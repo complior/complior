@@ -1,0 +1,71 @@
+# AI Act Compliance Platform - .gitignore
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production
+build/
+dist/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+prisma/migrations/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# TypeScript cache
+*.tsbuildinfo
