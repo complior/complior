@@ -1,0 +1,65 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# 1. Check for secrets/sensitive data
+echo "🔐 Checking for secrets..."
+if command -v git-secrets >/dev/null 2>&1; then
+  git secrets --scan || {
+    echo "❌ git-secrets found potential secrets!"
+    echo "   Install: https://github.com/awslabs/git-secrets"
+    exit 1
+  }
+else
+  echo "⚠️  git-secrets not installed. Skipping secret scan."
+  echo "   Recommended: brew install git-secrets (or apt/yum)"
+fi
+
+# 2. Check for common secret patterns (basic check)
+echo "🔍 Checking for common secret patterns..."
+if git diff --cached --name-only | xargs grep -E "(api[_-]?key|apikey|secret[_-]?key|password|token|bearer|jwt|private[_-]?key)" --ignore-case; then
+  echo "⚠️  Warning: Potential secrets detected in staged files!"
+  echo "   Review carefully before committing."
+  read -p "Continue anyway? (y/N) " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    exit 1
+  fi
+fi
+
+# 3. Run lint-staged (if configured)
+if command -v npx >/dev/null 2>&1; then
+  echo "🧹 Running lint-staged..."
+  npx lint-staged || {
+    echo "❌ lint-staged failed!"
+    exit 1
+  }
+else
+  echo "⚠️  npx not found. Skipping lint-staged."
+fi
+
+# 4. Check TypeScript types (fast check on staged files)
+if [ -f "tsconfig.json" ] && command -v npx >/dev/null 2>&1; then
+  echo "🔧 Checking TypeScript types..."
+  npx tsc --noEmit || {
+    echo "❌ TypeScript type check failed!"
+    exit 1
+  }
+fi
+
+# 5. Check for large files
+echo "📦 Checking file sizes..."
+MAX_SIZE=5242880 # 5MB
+for file in $(git diff --cached --name-only); do
+  if [ -f "$file" ]; then
+    size=$(wc -c < "$file")
+    if [ $size -gt $MAX_SIZE ]; then
+      echo "❌ File too large: $file ($(numfmt --to=iec $size))"
+      echo "   Maximum allowed: 5MB"
+      exit 1
+    fi
+  fi
+done
+
+echo "✅ Pre-commit checks passed!"
