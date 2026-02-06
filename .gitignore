@@ -46,8 +46,10 @@ prisma/migrations/
 
 # Temporary files
 tmp/
-temp/
 *.tmp
+
+# BUT: docs/temp/ should be tracked (setup documentation)
+!docs/temp/
 
 # OS
 Thumbs.db
