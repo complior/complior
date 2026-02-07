@@ -17,7 +17,6 @@ sequenceDiagram
     participant API as Fastify API
     participant Auth as Auth Service
     participant DB as PostgreSQL
-    participant Redis as Redis
     participant Eva as Eva (Mistral)
 
     User->>Next: GET /register
@@ -41,8 +40,7 @@ sequenceDiagram
 
     API->>Auth: generateToken(userId)
     Auth-->>API: JWT token
-    API->>Redis: SET session:{token} {userId, orgId} TTL 30d
-    API->>DB: INSERT Session {userId, token, ip}
+    API->>DB: INSERT Session {userId, token, ip, expiresAt: +30d}
     API->>DB: INSERT AuditLog {userId, action: 'login', resource: 'User'}
 
     API-->>User: 200 OK {token, user} + Set-Cookie: httpOnly
@@ -225,8 +223,8 @@ sequenceDiagram
 sequenceDiagram
     participant User as User (Browser)
     participant API as Fastify API
-    participant Queue as BullMQ
-    participant Worker as BullMQ Worker
+    participant Queue as pg-boss (PostgreSQL)
+    participant Worker as pg-boss Worker
     participant DocGen as DocumentGenerator
     participant LLM as Mistral Medium API
     participant DB as PostgreSQL
@@ -301,39 +299,31 @@ sequenceDiagram
     participant Next as Next.js (SSR)
     participant API as Fastify API
     participant DB as PostgreSQL
-    participant Redis as Redis
 
     User->>Next: GET /dashboard
     Next->>API: GET /api/dashboard/overview
 
-    API->>Redis: GET dashboard:{organizationId}
-    alt Cache hit
-        Redis-->>API: cached dashboard data
-    else Cache miss
-        API->>DB: SELECT count(*) FROM AISystem WHERE organizationId GROUP BY riskLevel
-        DB-->>API: {prohibited: 0, high: 3, gpai: 1, limited: 5, minimal: 2}
+    API->>DB: SELECT count(*) FROM AISystem WHERE organizationId GROUP BY riskLevel
+    DB-->>API: {prohibited: 0, high: 3, gpai: 1, limited: 5, minimal: 2}
 
-        API->>DB: SELECT AVG(complianceScore) FROM AISystem WHERE organizationId
-        DB-->>API: {avgScore: 67}
+    API->>DB: SELECT AVG(complianceScore) FROM AISystem WHERE organizationId
+    DB-->>API: {avgScore: 67}
 
-        API->>DB: SELECT AISystem WHERE complianceStatus != 'compliant' ORDER BY riskLevel DESC LIMIT 10
-        DB-->>API: [{name, riskLevel, complianceScore, status}, ...]
+    API->>DB: SELECT AISystem WHERE complianceStatus != 'compliant' ORDER BY riskLevel DESC LIMIT 10
+    DB-->>API: [{name, riskLevel, complianceScore, status}, ...]
 
-        API->>DB: SELECT sr.*, r.name FROM SystemRequirement sr JOIN Requirement r WHERE dueDate < NOW() + '30 days' AND status != 'completed'
-        DB-->>API: [{requirement, dueDate, system}, ...]
+    API->>DB: SELECT sr.*, r.name FROM SystemRequirement sr JOIN Requirement r WHERE dueDate < NOW() + '30 days' AND status != 'completed'
+    DB-->>API: [{requirement, dueDate, system}, ...]
 
-        API->>DB: SELECT * FROM Notification WHERE userId AND read=false ORDER BY creation DESC LIMIT 5
-        DB-->>API: [{type, title, message}, ...]
-
-        API->>Redis: SET dashboard:{orgId} {data} EX 300
-    end
+    API->>DB: SELECT * FROM Notification WHERE userId AND read=false ORDER BY creation DESC LIMIT 5
+    DB-->>API: [{type, title, message}, ...]
 
     API-->>Next: {systemsByRisk, avgScore, attentionItems, deadlines, notifications}
     Next-->>User: Rendered dashboard (SSR)
 
-    Note over User,Redis: Real-time updates via WebSocket
+    Note over User,DB: Real-time updates via WebSocket
     User->>API: WS /ws/dashboard
-    Note right of API: When AISystem complianceScore changes:<br/>→ Invalidate Redis cache<br/>→ Push update via WS
+    Note right of API: When AISystem complianceScore changes:<br/>→ Push update via WS
 ```
 
 ---
@@ -379,7 +369,6 @@ sequenceDiagram
     participant User as User (Browser)
     participant API as Fastify API
     participant DB as PostgreSQL
-    participant Redis as Redis
     participant Email as Email Service
 
     Note over User,Email: Login with Magic Link
@@ -390,21 +379,20 @@ sequenceDiagram
         API-->>User: 200 OK (same response to prevent email enumeration)
     else User found
         API->>API: Generate magic token (crypto.randomUUID)
-        API->>Redis: SET magic:{token} {userId, email} EX 600 (10 min TTL)
+        API->>DB: INSERT Session {userId, token, type: 'magic_link', expiresAt: +10min}
         API->>Email: Send magic link email
         Note right of Email: "Klicken Sie hier, um sich anzumelden"<br/>Link: /auth/verify?token={token}
         API-->>User: 200 OK "Check your email"
     end
 
     User->>API: GET /api/auth/verify?token={token}
-    API->>Redis: GET magic:{token}
+    API->>DB: SELECT Session WHERE token AND type='magic_link' AND expiresAt > NOW()
     alt Token valid
-        Redis-->>API: {userId, email}
-        API->>Redis: DEL magic:{token} (one-time use)
+        DB-->>API: {userId}
+        API->>DB: DELETE Session WHERE token (one-time use)
 
         API->>API: Generate JWT + session token
-        API->>Redis: SET session:{token} {userId, orgId} TTL 30d
-        API->>DB: INSERT Session {userId, token, ip}
+        API->>DB: INSERT Session {userId, token, type: 'auth', ip, expiresAt: +30d}
         API->>DB: UPDATE User SET lastLoginAt = NOW()
         API->>DB: INSERT AuditLog {action: 'login'}
 
@@ -415,8 +403,8 @@ sequenceDiagram
 
     Note over User,Email: Subsequent authenticated requests
     User->>API: GET /api/systems (Cookie: session_token)
-    API->>Redis: GET session:{token}
-    Redis-->>API: {userId, orgId}
+    API->>DB: SELECT Session WHERE token AND expiresAt > NOW()
+    DB-->>API: {userId, orgId}
     API->>API: Attach user context to request
     API->>DB: Query with organizationId filter (multi-tenancy)
     API-->>User: Response data
@@ -428,7 +416,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Cron as BullMQ Scheduler
+    participant Cron as pg-boss Scheduler
     participant Worker as Scraper Worker
     participant EURLex as EUR-Lex API
     participant LLM as Mistral Small API
@@ -520,11 +508,11 @@ sequenceDiagram
 
 ### Два паттерна передачи сообщений
 
-| Характеристика | Message Queue (BullMQ) | Pub/Sub (WebSocket) |
+| Характеристика | Message Queue (pg-boss) | Pub/Sub (WebSocket) |
 |---------------|------------------------|---------------------|
 | **Модель** | Many → One (много отправителей, один обработчик) | One → Many (один источник, все подписчики получают) |
 | **Порядок** | FIFO, гарантирован | Не важен |
-| **Персистентность** | Да (Redis persistence) | Нет (при disconnect — потеря) |
+| **Персистентность** | Да (PostgreSQL таблицы) | Нет (при disconnect — потеря) |
 | **Потеря сообщения** | Недопустима | Не критична (UI обновится при reconnect) |
 | **Дублирование** | Недопустимо (GUID idempotency) | Допустимо |
 
@@ -532,27 +520,29 @@ sequenceDiagram
 
 | Flow | Паттерн | Реализация | Почему |
 |------|---------|-----------|--------|
-| Document generation | **MQ** | BullMQ job | Порядок секций, потеря недопустима |
-| PDF export | **MQ** | BullMQ job | Длительная операция, гарантия завершения |
-| System classification (batch) | **MQ** | BullMQ job | GUID per job, retry при LLM timeout |
-| EUR-Lex scraping | **MQ** | BullMQ scheduled | FIFO, дедупликация по URL |
+| Document generation | **MQ** | pg-boss job | Порядок секций, потеря недопустима |
+| PDF export | **MQ** | pg-boss job | Длительная операция, гарантия завершения |
+| System classification (batch) | **MQ** | pg-boss job | GUID per job, retry при LLM timeout |
+| EUR-Lex scraping | **MQ** | pg-boss scheduled | FIFO, дедупликация по URL |
 | Eva chat streaming | **PubSub** | WebSocket | Real-time, потеря chunk не критична |
 | Dashboard updates | **PubSub** | WebSocket | Обновление UI, cache invalidation |
 | Section ready notification | **PubSub** | WebSocket | Уведомление, при потере — пользователь обновит страницу |
-| Compliance score changed | **Combined** | BullMQ → WebSocket | MQ для пересчёта → PubSub для уведомления UI |
+| Compliance score changed | **Combined** | pg-boss → WebSocket | MQ для пересчёта → PubSub для уведомления UI |
 
 ### Idempotency (GUID)
 
-Каждый BullMQ job содержит уникальный GUID, генерируемый **отправителем** (не BullMQ):
+Каждый pg-boss job содержит уникальный GUID, генерируемый **отправителем**:
 - Worker проверяет: если job с таким GUID уже обработан → пропуск
 - Защищает от дублирования при: retry после потери acknowledge, повторной отправке формы
 
-### Error Handling в BullMQ Workers
+### Error Handling в pg-boss Workers
 
 | Тип ошибки | Пример | Действие worker'а |
 |-----------|--------|------------------|
-| **Системная** | PostgreSQL down, Mistral API 503, Redis timeout | Не перехватывать — BullMQ сделает retry (exponential backoff) |
+| **Системная** | PostgreSQL down, Mistral API 503 | Не перехватывать — pg-boss сделает retry (exponential backoff) |
 | **Бизнес-ошибка** | Невалидные данные, система уже классифицирована, лимит плана превышен | Пометить job как completed с error result. Retry НЕ нужен |
+
+> **Миграция:** pg-boss → BullMQ через JobQueue adapter (см. ARCHITECTURE.md §6.10). Код workers не меняется.
 
 ---
 
@@ -568,17 +558,16 @@ sequenceDiagram
 | Classification (with LLM) | < 10 sec | Mistral Small API call |
 | Classification (cross-validated) | < 20 sec | Two sequential LLM calls |
 | Eva chat (streaming) | First token < 2 sec | WebSocket streaming, Mistral Large API |
-| Document section generation | < 30 sec | Async via BullMQ, Mistral Medium API |
-| Dashboard load | < 1 sec | Redis cache (5 min TTL) |
+| Document section generation | < 30 sec | Async via pg-boss, Mistral Medium API |
+| Dashboard load | < 1 sec | Прямой SQL-запрос (50 юзеров — без кэша) |
 | Gap analysis | < 5 sec | DB queries + Mistral Medium API |
-| PDF export | < 60 sec | Async via BullMQ |
+| PDF export | < 60 sec | Async via pg-boss |
 
 ### Data Persistence Points
 
 ```
 Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [validate] → PostgreSQL
-                                                    → [cache]    → Redis
-                                                    → [enqueue]  → BullMQ → Worker
+                                                    → [enqueue]  → pg-boss (PostgreSQL) → Worker
                                                     → [stream]   → WebSocket
                                                     → [classify] → Mistral API (EU)
                                                     → [store]    → S3 (Hetzner)

@@ -53,8 +53,7 @@ graph TB
 
         subgraph Infrastructure["Infrastructure Layer"]
             DB["PostgreSQL<br/>(Hetzner Managed)"]
-            Redis["Redis<br/>(sessions, cache)"]
-            BullMQ["BullMQ<br/>(job queues)"]
+            PgBoss["pg-boss<br/>(job queues via PostgreSQL)"]
             S3["S3 Storage<br/>(documents)"]
         end
 
@@ -80,12 +79,11 @@ graph TB
     Entities -->|defined by| MetaSchemas
     MetaSchemas -->|generate| DB
     UseCases -->|persist via| DB
-    UseCases -->|cache via| Redis
-    UseCases -->|enqueue| BullMQ
+    UseCases -->|enqueue| PgBoss
     UseCases -->|store docs| S3
     UseCases -->|classify/generate/chat| MistralAPI
     NextAPI -->|billing| Stripe
-    BullMQ -->|scrape| EURLex
+    PgBoss -->|scrape| EURLex
 ```
 
 ---
@@ -119,7 +117,7 @@ graph TB
 │  - Single source of truth for data structure                 │
 ├──────────────────────────────────────────────────────────────┤
 │  Infrastructure Layer                                        │
-│  - PostgreSQL (via pg pool), Redis, BullMQ, S3               │
+│  - PostgreSQL (via pg pool + pg-boss для job queues), S3      │
 │  - Mistral API client (Large/Medium/Small)                    │
 │  - Stripe client, EUR-Lex scraper                            │
 │  - Logger, error tracking (Sentry)                           │
@@ -329,6 +327,7 @@ src/
 │   ├── monitoring/
 │   │   └── eurlex-scraper.js
 │   └── jobs/
+│       ├── job-queue.js              # JobQueue port (pg-boss adapter, → BullMQ later)
 │       ├── classify-system.job.js
 │       ├── generate-document.job.js
 │       └── scrape-eurlex.job.js
@@ -438,7 +437,7 @@ const createClassificationResult = (ruleResult, llmResult, confidence) => ({
 | **Commands** (write) | `POST /api/systems/classify`, `POST /api/auth/register`, `PATCH /api/systems/:id` | Изменяют состояние, возвращают только статус/id |
 | **Queries** (read) | `GET /api/dashboard/overview`, `GET /api/systems/:id`, `GET /api/compliance/score` | Только читают, никогда не изменяют |
 
-Это упрощает кэширование (queries кэшируются в Redis), тестирование и аудит.
+Это упрощает кэширование (queries кэшируются), тестирование и аудит.
 
 ### 6.7 Audit Trail (Event Sourcing Lite)
 
@@ -457,14 +456,15 @@ const createClassificationResult = (ruleResult, llmResult, confidence) => ({
 
 | Паттерн | Реализация | Использование | Характеристика |
 |---------|-----------|---------------|----------------|
-| **Message Queue** | BullMQ (Redis) | Document generation, PDF export, EUR-Lex scraping, batch classification | Many→One, FIFO, persistent, exactly-once |
+| **Message Queue** | pg-boss (PostgreSQL) | Document generation, PDF export, EUR-Lex scraping, batch classification | Many→One, FIFO, persistent, exactly-once |
 | **Pub/Sub** | WebSocket (Fastify ws) | Eva chat streaming, dashboard real-time, section ready notifications | One→Many, не persistent, at-least-once |
 
 **Правила:**
-- **BullMQ** — для задач, где порядок критичен и потеря недопустима (генерация документов, классификация)
+- **pg-boss** — для задач, где порядок критичен и потеря недопустима (генерация документов, классификация)
 - **WebSocket** — для уведомлений в реальном времени, где потеря одного сообщения не критична (UI обновления)
 - **Idempotency:** каждое MQ-сообщение содержит GUID, получатель проверяет дубликаты
 - **Error handling:** системные ошибки (DB down) → retry; бизнес-ошибки (невалидные данные) → обработать и завершить
+- **Миграция:** при масштабировании pg-boss → BullMQ через JobQueue adapter (см. 6.10)
 
 ### 6.9 Анемичная доменная модель — обоснование
 
@@ -476,6 +476,50 @@ const createClassificationResult = (ruleResult, llmResult, confidence) => ({
 - Схемы обеспечивают runtime-валидацию (в отличие от TypeScript, который проверяет только в compile-time)
 
 Это соответствует подходу Тимура Шемсединова: «Анемичная модель — это нормально, когда мы моделируем не реальный объект, а набор документов и записей о нём».
+
+### 6.10 JobQueue Port — Adapter для миграции pg-boss → BullMQ
+
+Все обращения к очередям проходят через единый порт (интерфейс). Это обеспечивает замену pg-boss → BullMQ без изменения бизнес-логики:
+
+```javascript
+// domain/ports/JobQueue.js — порт (контракт)
+// Все use cases работают ТОЛЬКО с этим интерфейсом
+({
+  enqueue: async (name, data, opts) => {},    // Поставить задачу в очередь
+  schedule: async (name, cron, data) => {},   // Cron-задача
+  work: (name, handler) => {},                // Зарегистрировать обработчик
+});
+```
+
+```javascript
+// infrastructure/jobs/pg-boss-adapter.js — MVP
+const createPgBossQueue = (boss) => ({
+  async enqueue(name, data, opts = {}) {
+    const jobId = data.jobId || crypto.randomUUID();
+    return boss.send(name, { ...data, jobId }, opts);
+  },
+  async schedule(name, cron, data) {
+    return boss.schedule(name, cron, data);
+  },
+  work(name, handler) {
+    boss.work(name, handler);
+  },
+});
+
+// infrastructure/jobs/bullmq-adapter.js — при масштабировании
+// Тот же интерфейс, другая реализация → ни один use case не меняется
+```
+
+**Когда мигрировать на BullMQ + Redis:**
+- >100 concurrent пользователей
+- Горизонтальное масштабирование (несколько серверов — нужен shared queue)
+- PostgreSQL polling создаёт ощутимую нагрузку
+
+**Шаги миграции:**
+1. Добавить Redis в инфраструктуру
+2. Написать `bullmq-adapter.js` (тот же интерфейс)
+3. Заменить adapter в DI-конфигурации (одна строка)
+4. Zero изменений в application/domain слоях
 
 ---
 
@@ -554,7 +598,7 @@ sequenceDiagram
 | `domain/compliance/` | Document generation, gap analysis |
 | `domain/consultation/` | Eva orchestrator |
 | `infrastructure/llm/` | Mistral API adapters (Large/Medium/Small) |
-| `infrastructure/jobs/` | Background jobs (BullMQ) |
+| `infrastructure/jobs/` | Background jobs (pg-boss → BullMQ при масштабировании) |
 
 ### Что рефакторим
 
@@ -607,7 +651,7 @@ sequenceDiagram
 - **SQL injection:** Parameterized queries (existing CRUD builder)
 - **XSS:** React auto-escaping + CSP headers
 - **CSRF:** SameSite cookies + CSRF tokens
-- **Rate limiting:** Redis-based on public endpoints
+- **Rate limiting:** in-process (Map + sliding window) на MVP, Redis при масштабировании
 - **Encryption:** TLS 1.3 in transit, AES-256 at rest
 - **Secrets:** Environment variables (no hardcoded credentials)
 - **Audit trail:** Log all data access for compliance
@@ -622,8 +666,7 @@ graph LR
         subgraph AppServer["App Server (CX41)"]
             Docker["Docker Compose"]
             Fastify_["Fastify + Next.js"]
-            Redis_["Redis"]
-            BullMQ_["BullMQ Worker"]
+            PgBoss_["pg-boss Worker"]
         end
 
         subgraph DBServer["DB Server (Managed)"]
@@ -639,17 +682,17 @@ graph LR
 
     CF -->|proxy| Fastify_
     Fastify_ -->|query| PG
-    Fastify_ -->|cache| Redis_
-    Fastify_ -->|enqueue| BullMQ_
+    Fastify_ -->|enqueue| PgBoss_
     Fastify_ -->|classify/generate| MistralAPI_
-    BullMQ_ -->|batch jobs| MistralAPI_
+    PgBoss_ -->|query| PG
+    PgBoss_ -->|batch jobs| MistralAPI_
 ```
 
 ### MVP Scaling Plan
 
 | Phase | Users | Infrastructure |
 |-------|-------|---------------|
-| MVP (Month 1-3) | 0-50 | 1 app server + managed PG + Mistral API |
+| MVP (Month 1-3) | 0-50 | 1 app server + managed PG (+ pg-boss) + Mistral API |
 | Beta (Month 4-6) | 50-200 | 2 app servers + managed PG + Mistral API |
 | Growth (Month 7-12) | 200-1000 | Horizontal scaling + self-hosted LLM (cost optimization) |
 
@@ -665,7 +708,7 @@ graph LR
 | VM Sandbox | Direct imports | Безопасность, изоляция, hot-reload potential |
 | Mistral (product) | Claude/GPT | EU sovereignty, DACH market trust, acceptable quality |
 | PostgreSQL | MongoDB | Structured compliance data, ACID transactions, existing |
-| BullMQ | Temporal, Agenda | Простой, Redis-based, достаточно для MVP |
+| pg-boss (MVP) | BullMQ, Temporal, Agenda | PostgreSQL-native: нет доп. инфраструктуры. Миграция на BullMQ через adapter при масштабировании |
 | Next.js (frontend) | Remix, SvelteKit | Ecosystem, shadcn/ui compatibility, team expertise |
 
 ---

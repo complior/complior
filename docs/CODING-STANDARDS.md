@@ -627,11 +627,11 @@ const createClassificationEvent = (systemId, result, userId) => ({
 events.emit('SystemClassified', createClassificationEvent(systemId, result, userId));
 ```
 
-### Системные vs бизнес-ошибки (BullMQ)
+### Системные vs бизнес-ошибки (pg-boss)
 
 | Тип | Пример | Действие |
 |-----|--------|----------|
-| **Системная ошибка** | PostgreSQL недоступен, Mistral API timeout | **Retry** — BullMQ повторит job |
+| **Системная ошибка** | PostgreSQL недоступен, Mistral API timeout | **Retry** — pg-boss повторит job |
 | **Бизнес-ошибка** | Невалидные wizard answers, система уже классифицирована | **Завершить** — job обработан, результат — ошибка |
 
 ```javascript
@@ -649,12 +649,12 @@ const processClassifyJob = async (job) => {
 
 ### Idempotency (GUID)
 
-Каждое MQ-сообщение содержит уникальный GUID для предотвращения дублирования:
+Каждое MQ-сообщение содержит уникальный GUID для предотвращения дублирования (работает одинаково для pg-boss и BullMQ через JobQueue adapter):
 
 ```javascript
 // ✅ GOOD — GUID генерируется отправителем
 const jobId = crypto.randomUUID();
-await queue.add('classify-system', { systemId, jobId });
+await jobQueue.enqueue('classify-system', { systemId, jobId });
 
 // Worker проверяет: если job с таким GUID уже обработан — пропускаем
 const existing = await db.ClassificationLog.query(
