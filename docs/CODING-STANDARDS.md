@@ -583,6 +583,98 @@ try { await riskyOperation(); } catch {} // Никогда так!
 
 ## 6. Backend Architecture Rules (Max)
 
+### CQS (Command Query Separation)
+
+Функция либо **изменяет состояние**, либо **возвращает данные**, но никогда оба одновременно:
+
+```javascript
+// ✅ GOOD — CQS: command отдельно, query отдельно
+const classifySystem = async (systemId, answers) => {
+  const result = computeClassification(answers);
+  await db.RiskClassification.create(result);    // command — только запись
+};
+
+const getClassification = async (systemId) =>     // query — только чтение
+  db.RiskClassification.query('...', [systemId]);
+
+// ❌ BAD — и пишет, и возвращает (нарушение CQS)
+const classifyAndReturn = async (answers) => {
+  const result = computeClassification(answers);
+  await db.RiskClassification.create(result);
+  return result;  // Смешение command + query
+};
+```
+
+**Исключение:** `create → return id` допустимо для API endpoints (клиенту нужен ID созданного ресурса).
+
+### Command Pattern для Domain Events
+
+Domain events — анемичные сериализуемые объекты (Commands). Это позволяет: логировать, передавать по сети, воспроизводить для отладки:
+
+```javascript
+// ✅ GOOD — event как анемичный объект, сериализуемый
+const createClassificationEvent = (systemId, result, userId) => ({
+  type: 'SystemClassified',
+  systemId,
+  riskLevel: result.riskLevel,
+  confidence: result.confidence,
+  method: result.method,
+  userId,
+  timestamp: new Date().toISOString(),
+});
+
+// Записываем в audit trail + emit для подписчиков
+events.emit('SystemClassified', createClassificationEvent(systemId, result, userId));
+```
+
+### Системные vs бизнес-ошибки (BullMQ)
+
+| Тип | Пример | Действие |
+|-----|--------|----------|
+| **Системная ошибка** | PostgreSQL недоступен, Mistral API timeout | **Retry** — BullMQ повторит job |
+| **Бизнес-ошибка** | Невалидные wizard answers, система уже классифицирована | **Завершить** — job обработан, результат — ошибка |
+
+```javascript
+// ✅ GOOD — различаем типы ошибок в worker
+const processClassifyJob = async (job) => {
+  try {
+    const result = await classifySystem(job.data.systemId);
+    return result;
+  } catch (error) {
+    if (error instanceof AppError) throw error;  // бизнес-ошибка — не retry
+    throw error;                                    // системная — retry
+  }
+};
+```
+
+### Idempotency (GUID)
+
+Каждое MQ-сообщение содержит уникальный GUID для предотвращения дублирования:
+
+```javascript
+// ✅ GOOD — GUID генерируется отправителем
+const jobId = crypto.randomUUID();
+await queue.add('classify-system', { systemId, jobId });
+
+// Worker проверяет: если job с таким GUID уже обработан — пропускаем
+const existing = await db.ClassificationLog.query(
+  'SELECT 1 FROM "ClassificationLog" WHERE "jobId" = $1', [jobId]
+);
+if (existing.length > 0) return; // Idempotent — skip duplicate
+```
+
+### Закон Деметры: «Не разговаривай с незнакомцами»
+
+Модуль использует только прямые зависимости, не лезет вглубь чужих структур:
+
+```javascript
+// ✅ GOOD — работаем с прямой зависимостью
+const orgName = organization.name;
+
+// ❌ BAD — лезем через цепочку объектов (нарушение Law of Demeter)
+const orgName = user.organization.billing.plan.name;
+```
+
 ### DDD / Onion Layer Rules
 
 ```
@@ -700,6 +792,103 @@ const systems = await db.query(`SELECT * FROM "AISystem" WHERE name = '${name}'`
 ---
 
 ## 7. Frontend Architecture Rules (Nina)
+
+### 3-Layer Frontend Architecture
+
+Фронтенд строится на трёх разделённых слоях (из доклада Ильи Климова):
+
+```
+Transport Layer (React Query / TanStack Query)
+    ↓ данные (дедупликация, кэш, ревалидация)
+Store / Business Logic (Zustand, XState)
+    ↓ состояние
+Components (React) — ТОЛЬКО отображение
+```
+
+**Правила:**
+- **Транспортный слой** (React Query) решает: дедупликацию запросов, кэш, ревалидацию. Он ничего не знает о бизнес-логике
+- **Store** содержит бизнес-правила и гарантирует согласованность. Он ничего не знает о кнопках
+- **Компоненты** отображают данные из store и отправляют события. Они ничего не знают, откуда данные пришли
+
+```tsx
+// ❌ BAD — бизнес-логика прямо в компоненте поверх React Query хуков
+const SystemCard = ({ id }) => {
+  const { data } = useQuery(['system', id], fetchSystem);
+  const isHighRisk = data?.riskLevel === 'high' || data?.riskLevel === 'prohibited';
+  const score = data?.requirements?.reduce((s, r) => s + r.progress, 0) / (data?.requirements?.length * 100) * 100;
+  // ...куча вычислений в компоненте
+};
+
+// ✅ GOOD — компонент работает со store, не с транспортом
+const SystemCard = ({ id }) => {
+  const { system, isHighRisk, complianceScore } = useSystemStore(id);
+  if (!system) return <Skeleton />;
+  return <Card className={isHighRisk ? 'border-red-500' : ''}>{/* ... */}</Card>;
+};
+```
+
+### State Charts (XState) для 5-step Wizard
+
+Для сложных многошаговых процессов (наш Wizard регистрации AI-систем — 5 шагов с переходами туда-обратно) используем XState:
+
+```tsx
+// domain/classification/wizardMachine.ts — state chart для wizard
+// Декларативное описание переходов: наглядно, тестируемо, визуализируемо
+// XState генерирует диаграмму, понятную аналитику (Elena может проверить flow)
+
+// Правила:
+// - НЕ моделируйте всё приложение как один state chart
+// - Используйте ТОЛЬКО для сложных процессов (wizard, multi-step forms)
+// - State machine НИЧЕГО не знает про UI — компоненты отображают состояние
+```
+
+### Facade для shadcn/ui компонентов
+
+Все внешние UI-компоненты оборачиваются в Facade — менее настраиваемый, но более контролируемый:
+
+```tsx
+// ✅ GOOD — Facade: OurDropdown ограничивает API до нашей дизайн-системы
+// components/ui/RiskLevelSelect.tsx
+const RiskLevelSelect = ({ value, onChange }: RiskLevelSelectProps) => (
+  <Select value={value} onValueChange={onChange}>
+    <SelectTrigger className="w-[200px]">
+      <SelectValue placeholder="Risk level" />
+    </SelectTrigger>
+    <SelectContent>
+      {RISK_LEVELS.map((level) => (
+        <SelectItem key={level.value} value={level.value}>
+          <RiskBadge level={level.value} /> {level.label}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+);
+
+// ❌ BAD — прямое использование shadcn Select с 15 пропсами в каждом месте
+```
+
+### Design System: Tokens vs Components
+
+| Слой | Стабильность | Что включает | Где хранить |
+|------|-------------|-------------|-------------|
+| **Design Tokens** (атомы) | Высокая, меняются редко | Цвета, spacing, typography, shadows, border-radius | `tailwind.config.ts` |
+| **Components** | Меняются часто | Button, Badge, Card, Select | `components/ui/` (Facade обёртки) |
+
+Токены обеспечивают визуальную консистентность. Компоненты — реализация на основе токенов.
+
+### State Management — иерархия scope
+
+Состояние живёт максимально локально. Поднимаем выше ТОЛЬКО когда нужно:
+
+| Scope | Инструмент | Когда использовать |
+|-------|-----------|-------------------|
+| **Компонент** | `useState` | Accordion expanded, modal open, input value |
+| **Форма** | React Hook Form + Zod | Wizard steps, registration form |
+| **Группа компонентов** | React Context | Theme, sidebar state |
+| **Server state** | React Query | Списки систем, dashboard данные, классификации |
+| **Global app state** | Zustand | Auth, notifications, feature flags |
+
+**Правило:** много маленьких store лучше одного гигантского Redux. Не тащите локальное состояние компонента в глобальный store.
 
 ### Components
 

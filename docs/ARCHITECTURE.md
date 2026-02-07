@@ -427,6 +427,56 @@ const createClassificationResult = (ruleResult, llmResult, confidence) => ({
 });
 ```
 
+### 6.6 CQS (Command Query Separation) для API Design
+
+Принцип из лекции Тимура Шемсединова: метод либо **изменяет состояние** (command), либо **возвращает данные** (query), но никогда оба одновременно.
+
+Применение к нашим API endpoints:
+
+| Тип | Endpoints | Характеристика |
+|-----|-----------|----------------|
+| **Commands** (write) | `POST /api/systems/classify`, `POST /api/auth/register`, `PATCH /api/systems/:id` | Изменяют состояние, возвращают только статус/id |
+| **Queries** (read) | `GET /api/dashboard/overview`, `GET /api/systems/:id`, `GET /api/compliance/score` | Только читают, никогда не изменяют |
+
+Это упрощает кэширование (queries кэшируются в Redis), тестирование и аудит.
+
+### 6.7 Audit Trail (Event Sourcing Lite)
+
+Для AI Act compliance каждая классификация и изменение compliance-документов должны быть прослеживаемы. Вместо полного Event Sourcing (который избыточен для нашего масштаба) применяем **Event Sourcing Lite**:
+
+- Каждая операция записывается как **Command-объект** (анемичная структура) в `ClassificationLog` / `AuditLog`
+- Command содержит: `action`, `oldValue`, `newValue`, `userId`, `timestamp`
+- Текущее состояние хранится в основных таблицах (не пересчитывается из событий)
+- История позволяет: аудит для регулятора, undo ошибочной классификации, отладку
+
+При масштабировании (>1000 клиентов) можно перейти к полному CQRS с отдельными Read/Write API.
+
+### 6.8 MQ vs PubSub Strategy
+
+Два паттерна передачи сообщений, применяемые в нашей системе:
+
+| Паттерн | Реализация | Использование | Характеристика |
+|---------|-----------|---------------|----------------|
+| **Message Queue** | BullMQ (Redis) | Document generation, PDF export, EUR-Lex scraping, batch classification | Many→One, FIFO, persistent, exactly-once |
+| **Pub/Sub** | WebSocket (Fastify ws) | Eva chat streaming, dashboard real-time, section ready notifications | One→Many, не persistent, at-least-once |
+
+**Правила:**
+- **BullMQ** — для задач, где порядок критичен и потеря недопустима (генерация документов, классификация)
+- **WebSocket** — для уведомлений в реальном времени, где потеря одного сообщения не критична (UI обновления)
+- **Idempotency:** каждое MQ-сообщение содержит GUID, получатель проверяет дубликаты
+- **Error handling:** системные ошибки (DB down) → retry; бизнес-ошибки (невалидные данные) → обработать и завершить
+
+### 6.9 Анемичная доменная модель — обоснование
+
+Наша Domain Model (MetaSQL schemas) является **анемичной** — содержит данные без поведения. Это осознанное решение:
+
+- Мы моделируем **информационный слой** (AI-система, классификация, документ), а не реальные объекты с поведением
+- Вся бизнес-логика — в Domain Services (ClassificationEngine, DocumentGenerator, GapAnalyzer)
+- MetaSQL schemas описывают структуру данных и генерируют SQL + типы — это **schema-based contracts**, единый инструмент для всех слоёв
+- Схемы обеспечивают runtime-валидацию (в отличие от TypeScript, который проверяет только в compile-time)
+
+Это соответствует подходу Тимура Шемсединова: «Анемичная модель — это нормально, когда мы моделируем не реальный объект, а набор документов и записей о нём».
+
 ---
 
 ## 7. Classification Engine Architecture

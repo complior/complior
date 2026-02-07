@@ -516,7 +516,47 @@ sequenceDiagram
 
 ---
 
-## 11. Data Flow Summary
+## 11. Messaging Strategy: MQ vs PubSub
+
+### Два паттерна передачи сообщений
+
+| Характеристика | Message Queue (BullMQ) | Pub/Sub (WebSocket) |
+|---------------|------------------------|---------------------|
+| **Модель** | Many → One (много отправителей, один обработчик) | One → Many (один источник, все подписчики получают) |
+| **Порядок** | FIFO, гарантирован | Не важен |
+| **Персистентность** | Да (Redis persistence) | Нет (при disconnect — потеря) |
+| **Потеря сообщения** | Недопустима | Не критична (UI обновится при reconnect) |
+| **Дублирование** | Недопустимо (GUID idempotency) | Допустимо |
+
+### Маппинг на наши flows
+
+| Flow | Паттерн | Реализация | Почему |
+|------|---------|-----------|--------|
+| Document generation | **MQ** | BullMQ job | Порядок секций, потеря недопустима |
+| PDF export | **MQ** | BullMQ job | Длительная операция, гарантия завершения |
+| System classification (batch) | **MQ** | BullMQ job | GUID per job, retry при LLM timeout |
+| EUR-Lex scraping | **MQ** | BullMQ scheduled | FIFO, дедупликация по URL |
+| Eva chat streaming | **PubSub** | WebSocket | Real-time, потеря chunk не критична |
+| Dashboard updates | **PubSub** | WebSocket | Обновление UI, cache invalidation |
+| Section ready notification | **PubSub** | WebSocket | Уведомление, при потере — пользователь обновит страницу |
+| Compliance score changed | **Combined** | BullMQ → WebSocket | MQ для пересчёта → PubSub для уведомления UI |
+
+### Idempotency (GUID)
+
+Каждый BullMQ job содержит уникальный GUID, генерируемый **отправителем** (не BullMQ):
+- Worker проверяет: если job с таким GUID уже обработан → пропуск
+- Защищает от дублирования при: retry после потери acknowledge, повторной отправке формы
+
+### Error Handling в BullMQ Workers
+
+| Тип ошибки | Пример | Действие worker'а |
+|-----------|--------|------------------|
+| **Системная** | PostgreSQL down, Mistral API 503, Redis timeout | Не перехватывать — BullMQ сделает retry (exponential backoff) |
+| **Бизнес-ошибка** | Невалидные данные, система уже классифицирована, лимит плана превышен | Пометить job как completed с error result. Retry НЕ нужен |
+
+---
+
+## 12. Data Flow Summary
 
 ### Request → Response Latency Targets
 
@@ -556,5 +596,5 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [validate] → Po
 
 ---
 
-**Последнее обновление:** 2026-02-07
-**Следующий документ:** CODING-STANDARDS.md (ЭТАП 5) ⛔ Требует PO approval
+**Последнее обновление:** 2026-02-07 (обновлён: добавлен раздел 11 MQ vs PubSub из лекций)
+**Следующий документ:** CODING-STANDARDS.md (ЭТАП 5) ✅ Утверждён
