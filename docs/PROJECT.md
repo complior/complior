@@ -46,7 +46,7 @@
 | ARCHITECTURE.md | ✅ Создан | ✅ PO принял (API-only старт) |
 | DATABASE.md | ⏳ Следующий | Информационный |
 | DATA-FLOWS.md | ⏳ Ожидает | Информационный |
-| CODING-STANDARDS.md | ⏳ Ожидает | ⛔ Требует PO |
+| CODING-STANDARDS.md | ✅ Создан | ✅ PO принял |
 | PRODUCT-BACKLOG.md | ⏳ Ожидает | ⛔ Требует PO |
 | ADR-001..004 | ⏳ Ожидает | Информационный |
 
