@@ -34,8 +34,8 @@ class ComplianceCalculator {
 ### Factory Functions (вместо классов)
 
 ```javascript
-// ✅ GOOD — factory function с замыканием
-const createClassificationEngine = ({ ruleEngine, llmClient, db }) => ({
+// ✅ GOOD — factory function с замыканием (application layer orchestrates domain + infra)
+const createClassifySystem = ({ ruleEngine, llmClient, db }) => ({
   async classify(systemId, answers) {
     const ruleResult = ruleEngine.apply(answers);
     if (ruleResult.confidence >= 90) return ruleResult;
@@ -684,7 +684,7 @@ schemas/        → MetaSQL definitions, CAN reference domain types
 api/            → HTTP routing, validation, ONLY calls application layer
 infrastructure/ → DB, LLM, S3, ONLY called from application layer
 config/         → Environment-based, NO business logic
-lib/            → Shared utilities (db.js, common.js, errors.js)
+lib/            → Shared utilities (db.js, errors.js, validators.js)
 ```
 
 ### Layer Import Rules
@@ -692,7 +692,7 @@ lib/            → Shared utilities (db.js, common.js, errors.js)
 ```javascript
 // ✅ GOOD — application imports from domain
 // application/classification/classifySystem.js
-const { classify } = domain.classification.services.ClassificationEngine;
+const { apply } = domain.classification.services.RuleEngine;
 
 // ❌ BAD — domain imports from infrastructure
 // domain/classification/entities/AISystem.js
@@ -708,24 +708,29 @@ const { db } = require('../../infrastructure/db'); // VIOLATION!
 ({
   method: 'POST',
   path: '/api/systems/:id/classify',
-  handler: async ({ params, body, user }) => {
+  handler: async ({ params, body, session }) => {
     // 1. Validate input (Zod)
     const { id } = ClassifyParamsSchema.parse(params);
 
-    // 2. Authorization check (явный, не middleware!)
+    // 2. Resolve user from Ory session (явный, не middleware!)
+    const user = await db.User.query(
+      'SELECT * FROM "User" WHERE "oryId" = $1', [session.identity.id]
+    );
+
+    // 3. Authorization check (явный, не middleware!)
     const system = await db.AISystem.read(id);
     if (system.organizationId !== user.organizationId) throw new ForbiddenError();
 
-    // 3. Call application layer
+    // 4. Call application layer
     const result = await application.classification.classifySystem(id);
 
-    // 4. Audit log (явный, не middleware!)
+    // 5. Audit log (явный, не middleware!)
     await db.AuditLog.create({
       userId: user.id, action: 'classify',
       resource: 'AISystem', resourceId: id,
     });
 
-    // 5. Return typed response
+    // 6. Return typed response
     return { status: 200, body: result };
   },
 });
@@ -964,10 +969,11 @@ const moduleContext = Object.freeze({
   console: logger,                    // Логгер (не console.log!)
   config: Object.freeze(config),      // Конфигурация (read-only)
   db: Object.freeze(db),              // Database CRUD builder (read-only reference)
-  common: Object.freeze(common),      // Utilities (password hashing, etc.)
   domain: Object.freeze(domain),      // Domain layer
+  auth: Object.freeze(oryClient),     // Ory client (verify session, get identity)
+  email: Object.freeze(brevoClient),  // Brevo client (transactional email, EU)
   llm: Object.freeze(llmAdapter),     // LLM client (Mistral API)
-  storage: Object.freeze(s3Client),   // S3 storage
+  storage: Object.freeze(s3Client),   // Hetzner Object Storage (S3-compatible)
 });
 ```
 
@@ -987,7 +993,7 @@ const moduleContext = Object.freeze({
 | Threat | Mitigation |
 |--------|------------|
 | **Injection (SQL/NoSQL)** | Parameterized queries ONLY. No string concatenation in SQL. |
-| **Broken Auth** | scrypt password hashing, secure session tokens, httpOnly cookies |
+| **Broken Auth** | Ory (self-hosted, EU) — magic links, password hashing, session management, MFA |
 | **Sensitive Data Exposure** | TLS 1.3, AES-256 at rest, no PII in logs |
 | **XXE** | JSON only (no XML parsing) |
 | **Broken Access Control** | RBAC on every endpoint, organizationId filter |
@@ -1040,13 +1046,13 @@ const systems = await db.query('SELECT * FROM "AISystem"');
 
 ### Coverage Targets
 
-| Layer | Target | Enforcement |
-|-------|--------|-------------|
-| Domain services | 90%+ | CI блокирует PR |
-| Application layer | 80%+ | CI блокирует PR |
-| API endpoints | 80%+ | CI блокирует PR |
-| Frontend components | 70%+ | CI warning |
-| E2E critical paths | 100% of P0 flows | Manual verification |
+| Layer | Sprint 0-2 | Sprint 3+ | Enforcement |
+|-------|------------|-----------|-------------|
+| Domain services | 70%+ | 90%+ | CI блокирует PR |
+| Application layer | 60%+ | 80%+ | CI блокирует PR |
+| API endpoints | 60%+ | 80%+ | CI блокирует PR |
+| Frontend components | 50%+ | 70%+ | CI warning |
+| E2E critical paths | P0 flows | 100% of P0 flows | Manual verification |
 
 ### Test Structure
 
@@ -1054,7 +1060,7 @@ const systems = await db.query('SELECT * FROM "AISystem"');
 // classification-engine.test.js
 import { describe, it, expect } from 'vitest';
 
-describe('ClassificationEngine', () => {
+describe('RuleEngine', () => {
   describe('classify', () => {
     it('should return prohibited for social scoring systems', async () => {
       const answers = createWizardAnswers({ domain: 'social_scoring' });

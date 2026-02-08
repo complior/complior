@@ -410,7 +410,62 @@ Feature 001 (IAM)
 
 ---
 
-### ЭТАП 7: Marcus создаёт ADR-001, ADR-002, ... (Architecture Decision Records)
+### ЭТАП 7: Marcus создаёт SPRINT-BACKLOG.md (User Stories для Sprint 1)
+
+**Файл:** `/home/openclaw/PROJECT/docs/SPRINT-BACKLOG.md`
+
+**Создаёт:** Marcus
+
+**Что это:**
+SPRINT-BACKLOG.md — декомпозиция P0-фич из PRODUCT-BACKLOG.md в конкретные User Stories, готовые к разработке. Это мост между «ЧТО делать» (Product Backlog) и «КАК делать» (код).
+
+**Содержит:**
+
+Sprint 1 User Stories из P0-фич (Feature 01, 02, 03):
+
+```markdown
+## US-001: Инициализация monorepo с Fastify + Next.js
+**Feature:** 01 | **SP:** 5 | **Assignee:** @max
+**Теги:** [BE+QA]
+
+### Description
+As a developer, I want a working monorepo with backend (Fastify + MetaSQL)
+and frontend (Next.js 14), so that I can start building features.
+
+### Technical Context
+- Existing code: /existing-code/NodeJS-Fastify/, /existing-code/NodeJS-Application/
+- ARCHITECTURE.md §3 (module structure)
+- CODING-STANDARDS.md (lint, TypeScript strict)
+
+### Acceptance Criteria
+- [ ] Monorepo: src/ (backend) + frontend/
+- [ ] Fastify starts on port 3001
+- [ ] Next.js starts on port 3000
+- [ ] TypeScript strict, ESLint, Prettier configured
+- [ ] Tests: vitest configured, 1 smoke test passes
+- [ ] CI: GitHub Actions runs lint + type-check + test
+- [ ] Docker Compose: app + PostgreSQL
+
+### Зависимости
+Нет
+```
+
+**Формат User Story:**
+- Из Marcus SKILL.md → Sprint Task Template
+- Story Points: 1, 2, 3, 5, 8, 13 (Fibonacci)
+- Assignee: конкретный агент (@max, @nina, @elena, @leo, @ava)
+- Теги: [BE+QA], [FE+UX], [SecOps], [Legal], [Research]
+- Acceptance criteria: конкретные, проверяемые
+
+**Правило:** Sprint Backlog включает User Stories ТОЛЬКО для текущего спринта (Sprint 1). Следующие спринты планируются перед их началом.
+
+**Зависимости:** PRODUCT-BACKLOG.md (✅ approved) → SPRINT-BACKLOG.md
+
+**Статус после создания:** ⛔ **PO APPROVAL REQUIRED** — Product Owner утверждает Sprint Backlog перед стартом разработки
+
+---
+
+### ЭТАП 8: Marcus создаёт ADR-001, ADR-002, ... (Architecture Decision Records)
 
 **Файлы:** `/home/openclaw/PROJECT/adr/ADR-NNN-название.md`
 
@@ -479,6 +534,7 @@ Feature 001 (IAM)
 - [ ] ✅ DATA-FLOWS.md создан (sequence diagrams для всех key flows)
 - [ ] ✅ CODING-STANDARDS.md создан (правила кода)
 - [ ] ✅ PRODUCT-BACKLOG.md создан (фичи продукта, приоритеты, MVP scope)
+- [ ] ✅ SPRINT-BACKLOG.md создан (User Stories для Sprint 1)
 - [ ] ✅ ADR-001, ADR-002, ADR-003, ADR-004 созданы
 - [ ] ✅ Все Mermaid диаграммы рендерятся корректно
 - [ ] ✅ Нет TODO/FIXME в документах

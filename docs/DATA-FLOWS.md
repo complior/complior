@@ -1,6 +1,6 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 1.0.0
+**Версия:** 1.1.0
 **Дата:** 2026-02-07
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
@@ -14,40 +14,46 @@
 sequenceDiagram
     participant User as User (Browser)
     participant Next as Next.js (SSR)
+    participant Ory as Ory (self-hosted)
     participant API as Fastify API
-    participant Auth as Auth Service
     participant DB as PostgreSQL
+    participant Brevo as Brevo (email, EU)
     participant Eva as Eva (Mistral)
 
     User->>Next: GET /register
-    Next-->>User: Registration page (SSR)
+    Next-->>User: Registration page (SSR) → Ory registration form
 
-    User->>API: POST /api/auth/register {email, fullName, company}
-    API->>API: Validate input (Zod)
-    API->>DB: Check email uniqueness
-    DB-->>API: OK (no duplicate)
+    User->>Ory: POST /self-service/registration {email, password, fullName, company}
+    Ory->>Ory: Create identity, hash password
+    Ory->>Brevo: Send verification email (via Ory SMTP → Brevo)
+    Ory-->>User: Registration success → redirect to /auth/callback
 
+    Note over Ory,API: Ory webhook → after registration
+    Ory->>API: POST /api/auth/webhook {event: 'identity.created', identity}
+    API->>API: Validate webhook signature
     API->>DB: BEGIN TRANSACTION
-    API->>DB: INSERT Organization {name, industry, size, country}
+    API->>DB: INSERT Organization {name: identity.company, industry, size, country}
     DB-->>API: organizationId
-    API->>Auth: hashPassword(password) [scrypt]
-    Auth-->>API: passwordHash
-    API->>DB: INSERT User {email, fullName, passwordHash, organizationId}
+    API->>DB: INSERT User {oryId, email, fullName, organizationId}
     DB-->>API: userId
     API->>DB: INSERT UserRole {userId, roleId: 'owner'}
     API->>DB: INSERT Subscription {organizationId, planId: 'free'}
-    API->>DB: COMMIT
-
-    API->>Auth: generateToken(userId)
-    Auth-->>API: JWT token
-    API->>DB: INSERT Session {userId, token, ip, expiresAt: +30d}
     API->>DB: INSERT AuditLog {userId, action: 'login', resource: 'User'}
+    API->>DB: COMMIT
+    API-->>Ory: 200 OK
 
-    API-->>User: 200 OK {token, user} + Set-Cookie: httpOnly
-
-    User->>Next: GET /onboarding
+    Note over Next,DB: Fallback: если webhook не дошёл
+    User->>Next: GET /onboarding (Ory session cookie)
+    Next->>Ory: Verify session (toSession)
+    Ory-->>Next: {identity, session}
     Next->>API: GET /api/user/me
-    API-->>Next: {user, organization}
+    API->>DB: SELECT User WHERE oryId = identity.id
+    alt User не найден (webhook missed)
+        API->>DB: BEGIN TRANSACTION → INSERT Org + User + Role + Sub → COMMIT
+        API-->>Next: {user, organization} (created on-the-fly)
+    else User найден
+        API-->>Next: {user, organization}
+    end
     Next-->>User: Onboarding page
 
     User->>API: POST /api/onboarding/quick-assessment {answers}
@@ -105,8 +111,8 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant API as Fastify API
-    participant CE as ClassificationEngine
-    participant Rules as RuleEngine
+    participant CE as classifySystem (Application)
+    participant Rules as RuleEngine (Domain)
     participant LLM as Mistral Small API
     participant Escalation as Mistral Large API
     participant DB as PostgreSQL
@@ -178,7 +184,7 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     User->>WS: Connect /ws/chat
-    WS->>WS: Authenticate (JWT from cookie)
+    WS->>WS: Authenticate (Ory session from cookie)
 
     User->>WS: {type: 'message', text: "Наш чат-бот — это high risk?"}
 
@@ -228,7 +234,8 @@ sequenceDiagram
     participant DocGen as DocumentGenerator
     participant LLM as Mistral Medium API
     participant DB as PostgreSQL
-    participant S3 as S3 Storage
+    participant Gotenberg as Gotenberg (PDF)
+    participant S3 as Hetzner Object Storage
 
     User->>API: POST /api/compliance/documents {aiSystemId, documentType: 'technical_documentation'}
     API->>DB: SELECT AISystem WHERE id + classification data
@@ -280,7 +287,8 @@ sequenceDiagram
     API->>Queue: enqueue('export-document', {documentId, format})
     Queue->>Worker: process job
     Worker->>DB: SELECT all DocumentSections WHERE documentId ORDER BY sortOrder
-    Worker->>Worker: Render PDF (sections → formatted document)
+    Worker->>Gotenberg: POST /forms/chromium/convert/html (sections → HTML → PDF)
+    Gotenberg-->>Worker: PDF binary
     Worker->>S3: Upload PDF
     S3-->>Worker: fileUrl
     Worker->>DB: UPDATE ComplianceDocument SET fileUrl, status='approved'
@@ -362,50 +370,44 @@ sequenceDiagram
 
 ---
 
-## 8. Authentication Flow (Magic Link)
+## 8. Authentication Flow (Ory Magic Link)
 
 ```mermaid
 sequenceDiagram
     participant User as User (Browser)
+    participant Ory as Ory (self-hosted)
+    participant Brevo as Brevo (email, EU)
     participant API as Fastify API
     participant DB as PostgreSQL
-    participant Email as Email Service
 
-    Note over User,Email: Login with Magic Link
+    Note over User,Brevo: Login with Magic Link (managed by Ory)
 
-    User->>API: POST /api/auth/magic-link {email}
-    API->>DB: SELECT User WHERE email
-    alt User not found
-        API-->>User: 200 OK (same response to prevent email enumeration)
-    else User found
-        API->>API: Generate magic token (crypto.randomUUID)
-        API->>DB: INSERT Session {userId, token, type: 'magic_link', expiresAt: +10min}
-        API->>Email: Send magic link email
-        Note right of Email: "Klicken Sie hier, um sich anzumelden"<br/>Link: /auth/verify?token={token}
-        API-->>User: 200 OK "Check your email"
+    User->>Ory: POST /self-service/login {method: 'code', email}
+    Ory->>Ory: Generate magic code/link
+    Ory->>Brevo: Send magic link email (SMTP → Brevo)
+    Note right of Brevo: "Klicken Sie hier, um sich anzumelden"<br/>Link: /self-service/login?code={code}
+    Ory-->>User: 200 OK "Check your email"
+
+    User->>Ory: GET /self-service/login?code={code}
+    alt Code valid
+        Ory->>Ory: Create session
+        Ory-->>User: 302 Redirect /auth/callback + Set-Cookie: ory_session (httpOnly, Secure, SameSite)
+    else Code invalid/expired
+        Ory-->>User: 401 Invalid or expired link
     end
 
-    User->>API: GET /api/auth/verify?token={token}
-    API->>DB: SELECT Session WHERE token AND type='magic_link' AND expiresAt > NOW()
-    alt Token valid
-        DB-->>API: {userId}
-        API->>DB: DELETE Session WHERE token (one-time use)
+    Note over User,DB: Ory webhook → after login
+    Ory->>API: POST /api/auth/webhook {event: 'session.created', identity}
+    API->>DB: UPDATE User SET lastLoginAt = NOW() WHERE oryId = identity.id
+    API->>DB: INSERT AuditLog {userId, action: 'login'}
+    API-->>Ory: 200 OK
 
-        API->>API: Generate JWT + session token
-        API->>DB: INSERT Session {userId, token, type: 'auth', ip, expiresAt: +30d}
-        API->>DB: UPDATE User SET lastLoginAt = NOW()
-        API->>DB: INSERT AuditLog {action: 'login'}
-
-        API-->>User: 302 Redirect /dashboard + Set-Cookie: httpOnly, Secure, SameSite
-    else Token invalid/expired
-        API-->>User: 401 Invalid or expired link
-    end
-
-    Note over User,Email: Subsequent authenticated requests
-    User->>API: GET /api/systems (Cookie: session_token)
-    API->>DB: SELECT Session WHERE token AND expiresAt > NOW()
-    DB-->>API: {userId, orgId}
-    API->>API: Attach user context to request
+    Note over User,DB: Subsequent authenticated requests
+    User->>API: GET /api/systems (Cookie: ory_session)
+    API->>Ory: GET /sessions/whoami (verify session)
+    Ory-->>API: {identity: {id, email, ...}, active: true}
+    API->>DB: SELECT User WHERE oryId = identity.id
+    DB-->>API: {userId, organizationId}
     API->>DB: Query with organizationId filter (multi-tenancy)
     API-->>User: Response data
 ```
@@ -566,11 +568,14 @@ sequenceDiagram
 ### Data Persistence Points
 
 ```
-Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [validate] → PostgreSQL
+Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Ory (self-hosted, EU)
+                                                    → [validate] → PostgreSQL
                                                     → [enqueue]  → pg-boss (PostgreSQL) → Worker
                                                     → [stream]   → WebSocket
                                                     → [classify] → Mistral API (EU)
-                                                    → [store]    → S3 (Hetzner)
+                                                    → [email]    → Brevo (EU)
+                                                    → [PDF]      → Gotenberg (self-hosted)
+                                                    → [store]    → Hetzner Object Storage (EU)
 ```
 
 ### Cross-Context Events
@@ -585,5 +590,5 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [validate] → Po
 
 ---
 
-**Последнее обновление:** 2026-02-07 (обновлён: добавлен раздел 11 MQ vs PubSub из лекций)
+**Последнее обновление:** 2026-02-07 (v1.1.0: Ory для auth, Brevo для email, Gotenberg для PDF, Hetzner Object Storage)
 **Следующий документ:** CODING-STANDARDS.md (ЭТАП 5) ✅ Утверждён

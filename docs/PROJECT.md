@@ -1,6 +1,6 @@
 # PROJECT.md — AI Act Compliance Platform
 
-**Версия:** 1.0.0
+**Версия:** 1.1.0
 **Дата:** 2026-02-07
 **Фаза:** Phase 0 (Architecture & Planning)
 **Источник:** PRODUCT-VISION.md v1.0.0
@@ -48,7 +48,7 @@
 | DATA-FLOWS.md | ✅ Создан | Информационный |
 | CODING-STANDARDS.md | ✅ Создан | ✅ PO принял |
 | PRODUCT-BACKLOG.md | ✅ Создан | ✅ PO принял |
-| SPRINT-BACKLOG.md | — | Создаётся при Sprint Planning |
+| SPRINT-BACKLOG.md | ✅ Создан | ✅ PO принял |
 | ADR-001..004 | ⏳ Ожидает | Информационный |
 
 ---
@@ -60,9 +60,11 @@
 - **Архитектура:** DDD/Onion поверх существующего VM sandbox паттерна
 - **БД:** PostgreSQL (Hetzner Managed)
 - **Schema management:** MetaSQL (JavaScript schema → SQL DDL + TypeScript types)
-- **Сессии:** PostgreSQL Session table (no Redis on MVP)
+- **Auth:** Ory (self-hosted, Hetzner EU) — identity, sessions, MFA, magic links
+- **Email:** Brevo (Франция) — transactional API для magic links, notifications, digests
 - **Очереди:** pg-boss (PostgreSQL-native, document generation, classification)
-- **Rate limiting:** In-process (Map + sliding window)
+- **Rate limiting:** @fastify/rate-limit (официальный Fastify plugin)
+- **PDF:** Gotenberg (self-hosted Docker, HTML→PDF)
 
 ### Frontend
 - **Framework:** Next.js 14 (App Router) + TypeScript strict
@@ -73,7 +75,7 @@
 
 ### AI/LLM Layer (Product — EU Sovereign)
 - **Ева (Consultant):** Mistral Large 3 API (EU)
-- **Classifier:** Mixtral 8x22B (self-hosted, Hetzner GPU)
+- **Classifier:** Mistral Small 3.1 API (EU) — self-hosted Mixtral 8x22B при >100 клиентов
 - **Doc Writer:** Mistral Medium 3 API (EU)
 - **Quick Tasks:** Mistral Small 3.1 (self-hosted)
 
@@ -88,11 +90,13 @@
 
 ### Infrastructure
 - **Hosting:** Hetzner Cloud (EU data residency, Германия)
-- **GPU:** Hetzner GPU Server (1x A100 40GB) для self-hosted LLM
+- **GPU:** Hetzner GPU Server (1x A100 40GB) — при масштабировании (>100 клиентов, self-hosted LLM)
 - **CI/CD:** GitHub Actions
 - **CDN/DDoS:** Cloudflare
 - **Error tracking:** Sentry
-- **Storage:** S3-compatible (Hetzner) для документов
+- **Storage:** Hetzner Object Storage (S3-compatible, €5.27/TB) для PDF-документов
+- **Monitoring:** Better Uptime (EU, Литва) — uptime + status page
+- **Analytics:** Plausible (EU, Эстония) — privacy-first, без cookies
 
 ### Workflow
 - **Scrum:** 4-column board (Backlog → ToDo → Doing → Done)
@@ -108,7 +112,7 @@
 2. **Document Generation** — template engine + LLM expansion + human review + PDF export
 3. **Eva Consultant Chat** — conversation management + context injection + tool calling + streaming
 4. **Compliance Dashboard** — compliance score + requirements tracking + deadlines + notifications
-5. **User & Organization Management** — multi-tenant + RBAC + billing (Stripe)
+5. **User & Organization Management** — Ory (identity + sessions) + multi-tenant + RBAC + billing (Stripe)
 6. **Regulatory Monitor** — EUR-Lex scraping + change detection + impact assessment
 
 ---
@@ -202,7 +206,7 @@
 - **Layered:** API → Domain → Schema → DB
 - **RBAC:** Permission table (role → action → identifier)
 
-**Решение:** НЕ удалять до создания ARCHITECTURE.md + CODING-STANDARDS.md. Используется как reference для Marcus.
+**Решение:** ARCHITECTURE.md и CODING-STANDARDS.md созданы ✅. Пример-код сохраняется как reference до начала Sprint 001, затем удаляется (кроме core architecture).
 
 ---
 

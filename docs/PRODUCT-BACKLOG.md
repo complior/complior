@@ -49,13 +49,18 @@
 ### Описание
 - Monorepo: `src/` (backend, Onion Architecture) + `frontend/` (Next.js 14)
 - Backend из existing-code: Fastify + MetaSQL + VM Sandbox
-- Все 22 таблицы из DATABASE.md как MetaSQL schemas + миграции
+- Все 21 таблица из DATABASE.md как MetaSQL schemas + миграции
 - Библиотека ошибок AppError + structured logging (pino)
 - GitHub Actions CI: lint, type-check, tests, `npm audit`
-- Docker Compose: app + PostgreSQL (dev environment)
+- Docker Compose: app + PostgreSQL + Ory + Gotenberg (dev environment)
+- Hetzner Object Storage (S3) — настройка bucket
+- @fastify/rate-limit — подключение plugin
+- Plausible — подключение скрипта аналитики
+- Better Uptime — настройка мониторинга endpoint
 
 ### MVP Scope
 - Полная DB-схема с seed data (AI Act requirements, pricing plans)
+- Docker Compose с Ory и Gotenberg
 - CI pipeline рабочий с первого дня
 - pg-boss НЕ нужен на Sprint 0 — подключается в Sprint 4 (Feature 07)
 
@@ -72,18 +77,20 @@
 As a CTO компании в DACH-регионе, I want to register, login and manage my team's access, so that we can securely use the compliance platform.
 
 ### Описание
-- Регистрация: email + пароль (scrypt hash) + создание Organization + Role(owner) + Subscription(free)
-- Аутентификация: email magic link (без пароля) + JWT + httpOnly cookies
-- Session management: PostgreSQL Session table (type='magic_link' TTL 10 мин, type='auth' TTL 30 дней)
-- RBAC: Permission table (role + resource + action)
+- **Ory (self-hosted, Hetzner EU):** регистрация, login, magic links, password, sessions, MFA
+- **Brevo (Франция):** transactional email для magic links и verification emails
+- Ory webhook → наш API → создание Organization + User (sync) + Role(owner) + Subscription(free)
+- RBAC: Permission table (role + resource + action) — наша таблица поверх Ory identity
 - Multi-tenancy: ВСЕ запросы фильтруются по organizationId
-- AuditLog: запись каждого auth-события
+- AuditLog: запись каждого auth-события (Ory webhook → AuditLog)
 
 ### MVP Scope
-- Регистрация с email + magic link auth
+- Ory setup в Docker Compose + Brevo SMTP integration
+- Регистрация с email + magic link (Ory code method)
+- Ory webhook → User sync + Organization creation
 - Базовые роли: Owner, Member
 - Multi-tenancy изоляция
-- Rate limiting: не более 3 magic link в 10 минут
+- @fastify/rate-limit на public endpoints
 
 ### Зависимости
 Feature 01 (инфраструктура)
@@ -146,20 +153,22 @@ Feature 02 (IAM — нужна аутентификация)
 
 ---
 
-## Feature 04: Classification Engine — Классификация AI-систем
+## Feature 04a: Rule Engine — Rule-based классификация
 
-**Приоритет:** P0 (Must Have) | **Размер:** XL | **Спринт:** 2-3
+**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 2
 
 ### Бизнес-ценность
-As a CTO, I want to know the exact risk level and all applicable requirements for each AI system, so that I understand what compliance work is needed and get immediate recommendations.
+As a CTO, I want my AI systems classified by risk level using deterministic rules, so that I get instant, explainable results without waiting for LLM.
 
 ### Описание
 
-**Гибридный 4-step classification pipeline:**
-1. **Rule-based pre-filter** — Art. 5 (prohibited), Annex III (8 доменов high-risk), safety components + Annex I, **GPAI detection** (Art. 51)
-2. **LLM classification** — Mistral Small/Medium для сложных случаев
-3. **Cross-validation** — при расхождении rules/LLM → escalation на Mistral Large
-4. **Requirements mapping** — riskLevel + **role (Provider/Deployer)** + category → applicable Articles
+**Чистый Domain Service (RuleEngine)** — не зависит от LLM, инфраструктуры, внешних сервисов:
+
+1. **Art. 5 check** — prohibited practices (social scoring, real-time biometrics, etc.)
+2. **Annex III check** — 8 доменов high-risk (biometrics, HR, education, law enforcement, etc.)
+3. **Safety component check** — Annex I harmonisation legislation
+4. **GPAI detection** — Art. 51 (general purpose AI indicators)
+5. **Provider/Deployer role** — разные requirements per role
 
 **Пять classification paths:**
 
@@ -171,34 +180,89 @@ As a CTO, I want to know the exact risk level and all applicable requirements fo
 | **Limited Risk** (Art. 50) | 🟡 | Только transparency requirements (chatbots, deepfakes, emotion recognition) |
 | **Minimal Risk** | 🟢 | Нет обязательных требований. Voluntary codes of conduct |
 
-**Requirements зависят от роли:**
-- **Provider** (разработчик AI): Art. 9-17, 43, 47-49, 72 — полный набор
-- **Deployer** (использует AI): Art. 26-27 — использование по инструкции, мониторинг, логи, информирование работников
-
-**Рекомендации при классификации:**
-- Per requirement: что конкретно нужно сделать
-- Estimated effort и приоритет
-- Если **Prohibited**: чёткий guidance (прекратить использование, модифицировать систему, проконсультироваться с юристом)
-- Если **High Risk, не compliant**: ранжированный список действий
-
-**Переклассификация:**
-- Система изменилась → пользователь или система предлагает переклассифицировать
-- Новый riskLevel → обновление requirements → notification
-
-Output: riskLevel, role, confidence, matchedRules[], articleReferences[], requirements[], recommendations[]
+Output: riskLevel, role, confidence, matchedRules[], articleReferences[]
 
 ### MVP Scope
-- Rule-based classification (Annex III + Art. 5 + GPAI detection)
-- Provider/Deployer distinction в requirements mapping
-- LLM second opinion (Mistral Medium)
-- Полный requirements mapping по ролям и risk levels
-- Экран результата: risk level badge, обоснование, статьи, рекомендации «что делать»
+- RuleEngine в domain/classification/services/ (pure, 100% тестируемый)
+- Art. 5, Annex III, GPAI detection rules
+- Provider/Deployer distinction
+- Экран результата: risk level badge, обоснование, статьи
 
 ### Зависимости
 Feature 03 (wizard предоставляет данные для классификации)
 
 ### Экспертиза
-Elena: валидация правил, requirements mapping, тексты рекомендаций
+Elena: валидация правил, маппинг статей AI Act
+
+---
+
+## Feature 04b: LLM Classification + Cross-validation
+
+**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 2-3
+
+### Бизнес-ценность
+As a CTO with complex AI systems, I want LLM analysis for ambiguous cases, so that edge cases are handled correctly.
+
+### Описание
+
+**Application-layer orchestration (classifySystem use case):**
+1. Вызывает RuleEngine (domain) → получает rule-based результат
+2. Вызывает LLM (infrastructure port) → Mistral Small/Medium для сложных случаев
+3. **Cross-validation:** при расхождении rules ↔ LLM → escalation на Mistral Large
+4. Финальный результат: merged riskLevel, confidence, reasoning
+
+**Рекомендации при классификации:**
+- Per requirement: что конкретно нужно сделать
+- Estimated effort и приоритет
+- Если **Prohibited**: guidance (прекратить, модифицировать, юрист)
+- Если **High Risk, не compliant**: ранжированный список действий
+
+**Переклассификация:**
+- Система изменилась → переклассификация через тот же pipeline
+- Новый riskLevel → обновление requirements → notification
+
+### MVP Scope
+- classifySystem use case в application/classification/
+- LLM через infrastructure port (Mistral API adapter)
+- Cross-validation logic
+- Classification history (ClassificationLog)
+
+### Зависимости
+Feature 04a (RuleEngine), Feature 03 (wizard data)
+
+---
+
+## Feature 04c: Requirements Mapping + рекомендации
+
+**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 3
+
+### Бизнес-ценность
+As a CTO, I want to know ALL applicable requirements for my classified AI system with specific recommendations, so that I have a clear action plan.
+
+### Описание
+
+**Requirements mapping:**
+- riskLevel + **role (Provider/Deployer)** + category → applicable Articles
+- **Provider** (разработчик AI): Art. 9-17, 43, 47-49, 72 — полный набор
+- **Deployer** (использует AI): Art. 26-27 — использование по инструкции, мониторинг, логи
+
+**Рекомендации «Что делать?»:**
+- Per requirement: конкретные шаги
+- Estimated effort
+- Приоритет (urgency × impact)
+
+Output: requirements[], recommendations[], estimatedEffort
+
+### MVP Scope
+- Requirements mapping по ролям и risk levels
+- Recommendations per requirement
+- Экран: requirements checklist + рекомендации per gap
+
+### Зависимости
+Feature 04a/b (classification результат)
+
+### Экспертиза
+Elena: requirements mapping, тексты рекомендаций
 
 ---
 
@@ -262,7 +326,7 @@ As a CEO / CTO, I want a visual overview of compliance status with clear risk in
 - Responsive grid: mobile → desktop
 
 ### Зависимости
-Feature 03 (реестр систем), Feature 04 (classification + requirements)
+Feature 03 (реестр систем), Feature 04a/b/c (classification + requirements)
 
 ---
 
@@ -289,7 +353,7 @@ As a CTO без юридического бэкграунда, I want to ask que
 - Без tool calling (добавляется в Feature 10)
 
 ### Зависимости
-Feature 02 (IAM), Feature 04 (Classification — для контекста)
+Feature 02 (IAM), Feature 04a/b (Classification — для контекста)
 
 ---
 
@@ -306,7 +370,7 @@ As a compliance officer, I want the platform to generate draft Technical Documen
 - LLM-генерация черновиков секций (Mistral Medium 3) через pg-boss queue
 - Section-by-section workflow: Generate → Edit → Approve
 - Rich text editor (Tiptap) для редактирования
-- Export в PDF через pg-boss job → S3 link
+- Export в PDF через pg-boss job → Gotenberg (HTML→PDF, self-hosted Docker) → Hetzner Object Storage
 - WebSocket уведомление при готовности секции
 
 ### MVP Scope
@@ -315,7 +379,7 @@ As a compliance officer, I want the platform to generate draft Technical Documen
 - Генерация + редактирование + PDF export
 
 ### Зависимости
-Feature 04 (Classification — нужна классификация для генерации)
+Feature 04c (Requirements mapping — нужна классификация для генерации)
 
 ### Экспертиза
 Elena: валидация структуры шаблонов на соответствие Art. 11
@@ -366,7 +430,7 @@ As a compliance officer, I want a detailed gap analysis with specific, actionabl
 - Visual progress tracking с трендом
 
 ### Зависимости
-Feature 04 (Classification — нужны requirements)
+Feature 04c (Requirements mapping — нужны requirements)
 
 ---
 
@@ -410,7 +474,7 @@ As a user, I want Eva to perform actions (classify system, search regulation, cr
 - 3 tool definitions + execution
 
 ### Зависимости
-Feature 06 (Eva базовая), Feature 04 (Classification), Feature 07 (Documents)
+Feature 06 (Eva базовая), Feature 04a/b (Classification), Feature 07 (Documents)
 
 ---
 
@@ -429,7 +493,7 @@ As a compliance officer, I want the platform to proactively remind me about dead
 
 **Notification system:**
 - Notification bell + dropdown (in-app)
-- Email notifications (configurable: instant / daily digest / weekly)
+- Email notifications через **Brevo (Франция):** instant / daily digest / weekly (configurable)
 - Domain events → Notification creation
 
 **Proactive Scheduled Checks (ежедневный cron):**
@@ -449,12 +513,12 @@ As a compliance officer, I want the platform to proactively remind me about dead
 
 ### MVP Scope
 - Onboarding questionnaire + Eva welcome
-- In-app + email notifications
+- In-app + email notifications (Brevo transactional API)
 - Scheduled compliance checks (все триггеры из таблицы)
 - Notification preferences (on/off per type)
 
 ### Зависимости
-Feature 02 (IAM), Feature 05 (Dashboard — данные для checks), Feature 06 (Eva)
+Feature 02 (IAM + Brevo уже настроен), Feature 05 (Dashboard — данные для checks), Feature 06 (Eva)
 
 ---
 
@@ -585,7 +649,7 @@ As a CTO of a mid-size company with 20+ AI systems across departments, I want th
 - Данные сканирования хранятся в EU
 
 ### Зависимости
-Feature 03 (реестр), Feature 04 (classification)
+Feature 03 (реестр), Feature 04a/b (classification)
 
 ---
 
@@ -627,7 +691,9 @@ Feature 16 (Scanner — переиспользует коннекторы)
 | 01 | Инфраструктура и настройка | M | 0 |
 | 02 | IAM — Auth и управление | L | 1 |
 | 03 | Реестр AI-систем + Wizard | L | 1-2 |
-| 04 | Classification Engine | XL | 2-3 |
+| 04a | Rule Engine (rule-based классификация) | L | 2 |
+| 04b | LLM Classification + Cross-validation | M | 2-3 |
+| 04c | Requirements Mapping + рекомендации | M | 3 |
 | 05 | Dashboard & Recommendations | L | 3-4 |
 | 06 | Ева (базовая) | L | 4 |
 
@@ -672,8 +738,8 @@ Feature 16 (Scanner — переиспользует коннекторы)
 ```
 Sprint 0     ██ Feature 01: Инфраструктура
 Sprint 1     ████ Feature 02: IAM + Feature 03: Wizard (start)
-Sprint 2     ████ Feature 03: Wizard (end) + Feature 04: Classification (start)
-Sprint 3     ████ Feature 04: Classification (end) + Feature 05: Dashboard
+Sprint 2     ████ Feature 03: Wizard (end) + Feature 04a: Rule Engine + 04b: LLM (start)
+Sprint 3     ████ Feature 04b: LLM (end) + 04c: Requirements + Feature 05: Dashboard
 Sprint 4     ████ Feature 05: Dashboard (end) + Feature 06: Eva + Feature 07: Docs (start)
              ── MVP READY ──
 Sprint 5     ████ Feature 07: Docs (end) + Feature 08: Gap + Feature 09: Billing
@@ -691,9 +757,14 @@ Sprint 8     ██ Feature 13: Docs (end) + Feature 14: i18n
 | Решение | Обоснование |
 |---------|-------------|
 | **pg-boss** вместо BullMQ+Redis | PostgreSQL-only на MVP: -1 сервис, проще деплой. JobQueue adapter для миграции (ARCHITECTURE.md §6.10) |
-| **Session в PostgreSQL** | Таблица Session с index — достаточно для 50 пользователей. Redis при масштабировании |
+| **Ory (self-hosted)** вместо custom auth | Open-source (Apache 2.0), self-hosted на Hetzner EU. Управляет identity, sessions, MFA. Webhook sync → наша БД |
+| **Brevo** вместо custom email | EU (Франция), 300 emails/day free. Transactional API для magic links, notifications, digests |
+| **Gotenberg** для PDF | Self-hosted Docker, HTML→PDF. Без внешних зависимостей, данные не покидают инфраструктуру |
+| **Hetzner Object Storage** для файлов | S3-compatible, €5.27/TB, немецкий data residency. PDF-документы, экспорты |
+| **@fastify/rate-limit** | Официальный Fastify plugin, in-process. Заменяет custom Map + sliding window |
+| **Better Uptime** (мониторинг) | EU (Литва), free tier. Uptime monitoring + status page |
+| **Plausible** (аналитика) | EU (Эстония), €9/мес. Privacy-first, без cookies, GDPR by design |
 | **Без кэширования на MVP** | 50 пользователей — PostgreSQL справится с прямыми запросами. Кэш добавить при необходимости |
-| **Rate limiting in-process** | Map + sliding window — достаточно для одного сервера. Redis при горизонтальном масштабировании |
 | **Mistral EU-only** | Sovereign AI: данные клиентов обрабатываются только EU-моделями (Mistral, Франция) |
 
 ---

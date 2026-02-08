@@ -1,10 +1,12 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 1.0.0
+**Версия:** 1.1.0
 **Дата:** 2026-02-07
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md ✅
+
+> **v1.1.0:** Ory управляет identity и sessions — удалена таблица Session, User.password заменён на User.oryId. Hetzner Object Storage вместо generic S3.
 
 ---
 
@@ -54,11 +56,10 @@ MetaSQL определяет 4 типа сущностей:
 
 ```mermaid
 erDiagram
-    %% IAM Context
+    %% IAM Context (Ory manages identity + sessions)
     Organization ||--o{ User : "has members"
     Organization ||--o{ AISystem : "owns"
     Organization ||--o{ Subscription : "subscribes"
-    User ||--o{ Session : "has sessions"
     User ||--o{ AISystem : "creates"
     User }o--o{ Role : "has roles"
     Role ||--o{ Permission : "grants"
@@ -103,9 +104,9 @@ erDiagram
     User {
         bigint id PK
         bigint organizationId FK
+        string oryId UK
         string email UK
         string fullName
-        string passwordHash
         boolean active
         datetime createdAt
     }
@@ -121,15 +122,6 @@ erDiagram
         bigint roleId FK
         string resource
         string action
-    }
-
-    Session {
-        bigint sessionId PK
-        bigint userId FK
-        string token UK
-        inet ip
-        jsonb data
-        datetime expiresAt
     }
 
     AISystem {
@@ -285,14 +277,14 @@ erDiagram
 
 | Bounded Context | Tables | Количество |
 |----------------|--------|:---:|
-| **IAM** | Organization, User, Role, Permission, Session, UserRole (junction) | 6 |
+| **IAM** | Organization, User, Role, Permission, UserRole (junction) | 5 |
 | **Classification** | AISystem, RiskClassification, Requirement, SystemRequirement, ClassificationLog | 5 |
 | **Compliance** | ComplianceDocument, DocumentSection, ChecklistItem | 3 |
 | **Consultation** | Conversation, ChatMessage | 2 |
 | **Monitoring** | RegulatoryUpdate, ImpactAssessment, Notification | 3 |
 | **Billing** | Subscription, Plan | 2 |
 | **Cross-cutting** | AuditLog | 1 |
-| **Total** | | **22** |
+| **Total** | | **21** |
 
 ---
 
@@ -340,11 +332,12 @@ erDiagram
 
 ```javascript
 // schemas/User.js — migrated from Account.js
+// Auth (password, magic link, sessions) управляется Ory — здесь только бизнес-данные
 ({
   Registry: {},
   organization: { type: 'Organization', delete: 'cascade' },
+  oryId: { type: 'string', unique: true, index: true, note: 'Ory identity UUID' },
   email: { type: 'string', length: { min: 6, max: 255 }, unique: true, index: true },
-  password: { type: 'string', note: 'scrypt hash (PHC format)' },
   fullName: { type: 'string', length: { max: 255 } },
   active: { type: 'boolean', default: true },
   locale: { type: 'string', length: { max: 5 }, default: "'de'" },
@@ -357,14 +350,16 @@ erDiagram
 |--------|------|------------|----------|
 | id | bigint | PK, identity | Inherits from Identifier |
 | organizationId | bigint | FK → Organization.id, CASCADE | Tenant isolation |
-| email | varchar(255) | UNIQUE, INDEX, NOT NULL | Login identifier |
-| password | varchar | NOT NULL | scrypt hash (PHC format) |
+| oryId | varchar | UNIQUE, INDEX, NOT NULL | Ory identity UUID (sync via webhook) |
+| email | varchar(255) | UNIQUE, INDEX, NOT NULL | Login identifier (sync from Ory) |
 | fullName | varchar(255) | NOT NULL | Display name |
 | active | boolean | DEFAULT true | Soft delete |
 | locale | varchar(5) | DEFAULT 'de' | UI language (de, en) |
-| lastLoginAt | timestamptz | nullable | Last login tracking |
+| lastLoginAt | timestamptz | nullable | Updated via Ory webhook |
 | creation | timestamptz | DEFAULT now() | Registration date |
 | change | timestamptz | DEFAULT now() | Last profile update |
+
+> **Note:** Пароли, magic links, sessions управляются Ory. Наша таблица User содержит только бизнес-данные + oryId для связки.
 
 **Junction Table:** UserRole (userId, roleId) — CASCADE on delete
 
@@ -406,19 +401,7 @@ erDiagram
 
 ---
 
-#### Session (Details)
-
-```javascript
-// schemas/Session.js — preserved from existing code
-({
-  Details: {},
-  user: { type: 'User', delete: 'cascade' },
-  token: { type: 'string', unique: true },
-  ip: 'ip',
-  data: { type: 'json', required: false },
-  expiresAt: 'datetime',
-});
-```
+> **Session:** Удалена — sessions управляются Ory (self-hosted, Hetzner EU).
 
 ---
 
@@ -435,7 +418,7 @@ erDiagram
 
   // Basic Info (Step 1)
   name: { type: 'string', length: { max: 255 } },
-  description: { type: 'string', length: { max: 5000 } },
+  description: { type: 'text' },
 
   // Purpose & Context (Step 2)
   purpose: { type: 'string', length: { max: 2000 } },
@@ -560,7 +543,7 @@ erDiagram
   Entity: {},
   code: { type: 'string', unique: true, note: 'e.g., ART_9_RMS, ART_11_TD' },
   name: { type: 'string', length: { max: 255 } },
-  description: { type: 'string', length: { max: 5000 } },
+  description: { type: 'text' },
   articleReference: { type: 'string', note: 'e.g., Art. 9, Art. 11' },
   riskLevel: {
     enum: ['prohibited', 'high', 'gpai', 'limited', 'minimal'],
@@ -792,6 +775,7 @@ erDiagram
 // schemas/Notification.js
 ({
   Entity: {},
+  organization: { type: 'Organization', delete: 'cascade', note: 'Multi-tenancy filter' },
   user: { type: 'User', delete: 'cascade' },
   type: {
     enum: ['classification_complete', 'document_ready', 'deadline_approaching',
@@ -894,9 +878,9 @@ erDiagram
 | ComplianceDocument | idx_doc_system | aiSystemId | Documents per system |
 | Conversation | idx_conv_user | userId | User's conversations |
 | ChatMessage | idx_msg_conv | conversationId | Messages in conversation |
-| Notification | idx_notif_user_read | userId, read | Unread notifications |
+| Notification | idx_notif_org_user_read | organizationId, userId, read | Unread notifications per tenant |
 | AuditLog | idx_audit_org_time | organizationId, creation DESC | Audit trail queries |
-| Session | idx_session_expires | expiresAt | Expired session cleanup |
+| User | idx_user_ory_id | oryId (UNIQUE) | Ory webhook sync lookup |
 
 ### Full-Text Search (post-MVP)
 
@@ -971,13 +955,13 @@ migrations/
 
 | Existing Schema | New Schema | Migration |
 |----------------|-----------|-----------|
-| Account | User | Rename + add organizationId, locale, lastLoginAt |
+| Account | User | Rename + add oryId, organizationId, locale (remove password — Ory manages auth) |
 | Division | Organization | Rename + add industry, size, country, vatId |
 | Chat | Conversation | Rename + add aiSystemId, context, metadata |
 | Message | ChatMessage | Rename + restructure content, add role, toolCalls |
 | Role | Role | Add organizationId (nullable for system roles) |
 | Permission | Permission | Replace identifierId with resource + action strings |
-| Session | Session | Rename accountId → userId, add expiresAt |
+| Session | — | Remove (Ory manages sessions) |
 | ChatMember | — | Remove (Eva is 1:1 conversation, not group chat) |
 | Area | — | Remove (not needed for compliance platform) |
 | Catalog | — | Remove (not needed) |
@@ -999,7 +983,7 @@ migrations/
 | Compliance Documents | 7 years | Legal requirement |
 | Chat Messages | 2 years | Utility period |
 | Audit Logs | 7 years | Compliance audit trail |
-| Sessions | 30 days | Security |
+| Sessions | Managed by Ory | Ory session TTL configuration |
 | Notifications | 90 days | UX utility |
 
 ### GDPR Right to Erasure (Art. 17)
@@ -1007,22 +991,24 @@ migrations/
 При запросе на удаление данных:
 
 1. **Soft delete User:** `active = false`, anonymize PII (email, fullName)
-2. **Keep audit trail:** Classifications и documents сохраняются (legal basis: legitimate interest for AI Act compliance), но PII анонимизируется
-3. **Delete sessions:** Immediate
+2. **Delete Ory identity:** Ory Admin API → delete identity (удаляет sessions, credentials)
+3. **Keep audit trail:** Classifications и documents сохраняются (legal basis: legitimate interest for AI Act compliance), но PII анонимизируется
 4. **Delete chat messages:** Anonymize user references
 5. **Stripe:** Cancel subscription, delete customer via Stripe API
 
 ```javascript
 // Anonymization strategy
 const anonymizeUser = async (userId) => {
+  const user = await db.User.read(userId);
+  // 1. Delete Ory identity (sessions + credentials)
+  await oryClient.deleteIdentity(user.oryId);
+  // 2. Anonymize in our DB
   await db.User.update(userId, {
     email: `deleted_${userId}@anonymized.local`,
     fullName: 'Deleted User',
-    password: 'DELETED',
+    oryId: `deleted_${userId}`,
     active: false,
   });
-  await db.Session.query('DELETE FROM "Session" WHERE "userId" = $1', [userId]);
-};
 ```
 
 ---

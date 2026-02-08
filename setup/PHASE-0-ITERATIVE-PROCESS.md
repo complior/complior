@@ -406,7 +406,68 @@ git push origin develop
 
 ---
 
-### ЭТАП 7: ADR-001, ADR-002, ADR-003, ADR-004 (Architecture Decision Records)
+### ЭТАП 7: SPRINT-BACKLOG.md (User Stories для Sprint 1)
+
+#### Marcus создаёт:
+**Файл:** `/home/openclaw/PROJECT/docs/SPRINT-BACKLOG.md`
+
+**Что это:**
+Декомпозиция P0-фич из PRODUCT-BACKLOG.md в конкретные User Stories для Sprint 1, готовые к разработке.
+
+**Содержание SPRINT-BACKLOG.md:**
+- Цель Sprint 1 (Sprint Goal)
+- User Stories из P0-фич (Feature 01, 02, 03) с:
+  - Story Points (Fibonacci: 1, 2, 3, 5, 8, 13)
+  - Assignee (конкретный агент)
+  - Теги ([BE+QA], [FE+UX], [SecOps], [Legal], [Research])
+  - Technical Context (файлы, API, зависимости)
+  - Acceptance Criteria (конкретные, проверяемые)
+- Суммарно Story Points для спринта
+
+**Правило:** Sprint Backlog включает US ТОЛЬКО для Sprint 1. Следующие спринты планируются перед их началом.
+
+**После создания Marcus пишет:**
+```
+@founder SPRINT-BACKLOG.md (Sprint 1) готов к утверждению:
+
+Файл: /home/openclaw/PROJECT/docs/SPRINT-BACKLOG.md
+
+Sprint Goal: [цель]
+User Stories: [количество]
+Story Points: [сумма]
+
+P0-фичи в Sprint 1:
+- Feature 01: Инфраструктура → [N] US, [X] SP
+- Feature 02: IAM → [N] US, [X] SP
+- Feature 03: Реестр AI-систем (начало) → [N] US, [X] SP
+
+⛔ APPROVAL GATE: Sprint 1 не стартует без утверждения.
+Утвердить? ✅ / Изменить 📝
+```
+
+#### Product Owner отвечает:
+- **Вариант A:** "✅ Утверждаю" → Marcus делает commit и переходит к ЭТАП 8
+- **Вариант B:** "📝 Убери US-XXX, добавь вместо неё..." → Marcus правит → approval
+
+#### Marcus делает commit:
+```bash
+cd /home/openclaw/PROJECT
+git add docs/SPRINT-BACKLOG.md
+git commit -m "docs: add SPRINT-BACKLOG.md (Sprint 1 User Stories)
+
+- [N] User Stories, [X] Story Points
+- Features: 01 (Infrastructure), 02 (IAM), 03 (AI Registry)
+
+✅ Approved by Product Owner"
+
+git push origin develop
+```
+
+**⛔ ТОЛЬКО ПОСЛЕ УТВЕРЖДЕНИЯ → переход к ЭТАП 8**
+
+---
+
+### ЭТАП 8: ADR-001, ADR-002, ADR-003, ADR-004 (Architecture Decision Records)
 
 #### Marcus создаёт:
 **Файлы:** `/home/openclaw/PROJECT/adr/ADR-00X-название.md`
@@ -459,7 +520,7 @@ git push origin develop
 
 ---
 
-### 🎉 ЭТАП 8: Фаза 0 завершена
+### 🎉 ЭТАП 9: Фаза 0 завершена
 
 #### Marcus пишет:
 ```
@@ -472,6 +533,7 @@ git push origin develop
 ✅ DATA-FLOWS.md
 ✅ CODING-STANDARDS.md (APPROVED ⛔)
 ✅ PRODUCT-BACKLOG.md (APPROVED ⛔)
+✅ SPRINT-BACKLOG.md (APPROVED ⛔)
 ✅ ADR-001, ADR-002, ADR-003, ADR-004
 
 Все commits в develop branch.
@@ -492,10 +554,9 @@ git push origin develop
 ## 📊 Статистика Фазы 0:
 
 После завершения Фазы 0, у вас будет:
-- **7 ключевых документов Phase 0** (PROJECT, ARCHITECTURE, DATABASE, DATA-FLOWS, CODING-STANDARDS, PRODUCT-BACKLOG, ADR)
-- **+ SPRINT-BACKLOG.md** — создаётся при Sprint Planning (НЕ Phase 0 артефакт)
+- **8 ключевых документов Phase 0** (PROJECT, ARCHITECTURE, DATABASE, DATA-FLOWS, CODING-STANDARDS, PRODUCT-BACKLOG, SPRINT-BACKLOG, ADR)
 - **7+ commits** в develop branch (по одному после каждого approval)
-- **3 approval gates** пройдены (ARCHITECTURE, CODING-STANDARDS, PRODUCT-BACKLOG)
+- **4 approval gates** пройдены (ARCHITECTURE, CODING-STANDARDS, PRODUCT-BACKLOG, SPRINT-BACKLOG)
 - **Полная документация** для старта Sprint 001
 
 ---

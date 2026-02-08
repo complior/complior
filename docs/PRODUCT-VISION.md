@@ -34,7 +34,7 @@ EU AI Act вступает в полную силу в 2026 году. Малый
 
 ### Ценностное предложение (Value Proposition)
 
-**"AI Act compliance за 48 часов, а не 12 месяцев"**
+**"Классификация AI-системы + action plan за 48 часов, а не 12 месяцев"**
 
 **Для CTO / Head of Engineering:**
 - Снижение legal risk — автоматическая оценка всех AI-систем компании
@@ -424,7 +424,7 @@ DEV TEAM (наш код, тесты, документация):
 | Risk Calculator | Yes | Yes | Yes | Yes | Yes |
 | Classification | Basic | Full | Full | Full | Full |
 | Documents | - | Basic | Full | Full + templates | Custom |
-| Eva Chat | Limited | Email support | Priority chat | Dedicated | SLA |
+| Eva Chat | 10 msg/день | 50 msg/день | Unlimited | Unlimited | SLA + dedicated |
 | Gap Analysis | - | - | Yes | Yes | Yes |
 | Audit Prep | - | - | - | Yes | Yes |
 | API Access | - | - | - | Yes | Yes |
