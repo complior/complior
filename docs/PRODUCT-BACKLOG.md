@@ -414,24 +414,47 @@ Feature 06 (Eva базовая), Feature 04 (Classification), Feature 07 (Docume
 
 ---
 
-## Feature 11: Onboarding и notifications
+## Feature 11: Onboarding, Notifications & Proactive Compliance Checks
 
-**Приоритет:** P1 (Should Have) | **Размер:** S | **Спринт:** 6
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 6
 
 ### Бизнес-ценность
-As a new user, I want a quick assessment after registration, so that I immediately understand the scope of compliance work. As a user, I want notifications about important events.
+As a compliance officer, I want the platform to proactively remind me about deadlines, overdue tasks and required actions, so that my company is ready before Aug 2, 2026 — not after.
 
 ### Описание
+
+**Onboarding:**
 - Quick questionnaire (5-7 вопросов) → LLM-оценка масштаба работы
-- Notifications: classification_complete, document_ready, deadline_approaching
-- Notification bell + dropdown + domain events → Notification creation
+- Eva приветствует и предлагает помощь
+
+**Notification system:**
+- Notification bell + dropdown (in-app)
+- Email notifications (configurable: instant / daily digest / weekly)
+- Domain events → Notification creation
+
+**Proactive Scheduled Checks (ежедневный cron):**
+
+| Триггер | Уведомление | Когда |
+|---------|-------------|-------|
+| Дедлайн AI Act приближается | «До Aug 2, 2026 осталось 90 дней — 3 системы не compliant» | 180d, 90d, 30d, 14d, 7d, 1d |
+| Документ не создан | «System X: Technical Documentation (Art. 11) не создана — создать?» | 7 дней после классификации |
+| Документ не завершён | «System X: 3 из 8 секций не заполнены — продолжить?» | Каждые 7 дней |
+| Requirements не начаты | «System X (High Risk): 5 требований не начаты — начать?» | 3 дня после классификации |
+| Классификация устарела | «System Y не обновлялась 6 месяцев — переклассифицировать?» | Каждые 180 дней |
+| Система в Draft | «System Z: wizard не завершён — продолжить?» | 3, 7, 14 дней |
+
+- Каждое уведомление содержит **action button** (deep link к нужному экрану)
+- Пользователь может отключить/настроить частоту per notification type
+- Escalation: если action не выполнен → повторное уведомление + notification Owner организации
 
 ### MVP Scope
 - Onboarding questionnaire + Eva welcome
-- In-app notifications
+- In-app + email notifications
+- Scheduled compliance checks (все триггеры из таблицы)
+- Notification preferences (on/off per type)
 
 ### Зависимости
-Feature 02 (IAM), Feature 06 (Eva)
+Feature 02 (IAM), Feature 05 (Dashboard — данные для checks), Feature 06 (Eva)
 
 ---
 
@@ -500,6 +523,87 @@ Feature 02 (IAM — locale в профиле)
 
 ---
 
+## Feature 15: Compliance Copilot — multi-channel delivery
+
+**Приоритет:** P3 (Future) | **Размер:** M | **Тариф:** Growth+ (€149+)
+
+### Бизнес-ценность
+As a CTO, I want compliance notifications delivered to Slack, Teams and email digests, so that my team stays informed without checking the platform daily.
+
+### Описание
+Расширение Feature 11 (proactive checks) доставкой вне платформы:
+- **Slack** integration (bot в канал #ai-compliance)
+- **Microsoft Teams** integration
+- **Email digest** (weekly compliance report с summary)
+- **Webhook API** для кастомных интеграций (Zapier, n8n, etc.)
+- Configurable per organization: какие каналы, какая частота
+
+### Зависимости
+Feature 11 (Notifications & Proactive Checks)
+
+---
+
+## Feature 16: AI Inventory Scanner — автообнаружение AI-систем
+
+**Приоритет:** P3 (Future) | **Размер:** L | **Тариф:** Scale+ (€399+)
+
+### Бизнес-ценность
+As a CTO of a mid-size company with 20+ AI systems across departments, I want the platform to automatically discover AI systems in our infrastructure, so that I have a complete inventory without manual registration.
+
+### Описание
+**Интеграционные коннекторы** (OAuth read-only):
+
+| Источник | Что находит | Интеграция |
+|----------|-------------|------------|
+| AWS (SageMaker, Bedrock) | ML-модели в деплое, AI API calls | IAM Role |
+| Azure (Azure ML, OpenAI Service) | ML endpoints, AI services | Service Principal |
+| GCP (Vertex AI) | ML pipelines, models | Service Account |
+| GitHub / GitLab | Репозитории с ML-кодом | OAuth App |
+| API Gateway | Вызовы к OpenAI, Anthropic, Mistral | Log analysis |
+| SaaS directory | AI-tools (Copilot, ChatGPT Enterprise) | SSO/SCIM sync |
+
+**Human-in-the-loop:** Scanner НЕ добавляет системы автоматически — только предлагает. Решение за человеком.
+
+### Безопасность
+- ⚠️ Требует security review (Leo) перед реализацией
+- OAuth scopes: минимальные (read-only)
+- DPA обязателен
+- Данные сканирования хранятся в EU
+
+### Зависимости
+Feature 03 (реестр), Feature 04 (classification)
+
+---
+
+## Feature 17: Autonomous Compliance Agent — on-premise
+
+**Приоритет:** P3 (Future) | **Размер:** XL | **Тариф:** Enterprise (€999+)
+
+### Бизнес-ценность
+As a CTO of an enterprise with 100+ AI systems, I want a compliance agent deployed inside our infrastructure that continuously monitors AI usage, so that we have real-time compliance visibility.
+
+### Описание
+**Автономный агент** в инфраструктуре клиента:
+- **Deployment:** Docker container / Kubernetes Helm chart
+- **Auto-discovery:** сканирует сеть, API-трафик, container registries
+- **Continuous monitoring:** новая модель → уведомление + предложение классифицировать
+- **Secure communication:** outbound-only, передаёт только metadata (не данные клиента)
+- **Self-updating:** автоматические обновления правил классификации
+- **Air-gapped option:** офлайн-режим с ручным экспортом
+
+### Безопасность
+- ⚠️⚠️ Требует ПОЛНОГО security audit + external pentest
+- Agent code: open-source для клиентского аудита (transparency)
+- Zero-trust: агент не имеет write-доступа к системам клиента
+- Data minimization: передаёт только metadata
+- SOC 2 Type II рекомендуется перед запуском
+- AI Act compliance агента: minimal risk, Art. 50 transparency
+
+### Зависимости
+Feature 16 (Scanner — переиспользует коннекторы)
+
+---
+
 ## Сводка по приоритетам
 
 ### P0 — Must Have (MVP core)
@@ -523,7 +627,7 @@ Feature 02 (IAM — locale в профиле)
 | 08 | Gap Analysis | M | 5 |
 | 09 | Billing & подписки | M | 5-6 |
 | 10 | Ева tool calling | S | 6 |
-| 11 | Onboarding & notifications | S | 6 |
+| 11 | Onboarding & Proactive Compliance Checks | M | 6 |
 
 **Product-ready: Sprint 6 (неделя 12-14)** — документы, gap analysis, billing, Eva tools
 
@@ -536,6 +640,16 @@ Feature 02 (IAM — locale в профиле)
 | 14 | Multi-language (DE/EN) | S | 8 |
 
 **Full scope: Sprint 8 (неделя 16-18)** — regulatory monitor, multi-language
+
+### P3 — Future (post-launch, требует security review)
+
+| # | Feature | Размер | Тариф |
+|---|---------|--------|-------|
+| 15 | Compliance Copilot (Slack/Teams) | M | Growth+ |
+| 16 | AI Inventory Scanner | L | Scale+ |
+| 17 | Autonomous Agent (on-premise) | XL | Enterprise |
+
+**Реализация:** после launch, отдельный security review для каждой фичи
 
 ---
 
