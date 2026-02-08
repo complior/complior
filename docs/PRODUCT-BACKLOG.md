@@ -528,15 +528,29 @@ Feature 02 (IAM — locale в профиле)
 **Приоритет:** P3 (Future) | **Размер:** M | **Тариф:** Growth+ (€149+)
 
 ### Бизнес-ценность
-As a CTO, I want compliance notifications delivered to Slack, Teams and email digests, so that my team stays informed without checking the platform daily.
+As a CTO, I want compliance notifications delivered outside the platform, so that my team stays informed without logging in daily.
 
 ### Описание
-Расширение Feature 11 (proactive checks) доставкой вне платформы:
-- **Slack** integration (bot в канал #ai-compliance)
-- **Microsoft Teams** integration
-- **Email digest** (weekly compliance report с summary)
-- **Webhook API** для кастомных интеграций (Zapier, n8n, etc.)
-- Configurable per organization: какие каналы, какая частота
+Расширение Feature 11 (proactive checks) доставкой вне платформы.
+
+**EU-first подход** (соответствует нашему позиционированию "100% European AI"):
+
+| Канал | Data residency | Приоритет | Статус |
+|-------|---------------|-----------|--------|
+| **Email digest** (weekly compliance report) | EU ✅ | Основной | Feature 11 (уже в P1) |
+| **Webhook API** (Zapier, n8n, custom) | Клиент решает | Основной | Первый в Feature 15 |
+| **Matrix / Element** | EU ✅ (self-hosted) | EU-рекомендуемый | Второй |
+| Slack | US ⚠️ (DPF certified) | Опция | С предупреждением |
+| MS Teams | US ⚠️ (DPF certified) | Опция | С предупреждением |
+
+**Принципы:**
+- Содержимое уведомлений — **минимальное**: только alert text + deep link в платформу
+- Compliance data (risk levels, системы, документы) **НЕ передаётся** в сторонние каналы
+- Slack/Teams: при подключении — уведомление «данные уведомлений покидают EU (US DPF)»
+- Пользователь явно подтверждает: «Я понимаю, что уведомления будут доставляться через US-сервис»
+- Configurable per organization: какие каналы, какая частота, какие типы уведомлений
+
+**⚠️ GDPR note:** AI Act не регулирует каналы доставки. GDPR допускает US-трансфер через Data Privacy Framework (DPF). Но для trust и positioning — EU-каналы в приоритете.
 
 ### Зависимости
 Feature 11 (Notifications & Proactive Checks)
