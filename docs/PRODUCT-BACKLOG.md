@@ -1,6 +1,6 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform
 
-**Версия:** 1.0.0
+**Версия:** 2.0.0
 **Дата:** 2026-02-07
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ⛔ Ожидает утверждения Product Owner
@@ -8,774 +8,443 @@
 
 ---
 
-## Метаинформация
+## Как читать этот документ
 
-### Формат спринтов
-- **Длительность спринта:** 2 недели
-- **Story Points:** шкала Фибоначчи (1, 2, 3, 5, 8, 13)
-- **Скорость (velocity):** ~20-25 SP/спринт (оценка для 2 разработчиков: Max + Nina)
-- **Общий объём MVP (P0+P1):** ~140 SP → ~6 спринтов (12 недель)
+**Product Backlog** — это ЧТО делает продукт (фичи, бизнес-уровень).
+
+| | Product Backlog (этот документ) | Sprint Backlog (отдельный) |
+|--|--------------------------------|---------------------------|
+| **Уровень** | Фичи / Эпики | User Stories |
+| **Вопрос** | ЧТО делает продукт? | КАК это реализовать? |
+| **Когда** | Phase 0, дополняется | Sprint Planning |
+| **Кем** | Marcus → PO approval | Marcus декомпозирует фичи → US |
+| **Связь** | 1 фича → 5-10 user stories | US-NNN → Feature-NNN |
 
 ### Приоритеты
-| Приоритет | Значение | Когда |
-|-----------|----------|-------|
-| **P0** | Критично для MVP — без этого продукт не запустится | Sprint 0-4 |
-| **P1** | Важно — значительно повышает ценность продукта | Sprint 4-6 |
-| **P2** | Желательно — расширение функциональности | Post-MVP |
-| **P3** | Отложено — на будущее | Backlog |
 
-### Теги
-`[BE]` — backend, `[FE]` — frontend, `[Full]` — fullstack, `[Legal]` — AI Act экспертиза, `[UX]` — дизайн, `[DevOps]` — инфраструктура
+| Приоритет | Значение | Спринты |
+|-----------|----------|---------|
+| **P0** | Must Have — без этого продукт не запустится | Sprint 0-3 |
+| **P1** | Should Have — значительно повышает ценность | Sprint 4-6 |
+| **P2** | Could Have — расширение, post-MVP | Sprint 7-8 |
 
----
+### Размер фичи (грубая оценка)
 
-## Epic 1: Инфраструктура и настройка проекта
-
-### US-001: Инициализация проекта и toolchain
-**Приоритет:** P0 | **SP:** 5 | **Спринт:** 0 | **Теги:** `[DevOps]` `[Full]`
-**Исполнитель:** Max (backend) + Nina (frontend)
-
-**Описание:**
-Как разработчик, я хочу иметь настроенный monorepo с backend и frontend,
-чтобы начать реализацию фич с работающим CI/CD pipeline.
-
-**Acceptance Criteria:**
-- [ ] Monorepo структура: `src/` (backend, Onion Architecture), `frontend/` (Next.js 14)
-- [ ] Backend: Fastify + MetaSQL + VM Sandbox — из existing-code
-- [ ] Frontend: Next.js 14 App Router + TypeScript strict + TailwindCSS + shadcn/ui
-- [ ] ESLint + Prettier настроены согласно CODING-STANDARDS.md
-- [ ] Vitest (unit + integration), Playwright (E2E) — конфигурация
-- [ ] GitHub Actions CI: lint, type-check, tests, `npm audit`
-- [ ] Docker Compose: app + PostgreSQL (dev environment)
-- [ ] `.env.example` со всеми переменными окружения
-
-**Зависимости:** нет
+| Размер | Объём | Примерно |
+|--------|-------|----------|
+| **S** | 1-2 спринта, 1-2 разработчика | 10-20 SP при декомпозиции |
+| **M** | 2-3 спринта, 1-2 разработчика | 20-35 SP |
+| **L** | 3-4 спринта, 2+ разработчика | 35-50 SP |
+| **XL** | 4+ спринта, команда | 50+ SP, декомпозиция на sub-features |
 
 ---
 
-### US-002: Схема базы данных и миграции
-**Приоритет:** P0 | **SP:** 5 | **Спринт:** 0 | **Теги:** `[BE]`
-**Исполнитель:** Max
+## Feature 01: Инфраструктура и настройка проекта
 
-**Описание:**
-Как разработчик, я хочу иметь все MetaSQL-схемы и начальные миграции,
-чтобы работать с полной структурой данных с первого дня.
+**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 0
 
-**Acceptance Criteria:**
-- [ ] Все 22 таблицы из DATABASE.md реализованы как MetaSQL schemas
-- [ ] `.database.js` и `.types.js` обновлены (riskLevel, complianceStatus)
-- [ ] Миграция `001_initial_schema.sql` сгенерирована и применяется
-- [ ] Seed data: AI Act requirements (~50 записей), pricing plans (5 тарифов)
-- [ ] Seed миграции: `002_seed_requirements.sql`, `003_seed_plans.sql`
-- [ ] Все indexes из DATABASE.md §5 созданы
-- [ ] `lib/db.js` расширен: поддержка транзакций (Disposable pattern)
-- [ ] Тесты: создание/чтение/обновление для ключевых таблиц
+### Бизнес-ценность
+Техническая основа для всей разработки: monorepo, CI/CD, база данных, job queue.
 
-**Зависимости:** US-001
+### Описание
+- Monorepo: `src/` (backend, Onion Architecture) + `frontend/` (Next.js 14)
+- Backend из existing-code: Fastify + MetaSQL + VM Sandbox
+- Все 22 таблицы из DATABASE.md как MetaSQL schemas + миграции
+- pg-boss с JobQueue adapter (ARCHITECTURE.md §6.10) для фоновых задач
+- Библиотека ошибок AppError + structured logging (pino)
+- GitHub Actions CI: lint, type-check, tests, `npm audit`
+- Docker Compose: app + PostgreSQL (dev environment)
 
----
+### MVP Scope
+- Полная DB-схема с seed data (AI Act requirements, pricing plans)
+- pg-boss + JobQueue port/adapter (миграция на BullMQ при необходимости)
+- CI pipeline рабочий с первого дня
 
-### US-003: Настройка pg-boss и JobQueue adapter
-**Приоритет:** P0 | **SP:** 3 | **Спринт:** 0 | **Теги:** `[BE]`
-**Исполнитель:** Max
-
-**Описание:**
-Как разработчик, я хочу иметь систему очередей задач через pg-boss с абстракцией JobQueue,
-чтобы выполнять фоновые операции (classification, document generation) и легко мигрировать на BullMQ в будущем.
-
-**Acceptance Criteria:**
-- [ ] `pg-boss` установлен и настроен (подключение к PostgreSQL)
-- [ ] `domain/ports/JobQueue.js` — порт (интерфейс: enqueue, schedule, work)
-- [ ] `infrastructure/jobs/pg-boss-adapter.js` — реализация через pg-boss
-- [ ] GUID idempotency: каждый job содержит jobId, worker проверяет дубликаты
-- [ ] Error handling: системные ошибки → retry, бизнес-ошибки → complete с error
-- [ ] Тесты: enqueue/process job, idempotency check, error handling
-- [ ] Документация: комментарий как создать `bullmq-adapter.js` при миграции
-
-**Зависимости:** US-001
-**Архитектура:** см. ARCHITECTURE.md §6.10
+### Зависимости
+Нет (базовая фича, все остальные зависят от неё)
 
 ---
 
-### US-004: Библиотека ошибок и structured logging
-**Приоритет:** P0 | **SP:** 2 | **Спринт:** 0 | **Теги:** `[BE]`
-**Исполнитель:** Max
+## Feature 02: IAM — Аутентификация и управление пользователями
 
-**Описание:**
-Как разработчик, я хочу иметь иерархию ошибок AppError и structured logger,
-чтобы единообразно обрабатывать ошибки и иметь читаемые логи.
+**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1
 
-**Acceptance Criteria:**
-- [ ] `lib/errors.js`: AppError, NotFoundError, ForbiddenError, ValidationError, ClassificationError
-- [ ] Каждая ошибка содержит: message, code, statusCode, cause (опционально)
-- [ ] Fastify error handler: AppError → правильный HTTP-ответ, прочие → 500
-- [ ] Structured logger (pino): JSON-формат, уровни, correlation id
-- [ ] Замена `console.log` на injected logger в VM sandbox context
-- [ ] Тесты: каждый тип ошибки, error handler для Fastify
+### Бизнес-ценность
+As a CTO компании в DACH-регионе, I want to register, login and manage my team's access, so that we can securely use the compliance platform.
 
-**Зависимости:** US-001
+### Описание
+- Регистрация: email + пароль (scrypt hash) + создание Organization + Role(owner) + Subscription(free)
+- Аутентификация: email magic link (без пароля) + JWT + httpOnly cookies
+- Session management: PostgreSQL Session table (type='magic_link' TTL 10 мин, type='auth' TTL 30 дней)
+- RBAC: Permission table (role + resource + action)
+- Multi-tenancy: ВСЕ запросы фильтруются по organizationId
+- AuditLog: запись каждого auth-события
 
----
+### MVP Scope
+- Регистрация с email + magic link auth
+- Базовые роли: Owner, Member
+- Multi-tenancy изоляция
+- Rate limiting: не более 3 magic link в 10 минут
 
-## Epic 2: IAM (Identity & Access Management)
-
-### US-005: Регистрация пользователя и организации
-**Приоритет:** P0 | **SP:** 5 | **Спринт:** 1 | **Теги:** `[Full]`
-**Исполнитель:** Max (API) + Nina (UI)
-
-**Описание:**
-Как CTO компании в DACH-регионе, я хочу зарегистрироваться с email и описать свою компанию,
-чтобы начать оценку AI-систем на соответствие EU AI Act.
-
-**Acceptance Criteria:**
-- [ ] API: `POST /api/auth/register` — создаёт Organization + User + Role(owner) + Subscription(free)
-- [ ] Валидация: email (уникальный), пароль (scrypt hash), fullName, company (name, industry, size, country)
-- [ ] Транзакция: все операции в одной DB-транзакции
-- [ ] JWT токен + httpOnly cookie (Secure, SameSite=Strict)
-- [ ] Session записывается в таблицу Session (PostgreSQL)
-- [ ] AuditLog: запись `action: 'register'`
-- [ ] Frontend: форма регистрации, валидация (Zod + React Hook Form)
-- [ ] Responsive: mobile-first, 320px → 1440px
-- [ ] Тесты: happy path, duplicate email, валидация полей
-
-**Зависимости:** US-001, US-002
+### Зависимости
+Feature 01 (инфраструктура)
 
 ---
 
-### US-006: Аутентификация по email magic link
-**Приоритет:** P0 | **SP:** 5 | **Спринт:** 1 | **Теги:** `[Full]`
-**Исполнитель:** Max (API) + Nina (UI)
+## Feature 03: Регистрация AI-систем (5-step Wizard)
 
-**Описание:**
-Как пользователь, я хочу входить в систему через magic link по email (без пароля),
-чтобы иметь безопасный и удобный вход.
+**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 1-2
 
-**Acceptance Criteria:**
-- [ ] API: `POST /api/auth/magic-link` — генерирует токен, сохраняет в Session (type='magic_link', TTL 10 мин)
-- [ ] Email: отправка magic link (шаблон DE/EN)
-- [ ] API: `GET /api/auth/verify?token=...` — проверяет токен, создаёт auth-сессию
-- [ ] One-time use: токен удаляется после верификации
-- [ ] Защита: одинаковый ответ для существующих/несуществующих email (нет enumeration)
-- [ ] Frontend: страница входа, ожидание email, deep link обработка
-- [ ] Rate limiting: не более 3 magic link запросов в 10 минут на email
-- [ ] Тесты: полный flow, expired token, invalid token, rate limit
+### Бизнес-ценность
+As a compliance officer, I want to describe my AI system step-by-step, so that the platform can classify it and determine requirements.
 
-**Зависимости:** US-005
+### Описание
+- CRUD API для AI-систем (`/api/systems`)
+- 5-step wizard (XState state chart):
+  1. Basic Info — название, описание
+  2. Purpose & Context — цель, область (biometrics, HR, education, etc.)
+  3. Technical Details — тип модели, автономность, safety component
+  4. Data & Users — типы данных, количество пользователей
+  5. Review & Classify — обзор + кнопка классификации
+- Auto-save на каждом шаге
+- Валидация: React Hook Form + Zod
 
----
+### MVP Scope
+- Полный CRUD + wizard с 5 шагами
+- XState для управления состоянием wizard
+- Responsive, WCAG AA
 
-### US-007: Защита API и multi-tenancy
-**Приоритет:** P0 | **SP:** 3 | **Спринт:** 1 | **Теги:** `[BE]`
-**Исполнитель:** Max
-
-**Описание:**
-Как платформа, я должна обеспечить изоляцию данных между организациями,
-чтобы пользователь видел только данные своей организации.
-
-**Acceptance Criteria:**
-- [ ] Auth middleware: проверка JWT/session из httpOnly cookie на каждом API-запросе
-- [ ] Контекст запроса: `{ userId, organizationId, roles }` доступен в каждом handler
-- [ ] RBAC: проверка Permission (role + resource + action) перед выполнением
-- [ ] Multi-tenancy: ВСЕ запросы к данным фильтруются по `organizationId`
-- [ ] Тесты: доступ к чужим данным → 403, отсутствие токена → 401
-
-**Зависимости:** US-005
+### Зависимости
+Feature 02 (IAM — нужна аутентификация)
 
 ---
 
-## Epic 3: Регистрация AI-систем (5-step Wizard)
+## Feature 04: Classification Engine — Классификация AI-систем
 
-### US-008: CRUD для AI-систем
-**Приоритет:** P0 | **SP:** 3 | **Спринт:** 1 | **Теги:** `[BE]`
-**Исполнитель:** Max
+**Приоритет:** P0 (Must Have) | **Размер:** XL | **Спринт:** 2-3
 
-**Описание:**
-Как compliance officer, я хочу создавать, просматривать, обновлять и удалять AI-системы,
-чтобы управлять реестром AI-систем компании.
+### Бизнес-ценность
+As a CTO, I want to know the risk level of my AI system under EU AI Act, so that I understand which requirements apply and what needs to be done.
 
-**Acceptance Criteria:**
-- [ ] API: `POST /api/systems` — создание AI-системы (начало wizard)
-- [ ] API: `GET /api/systems` — список систем организации (с пагинацией, фильтрацией по riskLevel)
-- [ ] API: `GET /api/systems/:id` — детали системы (с classification и requirements)
-- [ ] API: `PATCH /api/systems/:id` — обновление полей (wizard step save)
-- [ ] API: `DELETE /api/systems/:id` — мягкое удаление (soft delete)
-- [ ] Multi-tenancy: organizationId фильтр на всех операциях
-- [ ] AuditLog: запись каждой операции
-- [ ] Тесты: CRUD операции, доступ к чужой системе → 403
+### Описание
+Гибридный 4-step classification pipeline:
+1. **Rule-based pre-filter** — Art. 5 (prohibited), Annex III (8 доменов high-risk), safety components
+2. **LLM classification** — Mistral Small/Medium для сложных случаев
+3. **Cross-validation** — при расхождении rules/LLM → escalation на Mistral Large
+4. **Requirements mapping** — riskLevel + category → набор Requirement из справочника
 
-**Зависимости:** US-002, US-007
+Output: riskLevel, confidence, matchedRules[], articleReferences[], generatedRequirements[]
 
----
+- Confidence >= 90% → результат без LLM
+- Domain events: `SystemClassified` → пересчёт complianceScore
 
-### US-009: Wizard регистрации AI-системы (frontend)
-**Приоритет:** P0 | **SP:** 8 | **Спринт:** 2 | **Теги:** `[FE]` `[UX]`
-**Исполнитель:** Nina
+### MVP Scope
+- Rule-based classification (Annex III + Art. 5)
+- LLM second opinion (Mistral Medium)
+- Базовый requirements mapping
+- Экран результата: risk level, обоснование, ссылки на статьи
 
-**Описание:**
-Как compliance officer, я хочу пройти 5-шаговый wizard для описания AI-системы,
-чтобы платформа определила уровень риска и требования compliance.
+### Зависимости
+Feature 03 (wizard предоставляет данные для классификации)
 
-**Acceptance Criteria:**
-- [ ] XState state chart для 5-step wizard (переходы вперёд/назад, сохранение состояния)
-- [ ] Step 1: Basic Info — название, описание (textarea)
-- [ ] Step 2: Purpose & Context — цель, область (dropdown: biometrics, HR, education, etc.)
-- [ ] Step 3: Technical Details — тип модели, автономность, влияние на людей, safety component
-- [ ] Step 4: Data & Users — типы данных, количество пользователей, масштаб данных
-- [ ] Step 5: Review & Classify — обзор введённых данных + кнопка «Классифицировать»
-- [ ] Auto-save: каждый шаг сохраняется через `PATCH /api/systems/:id`
-- [ ] Валидация: React Hook Form + Zod на каждом шаге
-- [ ] Progress indicator (шаги 1-5 с текущим выделением)
-- [ ] Responsive: полная ширина на mobile, центрированная карточка на desktop
-- [ ] WCAG AA: keyboard navigation, aria-labels, фокус-менеджмент между шагами
-- [ ] Wireframe: создать до начала кодирования
-
-**Зависимости:** US-008
+### Экспертиза
+Elena: валидация правил на соответствие тексту AI Act
 
 ---
 
-## Epic 4: Classification Engine
+## Feature 05: Compliance Dashboard
 
-### US-010: Rule-based pre-filter (Step 1 движка)
-**Приоритет:** P0 | **SP:** 5 | **Спринт:** 2 | **Теги:** `[BE]` `[Legal]`
-**Исполнитель:** Max (код) + Elena (правила)
+**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 3-4
 
-**Описание:**
-Как платформа, я должна мгновенно определять очевидные случаи классификации по правилам,
-чтобы не тратить время и деньги на LLM для простых случаев.
+### Бизнес-ценность
+As a CEO / CTO, I want to see the overall compliance status of all AI systems on one page, so that I can quickly assess the situation and report to the board.
 
-**Acceptance Criteria:**
-- [ ] `domain/classification/services/RuleEngine.js` — чистая функция (без зависимостей)
-- [ ] Правила Art. 5: prohibited practices (social scoring, biometric mass surveillance, etc.)
-- [ ] Правила Annex III: 8 доменов high-risk (biometrics, HR, education, etc.)
-- [ ] Правила safety component + Annex I products
-- [ ] Output: `{ riskLevel, confidence, matchedRules[], articleReferences[] }`
-- [ ] Confidence >= 90% → результат достаточен без LLM
-- [ ] Тесты: по минимум 2 тест-кейса на каждый домен Annex III + Art. 5
-- [ ] Elena: валидация правил на соответствие тексту AI Act
+### Описание
+- Compliance Score (aggregate): круговой прогресс-бар (0-100%)
+- Распределение по risk levels: визуальная диаграмма
+- Таблица AI-систем: название, risk level badge, compliance score, статус
+- «Требует внимания»: системы с просроченными задачами
+- Ближайшие дедлайны
+- Детальная страница AI-системы: classification details, requirements checklist, документы, actions
 
-**Зависимости:** US-008
+### MVP Scope
+- Обзорная страница + карточка системы
+- Dashboard API endpoints (CQS: read-only queries)
+- Фильтры по risk level и compliance status
+- Responsive grid: mobile → desktop
 
----
-
-### US-011: LLM-классификация и cross-validation (Steps 2-3 движка)
-**Приоритет:** P0 | **SP:** 8 | **Спринт:** 3 | **Теги:** `[BE]`
-**Исполнитель:** Max
-
-**Описание:**
-Как платформа, я должна использовать LLM для сложных случаев и cross-validation для спорных,
-чтобы обеспечить точность классификации > 90%.
-
-**Acceptance Criteria:**
-- [ ] `infrastructure/llm/mistral-client.js` — клиент Mistral API (EU endpoint)
-- [ ] `infrastructure/llm/llm-adapter.js` — Adapter pattern (Strategy: Small/Medium/Large)
-- [ ] Step 2: Mistral Small 3.1 API → JSON-ответ `{ riskLevel, article, reasoning }`
-- [ ] Step 3: при расхождении rule/LLM → escalation на Mistral Large 3 API
-- [ ] Prompt engineering: system prompt с контекстом AI Act, структурированный output
-- [ ] Retry + timeout: AbortSignal (15 сек), retry при 5xx (3 попытки)
-- [ ] Тесты: mock Mistral API, проверка flow (rule_only → rule_plus_llm → cross_validated)
-
-**Зависимости:** US-010
+### Зависимости
+Feature 03 (нужны AI-системы в базе)
 
 ---
 
-### US-012: Requirements mapping и сохранение классификации (Step 4 движка)
-**Приоритет:** P0 | **SP:** 3 | **Спринт:** 3 | **Теги:** `[BE]`
-**Исполнитель:** Max
+## Feature 06: Консультант Ева (базовая версия)
 
-**Описание:**
-Как платформа, я должна автоматически определить требования для классифицированной системы,
-чтобы пользователь сразу увидел свой checklist для compliance.
+**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 4
 
-**Acceptance Criteria:**
-- [ ] Mapping: riskLevel + annexCategory → набор Requirement из справочника
-- [ ] Создание SystemRequirement записей (status: 'pending') для каждого применимого требования
-- [ ] Обновление AISystem: riskLevel, complianceStatus, wizardCompleted
-- [ ] RiskClassification: сохранение полного результата (rule + llm + cross-validation)
-- [ ] ClassificationLog: запись `action: 'initial'`
-- [ ] AuditLog: запись `action: 'classify'`
-- [ ] Domain event: emit `SystemClassified` → пересчёт complianceScore
-- [ ] Тесты: mapping для каждого riskLevel, создание requirements
+### Бизнес-ценность
+As a CTO без юридического бэкграунда, I want to ask questions about AI Act in plain language, so that I understand what to do for my specific case.
 
-**Зависимости:** US-011
+### Описание
+- WebSocket-чат с AI-консультантом «Ева»
+- Mistral Large 3 API: streaming responses
+- Context injection: данные пользователя, организации, AI-систем → system prompt
+- Conversation persistence (Conversation + ChatMessage)
+- Quick actions: предопределённые вопросы-кнопки
+- Цитирование статей AI Act в ответах
+- Disclaimer: «не является юридической консультацией»
+- Rate limiting по плану (Free: 10 сообщений/день)
 
----
+### MVP Scope
+- Базовый чат со streaming
+- Контекстные ответы (видит данные пользователя)
+- Без tool calling (добавляется в Feature 10)
 
-### US-013: Экран результата классификации
-**Приоритет:** P0 | **SP:** 3 | **Спринт:** 3 | **Теги:** `[FE]`
-**Исполнитель:** Nina
-
-**Описание:**
-Как compliance officer, я хочу увидеть результат классификации с обоснованием и ссылками на статьи,
-чтобы понимать почему моя система получила данный уровень риска.
-
-**Acceptance Criteria:**
-- [ ] Карточка результата: risk level (цветовая индикация), confidence, метод
-- [ ] Обоснование (reasoning): текст от Classification Engine
-- [ ] Ссылки на статьи AI Act (articleReferences)
-- [ ] Список сгенерированных requirements (checklist preview)
-- [ ] CTA: «Перейти к Dashboard» / «Классифицировать ещё систему»
-- [ ] Анимация перехода от wizard к результату
-
-**Зависимости:** US-009, US-012
+### Зависимости
+Feature 02 (IAM), Feature 04 (Classification — для контекста)
 
 ---
 
-## Epic 5: Compliance Dashboard
+## Feature 07: Генерация документов
 
-### US-014: Compliance Dashboard — обзорная страница
-**Приоритет:** P0 | **SP:** 5 | **Спринт:** 3 | **Теги:** `[FE]` `[UX]`
-**Исполнитель:** Nina
+**Приоритет:** P1 (Should Have) | **Размер:** L | **Спринт:** 4-5
 
-**Описание:**
-Как CEO / CTO, я хочу видеть обзор всех AI-систем и статус compliance на одной странице,
-чтобы быстро оценить ситуацию и доложить руководству.
+### Бизнес-ценность
+As a compliance officer, I want the platform to generate draft Technical Documentation (Art. 11), so that I don't have to write every section from scratch.
 
-**Acceptance Criteria:**
-- [ ] Compliance Score (aggregate): круговой прогресс-бар (0-100%)
-- [ ] Распределение по risk levels: визуальная диаграмма (prohibited, high, gpai, limited, minimal)
-- [ ] Список AI-систем: таблица/карточки с названием, risk level badge, compliance score, статус
-- [ ] «Требует внимания»: системы с просроченными задачами (выделено)
-- [ ] Ближайшие дедлайны: список из SystemRequirement с dueDate
-- [ ] Responsive grid: 1 колонка mobile → 3 колонки desktop
-- [ ] Wireframe: создать до начала кодирования
-- [ ] Фильтры: по risk level, по compliance status
+### Описание
+- Структурированные шаблоны документов по Art. 11 AI Act (~8-10 секций)
+- LLM-генерация черновиков секций (Mistral Medium 3) через pg-boss queue
+- Section-by-section workflow: Generate → Edit → Approve
+- Rich text editor (Tiptap) для редактирования
+- Export в PDF через pg-boss job → S3 link
+- WebSocket уведомление при готовности секции
 
-**Зависимости:** US-008
+### MVP Scope
+- Technical Documentation (Art. 11) — единственный тип документа
+- Генерация + редактирование + PDF export
 
----
+### Зависимости
+Feature 04 (Classification — нужна классификация для генерации)
 
-### US-015: Dashboard API endpoints
-**Приоритет:** P0 | **SP:** 3 | **Спринт:** 3 | **Теги:** `[BE]`
-**Исполнитель:** Max
-
-**Описание:**
-Как frontend, мне нужны API endpoints для получения данных dashboard,
-чтобы отображать актуальную информацию об AI-системах.
-
-**Acceptance Criteria:**
-- [ ] API: `GET /api/dashboard/overview` — агрегированные данные (score, systems по risk, deadlines)
-- [ ] API: `GET /api/dashboard/attention` — системы требующие внимания
-- [ ] Multi-tenancy: все данные фильтрованы по organizationId
-- [ ] CQS: только queries (read-only endpoints)
-- [ ] Тесты: пустая организация, организация с данными, multi-tenancy
-
-**Зависимости:** US-007, US-008
+### Экспертиза
+Elena: валидация структуры шаблонов на соответствие Art. 11
 
 ---
 
-### US-016: Карточка AI-системы (детальная страница)
-**Приоритет:** P0 | **SP:** 3 | **Спринт:** 4 | **Теги:** `[FE]`
-**Исполнитель:** Nina
+## Feature 08: Gap Analysis
 
-**Описание:**
-Как compliance officer, я хочу видеть полную информацию о конкретной AI-системе,
-чтобы управлять её compliance-процессом.
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 5
 
-**Acceptance Criteria:**
-- [ ] Основная информация: название, описание, risk level badge, compliance score
-- [ ] Classification details: метод, confidence, обоснование, ссылки на статьи
-- [ ] Requirements checklist: список требований с прогресс-баром по каждому
-- [ ] Документы: список сгенерированных compliance-документов
-- [ ] Actions: «Переклассифицировать», «Создать документ», «Спросить Еву»
-- [ ] Tabs или accordion для группировки секций
+### Бизнес-ценность
+As a compliance officer, I want to see which requirements are met and which are not, so that I can create an action plan for compliance.
 
-**Зависимости:** US-014
+### Описание
+- Анализ gaps: для каждого requirement — статус (fulfilled/in_progress/gap)
+- Action plan: LLM-рекомендации по закрытию gaps (Mistral Medium 3)
+- Estimated effort из справочника Requirement
+- Приоритизация: risk level + proximity к deadline
+- UI: три секции (Fulfilled ✅, In Progress 🔄, Gaps ❌), progress bars, CTA
 
----
+### MVP Scope
+- Gap analysis per AI-system
+- Action plan recommendations
+- Визуализация прогресса
 
-## Epic 6: Консультант Ева (базовая версия)
-
-### US-017: Eva backend — чат с контекстом
-**Приоритет:** P0 | **SP:** 8 | **Спринт:** 4 | **Теги:** `[BE]`
-**Исполнитель:** Max
-
-**Описание:**
-Как платформа, я должна предоставить AI-консультанта Еву для ответов на вопросы об AI Act,
-чтобы пользователь мог получить помощь в реальном времени.
-
-**Acceptance Criteria:**
-- [ ] WebSocket endpoint: `/ws/chat` (Fastify ws)
-- [ ] `domain/consultation/services/EvaOrchestrator.js` — оркестрация чата
-- [ ] Context injection: данные пользователя, организации, AI-систем → system prompt
-- [ ] Mistral Large 3 API: streaming response (SSE через WebSocket)
-- [ ] Conversation persistence: Conversation + ChatMessage таблицы
-- [ ] History: загрузка последних 20 сообщений при подключении
-- [ ] Disclaimer: автоматическое добавление «не является юридической консультацией»
-- [ ] Rate limiting: ограничение по плану (Free: 10 сообщений/день, Starter+: без лимита)
-- [ ] Тесты: mock WebSocket, mock Mistral API, persistence
-
-**Зависимости:** US-007, US-011
+### Зависимости
+Feature 04 (Classification — нужны requirements)
 
 ---
 
-### US-018: Eva frontend — чат-виджет
-**Приоритет:** P0 | **SP:** 5 | **Спринт:** 4 | **Теги:** `[FE]` `[UX]`
-**Исполнитель:** Nina
+## Feature 09: Billing & подписки
 
-**Описание:**
-Как CTO без юридического бэкграунда, я хочу задавать вопросы об AI Act простым языком,
-чтобы понимать что нужно делать для моего конкретного случая.
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 5-6
 
-**Acceptance Criteria:**
-- [ ] Chat widget: плавающая кнопка в правом нижнем углу, раскрывается в панель
-- [ ] Streaming: посимвольное отображение ответа Евы
-- [ ] Quick actions: предопределённые вопросы-кнопки (5-7 популярных вопросов)
-- [ ] Цитирование: ссылки на статьи AI Act в ответах (выделенные блоки)
-- [ ] История: переключение между Conversations
-- [ ] Feedback: thumbs up/down на каждое сообщение
-- [ ] Markdown rendering в сообщениях Евы
-- [ ] Responsive: на mobile — полноэкранный чат
-- [ ] WCAG AA: keyboard navigation, aria-live для новых сообщений
+### Бизнес-ценность
+As a user, I want to upgrade from Free to a paid plan, so that I can access full platform capabilities.
 
-**Зависимости:** US-017
+### Описание
+- Stripe Checkout integration (checkout.completed, invoice.paid, payment_failed webhooks)
+- 5 тарифов: Free, Starter (€49), Growth (€149), Scale (€399), Enterprise (custom)
+- Feature limits: maxSystems, maxUsers, maxMessages из Plan
+- Pricing page с comparison table
+- Settings → Billing: текущий план, следующий платёж
 
----
+### MVP Scope
+- Stripe Checkout + webhook handling
+- Feature limits enforcement
+- Pricing page + billing settings
 
-## Epic 7: Генерация документов (P1)
-
-### US-019: Template engine для Technical Documentation
-**Приоритет:** P1 | **SP:** 5 | **Спринт:** 4 | **Теги:** `[BE]` `[Legal]`
-**Исполнитель:** Max (код) + Elena (шаблоны)
-
-**Описание:**
-Как платформа, я должна иметь структурированные шаблоны документов по Art. 11 AI Act,
-чтобы генерировать черновики Technical Documentation.
-
-**Acceptance Criteria:**
-- [ ] Шаблоны секций для Technical Documentation (Art. 11): ~8-10 секций
-- [ ] Каждый шаблон: structure (заголовки, подразделы), prompts для LLM, контекстные данные
-- [ ] API: `POST /api/compliance/documents` — создание документа из шаблона
-- [ ] API: `GET /api/compliance/documents/:id` — документ с секциями
-- [ ] Создание DocumentSection записей (status: 'empty') для каждой секции шаблона
-- [ ] Elena: валидация структуры шаблонов на соответствие Art. 11
-
-**Зависимости:** US-012
+### Зависимости
+Feature 02 (IAM)
 
 ---
 
-### US-020: LLM-генерация секций документа
-**Приоритет:** P1 | **SP:** 5 | **Спринт:** 5 | **Теги:** `[BE]`
-**Исполнитель:** Max
+## Feature 10: Ева — tool calling (полная версия)
 
-**Описание:**
-Как compliance officer, я хочу генерировать черновики секций документации через AI,
-чтобы не писать каждый раздел с нуля.
+**Приоритет:** P1 (Should Have) | **Размер:** S | **Спринт:** 6
 
-**Acceptance Criteria:**
-- [ ] API: `POST /api/compliance/documents/:docId/sections/:code/generate`
-- [ ] Задача ставится в pg-boss queue (async, GUID idempotency)
-- [ ] Worker: загрузка AISystem + Classification + Requirements → prompt для Mistral Medium 3
-- [ ] Prompt: шаблон секции + данные системы + требования → структурированный черновик
-- [ ] Сохранение: content (сгенерированный) + aiDraft (оригинал) в DocumentSection
-- [ ] WebSocket уведомление: `{ type: 'section_ready', sectionCode }` при завершении
-- [ ] Тесты: mock Mistral, проверка сохранения, idempotency
+### Бизнес-ценность
+As a user, I want Eva to perform actions (classify system, search regulation, create document), so that I can manage compliance through chat.
 
-**Зависимости:** US-003, US-019
+### Описание
+- Mistral tool calling: `classify_system`, `search_regulation`, `create_document`
+- Tool result → продолжение генерации ответа
+- Расширяет базовую Eva (Feature 06) действиями
 
----
+### MVP Scope
+- 3 tool definitions + execution
 
-### US-021: Редактор документов и экспорт
-**Приоритет:** P1 | **SP:** 5 | **Спринт:** 5 | **Теги:** `[FE]`
-**Исполнитель:** Nina
-
-**Описание:**
-Как compliance officer, я хочу редактировать сгенерированные черновики и экспортировать в PDF,
-чтобы получить готовый документ для аудита.
-
-**Acceptance Criteria:**
-- [ ] Rich text editor (Tiptap) для редактирования секций
-- [ ] Section-by-section workflow: Generate → Edit → Approve для каждой секции
-- [ ] «Сбросить к AI-черновику»: возврат к aiDraft
-- [ ] Прогресс документа: X из Y секций approved
-- [ ] API: `PATCH /api/compliance/documents/:docId/sections/:code` — сохранение правок
-- [ ] API: `POST /api/compliance/documents/:docId/sections/:code/approve` — утверждение секции
-- [ ] Экспорт: `POST /api/compliance/documents/:docId/export` → PDF через pg-boss job
-- [ ] Скачивание PDF по готовности (S3 link)
-
-**Зависимости:** US-020
+### Зависимости
+Feature 06 (Eva базовая), Feature 04 (Classification), Feature 07 (Documents)
 
 ---
 
-## Epic 8: Gap Analysis (P1)
+## Feature 11: Onboarding и notifications
 
-### US-022: Gap Analysis — backend
-**Приоритет:** P1 | **SP:** 5 | **Спринт:** 5 | **Теги:** `[BE]`
-**Исполнитель:** Max
+**Приоритет:** P1 (Should Have) | **Размер:** S | **Спринт:** 6
 
-**Описание:**
-Как compliance officer, я хочу видеть какие требования выполнены, какие нет, и что нужно сделать,
-чтобы составить план действий для compliance.
+### Бизнес-ценность
+As a new user, I want a quick assessment after registration, so that I immediately understand the scope of compliance work. As a user, I want notifications about important events.
 
-**Acceptance Criteria:**
-- [ ] API: `GET /api/compliance/gap-analysis/:aiSystemId`
-- [ ] `domain/compliance/services/GapAnalyzer.js` — анализ gaps
-- [ ] Для каждого requirement: статус (fulfilled/in_progress/gap), прогресс %
-- [ ] Action plan: Mistral Medium 3 → рекомендации по закрытию gaps
-- [ ] Estimated effort (часы) из справочника Requirement
-- [ ] Приоритизация: risk level + proximity к deadline
-- [ ] Тесты: система без requirements, частично выполненная, полностью compliant
+### Описание
+- Quick questionnaire (5-7 вопросов) → LLM-оценка масштаба работы
+- Notifications: classification_complete, document_ready, deadline_approaching
+- Notification bell + dropdown + domain events → Notification creation
 
-**Зависимости:** US-012
+### MVP Scope
+- Onboarding questionnaire + Eva welcome
+- In-app notifications
+
+### Зависимости
+Feature 02 (IAM), Feature 06 (Eva)
 
 ---
 
-### US-023: Gap Analysis — frontend
-**Приоритет:** P1 | **SP:** 3 | **Спринт:** 5 | **Теги:** `[FE]`
-**Исполнитель:** Nina
+## Feature 12: Regulatory Monitor
 
-**Описание:**
-Как compliance officer, я хочу видеть наглядный gap analysis с action plan,
-чтобы понимать что именно нужно делать и в каком порядке.
+**Приоритет:** P2 (Could Have) | **Размер:** M | **Спринт:** 7
 
-**Acceptance Criteria:**
-- [ ] Три секции: Fulfilled ✅, In Progress 🔄, Gaps ❌
-- [ ] Каждый gap: требование, приоритет, рекомендованные шаги, estimated effort
-- [ ] Progress bar по каждому требованию
-- [ ] Overall compliance score
-- [ ] CTA: «Начать работу» (переход к созданию документа для конкретного gap)
+### Бизнес-ценность
+As a compliance officer, I want to be notified about changes in AI Act regulations, so that I can react to regulatory updates in time.
 
-**Зависимости:** US-022
+### Описание
+- EUR-Lex API scraping (pg-boss scheduled job: ежедневно 02:00 UTC)
+- LLM-анализ: affected articles, impact level (Mistral Small)
+- Impact assessment: определение затронутых AI-систем
+- Dashboard секция: regulatory updates + impact per system
+- Notifications для затронутых пользователей
 
----
+### MVP Scope
+Не входит в MVP. Реализация после запуска.
 
-## Epic 9: Billing & подписки (P1)
-
-### US-024: Stripe интеграция и управление подписками
-**Приоритет:** P1 | **SP:** 5 | **Спринт:** 5 | **Теги:** `[BE]`
-**Исполнитель:** Max
-
-**Описание:**
-Как пользователь, я хочу перейти с Free на платный план через Stripe,
-чтобы получить доступ к полным возможностям платформы.
-
-**Acceptance Criteria:**
-- [ ] API: `POST /api/billing/checkout` — создание Stripe Checkout session
-- [ ] API: `POST /api/webhooks/stripe` — обработка webhooks (checkout.completed, invoice.paid, payment_failed)
-- [ ] Верификация Stripe webhook signature
-- [ ] Обновление Subscription: plan, status, period
-- [ ] Feature limits: проверка maxSystems, maxUsers из Plan при создании ресурсов
-- [ ] Notification при payment failure
-- [ ] AuditLog: все операции с подписками
-- [ ] Тесты: webhook handling, feature limits, plan upgrade
-
-**Зависимости:** US-002, US-007
+### Зависимости
+Feature 01 (pg-boss), Feature 11 (notifications)
 
 ---
 
-### US-025: Pricing page и управление подпиской (frontend)
-**Приоритет:** P1 | **SP:** 3 | **Спринт:** 6 | **Теги:** `[FE]`
-**Исполнитель:** Nina
+## Feature 13: Дополнительные compliance-документы
 
-**Описание:**
-Как пользователь, я хочу видеть тарифы и управлять подпиской,
-чтобы выбрать подходящий план.
+**Приоритет:** P2 (Could Have) | **Размер:** M | **Спринт:** 7-8
 
-**Acceptance Criteria:**
-- [ ] Pricing page: 5 тарифов (Free, Starter, Growth, Scale, Enterprise)
-- [ ] Comparison table: лимиты, фичи, цены
-- [ ] Текущий план: выделен, кнопка «Upgrade»
-- [ ] Redirect на Stripe Checkout при нажатии «Upgrade»
-- [ ] Settings → Billing: текущий план, следующий платёж, кнопка отмены
-- [ ] Уведомления: payment failed, план изменён
+### Бизнес-ценность
+As a compliance officer with a high-risk system, I want to generate Risk Assessment (Art. 9) and EU Declaration of Conformity (Art. 47), so that I fulfill all AI Act documentation requirements.
 
-**Зависимости:** US-024
+### Описание
+- Risk Assessment шаблон по Art. 9 (генерация через Mistral + edit workflow)
+- EU Declaration of Conformity шаблон по Art. 47 (pre-fill из данных системы)
+- Тот же workflow что Feature 07: generate → edit → approve → export PDF
 
----
+### MVP Scope
+Не входит в MVP. Расширяет Feature 07 дополнительными типами документов.
 
-## Epic 10: Eva полная версия (P1)
+### Зависимости
+Feature 07 (Document Generation — переиспользует engine)
 
-### US-026: Eva tool calling — classify, search, create_document
-**Приоритет:** P1 | **SP:** 5 | **Спринт:** 6 | **Теги:** `[BE]`
-**Исполнитель:** Max
-
-**Описание:**
-Как пользователь, я хочу просить Еву выполнять действия (классифицировать систему, искать в AI Act, создать документ),
-чтобы управлять compliance через чат.
-
-**Acceptance Criteria:**
-- [ ] Tool definitions для Mistral: `classify_system`, `search_regulation`, `create_document`
-- [ ] `classify_system`: запуск ClassificationEngine через чат
-- [ ] `search_regulation`: поиск по Requirement таблице (articleReference, description)
-- [ ] `create_document`: создание ComplianceDocument для указанной системы
-- [ ] Tool result → продолжение генерации ответа с результатом
-- [ ] Сохранение toolCalls в ChatMessage
-- [ ] Тесты: каждый tool, tool call → response flow
-
-**Зависимости:** US-017, US-012, US-019
+### Экспертиза
+Elena: шаблоны Art. 9 и Art. 47
 
 ---
 
-## Epic 11: Onboarding и polish (P1)
+## Feature 14: Multi-language (DE/EN)
 
-### US-027: Страница онбординга
-**Приоритет:** P1 | **SP:** 3 | **Спринт:** 6 | **Теги:** `[Full]`
-**Исполнитель:** Nina (UI) + Max (API)
+**Приоритет:** P2 (Could Have) | **Размер:** S | **Спринт:** 8
 
-**Описание:**
-Как новый пользователь, я хочу пройти quick assessment после регистрации,
-чтобы сразу понять масштаб работы по compliance.
+### Бизнес-ценность
+As a user from Austria/Switzerland, I want to use the platform in German or English, so that I can work in my preferred language.
 
-**Acceptance Criteria:**
-- [ ] Quick questionnaire: 5-7 вопросов о компании и использовании AI
-- [ ] API: `POST /api/onboarding/quick-assessment` → Mistral Large 3 (оценка)
-- [ ] Результат: «У вас ~X систем, Y потенциально high-risk»
-- [ ] CTA: «Добавить первую систему» → переход к wizard
-- [ ] Ева приветствует пользователя и предлагает помощь
+### Описание
+- i18n (next-intl): все UI-тексты в translation files (DE, EN)
+- Language switcher в header
+- Eva отвечает на языке пользователя (prompt engineering)
 
-**Зависимости:** US-005, US-017
+### MVP Scope
+Не входит в MVP. DACH market launch может быть только на немецком.
 
----
-
-### US-028: Notifications система
-**Приоритет:** P1 | **SP:** 3 | **Спринт:** 6 | **Теги:** `[Full]`
-**Исполнитель:** Max (API) + Nina (UI)
-
-**Описание:**
-Как пользователь, я хочу получать уведомления о важных событиях,
-чтобы не пропустить дедлайны и изменения.
-
-**Acceptance Criteria:**
-- [ ] API: `GET /api/notifications` — список уведомлений (paginated, unread first)
-- [ ] API: `PATCH /api/notifications/:id/read` — отметить прочитанным
-- [ ] Типы: classification_complete, document_ready, deadline_approaching, compliance_change
-- [ ] Notification bell в header с badge (count unread)
-- [ ] Dropdown с последними уведомлениями
-- [ ] Domain events → создание Notification (EventEmitter listeners)
-
-**Зависимости:** US-007
+### Зависимости
+Feature 02 (IAM — locale в профиле)
 
 ---
 
-## Epic 12: Regulatory Monitor (P2 — post-MVP)
+## Сводка по приоритетам
 
-### US-029: EUR-Lex scraper
-**Приоритет:** P2 | **SP:** 5 | **Спринт:** 7 | **Теги:** `[BE]`
-**Исполнитель:** Max
+### P0 — Must Have (MVP core)
 
-**Описание:**
-Как платформа, я должна автоматически отслеживать изменения в AI Act и related документах,
-чтобы уведомлять пользователей о regulatory updates.
+| # | Feature | Размер | Спринт |
+|---|---------|--------|--------|
+| 01 | Инфраструктура и настройка | M | 0 |
+| 02 | IAM — Auth и управление | L | 1 |
+| 03 | 5-step Wizard | M | 1-2 |
+| 04 | Classification Engine | XL | 2-3 |
+| 05 | Compliance Dashboard | M | 3-4 |
+| 06 | Ева (базовая) | L | 4 |
 
-**Acceptance Criteria:**
-- [ ] `infrastructure/monitoring/eurlex-scraper.js` — scraping EUR-Lex API
-- [ ] pg-boss scheduled job: ежедневно в 02:00 UTC
-- [ ] Дедупликация: проверка URL перед вставкой
-- [ ] LLM-анализ: Mistral Small → affected articles, impact level
-- [ ] Impact assessment: определение затронутых AI-систем
-- [ ] Notification создание для затронутых пользователей
-- [ ] Тесты: mock EUR-Lex API, дедупликация, impact assessment
+**MVP-ready: Sprint 4 (неделя 8-10)** — классификация, dashboard, базовая Eva
 
-**Зависимости:** US-003, US-028
+### P1 — Should Have (полноценный продукт)
 
----
+| # | Feature | Размер | Спринт |
+|---|---------|--------|--------|
+| 07 | Генерация документов | L | 4-5 |
+| 08 | Gap Analysis | M | 5 |
+| 09 | Billing & подписки | M | 5-6 |
+| 10 | Ева tool calling | S | 6 |
+| 11 | Onboarding & notifications | S | 6 |
 
-### US-030: Dashboard regulatory updates
-**Приоритет:** P2 | **SP:** 3 | **Спринт:** 7 | **Теги:** `[FE]`
-**Исполнитель:** Nina
+**Product-ready: Sprint 6 (неделя 12-14)** — документы, gap analysis, billing, Eva tools
 
-**Описание:**
-Как compliance officer, я хочу видеть regulatory updates и их влияние на мои системы,
-чтобы вовремя реагировать на изменения в законодательстве.
+### P2 — Could Have (расширение)
 
-**Acceptance Criteria:**
-- [ ] Секция «Regulatory Updates» на dashboard
-- [ ] Список обновлений: дата, источник, summary, impact level
-- [ ] Impact per system: какие системы затронуты
-- [ ] «Acknowledge» button: отметить что обновление обработано
+| # | Feature | Размер | Спринт |
+|---|---------|--------|--------|
+| 12 | Regulatory Monitor | M | 7 |
+| 13 | Доп. compliance-документы | M | 7-8 |
+| 14 | Multi-language (DE/EN) | S | 8 |
 
-**Зависимости:** US-029
+**Full scope: Sprint 8 (неделя 16-18)** — regulatory monitor, multi-language
 
 ---
 
-## Epic 13: Дополнительные документы (P2)
-
-### US-031: Risk Assessment генерация (Art. 9)
-**Приоритет:** P2 | **SP:** 5 | **Спринт:** 7 | **Теги:** `[BE]` `[Legal]`
-**Исполнитель:** Max (код) + Elena (шаблоны)
-
-**Описание:**
-Как compliance officer с high-risk системой, я хочу сгенерировать Risk Assessment,
-чтобы выполнить требование Art. 9 AI Act.
-
-**Acceptance Criteria:**
-- [ ] Шаблон Risk Assessment: секции по Art. 9
-- [ ] Генерация через pg-boss + Mistral Medium 3
-- [ ] Workflow: generate → edit → approve → export (аналогично US-020/021)
-
-**Зависимости:** US-020
-
----
-
-### US-032: Conformity Declaration генерация (Art. 47)
-**Приоритет:** P2 | **SP:** 3 | **Спринт:** 8 | **Теги:** `[BE]` `[Legal]`
-**Исполнитель:** Max (код) + Elena (шаблон)
-
-**Описание:**
-Как compliance officer, я хочу сгенерировать EU Declaration of Conformity,
-чтобы выполнить требование Art. 47 AI Act.
-
-**Acceptance Criteria:**
-- [ ] Шаблон Conformity Declaration по Art. 47
-- [ ] Pre-fill из данных системы и классификации
-- [ ] Export в PDF
-
-**Зависимости:** US-020
-
----
-
-## Epic 14: Multi-language (P2)
-
-### US-033: Интернационализация DE/EN
-**Приоритет:** P2 | **SP:** 5 | **Спринт:** 8 | **Теги:** `[FE]`
-**Исполнитель:** Nina
-
-**Описание:**
-Как пользователь из Австрии/Швейцарии, я хочу использовать платформу на немецком или английском,
-чтобы работать на привычном языке.
-
-**Acceptance Criteria:**
-- [ ] i18n библиотека (next-intl) настроена
-- [ ] Все UI-тексты вынесены в translation files (DE, EN)
-- [ ] User locale из профиля (default: DE)
-- [ ] Language switcher в header
-- [ ] Eva отвечает на языке пользователя (prompt engineering)
-
-**Зависимости:** US-005
-
----
-
-## Сводка по спринтам
-
-| Спринт | Недели | User Stories | SP | Фокус |
-|--------|--------|-------------|:---:|-------|
-| **Sprint 0** | 1-2 | US-001, 002, 003, 004 | 15 | Инфраструктура, DB, toolchain |
-| **Sprint 1** | 3-4 | US-005, 006, 007, 008 | 16 | IAM, auth, CRUD систем |
-| **Sprint 2** | 5-6 | US-009, 010 | 13 | Wizard UI, rule engine |
-| **Sprint 3** | 7-8 | US-011, 012, 013, 014, 015 | 22 | Classification, dashboard |
-| **Sprint 4** | 9-10 | US-016, 017, 018, 019 | 21 | Детали системы, Eva, templates |
-| **Sprint 5** | 11-12 | US-020, 021, 022, 023, 024 | 23 | Doc gen, gap analysis, billing |
-| **Sprint 6** | 13-14 | US-025, 026, 027, 028 | 14 | Eva tools, onboarding, notifications |
-| **Sprint 7** | 15-16 | US-029, 030, 031 | 13 | Regulatory monitor, risk assessment |
-| **Sprint 8** | 17-18 | US-032, 033 | 8 | Conformity declaration, i18n |
-| **Итого** | | **33 User Stories** | **145** | |
-
----
-
-## Спринт-план: P0 vs P1 vs P2
+## Roadmap
 
 ```
-Sprint 0-3 (8 недель):  ████████████ P0 — ядро MVP
-Sprint 4-6 (6 недель):  ████████ P1 — полноценный продукт
-Sprint 7-8 (4 недели):  ████ P2 — расширение
+Sprint 0     ██ Feature 01: Инфраструктура
+Sprint 1     ████ Feature 02: IAM + Feature 03: Wizard (start)
+Sprint 2     ████ Feature 03: Wizard (end) + Feature 04: Classification (start)
+Sprint 3     ████ Feature 04: Classification (end) + Feature 05: Dashboard
+Sprint 4     ████ Feature 05: Dashboard (end) + Feature 06: Eva + Feature 07: Docs (start)
+             ── MVP READY ──
+Sprint 5     ████ Feature 07: Docs (end) + Feature 08: Gap + Feature 09: Billing
+Sprint 6     ██ Feature 09: Billing (end) + Feature 10: Eva tools + Feature 11: Onboarding
+             ── PRODUCT READY ──
+Sprint 7     ████ Feature 12: Regulatory + Feature 13: Docs (start)
+Sprint 8     ██ Feature 13: Docs (end) + Feature 14: i18n
+             ── FULL SCOPE ──
 ```
-
-**MVP-ready (P0 завершены):** Sprint 3 (неделя 8) — классификация, dashboard, базовая Eva
-**Product-ready (P0+P1):** Sprint 6 (неделя 14) — документы, gap analysis, billing, Eva tools
-**Full scope:** Sprint 8 (неделя 18) — regulatory monitor, multi-language
 
 ---
 
-## Архитектурные решения для backlog
+## Архитектурные решения
 
 | Решение | Обоснование |
 |---------|-------------|
@@ -783,7 +452,10 @@ Sprint 7-8 (4 недели):  ████ P2 — расширение
 | **Session в PostgreSQL** | Таблица Session с index — достаточно для 50 пользователей. Redis при масштабировании |
 | **Без кэширования на MVP** | 50 пользователей — PostgreSQL справится с прямыми запросами. Кэш добавить при необходимости |
 | **Rate limiting in-process** | Map + sliding window — достаточно для одного сервера. Redis при горизонтальном масштабировании |
+| **Mistral EU-only** | Sovereign AI: данные клиентов обрабатываются только EU-моделями (Mistral, Франция) |
 
 ---
 
-⛔ **APPROVAL GATE:** Product Owner должен утвердить Product Backlog перед Sprint Planning.
+⛔ **APPROVAL GATE:** Product Owner должен утвердить Product Backlog (фичи и приоритеты) перед Sprint Planning.
+
+💡 **Следующий шаг:** После утверждения → Marcus декомпозирует P0-фичи Sprint 0 в User Stories → SPRINT-BACKLOG.md

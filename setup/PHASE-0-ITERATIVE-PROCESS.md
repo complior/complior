@@ -330,28 +330,34 @@ git push origin develop
 
 ---
 
-### ЭТАП 6: PRODUCT-BACKLOG.md (User Stories)
+### ЭТАП 6: PRODUCT-BACKLOG.md (Фичи продукта)
 
 #### Marcus создаёт:
 **Файл:** `/home/openclaw/PROJECT/docs/PRODUCT-BACKLOG.md`
 
-**Содержание:**
-- Разбивка ВСЕХ фич из PRODUCT-VISION.md на User Stories
-- Story Points для каждой US
-- Теги: [Tech][BE], [Tech][FE], [Legal], [Research], [UX], [Docs], [QA]
-- Acceptance criteria для каждой US
-- Зависимости между US
+**⚠️ PRODUCT-BACKLOG ≠ SPRINT-BACKLOG:**
+| | Product Backlog | Sprint Backlog |
+|--|----------------|----------------|
+| **Что** | ЧТО делает продукт | КАК реализовать |
+| **Уровень** | Фичи / Эпики (бизнес) | User Stories (техника) |
+| **Когда** | Phase 0 (один раз, потом дополняется) | Sprint Planning (каждый спринт) |
+| **Кто** | Marcus → PO approval | Marcus декомпозирует фичи → US |
+| **Связь** | 1 фича → N user stories | N user stories ← 1 фича |
 
-**Marcus создаёт User Stories для ВСЕЙ команды:**
-- [Tech][BE] — Max
-- [Tech][FE] — Nina
-- [UX] — Kai
-- [Research] — Ava
-- [SecOps] — Leo
-- [QA] — Quinn
-- [Legal] — Elena
-- [Docs] — Diana
-- [DevOps] — Derek
+**Содержание PRODUCT-BACKLOG.md:**
+- ВСЕ фичи (эпики) из PRODUCT-VISION.md на бизнес-уровне
+- Приоритет каждой фичи (P0 / P1 / P2)
+- Бизнес-ценность и описание
+- Грубый размер (S / M / L / XL)
+- Зависимости между фичами
+- MVP scope: какие фичи в MVP, какие — пост-MVP
+
+**SPRINT-BACKLOG.md (отдельный документ, НЕ Phase 0):**
+- Создаётся Marcus перед КАЖДЫМ спринтом при Sprint Planning
+- Берёт P0-фичи из Product Backlog → декомпозирует в User Stories
+- Каждая US: Story Points, acceptance criteria, assignee, теги, техконтекст
+- Одна фича может породить 5-10 User Stories
+- Формат US описан в Marcus SKILL.md → Sprint Task Template
 
 **После создания Marcus пишет:**
 ```
@@ -360,22 +366,19 @@ git push origin develop
 Файл: /home/openclaw/PROJECT/docs/PRODUCT-BACKLOG.md
 
 Итого:
-- Фичи: [количество]
-- User Stories: [количество]
-- Total Story Points: [сумма]
+- Фичи (эпики): [количество]
+- P0 (MVP Must Have): [список]
+- P1 (Should Have): [список]
+- P2 (Could Have / Future): [список]
 
-Breakdown:
-- Feature 001: User Registration & Auth (5 US, 21 SP)
-- Feature 002: Risk Classification Engine (8 US, 34 SP)
-- Feature 003: Dashboard (4 US, 15 SP)
-- [ ] Другие фичи
-
-⛔ APPROVAL GATE: Требуется приоритизация и утверждение.
+⛔ APPROVAL GATE: Требуется приоритизация и утверждение MVP scope.
 
 Пожалуйста:
 1. Проверь что все фичи из PRODUCT-VISION покрыты
-2. Приоритизируй фичи (какие в Sprint 001, какие позже)
-3. Утверди
+2. Согласуй приоритеты (P0 / P1 / P2)
+3. Утверди MVP scope
+
+💡 User Stories для Sprint 001 будут в отдельном SPRINT-BACKLOG.md
 
 Утвердить? ✅ / Изменить приоритеты 📝
 ```
@@ -383,17 +386,16 @@ Breakdown:
 #### Product Owner отвечает:
 - **Вариант A:** "✅ Утверждаю" → Marcus делает commit и переходит к ЭТАП 7
 - **Вариант B:** "📝 Изменить приоритет Feature X на P0" → Marcus правит → approval
-- **Вариант C:** "Добавь ещё фичу Y" → Marcus добавляет US → approval
+- **Вариант C:** "Добавь ещё фичу Y" → Marcus добавляет → approval
 
 #### Marcus делает commit:
 ```bash
 cd /home/openclaw/PROJECT
 git add docs/PRODUCT-BACKLOG.md
-git commit -m "docs: add PRODUCT-BACKLOG.md (User Stories)
+git commit -m "docs: add PRODUCT-BACKLOG.md (Product Features)
 
-- Все фичи декомпозированы в User Stories
-- Story Points оценены
-- Приоритеты установлены Product Owner
+- Все фичи из PRODUCT-VISION описаны как эпики
+- Приоритеты (P0/P1/P2) и MVP scope утверждены Product Owner
 
 ✅ Approved by Product Owner"
 
@@ -490,7 +492,8 @@ git push origin develop
 ## 📊 Статистика Фазы 0:
 
 После завершения Фазы 0, у вас будет:
-- **7 ключевых документов** (PROJECT, ARCHITECTURE, DATABASE, DATA-FLOWS, CODING-STANDARDS, PRODUCT-BACKLOG, ADR)
+- **7 ключевых документов Phase 0** (PROJECT, ARCHITECTURE, DATABASE, DATA-FLOWS, CODING-STANDARDS, PRODUCT-BACKLOG, ADR)
+- **+ SPRINT-BACKLOG.md** — создаётся при Sprint Planning (НЕ Phase 0 артефакт)
 - **7+ commits** в develop branch (по одному после каждого approval)
 - **3 approval gates** пройдены (ARCHITECTURE, CODING-STANDARDS, PRODUCT-BACKLOG)
 - **Полная документация** для старта Sprint 001

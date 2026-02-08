@@ -317,119 +317,92 @@ refactor(scope): description
 
 ---
 
-### ЭТАП 6: Marcus создаёт PRODUCT-BACKLOG.md (User Stories)
+### ЭТАП 6: Marcus создаёт PRODUCT-BACKLOG.md (Фичи продукта)
 
 **Файл:** `/home/openclaw/PROJECT/docs/PRODUCT-BACKLOG.md`
 
-**Создаёт:** Marcus (декомпозиция фич → User Stories)
+**Создаёт:** Marcus
+
+**⚠️ PRODUCT-BACKLOG ≠ SPRINT-BACKLOG:**
+- **Product Backlog** = ЧТО делает продукт (фичи/эпики, бизнес-уровень, Phase 0)
+- **Sprint Backlog** = КАК реализовать (User Stories, технический уровень, Sprint Planning)
+- 1 фича → много User Stories (декомпозиция при Sprint Planning)
 
 **Содержит:**
 
-Разбивка ВСЕХ фич из PRODUCT-VISION.md на User Stories с тегами и Story Points.
+Все фичи из PRODUCT-VISION.md на бизнес-уровне с приоритетами и MVP scope.
 
-#### Формат:
+#### Формат Product Backlog (Feature-level):
 ```markdown
 # Product Backlog — AI Act Compliance Platform
 
-## Feature 001: User Registration & Auth
-Приоритет: P0 | Статус: 🔨 Sprint 001
+## Feature 001: IAM — Аутентификация и управление пользователями
+**Приоритет:** P0 (MVP Must Have) | **Размер:** L
 
-### US-001.1 [Tech][BE] Регистрация по email + password
-**Story Points:** 5
-**As a** SMB owner, **I want** to register with email and password,
-**so that** I can access the platform.
+### Бизнес-ценность
+As a SMB owner, I want to register and manage my team's access,
+so that we can securely use the compliance platform.
 
-**Acceptance Criteria:**
-- [ ] POST /api/auth/register endpoint
-- [ ] Email validation (zod schema)
-- [ ] Password hashing (bcrypt)
-- [ ] JWT token generation
-- [ ] Unit tests (80%+ coverage)
+### Описание
+- Регистрация по email (magic link, без паролей)
+- Multi-tenant: организация → пользователи → роли
+- RBAC: Owner, Admin, Member, Viewer
+- Session management (PostgreSQL)
 
-**Technical Details:**
-- Prisma schema: users table
-- Auth service: validateEmail(), hashPassword(), generateJWT()
-- Error handling: EmailAlreadyExistsError
+### MVP Scope
+- Magic link auth (email)
+- Одна организация на пользователя
+- Базовые роли (Owner, Member)
 
-**Зависимости:** —
-
----
-
-### US-001.2 [Tech][FE] Форма регистрации + валидация
-**Story Points:** 3
-**As a** user, **I want** a registration form with real-time validation,
-**so that** I can register easily.
-
-**Acceptance Criteria:**
-- [ ] React component: RegistrationForm
-- [ ] Zod validation: email, password strength
-- [ ] Error states (inline errors)
-- [ ] Responsive design (mobile-first)
-- [ ] Accessibility (WCAG AA)
-
-**Зависимости:** US-001.1 (backend endpoint)
+### Зависимости
+Нет (базовая фича)
 
 ---
 
-### US-001.3 [Tech][BE] OAuth 2.0 (Google, Microsoft)
-**Story Points:** 8
-...
+## Feature 002: Classification Engine — Классификация AI-систем
+**Приоритет:** P0 (MVP Must Have) | **Размер:** XL
+
+### Бизнес-ценность
+As a CTO, I want to classify my AI systems by EU AI Act risk levels,
+so that I know which requirements apply.
+
+### Описание
+- 5-step wizard (XState)
+- Гибридный движок: rules (Annex III) + LLM (Mistral) + cross-validation
+- Confidence scoring + human review при низком confidence
+- Requirements mapping по уровню риска
+
+### MVP Scope
+- Rule-based classification (Annex III categories)
+- LLM second opinion (Mistral Medium)
+- Базовый requirements mapping
+
+### Зависимости
+Feature 001 (IAM)
 
 ---
 
-## Feature 002: Risk Classification Engine
-Приоритет: P0 | Статус: ⏳ Sprint 002
-
-### US-002.1 [Tech][BE] POST /api/risk/classify endpoint
-**Story Points:** 8
-...
-
-### US-002.2 [Tech][FE] Classification wizard UI
-**Story Points:** 5
-...
-
-### US-002.3 [Legal] AI Act Art.6 risk category mapping
-**Story Points:** 3
-**As a** compliance officer, **I want** accurate mapping to AI Act Art. 6,
-**so that** classifications are legally correct.
-...
-
-### US-002.4 [Research] Competitor risk classification analysis
-**Story Points:** 2
-**Assignee:** Ava
-...
-
-### US-002.5 [UX] Wireframes: classification flow
-**Story Points:** 2
-**Assignee:** Kai
-...
-
----
-
-## Feature 003: Dashboard & Analytics
-Приоритет: P1 | Статус: ⏳ Backlog
+## Feature 003: Dashboard — Compliance обзор
+**Приоритет:** P0 (MVP Must Have) | **Размер:** M
 ...
 ```
 
-#### Story Points — оценка сложности:
-- 1 SP = 1-2 часа работы (trivial)
-- 2 SP = 2-4 часа (simple)
-- 3 SP = 4-8 часов (moderate)
-- 5 SP = 1-2 дня (complex)
-- 8 SP = 2-3 дня (very complex)
-- 13 SP = 3-5 дней (epic, нужна декомпозиция)
+> 💡 **User Stories** создаются в **SPRINT-BACKLOG.md** при Sprint Planning.
+> Marcus декомпозирует фичи → US с Story Points, acceptance criteria, assignees.
+> Формат US: см. Marcus SKILL.md → Sprint Task Template.
 
-#### Теги User Stories:
-- `[Tech][BE]` — Backend (Max)
-- `[Tech][FE]` — Frontend (Nina)
-- `[Tech][DB]` — Database (Max по спеке Marcus)
-- `[Tech][Infra]` — CI/CD, Docker (Derek)
+#### Размер фичи (грубая оценка):
+- **S (Small)** — 1-2 спринта, 1-2 разработчика
+- **M (Medium)** — 2-3 спринта, 1-2 разработчика
+- **L (Large)** — 3-4 спринта, 2+ разработчика
+- **XL (Extra Large)** — 4+ спринта, команда (декомпозиция на sub-features)
+
+#### Теги (используются в Sprint Backlog при декомпозиции в US):
+- `[BE+QA]` — Backend + тесты (Max)
+- `[FE+UX]` — Frontend + дизайн (Nina)
 - `[SecOps]` — Security audit (Leo)
-- `[QA]` — Тесты (Quinn)
 - `[Legal]` — AI Act compliance (Elena)
 - `[Research]` — Ресёрч (Ava)
-- `[UX]` — Wireframes, прототипы (Kai)
-- `[Docs]` — Документация (Diana)
 
 **Зависимости:** PRODUCT-VISION.md → PRODUCT-BACKLOG.md
 
@@ -505,7 +478,7 @@ refactor(scope): description
 - [ ] ✅ DATABASE.md создан (ER-диаграммы + все таблицы)
 - [ ] ✅ DATA-FLOWS.md создан (sequence diagrams для всех key flows)
 - [ ] ✅ CODING-STANDARDS.md создан (правила кода)
-- [ ] ✅ PRODUCT-BACKLOG.md создан (ALL features → User Stories)
+- [ ] ✅ PRODUCT-BACKLOG.md создан (фичи продукта, приоритеты, MVP scope)
 - [ ] ✅ ADR-001, ADR-002, ADR-003, ADR-004 созданы
 - [ ] ✅ Все Mermaid диаграммы рендерятся корректно
 - [ ] ✅ Нет TODO/FIXME в документах

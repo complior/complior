@@ -44,10 +44,11 @@
 | PRODUCT-VISION.md | ✅ Создан | ✅ PO принял |
 | PROJECT.md | ✅ Создан | Информационный |
 | ARCHITECTURE.md | ✅ Создан | ✅ PO принял (API-only старт) |
-| DATABASE.md | ⏳ Следующий | Информационный |
-| DATA-FLOWS.md | ⏳ Ожидает | Информационный |
+| DATABASE.md | ✅ Создан | Информационный |
+| DATA-FLOWS.md | ✅ Создан | Информационный |
 | CODING-STANDARDS.md | ✅ Создан | ✅ PO принял |
-| PRODUCT-BACKLOG.md | ⏳ Ожидает | ⛔ Требует PO |
+| PRODUCT-BACKLOG.md | ✅ Создан | ⛔ Требует PO |
+| SPRINT-BACKLOG.md | — | Создаётся при Sprint Planning |
 | ADR-001..004 | ⏳ Ожидает | Информационный |
 
 ---
@@ -59,8 +60,9 @@
 - **Архитектура:** DDD/Onion поверх существующего VM sandbox паттерна
 - **БД:** PostgreSQL (Hetzner Managed)
 - **Schema management:** MetaSQL (JavaScript schema → SQL DDL + TypeScript types)
-- **Кэширование:** Redis (sessions, rate limiting)
-- **Очереди:** BullMQ (document generation, classification)
+- **Сессии:** PostgreSQL Session table (no Redis on MVP)
+- **Очереди:** pg-boss (PostgreSQL-native, document generation, classification)
+- **Rate limiting:** In-process (Map + sliding window)
 
 ### Frontend
 - **Framework:** Next.js 14 (App Router) + TypeScript strict
@@ -214,7 +216,8 @@
 | Database | `docs/DATABASE.md` | ER-diagrams, schema |
 | Data Flows | `docs/DATA-FLOWS.md` | Sequence diagrams |
 | Coding Standards | `docs/CODING-STANDARDS.md` | Правила кода |
-| Product Backlog | `docs/PRODUCT-BACKLOG.md` | User Stories |
+| Product Backlog | `docs/PRODUCT-BACKLOG.md` | Фичи продукта (эпики, приоритеты, MVP scope) |
+| Sprint Backlog | `docs/SPRINT-BACKLOG.md` | User Stories для спринта (Marcus при Sprint Planning) |
 | ADR | `adr/ADR-00X-*.md` | Architecture Decision Records |
 | Team Spec | `AGENTS-Settings.md` | Master spec команды (v7.2) |
 | Phase 0 Process | `setup/PHASE-0-ITERATIVE-PROCESS.md` | Процесс Phase 0 |
