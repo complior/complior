@@ -47,7 +47,7 @@
 | DATABASE.md | ✅ Создан | Информационный |
 | DATA-FLOWS.md | ✅ Создан | Информационный |
 | CODING-STANDARDS.md | ✅ Создан | ✅ PO принял |
-| PRODUCT-BACKLOG.md | ✅ Создан | ⛔ Требует PO |
+| PRODUCT-BACKLOG.md | ✅ Создан | ✅ PO принял |
 | SPRINT-BACKLOG.md | — | Создаётся при Sprint Planning |
 | ADR-001..004 | ⏳ Ожидает | Информационный |
 
