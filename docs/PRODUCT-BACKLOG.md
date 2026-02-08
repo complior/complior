@@ -50,15 +50,14 @@
 - Monorepo: `src/` (backend, Onion Architecture) + `frontend/` (Next.js 14)
 - Backend из existing-code: Fastify + MetaSQL + VM Sandbox
 - Все 22 таблицы из DATABASE.md как MetaSQL schemas + миграции
-- pg-boss с JobQueue adapter (ARCHITECTURE.md §6.10) для фоновых задач
 - Библиотека ошибок AppError + structured logging (pino)
 - GitHub Actions CI: lint, type-check, tests, `npm audit`
 - Docker Compose: app + PostgreSQL (dev environment)
 
 ### MVP Scope
 - Полная DB-схема с seed data (AI Act requirements, pricing plans)
-- pg-boss + JobQueue port/adapter (миграция на BullMQ при необходимости)
 - CI pipeline рабочий с первого дня
+- pg-boss НЕ нужен на Sprint 0 — подключается в Sprint 4 (Feature 07)
 
 ### Зависимости
 Нет (базовая фича, все остальные зависят от неё)
@@ -213,6 +212,7 @@ Feature 02 (IAM), Feature 04 (Classification — для контекста)
 As a compliance officer, I want the platform to generate draft Technical Documentation (Art. 11), so that I don't have to write every section from scratch.
 
 ### Описание
+- **pg-boss + JobQueue adapter** подключается здесь (ARCHITECTURE.md §6.10) — первая фича с async-задачами
 - Структурированные шаблоны документов по Art. 11 AI Act (~8-10 секций)
 - LLM-генерация черновиков секций (Mistral Medium 3) через pg-boss queue
 - Section-by-section workflow: Generate → Edit → Approve
@@ -221,6 +221,7 @@ As a compliance officer, I want the platform to generate draft Technical Documen
 - WebSocket уведомление при готовности секции
 
 ### MVP Scope
+- pg-boss + JobQueue port/adapter (миграция на BullMQ при необходимости)
 - Technical Documentation (Art. 11) — единственный тип документа
 - Генерация + редактирование + PDF export
 
