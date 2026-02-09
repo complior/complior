@@ -27,10 +27,16 @@ const createBrevoClient = (options = config) => {
   };
 
   return {
-    async sendTransactional({ to, subject, htmlContent, textContent, params, tags }) {
+    async sendTransactional({
+      to, subject, htmlContent, textContent,
+      params, tags,
+    }) {
+      const toArr = Array.isArray(to)
+        ? to.map((email) => ({ email }))
+        : [{ email: to }];
       return request('/smtp/email', {
         sender: { email: senderEmail, name: senderName },
-        to: Array.isArray(to) ? to.map((email) => ({ email })) : [{ email: to }],
+        to: toArr,
         subject,
         htmlContent: htmlContent || undefined,
         textContent: textContent || undefined,
@@ -40,8 +46,11 @@ const createBrevoClient = (options = config) => {
     },
 
     async sendTemplate({ to, templateId, params }) {
+      const toArr = Array.isArray(to)
+        ? to.map((email) => ({ email }))
+        : [{ email: to }];
       return request('/smtp/email', {
-        to: Array.isArray(to) ? to.map((email) => ({ email })) : [{ email: to }],
+        to: toArr,
         templateId,
         params: params || undefined,
       });

@@ -9,7 +9,10 @@
     type: 'json',
     schema: {
       text: { type: 'string', required: false },
-      citations: { type: 'json', required: false, note: 'AI Act article references' },
+      citations: {
+        type: 'json', required: false,
+        note: 'AI Act article references',
+      },
     },
   },
   toolCalls: { type: 'json', required: false },

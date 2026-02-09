@@ -4,12 +4,65 @@ const crypto = require('node:crypto');
 const pkg = require('../package.json');
 const { AppError } = require('./lib/errors.js');
 
+const checkDatabase = async (checks) => {
+  try {
+    const { Pool } = require('pg');
+    const connStr = process.env.DATABASE_URL;
+    const pool = new Pool({ connectionString: connStr });
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('timeout')), 5000);
+    });
+    await Promise.race([pool.query('SELECT 1'), timeout]);
+    checks.database = 'ok';
+    await pool.end();
+  } catch {
+    checks.database = 'error';
+  }
+};
+
+const checkService = async (checks, name, envVar, path) => {
+  try {
+    const url = process.env[envVar];
+    if (!url) {
+      checks[name] = 'not_configured';
+      return;
+    }
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(
+      `${url}${path}`,
+      { signal: ctrl.signal },
+    );
+    checks[name] = res.ok ? 'ok' : 'error';
+  } catch {
+    checks[name] = 'error';
+  }
+};
+
 const initHealth = (server) => {
-  server.get('/health', async () => ({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: pkg.version,
-  }));
+  server.get('/health', async () => {
+    const checks = {};
+    await Promise.all([
+      checkDatabase(checks),
+      checkService(
+        checks, 'ory',
+        'ORY_SDK_URL', '/health/alive',
+      ),
+      checkService(
+        checks, 'gotenberg',
+        'GOTENBERG_URL', '/health',
+      ),
+    ]);
+    const allOk = Object.values(checks).every(
+      (v) => v === 'ok' || v === 'not_configured',
+    );
+    return {
+      status: allOk ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      version: pkg.version,
+      services: checks,
+    };
+  });
 };
 
 const initRateLimit = async (server) => {
@@ -57,7 +110,14 @@ const initErrorHandler = (server) => {
       });
     }
 
-    request.log.error({ err: error, requestId }, 'Unhandled error');
+    request.log.error(
+      { err: error, requestId }, 'Unhandled error',
+    );
+    if (process.env.SENTRY_DSN) {
+      try {
+        require('@sentry/node').captureException(error);
+      } catch { /* noop */ }
+    }
     return reply.status(500).send({
       error: {
         code: 'INTERNAL_ERROR',

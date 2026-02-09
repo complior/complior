@@ -16,5 +16,10 @@
   score: { type: 'number', required: false, note: '0-100 quiz score' },
   certificateUrl: { type: 'string', required: false },
   completedAt: { type: 'datetime', required: false },
-  naturalKey: { unique: ['organization', 'course', 'module', 'user', 'employeeEmail'] },
+  naturalKey: {
+    unique: [
+      'organization', 'course', 'module',
+      'user', 'employeeEmail',
+    ],
+  },
 });

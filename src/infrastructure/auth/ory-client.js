@@ -34,7 +34,10 @@ const createOryClient = (options = config) => {
     },
 
     async listIdentities({ page = 0, perPage = 100 } = {}) {
-      return request(adminUrl, `/admin/identities?page=${page}&per_page=${perPage}`);
+      const q = `page=${page}&per_page=${perPage}`;
+      return request(
+        adminUrl, `/admin/identities?${q}`
+      );
     },
 
     async deleteIdentity(identityId) {
@@ -51,6 +54,7 @@ const createOryClient = (options = config) => {
       return request(adminUrl, `/admin/identities/${identityId}`, {
         method: 'PUT',
         body: JSON.stringify({
+          // eslint-disable-next-line camelcase
           schema_id: 'default',
           state: 'active',
           traits,

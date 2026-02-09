@@ -7,7 +7,10 @@
   priceYearly: { type: 'number', required: false },
   maxTools: { type: 'number', note: '-1 = unlimited' },
   maxUsers: { type: 'number', note: '-1 = unlimited' },
-  maxEmployees: { type: 'number', note: '-1 = unlimited (AI Literacy tracking)' },
+  maxEmployees: {
+    type: 'number',
+    note: '-1 = unlimited (AI Literacy tracking)',
+  },
   features: { type: 'json' },
   stripePriceId: { type: 'string', required: false },
   active: { type: 'boolean', default: true },

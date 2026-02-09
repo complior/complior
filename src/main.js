@@ -9,6 +9,16 @@ const {
 const { init: initWs } = require('./ws.js');
 const validateEnv = require('./config/validate.js');
 
+// Sentry error tracking (only if DSN configured)
+if (process.env.SENTRY_DSN) {
+  const Sentry = require('@sentry/node');
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 0.1,
+  });
+}
+
 const PORT = parseInt(process.env.PORT, 10) || 8000;
 const HOST = process.env.HOST || '0.0.0.0';
 

@@ -12,8 +12,14 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 1,
     estimatedEffortHours: 8,
-    description: 'Anbieter und Betreiber von KI-Systemen ergreifen Maßnahmen, um nach besten Kräften ein ausreichendes Maß an KI-Kompetenz ihres Personals und anderer Personen sicherzustellen, die in ihrem Auftrag mit dem Betrieb und der Nutzung von KI-Systemen befasst sind.',
-    guidance: 'Schulungsprogramm für alle Mitarbeiter einrichten, die KI-Systeme nutzen. Mindestens: Grundlagen der KI, Risiken, unternehmensspezifische Nutzungsrichtlinien.',
+    description: 'Anbieter und Betreiber von KI-Systemen ergreifen' +
+      ' Maßnahmen, um nach besten Kräften ein ausreichendes Maß' +
+      ' an KI-Kompetenz ihres Personals und anderer Personen' +
+      ' sicherzustellen, die in ihrem Auftrag mit dem Betrieb und' +
+      ' der Nutzung von KI-Systemen befasst sind.',
+    guidance: 'Schulungsprogramm für alle Mitarbeiter einrichten, die' +
+      ' KI-Systeme nutzen. Mindestens: Grundlagen der KI, Risiken,' +
+      ' unternehmensspezifische Nutzungsrichtlinien.',
   },
   {
     code: 'ART_4_TRAINING_CEO',
@@ -23,8 +29,11 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 2,
     estimatedEffortHours: 1,
-    description: 'Geschäftsführer und Vorstände müssen über ausreichende KI-Kompetenz verfügen, um strategische Entscheidungen zum KI-Einsatz treffen zu können.',
-    guidance: 'CEO/Executive-Kurs: AI Act Überblick, Risiken, Haftung, Budget, Verantwortlichkeiten (30 Min).',
+    description: 'Geschäftsführer und Vorstände müssen über ausreichende' +
+      ' KI-Kompetenz verfügen, um strategische Entscheidungen zum' +
+      ' KI-Einsatz treffen zu können.',
+    guidance: 'CEO/Executive-Kurs: AI Act Überblick, Risiken, Haftung,' +
+      ' Budget, Verantwortlichkeiten (30 Min).',
   },
   {
     code: 'ART_4_TRAINING_HR',
@@ -34,8 +43,11 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 3,
     estimatedEffortHours: 2,
-    description: 'HR-Mitarbeiter müssen KI-spezifische Risiken im Personalwesen kennen, insbesondere bei Hochrisiko-Anwendungen (Annex III, Bereich 4).',
-    guidance: 'HR-Kurs: Hochrisiko-KI im Recruiting, Bewerbermanagement, Leistungsbewertung (45 Min).',
+    description: 'HR-Mitarbeiter müssen KI-spezifische Risiken im' +
+      ' Personalwesen kennen, insbesondere bei' +
+      ' Hochrisiko-Anwendungen (Annex III, Bereich 4).',
+    guidance: 'HR-Kurs: Hochrisiko-KI im Recruiting, Bewerbermanagement,' +
+      ' Leistungsbewertung (45 Min).',
   },
   {
     code: 'ART_4_TRAINING_DEV',
@@ -45,8 +57,11 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 4,
     estimatedEffortHours: 2,
-    description: 'Entwickler müssen technische Anforderungen des AI Act verstehen, insbesondere Art. 26 Betreiberplichten bei der Integration von KI-Systemen.',
-    guidance: 'Developer-Kurs: Technische Anforderungen, API-Integration, Monitoring, Logging (60 Min).',
+    description: 'Entwickler müssen technische Anforderungen des AI Act' +
+      ' verstehen, insbesondere Art. 26 Betreiberplichten bei der' +
+      ' Integration von KI-Systemen.',
+    guidance: 'Developer-Kurs: Technische Anforderungen, API-Integration,' +
+      ' Monitoring, Logging (60 Min).',
   },
   {
     code: 'ART_4_TRAINING_GENERAL',
@@ -56,8 +71,10 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 5,
     estimatedEffortHours: 1,
-    description: 'Alle Mitarbeiter, die KI-Systeme nutzen, müssen grundlegende KI-Kompetenz nachweisen können.',
-    guidance: 'Allgemeiner Kurs: KI-Grundlagen, Dos & Don\'ts, Datenschutz, Meldepflichten (20 Min).',
+    description: 'Alle Mitarbeiter, die KI-Systeme nutzen, müssen' +
+      ' grundlegende KI-Kompetenz nachweisen können.',
+    guidance: 'Allgemeiner Kurs: KI-Grundlagen, Dos & Don\'ts, Datenschutz,' +
+      ' Meldepflichten (20 Min).',
   },
 
   // === Art. 5 — Prohibited Practices ===
@@ -69,8 +86,13 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 10,
     estimatedEffortHours: 2,
-    description: 'Prüfen, ob das eingesetzte KI-System verbotene Praktiken nutzt: Social Scoring, Echtzeit-Biometrie (ohne Ausnahme), manipulative/täuschende Techniken, Ausnutzung von Schwächen.',
-    guidance: 'Checkliste: Kein Social Scoring, keine Echtzeit-Biometrie ohne Genehmigung, keine manipulativen Techniken, keine Ausnutzung vulnerabler Gruppen.',
+    description: 'Prüfen, ob das eingesetzte KI-System verbotene Praktiken' +
+      ' nutzt: Social Scoring, Echtzeit-Biometrie (ohne' +
+      ' Ausnahme), manipulative/täuschende Techniken, Ausnutzung' +
+      ' von Schwächen.',
+    guidance: 'Checkliste: Kein Social Scoring, keine Echtzeit-Biometrie' +
+      ' ohne Genehmigung, keine manipulativen Techniken, keine' +
+      ' Ausnutzung vulnerabler Gruppen.',
   },
   {
     code: 'ART_5_SOCIAL_SCORING',
@@ -80,7 +102,9 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 11,
     estimatedEffortHours: 1,
-    description: 'Sicherstellen, dass kein KI-System zur Bewertung oder Klassifizierung natürlicher Personen auf Grundlage ihres Sozialverhaltens eingesetzt wird.',
+    description: 'Sicherstellen, dass kein KI-System zur Bewertung oder' +
+      ' Klassifizierung natürlicher Personen auf Grundlage ihres' +
+      ' Sozialverhaltens eingesetzt wird.',
   },
   {
     code: 'ART_5_BIOMETRIC',
@@ -90,7 +114,9 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 12,
     estimatedEffortHours: 1,
-    description: 'Keine biometrische Echtzeit-Fernidentifizierung in öffentlich zugänglichen Räumen einsetzen, es sei denn, es liegt eine gesetzliche Ausnahme vor.',
+    description: 'Keine biometrische Echtzeit-Fernidentifizierung in' +
+      ' öffentlich zugänglichen Räumen einsetzen, es sei denn, es' +
+      ' liegt eine gesetzliche Ausnahme vor.',
   },
 
   // === Art. 26 — Deployer Obligations (HIGH RISK) ===
@@ -102,8 +128,12 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 20,
     estimatedEffortHours: 4,
-    description: 'Hochrisiko-KI-Systeme gemäß der beigefügten Gebrauchsanweisung verwenden. Technische und organisatorische Maßnahmen treffen, um die bestimmungsgemäße Verwendung sicherzustellen.',
-    guidance: 'Gebrauchsanweisung des Anbieters beschaffen und dokumentieren. Interne Nutzungsrichtlinie erstellen.',
+    description: 'Hochrisiko-KI-Systeme gemäß der beigefügten' +
+      ' Gebrauchsanweisung verwenden. Technische und' +
+      ' organisatorische Maßnahmen treffen, um die' +
+      ' bestimmungsgemäße Verwendung sicherzustellen.',
+    guidance: 'Gebrauchsanweisung des Anbieters beschaffen und' +
+      ' dokumentieren. Interne Nutzungsrichtlinie erstellen.',
   },
   {
     code: 'ART_26_OVERSIGHT',
@@ -113,8 +143,11 @@ const requirements = [
     category: 'human_oversight',
     sortOrder: 21,
     estimatedEffortHours: 8,
-    description: 'Natürliche Personen mit der menschlichen Aufsicht betrauen, die über die erforderliche Kompetenz, Ausbildung und Befugnis verfügen.',
-    guidance: 'Verantwortliche Person(en) benennen. Schulung nachweisen. Befugnis zum Eingreifen/Abschalten dokumentieren.',
+    description: 'Natürliche Personen mit der menschlichen Aufsicht' +
+      ' betrauen, die über die erforderliche Kompetenz,' +
+      ' Ausbildung und Befugnis verfügen.',
+    guidance: 'Verantwortliche Person(en) benennen. Schulung nachweisen.' +
+      ' Befugnis zum Eingreifen/Abschalten dokumentieren.',
   },
   {
     code: 'ART_26_INPUT_DATA',
@@ -124,8 +157,11 @@ const requirements = [
     category: 'data_governance',
     sortOrder: 22,
     estimatedEffortHours: 4,
-    description: 'Sicherstellen, dass die Eingabedaten im Hinblick auf die Zweckbestimmung des Hochrisiko-KI-Systems relevant und hinreichend repräsentativ sind.',
-    guidance: 'Eingabedaten dokumentieren. Qualitätsprüfung einrichten. Bias-Checks durchführen.',
+    description: 'Sicherstellen, dass die Eingabedaten im Hinblick auf die' +
+      ' Zweckbestimmung des Hochrisiko-KI-Systems relevant und' +
+      ' hinreichend repräsentativ sind.',
+    guidance: 'Eingabedaten dokumentieren. Qualitätsprüfung einrichten.' +
+      ' Bias-Checks durchführen.',
   },
   {
     code: 'ART_26_MONITORING',
@@ -135,8 +171,12 @@ const requirements = [
     category: 'monitoring',
     sortOrder: 23,
     estimatedEffortHours: 8,
-    description: 'Den Betrieb des Hochrisiko-KI-Systems auf Grundlage der Gebrauchsanweisung überwachen. Bei Feststellung eines Risikos den Anbieter und die zuständige Behörde informieren.',
-    guidance: 'Monitoring-Plan erstellen. KPIs definieren. Eskalationsprozess dokumentieren.',
+    description: 'Den Betrieb des Hochrisiko-KI-Systems auf Grundlage der' +
+      ' Gebrauchsanweisung überwachen. Bei Feststellung eines' +
+      ' Risikos den Anbieter und die zuständige Behörde' +
+      ' informieren.',
+    guidance: 'Monitoring-Plan erstellen. KPIs definieren.' +
+      ' Eskalationsprozess dokumentieren.',
   },
   {
     code: 'ART_26_LOGS',
@@ -146,8 +186,12 @@ const requirements = [
     category: 'record_keeping',
     sortOrder: 24,
     estimatedEffortHours: 4,
-    description: 'Die automatisch erzeugten Protokolle des Hochrisiko-KI-Systems mindestens sechs Monate lang aufbewahren, sofern nach geltendem Recht nichts anderes vorgesehen ist.',
-    guidance: 'Log-Aufbewahrung konfigurieren (min. 6 Monate). Zugriffsschutz für Protokolle einrichten.',
+    description: 'Die automatisch erzeugten Protokolle des' +
+      ' Hochrisiko-KI-Systems mindestens sechs Monate lang' +
+      ' aufbewahren, sofern nach geltendem Recht nichts anderes' +
+      ' vorgesehen ist.',
+    guidance: 'Log-Aufbewahrung konfigurieren (min. 6 Monate).' +
+      ' Zugriffsschutz für Protokolle einrichten.',
   },
   {
     code: 'ART_26_INFORM_WORKERS',
@@ -157,8 +201,11 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 25,
     estimatedEffortHours: 2,
-    description: 'Arbeitnehmervertreter und betroffene Arbeitnehmer darüber informieren, dass sie dem Einsatz eines Hochrisiko-KI-Systems unterliegen werden.',
-    guidance: 'Betriebsrat / Arbeitnehmervertretung schriftlich informieren. Mitarbeiter vor Einsatz benachrichtigen.',
+    description: 'Arbeitnehmervertreter und betroffene Arbeitnehmer darüber' +
+      ' informieren, dass sie dem Einsatz eines' +
+      ' Hochrisiko-KI-Systems unterliegen werden.',
+    guidance: 'Betriebsrat / Arbeitnehmervertretung schriftlich' +
+      ' informieren. Mitarbeiter vor Einsatz benachrichtigen.',
   },
   {
     code: 'ART_26_DPIA',
@@ -168,8 +215,11 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 26,
     estimatedEffortHours: 16,
-    description: 'Gegebenenfalls eine Datenschutz-Folgenabschätzung gemäß Art. 35 DSGVO durchführen, wobei die vom Anbieter bereitgestellten Informationen zu nutzen sind.',
-    guidance: 'DSFA durchführen (falls personenbezogene Daten verarbeitet werden). Ergebnis dokumentieren.',
+    description: 'Gegebenenfalls eine Datenschutz-Folgenabschätzung gemäß' +
+      ' Art. 35 DSGVO durchführen, wobei die vom Anbieter' +
+      ' bereitgestellten Informationen zu nutzen sind.',
+    guidance: 'DSFA durchführen (falls personenbezogene Daten verarbeitet' +
+      ' werden). Ergebnis dokumentieren.',
   },
   {
     code: 'ART_26_REGISTRATION',
@@ -179,8 +229,10 @@ const requirements = [
     category: 'registration',
     sortOrder: 27,
     estimatedEffortHours: 2,
-    description: 'Vor Inbetriebnahme des Hochrisiko-KI-Systems sich und das System in der EU-Datenbank gemäß Art. 71 registrieren.',
-    guidance: 'Registrierung in der EU-KI-Datenbank vornehmen. Registrierungsnummer dokumentieren.',
+    description: 'Vor Inbetriebnahme des Hochrisiko-KI-Systems sich und das' +
+      ' System in der EU-Datenbank gemäß Art. 71 registrieren.',
+    guidance: 'Registrierung in der EU-KI-Datenbank vornehmen.' +
+      ' Registrierungsnummer dokumentieren.',
   },
   {
     code: 'ART_26_COOPERATION',
@@ -190,8 +242,11 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 28,
     estimatedEffortHours: 2,
-    description: 'Mit den zuständigen nationalen Behörden bei allen Maßnahmen kooperieren, die diese Behörden im Zusammenhang mit dem Hochrisiko-KI-System ergreifen.',
-    guidance: 'Ansprechpartner für Behördenanfragen benennen. Prozess für Informationsbereitstellung definieren.',
+    description: 'Mit den zuständigen nationalen Behörden bei allen' +
+      ' Maßnahmen kooperieren, die diese Behörden im Zusammenhang' +
+      ' mit dem Hochrisiko-KI-System ergreifen.',
+    guidance: 'Ansprechpartner für Behördenanfragen benennen. Prozess für' +
+      ' Informationsbereitstellung definieren.',
   },
   {
     code: 'ART_26_INCIDENT',
@@ -201,8 +256,11 @@ const requirements = [
     category: 'monitoring',
     sortOrder: 29,
     estimatedEffortHours: 4,
-    description: 'Bei Feststellung eines schwerwiegenden Vorfalls den Anbieter und die zuständige Marktüberwachungsbehörde unverzüglich informieren.',
-    guidance: 'Incident-Response-Prozess einrichten. Meldewege an Anbieter und Behörde definieren.',
+    description: 'Bei Feststellung eines schwerwiegenden Vorfalls den' +
+      ' Anbieter und die zuständige Marktüberwachungsbehörde' +
+      ' unverzüglich informieren.',
+    guidance: 'Incident-Response-Prozess einrichten. Meldewege an Anbieter' +
+      ' und Behörde definieren.',
   },
   {
     code: 'ART_26_CEASE',
@@ -212,8 +270,11 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 30,
     estimatedEffortHours: 2,
-    description: 'Den Einsatz des KI-Systems einstellen, wenn der Betreiber Grund zu der Annahme hat, dass der Einsatz ein Risiko darstellt.',
-    guidance: 'Notfallprozess für sofortiges Abschalten definieren. Verantwortliche Person benennen.',
+    description: 'Den Einsatz des KI-Systems einstellen, wenn der Betreiber' +
+      ' Grund zu der Annahme hat, dass der Einsatz ein Risiko' +
+      ' darstellt.',
+    guidance: 'Notfallprozess für sofortiges Abschalten definieren.' +
+      ' Verantwortliche Person benennen.',
   },
 
   // === Art. 27 — FRIA (HIGH RISK) ===
@@ -225,8 +286,14 @@ const requirements = [
     category: 'fria',
     sortOrder: 40,
     estimatedEffortHours: 24,
-    description: 'Vor der Inbetriebnahme eine Folgenabschätzung hinsichtlich der Auswirkungen auf die Grundrechte durchführen. Betrifft: öffentliche Einrichtungen, Betreiber privater Dienste (Kreditbewertung, Versicherung).',
-    guidance: 'FRIA mit 6 Abschnitten erstellen: Allgemein, Betroffene Personen, Spezifische Risiken, Menschliche Aufsicht, Minderungsmaßnahmen, Überwachungsplan.',
+    description: 'Vor der Inbetriebnahme eine Folgenabschätzung' +
+      ' hinsichtlich der Auswirkungen auf die Grundrechte' +
+      ' durchführen. Betrifft: öffentliche Einrichtungen,' +
+      ' Betreiber privater Dienste (Kreditbewertung,' +
+      ' Versicherung).',
+    guidance: 'FRIA mit 6 Abschnitten erstellen: Allgemein, Betroffene' +
+      ' Personen, Spezifische Risiken, Menschliche Aufsicht,' +
+      ' Minderungsmaßnahmen, Überwachungsplan.',
   },
   {
     code: 'ART_27_AFFECTED_PERSONS',
@@ -236,7 +303,9 @@ const requirements = [
     category: 'fria',
     sortOrder: 41,
     estimatedEffortHours: 4,
-    description: 'Die Gruppen natürlicher Personen und Personengruppen identifizieren, die von der Nutzung des KI-Systems betroffen sein können.',
+    description: 'Die Gruppen natürlicher Personen und Personengruppen' +
+      ' identifizieren, die von der Nutzung des KI-Systems' +
+      ' betroffen sein können.',
   },
   {
     code: 'ART_27_SPECIFIC_RISKS',
@@ -246,7 +315,9 @@ const requirements = [
     category: 'fria',
     sortOrder: 42,
     estimatedEffortHours: 8,
-    description: 'Die spezifischen Risiken für die Grundrechte der betroffenen Personen bewerten, einschließlich des Risikos der Diskriminierung.',
+    description: 'Die spezifischen Risiken für die Grundrechte der' +
+      ' betroffenen Personen bewerten, einschließlich des Risikos' +
+      ' der Diskriminierung.',
   },
   {
     code: 'ART_27_OVERSIGHT_MEASURES',
@@ -256,7 +327,9 @@ const requirements = [
     category: 'fria',
     sortOrder: 43,
     estimatedEffortHours: 4,
-    description: 'Die Maßnahmen zur menschlichen Aufsicht beschreiben, die zur Minderung der identifizierten Risiken ergriffen werden.',
+    description: 'Die Maßnahmen zur menschlichen Aufsicht beschreiben, die' +
+      ' zur Minderung der identifizierten Risiken ergriffen' +
+      ' werden.',
   },
   {
     code: 'ART_27_MITIGATION',
@@ -266,7 +339,9 @@ const requirements = [
     category: 'fria',
     sortOrder: 44,
     estimatedEffortHours: 8,
-    description: 'Geeignete Maßnahmen ergreifen, um die identifizierten Risiken zu mindern. Verantwortlichkeiten und Fristen festlegen.',
+    description: 'Geeignete Maßnahmen ergreifen, um die identifizierten' +
+      ' Risiken zu mindern. Verantwortlichkeiten und Fristen' +
+      ' festlegen.',
   },
   {
     code: 'ART_27_NOTIFY_AUTHORITY',
@@ -276,7 +351,9 @@ const requirements = [
     category: 'fria',
     sortOrder: 45,
     estimatedEffortHours: 2,
-    description: 'Die zuständige Marktüberwachungsbehörde über die Ergebnisse der FRIA informieren und das ausgefüllte Formular über die EU-Datenbank übermitteln.',
+    description: 'Die zuständige Marktüberwachungsbehörde über die' +
+      ' Ergebnisse der FRIA informieren und das ausgefüllte' +
+      ' Formular über die EU-Datenbank übermitteln.',
   },
 
   // === Art. 50 — Transparency (LIMITED + HIGH) ===
@@ -288,8 +365,11 @@ const requirements = [
     category: 'transparency',
     sortOrder: 50,
     estimatedEffortHours: 4,
-    description: 'Nutzer darüber informieren, dass sie mit einem KI-System interagieren (Chatbots, Deepfakes, Emotionserkennung, biometrische Kategorisierung).',
-    guidance: 'KI-Kennzeichnung implementieren. Nutzer vor Interaktion informieren. Transparenzhinweise sichtbar platzieren.',
+    description: 'Nutzer darüber informieren, dass sie mit einem KI-System' +
+      ' interagieren (Chatbots, Deepfakes, Emotionserkennung,' +
+      ' biometrische Kategorisierung).',
+    guidance: 'KI-Kennzeichnung implementieren. Nutzer vor Interaktion' +
+      ' informieren. Transparenzhinweise sichtbar platzieren.',
   },
   {
     code: 'ART_50_CHATBOT',
@@ -299,7 +379,10 @@ const requirements = [
     category: 'transparency',
     sortOrder: 51,
     estimatedEffortHours: 2,
-    description: 'Sicherstellen, dass natürliche Personen darüber informiert werden, dass sie mit einem KI-System interagieren, es sei denn, dies ergibt sich aus den Umständen.',
+    description: 'Sicherstellen, dass natürliche Personen darüber' +
+      ' informiert werden, dass sie mit einem KI-System' +
+      ' interagieren, es sei denn, dies ergibt sich aus den' +
+      ' Umständen.',
   },
   {
     code: 'ART_50_DEEPFAKE',
@@ -309,7 +392,9 @@ const requirements = [
     category: 'transparency',
     sortOrder: 52,
     estimatedEffortHours: 2,
-    description: 'KI-generierte oder manipulierte Bild-, Audio- oder Videoinhalte als solche kennzeichnen (maschinenlesbar und für Nutzer erkennbar).',
+    description: 'KI-generierte oder manipulierte Bild-, Audio- oder' +
+      ' Videoinhalte als solche kennzeichnen (maschinenlesbar und' +
+      ' für Nutzer erkennbar).',
   },
   {
     code: 'ART_50_EMOTION',
@@ -319,7 +404,9 @@ const requirements = [
     category: 'transparency',
     sortOrder: 53,
     estimatedEffortHours: 2,
-    description: 'Betroffene Personen über den Einsatz eines Emotionserkennungssystems oder eines Systems zur biometrischen Kategorisierung informieren.',
+    description: 'Betroffene Personen über den Einsatz eines' +
+      ' Emotionserkennungssystems oder eines Systems zur' +
+      ' biometrischen Kategorisierung informieren.',
   },
   {
     code: 'ART_50_AI_GENERATED_TEXT',
@@ -329,7 +416,9 @@ const requirements = [
     category: 'transparency',
     sortOrder: 54,
     estimatedEffortHours: 2,
-    description: 'Texte, die von KI-Systemen generiert wurden und zu Informationszwecken veröffentlicht werden, als maschinell erstellt kennzeichnen.',
+    description: 'Texte, die von KI-Systemen generiert wurden und zu' +
+      ' Informationszwecken veröffentlicht werden, als maschinell' +
+      ' erstellt kennzeichnen.',
   },
 
   // === Additional Deployer Obligations ===
@@ -341,8 +430,10 @@ const requirements = [
     category: 'risk_management',
     sortOrder: 60,
     estimatedEffortHours: 8,
-    description: 'Das vom Anbieter eingerichtete Risikomanagementsystem durch eigene Maßnahmen ergänzen und unterstützen.',
-    guidance: 'Eigene Risikobewertung durchführen. Regelmäßige Reviews planen. Dokumentation pflegen.',
+    description: 'Das vom Anbieter eingerichtete Risikomanagementsystem' +
+      ' durch eigene Maßnahmen ergänzen und unterstützen.',
+    guidance: 'Eigene Risikobewertung durchführen. Regelmäßige Reviews' +
+      ' planen. Dokumentation pflegen.',
   },
   {
     code: 'ART_26_POST_MARKET',
@@ -352,8 +443,11 @@ const requirements = [
     category: 'post_market_monitoring',
     sortOrder: 61,
     estimatedEffortHours: 4,
-    description: 'Den Anbieter bei der Nachmarktüberwachung unterstützen, insbesondere durch Bereitstellung von Informationen über aufgetretene Probleme.',
-    guidance: 'Feedback-Prozess zum Anbieter einrichten. Auffälligkeiten systematisch melden.',
+    description: 'Den Anbieter bei der Nachmarktüberwachung unterstützen,' +
+      ' insbesondere durch Bereitstellung von Informationen über' +
+      ' aufgetretene Probleme.',
+    guidance: 'Feedback-Prozess zum Anbieter einrichten. Auffälligkeiten' +
+      ' systematisch melden.',
   },
 ];
 

@@ -5,7 +5,7 @@
   createdBy: { type: 'User', delete: 'restrict' },
   documentType: {
     enum: ['fria', 'monitoring_plan', 'usage_policy', 'employee_notification',
-           'incident_report', 'risk_assessment', 'transparency_notice'],
+      'incident_report', 'risk_assessment', 'transparency_notice'],
   },
   title: { type: 'string', length: { max: 500 } },
   version: { type: 'number', default: 1 },

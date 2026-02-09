@@ -10,8 +10,8 @@
   },
   category: {
     enum: ['ai_literacy', 'deployer_obligations', 'fria', 'transparency',
-           'human_oversight', 'monitoring', 'risk_management', 'data_governance',
-           'record_keeping', 'registration', 'post_market_monitoring'],
+      'human_oversight', 'monitoring', 'risk_management', 'data_governance',
+      'record_keeping', 'registration', 'post_market_monitoring'],
   },
   sortOrder: { type: 'number', default: 0 },
   estimatedEffortHours: { type: 'number', required: false },
