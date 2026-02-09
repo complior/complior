@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const config = require('../../config/ory.js');
 
 const createOryClient = (options = config) => {
@@ -63,7 +64,11 @@ const createOryClient = (options = config) => {
     },
 
     verifyWebhookSecret(headerSecret) {
-      return headerSecret === webhookSecret;
+      if (!webhookSecret || !headerSecret) return false;
+      const a = Buffer.from(String(headerSecret));
+      const b = Buffer.from(String(webhookSecret));
+      if (a.length !== b.length) return false;
+      return crypto.timingSafeEqual(a, b);
     },
   };
 };

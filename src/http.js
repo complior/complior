@@ -69,9 +69,7 @@ const initRateLimit = async (server) => {
   await server.register(require('@fastify/rate-limit'), {
     max: 100,
     timeWindow: '1 minute',
-    keyGenerator: (request) => {
-      return request.headers['x-forwarded-for'] || request.ip;
-    },
+    keyGenerator: (request) => request.ip,
     errorResponseBuilder: () => ({
       error: {
         code: 'RATE_LIMIT',
@@ -116,14 +114,16 @@ const initErrorHandler = (server) => {
     if (process.env.SENTRY_DSN) {
       try {
         require('@sentry/node').captureException(error);
-      } catch { /* noop */ }
+      } catch (sentryErr) {
+        request.log.warn({ err: sentryErr }, 'Sentry capture failed');
+      }
     }
     return reply.status(500).send({
       error: {
         code: 'INTERNAL_ERROR',
-        message: process.env.NODE_ENV === 'production'
-          ? 'Internal server error'
-          : error.message,
+        message: process.env.NODE_ENV === 'development'
+          ? error.message
+          : 'Internal server error',
       },
     });
   });
