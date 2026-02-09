@@ -230,7 +230,11 @@ erDiagram
 
     LiteracyCompletion {
         bigint completionId PK
-        bigint userId FK
+        bigint userId FK "nullable"
+        bigint organizationId FK
+        string employeeName "nullable"
+        string employeeEmail "nullable"
+        string employeeRole "nullable"
         bigint courseId FK
         bigint moduleId FK
         integer score
@@ -948,19 +952,34 @@ erDiagram
 
 #### LiteracyCompletion (Entity) — прогресс сотрудника
 
+> **Note:** Сотрудник компании ≠ пользователь платформы. Админ может отслеживать обучение сотрудников, у которых нет аккаунта в системе (manual tracking). Поэтому `userId` опционален — альтернатива: `employeeName` + `employeeEmail`.
+
 ```javascript
 // schemas/LiteracyCompletion.js (NEW)
 ({
   Entity: {},
-  user: { type: 'User', delete: 'cascade' },
+  user: { type: 'User', delete: 'cascade', required: false,
+    note: 'null = сотрудник без аккаунта (manual tracking)' },
   organization: { type: 'Organization', delete: 'cascade' },
+  // Employee data (для сотрудников без аккаунта в платформе)
+  employeeName: { type: 'string', length: { max: 255 }, required: false,
+    note: 'Имя сотрудника (если нет userId)' },
+  employeeEmail: { type: 'string', length: { max: 255 }, required: false,
+    note: 'Email сотрудника (если нет userId)' },
+  employeeRole: {
+    enum: ['ceo_executive', 'hr_manager', 'developer', 'general_employee'],
+    required: false,
+    note: 'Роль сотрудника в компании (для matching с LiteracyRequirement)',
+  },
   course: { type: 'TrainingCourse', delete: 'restrict' },
   module: { type: 'TrainingModule', delete: 'restrict', required: false,
     note: 'null = course-level completion' },
   score: { type: 'number', required: false, note: '0-100 quiz score' },
   certificateUrl: { type: 'string', required: false, note: 'PDF certificate (Hetzner S3)' },
   completedAt: { type: 'datetime', required: false },
-  naturalKey: { unique: ['user', 'course', 'module'] },
+  // Constraint: userId OR (employeeName + employeeEmail) must be present
+  // naturalKey учитывает оба варианта
+  naturalKey: { unique: ['organization', 'course', 'module', 'user', 'employeeEmail'] },
 });
 ```
 
@@ -1159,7 +1178,7 @@ erDiagram
     enum: ['create', 'read', 'update', 'delete', 'classify', 'generate',
            'approve', 'export', 'login', 'logout'],
   },
-  resource: { type: 'string', note: 'Entity name (AISystem, ComplianceDocument, etc.)' },
+  resource: { type: 'string', note: 'Entity name (AITool, ComplianceDocument, etc.)' },
   resourceId: { type: 'number' },
   oldData: { type: 'json', required: false },
   newData: { type: 'json', required: false },
@@ -1184,9 +1203,9 @@ erDiagram
 | AITool | idx_aitool_org | organizationId | Dashboard listing |
 | AITool | idx_aitool_risk | riskLevel | Filter by risk |
 | AITool | idx_aitool_status | complianceStatus | Filter by status |
-| RiskClassification | idx_class_system_current | aiSystemId, isCurrent | Current classification |
-| ToolRequirement | idx_toolreq_tool | aiToolId | Requirements per system |
-| ComplianceDocument | idx_doc_system | aiSystemId | Documents per system |
+| RiskClassification | idx_class_tool_current | aiToolId, isCurrent | Current classification |
+| ToolRequirement | idx_toolreq_tool | aiToolId | Requirements per tool |
+| ComplianceDocument | idx_doc_tool | aiToolId | Documents per tool |
 | Conversation | idx_conv_user | userId | User's conversations |
 | ChatMessage | idx_msg_conv | conversationId | Messages in conversation |
 | Notification | idx_notif_org_user_read | organizationId, userId, read | Unread notifications per tenant |
@@ -1233,7 +1252,7 @@ Organization
 **Application-Level Enforcement:** Каждый запрос к данным клиентов проходит через organization filter:
 
 ```javascript
-// Все запросы к AISystem фильтруются по organizationId текущего пользователя
+// Все запросы к AITool фильтруются по organizationId текущего пользователя
 const tools = await db.AITool.query(
   'SELECT * FROM "AITool" WHERE "organizationId" = $1',
   [ctx.user.organizationId]
@@ -1272,7 +1291,7 @@ migrations/
 |----------------|-----------|-----------|
 | Account | User | Rename + add oryId, organizationId, locale (remove password — Ory manages auth) |
 | Division | Organization | Rename + add industry, size, country, vatId |
-| Chat | Conversation | Rename + add aiSystemId, context, metadata |
+| Chat | Conversation | Rename + add aiToolId, context, metadata |
 | Message | ChatMessage | Rename + restructure content, add role, toolCalls |
 | Role | Role | Add organizationId (nullable for system roles) |
 | Permission | Permission | Replace identifierId with resource + action strings |
@@ -1441,7 +1460,7 @@ const plans = [
 
 ### Query Optimization
 
-- **Dashboard queries:** Pre-calculated `complianceScore` и `complianceStatus` на AISystem (не пересчитываем на каждый запрос)
+- **Dashboard queries:** Pre-calculated `complianceScore` и `complianceStatus` на AITool (не пересчитываем на каждый запрос)
 - **Audit log:** Partition by month (если >1M записей)
 - **Chat messages:** Pagination (cursor-based, не offset)
 - **Classifications:** `isCurrent` flag + index (не MAX(version) query)

@@ -57,7 +57,9 @@ As a developer, I want a monorepo with working Fastify server based on existing-
 - [ ] Monorepo root: `package.json` с workspaces (`src/`, `frontend/`)
 - [ ] Скопированы core-файлы из existing-code:
   - `main.js`, `src/http.js`, `src/ws.js`, `src/loader.js` (NodeJS-Fastify)
-  - `lib/db.js` (CRUD builder)
+  - `lib/db.js` (CRUD builder) — **fix known bugs при копировании:**
+    - `delete()` template string bug (backticks fix, см. ARCHITECTURE.md §8)
+    - Add basic transaction support (`db.transaction(async (tx) => {...})`)
   - `schemas/.database.js`, `schemas/.types.js` (MetaSQL config)
   - `config/database.js`, `config/server.js`, `config/log.js`
   - `setup.js` (initialization)
@@ -117,7 +119,7 @@ As a developer, I want all database schemas defined in MetaSQL format with deplo
 - [ ] **AI Literacy Context** (4 таблицы, NEW):
   - `schemas/TrainingCourse.js` — Entity, title, roleTarget, durationMinutes, language
   - `schemas/TrainingModule.js` — Details, courseId FK, contentMarkdown, quizQuestions (jsonb)
-  - `schemas/LiteracyCompletion.js` — Entity, userId FK, courseId FK, score, certificateUrl
+  - `schemas/LiteracyCompletion.js` — Entity, userId FK (optional), organizationId FK, employeeName/employeeEmail (для сотрудников без аккаунта), courseId FK, score, certificateUrl
   - `schemas/LiteracyRequirement.js` — Entity, organizationId FK, roleTarget, requiredCourses, deadline
 - [ ] **Deployer Compliance Context** (5 таблиц):
   - `schemas/ComplianceDocument.js` — Entity, aiToolId FK, documentType (fria/monitoring_plan/usage_policy/etc.)
@@ -153,7 +155,7 @@ US-001 (project structure)
 
 ### Тесты
 - MetaSQL → SQL генерация без ошибок
-- Все 21 таблица создаются в PostgreSQL
+- Все 29 таблиц создаются в PostgreSQL
 - Seeds вставляются без конфликтов
 - Foreign keys валидны
 
