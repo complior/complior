@@ -1,0 +1,143 @@
+version: v1.3.1
+
+dsn: memory
+
+serve:
+  public:
+    base_url: http://localhost:4433/
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://localhost:3001
+        - http://localhost:8000
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Cookie
+        - Content-Type
+        - X-Request-Id
+      exposed_headers:
+        - Content-Type
+        - Set-Cookie
+  admin:
+    base_url: http://kratos:4434/
+
+selfservice:
+  default_browser_return_url: http://localhost:3001/
+  allowed_return_urls:
+    - http://localhost:3001
+
+  methods:
+    password:
+      enabled: true
+    code:
+      enabled: true
+      config:
+        lifespan: 15m
+
+  flows:
+    registration:
+      enabled: true
+      ui_url: http://localhost:3001/auth/register
+      lifespan: 10m
+      after:
+        password:
+          hooks:
+            - hook: session
+            - hook: web_hook
+              config:
+                url: http://app:8000/api/auth/webhook
+                method: POST
+                body: file:///etc/config/kratos/webhook-body.jsonnet
+                auth:
+                  type: api_key
+                  config:
+                    name: X-Webhook-Secret
+                    value: dev-webhook-secret-change-in-production
+                    in: header
+                can_interrupt: false
+                response:
+                  ignore: true
+        code:
+          hooks:
+            - hook: session
+            - hook: web_hook
+              config:
+                url: http://app:8000/api/auth/webhook
+                method: POST
+                body: file:///etc/config/kratos/webhook-body.jsonnet
+                auth:
+                  type: api_key
+                  config:
+                    name: X-Webhook-Secret
+                    value: dev-webhook-secret-change-in-production
+                    in: header
+                can_interrupt: false
+                response:
+                  ignore: true
+
+    login:
+      ui_url: http://localhost:3001/auth/login
+      lifespan: 10m
+
+    verification:
+      enabled: true
+      ui_url: http://localhost:3001/auth/verify
+      lifespan: 1h
+
+    recovery:
+      enabled: true
+      ui_url: http://localhost:3001/auth/recovery
+      lifespan: 1h
+      use: code
+
+    settings:
+      ui_url: http://localhost:3001/settings
+      privileged_session_max_age: 15m
+
+    logout:
+      after:
+        default_browser_return_url: http://localhost:3001/auth/login
+
+    error:
+      ui_url: http://localhost:3001/auth/error
+
+log:
+  level: info
+  format: json
+
+secrets:
+  cookie:
+    - dev-cookie-secret-at-least-32-chars-change-in-production
+  cipher:
+    - dev-cipher-secret-32-chars-min-change-in-production
+
+session:
+  lifespan: 24h
+  cookie:
+    name: aiact_session
+    same_site: Lax
+
+identity:
+  default_schema_id: default
+  schemas:
+    - id: default
+      url: file:///etc/config/kratos/identity.schema.json
+
+courier:
+  smtp:
+    connection_uri: smtps://test:test@mailslurper:1025/?skip_ssl_verify=true
+  template_override_path: /etc/config/kratos/templates
+
+hashers:
+  argon2:
+    parallelism: 1
+    memory: 131072
+    iterations: 2
+    salt_length: 16
+    key_length: 16

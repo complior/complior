@@ -1,0 +1,46 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "📝 Validating commit message..."
+
+# Read commit message
+commit_msg=$(cat "$1")
+
+# Conventional Commits pattern
+# Format: type(scope): subject
+# Examples:
+#   feat(auth): add JWT authentication
+#   fix(api): handle null pointer in user service
+#   docs(readme): update installation instructions
+
+pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?: .{10,}$"
+
+if ! echo "$commit_msg" | head -1 | grep -qE "$pattern"; then
+  echo "❌ Invalid commit message format!"
+  echo ""
+  echo "Commit message must follow Conventional Commits:"
+  echo "  type(scope): subject"
+  echo ""
+  echo "Types:"
+  echo "  feat:     New feature"
+  echo "  fix:      Bug fix"
+  echo "  docs:     Documentation changes"
+  echo "  style:    Code style changes (formatting, etc.)"
+  echo "  refactor: Code refactoring"
+  echo "  perf:     Performance improvements"
+  echo "  test:     Adding or updating tests"
+  echo "  build:    Build system changes"
+  echo "  ci:       CI/CD changes"
+  echo "  chore:    Other changes (dependencies, etc.)"
+  echo "  revert:   Revert previous commit"
+  echo ""
+  echo "Examples:"
+  echo "  feat(auth): add JWT authentication"
+  echo "  fix(api): handle null pointer in user service"
+  echo "  docs(readme): update installation instructions"
+  echo ""
+  echo "Subject must be at least 10 characters."
+  exit 1
+fi
+
+echo "✅ Commit message valid"

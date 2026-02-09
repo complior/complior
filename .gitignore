@@ -46,8 +46,10 @@ prisma/migrations/
 
 # Temporary files
 tmp/
-temp/
 *.tmp
+
+# BUT: docs/temp/ should be tracked (setup documentation)
+!docs/temp/
 
 # OS
 Thumbs.db
@@ -69,3 +71,76 @@ pids/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Security - DO NOT COMMIT
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+.env.*.local
+secrets.yml
+secrets.json
+credentials.json
+serviceAccount.json
+
+# API Keys and Tokens
+.env.keys
+api-keys.txt
+tokens.txt
+
+# SSH Keys
+id_rsa
+id_rsa.pub
+*.ppk
+
+# GPG Keys
+*.gpg
+*.asc
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Kubernetes secrets
+k8s/secrets/
+*.kubeconfig
+
+# CI/CD
+.github/secrets/
+
+# Sentry
+.sentryclirc
+
+# Prisma
+.env.prisma
+
+# Next.js
+.next/
+out/
+.vercel
+.turbo
+
+# Testing
+.vitest/
+playwright-report/
+test-results/
+
+# Package managers
+.yarn/
+.pnpm-store/
+package-lock.json.backup
+
+# OpenClaw specific
+.openclaw/sandboxes/
+.openclaw/cache/
+
+# Lecture notes & research PDFs (local only)
+*.pdf
+01_*.md
+02_*.md
+03_*.md
+04_*.md
+08_*.md

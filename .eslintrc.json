@@ -1,0 +1,56 @@
+{
+  "env": {
+    "es2022": true,
+    "node": true
+  },
+  "extends": ["eslint:recommended", "prettier"],
+  "parserOptions": {
+    "ecmaVersion": "latest"
+  },
+  "rules": {
+    "indent": ["error", 2],
+    "linebreak-style": ["error", "unix"],
+    "quotes": ["error", "single"],
+    "semi": ["error", "always"],
+    "eqeqeq": ["error", "always"],
+    "strict": ["error", "global"],
+    "no-var": "error",
+    "prefer-const": "error",
+    "arrow-parens": ["error", "always"],
+    "no-console": "warn",
+    "camelcase": ["error", { "allow": ["^_"] }],
+    "max-len": ["error", { "code": 100, "ignoreUrls": true, "ignoreStrings": true, "ignoreTemplateLiterals": true }],
+    "object-curly-spacing": ["error", "always"],
+    "comma-style": ["error", "last"],
+    "brace-style": ["error", "1tbs", { "allowSingleLine": true }],
+    "space-before-function-paren": ["error", {
+      "anonymous": "never",
+      "named": "never",
+      "asyncArrow": "always"
+    }],
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-delete-var": "error",
+    "no-implicit-coercion": "error",
+    "no-multi-assign": "error",
+    "no-restricted-syntax": [
+      "error",
+      { "selector": "ForInStatement", "message": "Use Object.keys() + for...of instead of for...in" }
+    ]
+  },
+  "ignorePatterns": ["frontend/", "node_modules/", "existing-code/"],
+  "overrides": [
+    {
+      "files": ["src/schemas/**/*.js"],
+      "rules": {
+        "strict": "off"
+      }
+    },
+    {
+      "files": ["src/seeds/**/*.js", "src/setup.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}
