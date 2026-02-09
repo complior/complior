@@ -1,0 +1,117 @@
+version: '3.9'
+
+services:
+  # PostgreSQL 16 — main database
+  postgres:
+    image: postgres:16-alpine
+    container_name: aiact-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aiact
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d aiact']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Ory Kratos — Identity & Auth (self-hosted, EU)
+  kratos-migrate:
+    image: oryd/kratos:v1.3.1
+    container_name: aiact-kratos-migrate
+    environment:
+      DSN: postgres://postgres:postgres@postgres:5432/aiact?sslmode=disable
+    volumes:
+      - ./ory:/etc/config/kratos
+    command: migrate sql -e --yes
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  kratos:
+    image: oryd/kratos:v1.3.1
+    container_name: aiact-kratos
+    restart: unless-stopped
+    environment:
+      DSN: postgres://postgres:postgres@postgres:5432/aiact?sslmode=disable
+      SERVE_PUBLIC_BASE_URL: http://localhost:4433/
+      SERVE_ADMIN_BASE_URL: http://kratos:4434/
+      LOG_LEVEL: info
+    volumes:
+      - ./ory:/etc/config/kratos
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    ports:
+      - '4433:4433'
+      - '4434:4434'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kratos-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:4434/health/alive']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Gotenberg — HTML → PDF (self-hosted)
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: aiact-gotenberg
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # App — Node.js backend
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aiact-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 8000
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/aiact
+      ORY_SDK_URL: http://kratos:4433
+      ORY_ADMIN_URL: http://kratos:4434
+      ORY_WEBHOOK_SECRET: dev-webhook-secret-change-in-production
+      GOTENBERG_URL: http://gotenberg:3000
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-compliance-docs}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_REGION: ${S3_REGION:-fsn1}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kratos:
+        condition: service_healthy
+      gotenberg:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:

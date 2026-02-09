@@ -136,3 +136,11 @@ package-lock.json.backup
 # OpenClaw specific
 .openclaw/sandboxes/
 .openclaw/cache/
+
+# Lecture notes & research PDFs (local only)
+*.pdf
+01_*.md
+02_*.md
+03_*.md
+04_*.md
+08_*.md
