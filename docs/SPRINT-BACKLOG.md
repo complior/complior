@@ -1,10 +1,10 @@
 # SPRINT-BACKLOG.md — AI Act Compliance Platform
 
-**Версия:** 1.0.0
+**Версия:** 2.0.0
 **Дата:** 2026-02-07
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** ✅ Утверждён Product Owner (2026-02-07)
-**Зависимости:** PRODUCT-BACKLOG.md ✅ (Feature 01)
+**Статус:** ⏳ Ожидает утверждения PO (deployer-first pivot)
+**Зависимости:** PRODUCT-BACKLOG.md v3.0.0 (Feature 01)
 
 ---
 
@@ -33,15 +33,15 @@
 
 **Фича:** Feature 01 (PRODUCT-BACKLOG.md)
 **Длительность:** 2 недели (2026-02-10 → 2026-02-21)
-**Цель спринта:** Рабочая среда разработки — monorepo, Fastify backend, все 21 таблица, Docker Compose с Ory + Gotenberg, CI/CD, Next.js skeleton
+**Цель спринта:** Рабочая среда разработки — monorepo, Fastify backend, все 29 таблиц (deployer-first), Docker Compose с Ory + Gotenberg, CI/CD, Next.js skeleton, deployer wireframes
 
 ### Capacity
 
 | Разработчик | Роль | SP |
 |-------------|------|----|
-| Max | Backend + QA | ~28 SP |
-| Nina | Frontend + UX | ~16 SP |
-| **Итого** | | **~44 SP** |
+| Max | Backend + QA | ~30 SP |
+| Nina | Frontend + UX | ~17 SP |
+| **Итого** | | **~47 SP** |
 
 ---
 
@@ -57,7 +57,9 @@ As a developer, I want a monorepo with working Fastify server based on existing-
 - [ ] Monorepo root: `package.json` с workspaces (`src/`, `frontend/`)
 - [ ] Скопированы core-файлы из existing-code:
   - `main.js`, `src/http.js`, `src/ws.js`, `src/loader.js` (NodeJS-Fastify)
-  - `lib/db.js` (CRUD builder)
+  - `lib/db.js` (CRUD builder) — **fix known bugs при копировании:**
+    - `delete()` template string bug (backticks fix, см. ARCHITECTURE.md §8)
+    - Add basic transaction support (`db.transaction(async (tx) => {...})`)
   - `schemas/.database.js`, `schemas/.types.js` (MetaSQL config)
   - `config/database.js`, `config/server.js`, `config/log.js`
   - `setup.js` (initialization)
@@ -90,12 +92,12 @@ As a developer, I want a monorepo with working Fastify server based on existing-
 
 ---
 
-## US-002: MetaSQL schemas — all 21 tables + seeds
+## US-002: MetaSQL schemas — all 29 tables + deployer seeds
 
-**Feature:** 01 | **SP:** 8 | **Разработчик:** Max
+**Feature:** 01 | **SP:** 10 | **Разработчик:** Max
 
 ### Описание
-As a developer, I want all database schemas defined in MetaSQL format with seed data, so that the full DB structure is ready from day one.
+As a developer, I want all database schemas defined in MetaSQL format with deployer-first seed data, so that the full DB structure is ready from day one.
 
 ### Acceptance Criteria
 
@@ -105,34 +107,46 @@ As a developer, I want all database schemas defined in MetaSQL format with seed 
   - `schemas/Role.js` — Entity, name unique
   - `schemas/Permission.js` — Entity, roleId FK, resource, action
   - `schemas/UserRole.js` — junction (many-to-many User↔Role)
-- [ ] **Classification Context** (5 таблиц):
-  - `schemas/AISystem.js` — Registry, organizationId FK, riskLevel, complianceStatus
-  - `schemas/RiskClassification.js` — Entity, aiSystemId FK, ruleResult (jsonb), llmResult (jsonb)
-  - `schemas/Requirement.js` — Entity, code unique, articleReference
-  - `schemas/SystemRequirement.js` — Entity, aiSystemId FK, requirementId FK, status, progress
+- [ ] **Inventory Context** (3 таблицы, NEW):
+  - `schemas/AITool.js` — Entity, organizationId FK, vendorName, riskLevel, complianceStatus
+  - `schemas/AIToolCatalog.js` — Entity, name unique, vendor, category, defaultRiskLevel
+  - `schemas/AIToolDiscovery.js` — Entity, organizationId FK, source (manual/csv_import/dns_scan/etc.)
+- [ ] **Classification Context** (4 таблицы):
+  - `schemas/RiskClassification.js` — Entity, aiToolId FK, ruleResult (jsonb), llmResult (jsonb)
+  - `schemas/Requirement.js` — Entity, code unique, articleReference (deployer: Art. 4, 26-27, 50)
+  - `schemas/ToolRequirement.js` — Entity, aiToolId FK, requirementId FK, status, progress
   - `schemas/ClassificationLog.js` — Entity, classificationId FK, history tracking
-- [ ] **Compliance Context** (3 таблицы):
-  - `schemas/ComplianceDocument.js` — Entity, aiSystemId FK, documentType, version, status
+- [ ] **AI Literacy Context** (4 таблицы, NEW):
+  - `schemas/TrainingCourse.js` — Entity, title, roleTarget, durationMinutes, language
+  - `schemas/TrainingModule.js` — Details, courseId FK, contentMarkdown, quizQuestions (jsonb)
+  - `schemas/LiteracyCompletion.js` — Entity, userId FK (optional), organizationId FK, employeeName/employeeEmail (для сотрудников без аккаунта), courseId FK, score, certificateUrl
+  - `schemas/LiteracyRequirement.js` — Entity, organizationId FK, roleTarget, requiredCourses, deadline
+- [ ] **Deployer Compliance Context** (5 таблиц):
+  - `schemas/ComplianceDocument.js` — Entity, aiToolId FK, documentType (fria/monitoring_plan/usage_policy/etc.)
   - `schemas/DocumentSection.js` — Details, documentId FK, content (jsonb)
-  - `schemas/ChecklistItem.js` — Entity, aiSystemId FK, requirementId FK, completed
+  - `schemas/ChecklistItem.js` — Entity, aiToolId FK, requirementId FK, completed
+  - `schemas/FRIAAssessment.js` — Entity, aiToolId FK, status, affectedPersons (jsonb), risks (jsonb)
+  - `schemas/FRIASection.js` — Details, friaId FK, sectionType, content (jsonb)
 - [ ] **Consultation Context** (2 таблицы):
-  - `schemas/Conversation.js` — Registry, userId FK, aiSystemId FK (optional)
+  - `schemas/Conversation.js` — Registry, userId FK, aiToolId FK (optional)
   - `schemas/ChatMessage.js` — Entity, conversationId FK, role, content (jsonb), toolCalls (jsonb)
 - [ ] **Monitoring Context** (3 таблицы):
   - `schemas/RegulatoryUpdate.js` — Entity, source, url, publishedAt
-  - `schemas/ImpactAssessment.js` — Entity, updateId FK, aiSystemId FK, impactLevel
-  - `schemas/Notification.js` — Entity, userId FK, type, title, read (boolean)
+  - `schemas/ImpactAssessment.js` — Entity, updateId FK, aiToolId FK, impactLevel
+  - `schemas/Notification.js` — Entity, userId FK, type (incl. ai_tool_discovered, literacy_overdue, fria_required)
 - [ ] **Billing Context** (2 таблицы):
   - `schemas/Subscription.js` — Entity, organizationId FK, planId FK, stripeSubscriptionId
-  - `schemas/Plan.js` — Entity, name unique, priceMonthly, maxSystems, maxUsers, features (jsonb)
+  - `schemas/Plan.js` — Entity, name unique, priceMonthly, maxTools, maxUsers, maxEmployees, features (jsonb)
 - [ ] **Cross-cutting** (1 таблица):
   - `schemas/AuditLog.js` — Entity, userId FK, action, resource, oldData (jsonb), newData (jsonb), ip (inet)
 - [ ] `.types.js` обновлён: riskLevel, complianceStatus custom types
 - [ ] Seed data:
   - 2 роли: Owner, Member
   - Permissions matrix (Owner: all, Member: read + limited write)
-  - 5 планов: Free, Starter (€49), Growth (€149), Scale (€399), Enterprise
-  - AI Act requirements (Art. 5, 9-15, 17, 26-27, 43, 47-51, 72) — минимум 20 записей
+  - 5 планов (deployer funnel): Free, Starter (€49), Growth (€149), Scale (€399), Enterprise
+  - Deployer requirements (Art. 4, 5, 26-27, 50) — минимум 35 записей
+  - AI Tool Catalog — 200+ AI-инструментов (ChatGPT, Copilot, HireVue, Personio AI, etc.)
+  - 4 AI Literacy курса: CEO (30 мин), HR (45 мин), Developer (60 мин), General (20 мин)
 - [ ] `npm run db:generate` → SQL DDL без ошибок
 - [ ] `npm run db:seed` → seed data загружена
 
@@ -141,7 +155,7 @@ US-001 (project structure)
 
 ### Тесты
 - MetaSQL → SQL генерация без ошибок
-- Все 21 таблица создаются в PostgreSQL
+- Все 29 таблиц создаются в PostgreSQL
 - Seeds вставляются без конфликтов
 - Foreign keys валидны
 
@@ -217,7 +231,7 @@ US-001, US-002 (schemas для DB init)
 - `curl localhost:8000/health` → 200
 - `curl localhost:4433/health/ready` → Ory ready
 - `curl localhost:3000/health` → Gotenberg ready
-- PostgreSQL: `\dt` → 21 таблиц
+- PostgreSQL: `\dt` → 29 таблиц
 
 ---
 
@@ -440,12 +454,12 @@ US-001 (backend /health), US-006 (frontend layout)
 
 ---
 
-## US-008: UX wireframes для Sprint 1
+## US-008: UX wireframes для Sprint 1-2 (deployer-first)
 
-**Feature:** 01 (prep) | **SP:** 5 | **Разработчик:** Nina
+**Feature:** 01 (prep) | **SP:** 6 | **Разработчик:** Nina
 
 ### Описание
-As a designer, I want wireframes for Sprint 1 pages (login, register, registry), so that frontend development in Sprint 1 starts with clear visual specs.
+As a designer, I want wireframes for Sprint 1-2 pages (login, register, tool inventory, AI literacy), so that frontend development starts with clear deployer-focused visual specs.
 
 ### Acceptance Criteria
 
@@ -453,19 +467,23 @@ As a designer, I want wireframes for Sprint 1 pages (login, register, registry),
   - Email input → "Отправить magic link" button
   - Status: "Проверьте email" → redirect после верификации
   - Link: "Нет аккаунта? Зарегистрироваться"
-- [ ] Wireframe: **Register page** (Ory registration)
-  - Fields: email, fullName, companyName, industry (select), country (select)
-  - Submit → Ory → magic link email → verify → redirect
+- [ ] Wireframe: **Register page** (Ory registration, deployer onboarding)
+  - Fields: email, fullName, companyName, industry (select), country (select), companySize
+  - Deployer question: "Какие AI-инструменты использует ваша компания?"
   - GDPR consent checkbox
-- [ ] Wireframe: **Dashboard** (placeholder layout)
-  - Header: logo, nav (Dashboard, Registry, Documents, Eva, Settings)
-  - Sidebar: organization switcher (future)
-  - Main: widget grid (risk distribution, compliance score, attention items, timeline)
-- [ ] Wireframe: **AI System Registry** (Feature 03 prep)
-  - Table: name, role badge, risk level badge, status, compliance %, deadline, actions
-  - Filters bar, search, "Add System" button
+- [ ] Wireframe: **Deployer Dashboard** (placeholder layout)
+  - Header: logo, nav (Dashboard, AI Tools, AI Literacy, Documents, Eva, Settings)
+  - Widgets: AI Tool Risk Inventory, AI Literacy Progress (X% обучены), Compliance Score, Deadlines
+- [ ] Wireframe: **AI Tool Inventory** (Feature 03 — deployer version)
+  - Table: name, vendor, risk level badge, compliance %, AI Literacy status, actions
+  - Catalog search bar, "Add AI Tool" button, CSV import button
+  - Filters: risk level, domain, compliance status
+- [ ] Wireframe: **AI Literacy Dashboard** (Feature 18 — wedge product)
+  - Progress: "X/Y сотрудников обучены (Z%)"
+  - Per-role breakdown: CEO ✅, HR ⏳, Developer ⏳, General ❌
+  - Enroll button, CSV import employees, deadline widget
 - [ ] Wireframes в формате: Markdown с ASCII layout или Figma/Excalidraw export
-- [ ] Файл: `docs/wireframes/sprint-1-wireframes.md`
+- [ ] Файл: `docs/wireframes/sprint-1-2-wireframes.md`
 
 ### Зависимости
 US-006 (design system tokens)
@@ -486,7 +504,7 @@ Feature 01: Инфраструктура и настройка проекта
 │
 ├── Backend (Max)
 │   ├── US-001: Monorepo + Fastify (5 SP)
-│   ├── US-002: MetaSQL schemas 21 таблиц (8 SP) ← зависит от US-001
+│   ├── US-002: MetaSQL schemas 29 таблиц (10 SP) ← зависит от US-001
 │   ├── US-003: Docker Compose (5 SP) ← зависит от US-001, US-002
 │   ├── US-004: Infrastructure clients (5 SP) ← зависит от US-001, US-003
 │   └── US-005: Errors, CI, rate-limit (5 SP) ← зависит от US-001
@@ -494,7 +512,7 @@ Feature 01: Инфраструктура и настройка проекта
 └── Frontend (Nina)
     ├── US-006: Next.js + design system (8 SP) ← зависит от US-001
     ├── US-007: Monitoring + analytics (3 SP) ← зависит от US-001, US-006
-    └── US-008: Wireframes Sprint 1 (5 SP) ← зависит от US-006
+    └── US-008: Wireframes Sprint 1-2 deployer (6 SP) ← зависит от US-006
 ```
 
 ### Dependency Graph
@@ -514,34 +532,35 @@ US-001 (Monorepo + Fastify)
 
 | Разработчик | Stories | SP | Фокус |
 |-------------|---------|-----|-------|
-| Max | US-001..005 | 28 | Backend infrastructure, DB, Docker, CI |
-| Nina | US-006..008 | 16 | Frontend skeleton, design system, wireframes |
-| **Итого** | **8 US** | **44 SP** | |
+| Max | US-001..005 | 30 | Backend infrastructure, 29 tables, Docker, CI |
+| Nina | US-006..008 | 17 | Frontend skeleton, design system, deployer wireframes |
+| **Итого** | **8 US** | **47 SP** | |
 
 ### Definition of Done (Sprint 0)
 
 - [ ] `docker compose up` → все сервисы стартуют и healthy
-- [ ] 21 таблица в PostgreSQL, seed data загружена
+- [ ] 29 таблиц в PostgreSQL, deployer seed data загружена (requirements, catalog 200+, 4 courses)
 - [ ] Backend: `curl /health` → 200 с service statuses
 - [ ] Frontend: `npm run build` → без ошибок
 - [ ] CI pipeline: lint + type-check + test → green
 - [ ] Все infrastructure clients инициализируются без ошибок
 - [ ] Rate limiting работает (> 100 req/min → 429)
-- [ ] Wireframes для Sprint 1 готовы
+- [ ] Wireframes для Sprint 1-2 готовы (deployer: AI Tool Inventory, AI Literacy Dashboard)
 
 ---
 
-## Sprint 1 Preview (Feature 02: IAM)
+## Sprint 1 Preview (Feature 02: IAM + Feature 03: AI Tool Inventory start)
 
 > Подробный Sprint 1 Backlog будет создан на Sprint Planning после завершения Sprint 0.
 
 **Ожидаемые User Stories:**
 - US-009: Ory webhook → User + Organization sync
 - US-010: Login page (Ory magic link flow)
-- US-011: Register page (Ory registration + webhook)
+- US-011: Register page (Ory registration + deployer onboarding)
 - US-012: RBAC — Permission checks в API handlers (explicit, no middleware)
 - US-013: Multi-tenancy isolation (organizationId filter)
 - US-014: AuditLog — auth events
+- US-015: AI Tool Catalog API (search, browse)
 
 **Ключевой паттерн (CODING-STANDARDS.md):** Нет middleware. Каждый handler явно проверяет сессию:
 ```javascript
@@ -552,18 +571,33 @@ handler: async ({ params, body, session }) => {
     [session.identity.id]
   );
   // 2. Permission check — explicit call
-  await checkPermission(user, 'systems', 'read');
+  await checkPermission(user, 'tools', 'read');
   // 3. Multi-tenancy — explicit filter
-  const systems = await db.AISystem.query(
-    'SELECT * FROM "AISystem" WHERE "organizationId" = $1',
+  const tools = await db.AITool.query(
+    'SELECT * FROM "AITool" WHERE "organizationId" = $1',
     [user.organizationId]
   );
-  return systems;
+  return tools;
 }
 ```
 
 ---
 
-✅ **APPROVED:** Sprint 0 Backlog утверждён Product Owner (2026-02-07).
+## Sprint 2 Preview (Feature 03 end + Feature 18: AI Literacy + Feature 04a: Rules)
 
-💡 **Следующий шаг:** Max начинает с US-001, Nina с US-006 (параллельно после создания monorepo structure).
+> Подробный Sprint 2 Backlog будет создан на Sprint Planning после завершения Sprint 1.
+
+**Ожидаемые User Stories:**
+- AI Tool Inventory wizard (5-step deployer wizard + catalog search)
+- AI Literacy Module — course management, employee enrollment, tracking
+- AI Literacy — quiz system + certificate generation (Gotenberg PDF)
+- Rule Engine — deployer classification rules (Art. 5, Annex III deployer domains)
+- CSV import for AI tools and employees
+
+> **Note:** Sprint 2 вводит AI Literacy Module — wedge product за €49/мес. Art. 4 обязателен с 02.02.2025, 70% компаний не соответствуют.
+
+---
+
+⏳ **Ожидает утверждения PO** (deployer-first pivot v2.0.0).
+
+**Следующий шаг:** Max начинает с US-001, Nina с US-006 (параллельно после создания monorepo structure).

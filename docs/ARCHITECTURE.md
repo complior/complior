@@ -1,11 +1,13 @@
 # ARCHITECTURE.md — AI Act Compliance Platform
 
-**Версия:** 1.1.0
+**Версия:** 2.0.0
 **Дата:** 2026-02-07
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** ✅ Утверждён Product Owner (2026-02-07)
+**Статус:** ⏳ Ожидает утверждения PO (deployer-first pivot)
 
-> **v1.1.0 (2026-02-07):** Интеграция 7 EU-сервисов вместо custom-кода: Ory (auth, Германия), Brevo (email, Франция), Gotenberg (PDF, self-hosted), Hetzner Object Storage (S3), @fastify/rate-limit, Better Uptime (мониторинг, Литва), Plausible (аналитика, Эстония).
+> **v2.0.0 (2026-02-07):** Deployer-first pivot — архитектура перестроена под компании, которые ИСПОЛЬЗУЮТ AI (deployers), а не строят. Новые Bounded Contexts: AI Literacy (Art. 4), Inventory (каталог AI-инструментов). Classification Engine переориентирован на deployer-требования (Art. 4, 26-27, 50). Compliance → Deployer Compliance (FRIA, Monitoring Plan, AI Usage Policy вместо Art. 11 Annex IV).
+>
+> **v1.1.0 (2026-02-07):** Интеграция 7 EU-сервисов: Ory, Brevo, Gotenberg, Hetzner Object Storage, @fastify/rate-limit, Better Uptime, Plausible.
 
 ---
 
@@ -117,13 +119,16 @@ graph TB
 ├──────────────────────────────────────────────────────────────┤
 │  Domain Services Layer                                       │
 │  - Cross-entity business operations                          │
-│  - Classification logic, compliance scoring                  │
-│  - Document generation orchestration                         │
+│  - Classification logic (deployer), compliance scoring       │
+│  - Document generation (FRIA, Monitoring Plan, Policies)     │
+│  - LiteracyManager, CertificateGenerator, CatalogMatcher    │
 ├──────────────────────────────────────────────────────────────┤
 │  Domain Model Layer (центр — ЧИСТАЯ бизнес-логика)           │
-│  - Entities: AISystem, Organization, User, ComplianceDoc     │
+│  - Entities: AITool, Organization, User, TrainingCourse,     │
+│    ComplianceDoc, FRIAAssessment, AIToolCatalog               │
 │  - Value Objects: RiskLevel, AnnexCategory, ComplianceScore  │
-│  - Domain Events: SystemClassified, DocumentGenerated        │
+│  - Domain Events: AIToolClassified, LiteracyCompleted,       │
+│    DocumentGenerated, AIToolDiscovered                        │
 │  - NO dependencies on frameworks, DB, or external services   │
 ├──────────────────────────────────────────────────────────────┤
 │  Schema Layer (MetaSQL)                                      │
@@ -169,14 +174,25 @@ graph LR
         OryAuth["Ory (identity + sessions)"]
     end
 
-    subgraph Classification["Classification Context"]
-        AISystem["AI System"]
-        RiskClassification["Risk Classification"]
-        Requirement["Requirement"]
+    subgraph Inventory["Inventory Context"]
+        AITool["AI Tool"]
+        AIToolCatalog["AI Tool Catalog"]
+        AIToolDiscovery["Discovery Log"]
     end
 
-    subgraph Compliance["Compliance Context"]
-        ComplianceDoc["Compliance Document"]
+    subgraph Classification["Classification Context"]
+        RiskClassification["Risk Classification"]
+        Requirement["Requirement (deployer)"]
+    end
+
+    subgraph Literacy["AI Literacy Context"]
+        TrainingCourse["Training Course"]
+        LiteracyCompletion["Completion Tracking"]
+        Certificate["Certificate (PDF)"]
+    end
+
+    subgraph DeployerCompliance["Deployer Compliance Context"]
+        ComplianceDoc["FRIA / Monitoring Plan /<br/>AI Usage Policy"]
         ChecklistItem["Checklist Item"]
         ComplianceScore["Compliance Score"]
     end
@@ -184,7 +200,7 @@ graph LR
     subgraph Consultation["Consultation Context"]
         Conversation["Conversation"]
         ChatMessage["Chat Message"]
-        EvaAgent["Eva Agent"]
+        EvaAgent["Eva Agent (deployer)"]
     end
 
     subgraph Monitoring["Monitoring Context"]
@@ -199,12 +215,15 @@ graph LR
         Invoice["Invoice"]
     end
 
-    IAM -->|"owns"| Classification
-    Classification -->|"generates"| Compliance
+    IAM -->|"owns"| Inventory
+    Inventory -->|"classifies"| Classification
+    Classification -->|"generates"| DeployerCompliance
+    Inventory -->|"trains"| Literacy
     Consultation -->|"uses"| Classification
-    Consultation -->|"uses"| Compliance
-    Monitoring -->|"notifies"| Compliance
+    Consultation -->|"uses"| DeployerCompliance
+    Monitoring -->|"notifies"| DeployerCompliance
     IAM -->|"subscribes"| Billing
+    Literacy -->|"tracks"| DeployerCompliance
 ```
 
 ### 4.1 IAM Context (Identity & Access Management)
@@ -213,31 +232,53 @@ graph LR
 - **Ответственный:** Max (backend Ory integration) + Nina (frontend auth UI)
 - **Паттерн:** Ory управляет identity lifecycle → webhook → наш API синхронизирует User + создаёт Organization
 
-### 4.2 Classification Context (ядро продукта)
-- **Entities:** AISystem, RiskClassification, AnnexCategory, Requirement
-- **Domain Services:** RuleEngine (pure rule-based: Art.5, Annex III, GPAI detection)
-- **Application:** classifySystem (orchestrates RuleEngine + LLM via port + cross-validation)
+### 4.2 Inventory Context (точка входа для deployer)
+- **Entities:** AITool, AIToolCatalog (200+ pre-populated tools), AIToolDiscovery
+- **Domain Services:** CatalogMatcher (поиск по каталогу), DiscoveryLogger
+- **Application:** registerAITool (wizard 5 шагов для deployer), importTools (CSV import)
+- **Ответственный:** Max (backend) + Nina (wizard UI)
+- **Описание:** Deployer регистрирует AI-инструменты, которые компания ИСПОЛЬЗУЕТ (ChatGPT, HireVue, Copilot и т.д.). Каталог помогает быстро найти и добавить инструмент с pre-fill данных.
+
+### 4.3 Classification Context (ядро продукта)
+- **Entities:** RiskClassification, AnnexCategory, Requirement (deployer: Art. 4, 26-27, 50)
+- **Domain Services:** RuleEngine (pure rule-based: Art.5 prohibited, Annex III deployer domains)
+- **Application:** classifyAITool (orchestrates RuleEngine + LLM via port + cross-validation)
+- **Фокус:** "Является ли моё ИСПОЛЬЗОВАНИЕ этого AI high-risk?" (не "является ли мой AI high-risk?")
+- **Output:** deployer-требования (Art. 4 AI Literacy, Art. 26 обязанности, Art. 27 FRIA, Art. 50 прозрачность)
 - **Ответственный:** Max (backend engine) + Elena (AI Act rules) + Nina (wizard UI)
 
-### 4.3 Compliance Context
-- **Entities:** ComplianceDocument, ChecklistItem, ComplianceScore, DocumentSection
-- **Domain Services:** DocumentGenerator, GapAnalyzer, ScoreCalculator
+### 4.4 AI Literacy Context (wedge product, Art. 4)
+- **Entities:** TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement
+- **Domain Services:** LiteracyManager, CertificateGenerator
+- **Application:** enrollEmployee, trackCompletion, generateCertificate (PDF via Gotenberg)
+- **Ответственный:** Max (backend) + Nina (learning UI) + Elena (контент курсов)
+- **Описание:** Art. 4 AI Literacy обязателен с 02.02.2025. 70% сотрудников не обучены. 4 role-based курса на немецком: CEO, HR, Developer, General. Standalone продукт за €49/мес.
+
+### 4.5 Deployer Compliance Context
+- **Entities:** ComplianceDocument (FRIA, Monitoring Plan, AI Usage Policy, Employee Notification), ChecklistItem, ComplianceScore, DocumentSection, FRIAAssessment, FRIASection
+- **Domain Services:** DocumentGenerator (deployer docs), GapAnalyzer, ScoreCalculator, FRIAWizard
+- **Типы документов:** FRIA (Art. 27), Monitoring Plan, AI Usage Policy, Employee Notification, Incident Report
+- **НЕ генерирует:** Art. 11 Annex IV Technical Documentation, Conformity Assessment (Art. 43) → P3 Future
 - **Ответственный:** Max (backend) + Nina (dashboard + editor UI)
 
-### 4.4 Consultation Context (Ева)
+### 4.6 Consultation Context (Ева — deployer focus)
 - **Entities:** Conversation, ChatMessage, QuickAction
 - **Domain Services:** EvaOrchestrator (context injection + tool calling)
+- **Фокус:** Deployer-вопросы: "Bin ich Betreiber?", "Ist Slack AI high-risk?", "Was muss ich als Betreiber tun?"
+- **Tools:** classify_ai_tool, create_fria, setup_monitoring, search_regulation
 - **Ответственный:** Max (backend) + Nina (chat UI)
 - **Существующий код:** Chat, Message, ChatMember schemas — адаптируем
 
-### 4.5 Monitoring Context (post-MVP)
+### 4.7 Monitoring Context (post-MVP)
 - **Entities:** RegulatoryUpdate, ImpactAssessment, Notification
 - **Domain Services:** EURLexScraper, ChangeDetector, NotificationSender
+- **Notification types:** ai_tool_discovered, literacy_overdue, fria_required, risk_threshold_exceeded, regulatory_update, compliance_change
 - **Ответственный:** Max (background jobs)
 
-### 4.6 Billing Context
+### 4.8 Billing Context
 - **Entities:** Subscription, Plan, Invoice
 - **External:** Stripe API (webhooks → internal events)
+- **Планы:** Free (Quick Check) → €49 (AI Literacy) → €149 (Full Compliance) → €399 (Scale) → Enterprise
 - **Ответственный:** Max (Stripe integration)
 
 ---
@@ -254,32 +295,54 @@ src/
 │   │   │   └── Role.js
 │   │   └── value-objects/
 │   │       └── Email.js
+│   ├── inventory/                       # NEW: AI Tool Inventory (deployer)
+│   │   ├── entities/
+│   │   │   ├── AITool.js                # Бывший AISystem — AI-инструмент, который компания ИСПОЛЬЗУЕТ
+│   │   │   ├── AIToolCatalog.js         # Pre-populated каталог 200+ AI-инструментов
+│   │   │   └── AIToolDiscovery.js       # Лог обнаружения (manual/import/scan)
+│   │   ├── value-objects/
+│   │   │   └── ToolCategory.js          # chatbot, recruitment, analytics, coding, etc.
+│   │   └── services/
+│   │       └── CatalogMatcher.js        # Поиск инструмента в каталоге, pre-fill данных
 │   ├── classification/
 │   │   ├── entities/
-│   │   │   ├── AISystem.js
 │   │   │   └── RiskClassification.js
 │   │   ├── value-objects/
 │   │   │   ├── RiskLevel.js         # enum: prohibited|high|gpai|limited|minimal
 │   │   │   ├── AnnexCategory.js     # enum: III_1a, III_4a, etc.
 │   │   │   └── ComplianceScore.js   # 0-100
 │   │   └── services/
-│   │       └── RuleEngine.js            # PURE: rule-based classification (Art.5, Annex III, GPAI)
-│   ├── compliance/
+│   │       └── RuleEngine.js            # PURE: deployer classification (Art.5 prohibited, Annex III)
+│   ├── literacy/                        # NEW: AI Literacy (Art. 4, wedge product)
 │   │   ├── entities/
-│   │   │   ├── ComplianceDocument.js
-│   │   │   └── ChecklistItem.js
+│   │   │   ├── TrainingCourse.js        # Курс (CEO, HR, Developer, General)
+│   │   │   ├── TrainingModule.js        # Модуль внутри курса
+│   │   │   ├── LiteracyCompletion.js    # Прогресс сотрудника
+│   │   │   └── LiteracyRequirement.js   # Какие роли какие курсы проходят
 │   │   └── services/
-│   │       ├── DocumentGenerator.js
-│   │       └── GapAnalyzer.js
+│   │       ├── LiteracyManager.js       # Назначение курсов, tracking, дедлайны
+│   │       └── CertificateGenerator.js  # PDF-сертификат via Gotenberg
+│   ├── compliance/                      # Deployer Compliance (не provider!)
+│   │   ├── entities/
+│   │   │   ├── ComplianceDocument.js    # FRIA, Monitoring Plan, AI Usage Policy
+│   │   │   ├── ChecklistItem.js
+│   │   │   ├── FRIAAssessment.js        # FRIA per AI tool (Art. 27)
+│   │   │   └── FRIASection.js           # Секции FRIA
+│   │   └── services/
+│   │       ├── DocumentGenerator.js     # Deployer docs (не Art. 11)
+│   │       ├── GapAnalyzer.js
+│   │       └── FRIAWizard.js            # Guided FRIA workflow
 │   ├── consultation/
 │   │   ├── entities/
 │   │   │   ├── Conversation.js
 │   │   │   └── ChatMessage.js
 │   │   └── services/
-│   │       └── EvaOrchestrator.js
+│   │       └── EvaOrchestrator.js       # Deployer-focused system prompt
 │   └── events/
-│       ├── SystemClassified.js
+│       ├── AIToolClassified.js          # Бывший SystemClassified
 │       ├── DocumentGenerated.js
+│       ├── LiteracyCompleted.js         # NEW: сотрудник завершил курс
+│       ├── AIToolDiscovered.js          # NEW: обнаружен новый AI-инструмент
 │       └── ComplianceScoreChanged.js
 │
 ├── application/                     # Use Cases (orchestration)
@@ -287,14 +350,22 @@ src/
 │   │   ├── syncUserFromOry.js       # Ory webhook → create/update User in our DB
 │   │   ├── createOrganization.js
 │   │   └── manageOrganization.js
+│   ├── inventory/                       # NEW
+│   │   ├── registerAITool.js            # Wizard 5 шагов (deployer questions)
+│   │   ├── searchCatalog.js             # Поиск в каталоге 200+ инструментов
+│   │   └── importTools.js               # CSV import AI-инструментов
 │   ├── classification/
-│   │   ├── classifySystem.js        # Orchestrates: RuleEngine (domain) + LLM (infra) + cross-validation
-│   │   ├── registerSystem.js
-│   │   └── mapRequirements.js
+│   │   ├── classifyAITool.js            # Бывший classifySystem — deployer context
+│   │   └── mapRequirements.js           # Map deployer requirements (Art. 4, 26-27, 50)
+│   ├── literacy/                        # NEW
+│   │   ├── enrollEmployee.js            # Назначить курс сотруднику
+│   │   ├── trackCompletion.js           # Отметить прохождение модуля
+│   │   └── generateCertificate.js       # PDF-сертификат via Gotenberg
 │   ├── compliance/
-│   │   ├── generateDocument.js
-│   │   ├── analyzeGaps.js
-│   │   └── calculateScore.js
+│   │   ├── generateDocument.js          # FRIA, Monitoring Plan, AI Usage Policy
+│   │   ├── analyzeGaps.js              # Deployer requirement gaps
+│   │   ├── calculateScore.js
+│   │   └── conductFRIA.js               # NEW: guided FRIA assessment
 │   └── consultation/
 │       ├── sendMessage.js
 │       └── executeToolCall.js
@@ -304,35 +375,50 @@ src/
 │   ├── .types.js                    # Custom types
 │   ├── Organization.js
 │   ├── User.js
-│   ├── AISystem.js
+│   ├── AITool.js                    # Бывший AISystem — AI-инструмент deployer'а
+│   ├── AIToolCatalog.js             # NEW: каталог 200+ известных AI-инструментов
+│   ├── AIToolDiscovery.js           # NEW: лог обнаружения
 │   ├── RiskClassification.js
-│   ├── Requirement.js
-│   ├── SystemRequirement.js
-│   ├── ComplianceDocument.js
+│   ├── Requirement.js               # Deployer requirements (Art. 4, 26-27, 50)
+│   ├── ToolRequirement.js           # Бывший SystemRequirement
+│   ├── TrainingCourse.js            # NEW: AI Literacy
+│   ├── TrainingModule.js            # NEW
+│   ├── LiteracyCompletion.js        # NEW
+│   ├── LiteracyRequirement.js       # NEW
+│   ├── ComplianceDocument.js        # FRIA, Monitoring Plan, AI Usage Policy
 │   ├── DocumentSection.js
+│   ├── FRIAAssessment.js            # NEW: FRIA per AI tool
+│   ├── FRIASection.js               # NEW
 │   ├── Conversation.js
 │   ├── ChatMessage.js
 │   ├── Subscription.js
-│   └── ...
+│   └── ...                          # 29 таблиц total (21 existing + 8 new)
 │
 ├── api/                             # API Endpoints (presentation)
 │   ├── auth/
 │   │   ├── callback.js              # Ory → redirect callback после login
 │   │   └── webhook.js               # Ory → webhook (user created/updated/deleted)
-│   ├── systems/
-│   │   ├── create.js
-│   │   ├── classify.js
+│   ├── tools/                       # Бывший systems/ — AI Tool Inventory
+│   │   ├── register.js              # Wizard: register AI tool (deployer)
+│   │   ├── classify.js              # Classify deployer's use of AI tool
 │   │   ├── list.js
-│   │   └── get.js
+│   │   ├── get.js
+│   │   └── catalog.js               # Search pre-populated catalog
+│   ├── literacy/                    # NEW: AI Literacy (Art. 4)
+│   │   ├── courses.js               # Список курсов
+│   │   ├── enroll.js                # Назначить сотруднику
+│   │   ├── progress.js              # Tracking прогресса
+│   │   └── certificate.js           # PDF-сертификат
 │   ├── compliance/
-│   │   ├── documents.js
+│   │   ├── documents.js             # FRIA, Monitoring Plan, AI Usage Policy
+│   │   ├── fria.js                  # NEW: FRIA wizard
 │   │   ├── checklist.js
 │   │   └── score.js
 │   ├── chat/
 │   │   ├── message.js
 │   │   └── history.js
 │   └── dashboard/
-│       └── overview.js
+│       └── overview.js              # Deployer dashboard: tools + literacy + compliance
 │
 ├── infrastructure/                  # External adapters
 │   ├── auth/
@@ -418,12 +504,12 @@ const createLLMAdapter = (config) => ({
 // Domain НЕ знает про PostgreSQL
 // Application использует repository для persistence
 
-// application/classification/classifySystem.js
-async ({ systemId, answers }) => {
-  const system = await db.AISystem.read(systemId);
-  const classification = domain.classification.classify(system, answers);
+// application/classification/classifyAITool.js
+async ({ toolId, answers }) => {
+  const tool = await db.AITool.read(toolId);
+  const classification = domain.classification.classify(tool, answers);
   await db.RiskClassification.create(classification);
-  domain.events.emit('SystemClassified', { systemId, classification });
+  domain.events.emit('AIToolClassified', { toolId, classification });
   return classification;
 };
 ```
@@ -432,10 +518,15 @@ async ({ systemId, answers }) => {
 
 ```javascript
 // domain/events/ — decoupling между контекстами
-// Когда система классифицирована:
-//   → Compliance Context создаёт checklist
+// Когда AI-инструмент классифицирован (AIToolClassified):
+//   → Deployer Compliance Context создаёт checklist (Art. 26-27 requirements)
 //   → Consultation Context обновляет контекст Евы
 //   → Dashboard обновляет compliance score
+// Когда сотрудник завершил курс (LiteracyCompleted):
+//   → Dashboard обновляет AI Literacy progress
+//   → Compliance Score пересчитывается (Art. 4 compliance)
+// Когда обнаружен новый AI-инструмент (AIToolDiscovered):
+//   → Notification: "Обнаружен новый AI-инструмент, требуется классификация"
 ```
 
 ### 6.5 Factory Pattern
@@ -459,8 +550,8 @@ const createClassificationResult = (ruleResult, llmResult, confidence) => ({
 
 | Тип | Endpoints | Характеристика |
 |-----|-----------|----------------|
-| **Commands** (write) | `POST /api/systems/classify`, `POST /api/auth/register`, `PATCH /api/systems/:id` | Изменяют состояние, возвращают только статус/id |
-| **Queries** (read) | `GET /api/dashboard/overview`, `GET /api/systems/:id`, `GET /api/compliance/score` | Только читают, никогда не изменяют |
+| **Commands** (write) | `POST /api/tools/:id/classify`, `POST /api/literacy/enroll`, `POST /api/compliance/fria` | Изменяют состояние, возвращают только статус/id |
+| **Queries** (read) | `GET /api/dashboard/overview`, `GET /api/tools/:id`, `GET /api/literacy/progress` | Только читают, никогда не изменяют |
 
 Это упрощает кэширование (queries кэшируются), тестирование и аудит.
 
@@ -495,8 +586,8 @@ const createClassificationResult = (ruleResult, llmResult, confidence) => ({
 
 Наша Domain Model (MetaSQL schemas) является **анемичной** — содержит данные без поведения. Это осознанное решение:
 
-- Мы моделируем **информационный слой** (AI-система, классификация, документ), а не реальные объекты с поведением
-- Вся бизнес-логика — в Domain Services (RuleEngine, DocumentGenerator, GapAnalyzer). LLM-интеграция — в Application layer через infrastructure ports
+- Мы моделируем **информационный слой** (AI-инструмент, классификация, FRIA, курс AI Literacy), а не реальные объекты с поведением
+- Вся бизнес-логика — в Domain Services (RuleEngine, DocumentGenerator, GapAnalyzer, LiteracyManager, CatalogMatcher, FRIAWizard). LLM-интеграция — в Application layer через infrastructure ports
 - MetaSQL schemas описывают структуру данных и генерируют SQL + типы — это **schema-based contracts**, единый инструмент для всех слоёв
 - Схемы обеспечивают runtime-валидацию (в отличие от TypeScript, который проверяет только в compile-time)
 
@@ -548,28 +639,34 @@ const createPgBossQueue = (boss) => ({
 
 ---
 
-## 7. Classification Engine Architecture
+## 7. Classification Engine Architecture (Deployer Context)
 
 ```mermaid
 sequenceDiagram
-    participant UI as Frontend (Wizard)
+    participant UI as Frontend (AI Tool Wizard)
     participant API as API Layer
-    participant CE as classifySystem (Application)
+    participant CE as classifyAITool (Application)
     participant Rules as RuleEngine (Domain)
     participant LLM as LLM (Mistral Small API)
     participant Escalation as Mistral Large 3
     participant DB as PostgreSQL
 
-    UI->>API: POST /api/systems/classify
-    API->>CE: classifySystem(answers)
+    UI->>API: POST /api/tools/:id/classify
+    API->>CE: classifyAITool(toolId, answers)
 
-    CE->>Rules: Step 1: Rule-based pre-filter
+    Note right of CE: Deployer context:<br/>"Is my USE of this tool high-risk?"
+
+    CE->>Rules: Step 1: Rule-based pre-filter (deployer rules)
+    Rules->>Rules: Art. 5 prohibited practices
+    Rules->>Rules: Annex III deployer domains
+    Rules->>Rules: Deployer obligations check (Art. 26)
     Rules-->>CE: {riskLevel, confidence: 95%}
 
     alt confidence >= 90%
         CE-->>API: Return rule-based result
     else confidence < 90%
-        CE->>LLM: Step 2: LLM analysis
+        CE->>LLM: Step 2: LLM analysis (deployer prompt)
+        Note right of LLM: "Is the DEPLOYMENT of this AI tool<br/>in this context high-risk?"
         LLM-->>CE: {riskLevel, article, reasoning}
 
         alt rule_result == llm_result
@@ -580,9 +677,10 @@ sequenceDiagram
         end
     end
 
-    CE->>DB: Step 4: Save classification + map requirements
-    CE-->>API: {riskLevel, annexCategory, confidence, requirements}
-    API-->>UI: Show classification result
+    CE->>DB: Step 4: Save + map DEPLOYER requirements
+    Note right of CE: Art. 4 (AI Literacy), Art. 26 (obligations),<br/>Art. 27 (FRIA), Art. 50 (transparency)
+    CE-->>API: {riskLevel, annexCategory, confidence, deployerRequirements[]}
+    API-->>UI: Show classification + deployer action plan
 ```
 
 ---
@@ -604,25 +702,37 @@ sequenceDiagram
 | `schemas/Account.js` | → User.js (rename + extend, add oryId, remove password) |
 | `schemas/Role.js, Permission.js` | Сохраняем RBAC модель (поверх Ory identity) |
 | `schemas/Division.js` | → Organization.js (rename + extend) |
-| `schemas/Chat.js, Message.js` | → Conversation.js, ChatMessage.js (adapt for Eva) |
+| `schemas/Chat.js, Message.js` | → Conversation.js, ChatMessage.js (adapt for Eva, deployer focus) |
+
+> **Deployer-first pivot (v2.0.0):** AISystem → AITool (переименование), SystemRequirement → ToolRequirement. Добавлены 8 новых таблиц: AIToolCatalog, AIToolDiscovery, TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement, FRIAAssessment, FRIASection. Всего: **29 таблиц** в 8 Bounded Contexts.
 
 ### Что добавляем
 
 | Новый компонент | Описание |
 |----------------|----------|
-| `schemas/AISystem.js` | Ключевая entity — AI-система клиента |
-| `schemas/RiskClassification.js` | Результат классификации |
-| `schemas/Requirement.js` | Справочник требований AI Act |
-| `schemas/SystemRequirement.js` | Связь система ↔ требование |
-| `schemas/ComplianceDocument.js` | Документы compliance |
+| `schemas/AITool.js` | Ключевая entity — AI-инструмент, который компания ИСПОЛЬЗУЕТ |
+| `schemas/AIToolCatalog.js` | Pre-populated каталог 200+ AI-инструментов (seed data) |
+| `schemas/AIToolDiscovery.js` | Лог обнаружения AI-инструментов (manual/import/scan) |
+| `schemas/RiskClassification.js` | Результат классификации (deployer context) |
+| `schemas/Requirement.js` | Справочник deployer-требований (Art. 4, 26-27, 50) |
+| `schemas/ToolRequirement.js` | Связь инструмент ↔ требование |
+| `schemas/TrainingCourse.js` | AI Literacy: курсы (CEO, HR, Developer, General) |
+| `schemas/TrainingModule.js` | AI Literacy: модули внутри курса |
+| `schemas/LiteracyCompletion.js` | AI Literacy: прогресс сотрудника |
+| `schemas/LiteracyRequirement.js` | AI Literacy: какие роли какие курсы проходят |
+| `schemas/ComplianceDocument.js` | Deployer документы (FRIA, Monitoring Plan, AI Usage Policy) |
 | `schemas/DocumentSection.js` | Секции документов |
+| `schemas/FRIAAssessment.js` | FRIA per AI tool (Art. 27) |
+| `schemas/FRIASection.js` | Секции FRIA |
 | `schemas/Subscription.js` | Подписки (billing) |
-| `domain/classification/` | Classification Engine (rules + LLM) |
-| `domain/compliance/` | Document generation, gap analysis |
-| `domain/consultation/` | Eva orchestrator |
+| `domain/inventory/` | AI Tool Inventory (каталог, wizard, import) |
+| `domain/classification/` | Classification Engine (rules + LLM, deployer context) |
+| `domain/literacy/` | AI Literacy (курсы, tracking, сертификаты) |
+| `domain/compliance/` | Deployer Compliance (FRIA, docs, gap analysis) |
+| `domain/consultation/` | Eva orchestrator (deployer focus) |
 | `infrastructure/auth/` | Ory SDK client (identity, sessions, webhooks) |
 | `infrastructure/email/` | Brevo SDK client (transactional email) |
-| `infrastructure/pdf/` | Gotenberg client (HTML→PDF) |
+| `infrastructure/pdf/` | Gotenberg client (HTML→PDF, сертификаты AI Literacy) |
 | `infrastructure/llm/` | Mistral API adapters (Large/Medium/Small) |
 | `infrastructure/jobs/` | Background jobs (pg-boss → BullMQ при масштабировании) |
 
@@ -785,6 +895,8 @@ graph LR
 
 ---
 
-✅ **APPROVED:** Product Owner утвердил документ 2026-02-07. Дополнение: стартуем на API-моделях, self-hosted разворачиваем при масштабировании (>100 клиентов).
+⏳ **Ожидает утверждения PO** (deployer-first pivot v2.0.0).
+
+**v2.0.0 (2026-02-07):** Deployer-first pivot — 8 Bounded Contexts (добавлены AI Literacy + Inventory), 29 таблиц, Classification Engine переориентирован на deployer (Art. 4, 26-27, 50), Deployer Compliance вместо provider Tech Docs.
 
 **v1.1.0 (2026-02-07):** Интегрированы 7 EU-сервисов: Ory (auth), Brevo (email), Gotenberg (PDF), Hetzner Object Storage, @fastify/rate-limit, Better Uptime, Plausible.
