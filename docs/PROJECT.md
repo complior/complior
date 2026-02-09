@@ -1,9 +1,9 @@
 # PROJECT.md — AI Act Compliance Platform
 
-**Версия:** 1.1.0
+**Версия:** 2.0.0
 **Дата:** 2026-02-07
 **Фаза:** Phase 0 (Architecture & Planning)
-**Источник:** PRODUCT-VISION.md v1.0.0
+**Источник:** PRODUCT-VISION.md v2.0.0 (deployer-first)
 
 ---
 
@@ -12,18 +12,24 @@
 **Название:** AI Act Compliance Platform
 **Тип:** Self-service B2B SaaS
 **Рынок:** DACH region (Germany, Austria, Switzerland) → EU expansion
+**Позиционирование:** Deployer-first — для компаний, которые ИСПОЛЬЗУЮТ AI
 
-**Проблема:** EU AI Act вступает в силу в 2026. SMB-компании (10-250 сотрудников) не могут самостоятельно определить уровень риска своих AI-систем, понять применимые требования и подготовить техническую документацию. Традиционный compliance стоит €50-100K и занимает 6-12 месяцев.
+**Проблема:** 125,000+ компаний в Германии уже используют AI-инструменты, но не знают своих обязанностей по AI Act. 70% сотрудников не обучены (Art. 4 AI Literacy обязателен с 02.02.2025). 71% используют AI без одобрения IT (Shadow AI). Традиционный compliance стоит €50-200K. К August 2026 — штрафы до €35M / 7% оборота.
 
-**Решение:** Платформа с AI-консультантом "Евой", которая:
-- Автоматически классифицирует AI-системы по уровням риска (гибридный движок: rules + LLM + cross-validation)
-- Ведёт пользователя через compliance step-by-step (guided compliance)
-- Генерирует техническую документацию (черновики AI → human review)
-- Отвечает на вопросы по AI Act простым языком
+**Решение:** Deployer-first платформа с AI-консультантом "Евой":
+- Узнай какой AI использует твоя компания (AI Tool Inventory + каталог 200+ инструментов)
+- Оцени риски (гибридный движок: rules + LLM + cross-validation для deployer context)
+- Обучи сотрудников (AI Literacy Module — Art. 4, wedge product €49/мес)
+- Получи compliance (FRIA, Monitoring Plan, AI Usage Policy, KI-Compliance Siegel)
 
 **Слоган:** "AI Act compliance за 48 часов, а не 12 месяцев"
 
-**Ключевое отличие:** 100% European AI — данные клиентов обрабатываются только EU-sovereign моделями (Mistral AI, Франция) и хостятся в EU (Hetzner, Германия).
+**Ключевые отличия:**
+1. **Deployer-first** — единственная платформа для компаний, которые ИСПОЛЬЗУЮТ AI (не строят)
+2. **AI Literacy** — Art. 4 wedge product (уже обязателен, 70% non-compliance)
+3. **Немецкий язык** — все курсы, документы, Eva на немецком
+4. **Self-service** — от €49/мес vs €10K+/year у конкурентов (Kertos)
+5. **100% EU-sovereign** — Mistral AI + Hetzner + Ory + Brevo
 
 ---
 
@@ -41,14 +47,15 @@
 
 | Артефакт | Статус | Approval |
 |----------|--------|----------|
-| PRODUCT-VISION.md | ✅ Создан | ✅ PO принял |
-| PROJECT.md | ✅ Создан | Информационный |
-| ARCHITECTURE.md | ✅ Создан | ✅ PO принял (API-only старт) |
-| DATABASE.md | ✅ Создан | Информационный |
-| DATA-FLOWS.md | ✅ Создан | Информационный |
+| PRODUCT-VISION.md | ✅ v2.0.0 (deployer-first) | ⏳ Ожидает PO |
+| PROJECT.md | ✅ v2.0.0 | Информационный |
+| ARCHITECTURE.md | ✅ v2.0.0 (8 BC, 29 tables) | ⏳ Ожидает PO |
+| DATABASE.md | ✅ v2.0.0 (+8 tables) | Информационный |
+| DATA-FLOWS.md | ✅ v2.0.0 (+4 flows) | Информационный |
 | CODING-STANDARDS.md | ✅ Создан | ✅ PO принял |
-| PRODUCT-BACKLOG.md | ✅ Создан | ✅ PO принял |
-| SPRINT-BACKLOG.md | ✅ Создан | ✅ PO принял |
+| PRODUCT-BACKLOG.md | ✅ v3.0.0 (deployer-first) | ⏳ Ожидает PO |
+| SPRINT-BACKLOG.md | ✅ v2.0.0 (updated) | ⏳ Ожидает PO |
+| COMPETITOR-ANALYSIS.md | ✅ Создан | Информационный |
 | ADR-001..004 | ⏳ Ожидает | Информационный |
 
 ---
@@ -106,35 +113,36 @@
 
 ---
 
-## 4. 6 ключевых систем
+## 4. 7 ключевых систем (deployer-first)
 
-1. **Classification Engine** — rule-based + LLM + cross-validation + requirements mapping
-2. **Document Generation** — template engine + LLM expansion + human review + PDF export
-3. **Eva Consultant Chat** — conversation management + context injection + tool calling + streaming
-4. **Compliance Dashboard** — compliance score + requirements tracking + deadlines + notifications
-5. **User & Organization Management** — Ory (identity + sessions) + multi-tenant + RBAC + billing (Stripe)
-6. **Regulatory Monitor** — EUR-Lex scraping + change detection + impact assessment
+1. **AI Tool Inventory** — каталог 200+ инструментов + wizard регистрации + CSV import + Shadow AI Discovery (P3)
+2. **AI Literacy Platform** — role-based курсы (Art. 4) + tracking + certificates (PDF) + compliance widget — **WEDGE PRODUCT €49/мес**
+3. **Classification Engine** — rule-based + LLM + cross-validation (deployer context: "Is my USE high-risk?")
+4. **FRIA Generator** — guided FRIA wizard (Art. 27) + LLM pre-fill + GDPR DPIA overlap + PDF export
+5. **Eva Consultant Chat** — deployer-focused AI consultant + tool calling + streaming
+6. **Deployer Dashboard** — AI tools risk inventory + AI Literacy progress + compliance score + KI-Siegel status
+7. **User & Organization Management** — Ory (identity + sessions) + multi-tenant + RBAC + billing (Stripe)
 
 ---
 
-## 5. Ценностное предложение
+## 5. Ценностное предложение (deployer-first)
 
 | Аудитория | Ценность |
 |-----------|----------|
-| CTO / Head of Engineering | Снижение legal risk, action plan, экономия времени, техдокументация |
-| Compliance Officers | Готовые чеклисты, документация под ключ, audit trail, regulatory updates |
-| Legal Teams | Mapping на статьи AI Act, обоснования классификации, gap analysis |
-| CEO / руководство | Risk overview, compliance score, cost savings (10-50x vs consulting) |
+| CTO / CEO SMB (5-250 сотрудников) | "Какой AI мы используем? Какие риски? Что обязательно?" — ответ за 48 часов |
+| HR-директор | AI в HR = high-risk (Annex III). AI Literacy обязательна (Art. 4). Мы готовим курсы и tracking |
+| IT-директор | Shadow AI (71% используют без одобрения). Инвентаризация + классификация всех инструментов |
+| Compliance Officer | Готовые deployer документы (FRIA, Monitoring Plan, Policies), audit trail, gap analysis |
 
-### Pricing
+### Pricing (deployer funnel)
 
-| Tier | Цена | AI-систем | Ключевые фичи |
-|------|------|-----------|---------------|
-| Free | €0 | 1 | Risk Calculator (lead magnet) |
-| Starter | €49/мес | 2 | Basic docs, email support |
-| Growth | €149/мес | 10 | Full docs, Eva full, gap analysis |
-| Scale | €399/мес | 50 | API access, audit prep, white-label docs |
-| Enterprise | Custom | Unlimited | On-premise, SLA, legal review |
+| Tier | Цена | AI-инструментов | Ключевые фичи |
+|------|------|----------------|---------------|
+| Free | €0 | 0 | AI Act Quick Check (5 мин) + Eva (3 вопроса) + KI-Compass Newsletter |
+| Starter | €49/мес | 1 | AI Literacy (курсы + tracking до 10 сотрудников) + 1 classification + Eva (10 msg/day) |
+| Growth | €149/мес | 10 | Full Compliance: Inventory + Dashboard + Gap + FRIA + Eva (50 msg/day) + KI-Siegel |
+| Scale | €399/мес | 50 | Unlimited + Auto-discovery + Post-market monitoring + API + Eva unlimited |
+| Enterprise | Custom | Unlimited | On-premise agent + SLA + custom integrations |
 
 ---
 
@@ -143,20 +151,24 @@
 | Термин | Определение |
 |--------|-------------|
 | **AI Act** | EU Regulation 2024/1689 — закон об искусственном интеллекте Европейского Союза |
-| **High Risk AI System** | AI-система категории "высокий риск" по Annex III AI Act (Art. 6) — требует полного compliance |
-| **Prohibited AI** | Запрещённые практики AI (Art. 5) — social scoring, real-time biometrics, etc. |
-| **GPAI** | General Purpose AI — модели общего назначения (Art. 51-56) |
+| **Deployer (Betreiber)** | Компания, которая ИСПОЛЬЗУЕТ AI-инструменты (наш основной клиент). Art. 3(4) AI Act |
+| **Provider (Anbieter)** | Компания, которая СТРОИТ AI-системы. Art. 3(3) AI Act. P3 Future для нас |
+| **AI Tool (KI-Instrument)** | AI-инструмент, который deployer использует (ChatGPT, HireVue, Copilot и т.д.) |
+| **AI Literacy (KI-Kompetenz)** | Art. 4 — обязанность обучить сотрудников. Обязательна с 02.02.2025 |
+| **FRIA** | Fundamental Rights Impact Assessment (Art. 27) — оценка влияния на основные права |
+| **Shadow AI** | AI-инструменты, используемые сотрудниками без одобрения IT (71% по статистике) |
+| **KI-Siegel** | Знак соответствия AI Act — бейдж для сайта компании (наша фича) |
+| **High Risk AI** | AI-система категории "высокий риск" по Annex III (Art. 6) — deployer обязанности Art. 26-27 |
+| **Prohibited AI** | Запрещённые практики AI (Art. 5) — social scoring, real-time biometrics |
 | **Limited Risk** | Системы с требованием прозрачности (Art. 50) — chatbots, deepfakes |
-| **Minimal Risk** | Системы без обязательных требований |
-| **Conformity Assessment** | Процедура подтверждения соответствия (Art. 43) — самооценка или notified body |
-| **Technical Documentation** | Обязательная документация для high-risk систем (Art. 11) |
-| **Risk Management System** | Система управления рисками (Art. 9) — обязательна для high-risk |
-| **EU Database** | Реестр high-risk AI-систем ЕС (Art. 71) — обязательная регистрация |
-| **Annex III** | Приложение III AI Act — список областей high-risk AI (8 категорий) |
-| **Annex I** | Приложение I — EU harmonisation legislation (safety components) |
-| **Ева** | AI-консультант платформы — отвечает на вопросы по AI Act, помогает с формами |
-| **Classification Engine** | Гибридный движок классификации: rules + LLM + cross-validation |
-| **Guided Compliance** | Подход UX: платформа ведёт пользователя step-by-step, не заваливает формами |
+| **Minimal Risk** | Системы без обязательных требований (кроме Art. 4 AI Literacy) |
+| **Art. 26** | 17 обязанностей deployer'а high-risk AI (надзор, мониторинг, логи, данные) |
+| **Art. 27** | Обязательная FRIA для deployer'ов в публичном секторе, кредитовании, страховании |
+| **Art. 50** | Обязанности прозрачности (chatbots, deepfakes, emotion recognition) |
+| **Annex III** | 8 категорий high-risk AI (biometrics, employment, education, justice, etc.) |
+| **Ева** | AI-консультант для deployer'ов — отвечает на немецком, помогает с FRIA и compliance |
+| **Classification Engine** | Гибридный движок: rules + LLM + cross-validation (deployer context) |
+| **Guided Compliance** | UX: платформа ведёт deployer'а step-by-step |
 | **MetaSQL** | Schema management: JavaScript schema → SQL DDL + TypeScript types |
 | **VM Sandbox** | Паттерн изоляции модулей через vm.Script + frozen context |
 | **DACH** | Немецкоязычный регион: Deutschland, Austria, Confoederatio Helvetica (Швейцария) |
@@ -229,4 +241,4 @@
 
 ---
 
-**Последнее обновление:** 2026-02-07
+**Последнее обновление:** 2026-02-07 (v2.0.0: deployer-first pivot)

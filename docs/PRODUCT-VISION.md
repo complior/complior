@@ -1,9 +1,20 @@
-# Product Vision — AI Act Compliance Platform
+# Product Vision — AI Act Compliance Platform (Deployer-First)
 
 **Статус:** ✅ Заполнен Product Owner
-**Дата:** 2026-02-07
-**Версия:** 1.0.0
-**Источники:** project1.pdf, eu_sovereign_llm_strategy.md.pdf, llm_strategy_and_product_ux.md.pdf
+**Дата:** 2026-02-08
+**Версия:** 2.0.0 (Deployer-First Pivot)
+**Источники:** project1.pdf, eu_sovereign_llm_strategy.md.pdf, llm_strategy_and_product_ux.md.pdf, COMPETITOR-ANALYSIS.md
+
+---
+
+## Changelog
+
+### v2.0.0 (2026-02-08) — Deployer-First Pivot
+- **Стратегический pivot:** universal (providers + deployers) → **deployer-first** (компании, которые ИСПОЛЬЗУЮТ AI)
+- **Обоснование:** 125,000+ deployers в Германии vs ~1,100 providers. Конкурент Kertos ($10K+/год, sales-gated) не покрывает deployer-сегмент. Рынок deployers в 120x больше и не обслужен.
+- **Новые фичи:** AI Literacy Module (Art. 4), Shadow AI Discovery, FRIA Generator (Art. 27), KI-Compliance Siegel
+- **Provider features** → P3 Future (Art. 11 Annex IV, conformity assessment, GPAI model cards)
+- **Pricing:** пересмотрен под deployer funnel (€49 wedge → €149 full → €399 scale)
 
 ---
 
@@ -11,160 +22,191 @@
 
 ### Проблема (Problem Statement)
 
-EU AI Act вступает в полную силу в 2026 году. Малый и средний бизнес (SMB) в DACH-регионе массово сталкивается с проблемами:
+**125,000+ компаний в Германии уже используют AI** (Bitkom 2025: 36%, удвоение с 2024). Ещё 47% планируют. Но:
 
-- **Не могут определить уровень риска** своих AI-систем по EU AI Act (Annex III содержит 8 категорий, каждая с подкатегориями)
-- **Не понимают какие требования compliance** применимы к их конкретным системам (Art. 8-15 для high-risk, Art. 50 для limited, Art. 51-56 для GPAI)
-- **Не могут подготовить техническую документацию** для conformity assessment — это требует юридической и технической экспертизы одновременно
-- **Нет внутренних compliance-специалистов** — нанять эксперта стоит €150-300/час, полный аудит обходится в €50-100K
-- **Юридические консультанты дороги и медленны** — процесс compliance занимает 6-12 месяцев при традиционном подходе
-- **Страх штрафов** — до €35M или 7% от годового оборота за нарушения (Art. 99)
-- **Неясность** — AI Act — сложный юридический текст на 450+ страниц с 13 приложениями
+- **70% сотрудников не прошли обучение по AI** — а Art. 4 AI Act (AI Literacy) уже обязателен с 2 февраля 2025
+- **71% сотрудников используют AI без одобрения IT** (shadow AI) — компания даже не знает, какие AI-инструменты используются
+- **Не понимают, что они "Betreiber" (deployers)** — компания, которая использует ChatGPT для HR-скрининга, является deployer high-risk AI-системы по Annex III
+- **Не знают своих обязанностей** — Art. 26-27 требуют: human oversight, логирование, FRIA, информирование сотрудников
+- **Штрафы:** до €35M или 7% оборота (Art. 99). Для SMB с 20 сотрудниками это смерть бизнеса
+- **Дедлайн:** 2 августа 2026 — полные требования для high-risk deployers вступают в силу
+- **Нет доступного инструмента:** Kertos — €10K+/год, sales-gated. Vanta/Drata — $10K+/год, US-based. Нет немецкоязычной self-service платформы для SMB
 
 ### Решение (Solution)
 
-**Self-service SaaS платформа "AI Act Compliance Platform"** с AI-консультантом "Евой":
+**Self-service SaaS платформа для компаний, которые ИСПОЛЬЗУЮТ AI:**
 
-- **Автоматическая классификация AI-систем** по уровням риска (Prohibited / High / GPAI / Limited / Minimal) через гибридный движок: rule-based pre-filter + LLM analysis + cross-validation
-- **Guided compliance** — платформа ведёт пользователя за руку через весь процесс step-by-step, не заваливая формами
-- **AI-генерация документации** — Technical Documentation, Risk Assessment, Conformity Declaration генерируются автоматически, пользователь редактирует и утверждает
-- **Консультант "Ева"** — AI-чат, объясняющий требования AI Act простым языком, помогающий заполнять формы, отвечающий на вопросы
-- **Compliance Dashboard** — визуальный прогресс (compliance score), дедлайны, gap analysis, action plan
-- **100% European AI** — данные клиентов обрабатываются только EU-sovereign моделями (Mistral AI, Франция) и хостятся в EU (Hetzner, Германия)
+```
+Узнай какой AI использует → Оцени риски → Обучи сотрудников → Получи compliance
+твоя компания               по AI Act      (Art. 4)            за €49/мес
+```
+
+1. **AI Tool Inventory** — зарегистрируй все AI-инструменты компании (manual wizard + каталог 200+ инструментов)
+2. **Risk Classification** — гибридный движок (rules + LLM) определяет risk level каждого инструмента с точки зрения deployer
+3. **AI Literacy Module** — обучающие курсы на немецком + tracking completion per employee (Art. 4 — уже обязателен!)
+4. **Консультант "Ева"** — AI-чат, объясняющий обязанности deployer простым языком
+5. **Compliance Dashboard** — прогресс, дедлайны, gaps, action plan
+6. **Deployer Documents** — FRIA (Art. 27), Monitoring Plan, AI Usage Policy — генерация, не с нуля
+7. **100% European** — Mistral (Франция), Hetzner (Германия), Ory (self-hosted). Данные не покидают EU
 
 ### Ценностное предложение (Value Proposition)
 
-**"Классификация AI-системы + action plan за 48 часов, а не 12 месяцев"**
+**"Ваши сотрудники уже используют AI. Мы помогаем делать это по закону."**
 
-**Для CTO / Head of Engineering:**
-- Снижение legal risk — автоматическая оценка всех AI-систем компании
-- Чёткий action plan — приоритезированный список шагов для compliance
-- Экономия времени — то, что юристы делают за месяцы, платформа делает за дни
-- Техническая документация — генерируется на основе описания системы
+**Для CTO / IT-директора:**
+- Узнай, какие AI-инструменты используют сотрудники (shadow AI → inventory)
+- Получи risk classification каждого инструмента за 5 минут
+- Чёткий action plan: что делать как deployer (Art. 26-27)
+- €49/мес вместо €200K через консультантов
 
-**Для Compliance Officers:**
-- Готовые чеклисты по каждому требованию AI Act
-- Документация под ключ — черновики генерируются AI, вы редактируете и утверждаете
-- Audit trail — вся история изменений для предъявления регуляторам
-- Regulatory updates — отслеживание изменений в AI Act и guidance documents
-
-**Для Legal Teams:**
-- Mapping AI-систем на конкретные статьи AI Act
-- Обоснования классификации с цитатами из закона
-- Gap analysis — что есть, чего не хватает
-- EU Database регистрация — подготовка данных для обязательной регистрации high-risk систем
+**Для HR-директора:**
+- AI в рекрутинге = high-risk по Annex III. Обязанности: human oversight, информирование кандидатов, FRIA
+- AI Literacy обучение сотрудников (Art. 4 — уже обязательно)
+- Tracking: кто прошёл обучение, кто нет. Certificate per employee
 
 **Для CEO / руководства:**
-- Risk overview в одном dashboardе — сколько систем, какой риск, какой прогресс
-- Compliance score — простая метрика для board meetings
-- Cost savings — в 10-50x дешевле традиционного consulting
+- Risk overview: сколько AI-инструментов, какой риск, какой прогресс
+- AI Literacy: X% сотрудников обучены
+- Compliance score для board meetings
+- KI-Compliance Siegel — бейдж на сайт ("AI Act Compliant")
 
 ---
 
 ## 2. Целевая аудитория (Target Audience)
 
+### Deployer — кто это?
+
+**Deployer (Betreiber)** — компания, которая ИСПОЛЬЗУЕТ AI-инструмент. Не строит, а покупает/подключает.
+
+Примеры:
+- Рекрутинговое агентство, использующее AI-скрининг резюме → deployer high-risk AI (Annex III, п.4)
+- Клиника, использующая AI-диагностику → deployer high-risk AI (медицинское ПО)
+- SaaS-компания, использующая ChatGPT для поддержки → deployer limited-risk AI (Art. 50)
+- Страховая, использующая AI для расчёта тарифов → deployer high-risk AI (Annex III, п.5)
+
 ### Первичная аудитория
-- **Кто:** B2B — CTO, compliance officers, legal teams в SMB
-- **Размер компаний:** 10-250 сотрудников (SMB по EU-определению)
-- **География:** DACH region (Germany, Austria, Switzerland) — стартовый рынок
-- **Отрасли:** Fintech, HR-tech, HealthTech, EdTech, E-commerce — все, кто использует AI в продуктах/процессах
+
+- **Кто:** CTO, CEO, HR-директора, IT-менеджеры в SMB
+- **Размер:** 5-250 сотрудников (micro + SMB по EU-определению)
+- **География:** DACH (Germany, Austria, Switzerland)
+- **Общее:** Компания ИСПОЛЬЗУЕТ AI-инструменты (ChatGPT, Copilot, AI-рекрутинг, AI-диагностика, чат-боты, AI-аналитика)
 - **Характеристики:**
-  - Используют AI (собственные модели, API к LLM, ML-пайплайны)
-  - Нет выделенного compliance-отдела (или отдел перегружен GDPR)
+  - Нет выделенного compliance-отдела
+  - Не знают, что они "deployers" по AI Act
+  - Сотрудники используют AI без формального одобрения (shadow AI)
   - Готовы платить €49-399/мес за самообслуживание vs €10K+ за консалтинг
-  - Предпочитают немецкоязычный интерфейс (DE + EN)
+  - Предпочитают немецкоязычный интерфейс
 
 ### Вторичная аудитория
-- **Консалтинговые компании** — используют платформу как инструмент для своих клиентов (white-label в Enterprise тарифе)
-- **Крупные компании (250+ сотрудников)** — для Enterprise тарифа с on-premise и SLA
-- **Стартапы** — Free tier + Starter для проверки соответствия перед привлечением инвестиций
+- **Консалтинговые компании** — используют как инструмент для своих клиентов (white-label в Enterprise)
+- **HR-tech компании** — AI в рекрутинге = high-risk, нужен compliance
+- **Стартапы** — Free tier для проверки "попадаю ли я под AI Act?"
 
 ### Антипаттерны (кто НЕ наша аудитория)
-- Компании, не использующие AI (нет предмета compliance)
-- Enterprise-гиганты (>5000 человек) с собственными compliance-отделами — они скорее конкуренты
-- Компании вне EU, не продающие в EU — AI Act не применим
-- Компании, ищущие юридическое заключение с подписью (мы — технический инструмент, не юрфирма)
+- **AI Providers** (строят AI-модели) — для них Kertos, Credo AI, Holistic AI. Мы добавим provider features позже (P3)
+- Компании, не использующие AI вообще
+- Enterprise-гиганты (>5000 человек) с собственными compliance-отделами
+- Компании вне EU, не работающие с EU-данными
 
 ---
 
-## 3. MVP Scope
+## 3. MVP Scope (Deployer-First)
 
-### Must Have (P0) — Week 1-8
+### Must Have (P0) — Sprint 0-4
 
-- **User Registration & Auth**
-  - Email magic links (passwordless)
-  - Company profile (name, size, industry)
-  - Multi-tenant: Organization → Users → AI Systems
-  - JWT + secure sessions
+- **Infrastructure** (Sprint 0)
+  - Monorepo, Fastify backend, MetaSQL schemas, Docker Compose (Ory + Gotenberg + PG)
+  - CI/CD, rate limiting, monitoring, analytics
 
-- **AI System Registration Wizard** (5 шагов)
-  - Step 1: Basic Info (название, описание)
-  - Step 2: Purpose & Context (цель, область — HR, Finance, Health, etc.)
-  - Step 3: Technical Details (тип модели, автономность, влияние на людей)
-  - Step 4: Data & Users (типы данных, пользователи, масштаб)
-  - Step 5: Review & Classification (результат + обоснование)
+- **IAM — Ory Auth** (Sprint 1)
+  - Ory (self-hosted, Hetzner): регистрация, login, magic links, sessions
+  - Brevo (Франция): email для magic links
+  - Ory webhook → Organization + User + Role + Subscription(free)
+  - Multi-tenancy: всё фильтруется по organizationId
 
-- **Classification Engine** (гибридный)
-  - Rule-based pre-filter: мгновенная проверка по Annex III категориям
-  - LLM analysis: для случаев с confidence < 90%
-  - Cross-validation: при расхождении rule-based и LLM — эскалация на Mistral Large
-  - Requirements mapping: автоматическое определение обязательных шагов по статьям AI Act
-  - Output: risk_level, annex_category, confidence, reasoning, requirements_list
+- **AI Tool Inventory** (Sprint 1-2)
+  - 5-step wizard для регистрации AI-инструментов:
+    1. **AI-инструмент:** выбор из каталога 200+ (ChatGPT, Copilot, HireVue...) или добавить свой
+    2. **Контекст использования:** как используете, в каком домене (HR, медицина, финансы...)
+    3. **Данные и пользователи:** какие данные обрабатывает, кто затронут, уязвимые группы?
+    4. **Автономность и контроль:** уровень автономности, human oversight
+    5. **Обзор и классификация:** summary → trigger classification
+  - Каталог AI-инструментов (seed data: 200+ инструментов с дефолтными risk levels)
+  - CSV import (IT-отдел выгружает список используемых SaaS)
 
-- **Compliance Dashboard**
-  - Compliance score (0-100%) по каждой системе и в целом
-  - Список AI-систем с risk levels (цветовая индикация)
-  - Requirements checklist с прогрессом
-  - Ближайшие дедлайны
+- **AI Literacy Module — WEDGE PRODUCT** (Sprint 2-3)
+  - Собственный обучающий контент на немецком
+  - 4 role-based курса: CEO/Executive, HR Manager, Developer, General Employee
+  - Каждый курс: 3-5 модулей, quiz, ~30 минут
+  - Tracking completion per employee (import список сотрудников через CSV)
+  - Compliance certificate per employee (PDF через Gotenberg)
+  - Dashboard widget: "X% сотрудников обучены"
+  - **Это €49/мес standalone продукт — уже продаётся, Art. 4 уже обязателен**
 
-- **Консультант "Ева" (базовый)**
-  - Chat interface с контекстом текущей страницы
-  - Ответы на вопросы по AI Act с цитированием статей
-  - Quick actions (предопределённые вопросы)
-  - Disclaimer: "не является юридической консультацией"
+- **Risk Classification** (Sprint 2-3)
+  - RuleEngine (domain) — Art. 5 prohibited, Annex III domains, GPAI detection
+  - LLM analysis (Mistral) — для сложных случаев
+  - Cross-validation — при расхождении → эскалация на Mistral Large
+  - **Deployer context:** "Какой risk level у МОЕГО ИСПОЛЬЗОВАНИЯ этого AI-инструмента?"
+  - Output: riskLevel, deployer requirements (Art. 4, 26, 27, 50), recommendations
 
-### Should Have (P1) — Week 9-12
+- **Deployer Dashboard** (Sprint 3-4)
+  - AI Tool Risk Inventory: все инструменты, risk levels, compliance status
+  - AI Literacy Progress: X% обучены, кто не прошёл
+  - Compliance Score (0-100%) — aggregate
+  - "Требует внимания": shadow AI, необученные сотрудники, пропущенные дедлайны
+  - Compliance Timeline: дедлайны AI Act (Art. 113)
 
-- **Document Generation** (Technical Documentation)
-  - Template engine: структурированные шаблоны по Art. 11 AI Act
-  - LLM expansion: генерация черновиков разделов на основе данных системы
-  - Section-by-section: пошаговая генерация с human review
-  - Rich text editor (Tiptap) для редактирования
-  - PDF/DOCX export
+- **Консультант "Ева"** (Sprint 4)
+  - WebSocket-чат, Mistral Large 3 API, streaming
+  - **Deployer-focused:** "Bin ich Betreiber?", "Ist unser HR-Tool high-risk?", "Was muss ich als Betreiber tun?"
+  - Context injection: данные компании, AI-инструменты, compliance status
+  - Rate limiting по плану (Free: 3 вопроса, Starter: 10 msg/day)
 
-- **Gap Analysis**
-  - Автоматическое сравнение текущего состояния vs требования
-  - Приоритезированный action plan
-  - Estimated effort по каждому пункту
+### Should Have (P1) — Sprint 4-6
 
-- **Ева (полная версия)**
-  - Tool calling: классификация, поиск по регуляции, создание документов
-  - Context injection: данные компании, системы, текущая страница
-  - History persistence
+- **Deployer Document Generation** (Sprint 4-5)
+  - FRIA (Art. 27) — Fundamental Rights Impact Assessment
+  - Monitoring Plan — план мониторинга AI-инструментов
+  - AI Usage Policy — корпоративная политика использования AI
+  - Employee Notification templates — информирование сотрудников (Art. 26(7))
+  - LLM-генерация черновиков → пользователь редактирует → PDF export (Gotenberg)
 
-### Could Have (P2) — Week 13-16
+- **Gap Analysis & Action Plan** (Sprint 5)
+  - Per AI tool: какие deployer requirements выполнены, какие нет
+  - Приоритизированный action plan
+  - "Что делать" per gap: конкретные шаги
 
-- **Regulatory Monitor** — отслеживание изменений в AI Act (EUR-Lex, AI Office)
-- **Audit Preparation** — подготовка пакета документов для аудита
-- **API Access** — REST API для интеграции с внутренними системами клиента
-- **Multi-language** — DE/EN (стартуем с DE, добавляем EN)
-- **Risk Assessment** генерация (Art. 9 AI Act)
-- **Conformity Declaration** генерация (Art. 47 AI Act)
+- **FRIA Generator** (Sprint 5)
+  - Guided workflow: affected persons → risks → oversight → mitigation
+  - Pre-fill из GDPR DPIA ("60% уже сделано")
+  - Для: public service deployers, credit scoring, insurance (Art. 27)
 
-### Won't Have (Out of Scope для MVP)
+- **Billing** (Sprint 5-6) — Stripe, 5 тарифов
 
-- On-premise deployment (Enterprise only, post-MVP)
-- White-label (Enterprise only, post-MVP)
-- Third-party integrations (Jira, Confluence, Slack)
-- Mobile app (responsive web достаточно)
-- Юридические консультации с подписью (мы — технический инструмент)
-- Multi-language beyond DE/EN (FR, IT — post-MVP)
-- AI model training / fine-tuning для клиентов
-- ISO 42001 certification support (v2.0)
+- **Eva Tools** (Sprint 6) — tool calling: classify_ai_tool, create_fria, setup_monitoring
+
+- **Onboarding + Notifications** (Sprint 6) — proactive compliance checks, email (Brevo)
+
+### Could Have (P2) — Sprint 7-8
+
+- **Regulatory Monitor** — EUR-Lex, deployer-relevant articles
+- **KI-Compliance Siegel** — trust badge для сайта ("AI Act Compliant")
+- **Additional docs** — Risk Assessment (Art. 9 deployer), Incident Report templates
+- **Multi-language** — DE + EN
+
+### P3 — Future (post-launch)
+
+- **Shadow AI Auto-Discovery** (EU-sovereign, см. §4a)
+- **Provider features** — Art. 11 Annex IV tech docs, conformity assessment (Art. 43), GPAI model cards (Art. 51-56), CE Declaration (Art. 47), EU DB registration (Art. 49)
+- **Compliance Copilot** — multi-channel delivery (webhook, Matrix, Slack)
+- **Autonomous Agent** — on-premise monitoring
+- **ISO 42001** — AI Management System support
+- **Personio integration** — HR AI compliance bundle
 
 ---
 
-## 4. Технические требования (Technical Requirements)
+## 4. Технические требования
 
 ### Стек (Tech Stack)
 
@@ -172,157 +214,169 @@ EU AI Act вступает в полную силу в 2026 году. Малый
 - Next.js 14 (App Router) + TypeScript strict
 - TailwindCSS + shadcn/ui (design system)
 - React Hook Form + Zod (forms + validation)
-- Zustand (state management)
+- XState (wizard state management)
 - React Query (data fetching)
 - Tiptap (rich text editor для документов)
 
 **Backend:**
 - Metasql + VM sandbox (vm.Script) + Fastify runtime (существующая архитектура)
 - PostgreSQL (Hetzner Managed)
-- Redis (caching, rate limiting, sessions)
-- BullMQ (job queues для document generation, classification)
+- pg-boss (job queues — PostgreSQL-native, без Redis на MVP)
 
-**AI/LLM Layer (PRODUCT — EU Sovereign, все API на старте):**
-- **Ева (Consultant):** Mistral Large 3 API (EU) — максимальная точность для юридических вопросов
-- **Classifier:** Mistral Small 3.1 API (EU) — высокая частота, быстрый pre-filter + LLM analysis
-- **Doc Writer:** Mistral Medium 3 API (EU) — качество документов важнее скорости
-- **Auditor:** Mistral Medium 3 API (EU) — batch processing
-- **Quick Tasks (autocomplete, forms):** Mistral Small 3.1 API (EU) — низкая latency
-- **Cross-validation escalation:** Mistral Large 3 API — для сложных случаев
-- **Масштабирование:** При >100 клиентов — переход на self-hosted (Mixtral 8x22B, Hetzner GPU) для оптимизации стоимости
+**Auth & Email:**
+- Ory (self-hosted, Hetzner EU) — identity, sessions, MFA, magic links
+- Brevo (Франция) — transactional email, 300/day free
+
+**PDF & Storage:**
+- Gotenberg (self-hosted Docker) — HTML→PDF для certificates, FRIA, documents
+- Hetzner Object Storage (S3-compatible) — PDF, exports
+
+**AI/LLM Layer (EU Sovereign):**
+- **Ева:** Mistral Large 3 API (EU) — deployer Q&A
+- **Classifier:** Mistral Small 3.1 API (EU) — risk classification
+- **Doc Writer:** Mistral Medium 3 API (EU) — document generation
+- **Quick Tasks:** Mistral Small 3.1 API (EU) — autocomplete, forms
+- **Cross-validation:** Mistral Large 3 API — для эскалации
+- **Масштабирование:** При >100 клиентов → self-hosted Mistral (Hetzner GPU)
 
 **Infrastructure:**
-- Hetzner Cloud (EU data residency — Германия)
+- Hetzner Cloud (EU, Германия)
 - Docker + Docker Compose
 - GitHub Actions (CI/CD)
-- Cloudflare (CDN, DDoS protection)
-- Sentry (error tracking)
-- S3-compatible storage (Hetzner) для документов
+- @fastify/rate-limit (official plugin)
+- Better Uptime (Литва) — мониторинг
+- Plausible (Эстония) — аналитика, без cookies
 
-**Auth:**
-- NextAuth.js с email magic links
-- Или Clerk (managed auth)
+### 4a. Shadow AI Auto-Discovery (P3, EU-Sovereign)
 
-**Testing:**
-- Vitest (unit + integration)
-- Playwright (E2E)
+Автоматическое обнаружение AI-инструментов **без зависимости от US-сервисов (M365/Google)**:
+
+**Метод 1: DNS/Proxy Log Analysis**
+- Компания экспортирует логи из firewall (pfSense, OPNsense, Sophos)
+- Платформа парсит домены: openai.com, anthropic.com, jasper.ai, midjourney.com и т.д.
+- База 200+ AI-доменов. Результат: "12 AI-сервисов за месяц, 3 high-risk"
+- Формат: загрузи CSV/JSON → анализ → отчёт
+
+**Метод 2: Browser Extension (self-hosted)**
+- Лёгкое расширение Chrome/Firefox, устанавливается сотрудникам
+- Детектирует посещение AI-сайтов, отправляет на наш сервер (Hetzner)
+- Собирает ТОЛЬКО: домен + timestamp. Не содержимое, не промпты
+- Privacy-friendly, GDPR-compliant
+
+**Метод 3: Ory/Keycloak OAuth Audit**
+- Если компания использует Ory/Keycloak для SSO — читаем список OAuth-приложений
+- AI-инструменты, авторизованные через корпоративный SSO → видны
+- Полностью EU-sovereign
+
+**Timeline:** MVP manual → Sprint 5-6 DNS logs → Sprint 7+ browser extension + OAuth audit
 
 ### Нефункциональные требования
 
 **Performance:**
-- Classification engine: < 3 sec для rule-based, < 15 sec с LLM
+- Classification: < 3 sec rule-based, < 15 sec с LLM
 - Dashboard load: < 2 sec
-- Eva chat response: < 5 sec (streaming)
-- Document generation: < 60 sec per section
+- Eva response: < 5 sec (streaming)
+- AI Literacy course load: < 1 sec
 - Target: 100 concurrent users для MVP
 
 **Security:**
-- EU data residency (все данные клиентов — только EU, Hetzner Germany)
+- EU data residency (Hetzner, Германия)
 - Encryption at rest (AES-256) и in transit (TLS 1.3)
 - GDPR compliance by design
-- No US/CN models для клиентских данных (Mistral only)
-- SOC 2 Type I preparation (post-MVP)
+- No US/CN models для данных клиентов (Mistral only)
 - OWASP Top 10 compliance
-- Rate limiting на все публичные endpoints
-- Input validation (Zod schemas)
-
-**Scalability:**
-- MVP: до 100 организаций, ~500 AI-систем
-- Year 1: до 1000 организаций
-- Horizontal scaling через Hetzner Cloud
-
-**Availability:**
-- MVP: 99% uptime (best effort)
-- Paid plans: 99.5% uptime SLA
-- Enterprise: 99.9% uptime SLA
+- Rate limiting на public endpoints
 
 ---
 
-## 5. Ключевые Use Cases (User Stories высокого уровня)
+## 5. Ключевые Use Cases
 
 ### UC-1: Регистрация и онбординг
 ```
-As a CTO of an DACH SMB company
-I want to register with my corporate email and describe my company
-So that I can start assessing our AI systems for EU AI Act compliance
+As a CTO of a DACH SMB
+I want to register and find out if AI Act applies to my company
+So that I understand what my obligations are as an AI deployer
 ```
 **Шаги:**
-1. Landing page: "Проверьте ваши AI-системы за 5 минут" (lead magnet — Free Risk Calculator)
-2. Signup: Email magic link → Company name, size, industry
-3. Ева приветствует, предлагает quick assessment
-4. Quick questionnaire (5-7 вопросов о компании и AI-использовании)
-5. Первичная оценка: "У вас X систем, Y потенциально high-risk"
-6. План действий
+1. Landing: "Используете AI? Проверьте за 5 минут" (Free Risk Check)
+2. Signup: Email magic link (Ory) → Company name, size, industry
+3. Quick questionnaire: "Какие AI-инструменты использует ваша компания?" (select из каталога)
+4. Мгновенный результат: "3 из 5 инструментов — high-risk. Art. 4 AI Literacy уже обязателен."
+5. CTA: "Начните с AI Literacy за €49/мес"
 
-### UC-2: Классификация AI-системы
+### UC-2: Регистрация AI-инструмента
 ```
-As a compliance officer
-I want to describe our AI system through a guided wizard
-So that the platform tells me the exact risk category with legal basis
+As an IT manager
+I want to register all AI tools our company uses
+So that I have a complete inventory with risk levels
 ```
 **Шаги:**
-1. Нажимаю "+ Добавить систему"
-2. 5-шаговый wizard (Basic Info → Purpose → Technical → Data → Review)
-3. Ева помогает на каждом шаге, подсказывает
-4. Получаю: Risk Level + Annex category + конкретные статьи AI Act + список requirements
-5. Compliance score появляется на dashboard
+1. "+ Добавить инструмент" → выбор из каталога (ChatGPT, Copilot, HireVue...) или ввод вручную
+2. 5-step wizard: инструмент → контекст → данные → автономность → обзор
+3. Автоматическая risk classification → risk level + deployer requirements
+4. Инструмент появляется на Dashboard с risk badge
 
-### UC-3: Генерация Technical Documentation
+### UC-3: AI Literacy — обучение сотрудников
 ```
-As a compliance officer with a High Risk AI system
-I want to generate technical documentation required by Art. 11
-So that I can prepare for conformity assessment
+As an HR director
+I want to ensure all employees complete AI literacy training
+So that our company complies with Art. 4 AI Act (already mandatory)
 ```
 **Шаги:**
-1. Из карточки системы нажимаю "Начать compliance"
-2. Платформа показывает Requirements Checklist
-3. Выбираю "Technical Documentation"
-4. Ева предлагает заполнить раздел за разделом
-5. Для каждого раздела: AI генерирует черновик → я редактирую → отмечаю "готово"
-6. Экспорт в PDF/DOCX
+1. Импорт списка сотрудников (CSV: name, email, role)
+2. Назначение курсов по ролям (CEO → Executive, HR → HR Manager, Dev → Developer, остальные → General)
+3. Сотрудники получают email-приглашение (Brevo), проходят курс
+4. Dashboard: X% completion, кто не прошёл
+5. Certificate per employee (PDF через Gotenberg)
 
 ### UC-4: Общение с консультантом Евой
 ```
 As a CTO without legal background
-I want to ask questions about AI Act in simple language
-So that I understand what I need to do for my specific case
+I want to ask about AI Act deployer obligations in simple language
+So that I understand what to do for my specific AI tools
 ```
 **Примеры вопросов:**
-- "Наш чат-бот для клиентов — это high risk?"
-- "Какие документы мне нужны?"
-- "Сколько времени займёт compliance?"
-- "Что будет, если я не соответствую до дедлайна?"
+- "Мы используем ChatGPT для ответов клиентам — это high risk?"
+- "Наш рекрутер использует AI-скрининг резюме — что нам нужно делать?"
+- "Art. 4 уже обязателен — мы в нарушении?"
+- "Нужен ли нам FRIA?"
 
 ### UC-5: Dashboard мониторинг
 ```
 As a CEO
-I want to see an overview of all our AI systems and their compliance status
+I want to see compliance status of all AI tools and employee training
 So that I can report to the board and prioritize resources
 ```
 **Данные:**
-- Compliance Score (67% — aggregate)
-- Список систем с risk levels и прогрессом
-- Ближайшие дедлайны
-- "Требует внимания" — системы с просроченными задачами
+- AI Tool Inventory: 7 инструментов, 2 high-risk, 3 limited, 2 minimal
+- AI Literacy: 78% сотрудников обучены
+- Compliance Score: 62% → action plan
+- "Требует внимания": 2 high-risk инструмента без FRIA, 5 сотрудников без обучения
 
-### UC-6: Gap Analysis
+### UC-6: FRIA — Fundamental Rights Impact Assessment
 ```
-As a compliance officer
-I want to see what requirements my system already meets and what is missing
-So that I can create a prioritized action plan
+As a compliance officer using high-risk AI
+I want a guided FRIA workflow
+So that I fulfill Art. 27 deployer obligations
 ```
+**Шаги:**
+1. Выбираю AI-инструмент → "Создать FRIA"
+2. Guided wizard: affected persons → specific risks → human oversight → mitigation
+3. Pre-fill из GDPR DPIA ("60% данных уже есть")
+4. LLM генерирует черновики секций → я редактирую
+5. Export PDF → audit-ready
 
 ---
 
 ## 6. AI-агенты в продукте
 
-### Архитектура AI-агентов (для клиентов)
+### Архитектура AI-агентов
 
 ```
 ┌─────────────────────────────────────────────────────┐
 │            КОНСУЛЬТАНТ "ЕВА"                        │
 │         Mistral Large 3 API (EU)                    │
-│  Юридическая интерпретация, помощь пользователям    │
+│  Deployer Q&A, помощь пользователям                 │
 └───────────────────┬─────────────────────────────────┘
           ┌─────────┼─────────┐
           ▼         ▼         ▼
@@ -337,20 +391,20 @@ So that I can create a prioritized action plan
   ┌──────────────────────────────────────┐
   │    ВЫСОКОЧАСТОТНЫЕ ЗАДАЧИ            │
   │    Mistral Small 3.1 API (EU)        │
-  │    Autocomplete, forms, simple Q&A   │
+  │    Autocomplete, quiz, forms         │
   └──────────────────────────────────────┘
 ```
 
-### Степень автоматизации (реалистичные оценки)
+### Степень автоматизации
 
 | Компонент | Автоматизация | Роль человека |
 |-----------|:---:|---|
 | Risk Classification | 80-90% | Утверждает классификацию |
-| Document Generation | 70-80% | Редактирует черновики |
+| AI Literacy Content | 90% | Валидирует курсы на старте |
+| FRIA Generation | 60-70% | Редактирует черновики |
 | Gap Analysis | 80% | Валидирует приоритеты |
 | Eva Chat (Q&A) | 80% | Контроль качества на старте |
-| Legal Check | 40-60% | Валидирует выводы |
-| Web UI | 50-60% | UX дизайн, тестирование |
+| Shadow AI Detection | 50% | Подтверждает / отклоняет обнаружения |
 
 ---
 
@@ -359,245 +413,220 @@ So that I can create a prioritized action plan
 ### Почему это критично
 
 ```
-"Мы продаём EU AI Act compliance, но используем US/CN модели для данных клиентов"
-→ Это лицемерие. Конкуренты укажут на это.
+"Мы продаём EU AI Act compliance, но используем US модели для данных клиентов"
+→ Это лицемерие. Kertos хостится на AWS. Мы — на Hetzner. Это наше преимущество.
 ```
 
-### Наш подход: 100% European AI для данных клиентов
+### Наш подход: 100% European AI
 
-| Аспект | Наша платформа | Конкуренты (типично) |
-|--------|:---:|:---:|
-| AI модели | Mistral (Франция) | OpenAI, Anthropic (US) |
-| Хостинг | Hetzner (Германия) | AWS, Azure (US) |
-| Данные клиентов | Не покидают EU | Могут уходить в US |
-| US CLOUD Act | Не применим | Риск |
-| DSGVO/GDPR | Full compliance | Зависит от DPA |
-
-### Маркетинговое преимущество
-
-**"100% EUROPEAN AI COMPLIANCE PLATFORM"**
-- Ваши данные никогда не покидают EU
-- Powered by Mistral AI (Paris)
-- GDPR-compliant by design
-- Без зависимости от US CLOUD Act
-- Без китайских моделей
+| Аспект | Наша платформа | Kertos | Vanta/Drata |
+|--------|:---:|:---:|:---:|
+| AI модели | Mistral (Франция) | ? | OpenAI (US) |
+| Хостинг | Hetzner (Германия) | AWS Europe | AWS US |
+| Auth | Ory (self-hosted EU) | ? | US-managed |
+| Email | Brevo (Франция) | ? | US services |
+| PDF | Gotenberg (self-hosted) | ? | US services |
+| US CLOUD Act | Не применим | Риск (AWS) | Применим |
+| Self-service | ✅ | ❌ (demo) | Partial |
+| Цена/мес | €49-399 | ~$830+ | ~$830+ |
 
 ### Стоимость AI layer
 
 ```
 Mistral API (EU) — все модели через API на старте:
-├── Ева (Large 3): ~500K tokens/клиент × $2/M = ~$1,000/мес на 1000 клиентов
-├── Doc Writer (Medium 3): ~200K tokens/клиент × $0.4/M = ~$80/мес
-├── Classifier (Small 3.1): ~300K tokens/клиент × $0.1/M = ~$30/мес
-├── Quick Tasks (Small 3.1): ~100K tokens/клиент × $0.1/M = ~$10/мес
-└── Итого API: ~$1,120/мес на 1000 клиентов
+├── Ева (Large 3): ~$1,000/мес на 1000 клиентов
+├── Doc Writer (Medium 3): ~$80/мес
+├── Classifier (Small 3.1): ~$30/мес
+├── Quick Tasks (Small 3.1): ~$10/мес
+└── Итого: ~$1,120/мес на 1000 клиентов = ~$1.1/клиент/мес
 
-При масштабировании (>100 клиентов):
-├── Self-hosted Mixtral 8x22B + Small: 1× A100 40GB = ~€400/мес
-└── Экономия ~30-50% на inference costs
-
-TOTAL MVP: ~$1,120/мес на 1000 клиентов = ~$1.1/клиент/мес
-При подписке €49-149/мес → отличная маржа
+При подписке €49-399/мес → отличная маржа
 ```
 
 ### Разделение: Product vs Dev Team
 
 ```
-PRODUCT (данные клиентов):
-├── ТОЛЬКО EU-sovereign модели (Mistral)
-├── ТОЛЬКО EU хостинг (Hetzner)
-└── Данные НИКОГДА не покидают EU
-
-DEV TEAM (наш код, тесты, документация):
-├── Используем любые модели для эффективности
-├── Claude Opus 4.6, GPT-5.2 Codex, Gemini 3 Pro
-└── Минимальный риск (это не данные клиентов)
+PRODUCT (данные клиентов):          DEV TEAM (наш код):
+├── ТОЛЬКО Mistral (EU)             ├── Любые модели
+├── ТОЛЬКО Hetzner (EU)             ├── Claude, GPT, Gemini
+└── Данные НЕ покидают EU           └── Минимальный риск
 ```
 
 ---
 
-## 8. Pricing Tiers
+## 8. Pricing Tiers (Deployer Funnel)
 
 | | Free | Starter €49/мес | Growth €149/мес | Scale €399/мес | Enterprise |
 |---|:---:|:---:|:---:|:---:|:---:|
-| AI-системы | 1 | 2 | 10 | 50 | Unlimited |
-| Risk Calculator | Yes | Yes | Yes | Yes | Yes |
-| Classification | Basic | Full | Full | Full | Full |
-| Documents | - | Basic | Full | Full + templates | Custom |
-| Eva Chat | 10 msg/день | 50 msg/день | Unlimited | Unlimited | SLA + dedicated |
-| Gap Analysis | - | - | Yes | Yes | Yes |
-| Audit Prep | - | - | - | Yes | Yes |
-| API Access | - | - | - | Yes | Yes |
-| Multi-user | 1 | 2 | 5 | 20 | Unlimited |
-| White-label | - | - | - | - | Yes |
-| On-premise | - | - | - | - | Yes |
+| **AI Act Quick Check** | ✅ (5 мин) | ✅ | ✅ | ✅ | ✅ |
+| **AI-инструменты** | 1 | 3 | 10 | Unlimited | Unlimited |
+| **AI Literacy курсы** | - | ✅ (4 курса) | ✅ | ✅ | Custom |
+| **Сотрудники (Literacy)** | - | 10 | 50 | 250 | Unlimited |
+| **Risk Classification** | Basic (1) | Full | Full | Full | Full |
+| **Eva Chat** | 3 вопроса | 10 msg/день | 50 msg/день | Unlimited | SLA + dedicated |
+| **Dashboard** | - | Basic | Full | Full | Full |
+| **FRIA Generator** | - | - | ✅ | ✅ | ✅ |
+| **Doc Generation** | - | - | ✅ | ✅ | Custom templates |
+| **Gap Analysis** | - | - | ✅ | ✅ | ✅ |
+| **KI-Compliance Siegel** | - | - | ✅ | ✅ Premium | ✅ Premium |
+| **Auto-Discovery** | - | - | - | ✅ | ✅ |
+| **API Access** | - | - | - | ✅ | ✅ |
+| **Multi-user** | 1 | 2 | 5 | 20 | Unlimited |
+| **White-label** | - | - | - | - | ✅ |
 
-**Free tier** — lead magnet: Risk Calculator показывает risk level одной системы бесплатно.
-Конверсия Free → Starter через показ ценности (действия для compliance).
+**Funnel:**
+- **Free** → lead magnet: "Попадаю ли я под AI Act?" + Risk Check 1 инструмента
+- **Starter €49** → wedge product: AI Literacy (уже обязателен!) + 3 инструмента
+- **Growth €149** → full compliance: inventory, dashboard, FRIA, docs, Eva
+- **Scale €399** → enterprise-lite: unlimited + auto-discovery + API
 
 ---
 
-## 9. Classification Engine — Technical Design
+## 9. Classification Engine — Deployer Context
 
-### Гибридный 4-шаговый алгоритм
+### Гибридный 4-шаговый алгоритм (тот же движок, deployer промпты)
 
 **Step 1: Rule-based Pre-filter (instant)**
-- Input: ответы из wizard
-- Проверка по Annex III domains (biometrics, HR, education, etc.)
-- Проверка Art. 5 prohibited practices
-- Проверка safety component + Annex I products
-- Output: preliminary_risk_level, confidence_score
+- Input: данные из wizard (инструмент, домен использования, данные, автономность)
+- Проверка: Art. 5 prohibited (социальный скоринг, real-time biometrics)
+- Проверка: Annex III domains (HR, медицина, финансы, образование...)
+- Вопрос: "В каком контексте вы ИСПОЛЬЗУЕТЕ этот инструмент?"
+- Output: preliminary_risk_level, confidence
 
 **Step 2: LLM Analysis (если confidence < 90%)**
-- Model: Mistral Small 3.1 API (EU, для скорости и стоимости)
-- Prompt: описание системы + domain + purpose → JSON {risk_level, article, reasoning}
+- Mistral Small 3.1: описание использования → JSON {risk_level, deployer_requirements, reasoning}
+- Промпт: "Компания использует [инструмент] для [цель] в домене [домен]. Какой risk level для deployer?"
 
 **Step 3: Cross-validation**
-- Если rule-based != LLM → эскалация на Mistral Large 3
-- Для high-risk: дополнительная проверка matching с конкретными статьями
+- Если rule-based ≠ LLM → Mistral Large 3
 - Output: final_classification, confidence, reasoning
 
-**Step 4: Requirements Mapping**
-- HIGH_RISK → full requirements (Art. 8-15)
-- GPAI → GPAI requirements (Art. 51-56)
-- LIMITED → transparency requirements (Art. 50)
-- MINIMAL → no mandatory requirements
-- Generate: checklist items, document templates, timeline, estimated effort
-
-### Database Schema (ключевые таблицы)
-
-```sql
--- AI-системы клиентов
-ai_systems (id, organization_id, name, description, purpose, domain,
-            risk_level, annex_category, classification_confidence,
-            classification_reasoning, model_type, makes_autonomous_decisions,
-            affects_natural_persons, is_safety_component,
-            compliance_score, compliance_status, created_at, updated_at)
-
--- Требования к каждой системе
-system_requirements (id, system_id, requirement_code, requirement_name,
-                     requirement_description, article_reference,
-                     status, progress, due_date, created_at, updated_at)
-
--- Документы compliance
-compliance_documents (id, system_id, document_type, version, status,
-                      content_jsonb, file_url, created_by, reviewed_by,
-                      approved_at, created_at, updated_at)
-```
+**Step 4: Deployer Requirements Mapping**
+- HIGH_RISK deployer → Art. 4 (literacy), 26 (17 обязанностей), 27 (FRIA), 50 (transparency)
+- LIMITED deployer → Art. 4, 50 (transparency к пользователям)
+- MINIMAL deployer → Art. 4 (только literacy)
+- PROHIBITED → WARNING: прекратить использование
+- Output: requirements[], recommendations[], estimated_effort
 
 ---
 
-## 10. Ограничения и Constraints
+## 10. Content Strategy (Lead Generation)
 
-### Бюджетные ограничения
-- Infrastructure: ~€100-300/мес (Hetzner servers, без GPU на старте)
-- AI API costs: ~€200-1200/мес (Mistral API, зависит от количества клиентов)
-- Dev team: OpenClaw multi-agent system (~€160-255/мес на API)
+### Контентный moat (чего нет ни у кого)
+
+**Немецкоязычная AI Act экосистема фрагментирована** — Bitkom имеет PDF-гайд, IHK — региональные базовые гайды. Нет доминантного ресурса. Мы заполняем этот gap:
+
+1. **KI-Kompass Newsletter** — еженедельный, бесплатный, на немецком. AI Act updates, практические советы
+2. **Free AI Act Compliance Checker** — лучше EU-версии, на немецком, deployer-focused
+3. **Template Library** — FRIA шаблоны, AI Usage Policy, Employee Notification letters
+4. **Blog/SEO** — "KI-Verordnung Betreiberpflichten", "Schatten-KI Risiken", "Art. 4 KI-Kompetenz"
+
+Кто владеет контентом — владеет top-of-funnel.
+
+---
+
+## 11. Ограничения и Constraints
+
+### Бюджет
+- Infrastructure: ~€100-300/мес (Hetzner, без GPU на старте)
+- AI API: ~€200-1200/мес (Mistral API)
+- Dev team: OpenClaw (~€160-255/мес)
 - Total: ~€1,200-2,750/мес на старте
 
-### Временные ограничения
-- MVP ready: 4 месяца (Week 1-16)
-- Beta launch: 5 месяцев
-- Production: 6 месяцев
-- AI Act key deadline: August 2, 2026 (Art. 6 high-risk requirements)
+### Временные
+- MVP ready: Sprint 4 (~8-10 недель)
+- Product ready: Sprint 6 (~12-14 недель)
+- AI Act deadline: 2 августа 2026
 
-### Юридические ограничения
-- EU data residency — обязательно (Hetzner, Германия)
-- GDPR compliance — by design
-- Disclaimer: "Платформа не предоставляет юридических консультаций"
-- No liability за результаты классификации (инструмент, не юрфирма)
-- Сохранение audit trail для регуляторных целей
+### Юридические
+- Disclaimer: "Не является юридической консультацией"
+- No liability за классификацию
+- EU data residency обязательно
+- GDPR compliance by design
 
-### Технические ограничения
-- Metasql + VM sandbox (vm.Script) + Fastify — существующая архитектура, СОХРАНЯЕМ
-- LLM API latency: зависимость от Mistral API availability (mitigation: retry + queue)
-- Mistral Large 3 API latency: 2-5 сек (допустимо для chat, не для autocomplete)
-- Rate limits Mistral API: учитывать при масштабировании
-
----
-
-## 11. Out of Scope (что НЕ делаем)
-
-- Юридические консультации с подписью — мы технический инструмент
-- Mobile app — responsive web достаточно для MVP
-- Сертификация (ISO 42001, SOC 2) — post-MVP
-- Training / fine-tuning моделей для клиентов
-- Multi-language beyond DE/EN — post-MVP
-- On-premise — только Enterprise tier, post-MVP
-- Real-time monitoring AI-систем клиентов — мы документируем, не мониторим
-- Integration с Jira/Confluence/Slack — post-MVP
+### Out of Scope (что НЕ делаем в MVP)
+- Provider features (Art. 11, Art. 43, GPAI) → P3
+- On-premise → Enterprise only, post-MVP
+- Mobile app → responsive web
+- ISO 42001 → post-MVP
+- Интеграция с Personio/DATEV → post-MVP
+- Shadow AI auto-discovery → post-MVP (EU-sovereign)
 
 ---
 
 ## 12. Success Metrics
 
-### MVP Success Criteria (Month 1-6)
-- 50+ зарегистрированных организаций
-- 100+ классифицированных AI-систем
-- 10+ платящих клиентов (Starter+)
+### MVP (Month 1-6)
+- 100+ зарегистрированных организаций
+- 500+ классифицированных AI-инструментов
+- 20+ платящих клиентов (Starter+)
+- 1000+ сотрудников прошли AI Literacy
+- Classification accuracy > 90%
 - NPS > 40
-- Classification accuracy > 90% (проверка на 50+ тестовых системах)
 
-### Key Metrics (после MVP)
+### Key Metrics
 - Monthly Active Organizations (MAO)
-- Conversion rate: Free → Paid (target: 10-15%)
-- Average Revenue Per Account (ARPA)
+- AI Literacy completion rate
+- Conversion: Free → Starter (target: 15-20%)
+- Conversion: Starter → Growth (target: 20-30%)
+- ARPA (Average Revenue Per Account)
 - Churn rate (target: < 5% monthly)
-- Time-to-compliance (среднее время от регистрации до "compliant")
-- Eva satisfaction rate (thumbs up/down)
+- Time-to-compliance (от регистрации до "compliant")
 
 ---
 
-## 13. Риски (Risks)
+## 13. Риски
 
-### Технические риски
+### Технические
 | Риск | Вероятность | Импакт | Митигация |
 |------|:---:|:---:|---|
-| Classification accuracy < 90% | Medium | High | Cross-validation + human review + continuous improvement |
-| Mistral API downtime | Low | High | Retry logic + queue + cached responses; self-hosted fallback при масштабировании |
-| Mistral качество ниже Claude/GPT на 2-5% | Known | Low | Для compliance use case разница не критична; Mistral лучше на DE/FR |
-| API costs при масштабировании | Medium | Medium | Переход на self-hosted при >100 клиентов для оптимизации |
-| AI Act изменения/поправки | Medium | Medium | Regulatory Monitor + Elena agent мониторит |
+| Classification accuracy < 90% | Medium | High | Cross-validation + human review |
+| Mistral API downtime | Low | High | Retry + queue + self-hosted fallback |
+| AI Literacy контент устаревает | Medium | Medium | Elena (AI Act expert) мониторит |
 
-### Бизнес-риски
+### Бизнес
 | Риск | Вероятность | Импакт | Митигация |
 |------|:---:|:---:|---|
-| Сильные конкуренты (Holistic AI, Credo AI) | High | Medium | EU sovereignty + price point + DACH focus |
-| Низкий adoption у SMB | Medium | High | Free tier lead magnet + content marketing + partnerships |
-| AI Act deadline shift | Low | Medium | Pivot на voluntary compliance / best practices |
+| Kertos углубляет AI Act модуль | High | Medium | Speed to market + deployer focus + price |
+| SMB не готовы платить | Medium | High | Free tier + Art. 4 urgency + content marketing |
+| AI Act deadline сдвигается | Low | Medium | AI Literacy уже обязателен (Art. 4) |
 
-### Юридические риски
+### Юридические
 | Риск | Вероятность | Импакт | Митигация |
 |------|:---:|:---:|---|
-| Liability за неверную классификацию | Medium | High | Disclaimers + "recommendation, not legal advice" + human review |
-| GDPR complaint | Low | High | EU-only infra + DPA + privacy-by-design |
+| Liability за неверную классификацию | Medium | High | Disclaimers + "recommendation, not legal advice" |
+| AI Literacy контент неточный | Low | High | Elena валидирует + юридический review |
 
 ---
 
-## 14. 6-системная архитектура для Marcus
+## 14. 6-системная архитектура
 
 ### 6 ключевых систем для проектирования:
 
-1. **Classification Engine** — rule-based + LLM + cross-validation + requirements mapping
-2. **Document Generation** — template engine + LLM expansion + human review workflow + export
-3. **Eva Consultant Chat** — conversation management + context injection + tool calling + streaming
-4. **Compliance Dashboard** — real-time score + requirements tracking + deadlines + notifications
-5. **User & Organization Management** — multi-tenant + roles (Owner/Admin/Member) + billing (Stripe)
-6. **Regulatory Monitor** — web scraping EUR-Lex + change detection + impact assessment + notifications
+1. **AI Tool Classifier** — rule-based + LLM + cross-validation + deployer requirements mapping
+2. **AI Literacy Platform** — курсы, модули, quiz, tracking, certificates
+3. **Eva Deployer Consultant** — conversation + context injection + tool calling + streaming
+4. **Deployer Compliance Dashboard** — AI inventory, risk levels, literacy progress, compliance score
+5. **User & Organization Management** — Ory + multi-tenant + roles + billing (Stripe)
+6. **Document Generator** — FRIA, Monitoring Plan, AI Usage Policy, Employee Notification + PDF export
 
 ---
 
 ## 15. Next Steps
 
-1. ✅ Product Owner заполнил Product Vision (этот документ)
-2. ⛔ Product Owner утверждает Product Vision
-3. → Marcus начинает Phase 0: PROJECT.md → ARCHITECTURE.md → DATABASE.md → ...
-4. → Каждый артефакт Phase 0 — одобрение PO
-5. → Sprint 001 начинается
+1. ✅ Product Vision v2.0 (Deployer-First Pivot)
+2. → Обновить PRODUCT-BACKLOG.md (deployer features + new features 18-20)
+3. → Обновить ARCHITECTURE.md (bounded contexts + new modules)
+4. → Обновить DATABASE.md (new tables + seed data)
+5. → Обновить DATA-FLOWS.md (deployer flows)
+6. → Обновить SPRINT-BACKLOG.md (Sprint 0 adjustments)
+7. → Создать COMPETITOR-ANALYSIS.md
+8. → Sprint 0 начинается
 
 ---
 
 ## Approval Section
 
-- [x] **Product Owner Review:** 2026-02-07 ✅ Принято
+- [x] **Product Owner Review v1.0:** 2026-02-07 ✅ Принято
+- [ ] **Product Owner Review v2.0 (Deployer-First):** ⏳ Ожидает утверждения
 - [x] **Ready for Phase 0 Technical Artifacts:** YES

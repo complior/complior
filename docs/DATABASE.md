@@ -1,12 +1,14 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 1.1.0
+**Версия:** 2.0.0
 **Дата:** 2026-02-07
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
-**Зависимости:** ARCHITECTURE.md ✅
+**Зависимости:** ARCHITECTURE.md v2.0.0
 
-> **v1.1.0:** Ory управляет identity и sessions — удалена таблица Session, User.password заменён на User.oryId. Hetzner Object Storage вместо generic S3.
+> **v2.0.0 (2026-02-07):** Deployer-first pivot — AISystem → AITool (переименование). 8 новых таблиц: AIToolCatalog, AIToolDiscovery (Inventory Context), TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement (AI Literacy Context), FRIAAssessment, FRIASection (Deployer Compliance Context). Seed data: deployer requirements (Art. 4, 26-27, 50), 200+ AI Tool Catalog, 4 AI Literacy курса. Всего: **29 таблиц** в 8 Bounded Contexts.
+>
+> **v1.1.0:** Ory управляет identity и sessions — удалена таблица Session, User.password заменён на User.oryId.
 
 ---
 
@@ -58,31 +60,44 @@ MetaSQL определяет 4 типа сущностей:
 erDiagram
     %% IAM Context (Ory manages identity + sessions)
     Organization ||--o{ User : "has members"
-    Organization ||--o{ AISystem : "owns"
+    Organization ||--o{ AITool : "uses"
     Organization ||--o{ Subscription : "subscribes"
-    User ||--o{ AISystem : "creates"
+    Organization ||--o{ LiteracyRequirement : "requires training"
+    User ||--o{ AITool : "registers"
     User }o--o{ Role : "has roles"
     Role ||--o{ Permission : "grants"
 
+    %% Inventory Context (NEW)
+    AITool }o--o| AIToolCatalog : "matched from"
+    AITool ||--o{ AIToolDiscovery : "discovered via"
+
     %% Classification Context
-    AISystem ||--o| RiskClassification : "classified as"
-    AISystem ||--o{ SystemRequirement : "must meet"
-    Requirement ||--o{ SystemRequirement : "applies to"
+    AITool ||--o| RiskClassification : "classified as"
+    AITool ||--o{ ToolRequirement : "must meet"
+    Requirement ||--o{ ToolRequirement : "applies to"
     RiskClassification ||--o{ ClassificationLog : "history"
 
-    %% Compliance Context
-    AISystem ||--o{ ComplianceDocument : "has docs"
+    %% AI Literacy Context (NEW)
+    TrainingCourse ||--o{ TrainingModule : "has modules"
+    User ||--o{ LiteracyCompletion : "completed"
+    TrainingModule ||--o{ LiteracyCompletion : "tracked in"
+    LiteracyRequirement ||--o{ TrainingCourse : "requires"
+
+    %% Deployer Compliance Context
+    AITool ||--o{ ComplianceDocument : "has docs"
     ComplianceDocument ||--o{ DocumentSection : "has sections"
-    AISystem ||--o{ ChecklistItem : "has checklist"
+    AITool ||--o{ ChecklistItem : "has checklist"
+    AITool ||--o{ FRIAAssessment : "assessed via"
+    FRIAAssessment ||--o{ FRIASection : "has sections"
 
     %% Consultation Context
-    AISystem ||--o{ Conversation : "discussed in"
+    AITool ||--o{ Conversation : "discussed in"
     User ||--o{ Conversation : "participates"
     Conversation ||--o{ ChatMessage : "contains"
 
     %% Monitoring Context
     RegulatoryUpdate ||--o{ ImpactAssessment : "impacts"
-    AISystem ||--o{ ImpactAssessment : "affected by"
+    AITool ||--o{ ImpactAssessment : "affected by"
 
     %% Billing Context
     Organization ||--o| Subscription : "has plan"
@@ -91,7 +106,8 @@ erDiagram
     %% Audit
     User ||--o{ AuditLog : "performed by"
 
-    %% Entity definitions
+    %% === Entity definitions ===
+
     Organization {
         bigint id PK
         string name
@@ -124,23 +140,44 @@ erDiagram
         string action
     }
 
-    AISystem {
-        bigint aiSystemId PK
+    AITool {
+        bigint aiToolId PK
         bigint organizationId FK
         bigint createdById FK
         string name
         text description
         string purpose
         string domain
+        string vendorName
+        string vendorCountry
         string riskLevel
         string complianceStatus
         integer complianceScore
         datetime createdAt
     }
 
+    AIToolCatalog {
+        bigint catalogId PK
+        string name UK
+        string vendor
+        string category
+        string defaultRiskLevel
+        jsonb domains
+        text description
+    }
+
+    AIToolDiscovery {
+        bigint discoveryId PK
+        bigint aiToolId FK
+        bigint organizationId FK
+        string source
+        string status
+        datetime discoveredAt
+    }
+
     RiskClassification {
         bigint classificationId PK
-        bigint aiSystemId FK
+        bigint aiToolId FK
         string riskLevel
         string annexCategory
         integer confidence
@@ -162,9 +199,9 @@ erDiagram
         integer sortOrder
     }
 
-    SystemRequirement {
-        bigint systemRequirementId PK
-        bigint aiSystemId FK
+    ToolRequirement {
+        bigint toolRequirementId PK
+        bigint aiToolId FK
         bigint requirementId FK
         string status
         integer progress
@@ -172,9 +209,46 @@ erDiagram
         text notes
     }
 
+    TrainingCourse {
+        bigint courseId PK
+        string title
+        string roleTarget
+        integer durationMinutes
+        string contentType
+        text description
+        boolean active
+    }
+
+    TrainingModule {
+        bigint moduleId PK
+        bigint courseId FK
+        integer sortOrder
+        string title
+        text contentMarkdown
+        jsonb quizQuestions
+    }
+
+    LiteracyCompletion {
+        bigint completionId PK
+        bigint userId FK
+        bigint courseId FK
+        bigint moduleId FK
+        integer score
+        string certificateUrl
+        datetime completedAt
+    }
+
+    LiteracyRequirement {
+        bigint literacyRequirementId PK
+        bigint organizationId FK
+        string roleTarget
+        jsonb requiredCourses
+        date deadline
+    }
+
     ComplianceDocument {
         bigint documentId PK
-        bigint aiSystemId FK
+        bigint aiToolId FK
         bigint createdById FK
         string documentType
         string title
@@ -193,10 +267,31 @@ erDiagram
         integer sortOrder
     }
 
+    FRIAAssessment {
+        bigint friaId PK
+        bigint aiToolId FK
+        bigint createdById FK
+        string status
+        jsonb affectedPersons
+        jsonb risks
+        jsonb oversightMeasures
+        jsonb mitigation
+        datetime completedAt
+    }
+
+    FRIASection {
+        bigint friaSectionId PK
+        bigint friaId FK
+        string sectionType
+        jsonb content
+        boolean completed
+        integer sortOrder
+    }
+
     Conversation {
         bigint conversationId PK
         bigint userId FK
-        bigint aiSystemId FK
+        bigint aiToolId FK
         string title
         string context
         datetime createdAt
@@ -214,7 +309,7 @@ erDiagram
 
     ChecklistItem {
         bigint checklistItemId PK
-        bigint aiSystemId FK
+        bigint aiToolId FK
         bigint requirementId FK
         string title
         text description
@@ -235,8 +330,9 @@ erDiagram
         bigint planId PK
         string name UK
         integer priceMonthly
-        integer maxSystems
+        integer maxTools
         integer maxUsers
+        integer maxEmployees
         jsonb features
     }
 
@@ -253,7 +349,7 @@ erDiagram
     ImpactAssessment {
         bigint assessmentId PK
         bigint updateId FK
-        bigint aiSystemId FK
+        bigint aiToolId FK
         string impactLevel
         text description
     }
@@ -278,13 +374,15 @@ erDiagram
 | Bounded Context | Tables | Количество |
 |----------------|--------|:---:|
 | **IAM** | Organization, User, Role, Permission, UserRole (junction) | 5 |
-| **Classification** | AISystem, RiskClassification, Requirement, SystemRequirement, ClassificationLog | 5 |
-| **Compliance** | ComplianceDocument, DocumentSection, ChecklistItem | 3 |
+| **Inventory** | AITool, AIToolCatalog, AIToolDiscovery | 3 |
+| **Classification** | RiskClassification, Requirement, ToolRequirement, ClassificationLog | 4 |
+| **AI Literacy** | TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement | 4 |
+| **Deployer Compliance** | ComplianceDocument, DocumentSection, ChecklistItem, FRIAAssessment, FRIASection | 5 |
 | **Consultation** | Conversation, ChatMessage | 2 |
 | **Monitoring** | RegulatoryUpdate, ImpactAssessment, Notification | 3 |
 | **Billing** | Subscription, Plan | 2 |
 | **Cross-cutting** | AuditLog | 1 |
-| **Total** | | **21** |
+| **Total** | | **29** |
 
 ---
 
@@ -405,48 +503,53 @@ erDiagram
 
 ---
 
-### 4.2 Classification Context
+### 4.2 Inventory Context (NEW — deployer-first)
 
-#### AISystem (Entity) — ядро продукта
+#### AITool (Entity) — AI-инструмент, который компания ИСПОЛЬЗУЕТ
+
+> **Переименовано из AISystem.** Deployer не "строит AI-систему" — он ИСПОЛЬЗУЕТ AI-инструмент (ChatGPT, HireVue, Copilot и т.д.).
 
 ```javascript
-// schemas/AISystem.js
+// schemas/AITool.js (бывший AISystem.js)
 ({
   Entity: {},
   organization: { type: 'Organization', delete: 'cascade' },
   createdBy: { type: 'User', delete: 'restrict' },
+  catalogEntry: { type: 'AIToolCatalog', required: false, delete: 'restrict',
+    note: 'Link to pre-populated catalog (null = custom tool)' },
 
-  // Basic Info (Step 1)
+  // Step 1: Какой AI-инструмент? (Basic Info)
   name: { type: 'string', length: { max: 255 } },
   description: { type: 'text' },
+  vendorName: { type: 'string', length: { max: 255 }, note: 'Кто поставляет этот AI' },
+  vendorCountry: { type: 'string', length: { min: 2, max: 2 }, required: false, note: 'ISO 3166-1' },
+  vendorUrl: { type: 'string', required: false },
 
-  // Purpose & Context (Step 2)
-  purpose: { type: 'string', length: { max: 2000 } },
+  // Step 2: Как вы используете этот инструмент? (Usage Context)
+  purpose: { type: 'string', length: { max: 2000 }, note: 'Для чего используется в компании' },
   domain: {
     enum: ['biometrics', 'critical_infrastructure', 'education',
            'employment', 'essential_services', 'law_enforcement',
-           'migration', 'justice', 'other'],
-    note: 'AI Act Annex III domains',
+           'migration', 'justice', 'customer_service', 'marketing',
+           'coding', 'analytics', 'other'],
+    note: 'AI Act Annex III domains + deployer-specific',
   },
 
-  // Technical Details (Step 3)
-  modelType: {
-    enum: ['proprietary', 'api_based', 'open_source', 'hybrid', 'rule_based'],
+  // Step 3: Данные и пользователи (Data & Users)
+  dataTypes: { type: 'json', note: 'Array: personal, sensitive, biometric, health, financial, etc.' },
+  affectedPersons: { type: 'json', note: 'Array: employees, customers, applicants, patients, students' },
+  vulnerableGroups: { type: 'boolean', default: false, note: 'Уязвимые группы: дети, инвалиды, пожилые' },
+  dataResidency: { type: 'string', required: false, note: 'Где хранятся данные (EU/US/unknown)' },
+
+  // Step 4: Автономность и надзор (Autonomy & Oversight)
+  autonomyLevel: {
+    enum: ['advisory', 'semi_autonomous', 'autonomous'],
+    note: 'advisory = рекомендации, autonomous = принимает решения сам',
   },
-  makesAutonomousDecisions: 'boolean',
+  humanOversight: { type: 'boolean', default: true, note: 'Есть ли контроль человека' },
   affectsNaturalPersons: 'boolean',
-  isSafetyComponent: { type: 'boolean', default: false },
 
-  // Data & Users (Step 4)
-  dataTypes: { type: 'json', note: 'Array of data types processed' },
-  userCount: {
-    enum: ['internal_only', 'up_to_100', 'up_to_1000', 'up_to_10000', 'over_10000'],
-  },
-  dataScale: {
-    enum: ['minimal', 'moderate', 'large', 'very_large'],
-  },
-
-  // Classification Result (Step 5)
+  // Step 5: Результат классификации
   riskLevel: {
     enum: ['prohibited', 'high', 'gpai', 'limited', 'minimal'],
     required: false,
@@ -471,20 +574,24 @@ erDiagram
 
 | Column | Type | Key info |
 |--------|------|----------|
-| aiSystemId | bigint | PK |
+| aiToolId | bigint | PK |
 | organizationId | bigint | FK, CASCADE, INDEX |
 | createdById | bigint | FK, RESTRICT |
+| catalogEntryId | bigint | FK, nullable (custom tool = null) |
 | name | varchar(255) | NOT NULL |
-| description | varchar(5000) | NOT NULL |
+| description | text | NOT NULL |
+| vendorName | varchar(255) | NOT NULL |
+| vendorCountry | varchar(2) | nullable, ISO |
+| vendorUrl | varchar | nullable |
 | purpose | varchar(2000) | NOT NULL |
 | domain | varchar | ENUM, NOT NULL |
-| modelType | varchar | ENUM, NOT NULL |
-| makesAutonomousDecisions | boolean | NOT NULL |
-| affectsNaturalPersons | boolean | NOT NULL |
-| isSafetyComponent | boolean | DEFAULT false |
 | dataTypes | jsonb | Array |
-| userCount | varchar | ENUM |
-| dataScale | varchar | ENUM |
+| affectedPersons | jsonb | Array |
+| vulnerableGroups | boolean | DEFAULT false |
+| dataResidency | varchar | nullable |
+| autonomyLevel | varchar | ENUM, NOT NULL |
+| humanOversight | boolean | DEFAULT true |
+| affectsNaturalPersons | boolean | NOT NULL |
 | riskLevel | varchar | ENUM, nullable, INDEX |
 | annexCategory | varchar | nullable |
 | classificationConfidence | integer | nullable (0-100) |
@@ -494,19 +601,78 @@ erDiagram
 | wizardCompleted | boolean | DEFAULT false |
 
 **Indexes:**
-- `idx_aisystem_organization` ON (organizationId) — tenant queries
-- `idx_aisystem_risk_level` ON (riskLevel) — dashboard filtering
-- `idx_aisystem_compliance_status` ON (complianceStatus) — dashboard filtering
+- `idx_aitool_organization` ON (organizationId) — tenant queries
+- `idx_aitool_risk_level` ON (riskLevel) — dashboard filtering
+- `idx_aitool_compliance_status` ON (complianceStatus) — dashboard filtering
 
 ---
 
-#### RiskClassification (Entity) — результат классификации
+#### AIToolCatalog (Entity) — каталог известных AI-инструментов
+
+```javascript
+// schemas/AIToolCatalog.js (NEW)
+({
+  Entity: {},
+  name: { type: 'string', length: { max: 255 }, unique: true },
+  vendor: { type: 'string', length: { max: 255 } },
+  vendorCountry: { type: 'string', length: { min: 2, max: 2 }, required: false },
+  category: {
+    enum: ['chatbot', 'recruitment', 'coding', 'analytics', 'customer_service',
+           'marketing', 'writing', 'image_generation', 'video', 'translation',
+           'medical', 'legal', 'finance', 'education', 'other'],
+  },
+  defaultRiskLevel: {
+    enum: ['high', 'limited', 'minimal'],
+    required: false,
+    note: 'Pre-assessed risk level for common use cases',
+  },
+  domains: { type: 'json', note: 'Array of Annex III domains where typically used' },
+  description: { type: 'text', required: false },
+  websiteUrl: { type: 'string', required: false },
+  dataResidency: { type: 'string', required: false, note: 'EU/US/global' },
+  active: { type: 'boolean', default: true },
+});
+```
+
+**Seed Data:** 200+ AI-инструментов (ChatGPT, Copilot, Jasper, HireVue, Personio AI, Slack AI, Notion AI, etc.)
+
+---
+
+#### AIToolDiscovery (Entity) — лог обнаружения AI-инструментов
+
+```javascript
+// schemas/AIToolDiscovery.js (NEW)
+({
+  Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade', required: false,
+    note: 'null = discovered but not yet registered' },
+  toolName: { type: 'string', length: { max: 255 }, note: 'Name as discovered' },
+  source: {
+    enum: ['manual', 'csv_import', 'dns_scan', 'browser_extension', 'oauth_audit'],
+    note: 'manual/csv_import = MVP, rest = future auto-discovery',
+  },
+  status: {
+    enum: ['pending', 'classified', 'dismissed', 'merged'],
+    default: 'pending',
+  },
+  metadata: { type: 'json', required: false, note: 'Source-specific data' },
+  discoveredAt: 'datetime',
+  processedBy: { type: 'User', required: false, delete: 'restrict' },
+});
+```
+
+---
+
+### 4.3 Classification Context
+
+#### RiskClassification (Entity) — результат классификации (deployer context)
 
 ```javascript
 // schemas/RiskClassification.js
 ({
   Entity: {},
-  aiSystem: { type: 'AISystem', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade' },
   riskLevel: {
     enum: ['prohibited', 'high', 'gpai', 'limited', 'minimal'],
   },
@@ -550,10 +716,10 @@ erDiagram
     note: 'Which risk levels this requirement applies to',
   },
   category: {
-    enum: ['risk_management', 'data_governance', 'technical_documentation',
-           'record_keeping', 'transparency', 'human_oversight',
-           'accuracy_robustness', 'conformity_assessment', 'registration',
-           'post_market_monitoring', 'gpai_obligations'],
+    enum: ['ai_literacy', 'deployer_obligations', 'fria', 'transparency',
+           'human_oversight', 'monitoring', 'risk_management', 'data_governance',
+           'record_keeping', 'registration', 'post_market_monitoring'],
+    note: 'Deployer-first categories (Art. 4, 26-27, 50)',
   },
   sortOrder: { type: 'number', default: 0 },
   estimatedEffortHours: { type: 'number', required: false },
@@ -561,17 +727,17 @@ erDiagram
 });
 ```
 
-**Seed Data:** ~50 requirements mapped from AI Act Articles 5-56.
+**Seed Data:** ~35 deployer requirements mapped from AI Act Articles 4, 5, 26-27, 50. Provider requirements (Art. 8-15, 43, 47-49) → P3 Future.
 
 ---
 
-#### SystemRequirement (Relation) — связь система ↔ требование
+#### ToolRequirement (Relation) — связь инструмент ↔ deployer-требование
 
 ```javascript
-// schemas/SystemRequirement.js
+// schemas/ToolRequirement.js (бывший SystemRequirement.js)
 ({
   Relation: {},
-  aiSystem: { type: 'AISystem', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade' },
   requirement: { type: 'Requirement', delete: 'restrict' },
   status: {
     enum: ['not_applicable', 'pending', 'in_progress', 'completed', 'blocked'],
@@ -581,7 +747,7 @@ erDiagram
   dueDate: { type: 'datetime', required: false },
   notes: { type: 'string', required: false },
   completedAt: { type: 'datetime', required: false },
-  naturalKey: { unique: ['aiSystem', 'requirement'] },
+  naturalKey: { unique: ['aiTool', 'requirement'] },
 });
 ```
 
@@ -593,7 +759,7 @@ erDiagram
 // schemas/ClassificationLog.js
 ({
   Details: {},
-  aiSystem: { type: 'AISystem', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade' },
   classification: { type: 'RiskClassification', delete: 'cascade' },
   action: {
     enum: ['initial', 'reclassification', 'system_updated', 'regulation_changed'],
@@ -609,17 +775,18 @@ erDiagram
 
 ### 4.3 Compliance Context
 
-#### ComplianceDocument (Entity)
+#### ComplianceDocument (Entity) — deployer documents
 
 ```javascript
 // schemas/ComplianceDocument.js
 ({
   Entity: {},
-  aiSystem: { type: 'AISystem', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade' },
   createdBy: { type: 'User', delete: 'restrict' },
   documentType: {
-    enum: ['technical_documentation', 'risk_assessment', 'conformity_declaration',
-           'data_governance_plan', 'monitoring_plan', 'transparency_notice'],
+    enum: ['fria', 'monitoring_plan', 'usage_policy', 'employee_notification',
+           'incident_report', 'risk_assessment', 'transparency_notice'],
+    note: 'Deployer docs: FRIA (Art.27), Monitoring Plan, AI Usage Policy, Employee Notification',
   },
   title: { type: 'string', length: { max: 500 } },
   version: { type: 'number', default: 1 },
@@ -664,7 +831,7 @@ erDiagram
 // schemas/ChecklistItem.js
 ({
   Entity: {},
-  aiSystem: { type: 'AISystem', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade' },
   requirement: { type: 'Requirement', delete: 'restrict', required: false },
   title: { type: 'string', length: { max: 500 } },
   description: { type: 'string', required: false },
@@ -677,7 +844,147 @@ erDiagram
 
 ---
 
-### 4.4 Consultation Context
+#### FRIAAssessment (Entity) — Fundamental Rights Impact Assessment (Art. 27)
+
+```javascript
+// schemas/FRIAAssessment.js (NEW)
+({
+  Entity: {},
+  aiTool: { type: 'AITool', delete: 'cascade' },
+  createdBy: { type: 'User', delete: 'restrict' },
+  status: {
+    enum: ['draft', 'in_progress', 'review', 'completed'],
+    default: 'draft',
+  },
+  affectedPersons: { type: 'json', note: 'Array: employees, customers, applicants, etc.' },
+  risks: { type: 'json', note: 'Array: { category, description, severity, likelihood }' },
+  oversightMeasures: { type: 'json', note: 'Array: human oversight measures' },
+  mitigation: { type: 'json', note: 'Array: { risk, measure, responsible, deadline }' },
+  gdpiaDraftImport: { type: 'json', required: false,
+    note: 'Pre-fill from existing GDPR DPIA (60% overlap)' },
+  completedAt: { type: 'datetime', required: false },
+  approvedBy: { type: 'User', required: false, delete: 'restrict' },
+  fileUrl: { type: 'string', required: false, note: 'PDF export URL (Hetzner S3)' },
+});
+```
+
+---
+
+#### FRIASection (Details) — секции FRIA
+
+```javascript
+// schemas/FRIASection.js (NEW)
+({
+  Details: {},
+  fria: { type: 'FRIAAssessment', delete: 'cascade' },
+  sectionType: {
+    enum: ['general_info', 'affected_persons', 'specific_risks',
+           'human_oversight', 'mitigation_measures', 'monitoring_plan'],
+    note: '6 секций FRIA по Art. 27',
+  },
+  content: { type: 'json', note: 'Section content (rich text or structured)' },
+  aiDraft: { type: 'json', required: false, note: 'LLM-generated draft' },
+  completed: { type: 'boolean', default: false },
+  sortOrder: { type: 'number', default: 0 },
+  naturalKey: { unique: ['fria', 'sectionType'] },
+});
+```
+
+---
+
+### 4.4 AI Literacy Context (NEW — Art. 4, wedge product)
+
+#### TrainingCourse (Entity) — курс AI Literacy
+
+```javascript
+// schemas/TrainingCourse.js (NEW)
+({
+  Entity: {},
+  title: { type: 'string', length: { max: 255 } },
+  slug: { type: 'string', unique: true, note: 'URL-friendly identifier' },
+  roleTarget: {
+    enum: ['ceo_executive', 'hr_manager', 'developer', 'general_employee'],
+    note: 'Для какой роли курс предназначен',
+  },
+  durationMinutes: { type: 'number', note: 'Ожидаемая длительность прохождения' },
+  contentType: {
+    enum: ['interactive', 'video', 'text', 'quiz'],
+    default: 'interactive',
+  },
+  description: { type: 'text' },
+  language: { type: 'string', length: { max: 5 }, default: "'de'", note: 'ISO 639-1' },
+  version: { type: 'number', default: 1 },
+  active: { type: 'boolean', default: true },
+  sortOrder: { type: 'number', default: 0 },
+});
+```
+
+**Seed Data (4 курса):**
+- CEO/Executive: "AI Act für Geschäftsführer" (30 min, вопросы: риски, бюджет, ответственность)
+- HR Manager: "KI im Personalwesen" (45 min, high-risk Annex III, HR-специфика)
+- Developer: "AI Act für Entwickler" (60 min, технические требования, Art. 26)
+- General Employee: "KI-Kompetenz am Arbeitsplatz" (20 min, basics, Dos/Don'ts)
+
+---
+
+#### TrainingModule (Details) — модули курса
+
+```javascript
+// schemas/TrainingModule.js (NEW)
+({
+  Details: {},
+  course: { type: 'TrainingCourse', delete: 'cascade' },
+  sortOrder: { type: 'number', default: 0 },
+  title: { type: 'string', length: { max: 255 } },
+  contentMarkdown: { type: 'text', note: 'Markdown content (rendered in frontend)' },
+  quizQuestions: { type: 'json', required: false,
+    note: 'Array of { question, options[], correctAnswer, explanation }' },
+  durationMinutes: { type: 'number', default: 10 },
+  naturalKey: { unique: ['course', 'sortOrder'] },
+});
+```
+
+---
+
+#### LiteracyCompletion (Entity) — прогресс сотрудника
+
+```javascript
+// schemas/LiteracyCompletion.js (NEW)
+({
+  Entity: {},
+  user: { type: 'User', delete: 'cascade' },
+  organization: { type: 'Organization', delete: 'cascade' },
+  course: { type: 'TrainingCourse', delete: 'restrict' },
+  module: { type: 'TrainingModule', delete: 'restrict', required: false,
+    note: 'null = course-level completion' },
+  score: { type: 'number', required: false, note: '0-100 quiz score' },
+  certificateUrl: { type: 'string', required: false, note: 'PDF certificate (Hetzner S3)' },
+  completedAt: { type: 'datetime', required: false },
+  naturalKey: { unique: ['user', 'course', 'module'] },
+});
+```
+
+---
+
+#### LiteracyRequirement (Entity) — какие роли проходят какие курсы
+
+```javascript
+// schemas/LiteracyRequirement.js (NEW)
+({
+  Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  roleTarget: {
+    enum: ['ceo_executive', 'hr_manager', 'developer', 'general_employee'],
+  },
+  requiredCourses: { type: 'json', note: 'Array of courseIds' },
+  deadline: { type: 'datetime', required: false, note: 'Дедлайн прохождения' },
+  naturalKey: { unique: ['organization', 'roleTarget'] },
+});
+```
+
+---
+
+### 4.5 Consultation Context
 
 #### Conversation (Entity)
 
@@ -686,7 +993,7 @@ erDiagram
 ({
   Entity: {},
   user: { type: 'User', delete: 'cascade' },
-  aiSystem: { type: 'AISystem', delete: 'cascade', required: false,
+  aiTool: { type: 'AITool', delete: 'cascade', required: false,
     note: 'Context-specific conversation (null = general Eva chat)' },
   title: { type: 'string', length: { max: 255 }, default: "'Новый разговор'" },
   context: {
@@ -758,7 +1065,7 @@ erDiagram
 ({
   Entity: {},
   regulatoryUpdate: { type: 'RegulatoryUpdate', delete: 'cascade' },
-  aiSystem: { type: 'AISystem', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade' },
   impactLevel: {
     enum: ['none', 'low', 'medium', 'high', 'critical'],
   },
@@ -779,7 +1086,10 @@ erDiagram
   user: { type: 'User', delete: 'cascade' },
   type: {
     enum: ['classification_complete', 'document_ready', 'deadline_approaching',
-           'regulatory_update', 'compliance_change', 'system_alert'],
+           'regulatory_update', 'compliance_change', 'system_alert',
+           'ai_tool_discovered', 'literacy_overdue', 'fria_required',
+           'risk_threshold_exceeded'],
+    note: 'Deployer-specific: ai_tool_discovered, literacy_overdue, fria_required',
   },
   title: { type: 'string', length: { max: 255 } },
   message: { type: 'string', length: { max: 1000 } },
@@ -803,9 +1113,10 @@ erDiagram
   displayName: { type: 'string' },
   priceMonthly: { type: 'number', note: 'Cents (EUR). 0 = free' },
   priceYearly: { type: 'number', required: false, note: 'Cents (EUR). Yearly discount' },
-  maxSystems: { type: 'number', note: '1, 2, 10, 50, -1 = unlimited' },
+  maxTools: { type: 'number', note: '0, 1, 10, 50, -1 = unlimited (бывший maxSystems)' },
   maxUsers: { type: 'number', note: '1, 2, 5, 20, -1 = unlimited' },
-  features: { type: 'json', note: 'Feature flags: { documents, eva, gapAnalysis, api, ... }' },
+  maxEmployees: { type: 'number', note: '0, 10, 50, 200, -1 = unlimited (AI Literacy tracking)' },
+  features: { type: 'json', note: 'Feature flags: { literacy, fria, eva, gapAnalysis, autoDiscovery, api, siegel, ... }' },
   stripePriceId: { type: 'string', required: false },
   active: { type: 'boolean', default: true },
   sortOrder: { type: 'number', default: 0 },
@@ -870,11 +1181,11 @@ erDiagram
 |-------|-------|---------|----------|
 | User | idx_user_org | organizationId | Tenant queries |
 | User | ak_user_email | email (UNIQUE) | Login lookup |
-| AISystem | idx_aisystem_org | organizationId | Dashboard listing |
-| AISystem | idx_aisystem_risk | riskLevel | Filter by risk |
-| AISystem | idx_aisystem_status | complianceStatus | Filter by status |
+| AITool | idx_aitool_org | organizationId | Dashboard listing |
+| AITool | idx_aitool_risk | riskLevel | Filter by risk |
+| AITool | idx_aitool_status | complianceStatus | Filter by status |
 | RiskClassification | idx_class_system_current | aiSystemId, isCurrent | Current classification |
-| SystemRequirement | idx_sysreq_system | aiSystemId | Requirements per system |
+| ToolRequirement | idx_toolreq_tool | aiToolId | Requirements per system |
 | ComplianceDocument | idx_doc_system | aiSystemId | Documents per system |
 | Conversation | idx_conv_user | userId | User's conversations |
 | ChatMessage | idx_msg_conv | conversationId | Messages in conversation |
@@ -886,7 +1197,7 @@ erDiagram
 
 ```sql
 -- AI System search (name + description)
-CREATE INDEX idx_aisystem_search ON "AISystem"
+CREATE INDEX idx_aitool_search ON "AITool"
   USING gin(to_tsvector('german', name || ' ' || description));
 
 -- Chat message search
@@ -905,12 +1216,16 @@ CREATE INDEX idx_chatmessage_search ON "ChatMessage"
 ```
 Organization
   ├── User (organizationId)
-  ├── AISystem (organizationId)
-  │   ├── RiskClassification (→ aiSystemId → organizationId)
-  │   ├── SystemRequirement (→ aiSystemId → organizationId)
-  │   ├── ComplianceDocument (→ aiSystemId → organizationId)
-  │   ├── ChecklistItem (→ aiSystemId → organizationId)
-  │   └── Conversation (→ aiSystemId → organizationId)
+  │   └── LiteracyCompletion (→ userId → organizationId)
+  ├── AITool (organizationId)
+  │   ├── RiskClassification (→ aiToolId → organizationId)
+  │   ├── ToolRequirement (→ aiToolId → organizationId)
+  │   ├── ComplianceDocument (→ aiToolId → organizationId)
+  │   ├── FRIAAssessment (→ aiToolId → organizationId)
+  │   ├── ChecklistItem (→ aiToolId → organizationId)
+  │   └── Conversation (→ aiToolId → organizationId)
+  ├── AIToolDiscovery (organizationId)
+  ├── LiteracyRequirement (organizationId)
   ├── Subscription (organizationId)
   └── AuditLog (organizationId)
 ```
@@ -919,8 +1234,8 @@ Organization
 
 ```javascript
 // Все запросы к AISystem фильтруются по organizationId текущего пользователя
-const systems = await db.AISystem.query(
-  'SELECT * FROM "AISystem" WHERE "organizationId" = $1',
+const tools = await db.AITool.query(
+  'SELECT * FROM "AITool" WHERE "organizationId" = $1',
   [ctx.user.organizationId]
 );
 ```
@@ -1015,52 +1330,89 @@ const anonymizeUser = async (userId) => {
 
 ## 9. Seed Data
 
-### AI Act Requirements (Requirement table)
+### AI Act Deployer Requirements (Requirement table)
 
 ```javascript
-// seeds/requirements.js — примеры записей
+// seeds/requirements.js — deployer-first (Art. 4, 5, 26-27, 50)
 const requirements = [
-  // High Risk — Art. 9: Risk Management System
-  { code: 'ART_9_RMS', name: 'Risk Management System',
-    articleReference: 'Art. 9', riskLevel: 'high',
-    category: 'risk_management',
-    description: 'Establish and maintain a risk management system...' },
+  // Art. 4 — AI Literacy (ALL risk levels, обязательна с 02.02.2025)
+  { code: 'ART_4_LITERACY', name: 'AI-Kompetenz (AI Literacy)',
+    articleReference: 'Art. 4', riskLevel: 'minimal',
+    category: 'ai_literacy',
+    description: 'Anbieter und Betreiber von KI-Systemen ergreifen Maßnahmen, um ein ausreichendes Maß an KI-Kompetenz ihres Personals sicherzustellen...' },
 
-  // High Risk — Art. 10: Data Governance
-  { code: 'ART_10_DG', name: 'Data and Data Governance',
-    articleReference: 'Art. 10', riskLevel: 'high',
+  // Art. 5 — Prohibited Practices (ALL)
+  { code: 'ART_5_PROHIBITED', name: 'Verbotene Praktiken prüfen',
+    articleReference: 'Art. 5', riskLevel: 'prohibited',
+    category: 'deployer_obligations',
+    description: 'Prüfen, ob das eingesetzte KI-System verbotene Praktiken nutzt (Social Scoring, Echtzeit-Biometrie, Manipulation)...' },
+
+  // Art. 26 — Deployer Obligations (HIGH RISK, 17 обязанностей)
+  { code: 'ART_26_USAGE', name: 'Bestimmungsgemäße Verwendung',
+    articleReference: 'Art. 26(1)', riskLevel: 'high',
+    category: 'deployer_obligations',
+    description: 'Hochrisiko-KI-System gemäß der Gebrauchsanweisung verwenden...' },
+  { code: 'ART_26_OVERSIGHT', name: 'Menschliche Aufsicht',
+    articleReference: 'Art. 26(2)', riskLevel: 'high',
+    category: 'human_oversight',
+    description: 'Natürliche Personen mit menschlicher Aufsicht betrauen, die über erforderliche Kompetenz verfügen...' },
+  { code: 'ART_26_INPUT_DATA', name: 'Eingabedaten-Relevanz',
+    articleReference: 'Art. 26(4)', riskLevel: 'high',
     category: 'data_governance',
-    description: 'Training, validation and testing datasets shall meet quality criteria...' },
+    description: 'Sicherstellen, dass Eingabedaten relevant und hinreichend repräsentativ sind...' },
+  { code: 'ART_26_MONITORING', name: 'Betriebsüberwachung',
+    articleReference: 'Art. 26(5)', riskLevel: 'high',
+    category: 'monitoring',
+    description: 'Betrieb des Hochrisiko-KI-Systems überwachen und bei Risiken Anbieter informieren...' },
+  { code: 'ART_26_LOGS', name: 'Protokollaufbewahrung',
+    articleReference: 'Art. 26(6)', riskLevel: 'high',
+    category: 'record_keeping',
+    description: 'Automatisch erzeugte Protokolle mindestens 6 Monate aufbewahren...' },
 
-  // High Risk — Art. 11: Technical Documentation
-  { code: 'ART_11_TD', name: 'Technical Documentation',
-    articleReference: 'Art. 11', riskLevel: 'high',
-    category: 'technical_documentation',
-    description: 'Draw up and maintain technical documentation...' },
+  // Art. 27 — FRIA (HIGH RISK, public sector + specific)
+  { code: 'ART_27_FRIA', name: 'Grundrechte-Folgenabschätzung (FRIA)',
+    articleReference: 'Art. 27', riskLevel: 'high',
+    category: 'fria',
+    description: 'Vor Inbetriebnahme eine Folgenabschätzung für Grundrechte durchführen (öffentliche Stellen, Kreditbewertung, Versicherung)...' },
 
-  // ... ~50 requirements total from Art. 5-56
+  // Art. 50 — Transparency (LIMITED + HIGH)
+  { code: 'ART_50_TRANSPARENCY', name: 'Transparenzpflichten',
+    articleReference: 'Art. 50', riskLevel: 'limited',
+    category: 'transparency',
+    description: 'Nutzer informieren, dass sie mit einem KI-System interagieren (Chatbots, Deepfakes, Emotionserkennung)...' },
+
+  // ... ~35 deployer requirements total
 ];
 ```
 
-### Pricing Plans (Plan table)
+### Pricing Plans (Plan table) — deployer funnel
 
 ```javascript
 const plans = [
+  // Free: AI Act Quick Check (lead magnet) + Eva 3 вопроса + KI-Compass newsletter
   { name: 'free', displayName: 'Free', priceMonthly: 0,
-    maxSystems: 1, maxUsers: 1,
-    features: { riskCalculator: true, classification: 'basic' } },
+    maxTools: 0, maxUsers: 1, maxEmployees: 0,
+    features: { quickCheck: true, eva: 3, newsletter: true } },
+
+  // Starter (€49): AI Literacy wedge product + 1 classification
   { name: 'starter', displayName: 'Starter', priceMonthly: 4900,
-    maxSystems: 2, maxUsers: 2,
-    features: { documents: 'basic', eva: 'email', classification: 'full' } },
+    maxTools: 1, maxUsers: 2, maxEmployees: 10,
+    features: { literacy: true, eva: 10, classification: 'full' } },
+
+  // Growth (€149): Full Compliance — inventory + dashboard + gap + FRIA + Eva + KI-Siegel
   { name: 'growth', displayName: 'Growth', priceMonthly: 14900,
-    maxSystems: 10, maxUsers: 5,
-    features: { documents: 'full', eva: 'priority', gapAnalysis: true, classification: 'full' } },
+    maxTools: 10, maxUsers: 5, maxEmployees: 50,
+    features: { literacy: true, fria: true, eva: 50, gapAnalysis: true, siegel: true, documents: 'full' } },
+
+  // Scale (€399): Unlimited + auto-discovery + API + post-market monitoring
   { name: 'scale', displayName: 'Scale', priceMonthly: 39900,
-    maxSystems: 50, maxUsers: 20,
-    features: { documents: 'full', eva: 'dedicated', gapAnalysis: true, api: true, audit: true } },
+    maxTools: 50, maxUsers: 20, maxEmployees: 200,
+    features: { literacy: true, fria: true, eva: -1, gapAnalysis: true, autoDiscovery: true, api: true, monitoring: true, siegel: true, documents: 'full' } },
+
+  // Enterprise: Custom + on-premise agent
   { name: 'enterprise', displayName: 'Enterprise', priceMonthly: -1,
-    maxSystems: -1, maxUsers: -1,
-    features: { documents: 'custom', eva: 'sla', whiteLabel: true, onPremise: true } },
+    maxTools: -1, maxUsers: -1, maxEmployees: -1,
+    features: { all: true, onPremise: true, sla: true, whiteLabel: true } },
 ];
 ```
 
@@ -1074,11 +1426,16 @@ const plans = [
 |-------|:---:|:---:|---|
 | Organization | 50-100 | 1,000 | Linear with acquisition |
 | User | 100-300 | 3,000 | ~3 users/org |
-| AISystem | 200-500 | 5,000 | ~5 systems/org |
-| RiskClassification | 200-500 | 5,000 | 1:1 with AISystem |
-| SystemRequirement | 2,000-5,000 | 50,000 | ~10 requirements/system |
-| ComplianceDocument | 100-300 | 3,000 | ~3 docs/high-risk system |
-| DocumentSection | 500-1500 | 15,000 | ~5 sections/doc |
+| AITool | 200-500 | 5,000 | ~5 tools/org |
+| AIToolCatalog | 200 | 500 | Seed data + community additions |
+| AIToolDiscovery | 100-300 | 3,000 | ~3 discoveries/org |
+| RiskClassification | 200-500 | 5,000 | 1:1 with AITool |
+| ToolRequirement | 2,000-5,000 | 50,000 | ~10 requirements/tool |
+| TrainingCourse | 4 | 20 | Slow growth (curated content) |
+| LiteracyCompletion | 500-2,000 | 30,000 | ~10 employees/org × 3 courses |
+| ComplianceDocument | 100-300 | 3,000 | ~3 docs/high-risk tool |
+| FRIAAssessment | 50-100 | 1,000 | ~1 FRIA/high-risk tool |
+| DocumentSection | 500-1,500 | 15,000 | ~5 sections/doc |
 | ChatMessage | 5,000-20,000 | 200,000 | ~40 messages/conversation |
 | AuditLog | 10,000-50,000 | 500,000 | Append-only, high volume |
 
@@ -1091,5 +1448,5 @@ const plans = [
 
 ---
 
-**Последнее обновление:** 2026-02-07
-**Следующий документ:** DATA-FLOWS.md (ЭТАП 4)
+**Последнее обновление:** 2026-02-07 (v2.0.0: deployer-first pivot, 29 таблиц)
+**Следующий документ:** DATA-FLOWS.md
