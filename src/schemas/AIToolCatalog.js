@@ -3,11 +3,14 @@
 
   name: { type: 'string', length: { max: 255 }, unique: true },
   vendor: { type: 'string', length: { max: 255 } },
-  vendorCountry: { type: 'string', length: { min: 2, max: 2 }, required: false },
+  vendorCountry: {
+    type: 'string', length: { min: 2, max: 2 },
+    required: false,
+  },
   category: {
     enum: ['chatbot', 'recruitment', 'coding', 'analytics', 'customer_service',
-           'marketing', 'writing', 'image_generation', 'video', 'translation',
-           'medical', 'legal', 'finance', 'education', 'other'],
+      'marketing', 'writing', 'image_generation', 'video', 'translation',
+      'medical', 'legal', 'finance', 'education', 'other'],
   },
   defaultRiskLevel: {
     enum: ['high', 'limited', 'minimal'],

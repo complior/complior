@@ -12,7 +12,7 @@
     default: 'interactive',
   },
   description: { type: 'text' },
-  language: { type: 'string', length: { max: 5 }, default: "'de'" },
+  language: { type: 'string', length: { max: 5 }, default: '\'de\'' },
   version: { type: 'number', default: 1 },
   active: { type: 'boolean', default: true },
   sortOrder: { type: 'number', default: 0 },

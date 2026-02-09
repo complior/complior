@@ -6,7 +6,10 @@
     note: 'null = discovered but not yet registered' },
   toolName: { type: 'string', length: { max: 255 } },
   source: {
-    enum: ['manual', 'csv_import', 'dns_scan', 'browser_extension', 'oauth_audit'],
+    enum: [
+      'manual', 'csv_import', 'dns_scan',
+      'browser_extension', 'oauth_audit',
+    ],
   },
   status: {
     enum: ['pending', 'classified', 'dismissed', 'merged'],

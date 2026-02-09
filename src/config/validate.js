@@ -17,6 +17,9 @@ const validate = () => {
 
   const warnings = [];
   if (!process.env.ORY_WEBHOOK_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ORY_WEBHOOK_SECRET is required in production');
+    }
     warnings.push('ORY_WEBHOOK_SECRET not set — webhook verification disabled');
   }
   if (!process.env.BREVO_API_KEY) {

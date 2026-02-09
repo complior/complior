@@ -538,14 +538,14 @@ US-001 (Monorepo + Fastify)
 
 ### Definition of Done (Sprint 0)
 
-- [ ] `docker compose up` → все сервисы стартуют и healthy
-- [ ] 29 таблиц в PostgreSQL, deployer seed data загружена (requirements, catalog 200+, 4 courses)
-- [ ] Backend: `curl /health` → 200 с service statuses
-- [ ] Frontend: `npm run build` → без ошибок
-- [ ] CI pipeline: lint + type-check + test → green
-- [ ] Все infrastructure clients инициализируются без ошибок
-- [ ] Rate limiting работает (> 100 req/min → 429)
-- [ ] Wireframes для Sprint 1-2 готовы (deployer: AI Tool Inventory, AI Literacy Dashboard)
+- [x] `docker compose up` → все сервисы стартуют и healthy
+- [x] 29 таблиц в PostgreSQL, deployer seed data загружена (225 catalog, 32 requirements, 5 plans, 4 courses)
+- [x] Backend: `curl /health` → 200 с service statuses (DB, Ory, Gotenberg checks)
+- [x] Frontend: `npm run build` → без ошибок
+- [x] CI pipeline: lint + type-check + test → green (22 tests, 0 errors)
+- [x] Все infrastructure clients инициализируются без ошибок (Ory, Brevo, Gotenberg, S3)
+- [x] Rate limiting работает (@fastify/rate-limit, 100 req/min → 429)
+- [x] Wireframes для Sprint 1-2 готовы (6 screens: Landing, Login, Register, Dashboard, AI Tools, AI Literacy)
 
 ---
 

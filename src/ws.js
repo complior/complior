@@ -8,18 +8,17 @@ const init = (server) => {
     instance.get(
       '/ws',
       { websocket: true },
-      (connection) => {
-        connection.socket.on('message', async (message) => {
+      (socket) => {
+        socket.on('message', async (message) => {
           try {
-            const { name, method, args = [] } =
-              JSON.parse(message);
-            // Route lookup will be added in Sprint 4 (Eva)
-            connection.socket.send(
+            JSON.parse(message);
+            // Route lookup will be added in Sprint 4
+            socket.send(
               JSON.stringify({ error: 'Not implemented' }),
             );
           } catch (err) {
             server.log.error(err, 'WebSocket error');
-            connection.socket.send(
+            socket.send(
               JSON.stringify({ error: 'Server error' }),
             );
           }

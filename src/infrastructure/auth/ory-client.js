@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const config = require('../../config/ory.js');
 
 const createOryClient = (options = config) => {
@@ -34,7 +35,10 @@ const createOryClient = (options = config) => {
     },
 
     async listIdentities({ page = 0, perPage = 100 } = {}) {
-      return request(adminUrl, `/admin/identities?page=${page}&per_page=${perPage}`);
+      const q = `page=${page}&per_page=${perPage}`;
+      return request(
+        adminUrl, `/admin/identities?${q}`
+      );
     },
 
     async deleteIdentity(identityId) {
@@ -51,6 +55,7 @@ const createOryClient = (options = config) => {
       return request(adminUrl, `/admin/identities/${identityId}`, {
         method: 'PUT',
         body: JSON.stringify({
+          // eslint-disable-next-line camelcase
           schema_id: 'default',
           state: 'active',
           traits,
@@ -59,7 +64,11 @@ const createOryClient = (options = config) => {
     },
 
     verifyWebhookSecret(headerSecret) {
-      return headerSecret === webhookSecret;
+      if (!webhookSecret || !headerSecret) return false;
+      const a = Buffer.from(String(headerSecret));
+      const b = Buffer.from(String(webhookSecret));
+      if (a.length !== b.length) return false;
+      return crypto.timingSafeEqual(a, b);
     },
   };
 };

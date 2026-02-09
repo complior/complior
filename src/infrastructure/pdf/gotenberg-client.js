@@ -6,7 +6,13 @@ const createGotenbergClient = (options = config) => {
   const { url, timeout } = options;
 
   return {
-    async convertHtmlToPdf(html, { landscape = false, marginTop = '1cm', marginBottom = '1cm', marginLeft = '1cm', marginRight = '1cm' } = {}) {
+    async convertHtmlToPdf(html, {
+      landscape = false,
+      marginTop = '1cm',
+      marginBottom = '1cm',
+      marginLeft = '1cm',
+      marginRight = '1cm',
+    } = {}) {
       const formData = new FormData();
 
       const htmlBlob = new Blob([html], { type: 'text/html' });
@@ -30,7 +36,9 @@ const createGotenbergClient = (options = config) => {
 
         if (!res.ok) {
           const text = await res.text().catch(() => '');
-          const err = new Error(`Gotenberg error: ${res.status} ${res.statusText}`);
+          const msg = `Gotenberg error: ${res.status}` +
+            ` ${res.statusText}`;
+          const err = new Error(msg);
           err.status = res.status;
           err.body = text;
           throw err;
@@ -42,7 +50,7 @@ const createGotenbergClient = (options = config) => {
       }
     },
 
-    async convertUrlToPdf(targetUrl, options = {}) {
+    async convertUrlToPdf(targetUrl) {
       const formData = new FormData();
       formData.append('url', targetUrl);
 

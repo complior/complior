@@ -11,7 +11,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'marketing', 'coding', 'education', 'other'],
-    description: 'General-purpose conversational AI assistant for text generation, Q&A, coding, and analysis.',
+    description: 'General-purpose conversational AI assistant for text' +
+      ' generation, Q&A, coding, and analysis.',
     websiteUrl: 'https://chat.openai.com',
     dataResidency: 'US',
     active: true,
@@ -23,7 +24,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'coding', 'analytics', 'other'],
-    description: 'AI assistant focused on safety, helpfulness, and honesty for text generation and analysis.',
+    description: 'AI assistant focused on safety, helpfulness, and honesty' +
+      ' for text generation and analysis.',
     websiteUrl: 'https://claude.ai',
     dataResidency: 'US',
     active: true,
@@ -35,7 +37,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'coding', 'analytics', 'other'],
-    description: 'Multimodal AI model for text, image, and code understanding across Google products.',
+    description: 'Multimodal AI model for text, image, and code' +
+      ' understanding across Google products.',
     websiteUrl: 'https://gemini.google.com',
     dataResidency: 'global',
     active: true,
@@ -47,7 +50,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'coding', 'other'],
-    description: 'EU-based conversational AI assistant built on open-weight Mistral models.',
+    description: 'EU-based conversational AI assistant built on open-weight' +
+      ' Mistral models.',
     websiteUrl: 'https://chat.mistral.ai',
     dataResidency: 'EU',
     active: true,
@@ -59,7 +63,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'coding', 'analytics', 'other'],
-    description: 'AI assistant integrated into Microsoft 365 apps for productivity, search, and content generation.',
+    description: 'AI assistant integrated into Microsoft 365 apps for' +
+      ' productivity, search, and content generation.',
     websiteUrl: 'https://copilot.microsoft.com',
     dataResidency: 'global',
     active: true,
@@ -71,7 +76,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['analytics', 'other'],
-    description: 'AI-powered search engine providing cited answers from web sources in real time.',
+    description: 'AI-powered search engine providing cited answers from web' +
+      ' sources in real time.',
     websiteUrl: 'https://www.perplexity.ai',
     dataResidency: 'US',
     active: true,
@@ -83,7 +89,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['coding', 'analytics', 'other'],
-    description: 'Open-weight large language model family for research and commercial deployment.',
+    description: 'Open-weight large language model family for research and' +
+      ' commercial deployment.',
     websiteUrl: 'https://llama.meta.com',
     dataResidency: null,
     active: true,
@@ -95,7 +102,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['coding', 'analytics', 'other'],
-    description: 'Chinese-developed AI chatbot with strong coding and reasoning capabilities.',
+    description: 'Chinese-developed AI chatbot with strong coding and' +
+      ' reasoning capabilities.',
     websiteUrl: 'https://chat.deepseek.com',
     dataResidency: 'global',
     active: true,
@@ -107,7 +115,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'analytics', 'other'],
-    description: 'AI chatbot integrated with X/Twitter, focused on real-time information and humor.',
+    description: 'AI chatbot integrated with X/Twitter, focused on' +
+      ' real-time information and humor.',
     websiteUrl: 'https://grok.x.ai',
     dataResidency: 'US',
     active: true,
@@ -119,7 +128,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'other'],
-    description: 'Personal AI companion designed for empathetic, supportive conversations.',
+    description: 'Personal AI companion designed for empathetic, supportive' +
+      ' conversations.',
     websiteUrl: 'https://pi.ai',
     dataResidency: 'US',
     active: true,
@@ -131,7 +141,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'analytics', 'other'],
-    description: 'Enterprise LLM platform for text generation, RAG, and classification with data privacy focus.',
+    description: 'Enterprise LLM platform for text generation, RAG, and' +
+      ' classification with data privacy focus.',
     websiteUrl: 'https://cohere.com',
     dataResidency: 'global',
     active: true,
@@ -143,7 +154,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'analytics', 'other'],
-    description: 'EU-sovereign AI model for enterprise use with on-premise deployment and GDPR compliance.',
+    description: 'EU-sovereign AI model for enterprise use with on-premise' +
+      ' deployment and GDPR compliance.',
     websiteUrl: 'https://aleph-alpha.com',
     dataResidency: 'EU',
     active: true,
@@ -155,7 +167,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['coding', 'other'],
-    description: 'Open-source chatbot interface powered by community models on Hugging Face.',
+    description: 'Open-source chatbot interface powered by community models' +
+      ' on Hugging Face.',
     websiteUrl: 'https://huggingface.co/chat',
     dataResidency: 'US',
     active: true,
@@ -167,7 +180,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['analytics', 'other'],
-    description: 'AI search engine with chat interface combining web search and AI generation.',
+    description: 'AI search engine with chat interface combining web search' +
+      ' and AI generation.',
     websiteUrl: 'https://you.com',
     dataResidency: 'US',
     active: true,
@@ -179,7 +193,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI chat assistant focused on marketing content generation and brand voice.',
+    description: 'AI chat assistant focused on marketing content generation' +
+      ' and brand voice.',
     websiteUrl: 'https://www.jasper.ai',
     dataResidency: 'US',
     active: true,
@@ -191,7 +206,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['other'],
-    description: 'Platform for creating and chatting with AI characters and personas.',
+    description: 'Platform for creating and chatting with AI characters and' +
+      ' personas.',
     websiteUrl: 'https://character.ai',
     dataResidency: 'US',
     active: true,
@@ -203,7 +219,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['other'],
-    description: 'AI companion chatbot for personal conversations and emotional support.',
+    description: 'AI companion chatbot for personal conversations and' +
+      ' emotional support.',
     websiteUrl: 'https://replika.com',
     dataResidency: 'US',
     active: true,
@@ -215,7 +232,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['other'],
-    description: 'Aggregator platform providing access to multiple AI chatbots from different providers.',
+    description: 'Aggregator platform providing access to multiple AI' +
+      ' chatbots from different providers.',
     websiteUrl: 'https://poe.com',
     dataResidency: 'US',
     active: true,
@@ -227,7 +245,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'customer_service', 'other'],
-    description: 'AI chatbot with real-time web search and image generation capabilities.',
+    description: 'AI chatbot with real-time web search and image generation' +
+      ' capabilities.',
     websiteUrl: 'https://writesonic.com/chat',
     dataResidency: 'US',
     active: true,
@@ -239,7 +258,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'other'],
-    description: 'Chinese AI chatbot built on Baidu ERNIE large language model.',
+    description: 'Chinese AI chatbot built on Baidu ERNIE large language' +
+      ' model.',
     websiteUrl: 'https://yiyan.baidu.com',
     dataResidency: 'global',
     active: true,
@@ -251,7 +271,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['coding', 'analytics', 'other'],
-    description: 'Multilingual AI assistant from Alibaba with strong multilingual and coding capabilities.',
+    description: 'Multilingual AI assistant from Alibaba with strong' +
+      ' multilingual and coding capabilities.',
     websiteUrl: 'https://qwen.ai',
     dataResidency: 'global',
     active: true,
@@ -263,7 +284,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['analytics', 'other'],
-    description: 'Multimodal AI model capable of understanding text, images, video, and audio.',
+    description: 'Multimodal AI model capable of understanding text,' +
+      ' images, video, and audio.',
     websiteUrl: 'https://reka.ai',
     dataResidency: 'US',
     active: true,
@@ -275,7 +297,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'analytics', 'other'],
-    description: 'Enterprise AI platform for text generation, summarization, and language tasks.',
+    description: 'Enterprise AI platform for text generation,' +
+      ' summarization, and language tasks.',
     websiteUrl: 'https://www.ai21.com',
     dataResidency: 'global',
     active: true,
@@ -287,7 +310,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'German AI content platform with chatbot for marketing copy in German and English.',
+    description: 'German AI content platform with chatbot for marketing' +
+      ' copy in German and English.',
     websiteUrl: 'https://neuroflash.com',
     dataResidency: 'EU',
     active: true,
@@ -299,7 +323,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['analytics', 'other'],
-    description: 'Enterprise version of Bing Chat with commercial data protection and no data leakage.',
+    description: 'Enterprise version of Bing Chat with commercial data' +
+      ' protection and no data leakage.',
     websiteUrl: 'https://www.microsoft.com/en-us/bing',
     dataResidency: 'global',
     active: true,
@@ -311,7 +336,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['coding', 'other'],
-    description: 'Open-source instruction-following LLM with strong coding and reasoning performance.',
+    description: 'Open-source instruction-following LLM with strong coding' +
+      ' and reasoning performance.',
     websiteUrl: 'https://github.com/nlpxucan/WizardLM',
     dataResidency: null,
     active: true,
@@ -323,7 +349,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['other'],
-    description: 'Open-source LLM from TII Abu Dhabi, available for commercial and research use.',
+    description: 'Open-source LLM from TII Abu Dhabi, available for' +
+      ' commercial and research use.',
     websiteUrl: 'https://falconllm.tii.ae',
     dataResidency: null,
     active: true,
@@ -335,7 +362,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'analytics', 'other'],
-    description: 'Enterprise chat interface with RAG capabilities for grounded, cited responses.',
+    description: 'Enterprise chat interface with RAG capabilities for' +
+      ' grounded, cited responses.',
     websiteUrl: 'https://coral.cohere.com',
     dataResidency: 'global',
     active: true,
@@ -347,7 +375,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['analytics', 'other'],
-    description: 'Enterprise AI platform with ultra-fast inference for open-source LLMs.',
+    description: 'Enterprise AI platform with ultra-fast inference for' +
+      ' open-source LLMs.',
     websiteUrl: 'https://sambanova.ai',
     dataResidency: 'US',
     active: true,
@@ -359,7 +388,8 @@ const catalog = [
     category: 'chatbot',
     defaultRiskLevel: 'limited',
     domains: ['customer_service', 'other'],
-    description: 'Portuguese-language AI assistant optimized for Brazilian and Portuguese markets.',
+    description: 'Portuguese-language AI assistant optimized for Brazilian' +
+      ' and Portuguese markets.',
     websiteUrl: 'https://maritaca.ai',
     dataResidency: 'global',
     active: true,
@@ -375,7 +405,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI pair programmer providing code completions and suggestions in IDEs.',
+    description: 'AI pair programmer providing code completions and' +
+      ' suggestions in IDEs.',
     websiteUrl: 'https://github.com/features/copilot',
     dataResidency: 'US',
     active: true,
@@ -387,7 +418,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI-native code editor with integrated chat, code generation, and codebase understanding.',
+    description: 'AI-native code editor with integrated chat, code' +
+      ' generation, and codebase understanding.',
     websiteUrl: 'https://cursor.com',
     dataResidency: 'US',
     active: true,
@@ -399,7 +431,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI code assistant with private model deployment for secure enterprise code completion.',
+    description: 'AI code assistant with private model deployment for' +
+      ' secure enterprise code completion.',
     websiteUrl: 'https://www.tabnine.com',
     dataResidency: 'global',
     active: true,
@@ -411,7 +444,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI coding assistant for AWS with code generation, debugging, and security scanning.',
+    description: 'AI coding assistant for AWS with code generation,' +
+      ' debugging, and security scanning.',
     websiteUrl: 'https://aws.amazon.com/q/developer/',
     dataResidency: 'global',
     active: true,
@@ -423,7 +457,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI coding assistant integrated into Replit online IDE for code generation and explanation.',
+    description: 'AI coding assistant integrated into Replit online IDE for' +
+      ' code generation and explanation.',
     websiteUrl: 'https://replit.com',
     dataResidency: 'US',
     active: true,
@@ -435,7 +470,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'Free AI code completion tool supporting 70+ languages across major IDEs.',
+    description: 'Free AI code completion tool supporting 70+ languages' +
+      ' across major IDEs.',
     websiteUrl: 'https://codeium.com',
     dataResidency: 'US',
     active: true,
@@ -447,7 +483,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI code assistant with full codebase context for code generation and understanding.',
+    description: 'AI code assistant with full codebase context for code' +
+      ' generation and understanding.',
     websiteUrl: 'https://sourcegraph.com/cody',
     dataResidency: 'US',
     active: true,
@@ -459,7 +496,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI assistant integrated into JetBrains IDEs for code completion, refactoring, and chat.',
+    description: 'AI assistant integrated into JetBrains IDEs for code' +
+      ' completion, refactoring, and chat.',
     websiteUrl: 'https://www.jetbrains.com/ai/',
     dataResidency: 'EU',
     active: true,
@@ -471,7 +509,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'Autonomous AI software engineer capable of planning, coding, and debugging full tasks.',
+    description: 'Autonomous AI software engineer capable of planning,' +
+      ' coding, and debugging full tasks.',
     websiteUrl: 'https://devin.ai',
     dataResidency: 'US',
     active: true,
@@ -483,7 +522,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'Agentic coding tool for terminal-based code generation, editing, and project management.',
+    description: 'Agentic coding tool for terminal-based code generation,' +
+      ' editing, and project management.',
     websiteUrl: 'https://docs.anthropic.com/en/docs/claude-code',
     dataResidency: 'US',
     active: true,
@@ -495,7 +535,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI-native IDE with agentic coding flows and deep codebase understanding.',
+    description: 'AI-native IDE with agentic coding flows and deep codebase' +
+      ' understanding.',
     websiteUrl: 'https://codeium.com/windsurf',
     dataResidency: 'US',
     active: true,
@@ -507,7 +548,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'EU-based code generation model supporting 80+ programming languages.',
+    description: 'EU-based code generation model supporting 80+ programming' +
+      ' languages.',
     websiteUrl: 'https://mistral.ai',
     dataResidency: 'EU',
     active: true,
@@ -519,7 +561,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'VS Code extension connecting multiple AI providers for code assistance.',
+    description: 'VS Code extension connecting multiple AI providers for' +
+      ' code assistance.',
     websiteUrl: 'https://codegpt.co',
     dataResidency: 'global',
     active: true,
@@ -531,7 +574,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'Open-source terminal-based AI pair programming tool working with local git repos.',
+    description: 'Open-source terminal-based AI pair programming tool' +
+      ' working with local git repos.',
     websiteUrl: 'https://aider.chat',
     dataResidency: null,
     active: true,
@@ -543,7 +587,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'Open-source AI code assistant for VS Code and JetBrains with custom model support.',
+    description: 'Open-source AI code assistant for VS Code and JetBrains' +
+      ' with custom model support.',
     websiteUrl: 'https://continue.dev',
     dataResidency: null,
     active: true,
@@ -555,7 +600,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI-powered code security scanning to find and fix vulnerabilities in real time.',
+    description: 'AI-powered code security scanning to find and fix' +
+      ' vulnerabilities in real time.',
     websiteUrl: 'https://snyk.io',
     dataResidency: 'global',
     active: true,
@@ -567,7 +613,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI code generation and search tool for developers with multi-language support.',
+    description: 'AI code generation and search tool for developers with' +
+      ' multi-language support.',
     websiteUrl: 'https://www.blackbox.ai',
     dataResidency: 'US',
     active: true,
@@ -579,7 +626,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI junior developer that turns GitHub issues into pull requests automatically.',
+    description: 'AI junior developer that turns GitHub issues into pull' +
+      ' requests automatically.',
     websiteUrl: 'https://sweep.dev',
     dataResidency: 'US',
     active: true,
@@ -591,7 +639,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI assistant for code review, documentation, and performance optimization in IDEs.',
+    description: 'AI assistant for code review, documentation, and' +
+      ' performance optimization in IDEs.',
     websiteUrl: 'https://bito.ai',
     dataResidency: 'US',
     active: true,
@@ -603,7 +652,8 @@ const catalog = [
     category: 'coding',
     defaultRiskLevel: 'minimal',
     domains: ['coding'],
-    description: 'AI-powered test generation and code quality tool for developers.',
+    description: 'AI-powered test generation and code quality tool for' +
+      ' developers.',
     websiteUrl: 'https://www.qodo.ai',
     dataResidency: 'global',
     active: true,
@@ -619,7 +669,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment', 'biometrics'],
-    description: 'AI-powered video interview platform with candidate assessment and game-based evaluations.',
+    description: 'AI-powered video interview platform with candidate' +
+      ' assessment and game-based evaluations.',
     websiteUrl: 'https://www.hirevue.com',
     dataResidency: 'global',
     active: true,
@@ -631,7 +682,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI features in German HR platform for automated screening, onboarding, and people analytics.',
+    description: 'AI features in German HR platform for automated' +
+      ' screening, onboarding, and people analytics.',
     websiteUrl: 'https://www.personio.com',
     dataResidency: 'EU',
     active: true,
@@ -643,7 +695,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-enhanced HCM platform for talent acquisition, workforce planning, and employee insights.',
+    description: 'AI-enhanced HCM platform for talent acquisition,' +
+      ' workforce planning, and employee insights.',
     websiteUrl: 'https://www.workday.com',
     dataResidency: 'global',
     active: true,
@@ -655,7 +708,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-powered talent management in SAP HCM for recruiting, learning, and succession planning.',
+    description: 'AI-powered talent management in SAP HCM for recruiting,' +
+      ' learning, and succession planning.',
     websiteUrl: 'https://www.sap.com/products/hcm.html',
     dataResidency: 'EU',
     active: true,
@@ -667,7 +721,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment', 'biometrics'],
-    description: 'AI hiring platform using neuroscience-based games and behavioral assessments for candidate matching.',
+    description: 'AI hiring platform using neuroscience-based games and' +
+      ' behavioral assessments for candidate matching.',
     websiteUrl: 'https://harver.com',
     dataResidency: 'EU',
     active: true,
@@ -679,7 +734,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-powered talent assessment and reference checking platform for data-driven hiring.',
+    description: 'AI-powered talent assessment and reference checking' +
+      ' platform for data-driven hiring.',
     websiteUrl: 'https://www.hipeople.io',
     dataResidency: 'EU',
     active: true,
@@ -691,7 +747,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI writing tool analyzing and optimizing job postings for inclusive language and effectiveness.',
+    description: 'AI writing tool analyzing and optimizing job postings for' +
+      ' inclusive language and effectiveness.',
     websiteUrl: 'https://textio.com',
     dataResidency: 'US',
     active: true,
@@ -703,7 +760,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI recruiting assistant chatbot automating screening, scheduling, and candidate communication.',
+    description: 'AI recruiting assistant chatbot automating screening,' +
+      ' scheduling, and candidate communication.',
     websiteUrl: 'https://www.paradox.ai',
     dataResidency: 'global',
     active: true,
@@ -715,7 +773,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI talent intelligence platform for sourcing, matching, and workforce planning.',
+    description: 'AI talent intelligence platform for sourcing, matching,' +
+      ' and workforce planning.',
     websiteUrl: 'https://eightfold.ai',
     dataResidency: 'global',
     active: true,
@@ -727,7 +786,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-powered talent management platform for proactive recruiting and internal mobility.',
+    description: 'AI-powered talent management platform for proactive' +
+      ' recruiting and internal mobility.',
     websiteUrl: 'https://beamery.com',
     dataResidency: 'global',
     active: true,
@@ -739,7 +799,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI features in recruiting platform for candidate matching, screening, and hiring automation.',
+    description: 'AI features in recruiting platform for candidate' +
+      ' matching, screening, and hiring automation.',
     websiteUrl: 'https://www.smartrecruiters.com',
     dataResidency: 'global',
     active: true,
@@ -751,7 +812,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-enhanced applicant tracking system with structured hiring and candidate scoring.',
+    description: 'AI-enhanced applicant tracking system with structured' +
+      ' hiring and candidate scoring.',
     websiteUrl: 'https://www.greenhouse.com',
     dataResidency: 'US',
     active: true,
@@ -763,7 +825,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI talent experience platform for personalized career sites, chatbots, and talent CRM.',
+    description: 'AI talent experience platform for personalized career' +
+      ' sites, chatbots, and talent CRM.',
     websiteUrl: 'https://www.phenom.com',
     dataResidency: 'global',
     active: true,
@@ -775,7 +838,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI talent search and diversity recruiting platform for sourcing passive candidates.',
+    description: 'AI talent search and diversity recruiting platform for' +
+      ' sourcing passive candidates.',
     websiteUrl: 'https://seekout.com',
     dataResidency: 'US',
     active: true,
@@ -787,7 +851,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI recruiting automation for sourcing candidates and personalized outreach at scale.',
+    description: 'AI recruiting automation for sourcing candidates and' +
+      ' personalized outreach at scale.',
     websiteUrl: 'https://fetcher.ai',
     dataResidency: 'US',
     active: true,
@@ -799,7 +864,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-powered talent screening and shortlisting for high-volume recruiting.',
+    description: 'AI-powered talent screening and shortlisting for' +
+      ' high-volume recruiting.',
     websiteUrl: 'https://ideal.com',
     dataResidency: 'global',
     active: true,
@@ -811,7 +877,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI sourcing platform that finds and ranks candidates from multiple channels.',
+    description: 'AI sourcing platform that finds and ranks candidates from' +
+      ' multiple channels.',
     websiteUrl: 'https://leoforce.com',
     dataResidency: 'US',
     active: true,
@@ -823,7 +890,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI chatbot for screening, scheduling, and note-taking in the hiring process.',
+    description: 'AI chatbot for screening, scheduling, and note-taking in' +
+      ' the hiring process.',
     websiteUrl: 'https://humanly.io',
     dataResidency: 'US',
     active: true,
@@ -835,7 +903,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-scored cognitive ability and personality assessments for pre-employment testing.',
+    description: 'AI-scored cognitive ability and personality assessments' +
+      ' for pre-employment testing.',
     websiteUrl: 'https://wonderlic.com',
     dataResidency: 'US',
     active: true,
@@ -847,7 +916,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI predictive hiring platform using personality, motivation, and cognitive assessments.',
+    description: 'AI predictive hiring platform using personality,' +
+      ' motivation, and cognitive assessments.',
     websiteUrl: 'https://www.assessfirst.com',
     dataResidency: 'EU',
     active: true,
@@ -859,7 +929,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'EU-based collaborative hiring platform with AI-powered candidate matching and pipeline management.',
+    description: 'EU-based collaborative hiring platform with AI-powered' +
+      ' candidate matching and pipeline management.',
     websiteUrl: 'https://recruitee.com',
     dataResidency: 'EU',
     active: true,
@@ -871,7 +942,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI-enhanced ATS and CRM for nurturing talent pipelines and data-driven hiring.',
+    description: 'AI-enhanced ATS and CRM for nurturing talent pipelines' +
+      ' and data-driven hiring.',
     websiteUrl: 'https://www.lever.co',
     dataResidency: 'US',
     active: true,
@@ -883,7 +955,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'AI talent cloud with intelligent matching, chatbot, and candidate engagement automation.',
+    description: 'AI talent cloud with intelligent matching, chatbot, and' +
+      ' candidate engagement automation.',
     websiteUrl: 'https://www.icims.com',
     dataResidency: 'global',
     active: true,
@@ -895,7 +968,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment', 'education'],
-    description: 'AI-powered talent management for learning, skills development, and workforce agility.',
+    description: 'AI-powered talent management for learning, skills' +
+      ' development, and workforce agility.',
     websiteUrl: 'https://www.cornerstoneondemand.com',
     dataResidency: 'global',
     active: true,
@@ -907,7 +981,8 @@ const catalog = [
     category: 'recruitment',
     defaultRiskLevel: 'high',
     domains: ['employment'],
-    description: 'German ATS with AI-powered job ad optimization and candidate matching for SMBs.',
+    description: 'German ATS with AI-powered job ad optimization and' +
+      ' candidate matching for SMBs.',
     websiteUrl: 'https://www.softgarden.com',
     dataResidency: 'EU',
     active: true,
@@ -923,7 +998,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI-powered customer service platform with automated ticket routing, bots, and agent assist.',
+    description: 'AI-powered customer service platform with automated' +
+      ' ticket routing, bots, and agent assist.',
     websiteUrl: 'https://www.zendesk.com',
     dataResidency: 'global',
     active: true,
@@ -935,7 +1011,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service', 'analytics', 'marketing'],
-    description: 'AI layer across Salesforce CRM for predictions, recommendations, and automated workflows.',
+    description: 'AI layer across Salesforce CRM for predictions,' +
+      ' recommendations, and automated workflows.',
     websiteUrl: 'https://www.salesforce.com/einstein/',
     dataResidency: 'global',
     active: true,
@@ -947,7 +1024,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI customer service agent that resolves support queries using company knowledge base.',
+    description: 'AI customer service agent that resolves support queries' +
+      ' using company knowledge base.',
     websiteUrl: 'https://www.intercom.com/fin',
     dataResidency: 'global',
     active: true,
@@ -959,7 +1037,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service', 'marketing'],
-    description: 'Conversational AI platform for B2B sales and marketing with chatbot and live chat.',
+    description: 'Conversational AI platform for B2B sales and marketing' +
+      ' with chatbot and live chat.',
     websiteUrl: 'https://www.drift.com',
     dataResidency: 'US',
     active: true,
@@ -971,7 +1050,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI assistant in Freshdesk for auto-resolving tickets, smart routing, and agent productivity.',
+    description: 'AI assistant in Freshdesk for auto-resolving tickets,' +
+      ' smart routing, and agent productivity.',
     websiteUrl: 'https://www.freshworks.com/freshdesk/',
     dataResidency: 'global',
     active: true,
@@ -983,7 +1063,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI-powered customer service automation platform for personalized support at scale.',
+    description: 'AI-powered customer service automation platform for' +
+      ' personalized support at scale.',
     websiteUrl: 'https://www.ada.cx',
     dataResidency: 'global',
     active: true,
@@ -995,7 +1076,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'EU-based AI platform for customer service automation with multilingual support.',
+    description: 'EU-based AI platform for customer service automation with' +
+      ' multilingual support.',
     websiteUrl: 'https://www.ultimate.ai',
     dataResidency: 'EU',
     active: true,
@@ -1007,7 +1089,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'German enterprise conversational AI platform for voice and chat customer service automation.',
+    description: 'German enterprise conversational AI platform for voice' +
+      ' and chat customer service automation.',
     websiteUrl: 'https://www.cognigy.com',
     dataResidency: 'EU',
     active: true,
@@ -1019,7 +1102,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'German AI platform for automated phone and chat customer service with natural conversations.',
+    description: 'German AI platform for automated phone and chat customer' +
+      ' service with natural conversations.',
     websiteUrl: 'https://www.parloa.com',
     dataResidency: 'EU',
     active: true,
@@ -1031,7 +1115,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'Conversational AI platform for messaging-based customer engagement and support.',
+    description: 'Conversational AI platform for messaging-based customer' +
+      ' engagement and support.',
     websiteUrl: 'https://www.liveperson.com',
     dataResidency: 'global',
     active: true,
@@ -1043,7 +1128,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'EU-based AI chatbot and live chat platform for SMB customer support and sales.',
+    description: 'EU-based AI chatbot and live chat platform for SMB' +
+      ' customer support and sales.',
     websiteUrl: 'https://www.tidio.com',
     dataResidency: 'EU',
     active: true,
@@ -1055,7 +1141,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI-powered CRM for customer service with unified conversation timeline and automation.',
+    description: 'AI-powered CRM for customer service with unified' +
+      ' conversation timeline and automation.',
     websiteUrl: 'https://www.kustomer.com',
     dataResidency: 'US',
     active: true,
@@ -1067,7 +1154,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'Danish conversational customer service platform with AI-powered routing and agent assist.',
+    description: 'Danish conversational customer service platform with' +
+      ' AI-powered routing and agent assist.',
     websiteUrl: 'https://www.dixa.com',
     dataResidency: 'EU',
     active: true,
@@ -1079,7 +1167,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI platform for customer support automating ticket triage, resolution, and agent assist.',
+    description: 'AI platform for customer support automating ticket' +
+      ' triage, resolution, and agent assist.',
     websiteUrl: 'https://forethought.ai',
     dataResidency: 'US',
     active: true,
@@ -1091,7 +1180,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI service management platform for IT, HR, and customer service automation.',
+    description: 'AI service management platform for IT, HR, and customer' +
+      ' service automation.',
     websiteUrl: 'https://aisera.com',
     dataResidency: 'US',
     active: true,
@@ -1103,7 +1193,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'Nordic enterprise conversational AI platform for scalable virtual agent deployments.',
+    description: 'Nordic enterprise conversational AI platform for scalable' +
+      ' virtual agent deployments.',
     websiteUrl: 'https://www.boost.ai',
     dataResidency: 'EU',
     active: true,
@@ -1115,7 +1206,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'Danish conversational AI platform for e-commerce customer engagement and support.',
+    description: 'Danish conversational AI platform for e-commerce customer' +
+      ' engagement and support.',
     websiteUrl: 'https://certainly.io',
     dataResidency: 'EU',
     active: true,
@@ -1127,7 +1219,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI chatbot and helpdesk platform for automating customer conversations across channels.',
+    description: 'AI chatbot and helpdesk platform for automating customer' +
+      ' conversations across channels.',
     websiteUrl: 'https://www.kommunicate.io',
     dataResidency: 'global',
     active: true,
@@ -1139,7 +1232,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'AI platform automating IT and employee service requests through natural language.',
+    description: 'AI platform automating IT and employee service requests' +
+      ' through natural language.',
     websiteUrl: 'https://www.moveworks.com',
     dataResidency: 'US',
     active: true,
@@ -1151,7 +1245,8 @@ const catalog = [
     category: 'customer_service',
     defaultRiskLevel: 'minimal',
     domains: ['customer_service'],
-    description: 'German AI chatbot for customer service with contextual conversation flows and diagnostics.',
+    description: 'German AI chatbot for customer service with contextual' +
+      ' conversation flows and diagnostics.',
     websiteUrl: 'https://www.dixa.com/solvemate',
     dataResidency: 'EU',
     active: true,
@@ -1167,7 +1262,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI content creation platform for marketing teams with brand voice and campaign workflows.',
+    description: 'AI content creation platform for marketing teams with' +
+      ' brand voice and campaign workflows.',
     websiteUrl: 'https://www.jasper.ai',
     dataResidency: 'US',
     active: true,
@@ -1179,7 +1275,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI-powered copywriting tool for marketing content, ads, social media, and email.',
+    description: 'AI-powered copywriting tool for marketing content, ads,' +
+      ' social media, and email.',
     websiteUrl: 'https://www.copy.ai',
     dataResidency: 'US',
     active: true,
@@ -1191,7 +1288,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI writing platform for SEO-optimized blog posts, ads, and marketing copy.',
+    description: 'AI writing platform for SEO-optimized blog posts, ads,' +
+      ' and marketing copy.',
     websiteUrl: 'https://writesonic.com',
     dataResidency: 'US',
     active: true,
@@ -1203,7 +1301,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI-powered brand language optimization for email subject lines, push, and social copy.',
+    description: 'AI-powered brand language optimization for email subject' +
+      ' lines, push, and social copy.',
     websiteUrl: 'https://phrasee.co',
     dataResidency: 'global',
     active: true,
@@ -1215,7 +1314,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'Motivation AI platform generating emotionally targeted marketing language at scale.',
+    description: 'Motivation AI platform generating emotionally targeted' +
+      ' marketing language at scale.',
     websiteUrl: 'https://www.persado.com',
     dataResidency: 'US',
     active: true,
@@ -1227,7 +1327,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'analytics'],
-    description: 'Autonomous AI for digital marketing campaign execution across channels.',
+    description: 'Autonomous AI for digital marketing campaign execution' +
+      ' across channels.',
     websiteUrl: 'https://albert.ai',
     dataResidency: 'global',
     active: true,
@@ -1239,7 +1340,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'analytics'],
-    description: 'AI send-time optimization for email marketing in HubSpot and Marketo.',
+    description: 'AI send-time optimization for email marketing in HubSpot' +
+      ' and Marketo.',
     websiteUrl: 'https://www.theseventhsense.com',
     dataResidency: 'US',
     active: true,
@@ -1251,7 +1353,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'analytics'],
-    description: 'AI-powered competitive intelligence platform tracking market movements and competitor strategies.',
+    description: 'AI-powered competitive intelligence platform tracking' +
+      ' market movements and competitor strategies.',
     websiteUrl: 'https://www.crayon.co',
     dataResidency: 'US',
     active: true,
@@ -1263,7 +1366,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'analytics'],
-    description: 'AI-enhanced SEO and digital marketing toolkit for content optimization and competitive analysis.',
+    description: 'AI-enhanced SEO and digital marketing toolkit for content' +
+      ' optimization and competitive analysis.',
     websiteUrl: 'https://www.semrush.com',
     dataResidency: 'US',
     active: true,
@@ -1275,7 +1379,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'customer_service', 'analytics'],
-    description: 'AI features across HubSpot CRM for content creation, lead scoring, and forecasting.',
+    description: 'AI features across HubSpot CRM for content creation, lead' +
+      ' scoring, and forecasting.',
     websiteUrl: 'https://www.hubspot.com',
     dataResidency: 'global',
     active: true,
@@ -1287,7 +1392,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'Polish AI-powered SEO tool for content optimization, SERP analysis, and article generation.',
+    description: 'Polish AI-powered SEO tool for content optimization, SERP' +
+      ' analysis, and article generation.',
     websiteUrl: 'https://surferseo.com',
     dataResidency: 'EU',
     active: true,
@@ -1299,7 +1405,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI features in email marketing platform for content generation, send optimization, and segmentation.',
+    description: 'AI features in email marketing platform for content' +
+      ' generation, send optimization, and segmentation.',
     websiteUrl: 'https://mailchimp.com',
     dataResidency: 'US',
     active: true,
@@ -1311,7 +1418,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'analytics'],
-    description: 'AI-powered digital experience platform for A/B testing, personalization, and content optimization.',
+    description: 'AI-powered digital experience platform for A/B testing,' +
+      ' personalization, and content optimization.',
     websiteUrl: 'https://www.optimizely.com',
     dataResidency: 'global',
     active: true,
@@ -1323,7 +1431,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI-powered email marketing automation for B2B outreach and conversation routing.',
+    description: 'AI-powered email marketing automation for B2B outreach' +
+      ' and conversation routing.',
     websiteUrl: 'https://www.drift.com/platform/email/',
     dataResidency: 'US',
     active: true,
@@ -1335,7 +1444,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI copywriting platform with predictive performance scoring for marketing content.',
+    description: 'AI copywriting platform with predictive performance' +
+      ' scoring for marketing content.',
     websiteUrl: 'https://anyword.com',
     dataResidency: 'global',
     active: true,
@@ -1347,7 +1457,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'analytics'],
-    description: 'AI social listening and consumer intelligence platform for brand monitoring and trend analysis.',
+    description: 'AI social listening and consumer intelligence platform' +
+      ' for brand monitoring and trend analysis.',
     websiteUrl: 'https://www.brandwatch.com',
     dataResidency: 'global',
     active: true,
@@ -1359,7 +1470,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI content optimization platform using NLP to improve search engine ranking performance.',
+    description: 'AI content optimization platform using NLP to improve' +
+      ' search engine ranking performance.',
     websiteUrl: 'https://www.clearscope.io',
     dataResidency: 'US',
     active: true,
@@ -1371,7 +1483,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'Finnish AI-powered ad tech platform for automated social advertising creative and optimization.',
+    description: 'Finnish AI-powered ad tech platform for automated social' +
+      ' advertising creative and optimization.',
     websiteUrl: 'https://www.smartly.io',
     dataResidency: 'EU',
     active: true,
@@ -1383,7 +1496,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing'],
-    description: 'AI ad creative generation platform producing conversion-focused banner and social ad designs.',
+    description: 'AI ad creative generation platform producing' +
+      ' conversion-focused banner and social ad designs.',
     websiteUrl: 'https://www.adcreative.ai',
     dataResidency: 'EU',
     active: true,
@@ -1395,7 +1509,8 @@ const catalog = [
     category: 'marketing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'analytics'],
-    description: 'AI content intelligence platform tracking B2B buyer engagement and optimizing content journeys.',
+    description: 'AI content intelligence platform tracking B2B buyer' +
+      ' engagement and optimizing content journeys.',
     websiteUrl: 'https://www.pathfactory.com',
     dataResidency: 'global',
     active: true,
@@ -1411,7 +1526,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI writing assistant for grammar, clarity, tone, and style improvements across platforms.',
+    description: 'AI writing assistant for grammar, clarity, tone, and' +
+      ' style improvements across platforms.',
     websiteUrl: 'https://www.grammarly.com',
     dataResidency: 'US',
     active: true,
@@ -1423,7 +1539,8 @@ const catalog = [
     category: 'translation',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'EU-based AI translation service with superior quality for European languages and document translation.',
+    description: 'EU-based AI translation service with superior quality for' +
+      ' European languages and document translation.',
     websiteUrl: 'https://www.deepl.com',
     dataResidency: 'EU',
     active: true,
@@ -1435,7 +1552,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI writing and summarization assistant built into Notion workspace for docs and wikis.',
+    description: 'AI writing and summarization assistant built into Notion' +
+      ' workspace for docs and wikis.',
     websiteUrl: 'https://www.notion.so/product/ai',
     dataResidency: 'US',
     active: true,
@@ -1447,7 +1565,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'other'],
-    description: 'AI-powered presentation and storytelling tool for creating visual narratives from text prompts.',
+    description: 'AI-powered presentation and storytelling tool for' +
+      ' creating visual narratives from text prompts.',
     websiteUrl: 'https://tome.app',
     dataResidency: 'US',
     active: true,
@@ -1459,7 +1578,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI presentation software with smart templates that auto-adapt design and layout.',
+    description: 'AI presentation software with smart templates that' +
+      ' auto-adapt design and layout.',
     websiteUrl: 'https://www.beautiful.ai',
     dataResidency: 'US',
     active: true,
@@ -1471,7 +1591,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'other'],
-    description: 'AI text generation tool within Canva for creating copy, social posts, and document content.',
+    description: 'AI text generation tool within Canva for creating copy,' +
+      ' social posts, and document content.',
     websiteUrl: 'https://www.canva.com/magic-write/',
     dataResidency: 'global',
     active: true,
@@ -1483,7 +1604,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'German-based AI writing assistant for grammar, style, and spelling in 30+ languages.',
+    description: 'German-based AI writing assistant for grammar, style, and' +
+      ' spelling in 30+ languages.',
     websiteUrl: 'https://languagetool.org',
     dataResidency: 'EU',
     active: true,
@@ -1495,7 +1617,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI paraphrasing and writing tool for rewording, summarizing, and grammar checking.',
+    description: 'AI paraphrasing and writing tool for rewording,' +
+      ' summarizing, and grammar checking.',
     websiteUrl: 'https://quillbot.com',
     dataResidency: 'US',
     active: true,
@@ -1507,7 +1630,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI writing companion for rewriting, summarizing, and improving text clarity and tone.',
+    description: 'AI writing companion for rewriting, summarizing, and' +
+      ' improving text clarity and tone.',
     websiteUrl: 'https://www.wordtune.com',
     dataResidency: 'global',
     active: true,
@@ -1519,7 +1643,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI meeting transcription and note-taking tool with real-time captions and summaries.',
+    description: 'AI meeting transcription and note-taking tool with' +
+      ' real-time captions and summaries.',
     websiteUrl: 'https://otter.ai',
     dataResidency: 'US',
     active: true,
@@ -1531,7 +1656,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI meeting assistant for transcription, summarization, and action item extraction.',
+    description: 'AI meeting assistant for transcription, summarization,' +
+      ' and action item extraction.',
     websiteUrl: 'https://fireflies.ai',
     dataResidency: 'US',
     active: true,
@@ -1543,7 +1669,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['marketing', 'other'],
-    description: 'Dutch AI writing tool for inclusive and SEO-optimized content with augmented writing.',
+    description: 'Dutch AI writing tool for inclusive and SEO-optimized' +
+      ' content with augmented writing.',
     websiteUrl: 'https://www.textmetrics.com',
     dataResidency: 'EU',
     active: true,
@@ -1555,7 +1682,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI-powered tool for creating presentations, documents, and web pages from text prompts.',
+    description: 'AI-powered tool for creating presentations, documents,' +
+      ' and web pages from text prompts.',
     websiteUrl: 'https://gamma.app',
     dataResidency: 'US',
     active: true,
@@ -1567,7 +1695,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI assistant in Coda docs for writing, summarizing, and automating document workflows.',
+    description: 'AI assistant in Coda docs for writing, summarizing, and' +
+      ' automating document workflows.',
     websiteUrl: 'https://coda.io/product/ai',
     dataResidency: 'US',
     active: true,
@@ -1579,7 +1708,8 @@ const catalog = [
     category: 'writing',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI-powered audio and video editor with transcription, filler word removal, and voice cloning.',
+    description: 'AI-powered audio and video editor with transcription,' +
+      ' filler word removal, and voice cloning.',
     websiteUrl: 'https://www.descript.com',
     dataResidency: 'US',
     active: true,
@@ -1595,7 +1725,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI image generation tool creating high-quality artwork and visuals from text prompts.',
+    description: 'AI image generation tool creating high-quality artwork' +
+      ' and visuals from text prompts.',
     websiteUrl: 'https://www.midjourney.com',
     dataResidency: 'US',
     active: true,
@@ -1607,7 +1738,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI image generation model creating and editing images from natural language descriptions.',
+    description: 'AI image generation model creating and editing images' +
+      ' from natural language descriptions.',
     websiteUrl: 'https://openai.com/dall-e',
     dataResidency: 'US',
     active: true,
@@ -1619,7 +1751,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'Open-source AI image generation model for creating images locally or via cloud.',
+    description: 'Open-source AI image generation model for creating images' +
+      ' locally or via cloud.',
     websiteUrl: 'https://stability.ai',
     dataResidency: null,
     active: true,
@@ -1631,7 +1764,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI image generation platform for game assets, marketing visuals, and creative content.',
+    description: 'AI image generation platform for game assets, marketing' +
+      ' visuals, and creative content.',
     websiteUrl: 'https://leonardo.ai',
     dataResidency: 'global',
     active: true,
@@ -1643,7 +1777,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI image generation trained on licensed content, integrated across Adobe Creative Cloud.',
+    description: 'AI image generation trained on licensed content,' +
+      ' integrated across Adobe Creative Cloud.',
     websiteUrl: 'https://www.adobe.com/products/firefly.html',
     dataResidency: 'global',
     active: true,
@@ -1655,7 +1790,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI design tools in Canva for generating images, presentations, and visual content.',
+    description: 'AI design tools in Canva for generating images,' +
+      ' presentations, and visual content.',
     websiteUrl: 'https://www.canva.com/magic-design/',
     dataResidency: 'global',
     active: true,
@@ -1667,7 +1803,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI image generator with strong typography rendering capabilities for text-in-image creation.',
+    description: 'AI image generator with strong typography rendering' +
+      ' capabilities for text-in-image creation.',
     websiteUrl: 'https://ideogram.ai',
     dataResidency: 'global',
     active: true,
@@ -1679,7 +1816,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'German AI image generation model with open weights and high-quality output.',
+    description: 'German AI image generation model with open weights and' +
+      ' high-quality output.',
     websiteUrl: 'https://blackforestlabs.ai',
     dataResidency: 'EU',
     active: true,
@@ -1691,7 +1829,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI video generation and editing platform for creating video from text and image prompts.',
+    description: 'AI video generation and editing platform for creating' +
+      ' video from text and image prompts.',
     websiteUrl: 'https://runwayml.com',
     dataResidency: 'US',
     active: true,
@@ -1703,7 +1842,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'education', 'other'],
-    description: 'AI video generation platform creating videos with realistic AI avatars from text scripts.',
+    description: 'AI video generation platform creating videos with' +
+      ' realistic AI avatars from text scripts.',
     websiteUrl: 'https://www.synthesia.io',
     dataResidency: 'EU',
     active: true,
@@ -1715,7 +1855,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI video creation platform with avatar presenters and multilingual voice cloning.',
+    description: 'AI video creation platform with avatar presenters and' +
+      ' multilingual voice cloning.',
     websiteUrl: 'https://www.heygen.com',
     dataResidency: 'US',
     active: true,
@@ -1727,7 +1868,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI video generation platform creating talking head videos from photos and text.',
+    description: 'AI video generation platform creating talking head videos' +
+      ' from photos and text.',
     websiteUrl: 'https://www.d-id.com',
     dataResidency: 'global',
     active: true,
@@ -1739,7 +1881,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI video creation tool that transforms blog posts and text into engaging social videos.',
+    description: 'AI video creation tool that transforms blog posts and' +
+      ' text into engaging social videos.',
     websiteUrl: 'https://lumen5.com',
     dataResidency: 'global',
     active: true,
@@ -1751,7 +1894,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI video creation tool for turning long-form content into short branded videos.',
+    description: 'AI video creation tool for turning long-form content into' +
+      ' short branded videos.',
     websiteUrl: 'https://pictory.ai',
     dataResidency: 'US',
     active: true,
@@ -1763,7 +1907,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['other'],
-    description: 'AI voice synthesis platform for realistic text-to-speech, voice cloning, and dubbing.',
+    description: 'AI voice synthesis platform for realistic text-to-speech,' +
+      ' voice cloning, and dubbing.',
     websiteUrl: 'https://elevenlabs.io',
     dataResidency: 'US',
     active: true,
@@ -1775,7 +1920,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI text-to-video model generating realistic and imaginative video scenes from text prompts.',
+    description: 'AI text-to-video model generating realistic and' +
+      ' imaginative video scenes from text prompts.',
     websiteUrl: 'https://openai.com/sora',
     dataResidency: 'US',
     active: true,
@@ -1787,7 +1933,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI video generation and editing platform for creating short videos from text and images.',
+    description: 'AI video generation and editing platform for creating' +
+      ' short videos from text and images.',
     websiteUrl: 'https://pika.art',
     dataResidency: 'US',
     active: true,
@@ -1799,7 +1946,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'Chinese AI video generation model producing high-quality videos from text descriptions.',
+    description: 'Chinese AI video generation model producing high-quality' +
+      ' videos from text descriptions.',
     websiteUrl: 'https://klingai.com',
     dataResidency: 'global',
     active: true,
@@ -1811,7 +1959,8 @@ const catalog = [
     category: 'video',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'education', 'other'],
-    description: 'AI voice generator for creating studio-quality voiceovers for videos and presentations.',
+    description: 'AI voice generator for creating studio-quality voiceovers' +
+      ' for videos and presentations.',
     websiteUrl: 'https://murf.ai',
     dataResidency: 'US',
     active: true,
@@ -1823,7 +1972,8 @@ const catalog = [
     category: 'image_generation',
     defaultRiskLevel: 'limited',
     domains: ['marketing', 'other'],
-    description: 'AI-powered creative tools for image generation, background removal, and enhancement.',
+    description: 'AI-powered creative tools for image generation,' +
+      ' background removal, and enhancement.',
     websiteUrl: 'https://clipdrop.co',
     dataResidency: 'global',
     active: true,
@@ -1839,7 +1989,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'AI-powered analytics in Tableau for automated insights, natural language queries, and data stories.',
+    description: 'AI-powered analytics in Tableau for automated insights,' +
+      ' natural language queries, and data stories.',
     websiteUrl: 'https://www.tableau.com',
     dataResidency: 'global',
     active: true,
@@ -1851,7 +2002,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'AI assistant in Power BI for generating reports, DAX formulas, and data narratives.',
+    description: 'AI assistant in Power BI for generating reports, DAX' +
+      ' formulas, and data narratives.',
     websiteUrl: 'https://powerbi.microsoft.com',
     dataResidency: 'global',
     active: true,
@@ -1863,7 +2015,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'AI-powered analytics platform with natural language search and automated insights.',
+    description: 'AI-powered analytics platform with natural language' +
+      ' search and automated insights.',
     websiteUrl: 'https://www.thoughtspot.com',
     dataResidency: 'global',
     active: true,
@@ -1875,7 +2028,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'French AI/ML platform for collaborative data science, MLOps, and analytics at enterprise scale.',
+    description: 'French AI/ML platform for collaborative data science,' +
+      ' MLOps, and analytics at enterprise scale.',
     websiteUrl: 'https://www.dataiku.com',
     dataResidency: 'EU',
     active: true,
@@ -1887,7 +2041,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'Open-source AI/ML platform for automated machine learning and predictive analytics.',
+    description: 'Open-source AI/ML platform for automated machine learning' +
+      ' and predictive analytics.',
     websiteUrl: 'https://h2o.ai',
     dataResidency: 'global',
     active: true,
@@ -1899,7 +2054,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'Enterprise AI platform for automated machine learning model building and deployment.',
+    description: 'Enterprise AI platform for automated machine learning' +
+      ' model building and deployment.',
     websiteUrl: 'https://www.datarobot.com',
     dataResidency: 'global',
     active: true,
@@ -1911,7 +2067,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'Unified data analytics platform with AI/ML capabilities for lakehouse architecture.',
+    description: 'Unified data analytics platform with AI/ML capabilities' +
+      ' for lakehouse architecture.',
     websiteUrl: 'https://www.databricks.com',
     dataResidency: 'global',
     active: true,
@@ -1923,7 +2080,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'AI-enhanced business intelligence platform with natural language queries and smart suggestions.',
+    description: 'AI-enhanced business intelligence platform with natural' +
+      ' language queries and smart suggestions.',
     websiteUrl: 'https://cloud.google.com/looker',
     dataResidency: 'global',
     active: true,
@@ -1935,7 +2093,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'AI-augmented analytics platform with associative engine and AI-generated insights.',
+    description: 'AI-augmented analytics platform with associative engine' +
+      ' and AI-generated insights.',
     websiteUrl: 'https://www.qlik.com',
     dataResidency: 'global',
     active: true,
@@ -1947,7 +2106,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'German AI-powered process mining platform for analyzing and optimizing business processes.',
+    description: 'German AI-powered process mining platform for analyzing' +
+      ' and optimizing business processes.',
     websiteUrl: 'https://www.celonis.com',
     dataResidency: 'EU',
     active: true,
@@ -1959,7 +2119,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'AI-powered analytics automation platform for data preparation, blending, and predictive analytics.',
+    description: 'AI-powered analytics automation platform for data' +
+      ' preparation, blending, and predictive analytics.',
     websiteUrl: 'https://www.alteryx.com',
     dataResidency: 'global',
     active: true,
@@ -1971,7 +2132,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'Enterprise AI and analytics platform for advanced analytics, ML, and decision intelligence.',
+    description: 'Enterprise AI and analytics platform for advanced' +
+      ' analytics, ML, and decision intelligence.',
     websiteUrl: 'https://www.sas.com/en_us/software/viya.html',
     dataResidency: 'global',
     active: true,
@@ -1983,7 +2145,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'AI services within Snowflake data cloud for ML model serving and LLM-based data analysis.',
+    description: 'AI services within Snowflake data cloud for ML model' +
+      ' serving and LLM-based data analysis.',
     websiteUrl: 'https://www.snowflake.com/en/data-cloud/cortex/',
     dataResidency: 'global',
     active: true,
@@ -1995,7 +2158,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: null,
     domains: ['analytics', 'law_enforcement', 'other'],
-    description: 'AI platform for operationalizing LLMs on enterprise data with ontology-driven decision making.',
+    description: 'AI platform for operationalizing LLMs on enterprise data' +
+      ' with ontology-driven decision making.',
     websiteUrl: 'https://www.palantir.com/platforms/aip/',
     dataResidency: 'global',
     active: true,
@@ -2007,7 +2171,8 @@ const catalog = [
     category: 'analytics',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'No-code AI platform for building and deploying predictive models from business data.',
+    description: 'No-code AI platform for building and deploying predictive' +
+      ' models from business data.',
     websiteUrl: 'https://www.obviously.ai',
     dataResidency: 'US',
     active: true,
@@ -2023,7 +2188,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services', 'other'],
-    description: 'German AI-powered symptom assessment and health navigation platform for patients and providers.',
+    description: 'German AI-powered symptom assessment and health' +
+      ' navigation platform for patients and providers.',
     websiteUrl: 'https://ada.com',
     dataResidency: 'EU',
     active: true,
@@ -2035,7 +2201,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'French healthcare platform with AI-powered appointment management and medical documentation.',
+    description: 'French healthcare platform with AI-powered appointment' +
+      ' management and medical documentation.',
     websiteUrl: 'https://www.doctolib.fr',
     dataResidency: 'EU',
     active: true,
@@ -2047,7 +2214,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI-powered clinical decision support and health data analytics platform (formerly IBM Watson Health).',
+    description: 'AI-powered clinical decision support and health data' +
+      ' analytics platform (formerly IBM Watson Health).',
     websiteUrl: 'https://www.merative.com',
     dataResidency: 'global',
     active: true,
@@ -2059,7 +2227,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services', 'biometrics'],
-    description: 'AI-powered pathology platform for disease diagnosis from tissue sample analysis.',
+    description: 'AI-powered pathology platform for disease diagnosis from' +
+      ' tissue sample analysis.',
     websiteUrl: 'https://www.pathai.com',
     dataResidency: 'US',
     active: true,
@@ -2071,7 +2240,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI triage and symptom checker for remote patient consultation and health monitoring.',
+    description: 'AI triage and symptom checker for remote patient' +
+      ' consultation and health monitoring.',
     websiteUrl: 'https://www.emed.com',
     dataResidency: 'global',
     active: true,
@@ -2083,7 +2253,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI-powered medical imaging analysis for detecting stroke, pulmonary embolism, and cardiac events.',
+    description: 'AI-powered medical imaging analysis for detecting stroke,' +
+      ' pulmonary embolism, and cardiac events.',
     websiteUrl: 'https://www.viz.ai',
     dataResidency: 'US',
     active: true,
@@ -2095,7 +2266,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'Polish AI diagnostic engine for symptom assessment and patient triage in healthcare.',
+    description: 'Polish AI diagnostic engine for symptom assessment and' +
+      ' patient triage in healthcare.',
     websiteUrl: 'https://infermedica.com',
     dataResidency: 'EU',
     active: true,
@@ -2107,8 +2279,10 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI clinical documentation assistant that automatically generates medical notes from conversations.',
-    websiteUrl: 'https://www.nuance.com/healthcare/ambient-clinical-intelligence.html',
+    description: 'AI clinical documentation assistant that automatically' +
+      ' generates medical notes from conversations.',
+    websiteUrl:
+      'https://www.nuance.com/healthcare/ambient-clinical-intelligence.html',
     dataResidency: 'global',
     active: true,
   },
@@ -2119,7 +2293,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI radiology platform for detecting critical findings in medical imaging scans.',
+    description: 'AI radiology platform for detecting critical findings in' +
+      ' medical imaging scans.',
     websiteUrl: 'https://www.aidoc.com',
     dataResidency: 'global',
     active: true,
@@ -2131,7 +2306,8 @@ const catalog = [
     category: 'medical',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI medical conversation summarization turning doctor-patient dialogues into clinical notes.',
+    description: 'AI medical conversation summarization turning' +
+      ' doctor-patient dialogues into clinical notes.',
     websiteUrl: 'https://www.abridge.com',
     dataResidency: 'US',
     active: true,
@@ -2147,7 +2323,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI platform for legal work including research, drafting, and document analysis for law firms.',
+    description: 'AI platform for legal work including research, drafting,' +
+      ' and document analysis for law firms.',
     websiteUrl: 'https://www.harvey.ai',
     dataResidency: 'US',
     active: true,
@@ -2159,7 +2336,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI-powered legal intelligence platform for contract review, negotiation, and due diligence.',
+    description: 'AI-powered legal intelligence platform for contract' +
+      ' review, negotiation, and due diligence.',
     websiteUrl: 'https://www.luminance.com',
     dataResidency: 'global',
     active: true,
@@ -2171,7 +2349,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI contract analysis and review tool for extracting clauses and provisions from documents.',
+    description: 'AI contract analysis and review tool for extracting' +
+      ' clauses and provisions from documents.',
     websiteUrl: 'https://kirasystems.com',
     dataResidency: 'global',
     active: true,
@@ -2183,7 +2362,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI-powered compliance and e-discovery platform for proactive communication surveillance.',
+    description: 'AI-powered compliance and e-discovery platform for' +
+      ' proactive communication surveillance.',
     websiteUrl: 'https://www.relativity.com/trace/',
     dataResidency: 'global',
     active: true,
@@ -2195,7 +2375,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI legal assistant for research, document review, contract analysis, and legal drafting.',
+    description: 'AI legal assistant for research, document review,' +
+      ' contract analysis, and legal drafting.',
     websiteUrl: 'https://legal.thomsonreuters.com/en/products/cocounsel',
     dataResidency: 'global',
     active: true,
@@ -2207,7 +2388,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI legal research platform with case law search and brief analysis capabilities.',
+    description: 'AI legal research platform with case law search and brief' +
+      ' analysis capabilities.',
     websiteUrl: 'https://casetext.com',
     dataResidency: 'US',
     active: true,
@@ -2219,7 +2401,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI-powered legal research assistant with hallucination-checked citations and document drafting.',
+    description: 'AI-powered legal research assistant with' +
+      ' hallucination-checked citations and document drafting.',
     websiteUrl: 'https://www.lexisnexis.com/en-us/products/lexis-plus-ai.page',
     dataResidency: 'global',
     active: true,
@@ -2231,7 +2414,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI contract drafting and review platform for legal teams to accelerate contract workflows.',
+    description: 'AI contract drafting and review platform for legal teams' +
+      ' to accelerate contract workflows.',
     websiteUrl: 'https://www.robinai.com',
     dataResidency: 'global',
     active: true,
@@ -2243,7 +2427,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['justice', 'other'],
-    description: 'AI platform for legal language simplification and automated contract compliance analysis.',
+    description: 'AI platform for legal language simplification and' +
+      ' automated contract compliance analysis.',
     websiteUrl: 'https://legalrobot.com',
     dataResidency: 'US',
     active: true,
@@ -2255,7 +2440,8 @@ const catalog = [
     category: 'legal',
     defaultRiskLevel: null,
     domains: ['other'],
-    description: 'AI contract management platform for automated drafting, review, and lifecycle management.',
+    description: 'AI contract management platform for automated drafting,' +
+      ' review, and lifecycle management.',
     websiteUrl: 'https://juro.com',
     dataResidency: 'EU',
     active: true,
@@ -2271,7 +2457,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: null,
     domains: ['essential_services', 'analytics'],
-    description: 'Finance-specific LLM trained on Bloomberg financial data for market analysis and insights.',
+    description: 'Finance-specific LLM trained on Bloomberg financial data' +
+      ' for market analysis and insights.',
     websiteUrl: 'https://www.bloomberg.com',
     dataResidency: 'US',
     active: true,
@@ -2283,7 +2470,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: null,
     domains: ['essential_services', 'analytics'],
-    description: 'AI analytics platform for financial data processing, NLP, and market intelligence.',
+    description: 'AI analytics platform for financial data processing, NLP,' +
+      ' and market intelligence.',
     websiteUrl: 'https://www.kensho.com',
     dataResidency: 'US',
     active: true,
@@ -2295,7 +2483,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: null,
     domains: ['essential_services', 'analytics'],
-    description: 'AI platform for financial crime detection, anti-money laundering, and fraud prevention.',
+    description: 'AI platform for financial crime detection, anti-money' +
+      ' laundering, and fraud prevention.',
     websiteUrl: 'https://www.symphonyai.com',
     dataResidency: 'global',
     active: true,
@@ -2307,7 +2496,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI-powered credit underwriting platform for fairer and more accurate lending decisions.',
+    description: 'AI-powered credit underwriting platform for fairer and' +
+      ' more accurate lending decisions.',
     websiteUrl: 'https://www.zest.ai',
     dataResidency: 'US',
     active: true,
@@ -2319,7 +2509,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: 'high',
     domains: ['essential_services'],
-    description: 'AI lending platform using ML for credit risk assessment beyond traditional FICO scores.',
+    description: 'AI lending platform using ML for credit risk assessment' +
+      ' beyond traditional FICO scores.',
     websiteUrl: 'https://www.upstart.com',
     dataResidency: 'US',
     active: true,
@@ -2331,7 +2522,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: 'minimal',
     domains: ['analytics'],
-    description: 'Swedish AI-powered customer success platform with predictive churn and revenue analytics.',
+    description: 'Swedish AI-powered customer success platform with' +
+      ' predictive churn and revenue analytics.',
     websiteUrl: 'https://www.planhat.com',
     dataResidency: 'EU',
     active: true,
@@ -2343,7 +2535,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: null,
     domains: ['essential_services', 'analytics'],
-    description: 'AI-powered decision intelligence for financial crime, fraud detection, and KYC/AML.',
+    description: 'AI-powered decision intelligence for financial crime,' +
+      ' fraud detection, and KYC/AML.',
     websiteUrl: 'https://www.quantexa.com',
     dataResidency: 'global',
     active: true,
@@ -2355,7 +2548,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: null,
     domains: ['essential_services', 'analytics'],
-    description: 'AI fraud prevention platform using adaptive behavioral analytics for payment protection.',
+    description: 'AI fraud prevention platform using adaptive behavioral' +
+      ' analytics for payment protection.',
     websiteUrl: 'https://www.featurespace.com',
     dataResidency: 'global',
     active: true,
@@ -2367,7 +2561,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: null,
     domains: ['essential_services', 'analytics'],
-    description: 'AI platform for banking personalization, financial insights, and automated money management.',
+    description: 'AI platform for banking personalization, financial' +
+      ' insights, and automated money management.',
     websiteUrl: 'https://personetics.com',
     dataResidency: 'global',
     active: true,
@@ -2379,7 +2574,8 @@ const catalog = [
     category: 'finance',
     defaultRiskLevel: null,
     domains: ['essential_services', 'analytics'],
-    description: 'Swiss banking software with AI for credit scoring, compliance, and customer engagement.',
+    description: 'Swiss banking software with AI for credit scoring,' +
+      ' compliance, and customer engagement.',
     websiteUrl: 'https://www.temenos.com',
     dataResidency: 'global',
     active: true,
@@ -2395,7 +2591,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI-enhanced language learning with GPT-4 powered roleplay and explanation features.',
+    description: 'AI-enhanced language learning with GPT-4 powered roleplay' +
+      ' and explanation features.',
     websiteUrl: 'https://www.duolingo.com',
     dataResidency: 'US',
     active: true,
@@ -2407,7 +2604,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI tutoring assistant by Khan Academy providing personalized guidance and Socratic tutoring.',
+    description: 'AI tutoring assistant by Khan Academy providing' +
+      ' personalized guidance and Socratic tutoring.',
     websiteUrl: 'https://www.khanacademy.org/khan-labs',
     dataResidency: 'US',
     active: true,
@@ -2419,7 +2617,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI math problem solver using camera recognition with step-by-step explanations.',
+    description: 'AI math problem solver using camera recognition with' +
+      ' step-by-step explanations.',
     websiteUrl: 'https://photomath.com',
     dataResidency: 'US',
     active: true,
@@ -2431,7 +2630,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI tutor chatbot for personalized study sessions and adaptive learning on Quizlet.',
+    description: 'AI tutor chatbot for personalized study sessions and' +
+      ' adaptive learning on Quizlet.',
     websiteUrl: 'https://quizlet.com',
     dataResidency: 'US',
     active: true,
@@ -2443,7 +2643,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI writing detection tool for academic integrity checking student submissions.',
+    description: 'AI writing detection tool for academic integrity checking' +
+      ' student submissions.',
     websiteUrl: 'https://www.turnitin.com',
     dataResidency: 'global',
     active: true,
@@ -2455,7 +2656,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'UK-based AI learning platform providing personalized learning paths and teacher analytics.',
+    description: 'UK-based AI learning platform providing personalized' +
+      ' learning paths and teacher analytics.',
     websiteUrl: 'https://www.century.tech',
     dataResidency: 'EU',
     active: true,
@@ -2467,7 +2669,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI-assisted grading platform for homework, exams, and assignments in higher education.',
+    description: 'AI-assisted grading platform for homework, exams, and' +
+      ' assignments in higher education.',
     websiteUrl: 'https://www.gradescope.com',
     dataResidency: 'US',
     active: true,
@@ -2479,7 +2682,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI virtual tutor for open-response assessment and personalized learning conversations.',
+    description: 'AI virtual tutor for open-response assessment and' +
+      ' personalized learning conversations.',
     websiteUrl: 'https://www.cognii.com',
     dataResidency: 'US',
     active: true,
@@ -2491,7 +2695,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'Polish AI-powered learning community with step-by-step homework help and tutoring.',
+    description: 'Polish AI-powered learning community with step-by-step' +
+      ' homework help and tutoring.',
     websiteUrl: 'https://brainly.com',
     dataResidency: 'EU',
     active: true,
@@ -2503,7 +2708,8 @@ const catalog = [
     category: 'education',
     defaultRiskLevel: 'high',
     domains: ['education'],
-    description: 'AI STEM tutoring platform with step-by-step problem solving and diagnostic assessments.',
+    description: 'AI STEM tutoring platform with step-by-step problem' +
+      ' solving and diagnostic assessments.',
     websiteUrl: 'https://www.querium.com',
     dataResidency: 'US',
     active: true,
@@ -2519,7 +2725,8 @@ const catalog = [
     category: 'translation',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI-powered translation service supporting 130+ languages with neural machine translation.',
+    description: 'AI-powered translation service supporting 130+ languages' +
+      ' with neural machine translation.',
     websiteUrl: 'https://translate.google.com',
     dataResidency: 'US',
     active: true,
@@ -2531,7 +2738,8 @@ const catalog = [
     category: 'translation',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'Italian AI translation platform with adaptive neural machine translation for enterprise.',
+    description: 'Italian AI translation platform with adaptive neural' +
+      ' machine translation for enterprise.',
     websiteUrl: 'https://translated.com',
     dataResidency: 'EU',
     active: true,
@@ -2543,7 +2751,8 @@ const catalog = [
     category: 'translation',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI translation management platform combining machine translation with human review workflows.',
+    description: 'AI translation management platform combining machine' +
+      ' translation with human review workflows.',
     websiteUrl: 'https://www.smartcat.com',
     dataResidency: 'global',
     active: true,
@@ -2555,7 +2764,8 @@ const catalog = [
     category: 'translation',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'German AI-powered translation management platform with quality estimation and automation.',
+    description: 'German AI-powered translation management platform with' +
+      ' quality estimation and automation.',
     websiteUrl: 'https://phrase.com',
     dataResidency: 'EU',
     active: true,
@@ -2571,7 +2781,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['analytics', 'other'],
-    description: 'AI-powered robotic process automation platform for automating business workflows.',
+    description: 'AI-powered robotic process automation platform for' +
+      ' automating business workflows.',
     websiteUrl: 'https://www.uipath.com',
     dataResidency: 'global',
     active: true,
@@ -2583,7 +2794,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['analytics', 'other'],
-    description: 'Intelligent automation platform combining RPA with AI for end-to-end business process automation.',
+    description: 'Intelligent automation platform combining RPA with AI for' +
+      ' end-to-end business process automation.',
     websiteUrl: 'https://www.automationanywhere.com',
     dataResidency: 'global',
     active: true,
@@ -2595,7 +2807,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI-enhanced workflow automation platform connecting 6000+ apps with natural language setup.',
+    description: 'AI-enhanced workflow automation platform connecting 6000+' +
+      ' apps with natural language setup.',
     websiteUrl: 'https://zapier.com',
     dataResidency: 'US',
     active: true,
@@ -2607,7 +2820,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'Czech visual workflow automation platform with AI modules for integration and process automation.',
+    description: 'Czech visual workflow automation platform with AI modules' +
+      ' for integration and process automation.',
     websiteUrl: 'https://www.make.com',
     dataResidency: 'EU',
     active: true,
@@ -2619,7 +2833,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'German open-source workflow automation platform with AI agent and LLM integration nodes.',
+    description: 'German open-source workflow automation platform with AI' +
+      ' agent and LLM integration nodes.',
     websiteUrl: 'https://n8n.io',
     dataResidency: 'EU',
     active: true,
@@ -2631,7 +2846,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['analytics', 'other'],
-    description: 'MLOps platform for experiment tracking, model versioning, and ML pipeline management.',
+    description: 'MLOps platform for experiment tracking, model versioning,' +
+      ' and ML pipeline management.',
     websiteUrl: 'https://wandb.ai',
     dataResidency: 'US',
     active: true,
@@ -2643,7 +2859,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: null,
     domains: ['coding', 'analytics', 'other'],
-    description: 'AI model hub and platform for sharing, deploying, and collaborating on ML models.',
+    description: 'AI model hub and platform for sharing, deploying, and' +
+      ' collaborating on ML models.',
     websiteUrl: 'https://huggingface.co',
     dataResidency: 'global',
     active: true,
@@ -2655,7 +2872,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI calendar optimization tool for intelligent scheduling and focus time management.',
+    description: 'AI calendar optimization tool for intelligent scheduling' +
+      ' and focus time management.',
     websiteUrl: 'https://www.notion.so/product/calendar',
     dataResidency: 'US',
     active: true,
@@ -2667,7 +2885,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI scheduling assistant that auto-schedules tasks, habits, and meetings in Google Calendar.',
+    description: 'AI scheduling assistant that auto-schedules tasks,' +
+      ' habits, and meetings in Google Calendar.',
     websiteUrl: 'https://reclaim.ai',
     dataResidency: 'US',
     active: true,
@@ -2679,7 +2898,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI noise cancellation and meeting transcription tool for clear audio in virtual meetings.',
+    description: 'AI noise cancellation and meeting transcription tool for' +
+      ' clear audio in virtual meetings.',
     websiteUrl: 'https://krisp.ai',
     dataResidency: 'US',
     active: true,
@@ -2691,7 +2911,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: null,
     domains: ['analytics', 'other'],
-    description: 'AI data labeling and model evaluation platform for training and improving AI systems.',
+    description: 'AI data labeling and model evaluation platform for' +
+      ' training and improving AI systems.',
     websiteUrl: 'https://scale.com',
     dataResidency: 'US',
     active: true,
@@ -2703,7 +2924,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['analytics', 'other'],
-    description: 'Vector database for AI applications enabling semantic search and retrieval-augmented generation.',
+    description: 'Vector database for AI applications enabling semantic' +
+      ' search and retrieval-augmented generation.',
     websiteUrl: 'https://www.pinecone.io',
     dataResidency: 'global',
     active: true,
@@ -2715,7 +2937,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['analytics', 'other'],
-    description: 'Dutch open-source vector database for AI-native search and RAG applications.',
+    description: 'Dutch open-source vector database for AI-native search' +
+      ' and RAG applications.',
     websiteUrl: 'https://weaviate.io',
     dataResidency: 'EU',
     active: true,
@@ -2727,7 +2950,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['analytics', 'other'],
-    description: 'German open-source vector search engine for AI and ML applications with filtering.',
+    description: 'German open-source vector search engine for AI and ML' +
+      ' applications with filtering.',
     websiteUrl: 'https://qdrant.tech',
     dataResidency: 'EU',
     active: true,
@@ -2739,7 +2963,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI speech-to-text and text-to-speech platform with real-time transcription API.',
+    description: 'AI speech-to-text and text-to-speech platform with' +
+      ' real-time transcription API.',
     websiteUrl: 'https://deepgram.com',
     dataResidency: 'US',
     active: true,
@@ -2751,7 +2976,8 @@ const catalog = [
     category: 'other',
     defaultRiskLevel: 'minimal',
     domains: ['other'],
-    description: 'AI speech-to-text API with speaker diarization, sentiment analysis, and content moderation.',
+    description: 'AI speech-to-text API with speaker diarization, sentiment' +
+      ' analysis, and content moderation.',
     websiteUrl: 'https://www.assemblyai.com',
     dataResidency: 'US',
     active: true,
