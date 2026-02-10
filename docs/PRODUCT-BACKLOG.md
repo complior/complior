@@ -3,7 +3,7 @@
 **Версия:** 3.0.0
 **Дата:** 2026-02-08
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** ⏳ Ожидает утверждения PO (Deployer-First Pivot)
+**Статус:** ✅ Утверждено PO (2026-02-10)
 **Зависимости:** PRODUCT-VISION.md v2.0 ✅
 
 ---
@@ -175,7 +175,7 @@ Feature 02 (IAM)
 
 ## Feature 18: AI Literacy Module — Обучение сотрудников (Art. 4)
 
-**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 2-3
+**Приоритет:** P2 (Could Have) | **Размер:** L | **Спринт:** 8+ (after Full Scope)
 
 ### Бизнес-ценность
 As an HR director, I want to ensure all employees complete AI literacy training, so that our company complies with Art. 4 AI Act (already mandatory since Feb 2, 2025).
@@ -751,14 +751,13 @@ Feature 16 (Shadow AI Discovery)
 | 01 | Инфраструктура | M | 0 |
 | 02 | IAM (Ory) | L | 1 |
 | 03 | AI Tool Inventory + Wizard | L | 1-2 |
-| 18 | **AI Literacy Module (WEDGE)** | L | 2-3 |
 | 04a | Rule Engine (deployer) | L | 2 |
 | 04b | LLM Classification | M | 2-3 |
 | 04c | Deployer Requirements Mapping | M | 3 |
 | 05 | Deployer Dashboard | L | 3-4 |
 | 06 | Ева (deployer focus) | L | 4 |
 
-**MVP-ready: Sprint 4 (неделя 8-10)** — inventory, AI Literacy, classification, dashboard, Eva
+**MVP-ready: Sprint 4 (неделя 8-10)** — inventory, classification, dashboard, Eva
 
 ### P1 — Should Have
 
@@ -780,6 +779,7 @@ Feature 16 (Shadow AI Discovery)
 | 12 | Regulatory Monitor | M | 7 |
 | 20 | KI-Compliance Siegel | S | 7 |
 | 13 | Доп. deployer-документы | M | 7-8 |
+| 18 | **AI Literacy Module (WEDGE)** | L | 8+ |
 | 14 | Multi-language (+ DE, FR) | M | post-MVP |
 
 ### P3 — Future
@@ -798,7 +798,7 @@ Feature 16 (Shadow AI Discovery)
 ```
 Sprint 0     ██ Feature 01: Infrastructure
 Sprint 1     ████ Feature 02: IAM + Feature 03: AI Tool Inventory (start)
-Sprint 2     ████ Feature 03 (end) + Feature 18: AI Literacy + Feature 04a: Rules
+Sprint 2     ████ Feature 03 (end) + Feature 04a: Rules
 Sprint 3     ████ Feature 04b/c: Classification + Feature 05: Dashboard
 Sprint 4     ████ Feature 05 (end) + Feature 06: Eva + Feature 07: Deployer Docs (start)
              ── MVP READY ──
@@ -808,7 +808,7 @@ Sprint 6     ██ Feature 09 (end) + Feature 10: Eva tools + Feature 11: Onboa
 Sprint 7     ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel + Feature 13: Docs
 Sprint 8     ██ Feature 13 (end)
              ── FULL SCOPE ──
-Sprint 8+    ██ Feature 14: i18n (+ DE, FR) — сразу после MVP
+Sprint 8+    ████ Feature 18: AI Literacy content + Feature 14: i18n (+ DE, FR)
 ```
 
 ---
@@ -833,6 +833,6 @@ Sprint 8+    ██ Feature 14: i18n (+ DE, FR) — сразу после MVP
 
 ---
 
-⛔ **APPROVAL GATE:** Product Owner должен утвердить Deployer-First Backlog перед Sprint Planning.
+✅ **APPROVED:** Deployer-First Backlog утверждён PO (2026-02-10).
 
-💡 **Следующий шаг:** После утверждения → обновить ARCHITECTURE.md, DATABASE.md, DATA-FLOWS.md, SPRINT-BACKLOG.md
+💡 **Следующий шаг:** Sprint 2 планирование (Feature 03 end + Feature 04a Rules)

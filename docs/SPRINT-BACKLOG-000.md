@@ -2,7 +2,7 @@
 
 **Версия:** 2.0.0
 **Дата:** 2026-02-07
-**Статус:** ✅ Done (merged to main, PR #2, #3)
+**Статус:** ✅ Утверждено PO (2026-02-10). Done (merged to main, PR #2, #3)
 **Фича:** Feature 01 (PRODUCT-BACKLOG.md)
 **Длительность:** 2 недели (2026-02-10 → 2026-02-21)
 **Цель спринта:** Рабочая среда разработки — monorepo, Fastify backend, все 29 таблиц (deployer-first), Docker Compose с Ory + Gotenberg, CI/CD, Next.js skeleton, deployer wireframes

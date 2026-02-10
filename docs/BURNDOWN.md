@@ -82,14 +82,65 @@
 
 ---
 
+## Sprint 1 (IAM + AI Tool Catalog)
+
+**Total Story Points:** 50
+**Duration:** 2026-02-09 — 2026-02-10 (2 days)
+**Team:** Max (Backend+QA), Claude Code (bug fixes + E2E)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-09 | 50 | 50 | Sprint start |
+| 1 | 2026-02-09 | 15 | 25 | US-009..013 (35 SP): Ory webhook, login, register, RBAC, multi-tenancy |
+| 2 | 2026-02-10 | 0 | 0 | US-014..015 (15 SP): AuditLog + Catalog. Zod validation, E2E, bug fixes |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 50 |
+| Completed SP | 50 |
+| Velocity | 50 SP / 2 days |
+| Carry-over | 0 |
+
+### Sprint 1 Completion Summary
+
+**Backend (Max → Claude Code fixes — 50 SP)**
+- **US-009** (8 SP): Ory webhook → User+Org sync — done
+- **US-010** (5 SP): Login page (Ory sessions) — done
+- **US-011** (8 SP): 2-step registration (profile + password) — done
+- **US-012** (8 SP): RBAC permissions (owner/member/viewer) — done
+- **US-013** (5 SP): Multi-tenancy isolation (organizationId filter) — done
+- **US-014** (5 SP): AuditLog for auth events — done
+- **US-015** (11 SP): AI Tool Catalog (search, filter, detail) — done
+
+### Bug Fixes During E2E Verification
+- Fix Entity PK naming (RoleId→roleId) in setup.js + 6 app files
+- Fix Fastify v5 logger config, Dockerfile workspace install
+- Fix Ory kratos.yml (locale, cipher, argon2, SMTP)
+- Fix bigint type mismatch in org update comparison
+- Fix ambiguous column in audit log JOIN query
+- Add Zod validation on all 6 API endpoints (CODING-STANDARDS §2)
+- Add initDatabase(pool) — auto DB setup on startup
+
+### Reviews
+- **E2E:** 14/14 smoke tests pass (live Docker)
+- **Unit:** 64/64 tests pass
+- **PR #6** → develop → main
+
+---
+
 ## Cumulative Velocity
 
 | Sprint | SP Planned | SP Done | Duration | Velocity (SP/day) |
 |--------|-----------|---------|----------|-------------------|
 | 000 | 10 | 10 | 4 days | 2.5 |
 | 0 | 47 | 47 | 2 days | 23.5 |
+| 1 | 50 | 50 | 2 days | 25.0 |
 
 ---
 
 **Updated by:** Claude Code (on behalf of Alex)
-**Last update:** 2026-02-09
+**Last update:** 2026-02-10

@@ -3,7 +3,7 @@
 **Версия:** 2.1.0
 **Дата:** 2026-02-09
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** ⏳ Ожидает утверждения PO (deployer-first pivot)
+**Статус:** ✅ Утверждено PO (2026-02-10)
 
 > **v2.1.0 (2026-02-09):** AI SDK интеграция — Vercel AI SDK 6 как framework для Eva и LLM-интеграций (ADR-005). Claude Agent SDK для автономных агентов Features 16-17. Nango (self-hosted EU) как planned agent integration platform вместо Composio. Multi-user tool registration (employee self-service). Подтверждение Ory Kratos vs WorkOS (ADR-006).
 >
@@ -922,7 +922,7 @@ graph LR
 
 ---
 
-⏳ **Ожидает утверждения PO** (deployer-first pivot v2.0.0).
+✅ **Утверждено PO** (2026-02-10). Deployer-first pivot v2.0.0.
 
 **v2.0.0 (2026-02-07):** Deployer-first pivot — 8 Bounded Contexts (добавлены AI Literacy + Inventory), 29 таблиц, Classification Engine переориентирован на deployer (Art. 4, 26-27, 50), Deployer Compliance вместо provider Tech Docs.
 
