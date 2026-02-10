@@ -1,0 +1,388 @@
+'use strict';
+
+const fsp = require('node:fs').promises;
+const path = require('node:path');
+const vm = require('node:vm');
+const pg = require('pg');
+// loader.js available for runtime use
+const dbConfig = require('./config/database.js');
+
+const SCHEMAS_DIR = path.join(__dirname, 'schemas');
+const SEEDS_DIR = path.join(__dirname, 'seeds');
+
+// MetaSQL kind → SQL DDL mapping
+const KIND_PK = {
+  Registry: () =>
+    '"id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY',
+  Entity: (n) =>
+    `"${n}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
+  Details: (n) =>
+    `"${n}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
+  Relation: (n) =>
+    `"${n}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
+};
+
+const REGISTRY_COLUMNS = `
+  "creation" timestamp with time zone DEFAULT now(),
+  "change" timestamp with time zone DEFAULT now()`;
+
+// Custom type mapping
+const TYPE_MAP = {
+  string: 'varchar',
+  text: 'text',
+  number: 'integer',
+  boolean: 'boolean',
+  datetime: 'timestamp with time zone',
+  json: 'jsonb',
+  ip: 'inet',
+  riskLevel: 'varchar',
+  complianceStatus: 'varchar',
+};
+
+const resolveType = (field) => {
+  if (typeof field === 'string') {
+    if (field.startsWith('?')) return { type: field.slice(1), required: false };
+    return { type: field };
+  }
+  return field;
+};
+
+const fieldToSQL = (name, rawField, tableName, schemas) => {
+  const field = resolveType(rawField);
+
+  // Skip meta-fields
+  if (name === 'naturalKey' || name === 'many') return null;
+  if (typeof field === 'object' && field.many) return null;
+
+  const type = field.type || 'string';
+  const isFK = schemas.has(type);
+
+  if (isFK) {
+    const refTable = type;
+    const refKind = getKind(schemas.get(refTable));
+    const refPK = refKind === 'Registry'
+      ? 'id'
+      : `${refTable[0].toLowerCase()}${refTable.slice(1)}Id`;
+    const colName = `"${name}Id"`;
+    const nullable = field.required === false ? '' : ' NOT NULL';
+    const onDelete = field.delete === 'cascade' ? ' ON DELETE CASCADE'
+      : field.delete === 'restrict' ? ' ON DELETE RESTRICT' : '';
+    const ref = `REFERENCES "${refTable}"("${refPK}")`;
+    return `${colName} bigint${nullable} ${ref}${onDelete}`;
+  }
+
+  let sqlType = TYPE_MAP[type] || 'varchar';
+
+  // Handle length constraints
+  if (field.length && field.length.max && sqlType === 'varchar') {
+    sqlType = `varchar(${field.length.max})`;
+  }
+
+  // Handle enums as CHECK constraints
+  if (field.enum) {
+    const values = field.enum.map((v) => `'${v}'`).join(', ');
+    sqlType = `varchar CHECK ("${name}" IN (${values}))`;
+  }
+
+  const nullable = field.required === false ? '' : ' NOT NULL';
+  const unique = field.unique === true ? ' UNIQUE' : '';
+  const defaultVal = field.default !== undefined
+    ? ` DEFAULT ${field.default}` : '';
+
+  return `"${name}" ${sqlType}${nullable}${unique}${defaultVal}`;
+};
+
+const getKind = (schema) => {
+  for (const kind of ['Registry', 'Entity', 'Details', 'Relation']) {
+    if (schema[kind] !== undefined) return kind;
+  }
+  return 'Entity';
+};
+
+const generateDDL = (tableName, schema, schemas) => {
+  const kind = getKind(schema);
+  const pk = KIND_PK[kind](tableName);
+  const columns = [pk];
+
+  if (kind === 'Registry') {
+    columns.push(REGISTRY_COLUMNS.trim());
+  }
+
+  const uniqueConstraints = [];
+
+  for (const [name, field] of Object.entries(schema)) {
+    if (['Registry', 'Entity', 'Details', 'Relation'].includes(name)) continue;
+
+    // Handle many-to-many (junction table created
+    // separately by UserRole schema)
+    if (typeof field === 'object' && field.many) continue;
+
+    // Handle naturalKey
+    if (name === 'naturalKey' && field.unique) {
+      const cols = field.unique.map((col) => {
+        const f = resolveType(schema[col]);
+        const isFK = f && schemas.has(f.type || f);
+        return isFK ? `"${col}Id"` : `"${col}"`;
+      });
+      uniqueConstraints.push(`UNIQUE (${cols.join(', ')})`);
+      continue;
+    }
+
+    const sql = fieldToSQL(name, field, tableName, schemas);
+    if (sql) columns.push(sql);
+  }
+
+  const allCols = [...columns, ...uniqueConstraints].join(',\n  ');
+  return `CREATE TABLE IF NOT EXISTS "${tableName}" (\n  ${allCols}\n);`;
+};
+
+// Table creation order (respects foreign key dependencies)
+const TABLE_ORDER = [
+  'Organization',
+  'Plan',
+  'AIToolCatalog',
+  'TrainingCourse',
+  'RegulatoryUpdate',
+  'User',
+  'Role',
+  'UserRole',
+  'Permission',
+  'Subscription',
+  'AITool',
+  'AIToolDiscovery',
+  'RiskClassification',
+  'Requirement',
+  'ToolRequirement',
+  'ClassificationLog',
+  'TrainingModule',
+  'LiteracyCompletion',
+  'LiteracyRequirement',
+  'ComplianceDocument',
+  'DocumentSection',
+  'ChecklistItem',
+  'FRIAAssessment',
+  'FRIASection',
+  'Conversation',
+  'ChatMessage',
+  'ImpactAssessment',
+  'Notification',
+  'AuditLog',
+];
+
+const loadSchemas = async () => {
+  const schemas = new Map();
+  const files = await fsp.readdir(SCHEMAS_DIR);
+  for (const file of files) {
+    if (!file.endsWith('.js') || file.startsWith('.')) continue;
+    const name = path.basename(file, '.js');
+    const filePath = path.join(SCHEMAS_DIR, file);
+    const src = await fsp.readFile(filePath, 'utf8');
+    const schema = vm.runInThisContext(src, { filename: filePath });
+    schemas.set(name, schema);
+  }
+  return schemas;
+};
+
+const seedRequirements = async (client) => {
+  const requirements = require(path.join(SEEDS_DIR, 'requirements.js'));
+  for (const req of requirements) {
+    await client.query(
+      `INSERT INTO "Requirement"
+       ("code", "name", "description",
+       "articleReference", "riskLevel", "category",
+       "sortOrder", "estimatedEffortHours", "guidance")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT ("code") DO NOTHING`,
+      [req.code, req.name, req.description, req.articleReference,
+        req.riskLevel, req.category, req.sortOrder,
+        req.estimatedEffortHours || null, req.guidance || null],
+    );
+  }
+  console.log(`  Seeded ${requirements.length} requirements`);
+};
+
+const seedPlans = async (client) => {
+  const plans = require(path.join(SEEDS_DIR, 'plans.js'));
+  for (const plan of plans) {
+    await client.query(
+      `INSERT INTO "Plan"
+       ("name", "displayName", "priceMonthly",
+       "priceYearly", "maxTools", "maxUsers",
+       "maxEmployees", "features", "active",
+       "sortOrder")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT ("name") DO NOTHING`,
+      [plan.name, plan.displayName, plan.priceMonthly, plan.priceYearly,
+        plan.maxTools, plan.maxUsers, plan.maxEmployees,
+        JSON.stringify(plan.features), plan.active, plan.sortOrder],
+    );
+  }
+  console.log(`  Seeded ${plans.length} plans`);
+};
+
+const seedRoles = async (client) => {
+  const { roles, permissions } = require(path.join(SEEDS_DIR, 'roles.js'));
+  for (const role of roles) {
+    await client.query(
+      `INSERT INTO "Role" ("name", "active", "organizationIdId")
+       VALUES ($1, $2, $3)
+       ON CONFLICT ("name") DO NOTHING`,
+      [role.name, role.active, role.organizationId],
+    );
+  }
+  for (const perm of permissions) {
+    const roleResult = await client.query(
+      'SELECT "roleId" FROM "Role" WHERE "name" = $1',
+      [perm.role],
+    );
+    if (roleResult.rows.length === 0) continue;
+    const roleId = roleResult.rows[0].roleId;
+    await client.query(
+      `INSERT INTO "Permission" ("roleId", "resource", "action")
+       VALUES ($1, $2, $3)
+       ON CONFLICT DO NOTHING`,
+      [roleId, perm.resource, perm.action],
+    );
+  }
+  const msg = `  Seeded ${roles.length} roles,` +
+    ` ${permissions.length} permissions`;
+  console.log(msg);
+};
+
+const seedCourses = async (client) => {
+  const courses = require(path.join(SEEDS_DIR, 'courses.js'));
+  for (const course of courses) {
+    const { modules, ...courseData } = course;
+    const result = await client.query(
+      `INSERT INTO "TrainingCourse"
+       ("title", "slug", "roleTarget",
+       "durationMinutes", "contentType",
+       "description", "language", "version",
+       "active", "sortOrder")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT ("slug") DO NOTHING
+       RETURNING "courseId"`,
+      [courseData.title, courseData.slug,
+        courseData.roleTarget,
+        courseData.durationMinutes,
+        courseData.contentType,
+        courseData.description,
+        courseData.language, courseData.version,
+        courseData.active, courseData.sortOrder],
+    );
+    if (result.rows.length === 0) continue;
+    const courseId = result.rows[0].courseId;
+    for (const mod of modules) {
+      await client.query(
+        `INSERT INTO "TrainingModule" ("courseId", "sortOrder", "title",
+         "contentMarkdown", "quizQuestions", "durationMinutes")
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT DO NOTHING`,
+        [courseId, mod.sortOrder, mod.title,
+          mod.contentMarkdown, JSON.stringify(mod.quizQuestions),
+          mod.durationMinutes],
+      );
+    }
+  }
+  console.log(`  Seeded ${courses.length} courses with modules`);
+};
+
+const seedCatalog = async (client) => {
+  const catalog = require(path.join(SEEDS_DIR, 'catalog.js'));
+  for (const tool of catalog) {
+    await client.query(
+      `INSERT INTO "AIToolCatalog"
+       ("name", "vendor", "vendorCountry",
+       "category", "defaultRiskLevel", "domains",
+       "description", "websiteUrl",
+       "dataResidency", "active")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT ("name") DO NOTHING`,
+      [tool.name, tool.vendor, tool.vendorCountry || null, tool.category,
+        tool.defaultRiskLevel || null, JSON.stringify(tool.domains),
+        tool.description || null, tool.websiteUrl || null,
+        tool.dataResidency || null, tool.active],
+    );
+  }
+  console.log(`  Seeded ${catalog.length} AI tools in catalog`);
+};
+
+const run = async () => {
+  console.log('Loading schemas...');
+  const schemas = await loadSchemas();
+  console.log(`  Found ${schemas.size} schemas`);
+
+  console.log('Connecting to database...');
+  const pool = new pg.Pool(dbConfig);
+  const client = await pool.connect();
+
+  try {
+    console.log('Creating tables...');
+    for (const tableName of TABLE_ORDER) {
+      const schema = schemas.get(tableName);
+      if (!schema) {
+        console.warn(`  WARNING: Schema not found for ${tableName}`);
+        continue;
+      }
+      const ddl = generateDDL(tableName, schema, schemas);
+      await client.query(ddl);
+      console.log(`  Created: ${tableName}`);
+    }
+
+    console.log('\nCreating indexes...');
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_user_org ON "User"("organizationId")',
+      'CREATE INDEX IF NOT EXISTS idx_user_ory_id ON "User"("oryId")',
+      'CREATE INDEX IF NOT EXISTS idx_aitool_org ON "AITool"("organizationId")',
+      'CREATE INDEX IF NOT EXISTS idx_aitool_risk ON "AITool"("riskLevel")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_aitool_status ON "AITool"("complianceStatus")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_class_tool_current ' +
+        'ON "RiskClassification"("aiToolId", "isCurrent")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_toolreq_tool ON "ToolRequirement"("aiToolId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_doc_tool ON "ComplianceDocument"("aiToolId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_conv_user ON "Conversation"("userId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_msg_conv ON "ChatMessage"("conversationId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_notif_org_user ' +
+        'ON "Notification"("organizationId", "userId", "read")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_audit_org_time ON "AuditLog"("organizationId")',
+    ];
+    for (const idx of indexes) {
+      await client.query(idx);
+    }
+    console.log(`  Created ${indexes.length} indexes`);
+
+    console.log('\nSeeding data...');
+    await seedRequirements(client);
+    await seedPlans(client);
+    await seedRoles(client);
+    await seedCourses(client);
+    await seedCatalog(client);
+
+    console.log('\nSetup complete!');
+    console.log(`  Tables: ${TABLE_ORDER.length}`);
+    console.log(`  Indexes: ${indexes.length}`);
+  } catch (err) {
+    console.error('Setup failed:', err.message);
+    throw err;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+};
+
+if (require.main === module) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+module.exports = { loadSchemas, generateDDL, run, TABLE_ORDER };

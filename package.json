@@ -1,0 +1,23 @@
+{
+  "name": "ai-act-compliance-platform",
+  "version": "0.1.0",
+  "description": "EU AI Act Compliance Platform (deployer-first)",
+  "private": true,
+  "workspaces": [
+    "src",
+    "frontend"
+  ],
+  "scripts": {
+    "start": "node src/main.js",
+    "dev": "node --watch src/main.js",
+    "lint": "eslint src/ --ext .js",
+    "type-check": "tsc --noEmit",
+    "test": "node --test tests/**/*.test.js",
+    "db:generate": "node src/setup.js generate",
+    "db:seed": "node src/setup.js seed",
+    "db:setup": "node src/setup.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,14 +1,91 @@
 # 🦞 AI Act Compliance Platform — Dev Team Specification
-## OpenClaw Multi-Agent Development Team (v7.1)
+## OpenClaw Multi-Agent Development Team (v7.2)
 
-**Дата:** 04.02.2026
+**Дата:** 06.02.2026
 **Платформа:** OpenRouter (единый API-ключ) + OpenClaw (оркестрация)
 **Endpoint:** `https://openrouter.ai/api/v1`
-**Команда:** 11 агентов (9 базовых + оркестратор + ресёрчер)
-**Управление:** Alex (Kimi K2.5) — Execution Master, Marcus (Opus 4.5) — Planning Master
+**Команда:** 7 активных агентов (4 деактивированы — см. changelog)
+**Управление:** Alex (Kimi K2.5) — Execution Master, Marcus (Opus 4.6) — Planning Master
 **Коммуникация:** Персональные DM + групповой чат «🦞 Dev Team»
 **Методология:** Scrum (Product Owner → Sprint Planning → Sprint → Review → Approval)
 **Режим работы:** Максимальная автономность между Approval Gates
+
+---
+
+# ⚡ v7.2 CHANGELOG (06.02.2026)
+
+## 1. Команда: 11 → 7 активных агентов
+
+**Активные (7):**
+| Agent | Role | Model (OpenRouter ID) | $/1M In/Out | Context |
+|-------|------|-----------------------|-------------|---------|
+| Alex | Orchestrator | Kimi K2.5 (`moonshotai/kimi-k2.5`) | $0.45/$2.50 | 262K |
+| Marcus | CTO/Architect | **Claude Opus 4.6** (`anthropic/claude-opus-4.6`) | $5/$25 | 1M |
+| Max | Backend **+ QA** | GPT-5.2 Codex (`openai/gpt-5.2-codex`) | $1.75/$14 | 400K |
+| Nina | Frontend **+ UX** | **Claude Opus 4.6** (`anthropic/claude-opus-4.6`) | $5/$25 | 1M |
+| Elena | AI Act Expert | Gemini 3 Flash (`google/gemini-3-flash-preview`) | $0.50/$3 | 1M |
+| Leo | SecOps | **Gemini 3 Pro** (`google/gemini-3-pro-preview`) | $2/$12 | 1M |
+| Ava | Researcher | Gemini 3 Pro (`google/gemini-3-pro-preview`) | $2/$12 | 1M |
+
+**Деактивированные (4):**
+| Agent | Причина | Реактивация |
+|-------|---------|-------------|
+| Quinn (QA) | QA merged в Max — разработчик пишет свои тесты | Sprint 3+ |
+| Kai (UX) | UX merged в Nina — фронтендер делает wireframes + код | Сложные UX flows |
+| Diana (Docs) | Нет работы для Sprint 1-2 | API docs приоритет |
+| Derek (DevOps) | CI/CD уже настроен, нет работы | Docker/k8s деплой |
+
+## 2. Обновлённые модели
+
+| Agent | Было (v7.1) | Стало (v7.2) | Причина |
+|-------|-------------|--------------|---------|
+| Marcus | Opus 4.5 | **Opus 4.6** | Та же цена, 5x контекст (1M), SWE-bench 80.8% |
+| Nina | GPT-5.2 Codex | **Opus 4.6** | #1 по бенчмаркам и для дизайна И для фронтенд-кода (LFG 9.25/10) |
+| Leo | DeepSeek V3.2 | **Gemini 3 Pro** | DeepSeek имеет задокументированные проблемы безопасности — неприемлемо для EU AI Act security reviewer |
+| Alex | Kimi K2.5 (без fallback) | Kimi K2.5 + **fallback: Gemini 3 Flash** | Устранение single point of failure |
+
+## 3. Workflow изменения
+
+### 3a. PR merge: Marcus мержит (не PO)
+- **Было:** Developer PR → Marcus review → Leo security → **PO мержит**
+- **Стало:** Developer PR → Marcus review + Leo security (**ПАРАЛЛЕЛЬНО**) → **Marcus мержит в develop**
+- PO только мержит develop → main (release gate)
+
+### 3b. Параллельный review
+- **Было:** Последовательно: Marcus review → Leo security (блокирующий)
+- **Стало:** Marcus и Leo стартуют review одновременно при создании PR
+
+### 3c. Scrum Board: 5 → 4 колонки
+- **Было:** Sprint Backlog → To Do → Doing → Testing → Done
+- **Стало:** Sprint Backlog → To Do → Doing → Done
+- Testing — часть "Doing" (разработчик пишет тесты как часть задачи)
+
+### 3d. Leo: фокус на code-level security
+- CI уже запускает: npm audit, Snyk, lint, type-check
+- Leo фокусируется на: SQL injection patterns, auth bypass, XSS, IDOR, race conditions
+- Не дублирует автоматизированные проверки
+
+### 3e. File ownership (предотвращение конфликтов)
+| File | Writer | Read-only |
+|------|--------|-----------|
+| SPRINT-BOARD.md, BURNDOWN.md | Alex | Все |
+| SPRINT-BACKLOG.md | Marcus (create), Alex (status) | Все |
+| ARCHITECTURE.md, DATABASE.md, CODING-STANDARDS.md | Marcus | Все |
+| AI-ACT-KB.md | Elena (Ava can append) | Все |
+| RESEARCH-LOG.md | Ava | Все |
+| SECURITY-POLICY.md | Leo | Все |
+
+## 4. Бюджет: ~$160-255/мес (было $170-260 для 11 агентов)
+
+## 5. openclaw.json обновлён
+- Удалены Quinn, Kai, Diana, Derek из agents.list и bindings
+- Обновлены model IDs для Marcus, Nina, Leo
+- Добавлен fallback для Alex
+- memorySearch.extraPaths включает knowledge-base
+
+---
+
+> **Ниже — оригинальный спек v7.1. Где v7.2 changelog конфликтует с разделами ниже — v7.2 имеет приоритет.**
 
 ---
 

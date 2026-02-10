@@ -1,0 +1,65 @@
+# CODEOWNERS — AI Act Compliance Platform
+# Defines code ownership for automatic PR review requests
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# === Global owners ===
+# Marcus reviews ALL code by default
+* @a3ka
+
+# === Architecture & Core ===
+# Marcus owns all architecture decisions
+/docs/ARCHITECTURE.md @a3ka
+/docs/DATABASE.md @a3ka
+/docs/DATA-FLOWS.md @a3ka
+/docs/CODING-STANDARDS.md @a3ka
+/adr/ @a3ka
+
+# === Backend ===
+# Max owns backend code (Marcus still reviews)
+/src/backend/ @a3ka
+/src/api/ @a3ka
+/src/services/ @a3ka
+/src/domain/ @a3ka
+/prisma/ @a3ka
+
+# === Frontend ===
+# Nina owns frontend code (Marcus still reviews)
+/src/frontend/ @a3ka
+/src/components/ @a3ka
+/src/app/ @a3ka
+/src/pages/ @a3ka
+
+# === Infrastructure ===
+# Derek owns DevOps code (Marcus still reviews)
+/.github/workflows/ @a3ka
+/docker/ @a3ka
+/k8s/ @a3ka
+/terraform/ @a3ka
+
+# === Documentation ===
+# Diana owns docs (optional review by Marcus)
+/docs/user-guides/ @a3ka
+/docs/api-docs/ @a3ka
+README.md @a3ka
+
+# === Tests ===
+# Quinn owns test files (Marcus still reviews)
+/tests/ @a3ka
+*.test.ts @a3ka
+*.spec.ts @a3ka
+/e2e/ @a3ka
+
+# === Security ===
+# Leo must review security-critical files
+/src/auth/ @a3ka
+/src/security/ @a3ka
+.env.example @a3ka
+
+# === Legal/Compliance ===
+# Elena owns compliance docs
+/docs/compliance/ @a3ka
+/docs/AI-ACT-KB.md @a3ka
+/docs/SECURITY-POLICY.md @a3ka
+
+# Note: Replace @a3ka with actual GitHub usernames when bots have GitHub accounts
+# For now, all reviews go to Product Owner (a3ka) who can then delegate to Marcus via Telegram
