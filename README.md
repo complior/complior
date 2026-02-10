@@ -37,7 +37,8 @@ PROJECT/
 ├── api/               # API контракты и спецификации
 ├── daily-scrum/       # Daily Scrum отчёты
 ├── sprints/           # Архив спринтов
-├── src/               # Исходный код проекта
+├── server/            # HTTP runtime (Fastify, infra clients)
+├── app/               # Business logic (VM-sandboxed)
 └── tests/             # Тесты
 ```
 

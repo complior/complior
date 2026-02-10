@@ -59,7 +59,7 @@
 Техническая основа для всей разработки.
 
 ### Описание
-- Monorepo: `src/` (backend, Onion Architecture) + `frontend/` (Next.js 14)
+- Monorepo: `server/` (HTTP runtime) + `app/` (business logic, VM-sandboxed) + `frontend/` (Next.js 14)
 - Backend из existing-code: Fastify + MetaSQL + VM Sandbox
 - Все таблицы из DATABASE.md как MetaSQL schemas + миграции
 - Библиотека ошибок AppError + structured logging (pino)

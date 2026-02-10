@@ -292,179 +292,77 @@ graph LR
 ## 5. Module Structure
 
 ```
-src/
-├── domain/                          # Domain Model (pure, no deps)
-│   ├── iam/
-│   │   ├── entities/
-│   │   │   ├── User.js
-│   │   │   ├── Organization.js
-│   │   │   └── Role.js
-│   │   └── value-objects/
-│   │       └── Email.js
-│   ├── inventory/                       # NEW: AI Tool Inventory (deployer)
-│   │   ├── entities/
-│   │   │   ├── AITool.js                # Бывший AISystem — AI-инструмент, который компания ИСПОЛЬЗУЕТ
-│   │   │   ├── AIToolCatalog.js         # Pre-populated каталог 200+ AI-инструментов
-│   │   │   └── AIToolDiscovery.js       # Лог обнаружения (manual/import/scan)
-│   │   ├── value-objects/
-│   │   │   └── ToolCategory.js          # chatbot, recruitment, analytics, coding, etc.
-│   │   └── services/
-│   │       └── CatalogMatcher.js        # Поиск инструмента в каталоге, pre-fill данных
-│   ├── classification/
-│   │   ├── entities/
-│   │   │   └── RiskClassification.js
-│   │   ├── value-objects/
-│   │   │   ├── RiskLevel.js         # enum: prohibited|high|gpai|limited|minimal
-│   │   │   ├── AnnexCategory.js     # enum: III_1a, III_4a, etc.
-│   │   │   └── ComplianceScore.js   # 0-100
-│   │   └── services/
-│   │       └── RuleEngine.js            # PURE: deployer classification (Art.5 prohibited, Annex III)
-│   ├── literacy/                        # NEW: AI Literacy (Art. 4, wedge product)
-│   │   ├── entities/
-│   │   │   ├── TrainingCourse.js        # Курс (CEO, HR, Developer, General)
-│   │   │   ├── TrainingModule.js        # Модуль внутри курса
-│   │   │   ├── LiteracyCompletion.js    # Прогресс сотрудника
-│   │   │   └── LiteracyRequirement.js   # Какие роли какие курсы проходят
-│   │   └── services/
-│   │       ├── LiteracyManager.js       # Назначение курсов, tracking, дедлайны
-│   │       └── CertificateGenerator.js  # PDF-сертификат via Gotenberg
-│   ├── compliance/                      # Deployer Compliance (не provider!)
-│   │   ├── entities/
-│   │   │   ├── ComplianceDocument.js    # FRIA, Monitoring Plan, AI Usage Policy
-│   │   │   ├── ChecklistItem.js
-│   │   │   ├── FRIAAssessment.js        # FRIA per AI tool (Art. 27)
-│   │   │   └── FRIASection.js           # Секции FRIA
-│   │   └── services/
-│   │       ├── DocumentGenerator.js     # Deployer docs (не Art. 11)
-│   │       ├── GapAnalyzer.js
-│   │       └── FRIAWizard.js            # Guided FRIA workflow
-│   ├── consultation/
-│   │   ├── entities/
-│   │   │   ├── Conversation.js
-│   │   │   └── ChatMessage.js
-│   │   └── services/
-│   │       └── EvaOrchestrator.js       # Deployer-focused system prompt
-│   └── events/
-│       ├── AIToolClassified.js          # Бывший SystemClassified
-│       ├── DocumentGenerated.js
-│       ├── LiteracyCompleted.js         # NEW: сотрудник завершил курс
-│       ├── AIToolDiscovered.js          # NEW: обнаружен новый AI-инструмент
-│       └── ComplianceScoreChanged.js
-│
-├── application/                     # Use Cases (orchestration)
+server/                              # HTTP runtime (require-based)
+├── main.js                          # Entry: loadApplication() pattern
+├── src/
+│   ├── loader.js                    # load, loadDir, loadDeepDir, loadApplication
+│   ├── http.js                      # registerSandboxRoutes + middleware
+│   ├── ws.js                        # WebSocket adapter
+│   └── logger.js                    # Logger wrapping pino (console in sandbox)
+├── lib/
+│   ├── errors.js                    # AppError hierarchy
+│   ├── schemas.js                   # Zod validators
+│   └── db.js                        # CRUD builder (future)
+└── infrastructure/                  # External clients (lazy-loaded)
+    ├── auth/ory-client.js
+    ├── email/brevo-client.js
+    ├── pdf/gotenberg-client.js
+    └── storage/s3-client.js
+
+app/                                 # Business logic (VM-sandboxed, NO require)
+├── setup.js                         # DB init (schemas + seeds)
+├── config/                          # Loaded by server via require()
+├── api/                             # Sandbox: { access, httpMethod, path, method }
+│   ├── auth/
+│   │   ├── webhook.js               # Ory → webhook (user created/updated/deleted)
+│   │   ├── me.js                    # Session → user lookup with sync fallback
+│   │   ├── updateOrganization.js    # PATCH org profile
+│   │   └── audit.js                 # Paginated audit log
+│   └── tools/
+│       └── catalog.js               # Search pre-populated catalog
+├── application/                     # Sandbox: use-case objects
 │   ├── iam/
 │   │   ├── syncUserFromOry.js       # Ory webhook → create/update User in our DB
-│   │   ├── createOrganization.js
-│   │   └── manageOrganization.js
-│   ├── inventory/                       # NEW
-│   │   ├── registerAITool.js            # Wizard 5 шагов (deployer questions)
-│   │   ├── searchCatalog.js             # Поиск в каталоге 200+ инструментов
-│   │   └── importTools.js               # CSV import AI-инструментов
+│   │   └── resolveSession.js        # Ory session → User record
+│   └── inventory/
+│       └── searchCatalog.js         # ILIKE search, filters, pagination
+├── lib/                             # Sandbox: IIFE closures (permissions, audit, tenant)
+│   ├── permissions.js               # checkPermission with wildcard 'manage'
+│   ├── audit.js                     # createAuditEntry + query helpers
+│   └── tenant.js                    # createTenantQuery + CRUD helpers
+├── domain/                          # DDD stubs (future)
+│   ├── iam/
+│   │   ├── entities/
+│   │   └── value-objects/
+│   ├── inventory/
+│   │   ├── entities/
+│   │   └── services/
 │   ├── classification/
-│   │   ├── classifyAITool.js            # Бывший classifySystem — deployer context
-│   │   └── mapRequirements.js           # Map deployer requirements (Art. 4, 26-27, 50)
-│   ├── literacy/                        # NEW
-│   │   ├── enrollEmployee.js            # Назначить курс сотруднику
-│   │   ├── trackCompletion.js           # Отметить прохождение модуля
-│   │   └── generateCertificate.js       # PDF-сертификат via Gotenberg
+│   │   ├── entities/
+│   │   ├── services/
+│   │   └── value-objects/
+│   ├── literacy/
+│   │   ├── entities/
+│   │   └── services/
 │   ├── compliance/
-│   │   ├── generateDocument.js          # FRIA, Monitoring Plan, AI Usage Policy
-│   │   ├── analyzeGaps.js              # Deployer requirement gaps
-│   │   ├── calculateScore.js
-│   │   └── conductFRIA.js               # NEW: guided FRIA assessment
-│   └── consultation/
-│       ├── sendMessage.js
-│       └── executeToolCall.js
-│
-├── schemas/                         # MetaSQL (schema → SQL + types)
-│   ├── .database.js                 # DB metadata
-│   ├── .types.js                    # Custom types
-│   ├── Organization.js
-│   ├── User.js
-│   ├── AITool.js                    # Бывший AISystem — AI-инструмент deployer'а
-│   ├── AIToolCatalog.js             # NEW: каталог 200+ известных AI-инструментов
-│   ├── AIToolDiscovery.js           # NEW: лог обнаружения
-│   ├── RiskClassification.js
-│   ├── Requirement.js               # Deployer requirements (Art. 4, 26-27, 50)
-│   ├── ToolRequirement.js           # Бывший SystemRequirement
-│   ├── TrainingCourse.js            # NEW: AI Literacy
-│   ├── TrainingModule.js            # NEW
-│   ├── LiteracyCompletion.js        # NEW
-│   ├── LiteracyRequirement.js       # NEW
-│   ├── ComplianceDocument.js        # FRIA, Monitoring Plan, AI Usage Policy
-│   ├── DocumentSection.js
-│   ├── FRIAAssessment.js            # NEW: FRIA per AI tool
-│   ├── FRIASection.js               # NEW
-│   ├── Conversation.js
-│   ├── ChatMessage.js
-│   ├── Subscription.js
-│   └── ...                          # 29 таблиц total (21 existing + 8 new)
-│
-├── api/                             # API Endpoints (presentation)
-│   ├── auth/
-│   │   ├── callback.js              # Ory → redirect callback после login
-│   │   └── webhook.js               # Ory → webhook (user created/updated/deleted)
-│   ├── tools/                       # Бывший systems/ — AI Tool Inventory
-│   │   ├── register.js              # Wizard: register AI tool (deployer)
-│   │   ├── classify.js              # Classify deployer's use of AI tool
-│   │   ├── list.js
-│   │   ├── get.js
-│   │   └── catalog.js               # Search pre-populated catalog
-│   ├── literacy/                    # NEW: AI Literacy (Art. 4)
-│   │   ├── courses.js               # Список курсов
-│   │   ├── enroll.js                # Назначить сотруднику
-│   │   ├── progress.js              # Tracking прогресса
-│   │   └── certificate.js           # PDF-сертификат
-│   ├── compliance/
-│   │   ├── documents.js             # FRIA, Monitoring Plan, AI Usage Policy
-│   │   ├── fria.js                  # NEW: FRIA wizard
-│   │   ├── checklist.js
-│   │   └── score.js
-│   ├── chat/
-│   │   ├── message.js
-│   │   └── history.js
-│   └── dashboard/
-│       └── overview.js              # Deployer dashboard: tools + literacy + compliance
-│
-├── infrastructure/                  # External adapters
-│   ├── auth/
-│   │   └── ory-client.js            # Ory SDK (identity, sessions, webhooks)
-│   ├── email/
-│   │   └── brevo-client.js          # Brevo SDK (transactional email, EU)
-│   ├── pdf/
-│   │   └── gotenberg-client.js      # Gotenberg API (HTML→PDF, self-hosted)
-│   ├── llm/
-│   │   ├── ai-sdk-setup.js          # Vercel AI SDK 6 provider config (ADR-005)
-│   │   ├── mistral-provider.js      # @ai-sdk/mistral (Large/Medium/Small, EU)
-│   │   └── tools/                   # Zod-typed tools for Eva
-│   │       ├── classifyAITool.js
-│   │       ├── searchRegulation.js
-│   │       └── createFRIA.js
-│   ├── storage/
-│   │   └── s3-client.js             # Hetzner Object Storage (S3-compatible, EU)
-│   ├── billing/
-│   │   └── stripe-client.js
-│   ├── monitoring/
-│   │   └── eurlex-scraper.js
-│   └── jobs/
-│       ├── job-queue.js              # JobQueue port (pg-boss adapter, → BullMQ later)
-│       ├── classify-system.job.js
-│       ├── generate-document.job.js
-│       └── scrape-eurlex.job.js
-│
-├── config/                          # Configuration
-│   ├── database.js
-│   ├── server.js
-│   ├── ory.js                      # Ory SDK endpoint, API key
-│   ├── brevo.js                    # Brevo API key, templates
-│   ├── llm.js                      # Mistral API keys, endpoints
-│   ├── stripe.js
-│   └── log.js
-│
-└── lib/                             # Shared utilities
-    ├── db.js                        # CRUD builder (existing)
-    ├── errors.js                    # Custom error hierarchy
-    └── validators.js                # Zod schemas
+│   │   ├── entities/
+│   │   └── services/
+│   ├── consultation/
+│   │   ├── entities/
+│   │   └── services/
+│   └── events/
+├── schemas/                         # MetaSQL definitions (29 files)
+│   ├── Organization.js, User.js, Role.js, Permission.js, UserRole.js
+│   ├── AITool.js, AIToolCatalog.js, AIToolDiscovery.js
+│   ├── RiskClassification.js, Requirement.js, ToolRequirement.js, ClassificationLog.js
+│   ├── TrainingCourse.js, TrainingModule.js, LiteracyCompletion.js, LiteracyRequirement.js
+│   ├── ComplianceDocument.js, DocumentSection.js, ChecklistItem.js
+│   ├── FRIAAssessment.js, FRIASection.js, ImpactAssessment.js
+│   ├── Conversation.js, ChatMessage.js
+│   ├── Subscription.js, Plan.js, Notification.js, RegulatoryUpdate.js
+│   └── AuditLog.js
+└── seeds/                           # Seed data (5 files)
+    ├── catalog.js, courses.js, plans.js, requirements.js, roles.js
 ```
 
 ---
@@ -714,10 +612,10 @@ sequenceDiagram
 
 | Существующий код | Новое использование |
 |-----------------|---------------------|
-| `NodeJS-Fastify/main.js` | Entry point — сохраняем структуру |
-| `src/loader.js` (VM sandbox) | Core pattern — сохраняем полностью |
-| `src/http.js` (HTTP routing) | Адаптируем для новых API endpoints |
-| `src/ws.js` (WebSocket) | Используем для Eva chat streaming |
+| `NodeJS-Fastify/main.js` | `server/main.js` — Entry point, loadApplication() pattern |
+| `src/loader.js` (VM sandbox) | `server/src/loader.js` — Core pattern, сохраняем полностью |
+| `src/http.js` (HTTP routing) | `server/src/http.js` — registerSandboxRoutes (walkApiTree pattern) |
+| `src/ws.js` (WebSocket) | `server/src/ws.js` — Используем для Eva chat streaming |
 | `lib/db.js` (CRUD builder) | Расширяем (fix delete bug, добавляем transactions) |
 | `schemas/.database.js` | Обновляем metadata для новых entities |
 | `schemas/.types.js` | Расширяем custom types |
@@ -728,6 +626,8 @@ sequenceDiagram
 | `schemas/Chat.js, Message.js` | → Conversation.js, ChatMessage.js (adapt for Eva, deployer focus) |
 
 > **Deployer-first pivot (v2.0.0):** AISystem → AITool (переименование), SystemRequirement → ToolRequirement. Добавлены 8 новых таблиц: AIToolCatalog, AIToolDiscovery, TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement, FRIAAssessment, FRIASection. Всего: **29 таблиц** в 8 Bounded Contexts.
+>
+> **Architecture split (Sprint 1):** `src/` split into `server/` (HTTP runtime, require-based) + `app/` (VM-sandboxed business logic, NO require). API handlers now use VM sandbox expression format (`{ access, httpMethod, path, method }`). `initRoutes` replaced by `registerSandboxRoutes` (walkApiTree pattern).
 
 ### Что добавляем
 
