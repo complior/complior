@@ -20,13 +20,13 @@ const createMockDb = (existingUser = null) => {
         return { rows: [{ id: 20 }] };
       }
       if (sql.includes('FROM "Role"')) {
-        return { rows: [{ id: 1 }] };
+        return { rows: [{ roleId: 1 }] };
       }
       if (sql.includes('INSERT INTO "UserRole"')) {
         return { rows: [] };
       }
       if (sql.includes('FROM "Plan"')) {
-        return { rows: [{ id: 1 }] };
+        return { rows: [{ planId: 1 }] };
       }
       if (sql.includes('INSERT INTO "Subscription"')) {
         return { rows: [] };

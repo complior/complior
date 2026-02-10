@@ -1,12 +1,8 @@
 'use strict';
 
+const { z } = require('zod');
 const { AuthError, ForbiddenError, ValidationError, NotFoundError } = require('../../lib/errors.js');
-
-const VALID_INDUSTRIES = [
-  'fintech', 'hrtech', 'healthtech', 'edtech', 'ecommerce',
-  'manufacturing', 'logistics', 'legal', 'insurance', 'other',
-];
-const VALID_SIZES = ['micro_1_9', 'small_10_49', 'medium_50_249', 'large_250_plus'];
+const { UpdateOrganizationSchema } = require('../../lib/schemas.js');
 
 const createUpdateOrganizationHandler = (db, sessionResolver, checkPermission) => {
   const handler = async (request) => {
@@ -18,27 +14,18 @@ const createUpdateOrganizationHandler = (db, sessionResolver, checkPermission) =
     await checkPermission(user, 'Organization', 'update');
 
     const orgId = parseInt(request.params.id, 10);
-    if (orgId !== user.organizationId) {
+    if (orgId !== Number(user.organizationId)) {
       throw new ForbiddenError('Cannot update another organization');
     }
 
-    const { name, industry, size, country, website, vatId } = request.body || {};
-
-    const errors = {};
-    if (name !== undefined && (!name || name.length > 255)) {
-      errors.name = 'Must be 1-255 characters';
-    }
-    if (industry !== undefined && !VALID_INDUSTRIES.includes(industry)) {
-      errors.industry = `Must be one of: ${VALID_INDUSTRIES.join(', ')}`;
-    }
-    if (size !== undefined && !VALID_SIZES.includes(size)) {
-      errors.size = `Must be one of: ${VALID_SIZES.join(', ')}`;
-    }
-    if (country !== undefined && (typeof country !== 'string' || country.length !== 2)) {
-      errors.country = 'Must be ISO 3166-1 alpha-2 code';
-    }
-    if (Object.keys(errors).length > 0) {
-      throw new ValidationError('Invalid organization data', errors);
+    let validated;
+    try {
+      validated = UpdateOrganizationSchema.parse(request.body || {});
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new ValidationError('Invalid organization data', err.flatten().fieldErrors);
+      }
+      throw err;
     }
 
     const fields = [];
@@ -52,12 +39,12 @@ const createUpdateOrganizationHandler = (db, sessionResolver, checkPermission) =
       }
     };
 
-    addField('name', name);
-    addField('industry', industry);
-    addField('size', size);
-    addField('country', country);
-    addField('website', website);
-    addField('vatId', vatId);
+    addField('name', validated.name);
+    addField('industry', validated.industry);
+    addField('size', validated.size);
+    addField('country', validated.country);
+    addField('website', validated.website);
+    addField('vatId', validated.vatId);
 
     if (fields.length === 0) {
       throw new ValidationError('No fields to update');

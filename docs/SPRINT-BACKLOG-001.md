@@ -232,12 +232,17 @@ Feature 02: IAM + Feature 03: AI Tool Inventory (start)
 - [x] CI green: lint + type-check + tests + audit
 - [x] PR #4 reviewed and merged to main
 - [x] Conventional Commits
+- [x] Zod validation on all API endpoints (CODING-STANDARDS §2)
+- [x] E2E tested against real Docker services (14/14 pass)
 
-### Verification
+### Verification (updated 2026-02-10)
 
-1. ✅ `docker compose up` → register via Ory → webhook creates Org+User → login → see dashboard
-2. ✅ `npm test` → 64 tests pass
-3. ✅ `npm run lint && npm run type-check` → 0 errors
-4. ✅ Browse `/tools/catalog`, search "ChatGPT", filter by category → see results
-5. ✅ Cross-org test: Org A cannot see Org B data
-6. ✅ Audit: `GET /api/auth/audit` returns login events
+1. ✅ `docker compose up` → all 4 services healthy (postgres, kratos, gotenberg, app)
+2. ✅ `npm test` → 64 tests pass, 0 failures
+3. ✅ E2E: Ory registration (2-step) → webhook → User+Org+Role+Subscription in DB
+4. ✅ E2E: `/api/auth/me` returns user with roles after session auth
+5. ✅ E2E: Catalog search (ChatGPT), category filter (recruitment), detail by id, 404
+6. ✅ E2E: PATCH `/api/organizations/:id` — org update with auth
+7. ✅ E2E: GET `/api/auth/audit` — paginated audit log with auth
+8. ✅ E2E: RBAC enforcement — cross-org access denied (403)
+9. ✅ E2E: Zod validation errors returned as 400 with field details

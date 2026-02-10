@@ -11,7 +11,7 @@ const createPermissionChecker = (db) => {
     const result = await db.query(
       `SELECT r."name" AS role, p."resource", p."action"
        FROM "Permission" p
-       JOIN "Role" r ON r."id" = p."roleId"`,
+       JOIN "Role" r ON r."roleId" = p."roleId"`,
     );
     const map = new Map();
     for (const row of result.rows) {

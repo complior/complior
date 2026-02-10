@@ -35,7 +35,7 @@ const createUserSync = (db) => {
         `INSERT INTO "Organization" ("name", "industry", "size", "country")
          VALUES ($1, $2, $3, $4)
          RETURNING "id"`,
-        [`${fullName}'s Organization`, 'other', 'micro_1_9', 'DE'],
+        [`${fullName}'s Organization (${oryId.slice(0, 8)})`, 'other', 'micro_1_9', 'DE'],
       );
       const organizationId = orgResult.rows[0].id;
 
@@ -50,19 +50,19 @@ const createUserSync = (db) => {
 
       // 3. Assign 'owner' role
       const roleResult = await client.query(
-        'SELECT "id" FROM "Role" WHERE "name" = $1 AND "organizationId" IS NULL',
+        'SELECT "roleId" FROM "Role" WHERE "name" = $1 AND "organizationIdId" IS NULL',
         ['owner'],
       );
       if (roleResult.rows.length > 0) {
         await client.query(
           'INSERT INTO "UserRole" ("userId", "roleId") VALUES ($1, $2)',
-          [userId, roleResult.rows[0].id],
+          [userId, roleResult.rows[0].roleId],
         );
       }
 
       // 4. Create free subscription
       const planResult = await client.query(
-        'SELECT "id" FROM "Plan" WHERE "name" = $1',
+        'SELECT "planId" FROM "Plan" WHERE "name" = $1',
         ['free'],
       );
       if (planResult.rows.length > 0) {
@@ -72,7 +72,7 @@ const createUserSync = (db) => {
         await client.query(
           `INSERT INTO "Subscription" ("organizationId", "planId", "status", "currentPeriodStart", "currentPeriodEnd")
            VALUES ($1, $2, $3, $4, $5)`,
-          [organizationId, planResult.rows[0].id, 'active', now, yearLater],
+          [organizationId, planResult.rows[0].planId, 'active', now, yearLater],
         );
       }
 
@@ -85,12 +85,16 @@ const createUserSync = (db) => {
       await client.query('ROLLBACK');
       if (err.code === '23505') {
         // Unique violation — race condition, user was created concurrently
-        const retry = await db.query(
-          'SELECT "id", "organizationId" FROM "User" WHERE "oryId" = $1',
-          [oryId],
-        );
-        if (retry.rows.length > 0) {
-          return { user: retry.rows[0], created: false };
+        // Retry with short delay to allow concurrent transaction to commit
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await new Promise((r) => setTimeout(r, 100 * (attempt + 1)));
+          const retry = await db.query(
+            'SELECT "id", "organizationId" FROM "User" WHERE "oryId" = $1',
+            [oryId],
+          );
+          if (retry.rows.length > 0) {
+            return { user: retry.rows[0], created: false };
+          }
         }
         throw new ConflictError('User already exists');
       }
@@ -113,7 +117,7 @@ const createUserSync = (db) => {
               array_agg(r."name") FILTER (WHERE r."name" IS NOT NULL) AS roles
        FROM "User" u
        LEFT JOIN "UserRole" ur ON ur."userId" = u."id"
-       LEFT JOIN "Role" r ON r."id" = ur."roleId"
+       LEFT JOIN "Role" r ON r."roleId" = ur."roleId"
        WHERE u."oryId" = $1
        GROUP BY u."id"`,
       [oryId],

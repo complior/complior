@@ -4,6 +4,6 @@ function(ctx) {
   email: ctx.identity.traits.email,
   name: ctx.identity.traits.name,
   organization_id: if std.objectHas(ctx.identity.traits, 'organization_id') then ctx.identity.traits.organization_id else null,
-  locale: if std.objectHas(ctx.identity.traits, 'locale') then ctx.identity.traits.locale else 'de',
+  locale: if std.objectHas(ctx.identity.traits, 'locale') then ctx.identity.traits.locale else 'en',
   event: 'registration',
 }

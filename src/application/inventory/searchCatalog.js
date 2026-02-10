@@ -56,7 +56,7 @@ const createCatalogSearch = (db) => {
 
   const findById = async (id) => {
     const result = await db.query(
-      'SELECT * FROM "AIToolCatalog" WHERE "id" = $1 AND "active" = true',
+      'SELECT * FROM "AIToolCatalog" WHERE "aIToolCatalogId" = $1 AND "active" = true',
       [id],
     );
     return result.rows[0] || null;

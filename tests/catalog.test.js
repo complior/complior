@@ -44,7 +44,7 @@ const createMockDb = () => ({
       }
       return { rows: [{ total: filtered.length }] };
     }
-    if (sql.includes('FROM "AIToolCatalog" WHERE "id"')) {
+    if (sql.includes('FROM "AIToolCatalog" WHERE "aIToolCatalogId"')) {
       const id = params[0];
       const tool = MOCK_CATALOG.find((t) => t.id === id);
       return { rows: tool ? [tool] : [] };
@@ -121,12 +121,14 @@ describe('AI Tool Catalog API', () => {
       assert.strictEqual(res.statusCode, 200);
     });
 
-    it('caps pageSize at 100', async () => {
+    it('rejects pageSize over 100', async () => {
       const res = await server.inject({
         method: 'GET',
         url: '/api/tools/catalog/search?pageSize=500',
       });
-      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.statusCode, 400);
+      const body = JSON.parse(res.payload);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
     });
   });
 

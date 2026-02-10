@@ -1,24 +1,43 @@
 'use strict';
 
-const { NotFoundError } = require('../../lib/errors.js');
+const { z } = require('zod');
+const { NotFoundError, ValidationError } = require('../../lib/errors.js');
+const { CatalogSearchSchema, CatalogIdSchema } = require('../../lib/schemas.js');
 
 const createCatalogHandlers = (catalogSearch) => {
   const searchHandler = async (request) => {
-    const { q, category, riskLevel, page, pageSize } = request.query || {};
+    let query;
+    try {
+      query = CatalogSearchSchema.parse(request.query || {});
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new ValidationError('Invalid search parameters', err.flatten().fieldErrors);
+      }
+      throw err;
+    }
 
     return catalogSearch.search({
-      q: q || '',
-      category: category || null,
-      riskLevel: riskLevel || null,
-      page: page ? parseInt(page, 10) : 1,
-      pageSize: pageSize ? Math.min(parseInt(pageSize, 10) || 20, 100) : 20,
+      q: query.q || '',
+      category: query.category || null,
+      riskLevel: query.riskLevel || null,
+      page: query.page,
+      pageSize: query.pageSize,
     });
   };
 
   const detailHandler = async (request) => {
-    const id = parseInt(request.params.id, 10);
-    const tool = await catalogSearch.findById(id);
-    if (!tool) throw new NotFoundError('AIToolCatalog', id);
+    let params;
+    try {
+      params = CatalogIdSchema.parse(request.params);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new ValidationError('Invalid catalog ID', err.flatten().fieldErrors);
+      }
+      throw err;
+    }
+
+    const tool = await catalogSearch.findById(params.id);
+    if (!tool) throw new NotFoundError('AIToolCatalog', params.id);
     return tool;
   };
 
