@@ -3,32 +3,24 @@
 const fastify = require('fastify');
 const pino = require('pino');
 const { Pool } = require('pg');
+const path = require('node:path');
 
+const { Logger } = require('./src/logger.js');
+const { loadApplication } = require('./src/loader.js');
 const {
   initHealth, initRateLimit, initRequestId, initErrorHandler,
-  initSessionHook, initRoutes,
-} = require('./http.js');
-const { init: initWs } = require('./ws.js');
-const validateEnv = require('./config/validate.js');
-const dbConfig = require('./config/database.js');
-const { initDatabase } = require('./setup.js');
+  initSessionHook, registerSandboxRoutes,
+} = require('./src/http.js');
+const { init: initWs } = require('./src/ws.js');
+
+const validateEnv = require('../app/config/validate.js');
+const dbConfig = require('../app/config/database.js');
+const { initDatabase } = require('../app/setup.js');
 const createOryClient = require('./infrastructure/auth/ory-client.js');
+const errors = require('./lib/errors.js');
+const schemas = require('./lib/schemas.js');
+const zod = require('zod');
 
-// Application services
-const createSessionResolver = require('./application/iam/resolveSession.js');
-const createUserSync = require('./application/iam/syncUserFromOry.js');
-const createPermissionChecker = require('./lib/permissions.js');
-const createAuditLogger = require('./lib/audit.js');
-const createCatalogSearch = require('./application/inventory/searchCatalog.js');
-
-// API handlers
-const createWebhookHandler = require('./api/auth/webhook.js');
-const createMeHandler = require('./api/auth/me.js');
-const createUpdateOrganizationHandler = require('./api/auth/updateOrganization.js');
-const createAuditHandler = require('./api/auth/audit.js');
-const createCatalogHandlers = require('./api/tools/catalog.js');
-
-// Sentry error tracking (only if DSN configured)
 if (process.env.SENTRY_DSN) {
   const Sentry = require('@sentry/node');
   Sentry.init({
@@ -45,7 +37,6 @@ const loggerConfig = {
   level: process.env.LOG_LEVEL || 'info',
 };
 
-// pino-pretty is a devDependency — only use in dev when available
 if (process.env.NODE_ENV !== 'production') {
   try {
     require.resolve('pino-pretty');
@@ -54,60 +45,75 @@ if (process.env.NODE_ENV !== 'production') {
       options: { colorize: true },
     };
   } catch {
-    // pino-pretty not installed — use default JSON output
+    // pino-pretty not installed
   }
 }
 
-const logger = pino(loggerConfig);
+const pinoLogger = pino(loggerConfig);
+
+const APPLICATION_PATH = path.join(__dirname, '..', 'app');
 
 (async () => {
-  // Validate environment
   const { warnings } = validateEnv();
   for (const warn of warnings) {
-    logger.warn(warn);
+    pinoLogger.warn(warn);
   }
 
-  // Database
   const db = new Pool(dbConfig);
-
-  // Initialize database schema and seed data
   await initDatabase(db);
 
-  // Infrastructure
-  const oryClient = createOryClient();
+  const ory = createOryClient();
 
-  // Services
-  const sessionResolver = createSessionResolver(db);
-  const userSync = createUserSync(db);
-  const { checkPermission } = createPermissionChecker(db);
-  const auditLogger = createAuditLogger(db);
-  const catalogSearch = createCatalogSearch(db);
+  // Optional infra clients — lazy-load only when configured
+  let brevo = { sendTransactional: async () => ({ messageId: 'noop' }) };
+  if (process.env.BREVO_API_KEY) {
+    const createBrevoClient = require('./infrastructure/email/brevo-client.js');
+    brevo = createBrevoClient();
+  }
+
+  let gotenberg = { convertHtmlToPdf: async () => Buffer.alloc(0) };
+  if (process.env.GOTENBERG_URL) {
+    const createGotenbergClient = require('./infrastructure/pdf/gotenberg-client.js');
+    gotenberg = createGotenbergClient();
+  }
+
+  let s3 = { upload: async () => ({}), download: async () => null, getSignedUrl: async () => '' };
+  if (process.env.S3_ENDPOINT) {
+    const createS3Storage = require('./infrastructure/storage/s3-client.js');
+    s3 = createS3Storage();
+  }
 
   const server = fastify({ logger: loggerConfig });
+  const logger = new Logger(server.log);
 
-  // Middleware
+  const config = {
+    server: require('../app/config/server.js'),
+    database: dbConfig,
+    ory: require('../app/config/ory.js'),
+    brevo: require('../app/config/brevo.js'),
+    gotenberg: require('../app/config/gotenberg.js'),
+    s3: require('../app/config/s3.js'),
+    log: require('../app/config/log.js'),
+  };
+
+  const appSandbox = await loadApplication(APPLICATION_PATH, {
+    console: logger, db, config, errors, schemas, zod,
+    ory, brevo, gotenberg, s3,
+  });
+
   initRequestId(server);
   await initRateLimit(server);
   initErrorHandler(server);
-  initSessionHook(server, oryClient);
+  initSessionHook(server, ory);
 
-  // Routes
   initHealth(server);
   initWs(server);
-
-  const routes = [
-    createWebhookHandler(db, oryClient, userSync),
-    createMeHandler(db, userSync),
-    createUpdateOrganizationHandler(db, sessionResolver, checkPermission),
-    createAuditHandler(sessionResolver, checkPermission, auditLogger),
-    ...createCatalogHandlers(catalogSearch),
-  ];
-  initRoutes(server, routes);
+  registerSandboxRoutes(server, appSandbox.api);
 
   await server.listen({ port: PORT, host: HOST });
-  logger.info('AI Act Compliance Platform v0.1.0');
-  logger.info(`Server listening on ${HOST}:${PORT}`);
+  pinoLogger.info('AI Act Compliance Platform v0.1.0');
+  pinoLogger.info(`Server listening on ${HOST}:${PORT}`);
 })().catch((err) => {
-  logger.fatal(err, 'Failed to start server');
+  pinoLogger.fatal(err, 'Failed to start server');
   process.exit(1);
 });

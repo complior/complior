@@ -58,7 +58,7 @@ jobs:
       - name: Setup database
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/aiact_test
-        run: node src/setup.js
+        run: node app/setup.js
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/aiact_test

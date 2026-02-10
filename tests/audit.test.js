@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const createAuditLogger = require('../src/lib/audit.js');
+const { createTestSandbox, loadAppModule } = require('./helpers/test-sandbox.js');
 
 const createMockDb = () => {
   const queries = [];
@@ -33,7 +33,8 @@ describe('audit logging', () => {
   describe('createAuditEntry', () => {
     it('inserts audit record with all fields', async () => {
       const db = createMockDb();
-      const audit = createAuditLogger(db);
+      const sandbox = createTestSandbox(db);
+      const audit = await loadAppModule('lib/audit.js', sandbox);
       const entry = await audit.createAuditEntry({
         userId: 1,
         organizationId: 10,
@@ -53,7 +54,8 @@ describe('audit logging', () => {
 
     it('handles null oldData and newData', async () => {
       const db = createMockDb();
-      const audit = createAuditLogger(db);
+      const sandbox = createTestSandbox(db);
+      const audit = await loadAppModule('lib/audit.js', sandbox);
       await audit.createAuditEntry({
         userId: 1,
         organizationId: 10,
@@ -69,7 +71,8 @@ describe('audit logging', () => {
   describe('findEntries', () => {
     it('returns paginated results for organization', async () => {
       const db = createMockDb();
-      const audit = createAuditLogger(db);
+      const sandbox = createTestSandbox(db);
+      const audit = await loadAppModule('lib/audit.js', sandbox);
       const result = await audit.findEntries(10, { page: 1, pageSize: 20 });
       assert.strictEqual(result.pagination.total, 42);
       assert.strictEqual(result.pagination.page, 1);
@@ -80,7 +83,8 @@ describe('audit logging', () => {
 
     it('filters by action when provided', async () => {
       const db = createMockDb();
-      const audit = createAuditLogger(db);
+      const sandbox = createTestSandbox(db);
+      const audit = await loadAppModule('lib/audit.js', sandbox);
       await audit.findEntries(10, { action: 'login' });
       const queries = db.getQueries();
       const countQuery = queries.find((q) => q.sql.includes('COUNT'));
@@ -89,7 +93,8 @@ describe('audit logging', () => {
 
     it('filters by resource when provided', async () => {
       const db = createMockDb();
-      const audit = createAuditLogger(db);
+      const sandbox = createTestSandbox(db);
+      const audit = await loadAppModule('lib/audit.js', sandbox);
       await audit.findEntries(10, { resource: 'User' });
       const queries = db.getQueries();
       const countQuery = queries.find((q) => q.sql.includes('COUNT'));

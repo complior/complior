@@ -3,9 +3,8 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const fastify = require('fastify');
-const { initRequestId, initErrorHandler, initRoutes } = require('../src/http.js');
-const createCatalogSearch = require('../src/application/inventory/searchCatalog.js');
-const createCatalogHandlers = require('../src/api/tools/catalog.js');
+const { initRequestId, initErrorHandler, registerSandboxRoutes } = require('../server/src/http.js');
+const { buildFullSandbox } = require('./helpers/test-sandbox.js');
 
 const MOCK_CATALOG = [
   {
@@ -60,13 +59,12 @@ describe('AI Tool Catalog API', () => {
 
   before(async () => {
     const mockDb = createMockDb();
-    const catalogSearch = createCatalogSearch(mockDb);
-    const catalogRoutes = createCatalogHandlers(catalogSearch);
+    const { api } = await buildFullSandbox(mockDb);
 
     server = fastify({ logger: false });
     initRequestId(server);
     initErrorHandler(server);
-    initRoutes(server, catalogRoutes);
+    registerSandboxRoutes(server, { tools: { catalog: api.tools.catalog } });
     await server.ready();
   });
 

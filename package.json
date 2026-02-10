@@ -4,19 +4,19 @@
   "description": "EU AI Act Compliance Platform (deployer-first)",
   "private": true,
   "workspaces": [
-    "src",
+    "server",
     "frontend"
   ],
   "scripts": {
-    "start": "node src/main.js",
-    "dev": "node --watch src/main.js",
-    "lint": "eslint src/ --ext .js",
+    "start": "node server/main.js",
+    "dev": "node --watch server/main.js",
+    "lint": "eslint server/ app/ --ext .js",
     "type-check": "tsc --noEmit",
     "test": "node --test tests/*.test.js",
     "test:integration": "node --test tests/integration/**/*.test.js",
-    "db:generate": "node src/setup.js generate",
-    "db:seed": "node src/setup.js seed",
-    "db:setup": "node src/setup.js"
+    "db:generate": "node app/setup.js generate",
+    "db:seed": "node app/setup.js seed",
+    "db:setup": "node app/setup.js"
   },
   "engines": {
     "node": ">=20.0.0"

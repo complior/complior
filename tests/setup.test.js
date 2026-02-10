@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { loadSchemas, generateDDL, TABLE_ORDER } = require('../src/setup.js');
+const { loadSchemas, generateDDL, TABLE_ORDER } = require('../app/setup.js');
 
 describe('Setup — schema loading', () => {
   it('loads all 29 schemas', async () => {

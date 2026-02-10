@@ -1,41 +1,32 @@
-'use strict';
+({
+  access: 'authenticated',
+  httpMethod: 'GET',
+  path: '/api/auth/audit',
+  method: async ({ query, session }) => {
+    if (!session) throw new errors.AuthError();
 
-const { z } = require('zod');
-const { AuthError, ValidationError } = require('../../lib/errors.js');
-const { AuditQuerySchema } = require('../../lib/schemas.js');
+    const user = await application.iam.resolveSession.resolveUser(session);
+    if (!user) throw new errors.AuthError('User not found');
 
-const createAuditHandler = (sessionResolver, checkPermission, auditLogger) => {
-  const handler = async (request) => {
-    if (!request.session) throw new AuthError();
+    await lib.permissions.checkPermission(user, 'AuditLog', 'read');
 
-    const user = await sessionResolver.resolveUser(request.session);
-    if (!user) throw new AuthError('User not found');
-
-    await checkPermission(user, 'AuditLog', 'read');
-
-    let query;
+    let parsed;
     try {
-      query = AuditQuerySchema.parse(request.query || {});
+      parsed = schemas.AuditQuerySchema.parse(query || {});
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw new ValidationError('Invalid query parameters', err.flatten().fieldErrors);
+      if (err.flatten) {
+        throw new errors.ValidationError(
+          'Invalid query parameters', err.flatten().fieldErrors,
+        );
       }
       throw err;
     }
 
-    return auditLogger.findEntries(user.organizationId, {
-      page: query.page,
-      pageSize: query.pageSize,
-      action: query.action,
-      resource: query.resource,
+    return lib.audit.findEntries(user.organizationId, {
+      page: parsed.page,
+      pageSize: parsed.pageSize,
+      action: parsed.action,
+      resource: parsed.resource,
     });
-  };
-
-  return {
-    method: 'GET',
-    path: '/api/auth/audit',
-    handler,
-  };
-};
-
-module.exports = createAuditHandler;
+  },
+})

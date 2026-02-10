@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const config = require('../../config/ory.js');
+const config = require('../../../app/config/ory.js');
 
 const createOryClient = (options = config) => {
   const { sdkUrl, adminUrl, webhookSecret } = options;

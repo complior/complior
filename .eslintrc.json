@@ -18,7 +18,7 @@
     "prefer-const": "error",
     "arrow-parens": ["error", "always"],
     "no-console": "warn",
-    "camelcase": ["error", { "allow": ["^_"] }],
+    "camelcase": ["error", { "allow": ["^_", "identity_id"] }],
     "max-len": ["error", { "code": 100, "ignoreUrls": true, "ignoreStrings": true, "ignoreTemplateLiterals": true }],
     "object-curly-spacing": ["error", "always"],
     "comma-style": ["error", "last"],
@@ -41,15 +41,38 @@
   "ignorePatterns": ["frontend/", "node_modules/", "existing-code/"],
   "overrides": [
     {
-      "files": ["src/schemas/**/*.js"],
+      "files": ["app/schemas/**/*.js"],
       "rules": {
         "strict": "off"
       }
     },
     {
-      "files": ["src/seeds/**/*.js", "src/setup.js"],
+      "files": ["app/seeds/**/*.js", "app/setup.js"],
       "rules": {
         "no-console": "off"
+      }
+    },
+    {
+      "files": ["app/api/**/*.js", "app/application/**/*.js", "app/lib/**/*.js"],
+      "globals": {
+        "db": "readonly",
+        "errors": "readonly",
+        "schemas": "readonly",
+        "zod": "readonly",
+        "config": "readonly",
+        "ory": "readonly",
+        "brevo": "readonly",
+        "gotenberg": "readonly",
+        "s3": "readonly",
+        "lib": "readonly",
+        "application": "readonly",
+        "console": "readonly"
+      },
+      "rules": {
+        "strict": "off",
+        "no-console": "off",
+        "semi": "off",
+        "camelcase": ["error", { "allow": ["^_", "identity_id"] }]
       }
     }
   ]

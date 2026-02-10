@@ -2,11 +2,11 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const createUserSync = require('../src/application/iam/syncUserFromOry.js');
+const { createTestSandbox, loadAppModule } = require('./helpers/test-sandbox.js');
 
 const createMockDb = (existingUser = null) => {
   const mockClient = {
-    query: async (sql, params) => {
+    query: async (sql) => {
       if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') {
         return { rows: [] };
       }
@@ -37,7 +37,7 @@ const createMockDb = (existingUser = null) => {
   };
 
   return {
-    query: async (sql, params) => {
+    query: async (sql) => {
       if (sql.includes('FROM "User" WHERE "oryId"')) {
         return { rows: existingUser ? [existingUser] : [] };
       }
@@ -54,7 +54,8 @@ describe('syncUserFromOry', () => {
   describe('syncFromWebhook', () => {
     it('creates new user with org, role, and subscription', async () => {
       const db = createMockDb();
-      const sync = createUserSync(db);
+      const sandbox = createTestSandbox(db);
+      const sync = await loadAppModule('application/iam/syncUserFromOry.js', sandbox);
       const result = await sync.syncFromWebhook({
         identity_id: 'ory-new',
         email: 'new@example.com',
@@ -69,7 +70,8 @@ describe('syncUserFromOry', () => {
     it('returns existing user without creating duplicate', async () => {
       const existing = { id: 5, organizationId: 3 };
       const db = createMockDb(existing);
-      const sync = createUserSync(db);
+      const sandbox = createTestSandbox(db);
+      const sync = await loadAppModule('application/iam/syncUserFromOry.js', sandbox);
       const result = await sync.syncFromWebhook({
         identity_id: 'ory-existing',
         email: 'existing@example.com',
@@ -80,7 +82,8 @@ describe('syncUserFromOry', () => {
 
     it('throws on missing oryId', async () => {
       const db = createMockDb();
-      const sync = createUserSync(db);
+      const sandbox = createTestSandbox(db);
+      const sync = await loadAppModule('application/iam/syncUserFromOry.js', sandbox);
       await assert.rejects(
         sync.syncFromWebhook({ email: 'test@example.com' }),
         (err) => err.statusCode === 400,
@@ -89,7 +92,8 @@ describe('syncUserFromOry', () => {
 
     it('throws on missing email', async () => {
       const db = createMockDb();
-      const sync = createUserSync(db);
+      const sandbox = createTestSandbox(db);
+      const sync = await loadAppModule('application/iam/syncUserFromOry.js', sandbox);
       await assert.rejects(
         sync.syncFromWebhook({ identity_id: 'ory-1' }),
         (err) => err.statusCode === 400,
@@ -104,7 +108,11 @@ describe('syncUserFromOry', () => {
         fullName: 'Test', active: true, locale: 'de', roles: ['owner'],
       };
       const db = createMockDb(existing);
-      const sync = createUserSync(db);
+      const sandbox = createTestSandbox(db);
+      sandbox.application = {
+        iam: { syncUserFromOry: await loadAppModule('application/iam/syncUserFromOry.js', sandbox) },
+      };
+      const sync = sandbox.application.iam.syncUserFromOry;
       const user = await sync.syncOnLogin({
         identity: { id: 'ory-5', traits: { email: 'e@test.com' } },
       });
@@ -113,7 +121,8 @@ describe('syncUserFromOry', () => {
 
     it('returns null for invalid session', async () => {
       const db = createMockDb();
-      const sync = createUserSync(db);
+      const sandbox = createTestSandbox(db);
+      const sync = await loadAppModule('application/iam/syncUserFromOry.js', sandbox);
       const user = await sync.syncOnLogin(null);
       assert.strictEqual(user, null);
     });

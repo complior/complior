@@ -1,87 +1,51 @@
 'use strict';
 
-const { describe, it, before, after, mock } = require('node:test');
+const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const fastify = require('fastify');
-const { initRequestId, initErrorHandler, initRoutes } = require('../src/http.js');
+const { initRequestId, initErrorHandler, registerSandboxRoutes } = require('../server/src/http.js');
+const { buildFullSandbox } = require('./helpers/test-sandbox.js');
 
-// Mock database
 const createMockDb = () => {
-  const queries = [];
-  let connectCalls = 0;
   const mockClient = {
-    query: async (sql, params) => {
-      queries.push({ sql, params });
-
-      if (sql.includes('FROM "User" WHERE "oryId"')) {
-        return { rows: [] };
-      }
-      if (sql.includes('INSERT INTO "Organization"')) {
-        return { rows: [{ id: 1 }] };
-      }
-      if (sql.includes('INSERT INTO "User"')) {
-        return { rows: [{ id: 1 }] };
-      }
-      if (sql.includes('FROM "Role" WHERE "name"')) {
-        return { rows: [{ roleId: 1 }] };
-      }
-      if (sql.includes('INSERT INTO "UserRole"')) {
-        return { rows: [{ userRoleId: 1 }] };
-      }
-      if (sql.includes('FROM "Plan" WHERE "name"')) {
-        return { rows: [{ planId: 1 }] };
-      }
-      if (sql.includes('INSERT INTO "Subscription"')) {
-        return { rows: [{ id: 1 }] };
-      }
-      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') {
-        return { rows: [] };
-      }
+    query: async (sql) => {
+      if (sql.includes('FROM "User" WHERE "oryId"')) return { rows: [] };
+      if (sql.includes('INSERT INTO "Organization"')) return { rows: [{ id: 1 }] };
+      if (sql.includes('INSERT INTO "User"')) return { rows: [{ id: 1 }] };
+      if (sql.includes('FROM "Role" WHERE "name"')) return { rows: [{ roleId: 1 }] };
+      if (sql.includes('INSERT INTO "UserRole"')) return { rows: [{ userRoleId: 1 }] };
+      if (sql.includes('FROM "Plan" WHERE "name"')) return { rows: [{ planId: 1 }] };
+      if (sql.includes('INSERT INTO "Subscription"')) return { rows: [{ id: 1 }] };
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
       return { rows: [] };
     },
     release: () => {},
   };
 
   return {
-    query: async (sql, params) => {
-      queries.push({ sql, params });
-      if (sql.includes('FROM "User" WHERE "oryId"')) {
-        return { rows: [] };
-      }
+    query: async (sql) => {
+      if (sql.includes('FROM "User" WHERE "oryId"')) return { rows: [] };
       return { rows: [] };
     },
-    connect: async () => {
-      connectCalls++;
-      return mockClient;
-    },
-    getQueries: () => queries,
-    getConnectCalls: () => connectCalls,
+    connect: async () => mockClient,
   };
 };
 
-const createMockOryClient = (validSecret = 'test-secret') => ({
-  verifyWebhookSecret: (secret) => secret === validSecret,
-  verifySession: async () => ({ identity: { id: 'ory-123' } }),
-});
-
 describe('POST /api/auth/webhook', () => {
   let server;
-  let mockDb;
 
   before(async () => {
-    mockDb = createMockDb();
-    const mockOryClient = createMockOryClient();
-
-    const createUserSync = require('../src/application/iam/syncUserFromOry.js');
-    const userSync = createUserSync(mockDb);
-
-    const createWebhookHandler = require('../src/api/auth/webhook.js');
-    const webhookRoute = createWebhookHandler(mockDb, mockOryClient, userSync);
+    const mockDb = createMockDb();
+    const mockOry = {
+      verifyWebhookSecret: (secret) => secret === 'test-secret',
+      verifySession: async () => ({ identity: { id: 'ory-123' } }),
+    };
+    const { api } = await buildFullSandbox(mockDb, { ory: mockOry });
 
     server = fastify({ logger: false });
     initRequestId(server);
     initErrorHandler(server);
-    initRoutes(server, [webhookRoute]);
+    registerSandboxRoutes(server, { auth: { webhook: api.auth.webhook } });
     await server.ready();
   });
 

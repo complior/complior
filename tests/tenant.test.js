@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { createTenantQuery, isTenantTable, TENANT_TABLES, GLOBAL_TABLES } = require('../src/lib/tenant.js');
+const { createTestSandbox, loadAppModule } = require('./helpers/test-sandbox.js');
 
 const createMockDb = () => {
   const queries = [];
@@ -26,19 +26,28 @@ const createMockDb = () => {
 
 describe('tenant isolation', () => {
   describe('table classification', () => {
-    it('identifies tenant tables', () => {
+    it('identifies tenant tables', async () => {
+      const db = createMockDb();
+      const sandbox = createTestSandbox(db);
+      const { isTenantTable } = await loadAppModule('lib/tenant.js', sandbox);
       assert.strictEqual(isTenantTable('AITool'), true);
       assert.strictEqual(isTenantTable('AuditLog'), true);
       assert.strictEqual(isTenantTable('Subscription'), true);
     });
 
-    it('identifies global tables', () => {
+    it('identifies global tables', async () => {
+      const db = createMockDb();
+      const sandbox = createTestSandbox(db);
+      const { isTenantTable } = await loadAppModule('lib/tenant.js', sandbox);
       assert.strictEqual(isTenantTable('AIToolCatalog'), false);
       assert.strictEqual(isTenantTable('Plan'), false);
       assert.strictEqual(isTenantTable('Role'), false);
     });
 
-    it('TENANT_TABLES and GLOBAL_TABLES do not overlap', () => {
+    it('TENANT_TABLES and GLOBAL_TABLES do not overlap', async () => {
+      const db = createMockDb();
+      const sandbox = createTestSandbox(db);
+      const { TENANT_TABLES, GLOBAL_TABLES } = await loadAppModule('lib/tenant.js', sandbox);
       for (const table of TENANT_TABLES) {
         assert(!GLOBAL_TABLES.has(table), `${table} is in both sets`);
       }
@@ -46,14 +55,18 @@ describe('tenant isolation', () => {
   });
 
   describe('createTenantQuery', () => {
-    it('throws without organizationId', () => {
+    it('throws without organizationId', async () => {
       const db = createMockDb();
-      assert.throws(() => createTenantQuery(db, null), (err) => err.statusCode === 400);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      assert.throws(() => createTenantQuery(null), (err) => err.statusCode === 400);
     });
 
     it('findMany injects organizationId filter', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       await tq.findMany('AITool');
       const lastQuery = db.getQueries().at(-1);
       assert(lastQuery.sql.includes('"organizationId" = $1'));
@@ -62,7 +75,9 @@ describe('tenant isolation', () => {
 
     it('findMany supports additional where conditions', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       await tq.findMany('AITool', { where: { active: true }, limit: 10, offset: 0 });
       const lastQuery = db.getQueries().at(-1);
       assert(lastQuery.sql.includes('"organizationId" = $1'));
@@ -71,17 +86,23 @@ describe('tenant isolation', () => {
 
     it('findOne filters by both id and organizationId', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       await tq.findOne('AITool', 42);
       const lastQuery = db.getQueries().at(-1);
       assert(lastQuery.sql.includes('"id" = $1'));
       assert(lastQuery.sql.includes('"organizationId" = $2'));
-      assert.deepStrictEqual(lastQuery.params, [42, 100]);
+      assert.strictEqual(lastQuery.params[0], 42);
+      assert.strictEqual(lastQuery.params[1], 100);
+      assert.strictEqual(lastQuery.params.length, 2);
     });
 
     it('create injects organizationId', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       await tq.create('AITool', { name: 'Test Tool' });
       const lastQuery = db.getQueries().at(-1);
       assert(lastQuery.sql.includes('INSERT INTO "AITool"'));
@@ -90,7 +111,9 @@ describe('tenant isolation', () => {
 
     it('create rejects cross-org data', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       await assert.rejects(
         tq.create('AITool', { name: 'Test', organizationId: 999 }),
         (err) => err.statusCode === 403,
@@ -99,7 +122,9 @@ describe('tenant isolation', () => {
 
     it('update filters by organizationId', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       await tq.update('AITool', 42, { name: 'Updated' });
       const lastQuery = db.getQueries().at(-1);
       assert(lastQuery.sql.includes('"organizationId"'));
@@ -107,7 +132,9 @@ describe('tenant isolation', () => {
 
     it('update rejects cross-org transfer', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       await assert.rejects(
         tq.update('AITool', 42, { organizationId: 999 }),
         (err) => err.statusCode === 403,
@@ -116,7 +143,9 @@ describe('tenant isolation', () => {
 
     it('remove filters by organizationId', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       const result = await tq.remove('AITool', 42);
       assert.strictEqual(result, true);
       const lastQuery = db.getQueries().at(-1);
@@ -125,7 +154,9 @@ describe('tenant isolation', () => {
 
     it('count returns total with organizationId filter', async () => {
       const db = createMockDb();
-      const tq = createTenantQuery(db, 100);
+      const sandbox = createTestSandbox(db);
+      const { createTenantQuery } = await loadAppModule('lib/tenant.js', sandbox);
+      const tq = createTenantQuery(100);
       const total = await tq.count('AITool');
       assert.strictEqual(total, 5);
     });

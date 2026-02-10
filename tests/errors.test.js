@@ -6,7 +6,7 @@ const {
   AppError, ValidationError, AuthError,
   ForbiddenError, NotFoundError, ConflictError,
   RateLimitError,
-} = require('../src/lib/errors.js');
+} = require('../server/lib/errors.js');
 
 describe('Error classes', () => {
   it('AppError defaults', () => {

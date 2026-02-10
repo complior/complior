@@ -1,6 +1,6 @@
 'use strict';
 
-const config = require('../../config/brevo.js');
+const config = require('../../../app/config/brevo.js');
 
 const BREVO_API_URL = 'https://api.brevo.com/v3';
 

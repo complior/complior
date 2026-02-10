@@ -1,7 +1,5 @@
-'use strict';
-
-const createAuditLogger = (db) => {
-  const createAuditEntry = async ({
+({
+  createAuditEntry: async ({
     userId, organizationId, action, resource,
     resourceId = 0, oldData = null, newData = null,
     ip = '0.0.0.0', userAgent = null,
@@ -20,9 +18,9 @@ const createAuditLogger = (db) => {
       ],
     );
     return result.rows[0];
-  };
+  },
 
-  const findEntries = async (organizationId, options = {}) => {
+  findEntries: async (organizationId, options = {}) => {
     const { page = 1, pageSize = 20, action, resource } = options;
     const conditions = ['al."organizationId" = $1'];
     const values = [organizationId];
@@ -67,9 +65,5 @@ const createAuditLogger = (db) => {
         totalPages: Math.ceil(total / pageSize),
       },
     };
-  };
-
-  return { createAuditEntry, findEntries };
-};
-
-module.exports = createAuditLogger;
+  },
+})

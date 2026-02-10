@@ -1,17 +1,15 @@
-'use strict';
-
-const { AuthError } = require('../../lib/errors.js');
-
-const createMeHandler = (db, userSync) => {
-  const handler = async (request) => {
-    if (!request.session) {
-      throw new AuthError('Not authenticated');
+({
+  access: 'authenticated',
+  httpMethod: 'GET',
+  path: '/api/auth/me',
+  method: async ({ session }) => {
+    if (!session) {
+      throw new errors.AuthError('Not authenticated');
     }
 
-    // Sync-on-login: ensure user exists in our DB
-    const user = await userSync.syncOnLogin(request.session);
+    const user = await application.iam.syncUserFromOry.syncOnLogin(session);
     if (!user) {
-      throw new AuthError('User not found');
+      throw new errors.AuthError('User not found');
     }
 
     return {
@@ -23,13 +21,5 @@ const createMeHandler = (db, userSync) => {
       roles: user.roles || [],
       active: user.active,
     };
-  };
-
-  return {
-    method: 'GET',
-    path: '/api/auth/me',
-    handler,
-  };
-};
-
-module.exports = createMeHandler;
+  },
+})
