@@ -41,7 +41,7 @@
 твоя компания               по AI Act      (Art. 4)            за €49/мес
 ```
 
-1. **AI Tool Inventory** — зарегистрируй все AI-инструменты компании (manual wizard + каталог 200+ инструментов)
+1. **AI Tool Inventory** — зарегистрируй все AI-инструменты компании (manual wizard + каталог 200+ инструментов + employee self-service registration с approval workflow)
 2. **Risk Classification** — гибридный движок (rules + LLM) определяет risk level каждого инструмента с точки зрения deployer
 3. **AI Literacy Module** — обучающие курсы на немецком + tracking completion per employee (Art. 4 — уже обязателен!)
 4. **Консультант "Ева"** — AI-чат, объясняющий обязанности deployer простым языком
@@ -88,14 +88,14 @@
 
 - **Кто:** CTO, CEO, HR-директора, IT-менеджеры в SMB
 - **Размер:** 5-250 сотрудников (micro + SMB по EU-определению)
-- **География:** DACH (Germany, Austria, Switzerland)
+- **География:** Global — любая компания, работающая с EU-клиентами или имеющая EU-операции (стартапы, SMB из US, UK, Asia и т.д.)
 - **Общее:** Компания ИСПОЛЬЗУЕТ AI-инструменты (ChatGPT, Copilot, AI-рекрутинг, AI-диагностика, чат-боты, AI-аналитика)
 - **Характеристики:**
   - Нет выделенного compliance-отдела
   - Не знают, что они "deployers" по AI Act
   - Сотрудники используют AI без формального одобрения (shadow AI)
   - Готовы платить €49-399/мес за самообслуживание vs €10K+ за консалтинг
-  - Предпочитают немецкоязычный интерфейс
+  - English-first UI; DE + FR сразу после MVP
 
 ### Вторичная аудитория
 - **Консалтинговые компании** — используют как инструмент для своих клиентов (white-label в Enterprise)
@@ -133,6 +133,7 @@
     5. **Обзор и классификация:** summary → trigger classification
   - Каталог AI-инструментов (seed data: 200+ инструментов с дефолтными risk levels)
   - CSV import (IT-отдел выгружает список используемых SaaS)
+  - **Employee self-service registration:** сотрудники регистрируют AI-инструменты (Organization Settings: enable/disable). Approval workflow: submit → review → approved/rejected
 
 - **AI Literacy Module — WEDGE PRODUCT** (Sprint 2-3)
   - Собственный обучающий контент на немецком
@@ -193,7 +194,7 @@
 - **Regulatory Monitor** — EUR-Lex, deployer-relevant articles
 - **KI-Compliance Siegel** — trust badge для сайта ("AI Act Compliant")
 - **Additional docs** — Risk Assessment (Art. 9 deployer), Incident Report templates
-- **Multi-language** — DE + EN
+- **Multi-language** — + DE, FR (English is default from MVP)
 
 ### P3 — Future (post-launch)
 
@@ -232,11 +233,17 @@
 - Hetzner Object Storage (S3-compatible) — PDF, exports
 
 **AI/LLM Layer (EU Sovereign):**
-- **Ева:** Mistral Large 3 API (EU) — deployer Q&A
+- **Framework:** Vercel AI SDK 6 (model-agnostic, Apache 2.0) — [ADR-005](ADR-005-vercel-ai-sdk.md)
+  - `streamText` (Fastify) + `useChat` (Next.js) — SSE streaming для Eva
+  - Zod-typed tools: `classifyAITool`, `searchRegulation`, `createFRIA`
+  - `needsApproval` flag для compliance-critical actions
+- **Ева:** Mistral Large 3 API (EU) via `@ai-sdk/mistral` — deployer Q&A
 - **Classifier:** Mistral Small 3.1 API (EU) — risk classification
 - **Doc Writer:** Mistral Medium 3 API (EU) — document generation
 - **Quick Tasks:** Mistral Small 3.1 API (EU) — autocomplete, forms
 - **Cross-validation:** Mistral Large 3 API — для эскалации
+- **Autonomous Agents (P3):** Claude Agent SDK — Shadow AI Discovery + On-premise Agent
+- **Agent Integrations (P3):** Nango (self-hosted EU) — вместо Composio (US data)
 - **Масштабирование:** При >100 клиентов → self-hosted Mistral (Hetzner GPU)
 
 **Infrastructure:**
@@ -293,7 +300,7 @@
 
 ### UC-1: Регистрация и онбординг
 ```
-As a CTO of a DACH SMB
+As a CTO of a company that serves EU clients
 I want to register and find out if AI Act applies to my company
 So that I understand what my obligations are as an AI deployer
 ```

@@ -44,7 +44,7 @@ const createUserSync = (db) => {
         `INSERT INTO "User" ("organizationId", "oryId", "email", "fullName", "active", "locale")
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING "id"`,
-        [organizationId, oryId, email, fullName, true, locale || 'de'],
+        [organizationId, oryId, email, fullName, true, locale || 'en'],
       );
       const userId = userResult.rows[0].id;
 

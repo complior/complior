@@ -12,7 +12,7 @@
   },
   fullName: { type: 'string', length: { max: 255 } },
   active: { type: 'boolean', default: true },
-  locale: { type: 'string', length: { max: 5 }, default: '\'de\'' },
+  locale: { type: 'string', length: { max: 5 }, default: '\'en\'' },
   roles: { many: 'Role' },
   lastLoginAt: { type: 'datetime', required: false },
 });

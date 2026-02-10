@@ -11,7 +11,7 @@
 
 **Название:** AI Act Compliance Platform
 **Тип:** Self-service B2B SaaS
-**Рынок:** DACH region (Germany, Austria, Switzerland) → EU expansion
+**Рынок:** Global — любая компания, работающая с EU-клиентами (не только европейские)
 **Позиционирование:** Deployer-first — для компаний, которые ИСПОЛЬЗУЮТ AI
 
 **Проблема:** 125,000+ компаний в Германии уже используют AI-инструменты, но не знают своих обязанностей по AI Act. 70% сотрудников не обучены (Art. 4 AI Literacy обязателен с 02.02.2025). 71% используют AI без одобрения IT (Shadow AI). Традиционный compliance стоит €50-200K. К August 2026 — штрафы до €35M / 7% оборота.
@@ -27,7 +27,7 @@
 **Ключевые отличия:**
 1. **Deployer-first** — единственная платформа для компаний, которые ИСПОЛЬЗУЮТ AI (не строят)
 2. **AI Literacy** — Art. 4 wedge product (уже обязателен, 70% non-compliance)
-3. **Немецкий язык** — все курсы, документы, Eva на немецком
+3. **English-first** — MVP на английском; DE + FR добавляются сразу после MVP
 4. **Self-service** — от €49/мес vs €10K+/year у конкурентов (Kertos)
 5. **100% EU-sovereign** — Mistral AI + Hetzner + Ory + Brevo
 
@@ -166,12 +166,12 @@
 | **Art. 27** | Обязательная FRIA для deployer'ов в публичном секторе, кредитовании, страховании |
 | **Art. 50** | Обязанности прозрачности (chatbots, deepfakes, emotion recognition) |
 | **Annex III** | 8 категорий high-risk AI (biometrics, employment, education, justice, etc.) |
-| **Ева** | AI-консультант для deployer'ов — отвечает на немецком, помогает с FRIA и compliance |
+| **Ева** | AI-консультант для deployer'ов — отвечает на английском (+ DE/FR post-MVP), помогает с FRIA и compliance |
 | **Classification Engine** | Гибридный движок: rules + LLM + cross-validation (deployer context) |
 | **Guided Compliance** | UX: платформа ведёт deployer'а step-by-step |
 | **MetaSQL** | Schema management: JavaScript schema → SQL DDL + TypeScript types |
 | **VM Sandbox** | Паттерн изоляции модулей через vm.Script + frozen context |
-| **DACH** | Немецкоязычный регион: Deutschland, Austria, Confoederatio Helvetica (Швейцария) |
+| **DACH** | Немецкоязычный регион: Deutschland, Austria, Confoederatio Helvetica (Швейцария). Ключевой, но не единственный рынок |
 
 ---
 

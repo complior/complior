@@ -411,7 +411,7 @@ erDiagram
   country: { type: 'string', length: { min: 2, max: 2 }, note: 'ISO 3166-1 alpha-2' },
   website: { type: 'string', required: false },
   vatId: { type: 'string', required: false, note: 'EU VAT number' },
-  settings: { type: 'json', required: false, note: 'Organization-level settings' },
+  settings: { type: 'json', required: false, note: 'Organization-level settings: { allowEmployeeRegistration: boolean, ... }' },
 });
 ```
 
@@ -424,7 +424,7 @@ erDiagram
 | country | varchar(2) | NOT NULL | ISO country code (DE, AT, CH) |
 | website | varchar | nullable | Company website |
 | vatId | varchar | nullable | EU VAT identification number |
-| settings | jsonb | nullable | Configurable settings |
+| settings | jsonb | nullable | Configurable settings (`{ allowEmployeeRegistration: bool }`) |
 | creation | timestamptz | DEFAULT now() | From Identifier |
 | change | timestamptz | DEFAULT now() | From Identifier |
 
@@ -442,7 +442,7 @@ erDiagram
   email: { type: 'string', length: { min: 6, max: 255 }, unique: true, index: true },
   fullName: { type: 'string', length: { max: 255 } },
   active: { type: 'boolean', default: true },
-  locale: { type: 'string', length: { max: 5 }, default: "'de'" },
+  locale: { type: 'string', length: { max: 5 }, default: "'en'" },
   roles: { many: 'Role' },
   lastLoginAt: { type: 'datetime', required: false },
 });
@@ -456,7 +456,7 @@ erDiagram
 | email | varchar(255) | UNIQUE, INDEX, NOT NULL | Login identifier (sync from Ory) |
 | fullName | varchar(255) | NOT NULL | Display name |
 | active | boolean | DEFAULT true | Soft delete |
-| locale | varchar(5) | DEFAULT 'de' | UI language (de, en) |
+| locale | varchar(5) | DEFAULT 'en' | UI language (en, de, fr) |
 | lastLoginAt | timestamptz | nullable | Updated via Ory webhook |
 | creation | timestamptz | DEFAULT now() | Registration date |
 | change | timestamptz | DEFAULT now() | Last profile update |
@@ -562,6 +562,16 @@ erDiagram
   annexCategory: { type: 'string', required: false, note: 'e.g., III_1a, III_4a' },
   classificationConfidence: { type: 'number', required: false },
 
+  // Multi-user Registration (employee self-service)
+  approvalStatus: {
+    enum: ['approved', 'pending_approval', 'rejected'],
+    default: 'approved',
+    note: 'approved = default for admin/owner. pending_approval = employee self-service registration',
+  },
+  approvedBy: { type: 'User', required: false, delete: 'restrict',
+    note: 'Manager/IT who approved employee-submitted tool' },
+  approvedAt: { type: 'datetime', required: false },
+
   // Compliance Tracking
   complianceStatus: {
     enum: ['not_started', 'in_progress', 'review', 'compliant', 'non_compliant'],
@@ -602,6 +612,9 @@ erDiagram
 | complianceStatus | varchar | ENUM, DEFAULT 'not_started', INDEX |
 | complianceScore | integer | DEFAULT 0 |
 | wizardStep | integer | DEFAULT 1 |
+| approvalStatus | varchar | ENUM, DEFAULT 'approved' |
+| approvedById | bigint | FK, nullable |
+| approvedAt | timestamptz | nullable |
 | wizardCompleted | boolean | DEFAULT false |
 
 **Indexes:**
@@ -916,7 +929,7 @@ erDiagram
     default: 'interactive',
   },
   description: { type: 'text' },
-  language: { type: 'string', length: { max: 5 }, default: "'de'", note: 'ISO 639-1' },
+  language: { type: 'string', length: { max: 5 }, default: "'en'", note: 'ISO 639-1' },
   version: { type: 'number', default: 1 },
   active: { type: 'boolean', default: true },
   sortOrder: { type: 'number', default: 0 },
@@ -1215,13 +1228,13 @@ erDiagram
 ### Full-Text Search (post-MVP)
 
 ```sql
--- AI System search (name + description)
+-- AI Tool search (name + description) — English-first, multilingual via 'simple' config
 CREATE INDEX idx_aitool_search ON "AITool"
-  USING gin(to_tsvector('german', name || ' ' || description));
+  USING gin(to_tsvector('english', name || ' ' || description));
 
 -- Chat message search
 CREATE INDEX idx_chatmessage_search ON "ChatMessage"
-  USING gin(to_tsvector('german', content->>'text'));
+  USING gin(to_tsvector('english', content->>'text'));
 ```
 
 ---
