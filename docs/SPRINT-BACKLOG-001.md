@@ -40,10 +40,10 @@ As the system, I need to sync Ory registration events into our DB, so that every
 - [x] Idempotent: duplicate oryId → 200 OK, no duplicates
 
 #### Реализованные файлы
-- `src/api/auth/webhook.js` — Fastify route handler
-- `src/api/auth/me.js` — session → user lookup with sync fallback
-- `src/application/iam/syncUserFromOry.js` — business logic (144 lines)
-- `src/application/iam/resolveSession.js` — Ory session → User record
+- `app/api/auth/webhook.js` — VM-sandboxed route handler
+- `app/api/auth/me.js` — session → user lookup with sync fallback
+- `app/application/iam/syncUserFromOry.js` — business logic (144 lines)
+- `app/application/iam/resolveSession.js` — Ory session → User record
 - `tests/webhook.test.js` — 4 tests (valid payload, idempotent, ignore non-registration, missing identity_id)
 - `tests/sync-user.test.js` — 4 tests (create new, idempotent, sync-on-login, missing identity)
 
@@ -87,7 +87,7 @@ As a new deployer, I want to register with my email and then set up my company p
 - `frontend/app/auth/register/page.tsx` — 2-step registration (156 lines)
 - `frontend/components/auth/RegisterStep1.tsx` — account creation form (84 lines)
 - `frontend/components/auth/RegisterStep2.tsx` — company onboarding form (127 lines)
-- `src/api/auth/updateOrganization.js` — PATCH handler (86 lines)
+- `app/api/auth/updateOrganization.js` — PATCH handler (86 lines)
 
 ---
 
@@ -101,14 +101,14 @@ As a new deployer, I want to register with my email and then set up my company p
 As the platform, I need role-based access control, so that users can only perform actions they are authorized for.
 
 #### Acceptance Criteria
-- [x] `checkPermission(user, resource, action)` in `src/lib/permissions.js`
+- [x] `checkPermission(user, resource, action)` in `app/lib/permissions.js`
 - [x] 'manage' action = wildcard for all CRUD actions
 - [x] `resolveUser(session)` — oryId → User record
 - [x] Seed roles: owner=manage all, admin=manage tools+compliance, member=limited, viewer=read-only
 
 #### Реализованные файлы
-- `src/lib/permissions.js` — checkPermission with wildcard 'manage' (65 lines)
-- `src/application/iam/resolveSession.js` — shared with US-009 (31 lines)
+- `app/lib/permissions.js` — checkPermission with wildcard 'manage' (65 lines)
+- `app/application/iam/resolveSession.js` — shared with US-009 (31 lines)
 - `tests/permissions.test.js` — 8 tests (owner manage, admin scope, member limited, viewer read-only, deny, wildcard)
 
 ---
@@ -121,14 +121,14 @@ As the platform, I need role-based access control, so that users can only perfor
 As the platform, I need tenant isolation on every data query, so that Organization A cannot see Organization B's data.
 
 #### Acceptance Criteria
-- [x] `createTenantQuery(db, table, organizationId)` in `src/lib/tenant.js`
+- [x] `createTenantQuery(db, table, organizationId)` in `app/lib/tenant.js`
 - [x] Auto-injects `WHERE "organizationId" = $N` on reads
 - [x] Validates organizationId match on create/update
 - [x] Tenant tables: AITool, AuditLog, Subscription, Conversation, Notification, AIToolDiscovery, ComplianceDocument, FRIAAssessment, LiteracyCompletion
 - [x] Global tables: AIToolCatalog, Requirement, TrainingCourse, Plan, Role, Permission
 
 #### Реализованные файлы
-- `src/lib/tenant.js` — createTenantQuery + CRUD helpers (124 lines)
+- `app/lib/tenant.js` — createTenantQuery + CRUD helpers (124 lines)
 - `tests/tenant.test.js` — 8 tests (read filter, create validate, update validate, cross-org deny, global tables)
 
 ---
@@ -143,13 +143,13 @@ As the platform, I need tenant isolation on every data query, so that Organizati
 As an admin, I want to see a log of all authentication events, so that I have an audit trail for compliance.
 
 #### Acceptance Criteria
-- [x] `createAuditEntry(db, {...})` in `src/lib/audit.js`
+- [x] `createAuditEntry(db, {...})` in `app/lib/audit.js`
 - [x] Logs: login, registration, permission failures
 - [x] `GET /api/auth/audit` — paginated, tenant-scoped, requires AuditLog+read permission
 
 #### Реализованные файлы
-- `src/lib/audit.js` — createAuditEntry + query helpers (75 lines)
-- `src/api/auth/audit.js` — paginated GET handler (31 lines)
+- `app/lib/audit.js` — createAuditEntry + query helpers (75 lines)
+- `app/api/auth/audit.js` — paginated GET handler (31 lines)
 - `tests/audit.test.js` — 6 tests (create entry, pagination, tenant isolation, permission check)
 
 ---
@@ -168,8 +168,8 @@ As a deployer, I want to browse and search a catalog of 225+ AI tools with risk 
 - [x] Risk badges: color-coded (prohibited=red, high=orange, gpai=blue, limited=yellow, minimal=green)
 
 #### Реализованные файлы
-- `src/api/tools/catalog.js` — search + detail routes (41 lines)
-- `src/application/inventory/searchCatalog.js` — ILIKE search, filters, pagination (68 lines)
+- `app/api/tools/catalog.js` — search + detail routes (41 lines)
+- `app/application/inventory/searchCatalog.js` — ILIKE search, filters, pagination (68 lines)
 - `tests/catalog.test.js` — 12 tests (search, filter by category, filter by risk, pagination, detail, not found)
 - `frontend/app/tools/catalog/page.tsx` — catalog page (129 lines)
 - `frontend/components/tools/CatalogSearch.tsx` — debounced search + filters (77 lines)
@@ -181,9 +181,9 @@ As a deployer, I want to browse and search a catalog of 225+ AI tools with risk 
 
 ## Architecture Decisions (Sprint 1)
 
-1. **Session hook** (not middleware): `initSessionHook` in `http.js` calls `oryClient.verifySession()` on all `/api/*` requests except webhook and health. Sets `request.session`. Business logic (resolveUser, checkPermission) stays explicit in handlers per CODING-STANDARDS §6.
+1. **Session hook** (not middleware): `initSessionHook` in `server/src/http.js` calls `oryClient.verifySession()` on all `/api/*` requests except webhook and health. Sets `request.session`. Business logic (resolveUser, checkPermission) stays explicit in handlers per CODING-STANDARDS §6.
 
-2. **GET route support**: `initRoutes` extended to support GET/PATCH (was POST-only). CQS: queries are GET.
+2. **Sandbox route registration**: `registerSandboxRoutes` (walkApiTree pattern) replaces `initRoutes`. Handlers are VM-sandboxed expressions (`{ access, httpMethod, path, method }`); no `require()` in `app/`.
 
 3. **Frontend Ory integration**: Raw fetch to Ory's self-service API at localhost:4433. Ory config points login/register UI URLs to localhost:3001/auth/*.
 

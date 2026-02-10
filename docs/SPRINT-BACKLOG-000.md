@@ -28,9 +28,9 @@ As a developer, I want a monorepo with working Fastify server based on existing-
 
 ### Acceptance Criteria
 
-- [x] Monorepo root: `package.json` с workspaces (`src/`, `frontend/`)
+- [x] Monorepo root: `package.json` с workspaces (`server/`, `frontend/`)
 - [x] Скопированы core-файлы из existing-code:
-  - `main.js`, `src/http.js`, `src/ws.js`, `src/loader.js` (NodeJS-Fastify)
+  - `server/main.js`, `server/src/http.js`, `server/src/ws.js`, `server/src/loader.js` (NodeJS-Fastify)
   - `lib/db.js` (CRUD builder) — **fix known bugs при копировании:**
     - `delete()` template string bug (backticks fix, см. ARCHITECTURE.md §8)
     - Add basic transaction support (`db.transaction(async (tx) => {...})`)
@@ -39,15 +39,21 @@ As a developer, I want a monorepo with working Fastify server based on existing-
   - `setup.js` (initialization)
 - [x] Адаптирован Module Structure из ARCHITECTURE.md §5:
   ```
-  src/
-  ├── domain/           # пустые директории с .gitkeep
+  server/               # HTTP runtime (require-based)
+  ├── main.js
+  ├── src/              # loader.js, http.js, ws.js, logger.js
+  ├── lib/              # errors.js, schemas.js, db.js
+  └── infrastructure/   # ory-client, brevo-client, gotenberg-client, s3-client
+
+  app/                  # Business logic (VM-sandboxed, NO require)
+  ├── setup.js
+  ├── config/
+  ├── domain/           # DDD stubs с .gitkeep
   ├── application/
   ├── schemas/
   ├── api/
-  ├── infrastructure/
-  ├── config/
   ├── lib/
-  └── setup.js
+  └── seeds/
   ```
 - [x] `GET /health` → `{ status: "ok", timestamp, version }` (200)
 - [x] ESLint + Prettier конфигурация (из existing-code `.eslintrc.json`, `.prettierrc`)

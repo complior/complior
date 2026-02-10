@@ -23,7 +23,7 @@
 ### Done
 
 #### US-001: Monorepo + Fastify Backend (5 SP) — Max
-- [x] Monorepo root с workspaces (src/, frontend/)
+- [x] Monorepo root с workspaces (server/, frontend/)
 - [x] Core files: main.js, http.js, ws.js, loader.js
 - [x] lib/db.js с CRUD builder
 - [x] DDD структура: domain/, application/, schemas/, api/, infrastructure/, config/, lib/
