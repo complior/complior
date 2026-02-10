@@ -70,10 +70,11 @@ const initRateLimit = async (server) => {
     max: 100,
     timeWindow: '1 minute',
     keyGenerator: (request) => request.ip,
-    errorResponseBuilder: () => ({
+    errorResponseBuilder: (_request, context) => ({
+      statusCode: 429,
       error: {
         code: 'RATE_LIMIT',
-        message: 'Too many requests. Please try again later.',
+        message: `Too many requests. Retry after ${context.after}.`,
       },
     }),
   });
@@ -106,6 +107,14 @@ const initErrorHandler = (server) => {
           details: error.validation,
         },
       });
+    }
+
+    if (error.statusCode === 429 || error?.error?.code === 'RATE_LIMIT') {
+      request.log.warn({ requestId }, 'Rate limit exceeded');
+      const body = error.error
+        ? { error: error.error }
+        : { error: { code: 'RATE_LIMIT', message: 'Too many requests.' } };
+      return reply.status(429).send(body);
     }
 
     request.log.error(
