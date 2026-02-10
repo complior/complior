@@ -5,7 +5,7 @@ const {
   GetObjectCommand, DeleteObjectCommand,
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const config = require('../../config/s3.js');
+const config = require('../../../app/config/s3.js');
 
 const createS3Storage = (options = config) => {
   const { endpoint, bucket, accessKey, secretKey, region } = options;

@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const modulePath = require.resolve('../src/config/validate.js');
+const modulePath = require.resolve('../app/config/validate.js');
 
 describe('Config validation', () => {
   let originalEnv;

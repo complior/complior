@@ -5,8 +5,8 @@ const assert = require('node:assert');
 const fastify = require('fastify');
 const {
   initHealth, initRateLimit, initRequestId, initErrorHandler,
-} = require('../src/http.js');
-const { ValidationError } = require('../src/lib/errors.js');
+} = require('../server/src/http.js');
+const { ValidationError } = require('../server/lib/errors.js');
 
 describe('HTTP server', () => {
   let server;

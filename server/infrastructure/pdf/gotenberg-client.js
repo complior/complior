@@ -1,6 +1,6 @@
 'use strict';
 
-const config = require('../../config/gotenberg.js');
+const config = require('../../../app/config/gotenberg.js');
 
 const createGotenbergClient = (options = config) => {
   const { url, timeout } = options;

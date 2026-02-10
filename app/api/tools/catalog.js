@@ -1,60 +1,50 @@
-'use strict';
-
-const { z } = require('zod');
-const { NotFoundError, ValidationError } = require('../../lib/errors.js');
-const { CatalogSearchSchema, CatalogIdSchema } = require('../../lib/schemas.js');
-
-const createCatalogHandlers = (catalogSearch) => {
-  const searchHandler = async (request) => {
-    let query;
-    try {
-      query = CatalogSearchSchema.parse(request.query || {});
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw new ValidationError('Invalid search parameters', err.flatten().fieldErrors);
+[
+  {
+    access: 'public',
+    httpMethod: 'GET',
+    path: '/api/tools/catalog/search',
+    method: async ({ query }) => {
+      let parsed;
+      try {
+        parsed = schemas.CatalogSearchSchema.parse(query || {});
+      } catch (err) {
+        if (err.flatten) {
+          throw new errors.ValidationError(
+            'Invalid search parameters', err.flatten().fieldErrors,
+          );
+        }
+        throw err;
       }
-      throw err;
-    }
 
-    return catalogSearch.search({
-      q: query.q || '',
-      category: query.category || null,
-      riskLevel: query.riskLevel || null,
-      page: query.page,
-      pageSize: query.pageSize,
-    });
-  };
-
-  const detailHandler = async (request) => {
-    let params;
-    try {
-      params = CatalogIdSchema.parse(request.params);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw new ValidationError('Invalid catalog ID', err.flatten().fieldErrors);
+      return application.inventory.searchCatalog.search({
+        q: parsed.q || '',
+        category: parsed.category || null,
+        riskLevel: parsed.riskLevel || null,
+        page: parsed.page,
+        pageSize: parsed.pageSize,
+      });
+    },
+  },
+  {
+    access: 'public',
+    httpMethod: 'GET',
+    path: '/api/tools/catalog/:id',
+    method: async ({ params }) => {
+      let parsed;
+      try {
+        parsed = schemas.CatalogIdSchema.parse(params);
+      } catch (err) {
+        if (err.flatten) {
+          throw new errors.ValidationError(
+            'Invalid catalog ID', err.flatten().fieldErrors,
+          );
+        }
+        throw err;
       }
-      throw err;
-    }
 
-    const tool = await catalogSearch.findById(params.id);
-    if (!tool) throw new NotFoundError('AIToolCatalog', params.id);
-    return tool;
-  };
-
-  return [
-    {
-      method: 'GET',
-      path: '/api/tools/catalog/search',
-      handler: searchHandler,
-      public: true,
+      const tool = await application.inventory.searchCatalog.findById(parsed.id);
+      if (!tool) throw new errors.NotFoundError('AIToolCatalog', parsed.id);
+      return tool;
     },
-    {
-      method: 'GET',
-      path: '/api/tools/catalog/:id',
-      handler: detailHandler,
-      public: true,
-    },
-  ];
-};
-
-module.exports = createCatalogHandlers;
+  },
+]

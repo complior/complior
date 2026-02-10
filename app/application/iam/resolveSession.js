@@ -1,11 +1,7 @@
-'use strict';
-
-const { AuthError } = require('../../lib/errors.js');
-
-const createSessionResolver = (db) => {
-  const resolveUser = async (session) => {
+({
+  resolveUser: async (session) => {
     if (!session || !session.identity) {
-      throw new AuthError('No valid session');
+      throw new errors.AuthError('No valid session');
     }
     const oryId = session.identity.id;
     const result = await db.query(
@@ -21,11 +17,7 @@ const createSessionResolver = (db) => {
     );
     if (result.rows.length === 0) return null;
     const user = result.rows[0];
-    if (!user.active) throw new AuthError('Account deactivated');
+    if (!user.active) throw new errors.AuthError('Account deactivated');
     return user;
-  };
-
-  return { resolveUser };
-};
-
-module.exports = createSessionResolver;
+  },
+})

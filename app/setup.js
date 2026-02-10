@@ -91,7 +91,7 @@ const fieldToSQL = (name, rawField, tableName, schemas) => {
     const d = field.default;
     // Booleans, numbers, pre-quoted strings ('en'), and functions (now())
     // pass through as-is. Bare strings need SQL quoting.
-    if (typeof d === 'string' && !d.startsWith("'") &&
+    if (typeof d === 'string' && !d.startsWith('\'') &&
         d !== 'now()' && d !== 'true' && d !== 'false') {
       defaultVal = ` DEFAULT '${d}'`;
     } else {

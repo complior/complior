@@ -1,9 +1,4 @@
-'use strict';
-
-const { ForbiddenError } = require('./errors.js');
-
-const createPermissionChecker = (db) => {
-  // Cache permissions per role (loaded once, invalidated on role change)
+(() => {
   let permissionCache = null;
 
   const loadPermissions = async () => {
@@ -28,7 +23,7 @@ const createPermissionChecker = (db) => {
 
   const checkPermission = async (user, resource, action) => {
     if (!user || !user.roles || user.roles.length === 0) {
-      throw new ForbiddenError('No roles assigned');
+      throw new errors.ForbiddenError('No roles assigned');
     }
 
     const permissions = await loadPermissions();
@@ -39,13 +34,12 @@ const createPermissionChecker = (db) => {
 
       for (const perm of rolePerms) {
         if (perm.resource !== resource) continue;
-        // 'manage' is wildcard — grants all CRUD actions
         if (perm.action === 'manage') return true;
         if (perm.action === action) return true;
       }
     }
 
-    throw new ForbiddenError(
+    throw new errors.ForbiddenError(
       `Missing permission: ${resource}:${action}`,
     );
   };
@@ -60,6 +54,4 @@ const createPermissionChecker = (db) => {
   };
 
   return { checkPermission, hasPermission, invalidateCache };
-};
-
-module.exports = createPermissionChecker;
+})()

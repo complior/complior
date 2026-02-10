@@ -1,8 +1,8 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const pkg = require('../package.json');
-const { AppError } = require('./lib/errors.js');
+const pkg = require('../../package.json');
+const { AppError } = require('../lib/errors.js');
 
 const checkDatabase = async (checks) => {
   try {
@@ -152,18 +152,49 @@ const initSessionHook = (server, oryClient) => {
   });
 };
 
-const initRoutes = (server, routeDefs) => {
-  for (const def of routeDefs) {
-    const { method, path, handler } = def;
-    const httpMethod = (method || 'POST').toLowerCase();
-    server[httpMethod](path, async (request, reply) => {
-      const result = await handler(request, reply);
-      if (result !== undefined) return result;
+const walkApiTree = (node, handlers = []) => {
+  if (node && typeof node === 'object' && node.httpMethod && node.method) {
+    handlers.push(node);
+    return handlers;
+  }
+  if (node && typeof node === 'object') {
+    for (const val of Object.values(node)) {
+      if (val && typeof val === 'object') {
+        if (Array.isArray(val)) {
+          for (const item of val) walkApiTree(item, handlers);
+        } else {
+          walkApiTree(val, handlers);
+        }
+      }
+    }
+  }
+  return handlers;
+};
+
+const registerSandboxRoutes = (server, api) => {
+  const handlers = walkApiTree(api);
+  for (const def of handlers) {
+    const httpMethod = def.httpMethod.toLowerCase();
+    server[httpMethod](def.path, async (request, reply) => {
+      const result = await def.method({
+        body: request.body,
+        query: request.query,
+        headers: request.headers,
+        params: request.params,
+        session: request.session,
+      });
+      const statusCode = result?._statusCode || 200;
+      if (result && result._statusCode !== undefined) {
+        const rest = { ...result };
+        delete rest._statusCode;
+        return reply.code(statusCode).send(rest);
+      }
+      return reply.code(statusCode).send(result);
     });
   }
 };
 
 module.exports = {
-  initRoutes, initHealth, initRateLimit,
+  registerSandboxRoutes, initHealth, initRateLimit,
   initRequestId, initErrorHandler, initSessionHook,
 };

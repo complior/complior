@@ -1,7 +1,5 @@
-'use strict';
-
-const createCatalogSearch = (db) => {
-  const search = async ({ q, category, riskLevel, page = 1, pageSize = 20 }) => {
+({
+  search: async ({ q, category, riskLevel, page = 1, pageSize = 20 }) => {
     const conditions = ['"active" = true'];
     const values = [];
     let idx = 1;
@@ -52,17 +50,13 @@ const createCatalogSearch = (db) => {
         totalPages: Math.ceil(total / pageSize),
       },
     };
-  };
+  },
 
-  const findById = async (id) => {
+  findById: async (id) => {
     const result = await db.query(
       'SELECT * FROM "AIToolCatalog" WHERE "aIToolCatalogId" = $1 AND "active" = true',
       [id],
     );
     return result.rows[0] || null;
-  };
-
-  return { search, findById };
-};
-
-module.exports = createCatalogSearch;
+  },
+})

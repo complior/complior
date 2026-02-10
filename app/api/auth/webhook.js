@@ -1,53 +1,43 @@
-'use strict';
-
-const { z } = require('zod');
-const { AuthError, ValidationError } = require('../../lib/errors.js');
-const { WebhookSchema } = require('../../lib/schemas.js');
-
-const createWebhookHandler = (db, oryClient, userSync) => {
-  const handler = async (request, reply) => {
-    const secret = request.headers['x-webhook-secret'];
-    if (!oryClient.verifyWebhookSecret(secret)) {
-      throw new AuthError('Invalid webhook secret');
+({
+  access: 'public',
+  httpMethod: 'POST',
+  path: '/api/auth/webhook',
+  method: async ({ body, headers }) => {
+    const secret = headers['x-webhook-secret'];
+    if (!ory.verifyWebhookSecret(secret)) {
+      throw new errors.AuthError('Invalid webhook secret');
     }
 
-    const body = request.body || {};
+    const payload = body || {};
 
-    if (body.event !== 'registration') {
-      return reply.status(200).send({ status: 'ignored', event: body.event });
+    if (payload.event !== 'registration') {
+      return { _statusCode: 200, status: 'ignored', event: payload.event };
     }
 
     let data;
     try {
-      data = WebhookSchema.parse(body);
+      data = schemas.WebhookSchema.parse(payload);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw new ValidationError('Validation failed', err.flatten().fieldErrors);
+      if (err.flatten) {
+        throw new errors.ValidationError(
+          'Validation failed', err.flatten().fieldErrors,
+        );
       }
       throw err;
     }
 
-    const result = await userSync.syncFromWebhook({
-      // eslint-disable-next-line camelcase
+    const result = await application.iam.syncUserFromOry.syncFromWebhook({
       identity_id: data.identity_id,
       email: data.email,
       name: data.name,
       locale: data.locale,
     });
 
-    return reply.status(result.created ? 201 : 200).send({
+    return {
+      _statusCode: result.created ? 201 : 200,
       status: result.created ? 'created' : 'exists',
       userId: result.user.id,
       organizationId: result.user.organizationId,
-    });
-  };
-
-  return {
-    method: 'POST',
-    path: '/api/auth/webhook',
-    handler,
-    public: true,
-  };
-};
-
-module.exports = createWebhookHandler;
+    };
+  },
+})

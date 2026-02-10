@@ -3,12 +3,19 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const { setupTestDb, cleanupTestDb, closeTestDb, getPool } = require('../helpers/test-db.js');
+const { createTestSandbox, loadAppModule, loadAppDeepDir } = require('../helpers/test-sandbox.js');
 
 describe('Integration: Registration flow (real DB)', () => {
   let pool;
+  let sandbox;
 
   before(async () => {
     pool = await setupTestDb();
+    sandbox = createTestSandbox(pool);
+    const lib = await loadAppModule('lib/audit.js', sandbox);
+    sandbox.lib = { audit: lib, permissions: await loadAppModule('lib/permissions.js', sandbox), tenant: await loadAppModule('lib/tenant.js', sandbox) };
+    const application = await loadAppDeepDir('application', sandbox);
+    sandbox.application = application;
   });
 
   after(async () => {
@@ -44,8 +51,7 @@ describe('Integration: Registration flow (real DB)', () => {
   });
 
   it('webhook creates user + org + role + subscription', async () => {
-    const createUserSync = require('../../src/application/iam/syncUserFromOry.js');
-    const userSync = createUserSync(pool);
+    const userSync = sandbox.application.iam.syncUserFromOry;
 
     const result = await userSync.syncFromWebhook({
       identity_id: 'ory-integration-test-1',
@@ -98,8 +104,7 @@ describe('Integration: Registration flow (real DB)', () => {
   });
 
   it('webhook is idempotent (same oryId returns existing)', async () => {
-    const createUserSync = require('../../src/application/iam/syncUserFromOry.js');
-    const userSync = createUserSync(pool);
+    const userSync = sandbox.application.iam.syncUserFromOry;
 
     const result = await userSync.syncFromWebhook({
       identity_id: 'ory-integration-test-1',
@@ -110,8 +115,7 @@ describe('Integration: Registration flow (real DB)', () => {
   });
 
   it('catalog search returns results for "ChatGPT"', async () => {
-    const createCatalogSearch = require('../../src/application/inventory/searchCatalog.js');
-    const catalogSearch = createCatalogSearch(pool);
+    const catalogSearch = sandbox.application.inventory.searchCatalog;
 
     const result = await catalogSearch.search({ q: 'ChatGPT' });
     assert(result.data.length >= 1, 'Should find ChatGPT');
@@ -122,8 +126,7 @@ describe('Integration: Registration flow (real DB)', () => {
   });
 
   it('catalog search filters by category', async () => {
-    const createCatalogSearch = require('../../src/application/inventory/searchCatalog.js');
-    const catalogSearch = createCatalogSearch(pool);
+    const catalogSearch = sandbox.application.inventory.searchCatalog;
 
     const result = await catalogSearch.search({ category: 'recruitment' });
     assert(result.data.length >= 1, 'Should find recruitment tools');
@@ -133,8 +136,7 @@ describe('Integration: Registration flow (real DB)', () => {
   });
 
   it('tenant isolation: user cannot see other org data', async () => {
-    const createUserSync = require('../../src/application/iam/syncUserFromOry.js');
-    const userSync = createUserSync(pool);
+    const userSync = sandbox.application.iam.syncUserFromOry;
 
     // Create second user/org
     const result2 = await userSync.syncFromWebhook({
@@ -157,8 +159,7 @@ describe('Integration: Registration flow (real DB)', () => {
   });
 
   it('audit log can be written and queried', async () => {
-    const createAuditLogger = require('../../src/lib/audit.js');
-    const audit = createAuditLogger(pool);
+    const audit = sandbox.lib.audit;
 
     const user = await pool.query(
       'SELECT "id", "organizationId" FROM "User" WHERE "oryId" = $1',

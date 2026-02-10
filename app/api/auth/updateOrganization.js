@@ -1,29 +1,28 @@
-'use strict';
+({
+  access: 'authenticated',
+  httpMethod: 'PATCH',
+  path: '/api/organizations/:id',
+  method: async ({ body, params, session }) => {
+    if (!session) throw new errors.AuthError();
 
-const { z } = require('zod');
-const { AuthError, ForbiddenError, ValidationError, NotFoundError } = require('../../lib/errors.js');
-const { UpdateOrganizationSchema } = require('../../lib/schemas.js');
+    const user = await application.iam.resolveSession.resolveUser(session);
+    if (!user) throw new errors.AuthError('User not found');
 
-const createUpdateOrganizationHandler = (db, sessionResolver, checkPermission) => {
-  const handler = async (request) => {
-    if (!request.session) throw new AuthError();
+    await lib.permissions.checkPermission(user, 'Organization', 'update');
 
-    const user = await sessionResolver.resolveUser(request.session);
-    if (!user) throw new AuthError('User not found');
-
-    await checkPermission(user, 'Organization', 'update');
-
-    const orgId = parseInt(request.params.id, 10);
+    const orgId = parseInt(params.id, 10);
     if (orgId !== Number(user.organizationId)) {
-      throw new ForbiddenError('Cannot update another organization');
+      throw new errors.ForbiddenError('Cannot update another organization');
     }
 
     let validated;
     try {
-      validated = UpdateOrganizationSchema.parse(request.body || {});
+      validated = schemas.UpdateOrganizationSchema.parse(body || {});
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw new ValidationError('Invalid organization data', err.flatten().fieldErrors);
+      if (err.flatten) {
+        throw new errors.ValidationError(
+          'Invalid organization data', err.flatten().fieldErrors,
+        );
       }
       throw err;
     }
@@ -47,7 +46,7 @@ const createUpdateOrganizationHandler = (db, sessionResolver, checkPermission) =
     addField('vatId', validated.vatId);
 
     if (fields.length === 0) {
-      throw new ValidationError('No fields to update');
+      throw new errors.ValidationError('No fields to update');
     }
 
     values.push(orgId);
@@ -57,17 +56,9 @@ const createUpdateOrganizationHandler = (db, sessionResolver, checkPermission) =
     );
 
     if (result.rows.length === 0) {
-      throw new NotFoundError('Organization', orgId);
+      throw new errors.NotFoundError('Organization', orgId);
     }
 
     return result.rows[0];
-  };
-
-  return {
-    method: 'PATCH',
-    path: '/api/organizations/:id',
-    handler,
-  };
-};
-
-module.exports = createUpdateOrganizationHandler;
+  },
+})

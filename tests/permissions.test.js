@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const createPermissionChecker = require('../src/lib/permissions.js');
+const { createTestSandbox, loadAppModule } = require('./helpers/test-sandbox.js');
 
 const createMockDb = () => ({
   query: async (sql) => {
@@ -27,9 +27,9 @@ const createMockDb = () => ({
 describe('permissions', () => {
   it('owner has manage (wildcard) access to Organization', async () => {
     const db = createMockDb();
-    const { checkPermission } = createPermissionChecker(db);
+    const sandbox = createTestSandbox(db);
+    const { checkPermission } = await loadAppModule('lib/permissions.js', sandbox);
     const user = { roles: ['owner'] };
-    // Should not throw
     await checkPermission(user, 'Organization', 'read');
     await checkPermission(user, 'Organization', 'create');
     await checkPermission(user, 'Organization', 'update');
@@ -38,7 +38,8 @@ describe('permissions', () => {
 
   it('manage action grants all CRUD actions', async () => {
     const db = createMockDb();
-    const { checkPermission } = createPermissionChecker(db);
+    const sandbox = createTestSandbox(db);
+    const { checkPermission } = await loadAppModule('lib/permissions.js', sandbox);
     const user = { roles: ['admin'] };
     await checkPermission(user, 'AITool', 'read');
     await checkPermission(user, 'AITool', 'create');
@@ -48,7 +49,8 @@ describe('permissions', () => {
 
   it('member can read AITool but not delete', async () => {
     const db = createMockDb();
-    const { checkPermission } = createPermissionChecker(db);
+    const sandbox = createTestSandbox(db);
+    const { checkPermission } = await loadAppModule('lib/permissions.js', sandbox);
     const user = { roles: ['member'] };
     await checkPermission(user, 'AITool', 'read');
     await assert.rejects(
@@ -59,7 +61,8 @@ describe('permissions', () => {
 
   it('viewer can only read AITool', async () => {
     const db = createMockDb();
-    const { checkPermission } = createPermissionChecker(db);
+    const sandbox = createTestSandbox(db);
+    const { checkPermission } = await loadAppModule('lib/permissions.js', sandbox);
     const user = { roles: ['viewer'] };
     await checkPermission(user, 'AITool', 'read');
     await assert.rejects(
@@ -70,7 +73,8 @@ describe('permissions', () => {
 
   it('throws when user has no roles', async () => {
     const db = createMockDb();
-    const { checkPermission } = createPermissionChecker(db);
+    const sandbox = createTestSandbox(db);
+    const { checkPermission } = await loadAppModule('lib/permissions.js', sandbox);
     await assert.rejects(
       checkPermission({ roles: [] }, 'AITool', 'read'),
       (err) => err.statusCode === 403,
@@ -79,7 +83,8 @@ describe('permissions', () => {
 
   it('hasPermission returns boolean without throwing', async () => {
     const db = createMockDb();
-    const { hasPermission } = createPermissionChecker(db);
+    const sandbox = createTestSandbox(db);
+    const { hasPermission } = await loadAppModule('lib/permissions.js', sandbox);
     const owner = { roles: ['owner'] };
     const viewer = { roles: ['viewer'] };
     assert.strictEqual(await hasPermission(owner, 'Organization', 'delete'), true);

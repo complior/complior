@@ -1,7 +1,7 @@
 'use strict';
 
 const { Pool } = require('pg');
-const { initDatabase } = require('../../src/setup.js');
+const { initDatabase } = require('../../app/setup.js');
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL
   || 'postgres://postgres:postgres@localhost:5432/aiact_test';
