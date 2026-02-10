@@ -129,30 +129,41 @@ const initErrorHandler = (server) => {
   });
 };
 
-const initRoutes = (server, routes) => {
-  for (const [iface, methods] of Object.entries(routes)) {
-    for (const [method, handler] of Object.entries(methods)) {
-      if (typeof handler !== 'function') continue;
+const initSessionHook = (server, oryClient) => {
+  server.addHook('onRequest', async (request) => {
+    request.session = null;
+    request.user = null;
 
-      server.post(
-        `/api/${iface}/${method}`,
-        async (request) => {
-          const { query, body, headers } = request;
-          const result = await handler({
-            ...query,
-            ...body,
-            headers,
-            session: request.session || null,
-            requestId: request.requestId,
-          });
-          return result;
-        },
-      );
+    const { url } = request;
+    if (!url.startsWith('/api/')) return;
+    if (url.startsWith('/api/auth/webhook')) return;
+    if (url === '/health') return;
+
+    const cookie = request.headers.cookie || '';
+    const token = request.headers['x-session-token'] || '';
+    if (!cookie && !token) return;
+
+    try {
+      const session = await oryClient.verifySession(token, cookie);
+      request.session = session;
+    } catch {
+      // Session invalid — leave null, handlers decide if auth required
     }
+  });
+};
+
+const initRoutes = (server, routeDefs) => {
+  for (const def of routeDefs) {
+    const { method, path, handler } = def;
+    const httpMethod = (method || 'POST').toLowerCase();
+    server[httpMethod](path, async (request, reply) => {
+      const result = await handler(request, reply);
+      if (result !== undefined) return result;
+    });
   }
 };
 
 module.exports = {
   initRoutes, initHealth, initRateLimit,
-  initRequestId, initErrorHandler,
+  initRequestId, initErrorHandler, initSessionHook,
 };
