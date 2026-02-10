@@ -1,7 +1,7 @@
 'use strict';
 
 // ~35 deployer requirements mapped from AI Act Articles 4, 5, 26-27, 50
-// All descriptions in German (DACH market)
+// Descriptions in German — English translations planned for Feature 14 (i18n)
 const requirements = [
   // === Art. 4 — AI Literacy (ALL risk levels, mandatory since 02.02.2025) ===
   {

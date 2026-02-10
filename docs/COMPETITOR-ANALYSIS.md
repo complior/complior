@@ -53,7 +53,7 @@
 | CE Declaration (Art. 47) | ❌ | P3 Future |
 | Art. 11 Annex IV generation | ❌ | P3 Future |
 | KI-Compliance Siegel | ❌ | ✅ |
-| German-language content | ❌ (English-only) | ✅ (all content in German) |
+| Multi-language content | ❌ (English-only) | ✅ (EN default + DE, FR post-MVP) |
 | Self-service signup | ❌ (demo call required) | ✅ |
 
 ### Вывод по Kertos
@@ -128,7 +128,7 @@
 | **FRIA Guided Wizard (Art. 27)** — пошаговая оценка | ❌ 0 из 30+ | ✅ |
 | **KI-Compliance Siegel** — знак соответствия для сайта | ❌ 0 из 30+ | ✅ |
 | **Deployer-First UX** — "Какой AI вы используете?" (не "Какой AI вы строите?") | ❌ 0 из 30+ | ✅ |
-| **German-language self-service** — всё на немецком, от €49/мес | ❌ 0 из 30+ | ✅ |
+| **Multi-language self-service** — EN + DE + FR, от €49/мес | ❌ 0 из 30+ | ✅ |
 | **AI Tool Catalog** — 200+ pre-populated инструментов с risk hints | ❌ 0 из 30+ | ✅ |
 
 ### Ценовой gap
@@ -169,7 +169,7 @@ DIY:            Free (но 70% ошибок)
 
 ### Phase 1: Vertical AI Act Deployer (MVP → Product Market Fit)
 
-**Целевой клиент:** CTO/CEO DACH компании с 5-250 сотрудниками, которая ИСПОЛЬЗУЕТ AI-инструменты.
+**Целевой клиент:** CTO/CEO компании с 5-250 сотрудниками, которая ИСПОЛЬЗУЕТ AI-инструменты и работает с EU-клиентами (глобально, не только DACH).
 
 **Wedge product:** AI Literacy Module (€49/мес)
 - Art. 4 уже обязателен
@@ -193,7 +193,7 @@ DIY:            Free (но 70% ошибок)
 | **Сегмент** | Mid-market (20-500) | SMB (5-250) |
 | **Цена** | $10K+/yr per framework | €49-399/мес (5-50x дешевле) |
 | **Sales** | Demo call required | Self-service (no demo needed) |
-| **Язык** | English | German-first |
+| **Язык** | English only | English-first + DE, FR post-MVP |
 | **AI Act depth** | Broad-not-deep | Deep (FRIA, AI Literacy, Shadow AI, Siegel) |
 | **Deployer focus** | Partial | 100% deployer-first |
 

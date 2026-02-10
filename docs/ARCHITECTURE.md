@@ -1,10 +1,12 @@
 # ARCHITECTURE.md — AI Act Compliance Platform
 
-**Версия:** 2.0.0
-**Дата:** 2026-02-07
+**Версия:** 2.1.0
+**Дата:** 2026-02-09
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ⏳ Ожидает утверждения PO (deployer-first pivot)
 
+> **v2.1.0 (2026-02-09):** AI SDK интеграция — Vercel AI SDK 6 как framework для Eva и LLM-интеграций (ADR-005). Claude Agent SDK для автономных агентов Features 16-17. Nango (self-hosted EU) как planned agent integration platform вместо Composio. Multi-user tool registration (employee self-service). Подтверждение Ory Kratos vs WorkOS (ADR-006).
+>
 > **v2.0.0 (2026-02-07):** Deployer-first pivot — архитектура перестроена под компании, которые ИСПОЛЬЗУЮТ AI (deployers), а не строят. Новые Bounded Contexts: AI Literacy (Art. 4), Inventory (каталог AI-инструментов). Classification Engine переориентирован на deployer-требования (Art. 4, 26-27, 50). Compliance → Deployer Compliance (FRIA, Monitoring Plan, AI Usage Policy вместо Art. 11 Annex IV).
 >
 > **v1.1.0 (2026-02-07):** Интеграция 7 EU-сервисов: Ory, Brevo, Gotenberg, Hetzner Object Storage, @fastify/rate-limit, Better Uptime, Plausible.
@@ -64,6 +66,7 @@ graph TB
         end
 
         subgraph AILayer["AI/LLM Layer (EU Sovereign)"]
+            AISDK["Vercel AI SDK 6<br/>(model-agnostic framework)<br/>streamText + useChat + tools"]
             MistralAPI["Mistral Large 3<br/>Mistral Medium 3<br/>Mistral Small 3.1<br/>(все API, EU)"]
         end
     end
@@ -94,7 +97,8 @@ graph TB
     UseCases -->|persist via| DB
     UseCases -->|enqueue| PgBoss
     UseCases -->|store docs| HetznerS3
-    UseCases -->|classify/generate/chat| MistralAPI
+    UseCases -->|classify/generate/chat| AISDK
+    AISDK -->|API calls| MistralAPI
     Fastify -->|auth| Ory
     UseCases -->|send email| Brevo
     PgBoss -->|generate PDF| Gotenberg_
@@ -141,7 +145,8 @@ graph TB
 │  - Ory client (auth, identity, sessions — Германия)          │
 │  - Brevo client (transactional email — Франция)              │
 │  - Gotenberg client (HTML→PDF, self-hosted Docker)           │
-│  - Mistral API client (Large/Medium/Small)                    │
+│  - Vercel AI SDK (model-agnostic LLM framework, ADR-005)      │
+│  - Mistral API client via @ai-sdk/mistral (Large/Medium/Small)│
 │  - Stripe client, EUR-Lex scraper                            │
 │  - Logger, error tracking (Sentry)                           │
 └──────────────────────────────────────────────────────────────┘
@@ -264,6 +269,7 @@ graph LR
 ### 4.6 Consultation Context (Ева — deployer focus)
 - **Entities:** Conversation, ChatMessage, QuickAction
 - **Domain Services:** EvaOrchestrator (context injection + tool calling)
+- **AI Framework:** Vercel AI SDK 6 — `streamText` (Fastify) + `useChat` (Next.js), Zod-typed tools с `needsApproval` ([ADR-005](ADR-005-vercel-ai-sdk.md))
 - **Фокус:** Deployer-вопросы: "Bin ich Betreiber?", "Ist Slack AI high-risk?", "Was muss ich als Betreiber tun?"
 - **Tools:** classify_ai_tool, create_fria, setup_monitoring, search_regulation
 - **Ответственный:** Max (backend) + Nina (chat UI)
@@ -428,8 +434,12 @@ src/
 │   ├── pdf/
 │   │   └── gotenberg-client.js      # Gotenberg API (HTML→PDF, self-hosted)
 │   ├── llm/
-│   │   ├── mistral-client.js        # Mistral Large/Medium/Small API (EU)
-│   │   └── llm-adapter.js           # Unified interface (Strategy pattern)
+│   │   ├── ai-sdk-setup.js          # Vercel AI SDK 6 provider config (ADR-005)
+│   │   ├── mistral-provider.js      # @ai-sdk/mistral (Large/Medium/Small, EU)
+│   │   └── tools/                   # Zod-typed tools for Eva
+│   │       ├── classifyAITool.js
+│   │       ├── searchRegulation.js
+│   │       └── createFRIA.js
 │   ├── storage/
 │   │   └── s3-client.js             # Hetzner Object Storage (S3-compatible, EU)
 │   ├── billing/
@@ -481,21 +491,34 @@ const exported = script.runInContext(context);
 **Плюсы:** Безопасность, изоляция, предотвращение cross-module pollution
 **Новое:** Добавляем в sandbox доступ к infrastructure adapters (llm, storage, auth, email)
 
-### 6.2 Adapter Pattern (LLM Providers)
+### 6.2 Vercel AI SDK — Model-Agnostic LLM Framework ([ADR-005](ADR-005-vercel-ai-sdk.md))
 
 ```javascript
-// infrastructure/llm/llm-adapter.js
-// Единый интерфейс для всех LLM провайдеров
-const createLLMAdapter = (config) => ({
-  async classify(systemDescription) { ... },
-  async generateSection(template, context) { ... },
-  async chat(messages, tools) { ... },
+// infrastructure/llm/ — uses Vercel AI SDK 6 (replaces custom adapter)
+import { streamText, generateText } from '@ai-sdk/core';
+import { mistral } from '@ai-sdk/mistral';
+
+// Eva chat streaming (Fastify backend → Next.js frontend via SSE)
+const result = streamText({
+  model: mistral('mistral-large-latest'),
+  system: 'Du bist Eva, KI-Act Compliance-Beraterin für Betreiber...',
+  messages: conversationHistory,
+  tools: { classifyAITool, searchRegulation, createFRIA },
+  maxSteps: 5,
 });
 
-// Strategy: выбор модели по задаче (все через Mistral API, EU)
-// classify → Mistral Small 3.1 API (speed, pre-filter + LLM analysis)
-// generateSection → Mistral Medium 3 API (quality, document generation)
-// chat → Mistral Large 3 API (accuracy, Eva consultant)
+// Classification (non-streaming)
+const classification = await generateText({
+  model: mistral('mistral-small-latest'),
+  system: 'You are an EU AI Act classifier for DEPLOYERS...',
+  prompt: `Is the DEPLOYMENT of ${tool} in ${context} high-risk?`,
+});
+
+// Strategy: выбор модели по задаче (все через Vercel AI SDK, EU-sovereign)
+// classify → mistral('mistral-small-latest') (speed)
+// generateSection → mistral('mistral-medium-latest') (quality)
+// chat → mistral('mistral-large-latest') (accuracy, Eva)
+// A/B testing → swap to anthropic('claude-sonnet-4.5') without code changes
 ```
 
 ### 6.3 Repository Pattern
@@ -869,7 +892,11 @@ graph LR
 | MetaSQL | Prisma ORM | Уже есть, даёт VM sandbox + type generation, zero-dependency |
 | Fastify | Express, Koa | Уже есть, быстрый, WebSocket support, plugin ecosystem |
 | VM Sandbox | Direct imports | Безопасность, изоляция, hot-reload potential |
-| Mistral (product) | Claude/GPT | EU sovereignty, DACH market trust, acceptable quality |
+| Mistral (product) | Claude/GPT | EU sovereignty, EU data residency trust, acceptable quality |
+| **Vercel AI SDK** (LLM framework) | Raw API, LangChain | Model-agnostic, `streamText`+`useChat` for Eva, Zod tools, Apache 2.0 ([ADR-005](ADR-005-vercel-ai-sdk.md)) |
+| **Claude Agent SDK** (autonomous) | Custom agent loop | Built-in tools, subagents, session persistence — for Features 16-17 (Sprint 5+) |
+| **Ory** (auth) | WorkOS | EU data residency (Hetzner DE) vs WorkOS US-only ([ADR-006](ADR-006-ory-vs-workos.md)) |
+| **Nango** (agent integrations) | Composio | Self-hosted EU vs Composio US data — planned for Sprint 5+ |
 | PostgreSQL | MongoDB | Structured compliance data, ACID transactions, existing |
 | pg-boss (MVP) | BullMQ, Temporal, Agenda | PostgreSQL-native: нет доп. инфраструктуры. Миграция на BullMQ через adapter при масштабировании |
 | Next.js (frontend) | Remix, SvelteKit | Ecosystem, shadcn/ui compatibility, team expertise |

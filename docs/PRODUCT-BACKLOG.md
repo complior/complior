@@ -86,7 +86,7 @@
 **Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1
 
 ### Бизнес-ценность
-As a CTO компании в DACH, I want to register, login and manage my team's access, so that we can securely use the compliance platform.
+As a CTO компании, работающей с EU-клиентами, I want to register, login and manage my team's access, so that we can securely use the compliance platform.
 
 ### Описание
 - **Ory (self-hosted, Hetzner EU):** регистрация, login, magic links, password, sessions, MFA
@@ -140,6 +140,14 @@ As an IT manager, I want a centralized inventory of all AI tools our company use
   - Ada Health, Babylon — медицина (high-risk)
   - Grammarly, DeepL — limited risk
 - Пользователь выбирает из каталога или добавляет свой
+
+**Multi-user Tool Registration (employee self-service):**
+- Настройка в Organization Settings: `allowEmployeeRegistration: true/false`
+- Когда включено: любой сотрудник организации может регистрировать AI-инструменты
+- Approval workflow: employee submits → manager/IT reviews → approved → inventory
+- Поле `registeredBy` (= `createdById`) показывает, кто зарегистрировал инструмент
+- Поле `approvalStatus`: `pending_approval` / `approved` / `rejected`
+- Admin/Owner всегда может регистрировать без approval
 
 **5-step Wizard** (XState) для добавления:
 1. **AI-инструмент** — выбор из каталога или ввод вручную (название, vendor, описание)
@@ -398,8 +406,10 @@ Feature 03 (реестр), Feature 04a/b/c (classification), Feature 18 (AI Lite
 As a CTO без юридического бэкграунда, I want to ask about deployer obligations in plain language, so that I understand what to do for my specific AI tools.
 
 ### Описание
-- WebSocket-чат с AI-консультантом «Ева»
-- Mistral Large 3 API: streaming responses
+- **Vercel AI SDK 6** — framework для streaming chat ([ADR-005](ADR-005-vercel-ai-sdk.md)):
+  - Backend: `streamText()` на Fastify с Mistral Large 3 API (EU)
+  - Frontend: `useChat()` hook в Next.js — SSE streaming, zero boilerplate
+  - Provider: `@ai-sdk/mistral` (model-agnostic — можно переключить на Claude/GPT без изменений кода)
 - **Deployer-focused system prompt:** обязанности deployer, Art. 26-27, shadow AI risks
 - Context injection: AI-инструменты компании, risk levels, AI Literacy status
 - Quick actions: "Что мне делать как deployer?", "Нужен ли FRIA?", "Как обучить сотрудников?"
@@ -408,7 +418,7 @@ As a CTO без юридического бэкграунда, I want to ask abo
 - Rate limiting по плану
 
 ### MVP Scope
-- Базовый чат со streaming (deployer Q&A)
+- Базовый чат со streaming (deployer Q&A) via Vercel AI SDK `streamText` + `useChat`
 - Контекстные ответы (видит AI-инструменты и compliance status)
 - Без tool calling (добавляется в Feature 10)
 
@@ -550,7 +560,13 @@ Feature 02 (IAM)
 **Приоритет:** P1 (Should Have) | **Размер:** S | **Спринт:** 6
 
 ### Описание
-- Mistral tool calling: `classify_ai_tool`, `create_fria`, `setup_monitoring`, `search_regulation`
+- **Vercel AI SDK Zod-typed tools** с `needsApproval` для compliance-critical actions:
+  - `classify_ai_tool` — запуск классификации из чата
+  - `create_fria` — создание FRIA assessment
+  - `setup_monitoring` — настройка monitoring plan
+  - `search_regulation` — RAG поиск по AI Act knowledge base (pgvector)
+- `maxSteps: 5` — Eva может последовательно вызывать несколько tools за один ответ
+- Human-in-the-loop: `needsApproval: true` для `classify_ai_tool` и `create_fria`
 - Расширяет базовую Eva (Feature 06) действиями
 
 ### Зависимости
@@ -615,7 +631,7 @@ As a CEO, I want to display an "AI Act Compliant" badge on our website, so that 
 - Platform-issued badge: "KI-Compliance Siegel — AI Act Compliant"
 - Embeddable widget для сайта (HTML snippet)
 - **Viral loop:** badge → link to platform → новые регистрации
-- Нет немецкого аналога (Nemko AI Trust Mark — не DACH, не SMB)
+- Нет прямого аналога для SMB (Nemko AI Trust Mark — enterprise, не self-service)
 - Premium badge (Scale/Enterprise): с детальной compliance page
 
 ### Зависимости
@@ -638,14 +654,19 @@ Feature 07 (Document Generation)
 
 ---
 
-## Feature 14: Multi-language (DE/EN)
+## Feature 14: Multi-language (+ DE, FR)
 
-**Приоритет:** P2 (Could Have) | **Размер:** S | **Спринт:** 8
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** post-MVP (сразу после Sprint 4)
+
+### Бизнес-ценность
+MVP выходит на английском. DE и FR добавляются сразу после MVP, т.к. DACH и Франция — крупнейшие EU-рынки по числу SMB, использующих AI.
 
 ### Описание
-- i18n (next-intl): все UI-тексты (DE, EN)
-- AI Literacy courses: EN versions
-- Eva отвечает на языке пользователя
+- i18n (next-intl): все UI-тексты (EN — уже в MVP, + DE, FR)
+- AI Literacy courses: DE + FR versions (EN is default from MVP)
+- Eva отвечает на языке пользователя (locale из профиля)
+- Compliance documents: generated in user's locale
+- Regulatory content (requirements): DE + FR translations
 
 ### Зависимости
 Feature 02 (IAM — locale)
@@ -673,6 +694,10 @@ As a CTO, I want automatic detection of AI tools employees use, so that I have a
 
 ### Описание
 
+**Implementation:** Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) в sandboxed Docker container — autonomous agent с built-in tools (WebSearch, WebFetch, Bash) для сканирования и анализа.
+
+**Agent Integrations:** Nango (self-hosted, Hetzner EU) — OAuth/API integration platform для подключения к корпоративным сервисам. Вместо Composio (US data).
+
 **EU-sovereign методы (без M365/Google):**
 
 | Метод | Как работает | Данные |
@@ -695,6 +720,8 @@ Feature 03 (AI Tool Inventory)
 
 ### Описание
 Docker container в инфраструктуре клиента: мониторинг AI-использования, уведомления, air-gapped mode.
+
+**Implementation:** Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) — autonomous agent loop с built-in tools, subagents, session persistence. Docker sandbox isolation обязателен. Agent Integrations через Nango (self-hosted).
 
 ### Зависимости
 Feature 16 (Shadow AI Discovery)
@@ -753,7 +780,7 @@ Feature 16 (Shadow AI Discovery)
 | 12 | Regulatory Monitor | M | 7 |
 | 20 | KI-Compliance Siegel | S | 7 |
 | 13 | Доп. deployer-документы | M | 7-8 |
-| 14 | Multi-language (DE/EN) | S | 8 |
+| 14 | Multi-language (+ DE, FR) | M | post-MVP |
 
 ### P3 — Future
 
@@ -779,8 +806,9 @@ Sprint 5     ████ Feature 07 (end) + Feature 08: Gap + Feature 19: FRIA 
 Sprint 6     ██ Feature 09 (end) + Feature 10: Eva tools + Feature 11: Onboarding
              ── PRODUCT READY ──
 Sprint 7     ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel + Feature 13: Docs
-Sprint 8     ██ Feature 13 (end) + Feature 14: i18n
+Sprint 8     ██ Feature 13 (end)
              ── FULL SCOPE ──
+Sprint 8+    ██ Feature 14: i18n (+ DE, FR) — сразу после MVP
 ```
 
 ---

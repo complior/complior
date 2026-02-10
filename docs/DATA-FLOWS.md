@@ -184,54 +184,58 @@ sequenceDiagram
 
 ---
 
-## 4. Eva Consultant Chat
+## 4. Eva Consultant Chat (via Vercel AI SDK 6)
+
+> **Framework:** Vercel AI SDK 6 — `streamText` (Fastify backend) + `useChat` (Next.js frontend) — SSE streaming, Zod-typed tools, `needsApproval` ([ADR-005](ADR-005-vercel-ai-sdk.md))
 
 ```mermaid
 sequenceDiagram
-    participant User as User (Browser)
-    participant WS as WebSocket (Fastify)
-    participant Eva as EvaOrchestrator
+    participant User as User (Browser)<br/>useChat() hook
+    participant Next as Next.js (SSE)
+    participant API as Fastify API<br/>streamText()
     participant Context as ContextInjector
-    participant LLM as Mistral Large API
+    participant LLM as Mistral Large 3 API<br/>via @ai-sdk/mistral
     participant DB as PostgreSQL
 
-    User->>WS: Connect /ws/chat
-    WS->>WS: Authenticate (Ory session from cookie)
+    User->>Next: useChat().sendMessage("Ist Slack AI high-risk für uns?")
+    Next->>API: POST /api/chat (SSE stream)
+    API->>API: Authenticate (Ory session)
 
-    User->>WS: {type: 'message', text: "Ist Slack AI high-risk für uns?"}
+    API->>DB: SELECT Conversation WHERE id = conversationId
+    API->>DB: SELECT last 20 ChatMessages
 
-    WS->>Eva: processMessage(userId, conversationId, text)
-
-    Eva->>DB: SELECT Conversation WHERE id = conversationId
-    Eva->>DB: SELECT last 20 ChatMessages WHERE conversationId ORDER BY creation DESC
-
-    Eva->>Context: injectContext(userId, conversationId)
+    API->>Context: injectContext(userId, conversationId)
     Context->>DB: SELECT User, Organization
-    Context->>DB: SELECT AITool WHERE organizationId (all deployer's AI tools)
-    Context->>DB: SELECT LiteracyCompletion WHERE organizationId (literacy progress)
-    Context-->>Eva: {userContext, toolsContext, literacyContext, pageContext}
+    Context->>DB: SELECT AITool WHERE organizationId
+    Context->>DB: SELECT LiteracyCompletion WHERE organizationId
+    Context-->>API: {userContext, toolsContext, literacyContext}
 
-    Eva->>LLM: POST /v1/chat/completions (stream: true)
-    Note right of LLM: System prompt (deployer-focused):<br/>- "Du bist Eva, KI-Act Compliance-Beraterin für Betreiber"<br/>- Company's AI tools inventory<br/>- AI Literacy progress (Art. 4)<br/>- Available tools: classify_ai_tool, create_fria,<br/>  setup_monitoring, search_regulation<br/><br/>Messages: conversation history + new message
+    API->>LLM: streamText({ model: mistral('mistral-large-latest'), tools, messages })
+    Note right of LLM: System prompt (deployer-focused):<br/>- "Du bist Eva, KI-Act Compliance-Beraterin"<br/>- Company AI tools inventory<br/>- AI Literacy progress (Art. 4)<br/>- Zod-typed tools: classifyAITool,<br/>  searchRegulation, createFRIA<br/><br/>Vercel AI SDK manages agent loop (maxSteps: 5)
 
-    loop Streaming response
-        LLM-->>Eva: chunk {delta: "Ваш чат-бот..."}
-        Eva-->>WS: {type: 'stream', delta: "Ваш чат-бот..."}
-        WS-->>User: Real-time text display
+    loop SSE streaming (Data Stream Protocol)
+        LLM-->>API: token chunk
+        API-->>Next: SSE data event
+        Next-->>User: useChat() renders in real-time
     end
 
-    alt Eva decides to use a tool
-        LLM-->>Eva: {tool_call: 'search_regulation', args: {query: 'chatbot Art. 50'}}
-        Eva->>DB: Search Requirement WHERE articleReference LIKE '%Art. 50%'
-        DB-->>Eva: {matching requirements}
-        Eva->>LLM: Tool result + continue generation
-        LLM-->>Eva: Final answer with citations
+    alt Eva calls a tool (e.g. searchRegulation)
+        LLM-->>API: tool_call: searchRegulation({query: 'chatbot Art. 50'})
+        API->>DB: Search Requirement WHERE articleReference LIKE '%Art. 50%'
+        DB-->>API: {matching requirements}
+        API->>LLM: Tool result → continue generation (next step)
+        LLM-->>API: Final answer with citations
     end
 
-    Eva->>DB: INSERT ChatMessage {role: 'user', content: originalMessage}
-    Eva->>DB: INSERT ChatMessage {role: 'assistant', content: response, toolCalls, tokenCount}
-    Eva-->>WS: {type: 'complete', messageId}
-    WS-->>User: Response complete (with citations)
+    alt Tool with needsApproval (e.g. classifyAITool)
+        LLM-->>API: tool_call: classifyAITool({toolId: 42})
+        API-->>User: {type: 'tool_approval', tool: 'classifyAITool', args}
+        User-->>API: approve/reject
+    end
+
+    API->>DB: INSERT ChatMessage {role: 'user', content}
+    API->>DB: INSERT ChatMessage {role: 'assistant', content, toolCalls, tokenCount}
+    API-->>User: Stream complete
 ```
 
 ---
