@@ -11,7 +11,7 @@ const createAuditLogger = (db) => {
        ("userId", "organizationId", "action", "resource", "resourceId",
         "oldData", "newData", "ip", "userAgent")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING "id", "createdAt"`,
+       RETURNING "auditLogId"`,
       [
         userId, organizationId, action, resource, resourceId,
         oldData ? JSON.stringify(oldData) : null,
@@ -24,7 +24,7 @@ const createAuditLogger = (db) => {
 
   const findEntries = async (organizationId, options = {}) => {
     const { page = 1, pageSize = 20, action, resource } = options;
-    const conditions = ['"organizationId" = $1'];
+    const conditions = ['al."organizationId" = $1'];
     const values = [organizationId];
     let idx = 2;
 
@@ -40,7 +40,7 @@ const createAuditLogger = (db) => {
     const whereClause = conditions.join(' AND ');
 
     const countResult = await db.query(
-      `SELECT COUNT(*)::int AS total FROM "AuditLog" WHERE ${whereClause}`,
+      `SELECT COUNT(*)::int AS total FROM "AuditLog" al WHERE ${whereClause}`,
       values,
     );
     const total = countResult.rows[0].total;

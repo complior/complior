@@ -1,6 +1,8 @@
 'use strict';
 
+const { z } = require('zod');
 const { AuthError, ValidationError } = require('../../lib/errors.js');
+const { WebhookSchema } = require('../../lib/schemas.js');
 
 const createWebhookHandler = (db, oryClient, userSync) => {
   const handler = async (request, reply) => {
@@ -10,26 +12,27 @@ const createWebhookHandler = (db, oryClient, userSync) => {
     }
 
     const body = request.body || {};
-    const identityId = body.identity_id;
-    const { email, name, locale, event } = body;
 
-    if (event !== 'registration') {
-      return reply.status(200).send({ status: 'ignored', event });
+    if (body.event !== 'registration') {
+      return reply.status(200).send({ status: 'ignored', event: body.event });
     }
 
-    if (!identityId || !email) {
-      throw new ValidationError('Missing required fields', {
-        identityId: !identityId ? 'required' : undefined,
-        email: !email ? 'required' : undefined,
-      });
+    let data;
+    try {
+      data = WebhookSchema.parse(body);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new ValidationError('Validation failed', err.flatten().fieldErrors);
+      }
+      throw err;
     }
 
     const result = await userSync.syncFromWebhook({
       // eslint-disable-next-line camelcase
-      identity_id: identityId,
-      email,
-      name,
-      locale,
+      identity_id: data.identity_id,
+      email: data.email,
+      name: data.name,
+      locale: data.locale,
     });
 
     return reply.status(result.created ? 201 : 200).send({

@@ -34,7 +34,7 @@ sequenceDiagram
     Ory->>API: POST /api/auth/webhook {event: 'identity.created', identity}
     API->>API: Validate webhook signature
     API->>DB: BEGIN TRANSACTION
-    API->>DB: INSERT Organization {name: identity.company, industry, size, country}
+    API->>DB: INSERT Organization {name: "${fullName}'s Organization (${oryId.slice(0,8)})"}
     DB-->>API: organizationId
     API->>DB: INSERT User {oryId, email, fullName, organizationId}
     DB-->>API: userId
@@ -44,11 +44,13 @@ sequenceDiagram
     API->>DB: COMMIT
     API-->>Ory: 200 OK
 
+    Note over API,DB: Retry logic: 3 attempts with exponential backoff for race conditions
+
     Note over Next,DB: Fallback: если webhook не дошёл
     User->>Next: GET /onboarding (Ory session cookie)
     Next->>Ory: Verify session (toSession)
     Ory-->>Next: {identity, session}
-    Next->>API: GET /api/user/me
+    Next->>API: GET /api/auth/me
     API->>DB: SELECT User WHERE oryId = identity.id
     alt User не найден (webhook missed)
         API->>DB: BEGIN TRANSACTION → INSERT Org + User + Role + Sub → COMMIT

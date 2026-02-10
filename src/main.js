@@ -11,6 +11,7 @@ const {
 const { init: initWs } = require('./ws.js');
 const validateEnv = require('./config/validate.js');
 const dbConfig = require('./config/database.js');
+const { initDatabase } = require('./setup.js');
 const createOryClient = require('./infrastructure/auth/ory-client.js');
 
 // Application services
@@ -40,12 +41,24 @@ if (process.env.SENTRY_DSN) {
 const PORT = parseInt(process.env.PORT, 10) || 8000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-const logger = pino({
+const loggerConfig = {
   level: process.env.LOG_LEVEL || 'info',
-  transport: process.env.NODE_ENV !== 'production'
-    ? { target: 'pino-pretty', options: { colorize: true } }
-    : undefined,
-});
+};
+
+// pino-pretty is a devDependency — only use in dev when available
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    require.resolve('pino-pretty');
+    loggerConfig.transport = {
+      target: 'pino-pretty',
+      options: { colorize: true },
+    };
+  } catch {
+    // pino-pretty not installed — use default JSON output
+  }
+}
+
+const logger = pino(loggerConfig);
 
 (async () => {
   // Validate environment
@@ -57,6 +70,9 @@ const logger = pino({
   // Database
   const db = new Pool(dbConfig);
 
+  // Initialize database schema and seed data
+  await initDatabase(db);
+
   // Infrastructure
   const oryClient = createOryClient();
 
@@ -67,7 +83,7 @@ const logger = pino({
   const auditLogger = createAuditLogger(db);
   const catalogSearch = createCatalogSearch(db);
 
-  const server = fastify({ logger });
+  const server = fastify({ logger: loggerConfig });
 
   // Middleware
   initRequestId(server);

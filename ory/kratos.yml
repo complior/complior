@@ -1,7 +1,5 @@
 version: v1.3.1
 
-dsn: memory
-
 serve:
   public:
     base_url: http://localhost:4433/
@@ -115,7 +113,7 @@ secrets:
   cookie:
     - dev-cookie-secret-at-least-32-chars-change-in-production
   cipher:
-    - dev-cipher-secret-32-chars-min-change-in-production
+    - dev-cipher-secret-change-in-prod
 
 session:
   lifespan: 24h
@@ -131,13 +129,13 @@ identity:
 
 courier:
   smtp:
-    connection_uri: smtps://test:test@mailslurper:1025/?skip_ssl_verify=true
+    connection_uri: smtp://localhost:1025/?disable_starttls=true
   template_override_path: /etc/config/kratos/templates
 
 hashers:
   argon2:
     parallelism: 1
-    memory: 131072
+    memory: 128MB
     iterations: 2
     salt_length: 16
     key_length: 16

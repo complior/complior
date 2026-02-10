@@ -54,8 +54,8 @@
         "locale": {
           "type": "string",
           "title": "Locale",
-          "default": "de",
-          "enum": ["de", "en"]
+          "default": "en",
+          "enum": ["en", "de", "fr"]
         }
       },
       "required": ["email", "name"],

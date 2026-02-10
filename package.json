@@ -12,7 +12,8 @@
     "dev": "node --watch src/main.js",
     "lint": "eslint src/ --ext .js",
     "type-check": "tsc --noEmit",
-    "test": "node --test tests/**/*.test.js",
+    "test": "node --test tests/*.test.js",
+    "test:integration": "node --test tests/integration/**/*.test.js",
     "db:generate": "node src/setup.js generate",
     "db:seed": "node src/setup.js seed",
     "db:setup": "node src/setup.js"

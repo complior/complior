@@ -15,11 +15,11 @@ const KIND_PK = {
   Registry: () =>
     '"id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY',
   Entity: (n) =>
-    `"${n}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
+    `"${n[0].toLowerCase()}${n.slice(1)}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
   Details: (n) =>
-    `"${n}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
+    `"${n[0].toLowerCase()}${n.slice(1)}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
   Relation: (n) =>
-    `"${n}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
+    `"${n[0].toLowerCase()}${n.slice(1)}Id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`,
 };
 
 const REGISTRY_COLUMNS = `
@@ -86,8 +86,18 @@ const fieldToSQL = (name, rawField, tableName, schemas) => {
 
   const nullable = field.required === false ? '' : ' NOT NULL';
   const unique = field.unique === true ? ' UNIQUE' : '';
-  const defaultVal = field.default !== undefined
-    ? ` DEFAULT ${field.default}` : '';
+  let defaultVal = '';
+  if (field.default !== undefined) {
+    const d = field.default;
+    // Booleans, numbers, pre-quoted strings ('en'), and functions (now())
+    // pass through as-is. Bare strings need SQL quoting.
+    if (typeof d === 'string' && !d.startsWith("'") &&
+        d !== 'now()' && d !== 'true' && d !== 'false') {
+      defaultVal = ` DEFAULT '${d}'`;
+    } else {
+      defaultVal = ` DEFAULT ${d}`;
+    }
+  }
 
   return `"${name}" ${sqlType}${nullable}${unique}${defaultVal}`;
 };
@@ -261,7 +271,7 @@ const seedCourses = async (client) => {
        "active", "sortOrder")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT ("slug") DO NOTHING
-       RETURNING "courseId"`,
+       RETURNING "trainingCourseId"`,
       [courseData.title, courseData.slug,
         courseData.roleTarget,
         courseData.durationMinutes,
@@ -271,7 +281,7 @@ const seedCourses = async (client) => {
         courseData.active, courseData.sortOrder],
     );
     if (result.rows.length === 0) continue;
-    const courseId = result.rows[0].courseId;
+    const courseId = result.rows[0].trainingCourseId;
     for (const mod of modules) {
       await client.query(
         `INSERT INTO "TrainingModule" ("courseId", "sortOrder", "title",
@@ -378,6 +388,69 @@ const run = async () => {
   }
 };
 
+const initDatabase = async (pool) => {
+  console.log('Loading schemas...');
+  const schemas = await loadSchemas();
+  console.log(`  Found ${schemas.size} schemas`);
+
+  const client = await pool.connect();
+  try {
+    console.log('Creating tables...');
+    for (const tableName of TABLE_ORDER) {
+      const schema = schemas.get(tableName);
+      if (!schema) {
+        console.warn(`  WARNING: Schema not found for ${tableName}`);
+        continue;
+      }
+      const ddl = generateDDL(tableName, schema, schemas);
+      await client.query(ddl);
+    }
+    console.log(`  Created ${TABLE_ORDER.length} tables`);
+
+    console.log('Creating indexes...');
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_user_org ON "User"("organizationId")',
+      'CREATE INDEX IF NOT EXISTS idx_user_ory_id ON "User"("oryId")',
+      'CREATE INDEX IF NOT EXISTS idx_aitool_org ON "AITool"("organizationId")',
+      'CREATE INDEX IF NOT EXISTS idx_aitool_risk ON "AITool"("riskLevel")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_aitool_status ON "AITool"("complianceStatus")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_class_tool_current ' +
+        'ON "RiskClassification"("aiToolId", "isCurrent")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_toolreq_tool ON "ToolRequirement"("aiToolId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_doc_tool ON "ComplianceDocument"("aiToolId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_conv_user ON "Conversation"("userId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_msg_conv ON "ChatMessage"("conversationId")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_notif_org_user ' +
+        'ON "Notification"("organizationId", "userId", "read")',
+      'CREATE INDEX IF NOT EXISTS ' +
+        'idx_audit_org_time ON "AuditLog"("organizationId")',
+    ];
+    for (const idx of indexes) {
+      await client.query(idx);
+    }
+    console.log(`  Created ${indexes.length} indexes`);
+
+    console.log('Seeding data...');
+    await seedRequirements(client);
+    await seedPlans(client);
+    await seedRoles(client);
+    await seedCourses(client);
+    await seedCatalog(client);
+
+    console.log('Setup complete!');
+    console.log(`  Tables: ${TABLE_ORDER.length}, Indexes: ${indexes.length}`);
+  } finally {
+    client.release();
+  }
+};
+
 if (require.main === module) {
   run().catch((err) => {
     console.error(err);
@@ -385,4 +458,6 @@ if (require.main === module) {
   });
 }
 
-module.exports = { loadSchemas, generateDDL, run, TABLE_ORDER };
+module.exports = {
+  loadSchemas, generateDDL, run, initDatabase, TABLE_ORDER,
+};

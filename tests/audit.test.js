@@ -10,7 +10,7 @@ const createMockDb = () => {
     query: async (sql, params) => {
       queries.push({ sql, params });
       if (sql.includes('INSERT INTO "AuditLog"')) {
-        return { rows: [{ id: 1, createdAt: new Date().toISOString() }] };
+        return { rows: [{ auditLogId: 1 }] };
       }
       if (sql.includes('COUNT')) {
         return { rows: [{ total: 42 }] };
@@ -43,8 +43,7 @@ describe('audit logging', () => {
         ip: '127.0.0.1',
         userAgent: 'Mozilla/5.0',
       });
-      assert(entry.id);
-      assert(entry.createdAt);
+      assert(entry.auditLogId);
       const q = db.getQueries().at(-1);
       assert(q.sql.includes('INSERT INTO "AuditLog"'));
       assert.strictEqual(q.params[0], 1); // userId

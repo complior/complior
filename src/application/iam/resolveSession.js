@@ -14,7 +14,7 @@ const createSessionResolver = (db) => {
               array_agg(r."name") FILTER (WHERE r."name" IS NOT NULL) AS roles
        FROM "User" u
        LEFT JOIN "UserRole" ur ON ur."userId" = u."id"
-       LEFT JOIN "Role" r ON r."id" = ur."roleId"
+       LEFT JOIN "Role" r ON r."roleId" = ur."roleId"
        WHERE u."oryId" = $1
        GROUP BY u."id"`,
       [oryId],
