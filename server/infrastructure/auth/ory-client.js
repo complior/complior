@@ -13,6 +13,7 @@ const createOryClient = (options = config) => {
       ...opts,
     });
     if (!res.ok) {
+      // Defensive: read error body for diagnostics, ignore if stream fails
       const body = await res.text().catch(() => '');
       const err = new Error(`Ory API error: ${res.status} ${res.statusText}`);
       err.status = res.status;

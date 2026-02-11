@@ -17,6 +17,7 @@ const createBrevoClient = (options = config) => {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
+      // Defensive: read error body for diagnostics, ignore if stream fails
       const text = await res.text().catch(() => '');
       const err = new Error(`Brevo API error: ${res.status} ${res.statusText}`);
       err.status = res.status;

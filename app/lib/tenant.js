@@ -10,6 +10,21 @@
     'Permission', 'Organization', 'TrainingModule', 'RegulatoryUpdate',
   ]);
 
+  /* Registry tables use "id" as PK; all others use "{camelCase}Id" */
+  const REGISTRY_TABLES = new Set(['Organization', 'User']);
+
+  const getPkColumn = (table) => {
+    if (REGISTRY_TABLES.has(table)) return 'id';
+    return `${table[0].toLowerCase()}${table.slice(1)}Id`;
+  };
+
+  const addIdAlias = (table, row) => {
+    if (!row) return row;
+    const pk = getPkColumn(table);
+    if (pk !== 'id' && row[pk] !== undefined) row.id = row[pk];
+    return row;
+  };
+
   const isTenantTable = (table) => TENANT_TABLES.has(table);
 
   const createTenantQuery = (organizationId) => {
@@ -41,15 +56,18 @@
         if (limit) { sql += ` LIMIT $${idx++}`; values.push(limit); }
         if (offset) { sql += ` OFFSET $${idx++}`; values.push(offset); }
 
-        return db.query(sql, values);
+        const result = await db.query(sql, values);
+        result.rows = result.rows.map((r) => addIdAlias(table, r));
+        return result;
       },
 
       async findOne(table, id) {
+        const pk = getPkColumn(table);
         const result = await db.query(
-          `SELECT * FROM "${table}" WHERE "id" = $1 AND "organizationId" = $2`,
+          `SELECT * FROM "${table}" WHERE "${pk}" = $1 AND "organizationId" = $2`,
           [id, organizationId],
         );
-        return result.rows[0] || null;
+        return addIdAlias(table, result.rows[0]) || null;
       },
 
       async count(table, where = {}) {
@@ -90,7 +108,7 @@
            RETURNING *`,
           vals,
         );
-        return result.rows[0];
+        return addIdAlias(table, result.rows[0]);
       },
 
       async update(table, id, data) {
@@ -100,6 +118,7 @@
           );
         }
 
+        const pk = getPkColumn(table);
         const cols = Object.keys(data);
         const vals = Object.values(data);
         const sets = cols.map((c, i) => `"${c}" = $${i + 1}`);
@@ -107,16 +126,17 @@
 
         const result = await db.query(
           `UPDATE "${table}" SET ${sets.join(', ')}
-           WHERE "id" = $${vals.length - 1} AND "organizationId" = $${vals.length}
+           WHERE "${pk}" = $${vals.length - 1} AND "organizationId" = $${vals.length}
            RETURNING *`,
           vals,
         );
-        return result.rows[0] || null;
+        return addIdAlias(table, result.rows[0]) || null;
       },
 
       async remove(table, id) {
+        const pk = getPkColumn(table);
         const result = await db.query(
-          `DELETE FROM "${table}" WHERE "id" = $1 AND "organizationId" = $2 RETURNING "id"`,
+          `DELETE FROM "${table}" WHERE "${pk}" = $1 AND "organizationId" = $2 RETURNING "${pk}"`,
           [id, organizationId],
         );
         return result.rowCount > 0;
@@ -124,5 +144,5 @@
     };
   };
 
-  return { createTenantQuery, isTenantTable, TENANT_TABLES, GLOBAL_TABLES };
+  return { createTenantQuery, isTenantTable, getPkColumn, TENANT_TABLES, GLOBAL_TABLES };
 })()

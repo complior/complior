@@ -41,11 +41,13 @@ const buildFullSandbox = async (mockDb, extras = {}) => {
   const sandbox = createTestSandbox(mockDb, extras);
   const lib = await loadAppDir('lib', sandbox);
   sandbox.lib = lib;
+  const domain = await loadAppDeepDir('domain', sandbox);
+  sandbox.domain = domain;
   const application = await loadAppDeepDir('application', sandbox);
   sandbox.application = application;
   const api = await loadAppDeepDir('api', sandbox);
   sandbox.api = api;
-  return { sandbox, lib, application, api };
+  return { sandbox, lib, domain, application, api };
 };
 
 module.exports = {

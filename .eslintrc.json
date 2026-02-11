@@ -53,7 +53,7 @@
       }
     },
     {
-      "files": ["app/api/**/*.js", "app/application/**/*.js", "app/lib/**/*.js"],
+      "files": ["app/api/**/*.js", "app/application/**/*.js", "app/domain/**/*.js", "app/lib/**/*.js"],
       "globals": {
         "db": "readonly",
         "errors": "readonly",
@@ -65,6 +65,7 @@
         "gotenberg": "readonly",
         "s3": "readonly",
         "lib": "readonly",
+        "domain": "readonly",
         "application": "readonly",
         "console": "readonly"
       },

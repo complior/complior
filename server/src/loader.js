@@ -71,7 +71,13 @@ const loadApplication = async (appPath, serverContext) => {
   const lib = await loadDir(path.join(appPath, 'lib'), sandbox);
   sandbox.lib = Object.freeze(lib);
 
-  // Layer 2: application (use cases)
+  // Layer 2: domain (pure business logic, no dependencies)
+  const domain = await loadDeepDir(
+    path.join(appPath, 'domain'), sandbox,
+  );
+  sandbox.domain = Object.freeze(domain);
+
+  // Layer 3: application (use cases)
   const application = await loadDeepDir(
     path.join(appPath, 'application'), sandbox,
   );
@@ -83,7 +89,7 @@ const loadApplication = async (appPath, serverContext) => {
   );
   sandbox.api = Object.freeze(api);
 
-  return Object.freeze({ lib, application, api, config });
+  return Object.freeze({ lib, domain, application, api, config });
 };
 
 module.exports = { load, loadDir, loadDeepDir, loadApplication };

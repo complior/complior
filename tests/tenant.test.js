@@ -91,7 +91,7 @@ describe('tenant isolation', () => {
       const tq = createTenantQuery(100);
       await tq.findOne('AITool', 42);
       const lastQuery = db.getQueries().at(-1);
-      assert(lastQuery.sql.includes('"id" = $1'));
+      assert(lastQuery.sql.includes('"aIToolId" = $1'));
       assert(lastQuery.sql.includes('"organizationId" = $2'));
       assert.strictEqual(lastQuery.params[0], 42);
       assert.strictEqual(lastQuery.params[1], 100);

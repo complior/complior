@@ -44,12 +44,90 @@ const CatalogIdSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+// === AI Tool Inventory Schemas ===
+
+const VALID_DOMAINS = [
+  'biometrics', 'critical_infrastructure', 'education', 'employment',
+  'essential_services', 'law_enforcement', 'migration', 'justice',
+  'customer_service', 'marketing', 'coding', 'analytics', 'other',
+];
+
+const VALID_DATA_TYPES = ['personal', 'sensitive', 'biometric', 'health', 'financial'];
+
+const VALID_AFFECTED_PERSONS = ['employees', 'customers', 'applicants', 'patients', 'students', 'public'];
+
+const VALID_AUTONOMY_LEVELS = ['advisory', 'semi_autonomous', 'autonomous'];
+
+const VALID_RISK_LEVELS = ['prohibited', 'high', 'gpai', 'limited', 'minimal'];
+
+const VALID_COMPLIANCE_STATUSES = ['not_started', 'in_progress', 'review', 'compliant', 'non_compliant'];
+
+const ToolStep1Schema = z.object({
+  name: z.string().min(1, 'Name is required').max(255),
+  vendorName: z.string().min(1, 'Vendor name is required').max(255),
+  vendorCountry: z.string().length(2).optional(),
+  vendorUrl: z.string().url().optional().or(z.literal('')),
+  description: z.string().optional(),
+  catalogEntryId: z.number().int().positive().optional(),
+});
+
+const ToolStep2Schema = z.object({
+  purpose: z.string().min(1, 'Purpose is required').max(2000),
+  domain: z.enum(VALID_DOMAINS, { message: 'Invalid domain' }),
+});
+
+const ToolStep3Schema = z.object({
+  dataTypes: z.array(z.enum(VALID_DATA_TYPES)).min(1, 'At least one data type is required'),
+  affectedPersons: z.array(z.enum(VALID_AFFECTED_PERSONS)).min(1, 'At least one affected group is required'),
+  vulnerableGroups: z.boolean(),
+  dataResidency: z.string().optional(),
+});
+
+const ToolStep4Schema = z.object({
+  autonomyLevel: z.enum(VALID_AUTONOMY_LEVELS, { message: 'Invalid autonomy level' }),
+  humanOversight: z.boolean(),
+  affectsNaturalPersons: z.boolean(),
+});
+
+const ToolCreateSchema = ToolStep1Schema;
+
+const ToolUpdateSchema = z.object({
+  step: z.coerce.number().int().min(1).max(4),
+}).and(z.union([ToolStep1Schema, ToolStep2Schema, ToolStep3Schema, ToolStep4Schema]));
+
+const ToolListSchema = z.object({
+  q: z.string().optional(),
+  riskLevel: z.enum(VALID_RISK_LEVELS).optional(),
+  domain: z.enum(VALID_DOMAINS).optional(),
+  status: z.enum(VALID_COMPLIANCE_STATUSES).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+const ToolIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
 module.exports = {
   VALID_INDUSTRIES,
   VALID_SIZES,
+  VALID_DOMAINS,
+  VALID_DATA_TYPES,
+  VALID_AFFECTED_PERSONS,
+  VALID_AUTONOMY_LEVELS,
+  VALID_RISK_LEVELS,
+  VALID_COMPLIANCE_STATUSES,
   WebhookSchema,
   UpdateOrganizationSchema,
   AuditQuerySchema,
   CatalogSearchSchema,
   CatalogIdSchema,
+  ToolStep1Schema,
+  ToolStep2Schema,
+  ToolStep3Schema,
+  ToolStep4Schema,
+  ToolCreateSchema,
+  ToolUpdateSchema,
+  ToolListSchema,
+  ToolIdSchema,
 };

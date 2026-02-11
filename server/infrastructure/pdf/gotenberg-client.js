@@ -35,6 +35,7 @@ const createGotenbergClient = (options = config) => {
         });
 
         if (!res.ok) {
+          // Defensive: read error body for diagnostics, ignore if stream fails
           const text = await res.text().catch(() => '');
           const msg = `Gotenberg error: ${res.status}` +
             ` ${res.statusText}`;
