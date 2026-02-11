@@ -70,6 +70,96 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface AITool {
+  id: number;
+  organizationId: number;
+  createdById: number;
+  catalogEntryId: number | null;
+  name: string;
+  description: string;
+  vendorName: string;
+  vendorCountry: string | null;
+  vendorUrl: string | null;
+  purpose: string;
+  domain: string;
+  dataTypes: string[];
+  affectedPersons: string[];
+  vulnerableGroups: boolean;
+  dataResidency: string | null;
+  autonomyLevel: string;
+  humanOversight: boolean;
+  affectsNaturalPersons: boolean;
+  riskLevel: string | null;
+  annexCategory: string | null;
+  classificationConfidence: number | null;
+  complianceStatus: string;
+  complianceScore: number;
+  wizardStep: number;
+  wizardCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskClassification {
+  riskClassificationId: number;
+  aiToolId: number;
+  riskLevel: string;
+  annexCategory: string | null;
+  confidence: number;
+  reasoning: string;
+  ruleResult: {
+    riskLevel: string;
+    confidence: number;
+    matchedRules: string[];
+    articleReferences: ArticleReference[];
+    annexCategory: string | null;
+  };
+  method: string;
+  articleReferences: ArticleReference[];
+  version: number;
+  isCurrent: boolean;
+}
+
+export interface ArticleReference {
+  article: string;
+  text: string;
+  relevance: string;
+}
+
+export interface ToolRequirement {
+  toolRequirementId: number;
+  aiToolId: number;
+  requirementId: number;
+  status: string;
+  progress: number;
+  dueDate: string | null;
+  notes: string | null;
+  completedAt: string | null;
+  code: string;
+  name: string;
+  description: string;
+  articleReference: string;
+  requirementLevel: string;
+  category: string;
+  guidance: string | null;
+  estimatedEffortHours: number | null;
+}
+
+export interface AIToolDetail extends AITool {
+  classification: RiskClassification | null;
+  requirements: ToolRequirement[];
+}
+
+export interface ClassifyResult {
+  classification: RiskClassification;
+  riskLevel: string;
+  confidence: number;
+  matchedRules: string[];
+  articleReferences: ArticleReference[];
+  annexCategory: string | null;
+  requirementsCreated: number;
+}
+
 export const api = {
   auth: {
     me: () => apiFetch<UserProfile>('/api/auth/me'),
@@ -81,5 +171,19 @@ export const api = {
       apiFetch<PaginatedResponse<CatalogTool>>('/api/tools/catalog/search', { params }),
     getById: (id: number) =>
       apiFetch<CatalogTool>(`/api/tools/catalog/${id}`),
+  },
+  tools: {
+    list: (params: Record<string, string>) =>
+      apiFetch<PaginatedResponse<AITool>>('/api/tools', { params }),
+    getById: (id: number) =>
+      apiFetch<AIToolDetail>(`/api/tools/${id}`),
+    create: (data: Record<string, unknown>) =>
+      apiFetch<AITool>('/api/tools', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Record<string, unknown>) =>
+      apiFetch<AITool>(`/api/tools/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      apiFetch<{ success: boolean }>(`/api/tools/${id}`, { method: 'DELETE' }),
+    classify: (id: number) =>
+      apiFetch<ClassifyResult>(`/api/tools/${id}/classify`, { method: 'POST' }),
   },
 };

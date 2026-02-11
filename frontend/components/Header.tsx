@@ -15,8 +15,11 @@ export function Header() {
           <Link href="/dashboard" className="text-slate-600 hover:text-slate-900 transition-colors">
             Dashboard
           </Link>
+          <Link href="/tools/inventory" className="text-slate-600 hover:text-slate-900 transition-colors">
+            Inventar
+          </Link>
           <Link href="/tools/catalog" className="text-slate-600 hover:text-slate-900 transition-colors">
-            AI Tools
+            Katalog
           </Link>
           <Link href="/dashboard" className="text-slate-600 hover:text-slate-900 transition-colors">
             AI Literacy

@@ -794,6 +794,68 @@ await tx.commit();
 const systems = await db.query(`SELECT * FROM "AISystem" WHERE name = '${name}'`);
 ```
 
+### MetaSQL Primary Key Convention
+
+MetaSQL генерирует имя PK столбца по **типу схемы** (kind):
+
+| Kind | PK column | Правило | Пример |
+|------|-----------|---------|--------|
+| **Registry** | `"id"` | Всегда `"id"` | Organization → `"id"`, User → `"id"` |
+| **Entity** | `"{camelCase}Id"` | `tableName[0].lower + tableName.slice(1) + 'Id'` | AITool → `"aIToolId"`, Role → `"roleId"` |
+| **Details** | `"{camelCase}Id"` | Аналогично Entity | — |
+| **Relation** | `"{camelCase}Id"` | Аналогично Entity | Permission → `"permissionId"`, UserRole → `"userRoleId"` |
+
+Kind определяется полем в корне схемы (`app/schemas/*.js`):
+
+```javascript
+// Registry → PK = "id"
+({ Registry: {}, name: { type: 'string' } })
+
+// Entity → PK = "aIToolId"
+({ Entity: {}, name: { type: 'string', length: { max: 255 } } })
+```
+
+**Правила:**
+
+```javascript
+// ✅ GOOD — используй lib.tenant.getPkColumn() или знай конвенцию
+const pk = lib.tenant.getPkColumn('AITool'); // → "aIToolId"
+const pk = lib.tenant.getPkColumn('User');   // → "id"
+
+// ✅ GOOD — tenant query автоматически резолвит PK
+const tq = lib.tenant.createTenantQuery(orgId);
+await tq.findOne('AITool', toolId);  // WHERE "aIToolId" = $1
+await tq.update('AITool', toolId, data);
+await tq.remove('AITool', toolId);
+
+// ✅ GOOD — tenant query добавляет .id alias к результатам
+const tool = await tq.create('AITool', { name: 'Test' });
+console.log(tool.id);        // alias → tool.aIToolId
+console.log(tool.aIToolId);  // native PK
+
+// ❌ BAD — хардкодить "id" для Entity таблиц
+await db.query('SELECT * FROM "AITool" WHERE "id" = $1', [id]); // "id" не существует!
+
+// ✅ GOOD — использовать правильное имя PK в raw SQL
+await db.query('SELECT * FROM "AITool" WHERE "aIToolId" = $1', [id]);
+```
+
+**Таблицы без organizationId** (Relation/junction таблицы):
+
+Некоторые таблицы (ToolRequirement, UserRole, Permission) не имеют `organizationId`. Для них **нельзя** использовать `tq.findMany`/`tq.create` — только raw SQL:
+
+```javascript
+// ❌ BAD — ToolRequirement не имеет organizationId
+const tq = lib.tenant.createTenantQuery(orgId);
+await tq.findMany('ToolRequirement', { where: { aiToolId } }); // SQL error!
+
+// ✅ GOOD — raw SQL для non-tenant таблиц
+await db.query(
+  'SELECT * FROM "ToolRequirement" WHERE "aiToolId" = $1',
+  [aiToolId],
+);
+```
+
 ---
 
 ## 7. Frontend Architecture Rules (Nina)

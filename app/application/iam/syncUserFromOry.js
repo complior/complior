@@ -74,7 +74,7 @@
 
       await client.query('COMMIT');
       return {
-        user: { id: userId, organizationId, email, fullName },
+        user: { id: userId, organizationId, email, fullName, roles: ['owner'] },
         created: true,
       };
     } catch (err) {
