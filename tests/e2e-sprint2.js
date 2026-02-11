@@ -423,6 +423,11 @@ const testMultiTenancy = async () => {
   assert(!!otherToken, `Second user registered`);
 
   if (otherToken) {
+    // Sync second user to DB via /api/auth/me (triggers syncOnLogin)
+    await fetch(`${BASE}/api/auth/me`, {
+      headers: { 'X-Session-Token': otherToken },
+    });
+
     // Try to access first user's tool
     const res = await fetch(`${BASE}/api/tools/${createdToolId}`, {
       headers: { 'X-Session-Token': otherToken },

@@ -33,7 +33,7 @@
       ? JSON.parse(tool.affectedPersons) : (tool.affectedPersons || []);
 
     // 5. Run RuleEngine
-    const ruleResult = application.classification.services.RuleEngine.classify({
+    const ruleResult = domain.classification.services.RuleEngine.classify({
       name: tool.name,
       domain: tool.domain,
       purpose: tool.purpose,
@@ -98,7 +98,6 @@
     const requirements = await application.classification.mapRequirements.map({
       aiToolId: toolId,
       riskLevel: ruleResult.riskLevel,
-      organizationId,
     });
 
     // 11. Audit log

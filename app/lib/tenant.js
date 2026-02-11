@@ -57,7 +57,7 @@
         if (offset) { sql += ` OFFSET $${idx++}`; values.push(offset); }
 
         const result = await db.query(sql, values);
-        result.rows.forEach((r) => addIdAlias(table, r));
+        result.rows = result.rows.map((r) => addIdAlias(table, r));
         return result;
       },
 

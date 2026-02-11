@@ -12,7 +12,7 @@ describe('RuleEngine', () => {
   it('loads successfully', async () => {
     const sandbox = createTestSandbox(createMockDb());
     RuleEngine = await loadAppModule(
-      'application/classification/services/RuleEngine.js', sandbox,
+      'domain/classification/services/RuleEngine.js', sandbox,
     );
     assert(RuleEngine);
     assert(typeof RuleEngine.classify === 'function');
@@ -23,7 +23,7 @@ describe('RuleEngine', () => {
   describe('Art. 5 — Prohibited Practices', () => {
     it('5(1)(a): detects subliminal/manipulative techniques', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Subliminal advertising to influence purchasing decisions',
         affectsNaturalPersons: true,
@@ -35,7 +35,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(a): does not trigger without affectsNaturalPersons', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Subliminal message testing for research',
         affectsNaturalPersons: false,
@@ -45,7 +45,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(b): detects vulnerability exploitation', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Exploit vulnerable elderly users for financial products',
         vulnerableGroups: true,
@@ -57,7 +57,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(c): detects social scoring', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Social scoring system to rate citizen behavior',
         affectsNaturalPersons: true,
@@ -68,7 +68,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(d): detects criminal prediction by sole profiling', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Criminal prediction based on personality traits',
         affectsNaturalPersons: true,
@@ -79,7 +79,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(d): allows criminal prediction with objective facts', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Criminal prediction supporting human assessment based on objective facts',
         affectsNaturalPersons: true,
@@ -90,7 +90,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(e): detects untargeted facial scraping', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Building a face database by facial scraping from the internet',
       });
@@ -100,7 +100,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(f): detects workplace emotion recognition', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Emotion recognition for employee productivity monitoring',
         domain: 'employment',
@@ -112,7 +112,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(f): allows emotion recognition for medical purposes', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Emotion recognition for medical diagnostics and safety',
         domain: 'employment',
@@ -123,7 +123,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(g): detects biometric categorization by race', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Categorization of individuals by race using facial biometrics',
         dataTypes: ['biometric'],
@@ -134,7 +134,7 @@ describe('RuleEngine', () => {
 
     it('5(1)(h): detects real-time remote biometric ID in public', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Real-time biometric identification in public spaces',
         dataTypes: ['biometric'],
@@ -155,7 +155,7 @@ describe('RuleEngine', () => {
     for (const domain of annexDomains) {
       it(`classifies ${domain} domain as high-risk`, async () => {
         const sandbox = createTestSandbox(createMockDb());
-        const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+        const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
         const result = engine.classify({
           domain,
           purpose: 'General tool usage in this domain',
@@ -167,7 +167,7 @@ describe('RuleEngine', () => {
 
     it('profiling override: always high-risk, no exceptions', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'employment',
         purpose: 'Candidate screening and profiling for recruitment',
@@ -182,7 +182,7 @@ describe('RuleEngine', () => {
 
     it('Art. 6(3) exception: narrow procedural + advisory + oversight', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'education',
         purpose: 'Narrow procedural task: simple lookup of student records',
@@ -196,7 +196,7 @@ describe('RuleEngine', () => {
 
     it('Art. 6(3) exception does NOT apply without advisory/oversight', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'education',
         purpose: 'Narrow procedural task: automated grading',
@@ -212,7 +212,7 @@ describe('RuleEngine', () => {
   describe('GPAI Detection', () => {
     it('detects GPAI from catalog default risk', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'other',
         purpose: 'General purpose AI model',
@@ -228,7 +228,7 @@ describe('RuleEngine', () => {
   describe('Art. 50 — Transparency (Limited Risk)', () => {
     it('detects chatbot as limited risk', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Customer chatbot for support inquiries',
         domain: 'customer_service',
@@ -239,7 +239,7 @@ describe('RuleEngine', () => {
 
     it('detects content generation as limited risk', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'AI-powered content generation for marketing',
         domain: 'marketing',
@@ -250,7 +250,7 @@ describe('RuleEngine', () => {
 
     it('detects deepfakes as limited risk', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Image generation for creative design',
         domain: 'marketing',
@@ -260,7 +260,7 @@ describe('RuleEngine', () => {
 
     it('detects emotion recognition transparency (non-prohibited domain)', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Customer emotion analysis for service improvement',
         domain: 'customer_service',
@@ -272,7 +272,7 @@ describe('RuleEngine', () => {
 
     it('uses catalog default limited risk', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         purpose: 'Internal tool',
         domain: 'other',
@@ -287,7 +287,7 @@ describe('RuleEngine', () => {
   describe('Context Modifiers', () => {
     it('escalates when vulnerable groups are involved', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'other',
         purpose: 'Internal analytics',
@@ -300,7 +300,7 @@ describe('RuleEngine', () => {
 
     it('escalates for autonomous + no oversight', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'other',
         purpose: 'Internal operations',
@@ -314,7 +314,7 @@ describe('RuleEngine', () => {
 
     it('double escalation: vulnerable + autonomous + no oversight', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'other',
         purpose: 'Internal operations',
@@ -332,7 +332,7 @@ describe('RuleEngine', () => {
   describe('Default Minimal', () => {
     it('returns minimal for safe internal coding tool', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         name: 'Internal Linter',
         domain: 'coding',
@@ -353,7 +353,7 @@ describe('RuleEngine', () => {
   describe('Catalog Default High', () => {
     it('uses catalog high risk for non-Annex-III domain', async () => {
       const sandbox = createTestSandbox(createMockDb());
-      const engine = await loadAppModule('application/classification/services/RuleEngine.js', sandbox);
+      const engine = await loadAppModule('domain/classification/services/RuleEngine.js', sandbox);
       const result = engine.classify({
         domain: 'other',
         purpose: 'Medical device control',

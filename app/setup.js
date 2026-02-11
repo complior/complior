@@ -234,7 +234,7 @@ const seedRoles = async (client) => {
   const { roles, permissions } = require(path.join(SEEDS_DIR, 'roles.js'));
   for (const role of roles) {
     await client.query(
-      `INSERT INTO "Role" ("name", "active", "organizationIdId")
+      `INSERT INTO "Role" ("name", "active", "organizationId")
        VALUES ($1, $2, $3)
        ON CONFLICT ("name") DO NOTHING`,
       [role.name, role.active, role.organizationId],

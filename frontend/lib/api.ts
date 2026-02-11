@@ -29,6 +29,7 @@ async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
   });
 
   if (!res.ok) {
+    // Defensive: parse error JSON for message, fallback if body is not valid JSON
     const body = await res.json().catch(() => ({ error: { message: res.statusText } }));
     throw new Error(body.error?.message || `API error: ${res.status}`);
   }

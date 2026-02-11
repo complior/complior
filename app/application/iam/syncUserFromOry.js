@@ -44,7 +44,7 @@
       const userId = userResult.rows[0].id;
 
       const roleResult = await client.query(
-        'SELECT "roleId" FROM "Role" WHERE "name" = $1 AND "organizationIdId" IS NULL',
+        'SELECT "roleId" FROM "Role" WHERE "name" = $1 AND "organizationId" IS NULL',
         ['owner'],
       );
       if (roleResult.rows.length > 0) {
