@@ -133,6 +133,9 @@ test-results/
 .pnpm-store/
 package-lock.json.backup
 
+# Claude Code MCP config (contains tokens)
+.mcp.json
+
 # OpenClaw specific
 .openclaw/sandboxes/
 .openclaw/cache/

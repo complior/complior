@@ -10,7 +10,7 @@
   category: {
     enum: ['chatbot', 'recruitment', 'coding', 'analytics', 'customer_service',
       'marketing', 'writing', 'image_generation', 'video', 'translation',
-      'medical', 'legal', 'finance', 'education', 'other'],
+      'medical', 'legal', 'finance', 'education', 'api_platform', 'other'],
   },
   defaultRiskLevel: {
     enum: ['high', 'limited', 'minimal'],

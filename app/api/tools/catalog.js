@@ -20,6 +20,8 @@
         q: parsed.q || '',
         category: parsed.category || null,
         riskLevel: parsed.riskLevel || null,
+        domain: parsed.domain || null,
+        maxRisk: parsed.maxRisk || null,
         page: parsed.page,
         pageSize: parsed.pageSize,
       });

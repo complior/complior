@@ -36,6 +36,8 @@ const CatalogSearchSchema = z.object({
   q: z.string().optional(),
   category: z.string().optional(),
   riskLevel: z.string().optional(),
+  domain: z.string().optional(),
+  maxRisk: z.enum(['high', 'limited', 'minimal']).optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -108,6 +110,17 @@ const ToolIdSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+const VALID_REQUIREMENT_STATUSES = [
+  'not_applicable', 'pending', 'in_progress', 'completed', 'blocked',
+];
+
+const RequirementUpdateSchema = z.object({
+  status: z.enum(VALID_REQUIREMENT_STATUSES).optional(),
+  progress: z.coerce.number().int().min(0).max(100).optional(),
+  notes: z.string().max(5000).optional(),
+  dueDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
+}).refine((obj) => Object.keys(obj).length > 0, { message: 'No fields to update' });
+
 const VALID_INVITE_ROLES = ['admin', 'member', 'viewer'];
 
 const InviteCreateSchema = z.object({
@@ -132,7 +145,9 @@ module.exports = {
   VALID_AUTONOMY_LEVELS,
   VALID_RISK_LEVELS,
   VALID_COMPLIANCE_STATUSES,
+  VALID_REQUIREMENT_STATUSES,
   VALID_INVITE_ROLES,
+  RequirementUpdateSchema,
   WebhookSchema,
   UpdateOrganizationSchema,
   AuditQuerySchema,

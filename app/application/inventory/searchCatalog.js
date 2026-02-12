@@ -1,5 +1,7 @@
 ({
-  search: async ({ q, category, riskLevel, page = 1, pageSize = 20 }) => {
+  search: async ({ q, category, riskLevel, domain, maxRisk, page = 1, pageSize = 20 }) => {
+    const RISK_ORDER = { high: ['high', 'gpai', 'limited', 'minimal'], limited: ['limited', 'minimal'], minimal: ['minimal'] };
+
     const conditions = ['"active" = true'];
     const values = [];
     let idx = 1;
@@ -20,6 +22,21 @@
     if (riskLevel) {
       conditions.push(`"defaultRiskLevel" = $${idx++}`);
       values.push(riskLevel);
+    }
+
+    if (domain) {
+      conditions.push(`"domains"::text ILIKE $${idx++}`);
+      values.push(`%${domain}%`);
+    }
+
+    if (maxRisk && RISK_ORDER[maxRisk]) {
+      const allowed = RISK_ORDER[maxRisk];
+      const placeholders = allowed.map((_, i) => `$${idx + i}`).join(', ');
+      conditions.push(`"defaultRiskLevel" IN (${placeholders})`);
+      for (const level of allowed) {
+        values.push(level);
+        idx++;
+      }
     }
 
     const whereClause = conditions.join(' AND ');
