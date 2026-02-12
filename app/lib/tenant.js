@@ -2,7 +2,7 @@
   const TENANT_TABLES = new Set([
     'AITool', 'AuditLog', 'Subscription', 'Conversation', 'Notification',
     'AIToolDiscovery', 'ComplianceDocument', 'FRIAAssessment',
-    'LiteracyCompletion', 'User',
+    'LiteracyCompletion', 'User', 'Invitation',
   ]);
 
   const GLOBAL_TABLES = new Set([
@@ -21,7 +21,7 @@
   const addIdAlias = (table, row) => {
     if (!row) return row;
     const pk = getPkColumn(table);
-    if (pk !== 'id' && row[pk] !== undefined) row.id = row[pk];
+    if (pk !== 'id' && row[pk] !== undefined) return { ...row, id: row[pk] };
     return row;
   };
 

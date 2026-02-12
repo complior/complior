@@ -1,11 +1,15 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 2.0.0
-**Дата:** 2026-02-07
+**Версия:** 2.2.0
+**Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
-**Зависимости:** ARCHITECTURE.md v2.0.0
+**Зависимости:** ARCHITECTURE.md v2.1.0
 
+> **v2.2.0 (2026-02-12):** AI Act roles + Use Case model. Organization: добавлено `aiActRoles` (jsonb, default ["deployer"]) — 4 роли по AI Act (provider, deployer, distributor, importer). AITool: концепция "AITool = Use Case (Anwendungsfall)"; добавлены поля `useCaseDetails`, `decisionImpact`, `deploymentDate`, `employeesInformed` (Art. 26). Plan seed data вынесены в `app/config/plans.js` (single source of truth).
+>
+> **v2.1.0 (2026-02-12):** Sprint 2.5 — Invite Flow + Team Management. Новая таблица: Invitation (IAM Context). Обновлены seed data Plan (free=5 tools, starter=15, growth=25, scale=100, eva=-1 everywhere). IAM context: 5 → 6 таблиц. Всего: **30 таблиц** в 8 Bounded Contexts.
+>
 > **v2.0.0 (2026-02-07):** Deployer-first pivot — AISystem → AITool (переименование). 8 новых таблиц: AIToolCatalog, AIToolDiscovery (Inventory Context), TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement (AI Literacy Context), FRIAAssessment, FRIASection (Deployer Compliance Context). Seed data: deployer requirements (Art. 4, 26-27, 50), 200+ AI Tool Catalog, 4 AI Literacy курса. Всего: **29 таблиц** в 8 Bounded Contexts.
 >
 > **v1.1.0:** Ory управляет identity и sessions — удалена таблица Session, User.password заменён на User.oryId.
@@ -62,9 +66,11 @@ MetaSQL определяет 4 типа сущностей:
 erDiagram
     %% IAM Context (Ory manages identity + sessions)
     Organization ||--o{ User : "has members"
+    Organization ||--o{ Invitation : "has invitations"
     Organization ||--o{ AITool : "uses"
     Organization ||--o{ Subscription : "subscribes"
     Organization ||--o{ LiteracyRequirement : "requires training"
+    User ||--o{ Invitation : "invited by"
     User ||--o{ AITool : "registers"
     User }o--o{ Role : "has roles"
     Role ||--o{ Permission : "grants"
@@ -116,6 +122,7 @@ erDiagram
         string industry
         string size
         string country
+        jsonb aiActRoles "default deployer"
         datetime createdAt
     }
 
@@ -127,6 +134,19 @@ erDiagram
         string fullName
         boolean active
         datetime createdAt
+    }
+
+    Invitation {
+        bigint invitationId PK
+        bigint organizationId FK
+        bigint invitedById FK
+        string email
+        string role
+        string token UK
+        string status
+        datetime expiresAt
+        datetime acceptedAt
+        bigint acceptedById FK
     }
 
     Role {
@@ -149,9 +169,13 @@ erDiagram
         string name
         text description
         string purpose
+        text useCaseDetails "Art 26 detailed use case"
         string domain
+        string decisionImpact "no_impact advisory significant sole_decision"
+        date deploymentDate
         string vendorName
         string vendorCountry
+        boolean employeesInformed "Art 26(7)"
         string riskLevel
         string complianceStatus
         integer complianceScore
@@ -379,7 +403,7 @@ erDiagram
 
 | Bounded Context | Tables | Количество |
 |----------------|--------|:---:|
-| **IAM** | Organization, User, Role, Permission, UserRole (junction) | 5 |
+| **IAM** | Organization, User, Role, Permission, UserRole (junction), Invitation | 6 |
 | **Inventory** | AITool, AIToolCatalog, AIToolDiscovery | 3 |
 | **Classification** | RiskClassification, Requirement, ToolRequirement, ClassificationLog | 4 |
 | **AI Literacy** | TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement | 4 |
@@ -388,7 +412,7 @@ erDiagram
 | **Monitoring** | RegulatoryUpdate, ImpactAssessment, Notification | 3 |
 | **Billing** | Subscription, Plan | 2 |
 | **Cross-cutting** | AuditLog | 1 |
-| **Total** | | **29** |
+| **Total** | | **30** |
 
 ---
 
@@ -411,6 +435,11 @@ erDiagram
     enum: ['micro_1_9', 'small_10_49', 'medium_50_249', 'large_250_plus'],
   },
   country: { type: 'string', length: { min: 2, max: 2 }, note: 'ISO 3166-1 alpha-2' },
+  aiActRoles: {
+    type: 'json',
+    default: '\'["deployer"]\'',
+    note: 'AI Act roles: provider, deployer, distributor, importer. Array, multiple allowed.',
+  },
   website: { type: 'string', required: false },
   vatId: { type: 'string', required: false, note: 'EU VAT number' },
   settings: { type: 'json', required: false, note: 'Organization-level settings: { allowEmployeeRegistration: boolean, ... }' },
@@ -424,6 +453,7 @@ erDiagram
 | industry | varchar | NOT NULL, CHECK enum | Industry vertical |
 | size | varchar | NOT NULL, CHECK enum | EU SMB size category |
 | country | varchar(2) | NOT NULL | ISO country code (DE, AT, CH) |
+| aiActRoles | jsonb | DEFAULT '["deployer"]' | AI Act roles: provider, deployer, distributor, importer (Art. 3) |
 | website | varchar | nullable | Company website |
 | vatId | varchar | nullable | EU VAT identification number |
 | settings | jsonb | nullable | Configurable settings (`{ allowEmployeeRegistration: bool }`) |
@@ -505,14 +535,57 @@ erDiagram
 
 ---
 
+#### Invitation (Entity) — приглашение сотрудника в организацию
+
+```javascript
+// schemas/Invitation.js (NEW — Sprint 2.5)
+({
+  Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  invitedBy: { type: 'User', delete: 'restrict' },
+  email: { type: 'string', length: { min: 6, max: 255 }, index: true },
+  role: { type: 'string', note: 'admin, member, viewer' },
+  token: { type: 'string', unique: true, index: true },
+  status: {
+    enum: ['pending', 'accepted', 'expired', 'revoked'],
+    default: 'pending',
+  },
+  expiresAt: 'datetime',
+  acceptedAt: { type: 'datetime', required: false },
+  acceptedBy: { type: 'User', required: false, delete: 'restrict' },
+})
+```
+
+| Column | Type | Constraints | Описание |
+|--------|------|------------|----------|
+| invitationId | bigint | PK | Entity PK |
+| organizationId | bigint | FK → Organization.id, CASCADE | Tenant isolation |
+| invitedById | bigint | FK → User.id, RESTRICT | Кто пригласил |
+| email | varchar(255) | NOT NULL, INDEX | Email приглашённого |
+| role | varchar | NOT NULL | Роль при вступлении (admin/member/viewer) |
+| token | varchar | UNIQUE, INDEX, NOT NULL | UUID для accept-ссылки |
+| status | varchar | NOT NULL, DEFAULT 'pending' | pending/accepted/expired/revoked |
+| expiresAt | timestamptz | NOT NULL | Срок действия (7 дней) |
+| acceptedAt | timestamptz | nullable | Когда принято |
+| acceptedById | bigint | FK → User.id, nullable | Кто принял |
+
+**Indexes:**
+- `idx_invitation_org` ON (organizationId) — tenant queries
+- `idx_invitation_token` ON (token) — accept link lookup
+- `idx_invitation_email` ON (email) — duplicate check
+
+---
+
 > **Session:** Удалена — sessions управляются Ory (self-hosted, Hetzner EU).
 
 ---
 
 ### 4.2 Inventory Context (NEW — deployer-first)
 
-#### AITool (Entity) — AI-инструмент, который компания ИСПОЛЬЗУЕТ
+#### AITool (Entity) — Use Case (Anwendungsfall) применения AI-инструмента
 
+> **Концепция:** AITool ≠ программный продукт. AITool = конкретный use case (Anwendungsfall) применения AI-системы в организации. Один программный продукт (напр. ChatGPT) может порождать несколько AITool записей, если используется в разных контекстах с разными целями и затронутыми лицами. Это соответствует Art. 26 AI Act, где обязанности deployer'а привязаны к конкретному применению, а не к продукту.
+>
 > **Переименовано из AISystem.** Deployer не "строит AI-систему" — он ИСПОЛЬЗУЕТ AI-инструмент (ChatGPT, HireVue, Copilot и т.д.).
 
 ```javascript
@@ -531,8 +604,14 @@ erDiagram
   vendorCountry: { type: 'string', length: { min: 2, max: 2 }, required: false, note: 'ISO 3166-1' },
   vendorUrl: { type: 'string', required: false },
 
-  // Step 2: Как вы используете этот инструмент? (Usage Context)
+  // Step 2: Use Case Context (Art. 26 — deployer obligations)
+  // AITool = use case, NOT software product. One product → multiple AITool records
+  // if used for different purposes with different affected persons.
   purpose: { type: 'string', length: { max: 2000 }, note: 'Для чего используется в компании' },
+  useCaseDetails: {
+    type: 'text', required: false,
+    note: 'Детальное описание use case: какие решения, какой процесс, какой output (Art. 26)',
+  },
   domain: {
     enum: ['biometrics', 'critical_infrastructure', 'education',
            'employment', 'essential_services', 'law_enforcement',
@@ -540,12 +619,25 @@ erDiagram
            'coding', 'analytics', 'other'],
     note: 'AI Act Annex III domains + deployer-specific',
   },
+  decisionImpact: {
+    enum: ['no_impact', 'advisory', 'significant', 'sole_decision'],
+    default: 'advisory',
+    note: 'Влияние AI на решения о людях (Art. 26(2))',
+  },
+  deploymentDate: {
+    type: 'date', required: false,
+    note: 'Когда инструмент начал использоваться в данном use case',
+  },
 
   // Step 3: Данные и пользователи (Data & Users)
   dataTypes: { type: 'json', note: 'Array: personal, sensitive, biometric, health, financial, etc.' },
   affectedPersons: { type: 'json', note: 'Array: employees, customers, applicants, patients, students' },
   vulnerableGroups: { type: 'boolean', default: false, note: 'Уязвимые группы: дети, инвалиды, пожилые' },
   dataResidency: { type: 'string', required: false, note: 'Где хранятся данные (EU/US/unknown)' },
+  employeesInformed: {
+    type: 'boolean', default: false,
+    note: 'Art. 26(7): Были ли сотрудники/представители уведомлены об использовании AI?',
+  },
 
   // Step 4: Автономность и надзор (Autonomy & Oversight)
   autonomyLevel: {
@@ -1147,9 +1239,9 @@ erDiagram
   displayName: { type: 'string' },
   priceMonthly: { type: 'number', note: 'Cents (EUR). 0 = free' },
   priceYearly: { type: 'number', required: false, note: 'Cents (EUR). Yearly discount' },
-  maxTools: { type: 'number', note: '0, 1, 10, 50, -1 = unlimited (бывший maxSystems)' },
-  maxUsers: { type: 'number', note: '1, 2, 5, 20, -1 = unlimited' },
-  maxEmployees: { type: 'number', note: '0, 10, 50, 200, -1 = unlimited (AI Literacy tracking)' },
+  maxTools: { type: 'number', note: '5, 15, 25, 100, -1 = unlimited (бывший maxSystems)' },
+  maxUsers: { type: 'number', note: '1, 3, 10, 50, -1 = unlimited' },
+  maxEmployees: { type: 'number', note: '0 (Sprint 2.5), -1 = unlimited (AI Literacy Sprint 8+)' },
   features: { type: 'json', note: 'Feature flags: { literacy, fria, eva, gapAnalysis, autoDiscovery, api, siegel, ... }' },
   stripePriceId: { type: 'string', required: false },
   active: { type: 'boolean', default: true },
@@ -1251,6 +1343,7 @@ CREATE INDEX idx_chatmessage_search ON "ChatMessage"
 Organization
   ├── User (organizationId)
   │   └── LiteracyCompletion (→ userId → organizationId)
+  ├── Invitation (organizationId)
   ├── AITool (organizationId)
   │   ├── RiskClassification (→ aiToolId → organizationId)
   │   ├── ToolRequirement (→ aiToolId → organizationId)
@@ -1422,25 +1515,26 @@ const requirements = [
 ### Pricing Plans (Plan table) — deployer funnel
 
 ```javascript
+// Sprint 2.5: обновлённые лимиты (щедрее для конверсии, eva=-1 everywhere)
 const plans = [
-  // Free: AI Act Quick Check (lead magnet) + Eva 3 вопроса + KI-Compass newsletter
+  // Free: AI Act Quick Check (lead magnet) + Eva unlimited + KI-Compass newsletter
   { name: 'free', displayName: 'Free', priceMonthly: 0,
-    maxTools: 0, maxUsers: 1, maxEmployees: 0,
-    features: { quickCheck: true, eva: 3, newsletter: true } },
+    maxTools: 5, maxUsers: 1, maxEmployees: 0,
+    features: { quickCheck: true, eva: -1, newsletter: true } },
 
-  // Starter (€49): AI Literacy wedge product + 1 classification
+  // Starter (€49): AI Literacy wedge product + classification
   { name: 'starter', displayName: 'Starter', priceMonthly: 4900,
-    maxTools: 1, maxUsers: 2, maxEmployees: 10,
-    features: { literacy: true, eva: 10, classification: 'full' } },
+    maxTools: 15, maxUsers: 3, maxEmployees: 0,
+    features: { literacy: true, eva: -1, classification: 'full' } },
 
   // Growth (€149): Full Compliance — inventory + dashboard + gap + FRIA + Eva + KI-Siegel
   { name: 'growth', displayName: 'Growth', priceMonthly: 14900,
-    maxTools: 10, maxUsers: 5, maxEmployees: 50,
-    features: { literacy: true, fria: true, eva: 50, gapAnalysis: true, siegel: true, documents: 'full' } },
+    maxTools: 25, maxUsers: 10, maxEmployees: 0,
+    features: { literacy: true, fria: true, eva: -1, gapAnalysis: true, siegel: true, documents: 'full' } },
 
   // Scale (€399): Unlimited + auto-discovery + API + post-market monitoring
   { name: 'scale', displayName: 'Scale', priceMonthly: 39900,
-    maxTools: 50, maxUsers: 20, maxEmployees: 200,
+    maxTools: 100, maxUsers: 50, maxEmployees: 0,
     features: { literacy: true, fria: true, eva: -1, gapAnalysis: true, autoDiscovery: true, api: true, monitoring: true, siegel: true, documents: 'full' } },
 
   // Enterprise: Custom + on-premise agent
@@ -1482,5 +1576,5 @@ const plans = [
 
 ---
 
-**Последнее обновление:** 2026-02-07 (v2.0.0: deployer-first pivot, 29 таблиц)
+**Последнее обновление:** 2026-02-12 (v2.1.0: Sprint 2.5 — Invitation table, обновлённые plan limits, 30 таблиц)
 **Следующий документ:** DATA-FLOWS.md

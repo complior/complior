@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const path = require('node:path');
 const errors = require('../../server/lib/errors.js');
 const schemas = require('../../server/lib/schemas.js');
@@ -10,6 +11,7 @@ const APP_PATH = path.resolve(__dirname, '../../app');
 
 const createTestSandbox = (mockDb, extras = {}) => ({
   console,
+  crypto,
   db: mockDb,
   errors,
   schemas,

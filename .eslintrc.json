@@ -55,6 +55,7 @@
     {
       "files": ["app/api/**/*.js", "app/application/**/*.js", "app/domain/**/*.js", "app/lib/**/*.js"],
       "globals": {
+        "crypto": "readonly",
         "db": "readonly",
         "errors": "readonly",
         "schemas": "readonly",

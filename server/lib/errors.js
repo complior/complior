@@ -70,6 +70,27 @@ class RateLimitError extends AppError {
   }
 }
 
+class PlanLimitError extends AppError {
+  constructor(limitType, current, max) {
+    super(`Plan limit exceeded: ${limitType} (${current}/${max})`, 403, 'PLAN_LIMIT_EXCEEDED');
+    this.limitType = limitType;
+    this.current = current;
+    this.max = max;
+  }
+
+  toJSON() {
+    return {
+      error: {
+        code: this.code,
+        message: this.message,
+        limitType: this.limitType,
+        current: this.current,
+        max: this.max,
+      },
+    };
+  }
+}
+
 module.exports = {
   AppError,
   ValidationError,
@@ -78,4 +99,5 @@ module.exports = {
   NotFoundError,
   ConflictError,
   RateLimitError,
+  PlanLimitError,
 };

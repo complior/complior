@@ -1,7 +1,7 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform (Deployer-First)
 
-**Версия:** 3.0.0
-**Дата:** 2026-02-08
+**Версия:** 3.3.0
+**Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ✅ Утверждено PO (2026-02-10)
 **Зависимости:** PRODUCT-VISION.md v2.0 ✅
@@ -9,6 +9,24 @@
 ---
 
 ## Changelog
+
+### v3.3.0 (2026-02-12) — AI Act Roles + Use Case Model
+- **Feature 03:** AITool = Use Case (Anwendungsfall), не программный продукт. Новые wizard-поля: `useCaseDetails`, `decisionImpact`, `deploymentDate`, `employeesInformed` (Art. 26)
+- **Feature 02:** Organization получает `aiActRoles` (provider, deployer, distributor, importer)
+- **Plan Limits:** Source of truth вынесен в `app/config/plans.js`
+
+### v3.2.0 (2026-02-12) — Sprint 2.5: Invite Flow + Team Management + Enforcement
+- **Feature 02:** Расширена секциями Invite Flow, Team Management, Subscription Enforcement
+- **Feature 09:** Добавлена note про enforcement infrastructure из Sprint 2.5
+- **Roadmap:** Вставлен Sprint 2.5 между Sprint 2 и Sprint 3
+- **P0 Summary:** Обновлён Feature 02 спринт "1 + 2.5"
+- **Plan Limits:** Обновлены: free=5 tools, starter=15/3users, growth=25/10users, scale=100/50users, eva=-1 everywhere
+
+### v3.1.0 (2026-02-11) — Eva Pivot + Sprint 3 Planning
+- **Feature 04b:** LLM Cross-validation removed → Classification History + Reclassification
+- **Feature 06:** Eva переосмыслена как conversational onboarding (discovery + registration через диалог)
+- **Feature 03:** Добавлен блок EU-Compliant Alternatives (из DESIGN-BRIEF v2.2.0)
+- **Roadmap:** Sprint 3 = Requirements + Dashboard + History APIs; Sprint 4 = Eva
 
 ### v3.0.0 (2026-02-08) — Deployer-First Pivot
 - **Pivot:** universal → deployer-first (компании, которые ИСПОЛЬЗУЮТ AI)
@@ -83,7 +101,7 @@
 
 ## Feature 02: IAM — Аутентификация и управление пользователями
 
-**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1
+**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1 + 2.5
 
 ### Бизнес-ценность
 As a CTO компании, работающей с EU-клиентами, I want to register, login and manage my team's access, so that we can securely use the compliance platform.
@@ -94,26 +112,60 @@ As a CTO компании, работающей с EU-клиентами, I want
 - Ory webhook → наш API → создание Organization + User (sync) + Role(owner) + Subscription(free)
 - RBAC: Permission table (role + resource + action) — наша таблица поверх Ory identity
 - Multi-tenancy: ВСЕ запросы фильтруются по organizationId
+- **AI Act Roles:** Organization.aiActRoles — 4 роли по AI Act (Art. 3): provider, deployer, distributor, importer. Default: ["deployer"]. Одна организация может иметь несколько ролей. Выбирается при регистрации (Step 2 onboarding). Влияет на отображаемые obligations и requirements.
 - AuditLog: запись каждого auth-события (Ory webhook → AuditLog)
+
+### Invite Flow (Sprint 2.5)
+- **Invite API:** Owner/Admin приглашает сотрудника по email → POST `/api/team/invite`
+- **Accept Flow:** Invitee получает email → регистрируется через Ory → webhook проверяет pending invitation → присоединяется к СУЩЕСТВУЮЩЕЙ организации (не создаёт новую) → получает роль из invitation
+- **Existing User:** Уже зарегистрированный пользователь принимает invite → transfer в новую org
+- **Token:** UUID, expires 7 дней, revocable
+- **Roles:** admin, member, viewer (назначается при приглашении)
+
+### Team Management (Sprint 2.5)
+- **List Members:** Owner/Admin видит всех участников + pending приглашения + plan limits
+- **Change Role:** Owner/Admin меняет роль участника (admin/member/viewer). Нельзя менять свою роль. Нельзя изменить owner'а
+- **Remove Member:** Owner/Admin деактивирует участника (active: false)
+- **Revoke/Resend Invite:** Отмена или повторная отправка pending приглашения
+- **Admin Upgrade:** Admin получает User.manage + Invitation.manage + Organization.read (но НЕ Organization.manage, НЕ Subscription.manage)
+
+### Subscription Enforcement (Sprint 2.5)
+- **maxUsers:** проверяется при создании invitation (currentUsers + pendingInvites >= maxUsers → 403)
+- **maxTools:** проверяется при регистрации AI-инструмента (currentTools >= maxTools → 403)
+- **SubscriptionLimitChecker:** чистый domain service (без I/O), -1 = unlimited, 0 = blocked
+- **PlanLimitError:** новый класс ошибки (403 PLAN_LIMIT_EXCEEDED + limitType, current, max)
+
+### Обновлённые тарифные лимиты (Sprint 2.5)
+
+| Plan | maxTools | maxUsers | maxEmployees | features.eva |
+|------|---------|---------|-------------|-------------|
+| free | 5 | 1 | 0 | -1 (unlimited) |
+| starter | 15 | 3 | 0 | -1 (unlimited) |
+| growth | 25 | 10 | 0 | -1 (unlimited) |
+| scale | 100 | 50 | 0 | -1 (unlimited) |
+| enterprise | -1 | -1 | -1 | all |
 
 ### MVP Scope
 - Ory setup в Docker Compose + Brevo SMTP integration
 - Регистрация с email + magic link (Ory code method)
 - Ory webhook → User sync + Organization creation
-- Базовые роли: Owner, Member
+- Базовые роли: Owner, Admin, Member, Viewer
 - Multi-tenancy изоляция
+- Invite flow + team management + subscription enforcement (Sprint 2.5)
 
 ### Зависимости
 Feature 01 (инфраструктура)
 
 ---
 
-## Feature 03: AI Tool Inventory — Реестр AI-инструментов
+## Feature 03: AI Tool Inventory — Реестр Use Cases AI-инструментов
 
 **Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1-2
 
 ### Бизнес-ценность
-As an IT manager, I want a centralized inventory of all AI tools our company uses, so that I can assess compliance risks for each tool.
+As an IT manager, I want a centralized inventory of all AI tool use cases our company has, so that I can assess compliance risks for each use case.
+
+> **Ключевая концепция:** AITool ≠ программный продукт. AITool = конкретный **use case (Anwendungsfall)** применения AI-системы в организации. Один программный продукт (напр. ChatGPT) может порождать несколько AITool записей, если используется в разных контекстах с разными целями и затронутыми лицами. Это соответствует Art. 26 AI Act, где обязанности deployer'а привязаны к конкретному применению, а не к продукту.
 
 ### Описание
 
@@ -149,10 +201,10 @@ As an IT manager, I want a centralized inventory of all AI tools our company use
 - Поле `approvalStatus`: `pending_approval` / `approved` / `rejected`
 - Admin/Owner всегда может регистрировать без approval
 
-**5-step Wizard** (XState) для добавления:
+**5-step Wizard** (XState) для регистрации use case:
 1. **AI-инструмент** — выбор из каталога или ввод вручную (название, vendor, описание)
-2. **Контекст использования** — как используете, **домен Annex III** (HR, медицина, финансы...), цель
-3. **Данные и пользователи** — персональные данные, **уязвимые группы?**, масштаб, кто затронут
+2. **Use Case** — цель использования (`purpose`), детали use case (`useCaseDetails`), **домен Annex III**, влияние на решения (`decisionImpact`), дата начала использования (`deploymentDate`)
+3. **Данные и пользователи** — персональные данные, **уязвимые группы?**, кто затронут, **уведомлены ли сотрудники** (`employeesInformed`, Art. 26(7))
 4. **Автономность и контроль** — уровень автономности, human oversight, **safety component?**
 5. **Обзор и классификация** — summary → trigger classification
 
@@ -160,12 +212,19 @@ As an IT manager, I want a centralized inventory of all AI tools our company use
 - CSV import: IT-отдел выгружает список SaaS-приложений
 - CRUD API (`/api/tools`) с multi-tenancy
 
+**EU-Compliant Alternatives (из DESIGN-BRIEF v2.2.0):**
+- Для high-risk / prohibited инструментов — блок альтернатив на Tool Detail
+- Каталог фильтруется по domain + maxRisk → предлагает инструменты с более низким уровнем риска
+- API: `GET /api/tools/catalog/search?domain={domain}&maxRisk=limited`
+- Маппинг maxRisk: high → high+gpai+limited+minimal, limited → limited+minimal, minimal → только minimal
+
 ### MVP Scope
 - Полная страница реестра с risk level badges
 - Wizard с deployer-focused вопросами
 - AI Tool Catalog (seed: 200+ инструментов)
 - CSV import для массового добавления
 - Lifecycle статусы (5 состояний)
+- EU-Compliant Alternatives для high-risk/prohibited инструментов
 - Responsive, WCAG AA
 
 ### Зависимости
@@ -268,30 +327,30 @@ Elena: валидация правил, маппинг deployer-статей AI 
 
 ---
 
-## Feature 04b: LLM Classification + Cross-validation
+## Feature 04b: Classification History + Reclassification
 
-**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 2-3
+**Приоритет:** P0 (Must Have) | **Размер:** S | **Спринт:** 3
 
 ### Бизнес-ценность
-As a CTO with ambiguous AI tool usage, I want LLM analysis, so that edge cases are handled correctly.
+As a CTO, I want to see the full classification history of my AI tools and reclassify when context changes, so that I can track risk evolution and maintain compliance.
 
 ### Описание
 
-**Application-layer orchestration (classifyAITool use case):**
-1. Вызывает RuleEngine → rule-based результат
-2. Вызывает LLM (Mistral Small) → deployer-focused промпт: "Компания использует [tool] для [purpose] в домене [domain]. Какой risk level для deployer?"
-3. **Cross-validation:** при расхождении → Mistral Large
-4. Финальный результат: riskLevel, confidence, reasoning, deployerRequirements[]
+**Решение PO:** RuleEngine (Feature 04a) достаточен для детерминированной классификации (34 теста, все 5 risk paths). LLM-валидация не нужна для классификации.
 
-**Переклассификация:**
-- Контекст использования изменился → переклассификация
-- Новый riskLevel → обновление requirements → notification
+**Classification History (ClassificationLog):**
+- Текущая классификация с полным reasoning: ruleResult, метод, обоснование, ссылки на статьи
+- Список всех предыдущих классификаций: версия, дата, метод, уровень риска, confidence, кто классифицировал
+- History отсортирована от новых к старым (version DESC)
+
+**Reclassification workflow:**
+- Контекст использования изменился → deployer запускает переклассификацию
+- Новый riskLevel → обновление requirements → обновление complianceScore
 
 ### MVP Scope
-- classifyAITool use case в application/classification/
-- LLM через infrastructure port (Mistral API adapter)
-- Cross-validation logic
-- Classification history (ClassificationLog)
+- Classification history API (`GET /api/tools/:id/classification-history`)
+- Reclassification trigger (уже существует: `POST /api/tools/:id/classify`)
+- Версионирование классификаций (RiskClassification.version)
 
 ### Зависимости
 Feature 04a (RuleEngine), Feature 03 (wizard data)
@@ -347,7 +406,7 @@ Elena: deployer requirements mapping, тексты рекомендаций
 
 ## Feature 05: Deployer Compliance Dashboard
 
-**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 3-4
+**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 3 (backend API) + 5+ (frontend)
 
 ### Бизнес-ценность
 As a CEO, I want a visual overview of all AI tools, employee training status, and compliance progress, so that I can make decisions and report to the board.
@@ -398,32 +457,47 @@ Feature 03 (реестр), Feature 04a/b/c (classification), Feature 18 (AI Lite
 
 ---
 
-## Feature 06: Консультант Ева (Deployer Focus)
+## Feature 06: Eva — Conversational AI Onboarding
 
 **Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 4
 
 ### Бизнес-ценность
-As a CTO без юридического бэкграунда, I want to ask about deployer obligations in plain language, so that I understand what to do for my specific AI tools.
+As a CTO, I want an AI assistant that helps me discover and register all AI tools my company uses through a conversation, so that I don't miss any tools and get guided through compliance from day one.
 
 ### Описание
+
+**Решение PO:** Eva — не просто Q&A чат, а **альтернативный способ регистрации AI-инструментов через диалог**. Eva — интерактивный помощник для conversational onboarding.
+
+**Conversational Onboarding (основная функция):**
+- Eva проактивно спрашивает: "Какие AI-инструменты использует ваша компания?", "В каком домене вы их применяете?"
+- Eva помогает обнаружить инструменты, о которых deployer мог забыть (shadow AI discovery через диалог)
+- Eva автоматически заполняет wizard на основе ответов пользователя → создаёт draft AI Tool
+- После заполнения: предлагает классифицировать
+
+**Deployer Q&A (вторичная функция):**
+- Ответы на вопросы по deployer obligations в plain language
+- Quick actions: "Что мне делать как deployer?", "Нужен ли FRIA?", "Как обучить сотрудников?"
+- Цитирование статей AI Act
+- Disclaimer: «не является юридической консультацией»
+
+**Архитектура:**
 - **Vercel AI SDK 6** — framework для streaming chat ([ADR-005](ADR-005-vercel-ai-sdk.md)):
   - Backend: `streamText()` на Fastify с Mistral Large 3 API (EU)
   - Frontend: `useChat()` hook в Next.js — SSE streaming, zero boilerplate
   - Provider: `@ai-sdk/mistral` (model-agnostic — можно переключить на Claude/GPT без изменений кода)
-- **Deployer-focused system prompt:** обязанности deployer, Art. 26-27, shadow AI risks
-- Context injection: AI-инструменты компании, risk levels, AI Literacy status
-- Quick actions: "Что мне делать как deployer?", "Нужен ли FRIA?", "Как обучить сотрудников?"
-- Цитирование статей AI Act
-- Disclaimer: «не является юридической консультацией»
+- **RAG по EU AI Act** — контекстные ответы на основе knowledge base (pgvector)
+- Context injection: AI-инструменты компании, risk levels, compliance status
 - Rate limiting по плану
 
 ### MVP Scope
-- Базовый чат со streaming (deployer Q&A) via Vercel AI SDK `streamText` + `useChat`
+- Conversational onboarding: discovery AI-инструментов + auto-fill wizard через диалог
+- Deployer Q&A со streaming via Vercel AI SDK `streamText` + `useChat`
 - Контекстные ответы (видит AI-инструменты и compliance status)
+- RAG по EU AI Act knowledge base
 - Без tool calling (добавляется в Feature 10)
 
 ### Зависимости
-Feature 02 (IAM), Feature 04a/b (Classification — для контекста)
+Feature 02 (IAM), Feature 03 (AI Tool Inventory — для auto-fill), Feature 04a (Classification — для контекста)
 
 ---
 
@@ -549,6 +623,8 @@ Elena: валидация FRIA шаблона на соответствие Art.
 - 5 тарифов: Free, Starter (€49), Growth (€149), Scale (€399), Enterprise (custom)
 - Feature limits: maxTools, maxUsers, maxEmployees, maxMessages из Plan
 - Pricing page с comparison table
+
+> **Note (Sprint 2.5):** Enforcement infrastructure (SubscriptionLimitChecker, PlanLimitError, getOrgLimits) уже реализована в Sprint 2.5 для maxUsers и maxTools. Sprint 5-6 добавляет Stripe integration + pricing UI, но enforcement logic переиспользуется.
 
 ### Зависимости
 Feature 02 (IAM)
@@ -749,13 +825,13 @@ Feature 16 (Shadow AI Discovery)
 | # | Feature | Размер | Спринт |
 |---|---------|--------|--------|
 | 01 | Инфраструктура | M | 0 |
-| 02 | IAM (Ory) | L | 1 |
-| 03 | AI Tool Inventory + Wizard | L | 1-2 |
+| 02 | IAM (Ory) + Invite + Team + Enforcement | L | 1 + 2.5 |
+| 03 | AI Tool Inventory + Wizard + Alternatives | L | 1-3 |
 | 04a | Rule Engine (deployer) | L | 2 |
-| 04b | LLM Classification | M | 2-3 |
+| 04b | Classification History + Reclassification | S | 3 |
 | 04c | Deployer Requirements Mapping | M | 3 |
-| 05 | Deployer Dashboard | L | 3-4 |
-| 06 | Ева (deployer focus) | L | 4 |
+| 05 | Deployer Dashboard | L | 3 (backend) + 5+ (frontend) |
+| 06 | Eva — Conversational Onboarding | L | 4 |
 
 **MVP-ready: Sprint 4 (неделя 8-10)** — inventory, classification, dashboard, Eva
 
@@ -796,17 +872,20 @@ Feature 16 (Shadow AI Discovery)
 ## Roadmap
 
 ```
-Sprint 0     ██ Feature 01: Infrastructure
-Sprint 1     ████ Feature 02: IAM + Feature 03: AI Tool Inventory (start)
-Sprint 2     ████ Feature 03 (end) + Feature 04a: Rules
-Sprint 3     ████ Feature 04b/c: Classification + Feature 05: Dashboard
-Sprint 4     ████ Feature 05 (end) + Feature 06: Eva + Feature 07: Deployer Docs (start)
+Sprint 0     ██ Feature 01: Infrastructure                                        ✅
+Sprint 1     ████ Feature 02: IAM + Feature 03: AI Tool Inventory (start)         ✅
+Sprint 2     ████ Feature 03 (end) + Feature 04a: Rules + Feature 04c (mapping)   ✅
+Sprint 2.5   ████ Feature 02: Invite Flow + Team Management + Enforcement (24 SP)
+Sprint 3     ████ Feature 04b: History + Feature 04c: Requirements API
+                  + Feature 05: Dashboard API + Feature 03: Alternatives
+Sprint 4     ████ Feature 06: Eva Conversational Onboarding
              ── MVP READY ──
-Sprint 5     ████ Feature 07 (end) + Feature 08: Gap + Feature 19: FRIA + Feature 09: Billing
-Sprint 6     ██ Feature 09 (end) + Feature 10: Eva tools + Feature 11: Onboarding
+Sprint 5+    ████ Frontend спринты (Dashboard UI, Requirements UI, Eva UI)
+                  + Feature 07: Deployer Docs (start)
+Sprint 6     ████ Feature 07 (end) + Feature 08: Gap + Feature 19: FRIA + Feature 09: Billing
+Sprint 7     ██ Feature 09 (end) + Feature 10: Eva tools + Feature 11: Onboarding
              ── PRODUCT READY ──
-Sprint 7     ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel + Feature 13: Docs
-Sprint 8     ██ Feature 13 (end)
+Sprint 8     ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel + Feature 13: Docs
              ── FULL SCOPE ──
 Sprint 8+    ████ Feature 18: AI Literacy content + Feature 14: i18n (+ DE, FR)
 ```
@@ -835,4 +914,4 @@ Sprint 8+    ████ Feature 18: AI Literacy content + Feature 14: i18n (+ 
 
 ✅ **APPROVED:** Deployer-First Backlog утверждён PO (2026-02-10).
 
-💡 **Следующий шаг:** Sprint 2 планирование (Feature 03 end + Feature 04a Rules)
+💡 **Следующий шаг:** Sprint 2.5 реализация (Feature 02: Invite Flow + Team Management + Enforcement) — см. `SPRINT-BACKLOG-002.5.md`, затем Sprint 3 — см. `SPRINT-BACKLOG-003.md`
