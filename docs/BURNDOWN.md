@@ -277,6 +277,57 @@
 
 ---
 
+## Sprint 3.5 (Stripe Checkout + Registration + Lead Gen Pages)
+
+**Total Story Points:** 22
+**Duration:** 2026-02-12 (1 day)
+**Team:** Claude Code (Team Lead), 4 parallel agents (backend-infra, backend-quickcheck, frontend-pages, docs-updater)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-12 | 22 | 22 | Sprint start (parallel team of 4 agents) |
+| 1 | 2026-02-12 | 0 | 0 | All 7 US done: Stripe, Registration, Pricing, Quick Check, Penalty Calc |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 22 |
+| Completed SP | 22 |
+| Velocity | 22 SP / 1 day |
+| Carry-over | 0 |
+
+### Sprint 3.5 Completion Summary
+
+**Backend — Stripe (US-038, US-039 — 8 SP)**
+- **US-038** (5 SP): Stripe Checkout Session API — POST /api/billing/checkout + GET /api/billing/checkout-status. Stripe SDK integration (server/infrastructure/billing/stripe-client.js), config (app/config/stripe.js), DB schema (Stripe columns on Subscription) — done
+- **US-039** (3 SP): Stripe Webhook Handler — POST /api/webhooks/stripe (4 events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted). Idempotent, audit-logged — done
+
+**Backend — Quick Check (US-040 — 2 SP)**
+- **US-040** (2 SP): QuickCheckAssessor domain service (Art. 2, 4, 6, 50) + POST /api/public/quick-check (public, rate-limited) + Brevo lead capture — done
+
+**Frontend (US-041..044 — 12 SP)**
+- **US-041** (5 SP): Plan-aware registration (2-step free, 3-step paid → Stripe redirect), TrialConfirmation component, checkout success/cancel pages, German→English translation — done
+- **US-042** (3 SP): Pricing page (/pricing) — 5 tiers, monthly/annual toggle, feature comparison, FAQ — done
+- **US-043** (2 SP): Quick Check page (/check) — 5-step wizard + result display — done
+- **US-044** (2 SP): Penalty Calculator (/penalty-calculator) — Art. 99 client-side calc, shareable URL — done
+
+**Docs**
+- DESIGN-BRIEF v2.8.0 (Screen 03 rewritten, Screen 22 added, Screens 01/19 updated)
+- DATA-FLOWS v2.3.0 (Flow 1 updated, Flow 21 added — Stripe Checkout)
+- PRODUCT-BACKLOG v3.5.0 (Features 02, 09, 23 updated)
+- PRODUCT-VISION v2.2.0 (UC-1 updated)
+- NEW: SPRINT-BACKLOG-003.5.md
+
+### Reviews
+- **Lint:** 0 errors (24 lint errors fixed during integration: eslint globals, camelcase, indentation)
+- **Unit:** 214/214 tests pass (187 Sprint 3 + 15 new Stripe + 12 new Quick Check)
+- **PR #13** → develop → main (merged 2026-02-12)
+
+---
+
 ## Cumulative Velocity
 
 | Sprint | SP Planned | SP Done | Duration | Velocity (SP/day) |
@@ -287,7 +338,8 @@
 | 2 | 55 | 55 | 2 days | 27.5 |
 | 2.5 | 17 | 17 | 2 days | 8.5 |
 | 3 | 21 | 21 | 1 day | 21.0 |
-| **Total** | **200** | **200** | **13 days** | **15.4 avg** |
+| 3.5 | 22 | 22 | 1 day | 22.0 |
+| **Total** | **222** | **222** | **14 days** | **15.9 avg** |
 
 ### Test Growth
 
@@ -298,6 +350,7 @@
 | 2 | 115 | 14 | 129 |
 | 2.5 | 149 | 101 | 250 |
 | 3 | 187 | 148 | 335 |
+| 3.5 | 214 | 148 | 362 |
 
 ---
 
