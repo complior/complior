@@ -1,6 +1,6 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform (Deployer-First)
 
-**Версия:** 3.2.0
+**Версия:** 3.3.0
 **Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ✅ Утверждено PO (2026-02-10)
@@ -9,6 +9,11 @@
 ---
 
 ## Changelog
+
+### v3.3.0 (2026-02-12) — AI Act Roles + Use Case Model
+- **Feature 03:** AITool = Use Case (Anwendungsfall), не программный продукт. Новые wizard-поля: `useCaseDetails`, `decisionImpact`, `deploymentDate`, `employeesInformed` (Art. 26)
+- **Feature 02:** Organization получает `aiActRoles` (provider, deployer, distributor, importer)
+- **Plan Limits:** Source of truth вынесен в `app/config/plans.js`
 
 ### v3.2.0 (2026-02-12) — Sprint 2.5: Invite Flow + Team Management + Enforcement
 - **Feature 02:** Расширена секциями Invite Flow, Team Management, Subscription Enforcement
@@ -107,6 +112,7 @@ As a CTO компании, работающей с EU-клиентами, I want
 - Ory webhook → наш API → создание Organization + User (sync) + Role(owner) + Subscription(free)
 - RBAC: Permission table (role + resource + action) — наша таблица поверх Ory identity
 - Multi-tenancy: ВСЕ запросы фильтруются по organizationId
+- **AI Act Roles:** Organization.aiActRoles — 4 роли по AI Act (Art. 3): provider, deployer, distributor, importer. Default: ["deployer"]. Одна организация может иметь несколько ролей. Выбирается при регистрации (Step 2 onboarding). Влияет на отображаемые obligations и requirements.
 - AuditLog: запись каждого auth-события (Ory webhook → AuditLog)
 
 ### Invite Flow (Sprint 2.5)
@@ -152,12 +158,14 @@ Feature 01 (инфраструктура)
 
 ---
 
-## Feature 03: AI Tool Inventory — Реестр AI-инструментов
+## Feature 03: AI Tool Inventory — Реестр Use Cases AI-инструментов
 
 **Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1-2
 
 ### Бизнес-ценность
-As an IT manager, I want a centralized inventory of all AI tools our company uses, so that I can assess compliance risks for each tool.
+As an IT manager, I want a centralized inventory of all AI tool use cases our company has, so that I can assess compliance risks for each use case.
+
+> **Ключевая концепция:** AITool ≠ программный продукт. AITool = конкретный **use case (Anwendungsfall)** применения AI-системы в организации. Один программный продукт (напр. ChatGPT) может порождать несколько AITool записей, если используется в разных контекстах с разными целями и затронутыми лицами. Это соответствует Art. 26 AI Act, где обязанности deployer'а привязаны к конкретному применению, а не к продукту.
 
 ### Описание
 
@@ -193,10 +201,10 @@ As an IT manager, I want a centralized inventory of all AI tools our company use
 - Поле `approvalStatus`: `pending_approval` / `approved` / `rejected`
 - Admin/Owner всегда может регистрировать без approval
 
-**5-step Wizard** (XState) для добавления:
+**5-step Wizard** (XState) для регистрации use case:
 1. **AI-инструмент** — выбор из каталога или ввод вручную (название, vendor, описание)
-2. **Контекст использования** — как используете, **домен Annex III** (HR, медицина, финансы...), цель
-3. **Данные и пользователи** — персональные данные, **уязвимые группы?**, масштаб, кто затронут
+2. **Use Case** — цель использования (`purpose`), детали use case (`useCaseDetails`), **домен Annex III**, влияние на решения (`decisionImpact`), дата начала использования (`deploymentDate`)
+3. **Данные и пользователи** — персональные данные, **уязвимые группы?**, кто затронут, **уведомлены ли сотрудники** (`employeesInformed`, Art. 26(7))
 4. **Автономность и контроль** — уровень автономности, human oversight, **safety component?**
 5. **Обзор и классификация** — summary → trigger classification
 

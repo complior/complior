@@ -1,11 +1,13 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 2.1.0
+**Версия:** 2.2.0
 **Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md v2.1.0
 
+> **v2.2.0 (2026-02-12):** AI Act roles + Use Case model. Organization: добавлено `aiActRoles` (jsonb, default ["deployer"]) — 4 роли по AI Act (provider, deployer, distributor, importer). AITool: концепция "AITool = Use Case (Anwendungsfall)"; добавлены поля `useCaseDetails`, `decisionImpact`, `deploymentDate`, `employeesInformed` (Art. 26). Plan seed data вынесены в `app/config/plans.js` (single source of truth).
+>
 > **v2.1.0 (2026-02-12):** Sprint 2.5 — Invite Flow + Team Management. Новая таблица: Invitation (IAM Context). Обновлены seed data Plan (free=5 tools, starter=15, growth=25, scale=100, eva=-1 everywhere). IAM context: 5 → 6 таблиц. Всего: **30 таблиц** в 8 Bounded Contexts.
 >
 > **v2.0.0 (2026-02-07):** Deployer-first pivot — AISystem → AITool (переименование). 8 новых таблиц: AIToolCatalog, AIToolDiscovery (Inventory Context), TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement (AI Literacy Context), FRIAAssessment, FRIASection (Deployer Compliance Context). Seed data: deployer requirements (Art. 4, 26-27, 50), 200+ AI Tool Catalog, 4 AI Literacy курса. Всего: **29 таблиц** в 8 Bounded Contexts.
@@ -120,6 +122,7 @@ erDiagram
         string industry
         string size
         string country
+        jsonb aiActRoles "default deployer"
         datetime createdAt
     }
 
@@ -166,9 +169,13 @@ erDiagram
         string name
         text description
         string purpose
+        text useCaseDetails "Art 26 detailed use case"
         string domain
+        string decisionImpact "no_impact advisory significant sole_decision"
+        date deploymentDate
         string vendorName
         string vendorCountry
+        boolean employeesInformed "Art 26(7)"
         string riskLevel
         string complianceStatus
         integer complianceScore
@@ -428,6 +435,11 @@ erDiagram
     enum: ['micro_1_9', 'small_10_49', 'medium_50_249', 'large_250_plus'],
   },
   country: { type: 'string', length: { min: 2, max: 2 }, note: 'ISO 3166-1 alpha-2' },
+  aiActRoles: {
+    type: 'json',
+    default: '\'["deployer"]\'',
+    note: 'AI Act roles: provider, deployer, distributor, importer. Array, multiple allowed.',
+  },
   website: { type: 'string', required: false },
   vatId: { type: 'string', required: false, note: 'EU VAT number' },
   settings: { type: 'json', required: false, note: 'Organization-level settings: { allowEmployeeRegistration: boolean, ... }' },
@@ -441,6 +453,7 @@ erDiagram
 | industry | varchar | NOT NULL, CHECK enum | Industry vertical |
 | size | varchar | NOT NULL, CHECK enum | EU SMB size category |
 | country | varchar(2) | NOT NULL | ISO country code (DE, AT, CH) |
+| aiActRoles | jsonb | DEFAULT '["deployer"]' | AI Act roles: provider, deployer, distributor, importer (Art. 3) |
 | website | varchar | nullable | Company website |
 | vatId | varchar | nullable | EU VAT identification number |
 | settings | jsonb | nullable | Configurable settings (`{ allowEmployeeRegistration: bool }`) |
@@ -569,8 +582,10 @@ erDiagram
 
 ### 4.2 Inventory Context (NEW — deployer-first)
 
-#### AITool (Entity) — AI-инструмент, который компания ИСПОЛЬЗУЕТ
+#### AITool (Entity) — Use Case (Anwendungsfall) применения AI-инструмента
 
+> **Концепция:** AITool ≠ программный продукт. AITool = конкретный use case (Anwendungsfall) применения AI-системы в организации. Один программный продукт (напр. ChatGPT) может порождать несколько AITool записей, если используется в разных контекстах с разными целями и затронутыми лицами. Это соответствует Art. 26 AI Act, где обязанности deployer'а привязаны к конкретному применению, а не к продукту.
+>
 > **Переименовано из AISystem.** Deployer не "строит AI-систему" — он ИСПОЛЬЗУЕТ AI-инструмент (ChatGPT, HireVue, Copilot и т.д.).
 
 ```javascript
@@ -589,8 +604,14 @@ erDiagram
   vendorCountry: { type: 'string', length: { min: 2, max: 2 }, required: false, note: 'ISO 3166-1' },
   vendorUrl: { type: 'string', required: false },
 
-  // Step 2: Как вы используете этот инструмент? (Usage Context)
+  // Step 2: Use Case Context (Art. 26 — deployer obligations)
+  // AITool = use case, NOT software product. One product → multiple AITool records
+  // if used for different purposes with different affected persons.
   purpose: { type: 'string', length: { max: 2000 }, note: 'Для чего используется в компании' },
+  useCaseDetails: {
+    type: 'text', required: false,
+    note: 'Детальное описание use case: какие решения, какой процесс, какой output (Art. 26)',
+  },
   domain: {
     enum: ['biometrics', 'critical_infrastructure', 'education',
            'employment', 'essential_services', 'law_enforcement',
@@ -598,12 +619,25 @@ erDiagram
            'coding', 'analytics', 'other'],
     note: 'AI Act Annex III domains + deployer-specific',
   },
+  decisionImpact: {
+    enum: ['no_impact', 'advisory', 'significant', 'sole_decision'],
+    default: 'advisory',
+    note: 'Влияние AI на решения о людях (Art. 26(2))',
+  },
+  deploymentDate: {
+    type: 'date', required: false,
+    note: 'Когда инструмент начал использоваться в данном use case',
+  },
 
   // Step 3: Данные и пользователи (Data & Users)
   dataTypes: { type: 'json', note: 'Array: personal, sensitive, biometric, health, financial, etc.' },
   affectedPersons: { type: 'json', note: 'Array: employees, customers, applicants, patients, students' },
   vulnerableGroups: { type: 'boolean', default: false, note: 'Уязвимые группы: дети, инвалиды, пожилые' },
   dataResidency: { type: 'string', required: false, note: 'Где хранятся данные (EU/US/unknown)' },
+  employeesInformed: {
+    type: 'boolean', default: false,
+    note: 'Art. 26(7): Были ли сотрудники/представители уведомлены об использовании AI?',
+  },
 
   // Step 4: Автономность и надзор (Autonomy & Oversight)
   autonomyLevel: {

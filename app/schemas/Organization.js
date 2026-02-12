@@ -15,6 +15,11 @@
   },
   website: { type: 'string', required: false },
   vatId: { type: 'string', required: false, note: 'EU VAT number' },
+  aiActRoles: {
+    type: 'json',
+    default: '\'["deployer"]\'',
+    note: 'AI Act roles: provider, deployer, distributor, importer. Array, multiple allowed.',
+  },
   settings: {
     type: 'json', required: false,
     note: 'Organization-level settings',
