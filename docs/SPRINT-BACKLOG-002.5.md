@@ -1,6 +1,7 @@
 # Sprint Backlog 002.5 — Invite Flow + Team Management + Subscription Enforcement
 
 **Sprint Goal:** Обеспечить org-centric регистрацию с invite flow, team management и enforcement тарифных лимитов (maxUsers, maxTools).
+**Статус:** ✅ Утверждено PO (2026-02-12)
 
 **Capacity:** ~24 SP | **Duration:** 2 weeks
 **Developer:** Max (Backend+QA, US-031..036) + Nina (Frontend+UX, US-037)

@@ -1,6 +1,7 @@
 # Sprint Backlog 003 — Requirements + Dashboard + Catalog APIs
 
 **Sprint Goal:** Enable deployers to track compliance obligations per AI tool, view an organization-wide compliance dashboard, review classification history, and find EU-compliant alternatives.
+**Статус:** ✅ Утверждено PO (2026-02-12)
 
 **Capacity:** ~21 SP | **Duration:** 2 weeks
 **Developer:** Max (Backend+QA)
@@ -133,7 +134,7 @@ US-025 первым, затем US-026..030 можно параллелить.
 
 ---
 
-### Phase 4: Dashboard API (5 SP)
+### Phase 4: Dashboard API (6 SP)
 
 #### US-029: Compliance dashboard — сводка по организации (6 SP)
 
@@ -234,7 +235,7 @@ tests/requirements-api.test.js       (11 tests)
 tests/classification-history.test.js  (4 tests)
 tests/dashboard.test.js               (7 tests)
 + 4 tests в существующих тестах каталога
-Total: 32 new tests (115 → ~147)
+Total: 32 new tests (153 → ~185)
 ```
 
 ---
