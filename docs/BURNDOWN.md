@@ -132,6 +132,151 @@
 
 ---
 
+## Sprint 2 (AI Tool Registration + Rule-Based Classification)
+
+**Total Story Points:** 55
+**Duration:** 2026-02-10 — 2026-02-11 (2 days)
+**Team:** Max (Backend+QA), Nina (Frontend), Claude Code (E2E + audit)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-10 | 55 | 55 | Sprint start (after Sprint 1 merged to main) |
+| 1 | 2026-02-11 | 0 | 27.5 | All 10 US done: RuleEngine, CRUD, Wizard, frontend pages |
+| 2 | 2026-02-11 | 0 | 0 | Code audit Sprint 1+2 vs standards, PR #9 merged |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 55 |
+| Completed SP | 55 |
+| Velocity | 55 SP / 2 days |
+| Carry-over | 0 |
+
+### Sprint 2 Completion Summary
+
+**Phase 0 — Specification (5 SP)**
+- **US-015** (5 SP): EU AI Act Classification Rules Reference doc — done
+
+**Backend (Max — 28 SP)**
+- **US-016** (5 SP): AI Tool CRUD API (register, update, list, detail, delete) — done
+- **US-017** (5 SP): Wizard backend — step validation + auto-save — done
+- **US-018** (10 SP): RuleEngine domain service (Art. 5, Annex III, Art. 50, modifiers) — done
+- **US-019** (5 SP): Classification endpoint + persistence (RiskClassification) — done
+- **US-020** (3 SP): Auto-generate deployer requirements (mapRequirements) — done
+
+**Frontend (Nina — 22 SP)**
+- **US-021** (8 SP): AI Tool Inventory page + filters — done
+- **US-022** (8 SP): 5-step wizard UI — done
+- **US-023** (3 SP): Classification result display — done
+- **US-024** (3 SP): AI Tool detail page — done
+
+### Reviews
+- **Unit:** 115/115 tests pass (64 Sprint 1 + 51 new)
+- **Code audit:** Sprint 1+2 audited vs ARCHITECTURE.md, CODING-STANDARDS.md — 0 violations
+- **PR #9** → develop → main
+
+---
+
+## Sprint 2.5 (Invite Flow + Team Management + Enforcement)
+
+**Total Story Points:** 17
+**Duration:** 2026-02-11 — 2026-02-12 (2 days)
+**Team:** Claude Code (Backend+QA)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-11 | 17 | 17 | Sprint start (Phase 0 docs + Design Brief) |
+| 1 | 2026-02-12 | 0 | 8.5 | All 6 US done: Invite, Accept, Team CRUD, Plan Limits |
+| 2 | 2026-02-12 | 0 | 0 | E2E verified, committed to develop |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 17 |
+| Completed SP | 17 |
+| Velocity | 17 SP / 2 days |
+| Carry-over | US-037 (7 SP frontend) deferred |
+
+### Sprint 2.5 Completion Summary
+
+**Domain (2 SP)**
+- **US-031** (2 SP): SubscriptionLimitChecker (checkUserLimit, checkToolLimit) — done
+
+**Backend (15 SP)**
+- **US-032** (5 SP): Create Invitation (plan limits, Brevo email, token) — done
+- **US-033** (3 SP): Accept Invitation (existing user transfer, syncFromOry update) — done
+- **US-034** (2 SP): List Team Members (roles, status, invite date) — done
+- **US-035** (3 SP): Change Role + Remove Member (audit log, owner protection) — done
+- **US-036** (2 SP): maxTools enforcement on tool registration — done
+
+### Reviews
+- **Unit:** ~149/149 tests pass (115 Sprint 2 + 34 new)
+- **E2E:** 35/35 sprint2-2.5-flow.test.js (real DB)
+- **PR #12** → develop (bundled with Sprint 3)
+
+---
+
+## Sprint 3 (Requirements + Dashboard + Catalog APIs)
+
+**Total Story Points:** 21
+**Duration:** 2026-02-12 (1 day)
+**Team:** Claude Code (Backend+QA)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-12 | 21 | 21 | Sprint start (Phase 0 docs+pricing done earlier same day) |
+| 1 | 2026-02-12 | 0 | 0 | All 6 US done: Score, Requirements, Dashboard, History, Catalog |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 21 |
+| Completed SP | 21 |
+| Velocity | 21 SP / 1 day |
+| Carry-over | 0 |
+
+### Sprint 3 Completion Summary
+
+**Phase 0 — Docs+Config (same day, before code)**
+- Pricing v3.0 in `app/config/plans.js` (5 tiers, annual discount, Eva caps)
+- 20 API platform tools in `app/seeds/catalog.js` (245 total)
+- Eva Guard 3-level protection spec
+- Lead Gen tools spec (Quick Check, Penalty Calculator)
+- Provider-Lite segment definition
+- 7 docs updated (PRODUCT-VISION, PRODUCT-BACKLOG, DESIGN-BRIEF, DATA-FLOWS, TECH-STACK, COMPETITOR-ANALYSIS, DATABASE)
+
+**Domain (3 SP)**
+- **US-025** (3 SP): ComplianceScoreCalculator (calculateToolScore, calculateOrgScore, groupByArticle) — done
+
+**Backend (18 SP)**
+- **US-026** (3 SP): GET /api/tools/:id/requirements (grouped by article) — done
+- **US-027** (3 SP): PATCH /api/tools/:id/requirements/:id (status, progress, notes, dueDate) — done
+- **US-028** (3 SP): GET /api/tools/:id/classification-history (versioned, sorted DESC) — done
+- **US-029** (6 SP): GET /api/dashboard/summary (scores, risk distribution, timeline, planLimits, requiresAttention) — done
+- **US-030** (3 SP): Catalog Alternatives (domain + maxRisk filters, api_platform category) — done
+
+### Audit
+- All code verified vs ARCHITECTURE.md, CODING-STANDARDS.md, DATABASE.md, DATA-FLOWS.md — 0 violations
+- 2 minor fixes during audit: consolidated double `tq.update()` in updateRequirement.js, `|| 0` → `?? 0` in getDashboardSummary.js
+- Added `api_platform` to AIToolCatalog schema enum
+
+### Reviews
+- **Unit:** 187/187 tests pass (149 Sprint 2.5 + 38 new)
+- **E2E:** 47/47 sprint3-flow.test.js (real PostgreSQL + Fastify)
+- **Total tests:** 335 (187 unit + 148 E2E integration)
+- **PR #12** → develop → main (merged 2026-02-12)
+
+---
+
 ## Cumulative Velocity
 
 | Sprint | SP Planned | SP Done | Duration | Velocity (SP/day) |
@@ -139,8 +284,22 @@
 | 000 | 10 | 10 | 4 days | 2.5 |
 | 0 | 47 | 47 | 2 days | 23.5 |
 | 1 | 50 | 50 | 2 days | 25.0 |
+| 2 | 55 | 55 | 2 days | 27.5 |
+| 2.5 | 17 | 17 | 2 days | 8.5 |
+| 3 | 21 | 21 | 1 day | 21.0 |
+| **Total** | **200** | **200** | **13 days** | **15.4 avg** |
+
+### Test Growth
+
+| Sprint | Unit Tests | E2E Tests | Total |
+|--------|-----------|-----------|-------|
+| 0 | 22 | 0 | 22 |
+| 1 | 64 | 14 | 78 |
+| 2 | 115 | 14 | 129 |
+| 2.5 | 149 | 101 | 250 |
+| 3 | 187 | 148 | 335 |
 
 ---
 
 **Updated by:** Claude Code (on behalf of Alex)
-**Last update:** 2026-02-10
+**Last update:** 2026-02-12
