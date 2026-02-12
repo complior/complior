@@ -2,12 +2,17 @@
 
 **Статус:** ✅ Заполнен Product Owner
 **Дата:** 2026-02-12
-**Версия:** 2.1.0 (Sprint 3 Additions)
+**Версия:** 2.2.0 (Sprint 3.5 Additions)
 **Источники:** project1.pdf, eu_sovereign_llm_strategy.md.pdf, llm_strategy_and_product_ux.md.pdf, COMPETITOR-ANALYSIS.md
 
 ---
 
 ## Changelog
+
+### v2.2.0 (2026-02-12) — Sprint 3.5 Additions
+- **Registration:** Plan-aware flow. `/auth/register?plan=X&period=Y` → free (2-step → dashboard) or paid (3-step → Stripe Checkout → success page → dashboard)
+- **Billing (partial):** Stripe Checkout Session + Webhook moved to Sprint 3.5. Full billing management remains Sprint 5-6
+- **Lead Gen (partial):** Quick Check + Penalty Calculator moved to Sprint 3.5. Free Classification remains Sprint 5
 
 ### v2.1.0 (2026-02-12) — Sprint 3 Additions
 - **Global TAM:** Art. 2 extraterritorial scope → 1M+ global deployers (beyond DACH 125K)
@@ -324,18 +329,21 @@
 
 ## 5. Ключевые Use Cases
 
-### UC-1: Регистрация и онбординг
+### UC-1: Регистрация и онбординг (Sprint 3.5 — Plan-Aware)
 ```
 As a CTO of a company that serves EU clients
 I want to register and find out if AI Act applies to my company
 So that I understand what my obligations are as an AI deployer
 ```
 **Шаги:**
-1. Landing: "Используете AI? Проверьте за 5 минут" (Free Risk Check)
-2. Signup: Email magic link (Ory) → Company name, size, industry
-3. Quick questionnaire: "Какие AI-инструменты использует ваша компания?" (select из каталога)
-4. Мгновенный результат: "3 из 5 инструментов — high-risk. Art. 4 AI Literacy уже обязателен."
-5. CTA: "Начните с AI Literacy за €49/мес"
+1. Landing/Pricing: User selects a plan on `/pricing` page → CTA links to `/auth/register?plan={name}&period={period}`
+2. Signup Step 1 (Account): Email, password, name. Selected plan badge shown at top
+3. Signup Step 2 (Company): Company name, size, industry (mandatory)
+4. **Free plan:** → redirect to `/dashboard`. **Paid plan:** → Step 3 (Trial Confirmation) → redirect to Stripe Checkout
+5. **Stripe Checkout** (paid only): User enters credit card on Stripe-hosted page. 14-day trial starts
+6. **Checkout Success** (paid only): `/checkout/success?session_id=cs_xxx` — polls API, shows plan badge + trial details, auto-redirect to dashboard
+7. Dashboard: Quick questionnaire "Какие AI-инструменты использует ваша компания?" (select из каталога)
+8. Мгновенный результат: "3 из 5 инструментов — high-risk. Art. 4 AI Literacy уже обязателен."
 
 ### UC-2: Регистрация AI-инструмента
 ```

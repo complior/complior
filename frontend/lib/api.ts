@@ -161,6 +161,32 @@ export interface ClassifyResult {
   requirementsCreated: number;
 }
 
+export interface CheckoutResponse {
+  url: string;
+  sessionId: string;
+}
+
+export interface CheckoutStatusResponse {
+  status: string;
+  planName: string;
+}
+
+export interface QuickCheckRequest {
+  deploysAi: boolean;
+  affectsNaturalPersons: boolean;
+  domain: string;
+  makesDecisions: boolean;
+  email: string;
+}
+
+export interface QuickCheckResponse {
+  applies: boolean;
+  riskLevel: string;
+  obligations: { article: string; text: string }[];
+  findings: { severity: string; text: string }[];
+  literacyRequired: boolean;
+}
+
 export const api = {
   auth: {
     me: () => apiFetch<UserProfile>('/api/auth/me'),
@@ -186,5 +212,23 @@ export const api = {
       apiFetch<{ success: boolean }>(`/api/tools/${id}`, { method: 'DELETE' }),
     classify: (id: number) =>
       apiFetch<ClassifyResult>(`/api/tools/${id}/classify`, { method: 'POST' }),
+  },
+  billing: {
+    createCheckout: (planName: string, period: string) =>
+      apiFetch<CheckoutResponse>('/api/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ planName, period }),
+      }),
+    checkoutStatus: (sessionId: string) =>
+      apiFetch<CheckoutStatusResponse>('/api/billing/checkout-status', {
+        params: { session_id: sessionId },
+      }),
+  },
+  public: {
+    quickCheck: (data: QuickCheckRequest) =>
+      apiFetch<QuickCheckResponse>('/api/public/quick-check', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 };

@@ -21,6 +21,7 @@ const createTestSandbox = (mockDb, extras = {}) => ({
   brevo: { sendTransactional: async () => ({}) },
   gotenberg: { convertHtmlToPdf: async () => Buffer.alloc(0) },
   s3: { upload: async () => ({}), download: async () => null },
+  stripe: { createCheckoutSession: async () => ({}), retrieveSession: async () => null, constructEvent: () => null },
   ...extras,
 });
 

@@ -1,14 +1,20 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform (Deployer-First)
 
-**Версия:** 3.4.0
+**Версия:** 3.5.0
 **Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ✅ Утверждено PO (2026-02-10)
-**Зависимости:** PRODUCT-VISION.md v2.0 ✅
+**Зависимости:** PRODUCT-VISION.md v2.1 ✅
 
 ---
 
 ## Changelog
+
+### v3.5.0 (2026-02-12) — Sprint 3.5 Additions
+- **Feature 02:** Registration is now plan-aware (Sprint 3.5). URL params `?plan=` and `?period=` route users through free or paid (Stripe Checkout) flows.
+- **Feature 09:** Partial scope (Stripe Checkout + Webhook) moved to Sprint 3.5. Full billing management (portal, invoices, plan changes) remains Sprint 5-6.
+- **Feature 23:** Quick Check + Penalty Calculator moved to Sprint 3.5 scope. Free Classification stays Sprint 5.
+- **Roadmap:** Added Sprint 3.5 between Sprint 3 and Sprint 4.
 
 ### v3.4.0 (2026-02-12) — Sprint 3 Additions (6 Proposals)
 - **Pricing v3.0:** Free=1 tool/no Eva, Starter=5/200msg, Growth=20/1000msg, Scale=unlimited. Annual 20%, 14-day trial. Source: `app/config/plans.js`
@@ -111,7 +117,7 @@
 
 ## Feature 02: IAM — Аутентификация и управление пользователями
 
-**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1 + 2.5
+**Приоритет:** P0 (Must Have) | **Размер:** L | **Спринт:** 1 + 2.5 + 3.5
 
 ### Бизнес-ценность
 As a CTO компании, работающей с EU-клиентами, I want to register, login and manage my team's access, so that we can securely use the compliance platform.
@@ -124,6 +130,8 @@ As a CTO компании, работающей с EU-клиентами, I want
 - Multi-tenancy: ВСЕ запросы фильтруются по organizationId
 - **AI Act Roles:** Organization.aiActRoles — 4 роли по AI Act (Art. 3): provider, deployer, distributor, importer. Default: ["deployer"]. Одна организация может иметь несколько ролей. Выбирается при регистрации (Step 2 onboarding). Влияет на отображаемые obligations и requirements.
 - AuditLog: запись каждого auth-события (Ory webhook → AuditLog)
+
+> **Note (Sprint 3.5):** Registration is now plan-aware. URL params `?plan=` and `?period=` determine the flow: free plan → 2-step (Account → Company → Dashboard), paid plans → 3-step (Account → Company → Trial Confirmation → Stripe Checkout redirect → `/checkout/success`). See DESIGN-BRIEF Screen 03 + Screen 22.
 
 ### Invite Flow (Sprint 2.5)
 - **Invite API:** Owner/Admin приглашает сотрудника по email → POST `/api/team/invite`
@@ -668,7 +676,7 @@ Elena: валидация FRIA шаблона на соответствие Art.
 
 ## Feature 09: Billing & подписки
 
-**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 5-6
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 3.5 (partial) + 5-6 (full)
 
 ### Описание
 - Stripe Checkout integration
@@ -681,6 +689,8 @@ Elena: валидация FRIA шаблона на соответствие Art.
 - **Enterprise:** "Contact us" flow → Calendly/email, custom pricing
 
 > **Note (Sprint 2.5):** Enforcement infrastructure (SubscriptionLimitChecker, PlanLimitError, getOrgLimits) уже реализована в Sprint 2.5 для maxUsers и maxTools. Sprint 5-6 добавляет Stripe integration + pricing UI, но enforcement logic переиспользуется.
+
+> **Note (Sprint 3.5):** Partial scope (Stripe Checkout Session API + Webhook Handler) moved to Sprint 3.5 to enable plan-aware registration flow. Covers: `POST /api/billing/checkout`, `POST /api/webhooks/stripe` (checkout.session.completed), `GET /api/billing/checkout-status`, Pricing Page UI, Checkout Success page. Full billing management (customer portal, invoice history, plan upgrades/downgrades, cancellation, payment method management) remains Sprint 5-6.
 
 ### Зависимости
 Feature 02 (IAM)
@@ -931,7 +941,7 @@ Feature 04a/b/c (classification), Feature 07 (doc generation infrastructure)
 
 ## Feature 23: Free Lead Generation Tools
 
-**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 5
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 3.5 (Quick Check + Penalty Calculator) + 5 (Free Classification)
 
 ### Бизнес-ценность
 As a potential customer, I want free tools to check if AI Act applies to me, so that I can assess the urgency before committing to a paid plan.
@@ -940,7 +950,9 @@ As a potential customer, I want free tools to check if AI Act applies to me, so 
 
 **3 public tools (no auth required, email-gated):**
 
-**(a) Quick Check (`/check`):**
+> **Note (Sprint 3.5):** Quick Check and Penalty Calculator moved to Sprint 3.5 to serve as lead gen tools alongside the new Stripe Checkout and Pricing flows. Free Classification remains Sprint 5 as it requires full wizard integration.
+
+**(a) Quick Check (`/check`) — Sprint 3.5:**
 - 5-step micro-wizard:
   1. "Does your company use AI tools?" (Yes/No)
   2. "How many employees?" (1-10 / 11-50 / 51-200 / 200+)
@@ -950,14 +962,14 @@ As a potential customer, I want free tools to check if AI Act applies to me, so 
 - Result: "X obligations apply, Y potential high-risk areas"
 - CTA: "Create free account for full assessment"
 
-**(b) Penalty Calculator (`/penalty-calculator`):**
+**(b) Penalty Calculator (`/penalty-calculator`) — Sprint 3.5:**
 - Revenue input (annual turnover)
 - Art. 99 formula: max(7% of turnover, €35M) for prohibited; max(3%, €15M) for high-risk
 - Visual: animated counter to max fine
 - Shareable OG card: "Your max AI Act penalty: €X"
 - CTA: "Reduce your risk — Start compliance now"
 
-**(c) Free Classification:**
+**(c) Free Classification — Sprint 5:**
 - 1 tool from catalog → full wizard → full classification result
 - Same flow as Feature 03/04a but limited to 1 tool for unregistered users
 - After result: "Add more tools → Create account (Free) or Start trial (Starter)"
@@ -997,8 +1009,8 @@ Feature 01 (infrastructure), Feature 04a (classification for Free Classification
 | 07 | Deployer Doc Generation | L | 4-5 |
 | 08 | Gap Analysis | M | 5 |
 | 19 | FRIA Generator (Art. 27) | M | 5 |
-| **23** | **Free Lead Gen Tools (Quick Check, Penalty Calc, Free Classification)** | **M** | **5** |
-| 09 | Billing (trial + annual) | M | 5-6 |
+| **23** | **Free Lead Gen Tools (Quick Check, Penalty Calc → 3.5; Free Classification → 5)** | **M** | **3.5 + 5** |
+| 09 | Billing (Stripe Checkout → 3.5; full management → 5-6) | M | 3.5 + 5-6 |
 | 10 | Eva tool calling | S | 6 |
 | 11 | Onboarding + Notifications | M | 6 |
 
@@ -1033,15 +1045,18 @@ Feature 01 (infrastructure), Feature 04a (classification for Free Classification
 Sprint 0     ██ Feature 01: Infrastructure                                        ✅
 Sprint 1     ████ Feature 02: IAM + Feature 03: AI Tool Inventory (start)         ✅
 Sprint 2     ████ Feature 03 (end) + Feature 04a: Rules + Feature 04c (mapping)   ✅
-Sprint 2.5   ████ Feature 02: Invite Flow + Team Management + Enforcement (24 SP)
-Sprint 3     ████ Feature 04b: History + Feature 04c: Requirements API
+Sprint 2.5   ████ Feature 02: Invite Flow + Team Management + Enforcement (24 SP) ✅
+Sprint 3     ████ Feature 04b: History + Feature 04c: Requirements API            ✅
                   + Feature 05: Dashboard API + Feature 03: Alternatives
+Sprint 3.5   ████ Feature 09 (partial): Stripe Checkout + Webhook
+                  + Feature 23 (partial): Quick Check + Penalty Calculator
+                  + Feature 02: Plan-aware Registration + Pricing Page
 Sprint 4     ████ Feature 06: Eva (with Eva Guard) Conversational Onboarding
              ── MVP READY ──
 Sprint 5     ████ Frontend спринты + Feature 07: Deployer Docs (start)
-                  + Feature 23: Free Lead Gen Tools (Quick Check, Penalty Calc)
+                  + Feature 23: Free Classification (remaining)
 Sprint 6     ████ Feature 07 (end) + Feature 08: Gap + Feature 19: FRIA
-                  + Feature 09: Billing (trial + annual)
+                  + Feature 09: Full Billing (portal, invoices, plan changes)
 Sprint 7     ██ Feature 10: Eva tools + Feature 11: Onboarding
              ── PRODUCT READY ──
 Sprint 7-8   ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel
@@ -1075,4 +1090,4 @@ Sprint 8+    ████ Feature 18: AI Literacy (EN-first) + Feature 14: i18n 
 
 ✅ **APPROVED:** Deployer-First Backlog утверждён PO (2026-02-10).
 
-💡 **Следующий шаг:** Sprint 2.5 реализация (Feature 02: Invite Flow + Team Management + Enforcement) — см. `SPRINT-BACKLOG-002.5.md`, затем Sprint 3 — см. `SPRINT-BACKLOG-003.md`
+💡 **Следующий шаг:** Sprint 3.5 реализация (Feature 09 partial: Stripe Checkout + Feature 23 partial: Quick Check + Penalty Calc + Plan-aware Registration + Pricing Page) — см. `SPRINT-BACKLOG-003.5.md`
