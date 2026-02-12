@@ -26,7 +26,7 @@ export function RegisterStep1({ onSubmit, error, loading }: RegisterStep1Props) 
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="firstName">Vorname</Label>
+          <Label htmlFor="firstName">First Name</Label>
           <Input
             id="firstName"
             value={firstName}
@@ -36,7 +36,7 @@ export function RegisterStep1({ onSubmit, error, loading }: RegisterStep1Props) 
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="lastName">Nachname</Label>
+          <Label htmlFor="lastName">Last Name</Label>
           <Input
             id="lastName"
             value={lastName}
@@ -48,11 +48,11 @@ export function RegisterStep1({ onSubmit, error, loading }: RegisterStep1Props) 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">E-Mail-Adresse</Label>
+        <Label htmlFor="email">Email Address</Label>
         <Input
           id="email"
           type="email"
-          placeholder="name@unternehmen.de"
+          placeholder="name@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -61,7 +61,7 @@ export function RegisterStep1({ onSubmit, error, loading }: RegisterStep1Props) 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Passwort</Label>
+        <Label htmlFor="password">Password</Label>
         <Input
           id="password"
           type="password"
@@ -71,13 +71,13 @@ export function RegisterStep1({ onSubmit, error, loading }: RegisterStep1Props) 
           minLength={8}
           autoComplete="new-password"
         />
-        <p className="text-xs text-slate-500">Mindestens 8 Zeichen</p>
+        <p className="text-xs text-slate-500">At least 8 characters</p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Wird erstellt...' : 'Konto erstellen'}
+        {loading ? 'Creating account...' : 'Create Account'}
       </Button>
     </form>
   );

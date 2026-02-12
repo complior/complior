@@ -28,6 +28,12 @@ const validate = () => {
   if (!process.env.S3_ENDPOINT) {
     warnings.push('S3_ENDPOINT not set — file storage disabled');
   }
+  if (!process.env.STRIPE_SECRET_KEY) {
+    warnings.push('STRIPE_SECRET_KEY not set — Stripe billing disabled');
+  }
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    warnings.push('STRIPE_WEBHOOK_SECRET not set — Stripe webhook verification disabled');
+  }
 
   return { missing, warnings };
 };

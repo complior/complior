@@ -83,6 +83,16 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     s3 = createS3Storage();
   }
 
+  let stripe = {
+    createCheckoutSession: async () => ({}),
+    retrieveSession: async () => null,
+    constructEvent: () => null,
+  };
+  if (process.env.STRIPE_SECRET_KEY) {
+    const createStripeClient = require('./infrastructure/billing/stripe-client.js');
+    stripe = createStripeClient();
+  }
+
   const server = fastify({ logger: loggerConfig });
   const logger = new Logger(server.log);
 
@@ -94,11 +104,12 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     gotenberg: require('../app/config/gotenberg.js'),
     s3: require('../app/config/s3.js'),
     log: require('../app/config/log.js'),
+    stripe: require('../app/config/stripe.js'),
   };
 
   const appSandbox = await loadApplication(APPLICATION_PATH, {
     console: logger, db, config, errors, schemas, zod,
-    ory, brevo, gotenberg, s3,
+    ory, brevo, gotenberg, s3, stripe,
   });
 
   initRequestId(server);

@@ -180,6 +180,16 @@ const TABLE_ORDER = [
   'AuditLog',
 ];
 
+// Migrations — idempotent ALTER TABLEs for existing databases
+const MIGRATIONS = [
+  `ALTER TABLE "Subscription"
+   ADD COLUMN IF NOT EXISTS "stripePriceId" varchar`,
+  `ALTER TABLE "Subscription"
+   ADD COLUMN IF NOT EXISTS "billingPeriod" varchar DEFAULT 'monthly'`,
+  `ALTER TABLE "Subscription"
+   ADD COLUMN IF NOT EXISTS "trialEndsAt" timestamp with time zone`,
+];
+
 const INDEXES = [
   'CREATE INDEX IF NOT EXISTS idx_user_org ON "User"("organizationId")',
   'CREATE INDEX IF NOT EXISTS idx_user_ory_id ON "User"("oryId")',
@@ -371,6 +381,12 @@ const run = async () => {
       console.log(`  Created: ${tableName}`);
     }
 
+    console.log('\nRunning migrations...');
+    for (const migration of MIGRATIONS) {
+      await client.query(migration);
+    }
+    console.log(`  Applied ${MIGRATIONS.length} migrations`);
+
     console.log('\nCreating indexes...');
     for (const idx of INDEXES) {
       await client.query(idx);
@@ -414,6 +430,12 @@ const initDatabase = async (pool) => {
       await client.query(ddl);
     }
     console.log(`  Created ${TABLE_ORDER.length} tables`);
+
+    console.log('Running migrations...');
+    for (const migration of MIGRATIONS) {
+      await client.query(migration);
+    }
+    console.log(`  Applied ${MIGRATIONS.length} migrations`);
 
     console.log('Creating indexes...');
     for (const idx of INDEXES) {

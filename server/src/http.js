@@ -146,6 +146,8 @@ const initSessionHook = (server, oryClient) => {
     const { url } = request;
     if (!url.startsWith('/api/')) return;
     if (url.startsWith('/api/auth/webhook')) return;
+    if (url.startsWith('/api/webhooks/')) return;
+    if (url.startsWith('/api/public/')) return;
     if (url === '/health') return;
 
     const cookie = request.headers.cookie || '';

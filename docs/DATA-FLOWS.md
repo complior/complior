@@ -1,11 +1,13 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 2.2.0
+**Версия:** 2.3.0
 **Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md v2.1.0, DATABASE.md v2.1.0
 
+> **v2.3.0 (2026-02-12):** Sprint 3.5 — Modified Flow 1 (Registration): conditional branch — free plan→dashboard, paid plan→Stripe Checkout→success page→dashboard. NEW Flow 21: Stripe Checkout sequence diagram (checkout session creation → Stripe hosted page → webhook → success page polling).
+>
 > **v2.2.0 (2026-02-12):** Sprint 3 Additions — 2 новых flow: Lead Gen Public (Flow 19), Eva Guard Pipeline (Flow 20). Модифицирован Flow 4 (Eva Chat) — добавлены Eva Guard pre-filter (Mistral Small 3.1) и message quota check per plan.
 >
 > **v2.1.0 (2026-02-12):** Sprint 2.5 — 2 новых flow: Employee Invite Flow (Owner → API → Brevo → Invitee → Ory → API), Accept Invitation (existing user). Модифицирован flow 1 (User Registration) — проверка pending invitation перед созданием организации.
@@ -14,7 +16,9 @@
 
 ---
 
-## 1. User Registration & Onboarding (Deployer)
+## 1. User Registration & Onboarding (Deployer) — Plan-Aware (Sprint 3.5)
+
+> **v2.3.0 (Sprint 3.5):** Registration is now plan-aware. URL params `?plan=` and `?period=` determine the flow. Free plan → dashboard. Paid plans → Stripe Checkout → success page → dashboard.
 
 ```mermaid
 sequenceDiagram
@@ -22,12 +26,13 @@ sequenceDiagram
     participant Next as Next.js (SSR)
     participant Ory as Ory (self-hosted)
     participant API as Fastify API
+    participant Stripe as Stripe API
     participant DB as PostgreSQL
     participant Brevo as Brevo (email, EU)
     participant Eva as Eva (Mistral)
 
-    User->>Next: GET /register
-    Next-->>User: Registration page (SSR) → Ory registration form
+    User->>Next: GET /auth/register?plan={plan}&period={period}
+    Next-->>User: Plan-aware registration page (plan badge shown)
 
     User->>Ory: POST /self-service/registration {email, password, fullName, company}
     Ory->>Ory: Create identity, hash password
@@ -62,7 +67,23 @@ sequenceDiagram
     else User найден
         API-->>Next: {user, organization}
     end
-    Next-->>User: Onboarding page
+
+    Note over User,Stripe: Conditional branch based on selected plan
+
+    alt Free plan (plan=free or no plan param)
+        Next-->>User: Redirect to /dashboard
+    else Paid plan (plan=starter|growth|scale)
+        Note over User,Stripe: → See Flow 21: Stripe Checkout
+        User->>API: POST /api/billing/checkout {planId, period}
+        API->>Stripe: Create Checkout Session {trial_period_days: 14}
+        Stripe-->>API: {sessionId, url}
+        API-->>User: {checkoutUrl}
+        User->>Stripe: Redirect to Stripe Checkout → enter card
+        Stripe-->>User: Redirect to /checkout/success?session_id=cs_xxx
+        User->>API: GET /api/billing/checkout-status?session_id=cs_xxx
+        API-->>User: {status: 'trialing', plan, trialEnd}
+        Next-->>User: Redirect to /dashboard
+    end
 
     User->>API: POST /api/onboarding/quick-assessment {answers}
     Note right of API: Deployer questions:<br/>"Какие AI-инструменты использует ваша компания?"<br/>"Сколько сотрудников работает с AI?"<br/>"Есть ли AI в HR/рекрутинге?"
@@ -1038,6 +1059,73 @@ User Message
 
 ---
 
+## 21. Stripe Checkout Flow (Sprint 3.5)
+
+> **Feature 09 (partial):** Stripe Checkout Session creation, hosted payment page, webhook confirmation, success page polling. Full billing management remains Sprint 5-6.
+
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant Next as Next.js (Frontend)
+    participant API as Fastify API
+    participant Stripe as Stripe API
+    participant DB as PostgreSQL
+
+    Note over User,DB: Step 1: Create Checkout Session
+
+    User->>Next: Click [Start 14-Day Trial] on /pricing or /auth/register step 3
+    Next->>API: POST /api/billing/checkout {planId: 'growth', period: 'monthly'}
+    API->>API: Authenticate (Ory session)
+    API->>DB: SELECT Subscription WHERE organizationId
+    API->>DB: SELECT Plan WHERE id = planId (from plans.js)
+
+    alt Already has active paid subscription
+        API-->>User: 409 {code: 'ALREADY_SUBSCRIBED'}
+    end
+
+    API->>Stripe: POST /v1/checkout/sessions
+    Note right of Stripe: {<br/>  mode: 'subscription',<br/>  customer_email: user.email,<br/>  line_items: [{price: stripePriceId}],<br/>  subscription_data: {trial_period_days: 14},<br/>  success_url: '/checkout/success?session_id={CHECKOUT_SESSION_ID}',<br/>  cancel_url: '/pricing',<br/>  metadata: {organizationId, userId}<br/>}
+    Stripe-->>API: {sessionId: 'cs_xxx', url: 'https://checkout.stripe.com/...'}
+    API-->>User: {checkoutUrl: 'https://checkout.stripe.com/...'}
+
+    Note over User,Stripe: Step 2: Stripe Hosted Payment Page
+
+    User->>Stripe: Redirect to Stripe Checkout page
+    User->>Stripe: Enter credit card details
+    Stripe->>Stripe: Validate card, create subscription with trial
+
+    Note over User,DB: Step 3: Stripe Webhook (async confirmation)
+
+    Stripe->>API: POST /api/webhooks/stripe {event: 'checkout.session.completed'}
+    API->>API: Verify Stripe webhook signature (STRIPE_WEBHOOK_SECRET)
+    API->>Stripe: GET /v1/subscriptions/:id (retrieve full subscription)
+    Stripe-->>API: {subscription: {id, status: 'trialing', trial_end, items}}
+
+    API->>DB: BEGIN TRANSACTION
+    API->>DB: UPDATE Subscription SET planId=planId, stripeSubscriptionId, stripeCustomerId, status='trialing', currentPeriodEnd=trial_end
+    API->>DB: INSERT AuditLog {action: 'update', resource: 'Subscription', newData: {plan, status}}
+    API->>DB: COMMIT
+    API-->>Stripe: 200 OK
+
+    Note over User,DB: Step 4: Success Page Polling
+
+    Stripe-->>User: Redirect to /checkout/success?session_id=cs_xxx
+
+    loop Poll every 2s (max 10 attempts)
+        User->>API: GET /api/billing/checkout-status?session_id=cs_xxx
+        API->>DB: SELECT Subscription WHERE organizationId
+        alt Subscription updated (webhook processed)
+            API-->>User: {status: 'trialing', plan: 'growth', trialEnd: '2026-03-01'}
+        else Webhook not yet processed
+            API-->>User: {status: 'pending'}
+        end
+    end
+
+    User->>Next: Auto-redirect to /dashboard after confirmation
+```
+
+---
+
 ## 18. Data Flow Summary
 
 ### Request → Response Latency Targets
@@ -1092,5 +1180,5 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Or
 
 ---
 
-**Последнее обновление:** 2026-02-12 (v2.2.0: Sprint 3 Additions — Lead Gen Flow 19, Eva Guard Flow 20, modified Eva Chat Flow 4)
+**Последнее обновление:** 2026-02-12 (v2.3.0: Sprint 3.5 — Stripe Checkout Flow 21, modified Registration Flow 1 with plan-aware conditional branch)
 **Следующий документ:** CODING-STANDARDS.md ✅ Утверждён

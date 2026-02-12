@@ -65,6 +65,7 @@
         "brevo": "readonly",
         "gotenberg": "readonly",
         "s3": "readonly",
+        "stripe": "readonly",
         "lib": "readonly",
         "domain": "readonly",
         "application": "readonly",
@@ -74,7 +75,7 @@
         "strict": "off",
         "no-console": "off",
         "semi": "off",
-        "camelcase": ["error", { "allow": ["^_", "identity_id"] }]
+        "camelcase": ["error", { "allow": ["^_", "identity_id", "session_id"] }]
       }
     }
   ]

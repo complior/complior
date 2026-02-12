@@ -1,12 +1,14 @@
 # Design Brief for Nina — Sprint 3+
 
-**Version:** 2.7.0
+**Version:** 2.8.0
 **Date:** 2026-02-12
 **From:** PO
 **For:** Nina (Frontend+UX, Claude Opus 4.6)
-**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 4 (Eva) + Sprint 5+ (Lead Gen, Pricing)
-**Ref:** PRODUCT-BACKLOG.md v3.4.0, wireframes/sprint-1-2-wireframes.md
+**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 3.5 (Stripe + Lead Gen + Pricing Frontend) + Sprint 4 (Eva) + Sprint 5+ (remaining)
+**Ref:** PRODUCT-BACKLOG.md v3.5.0, wireframes/sprint-1-2-wireframes.md
 
+> **v2.8.0 (2026-02-12):** Sprint 3.5 — Screen 03 (Registration): rewritten as plan-aware flow with conditional 2-step (free) or 3-step (paid: Account → Company → TrialConfirmation → Stripe redirect). NEW Screen 22 (Checkout Success `/checkout/success`). Screen 19 (Pricing): CTAs now link to plan-aware registration. Screen 01 (Hero): CTAs updated with target URLs. Всего: **22 экрана**.
+>
 > **v2.7.0 (2026-02-12):** Sprint 3 Additions — 4 новых экрана: Screen 18 (Provider-Lite Wizard, reserved Sprint 7+), Screen 19 (Pricing Page `/pricing`), Screen 20 (Quick Check `/check`), Screen 21 (Penalty Calculator `/penalty-calculator`). Screen 01 Landing: обновлён Hero CTA + секция "Free Tools" + dual messaging. Всего: **21 экран**.
 >
 > **v2.6.0 (2026-02-12):** Screen 08 Wizard: AITool = Use Case (Anwendungsfall). Step 2 расширен: `useCaseDetails`, `decisionImpact`, `deploymentDate`. Step 3: добавлено `employeesInformed` (Art. 26(7)). Screen 07: помечен DEPRECATED (заменён Screen 11). Tooltip на Step 2: "один продукт → несколько use cases".
@@ -27,7 +29,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 ---
 
-## Полный список экранов (21 screens)
+## Полный список экранов (22 screens)
 
 ### Группа A — Публичные (до авторизации)
 
@@ -35,7 +37,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 |---|-------|------|--------|--------|----------|
 | 01 | **Landing Page** | `/` | 0 | wireframe | Hero + 6 feature cards + 4 pricing tiers + EU trust bar + CTA |
 | 02 | **Login** | `/auth/login` | 1 | wireframe | Email + magic link (primary), password (secondary), "check your email" состояние |
-| 03 | **Register** | `/auth/register` | 1 | wireframe | 2-step wizard: Step 1 (account), Step 2 (company + industry) |
+| 03 | **Register** | `/auth/register` | 1 + 3.5 | updated | Plan-aware flow: 2-step (free) or 3-step (paid → Stripe Checkout) |
 
 ### Группа B — App Shell (layout)
 
@@ -80,6 +82,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 | 19 | **Pricing Page** | `/pricing` | 5 | **NEW** | 5-tier comparison table, monthly/annual toggle, FAQ |
 | 20 | **Quick Check** | `/check` | 5 | **NEW** | Public, no auth. 5-step micro-wizard → email gate → result |
 | 21 | **Penalty Calculator** | `/penalty-calculator` | 5 | **NEW** | Public, no auth. Revenue input → max fine → shareable card |
+| 22 | **Checkout Success** | `/checkout/success` | 3.5 | **NEW** | Success icon, plan badge, trial started, polls API, auto-redirect |
 
 ---
 
@@ -91,7 +94,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 **Секции (сверху вниз):**
 1. **Navbar** — Логотип `[🛡] AI Act Compliance` + nav: Features, Free Tools, Pricing, Contact + [Sign In] [Get Started Free]
-2. **Hero** — H1: "AI Act Compliance for Your Company", subtitle: "The self-service platform for EU AI Act compliance. For companies that USE AI — not build it.", 3 CTA: [Get Started Free] primary + [Free Quick Check] secondary + [See Pricing] ghost. 3 trust bullets (Art. 4 mandatory, 70% non-compliant, from $49/mo)
+2. **Hero** — H1: "AI Act Compliance for Your Company", subtitle: "The self-service platform for EU AI Act compliance. For companies that USE AI — not build it.", 3 CTA: [Get Started Free] primary → `/auth/register?plan=free` + [Free Quick Check] secondary → `/check` + [See Pricing] ghost → `/pricing`. 3 trust bullets (Art. 4 mandatory, 70% non-compliant, from $49/mo)
 3. **Features Grid** — 6 карточек (2x3): AI Tool Inventory, AI Literacy, Risk Classification, FRIA & Documentation, Eva AI Assistant, Compliance Dashboard
 4. **Free Tools** (NEW) — 3 карточки inline:
    - **Quick Check:** "Does the AI Act apply to you? Find out in 2 minutes." [Check Now →] → `/check`
@@ -120,19 +123,36 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 ---
 
-### Screen 03: Register `/auth/register`
+### Screen 03: Register `/auth/register` (Plan-Aware Flow — Sprint 3.5)
+
+> **v3.0 (Sprint 3.5):** Registration is now plan-aware. URL params `?plan=` and `?period=` determine the flow. Free plan = 2 steps (Account → Company → Dashboard). Paid plans = 3 steps (Account → Company → Trial Confirmation → Stripe Checkout redirect).
+
+**URL Parameters:**
+- `?plan=free|starter|growth|scale` — pre-selects the plan (default: free)
+- `?period=monthly|annual` — billing period for paid plans (default: monthly)
 
 **Step 1 — Account:**
 - Поля: First Name, Last Name, Email, Password (with strength indicator)
+- Selected plan badge shown at top: e.g. "Growth Plan — $149/mo" (read from URL params)
 - [Create Account] primary кнопка
 - "Already have an account? Sign In" ссылка
 
 **Step 2 — Company (MANDATORY — Sprint 2.5):**
 - Поля: Company Name, Industry (dropdown: Technology, Healthcare, Finance, HR, Education, Legal, Manufacturing, Other), Company Size (dropdown: 1-10, 11-50, 51-200, 201-500, 500+), Country (dropdown)
-- [Continue to Dashboard] primary кнопка
-- ~~[Skip] — REMOVED (Sprint 2.5)~~: Step 2 обязателен, т.к. invite email показывает organizationName — placeholder неприемлем
+- **Free plan flow:** [Continue to Dashboard] primary кнопка → redirect to `/dashboard`
+- **Paid plan flow:** [Continue] primary кнопка → proceeds to Step 3
 
-**Progress:** Индикатор шагов (1/2, 2/2) сверху
+**Step 3 — Trial Confirmation (PAID PLANS ONLY):**
+- Plan summary card: plan name, price, billing period, features included
+- "Start your 14-day free trial" heading
+- Trial details: "You won't be charged until {trialEndDate}. Cancel anytime."
+- Card required badge: "Credit card required to start trial"
+- [Start 14-Day Trial →] primary CTA → redirects to Stripe Checkout
+- [Choose a different plan] ghost link → back to `/pricing`
+
+**Progress:** Индикатор шагов:
+- Free: 2 steps (1/2, 2/2)
+- Paid: 3 steps (1/3, 2/3, 3/3)
 
 ---
 
@@ -745,7 +765,8 @@ designs/
 ├── 20-quick-check-result.png         ← Sprint 5 P1
 ├── 20-quick-check-mobile.png         ← Sprint 5 P1
 ├── 21-penalty-calculator-desktop.png ← Sprint 5 P1
-└── 21-penalty-calculator-mobile.png  ← Sprint 5 P1
+├── 21-penalty-calculator-mobile.png  ← Sprint 5 P1
+└── 22-checkout-success.png           ← Sprint 3.5 P0
 ```
 
 ---
@@ -809,7 +830,7 @@ designs/
 
 ---
 
-### Screen 19: Pricing Page `/pricing`
+### Screen 19: Pricing Page `/pricing` (Updated CTAs — Sprint 3.5)
 
 **Ref:** PRODUCT-BACKLOG Feature 09
 
@@ -846,10 +867,18 @@ designs/
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**CTA Buttons per Plan (Sprint 3.5 — plan-aware registration):**
+- **Free:** [Get Started Free] → `/auth/register?plan=free`
+- **Starter:** [Start 14-Day Trial] → `/auth/register?plan=starter&period={monthly|annual}`
+- **Growth:** [Start 14-Day Trial] → `/auth/register?plan=growth&period={monthly|annual}` (highlighted as "Most Popular")
+- **Scale:** [Start 14-Day Trial] → `/auth/register?plan=scale&period={monthly|annual}`
+- **Enterprise:** [Contact Sales →] → Calendly or email form
+
 **Toggle Monthly/Annual:**
 - Default: Monthly selected
 - Annual: показывает сниженные цены ($470/yr, $1,430/yr, $3,830/yr) + "Save 20%" badge
 - Annual prices: per-month equivalent показан мелким текстом ("$39/mo billed annually")
+- Toggle affects `period` param in CTA links
 
 **Enterprise column:**
 - Price: "Custom" (не "Contact us")
@@ -975,6 +1004,61 @@ designs/
 - Route: `/penalty-calculator?revenue=5000000` → pre-fill + og:image
 
 **Mobile:** Same layout, full-width input and results
+
+---
+
+### Screen 22: Checkout Success `/checkout/success` (NEW — Sprint 3.5)
+
+**Ref:** PRODUCT-BACKLOG Feature 09 (Sprint 3.5 — Stripe Checkout)
+
+**Public page, authenticated user expected.**
+
+**URL Parameters:**
+- `?session_id=cs_xxx` — Stripe Checkout Session ID for verification
+
+**Layout (centered, max-w-md):**
+
+```
+┌─────────────────────────────────────────┐
+│  [🛡] AI Act Compliance                  │
+│                                          │
+│          ✅ (success icon)               │
+│                                          │
+│  Welcome to {planName}!                  │
+│                                          │
+│  ┌───────────────────────────────────┐  │
+│  │  Growth Plan         $149/mo      │  │
+│  │  14-day trial started             │  │
+│  │  Trial ends: {trialEndDate}       │  │
+│  └───────────────────────────────────┘  │
+│                                          │
+│  Your trial includes:                    │
+│  ✓ 20 AI tools                          │
+│  ✓ 10 team members                      │
+│  ✓ 1,000 Eva messages/mo               │
+│  ✓ Full compliance dashboard            │
+│                                          │
+│  [Go to Dashboard →] primary             │
+│                                          │
+│  You won't be charged until              │
+│  {trialEndDate}. Cancel anytime          │
+│  in Settings > Billing.                  │
+│                                          │
+└─────────────────────────────────────────┘
+```
+
+**States:**
+- **Loading:** Spinner + "Confirming your subscription..." while polling API
+- **Success:** Success icon + plan badge + trial details + [Go to Dashboard →]
+- **Error:** "Something went wrong. Please contact support." + [Try Again] + [Go to Dashboard]
+
+**Behavior:**
+- Page loads → Frontend calls `GET /api/billing/checkout-status?session_id=cs_xxx`
+- Polls every 2 seconds (max 10 attempts) until subscription status = active/trialing
+- On confirmation → shows success state, auto-redirects to `/dashboard` after 5 seconds
+- If already confirmed → immediate redirect to `/dashboard`
+
+**Mobile:** Same layout, full-width card
 
 ---
 

@@ -121,6 +121,37 @@ const RequirementUpdateSchema = z.object({
   dueDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
 }).refine((obj) => Object.keys(obj).length > 0, { message: 'No fields to update' });
 
+const VALID_QUICK_CHECK_DOMAINS = [
+  'biometrics', 'critical_infrastructure', 'education', 'employment',
+  'essential_services', 'law_enforcement', 'migration', 'justice',
+  'customer_service', 'marketing', 'coding', 'analytics', 'other',
+];
+
+const QuickCheckSchema = z.object({
+  answers: z.object({
+    deploysAI: z.boolean(),
+    aiAffectsPersons: z.boolean(),
+    domain: z.enum(VALID_QUICK_CHECK_DOMAINS, { message: 'Invalid domain' }),
+    aiMakesDecisions: z.boolean(),
+  }),
+  email: z.string().email().optional(),
+  consent: z.boolean().optional(),
+});
+
+// === Billing / Checkout Schemas ===
+
+const VALID_PAID_PLANS = ['starter', 'growth', 'scale'];
+const VALID_BILLING_PERIODS = ['monthly', 'yearly'];
+
+const CheckoutSchema = z.object({
+  planName: z.enum(VALID_PAID_PLANS, { message: 'Invalid plan' }),
+  period: z.enum(VALID_BILLING_PERIODS, { message: 'Invalid billing period' }),
+});
+
+const CheckoutStatusSchema = z.object({
+  sessionId: z.string().min(1, 'session_id is required'),
+});
+
 const VALID_INVITE_ROLES = ['admin', 'member', 'viewer'];
 
 const InviteCreateSchema = z.object({
@@ -147,6 +178,7 @@ module.exports = {
   VALID_COMPLIANCE_STATUSES,
   VALID_REQUIREMENT_STATUSES,
   VALID_INVITE_ROLES,
+  VALID_QUICK_CHECK_DOMAINS,
   RequirementUpdateSchema,
   WebhookSchema,
   UpdateOrganizationSchema,
@@ -164,4 +196,9 @@ module.exports = {
   InviteCreateSchema,
   InviteTokenSchema,
   ChangeRoleSchema,
+  QuickCheckSchema,
+  CheckoutSchema,
+  CheckoutStatusSchema,
+  VALID_PAID_PLANS,
+  VALID_BILLING_PERIODS,
 };
