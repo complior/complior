@@ -11,6 +11,7 @@ const permissions = [
   // Owner — full access
   { role: 'owner', resource: 'Organization', action: 'manage' },
   { role: 'owner', resource: 'User', action: 'manage' },
+  { role: 'owner', resource: 'Invitation', action: 'manage' },
   { role: 'owner', resource: 'AITool', action: 'manage' },
   { role: 'owner', resource: 'RiskClassification', action: 'manage' },
   { role: 'owner', resource: 'ComplianceDocument', action: 'manage' },
@@ -22,14 +23,16 @@ const permissions = [
   { role: 'owner', resource: 'Notification', action: 'manage' },
   { role: 'owner', resource: 'Conversation', action: 'manage' },
 
-  // Admin — manage tools + compliance, no billing
+  // Admin — manage tools + compliance + team, no billing
   { role: 'admin', resource: 'AITool', action: 'manage' },
   { role: 'admin', resource: 'RiskClassification', action: 'manage' },
   { role: 'admin', resource: 'ComplianceDocument', action: 'manage' },
   { role: 'admin', resource: 'FRIAAssessment', action: 'manage' },
   { role: 'admin', resource: 'TrainingCourse', action: 'manage' },
   { role: 'admin', resource: 'LiteracyCompletion', action: 'manage' },
-  { role: 'admin', resource: 'User', action: 'read' },
+  { role: 'admin', resource: 'User', action: 'manage' },
+  { role: 'admin', resource: 'Invitation', action: 'manage' },
+  { role: 'admin', resource: 'Organization', action: 'read' },
   { role: 'admin', resource: 'AuditLog', action: 'read' },
   { role: 'admin', resource: 'Notification', action: 'manage' },
   { role: 'admin', resource: 'Conversation', action: 'manage' },

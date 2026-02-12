@@ -5,13 +5,13 @@ const assert = require('node:assert');
 const { loadSchemas, generateDDL, TABLE_ORDER } = require('../app/setup.js');
 
 describe('Setup — schema loading', () => {
-  it('loads all 29 schemas', async () => {
+  it('loads all 30 schemas', async () => {
     const schemas = await loadSchemas();
-    assert.strictEqual(schemas.size, 29);
+    assert.strictEqual(schemas.size, 30);
   });
 
-  it('TABLE_ORDER has 29 entries', () => {
-    assert.strictEqual(TABLE_ORDER.length, 29);
+  it('TABLE_ORDER has 30 entries', () => {
+    assert.strictEqual(TABLE_ORDER.length, 30);
   });
 
   it('TABLE_ORDER entries are unique', () => {

@@ -31,7 +31,8 @@ const MOCK_CATALOG_ENTRY = {
 const createdTools = [];
 let nextId = 1;
 
-const createMockDb = () => {
+const createMockDb = (opts = {}) => {
+  const { maxTools = 100 } = opts;
   const permissions = [
     { role: 'owner', resource: 'AITool', action: 'manage' },
     { role: 'member', resource: 'AITool', action: 'create' },
@@ -56,6 +57,10 @@ const createMockDb = () => {
       if (sql.includes('FROM "AIToolCatalog"')) {
         if (params?.[0] === 100) return { rows: [MOCK_CATALOG_ENTRY] };
         return { rows: [] };
+      }
+      // Subscription + Plan query (getOrgLimits)
+      if (sql.includes('FROM "Subscription"') && sql.includes('JOIN "Plan"')) {
+        return { rows: [{ maxTools, maxUsers: 5 }] };
       }
       // Count
       if (sql.includes('COUNT')) {
@@ -227,5 +232,156 @@ describe('AI Tool CRUD API', () => {
       const body = JSON.parse(res.payload);
       assert.strictEqual(body.success, true);
     });
+  });
+});
+
+describe('maxTools Enforcement — US-036', () => {
+  it('allows tool creation when under limit', async () => {
+    const limitTools = [];
+    let limitNextId = 100;
+    const mockDb = createMockDb({ maxTools: 5 });
+    // Override count to return 3 (under limit of 5)
+    const origQuery = mockDb.query;
+    mockDb.query = async (sql, params) => {
+      if (sql.includes('COUNT') && sql.includes('"AITool"')) {
+        return { rows: [{ total: 3 }] };
+      }
+      if (sql.includes('INSERT INTO "AITool"')) {
+        const id = limitNextId++;
+        const tool = { id };
+        limitTools.push(tool);
+        return { rows: [{ id, ...tool }] };
+      }
+      return origQuery(sql, params);
+    };
+
+    const { api } = await buildFullSandbox(mockDb);
+    const srv = fastify({ logger: false });
+    initRequestId(srv);
+    initErrorHandler(srv);
+    srv.addHook('onRequest', (req, _reply, done) => {
+      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      done();
+    });
+    registerSandboxRoutes(srv, { tools: api.tools });
+    await srv.ready();
+
+    const res = await srv.inject({
+      method: 'POST',
+      url: '/api/tools',
+      payload: { name: 'Allowed Tool', vendorName: 'Vendor' },
+    });
+    assert.strictEqual(res.statusCode, 201);
+    await srv.close();
+  });
+
+  it('blocks tool creation when at limit (free plan, 5/5)', async () => {
+    const mockDb = createMockDb({ maxTools: 5 });
+    const origQuery = mockDb.query;
+    mockDb.query = async (sql, params) => {
+      if (sql.includes('COUNT') && sql.includes('"AITool"')) {
+        return { rows: [{ total: 5 }] };
+      }
+      return origQuery(sql, params);
+    };
+
+    const { api } = await buildFullSandbox(mockDb);
+    const srv = fastify({ logger: false });
+    initRequestId(srv);
+    initErrorHandler(srv);
+    srv.addHook('onRequest', (req, _reply, done) => {
+      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      done();
+    });
+    registerSandboxRoutes(srv, { tools: api.tools });
+    await srv.ready();
+
+    const res = await srv.inject({
+      method: 'POST',
+      url: '/api/tools',
+      payload: { name: 'Blocked Tool', vendorName: 'Vendor' },
+    });
+    assert.strictEqual(res.statusCode, 403);
+    const body = JSON.parse(res.payload);
+    assert.strictEqual(body.error.code, 'PLAN_LIMIT_EXCEEDED');
+    assert.strictEqual(body.error.limitType, 'maxTools');
+    assert.strictEqual(body.error.current, 5);
+    assert.strictEqual(body.error.max, 5);
+    await srv.close();
+  });
+
+  it('enterprise plan (-1) allows unlimited tools', async () => {
+    const limitTools = [];
+    let limitNextId = 200;
+    const mockDb = createMockDb({ maxTools: -1 });
+    const origQuery = mockDb.query;
+    mockDb.query = async (sql, params) => {
+      if (sql.includes('COUNT') && sql.includes('"AITool"')) {
+        return { rows: [{ total: 999 }] };
+      }
+      if (sql.includes('INSERT INTO "AITool"')) {
+        const id = limitNextId++;
+        const tool = { id };
+        limitTools.push(tool);
+        return { rows: [{ id, ...tool }] };
+      }
+      return origQuery(sql, params);
+    };
+
+    const { api } = await buildFullSandbox(mockDb);
+    const srv = fastify({ logger: false });
+    initRequestId(srv);
+    initErrorHandler(srv);
+    srv.addHook('onRequest', (req, _reply, done) => {
+      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      done();
+    });
+    registerSandboxRoutes(srv, { tools: api.tools });
+    await srv.ready();
+
+    const res = await srv.inject({
+      method: 'POST',
+      url: '/api/tools',
+      payload: { name: 'Enterprise Tool', vendorName: 'Vendor' },
+    });
+    assert.strictEqual(res.statusCode, 201);
+    await srv.close();
+  });
+
+  it('error contains limitType, current, and max fields', async () => {
+    const mockDb = createMockDb({ maxTools: 5 });
+    const origQuery = mockDb.query;
+    mockDb.query = async (sql, params) => {
+      if (sql.includes('COUNT') && sql.includes('"AITool"')) {
+        return { rows: [{ total: 7 }] };
+      }
+      return origQuery(sql, params);
+    };
+
+    const { api } = await buildFullSandbox(mockDb);
+    const srv = fastify({ logger: false });
+    initRequestId(srv);
+    initErrorHandler(srv);
+    srv.addHook('onRequest', (req, _reply, done) => {
+      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      done();
+    });
+    registerSandboxRoutes(srv, { tools: api.tools });
+    await srv.ready();
+
+    const res = await srv.inject({
+      method: 'POST',
+      url: '/api/tools',
+      payload: { name: 'Over Limit', vendorName: 'Vendor' },
+    });
+    assert.strictEqual(res.statusCode, 403);
+    const body = JSON.parse(res.payload);
+    assert.strictEqual(body.error.code, 'PLAN_LIMIT_EXCEEDED');
+    assert.strictEqual(typeof body.error.limitType, 'string');
+    assert.strictEqual(typeof body.error.current, 'number');
+    assert.strictEqual(typeof body.error.max, 'number');
+    assert.strictEqual(body.error.current, 7);
+    assert.strictEqual(body.error.max, 5);
+    await srv.close();
   });
 });

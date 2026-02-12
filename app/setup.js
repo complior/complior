@@ -154,6 +154,7 @@ const TABLE_ORDER = [
   'TrainingCourse',
   'RegulatoryUpdate',
   'User',
+  'Invitation',
   'Role',
   'UserRole',
   'Permission',
@@ -177,6 +178,37 @@ const TABLE_ORDER = [
   'ImpactAssessment',
   'Notification',
   'AuditLog',
+];
+
+const INDEXES = [
+  'CREATE INDEX IF NOT EXISTS idx_user_org ON "User"("organizationId")',
+  'CREATE INDEX IF NOT EXISTS idx_user_ory_id ON "User"("oryId")',
+  'CREATE INDEX IF NOT EXISTS idx_aitool_org ON "AITool"("organizationId")',
+  'CREATE INDEX IF NOT EXISTS idx_aitool_risk ON "AITool"("riskLevel")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_aitool_status ON "AITool"("complianceStatus")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_class_tool_current ' +
+    'ON "RiskClassification"("aiToolId", "isCurrent")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_toolreq_tool ON "ToolRequirement"("aiToolId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_doc_tool ON "ComplianceDocument"("aiToolId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_conv_user ON "Conversation"("userId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_msg_conv ON "ChatMessage"("conversationId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_notif_org_user ' +
+    'ON "Notification"("organizationId", "userId", "read")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_audit_org_time ON "AuditLog"("organizationId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_invitation_org ON "Invitation"("organizationId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_invitation_token ON "Invitation"("token")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_invitation_email_status ON "Invitation"("email", "status")',
 ];
 
 const loadSchemas = async () => {
@@ -340,34 +372,10 @@ const run = async () => {
     }
 
     console.log('\nCreating indexes...');
-    const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_user_org ON "User"("organizationId")',
-      'CREATE INDEX IF NOT EXISTS idx_user_ory_id ON "User"("oryId")',
-      'CREATE INDEX IF NOT EXISTS idx_aitool_org ON "AITool"("organizationId")',
-      'CREATE INDEX IF NOT EXISTS idx_aitool_risk ON "AITool"("riskLevel")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_aitool_status ON "AITool"("complianceStatus")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_class_tool_current ' +
-        'ON "RiskClassification"("aiToolId", "isCurrent")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_toolreq_tool ON "ToolRequirement"("aiToolId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_doc_tool ON "ComplianceDocument"("aiToolId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_conv_user ON "Conversation"("userId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_msg_conv ON "ChatMessage"("conversationId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_notif_org_user ' +
-        'ON "Notification"("organizationId", "userId", "read")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_audit_org_time ON "AuditLog"("organizationId")',
-    ];
-    for (const idx of indexes) {
+    for (const idx of INDEXES) {
       await client.query(idx);
     }
-    console.log(`  Created ${indexes.length} indexes`);
+    console.log(`  Created ${INDEXES.length} indexes`);
 
     console.log('\nSeeding data...');
     await seedRequirements(client);
@@ -378,7 +386,7 @@ const run = async () => {
 
     console.log('\nSetup complete!');
     console.log(`  Tables: ${TABLE_ORDER.length}`);
-    console.log(`  Indexes: ${indexes.length}`);
+    console.log(`  Indexes: ${INDEXES.length}`);
   } catch (err) {
     console.error('Setup failed:', err.message);
     throw err;
@@ -408,34 +416,10 @@ const initDatabase = async (pool) => {
     console.log(`  Created ${TABLE_ORDER.length} tables`);
 
     console.log('Creating indexes...');
-    const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_user_org ON "User"("organizationId")',
-      'CREATE INDEX IF NOT EXISTS idx_user_ory_id ON "User"("oryId")',
-      'CREATE INDEX IF NOT EXISTS idx_aitool_org ON "AITool"("organizationId")',
-      'CREATE INDEX IF NOT EXISTS idx_aitool_risk ON "AITool"("riskLevel")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_aitool_status ON "AITool"("complianceStatus")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_class_tool_current ' +
-        'ON "RiskClassification"("aiToolId", "isCurrent")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_toolreq_tool ON "ToolRequirement"("aiToolId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_doc_tool ON "ComplianceDocument"("aiToolId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_conv_user ON "Conversation"("userId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_msg_conv ON "ChatMessage"("conversationId")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_notif_org_user ' +
-        'ON "Notification"("organizationId", "userId", "read")',
-      'CREATE INDEX IF NOT EXISTS ' +
-        'idx_audit_org_time ON "AuditLog"("organizationId")',
-    ];
-    for (const idx of indexes) {
+    for (const idx of INDEXES) {
       await client.query(idx);
     }
-    console.log(`  Created ${indexes.length} indexes`);
+    console.log(`  Created ${INDEXES.length} indexes`);
 
     console.log('Seeding data...');
     await seedRequirements(client);
@@ -445,7 +429,7 @@ const initDatabase = async (pool) => {
     await seedCatalog(client);
 
     console.log('Setup complete!');
-    console.log(`  Tables: ${TABLE_ORDER.length}, Indexes: ${indexes.length}`);
+    console.log(`  Tables: ${TABLE_ORDER.length}, Indexes: ${INDEXES.length}`);
   } finally {
     client.release();
   }

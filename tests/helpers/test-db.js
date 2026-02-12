@@ -41,7 +41,7 @@ const cleanupTestDb = async () => {
     'ChecklistItem', 'DocumentSection', 'ComplianceDocument',
     'ToolRequirement', 'ClassificationLog', 'RiskClassification',
     'AIToolDiscovery', 'AITool', 'TrainingModule', 'TrainingCourse',
-    'Subscription', 'UserRole', 'Permission', 'Role',
+    'Invitation', 'Subscription', 'UserRole', 'Permission', 'Role',
     'User', 'Organization',
   ];
   const client = await pool.connect();

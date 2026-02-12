@@ -108,6 +108,21 @@ const ToolIdSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+const VALID_INVITE_ROLES = ['admin', 'member', 'viewer'];
+
+const InviteCreateSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(VALID_INVITE_ROLES),
+});
+
+const InviteTokenSchema = z.object({
+  token: z.string().uuid(),
+});
+
+const ChangeRoleSchema = z.object({
+  role: z.enum(VALID_INVITE_ROLES),
+});
+
 module.exports = {
   VALID_INDUSTRIES,
   VALID_SIZES,
@@ -117,6 +132,7 @@ module.exports = {
   VALID_AUTONOMY_LEVELS,
   VALID_RISK_LEVELS,
   VALID_COMPLIANCE_STATUSES,
+  VALID_INVITE_ROLES,
   WebhookSchema,
   UpdateOrganizationSchema,
   AuditQuerySchema,
@@ -130,4 +146,7 @@ module.exports = {
   ToolUpdateSchema,
   ToolListSchema,
   ToolIdSchema,
+  InviteCreateSchema,
+  InviteTokenSchema,
+  ChangeRoleSchema,
 };

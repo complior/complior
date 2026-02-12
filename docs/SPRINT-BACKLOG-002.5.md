@@ -3,9 +3,11 @@
 **Sprint Goal:** Обеспечить org-centric регистрацию с invite flow, team management и enforcement тарифных лимитов (maxUsers, maxTools).
 **Статус:** ✅ Утверждено PO (2026-02-12)
 
-**Capacity:** ~24 SP | **Duration:** 2 weeks
-**Developer:** Max (Backend+QA, US-031..036) + Nina (Frontend+UX, US-037)
-**Baseline:** 115 tests (Sprint 1-2) → **New: 38 tests (total: ~153)**
+**Capacity:** ~17 SP | **Duration:** 2 weeks
+**Developer:** Max (Backend+QA, US-031..036)
+**Baseline:** 115 tests (Sprint 1-2) → **New: 34 tests (total: ~149)**
+
+> **Frontend deferred:** US-037 (Team Settings + Accept Invite Page, 7 SP) перенесена в отдельный frontend-спринт. Текущий спринт — только backend API.
 
 **Контекст разработки:** Вся реализация ДОЛЖНА соответствовать правилам, описанным в `docs/CODING-STANDARDS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md` и `docs/DATA-FLOWS.md`. В частности: DDD/Onion слои (domain → application → api), VM-sandbox (никаких `require()` в `app/`), CQS, factory functions вместо классов, Zod-валидация на всех API, explicit `resolveSession`/`checkPermission` в каждом handler, multi-tenancy через `organizationId`. Тарифные лимиты определены в `app/config/plans.js` (single source of truth).
 
@@ -290,41 +292,9 @@ US-037 (Frontend: Team page) — после US-032..035
 
 ---
 
-### Phase 6: Frontend (7 SP)
+### ~~Phase 6: Frontend (7 SP) — DEFERRED~~
 
-#### US-037: Team Settings Page + Accept Invite Page (7 SP)
-
-- **Feature:** 02 | **Developer:** Nina
-
-##### Описание
-Как owner/admin, я хочу страницу управления командой, а как приглашённый — страницу принятия приглашения.
-
-##### Реализация
-- Новый: `frontend/app/settings/team/page.tsx` — Team tab в Settings:
-  - Members table + pending invites
-  - [Mitglied einladen] → InviteDialog (email + role dropdown)
-  - PlanLimitBar: "3 von 5 Benutzer"
-  - Role change dropdown (owner only)
-  - Remove + Revoke/Resend actions
-- Новый: `frontend/app/invite/accept/page.tsx` — Accept invitation:
-  - Verify token → show org name + role
-  - If not registered → redirect to Ory registration with return URL
-  - If logged in → POST accept, redirect to dashboard
-- Новый: `frontend/components/team/TeamMemberList.tsx` — members table
-- Новый: `frontend/components/team/InviteDialog.tsx` — invite modal
-- Новый: `frontend/components/team/PlanLimitBar.tsx` — "3 of 5 users" progress bar
-- Изменён: `frontend/components/auth/RegisterStep2.tsx` — **удалить кнопку [Überspringen]** (Step 2 mandatory)
-
-##### Критерии приёмки
-- [ ] Members table с name, email, role, status, actions
-- [ ] Invite dialog с validation
-- [ ] Plan limit indicator + disabled invite when full
-- [ ] Accept page: verify → register/login → join org
-- [ ] Step 2 mandatory (no skip)
-- [ ] Responsive, WCAG AA
-
-- **Tests:** 4 (frontend component tests)
-- **Dependencies:** US-032, US-033, US-034, US-035
+> **US-037** (Team Settings Page + Accept Invite Page, 7 SP, Nina) перенесена в отдельный frontend-спринт. Backend API готов — фронтенд реализуется позже.
 
 ---
 
@@ -338,15 +308,14 @@ US-037 (Frontend: Team page) — после US-032..035
 | Team List | US-034 | 2 |
 | Team Manage | US-035 | 3 |
 | maxTools | US-036 | 2 |
-| Frontend | US-037 | 7 |
-| **Total** | **7 stories** | **24 SP** |
+| ~~Frontend~~ | ~~US-037~~ | ~~7~~ (deferred) |
+| **Total** | **6 stories** | **17 SP** |
 
 ---
 
-## New Files (17 backend + 5 frontend)
+## New Files (12 backend)
 
 ```
-# Backend
 app/schemas/Invitation.js
 app/domain/iam/services/SubscriptionLimitChecker.js
 app/application/billing/getOrgLimits.js
@@ -359,26 +328,17 @@ app/api/team/invite.js
 app/api/team/acceptInvite.js
 app/api/team/list.js
 app/api/team/manage.js
-
-# Frontend
-frontend/app/invite/accept/page.tsx
-frontend/app/settings/team/page.tsx
-frontend/components/team/TeamMemberList.tsx
-frontend/components/team/InviteDialog.tsx
-frontend/components/team/PlanLimitBar.tsx
 ```
 
-## Modified Files (7)
+## Modified Files (6)
 
 ```
 app/application/iam/syncUserFromOry.js     — check pending invitation before creating org
 app/application/inventory/registerTool.js  — add maxTools enforcement
 app/lib/tenant.js                          — add 'Invitation' to TENANT_TABLES
 app/seeds/roles.js                         — add Invitation permissions + UPGRADE admin
-app/seeds/plans.js                         — новые лимиты
 server/lib/schemas.js                      — InviteCreateSchema, ChangeRoleSchema, InviteTokenSchema
 server/lib/errors.js                       — add PlanLimitError class
-frontend/components/auth/RegisterStep2.tsx — удалить кнопку [Überspringen]
 ```
 
 ## New Test Files
@@ -390,7 +350,7 @@ tests/invite-accept.test.js           (8 tests)
 tests/team-api.test.js                (4 tests)
 tests/team-manage.test.js             (8 tests)
 + 4 tests в существующем tool-crud.test.js (maxTools enforcement)
-Total: 38 new tests (115 → ~153)
+Total: 34 new tests (115 → ~149)
 ```
 
 ---
@@ -430,13 +390,13 @@ Total: 38 new tests (115 → ~153)
 
 - [ ] `npm run lint` — 0 errors
 - [ ] `npm run type-check` — 0 errors
-- [ ] `npm test` — ~153 tests, 0 failures
-- [ ] Invite flow E2E: create invite → verify token → register → joins correct org with correct role
+- [ ] `npm run lint` — 0 errors
+- [ ] `npm test` — ~149 tests, 0 failures
+- [ ] Invite flow: create invite → verify token → register → joins correct org with correct role
 - [ ] maxUsers: invite blocked at plan limit (403 PLAN_LIMIT_EXCEEDED)
 - [ ] maxTools: tool registration blocked at plan limit (403 PLAN_LIMIT_EXCEEDED)
 - [ ] Team management: list members, change role, remove member, revoke invite
 - [ ] Modified webhook: invitation email → join existing org (not new)
-- [ ] Registration Step 2: mandatory (no skip button)
 - [ ] Multi-tenancy on all new endpoints
 - [ ] AuditLog on all mutations
 - [ ] Zod validation on all new APIs
