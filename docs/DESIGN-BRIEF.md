@@ -1,12 +1,14 @@
 # Design Brief for Nina — Sprint 3+
 
-**Version:** 2.6.0
+**Version:** 2.7.0
 **Date:** 2026-02-12
 **From:** PO
 **For:** Nina (Frontend+UX, Claude Opus 4.6)
-**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 4 (Eva)
-**Ref:** PRODUCT-BACKLOG.md v3.3.0, wireframes/sprint-1-2-wireframes.md
+**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 4 (Eva) + Sprint 5+ (Lead Gen, Pricing)
+**Ref:** PRODUCT-BACKLOG.md v3.4.0, wireframes/sprint-1-2-wireframes.md
 
+> **v2.7.0 (2026-02-12):** Sprint 3 Additions — 4 новых экрана: Screen 18 (Provider-Lite Wizard, reserved Sprint 7+), Screen 19 (Pricing Page `/pricing`), Screen 20 (Quick Check `/check`), Screen 21 (Penalty Calculator `/penalty-calculator`). Screen 01 Landing: обновлён Hero CTA + секция "Free Tools" + dual messaging. Всего: **21 экран**.
+>
 > **v2.6.0 (2026-02-12):** Screen 08 Wizard: AITool = Use Case (Anwendungsfall). Step 2 расширен: `useCaseDetails`, `decisionImpact`, `deploymentDate`. Step 3: добавлено `employeesInformed` (Art. 26(7)). Screen 07: помечен DEPRECATED (заменён Screen 11). Tooltip на Step 2: "один продукт → несколько use cases".
 >
 > **v2.5.0 (2026-02-12):** Весь UI переведён на **английский** (немецкая версия — post-MVP через i18n). Описания в документе на русском. Sprint 2.5 — Screen 03 Register: Step 2 mandatory (удалён [Skip]). Screen 16 Settings: добавлен Team tab spec. Новая страница: Accept Invitation (`/invite/accept`). Backend API: `/api/team/*` endpoints. Design System: PlanLimitBar, InviteDialog, TeamMemberList.
@@ -25,7 +27,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 ---
 
-## Полный список экранов (17 screens)
+## Полный список экранов (21 screens)
 
 ### Группа A — Публичные (до авторизации)
 
@@ -70,6 +72,15 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 | 16b | **Accept Invitation** | `/invite/accept` | 2.5 | **NEW** — Проверка токена, показ org + role, регистрация/логин, присоединение к org |
 | 17 | **AI Literacy Dashboard** | `/literacy` | 8+ | Progress bar, per-role breakdown, certificates |
 
+### Группа F — Sprint 3 Additions (NEW Screens)
+
+| # | Экран | Роут | Sprint | Статус | Описание |
+|---|-------|------|--------|--------|----------|
+| 18 | **Provider-Lite Wizard** | `/provider-check` | 7+ | RESERVED | 5-step wizard for bootstrapped AI startups |
+| 19 | **Pricing Page** | `/pricing` | 5 | **NEW** | 5-tier comparison table, monthly/annual toggle, FAQ |
+| 20 | **Quick Check** | `/check` | 5 | **NEW** | Public, no auth. 5-step micro-wizard → email gate → result |
+| 21 | **Penalty Calculator** | `/penalty-calculator` | 5 | **NEW** | Public, no auth. Revenue input → max fine → shareable card |
+
 ---
 
 ## Детальные спецификации — Группа A (Публичные)
@@ -79,15 +90,22 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 **Wireframe:** `wireframes/sprint-1-2-wireframes.md` → Section 1
 
 **Секции (сверху вниз):**
-1. **Navbar** — Логотип `[🛡] AI Act Compliance` + nav: Features, Pricing, Contact + [Sign In] [Get Started Free]
-2. **Hero** — H1: "AI Act Compliance for Your Company", subtitle: "The self-service platform for EU AI Act compliance. For companies that USE AI — not build it.", 2 CTA кнопки + 3 trust bullets (Art. 4, 70% non-compliant, from €49)
+1. **Navbar** — Логотип `[🛡] AI Act Compliance` + nav: Features, Free Tools, Pricing, Contact + [Sign In] [Get Started Free]
+2. **Hero** — H1: "AI Act Compliance for Your Company", subtitle: "The self-service platform for EU AI Act compliance. For companies that USE AI — not build it.", 3 CTA: [Get Started Free] primary + [Free Quick Check] secondary + [See Pricing] ghost. 3 trust bullets (Art. 4 mandatory, 70% non-compliant, from $49/mo)
 3. **Features Grid** — 6 карточек (2x3): AI Tool Inventory, AI Literacy, Risk Classification, FRIA & Documentation, Eva AI Assistant, Compliance Dashboard
-4. **Pricing** — 4 тарифа рядом: Free (€0), Starter (€49), Growth (€149, "most popular" badge), Scale (€399)
-5. **EU Trust Bar** — 6 логотипов EU-сервисов с флагами: 🇩🇪 Hetzner, 🇫🇷 Brevo, 🇪🇪 Plausible, 🇩🇪 Ory, 🇫🇷 Mistral, 🇱🇹 Better Uptime + "Your data NEVER leaves the EU"
-6. **Final CTA** — Большая центрированная кнопка
-7. **Footer** — © + юридические ссылки
+4. **Free Tools** (NEW) — 3 карточки inline:
+   - **Quick Check:** "Does the AI Act apply to you? Find out in 2 minutes." [Check Now →] → `/check`
+   - **Penalty Calculator:** "What's your max AI Act fine?" [Calculate →] → `/penalty-calculator`
+   - **Free Classification:** "Classify 1 AI tool for free." [Try Now →] → `/auth/register`
+5. **Dual Messaging** (NEW) — 2 колонки:
+   - Left: **"Using AI in your company?"** (deployers) — 3 bullets + [Start Compliance →] primary
+   - Right: **"Building AI for the EU market?"** (provider-lite) — 3 bullets + "Coming soon" badge + [Join Waitlist →] secondary
+6. **Pricing** — 5 тарифов: Free ($0), Starter ($49), Growth ($149, "Most popular" badge), Scale ($399), Enterprise ("Contact us"). Toggle: Monthly / Annual (20% off). Link: [Full comparison →] `/pricing`
+7. **EU Trust Bar** — 6 логотипов EU-сервисов с флагами: 🇩🇪 Hetzner, 🇫🇷 Brevo, 🇪🇪 Plausible, 🇩🇪 Ory, 🇫🇷 Mistral, 🇱🇹 Better Uptime + "Your data NEVER leaves the EU"
+8. **Final CTA** — Большая центрированная кнопка
+9. **Footer** — © + юридические ссылки
 
-**Mobile:** Одноколоночный, карточки стопкой, hamburger-меню, pricing прокручивается горизонтально
+**Mobile:** Одноколоночный, карточки стопкой, hamburger-меню, pricing прокручивается горизонтально, Free Tools — стопка карточек
 
 ---
 
@@ -719,7 +737,15 @@ designs/
 ├── 14-eva-chat-mobile.png            ← Sprint 4 P0
 ├── 15-fria-wizard.png
 ├── 16-settings.png
-└── 17-literacy-dashboard.png
+├── 17-literacy-dashboard.png
+├── 18-provider-lite-wizard.png       ← Sprint 7+ RESERVED
+├── 19-pricing-desktop.png            ← Sprint 5 P1
+├── 19-pricing-mobile.png             ← Sprint 5 P1
+├── 20-quick-check-desktop.png        ← Sprint 5 P1
+├── 20-quick-check-result.png         ← Sprint 5 P1
+├── 20-quick-check-mobile.png         ← Sprint 5 P1
+├── 21-penalty-calculator-desktop.png ← Sprint 5 P1
+└── 21-penalty-calculator-mobile.png  ← Sprint 5 P1
 ```
 
 ---
@@ -764,6 +790,191 @@ designs/
 - `docs/PRODUCT-BACKLOG.md` — Описания фич
 - Mood board: Linear, Vercel Dashboard, Stripe Dashboard, Vanta
 - Избегать: consumer apps, gamified UX, тяжёлые иллюстрации
+
+---
+
+## Детальные спецификации — Группа F (Sprint 3 Additions)
+
+### Screen 18: Provider-Lite Wizard `/provider-check` (RESERVED, Sprint 7+)
+
+**Ref:** PRODUCT-BACKLOG Feature 21
+
+> **Reserved screen.** Детальный wireframe будет создан в Sprint 7. Краткое описание:
+
+- 5-step wizard для bootstrapped AI startups (<50 employees)
+- Steps: "Building AI?" → Product domain → End users → EU clients? → Risk level + provider obligations
+- Output: Compliance Checklist (PDF) + EU Market Readiness Score
+- Visual style: аналогичен Screen 08 (5-Step Wizard), но provider-focused вопросы
+- No detailed wireframe at this stage
+
+---
+
+### Screen 19: Pricing Page `/pricing`
+
+**Ref:** PRODUCT-BACKLOG Feature 09
+
+**Layout (centered, max-w-6xl):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Simple, transparent pricing                                 │
+│  Start free. Upgrade when you need more.                     │
+│                                                             │
+│  [Monthly] ● [Annual — Save 20%]                            │
+│                                                             │
+├──────┬──────┬──────┬──────┬──────────┤
+│ Free │Start.│Growth│Scale │Enterprise│
+│  $0  │ $49  │ $149 │ $399 │ Contact  │
+│      │ /mo  │ /mo  │ /mo  │   us     │
+│      │      │ MOST │      │          │
+│      │      │POPULAR     │          │
+├──────┼──────┼──────┼──────┼──────────┤
+│ Feature comparison matrix (expandable rows)                 │
+│ AI Tools:        1    5    20   Unlim  Unlim               │
+│ Users:           1    2    10   Unlim  Unlim               │
+│ Employees:       0    15   50   250    Unlim               │
+│ Eva Chat:        ❌   200  1K   Unlim  Unlim               │
+│ Classification:  Basic Full Full Full  Full                │
+│ ...                                                         │
+├─────────────────────────────────────────────────────────────┤
+│  FAQ (accordion)                                             │
+│  • What happens after the 14-day trial?                      │
+│  • Can I switch plans?                                       │
+│  • What payment methods do you accept?                       │
+│  • Is there a contract?                                      │
+│  • What's included in Enterprise?                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Toggle Monthly/Annual:**
+- Default: Monthly selected
+- Annual: показывает сниженные цены ($470/yr, $1,430/yr, $3,830/yr) + "Save 20%" badge
+- Annual prices: per-month equivalent показан мелким текстом ("$39/mo billed annually")
+
+**Enterprise column:**
+- Price: "Custom" (не "Contact us")
+- Все features = "Unlimited" / ✅
+- CTA: [Contact Sales →] → Calendly или email form
+- Features: white-label, on-premise, SLA, dedicated Eva
+
+**Mobile:** Pricing cards горизонтальный scroll, Feature matrix → accordion
+
+---
+
+### Screen 20: Quick Check `/check`
+
+**Ref:** PRODUCT-BACKLOG Feature 23
+
+**Public page, no auth required.**
+
+**Layout (centered, max-w-lg, step-by-step micro-wizard):**
+
+```
+┌─────────────────────────────────────────┐
+│  [🛡] AI Act Compliance                  │
+│                                          │
+│  Does the AI Act apply to your company? │
+│  Find out in 2 minutes.                 │
+│                                          │
+│  Step 1 of 5                   ●○○○○    │
+│                                          │
+│  Does your company use AI tools?        │
+│  (ChatGPT, Copilot, AI analytics...)    │
+│                                          │
+│  ○ Yes, we actively use AI              │
+│  ○ We're planning to use AI             │
+│  ○ I'm not sure                         │
+│  ○ No, we don't use AI                  │
+│                                          │
+│  [Next →]                               │
+│                                          │
+└─────────────────────────────────────────┘
+```
+
+**5 Steps:**
+1. "Does your company use AI tools?" (radio: Yes/Planning/Not sure/No)
+2. "How many employees?" (radio: 1-10/11-50/51-200/200+)
+3. "Do you have EU clients or EU operations?" (radio: Yes/No/Unsure)
+4. "Do you use AI in any of these areas?" (multi-select: HR & Recruitment, Healthcare, Finance & Insurance, Education, Law enforcement, None of these)
+5. "Enter your email for your personalized result" (email input + consent checkbox)
+
+**Result page (after email submission):**
+```
+┌─────────────────────────────────────────┐
+│  Your AI Act Assessment                  │
+│                                          │
+│  ⚠️ The AI Act likely applies to you     │
+│                                          │
+│  📋 5 obligations identified             │
+│  🟠 2 potential high-risk areas          │
+│  📚 AI Literacy training required        │
+│                                          │
+│  Key findings:                           │
+│  • Art. 4 AI Literacy — already mandatory│
+│  • HR AI usage → Annex III high-risk     │
+│  • Art. 26 deployer obligations apply    │
+│                                          │
+│  [Create Free Account →] primary         │
+│  [Start 14-day Trial →] secondary        │
+│                                          │
+└─────────────────────────────────────────┘
+```
+
+**Mobile:** Full-width, same layout, buttons full-width
+
+---
+
+### Screen 21: Penalty Calculator `/penalty-calculator`
+
+**Ref:** PRODUCT-BACKLOG Feature 23
+
+**Public page, no auth required.**
+
+**Layout (centered, max-w-md):**
+
+```
+┌─────────────────────────────────────────┐
+│  [🛡] AI Act Compliance                  │
+│                                          │
+│  AI Act Penalty Calculator              │
+│  What's the maximum fine for your       │
+│  company?                               │
+│                                          │
+│  Annual Revenue (EUR)                    │
+│  ┌─────────────────────────────────┐    │
+│  │  € 5,000,000                    │    │
+│  └─────────────────────────────────┘    │
+│                                          │
+│  [Calculate Maximum Fine]               │
+│                                          │
+├─────────────────────────────────────────┤
+│                                          │
+│  Your Maximum Penalties                  │
+│                                          │
+│  🔴 Prohibited AI practices             │
+│     €35,000,000                          │
+│     (7% of turnover or €35M,            │
+│      whichever is higher)                │
+│                                          │
+│  🟠 High-risk non-compliance            │
+│     €15,000,000                          │
+│     (3% of turnover or €15M)            │
+│                                          │
+│  🟡 Other violations                    │
+│     €7,500,000                           │
+│     (1.5% of turnover or €7.5M)        │
+│                                          │
+│  [Share Result] [Create Account →]      │
+│                                          │
+│  Art. 99 EU AI Act                      │
+└─────────────────────────────────────────┘
+```
+
+**OG Card (для sharing):**
+- Generated server-side: "Your max AI Act penalty: €X — Calculate yours at [URL]"
+- Route: `/penalty-calculator?revenue=5000000` → pre-fill + og:image
+
+**Mobile:** Same layout, full-width input and results
 
 ---
 

@@ -1,11 +1,13 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 2.2.0
+**Версия:** 2.3.0
 **Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md v2.1.0
 
+> **v2.3.0 (2026-02-12):** Sprint 3 Additions — AIToolCatalog category enum: added `api_platform`. Plan seed data: replaced duplicated values with reference to `app/config/plans.js` (Pricing v3.0). Catalog seed: 200+ → 220+ tools.
+>
 > **v2.2.0 (2026-02-12):** AI Act roles + Use Case model. Organization: добавлено `aiActRoles` (jsonb, default ["deployer"]) — 4 роли по AI Act (provider, deployer, distributor, importer). AITool: концепция "AITool = Use Case (Anwendungsfall)"; добавлены поля `useCaseDetails`, `decisionImpact`, `deploymentDate`, `employeesInformed` (Art. 26). Plan seed data вынесены в `app/config/plans.js` (single source of truth).
 >
 > **v2.1.0 (2026-02-12):** Sprint 2.5 — Invite Flow + Team Management. Новая таблица: Invitation (IAM Context). Обновлены seed data Plan (free=5 tools, starter=15, growth=25, scale=100, eva=-1 everywhere). IAM context: 5 → 6 таблиц. Всего: **30 таблиц** в 8 Bounded Contexts.
@@ -730,7 +732,7 @@ erDiagram
   category: {
     enum: ['chatbot', 'recruitment', 'coding', 'analytics', 'customer_service',
            'marketing', 'writing', 'image_generation', 'video', 'translation',
-           'medical', 'legal', 'finance', 'education', 'other'],
+           'medical', 'legal', 'finance', 'education', 'api_platform', 'other'],
   },
   defaultRiskLevel: {
     enum: ['high', 'limited', 'minimal'],
@@ -745,7 +747,7 @@ erDiagram
 });
 ```
 
-**Seed Data:** 200+ AI-инструментов (ChatGPT, Copilot, Jasper, HireVue, Personio AI, Slack AI, Notion AI, etc.)
+**Seed Data:** 220+ AI-инструментов (ChatGPT, Copilot, Jasper, HireVue, Personio AI, Slack AI, Notion AI, OpenAI API, Anthropic Claude API, Google Vertex AI, Azure OpenAI, AWS Bedrock, etc.). Categories include `api_platform` for developer-facing API services.
 
 ---
 
@@ -1512,37 +1514,11 @@ const requirements = [
 ];
 ```
 
-### Pricing Plans (Plan table) — deployer funnel
+### Pricing Plans (Plan table) — Pricing v3.0
 
-```javascript
-// Sprint 2.5: обновлённые лимиты (щедрее для конверсии, eva=-1 everywhere)
-const plans = [
-  // Free: AI Act Quick Check (lead magnet) + Eva unlimited + KI-Compass newsletter
-  { name: 'free', displayName: 'Free', priceMonthly: 0,
-    maxTools: 5, maxUsers: 1, maxEmployees: 0,
-    features: { quickCheck: true, eva: -1, newsletter: true } },
-
-  // Starter (€49): AI Literacy wedge product + classification
-  { name: 'starter', displayName: 'Starter', priceMonthly: 4900,
-    maxTools: 15, maxUsers: 3, maxEmployees: 0,
-    features: { literacy: true, eva: -1, classification: 'full' } },
-
-  // Growth (€149): Full Compliance — inventory + dashboard + gap + FRIA + Eva + KI-Siegel
-  { name: 'growth', displayName: 'Growth', priceMonthly: 14900,
-    maxTools: 25, maxUsers: 10, maxEmployees: 0,
-    features: { literacy: true, fria: true, eva: -1, gapAnalysis: true, siegel: true, documents: 'full' } },
-
-  // Scale (€399): Unlimited + auto-discovery + API + post-market monitoring
-  { name: 'scale', displayName: 'Scale', priceMonthly: 39900,
-    maxTools: 100, maxUsers: 50, maxEmployees: 0,
-    features: { literacy: true, fria: true, eva: -1, gapAnalysis: true, autoDiscovery: true, api: true, monitoring: true, siegel: true, documents: 'full' } },
-
-  // Enterprise: Custom + on-premise agent
-  { name: 'enterprise', displayName: 'Enterprise', priceMonthly: -1,
-    maxTools: -1, maxUsers: -1, maxEmployees: -1,
-    features: { all: true, onPremise: true, sla: true, whiteLabel: true } },
-];
-```
+> **Source of truth:** `app/config/plans.js` — single source for all plan limits, features, and pricing. This section references that file to avoid duplication.
+>
+> **Key changes in v3.0:** Free=1 tool/no Eva, Starter=5 tools/200 Eva msg, Growth=20 tools/1000 msg, Scale=unlimited. Employee limits added. Annual 20% discount. 14-day trial (card required for paid plans).
 
 ---
 

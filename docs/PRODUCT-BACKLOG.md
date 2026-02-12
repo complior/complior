@@ -1,6 +1,6 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform (Deployer-First)
 
-**Версия:** 3.3.0
+**Версия:** 3.4.0
 **Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ✅ Утверждено PO (2026-02-10)
@@ -9,6 +9,16 @@
 ---
 
 ## Changelog
+
+### v3.4.0 (2026-02-12) — Sprint 3 Additions (6 Proposals)
+- **Pricing v3.0:** Free=1 tool/no Eva, Starter=5/200msg, Growth=20/1000msg, Scale=unlimited. Annual 20%, 14-day trial. Source: `app/config/plans.js`
+- **Feature 06 (Eva):** Eva Guard — 3-level protection (system prompt + Mistral Small 3.1 pre-filter + output monitoring). Eva message limits per plan.
+- **Feature 09 (Billing):** 14-day trial (card required), annual toggle (20% discount), Stripe trial_period
+- **Feature 18 (AI Literacy):** Content: English-first (default), DE + FR post-MVP
+- **NEW Feature 21:** Provider-Lite Wizard (P2, Sprint 7-8)
+- **NEW Feature 22:** Compliance Checklist Generator (P2, Sprint 7+)
+- **NEW Feature 23:** Free Lead Generation Tools (P1, Sprint 5)
+- **Catalog:** +20 API platform tools (`api_platform` category)
 
 ### v3.3.0 (2026-02-12) — AI Act Roles + Use Case Model
 - **Feature 03:** AITool = Use Case (Anwendungsfall), не программный продукт. Новые wizard-поля: `useCaseDetails`, `decisionImpact`, `deploymentDate`, `employeesInformed` (Art. 26)
@@ -135,15 +145,17 @@ As a CTO компании, работающей с EU-клиентами, I want
 - **SubscriptionLimitChecker:** чистый domain service (без I/O), -1 = unlimited, 0 = blocked
 - **PlanLimitError:** новый класс ошибки (403 PLAN_LIMIT_EXCEEDED + limitType, current, max)
 
-### Обновлённые тарифные лимиты (Sprint 2.5)
+### Тарифные лимиты
 
-| Plan | maxTools | maxUsers | maxEmployees | features.eva |
+> **Source of truth:** `app/config/plans.js` (Pricing v3.0). Краткий обзор:
+
+| Plan | maxTools | maxUsers | maxEmployees | Eva (msg/мес) |
 |------|---------|---------|-------------|-------------|
-| free | 5 | 1 | 0 | -1 (unlimited) |
-| starter | 15 | 3 | 0 | -1 (unlimited) |
-| growth | 25 | 10 | 0 | -1 (unlimited) |
-| scale | 100 | 50 | 0 | -1 (unlimited) |
-| enterprise | -1 | -1 | -1 | all |
+| free | 1 | 1 | 0 | 0 (нет) |
+| starter | 5 | 2 | 15 | 200 |
+| growth | 20 | 10 | 50 | 1,000 |
+| scale | -1 (unlimited) | -1 | 250 | -1 (unlimited) |
+| enterprise | -1 | -1 | -1 | -1 (unlimited) |
 
 ### MVP Scope
 - Ory setup в Docker Compose + Brevo SMTP integration
@@ -243,7 +255,7 @@ As an HR director, I want to ensure all employees complete AI literacy training,
 
 ### Описание
 
-**Обучающий контент (собственный, на немецком):**
+**Обучающий контент (собственный, English-first, DE + FR post-MVP):**
 - 4 role-based курса:
 
 | Курс | Для кого | Модулей | Длительность |
@@ -489,11 +501,51 @@ As a CTO, I want an AI assistant that helps me discover and register all AI tool
 - Context injection: AI-инструменты компании, risk levels, compliance status
 - Rate limiting по плану
 
+### Eva Guard — 3-Level Protection
+
+Без защиты Eva = бесплатный ChatGPT за наш счёт. 3-уровневая система:
+
+**Level 1: System Prompt (topic scope)**
+- Scope: EU AI Act, deployer obligations, company AI tools, compliance status
+- Refuse patterns: code generation, creative writing, personal questions, non-EU-regulation topics
+- Redirect template: "I can only help with AI Act compliance. Try asking about your AI tools or deployer obligations."
+
+**Level 2: Pre-filter — Mistral Small 3.1**
+- Каждое пользовательское сообщение → Mistral Small 3.1 → `ON_TOPIC` / `OFF_TOPIC` classification
+- ON_TOPIC → forward to Mistral Large 3 (standard Eva flow)
+- OFF_TOPIC → canned response (skip Large = save cost), no token consumption
+- Cost: ~$0.00001/check (negligible, $0.03/1M input tokens)
+
+**Level 3: Output Monitoring**
+- Логирование всех Eva interactions (topic classification, token count, response quality)
+- Weekly sampling: 5% случайных разговоров для ревью качества
+- Off-topic cooldown: 3 strikes → 5-min cooldown на Eva для пользователя
+- Metrics: on-topic rate, avg tokens per conversation, off-topic patterns
+
+**Cost comparison (1000 клиентов, 500 msg/day):**
+
+| Без Guard | С Guard |
+|-----------|---------|
+| All 500 → Large ($2.50/day) | 450 on-topic → Large ($2.25) + 50 off-topic → Small ($0.001) |
+| $75/мес | $67.53/мес (10% savings + quality protection) |
+
+### Eva Message Limits
+
+| Plan | Eva Messages/мес | При исчерпании |
+|------|:---:|---|
+| Free | 0 | Eva недоступна. CTA: "Upgrade to Starter" |
+| Starter | 200 | Сообщение: "Quota reached. Upgrade or wait until next month." |
+| Growth | 1,000 | Сообщение: "Quota reached. Upgrade to Scale for unlimited." |
+| Scale | Unlimited | — |
+| Enterprise | Unlimited + SLA | Dedicated instance option |
+
 ### MVP Scope
 - Conversational onboarding: discovery AI-инструментов + auto-fill wizard через диалог
 - Deployer Q&A со streaming via Vercel AI SDK `streamText` + `useChat`
 - Контекстные ответы (видит AI-инструменты и compliance status)
 - RAG по EU AI Act knowledge base
+- Eva Guard (all 3 levels)
+- Eva message quota enforcement per plan
 - Без tool calling (добавляется в Feature 10)
 
 ### Зависимости
@@ -620,9 +672,13 @@ Elena: валидация FRIA шаблона на соответствие Art.
 
 ### Описание
 - Stripe Checkout integration
-- 5 тарифов: Free, Starter (€49), Growth (€149), Scale (€399), Enterprise (custom)
-- Feature limits: maxTools, maxUsers, maxEmployees, maxMessages из Plan
-- Pricing page с comparison table
+- 5 тарифов: Free, Starter ($49), Growth ($149), Scale ($399), Enterprise (custom)
+- Feature limits: maxTools, maxUsers, maxEmployees, Eva messages из Plan (`app/config/plans.js`)
+- Pricing page (`/pricing`) с comparison table и toggle Monthly/Annual
+- **14-day trial** (Starter/Growth/Scale): card required, Stripe `trial_period_days: 14`
+- **Annual billing toggle:** 20% discount (Starter: $470/yr, Growth: $1,430/yr, Scale: $3,830/yr)
+- **Free tier:** no card required, no trial
+- **Enterprise:** "Contact us" flow → Calendly/email, custom pricing
 
 > **Note (Sprint 2.5):** Enforcement infrastructure (SubscriptionLimitChecker, PlanLimitError, getOrgLimits) уже реализована в Sprint 2.5 для maxUsers и maxTools. Sprint 5-6 добавляет Stripe integration + pricing UI, но enforcement logic переиспользуется.
 
@@ -806,6 +862,8 @@ Feature 16 (Shadow AI Discovery)
 
 ## Provider Features (P3 Future)
 
+> **Note:** Provider-Lite (Feature 21, P2) covers bootstrapped AI startups (<50 employees) building for EU market. Full provider features below (Art. 43, 51-56) remain P3 for foundation model companies.
+
 **Когда:** После product-market fit с deployer-сегментом. При запросе от клиентов, которые также являются AI providers.
 
 | Feature | Статья | Описание |
@@ -815,6 +873,103 @@ Feature 16 (Shadow AI Discovery)
 | GPAI Model Cards (Art. 51-56) | Transparency sheets | Для GPAI model providers |
 | CE Declaration (Art. 47) | Conformity declaration | EU Declaration of Conformity |
 | EU DB Registration (Art. 49) | Annex VIII | Pre-fill + submission help |
+
+---
+
+## Feature 21: Provider-Lite Wizard
+
+**Приоритет:** P2 (Could Have) | **Размер:** M | **Спринт:** 7-8
+
+### Бизнес-ценность
+As a bootstrapped AI startup building for the EU market, I want a guided wizard that assesses my provider obligations, so that I understand what compliance steps are needed before launching.
+
+### Описание
+
+**Target:** Bootstrapped AI startups (<50 employees) building AI products for EU market. NOT foundation model companies (GPAI).
+
+**Provider-Lite Wizard (5 steps):**
+1. "Are you building an AI product?" → Yes/No
+2. Product domain (what does your AI do?)
+3. End users — who are they? Where are they?
+4. EU clients? → Art. 2 extraterritorial scope check
+5. Risk level as provider → obligations (Art. 6/9/11/16)
+
+**Sub-features:**
+- **Compliance Checklist Generator:** Personalized checklist based on wizard answers → downloadable PDF (via Gotenberg)
+- **EU Market Readiness Score:** 0-100% score with breakdown by category (technical docs, conformity, registration)
+- **Provider Starter Kit:** Templates for Art. 11 basic tech documentation (simplified, not full Annex IV)
+
+### MVP Scope
+- Guided wizard (5 steps)
+- Compliance Checklist PDF
+- EU Market Readiness Score
+
+### Зависимости
+Feature 01 (infrastructure), Feature 02 (IAM)
+
+---
+
+## Feature 22: Compliance Checklist Generator
+
+**Приоритет:** P2 (Could Have) | **Размер:** S | **Спринт:** 7+
+
+### Бизнес-ценность
+As a compliance officer, I want a personalized downloadable checklist for my organization, so that I have a clear paper-based action plan.
+
+### Описание
+- Input: organization's AI tools + risk levels + AI Act role (deployer/provider-lite)
+- Output: personalized compliance checklist PDF
+- Per-tool breakdown: tool name, risk level, applicable articles, requirements status
+- Organization summary: total tools, risk distribution, overall compliance score
+- PDF generation via Gotenberg → Hetzner Object Storage
+- Shareable link (optional, with org consent)
+
+### Зависимости
+Feature 04a/b/c (classification), Feature 07 (doc generation infrastructure)
+
+---
+
+## Feature 23: Free Lead Generation Tools
+
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 5
+
+### Бизнес-ценность
+As a potential customer, I want free tools to check if AI Act applies to me, so that I can assess the urgency before committing to a paid plan.
+
+### Описание
+
+**3 public tools (no auth required, email-gated):**
+
+**(a) Quick Check (`/check`):**
+- 5-step micro-wizard:
+  1. "Does your company use AI tools?" (Yes/No)
+  2. "How many employees?" (1-10 / 11-50 / 51-200 / 200+)
+  3. "Do you have EU clients or EU operations?" (Yes/No)
+  4. "Do you use AI in HR, healthcare, or finance?" (Yes/No/Unsure)
+  5. Email input → instant result
+- Result: "X obligations apply, Y potential high-risk areas"
+- CTA: "Create free account for full assessment"
+
+**(b) Penalty Calculator (`/penalty-calculator`):**
+- Revenue input (annual turnover)
+- Art. 99 formula: max(7% of turnover, €35M) for prohibited; max(3%, €15M) for high-risk
+- Visual: animated counter to max fine
+- Shareable OG card: "Your max AI Act penalty: €X"
+- CTA: "Reduce your risk — Start compliance now"
+
+**(c) Free Classification:**
+- 1 tool from catalog → full wizard → full classification result
+- Same flow as Feature 03/04a but limited to 1 tool for unregistered users
+- After result: "Add more tools → Create account (Free) or Start trial (Starter)"
+
+**Technical:**
+- Public endpoints, no auth
+- Rate limiting: 10 requests/IP/hour via @fastify/rate-limit
+- Email capture → Brevo transactional API → lead list
+- No account created until user explicitly signs up
+
+### Зависимости
+Feature 01 (infrastructure), Feature 04a (classification for Free Classification)
 
 ---
 
@@ -842,7 +997,8 @@ Feature 16 (Shadow AI Discovery)
 | 07 | Deployer Doc Generation | L | 4-5 |
 | 08 | Gap Analysis | M | 5 |
 | 19 | FRIA Generator (Art. 27) | M | 5 |
-| 09 | Billing | M | 5-6 |
+| **23** | **Free Lead Gen Tools (Quick Check, Penalty Calc, Free Classification)** | **M** | **5** |
+| 09 | Billing (trial + annual) | M | 5-6 |
 | 10 | Eva tool calling | S | 6 |
 | 11 | Onboarding + Notifications | M | 6 |
 
@@ -854,8 +1010,10 @@ Feature 16 (Shadow AI Discovery)
 |---|---------|--------|--------|
 | 12 | Regulatory Monitor | M | 7 |
 | 20 | KI-Compliance Siegel | S | 7 |
+| **21** | **Provider-Lite Wizard** | **M** | **7-8** |
+| **22** | **Compliance Checklist Generator** | **S** | **7+** |
 | 13 | Доп. deployer-документы | M | 7-8 |
-| 18 | **AI Literacy Module (WEDGE)** | L | 8+ |
+| 18 | **AI Literacy Module (WEDGE, EN-first)** | L | 8+ |
 | 14 | Multi-language (+ DE, FR) | M | post-MVP |
 
 ### P3 — Future
@@ -865,7 +1023,7 @@ Feature 16 (Shadow AI Discovery)
 | 15 | Compliance Copilot | M |
 | 16 | Shadow AI Auto-Discovery (EU) | L |
 | 17 | Autonomous Agent | XL |
-| — | Provider Features (Art. 11, 43, 47, 51-56, 49) | XL |
+| — | Provider Features (Art. 11, 43, 47, 51-56, 49) — full providers only | XL |
 
 ---
 
@@ -878,16 +1036,19 @@ Sprint 2     ████ Feature 03 (end) + Feature 04a: Rules + Feature 04c (m
 Sprint 2.5   ████ Feature 02: Invite Flow + Team Management + Enforcement (24 SP)
 Sprint 3     ████ Feature 04b: History + Feature 04c: Requirements API
                   + Feature 05: Dashboard API + Feature 03: Alternatives
-Sprint 4     ████ Feature 06: Eva Conversational Onboarding
+Sprint 4     ████ Feature 06: Eva (with Eva Guard) Conversational Onboarding
              ── MVP READY ──
-Sprint 5+    ████ Frontend спринты (Dashboard UI, Requirements UI, Eva UI)
-                  + Feature 07: Deployer Docs (start)
-Sprint 6     ████ Feature 07 (end) + Feature 08: Gap + Feature 19: FRIA + Feature 09: Billing
-Sprint 7     ██ Feature 09 (end) + Feature 10: Eva tools + Feature 11: Onboarding
+Sprint 5     ████ Frontend спринты + Feature 07: Deployer Docs (start)
+                  + Feature 23: Free Lead Gen Tools (Quick Check, Penalty Calc)
+Sprint 6     ████ Feature 07 (end) + Feature 08: Gap + Feature 19: FRIA
+                  + Feature 09: Billing (trial + annual)
+Sprint 7     ██ Feature 10: Eva tools + Feature 11: Onboarding
              ── PRODUCT READY ──
-Sprint 8     ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel + Feature 13: Docs
+Sprint 7-8   ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel
+                  + Feature 21: Provider-Lite Wizard + Feature 22: Checklist
+Sprint 8     ████ Feature 13: Docs
              ── FULL SCOPE ──
-Sprint 8+    ████ Feature 18: AI Literacy content + Feature 14: i18n (+ DE, FR)
+Sprint 8+    ████ Feature 18: AI Literacy (EN-first) + Feature 14: i18n (+ DE, FR)
 ```
 
 ---

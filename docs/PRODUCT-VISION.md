@@ -1,13 +1,20 @@
 # Product Vision — AI Act Compliance Platform (Deployer-First)
 
 **Статус:** ✅ Заполнен Product Owner
-**Дата:** 2026-02-08
-**Версия:** 2.0.0 (Deployer-First Pivot)
+**Дата:** 2026-02-12
+**Версия:** 2.1.0 (Sprint 3 Additions)
 **Источники:** project1.pdf, eu_sovereign_llm_strategy.md.pdf, llm_strategy_and_product_ux.md.pdf, COMPETITOR-ANALYSIS.md
 
 ---
 
 ## Changelog
+
+### v2.1.0 (2026-02-12) — Sprint 3 Additions
+- **Global TAM:** Art. 2 extraterritorial scope → 1M+ global deployers (beyond DACH 125K)
+- **Provider-Lite segment:** Secondary ICP for bootstrapped AI startups (<50) building for EU market → P2, Sprint 7-8
+- **Pricing v3.0:** Tighter Free (1 tool, no Eva), Eva message caps, employee limits, 14-day trial, annual 20% discount
+- **Lead Gen tools:** Pre-signup Quick Check, Penalty Calculator, Free Classification — public endpoints, email-gated
+- **Eva Guard:** 3-level protection system (system prompt + Mistral Small 3.1 pre-filter + output monitoring)
 
 ### v2.0.0 (2026-02-08) — Deployer-First Pivot
 - **Стратегический pivot:** universal (providers + deployers) → **deployer-first** (компании, которые ИСПОЛЬЗУЮТ AI)
@@ -22,7 +29,7 @@
 
 ### Проблема (Problem Statement)
 
-**125,000+ компаний в Германии уже используют AI** (Bitkom 2025: 36%, удвоение с 2024). Ещё 47% планируют. Но:
+**1,000,000+ компаний глобально подпадают под EU AI Act** по Art. 2 (экстерриториальное действие, аналог GDPR Art. 3). Среди них 125,000+ в Германии (Bitkom 2025: 36% используют AI), 50,000+ AI-стартапов, сотни тысяч SaaS-компаний, обслуживающих EU-клиентов. Но:
 
 - **70% сотрудников не прошли обучение по AI** — а Art. 4 AI Act (AI Literacy) уже обязателен с 2 февраля 2025
 - **71% сотрудников используют AI без одобрения IT** (shadow AI) — компания даже не знает, какие AI-инструменты используются
@@ -97,16 +104,34 @@
   - Готовы платить €49-399/мес за самообслуживание vs €10K+ за консалтинг
   - English-first UI; DE + FR сразу после MVP
 
-### Вторичная аудитория
+### Вторичная аудитория: Segment B — Provider-Lite (P2, Sprint 7-8)
+
+**Provider-Lite** — bootstrapped AI-стартапы (<50 человек), которые СТРОЯТ AI-продукты для EU-рынка. Не путать с полными AI Providers (foundation models, GPAI) — те остаются вне нашей аудитории.
+
+**Примеры ICP:**
+- SaaS-стартап из UK, добавляющий AI-фичу для EU-клиентов → нужен compliance чеклист по Art. 6/9/11/16
+- AI-рекрутинговый стартап из Берлина (5 человек) → provider high-risk, нужен Annex IV tech docs
+- Американский fintech, использующий AI для EU-кредитного скоринга → provider + deployer obligations
+
+**Messaging:** "Building AI for the EU market? Check your compliance in 5 minutes."
+
+**Продуктовые фичи (Sprint 7+):**
+- Provider-Lite Wizard: "Are you building an AI product?" → домен → конечные пользователи → EU clients? → risk level + provider obligations
+- Compliance Checklist Generator (персонализированный PDF)
+- EU Market Readiness Score
+
+> **Full AI Providers** (foundation models, GPAI model cards, Art. 51-56) — NOT our audience. Для них: Kertos, Credo AI, Holistic AI. Полные provider features остаются P3.
+
+### Другие вторичные аудитории
 - **Консалтинговые компании** — используют как инструмент для своих клиентов (white-label в Enterprise)
 - **HR-tech компании** — AI в рекрутинге = high-risk, нужен compliance
 - **Стартапы** — Free tier для проверки "попадаю ли я под AI Act?"
 
 ### Антипаттерны (кто НЕ наша аудитория)
-- **AI Providers** (строят AI-модели) — для них Kertos, Credo AI, Holistic AI. Мы добавим provider features позже (P3)
+- **Full AI Providers** (строят foundation models, GPAI) — для них Kertos, Credo AI, Holistic AI. Provider-Lite (bootstrapped startups) — наш Segment B
 - Компании, не использующие AI вообще
 - Enterprise-гиганты (>5000 человек) с собственными compliance-отделами
-- Компании вне EU, не работающие с EU-данными
+- Компании вне EU, не работающие с EU-клиентами и не подпадающие под Art. 2
 
 ---
 
@@ -293,6 +318,7 @@
 - No US/CN models для данных клиентов (Mistral only)
 - OWASP Top 10 compliance
 - Rate limiting на public endpoints
+- **Eva topic boundary:** 3-level protection (system prompt scope → Mistral Small 3.1 pre-filter → output monitoring)
 
 ---
 
@@ -384,6 +410,13 @@ So that I fulfill Art. 27 deployer obligations
 │            КОНСУЛЬТАНТ "ЕВА"                        │
 │         Mistral Large 3 API (EU)                    │
 │  Deployer Q&A, помощь пользователям                 │
+│                                                     │
+│  ┌──────────────── EVA GUARD ─────────────────┐     │
+│  │ L1: System Prompt (topic scope, redirects) │     │
+│  │ L2: PRE-FILTER Mistral Small 3.1           │     │
+│  │     ON_TOPIC → Large | OFF_TOPIC → canned  │     │
+│  │ L3: Output monitor (logging, sampling 5%)  │     │
+│  └────────────────────────────────────────────┘     │
 └───────────────────┬─────────────────────────────────┘
           ┌─────────┼─────────┐
           ▼         ▼         ▼
@@ -461,31 +494,44 @@ PRODUCT (данные клиентов):          DEV TEAM (наш код):
 
 ---
 
-## 8. Pricing Tiers (Deployer Funnel)
+## 8. Pricing Tiers v3.0 (Deployer Funnel)
 
-| | Free | Starter €49/мес | Growth €149/мес | Scale €399/мес | Enterprise |
+> **Source of truth:** `app/config/plans.js`. Таблица ниже — для обзора. Prices: $49 / €49 (dual display, stored in EUR cents).
+
+**Lead Gen (без аккаунта):** Quick Check, Penalty Calculator, 1 Free Classification — public, email-gated.
+
+| | Free | Starter $49/мес | Growth $149/мес | Scale $399/мес | Enterprise |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **AI Act Quick Check** | ✅ (5 мин) | ✅ | ✅ | ✅ | ✅ |
-| **AI-инструменты** | 1 | 3 | 10 | Unlimited | Unlimited |
-| **AI Literacy курсы** | - | ✅ (4 курса) | ✅ | ✅ | Custom |
-| **Сотрудники (Literacy)** | - | 10 | 50 | 250 | Unlimited |
+| **AI-инструменты** | 1 | 5 | 20 | Unlimited | Unlimited |
+| **Users** | 1 | 2 | 10 | Unlimited | Unlimited |
+| **Employees** | 0 | 15 | 50 | 250 | Unlimited |
+| **Eva Chat** | ❌ (0 msg) | 200 msg/мес | 1,000 msg/мес | Unlimited | Unlimited + SLA |
 | **Risk Classification** | Basic (1) | Full | Full | Full | Full |
-| **Eva Chat** | 3 вопроса | 10 msg/день | 50 msg/день | Unlimited | SLA + dedicated |
+| **AI Literacy курсы** | - | ✅ (4 курса) | ✅ | ✅ | Custom |
 | **Dashboard** | - | Basic | Full | Full | Full |
+| **Compliance Timeline** | - | ✅ | ✅ | ✅ | ✅ |
+| **CSV Import** | - | Basic | Full | Full | Full |
+| **CSV Import AI tools** | - | - | ✅ | ✅ | ✅ |
+| **Employee Self-Reg** | - | - | ✅ | ✅ | ✅ |
 | **FRIA Generator** | - | - | ✅ | ✅ | ✅ |
 | **Doc Generation** | - | - | ✅ | ✅ | Custom templates |
 | **Gap Analysis** | - | - | ✅ | ✅ | ✅ |
-| **KI-Compliance Siegel** | - | - | ✅ | ✅ Premium | ✅ Premium |
+| **Compliance Badge** | - | - | ✅ | ✅ Premium | ✅ Premium |
 | **Auto-Discovery** | - | - | - | ✅ | ✅ |
 | **API Access** | - | - | - | ✅ | ✅ |
-| **Multi-user** | 1 | 2 | 5 | 20 | Unlimited |
 | **White-label** | - | - | - | - | ✅ |
+| **On-premise** | - | - | - | - | ✅ |
+| **SLA** | - | - | - | - | ✅ |
+| **Trial** | Без карты | 14 дней (карта) | 14 дней (карта) | 14 дней (карта) | — |
+| **Annual discount** | — | 20% off | 20% off | 20% off | Custom |
 
 **Funnel:**
-- **Free** → lead magnet: "Попадаю ли я под AI Act?" + Risk Check 1 инструмента
-- **Starter €49** → wedge product: AI Literacy (уже обязателен!) + 3 инструмента
-- **Growth €149** → full compliance: inventory, dashboard, FRIA, docs, Eva
-- **Scale €399** → enterprise-lite: unlimited + auto-discovery + API
+- **Lead Gen (public)** → Quick Check + Penalty Calculator + 1 Free Classification → email capture → CTA signup
+- **Free** → try 1 tool, no Eva → upgrade path clear
+- **Starter $49** → wedge: AI Literacy + 5 tools + Eva (200 msg) + CSV import
+- **Growth $149** → full compliance: 20 tools, docs, FRIA, gap analysis, badge, employee self-reg
+- **Scale $399** → unlimited tools/users + auto-discovery + API
+- **Enterprise** → custom pricing, on-premise, white-label, SLA
 
 ---
 
@@ -519,12 +565,26 @@ PRODUCT (данные клиентов):          DEV TEAM (наш код):
 
 ## 10. Content Strategy (Lead Generation)
 
+### Pre-signup Lead Magnets (без аккаунта)
+
+Три публичных инструмента с email-gate через Brevo. Покрывают весь top-of-funnel:
+
+| Tool | Route | Цель | Механика |
+|------|-------|------|----------|
+| **Quick Check** | `/check` | Awareness: "Подпадаю ли я?" | 5 вопросов → email → instant result → CTA signup |
+| **Penalty Calculator** | `/penalty-calculator` | Urgency: "Сколько штраф?" | Revenue input → Art. 99 formula (7%/€35M) → shareable OG card |
+| **Free Classification** | `/tools/new` | Product experience | 1 tool из каталога → полный результат → CTA "Add more → Start trial" |
+
+- Public endpoints, rate-limited (10/IP/hour via @fastify/rate-limit)
+- Email capture → Brevo lead list → nurture sequence
+- No auth required, no account created
+
 ### Контентный moat (чего нет ни у кого)
 
 **Немецкоязычная AI Act экосистема фрагментирована** — Bitkom имеет PDF-гайд, IHK — региональные базовые гайды. Нет доминантного ресурса. Мы заполняем этот gap:
 
 1. **KI-Kompass Newsletter** — еженедельный, бесплатный, на немецком. AI Act updates, практические советы
-2. **Free AI Act Compliance Checker** — лучше EU-версии, на немецком, deployer-focused
+2. **Free AI Act Compliance Checker** — лучше EU-версии, deployer-focused
 3. **Template Library** — FRIA шаблоны, AI Usage Policy, Employee Notification letters
 4. **Blog/SEO** — "KI-Verordnung Betreiberpflichten", "Schatten-KI Risiken", "Art. 4 KI-Kompetenz"
 

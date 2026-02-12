@@ -1,11 +1,13 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 2.1.0
+**Версия:** 2.2.0
 **Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md v2.1.0, DATABASE.md v2.1.0
 
+> **v2.2.0 (2026-02-12):** Sprint 3 Additions — 2 новых flow: Lead Gen Public (Flow 19), Eva Guard Pipeline (Flow 20). Модифицирован Flow 4 (Eva Chat) — добавлены Eva Guard pre-filter (Mistral Small 3.1) и message quota check per plan.
+>
 > **v2.1.0 (2026-02-12):** Sprint 2.5 — 2 новых flow: Employee Invite Flow (Owner → API → Brevo → Invitee → Ory → API), Accept Invitation (existing user). Модифицирован flow 1 (User Registration) — проверка pending invitation перед созданием организации.
 >
 > **v2.0.0 (2026-02-07):** Deployer-first pivot — все flows перестроены под deployer context. AI System Registration → AI Tool Registration (deployer wizard). Classification → "Is my USE of this tool high-risk?". Document Generation → FRIA + Monitoring Plan + AI Usage Policy. 4 новых flow: AI Literacy, AI Tool Discovery, FRIA Assessment, KI-Siegel.
@@ -188,9 +190,11 @@ sequenceDiagram
 
 ---
 
-## 4. Eva Consultant Chat (via Vercel AI SDK 6)
+## 4. Eva Consultant Chat (via Vercel AI SDK 6 + Eva Guard)
 
 > **Framework:** Vercel AI SDK 6 — `streamText` (Fastify backend) + `useChat` (Next.js frontend) — SSE streaming, Zod-typed tools, `needsApproval` ([ADR-005](ADR-005-vercel-ai-sdk.md))
+>
+> **Eva Guard:** 3-level protection — system prompt scope + Mistral Small 3.1 pre-filter + output monitoring. See Flow 20 for detailed pipeline.
 
 ```mermaid
 sequenceDiagram
@@ -198,6 +202,7 @@ sequenceDiagram
     participant Next as Next.js (SSE)
     participant API as Fastify API<br/>streamText()
     participant Context as ContextInjector
+    participant Guard as Eva Guard<br/>Mistral Small 3.1
     participant LLM as Mistral Large 3 API<br/>via @ai-sdk/mistral
     participant DB as PostgreSQL
 
@@ -205,8 +210,29 @@ sequenceDiagram
     Next->>API: POST /api/chat (SSE stream)
     API->>API: Authenticate (Ory session)
 
+    Note over API,DB: Step 0: Check Eva message quota per plan
+    API->>DB: SELECT Plan.features.eva via Subscription WHERE organizationId
+    API->>DB: SELECT COUNT(*) FROM ChatMessage WHERE userId AND role='user' AND createdAt >= month_start
+    alt Quota exceeded (eva != -1 AND count >= limit)
+        API-->>User: 429 {code: 'EVA_QUOTA_EXCEEDED', current, max, resetDate}
+    end
+
     API->>DB: SELECT Conversation WHERE id = conversationId
     API->>DB: SELECT last 20 ChatMessages
+
+    Note over API,Guard: Step 1: Eva Guard Pre-filter (Mistral Small 3.1)
+    API->>Guard: classify(userMessage) → ON_TOPIC / OFF_TOPIC
+    Note right of Guard: Small 3.1: "Is this about EU AI Act,<br/>deployer compliance, AI tools,<br/>or company AI governance?"<br/>Cost: ~$0.00001/check
+    alt OFF_TOPIC
+        API->>DB: INSERT ChatMessage {role: 'user', content, topicClassification: 'off_topic'}
+        API->>DB: INSERT ChatMessage {role: 'assistant', content: canned_response}
+        API->>DB: INCREMENT User.offTopicCount
+        alt offTopicCount >= 3 (cooldown)
+            API-->>User: {type: 'cooldown', duration: 300, message: 'Eva is resting. Try again in 5 minutes.'}
+        else Normal off-topic
+            API-->>User: "I can only help with AI Act compliance. Try asking about your AI tools or deployer obligations."
+        end
+    end
 
     API->>Context: injectContext(userId, conversationId)
     Context->>DB: SELECT User, Organization
@@ -237,7 +263,8 @@ sequenceDiagram
         User-->>API: approve/reject
     end
 
-    API->>DB: INSERT ChatMessage {role: 'user', content}
+    Note over API,DB: Step 3: Output monitor (logging)
+    API->>DB: INSERT ChatMessage {role: 'user', content, topicClassification: 'on_topic'}
     API->>DB: INSERT ChatMessage {role: 'assistant', content, toolCalls, tokenCount}
     API-->>User: Stream complete
 ```
@@ -878,6 +905,139 @@ sequenceDiagram
 
 ---
 
+## 19. Lead Gen — Public Tools (No Auth)
+
+> **Feature 23:** Quick Check, Penalty Calculator, Free Classification — public endpoints, email-gated, rate-limited.
+
+```mermaid
+sequenceDiagram
+    participant User as Visitor (Browser)
+    participant Next as Next.js (SSR)
+    participant API as Fastify API
+    participant RateLimit as @fastify/rate-limit
+    participant Rules as RuleEngine (Domain)
+    participant Brevo as Brevo (email, EU)
+    participant DB as PostgreSQL
+
+    Note over User,DB: Quick Check Flow (/check)
+
+    User->>Next: GET /check
+    Next-->>User: Quick Check page (public, no auth)
+
+    User->>API: POST /api/public/quick-check {answers: [useAI, employees, euClients, domains]}
+    API->>RateLimit: Check 10/IP/hour limit
+    alt Rate limit exceeded
+        API-->>User: 429 Too Many Requests
+    end
+
+    API->>Rules: assessQuickCheck(answers)
+    Rules->>Rules: Check AI usage → Art. 2 applicability
+    Rules->>Rules: Check domains → Annex III high-risk areas
+    Rules->>Rules: Count applicable obligations
+    Rules-->>API: {applies: true, obligations: 5, highRiskAreas: 2, literacyRequired: true}
+
+    API-->>User: {requiresEmail: true, preview: 'AI Act likely applies'}
+
+    User->>API: POST /api/public/quick-check/result {email, answers, consent}
+    API->>Brevo: addContact({email, list: 'quick-check-leads', attributes: {obligations, highRisk}})
+    Brevo-->>API: {contactId}
+    API-->>User: {fullResult: {obligations, highRiskAreas, articles, recommendations}, cta: 'signup'}
+
+    Note over User,DB: Penalty Calculator Flow (/penalty-calculator)
+
+    User->>API: POST /api/public/penalty-calculator {annualRevenue}
+    API->>RateLimit: Check limit
+    API->>API: Calculate Art. 99 penalties:
+    Note right of API: Prohibited: max(7% * revenue, 35_000_000)<br/>High-risk: max(3% * revenue, 15_000_000)<br/>Other: max(1.5% * revenue, 7_500_000)
+    API-->>User: {prohibited: €X, highRisk: €Y, other: €Z, ogImageUrl}
+
+    Note over User,DB: Free Classification Flow (1 tool, no account)
+
+    User->>API: POST /api/public/classify {catalogEntryId, purpose, domain, dataTypes, autonomyLevel}
+    API->>RateLimit: Check limit
+    API->>Rules: applyDeployerRules(answers)
+    Rules-->>API: {riskLevel, confidence, matchedRules, deployerRequirements}
+    API-->>User: {riskLevel, requirements, cta: 'Create account to add more tools'}
+```
+
+---
+
+## 20. Eva Guard Pipeline (Detailed)
+
+> **Feature 06:** 3-level Eva protection — system prompt + pre-filter + output monitoring. Cost-efficient topic boundary enforcement.
+
+```mermaid
+sequenceDiagram
+    participant Msg as User Message
+    participant L1 as Level 1:<br/>System Prompt
+    participant L2 as Level 2:<br/>Pre-filter<br/>Mistral Small 3.1
+    participant L3 as Level 3:<br/>Output Monitor
+    participant Large as Mistral Large 3<br/>(Eva Main)
+    participant DB as PostgreSQL
+
+    Msg->>L1: "Write me a poem about cats"
+
+    rect rgb(255, 248, 240)
+        Note over L1: Level 1: System Prompt Scope
+        L1->>L1: Check against system prompt rules:
+        Note right of L1: Allowed topics:<br/>- EU AI Act (Art. 1-113)<br/>- Deployer obligations<br/>- Company AI tools<br/>- Risk classification<br/>- Compliance guidance<br/><br/>Refused topics:<br/>- Code generation<br/>- Creative writing<br/>- Personal questions<br/>- Non-EU regulation<br/>- General knowledge
+    end
+
+    rect rgb(240, 248, 255)
+        Note over L2: Level 2: Pre-filter Classification
+        L1->>L2: classify(message)
+        L2->>L2: Mistral Small 3.1 API
+        Note right of L2: Prompt: "Classify if this message<br/>is about EU AI Act compliance,<br/>deployer obligations, or<br/>company AI governance.<br/>Reply: ON_TOPIC or OFF_TOPIC"<br/><br/>Cost: $0.03 / 1M input tokens<br/>≈ $0.00001 per check
+        L2-->>L1: OFF_TOPIC (confidence: 0.95)
+    end
+
+    alt ON_TOPIC
+        L1->>Large: Forward to Mistral Large 3
+        Large-->>L3: Response stream
+        rect rgb(240, 255, 240)
+            Note over L3: Level 3: Output Monitor
+            L3->>DB: Log: {messageId, topic: 'on_topic', tokens, model: 'large'}
+            Note right of L3: Weekly sampling: 5% random<br/>conversations reviewed for<br/>quality + topic adherence
+        end
+        L3-->>Msg: Eva response (streaming)
+    else OFF_TOPIC
+        L1-->>Msg: Canned response (no Large API call)
+        Note right of Msg: "I can only help with AI Act<br/>compliance. Try asking about<br/>your AI tools or deployer<br/>obligations."
+        L1->>DB: Log: {messageId, topic: 'off_topic', tokens: 0, model: 'none'}
+        L1->>DB: INCREMENT offTopicCount for user
+        alt offTopicCount >= 3
+            L1->>DB: SET evaCooldownUntil = NOW() + 5 min
+        end
+    end
+```
+
+**Decision Tree:**
+
+```
+User Message
+  │
+  ├── Level 1: System Prompt → obvious refuse patterns → CANNED RESPONSE ($0)
+  │
+  ├── Level 2: Small 3.1 Pre-filter ($0.00001)
+  │     ├── ON_TOPIC → Level 3 + Mistral Large ($0.005/msg avg)
+  │     └── OFF_TOPIC → CANNED RESPONSE ($0.00001 total)
+  │
+  └── Level 3: Output Monitor (logging only, no cost)
+```
+
+**Cost Comparison (1000 clients, ~500 msgs/day):**
+
+| Metric | Without Guard | With Guard |
+|--------|:---:|:---:|
+| Large API calls | 500/day | ~450/day (90% on-topic) |
+| Small API calls | 0 | 500/day ($0.005/day) |
+| Monthly Large cost | ~$75 | ~$67.50 |
+| Monthly Small cost | $0 | ~$0.15 |
+| **Total** | **$75/mo** | **$67.65/mo** |
+| Quality | Uncontrolled | Topic-enforced |
+
+---
+
 ## 18. Data Flow Summary
 
 ### Request → Response Latency Targets
@@ -932,5 +1092,5 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Or
 
 ---
 
-**Последнее обновление:** 2026-02-12 (v2.1.0: Sprint 2.5 — Employee Invite Flow, Accept Invitation, modified webhook)
+**Последнее обновление:** 2026-02-12 (v2.2.0: Sprint 3 Additions — Lead Gen Flow 19, Eva Guard Flow 20, modified Eva Chat Flow 4)
 **Следующий документ:** CODING-STANDARDS.md ✅ Утверждён

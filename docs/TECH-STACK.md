@@ -1,9 +1,11 @@
 # TECH-STACK.md — AI Act Compliance Platform
 
-**Version:** 2.0.0
-**Last updated:** 2026-02-09
+**Version:** 2.1.0
+**Last updated:** 2026-02-12
 **Author:** Marcus (CTO) via Claude Code
 
+> **v2.1.0 (2026-02-12):** Added Eva Pre-filter (Mistral Small 3.1) for topic boundary enforcement.
+>
 > **v2.0.0 (2026-02-09):** Полное обновление — актуализация стека после Sprint 0-1, deployer-first pivot, интеграция исследований (Vercel AI SDK, Claude Agent SDK, Nango). Удалены устаревшие технологии (Prisma, NextAuth, DeepSeek).
 
 ---
@@ -40,6 +42,7 @@
 - **Ева (Q&A):** Mistral Large 3 API (Париж, EU) — via `@ai-sdk/mistral`
 - **Classifier:** Mistral Small 3.1 API (EU) — risk classification
 - **Doc Writer:** Mistral Medium 3 API (EU) — document generation
+- **Eva Pre-filter:** Mistral Small 3.1 API (EU, $0.03/1M input) — ON_TOPIC/OFF_TOPIC classification before Large API call
 - **Cross-validation:** Mistral Large 3 API — эскалация при расхождении
 - **Масштабирование:** При >100 клиентов → self-hosted Mistral (Hetzner GPU)
 
@@ -101,4 +104,4 @@
 
 ---
 
-**Последнее обновление:** 2026-02-09 (v2.0.0)
+**Последнее обновление:** 2026-02-12 (v2.1.0)

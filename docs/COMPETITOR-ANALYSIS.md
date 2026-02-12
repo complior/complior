@@ -1,7 +1,7 @@
 # COMPETITOR-ANALYSIS.md — AI Act Compliance Market
 
-**Версия:** 1.0.0
-**Дата:** 2026-02-07
+**Версия:** 1.1.0
+**Дата:** 2026-02-12
 **Автор:** Ava (Research) + Marcus (CTO) via Claude Code
 **Статус:** Информационный
 
@@ -144,12 +144,36 @@ DIY:            Free (но 70% ошибок)
 
 ## 5. Deployer Market Data
 
-### Размер рынка (Германия)
+### Размер рынка (Германия — DACH)
 
 - **36%** немецких компаний уже используют AI (Bitkom 2025)
 - **47%** планируют внедрение
-- **125,000+** потенциальных deployer-клиентов
+- **125,000+** потенциальных deployer-клиентов в Германии
 - **~1,100** AI provider-компаний (для сравнения: 120:1 ratio)
+
+### Global TAM (Art. 2 — экстерриториальное действие)
+
+Art. 2 AI Act действует аналогично GDPR Art. 3 — распространяется на **любую компанию, чьи AI-системы используются в EU**, независимо от регистрации:
+
+| Сегмент | Оценка | Примеры |
+|---------|:---:|---|
+| DACH deployers | 125,000+ | Немецкие SMB, использующие AI |
+| EU-wide deployers | 500,000+ | Франция, Нидерланды, Скандинавия |
+| Non-EU companies serving EU | 300,000+ | US SaaS с EU-клиентами, UK рекрутинг, Indian аутсорс |
+| Bootstrapped AI startups (Provider-Lite) | 50,000+ | AI-стартапы <50 чел, строящие для EU рынка |
+| **Total addressable market** | **~1,000,000+** | Глобально |
+
+**Юридическое основание:** Art. 2(1)(a): "providers placing on the market or putting into service AI systems in the Union, irrespective of whether those providers are established within or outside the Union". Art. 2(1)(c): same for deployers.
+
+**GDPR аналогия:** GDPR Art. 3 создал $3B+ compliance software рынок (OneTrust, Cookiebot, TrustArc). AI Act Art. 2 создаёт аналогичную возможность для AI compliance.
+
+### Provider-Lite Market
+
+**50,000+ bootstrapped AI startups** (< 50 сотрудников) строят AI-продукты для EU-рынка:
+- Pain points: не могут позволить себе Kertos ($10K+), не знают provider obligations (Art. 6/9/11/16)
+- Отличие от full providers: не строят foundation models, не подпадают под GPAI (Art. 51-56)
+- Наш messaging: "Building AI for the EU market? Start compliance from $49/mo"
+- Timing: P2 (Sprint 7-8), после deployer PMF
 
 ### AI Literacy Gap (Art. 4, обязателен с 02.02.2025)
 
@@ -199,4 +223,4 @@ DIY:            Free (но 70% ошибок)
 
 ---
 
-**Последнее обновление:** 2026-02-07
+**Последнее обновление:** 2026-02-12 (v1.1.0: Global TAM + Provider-Lite market)
