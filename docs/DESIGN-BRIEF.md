@@ -1,11 +1,13 @@
-# Design Brief for Nina — Sprint 3
+# Design Brief for Nina — Sprint 3+
 
-**Version:** 2.0.0
-**Date:** 2026-02-11
+**Version:** 2.4.0
+**Date:** 2026-02-12
 **From:** PO
 **For:** Nina (Frontend+UX, Claude Opus 4.6)
-**Sprint:** 3 (LLM Classification + Requirements Mapping + Dashboard)
-**Ref:** PRODUCT-BACKLOG.md, wireframes/sprint-1-2-wireframes.md
+**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 4 (Eva)
+**Ref:** PRODUCT-BACKLOG.md v3.2.0, wireframes/sprint-1-2-wireframes.md
+
+> **v2.4.0 (2026-02-12):** Sprint 2.5 — Screen 03 Register: Step 2 mandatory (удалён [Überspringen]). Screen 16 Settings: добавлен Team tab spec. Новая страница: Accept Invitation (`/invite/accept`). Backend API: `/api/team/*` endpoints. Design System: PlanLimitBar, InviteDialog, TeamMemberList.
 
 ---
 
@@ -13,11 +15,13 @@
 
 Sprint 1-2 завершены. Весь фронтенд сделан как **wireframe-first** — функциональный, но без визуального дизайна. Sprint 3 добавляет новые экраны (Dashboard, Requirements). Нужен полный дизайн для всех страниц — и старых, и новых.
 
+**Eva Pivot (v2.3.0):** Eva переосмыслена как **conversational onboarding** — альтернативный способ регистрации AI-инструментов через диалог. Eva-плейсхолдеры добавлены на Screen 08 (Wizard), Screen 11 (Dashboard) и Screen 14 (Eva Chat).
+
 **Задача:** Получить от внешнего дизайнера (или LLM-дизайнера) высококачественные макеты для ВСЕХ экранов, чтобы Nina могла имплементировать их в Next.js + TailwindCSS + shadcn/ui.
 
 ---
 
-## Полный список экранов (19 screens)
+## Полный список экранов (17 screens)
 
 ### Группа A — Публичные (до авторизации)
 
@@ -32,36 +36,35 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 | # | Экран | Компонент | Sprint | Статус | Описание |
 |---|-------|-----------|--------|--------|----------|
 | 04 | **Header** | `Header.tsx` | 0 | wireframe | Logo + nav links (desktop), hamburger (mobile) |
-| 05 | **Sidebar** | `Sidebar.tsx` | 0 | wireframe | Desktop: collapsible nav. Items: Dashboard, Inventar, Katalog, Literacy, Dokumente, Eva, Settings |
+| 05 | **Sidebar** | `Sidebar.tsx` | 0 | wireframe | Desktop: collapsible nav. Items: Dashboard, Literacy, Dokumente, Eva, Settings |
 | 06 | **Mobile Bottom Tab** | planned | 3 | NEW | 5 tabs: Dashboard, Tools, Literacy, Docs, Eva |
 
 ### Группа C — Core App Pages (Sprint 1-2, wireframes)
 
 | # | Экран | Роут | Sprint | Статус | Описание |
 |---|-------|------|--------|--------|----------|
-| 07 | **Dashboard** | `/dashboard` | 1 | wireframe (basic) | Заглушка. Sprint 3 полностью переделывает — см. экран 15 |
-| 08 | **AI Tool Inventory** | `/tools/inventory` | 2 | wireframe | Table + search + dropdown filters (Risk, Status, Domain) + pagination + empty state |
-| 09 | **Catalog Search** | `/tools/catalog` | 1 | wireframe | Card grid (1/2/3 cols responsive) + search + category/risk filters + detail dialog |
-| 10 | **5-Step Registration Wizard** | `/tools/new` | 2 | wireframe | 5 steps: Tool → Usage → Data → Autonomy → Review. Progress bar, auto-save, validation |
-| 11 | **Classification Result** | component in wizard | 2 | wireframe | Risk badge (large), confidence %, method, reasoning text, article refs, requirements list |
-| 12 | **Tool Detail** | `/tools/[id]` | 2 | wireframe | Header + 3 metric cards (risk, status, confidence) + requirements tab + actions |
+| 07 | **Dashboard** | `/dashboard` | 1 | wireframe (basic) | Заглушка. Sprint 3 полностью переделывает — см. экран 11 |
+| 08 | **5-Step Registration Wizard** | `/tools/new` | 2 | wireframe | 5 steps: Tool → Usage → Data → Autonomy → Review. Левая панель: список добавленных tools. Catalog Modal in Step 1 |
+| 09 | **Classification Result** | component in wizard | 2 | wireframe | Risk badge (large), confidence %, method, reasoning text, article refs, requirements list |
+| 10 | **Tool Detail** | `/tools/[id]` | 2 | wireframe | Header + 3 metric cards (risk, status, confidence) + tabs (Requirements → Screen 12, Classification → Screen 13) + Alternatives block |
 
 ### Группа D — Sprint 3 NEW Screens
 
 | # | Экран | Роут | Sprint | Статус | Описание |
 |---|-------|------|--------|--------|----------|
-| 13 | **Compliance Dashboard** (полный) | `/dashboard` | 3 | **NEW** | Заменяет заглушку. Центральный экран CEO/CTO |
-| 14 | **Requirements Checklist** | `/tools/[id]/requirements` | 3 | **NEW** | Deployer obligations checklist с рекомендациями |
-| 15 | **Classification Detail Tab** | tab on `/tools/[id]` | 3 | **NEW** | LLM reasoning, cross-validation, classification history |
+| 11 | **Compliance Dashboard** (полный) | `/dashboard` | 3 | **NEW** | Заменяет заглушку. Центральный экран CEO/CTO |
+| 12 | **Requirements Checklist** | tab on `/tools/[id]` | 3 | **NEW** | Таб на Tool Detail (Screen 10). Deployer obligations checklist с рекомендациями |
+| 13 | **Classification Detail Tab** | tab on `/tools/[id]` | 3 | **NEW** | Таб на Tool Detail (Screen 10). Rule reasoning, classification history (no LLM cross-validation) |
 
 ### Группа E — Planned (Sprint 4+, wireframes ready)
 
 | # | Экран | Роут | Sprint | Описание |
 |---|-------|------|--------|----------|
-| 16 | **Eva Chat** | `/eva` (side panel) | 4 | Chat bubbles, quick actions, tool-calling UI, disclaimer |
-| 17 | **FRIA Wizard** | `/tools/[id]/fria` | 4-5 | 6-section assessment, AI drafts, rich text editor |
-| 18 | **Settings** | `/settings` | 4 | Tabs: Profile, Company, Team, Subscription, Security |
-| 19 | **AI Literacy Dashboard** | `/literacy` | 8+ | Progress bar, per-role breakdown, certificates |
+| 14 | **Eva Chat** | `/eva` (side panel) | 4 | Conversational onboarding + Q&A, quick actions, auto-fill wizard, disclaimer |
+| 15 | **FRIA Wizard** | `/tools/[id]/fria` | 4-5 | 6-section assessment, AI drafts, rich text editor |
+| 16 | **Settings** | `/settings` | 2.5 (Team tab) + 4 (rest) | Tabs: Profile, Company, **Team (Sprint 2.5)**, Subscription, Security |
+| 16b | **Accept Invitation** | `/invite/accept` | 2.5 | **NEW** — Verify token, show org + role, register/login, join org |
+| 17 | **AI Literacy Dashboard** | `/literacy` | 8+ | Progress bar, per-role breakdown, certificates |
 
 ---
 
@@ -102,31 +105,16 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 - [Konto erstellen] primary button
 - "Bereits ein Konto? Anmelden" link
 
-**Step 2 — Company:**
+**Step 2 — Company (MANDATORY — Sprint 2.5):**
 - Fields: Firmenname, Branche (dropdown: Technology, Healthcare, Finance, HR, Education, Legal, Manufacturing, Other), Unternehmensgröße (dropdown: 1-10, 11-50, 51-200, 201-500, 500+), Land (dropdown)
-- [Weiter zum Dashboard] primary button + [Überspringen] ghost link
+- [Weiter zum Dashboard] primary button
+- ~~[Überspringen] — REMOVED (Sprint 2.5)~~: Step 2 обязателен, т.к. invite email показывает organizationName — placeholder неприемлем
 
 **Progress:** Step indicator (1/2, 2/2) at top
 
 ---
 
 ## Детальные спецификации — Группа C (Sprint 1-2 Wireframes)
-
-### Screen 08: AI Tool Inventory `/tools/inventory`
-
-**Layout:**
-- **Header row:** H1 "AI-Tool Inventar" + [+ AI-Tool hinzufügen] primary + [Katalog durchsuchen] secondary
-- **Filters row:** Search input + 3 dropdown filters (Risk Level, Compliance Status, Domain)
-- **Table (desktop):**
-
-| Name | Vendor | Domain | Risk Level | Status | Compliance | Actions |
-|------|--------|--------|------------|--------|------------|---------|
-| ChatGPT | OpenAI | General | 🟢 Minimal | Classified | 45% | [View] |
-| HireVue | HireVue | HR | 🟠 High | In Progress | 20% | [View] |
-
-- **Cards (mobile):** Stacked cards with risk badge, name, vendor, status
-- **Pagination:** "Showing 1-10 of 23" + Previous/Next
-- **Empty state:** Illustration + "Noch keine AI-Tools. Beginnen Sie mit dem Katalog."
 
 **Risk badges (CRITICAL — consistent everywhere):**
 - 🔴 Prohibited — `bg-red-100 text-red-800`
@@ -137,23 +125,47 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 ---
 
-### Screen 09: Catalog Search `/tools/catalog`
+### Screen 08: 5-Step Registration Wizard `/tools/new`
 
-**Layout:**
-- **Search:** Full-width input with 🔍 icon, debounced 300ms
-- **Filters:** Category chips (All, HR, Healthcare, Finance, Education, General...) + Risk Level dropdown
-- **Grid:** 3 columns (desktop), 2 (tablet), 1 (mobile)
-- **Card:** Tool name, vendor, risk badge, short description, [+ Hinzufügen] button
-- **Detail Dialog:** Modal with full description, default risk, data types, Annex III domain, [Zum Inventar hinzufügen] CTA
+> Центральный экран для регистрации AI-инструментов. Вместо отдельной Inventory-страницы — левая панель со списком уже добавленных инструментов прямо в визарде.
 
----
+**Layout (desktop — split view):**
 
-### Screen 10: 5-Step Wizard `/tools/new`
+```
+┌──────────────────────────┬───────────────────────────────┐
+│  Ihre AI-Tools (3)       │  Neues AI-Tool hinzufügen     │
+│                          │                               │
+│  ✅ ChatGPT    🟢 Min    │  Step 1 ● ─ ─ ─ ● 5          │
+│  ✅ Copilot    🟢 Min    │                               │
+│  🔄 HireVue   🟠 High   │  [Aus Katalog wählen]         │
+│                          │                               │
+│  Click → Tool Detail     │  Name: ___________            │
+│                          │  Vendor: ___________          │
+│  [+ Weiteres Tool]       │  ...                          │
+└──────────────────────────┴───────────────────────────────┘
+```
+
+**Left panel — Ihre AI-Tools:**
+- List of registered tools with name + risk badge + status icon (✅ classified, 🔄 in progress)
+- Click tool → navigate to Tool Detail (Screen 10)
+- Empty state: "Noch keine AI-Tools. Fügen Sie Ihr erstes hinzu."
+- Mobile: collapsible panel above wizard, or bottom sheet
+
+**Right panel — Wizard form:**
 
 **Progress bar:** 5 steps with labels, current step highlighted (primary-600), completed = checkmark
 
 **Step 1 — AI-Tool:**
-- "Aus Katalog wählen" button (opens catalog dialog) OR manual entry
+- [Aus Katalog wählen] secondary button → opens **Catalog Modal (Dialog)**
+- **Catalog Modal:**
+  - Search input (full-width, 🔍 icon, debounced 300ms)
+  - Category filter chips (All, HR, Healthcare, Finance, Education, General...)
+  - Risk Level dropdown filter
+  - Card grid: 3 columns (desktop), 2 (tablet), 1 (mobile)
+  - Card: tool name, vendor, risk badge, short description, [Auswählen] button
+  - On select: auto-fills Name, Vendor, Description, Website + sets defaultRiskLevel
+  - Data source: 225 tools, API: `GET /api/tools/catalog/search`
+- **OR** manual entry (fields remain as-is)
 - Fields: Name*, Vendor*, Description, Website
 - Pre-fill from catalog if selected
 
@@ -173,9 +185,17 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 **All steps:** [Zurück] + [Weiter] navigation, auto-save indicator ("Gespeichert ✓")
 
+**Eva-Placeholder (Sprint 4):**
+- Кнопка "Mit Eva registrieren" рядом с [Aus Katalog wählen] в Step 1
+- При нажатии: открывается side panel (или slide-over) с Eva-чатом
+- Eva проактивно спрашивает: "Welche AI-Tools nutzt Ihr Unternehmen?"
+- На основе диалога Eva auto-fills поля визарда → создаёт draft AI Tool
+- Визуально: ghost button с иконкой чат-пузыря, tooltip "KI-Assistentin hilft beim Registrieren"
+- Mobile: full-screen overlay поверх визарда
+
 ---
 
-### Screen 11: Classification Result (shown after Step 5)
+### Screen 09: Classification Result (shown after Step 5)
 
 **Layout (centered, max-w-2xl):**
 - **Risk Badge (large):** Full-width colored banner — "🟠 High Risk" with confidence "87%"
@@ -184,11 +204,11 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 - **Article References:** Chips: "Art. 26", "Art. 27", "Annex III §4"
 - **Deployer Requirements:** Grouped list by category (Literacy, Oversight, Documentation, Transparency)
   - Each requirement: checkbox (future), name, article ref, estimated effort badge
-- **Actions:** [Zum Tool-Detail] primary + [Weitere AI-Tool hinzufügen] secondary
+- **Actions:** [Zum Tool-Detail] primary (→ Screen 10) + [Weitere AI-Tool hinzufügen] secondary
 
 ---
 
-### Screen 12: Tool Detail `/tools/[id]`
+### Screen 10: Tool Detail `/tools/[id]`
 
 **Header section:**
 - Tool name + vendor + risk badge + domain badge
@@ -196,16 +216,26 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 - Action buttons: [Neu klassifizieren] secondary + [Löschen] destructive (ghost)
 
 **Tabs:**
-- **Requirements** (active) — checklist with status icons (✅ done, 🔄 in progress, ⬜ pending)
-- **Classification** (Sprint 3 — LLM details, history)
+- **Requirements** (active) — checklist with status icons (✅ done, 🔄 in progress, ⬜ pending). Подробная спецификация → Screen 12
+- **Classification** (Sprint 3 — LLM details, history). Подробная спецификация → Screen 13
 - **Documents** (Sprint 4 — FRIA, policies)
 - **Audit Trail** (Sprint 4 — log of changes)
+
+> **Note:** Screens 12 и 13 описывают содержимое табов этого экрана. Это не отдельные страницы, а контент внутри табов Tool Detail.
+
+**Alternatives block (below tabs):**
+- Показывается для High Risk и Prohibited инструментов
+- Заголовок: "EU-konforme Alternativen"
+- 2-3 карточки из каталога с более низким риском в том же домене
+- Карточка: name, vendor, risk badge, short description, [Details ansehen] link
+- Данные: API `GET /api/tools/catalog/search?domain={domain}&maxRisk=limited`
+- Для Minimal/Limited инструментов блок не показывается
 
 ---
 
 ## Детальные спецификации — Группа D (Sprint 3 NEW)
 
-### Screen 13: Compliance Dashboard `/dashboard`
+### Screen 11: Compliance Dashboard `/dashboard`
 
 **Ref:** PRODUCT-BACKLOG Feature 05
 
@@ -245,7 +275,7 @@ Desktop (1280px):
 **Mobile:** Single column, cards stack vertically, summary cards scroll horizontally
 
 **4 summary cards (top row):**
-1. AI Tools — total count + link to inventory
+1. AI Tools — total count + [+ AI-Tool hinzufügen] link (→ Wizard, Screen 08)
 2. Classified — X/Y ratio + mini donut (risk distribution)
 3. Compliance Score — 0-100% circular progress, color by range (red <40, yellow 40-70, green >70)
 4. AI Literacy — % trained + progress bar
@@ -253,7 +283,7 @@ Desktop (1280px):
 **Risk Distribution widget:**
 - Donut chart OR horizontal stacked bar
 - Color-coded by risk level (use exact risk-* tokens)
-- Click segment → navigate to `/tools/inventory?riskLevel=high`
+- Click segment → navigate to Tool Detail (Screen 10) for each tool in that risk category
 - Legend with counts
 
 **Requires Attention panel:**
@@ -270,13 +300,19 @@ Desktop (1280px):
 - Last 5 actions from AuditLog
 - Relative timestamps (2h ago, 1d ago)
 
+**Eva-Placeholder (Sprint 4):**
+- Мини-виджет "Fragen Sie Eva" в правом нижнем углу Dashboard (или как карточка в grid)
+- Quick actions (chips): "Wie ist mein Compliance-Status?", "Welche Tools fehlen?", "Was muss ich als nächstes tun?"
+- При клике: navigate to Eva Chat (Screen 14) или slide-over panel
+- Визуально: компактная карточка с иконкой Eva + 2-3 suggested questions
+
 ---
 
-### Screen 14: Requirements Checklist `/tools/[id]/requirements`
+### Screen 12: Requirements Checklist (таб на Tool Detail, Screen 10)
 
 **Ref:** PRODUCT-BACKLOG Feature 04c
 
-**Could be a tab on Tool Detail or separate page.**
+> **Это не отдельная страница.** Контент отображается как активный таб "Requirements" на экране Tool Detail (Screen 10, `/tools/[id]`).
 
 **Layout:**
 
@@ -342,9 +378,9 @@ Desktop (1280px):
 
 ---
 
-### Screen 15: Classification Detail Tab (on Tool Detail)
+### Screen 13: Classification Detail Tab (таб на Tool Detail, Screen 10)
 
-**New tab on `/tools/[id]` — replaces "coming soon" placeholder.**
+> **Это не отдельная страница.** Контент отображается как таб "Classification" на экране Tool Detail (Screen 10, `/tools/[id]`). Replaces "coming soon" placeholder.
 
 **Content:**
 - **Current Classification:**
@@ -355,16 +391,212 @@ Desktop (1280px):
   - Article References as chips
   - Annex III domain (if applicable)
 
-- **LLM Analysis (Sprint 3 — when LLM classification added):**
-  - LLM reasoning (separate from rules)
-  - Cross-validation result: "Rule ↔ LLM: Agree ✅" or "Disagree ⚠ → Escalated to Large model"
-  - Confidence comparison bar (rule confidence vs LLM confidence)
-
 - **Classification History:**
   - Table: Version | Date | Method | Risk Level | Confidence | Classified By
   - Click row → show that version's details
 
 - **[Neu klassifizieren]** button at bottom
+
+---
+
+## Детальные спецификации — Группа E (Sprint 4, Eva)
+
+### Screen 14: Eva Chat — Conversational Onboarding `/eva` (side panel)
+
+**Ref:** PRODUCT-BACKLOG Feature 06 (v3.1.0 — Eva Pivot)
+
+> **Eva — не просто Q&A чат.** Eva — это альтернативный способ регистрации AI-инструментов через conversational onboarding. Eva проактивно помогает обнаружить и зарегистрировать инструменты.
+
+**Layout (desktop — slide-over panel, 400px):**
+
+```
+┌─────────────────────────────────────────────┐
+│  Eva — KI-Compliance Assistentin      [✕]   │
+├─────────────────────────────────────────────┤
+│                                             │
+│  🤖 Hallo! Ich bin Eva, Ihre KI-Compliance │
+│     Assistentin. Ich kann Ihnen helfen,     │
+│     AI-Tools zu entdecken und zu            │
+│     registrieren.                           │
+│                                             │
+│  🤖 Welche AI-Tools nutzt Ihr Unternehmen? │
+│     Zum Beispiel ChatGPT, Copilot,         │
+│     HireVue...                             │
+│                                             │
+│  👤 Wir nutzen ChatGPT für Content und     │
+│     HireVue im HR für Bewerbungsgespräche  │
+│                                             │
+│  🤖 Danke! Ich habe 2 Tools erkannt:       │
+│     ✅ ChatGPT — Content (General)          │
+│     ⚠️ HireVue — HR (High Risk, Annex III) │
+│                                             │
+│     Soll ich diese als Entwurf in Ihrem    │
+│     Inventar anlegen?                      │
+│                                             │
+│     [Ja, anlegen] [Details bearbeiten]     │
+│                                             │
+├─────────────────────────────────────────────┤
+│  Quick Actions:                             │
+│  [AI-Tools entdecken] [Compliance-Status]   │
+│  [Was muss ich tun?]  [FRIA nötig?]        │
+├─────────────────────────────────────────────┤
+│  ┌─────────────────────────────────┐ [↑]   │
+│  │ Nachricht eingeben...           │        │
+│  └─────────────────────────────────┘        │
+│  ⚖️ Keine Rechtsberatung. Immer Experten   │
+│     konsultieren.                           │
+└─────────────────────────────────────────────┘
+```
+
+**Conversational Onboarding Flow:**
+1. Eva начинает с приветствия и проактивного вопроса об AI-инструментах
+2. Пользователь описывает инструменты в свободной форме
+3. Eva распознаёт инструменты, матчит с каталогом, определяет домен
+4. Eva показывает inline-карточки с предварительной классификацией
+5. Пользователь подтверждает → Eva создаёт draft AI Tools в inventory
+6. Eva предлагает классифицировать: "Soll ich die Risiko-Klassifizierung starten?"
+
+**Q&A Mode:**
+- Deployer-focused ответы по Art. 4, 26, 27, 50
+- RAG по EU AI Act knowledge base
+- Цитирование статей: inline badges "Art. 26 §3"
+- Контекстные ответы: видит AI-инструменты и compliance status организации
+
+**UI Elements:**
+- Chat bubbles: Eva (left, muted bg) / User (right, primary bg)
+- Streaming text (SSE via Vercel AI SDK `useChat`)
+- Inline action cards: tool recognition cards with [Anlegen] / [Bearbeiten] buttons
+- Quick actions chips (above input): suggested prompts that change based on context
+- Disclaimer footer: always visible, legal notice
+- Typing indicator: "Eva denkt nach..."
+
+**Access points:**
+- Sidebar nav: "Eva" menu item
+- Dashboard: "Fragen Sie Eva" widget (Screen 11)
+- Wizard: "Mit Eva registrieren" button (Screen 08)
+- Tool Detail: "Eva fragen" contextual link
+
+**Mobile:** Full-screen chat view, quick actions scrollable row, FAB button on other screens
+
+---
+
+## Детальные спецификации — Sprint 2.5 NEW
+
+### Screen 16: Settings > Team Tab `/settings/team`
+
+**Ref:** PRODUCT-BACKLOG Feature 02 (Sprint 2.5)
+
+> **Sprint 2.5 реализует ТОЛЬКО Team tab.** Остальные табы (Profile, Company, Subscription, Security) → Sprint 4.
+
+**Layout (desktop):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Einstellungen                                               │
+├──────────┬──────────────────────────────────────────────────┤
+│  Profile │  Team                                             │
+│  Company │                                                   │
+│  Team ←  │  Ihr Team                    3 von 5 Benutzer    │
+│  Billing │  ┌───────────────────────────────────────────┐   │
+│  Security│  │ ████████████████░░░░░░  60%              │   │
+│          │  └───────────────────────────────────────────┘   │
+│          │                                                   │
+│          │  [+ Mitglied einladen]                            │
+│          │                                                   │
+│          │  ┌──────────────────────────────────────────────┐│
+│          │  │ Name          Email            Rolle  Status  ││
+│          │  │───────────────────────────────────────────────││
+│          │  │ Max Müller    max@acme.de      Owner  Active  ││
+│          │  │ Anna Schmidt  anna@acme.de     Admin  Active [▼]│
+│          │  │ Tom Weber     tom@acme.de      Member Active [▼]│
+│          │  └──────────────────────────────────────────────┘│
+│          │                                                   │
+│          │  Ausstehende Einladungen                          │
+│          │  ┌──────────────────────────────────────────────┐│
+│          │  │ lisa@acme.de  Member  Läuft ab: 19.02.2026    ││
+│          │  │              [Erneut senden] [Widerrufen]      ││
+│          │  └──────────────────────────────────────────────┘│
+│          │                                                   │
+└──────────┴──────────────────────────────────────────────────┘
+```
+
+**PlanLimitBar (top):**
+- Progress bar: "X von Y Benutzer" (currentUsers + pendingInvites / maxUsers)
+- Color: green (<60%), yellow (60-90%), red (>90%)
+- When full (100%): bar red, [+ Mitglied einladen] disabled, tooltip "Plan-Limit erreicht. Upgraden Sie Ihren Plan."
+
+**[+ Mitglied einladen] → InviteDialog (Modal):**
+- Fields: E-Mail-Adresse (email input), Rolle (dropdown: Admin, Mitglied, Betrachter)
+- [Einladen] primary button + [Abbrechen] ghost
+- Validation: email format, not already member/pending
+- Error: "Plan-Limit erreicht" if maxUsers exceeded
+- Success: toast "Einladung an lisa@acme.de gesendet"
+
+**Members Table (TeamMemberList):**
+- Columns: Name, E-Mail, Rolle, Status, Aktionen
+- Owner row: no actions (immutable)
+- Admin/Member/Viewer rows (for owner): [▼] dropdown → Rolle ändern (Admin/Mitglied/Betrachter), Entfernen
+- Admin/Member/Viewer rows (for admin): [▼] dropdown → Rolle ändern (Mitglied/Betrachter), Entfernen
+  - Admin CANNOT assign another admin (only owner can)
+- Self row: no actions ("Das sind Sie" badge)
+- Status: Active (green), Deaktiviert (red)
+
+**Pending Invitations:**
+- Inline below members table
+- Per invite: email, role, expiry date, [Erneut senden] + [Widerrufen] actions
+- Expired: muted text, only [Erneut senden]
+
+**Mobile:** Tabs → horizontal scrollable pills. Members as cards instead of table.
+
+---
+
+### Screen 16b: Accept Invitation `/invite/accept?token={uuid}`
+
+**Ref:** PRODUCT-BACKLOG Feature 02 (Sprint 2.5)
+
+**Layout (centered card, max-w-md):**
+
+```
+┌─────────────────────────────────────────┐
+│  [🛡] AI Act Compliance                  │
+│                                          │
+│  Einladung zu ACME Corp                  │
+│                                          │
+│  Sie wurden als Mitglied eingeladen.     │
+│                                          │
+│  Organisation: ACME Corp                 │
+│  Rolle: Mitglied                         │
+│  Eingeladen von: max@acme.de             │
+│                                          │
+│  [Konto erstellen und beitreten]         │
+│  oder                                    │
+│  [Anmelden und beitreten]                │
+│                                          │
+└─────────────────────────────────────────┘
+```
+
+**States:**
+- **Loading:** Skeleton while verifying token
+- **Valid token (not logged in):**
+  - Shows org name, role, inviter email
+  - [Konto erstellen und beitreten] → Ory registration (with return URL `/invite/accept?token=...`)
+  - [Anmelden und beitreten] → Ory login (with return URL)
+- **Valid token (logged in, email matches):**
+  - Shows org name, role
+  - If user in another org: "Sie verlassen Ihre aktuelle Organisation ({currentOrg})" warning
+  - [Beitreten] primary button → POST accept
+  - Success → redirect to /dashboard
+- **Valid token (logged in, email mismatch):**
+  - "Diese Einladung ist für {inviteEmail}. Sie sind als {currentEmail} angemeldet."
+  - [Abmelden und mit richtigem Konto anmelden] → logout + redirect
+- **Expired token:**
+  - "Diese Einladung ist abgelaufen."
+  - "Bitten Sie den Administrator, Ihnen eine neue Einladung zu senden."
+- **Already accepted:**
+  - "Diese Einladung wurde bereits angenommen."
+  - [Zum Dashboard] link
+
+**Mobile:** Same layout, full-width card
 
 ---
 
@@ -378,17 +610,22 @@ Button, Card, Badge, RiskBadge, Input, Label, Dialog, Table, Skeleton, Toast
 
 | Компонент | Экраны | Описание |
 |-----------|--------|----------|
-| **StatCard** | Dashboard (13) | Число + label + trend/icon, colored border-left по типу |
-| **DonutChart** | Dashboard (13) | Risk distribution, 5 цветов, legend, click-to-filter |
-| **CircularProgress** | Dashboard (13) | Compliance score 0-100%, colored by range |
-| **ProgressBar** | Requirements (14), Literacy | Horizontal progress with % label |
-| **Timeline** | Dashboard (13) | Vertical timeline, past/current/future milestones |
-| **AlertItem** | Dashboard (13) | Severity icon + text + action link |
-| **RequirementRow** | Requirements (14) | Expandable row: status + name + effort + recommendation |
-| **ArticleGroup** | Requirements (14) | Collapsible section header with sub-progress |
-| **ConfidenceBar** | Classification (15) | Horizontal bar comparing rule vs LLM confidence |
+| **StatCard** | Dashboard (11) | Число + label + trend/icon, colored border-left по типу |
+| **DonutChart** | Dashboard (11) | Risk distribution, 5 цветов, legend, click-to-filter |
+| **CircularProgress** | Dashboard (11) | Compliance score 0-100%, colored by range |
+| **ProgressBar** | Requirements (12), Literacy | Horizontal progress with % label |
+| **Timeline** | Dashboard (11) | Vertical timeline, past/current/future milestones |
+| **AlertItem** | Dashboard (11) | Severity icon + text + action link |
+| **RequirementRow** | Requirements (12) | Expandable row: status + name + effort + recommendation |
+| **ArticleGroup** | Requirements (12) | Collapsible section header with sub-progress |
+| **ChatBubble** | Eva Chat (14) | Chat message: Eva (left, muted) / User (right, primary) |
+| **AlternativeCard** | Tool Detail (10) | EU-compliant alternative: name, vendor, risk badge, description |
+| **ToolListItem** | Wizard (08) | Left panel item: name + risk badge + status icon, clickable |
 | **BottomTabBar** | Mobile layout (06) | 5-tab mobile navigation |
-| **StepIndicator** | Register (03), Wizard (10) | Step dots/labels with current/completed states |
+| **StepIndicator** | Register (03), Wizard (08) | Step dots/labels with current/completed states |
+| **PlanLimitBar** | Settings Team (16) | "X von Y Benutzer" progress bar, color by threshold |
+| **InviteDialog** | Settings Team (16) | Modal: email + role dropdown + send button |
+| **TeamMemberList** | Settings Team (16) | Table: name, email, role, status, actions dropdown |
 
 ### Design Tokens (existing)
 
@@ -414,7 +651,7 @@ Shadows:      sm (cards), md (dialogs), lg (dropdowns)
 
 ## Deliverables
 
-Для каждого экрана (19 total):
+Для каждого экрана (17 total):
 
 1. **Desktop (1280px)** — primary viewport
 2. **Mobile (375px)** — required for all screens
@@ -424,24 +661,22 @@ Shadows:      sm (cards), md (dialogs), lg (dropdowns)
 ### Приоритет (Sprint 3 deadline)
 
 **P0 — нужно для Sprint 3 реализации:**
-1. Screen 13: Compliance Dashboard
-2. Screen 14: Requirements Checklist
-3. Screen 15: Classification Detail Tab
+1. Screen 11: Compliance Dashboard
+2. Screen 12: Requirements Checklist (таб на Screen 10)
+3. Screen 13: Classification Detail Tab (таб на Screen 10)
 
 **P1 — refactor existing wireframes (Sprint 1-2 pages):**
 4. Screen 01: Landing Page
 5. Screen 02: Login
 6. Screen 03: Register
-7. Screen 08: AI Tool Inventory
-8. Screen 09: Catalog Search
-9. Screen 10: 5-Step Wizard (all steps)
-10. Screen 11: Classification Result
-11. Screen 12: Tool Detail
+7. Screen 08: 5-Step Wizard (all steps + Catalog Modal + Tool List panel)
+8. Screen 09: Classification Result
+9. Screen 10: Tool Detail (+ Alternatives block)
 
 **P2 — Sprint 4+ planned screens:**
-12. Screen 16: Eva Chat
-13. Screen 17: FRIA Wizard
-14. Screen 18: Settings
+10. Screen 14: Eva Chat
+11. Screen 15: FRIA Wizard
+12. Screen 16: Settings
 
 ### Формат файлов
 
@@ -458,30 +693,29 @@ designs/
 ├── 04-header-desktop.png
 ├── 05-sidebar.png
 ├── 06-mobile-bottom-tabs.png
-├── 08-inventory-desktop.png
-├── 08-inventory-mobile.png
-├── 08-inventory-empty.png
-├── 09-catalog-desktop.png
-├── 09-catalog-detail-dialog.png
-├── 09-catalog-mobile.png
-├── 10-wizard-step1.png
-├── 10-wizard-step2.png
-├── 10-wizard-step3.png
-├── 10-wizard-step4.png
-├── 10-wizard-step5.png
-├── 10-wizard-mobile.png
-├── 11-classification-result.png
-├── 12-tool-detail-desktop.png
-├── 12-tool-detail-mobile.png
-├── 13-dashboard-desktop.png      ← Sprint 3 P0
-├── 13-dashboard-mobile.png       ← Sprint 3 P0
-├── 14-requirements-desktop.png   ← Sprint 3 P0
-├── 14-requirements-mobile.png    ← Sprint 3 P0
-├── 15-classification-tab.png     ← Sprint 3 P0
-├── 16-eva-chat-desktop.png
-├── 16-eva-chat-mobile.png
-├── 17-fria-wizard.png
-└── 18-settings.png
+├── 08-wizard-desktop.png
+├── 08-wizard-tool-list-panel.png
+├── 08-wizard-catalog-modal.png
+├── 08-wizard-step2.png
+├── 08-wizard-step3.png
+├── 08-wizard-step4.png
+├── 08-wizard-step5.png
+├── 08-wizard-mobile.png
+├── 09-classification-result.png
+├── 10-tool-detail-desktop.png
+├── 10-tool-detail-alternatives.png
+├── 10-tool-detail-mobile.png
+├── 11-dashboard-desktop.png      ← Sprint 3 P0
+├── 11-dashboard-mobile.png       ← Sprint 3 P0
+├── 12-requirements-desktop.png   ← Sprint 3 P0
+├── 12-requirements-mobile.png    ← Sprint 3 P0
+├── 13-classification-tab.png     ← Sprint 3 P0
+├── 14-eva-chat-desktop.png           ← Sprint 4 P0
+├── 14-eva-chat-onboarding-flow.png   ← Sprint 4 P0
+├── 14-eva-chat-mobile.png            ← Sprint 4 P0
+├── 15-fria-wizard.png
+├── 16-settings.png
+└── 17-literacy-dashboard.png
 ```
 
 ---
@@ -502,14 +736,25 @@ designs/
 | `/api/tools/:id` | PATCH | Update tool (wizard step) | 2 |
 | `/api/tools/:id` | DELETE | Delete tool | 2 |
 | `/api/tools/:id/classify` | POST | Trigger classification | 2 |
-| `/api/dashboard/summary` | GET | Dashboard aggregates | 3 (planned) |
-| `/api/tools/:id/requirements` | GET | Requirements with status | 3 (planned) |
+| `/api/dashboard/summary` | GET | Dashboard aggregates | 3 |
+| `/api/tools/:id/requirements` | GET | Requirements grouped by article | 3 |
+| `/api/tools/:id/requirements/:reqId` | PATCH | Update requirement status/progress | 3 |
+| `/api/tools/:id/classification-history` | GET | Classification history (all versions) | 3 |
+| `/api/tools/catalog/search?domain=&maxRisk=` | GET | Catalog with domain + maxRisk filters | 3 |
+| `/api/team/invite` | POST | Create invitation (email + role) | 2.5 |
+| `/api/team/invite/verify?token=` | GET | Verify invitation token (public) | 2.5 |
+| `/api/team/invite/accept` | POST | Accept invitation (authenticated) | 2.5 |
+| `/api/team/members` | GET | List members + pending invites + limits | 2.5 |
+| `/api/team/members/:userId` | PATCH | Change member role | 2.5 |
+| `/api/team/members/:userId` | DELETE | Remove member (deactivate) | 2.5 |
+| `/api/team/invitations/:id` | DELETE | Revoke pending invitation | 2.5 |
+| `/api/team/invitations/:id/resend` | POST | Resend invitation email | 2.5 |
 
 ---
 
 ## References
 
-- `docs/wireframes/sprint-1-2-wireframes.md` — ASCII wireframes (14 screens, desktop + mobile)
+- `docs/wireframes/sprint-1-2-wireframes.md` — ASCII wireframes (desktop + mobile)
 - `docs/PRODUCT-VISION.md` — Product vision, features, pricing
 - `docs/DATA-FLOWS.md` — User flows with sequence diagrams
 - `docs/PRODUCT-BACKLOG.md` — Feature descriptions

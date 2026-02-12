@@ -176,6 +176,7 @@ graph LR
         User["User (sync from Ory)"]
         Organization["Organization"]
         Role["Role"]
+        Invitation_["Invitation"]
         OryAuth["Ory (identity + sessions)"]
     end
 
@@ -233,9 +234,11 @@ graph LR
 
 ### 4.1 IAM Context (Identity & Access Management)
 - **Identity & Auth:** Ory (self-hosted, Hetzner) — регистрация, login, magic links, sessions, MFA
-- **Наша БД:** User (sync от Ory через webhook), Organization, Role, Permission
+- **Наша БД:** User (sync от Ory через webhook), Organization, Role, Permission, Invitation
 - **Ответственный:** Max (backend Ory integration) + Nina (frontend auth UI)
 - **Паттерн:** Ory управляет identity lifecycle → webhook → наш API синхронизирует User + создаёт Organization
+- **Invite Flow (Sprint 2.5):** Owner/Admin создаёт Invitation → email через Brevo → invitee регистрируется через Ory → webhook проверяет pending invitation → присоединяется к существующей org (не создаёт новую)
+- **Subscription Enforcement (Sprint 2.5):** SubscriptionLimitChecker (чистый domain service) проверяет maxUsers/maxTools перед созданием invitation и регистрацией инструмента. PlanLimitError (403) при превышении лимита
 
 ### 4.2 Inventory Context (точка входа для deployer)
 - **Entities:** AITool, AIToolCatalog (200+ pre-populated tools), AIToolDiscovery
@@ -351,8 +354,8 @@ app/                                 # Business logic (VM-sandboxed, NO require)
 │   │   ├── entities/
 │   │   └── services/
 │   └── events/
-├── schemas/                         # MetaSQL definitions (29 files)
-│   ├── Organization.js, User.js, Role.js, Permission.js, UserRole.js
+├── schemas/                         # MetaSQL definitions (30 files)
+│   ├── Organization.js, User.js, Role.js, Permission.js, UserRole.js, Invitation.js
 │   ├── AITool.js, AIToolCatalog.js, AIToolDiscovery.js
 │   ├── RiskClassification.js, Requirement.js, ToolRequirement.js, ClassificationLog.js
 │   ├── TrainingCourse.js, TrainingModule.js, LiteracyCompletion.js, LiteracyRequirement.js
@@ -823,6 +826,8 @@ graph LR
 ---
 
 ✅ **Утверждено PO** (2026-02-10). Deployer-first pivot v2.0.0.
+
+**v2.1.0 (2026-02-12):** Sprint 2.5 — Invitation entity в IAM Context, Subscription Enforcement pattern (SubscriptionLimitChecker domain service), 30 таблиц.
 
 **v2.0.0 (2026-02-07):** Deployer-first pivot — 8 Bounded Contexts (добавлены AI Literacy + Inventory), 29 таблиц, Classification Engine переориентирован на deployer (Art. 4, 26-27, 50), Deployer Compliance вместо provider Tech Docs.
 

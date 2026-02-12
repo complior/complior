@@ -1,11 +1,13 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 2.0.0
-**Дата:** 2026-02-07
+**Версия:** 2.1.0
+**Дата:** 2026-02-12
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
-**Зависимости:** ARCHITECTURE.md v2.0.0, DATABASE.md v2.0.0
+**Зависимости:** ARCHITECTURE.md v2.1.0, DATABASE.md v2.1.0
 
+> **v2.1.0 (2026-02-12):** Sprint 2.5 — 2 новых flow: Employee Invite Flow (Owner → API → Brevo → Invitee → Ory → API), Accept Invitation (existing user). Модифицирован flow 1 (User Registration) — проверка pending invitation перед созданием организации.
+>
 > **v2.0.0 (2026-02-07):** Deployer-first pivot — все flows перестроены под deployer context. AI System Registration → AI Tool Registration (deployer wizard). Classification → "Is my USE of this tool high-risk?". Document Generation → FRIA + Monitoring Plan + AI Usage Policy. 4 новых flow: AI Literacy, AI Tool Discovery, FRIA Assessment, KI-Siegel.
 
 ---
@@ -711,7 +713,128 @@ sequenceDiagram
 
 ---
 
-## 15. Messaging Strategy: MQ vs PubSub
+## 15. Employee Invite Flow (Sprint 2.5)
+
+```mermaid
+sequenceDiagram
+    participant Owner as Owner (Browser)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+    participant Brevo as Brevo (email, EU)
+    participant Invitee as Invitee (Browser)
+    participant Ory as Ory (self-hosted)
+
+    Note over Owner,Brevo: Step 1: Owner creates invitation
+    Owner->>API: POST /api/team/invite {email, role: 'member'}
+    API->>API: Authenticate (Ory session) + checkPermission('User', 'manage')
+
+    API->>DB: SELECT Plan.maxUsers via Subscription WHERE organizationId
+    API->>DB: SELECT COUNT(*) FROM "User" WHERE organizationId AND active=true
+    API->>DB: SELECT COUNT(*) FROM "Invitation" WHERE organizationId AND status='pending'
+    API->>API: SubscriptionLimitChecker.checkUserLimit({currentUsers, pendingInvites, maxUsers})
+
+    alt Plan limit exceeded
+        API-->>Owner: 403 {code: 'PLAN_LIMIT_EXCEEDED', limitType: 'maxUsers', current: 5, max: 5}
+    end
+
+    API->>DB: SELECT "User" WHERE email AND organizationId
+    API->>DB: SELECT "Invitation" WHERE email AND organizationId AND status='pending'
+    alt Email already member or pending
+        API-->>Owner: 409 {code: 'CONFLICT', message: 'Email already member or has pending invite'}
+    end
+
+    API->>API: Generate token = crypto.randomUUID()
+    API->>DB: INSERT Invitation {organizationId, invitedById, email, role, token, status: 'pending', expiresAt: NOW()+7d}
+    DB-->>API: invitationId
+    API->>DB: INSERT AuditLog {action: 'create', resource: 'Invitation'}
+
+    API->>Brevo: sendTransactional({to: email, template: 'team-invite', vars: {orgName, role, acceptUrl}})
+    Note right of Brevo: Accept URL: {APP_URL}/invite/accept?token={uuid}
+    Brevo-->>API: {messageId}
+
+    API-->>Owner: 201 {invitationId, email, role, status: 'pending', expiresAt}
+
+    Note over Invitee,Ory: Step 2: Invitee receives email and registers
+    Invitee->>API: GET /api/team/invite/verify?token={uuid}
+    API->>DB: SELECT Invitation WHERE token AND status='pending' AND expiresAt > NOW()
+    alt Token valid
+        API-->>Invitee: {valid: true, organizationName, role, email}
+    else Token invalid/expired
+        API-->>Invitee: {valid: false, reason: 'expired' | 'already_accepted'}
+    end
+
+    Invitee->>Ory: POST /self-service/registration {email, password, fullName}
+    Ory->>Ory: Create identity
+    Ory->>Brevo: Verification email
+    Ory-->>Invitee: Registration success
+
+    Note over Ory,DB: Modified webhook (Sprint 2.5 CRITICAL CHANGE)
+    Ory->>API: POST /api/auth/webhook {event: 'identity.created', identity}
+    API->>API: Validate webhook signature
+    API->>DB: BEGIN TRANSACTION
+    API->>DB: SELECT Invitation WHERE email=identity.email AND status='pending' AND expiresAt > NOW()
+
+    alt Invitation found (INVITE FLOW)
+        API->>DB: INSERT User {oryId, email, fullName, organizationId: invitation.organizationId}
+        DB-->>API: userId
+        API->>DB: INSERT UserRole {userId, roleId: invitation.role}
+        Note right of API: НЕ создаём Organization,<br/>НЕ создаём Subscription<br/>(org уже существует)
+        API->>DB: UPDATE Invitation SET status='accepted', acceptedAt=NOW(), acceptedById=userId
+        API->>DB: INSERT AuditLog {action: 'create', resource: 'User', newData: {source: 'invitation'}}
+    else No invitation (NORMAL FLOW)
+        API->>DB: INSERT Organization {name: placeholder}
+        API->>DB: INSERT User {oryId, email, fullName, organizationId}
+        API->>DB: INSERT UserRole {userId, roleId: 'owner'}
+        API->>DB: INSERT Subscription {organizationId, planId: 'free'}
+        API->>DB: INSERT AuditLog {action: 'login', resource: 'User'}
+    end
+
+    API->>DB: COMMIT
+    API-->>Ory: 200 OK
+```
+
+---
+
+## 16. Accept Invitation — Existing User (Sprint 2.5)
+
+```mermaid
+sequenceDiagram
+    participant User as Existing User (Browser)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+
+    Note over User,DB: User already has an account in another org
+
+    User->>API: GET /api/team/invite/verify?token={uuid}
+    API->>DB: SELECT Invitation WHERE token AND status='pending' AND expiresAt > NOW()
+    API-->>User: {valid: true, organizationName: 'ACME Corp', role: 'member'}
+
+    User->>API: POST /api/team/invite/accept (authenticated, Cookie: ory_session)
+    API->>API: Authenticate (Ory session)
+    API->>DB: SELECT Invitation WHERE token AND status='pending'
+
+    API->>API: Verify: session.email === invitation.email
+    alt Email mismatch
+        API-->>User: 403 {code: 'EMAIL_MISMATCH', message: 'Logged-in email does not match invitation'}
+    end
+
+    API->>DB: BEGIN TRANSACTION
+
+    Note right of API: Transfer user to new org
+    API->>DB: UPDATE User SET organizationId = invitation.organizationId
+    API->>DB: DELETE UserRole WHERE userId = user.id
+    API->>DB: INSERT UserRole {userId, roleId: invitation.role}
+    API->>DB: UPDATE Invitation SET status='accepted', acceptedAt=NOW(), acceptedById=userId
+    API->>DB: INSERT AuditLog {action: 'update', resource: 'User', oldData: {orgId: old}, newData: {orgId: new, source: 'invitation'}}
+
+    API->>DB: COMMIT
+    API-->>User: 200 {organizationId, role, organizationName}
+    Note right of User: Redirect to /dashboard (new org)
+```
+
+---
+
+## 17. Messaging Strategy: MQ vs PubSub
 
 ### Два паттерна передачи сообщений
 
@@ -755,7 +878,7 @@ sequenceDiagram
 
 ---
 
-## 12. Data Flow Summary
+## 18. Data Flow Summary
 
 ### Request → Response Latency Targets
 
@@ -803,8 +926,11 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Or
 | SiegelEligible | Compliance | Notification | "Ваша компания может получить KI-Siegel!" |
 | RegulatoryUpdateFound | Monitoring | Compliance, Notification | Assess impact on deployer, notify affected |
 | SubscriptionChanged | Billing | IAM | Update feature access |
+| InvitationCreated | IAM | Notification (Brevo) | Send invite email to invitee |
+| InvitationAccepted | IAM | Dashboard, Notification | New team member joined, update user count |
+| PlanLimitExceeded | Billing | IAM | Block invitation/tool registration (403) |
 
 ---
 
-**Последнее обновление:** 2026-02-07 (v2.0.0: deployer-first pivot, 4 новых flow: AI Literacy, AI Tool Discovery, FRIA, KI-Siegel)
+**Последнее обновление:** 2026-02-12 (v2.1.0: Sprint 2.5 — Employee Invite Flow, Accept Invitation, modified webhook)
 **Следующий документ:** CODING-STANDARDS.md ✅ Утверждён
