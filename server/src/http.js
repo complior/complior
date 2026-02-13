@@ -80,6 +80,21 @@ const initRateLimit = async (server) => {
   });
 };
 
+const initSecurityHeaders = (server) => {
+  server.addHook('onRequest', (request, reply, done) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (process.env.NODE_ENV === 'production') {
+      reply.header(
+        'Strict-Transport-Security',
+        'max-age=63072000; includeSubDomains; preload',
+      );
+    }
+    done();
+  });
+};
+
 const initRequestId = (server) => {
   server.addHook('onRequest', (request, reply, done) => {
     const requestId = request.headers['x-request-id'] || crypto.randomUUID();
@@ -208,4 +223,5 @@ const registerSandboxRoutes = (server, api) => {
 module.exports = {
   registerSandboxRoutes, initHealth, initRateLimit,
   initRequestId, initErrorHandler, initSessionHook,
+  initSecurityHeaders,
 };

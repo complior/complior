@@ -9,7 +9,7 @@ const { Logger } = require('./src/logger.js');
 const { loadApplication } = require('./src/loader.js');
 const {
   initHealth, initRateLimit, initRequestId, initErrorHandler,
-  initSessionHook, registerSandboxRoutes,
+  initSessionHook, initSecurityHeaders, registerSandboxRoutes,
 } = require('./src/http.js');
 const { init: initWs } = require('./src/ws.js');
 
@@ -27,6 +27,17 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     environment: process.env.NODE_ENV || 'development',
     tracesSampleRate: 0.1,
+    beforeSend(event) {
+      if (event.request) {
+        delete event.request.cookies;
+        if (event.request.headers) {
+          delete event.request.headers.cookie;
+          delete event.request.headers.authorization;
+          delete event.request.headers['x-session-token'];
+        }
+      }
+      return event;
+    },
   });
 }
 
@@ -112,6 +123,7 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     ory, brevo, gotenberg, s3, stripe,
   });
 
+  initSecurityHeaders(server);
   initRequestId(server);
   await initRateLimit(server);
   initErrorHandler(server);

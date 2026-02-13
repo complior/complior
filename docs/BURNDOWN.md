@@ -328,6 +328,53 @@
 
 ---
 
+## Sprint 4 (Production Deployment)
+
+**Total Story Points:** 30
+**Duration:** 2026-02-13 (1 day)
+**Team:** Claude Code (Infra+Backend+QA)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-13 | 30 | 30 | Sprint start (plan approved by PO) |
+| 1 | 2026-02-13 | 0 | 0 | All 8 US done: Docker, Caddy, Kratos, DB Security, Hardening, CI/CD, Monitoring, GDPR |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 30 |
+| Completed SP | 30 |
+| Velocity | 30 SP / 1 day |
+| Carry-over | 0 |
+
+### Sprint 4 Completion Summary
+
+**Infrastructure (US-045..US-048 — 18 SP)**
+- **US-045** (5 SP): Production Docker — `Dockerfile.production` (multi-stage, non-root), `frontend/Dockerfile.production` (standalone), `docker-compose.production.yml` (5 services: postgres, kratos, gotenberg, backend, caddy), `next.config.js` fix (`output: 'standalone'`, env-based `BACKEND_URL`) — done
+- **US-046** (3 SP): Caddy Reverse Proxy + Auto-TLS — `caddy/Caddyfile` (path-based routing, security headers, auto-TLS, HTTP/3), single domain `app.complior.ai` — done
+- **US-047** (5 SP): Ory Kratos Production Config — `ory/kratos.production.yml` (env-based secrets, Brevo SMTP courier, production URLs, argon2 hardened, no `--dev` flag) — done
+- **US-048** (5 SP): Database Security + Automated Backups — PostgreSQL Docker secrets, no external ports, `scripts/backup-db.sh` (S3 upload, 14-day retention), `scripts/restore-db.sh` — done
+
+**Security (US-049 — 3 SP)**
+- **US-049** (3 SP): Server Hardening — `initSecurityHeaders()` in `server/src/http.js` (HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy), Sentry PII filtering (strip cookies/auth headers), UFW/SSH/fail2ban config documented — done
+
+**Operations (US-050..US-051 — 6 SP)**
+- **US-050** (3 SP): CI/CD Pipeline Fix — `deploy.yml` rewritten (MetaSQL instead of Prisma, correct paths, `node app/setup.js`, health checks, rollback support) — done
+- **US-051** (3 SP): Monitoring + Alerting — Sentry `beforeSend` PII filter, Plausible/UptimeRobot docs, disk monitoring cron documented — done
+
+**Compliance (US-052 — 3 SP)**
+- **US-052** (3 SP): EU Compliance Pack — GDPR data export (`app/application/iam/exportUserData.js`, `app/api/user/exportData.js`), account deletion (`app/application/iam/deleteAccount.js`, `app/api/user/deleteAccount.js`), `AccountDeleteSchema` Zod validation, `docs/RUNBOOK.md` — done
+
+### Reviews
+- **Lint:** 0 errors
+- **Unit:** 221/221 tests pass (214 Sprint 3.5 + 7 new GDPR)
+- **PR #14** → develop → main
+
+---
+
 ## Cumulative Velocity
 
 | Sprint | SP Planned | SP Done | Duration | Velocity (SP/day) |
@@ -339,7 +386,8 @@
 | 2.5 | 17 | 17 | 2 days | 8.5 |
 | 3 | 21 | 21 | 1 day | 21.0 |
 | 3.5 | 22 | 22 | 1 day | 22.0 |
-| **Total** | **222** | **222** | **14 days** | **15.9 avg** |
+| 4 | 30 | 30 | 1 day | 30.0 |
+| **Total** | **252** | **252** | **15 days** | **16.8 avg** |
 
 ### Test Growth
 
@@ -351,8 +399,9 @@
 | 2.5 | 149 | 101 | 250 |
 | 3 | 187 | 148 | 335 |
 | 3.5 | 214 | 148 | 362 |
+| 4 | 221 | 148 | 369 |
 
 ---
 
 **Updated by:** Claude Code (on behalf of Alex)
-**Last update:** 2026-02-12
+**Last update:** 2026-02-13

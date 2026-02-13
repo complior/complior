@@ -1,0 +1,31 @@
+# Stage 1: Install production dependencies
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+COPY server/package.json ./server/
+RUN npm install --omit=dev --workspace=server 2>/dev/null || npm install --omit=dev
+
+# Stage 2: Production runtime
+FROM node:20-alpine
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --chown=nodejs:nodejs package.json ./
+COPY --chown=nodejs:nodejs server ./server
+COPY --chown=nodejs:nodejs app ./app
+
+USER nodejs
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:8000/health || exit 1
+
+CMD ["node", "server/main.js"]
