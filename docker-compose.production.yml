@@ -1,0 +1,203 @@
+services:
+  # PostgreSQL 16 — production database
+  postgres:
+    image: postgres:16-alpine
+    container_name: complior-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: complior
+      POSTGRES_USER: complior
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - complior_net
+    # No ports exposed — only accessible within Docker network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U complior -d complior']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - postgres
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_statement=ddl
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - max_connections=100
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Ory Kratos — Identity & Auth (self-hosted, EU)
+  kratos-migrate:
+    image: oryd/kratos:v1.3.1
+    container_name: complior-kratos-migrate
+    environment:
+      DSN: postgres://complior:${DB_PASSWORD}@postgres:5432/complior?sslmode=disable
+    volumes:
+      - ./ory:/etc/config/kratos:ro
+    command: migrate sql -e --yes
+    networks:
+      - complior_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  kratos:
+    image: oryd/kratos:v1.3.1
+    container_name: complior-kratos
+    restart: unless-stopped
+    environment:
+      DSN: postgres://complior:${DB_PASSWORD}@postgres:5432/complior?sslmode=disable
+      SECRETS_COOKIE: ${KRATOS_COOKIE_SECRET}
+      SECRETS_CIPHER: ${KRATOS_CIPHER_SECRET}
+      COURIER_SMTP_CONNECTION_URI: ${COURIER_SMTP_CONNECTION_URI}
+    volumes:
+      - ./ory:/etc/config/kratos:ro
+    command: serve -c /etc/config/kratos/kratos.production.yml --watch-courier
+    networks:
+      - complior_net
+    # No ports exposed — only accessible within Docker network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kratos-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:4434/health/alive']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Gotenberg — HTML → PDF (self-hosted)
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: complior-gotenberg
+    restart: unless-stopped
+    networks:
+      - complior_net
+    # No ports exposed — only accessible within Docker network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Backend — Fastify API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: complior-backend
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgres://complior:${DB_PASSWORD}@postgres:5432/complior
+      ORY_SDK_URL: http://kratos:4433
+      ORY_ADMIN_URL: http://kratos:4434
+      GOTENBERG_URL: http://gotenberg:3000
+    networks:
+      - complior_net
+    # No ports exposed — Caddy routes traffic to backend:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kratos:
+        condition: service_healthy
+      gotenberg:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://127.0.0.1:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Frontend — Next.js (disabled — will be enabled when frontend is deployed)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.production
+  #     args:
+  #       - BACKEND_URL=http://backend:8000
+  #   container_name: complior-frontend
+  #   restart: unless-stopped
+  #   environment:
+  #     BACKEND_URL: http://backend:8000
+  #     HOSTNAME: 0.0.0.0
+  #     PORT: 3001
+  #   networks:
+  #     - complior_net
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+
+  # Caddy — Reverse Proxy + Auto-TLS
+  caddy:
+    image: caddy:2-alpine
+    container_name: complior-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/placeholder.html:/srv/placeholder.html:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - complior_net
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
+volumes:
+  pgdata:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+networks:
+  complior_net:
+    driver: bridge

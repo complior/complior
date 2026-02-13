@@ -1,0 +1,33 @@
+{$DOMAIN:app.complior.ai} {
+	# API and health check → backend
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /health {
+		reverse_proxy backend:8000
+	}
+
+	# Placeholder (will switch to frontend:3001 when frontend is deployed)
+	handle {
+		root * /srv
+		try_files {path} /placeholder.html
+		file_server
+	}
+
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		X-XSS-Protection "0"
+		-Server
+	}
+
+	# Logging
+	log {
+		output stdout
+		format json
+	}
+}

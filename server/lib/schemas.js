@@ -167,6 +167,12 @@ const ChangeRoleSchema = z.object({
   role: z.enum(VALID_INVITE_ROLES),
 });
 
+// === GDPR Schemas ===
+
+const AccountDeleteSchema = z.object({
+  confirm: z.literal(true, { message: 'Confirmation required' }),
+});
+
 module.exports = {
   VALID_INDUSTRIES,
   VALID_SIZES,
@@ -199,6 +205,7 @@ module.exports = {
   QuickCheckSchema,
   CheckoutSchema,
   CheckoutStatusSchema,
+  AccountDeleteSchema,
   VALID_PAID_PLANS,
   VALID_BILLING_PERIODS,
 };

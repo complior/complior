@@ -72,6 +72,12 @@ pids/
 # TypeScript cache
 *.tsbuildinfo
 
+# Production secrets - DO NOT COMMIT
+.env.production
+secrets/
+backups/
+ory/webhook-secret
+
 # Security - DO NOT COMMIT
 *.pem
 *.key
