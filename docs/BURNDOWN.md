@@ -353,8 +353,8 @@
 ### Sprint 4 Completion Summary
 
 **Infrastructure (US-045..US-048 — 18 SP)**
-- **US-045** (5 SP): Production Docker — `Dockerfile.production` (multi-stage, non-root), `frontend/Dockerfile.production` (standalone), `docker-compose.production.yml` (6 services: postgres, kratos, gotenberg, backend, frontend, caddy), `next.config.js` fix (`output: 'standalone'`, env-based `BACKEND_URL`) — done
-- **US-046** (3 SP): Caddy Reverse Proxy + Auto-TLS — `caddy/Caddyfile` (path-based routing, security headers, auto-TLS, HTTP/3), single domain `app.complior.eu` — done
+- **US-045** (5 SP): Production Docker — `Dockerfile.production` (multi-stage, non-root), `frontend/Dockerfile.production` (standalone), `docker-compose.production.yml` (5 services: postgres, kratos, gotenberg, backend, caddy), `next.config.js` fix (`output: 'standalone'`, env-based `BACKEND_URL`) — done
+- **US-046** (3 SP): Caddy Reverse Proxy + Auto-TLS — `caddy/Caddyfile` (path-based routing, security headers, auto-TLS, HTTP/3), single domain `app.complior.ai` — done
 - **US-047** (5 SP): Ory Kratos Production Config — `ory/kratos.production.yml` (env-based secrets, Brevo SMTP courier, production URLs, argon2 hardened, no `--dev` flag) — done
 - **US-048** (5 SP): Database Security + Automated Backups — PostgreSQL Docker secrets, no external ports, `scripts/backup-db.sh` (S3 upload, 14-day retention), `scripts/restore-db.sh` — done
 
@@ -362,46 +362,16 @@
 - **US-049** (3 SP): Server Hardening — `initSecurityHeaders()` in `server/src/http.js` (HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy), Sentry PII filtering (strip cookies/auth headers), UFW/SSH/fail2ban config documented — done
 
 **Operations (US-050..US-051 — 6 SP)**
-- **US-050** (3 SP): CI/CD Pipeline Fix — `deploy.yml` rewritten (MetaSQL instead of Prisma, correct paths `/home/complior/PROJECT`, `node app/setup.js`, health checks, rollback support) — done
+- **US-050** (3 SP): CI/CD Pipeline Fix — `deploy.yml` rewritten (MetaSQL instead of Prisma, correct paths, `node app/setup.js`, health checks, rollback support) — done
 - **US-051** (3 SP): Monitoring + Alerting — Sentry `beforeSend` PII filter, Plausible/UptimeRobot docs, disk monitoring cron documented — done
 
 **Compliance (US-052 — 3 SP)**
 - **US-052** (3 SP): EU Compliance Pack — GDPR data export (`app/application/iam/exportUserData.js`, `app/api/user/exportData.js`), account deletion (`app/application/iam/deleteAccount.js`, `app/api/user/deleteAccount.js`), `AccountDeleteSchema` Zod validation, `docs/RUNBOOK.md` — done
 
-### New Files (13)
-
-```
-Dockerfile.production                    # Multi-stage backend build
-frontend/Dockerfile.production           # Multi-stage Next.js standalone
-frontend/.dockerignore                   # Docker build exclusions
-docker-compose.production.yml            # 6-service production orchestration
-caddy/Caddyfile                          # Reverse proxy + auto-TLS
-ory/kratos.production.yml                # Production Kratos config
-scripts/backup-db.sh                     # Automated DB backup + S3
-scripts/restore-db.sh                    # DB restore procedure
-app/application/iam/exportUserData.js    # GDPR Art. 20 data export
-app/application/iam/deleteAccount.js     # GDPR Art. 17 account deletion
-app/api/user/exportData.js               # GET /api/user/export
-app/api/user/deleteAccount.js            # DELETE /api/user/account
-tests/gdpr-data-rights.test.js           # 7 GDPR tests
-docs/RUNBOOK.md                          # Operations runbook
-```
-
-### Modified Files (6)
-
-```
-frontend/next.config.js                  # output: 'standalone', env-based BACKEND_URL
-server/src/http.js                       # initSecurityHeaders()
-server/main.js                           # Security headers hook + Sentry PII filter
-server/lib/schemas.js                    # AccountDeleteSchema
-.github/workflows/deploy.yml             # Fixed CI/CD pipeline
-.gitignore                               # .env.production, secrets/, backups/
-```
-
 ### Reviews
 - **Lint:** 0 errors
 - **Unit:** 221/221 tests pass (214 Sprint 3.5 + 7 new GDPR)
-- Pending: commit + PR to develop → main
+- **PR #14** → develop → main
 
 ---
 
