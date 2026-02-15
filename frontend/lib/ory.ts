@@ -60,6 +60,20 @@ export async function submitRegistration(flowId: string, body: Record<string, un
   return res.json();
 }
 
+export async function createRecoveryFlow() {
+  const res = await oryFetch('/self-service/recovery/browser');
+  if (!res.ok) throw new Error('Failed to create recovery flow');
+  return res.json();
+}
+
+export async function submitRecovery(flowId: string, body: Record<string, unknown>) {
+  const res = await oryFetch(`/self-service/recovery?flow=${flowId}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
 export async function logout() {
   const res = await oryFetch('/self-service/logout/browser');
   if (!res.ok) return;
