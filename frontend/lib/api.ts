@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 interface ApiOptions extends RequestInit {
   params?: Record<string, string>;
@@ -26,7 +26,7 @@ async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
       ...fetchOptions.headers as Record<string, string>,
     },
     ...fetchOptions,
-  });
+  }).catch(() => new Response(JSON.stringify({ error: { message: 'Service unavailable' } }), { status: 503 }));
 
   if (!res.ok) {
     // Defensive: parse error JSON for message, fallback if body is not valid JSON

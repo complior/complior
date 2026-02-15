@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { getSession, createRegistrationFlow, submitRegistration } from '@/lib/ory';
+import { getSession, createRegistrationFlow, submitRegistration, extractCsrfToken } from '@/lib/ory';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
 
@@ -92,7 +92,7 @@ function RegisterContent() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [checkingSession, setCheckingSession] = useState(false);
   const [userProfile, setUserProfile] = useState<{ organizationId: number } | null>(null);
 
   /* ── Step 1 fields ── */
@@ -125,6 +125,8 @@ function RegisterContent() {
       } else {
         setCheckingSession(false);
       }
+    }).catch(() => {
+      setCheckingSession(false);
     });
   }, [router, locale]);
 
@@ -177,17 +179,32 @@ function RegisterContent() {
       const flow = await createRegistrationFlow();
       const result = await submitRegistration(flow.id, {
         method: 'password',
+        csrf_token: extractCsrfToken(flow),
         traits: { email, name: { first: firstName, last: lastName } },
         password,
       });
       if (result.identity) {
-        const profile = await api.auth.me();
-        setUserProfile(profile);
+        try {
+          const profile = await api.auth.me();
+          setUserProfile(profile);
+        } catch {
+          // Session cookie may not work across domains (dev/tunnel) —
+          // proceed without profile, step 2 will skip org update
+        }
         setStep(2);
-      } else if (result.error) {
-        setError(result.error.message || 'Registration failed');
-      } else if (result.ui?.messages) {
-        setError(result.ui.messages.map((m: { text: string }) => m.text).join('. '));
+      } else {
+        // Extract errors from Kratos response (top-level + per-node messages)
+        const msgs: string[] = [];
+        if (result.error?.message) msgs.push(result.error.message);
+        result.ui?.messages?.forEach((m: { text: string; type: string }) => {
+          if (m.type === 'error') msgs.push(m.text);
+        });
+        result.ui?.nodes?.forEach((node: { messages?: Array<{ text: string; type: string }> }) => {
+          node.messages?.forEach((m) => {
+            if (m.type === 'error') msgs.push(m.text);
+          });
+        });
+        setError(msgs.length > 0 ? msgs.join('. ') : 'Registration failed');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -206,13 +223,14 @@ function RegisterContent() {
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    if (!userProfile) return;
     setLoading(true);
     setError(null);
     try {
-      await api.auth.updateOrganization(userProfile.organizationId, {
-        name: companyName, industry, size: companySize, country,
-      });
+      if (userProfile) {
+        await api.auth.updateOrganization(userProfile.organizationId, {
+          name: companyName, industry, size: companySize, country,
+        });
+      }
       if (isPaid) {
         setStep(3);
       } else {

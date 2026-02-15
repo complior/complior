@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { createRecoveryFlow, submitRecovery } from '@/lib/ory';
+import { createRecoveryFlow, submitRecovery, extractCsrfToken } from '@/lib/ory';
 
 export default function ForgotPasswordPage() {
   const locale = useLocale();
@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const flow = await createRecoveryFlow();
-      await submitRecovery(flow.id, { method: 'link', email });
+      await submitRecovery(flow.id, { method: 'link', csrf_token: extractCsrfToken(flow), email });
       setSent(true);
     } catch {
       // Always show success (security-conscious)
@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
   const handleResend = async () => {
     try {
       const flow = await createRecoveryFlow();
-      await submitRecovery(flow.id, { method: 'link', email });
+      await submitRecovery(flow.id, { method: 'link', csrf_token: extractCsrfToken(flow), email });
     } catch {
       // Silently fail
     }

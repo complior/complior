@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { getSession, createLoginFlow, submitLogin } from '@/lib/ory';
+import { getSession, createLoginFlow, submitLogin, extractCsrfToken } from '@/lib/ory';
 import { api } from '@/lib/api';
 
 export default function LoginPage() {
@@ -13,7 +13,7 @@ export default function LoginPage() {
   const t = useTranslations('auth');
   const tc = useTranslations('common');
 
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [checkingSession, setCheckingSession] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -36,6 +36,8 @@ export default function LoginPage() {
       } else {
         setCheckingSession(false);
       }
+    }).catch(() => {
+      setCheckingSession(false);
     });
   }, [router, locale]);
 
@@ -67,7 +69,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const flow = await createLoginFlow();
-      await submitLogin(flow.id, { method: 'code', identifier: email });
+      await submitLogin(flow.id, { method: 'code', csrf_token: extractCsrfToken(flow), identifier: email });
       setMagicLinkEmail(email);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('invalidCredentials'));
@@ -85,7 +87,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const flow = await createLoginFlow();
-      const result = await submitLogin(flow.id, { method: 'password', identifier: email, password });
+      const result = await submitLogin(flow.id, { method: 'password', csrf_token: extractCsrfToken(flow), identifier: email, password });
       if (result.session) {
         await api.auth.me();
         router.push(`/${locale}/dashboard`);
@@ -103,7 +105,7 @@ export default function LoginPage() {
     if (resent || !magicLinkEmail) return;
     try {
       const flow = await createLoginFlow();
-      await submitLogin(flow.id, { method: 'code', identifier: magicLinkEmail });
+      await submitLogin(flow.id, { method: 'code', csrf_token: extractCsrfToken(flow), identifier: magicLinkEmail });
     } catch { /* silent */ }
     setResent(true);
     resentTimerRef.current = setTimeout(() => setResent(false), 2500);

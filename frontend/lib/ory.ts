@@ -13,23 +13,22 @@ export interface OrySession {
   };
 }
 
-async function oryFetch(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${ORY_SDK_URL}${path}`, {
+async function oryFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(`${ORY_SDK_URL}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers as Record<string, string> },
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...(options.headers as Record<string, string>),
+    },
     ...options,
-  });
-  return res;
+  }).catch(() => new Response('{}', { status: 503 }));
 }
 
 export async function getSession(): Promise<OrySession | null> {
-  try {
-    const res = await oryFetch('/sessions/whoami');
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  const res = await oryFetch('/sessions/whoami');
+  if (!res.ok) return null;
+  try { return await res.json(); } catch { return null; }
 }
 
 export async function createLoginFlow() {
@@ -52,12 +51,19 @@ export async function createRegistrationFlow() {
   return res.json();
 }
 
+export function extractCsrfToken(flow: { ui?: { nodes?: Array<{ attributes: { name?: string; value?: string } }> } }): string {
+  const node = flow.ui?.nodes?.find((n: { attributes: { name?: string } }) => n.attributes.name === 'csrf_token');
+  return node?.attributes?.value || '';
+}
+
 export async function submitRegistration(flowId: string, body: Record<string, unknown>) {
   const res = await oryFetch(`/self-service/registration?flow=${flowId}`, {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) console.error('[ory] submitRegistration error:', JSON.stringify(data, null, 2));
+  return data;
 }
 
 export async function createRecoveryFlow() {
