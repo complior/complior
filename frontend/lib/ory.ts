@@ -83,6 +83,12 @@ export async function submitRecovery(flowId: string, body: Record<string, unknow
 export async function logout() {
   const res = await oryFetch('/self-service/logout/browser');
   if (!res.ok) return;
-  const { logout_url } = await res.json();
-  if (logout_url) window.location.href = logout_url;
+  const { logout_url, logout_token } = await res.json();
+  if (logout_token) {
+    await oryFetch(`/self-service/logout?token=${logout_token}`, { method: 'GET' });
+  } else if (logout_url) {
+    try { const u = new URL(logout_url); await oryFetch(`${u.pathname}${u.search}`, { method: 'GET' }); } catch { /* fallback */ }
+  }
+  document.cookie = 'aiact_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  document.cookie = 'ory_kratos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
 }

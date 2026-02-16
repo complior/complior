@@ -1,11 +1,13 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 2.3.0
-**Дата:** 2026-02-12
+**Версия:** 2.4.0
+**Дата:** 2026-02-15
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md v2.1.0
 
+> **v2.4.0 (2026-02-15):** Sprint 6 — New seed: `platform_admin` role + `PlatformAdmin:manage` permission in `app/seeds/roles.js`. Admin cross-org query pattern: queries bypass tenant filter (`organizationId`) for platform-wide visibility. Double gate security: RBAC permission check + env whitelist (`PLATFORM_ADMIN_EMAILS`).
+>
 > **v2.3.0 (2026-02-12):** Sprint 3 Additions — AIToolCatalog category enum: added `api_platform`. Plan seed data: replaced duplicated values with reference to `app/config/plans.js` (Pricing v3.0). Catalog seed: 200+ → 220+ tools.
 >
 > **v2.2.0 (2026-02-12):** AI Act roles + Use Case model. Organization: добавлено `aiActRoles` (jsonb, default ["deployer"]) — 4 роли по AI Act (provider, deployer, distributor, importer). AITool: концепция "AITool = Use Case (Anwendungsfall)"; добавлены поля `useCaseDetails`, `decisionImpact`, `deploymentDate`, `employeesInformed` (Art. 26). Plan seed data вынесены в `app/config/plans.js` (single source of truth).

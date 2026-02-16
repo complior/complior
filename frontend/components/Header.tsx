@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/app/providers';
+import { logout } from '@/lib/ory';
 
 const LOCALES = [
   { code: 'en', label: 'English', flag: '\u{1F1EC}\u{1F1E7}' },
@@ -12,7 +13,7 @@ const LOCALES = [
 ] as const;
 
 interface HeaderProps {
-  mode?: 'marketing' | 'app';
+  mode?: 'marketing' | 'app' | 'admin';
 }
 
 export function Header({ mode = 'marketing' }: HeaderProps) {
@@ -62,7 +63,14 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
     { href: `/${locale}/tools/catalog`, label: t('catalog') },
   ];
 
-  const links = mode === 'marketing' ? marketingLinks : appLinks;
+  const adminLinks = [
+    { href: `/${locale}/admin/dashboard`, label: t('adminOverview') },
+    { href: `/${locale}/admin/users`, label: t('adminUsers') },
+    { href: `/${locale}/admin/organizations`, label: t('adminOrganizations') },
+    { href: `/${locale}/admin/subscriptions`, label: t('adminSubscriptions') },
+  ];
+
+  const links = mode === 'admin' ? adminLinks : mode === 'app' ? appLinks : marketingLinks;
 
   /* ---- Exact CSS from HTML design ---- */
   /* header */
@@ -316,6 +324,20 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
           >
             {theme === 'dark' ? '\u2600\uFE0F Light' : '\uD83C\uDF19 Dark'}
           </button>
+
+          {(mode === 'admin' || mode === 'app') && (
+            <button
+              style={{ ...btGhost, color: 'var(--coral, #e74c3c)' }}
+              onClick={async () => {
+                await logout();
+                router.push(`/${locale}/auth/login`);
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+            >
+              {tc('logout')}
+            </button>
+          )}
 
           {mode === 'marketing' && (
             <>

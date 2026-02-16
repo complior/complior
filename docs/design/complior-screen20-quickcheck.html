@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Act Quick Check — Complior.ai</title>
+<meta name="description" content="Does the EU AI Act apply to your company? 13 expert questions, personalized compliance report. Free, no account required.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#faf8f5;--bg2:#f3f0eb;--bg3:#eae6df;--bg4:#ddd8cf;--dark:#1a1a1a;--dark2:#2d2d2d;--dark3:#444;--dark4:#666;--dark5:#888;--teal:#0d9488;--teal2:#0f766e;--teal3:#115e59;--teal-dim:rgba(13,148,136,.06);--teal-glow:rgba(13,148,136,.12);--coral:#e74c3c;--green:#059669;--amber:#d97706;--b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);--b3:rgba(0,0,0,.2);--card:#fff;--hdr-bg:rgba(250,248,245,.9);--f-display:'Fraunces',serif;--f-body:'Plus Jakarta Sans',sans-serif;--f-mono:'JetBrains Mono',monospace;--sel-bg:var(--teal);--sel-c:#fff}
+html.dark{--bg:#111213;--bg2:#161718;--bg3:#1c1d1f;--bg4:#252628;--dark:#f4f4f5;--dark2:#d4d4d8;--dark3:#a1a1aa;--dark4:#71717a;--dark5:#52525b;--teal:#84cc16;--teal2:#65a30d;--teal3:#4d7c0f;--teal-dim:rgba(132,204,22,.07);--teal-glow:rgba(132,204,22,.12);--coral:#f87171;--green:#22c55e;--amber:#fbbf24;--b:rgba(255,255,255,.06);--b2:rgba(255,255,255,.09);--b3:rgba(255,255,255,.15);--card:rgba(255,255,255,.03);--hdr-bg:rgba(17,18,19,.85);--f-display:'Sora',sans-serif;--f-body:'Sora',sans-serif;--f-mono:'Space Mono',monospace;--sel-bg:var(--teal);--sel-c:var(--bg)}
+html{scroll-behavior:smooth}
+body{font-family:var(--f-body);background:var(--bg);color:var(--dark3);line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:5rem 2rem 2rem;transition:background .4s,color .4s}
+::selection{background:var(--sel-bg);color:var(--sel-c)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* theme toggle is in navbar now */
+.logo{font-family:var(--f-display);font-weight:700;font-size:1.25rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;letter-spacing:-.02em;margin:1rem 0 .5rem;text-decoration:none}.logo-d{font-family:var(--f-mono);font-size:.625rem;font-weight:500;color:var(--teal);opacity:.7}
+.hd{text-align:center;margin-bottom:1.5rem}.hd-badge{display:inline-flex;align-items:center;gap:.375rem;font-family:var(--f-mono);font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--teal);margin-bottom:.5rem}.hd-badge svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2}.hd h1{font-family:var(--f-display);font-size:1.375rem;font-weight:700;color:var(--dark);margin-bottom:.25rem;letter-spacing:-.02em}.hd p{font-size:.875rem;color:var(--dark4)}
+.prg{display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem;width:100%;max-width:520px}.prg-info{font-family:var(--f-mono);font-size:.5rem;font-weight:600;color:var(--dark5);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;min-width:60px}.prg-bar{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}html.dark .prg-bar{background:var(--bg4)}.prg-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .4s ease}.prg-blk{font-family:var(--f-mono);font-size:.4375rem;color:var(--dark5);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}.prg-blk em{font-style:normal;color:var(--teal);font-weight:700}
+html.dark .prg-info{color:var(--dark3)}html.dark .prg-blk{color:var(--dark3)}
+.crd{background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:2.5rem;width:100%;max-width:520px;box-shadow:0 16px 48px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.03);transition:.35s}html.dark .crd{box-shadow:0 16px 48px rgba(0,0,0,.3);border-color:var(--b3)}
+.bh{font-family:var(--f-mono);font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);margin-bottom:1.25rem;display:flex;align-items:center;gap:.375rem}.bh svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stp{display:none}.stp.on{display:block;animation:fi .3s ease both}@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.stp-q{font-family:var(--f-display);font-size:1.0625rem;font-weight:700;color:var(--dark);margin-bottom:.25rem}.stp-h{font-size:.8125rem;color:var(--dark5);margin-bottom:1.125rem;line-height:1.5}.stp-h code{font-family:var(--f-mono);font-size:.6875rem;background:var(--bg2);padding:.1em .35em;border-radius:4px;color:var(--dark3)}html.dark .stp-h code{background:rgba(132,204,22,.1);color:var(--teal);border:1px solid rgba(132,204,22,.15)}
+html.dark .stp-h{color:var(--dark3)}html.dark .stp-h strong{color:var(--dark)}
+.opts{display:flex;flex-direction:column;gap:.4375rem;margin-bottom:1.375rem}
+.opt{display:flex;align-items:center;gap:.75rem;padding:.6875rem 1rem;border:1.5px solid var(--b2);border-radius:10px;cursor:pointer;transition:.2s}.opt:hover{border-color:var(--teal);background:var(--teal-dim)}.opt.sel{border-color:var(--teal);background:var(--teal-dim);box-shadow:0 0 0 3px rgba(13,148,136,.06)}html.dark .opt{border-color:var(--b3)}html.dark .opt.sel{border-color:var(--teal);background:var(--teal-dim);box-shadow:0 0 0 3px rgba(132,204,22,.06)}
+.rd{width:18px;height:18px;border-radius:50%;border:2px solid var(--b3);flex-shrink:0;display:grid;place-items:center;transition:.2s}.opt.sel .rd{border-color:var(--teal);background:var(--teal)}.opt.sel .rd::after{content:'';width:6px;height:6px;border-radius:50%;background:#fff}html.dark .opt.sel .rd::after{background:var(--bg)}
+.ck{width:18px;height:18px;border-radius:5px;border:2px solid var(--b3);flex-shrink:0;display:grid;place-items:center;transition:.2s}.opt.sel .ck{border-color:var(--teal);background:var(--teal)}.opt.sel .ck::after{content:'\2713';font-size:.625rem;color:#fff;font-weight:700;line-height:1}html.dark .opt.sel .ck::after{color:var(--bg)}
+.opt-t{font-size:.8125rem;color:var(--dark2);font-weight:500}.opt-desc{font-size:.6875rem;color:var(--dark5);margin-top:.125rem}
+html.dark .opt-desc{color:var(--dark4)}
+.em-l{font-family:var(--f-mono);font-size:.5625rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--dark4);margin-bottom:.4375rem;display:block}html.dark .em-l{color:var(--dark3)}.em-i{width:100%;padding:.75rem 1rem;border:1.5px solid var(--b2);border-radius:8px;font-family:var(--f-body);font-size:.875rem;color:var(--dark);background:var(--bg);outline:none;transition:.25s;margin-bottom:.75rem}.em-i:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-dim)}html.dark .em-i{border-color:var(--b3);background:var(--bg2)}
+.consent{display:flex;align-items:flex-start;gap:.5rem;margin-bottom:1.25rem;cursor:pointer}.consent input{display:none}.cbx{width:16px;height:16px;border-radius:4px;border:2px solid var(--b3);flex-shrink:0;display:grid;place-items:center;transition:.2s;margin-top:.15rem}.consent input:checked~.cbx{background:var(--teal);border-color:var(--teal)}.consent input:checked~.cbx::after{content:'\2713';font-size:.5rem;color:#fff;font-weight:700}html.dark .consent input:checked~.cbx::after{color:var(--bg)}.consent span{font-size:.6875rem;color:var(--dark5);line-height:1.5}
+.btns{display:flex;gap:.5rem}.bn{padding:.6875rem 1.25rem;border-radius:8px;font-family:var(--f-body);font-weight:700;font-size:.8125rem;cursor:pointer;border:none;transition:.25s;display:inline-flex;align-items:center;gap:.5rem;justify-content:center}.bn-p{background:var(--teal);color:#fff;box-shadow:0 2px 8px var(--teal-glow);flex:1}.bn-p:hover{background:var(--teal2);transform:translateY(-1px)}html.dark .bn-p{color:var(--bg)}.bn-p:disabled{opacity:.35;cursor:not-allowed;transform:none}.bn-g{background:0;color:var(--dark4);flex:0;padding:.6875rem .75rem}.bn-g:hover{color:var(--dark2)}
+html.dark .bn-g{color:var(--dark3);background:var(--bg3);border-radius:8px}html.dark .bn-g:hover{color:var(--dark);background:var(--bg4)}.bn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.bn-o{background:0;color:var(--teal);border:1.5px solid var(--teal);flex:1}.bn-o:hover{background:var(--teal-dim)}
+/* Result */
+.res{display:none}.res.on{display:block;animation:fi .5s ease both}
+.rv{text-align:center;padding:1rem 0 1.25rem;border-bottom:1px solid var(--b)}.rv-ic{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;margin:0 auto .75rem}.rv-ic.w{background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.15)}.rv-ic.w svg{stroke:var(--amber)}.rv-ic.g{background:var(--teal-dim);border:1px solid var(--teal-glow)}.rv-ic.g svg{stroke:var(--teal)}.rv-ic.d{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.12)}.rv-ic.d svg{stroke:var(--coral)}.rv-ic svg{width:24px;height:24px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.rv h2{font-family:var(--f-display);font-size:1.25rem;font-weight:700;color:var(--dark);margin-bottom:.25rem}.rv p{font-size:.8125rem;color:var(--dark4)}
+.rs{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;padding:1rem 0;border-bottom:1px solid var(--b)}.rs-i{text-align:center}.rs-n{font-family:var(--f-display);font-size:1.25rem;font-weight:800;color:var(--dark)}.rs-n.w{color:var(--amber)}.rs-n.d{color:var(--coral)}.rs-n.gr{color:var(--green)}.rs-l{font-family:var(--f-mono);font-size:.375rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dark5)}
+.rf{padding:1rem 0;border-bottom:1px solid var(--b)}.rf-t{font-family:var(--f-mono);font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark4);margin-bottom:.75rem}html.dark .rf-t{color:var(--dark3)}
+.ri{display:flex;align-items:flex-start;gap:.5rem;padding:.375rem 0;font-size:.8125rem;color:var(--dark2);line-height:1.5}.ri svg{width:14px;height:14px;flex-shrink:0;margin-top:.2rem;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.ri.rw svg{stroke:var(--amber)}.ri.rd svg{stroke:var(--coral)}.ri.rn svg{stroke:var(--teal)}
+.ri code{font-family:var(--f-mono);font-size:.6875rem;background:var(--bg2);padding:.05em .3em;border-radius:3px;white-space:nowrap;color:var(--dark3)}html.dark .ri code{background:rgba(132,204,22,.1);color:var(--teal);border:1px solid rgba(132,204,22,.15)}
+.rc{padding-top:1.25rem;display:flex;flex-direction:column;gap:.5rem}.rc .bn{width:100%}.rref{text-align:center;margin-top:.75rem;font-family:var(--f-mono);font-size:.375rem;color:var(--dark5);letter-spacing:.04em}
+.ft{margin-top:1.5rem;text-align:center;font-family:var(--f-mono);font-size:.4375rem;color:var(--dark5);letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:.375rem}.ft svg{width:12px;height:12px;stroke:var(--teal);fill:none;stroke-width:2}.ft a{color:var(--teal);text-decoration:none;font-weight:600}
+@media(max-width:520px){.crd{padding:1.75rem 1.25rem;border-radius:12px}.hd h1{font-size:1.125rem}.stp-q{font-size:1rem}.btns{flex-direction:column}.bn-g{order:-1}.rs{grid-template-columns:1fr 1fr;gap:.75rem}}
+/* Navbar */
+header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--hdr-bg);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--b);transition:.4s}
+nav{max-width:1140px;margin:0 auto;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:var(--f-display);font-weight:700;font-size:1.125rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;letter-spacing:-.02em;text-decoration:none}
+.logo-d{font-family:var(--f-mono);font-size:.625rem;font-weight:500;color:var(--teal);opacity:.7}
+.nv{display:flex;gap:1.5rem;list-style:none}.nv a{color:var(--dark4);font-size:.8125rem;font-weight:600;transition:.25s;text-decoration:none}.nv a:hover{color:var(--teal)}
+.nr{display:flex;gap:.5rem;align-items:center}
+.bt{padding:.4375rem 1rem;border-radius:6px;font-weight:700;font-size:.8125rem;transition:.25s;border:none;cursor:pointer;font-family:var(--f-body);display:inline-flex;align-items:center;gap:.4375rem;line-height:1.4;text-decoration:none}
+.bt-g{background:0;color:var(--dark4)}.bt-g:hover{color:var(--dark)}
+.bt-t{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(13,148,136,.2)}.bt-t:hover{background:var(--teal2);transform:translateY(-1px)}
+html.dark .bt-t{color:var(--bg)}
+@media(max-width:768px){.nv{display:none}nav{padding:.75rem 1.25rem}}
+</style>
+</head>
+<body>
+<header>
+<nav>
+<a href="/" class="logo">Complior<span class="logo-d">.ai</span></a>
+<ul class="nv"><li><a href="/#features">Features</a></li><li><a href="/#free-tools">Free Tools</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/#faq">FAQ</a></li></ul>
+<div class="nr"><button class="bt bt-g" onclick="document.documentElement.classList.toggle('dark');this.textContent=document.documentElement.classList.contains('dark')?'☀️ Light':'🌙 Dark'">🌙 Dark</button><a href="/auth/login" class="bt bt-g">Sign In</a><a href="/auth/register" class="bt bt-t">Get Started Free</a></div>
+</nav>
+</header>
+<div class="hd"><div class="hd-badge"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg> AI Act Quick Check</div><h1>Does the EU AI Act apply to your company?</h1><p>13 expert questions. Personalized report. Free.</p></div>
+<div class="prg" id="prg"><span class="prg-info" id="pInf">Q 1 / 13</span><div class="prg-bar"><div class="prg-fill" id="pBar" style="width:7.7%"></div></div><span class="prg-blk" id="pBlk"><em>1</em>/4 Scope</span></div>
+<div class="crd" id="card">
+<!-- BLOCK 1: SCOPE -->
+<div class="stp on" data-s="1">
+<div class="bh"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Block 1 / 4 — Scope &amp; Applicability</div>
+<div class="stp-q">Does your company currently use any AI-powered tools?</div>
+<div class="stp-h">Including ChatGPT, Copilot, Jasper, AI analytics, automated recommendations, chatbots, etc.</div>
+<div class="opts" data-t="r" data-k="usesAI">
+<div class="opt" data-v="active"><div class="rd"></div><div><div class="opt-t">Yes, we actively use AI tools</div></div></div>
+<div class="opt" data-v="planning"><div class="rd"></div><div><div class="opt-t">We're evaluating or piloting AI</div></div></div>
+<div class="opt" data-v="unsure"><div class="rd"></div><div><div class="opt-t">I'm not sure</div><div class="opt-desc">Some tools may use AI without you knowing</div></div></div>
+<div class="opt" data-v="no"><div class="rd"></div><div><div class="opt-t">No, we don't use AI</div></div></div>
+</div>
+<div class="btns"><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="2">
+<div class="stp-q">How many people work at your company?</div>
+<div class="stp-h">Total headcount including full-time, part-time, and regular contractors.</div>
+<div class="opts" data-t="r" data-k="size">
+<div class="opt" data-v="1-10"><div class="rd"></div><div class="opt-t">1–10</div></div>
+<div class="opt" data-v="11-50"><div class="rd"></div><div class="opt-t">11–50</div></div>
+<div class="opt" data-v="51-200"><div class="rd"></div><div class="opt-t">51–200</div></div>
+<div class="opt" data-v="201-500"><div class="rd"></div><div class="opt-t">201–500</div></div>
+<div class="opt" data-v="500+"><div class="rd"></div><div class="opt-t">500+</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="3">
+<div class="stp-q">Does your company have EU operations or serve EU customers?</div>
+<div class="stp-h">The AI Act applies to companies placing or using AI in the EU market, regardless of where you're based <code>Art. 2</code>.</div>
+<div class="opts" data-t="r" data-k="euScope">
+<div class="opt" data-v="eu_based"><div class="rd"></div><div class="opt-t">Yes — headquartered in the EU</div></div>
+<div class="opt" data-v="eu_clients"><div class="rd"></div><div class="opt-t">Not EU-based, but we have EU clients/users</div></div>
+<div class="opt" data-v="no_eu"><div class="rd"></div><div class="opt-t">No EU connection</div></div>
+<div class="opt" data-v="unsure"><div class="rd"></div><div class="opt-t">Not sure</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="4">
+<div class="stp-q">What is your company's role in relation to AI?</div>
+<div class="stp-h">This determines which obligations apply: <code>Art. 3(4)</code> deployer vs <code>Art. 3(3)</code> provider.</div>
+<div class="opts" data-t="r" data-k="role">
+<div class="opt" data-v="deployer"><div class="rd"></div><div><div class="opt-t">We use third-party AI tools (deployer)</div><div class="opt-desc">e.g. Using ChatGPT, Copilot, HubSpot AI</div></div></div>
+<div class="opt" data-v="provider"><div class="rd"></div><div><div class="opt-t">We build or sell AI products (provider)</div><div class="opt-desc">e.g. SaaS with ML models, AI APIs</div></div></div>
+<div class="opt" data-v="both"><div class="rd"></div><div class="opt-t">Both — we build AI and use third-party AI</div></div>
+<div class="opt" data-v="unsure"><div class="rd"></div><div class="opt-t">Not sure</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<!-- BLOCK 2: AI USAGE -->
+<div class="stp" data-s="5">
+<div class="bh"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Block 2 / 4 — AI Usage Details</div>
+<div class="stp-q">Which types of AI tools does your company use?</div>
+<div class="stp-h">Select all that apply.</div>
+<div class="opts" data-t="m" data-k="toolTypes">
+<div class="opt" data-v="llm"><div class="ck"></div><div><div class="opt-t">LLMs / Chatbots</div><div class="opt-desc">ChatGPT, Claude, Gemini, internal chatbots</div></div></div>
+<div class="opt" data-v="analytics"><div class="ck"></div><div><div class="opt-t">AI Analytics &amp; BI</div><div class="opt-desc">Predictive analytics, forecasting, anomaly detection</div></div></div>
+<div class="opt" data-v="content"><div class="ck"></div><div><div class="opt-t">AI Content Generation</div><div class="opt-desc">Jasper, Midjourney, DALL-E, copy generation</div></div></div>
+<div class="opt" data-v="code"><div class="ck"></div><div><div class="opt-t">AI Code Tools</div><div class="opt-desc">GitHub Copilot, Cursor, Tabnine</div></div></div>
+<div class="opt" data-v="process"><div class="ck"></div><div><div class="opt-t">AI in Internal Processes</div><div class="opt-desc">Document processing, workflow automation, email AI</div></div></div>
+<div class="opt" data-v="custom"><div class="ck"></div><div><div class="opt-t">Custom / In-house AI</div><div class="opt-desc">ML models trained on your company data</div></div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="6">
+<div class="stp-q">How are AI-generated outputs used in decisions?</div>
+<div class="stp-h">Affects risk level and obligations under <code>Art. 6</code> and <code>Art. 14</code>.</div>
+<div class="opts" data-t="r" data-k="decisionRole">
+<div class="opt" data-v="info"><div class="rd"></div><div><div class="opt-t">Informational only</div><div class="opt-desc">AI provides insights, humans decide everything</div></div></div>
+<div class="opt" data-v="assist"><div class="rd"></div><div><div class="opt-t">AI assists human decisions</div><div class="opt-desc">AI recommends, person reviews and approves</div></div></div>
+<div class="opt" data-v="auto"><div class="rd"></div><div><div class="opt-t">AI makes some decisions autonomously</div><div class="opt-desc">Auto-replies, automated scoring, auto-filtering</div></div></div>
+<div class="opt" data-v="customer"><div class="rd"></div><div><div class="opt-t">AI interacts directly with customers</div><div class="opt-desc">Chatbots, AI phone agents, AI recommendations</div></div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="7">
+<div class="stp-q">Can users tell when they're interacting with AI?</div>
+<div class="stp-h"><code>Art. 50</code> requires transparency — people must know when they interact with AI or see AI-generated content.</div>
+<div class="opts" data-t="r" data-k="transparency">
+<div class="opt" data-v="yes"><div class="rd"></div><div class="opt-t">Yes — we clearly label AI outputs</div></div>
+<div class="opt" data-v="partial"><div class="rd"></div><div class="opt-t">Sometimes — depends on the tool</div></div>
+<div class="opt" data-v="no"><div class="rd"></div><div class="opt-t">No — users can't distinguish AI from human</div></div>
+<div class="opt" data-v="na"><div class="rd"></div><div class="opt-t">Not applicable — AI is internal only</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="8">
+<div class="stp-q">Does your company have a formal AI usage policy?</div>
+<div class="stp-h">A documented policy covering approved tools, permitted uses, and data handling rules.</div>
+<div class="opts" data-t="r" data-k="policy">
+<div class="opt" data-v="yes"><div class="rd"></div><div class="opt-t">Yes — documented and enforced</div></div>
+<div class="opt" data-v="wip"><div class="rd"></div><div class="opt-t">We're working on one</div></div>
+<div class="opt" data-v="no"><div class="rd"></div><div class="opt-t">No formal policy</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<!-- BLOCK 3: HIGH-RISK -->
+<div class="stp" data-s="9">
+<div class="bh"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Block 3 / 4 — High-Risk Screening</div>
+<div class="stp-q">Do you use AI in any of these regulated areas?</div>
+<div class="stp-h">Listed in <code>Annex III</code> as potentially high-risk. Select all that apply.</div>
+<div class="opts" data-t="m" data-k="hrAreas">
+<div class="opt" data-v="hr"><div class="ck"></div><div><div class="opt-t">HR &amp; Recruitment</div><div class="opt-desc">CV screening, candidate ranking, performance scoring</div></div></div>
+<div class="opt" data-v="credit"><div class="ck"></div><div><div class="opt-t">Creditworthiness &amp; Insurance</div><div class="opt-desc">Credit scoring, risk assessment, pricing models</div></div></div>
+<div class="opt" data-v="education"><div class="ck"></div><div><div class="opt-t">Education &amp; Training Assessment</div><div class="opt-desc">Grading, admission decisions, learning analytics</div></div></div>
+<div class="opt" data-v="health"><div class="ck"></div><div><div class="opt-t">Healthcare</div><div class="opt-desc">Diagnosis support, treatment recommendations, triage</div></div></div>
+<div class="opt" data-v="legal"><div class="ck"></div><div><div class="opt-t">Legal &amp; Judicial</div><div class="opt-desc">Legal research AI, case outcome prediction</div></div></div>
+<div class="opt" data-v="infra"><div class="ck"></div><div><div class="opt-t">Critical Infrastructure</div><div class="opt-desc">Energy, transport, water, telecom systems</div></div></div>
+<div class="opt" data-v="biometric"><div class="ck"></div><div><div class="opt-t">Biometric Identification</div><div class="opt-desc">Facial recognition, emotion detection</div></div></div>
+<div class="opt" data-v="none"><div class="ck"></div><div class="opt-t">None of these</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="10">
+<div class="stp-q">Does any AI system influence decisions that affect individuals?</div>
+<div class="stp-h">Employment, access to services, financial assessments, eligibility. <code>Art. 6(2)</code></div>
+<div class="opts" data-t="r" data-k="affectsRights">
+<div class="opt" data-v="yes"><div class="rd"></div><div class="opt-t">Yes — AI influences decisions about people</div></div>
+<div class="opt" data-v="indirect"><div class="rd"></div><div class="opt-t">Indirectly — AI informs but doesn't decide</div></div>
+<div class="opt" data-v="no"><div class="rd"></div><div class="opt-t">No — internal productivity only</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="11">
+<div class="stp-q">Is there human oversight for AI-assisted decisions?</div>
+<div class="stp-h"><code>Art. 14</code> requires human oversight for high-risk AI — a person must understand, monitor, and be able to override AI.</div>
+<div class="opts" data-t="r" data-k="oversight">
+<div class="opt" data-v="formal"><div class="rd"></div><div><div class="opt-t">Yes — formal review process</div><div class="opt-desc">Documented process, assigned reviewers, override capability</div></div></div>
+<div class="opt" data-v="informal"><div class="rd"></div><div><div class="opt-t">Informal — someone usually checks</div><div class="opt-desc">No documented process</div></div></div>
+<div class="opt" data-v="no"><div class="rd"></div><div class="opt-t">No human oversight</div></div>
+<div class="opt" data-v="na"><div class="rd"></div><div class="opt-t">Not applicable</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<!-- BLOCK 4: READINESS -->
+<div class="stp" data-s="12">
+<div class="bh"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Block 4 / 4 — Compliance Readiness</div>
+<div class="stp-q">Do you maintain an inventory of AI tools used?</div>
+<div class="stp-h"><code>Art. 26(1)</code> requires deployers to keep records of AI systems, their purpose, and risk classification.</div>
+<div class="opts" data-t="r" data-k="inventory">
+<div class="opt" data-v="yes"><div class="rd"></div><div class="opt-t">Yes — we track all AI tools centrally</div></div>
+<div class="opt" data-v="partial"><div class="rd"></div><div class="opt-t">Partially — some tools tracked</div></div>
+<div class="opt" data-v="no"><div class="rd"></div><div class="opt-t">No formal inventory</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<div class="stp" data-s="13">
+<div class="stp-q">Have employees received AI literacy training?</div>
+<div class="stp-h"><code>Art. 4</code> mandates sufficient AI literacy for all staff using or overseeing AI. This obligation is <strong>already in force since Feb 2, 2025</strong>.</div>
+<div class="opts" data-t="r" data-k="litTraining">
+<div class="opt" data-v="yes"><div class="rd"></div><div class="opt-t">Yes — formal training completed</div></div>
+<div class="opt" data-v="partial"><div class="rd"></div><div class="opt-t">Some employees, not all</div></div>
+<div class="opt" data-v="planned"><div class="rd"></div><div class="opt-t">Planned but not started</div></div>
+<div class="opt" data-v="no"><div class="rd"></div><div class="opt-t">No training</div></div>
+</div>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" disabled onclick="nxt()">Next <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<!-- STEP 14: EMAIL -->
+<div class="stp" data-s="14">
+<div class="stp-q">Get your personalized AI Act assessment</div>
+<div class="stp-h">We'll generate a detailed compliance report based on your 13 answers.</div>
+<div class="em-l">Work Email</div>
+<input class="em-i" id="qcEmail" type="email" placeholder="you@company.com" oninput="chkE()">
+<label class="consent" onclick="event.stopPropagation()"><input type="checkbox" id="qcCon" onchange="chkE()"><div class="cbx"></div><span>I agree to receive my assessment and occasional compliance updates. Unsubscribe anytime.</span></label>
+<div class="btns"><button class="bn bn-g" onclick="prv()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="bn bn-p" id="subBtn" disabled onclick="showRes()">See My Assessment <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></button></div>
+</div>
+
+<!-- RESULT -->
+<div class="res" id="resView">
+<div class="rv"><div class="rv-ic w" id="rIc"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><h2 id="rTi">The AI Act likely applies to you</h2><p id="rSu">Based on your answers, your company has EU AI Act obligations.</p></div>
+<div class="rs"><div class="rs-i"><div class="rs-n" id="rOb">5</div><div class="rs-l">Obligations</div></div><div class="rs-i"><div class="rs-n w" id="rHr">2</div><div class="rs-l">High-risk areas</div></div><div class="rs-i"><div class="rs-n" id="rRd">3</div><div class="rs-l">Readiness gaps</div></div><div class="rs-i"><div class="rs-n d" id="rUr">High</div><div class="rs-l">Urgency</div></div></div>
+<div class="rf"><div class="rf-t">Key Findings</div><div id="fList"></div></div>
+<div class="rc"><a href="/auth/register?plan=free" class="bn bn-p">Create Free Account <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></a><a href="/auth/register?plan=growth&period=monthly" class="bn bn-o">Start 14-day Trial</a></div>
+<div class="rref">Based on Regulation (EU) 2024/1689 — EU Artificial Intelligence Act</div>
+</div>
+</div>
+<div class="ft"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M9 12l2 2 4-4"/></svg>No account required · Your data is not stored · <a href="/">complior.ai</a></div>
+<script>
+var cur=1,tot=14,A={};
+var BLK=[[1,4,'Scope'],[5,8,'Usage'],[9,11,'Risk'],[12,14,'Readiness']];
+
+document.querySelectorAll('.opts').forEach(function(g){
+  var t=g.dataset.t,k=g.dataset.k;
+  g.querySelectorAll('.opt').forEach(function(o){
+    o.addEventListener('click',function(){
+      if(t==='r'){g.querySelectorAll('.opt').forEach(function(x){x.classList.remove('sel')});o.classList.add('sel');A[k]=o.dataset.v}
+      else{
+        if(o.dataset.v==='none'){g.querySelectorAll('.opt').forEach(function(x){x.classList.remove('sel')});o.classList.add('sel');A[k]=['none']}
+        else{var n=g.querySelector('[data-v="none"]');if(n)n.classList.remove('sel');o.classList.toggle('sel');A[k]=[];g.querySelectorAll('.opt.sel').forEach(function(s){A[k].push(s.dataset.v)})}
+      }
+      enab();
+    });
+  });
+});
+
+function enab(){var s=document.querySelector('.stp.on'),b=s.querySelector('.bn-p'),g=s.querySelector('.opts');if(g){b.disabled=!g.querySelector('.opt.sel')}}
+
+function updP(){
+  document.getElementById('pInf').textContent='Q '+Math.min(cur,13)+' / 13';
+  document.getElementById('pBar').style.width=(cur/tot*100)+'%';
+  var bl='';for(var i=0;i<BLK.length;i++){if(cur>=BLK[i][0]&&cur<=BLK[i][1]){bl='<em>'+(i+1)+'</em>/4 '+BLK[i][2];break}}
+  if(cur===14)bl='<em>4</em>/4 Email';
+  document.getElementById('pBlk').innerHTML=bl;
+}
+
+function show(n){document.querySelectorAll('.stp').forEach(function(s){s.classList.remove('on')});var s=document.querySelector('[data-s="'+n+'"]');if(s){s.classList.add('on');s.style.animation='fi .3s ease both'}cur=n;updP()}
+function nxt(){if(cur<tot)show(cur+1)}
+function prv(){if(cur>1)show(cur-1)}
+function chkE(){var e=document.getElementById('qcEmail').value,c=document.getElementById('qcCon').checked;document.getElementById('subBtn').disabled=!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)&&c)}
+
+function showRes(){
+  A.email=document.getElementById('qcEmail').value;
+  document.querySelectorAll('.stp').forEach(function(s){s.classList.remove('on');s.style.display='none'});
+  document.getElementById('prg').style.display='none';
+
+  var ob=0,hr=0,gaps=0,F=[];
+  var applies=true;
+
+  // 1. AI usage
+  if(A.usesAI==='active'){ob+=2;F.push({t:'n',s:'Your company actively uses AI — <code>Art. 4</code> AI Literacy obligation applies immediately (since Feb 2, 2025)'});F.push({t:'n',s:'<code>Art. 26</code> deployer obligations apply: monitoring, record-keeping, incident reporting'})}
+  else if(A.usesAI==='planning'){ob+=1;F.push({t:'w',s:'AI evaluation phase — obligations will apply once tools are deployed. Start preparing now'})}
+  else if(A.usesAI==='unsure'){ob+=1;gaps++;F.push({t:'w',s:'Unclear AI usage — many SaaS tools embed AI features. Conduct an AI tool inventory to identify hidden AI'})}
+  else{applies=false;F.push({t:'n',s:'No AI usage reported — most obligations don\'t apply yet, but <code>Art. 4</code> literacy requirements apply broadly'})}
+
+  // 2. EU scope
+  if(A.euScope==='eu_based'){ob+=1;F.push({t:'n',s:'EU-based company — full AI Act scope applies under <code>Art. 2(1)</code>'})}
+  else if(A.euScope==='eu_clients'){ob+=1;F.push({t:'w',s:'Non-EU company serving EU — AI Act applies to you if AI output reaches EU users <code>Art. 2(1)(c)</code>'})}
+  else if(A.euScope==='no_eu'){if(applies)F.push({t:'n',s:'No EU nexus — AI Act may not apply currently, but monitor expansion of EU customer base'})}
+  else{gaps++;F.push({t:'w',s:'Unclear EU connection — verify if any AI outputs reach EU-based users or customers'})}
+
+  // 3. Role
+  if(A.role==='provider'||A.role==='both'){ob+=3;F.push({t:'d',s:'As an AI provider, you face the strictest obligations: conformity assessment, technical documentation, CE marking <code>Art. 16</code>'})}
+  if(A.role==='deployer'||A.role==='both'){ob+=1;F.push({t:'n',s:'As a deployer: ensure proper use, monitor performance, maintain logs <code>Art. 26</code>'})}
+  if(A.role==='unsure'){gaps++;F.push({t:'w',s:'Role unclear — provider vs deployer classification significantly changes your obligations'})}
+
+  // 4. Tool types
+  if(A.toolTypes&&A.toolTypes.indexOf('custom')>=0){ob+=1;F.push({t:'w',s:'Custom/in-house AI may classify you as a provider under <code>Art. 3(3)</code> — stricter obligations apply'})}
+  if(A.toolTypes&&A.toolTypes.length>3){F.push({t:'n',s:'Multiple AI tool categories detected ('+A.toolTypes.length+') — comprehensive inventory and classification needed'})}
+
+  // 5. Decision role
+  if(A.decisionRole==='auto'){ob+=2;F.push({t:'d',s:'Autonomous AI decisions require risk assessment, human oversight measures, and may trigger <code>Art. 6</code> high-risk classification'})}
+  else if(A.decisionRole==='customer'){ob+=1;F.push({t:'w',s:'Customer-facing AI must comply with <code>Art. 50</code> transparency obligations — users must know they\'re interacting with AI'})}
+  else if(A.decisionRole==='assist'){F.push({t:'n',s:'AI-assisted decisions — ensure human reviewers have adequate training and override capability'})}
+
+  // 6. Transparency
+  if(A.transparency==='no'){ob+=1;gaps++;F.push({t:'d',s:'<code>Art. 50</code> violation risk — AI interactions must be transparently disclosed to affected persons'})}
+  else if(A.transparency==='partial'){gaps++;F.push({t:'w',s:'Inconsistent transparency — <code>Art. 50</code> requires systematic disclosure, not case-by-case'})}
+
+  // 7. Policy
+  if(A.policy==='no'){gaps++;F.push({t:'w',s:'No AI policy — critical governance gap. Needed for <code>Art. 26</code> compliance and internal accountability'})}
+  else if(A.policy==='wip'){F.push({t:'n',s:'AI policy in progress — ensure it covers approved tools, data handling, human oversight, and incident response'})}
+
+  // 8. High-risk areas
+  var areas=A.hrAreas?A.hrAreas.filter(function(a){return a!=='none'}):[];
+  var areaNames={hr:'HR & Recruitment',credit:'Creditworthiness & Insurance',education:'Education & Training',health:'Healthcare',legal:'Legal & Judicial',infra:'Critical Infrastructure',biometric:'Biometric Identification'};
+  var areaAnnex={hr:'Annex III §4',credit:'Annex III §5(b)',education:'Annex III §3',health:'Annex III §1(b)',legal:'Annex III §6',infra:'Annex III §2',biometric:'Annex III §1(a)'};
+  areas.forEach(function(a){hr++;ob+=2;F.push({t:'d',s:areaNames[a]+' → high-risk under <code>'+areaAnnex[a]+'</code>. Requires FRIA, conformity assessment, and registration in EU database'})});
+
+  // 9. Affects rights
+  if(A.affectsRights==='yes'){ob+=1;F.push({t:'d',s:'AI affecting individual rights likely triggers high-risk classification <code>Art. 6(2)</code> — requires Fundamental Rights Impact Assessment'})}
+  else if(A.affectsRights==='indirect'){F.push({t:'w',s:'Indirect influence on individuals — monitor for scope creep into high-risk territory'})}
+
+  // 10. Oversight
+  if(A.oversight==='no'&&(hr>0||A.decisionRole==='auto')){ob+=1;gaps++;F.push({t:'d',s:'No human oversight for AI decisions — <code>Art. 14</code> violation risk. High-risk systems require documented oversight measures'})}
+  else if(A.oversight==='informal'&&hr>0){gaps++;F.push({t:'w',s:'Informal oversight insufficient for high-risk AI — <code>Art. 14</code> requires documented, assigned review process'})}
+
+  // 11. Inventory
+  if(A.inventory==='no'){gaps++;F.push({t:'w',s:'No AI inventory — <code>Art. 26(1)</code> requires deployers to maintain records of all AI systems in use'})}
+  else if(A.inventory==='partial'){gaps++;F.push({t:'w',s:'Partial inventory — untracked AI tools create blind spots. Complete inventory needed for <code>Art. 26</code> compliance'})}
+
+  // 12. Literacy
+  if(A.litTraining==='no'){ob+=1;gaps++;F.push({t:'d',s:'No AI literacy training — <code>Art. 4</code> is already in force. All staff using or overseeing AI must have sufficient AI literacy'})}
+  else if(A.litTraining==='partial'){gaps++;F.push({t:'w',s:'Partial training — <code>Art. 4</code> requires ALL relevant staff to have AI literacy, not just some'})}
+  else if(A.litTraining==='planned'){gaps++;F.push({t:'w',s:'Training planned but not delivered — <code>Art. 4</code> deadline was Feb 2, 2025. Action needed immediately'})}
+
+  // Verdict
+  var score=ob+hr*3+gaps*2;
+  var ic=document.getElementById('rIc'),ti=document.getElementById('rTi'),su=document.getElementById('rSu');
+  var urgency='Low';
+
+  if(score<=3||!applies){
+    ic.className='rv-ic g';ic.innerHTML='<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+    ti.textContent='Low impact for now';su.textContent='Based on your answers, the AI Act has limited immediate impact. Keep monitoring as your AI usage evolves.';urgency='Low';
+  } else if(score<=10){
+    ic.className='rv-ic w';ic.innerHTML='<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    ti.textContent='The AI Act applies to your company';su.textContent='You have identified obligations and compliance gaps that need to be addressed.';urgency='Medium';
+  } else {
+    ic.className='rv-ic d';ic.innerHTML='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    ti.textContent='Significant obligations identified';su.textContent='Your company has multiple high-risk areas and compliance gaps requiring immediate attention.';urgency='High';
+  }
+
+  document.getElementById('rOb').textContent=Math.max(ob,1);
+  document.getElementById('rHr').textContent=hr;document.getElementById('rHr').className='rs-n'+(hr>0?' d':'');
+  document.getElementById('rRd').textContent=gaps;document.getElementById('rRd').className='rs-n'+(gaps>2?' d':gaps>0?' w':'');
+  document.getElementById('rUr').textContent=urgency;document.getElementById('rUr').className='rs-n'+(urgency==='High'?' d':urgency==='Medium'?' w':' gr');
+
+  var fl=document.getElementById('fList');fl.innerHTML='';
+  var svgs={d:'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',w:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',n:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'};
+  var cls={d:'rd',w:'rw',n:'rn'};
+  F.forEach(function(f){fl.innerHTML+='<div class="ri '+cls[f.t]+'"><svg viewBox="0 0 24 24">'+svgs[f.t]+'</svg><span>'+f.s+'</span></div>'});
+
+  document.getElementById('resView').classList.add('on');
+}
+</script>
+</body>
+</html>

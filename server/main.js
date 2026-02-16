@@ -10,6 +10,7 @@ const { loadApplication } = require('./src/loader.js');
 const {
   initHealth, initRateLimit, initRequestId, initErrorHandler,
   initSessionHook, initSecurityHeaders, registerSandboxRoutes,
+  initRawBodyForWebhooks,
 } = require('./src/http.js');
 const { init: initWs } = require('./src/ws.js');
 
@@ -123,6 +124,7 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     ory, brevo, gotenberg, s3, stripe,
   });
 
+  initRawBodyForWebhooks(server);
   initSecurityHeaders(server);
   initRequestId(server);
   await initRateLimit(server);

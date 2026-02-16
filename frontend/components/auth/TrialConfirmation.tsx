@@ -37,8 +37,8 @@ export function TrialConfirmation({ planName, period, onContinueFree }: TrialCon
     setLoading(true);
     setError(null);
     try {
-      const { url } = await api.billing.createCheckout(planName, period);
-      window.location.href = url;
+      const { checkoutUrl } = await api.billing.createCheckout(planName, period);
+      window.location.href = checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start checkout');
       setLoading(false);

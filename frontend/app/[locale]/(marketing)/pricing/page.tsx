@@ -8,9 +8,9 @@ import { formatPrice } from '@/lib/currency';
 /* ──── Plan data (prices in EUR cents, from app/config/plans.js) ──── */
 const plans = [
   { key: 'free', priceMonthly: 0, priceYearly: 0, ctaStyle: 'outline' as const },
-  { key: 'starter', priceMonthly: 4900, priceYearly: 47040, ctaStyle: 'teal' as const },
-  { key: 'growth', priceMonthly: 14900, priceYearly: 143040, ctaStyle: 'teal' as const, popular: true },
-  { key: 'scale', priceMonthly: 39900, priceYearly: 383040, ctaStyle: 'teal' as const },
+  { key: 'starter', priceMonthly: 4900, priceYearly: 49000, ctaStyle: 'teal' as const },
+  { key: 'growth', priceMonthly: 14900, priceYearly: 149000, ctaStyle: 'teal' as const, popular: true },
+  { key: 'scale', priceMonthly: 39900, priceYearly: 399000, ctaStyle: 'teal' as const },
   { key: 'enterprise', priceMonthly: -1, priceYearly: -1, ctaStyle: 'outline' as const },
 ];
 
@@ -383,11 +383,11 @@ export default function PricingPage() {
 
   const compData = getComparisonData();
 
-  /* Compute display price (per-month amount in cents) */
+  /* Compute display price */
   function getDisplayPrice(plan: typeof plans[number]): string {
     if (plan.key === 'enterprise') return tc('custom');
     if (plan.key === 'free') return formatPrice(0, locale);
-    const cents = annual ? Math.round(plan.priceYearly / 12) : plan.priceMonthly;
+    const cents = annual ? plan.priceYearly : plan.priceMonthly;
     return formatPrice(cents, locale);
   }
 
@@ -395,7 +395,7 @@ export default function PricingPage() {
   function getCtaHref(plan: typeof plans[number]): string {
     if (plan.key === 'enterprise') return `/${locale}/contact`;
     if (plan.key === 'free') return `/${locale}/auth/register?plan=free`;
-    return `/${locale}/auth/register?plan=${plan.key}&period=${annual ? 'annual' : 'monthly'}`;
+    return `/${locale}/auth/register?plan=${plan.key}&period=${annual ? 'yearly' : 'monthly'}`;
   }
 
   /* CTA label */
@@ -554,7 +554,7 @@ export default function PricingPage() {
                   {getDisplayPrice(plan)}
                   {!['free', 'enterprise'].includes(plan.key) && (
                     <small style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--dark5)' }}>
-                      {tc('perMonth')}
+                      {annual ? tc('perYear') : tc('perMonth')}
                     </small>
                   )}
                 </div>

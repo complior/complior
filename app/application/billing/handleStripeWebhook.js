@@ -62,6 +62,13 @@
       }
 
       await updateSubscription(client, Number(organizationId), fields);
+
+      const subRow = await client.query(
+        'SELECT "subscriptionId" FROM "Subscription" WHERE "organizationId" = $1',
+        [Number(organizationId)],
+      );
+      const subscriptionId = subRow.rows[0]?.subscriptionId || 0;
+
       await client.query('COMMIT');
 
       await lib.audit.createAuditEntry({
@@ -69,7 +76,7 @@
         organizationId: Number(organizationId),
         action: 'update',
         resource: 'Subscription',
-        resourceId: null,
+        resourceId: subscriptionId,
         newData: { event: 'checkout.session.completed', planName },
       });
 
@@ -108,12 +115,17 @@
         : ['active', typeof subId === 'string' ? subId : subId?.id],
     );
 
+    const subRow = await db.query(
+      'SELECT "subscriptionId" FROM "Subscription" WHERE "stripeSubscriptionId" = $1',
+      [typeof subId === 'string' ? subId : subId?.id],
+    );
+
     await lib.audit.createAuditEntry({
       userId: null,
       organizationId: orgId,
       action: 'update',
       resource: 'Subscription',
-      resourceId: null,
+      resourceId: subRow.rows[0]?.subscriptionId || 0,
       newData: { event: 'invoice.paid' },
     });
 
@@ -137,12 +149,17 @@
       ['past_due', stripeSubId],
     );
 
+    const subRow2 = await db.query(
+      'SELECT "subscriptionId" FROM "Subscription" WHERE "stripeSubscriptionId" = $1',
+      [stripeSubId],
+    );
+
     await lib.audit.createAuditEntry({
       userId: null,
       organizationId: result.rows[0].organizationId,
       action: 'update',
       resource: 'Subscription',
-      resourceId: null,
+      resourceId: subRow2.rows[0]?.subscriptionId || 0,
       newData: { event: 'invoice.payment_failed' },
     });
 
@@ -164,12 +181,17 @@
       ['canceled', stripeSubId],
     );
 
+    const subRow3 = await db.query(
+      'SELECT "subscriptionId" FROM "Subscription" WHERE "stripeSubscriptionId" = $1',
+      [stripeSubId],
+    );
+
     await lib.audit.createAuditEntry({
       userId: null,
       organizationId: result.rows[0].organizationId,
       action: 'update',
       resource: 'Subscription',
-      resourceId: null,
+      resourceId: subRow3.rows[0]?.subscriptionId || 0,
       newData: { event: 'customer.subscription.deleted' },
     });
 

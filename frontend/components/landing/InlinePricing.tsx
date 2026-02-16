@@ -35,14 +35,14 @@ const plans = [
   {
     name: 'starter' as const,
     priceMonthly: 4900,
-    priceYearly: 47040,
+    priceYearly: 49000,
     features: ['starterF1', 'starterF2', 'starterF3'] as const,
     ctaStyle: 'teal' as const,
   },
   {
     name: 'growth' as const,
     priceMonthly: 14900,
-    priceYearly: 143040,
+    priceYearly: 149000,
     features: ['growthF1', 'growthF2', 'growthF3'] as const,
     ctaStyle: 'teal' as const,
     popular: true,
@@ -50,7 +50,7 @@ const plans = [
   {
     name: 'scale' as const,
     priceMonthly: 39900,
-    priceYearly: 383040,
+    priceYearly: 399000,
     features: ['scaleF1', 'scaleF2', 'scaleF3'] as const,
     ctaStyle: 'teal' as const,
   },
@@ -199,12 +199,10 @@ export function InlinePricing() {
             const isFree = plan.name === 'free';
             const isPopular = 'popular' in plan && plan.popular;
 
-            // Compute displayed price (per-month amount in cents)
+            // Compute displayed price in cents
             let displayCents = 0;
             if (!isEnterprise && !isFree) {
-              displayCents = annual
-                ? Math.round(plan.priceYearly / 12)
-                : plan.priceMonthly;
+              displayCents = annual ? plan.priceYearly : plan.priceMonthly;
             }
 
             return (
@@ -313,7 +311,7 @@ export function InlinePricing() {
                     ? tc('tailored')
                     : isFree
                       ? tc('forever')
-                      : `/${tc('month')}`}
+                      : annual ? tc('perYear') : tc('perMonth')}
                 </div>
 
                 {/* Feature list (pr-ul) with check icons */}
@@ -377,7 +375,7 @@ export function InlinePricing() {
                     href={
                       isFree
                         ? `/${locale}/auth/register?plan=free`
-                        : `/${locale}/auth/register?plan=${plan.name}&period=${annual ? 'annual' : 'monthly'}`
+                        : `/${locale}/auth/register?plan=${plan.name}&period=${annual ? 'yearly' : 'monthly'}`
                     }
                     style={{
                       width: '100%',

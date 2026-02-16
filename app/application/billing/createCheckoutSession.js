@@ -1,6 +1,6 @@
 (() => {
   return {
-    createSession: async ({ organizationId, userId, email, planName, period }) => {
+    createSession: async ({ organizationId, userId, email, planName, period, returnUrl }) => {
       const priceId = config.stripe.prices[planName]?.[period];
       if (!priceId) {
         throw new errors.ValidationError(
@@ -8,7 +8,7 @@
         );
       }
 
-      const frontendUrl = config.server.frontendUrl;
+      const frontendUrl = returnUrl || config.server.frontendUrl;
       /* eslint-disable camelcase */
       const session = await stripe.createCheckoutSession({
         mode: 'subscription',
@@ -37,8 +37,8 @@
         organizationId,
         action: 'create',
         resource: 'CheckoutSession',
-        resourceId: session.id,
-        newData: { planName, period },
+        resourceId: 0,
+        newData: { planName, period, stripeSessionId: session.id },
       });
 
       return { checkoutUrl: session.url, sessionId: session.id };

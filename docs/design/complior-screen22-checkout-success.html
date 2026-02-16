@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Welcome — Complior.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#faf8f5;--bg2:#f3f0eb;--bg3:#eae6df;--bg4:#ddd8cf;--dark:#1a1a1a;--dark2:#2d2d2d;--dark3:#444;--dark4:#666;--dark5:#888;--teal:#0d9488;--teal2:#0f766e;--teal3:#115e59;--teal-dim:rgba(13,148,136,.06);--teal-glow:rgba(13,148,136,.12);--coral:#e74c3c;--green:#059669;--amber:#d97706;--b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);--b3:rgba(0,0,0,.2);--card:#fff;--hdr-bg:rgba(250,248,245,.9);--f-display:'Fraunces',serif;--f-body:'Plus Jakarta Sans',sans-serif;--f-mono:'JetBrains Mono',monospace;--sel-bg:var(--teal);--sel-c:#fff}
+html.dark{--bg:#111213;--bg2:#161718;--bg3:#1c1d1f;--bg4:#252628;--dark:#f4f4f5;--dark2:#d4d4d8;--dark3:#a1a1aa;--dark4:#71717a;--dark5:#52525b;--teal:#84cc16;--teal2:#65a30d;--teal3:#4d7c0f;--teal-dim:rgba(132,204,22,.07);--teal-glow:rgba(132,204,22,.12);--coral:#f87171;--green:#22c55e;--amber:#fbbf24;--b:rgba(255,255,255,.06);--b2:rgba(255,255,255,.09);--b3:rgba(255,255,255,.15);--card:rgba(255,255,255,.03);--hdr-bg:rgba(17,18,19,.85);--f-display:'Sora',sans-serif;--f-body:'Sora',sans-serif;--f-mono:'Space Mono',monospace;--sel-bg:var(--teal);--sel-c:var(--bg)}
+html{scroll-behavior:smooth}
+body{font-family:var(--f-body);background:var(--bg);color:var(--dark3);line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5rem 2rem 2rem;transition:background .4s,color .4s}
+::selection{background:var(--sel-bg);color:var(--sel-c)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* Navbar */
+header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--hdr-bg);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--b);transition:.4s}
+nav{max-width:1140px;margin:0 auto;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:var(--f-display);font-weight:700;font-size:1.125rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;letter-spacing:-.02em;text-decoration:none}
+.logo-d{font-family:var(--f-mono);font-size:.625rem;font-weight:500;color:var(--teal);opacity:.7}
+.nr{display:flex;gap:.5rem;align-items:center}
+.bt{padding:.4375rem 1rem;border-radius:6px;font-weight:700;font-size:.8125rem;transition:.25s;border:none;cursor:pointer;font-family:var(--f-body);display:inline-flex;align-items:center;gap:.4375rem;line-height:1.4;text-decoration:none}
+.bt-g{background:0;color:var(--dark4)}.bt-g:hover{color:var(--dark)}
+@media(max-width:768px){nav{padding:.75rem 1.25rem}}
+/* Card */
+.crd{background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:2.5rem;width:100%;max-width:460px;box-shadow:0 16px 48px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.03);transition:.35s;text-align:center}
+html.dark .crd{box-shadow:0 16px 48px rgba(0,0,0,.3);border-color:var(--b3)}
+/* States */
+.state{display:none}.state.on{display:block;animation:fi .4s ease both}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Icon */
+.ic{width:64px;height:64px;border-radius:16px;display:grid;place-items:center;margin:0 auto 1.25rem}
+.ic svg{width:28px;height:28px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic-ok{background:var(--teal-dim);border:1px solid var(--teal-glow)}.ic-ok svg{stroke:var(--teal)}
+.ic-load{background:var(--bg2);border:1px solid var(--b2)}.ic-load svg{stroke:var(--dark5)}
+.ic-err{background:rgba(231,76,60,.06);border:1px solid rgba(231,76,60,.1)}.ic-err svg{stroke:var(--coral)}
+html.dark .ic-load{background:var(--bg3);border-color:var(--b3)}
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{animation:spin 1.2s linear infinite;transform-origin:center}
+/* Title */
+.st-title{font-family:var(--f-display);font-size:1.375rem;font-weight:700;color:var(--dark);margin-bottom:.25rem;letter-spacing:-.02em}
+.st-sub{font-size:.875rem;color:var(--dark4);margin-bottom:1.5rem}
+/* Plan card */
+.plan-box{background:var(--bg2);border:1px solid var(--b2);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;text-align:left}
+html.dark .plan-box{background:var(--bg3);border-color:var(--b3)}
+.plan-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.375rem}
+.plan-name{font-family:var(--f-display);font-size:1rem;font-weight:700;color:var(--dark)}
+.plan-price{font-family:var(--f-display);font-size:1rem;font-weight:800;color:var(--teal)}
+.plan-price small{font-size:.75rem;font-weight:400;color:var(--dark5)}
+.plan-tag{display:inline-flex;align-items:center;gap:.25rem;font-family:var(--f-mono);font-size:.4375rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.2rem .5rem;border-radius:4px;background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-glow);margin-bottom:.25rem}
+.plan-tag svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2}
+.plan-detail{font-family:var(--f-mono);font-size:.4375rem;text-transform:uppercase;letter-spacing:.04em;color:var(--dark5)}
+html.dark .plan-detail{color:var(--dark4)}
+/* Features */
+.feats{text-align:left;margin-bottom:1.5rem}
+.feats-title{font-family:var(--f-mono);font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark4);margin-bottom:.625rem}
+html.dark .feats-title{color:var(--dark3)}
+.feat{display:flex;align-items:center;gap:.5rem;padding:.3rem 0;font-size:.8125rem;color:var(--dark2)}
+.feat svg{width:14px;height:14px;flex-shrink:0;fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Button */
+.bn{width:100%;padding:.8125rem 1.25rem;border-radius:8px;font-family:var(--f-body);font-weight:700;font-size:.875rem;cursor:pointer;border:none;transition:.25s;display:flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none}
+.bn-p{background:var(--teal);color:#fff;box-shadow:0 2px 8px var(--teal-glow)}
+.bn-p:hover{background:var(--teal2);transform:translateY(-1px)}
+html.dark .bn-p{color:var(--bg)}
+.bn-g2{background:var(--bg2);color:var(--dark3);border:1px solid var(--b2);margin-top:.5rem}
+.bn-g2:hover{border-color:var(--b3);color:var(--dark)}
+html.dark .bn-g2{background:var(--bg3);border-color:var(--b3)}
+.bn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Redirect notice */
+.redirect{font-family:var(--f-mono);font-size:.4375rem;text-transform:uppercase;letter-spacing:.04em;color:var(--dark5);margin-top:1.25rem;display:flex;align-items:center;justify-content:center;gap:.375rem}
+.redirect-bar{width:40px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+html.dark .redirect-bar{background:var(--bg4)}
+.redirect-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .3s linear}
+/* Fine print */
+.fine{font-size:.75rem;color:var(--dark5);margin-top:1.25rem;line-height:1.5}
+.fine a{color:var(--teal);font-weight:600;text-decoration:none}
+/* Demo switcher */
+.demo{position:fixed;bottom:1.25rem;left:1.25rem;display:flex;gap:.25rem;z-index:10}
+.demo button{background:var(--card);border:1px solid var(--b2);border-radius:5px;padding:.25rem .5rem;font-family:var(--f-mono);font-size:.4375rem;color:var(--dark5);cursor:pointer;transition:.2s}
+.demo button:hover{border-color:var(--teal);color:var(--teal)}
+.demo button.on{background:var(--teal);border-color:var(--teal);color:#fff}
+html.dark .demo button.on{color:var(--bg)}
+@media(max-width:480px){.crd{padding:2rem 1.5rem;border-radius:12px}.st-title{font-size:1.125rem}}
+</style>
+</head>
+<body>
+
+<header><nav>
+<a href="/" class="logo">Complior<span class="logo-d">.ai</span></a>
+<div class="nr"><button class="bt bt-g" onclick="document.documentElement.classList.toggle('dark');this.textContent=document.documentElement.classList.contains('dark')?'☀️ Light':'🌙 Dark'">🌙 Dark</button></div>
+</nav></header>
+
+<div class="crd">
+
+<!-- ═══ LOADING STATE ═══ -->
+<div class="state on" id="stLoad">
+<div class="ic ic-load"><svg class="spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>
+<div class="st-title">Confirming your subscription...</div>
+<div class="st-sub">Please wait while we verify your payment with Stripe.</div>
+<div style="font-family:var(--f-mono);font-size:.4375rem;color:var(--dark5);text-transform:uppercase;letter-spacing:.04em" id="pollStatus">Checking... (attempt 1/10)</div>
+</div>
+
+<!-- ═══ SUCCESS STATE ═══ -->
+<div class="state" id="stOk">
+<div class="ic ic-ok"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+<div class="st-title" id="okTitle">Welcome to Growth!</div>
+<div class="st-sub">Your trial is now active.</div>
+
+<div class="plan-box">
+<div class="plan-row">
+<span class="plan-name" id="okPlanName">Growth Plan</span>
+<span class="plan-price" id="okPlanPrice">$149<small>/mo</small></span>
+</div>
+<div class="plan-tag"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> 14-day free trial started</div>
+<div class="plan-detail">Trial ends: <span id="okTrialEnd"></span></div>
+</div>
+
+<div class="feats">
+<div class="feats-title">Your trial includes</div>
+<div id="okFeats"></div>
+</div>
+
+<a href="/dashboard" class="bn bn-p">Go to Dashboard <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+
+<div class="fine">You won't be charged until <strong id="okChargeDate"></strong>. Cancel anytime in <a href="/settings/billing">Settings → Billing</a>.</div>
+
+<div class="redirect" id="redirectNotice">
+Redirecting to dashboard in <span id="countdown">5</span>s
+<div class="redirect-bar"><div class="redirect-fill" id="redirectBar" style="width:0%"></div></div>
+</div>
+</div>
+
+<!-- ═══ ERROR STATE ═══ -->
+<div class="state" id="stErr">
+<div class="ic ic-err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+<div class="st-title">Something went wrong</div>
+<div class="st-sub">We couldn't confirm your subscription. This might be a temporary issue.</div>
+<button class="bn bn-p" onclick="startPolling()"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Try Again</button>
+<a href="/dashboard" class="bn bn-g2">Go to Dashboard</a>
+<div class="fine" style="margin-top:1rem">If this persists, please contact <a href="mailto:support@complior.ai">support@complior.ai</a> with your session ID.</div>
+</div>
+
+</div>
+
+<!-- DEMO SWITCHER -->
+<div class="demo">
+<button class="on" onclick="demoState('load',this)">Loading</button>
+<button onclick="demoState('ok',this)">Success</button>
+<button onclick="demoState('err',this)">Error</button>
+<button onclick="demoState('ok-starter',this)">Starter</button>
+<button onclick="demoState('ok-scale',this)">Scale (yr)</button>
+</div>
+
+<script>
+var PLANS={
+  starter:{name:'Starter Plan',price:'$49',annual:'$39',per:'/mo',features:['5 AI tools','2 team members','15 AI literacy seats','200 Eva messages/mo','90-day audit trail']},
+  growth:{name:'Growth Plan',price:'$149',annual:'$119',per:'/mo',features:['20 AI tools','5 team members','50 AI literacy seats','1,000 Eva messages/mo','FRIA & doc generation','Compliance badge']},
+  scale:{name:'Scale Plan',price:'$399',annual:'$319',per:'/mo',features:['Unlimited AI tools & users','250 AI literacy seats','Unlimited Eva messages','API access','Priority support + onboarding']}
+};
+
+var params=new URLSearchParams(window.location.search);
+var sessionId=params.get('session_id')||'demo';
+var planKey=params.get('plan')||'growth';
+var period=params.get('period')||'monthly';
+
+function showState(id){
+  document.querySelectorAll('.state').forEach(function(s){s.classList.remove('on');s.style.display='none'});
+  var el=document.getElementById(id);
+  el.style.display='block';
+  setTimeout(function(){el.classList.add('on')},10);
+}
+
+function populateSuccess(plan,per){
+  var d=PLANS[plan]||PLANS.growth;
+  var priceShow=per==='annual'?d.annual:d.price;
+  document.getElementById('okTitle').textContent='Welcome to '+d.name.replace(' Plan','')+'!';
+  document.getElementById('okPlanName').textContent=d.name;
+  document.getElementById('okPlanPrice').innerHTML=priceShow+'<small>'+d.per+'</small>';
+
+  var end=new Date();end.setDate(end.getDate()+14);
+  var endStr=end.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('okTrialEnd').textContent=endStr;
+  document.getElementById('okChargeDate').textContent=endStr;
+
+  var fl=document.getElementById('okFeats');fl.innerHTML='';
+  d.features.forEach(function(f){
+    fl.innerHTML+='<div class="feat"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+f+'</div>';
+  });
+}
+
+// Polling simulation (replace with real API in production)
+var pollCount=0,pollMax=10,pollTimer=null;
+function startPolling(){
+  pollCount=0;
+  showState('stLoad');
+  pollTimer=setInterval(function(){
+    pollCount++;
+    document.getElementById('pollStatus').textContent='Checking... (attempt '+pollCount+'/'+pollMax+')';
+    // PRODUCTION: fetch('/api/billing/checkout-status?session_id='+sessionId)
+    // For demo, succeed after 3 attempts
+    if(pollCount>=3){
+      clearInterval(pollTimer);
+      populateSuccess(planKey,period);
+      showState('stOk');
+      startRedirect();
+    }
+    if(pollCount>=pollMax){
+      clearInterval(pollTimer);
+      showState('stErr');
+    }
+  },1500);
+}
+
+var redirectTimer=null;
+function startRedirect(){
+  var sec=5;
+  document.getElementById('countdown').textContent=sec;
+  document.getElementById('redirectBar').style.width='0%';
+  redirectTimer=setInterval(function(){
+    sec--;
+    document.getElementById('countdown').textContent=sec;
+    document.getElementById('redirectBar').style.width=((5-sec)/5*100)+'%';
+    if(sec<=0){
+      clearInterval(redirectTimer);
+      // window.location.href='/dashboard'; // uncomment in production
+      document.getElementById('redirectNotice').innerHTML='<span style="color:var(--teal);font-weight:700">✓ WOULD REDIRECT TO DASHBOARD</span>';
+    }
+  },1000);
+}
+
+// Demo switcher
+function demoState(s,btn){
+  clearInterval(pollTimer);clearInterval(redirectTimer);
+  document.querySelectorAll('.demo button').forEach(function(b){b.classList.remove('on')});
+  btn.classList.add('on');
+  if(s==='load'){showState('stLoad');pollCount=1;document.getElementById('pollStatus').textContent='Checking... (attempt 1/10)'}
+  else if(s==='ok'){populateSuccess('growth','monthly');showState('stOk');startRedirect()}
+  else if(s==='err'){showState('stErr')}
+  else if(s==='ok-starter'){populateSuccess('starter','monthly');showState('stOk');startRedirect()}
+  else if(s==='ok-scale'){populateSuccess('scale','annual');showState('stOk');startRedirect()}
+}
+
+// Auto-start polling on load
+startPolling();
+</script>
+</body>
+</html>

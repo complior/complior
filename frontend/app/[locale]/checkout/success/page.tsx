@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { api } from '@/lib/api';
 
 /* ─── Plan data helper ─── */
 type PlanKey = 'starter' | 'growth' | 'scale';
@@ -341,28 +342,32 @@ function SuccessContent() {
     setPollCount(1);
     setStatus('polling');
 
-    // Clear any existing timer
     if (pollTimerRef.current) clearInterval(pollTimerRef.current);
 
-    pollTimerRef.current = setInterval(() => {
+    const poll = async () => {
       retriesRef.current += 1;
       setPollCount(retriesRef.current);
 
-      // Simulate: show loading for ~2 seconds (2 polls at 1500ms), then success
-      // In production, replace with actual API call:
-      // const result = await api.billing.checkoutStatus(sessionId);
-      if (retriesRef.current >= 2) {
+      if (!sessionId || retriesRef.current > 10) {
         if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-        setStatus('confirmed');
+        setStatus(retriesRef.current > 10 ? 'error' : 'confirmed');
         return;
       }
 
-      if (retriesRef.current >= 10) {
-        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-        setStatus('error');
+      try {
+        const result = await api.billing.checkoutStatus(sessionId);
+        if (result.status === 'paid') {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setStatus('confirmed');
+        }
+      } catch {
+        // Keep polling until max retries
       }
-    }, 1500);
-  }, []);
+    };
+
+    poll();
+    pollTimerRef.current = setInterval(poll, 2000);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId) {

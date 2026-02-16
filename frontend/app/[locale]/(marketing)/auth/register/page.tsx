@@ -11,9 +11,9 @@ import { formatPrice } from '@/lib/currency';
 /* ── Plan data ─────────────────────────────────────────────── */
 const PLAN_DATA: Record<string, { priceCentsMonthly: number; priceCentsAnnual: number; featureKeys: string[] }> = {
   free:    { priceCentsMonthly: 0,     priceCentsAnnual: 0,     featureKeys: ['1 AI tool', '1 user', 'Basic classification', 'AI tool catalog'] },
-  starter: { priceCentsMonthly: 4900,  priceCentsAnnual: 3900,  featureKeys: ['5 AI tools, 2 users', '15 AI literacy seats', 'Eva AI (200 msg/mo)', '90-day audit trail'] },
-  growth:  { priceCentsMonthly: 14900, priceCentsAnnual: 11900, featureKeys: ['20 AI tools, 5 users', '50 AI literacy seats', 'FRIA & doc generation', 'Gap analysis + compliance badge'] },
-  scale:   { priceCentsMonthly: 39900, priceCentsAnnual: 31900, featureKeys: ['Unlimited tools & users', '250 AI literacy seats', 'API access', 'Priority support + onboarding'] },
+  starter: { priceCentsMonthly: 4900,  priceCentsAnnual: 49000,  featureKeys: ['5 AI tools, 2 users', '15 AI literacy seats', 'Eva AI (200 msg/mo)', '90-day audit trail'] },
+  growth:  { priceCentsMonthly: 14900, priceCentsAnnual: 149000, featureKeys: ['20 AI tools, 5 users', '50 AI literacy seats', 'FRIA & doc generation', 'Gap analysis + compliance badge'] },
+  scale:   { priceCentsMonthly: 39900, priceCentsAnnual: 399000, featureKeys: ['Unlimited tools & users', '250 AI literacy seats', 'API access', 'Priority support + onboarding'] },
 };
 const PAID_PLANS = ['starter', 'growth', 'scale'];
 
@@ -83,7 +83,8 @@ function RegisterContent() {
   const searchParams = useSearchParams();
 
   const planParam = searchParams.get('plan') || 'free';
-  const periodParam = (searchParams.get('period') || 'monthly') as 'monthly' | 'yearly';
+  const rawPeriod = searchParams.get('period') || 'monthly';
+  const periodParam = (rawPeriod === 'annual' ? 'yearly' : rawPeriod) as 'monthly' | 'yearly';
   const plan = PLAN_DATA[planParam] ? planParam : 'free';
   const isPaid = PAID_PLANS.includes(plan);
   const totalSteps = isPaid ? 3 : 2;
@@ -92,7 +93,7 @@ function RegisterContent() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [userProfile, setUserProfile] = useState<{ organizationId: number } | null>(null);
 
   /* ── Step 1 fields ── */
@@ -133,7 +134,7 @@ function RegisterContent() {
   /* ── Plan badge text ── */
   const planBadgeText = useMemo(() => {
     const priceShow = periodParam === 'yearly'
-      ? formatPrice(planInfo.priceCentsAnnual, locale, 'monthly')
+      ? formatPrice(planInfo.priceCentsAnnual, locale, 'yearly')
       : formatPrice(planInfo.priceCentsMonthly, locale, 'monthly');
     const nameMap: Record<string, string> = {
       free: 'Free Plan',
@@ -150,7 +151,7 @@ function RegisterContent() {
   /* ── Price display for trial card ── */
   const priceDisplay = useMemo(() => {
     const cents = periodParam === 'yearly' ? planInfo.priceCentsAnnual : planInfo.priceCentsMonthly;
-    return formatPrice(cents, locale, 'monthly');
+    return formatPrice(cents, locale, periodParam === 'yearly' ? 'yearly' : 'monthly');
   }, [periodParam, planInfo, locale]);
 
   /* ── Trial end date ── */
@@ -248,11 +249,11 @@ function RegisterContent() {
     setLoading(true);
     try {
       const checkout = await api.billing.createCheckout(plan, periodParam);
-      if (checkout.url) {
-        window.location.href = checkout.url;
+      if (checkout.checkoutUrl) {
+        window.location.href = checkout.checkoutUrl;
       }
-    } catch {
-      router.push(`/${locale}/dashboard`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create checkout session');
     } finally {
       setLoading(false);
     }
@@ -283,9 +284,9 @@ function RegisterContent() {
   /* ── Period text for trial card ── */
   const periodText = useMemo(() => {
     if (periodParam === 'yearly') {
-      const annualAmount = Math.round(planInfo.priceCentsAnnual / 100);
       const symbol = locale === 'de' ? '\u20ac' : '$';
-      return `${t('trialBilledAnnually')} at ${symbol}${annualAmount} \u00d7 12 = ${symbol}${annualAmount * 12}/year (save 20%)`;
+      const yearlyTotal = Math.round(planInfo.priceCentsAnnual / 100);
+      return `${t('trialBilledAnnually')} \u2014 ${symbol}${yearlyTotal}/${locale === 'de' ? 'Jahr' : 'year'} (save 2 months)`;
     }
     return t('trialBilledMonthly');
   }, [periodParam, planInfo, locale, t]);
@@ -926,14 +927,16 @@ function RegisterContent() {
                     style={styles.fieldSelect(!!fieldErrors.industry)}
                   >
                     <option value="" disabled>{t('select')}</option>
-                    <option value="Technology">{t('industryTechnology')}</option>
-                    <option value="Healthcare">{t('industryHealthcare')}</option>
-                    <option value="Finance">{t('industryFinance')}</option>
-                    <option value="HR">{t('industryHR')}</option>
-                    <option value="Education">{t('industryEducation')}</option>
-                    <option value="Legal">{t('industryLegal')}</option>
-                    <option value="Manufacturing">{t('industryManufacturing')}</option>
-                    <option value="Other">{t('industryOther')}</option>
+                    <option value="fintech">{t('industryFinance')}</option>
+                    <option value="healthtech">{t('industryHealthcare')}</option>
+                    <option value="hrtech">{t('industryHR')}</option>
+                    <option value="edtech">{t('industryEducation')}</option>
+                    <option value="ecommerce">{t('industryTechnology')}</option>
+                    <option value="manufacturing">{t('industryManufacturing')}</option>
+                    <option value="legal">{t('industryLegal')}</option>
+                    <option value="logistics">Logistics</option>
+                    <option value="insurance">Insurance</option>
+                    <option value="other">{t('industryOther')}</option>
                   </select>
                   {fieldErrors.industry && <div style={styles.fieldError}>{t('required')}</div>}
                 </div>
@@ -948,11 +951,10 @@ function RegisterContent() {
                     style={styles.fieldSelect(!!fieldErrors.companySize)}
                   >
                     <option value="" disabled>{t('select')}</option>
-                    <option value="1-10">{t('size1_10')}</option>
-                    <option value="11-50">{t('size11_50')}</option>
-                    <option value="51-200">{t('size51_200')}</option>
-                    <option value="201-500">{t('size201_500')}</option>
-                    <option value="500+">{t('size500plus')}</option>
+                    <option value="micro_1_9">{t('size1_10')}</option>
+                    <option value="small_10_49">{t('size11_50')}</option>
+                    <option value="medium_50_249">{t('size51_200')}</option>
+                    <option value="large_250_plus">{t('size500plus')}</option>
                   </select>
                   {fieldErrors.companySize && <div style={styles.fieldError}>{t('required')}</div>}
                 </div>
@@ -970,16 +972,16 @@ function RegisterContent() {
                   style={styles.fieldSelect(!!fieldErrors.country)}
                 >
                   <option value="" disabled>{t('select')}</option>
-                  <option value="Germany">{t('countryGermany')}</option>
-                  <option value="Austria">{t('countryAustria')}</option>
-                  <option value="Switzerland">{t('countrySwitzerland')}</option>
-                  <option value="Netherlands">{t('countryNetherlands')}</option>
-                  <option value="France">{t('countryFrance')}</option>
-                  <option value="Spain">{t('countrySpain')}</option>
-                  <option value="Italy">{t('countryItaly')}</option>
-                  <option value="United Kingdom">{t('countryUK')}</option>
-                  <option value="United States">{t('countryUS')}</option>
-                  <option value="Other">{t('countryOther')}</option>
+                  <option value="DE">{t('countryGermany')}</option>
+                  <option value="AT">{t('countryAustria')}</option>
+                  <option value="CH">{t('countrySwitzerland')}</option>
+                  <option value="NL">{t('countryNetherlands')}</option>
+                  <option value="FR">{t('countryFrance')}</option>
+                  <option value="ES">{t('countrySpain')}</option>
+                  <option value="IT">{t('countryItaly')}</option>
+                  <option value="GB">{t('countryUK')}</option>
+                  <option value="US">{t('countryUS')}</option>
+                  <option value="XX">{t('countryOther')}</option>
                 </select>
                 {fieldErrors.country && <div style={styles.fieldError}>{t('required')}</div>}
               </div>
@@ -1009,13 +1011,21 @@ function RegisterContent() {
               <h1 className="auth-title-r" style={styles.title}>{t('trialTitle')}</h1>
               <p style={styles.subtitle}>{t('trialSub')}</p>
 
+              {error && (
+                <div style={styles.errorBox}>
+                  <p style={styles.errorText}>{error}</p>
+                </div>
+              )}
+
               {/* Trial card */}
               <div style={styles.trialCard}>
                 <div className="trial-plan-row-r" style={styles.trialPlanRow}>
                   <span style={styles.trialPlanName}>{planNameMap[plan] || plan}</span>
                   <span style={styles.trialPlanPrice}>
-                    {priceDisplay.replace('/mo', '').replace('/Monat', '')}
-                    <small style={styles.trialPriceSmall}>/mo</small>
+                    {priceDisplay.replace(/\/(mo|yr|Monat|Jahr)/, '')}
+                    <small style={styles.trialPriceSmall}>
+                      {periodParam === 'yearly' ? '/yr' : '/mo'}
+                    </small>
                   </span>
                 </div>
                 <div style={styles.trialPeriod}>{periodText}</div>

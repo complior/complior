@@ -15,9 +15,9 @@ export function formatPrice(
   const amount = Math.round(cents / 100);
   const symbol = locale === 'de' ? '€' : '$';
   const suffix = period
-    ? locale === 'de'
-      ? '/Monat'
-      : '/mo'
+    ? period === 'yearly'
+      ? locale === 'de' ? '/Jahr' : '/yr'
+      : locale === 'de' ? '/Monat' : '/mo'
     : '';
 
   return `${symbol}${amount}${suffix}`;

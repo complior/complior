@@ -2,12 +2,18 @@
 
 **Статус:** ✅ Заполнен Product Owner
 **Дата:** 2026-02-12
-**Версия:** 2.2.0 (Sprint 3.5 Additions)
+**Версия:** 2.3.0 (Sprint 6: Admin Panel + Stripe + Deploy)
 **Источники:** project1.pdf, eu_sovereign_llm_strategy.md.pdf, llm_strategy_and_product_ux.md.pdf, COMPETITOR-ANALYSIS.md
 
 ---
 
 ## Changelog
+
+### v2.3.0 (2026-02-15) — Sprint 6: Admin Panel + Stripe + Deploy
+- **Sprint 4 completed:** Production deployment (Docker, Caddy, Kratos, GDPR, CI/CD)
+- **Sprint 5 completed:** Frontend fully rebuilt — landing page (15 sections), auth (login/register/forgot-password), pricing page, quick check, penalty calculator, checkout success. i18n EN/DE, dark/light themes, Ory Kratos dev integration
+- **Sprint 6:** Platform Admin Panel (Feature 24) — cross-org admin API + frontend UI. Stripe test mode setup. Frontend production deployment via Docker + Caddy
+- **Platform Admin** as P1 requirement: SaaS owner needs visibility into all users, organizations, subscriptions, and MRR
 
 ### v2.2.0 (2026-02-12) — Sprint 3.5 Additions
 - **Registration:** Plan-aware flow. `/auth/register?plan=X&period=Y` → free (2-step → dashboard) or paid (3-step → Stripe Checkout → success page → dashboard)

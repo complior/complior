@@ -375,6 +375,132 @@
 
 ---
 
+## Sprint 5 (Landing Page, Auth & Public Pages)
+
+**Total Story Points:** 55 (planned) → 50 completed
+**Duration:** 2026-02-14 — 2026-02-15 (2 days)
+**Team:** Nina (Frontend, US-053..062), Claude Code (Ory integration fixes)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-14 | 55 | 55 | Sprint start |
+| 1 | 2026-02-15 | 5 | 27.5 | US-053..062 done: Design System, i18n, Layout, Landing (15 sections), Pricing, Auth (Login/Register/Forgot), Quick Check (13Q), Penalty Calc, Checkout Success |
+| 2 | 2026-02-15 | 5 | 0 | Ory Kratos dev integration (proxy, CSRF, cookies). US-063+064 carry-over |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 55 |
+| Completed SP | 50 |
+| Velocity | 25 SP / day |
+| Carry-over | US-063 (3 SP) + US-064 (2 SP) → Sprint 6 |
+
+### Sprint 5 Completion Summary
+
+**Phase 1 — Infrastructure (18 SP)**
+- **US-053** (8 SP): Design System — CSS variables (30+ tokens), light/dark themes, ThemeToggle, Google Fonts (Fraunces/Jakarta Sans/Sora/JetBrains Mono/Space Mono), teal/lime accent colors, noise texture, `prefers-reduced-motion` — done
+- **US-054** (5 SP): i18n — `next-intl`, URL-based routing (`/en/`, `/de/`), ~500 keys per locale, `formatPrice()` ($49 EN / €49 DE), LanguageSwitcher, middleware — done
+- **US-055** (5 SP): Layout — Header (sticky glass blur, mobile hamburger, marketing/app modes), Footer (5-col grid), `(marketing)` and `(app)` route groups — done
+
+**Phase 2 — Landing Page (13 SP)**
+- **US-056** (13 SP): Landing — 15 sections (Hero, PainCards, Capabilities, ComparisonTable, ProcessSteps, FeatureGrid, Testimonials, FreeTools, DualAudience, InlinePricing, TrustBadges, FAQ, CTASection), GSAP animations, ScrollReveal, CounterAnimation, DashboardMock (3D perspective), IconSprite (27 SVGs), responsive 3 breakpoints — done
+
+**Phase 3 — Auth Pages (11 SP)**
+- **US-057** (3 SP): Login — Magic Link + Password modes, Ory Kratos flow integration, resend with "Sent ✓" feedback, AuthCard animation — done
+- **US-058** (5 SP): Registration — 3-step flow (Account → Company → Trial), ProgressStepper, PasswordStrength (4-bar), PlanBadge from URL param, Ory createRegistrationFlow + CSRF token, graceful fallback when session cookie unavailable — done
+- **US-059** (3 SP): Forgot Password + Email Verify — RecoveryFlow, "security-conscious" messaging, resend link — done
+
+**Phase 4 — Public Pages (8 SP)**
+- **US-060** (3 SP): Pricing — 5 tiers from `plans.js`, monthly/annual toggle, full comparison table, horizontal scroll on mobile, FAQ — done
+- **US-061** (3 SP): Quick Check — 13-question wizard (4 blocks), client-side scoring, radio/multi-select, progress bar, result with findings — done
+- **US-062** (2 SP): Penalty Calculator + Checkout Success — 3 penalty tiers (Art. 99), 7 presets, share URL, checkout polling with auto-redirect — done
+
+**Ory Kratos Dev Integration (bug fixes)**
+- Next.js rewrite proxy (`/.ory/*` → Kratos) — eliminates CORS + mixed content
+- CSRF token extraction for all auth flows
+- `kratos.dev.yml` — dev config without fixed cookie domain, supports Cloudflare tunnel
+- Graceful fetch error handling (`.catch()` → 503 Response)
+- Middleware exclusion for `/.ory` path
+
+**Not completed (carry-over to Sprint 6):**
+- **US-063** (3 SP): External Services (Brevo SMTP, Stripe test keys, DNS) — deferred
+- **US-064** (2 SP): Build & Deploy frontend to production — deferred
+
+### File Stats
+- 96 files changed, ~16K lines added
+- ~45 new files (30 components, 10 infra, 2 pages, i18n messages)
+- 2 new npm deps: `next-intl`, `gsap`
+
+### Reviews
+- **Build:** `npm run build` — 0 errors
+- **Tests:** 221/221 pass (no new tests — visual verification sprint)
+- **E2E:** Registration flow verified through Cloudflare tunnel (free plan → dashboard)
+
+---
+
+## Sprint 6 (Admin Panel + Stripe Integration + Production Deploy)
+
+**Total Story Points:** 15
+**Duration:** 2026-02-15 — 2026-02-16 (2 days)
+**Team:** Nina (Admin UI), Marcus (Stripe fixes + webhook pipeline), Claude Code (QA + integration)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-15 | 15 | 15 | Sprint start |
+| 1 | 2026-02-15 | 5 | 7.5 | US-065+066 done: Admin backend (6 endpoints) + frontend (6 pages, 4 charts) |
+| 2 | 2026-02-16 | 0 | 0 | US-063+064 done: Stripe webhook pipeline fixed, build verified, checkout E2E pass |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 15 |
+| Completed SP | 15 |
+| Velocity | 15 SP / 2 days |
+| Carry-over | 0 |
+
+### Sprint 6 Completion Summary
+
+**Backend — Platform Admin (US-065 — 5 SP)**
+- **US-065** (5 SP): Platform Admin Backend API — 6 endpoints (GET overview, users, organizations, subscriptions, analytics + POST assign-admin script), 6 application services, double-gate security (RBAC `platform_admin` role + `PLATFORM_ADMIN_EMAILS` env whitelist), AuditLog on all endpoints, parameterized SQL — done
+
+**Frontend — Platform Admin (US-066 — 5 SP)**
+- **US-066** (5 SP): Platform Admin Frontend UI — Admin layout with access guard, Dashboard (6 KPI cards + 4 recharts charts: AreaChart user signups 30d, BarChart MRR by plan, PieChart subscription status, BarChart plan distribution + recent signups table), Users/Organizations/Subscriptions pages (search, filter, pagination), Header mode="admin", full EN/DE i18n (55+ keys), dark theme, responsive — done
+
+**Stripe Integration (US-063 — 3 SP)**
+- **US-063** (3 SP): Stripe Test Mode + Webhook Pipeline — `.env.stripe.example`, `docs/STRIPE-SETUP.md`, Stripe webhook raw body fix (`initRawBodyForWebhooks` custom content type parser in `server/src/http.js`), Fastify v5 API fix (`request.rawBody` not `request.raw.rawBody`), AuditLog NOT NULL fix (look up `subscriptionId` instead of passing `null`), checkout-status query param fix (`sessionId` not `session_id`), `period=annual→yearly` normalization, dynamic `returnUrl` for Stripe redirect, annual pricing display (yearly total), TrialConfirmation type fix (`checkoutUrl`) — done
+
+**Build & Deploy (US-064 — 2 SP)**
+- **US-064** (2 SP): Build & Deploy Verification — `npm run build` 0 errors (all 24 routes compiled), `npm test` 229/229 pass, Docker multi-stage build verified, Caddy routing `.ory/*` + frontend confirmed, Suspense boundaries on all pages with `useSearchParams` — done
+
+### Bug Fixes During Sprint
+- Stripe webhook signature: Fastify auto-parses JSON body → raw body lost → added custom content type parser preserving raw body for `/api/webhooks/*`
+- Fastify v5 API: content type parser's `req` is Fastify Request (not Node IncomingMessage) → `request.rawBody` instead of `request.raw.rawBody`
+- AuditLog NOT NULL: webhook handler passed `resourceId: null` → now looks up actual `subscriptionId`
+- Checkout status: frontend sent `session_id` but backend schema expects `sessionId`
+- Billing period: pricing/register pages sent `period=annual` but backend accepts `yearly`
+- Stripe redirect: `FRONTEND_URL=localhost` → frontend now sends `window.location.origin` as dynamic `returnUrl`
+- Annual pricing: display changed from per-month to yearly total (`/yr` suffix)
+- TrialConfirmation: `{ url }` → `{ checkoutUrl }` to match `CheckoutResponse` interface
+
+### File Stats
+- 35+ files changed
+- 12 new files (6 admin backend, 6 admin frontend)
+- 1 new npm dep: `recharts`
+- 8 new tests (admin guard + pagination + stats)
+
+### Reviews
+- **Build:** `npm run build` — 0 errors
+- **Tests:** 229/229 pass (221 Sprint 5 + 8 new admin)
+- **E2E:** Full checkout flow verified (register → Stripe payment → webhook → subscription updated → admin dashboard)
+
+---
+
 ## Cumulative Velocity
 
 | Sprint | SP Planned | SP Done | Duration | Velocity (SP/day) |
@@ -387,7 +513,9 @@
 | 3 | 21 | 21 | 1 day | 21.0 |
 | 3.5 | 22 | 22 | 1 day | 22.0 |
 | 4 | 30 | 30 | 1 day | 30.0 |
-| **Total** | **252** | **252** | **15 days** | **16.8 avg** |
+| 5 | 55 | 50 | 2 days | 25.0 |
+| 6 | 15 | 15 | 2 days | 7.5 |
+| **Total** | **322** | **317** | **19 days** | **16.7 avg** |
 
 ### Test Growth
 
@@ -400,8 +528,10 @@
 | 3 | 187 | 148 | 335 |
 | 3.5 | 214 | 148 | 362 |
 | 4 | 221 | 148 | 369 |
+| 5 | 221 | 148 | 369 |
+| 6 | 229 | 148 | 377 |
 
 ---
 
-**Updated by:** Claude Code (on behalf of Alex)
-**Last update:** 2026-02-13
+**Updated by:** Claude Code (on behalf of Marcus)
+**Last update:** 2026-02-16
