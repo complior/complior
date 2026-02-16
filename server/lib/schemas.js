@@ -138,6 +138,21 @@ const QuickCheckSchema = z.object({
   consent: z.boolean().optional(),
 });
 
+// === Platform Admin Schemas ===
+
+const AdminListSchema = z.object({
+  q: z.string().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  sortBy: z.string().optional(),
+  sortDir: z.enum(['asc', 'desc']).optional().default('desc'),
+});
+
+const AdminSubscriptionSchema = AdminListSchema.extend({
+  status: z.string().optional(),
+  planName: z.string().optional(),
+});
+
 // === Billing / Checkout Schemas ===
 
 const VALID_PAID_PLANS = ['starter', 'growth', 'scale'];
@@ -146,6 +161,7 @@ const VALID_BILLING_PERIODS = ['monthly', 'yearly'];
 const CheckoutSchema = z.object({
   planName: z.enum(VALID_PAID_PLANS, { message: 'Invalid plan' }),
   period: z.enum(VALID_BILLING_PERIODS, { message: 'Invalid billing period' }),
+  returnUrl: z.string().url().optional(),
 });
 
 const CheckoutStatusSchema = z.object({
@@ -206,6 +222,8 @@ module.exports = {
   CheckoutSchema,
   CheckoutStatusSchema,
   AccountDeleteSchema,
+  AdminListSchema,
+  AdminSubscriptionSchema,
   VALID_PAID_PLANS,
   VALID_BILLING_PERIODS,
 };

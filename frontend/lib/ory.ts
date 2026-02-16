@@ -13,23 +13,22 @@ export interface OrySession {
   };
 }
 
-async function oryFetch(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${ORY_SDK_URL}${path}`, {
+async function oryFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(`${ORY_SDK_URL}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers as Record<string, string> },
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...(options.headers as Record<string, string>),
+    },
     ...options,
-  });
-  return res;
+  }).catch(() => new Response('{}', { status: 503 }));
 }
 
 export async function getSession(): Promise<OrySession | null> {
-  try {
-    const res = await oryFetch('/sessions/whoami');
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  const res = await oryFetch('/sessions/whoami');
+  if (!res.ok) return null;
+  try { return await res.json(); } catch { return null; }
 }
 
 export async function createLoginFlow() {
@@ -52,8 +51,29 @@ export async function createRegistrationFlow() {
   return res.json();
 }
 
+export function extractCsrfToken(flow: { ui?: { nodes?: Array<{ attributes: { name?: string; value?: string } }> } }): string {
+  const node = flow.ui?.nodes?.find((n: { attributes: { name?: string } }) => n.attributes.name === 'csrf_token');
+  return node?.attributes?.value || '';
+}
+
 export async function submitRegistration(flowId: string, body: Record<string, unknown>) {
   const res = await oryFetch(`/self-service/registration?flow=${flowId}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) console.error('[ory] submitRegistration error:', JSON.stringify(data, null, 2));
+  return data;
+}
+
+export async function createRecoveryFlow() {
+  const res = await oryFetch('/self-service/recovery/browser');
+  if (!res.ok) throw new Error('Failed to create recovery flow');
+  return res.json();
+}
+
+export async function submitRecovery(flowId: string, body: Record<string, unknown>) {
+  const res = await oryFetch(`/self-service/recovery?flow=${flowId}`, {
     method: 'POST',
     body: JSON.stringify(body),
   });
@@ -63,6 +83,12 @@ export async function submitRegistration(flowId: string, body: Record<string, un
 export async function logout() {
   const res = await oryFetch('/self-service/logout/browser');
   if (!res.ok) return;
-  const { logout_url } = await res.json();
-  if (logout_url) window.location.href = logout_url;
+  const { logout_url, logout_token } = await res.json();
+  if (logout_token) {
+    await oryFetch(`/self-service/logout?token=${logout_token}`, { method: 'GET' });
+  } else if (logout_url) {
+    try { const u = new URL(logout_url); await oryFetch(`${u.pathname}${u.search}`, { method: 'GET' }); } catch { /* fallback */ }
+  }
+  document.cookie = 'aiact_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  document.cookie = 'ory_kratos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
 }

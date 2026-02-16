@@ -5,7 +5,7 @@
 // To change limits: update here → re-seed or write migration UPDATE
 // Convention: -1 = unlimited, 0 = blocked
 // Prices in EUR cents. Frontend shows both EUR and USD ($49 / €49).
-// Annual = 20% discount on monthly price.
+// Annual = pay for 10 months instead of 12 ("Save 2 months").
 // Trial: Free = no card, Starter/Growth/Scale = 14-day trial (card required).
 
 const plans = [
@@ -33,7 +33,7 @@ const plans = [
     name: 'starter',
     displayName: 'Starter',
     priceMonthly: 4900,
-    priceYearly: 47040,
+    priceYearly: 49000,
     trialDays: 14,
     cardRequired: true,
     maxTools: 5,
@@ -53,7 +53,7 @@ const plans = [
     name: 'growth',
     displayName: 'Growth',
     priceMonthly: 14900,
-    priceYearly: 143040,
+    priceYearly: 149000,
     trialDays: 14,
     cardRequired: true,
     maxTools: 20,
@@ -79,7 +79,7 @@ const plans = [
     name: 'scale',
     displayName: 'Scale',
     priceMonthly: 39900,
-    priceYearly: 383040,
+    priceYearly: 399000,
     trialDays: 14,
     cardRequired: true,
     maxTools: -1,

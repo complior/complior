@@ -1,11 +1,13 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 2.3.0
-**Дата:** 2026-02-12
+**Версия:** 2.4.0
+**Дата:** 2026-02-15
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md v2.1.0, DATABASE.md v2.1.0
 
+> **v2.4.0 (2026-02-15):** Sprint 6 — NEW Flow 22: Platform Admin Data Access (Admin → requirePlatformAdmin guard → cross-org SQL JOINs → paginated results). Admin endpoints bypass tenant filter for global visibility.
+>
 > **v2.3.0 (2026-02-12):** Sprint 3.5 — Modified Flow 1 (Registration): conditional branch — free plan→dashboard, paid plan→Stripe Checkout→success page→dashboard. NEW Flow 21: Stripe Checkout sequence diagram (checkout session creation → Stripe hosted page → webhook → success page polling).
 >
 > **v2.2.0 (2026-02-12):** Sprint 3 Additions — 2 новых flow: Lead Gen Public (Flow 19), Eva Guard Pipeline (Flow 20). Модифицирован Flow 4 (Eva Chat) — добавлены Eva Guard pre-filter (Mistral Small 3.1) и message quota check per plan.
@@ -1126,6 +1128,53 @@ sequenceDiagram
 
 ---
 
+## 22. Platform Admin Data Access (Sprint 6)
+
+> **NEW (v2.4.0):** Cross-org read-only admin API for SaaS platform owner.
+
+```mermaid
+sequenceDiagram
+    participant Admin as Admin (Browser)
+    participant Next as Next.js (SSR)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+
+    Admin->>Next: GET /admin/dashboard
+    Next->>API: GET /api/admin/overview (with session cookie)
+    API->>API: requirePlatformAdmin(session)
+    Note over API: 1. resolveSession → get user with roles
+    Note over API: 2. checkPermission('PlatformAdmin', 'manage')
+    Note over API: 3. Verify email in PLATFORM_ADMIN_EMAILS env
+    API->>DB: COUNT users, orgs, subscriptions (no tenant filter)
+    API->>DB: SUM MRR from active subscriptions
+    API->>DB: Plan distribution (GROUP BY plan)
+    DB-->>API: Aggregate results
+    API->>DB: INSERT AuditLog {action: 'read', resource: 'PlatformAdmin'}
+    API-->>Next: {totalUsers, totalOrganizations, activeSubscriptions, mrr, planDistribution}
+    Next-->>Admin: Render dashboard with stat cards
+
+    Admin->>Next: GET /admin/users?q=john&page=1
+    Next->>API: GET /api/admin/users?q=john&page=1
+    API->>API: requirePlatformAdmin(session)
+    API->>DB: SELECT u.*, o.name, r.name, p.name, s.status
+    Note over DB: Cross-org JOIN: User + Organization + Role + Subscription + Plan
+    Note over DB: WHERE email ILIKE '%john%' OR fullName ILIKE '%john%'
+    Note over DB: LIMIT $pageSize OFFSET $offset + COUNT(*) OVER()
+    DB-->>API: Paginated user rows + total count
+    API->>DB: INSERT AuditLog
+    API-->>Next: {data: [...users], pagination: {page, pageSize, total, totalPages}}
+    Next-->>Admin: Render user table with search + pagination
+```
+
+**Key Design Decisions:**
+- **No tenant filter:** Admin queries bypass `organizationId` filtering for cross-org visibility
+- **Double gate security:** RBAC permission (`PlatformAdmin:manage`) + env whitelist (`PLATFORM_ADMIN_EMAILS`)
+- **Read-only:** v1 has no modification endpoints
+- **Audit trail:** Every admin API call logged to AuditLog
+- **Pagination:** COUNT(*) OVER() window function for total count without extra query
+
+---
+
 ## 18. Data Flow Summary
 
 ### Request → Response Latency Targets
@@ -1180,5 +1229,5 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Or
 
 ---
 
-**Последнее обновление:** 2026-02-12 (v2.3.0: Sprint 3.5 — Stripe Checkout Flow 21, modified Registration Flow 1 with plan-aware conditional branch)
+**Последнее обновление:** 2026-02-15 (v2.4.0: Sprint 6 — Platform Admin Data Access Flow 22)
 **Следующий документ:** CODING-STANDARDS.md ✅ Утверждён

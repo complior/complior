@@ -2,7 +2,7 @@
   access: 'public',
   httpMethod: 'POST',
   path: '/api/webhooks/stripe',
-  method: async ({ body, headers }) => {
+  method: async ({ body, rawBody, headers }) => {
     const signature = headers['stripe-signature'];
     if (!signature) {
       throw new errors.AuthError('Missing Stripe signature');
@@ -15,7 +15,7 @@
 
     let event;
     try {
-      const payload = typeof body === 'string' ? body : JSON.stringify(body);
+      const payload = rawBody || (typeof body === 'string' ? body : JSON.stringify(body));
       event = stripe.constructEvent(payload, signature, webhookSecret);
     } catch (err) {
       throw new errors.AuthError('Invalid Stripe signature');

@@ -111,7 +111,7 @@ Internet
 | Stripe | EU + US | Платёжные данные | ✅ c DPA |
 | Sentry | US | Stack traces (без PII) | ⚠️ DPA + SCC |
 | Plausible | Таллинн, EE | Аналитика (анонимная, без cookies) | ✅ |
-| Mistral | Париж, FR | Chat-сообщения (Sprint 5) | ✅ |
+| Mistral | Париж, FR | Chat-сообщения (Sprint Eva) | ✅ |
 
 **Sentry** — единственный US-субпроцессор. Варианты:
 1. Sentry SaaS + DPA с Standard Contractual Clauses (текущий план)
@@ -660,7 +660,7 @@ curl -f http://127.0.0.1:8000/health
 | Sentry | ✅ | sentry.io → Settings → Legal → DPA |
 | Plausible | ❌ | Не обрабатывает PII |
 | Hetzner | ✅ | Автоматически в Hetzner ToS (AV-Vertrag) |
-| Mistral | ✅ | При подключении Eva (Sprint 5) |
+| Mistral | ✅ | При подключении Eva (Sprint Eva) |
 
 **6. NIS2 Directive (для SaaS-платформ):**
 - Базовая оценка рисков: документировать в `docs/RISK-ASSESSMENT.md`

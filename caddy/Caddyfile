@@ -7,11 +7,15 @@
 		reverse_proxy backend:8000
 	}
 
-	# Placeholder (will switch to frontend:3001 when frontend is deployed)
+	# Ory Kratos public API → kratos
+	handle /.ory/* {
+		uri strip_prefix /.ory
+		reverse_proxy kratos:4433
+	}
+
+	# Frontend → Next.js
 	handle {
-		root * /srv
-		try_files {path} /placeholder.html
-		file_server
+		reverse_proxy frontend:3001
 	}
 
 	# Security headers

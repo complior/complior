@@ -11,4 +11,5 @@ module.exports = {
     request: 30000,
     shutdown: 5000,
   },
+  platformAdminEmails: (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').map((e) => e.trim()).filter(Boolean),
 };

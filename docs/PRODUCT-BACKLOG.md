@@ -1,7 +1,7 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform (Deployer-First)
 
-**Версия:** 3.5.0
-**Дата:** 2026-02-12
+**Версия:** 3.6.0
+**Дата:** 2026-02-15
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ✅ Утверждено PO (2026-02-10)
 **Зависимости:** PRODUCT-VISION.md v2.1 ✅
@@ -9,6 +9,11 @@
 ---
 
 ## Changelog
+
+### v3.6.0 (2026-02-15) — Sprint 6: Admin Panel + Stripe + Deploy
+- **NEW Feature 24:** Platform Admin Panel (P1, Sprint 6) — cross-org read-only admin API + frontend UI for SaaS owner to view all users, organizations, subscriptions, and MRR
+- **Feature 09:** Stripe test mode setup moved to Sprint 6 (was Sprint 5-6). Full billing management (portal, invoices) deferred
+- **Roadmap:** Sprint 5 ✅ (frontend rebuilt), Sprint 6 = Feature 24 + Feature 09 (test) + Production Deploy
 
 ### v3.5.0 (2026-02-12) — Sprint 3.5 Additions
 - **Feature 02:** Registration is now plan-aware (Sprint 3.5). URL params `?plan=` and `?period=` route users through free or paid (Stripe Checkout) flows.
@@ -674,6 +679,33 @@ Elena: валидация FRIA шаблона на соответствие Art.
 
 ---
 
+## Feature 24: Platform Admin Panel (NEW — Sprint 6)
+
+**Приоритет:** P1 (Should Have) | **Размер:** S | **Спринт:** 6
+
+### Бизнес-ценность
+As the SaaS platform owner, I want a protected admin panel to view all users, organizations, subscriptions, and revenue metrics, so that I can monitor business health and support customers.
+
+### Описание
+- **Admin Role:** `platform_admin` in RBAC + env whitelist `PLATFORM_ADMIN_EMAILS` (double gate)
+- **Backend API:** 4 read-only endpoints under `/api/admin/*` (overview, users, organizations, subscriptions)
+- **Frontend UI:** Separate route group `(admin)/` with dashboard, users table, orgs table, subscriptions table
+- **Overview Dashboard:** Total users, total orgs, active subscriptions, MRR (€), plan distribution
+- **Cross-org Queries:** Admin sees ALL data across organizations (no tenant filter)
+- **Search + Pagination:** ILIKE search on email/name/org, standard pagination
+- **AuditLog:** All admin API calls logged
+
+### MVP Scope
+- Read-only (no modification operations)
+- 4 API endpoints + 4 frontend pages
+- Role `platform_admin` + env whitelist
+- EN/DE i18n
+
+### Зависимости
+Feature 02 (IAM), Feature 09 (Billing — for subscription data)
+
+---
+
 ## Feature 09: Billing & подписки
 
 **Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 3.5 (partial) + 5-6 (full)
@@ -1048,16 +1080,20 @@ Sprint 2     ████ Feature 03 (end) + Feature 04a: Rules + Feature 04c (m
 Sprint 2.5   ████ Feature 02: Invite Flow + Team Management + Enforcement (24 SP) ✅
 Sprint 3     ████ Feature 04b: History + Feature 04c: Requirements API            ✅
                   + Feature 05: Dashboard API + Feature 03: Alternatives
-Sprint 3.5   ████ Feature 09 (partial): Stripe Checkout + Webhook
+Sprint 3.5   ████ Feature 09 (partial): Stripe Checkout + Webhook                ✅
                   + Feature 23 (partial): Quick Check + Penalty Calculator
                   + Feature 02: Plan-aware Registration + Pricing Page
-Sprint 4     ████ Feature 06: Eva (with Eva Guard) Conversational Onboarding
+Sprint 4     ████ Production Deployment: Docker, Caddy, Kratos, GDPR, CI/CD      ✅
+Sprint 5     ████ Frontend: Landing (15 sections), Auth, Pricing, Tools, i18n     ✅
+             ── MVP FRONTEND READY ──
+Sprint 6     ████ Feature 24: Platform Admin Panel (Backend + Frontend)
+                  + Feature 09: Stripe Test Mode Setup
+                  + Production Deploy: Frontend Docker + Caddy proxy
+Sprint 7     ████ Feature 06: Eva Conversational Onboarding
              ── MVP READY ──
-Sprint 5     ████ Frontend спринты + Feature 07: Deployer Docs (start)
-                  + Feature 23: Free Classification (remaining)
-Sprint 6     ████ Feature 07 (end) + Feature 08: Gap + Feature 19: FRIA
+Sprint 7-8   ████ Feature 07: Deployer Docs + Feature 08: Gap + Feature 19: FRIA
                   + Feature 09: Full Billing (portal, invoices, plan changes)
-Sprint 7     ██ Feature 10: Eva tools + Feature 11: Onboarding
+Sprint 8     ██ Feature 10: Eva tools + Feature 11: Onboarding
              ── PRODUCT READY ──
 Sprint 7-8   ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel
                   + Feature 21: Provider-Lite Wizard + Feature 22: Checklist
@@ -1090,4 +1126,4 @@ Sprint 8+    ████ Feature 18: AI Literacy (EN-first) + Feature 14: i18n 
 
 ✅ **APPROVED:** Deployer-First Backlog утверждён PO (2026-02-10).
 
-💡 **Следующий шаг:** Sprint 3.5 реализация (Feature 09 partial: Stripe Checkout + Feature 23 partial: Quick Check + Penalty Calc + Plan-aware Registration + Pricing Page) — см. `SPRINT-BACKLOG-003.5.md`
+💡 **Следующий шаг:** Sprint 6 реализация (Feature 24: Platform Admin Panel + Feature 09: Stripe Test Mode + Production Frontend Deploy) — см. `SPRINT-BACKLOG-006.md`

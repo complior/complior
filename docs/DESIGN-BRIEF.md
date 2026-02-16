@@ -1,12 +1,14 @@
 # Design Brief for Nina — Sprint 3+
 
-**Version:** 2.8.0
-**Date:** 2026-02-12
+**Version:** 2.9.0
+**Date:** 2026-02-15
 **From:** PO
 **For:** Nina (Frontend+UX, Claude Opus 4.6)
-**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 3.5 (Stripe + Lead Gen + Pricing Frontend) + Sprint 4 (Eva) + Sprint 5+ (remaining)
-**Ref:** PRODUCT-BACKLOG.md v3.5.0, wireframes/sprint-1-2-wireframes.md
+**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 3.5 (Stripe + Lead Gen + Pricing Frontend) + Sprint 4 (Production) + Sprint 5 (Frontend) + Sprint 6 (Admin Panel + Deploy)
+**Ref:** PRODUCT-BACKLOG.md v3.6.0, wireframes/sprint-1-2-wireframes.md
 
+> **v2.9.0 (2026-02-15):** Sprint 6 — NEW Screen 23 (Platform Admin): 4 pages — admin dashboard (stat cards: Users, Orgs, Active Subs, MRR + plan distribution table), users table (search + pagination), organizations table (filter by plan), subscriptions table (status badges). Separate route group `(admin)/` with Header mode="admin". Access control via platform_admin role check. Всего: **23 экрана**.
+>
 > **v2.8.0 (2026-02-12):** Sprint 3.5 — Screen 03 (Registration): rewritten as plan-aware flow with conditional 2-step (free) or 3-step (paid: Account → Company → TrialConfirmation → Stripe redirect). NEW Screen 22 (Checkout Success `/checkout/success`). Screen 19 (Pricing): CTAs now link to plan-aware registration. Screen 01 (Hero): CTAs updated with target URLs. Всего: **22 экрана**.
 >
 > **v2.7.0 (2026-02-12):** Sprint 3 Additions — 4 новых экрана: Screen 18 (Provider-Lite Wizard, reserved Sprint 7+), Screen 19 (Pricing Page `/pricing`), Screen 20 (Quick Check `/check`), Screen 21 (Penalty Calculator `/penalty-calculator`). Screen 01 Landing: обновлён Hero CTA + секция "Free Tools" + dual messaging. Всего: **21 экран**.
@@ -29,7 +31,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 ---
 
-## Полный список экранов (22 screens)
+## Полный список экранов (23 screens)
 
 ### Группа A — Публичные (до авторизации)
 

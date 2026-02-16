@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pricing — Complior.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#faf8f5;--bg2:#f3f0eb;--bg3:#eae6df;--bg4:#ddd8cf;
+--dark:#1a1a1a;--dark2:#2d2d2d;--dark3:#444;--dark4:#666;--dark5:#888;
+--teal:#0d9488;--teal2:#0f766e;--teal3:#115e59;--teal-dim:rgba(13,148,136,.06);--teal-glow:rgba(13,148,136,.12);
+--coral:#e74c3c;--green:#059669;--amber:#d97706;
+--b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);--b3:rgba(0,0,0,.2);
+--card:#fff;--card-hover:0 8px 24px rgba(0,0,0,.06);
+--f-display:'Fraunces',serif;--f-body:'Plus Jakarta Sans',sans-serif;--f-mono:'JetBrains Mono',monospace;
+--hdr-bg:rgba(250,248,245,.9);
+--sel-bg:var(--teal);--sel-c:#fff;
+}
+html.dark{
+--bg:#111213;--bg2:#161718;--bg3:#1c1d1f;--bg4:#252628;
+--dark:#f4f4f5;--dark2:#d4d4d8;--dark3:#a1a1aa;--dark4:#71717a;--dark5:#52525b;
+--teal:#84cc16;--teal2:#65a30d;--teal3:#4d7c0f;--teal-dim:rgba(132,204,22,.07);--teal-glow:rgba(132,204,22,.12);
+--coral:#f87171;--green:#22c55e;--amber:#fbbf24;
+--b:rgba(255,255,255,.06);--b2:rgba(255,255,255,.09);--b3:rgba(255,255,255,.15);
+--card:rgba(255,255,255,.03);--card-hover:0 8px 24px rgba(0,0,0,.2);
+--f-display:'Sora',sans-serif;--f-body:'Sora',sans-serif;--f-mono:'Space Mono',monospace;
+--hdr-bg:rgba(17,18,19,.85);
+--sel-bg:var(--teal);--sel-c:var(--bg);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--f-body);background:var(--bg);color:var(--dark3);line-height:1.7;-webkit-font-smoothing:antialiased;transition:background .4s,color .4s}
+::selection{background:var(--sel-bg);color:var(--sel-c)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{text-decoration:none}
+.ctr{max-width:1180px;margin:0 auto;padding:0 2rem}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:100;background:var(--hdr-bg);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--b);transition:.4s}
+nav{max-width:1180px;margin:0 auto;padding:.875rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:var(--f-display);font-weight:700;font-size:1.125rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;letter-spacing:-.02em;text-decoration:none}
+.logo-d{font-family:var(--f-mono);font-size:.625rem;font-weight:500;color:var(--teal);opacity:.7}
+.nr{display:flex;gap:.625rem;align-items:center}
+.bt{padding:.5rem 1.125rem;border-radius:6px;font-weight:700;font-size:.8125rem;transition:.25s;border:none;cursor:pointer;font-family:var(--f-body);display:inline-flex;align-items:center;gap:.4375rem;line-height:1.4}
+.bt svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bt-g{background:0;color:var(--dark4)}.bt-g:hover{color:var(--dark)}
+.bt-t{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(13,148,136,.2)}.bt-t:hover{background:var(--teal2);transform:translateY(-1px)}
+.bt-o{background:0;color:var(--teal);border:1.5px solid var(--teal)}.bt-o:hover{background:var(--teal-dim)}
+html.dark .bt-t{color:var(--bg)}
+.back-link{font-size:.8125rem;color:var(--dark4);display:flex;align-items:center;gap:.25rem;transition:.2s}
+.back-link:hover{color:var(--teal)}
+.back-link svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* HERO */
+.price-hero{padding:4rem 0 2rem;text-align:center}
+.sl{font-family:var(--f-mono);font-size:.5625rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem}
+.price-hero h1{font-family:var(--f-display);font-size:clamp(2rem,4vw,2.75rem);font-weight:800;color:var(--dark);margin-bottom:.5rem;letter-spacing:-.02em}
+.price-hero h1 em{font-style:italic;color:var(--teal);font-weight:600}
+.price-hero p{font-size:1rem;color:var(--dark4);max-width:480px;margin:0 auto}
+
+/* TOGGLE */
+.price-toggle{display:flex;align-items:center;justify-content:center;gap:.625rem;margin:2rem 0 2.5rem}
+.price-toggle span{font-size:.8125rem;color:var(--dark4);font-weight:500;transition:.25s}
+.price-toggle span.active{color:var(--dark);font-weight:700}
+.toggle-pill{width:44px;height:24px;border-radius:12px;background:var(--bg3);position:relative;cursor:pointer;transition:.25s}
+.toggle-pill::after{content:'';width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);position:absolute;top:3px;left:3px;transition:.25s}
+.toggle-pill.annual{background:var(--teal)}
+.toggle-pill.annual::after{left:23px}
+.save-tag{font-family:var(--f-mono);font-size:.4375rem;font-weight:700;color:var(--teal);background:var(--teal-dim);border:1px solid var(--teal-glow);padding:.125rem .375rem;border-radius:8px}
+
+/* PLAN HEADERS */
+.plan-row{display:grid;grid-template-columns:220px repeat(5,1fr);gap:0;position:sticky;top:54px;z-index:50;background:var(--bg);border-bottom:2px solid var(--b2);padding-bottom:1.25rem;margin-bottom:0}
+.plan-cell{text-align:center;padding:.75rem .5rem}
+.plan-label{}
+.plan-name{font-family:var(--f-display);font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:.125rem}
+.plan-price{font-family:var(--f-display);font-size:1.75rem;font-weight:800;color:var(--teal)}
+.plan-price small{font-size:.75rem;font-weight:400;color:var(--dark5)}
+.plan-per{font-family:var(--f-mono);font-size:.5rem;color:var(--dark5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.625rem}
+.plan-cta .bt{width:100%;justify-content:center;padding:.4375rem .75rem;font-size:.75rem}
+.plan-pop{position:relative}
+.plan-pop::before{content:'Most Popular';position:absolute;top:-.5rem;left:50%;transform:translateX(-50%);font-family:var(--f-mono);font-size:.4375rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--teal);background:var(--teal-dim);border:1px solid var(--teal-glow);padding:.125rem .5rem;border-radius:8px;white-space:nowrap}
+
+/* TABLE */
+.comp-section{padding:0 0 3.5rem}
+.comp-group{margin-bottom:.5rem}
+.comp-group-title{font-family:var(--f-mono);font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);padding:.875rem 0 .5rem;border-bottom:1px solid var(--b)}
+.comp-row{display:grid;grid-template-columns:220px repeat(5,1fr);gap:0;border-bottom:1px solid var(--b);transition:background .15s}
+.comp-row:hover{background:var(--teal-dim)}
+.comp-feature{padding:.625rem .5rem .625rem 0;font-size:.8125rem;color:var(--dark2);font-weight:500;display:flex;align-items:center;gap:.375rem}
+.comp-feature .hint{font-size:.625rem;color:var(--dark5);font-weight:400;display:block;margin-top:.125rem}
+.comp-val{padding:.625rem .5rem;text-align:center;font-size:.8125rem;color:var(--dark3);display:flex;align-items:center;justify-content:center}
+/* Icons */
+.ck{width:18px;height:18px;border-radius:50%;background:var(--teal-dim);display:grid;place-items:center;flex-shrink:0}
+.ck svg{width:10px;height:10px;stroke:var(--teal);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.xk{width:18px;height:18px;display:grid;place-items:center;flex-shrink:0}
+.xk svg{width:10px;height:10px;stroke:var(--dark5);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.4}
+.val-text{font-family:var(--f-mono);font-size:.6875rem;font-weight:600;color:var(--dark2)}
+.val-limit{font-family:var(--f-mono);font-size:.6875rem;color:var(--dark5)}
+
+/* CTA FOOTER */
+.cta-bar{background:var(--bg2);padding:3rem 0;text-align:center}
+.cta-bar h2{font-family:var(--f-display);font-size:1.5rem;font-weight:700;color:var(--dark);margin-bottom:.5rem}
+.cta-bar h2 em{font-style:italic;color:var(--teal);font-weight:600}
+.cta-bar p{font-size:.875rem;color:var(--dark4);margin-bottom:1.5rem}
+.cta-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+.cta-btns .bt{padding:.625rem 1.5rem;font-size:.875rem}
+
+/* FAQ */
+.faq-section{padding:3.5rem 0}
+.faq-title{font-family:var(--f-display);font-size:1.5rem;font-weight:700;color:var(--dark);text-align:center;margin-bottom:2rem}
+.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;max-width:860px;margin:0 auto}
+.faq-item{background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:1.25rem}
+.faq-q{font-family:var(--f-display);font-size:.875rem;font-weight:700;color:var(--dark);margin-bottom:.375rem}
+.faq-a{font-size:.8125rem;color:var(--dark4);line-height:1.6}
+
+/* FOOTER */
+footer{padding:2rem 0;border-top:1px solid var(--b);text-align:center}
+footer p{font-size:.75rem;color:var(--dark5)}
+footer a{color:var(--teal);font-weight:600}
+
+/* Language Switcher */
+.lang-sw{position:relative;cursor:pointer;user-select:none}
+.lang-cur{font-family:var(--f-mono);font-size:.625rem;font-weight:600;color:var(--dark4);padding:.3rem .5rem;border:1px solid var(--b2);border-radius:5px;display:flex;align-items:center;gap:.25rem;transition:.25s}
+.lang-cur::after{content:'▾';font-size:.5rem;opacity:.5}
+.lang-cur:hover{border-color:var(--b3);color:var(--dark2)}
+.lang-dd{position:absolute;top:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--b2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:.25rem;min-width:130px;opacity:0;visibility:hidden;transform:translateY(-4px);transition:.2s;z-index:110}
+.lang-sw.open .lang-dd{opacity:1;visibility:visible;transform:translateY(0)}
+html.dark .lang-dd{box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.lang-opt{display:flex;align-items:center;gap:.5rem;padding:.375rem .625rem;font-family:var(--f-mono);font-size:.5625rem;color:var(--dark3);border-radius:5px;transition:.15s;text-decoration:none}
+.lang-opt:hover{background:var(--bg2);color:var(--dark)}
+.lang-opt.active{color:var(--teal);font-weight:700}
+
+/* RESPONSIVE */
+@media(max-width:1024px){
+.plan-row,.comp-row{grid-template-columns:160px repeat(5,1fr)}
+}
+@media(max-width:860px){
+.plan-row,.comp-row{overflow-x:auto;grid-template-columns:140px repeat(5,130px);min-width:790px}
+.comp-section{overflow-x:auto}
+.comp-section .ctr{min-width:790px}
+.faq-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+.price-hero{padding:3rem 0 1.5rem}
+.price-hero h1{font-size:1.75rem}
+}
+</style>
+</head>
+<body>
+
+<header><nav>
+<a href="/" class="logo">Complior<span class="logo-d">.ai</span></a>
+<a href="/" class="back-link"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Back to homepage</a>
+<div class="nr">
+<div class="lang-sw" onclick="this.classList.toggle('open')"><span class="lang-cur">EN</span><div class="lang-dd"><a class="lang-opt active" data-lang="en">🇬🇧 English</a><a class="lang-opt" data-lang="de">🇩🇪 Deutsch</a></div></div>
+<button class="bt bt-g" onclick="document.documentElement.classList.toggle('dark');this.textContent=document.documentElement.classList.contains('dark')?'☀️ Light':'🌙 Dark'">🌙 Dark</button>
+<a href="#" class="bt bt-g">Sign In</a>
+<a href="#" class="bt bt-t">Get Started Free</a>
+</div>
+</nav></header>
+
+<!-- HERO -->
+<section class="price-hero"><div class="ctr">
+<div class="sl">Pricing</div>
+<h1>Find the right plan for <em>your team</em></h1>
+<p>All plans include EU AI Act updates, GDPR-compliant hosting, and email support.</p>
+</div></section>
+
+<!-- TOGGLE -->
+<div class="ctr">
+<div class="price-toggle">
+<span class="active" id="moLabel">Monthly</span>
+<div class="toggle-pill" id="pricePill" onclick="togglePricing()"></div>
+<span id="anLabel">Annual</span>
+<span class="save-tag">Save 20%</span>
+</div>
+</div>
+
+<!-- PLAN HEADERS -->
+<div class="ctr">
+<div class="plan-row" id="planRow">
+<div class="plan-label"></div>
+<div class="plan-cell">
+<div class="plan-name">Free</div>
+<div class="plan-price">$0</div>
+<div class="plan-per">forever</div>
+<div class="plan-cta"><a href="#" class="bt bt-o">Get Started</a></div>
+</div>
+<div class="plan-cell">
+<div class="plan-name">Starter</div>
+<div class="plan-price" data-mo="$49" data-an="$39">$49<small>/mo</small></div>
+<div class="plan-per">14-day free trial</div>
+<div class="plan-cta"><a href="#" class="bt bt-t">Free Trial</a></div>
+</div>
+<div class="plan-cell plan-pop">
+<div class="plan-name">Growth</div>
+<div class="plan-price" data-mo="$149" data-an="$119">$149<small>/mo</small></div>
+<div class="plan-per">14-day free trial</div>
+<div class="plan-cta"><a href="#" class="bt bt-t">Free Trial</a></div>
+</div>
+<div class="plan-cell">
+<div class="plan-name">Scale</div>
+<div class="plan-price" data-mo="$399" data-an="$319">$399<small>/mo</small></div>
+<div class="plan-per">14-day free trial</div>
+<div class="plan-cta"><a href="#" class="bt bt-t">Free Trial</a></div>
+</div>
+<div class="plan-cell">
+<div class="plan-name">Enterprise</div>
+<div class="plan-price" style="font-size:1.375rem">Custom</div>
+<div class="plan-per">tailored</div>
+<div class="plan-cta"><a href="#" class="bt bt-o">Contact Us</a></div>
+</div>
+</div>
+</div>
+
+<!-- COMPARISON TABLE -->
+<section class="comp-section"><div class="ctr">
+
+<!-- USAGE LIMITS -->
+<div class="comp-group">
+<div class="comp-group-title">Usage Limits</div>
+<div class="comp-row"><div class="comp-feature">AI Tools</div><div class="comp-val"><span class="val-text">1</span></div><div class="comp-val"><span class="val-text">5</span></div><div class="comp-val"><span class="val-text">20</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div></div>
+<div class="comp-row"><div class="comp-feature">Platform Users</div><div class="comp-val"><span class="val-text">1</span></div><div class="comp-val"><span class="val-text">2</span></div><div class="comp-val"><span class="val-text">5</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div></div>
+<div class="comp-row"><div class="comp-feature">Employees (Literacy)<span class="hint">Seats for AI literacy training</span></div><div class="comp-val"><span class="val-limit">—</span></div><div class="comp-val"><span class="val-text">15</span></div><div class="comp-val"><span class="val-text">50</span></div><div class="comp-val"><span class="val-text">250</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div></div>
+<div class="comp-row"><div class="comp-feature">Document Exports<span class="hint">PDF exports per month</span></div><div class="comp-val"><span class="val-limit">0</span></div><div class="comp-val"><span class="val-limit">1</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div></div>
+<div class="comp-row"><div class="comp-feature">Trial Period</div><div class="comp-val"><span class="val-limit">—</span></div><div class="comp-val"><span class="val-text">14 days</span></div><div class="comp-val"><span class="val-text">14 days</span></div><div class="comp-val"><span class="val-text">14 days</span></div><div class="comp-val"><span class="val-limit">—</span></div></div>
+</div>
+
+<!-- AI TOOL INVENTORY -->
+<div class="comp-group">
+<div class="comp-group-title">AI Tool Inventory</div>
+<div class="comp-row"><div class="comp-feature">AI Tool Catalog<span class="hint">Pre-built tool profiles</span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+<div class="comp-row"><div class="comp-feature">Manual Tool Registration</div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+<div class="comp-row"><div class="comp-feature">CSV Import</div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="val-limit">Basic</span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div></div>
+<div class="comp-row"><div class="comp-feature">Employee Self-Registration<span class="hint">Employees add tools themselves</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+</div>
+
+<!-- RISK CLASSIFICATION -->
+<div class="comp-group">
+<div class="comp-group-title">Risk Classification</div>
+<div class="comp-row"><div class="comp-feature">5-Step Classification Wizard</div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div></div>
+<div class="comp-row"><div class="comp-feature">Classification Result<span class="hint">Risk level + article references</span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+<div class="comp-row"><div class="comp-feature">Gap Analysis + Action Plan<span class="hint">What's missing and next steps</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+</div>
+
+<!-- COMPLIANCE DOCUMENTATION -->
+<div class="comp-group">
+<div class="comp-group-title">Compliance Documentation</div>
+<div class="comp-row"><div class="comp-feature">Doc Generation<span class="hint">FRIA, Human Oversight, Monitoring Plans</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+<div class="comp-row"><div class="comp-feature">Compliance Badge<span class="hint">Embeddable badge for website</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="val-text">Premium</span></div></div>
+<div class="comp-row"><div class="comp-feature">Audit Trail<span class="hint">Who changed what and when</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="val-limit">90 days</span></div><div class="comp-val"><span class="val-text">1 year</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div></div>
+</div>
+
+<!-- AI LITERACY -->
+<div class="comp-group">
+<div class="comp-group-title">AI Literacy (Art. 4)</div>
+<div class="comp-row"><div class="comp-feature">AI Literacy Courses</div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="val-text">EN</span></div><div class="comp-val"><span class="val-text">EN + DE</span></div><div class="comp-val"><span class="val-text">All languages</span></div><div class="comp-val"><span class="val-text">All languages</span></div></div>
+<div class="comp-row"><div class="comp-feature">Training Certificates<span class="hint">Per-employee proof of completion</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+<div class="comp-row"><div class="comp-feature">Completion Tracking<span class="hint">Dashboard showing progress</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+</div>
+
+<!-- EVA AI ASSISTANT -->
+<div class="comp-group">
+<div class="comp-group-title">Eva AI Assistant</div>
+<div class="comp-row"><div class="comp-feature">Eva Chat<span class="hint">Ask questions about EU AI Act</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="val-text">200/mo</span></div><div class="comp-val"><span class="val-text">1,000/mo</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div><div class="comp-val"><span class="val-text">Unlimited</span></div></div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="comp-group">
+<div class="comp-group-title">Dashboard</div>
+<div class="comp-row"><div class="comp-feature">Compliance Dashboard</div><div class="comp-val"><span class="val-limit">Basic</span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div><div class="comp-val"><span class="val-text">Full</span></div></div>
+<div class="comp-row"><div class="comp-feature">Deadline Reminders<span class="hint">Email notifications</span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+</div>
+
+<!-- INTEGRATIONS -->
+<div class="comp-group">
+<div class="comp-group-title">Integrations</div>
+<div class="comp-row"><div class="comp-feature">API Access</div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="xk"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+</div>
+
+<!-- SUPPORT & DATA -->
+<div class="comp-group">
+<div class="comp-group-title">Support & Data</div>
+<div class="comp-row"><div class="comp-feature">Support</div><div class="comp-val"><span class="val-limit">Email</span></div><div class="comp-val"><span class="val-limit">Email</span></div><div class="comp-val"><span class="val-text">Priority email</span></div><div class="comp-val"><span class="val-text">Priority + onboarding</span></div><div class="comp-val"><span class="val-text">Dedicated</span></div></div>
+<div class="comp-row"><div class="comp-feature">EU Data Hosting<span class="hint">Frankfurt, Germany (Hetzner)</span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+<div class="comp-row"><div class="comp-feature">Data Processing Agreement</div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div><div class="comp-val"><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div>
+</div>
+
+</div></section>
+
+<!-- CTA -->
+<section class="cta-bar">
+<h2>Ready to get <em>compliant</em>?</h2>
+<p>Start free, upgrade when you need more. No credit card required.</p>
+<div class="cta-btns">
+<a href="#" class="bt bt-t">Get Started Free</a>
+<a href="#" class="bt bt-o">Book a Demo</a>
+</div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section"><div class="ctr">
+<h2 class="faq-title">Frequently Asked Questions</h2>
+<div class="faq-grid">
+<div class="faq-item"><h3 class="faq-q">Can I switch plans anytime?</h3><p class="faq-a">Yes. Upgrade instantly, downgrade at next billing cycle. No lock-in contracts on any plan.</p></div>
+<div class="faq-item"><h3 class="faq-q">What happens after the 14-day trial?</h3><p class="faq-a">Your account converts to the Free plan automatically. No charge unless you explicitly upgrade. All your data is preserved.</p></div>
+<div class="faq-item"><h3 class="faq-q">Do you offer discounts for NGOs or startups?</h3><p class="faq-a">Yes — 30% off Growth and Scale plans for registered NGOs, educational institutions, and startups under 2 years old. Contact us to apply.</p></div>
+<div class="faq-item"><h3 class="faq-q">Is my data stored in the EU?</h3><p class="faq-a">100%. All data is hosted on Hetzner servers in Frankfurt, Germany. We use only EU-based subprocessors. Full GDPR compliance with DPA available on all plans.</p></div>
+<div class="faq-item"><h3 class="faq-q">What payment methods do you accept?</h3><p class="faq-a">Credit card (Visa, Mastercard, Amex), SEPA direct debit, and bank transfer for annual Enterprise plans. All payments processed via Stripe.</p></div>
+<div class="faq-item"><h3 class="faq-q">Can I pay annually?</h3><p class="faq-a">Yes — save 20% with annual billing. Toggle the switch above to see annual prices. You can switch between monthly and annual at any time.</p></div>
+</div>
+</div></section>
+
+<!-- FOOTER -->
+<footer><div class="ctr">
+<p>© 2026 Complior AI · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/dpa">DPA</a> · Made in Germany 🇪🇺</p>
+</div></footer>
+
+<script>
+document.addEventListener('click',function(e){
+  var sw=document.querySelector('.lang-sw');
+  if(sw&&!sw.contains(e.target))sw.classList.remove('open');
+});
+document.querySelectorAll('.lang-opt').forEach(function(opt){
+  opt.addEventListener('click',function(e){
+    e.stopPropagation();
+    document.querySelectorAll('.lang-opt').forEach(function(o){o.classList.remove('active')});
+    this.classList.add('active');
+    document.querySelector('.lang-cur').textContent=this.dataset.lang.toUpperCase();
+    document.querySelector('.lang-sw').classList.remove('open');
+  });
+});
+function togglePricing(){
+  var pill=document.getElementById('pricePill');
+  pill.classList.toggle('annual');
+  var isAnnual=pill.classList.contains('annual');
+  document.getElementById('moLabel').classList.toggle('active',!isAnnual);
+  document.getElementById('anLabel').classList.toggle('active',isAnnual);
+  document.querySelectorAll('.plan-price[data-mo]').forEach(function(el){
+    var price=isAnnual?el.dataset.an:el.dataset.mo;
+    el.innerHTML=price+'<small>/mo</small>';
+  });
+  document.querySelectorAll('.plan-per').forEach(function(el){
+    if(el.textContent==='forever'||el.textContent==='tailored')return;
+    el.textContent=isAnnual?'billed annually':'billed monthly';
+  });
+}
+</script>
+</body>
+</html>

@@ -67,10 +67,12 @@ services:
       COURIER_SMTP_CONNECTION_URI: ${COURIER_SMTP_CONNECTION_URI}
     volumes:
       - ./ory:/etc/config/kratos:ro
-    command: serve -c /etc/config/kratos/kratos.production.yml --watch-courier
+    command: serve -c /etc/config/kratos/kratos.dev.yml --dev --watch-courier
+    ports:
+      - '4433:4433'
+      - '4434:4434'
     networks:
       - complior_net
-    # No ports exposed — only accessible within Docker network
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,9 +122,11 @@ services:
       ORY_SDK_URL: http://kratos:4433
       ORY_ADMIN_URL: http://kratos:4434
       GOTENBERG_URL: http://gotenberg:3000
+    ports:
+      - '8000:8000'
     networks:
       - complior_net
-    # No ports exposed — Caddy routes traffic to backend:8000
+    # Port 8000 exposed for Stripe webhook testing (remove in production)
     depends_on:
       postgres:
         condition: service_healthy
@@ -142,24 +146,36 @@ services:
         max-size: '10m'
         max-file: '3'
 
-  # Frontend — Next.js (disabled — will be enabled when frontend is deployed)
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile.production
-  #     args:
-  #       - BACKEND_URL=http://backend:8000
-  #   container_name: complior-frontend
-  #   restart: unless-stopped
-  #   environment:
-  #     BACKEND_URL: http://backend:8000
-  #     HOSTNAME: 0.0.0.0
-  #     PORT: 3001
-  #   networks:
-  #     - complior_net
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
+  # Frontend — Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production
+      args:
+        - BACKEND_URL=http://backend:8000
+    container_name: complior-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8000
+      ORY_INTERNAL_URL: http://kratos:4433
+      HOSTNAME: 0.0.0.0
+      PORT: 3001
+    networks:
+      - complior_net
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://127.0.0.1:3001/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # Caddy — Reverse Proxy + Auto-TLS
   caddy:
@@ -172,13 +188,14 @@ services:
       - '443:443/udp'
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./caddy/placeholder.html:/srv/placeholder.html:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
       - complior_net
     depends_on:
       backend:
+        condition: service_healthy
+      frontend:
         condition: service_healthy
     logging:
       driver: json-file

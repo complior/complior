@@ -55,7 +55,7 @@ selfservice:
                   type: api_key
                   config:
                     name: X-Webhook-Secret
-                    value: file:///etc/config/kratos/webhook-secret
+                    value: ce7f5440c53594b8aaa45225af82e84fefe30ed919c55c41df901ad7958ae23f
                     in: header
                 can_interrupt: false
                 response:
@@ -72,7 +72,7 @@ selfservice:
                   type: api_key
                   config:
                     name: X-Webhook-Secret
-                    value: file:///etc/config/kratos/webhook-secret
+                    value: ce7f5440c53594b8aaa45225af82e84fefe30ed919c55c41df901ad7958ae23f
                     in: header
                 can_interrupt: false
                 response:

@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 interface ApiOptions extends RequestInit {
   params?: Record<string, string>;
@@ -26,7 +26,7 @@ async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
       ...fetchOptions.headers as Record<string, string>,
     },
     ...fetchOptions,
-  });
+  }).catch(() => new Response(JSON.stringify({ error: { message: 'Service unavailable' } }), { status: 503 }));
 
   if (!res.ok) {
     // Defensive: parse error JSON for message, fallback if body is not valid JSON
@@ -162,7 +162,7 @@ export interface ClassifyResult {
 }
 
 export interface CheckoutResponse {
-  url: string;
+  checkoutUrl: string;
   sessionId: string;
 }
 
@@ -185,6 +185,91 @@ export interface QuickCheckResponse {
   obligations: { article: string; text: string }[];
   findings: { severity: string; text: string }[];
   literacyRequired: boolean;
+}
+
+export interface AdminOverview {
+  totalUsers: number;
+  totalOrganizations: number;
+  activeSubscriptions: number;
+  mrr: number;
+  planDistribution: { planName: string; displayName: string; count: number }[];
+}
+
+export interface AnalyticsDay {
+  day: string;
+  count: number;
+}
+
+export interface RevenueByPlan {
+  planName: string;
+  displayName: string;
+  activeCount: number;
+  mrrCents: number;
+}
+
+export interface StatusCount {
+  status: string;
+  count: number;
+}
+
+export interface RecentSignup {
+  id: number;
+  email: string;
+  fullName: string;
+  organizationName: string;
+  planName: string;
+  createdAt: string;
+}
+
+export interface AdminAnalytics {
+  usersByDay: AnalyticsDay[];
+  subscriptionsByDay: AnalyticsDay[];
+  revenueByPlan: RevenueByPlan[];
+  statusDistribution: StatusCount[];
+  kpis: {
+    totalMrrCents: number;
+    activeTrials: number;
+    activePaid: number;
+    arpu: number;
+    trialConversionRate: number;
+  };
+  recentSignups: RecentSignup[];
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  fullName: string;
+  organizationName: string;
+  role: string;
+  planName: string;
+  subscriptionStatus: string;
+  active: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminOrganization {
+  id: number;
+  name: string;
+  industry: string | null;
+  size: string | null;
+  country: string | null;
+  userCount: number;
+  toolCount: number;
+  planName: string;
+  subscriptionStatus: string;
+}
+
+export interface AdminSubscription {
+  subscriptionId: number;
+  organizationName: string;
+  planName: string;
+  displayName: string;
+  status: string;
+  billingPeriod: string;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
 }
 
 export const api = {
@@ -217,11 +302,11 @@ export const api = {
     createCheckout: (planName: string, period: string) =>
       apiFetch<CheckoutResponse>('/api/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ planName, period }),
+        body: JSON.stringify({ planName, period, returnUrl: window.location.origin }),
       }),
     checkoutStatus: (sessionId: string) =>
       apiFetch<CheckoutStatusResponse>('/api/billing/checkout-status', {
-        params: { session_id: sessionId },
+        params: { sessionId },
       }),
   },
   public: {
@@ -230,5 +315,15 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+  },
+  admin: {
+    overview: () => apiFetch<AdminOverview>('/api/admin/overview'),
+    analytics: () => apiFetch<AdminAnalytics>('/api/admin/analytics'),
+    users: (params: Record<string, string>) =>
+      apiFetch<PaginatedResponse<AdminUser>>('/api/admin/users', { params }),
+    organizations: (params: Record<string, string>) =>
+      apiFetch<PaginatedResponse<AdminOrganization>>('/api/admin/organizations', { params }),
+    subscriptions: (params: Record<string, string>) =>
+      apiFetch<PaginatedResponse<AdminSubscription>>('/api/admin/subscriptions', { params }),
   },
 };

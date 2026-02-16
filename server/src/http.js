@@ -197,6 +197,23 @@ const walkApiTree = (node, handlers = []) => {
   return handlers;
 };
 
+const initRawBodyForWebhooks = (server) => {
+  server.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (req, body, done) => {
+      if (req.url && req.url.startsWith('/api/webhooks/')) {
+        req.rawBody = body;
+      }
+      try {
+        done(null, JSON.parse(body));
+      } catch (err) {
+        done(err);
+      }
+    },
+  );
+};
+
 const registerSandboxRoutes = (server, api) => {
   const handlers = walkApiTree(api);
   for (const def of handlers) {
@@ -204,6 +221,7 @@ const registerSandboxRoutes = (server, api) => {
     server[httpMethod](def.path, async (request, reply) => {
       const result = await def.method({
         body: request.body,
+        rawBody: request.rawBody,
         query: request.query,
         headers: request.headers,
         params: request.params,
@@ -223,5 +241,5 @@ const registerSandboxRoutes = (server, api) => {
 module.exports = {
   registerSandboxRoutes, initHealth, initRateLimit,
   initRequestId, initErrorHandler, initSessionHook,
-  initSecurityHeaders,
+  initSecurityHeaders, initRawBodyForWebhooks,
 };

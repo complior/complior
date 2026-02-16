@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create Account — Complior.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#faf8f5;--bg2:#f3f0eb;--bg3:#eae6df;--bg4:#ddd8cf;
+--dark:#1a1a1a;--dark2:#2d2d2d;--dark3:#444;--dark4:#666;--dark5:#888;
+--teal:#0d9488;--teal2:#0f766e;--teal3:#115e59;--teal-dim:rgba(13,148,136,.06);--teal-glow:rgba(13,148,136,.12);
+--coral:#e74c3c;--green:#059669;
+--b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);--b3:rgba(0,0,0,.2);
+--card:#fff;
+--f-display:'Fraunces',serif;--f-body:'Plus Jakarta Sans',sans-serif;--f-mono:'JetBrains Mono',monospace;
+--sel-bg:var(--teal);--sel-c:#fff;
+}
+html.dark{
+--bg:#111213;--bg2:#161718;--bg3:#1c1d1f;--bg4:#252628;
+--dark:#f4f4f5;--dark2:#d4d4d8;--dark3:#a1a1aa;--dark4:#71717a;--dark5:#52525b;
+--teal:#84cc16;--teal2:#65a30d;--teal3:#4d7c0f;--teal-dim:rgba(132,204,22,.07);--teal-glow:rgba(132,204,22,.12);
+--coral:#f87171;--green:#22c55e;
+--b:rgba(255,255,255,.06);--b2:rgba(255,255,255,.09);--b3:rgba(255,255,255,.15);
+--card:rgba(255,255,255,.03);
+--f-display:'Sora',sans-serif;--f-body:'Sora',sans-serif;--f-mono:'Space Mono',monospace;
+--sel-bg:var(--teal);--sel-c:var(--bg);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--f-body);background:var(--bg);color:var(--dark3);line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;transition:background .4s,color .4s}
+::selection{background:var(--sel-bg);color:var(--sel-c)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.theme-btn{position:fixed;top:1.25rem;right:1.25rem;background:var(--card);border:1px solid var(--b2);border-radius:8px;padding:.4rem .75rem;font-family:var(--f-mono);font-size:.625rem;color:var(--dark4);cursor:pointer;transition:.25s;z-index:10}
+.theme-btn:hover{border-color:var(--b3);color:var(--dark2)}
+.demo-sw{background:var(--card);border:1px solid var(--b2);border-radius:6px;padding:.3rem .5rem;font-family:var(--f-mono);font-size:.5rem;color:var(--dark5);cursor:pointer;transition:.2s}
+.demo-sw:hover{border-color:var(--b3);color:var(--dark3)}
+.demo-sw.active{background:var(--teal);border-color:var(--teal);color:#fff}
+html.dark .demo-sw.active{color:var(--bg)}
+
+.logo{font-family:var(--f-display);font-weight:700;font-size:1.25rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;letter-spacing:-.02em;margin-bottom:1.5rem;text-decoration:none}
+.logo-d{font-family:var(--f-mono);font-size:.625rem;font-weight:500;color:var(--teal);opacity:.7}
+
+/* Plan badge */
+.plan-badge{display:inline-flex;align-items:center;gap:.375rem;font-family:var(--f-mono);font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.3rem .75rem;border-radius:8px;margin-bottom:1.5rem;background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-glow)}
+.plan-badge svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2}
+.plan-badge.free{background:var(--bg2);color:var(--dark4);border-color:var(--b2)}
+html.dark .plan-badge{background:rgba(132,204,22,.12);border-color:rgba(132,204,22,.25);color:var(--teal);font-weight:800}
+html.dark .plan-badge.free{background:var(--bg3);border-color:var(--b3);color:var(--dark2)}
+
+/* Progress */
+.progress{display:flex;align-items:center;gap:.5rem;margin-bottom:2rem;width:100%;max-width:420px}
+.step{display:flex;align-items:center;gap:.5rem;flex:1}
+.step-num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-size:.625rem;font-weight:700;border:2px solid var(--b2);color:var(--dark5);transition:.35s;flex-shrink:0}
+.step.active .step-num{background:var(--teal);border-color:var(--teal);color:#fff}
+html.dark .step.active .step-num{color:var(--bg)}
+.step.done .step-num{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.step-label{font-family:var(--f-mono);font-size:.5rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dark5);transition:.35s}
+.step.active .step-label,.step.done .step-label{color:var(--dark3)}
+html.dark .step.active .step-label{color:var(--dark)}
+html.dark .step-num{border-color:var(--b3);color:var(--dark4)}
+html.dark .step-line{background:var(--b3)}
+.step-line{flex:0 0 40px;height:2px;background:var(--b2);border-radius:1px;transition:.35s}
+.step-line.filled{background:var(--teal)}
+
+.auth-card{background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 16px 48px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.03);transition:background .35s,border-color .35s,box-shadow .35s;animation:cardIn .5s ease both}
+html.dark .auth-card{box-shadow:0 16px 48px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.15)}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.auth-title{font-family:var(--f-display);font-size:1.5rem;font-weight:700;color:var(--dark);margin-bottom:.375rem;letter-spacing:-.02em}
+.auth-sub{font-size:.875rem;color:var(--dark4);margin-bottom:2rem}
+html.dark .auth-card{box-shadow:0 16px 48px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.15);border-color:var(--b3)}
+
+.field{margin-bottom:1.25rem}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.field-label{display:block;font-family:var(--f-mono);font-size:.5625rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--dark4);margin-bottom:.4375rem}
+.field-label .req{color:var(--coral)}
+html.dark .field-label{color:var(--dark3)}
+.field-input,.field-select{width:100%;padding:.6875rem .875rem;border:1.5px solid var(--b2);border-radius:8px;font-family:var(--f-body);font-size:.875rem;color:var(--dark);background:var(--bg);outline:none;transition:border-color .25s,box-shadow .25s;-webkit-appearance:none;appearance:none}
+html.dark .field-input,html.dark .field-select{border-color:var(--b3);background:var(--bg2)}
+.field-select{background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .875rem center;padding-right:2.5rem}
+.field-input::placeholder{color:var(--dark5)}
+.field-input:focus,.field-select:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-dim)}
+.field-input.err,.field-select.err{border-color:var(--coral);box-shadow:0 0 0 3px rgba(231,76,60,.06)}
+.field-error{font-size:.6875rem;color:var(--coral);margin-top:.3125rem;display:none}
+
+.pw-wrap{position:relative}
+.pw-wrap .field-input{padding-right:2.75rem}
+.pw-toggle{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:0;border:0;cursor:pointer;color:var(--dark5);font-size:.75rem;padding:0;line-height:1}
+.pw-toggle:hover{color:var(--dark3)}
+.pw-strength{display:flex;gap:3px;margin-top:.375rem}
+.pw-bar{height:3px;flex:1;border-radius:2px;background:var(--bg3);transition:background .3s}
+.pw-bar.s1{background:var(--coral)}.pw-bar.s2{background:var(--coral)}
+.pw-bar.s3{background:#f59e0b}.pw-bar.s4{background:var(--green)}
+.pw-label{font-family:var(--f-mono);font-size:.5rem;color:var(--dark5);margin-top:.25rem;text-transform:uppercase;letter-spacing:.06em;transition:color .3s}
+
+.btn{width:100%;padding:.75rem 1.25rem;border-radius:8px;font-family:var(--f-body);font-weight:700;font-size:.875rem;cursor:pointer;border:none;transition:.25s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-primary{background:var(--teal);color:#fff;box-shadow:0 2px 8px var(--teal-glow)}
+.btn-primary:hover{background:var(--teal2);box-shadow:0 4px 16px var(--teal-glow);transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+html.dark .btn-primary{color:var(--bg)}
+.btn-ghost{background:0;color:var(--dark4);border:none;font-size:.8125rem;font-weight:500;cursor:pointer;margin-top:.75rem;transition:.2s}
+.btn-ghost:hover{color:var(--teal)}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.auth-footer{margin-top:1.75rem;font-size:.8125rem;color:var(--dark4);text-align:center}
+.auth-footer a{color:var(--teal);font-weight:600;text-decoration:none;transition:.2s}
+.auth-footer a:hover{text-decoration:underline}
+
+.trust-line{margin-top:1.5rem;text-align:center;font-family:var(--f-mono);font-size:.5rem;color:var(--dark5);letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:.375rem}
+.trust-line svg{width:12px;height:12px;stroke:var(--teal);fill:none;stroke-width:2}
+
+.step-section{animation:fadeIn .35s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.step2-note{background:var(--teal-dim);border:1px solid var(--teal-glow);border-radius:8px;padding:.625rem .875rem;margin-bottom:1.5rem;font-size:.75rem;color:var(--teal);display:flex;align-items:center;gap:.5rem;line-height:1.5}
+.step2-note svg{flex-shrink:0;width:16px;height:16px;stroke:var(--teal);fill:none;stroke-width:2}
+
+/* Step 3: Trial Confirmation */
+.trial-card{background:var(--bg2);border:1px solid var(--b2);border-radius:10px;padding:1.25rem;margin-bottom:1.5rem}
+.trial-plan-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+.trial-plan-name{font-family:var(--f-display);font-size:1.125rem;font-weight:700;color:var(--dark)}
+.trial-plan-price{font-family:var(--f-display);font-size:1.125rem;font-weight:800;color:var(--teal)}
+.trial-plan-price small{font-size:.75rem;font-weight:400;color:var(--dark5)}
+.trial-period{font-family:var(--f-mono);font-size:.5rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dark5);margin-bottom:.875rem;padding-bottom:.75rem;border-bottom:1px solid var(--b)}
+.trial-features{list-style:none}
+.trial-features li{font-size:.8125rem;color:var(--dark3);padding:.25rem 0;display:flex;align-items:center;gap:.5rem}
+.trial-features li svg{width:14px;height:14px;stroke:var(--teal);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+.trial-details{background:var(--bg2);border:1px solid var(--b2);border-radius:8px;padding:.75rem 1rem;margin-bottom:1.25rem;display:flex;align-items:flex-start;gap:.625rem;font-size:.8125rem;color:var(--dark3);line-height:1.5}
+.trial-details svg{width:18px;height:18px;stroke:var(--teal);fill:none;stroke-width:2;flex-shrink:0;margin-top:.1rem}
+.trial-details strong{color:var(--dark);font-weight:700}
+
+.card-req{display:flex;align-items:center;gap:.375rem;font-family:var(--f-mono);font-size:.5rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dark5);margin-bottom:1rem;justify-content:center}
+.card-req svg{width:12px;height:12px;stroke:var(--dark5);fill:none;stroke-width:2}
+
+@media(max-width:480px){
+.auth-card{padding:2rem 1.5rem;border-radius:12px}
+.auth-title{font-size:1.25rem}
+.field-row{grid-template-columns:1fr}
+.trial-plan-row{flex-direction:column;align-items:flex-start;gap:.25rem}
+}
+</style>
+</head>
+<body>
+
+<button class="theme-btn" onclick="document.documentElement.classList.toggle('dark');this.textContent=document.documentElement.classList.contains('dark')?'☀️ Light':'🌙 Dark'">🌙 Dark</button>
+
+<!-- DEMO SWITCHER (remove in production) -->
+<div style="position:fixed;top:1.25rem;left:1.25rem;display:flex;gap:.375rem;z-index:10">
+<button class="demo-sw active" onclick="switchPlan('free','monthly')">Free</button>
+<button class="demo-sw" onclick="switchPlan('starter','monthly')">Starter $49</button>
+<button class="demo-sw" onclick="switchPlan('starter','annual')">Starter $39/yr</button>
+<button class="demo-sw" onclick="switchPlan('growth','monthly')">Growth $149</button>
+<button class="demo-sw" onclick="switchPlan('growth','annual')">Growth $119/yr</button>
+<button class="demo-sw" onclick="switchPlan('scale','monthly')">Scale $399</button>
+<button class="demo-sw" onclick="switchPlan('scale','annual')">Scale $319/yr</button>
+</div>
+
+<a href="/" class="logo">Complior<span class="logo-d">.ai</span></a>
+
+<!-- PROGRESS -->
+<div class="progress" id="progress"></div>
+
+<div class="auth-card">
+
+<!-- ═══ STEP 1: Account ═══ -->
+<div id="step1" class="step-section">
+<div id="planBadge"></div>
+<h1 class="auth-title">Create your account</h1>
+<p class="auth-sub">Start your EU AI Act compliance journey</p>
+
+<div class="field-row">
+<div class="field">
+<label class="field-label" for="fname">First Name <span class="req">*</span></label>
+<input class="field-input" id="fname" type="text" placeholder="Max" autocomplete="given-name">
+<div class="field-error">Required</div>
+</div>
+<div class="field">
+<label class="field-label" for="lname">Last Name <span class="req">*</span></label>
+<input class="field-input" id="lname" type="text" placeholder="Smith" autocomplete="family-name">
+<div class="field-error">Required</div>
+</div>
+</div>
+
+<div class="field">
+<label class="field-label" for="remail">Email <span class="req">*</span></label>
+<input class="field-input" id="remail" type="email" placeholder="you@company.com" autocomplete="email">
+<div class="field-error">Please enter a valid email address</div>
+</div>
+
+<div class="field">
+<label class="field-label" for="rpw">Password <span class="req">*</span></label>
+<div class="pw-wrap">
+<input class="field-input" id="rpw" type="password" placeholder="Min. 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)">
+<button class="pw-toggle" type="button" onclick="togglePw(this)" aria-label="Show password">👁</button>
+</div>
+<div class="pw-strength"><div class="pw-bar" id="b1"></div><div class="pw-bar" id="b2"></div><div class="pw-bar" id="b3"></div><div class="pw-bar" id="b4"></div></div>
+<div class="pw-label" id="pwLabel">Password strength</div>
+<div class="field-error" id="pwErr" style="display:none">At least 8 characters required</div>
+</div>
+
+<button class="btn btn-primary" onclick="goStep2()">Create Account</button>
+</div>
+
+<!-- ═══ STEP 2: Company (MANDATORY) ═══ -->
+<div id="step2" class="step-section" style="display:none">
+<h1 class="auth-title">About your company</h1>
+<p class="auth-sub">Required to set up your compliance workspace</p>
+
+<div class="step2-note">
+<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+Company info is used in compliance reports and team invitations.
+</div>
+
+<div class="field">
+<label class="field-label" for="company">Company Name <span class="req">*</span></label>
+<input class="field-input" id="company" type="text" placeholder="Acme Inc." autocomplete="organization">
+<div class="field-error">Required</div>
+</div>
+
+<div class="field-row">
+<div class="field">
+<label class="field-label" for="industry">Industry <span class="req">*</span></label>
+<select class="field-select" id="industry">
+<option value="" disabled selected>Select</option>
+<option>Technology</option>
+<option>Healthcare</option>
+<option>Finance</option>
+<option>HR</option>
+<option>Education</option>
+<option>Legal</option>
+<option>Manufacturing</option>
+<option>Other</option>
+</select>
+<div class="field-error">Required</div>
+</div>
+<div class="field">
+<label class="field-label" for="size">Company Size <span class="req">*</span></label>
+<select class="field-select" id="size">
+<option value="" disabled selected>Select</option>
+<option>1–10</option>
+<option>11–50</option>
+<option>51–200</option>
+<option>201–500</option>
+<option>500+</option>
+</select>
+<div class="field-error">Required</div>
+</div>
+</div>
+
+<div class="field">
+<label class="field-label" for="country">Country <span class="req">*</span></label>
+<select class="field-select" id="country">
+<option value="" disabled selected>Select</option>
+<option>Germany</option>
+<option>Austria</option>
+<option>Switzerland</option>
+<option>Netherlands</option>
+<option>France</option>
+<option>Spain</option>
+<option>Italy</option>
+<option>United Kingdom</option>
+<option>United States</option>
+<option>Other</option>
+</select>
+<div class="field-error">Required</div>
+</div>
+
+<button class="btn btn-primary" id="step2btn" onclick="goStep3()">
+<svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+<span id="step2btnText">Continue to Dashboard</span>
+</button>
+</div>
+
+<!-- ═══ STEP 3: Trial Confirmation (PAID ONLY) ═══ -->
+<div id="step3" class="step-section" style="display:none">
+<h1 class="auth-title">Start your 14-day free trial</h1>
+<p class="auth-sub">Full access, cancel anytime.</p>
+
+<div class="trial-card">
+<div class="trial-plan-row">
+<span class="trial-plan-name" id="trialPlanName">Growth Plan</span>
+<span class="trial-plan-price" id="trialPlanPrice">$149<small>/mo</small></span>
+</div>
+<div class="trial-period" id="trialPeriod">Billed monthly</div>
+<ul class="trial-features" id="trialFeatures"></ul>
+</div>
+
+<div class="trial-details">
+<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+<div>You won't be charged until <strong id="trialEndDate"></strong>. Cancel anytime during your trial — no questions asked.</div>
+</div>
+
+<div class="card-req">
+<svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+Credit card required to start trial
+</div>
+
+<button class="btn btn-primary" onclick="startTrial()">
+Start 14-Day Trial
+<svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+</button>
+<button class="btn btn-ghost" onclick="window.location.href='/pricing'">Choose a different plan</button>
+</div>
+
+</div>
+
+<div class="auth-footer" id="footerLink">
+Already have an account? <a href="complior-screen02-login.html">Sign in</a>
+</div>
+
+<div class="trust-line" id="trustLine">
+<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M9 12l2 2 4-4"/></svg>
+<span id="trustText">GDPR compliant · Data hosted in Frankfurt, DE · No credit card required</span>
+</div>
+
+<script>
+var PLANS={
+  free:   {name:'Free Plan',price:'$0',annual:'$0',per:'forever',features:['1 AI tool','1 user','Basic classification','AI tool catalog']},
+  starter:{name:'Starter Plan',price:'$49',annual:'$39',per:'/mo',features:['5 AI tools, 2 users','15 AI literacy seats','Eva AI (200 msg/mo)','90-day audit trail']},
+  growth: {name:'Growth Plan',price:'$149',annual:'$119',per:'/mo',features:['20 AI tools, 5 users','50 AI literacy seats','FRIA & doc generation','Gap analysis + compliance badge']},
+  scale:  {name:'Scale Plan',price:'$399',annual:'$319',per:'/mo',features:['Unlimited tools & users','250 AI literacy seats','API access','Priority support + onboarding']}
+};
+
+var plan,period,isPaid,planData,totalSteps;
+
+function initPlan(p,per){
+  plan=p||'free';period=per||'monthly';
+  if(!PLANS[plan])plan='free';
+  isPaid=plan!=='free';
+  planData=PLANS[plan];
+  totalSteps=isPaid?3:2;
+
+  // Reset sections
+  document.getElementById('step1').style.display='block';
+  document.getElementById('step2').style.display='none';
+  document.getElementById('step3').style.display='none';
+  document.getElementById('footerLink').style.display='';
+  document.getElementById('progress').style.display='';
+
+  // Plan badge
+  var badge=document.getElementById('planBadge');
+  var priceShow=period==='annual'?planData.annual:planData.price;
+  var perShow=plan==='free'?'':period==='annual'?' /mo · Annual plan':' /mo';
+  if(plan==='free'){
+    badge.innerHTML='<div class="plan-badge free"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Free Plan — $0</div>';
+  } else {
+    badge.innerHTML='<div class="plan-badge"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>'+planData.name+' — '+priceShow+perShow+'</div>';
+  }
+
+  // Progress
+  var prog=document.getElementById('progress');
+  var html='';
+  var labels=isPaid?['Account','Company','Trial']:['Account','Company'];
+  for(var i=0;i<totalSteps;i++){
+    if(i>0)html+='<div class="step-line" id="line'+(i)+'"></div>';
+    html+='<div class="step'+(i===0?' active':'')+'" id="sind'+(i+1)+'"><div class="step-num">'+(i+1)+'</div><div class="step-label">'+labels[i]+'</div></div>';
+  }
+  prog.innerHTML=html;
+
+  // Step 2 button
+  document.getElementById('step2btnText').textContent=isPaid?'Continue':'Continue to Dashboard';
+
+  // Trust line
+  document.getElementById('trustText').textContent=isPaid?'GDPR compliant · Data hosted in Frankfurt, DE · 14-day free trial':'GDPR compliant · Data hosted in Frankfurt, DE · No credit card required';
+
+  // Step 3 content
+  if(isPaid){
+    document.getElementById('trialPlanName').textContent=planData.name;
+    document.getElementById('trialPlanPrice').innerHTML=priceShow+'<small>'+planData.per+'</small>';
+    var periodText=period==='annual'?'Billed annually at '+planData.annual.replace('$','')+' × 12 = $'+(parseInt(planData.annual.replace('$',''))*12)+'/year (save 20%)':'Billed monthly';
+    document.getElementById('trialPeriod').textContent=periodText;
+    var fl=document.getElementById('trialFeatures');fl.innerHTML='';
+    planData.features.forEach(function(f){fl.innerHTML+='<li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+f+'</li>'});
+    var end=new Date();end.setDate(end.getDate()+14);
+    document.getElementById('trialEndDate').textContent=end.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  }
+}
+
+function switchPlan(p,per){
+  initPlan(p,per);
+  document.querySelectorAll('.demo-sw').forEach(function(b){b.classList.remove('active')});
+  if(event&&event.target)event.target.classList.add('active');
+}
+
+// Init
+var params=new URLSearchParams(window.location.search);
+initPlan(params.get('plan'),params.get('period'));
+
+function validateEmail(e){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
+
+function checkStrength(pw){
+  var s=0;if(pw.length>=8)s++;if(/[A-Z]/.test(pw))s++;if(/[0-9]/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;
+  var labels=['','Weak','Weak','Medium','Strong'],colors=['','s1','s2','s3','s4'];
+  for(var i=1;i<=4;i++){var b=document.getElementById('b'+i);b.className='pw-bar';if(i<=s)b.classList.add(colors[s])}
+  var l=document.getElementById('pwLabel');l.textContent=s?labels[s]:'Password strength';
+  l.style.color=s>=4?'var(--green)':s>=3?'#f59e0b':s>=1?'var(--coral)':'';
+}
+
+function activateStep(n){
+  for(var i=1;i<=totalSteps;i++){var el=document.getElementById('sind'+i);if(!el)continue;if(i<n){el.className='step done';el.querySelector('.step-num').textContent='\u2713'}else if(i===n){el.className='step active';el.querySelector('.step-num').textContent=i}else{el.className='step'}}
+  for(var j=1;j<totalSteps;j++){var line=document.getElementById('line'+j);if(line)line.className=j<n?'step-line filled':'step-line'}
+}
+
+function showSection(id){
+  ['step1','step2','step3'].forEach(function(s){document.getElementById(s).style.display=s===id?'block':'none';if(s===id)document.getElementById(s).style.animation='fadeIn .35s ease both'});
+}
+
+function goStep2(){
+  var ok=true;
+  ['fname','lname'].forEach(function(id){var el=document.getElementById(id);if(!el.value.trim()){el.classList.add('err');el.nextElementSibling.style.display='block';ok=false}else{el.classList.remove('err');el.nextElementSibling.style.display='none'}});
+  var em=document.getElementById('remail');if(!validateEmail(em.value)){em.classList.add('err');em.nextElementSibling.style.display='block';ok=false}else{em.classList.remove('err');em.nextElementSibling.style.display='none'}
+  var pw=document.getElementById('rpw'),pwE=document.getElementById('pwErr');if(pw.value.length<8){pw.classList.add('err');pwE.style.display='block';ok=false}else{pw.classList.remove('err');pwE.style.display='none'}
+  if(!ok)return;
+  showSection('step2');activateStep(2);
+}
+
+function goStep3(){
+  var ok=true;
+  var company=document.getElementById('company');if(!company.value.trim()){company.classList.add('err');company.nextElementSibling.style.display='block';ok=false}else{company.classList.remove('err');company.nextElementSibling.style.display='none'}
+  ['industry','size','country'].forEach(function(id){var el=document.getElementById(id);if(!el.value){el.classList.add('err');el.parentElement.querySelector('.field-error').style.display='block';ok=false}else{el.classList.remove('err');el.parentElement.querySelector('.field-error').style.display='none'}});
+  if(!ok)return;
+  if(!isPaid){showSuccess();return}
+  showSection('step3');activateStep(3);document.getElementById('footerLink').style.display='none';
+}
+
+function startTrial(){
+  var card=document.querySelector('.auth-card');
+  card.innerHTML='<div style="text-align:center;padding:2rem 0"><div style="width:56px;height:56px;border-radius:14px;background:var(--teal-dim);border:1px solid var(--teal-glow);display:grid;place-items:center;margin:0 auto 1.25rem"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div><h2 style="font-family:var(--f-display);font-size:1.25rem;font-weight:700;color:var(--dark);margin-bottom:.375rem">Redirecting to Stripe...</h2><p style="font-size:.875rem;color:var(--dark4);margin-bottom:1.5rem">Secure checkout powered by Stripe.</p><div style="width:40px;height:3px;background:var(--teal);border-radius:2px;margin:0 auto;animation:loading 1.5s ease infinite"><style>@keyframes loading{0%,100%{opacity:.3}50%{opacity:1}}</style></div></div>';
+  document.getElementById('progress').style.display='none';document.getElementById('footerLink').style.display='none';
+}
+
+function showSuccess(){
+  var card=document.querySelector('.auth-card');
+  card.innerHTML='<div style="text-align:center;padding:2rem 0"><div style="width:56px;height:56px;border-radius:14px;background:var(--teal-dim);border:1px solid var(--teal-glow);display:grid;place-items:center;margin:0 auto 1.25rem"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><h2 style="font-family:var(--f-display);font-size:1.25rem;font-weight:700;color:var(--dark);margin-bottom:.375rem">Welcome to Complior!</h2><p style="font-size:.875rem;color:var(--dark4);margin-bottom:1.5rem">Your workspace is ready. Redirecting to dashboard...</p><div style="width:40px;height:3px;background:var(--teal);border-radius:2px;margin:0 auto;animation:loading 1.5s ease infinite"></div></div>';
+  document.getElementById('progress').style.display='none';document.getElementById('footerLink').style.display='none';
+}
+
+function togglePw(btn){var inp=btn.previousElementSibling;if(inp.type==='password'){inp.type='text';btn.textContent='\uD83D\uDE48'}else{inp.type='password';btn.textContent='\uD83D\uDC41'}}
+
+document.querySelectorAll('.field-input,.field-select').forEach(function(inp){
+  inp.addEventListener('input',function(){this.classList.remove('err');var e=this.parentElement.querySelector('.field-error')||this.nextElementSibling;if(e&&e.classList.contains('field-error'))e.style.display='none'});
+  inp.addEventListener('change',function(){this.classList.remove('err');var e=this.parentElement.querySelector('.field-error');if(e)e.style.display='none'});
+});
+</script>
+</script>
+</body>
+</html>

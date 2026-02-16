@@ -5,6 +5,7 @@ const roles = [
   { name: 'admin', active: true, organizationId: null },
   { name: 'member', active: true, organizationId: null },
   { name: 'viewer', active: true, organizationId: null },
+  { name: 'platform_admin', active: true, organizationId: null },
 ];
 
 const permissions = [
@@ -51,6 +52,9 @@ const permissions = [
   { role: 'member', resource: 'Notification', action: 'read' },
   { role: 'member', resource: 'Conversation', action: 'create' },
   { role: 'member', resource: 'Conversation', action: 'read' },
+
+  // Platform Admin — cross-org read access
+  { role: 'platform_admin', resource: 'PlatformAdmin', action: 'manage' },
 
   // Viewer — read-only
   { role: 'viewer', resource: 'AITool', action: 'read' },

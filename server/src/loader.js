@@ -52,7 +52,7 @@ const loadDeepDir = async (dir, sandbox) => {
 
 const loadApplication = async (appPath, serverContext) => {
   const { console: logger, db, config, errors, schemas, zod,
-    ory, brevo, gotenberg, s3 } = serverContext;
+    ory, brevo, gotenberg, s3, stripe } = serverContext;
 
   // Base sandbox — available to all VM layers
   const sandbox = {
@@ -67,6 +67,7 @@ const loadApplication = async (appPath, serverContext) => {
     brevo: Object.freeze(brevo),
     gotenberg: Object.freeze(gotenberg),
     s3: Object.freeze(s3),
+    stripe: Object.freeze(stripe),
   };
 
   // Layer 1: lib (permissions, audit, tenant)

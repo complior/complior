@@ -42,7 +42,7 @@ export function PricingToggle({ period, onToggle }: PricingToggleProps) {
       >
         Annual
       </button>
-      <Badge className="bg-green-100 text-green-700 border-green-200">Save 20%</Badge>
+      <Badge className="bg-green-100 text-green-700 border-green-200">Save 2 months</Badge>
     </div>
   );
 }

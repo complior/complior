@@ -28,6 +28,7 @@
       email: user.email,
       planName: parsed.planName,
       period: parsed.period,
+      returnUrl: parsed.returnUrl,
     });
 
     return { _statusCode: 200, ...result };

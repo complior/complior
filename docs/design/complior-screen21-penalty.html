@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Act Penalty Calculator — Complior.ai</title>
+<meta name="description" content="Calculate your maximum EU AI Act fine based on annual revenue. Art. 99 penalty tiers explained.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#faf8f5;--bg2:#f3f0eb;--bg3:#eae6df;--bg4:#ddd8cf;--dark:#1a1a1a;--dark2:#2d2d2d;--dark3:#444;--dark4:#666;--dark5:#888;--teal:#0d9488;--teal2:#0f766e;--teal3:#115e59;--teal-dim:rgba(13,148,136,.06);--teal-glow:rgba(13,148,136,.12);--coral:#e74c3c;--green:#059669;--amber:#d97706;--b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);--b3:rgba(0,0,0,.2);--card:#fff;--hdr-bg:rgba(250,248,245,.9);--f-display:'Fraunces',serif;--f-body:'Plus Jakarta Sans',sans-serif;--f-mono:'JetBrains Mono',monospace;--sel-bg:var(--teal);--sel-c:#fff}
+html.dark{--bg:#111213;--bg2:#161718;--bg3:#1c1d1f;--bg4:#252628;--dark:#f4f4f5;--dark2:#d4d4d8;--dark3:#a1a1aa;--dark4:#71717a;--dark5:#52525b;--teal:#84cc16;--teal2:#65a30d;--teal3:#4d7c0f;--teal-dim:rgba(132,204,22,.07);--teal-glow:rgba(132,204,22,.12);--coral:#f87171;--green:#22c55e;--amber:#fbbf24;--b:rgba(255,255,255,.06);--b2:rgba(255,255,255,.09);--b3:rgba(255,255,255,.15);--card:rgba(255,255,255,.03);--hdr-bg:rgba(17,18,19,.85);--f-display:'Sora',sans-serif;--f-body:'Sora',sans-serif;--f-mono:'Space Mono',monospace;--sel-bg:var(--teal);--sel-c:var(--bg)}
+html{scroll-behavior:smooth}
+body{font-family:var(--f-body);background:var(--bg);color:var(--dark3);line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:5rem 2rem 2rem;transition:background .4s,color .4s}
+::selection{background:var(--sel-bg);color:var(--sel-c)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* Navbar */
+header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--hdr-bg);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--b);transition:.4s}
+nav{max-width:1140px;margin:0 auto;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:var(--f-display);font-weight:700;font-size:1.125rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;letter-spacing:-.02em;text-decoration:none}
+.logo-d{font-family:var(--f-mono);font-size:.625rem;font-weight:500;color:var(--teal);opacity:.7}
+.nv{display:flex;gap:1.5rem;list-style:none}.nv a{color:var(--dark4);font-size:.8125rem;font-weight:600;transition:.25s;text-decoration:none}.nv a:hover{color:var(--teal)}
+.nr{display:flex;gap:.5rem;align-items:center}
+.bt{padding:.4375rem 1rem;border-radius:6px;font-weight:700;font-size:.8125rem;transition:.25s;border:none;cursor:pointer;font-family:var(--f-body);display:inline-flex;align-items:center;gap:.4375rem;line-height:1.4;text-decoration:none}
+.bt-g{background:0;color:var(--dark4)}.bt-g:hover{color:var(--dark)}
+.bt-t{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(13,148,136,.2)}.bt-t:hover{background:var(--teal2);transform:translateY(-1px)}
+html.dark .bt-t{color:var(--bg)}
+@media(max-width:768px){.nv{display:none}nav{padding:.75rem 1.25rem}}
+/* Header */
+.hd{text-align:center;margin:1.5rem 0 1.75rem}
+.hd-badge{display:inline-flex;align-items:center;gap:.375rem;font-family:var(--f-mono);font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--teal);margin-bottom:.5rem}
+.hd-badge svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2}
+.hd h1{font-family:var(--f-display);font-size:1.5rem;font-weight:700;color:var(--dark);margin-bottom:.25rem;letter-spacing:-.02em}
+.hd p{font-size:.875rem;color:var(--dark4)}
+/* Card */
+.crd{background:var(--card);border:1px solid var(--b2);border-radius:14px;width:100%;max-width:480px;box-shadow:0 16px 48px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.03);transition:.35s;overflow:hidden}
+html.dark .crd{box-shadow:0 16px 48px rgba(0,0,0,.3);border-color:var(--b3)}
+/* Input section */
+.inp-sec{padding:2rem 2.5rem}
+.inp-label{font-family:var(--f-mono);font-size:.5625rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--dark4);margin-bottom:.5rem;display:block}
+html.dark .inp-label{color:var(--dark3)}
+.inp-wrap{position:relative;margin-bottom:1.25rem}
+.inp-prefix{position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:var(--f-mono);font-size:.875rem;color:var(--dark5);font-weight:600;pointer-events:none}
+.inp{width:100%;padding:.875rem 1rem .875rem 2.25rem;border:1.5px solid var(--b2);border-radius:10px;font-family:var(--f-mono);font-size:1.125rem;font-weight:700;color:var(--dark);background:var(--bg);outline:none;transition:.25s}
+.inp:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-dim)}
+html.dark .inp{border-color:var(--b3);background:var(--bg2)}
+.inp-hint{font-size:.6875rem;color:var(--dark5);margin-top:.375rem;font-family:var(--f-mono);font-size:.4375rem;letter-spacing:.02em}
+.calc-btn{width:100%;padding:.8125rem 1.25rem;border-radius:8px;font-family:var(--f-body);font-weight:700;font-size:.875rem;cursor:pointer;border:none;background:var(--teal);color:#fff;box-shadow:0 2px 8px var(--teal-glow);transition:.25s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.calc-btn:hover{background:var(--teal2);transform:translateY(-1px)}
+html.dark .calc-btn{color:var(--bg)}
+.calc-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Divider */
+.divider{height:1px;background:var(--b2)}
+/* Result section */
+.res-sec{padding:2rem 2.5rem;display:none}
+.res-sec.on{display:block;animation:fi .4s ease both}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.res-title{font-family:var(--f-mono);font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dark4);margin-bottom:1.25rem}
+html.dark .res-title{color:var(--dark3)}
+/* Penalty tier */
+.tier{padding:1rem 1.25rem;border-radius:10px;margin-bottom:.75rem;border:1px solid var(--b);position:relative;overflow:hidden;transition:.3s}
+.tier::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
+.tier-red{background:rgba(231,76,60,.03)}.tier-red::before{background:var(--coral)}
+.tier-amber{background:rgba(217,119,6,.03)}.tier-amber::before{background:var(--amber)}
+.tier-yellow{background:rgba(234,179,8,.03)}.tier-yellow::before{background:#eab308}
+html.dark .tier-red{background:rgba(248,113,113,.04);border-color:rgba(248,113,113,.1)}
+html.dark .tier-amber{background:rgba(251,191,36,.04);border-color:rgba(251,191,36,.1)}
+html.dark .tier-yellow{background:rgba(234,179,8,.04);border-color:rgba(234,179,8,.1)}
+.tier-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+.tier-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tier-red .tier-dot{background:var(--coral)}
+.tier-amber .tier-dot{background:var(--amber)}
+.tier-yellow .tier-dot{background:#eab308}
+html.dark .tier-yellow .tier-dot{background:#fbbf24}
+.tier-name{font-family:var(--f-body);font-size:.8125rem;font-weight:700;color:var(--dark)}
+.tier-amount{font-family:var(--f-display);font-size:1.5rem;font-weight:800;color:var(--dark);margin-bottom:.25rem;letter-spacing:-.02em}
+.tier-red .tier-amount{color:var(--coral)}
+.tier-amber .tier-amount{color:var(--amber)}
+.tier-yellow .tier-amount{color:#ca8a04}
+html.dark .tier-yellow .tier-amount{color:#fbbf24}
+.tier-rule{font-size:.75rem;color:var(--dark5);line-height:1.5}
+.tier-rule code{font-family:var(--f-mono);font-size:.6875rem;background:var(--bg2);padding:.05em .3em;border-radius:3px;color:var(--dark3)}
+html.dark .tier-rule code{background:rgba(132,204,22,.1);color:var(--teal);border:1px solid rgba(132,204,22,.15)}
+.tier-which{font-family:var(--f-mono);font-size:.5rem;color:var(--dark5);text-transform:uppercase;letter-spacing:.04em;margin-top:.25rem}
+.tier-which em{font-style:normal;font-weight:700;color:var(--dark3)}
+/* SME note */
+.sme-note{background:var(--teal-dim);border:1px solid var(--teal-glow);border-radius:8px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.75rem;color:var(--teal);display:flex;align-items:flex-start;gap:.5rem;line-height:1.5}
+.sme-note svg{width:16px;height:16px;stroke:var(--teal);fill:none;stroke-width:2;flex-shrink:0;margin-top:.1rem}
+/* CTA */
+.res-cta{display:flex;gap:.5rem;margin-bottom:.75rem}
+.res-cta .bn{flex:1;padding:.6875rem 1rem;border-radius:8px;font-family:var(--f-body);font-weight:700;font-size:.8125rem;cursor:pointer;border:none;transition:.25s;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none}
+.bn-p{background:var(--teal);color:#fff;box-shadow:0 2px 8px var(--teal-glow)}
+.bn-p:hover{background:var(--teal2);transform:translateY(-1px)}
+html.dark .bn-p{color:var(--bg)}
+.bn-o{background:0;color:var(--teal);border:1.5px solid var(--teal)}
+.bn-o:hover{background:var(--teal-dim)}
+.bn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Toast */
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--dark);color:#fff;padding:.625rem 1.25rem;border-radius:8px;font-size:.8125rem;font-weight:600;z-index:200;opacity:0;transition:.35s;pointer-events:none}
+html.dark .toast{background:var(--dark2);color:var(--bg)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+/* Ref */
+.res-ref{text-align:center;font-family:var(--f-mono);font-size:.4375rem;color:var(--dark5);letter-spacing:.04em}
+.res-ref a{color:var(--teal);text-decoration:none;font-weight:600}
+/* Footer */
+.ft{margin-top:1.75rem;text-align:center;font-family:var(--f-mono);font-size:.4375rem;color:var(--dark5);letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:.375rem}
+.ft svg{width:12px;height:12px;stroke:var(--teal);fill:none;stroke-width:2}
+.ft a{color:var(--teal);text-decoration:none;font-weight:600}
+/* Presets */
+.presets{display:flex;gap:.375rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.preset{font-family:var(--f-mono);font-size:.5rem;padding:.25rem .5rem;border-radius:5px;background:var(--bg2);border:1px solid var(--b);color:var(--dark4);cursor:pointer;transition:.2s;font-weight:600}
+.preset:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-dim)}
+html.dark .preset{background:var(--bg3);border-color:var(--b3);color:var(--dark4)}
+html.dark .preset:hover{border-color:var(--teal);color:var(--teal)}
+@media(max-width:520px){
+.inp-sec,.res-sec{padding:1.5rem 1.25rem}
+.crd{border-radius:12px}
+.hd h1{font-size:1.25rem}
+.tier-amount{font-size:1.25rem}
+.res-cta{flex-direction:column}
+.presets{gap:.25rem}
+}
+</style>
+</head>
+<body>
+
+<header>
+<nav>
+<a href="/" class="logo">Complior<span class="logo-d">.ai</span></a>
+<ul class="nv"><li><a href="/#features">Features</a></li><li><a href="/check">Quick Check</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/#faq">FAQ</a></li></ul>
+<div class="nr"><button class="bt bt-g" onclick="document.documentElement.classList.toggle('dark');this.textContent=document.documentElement.classList.contains('dark')?'☀️ Light':'🌙 Dark'">🌙 Dark</button><a href="/auth/login" class="bt bt-g">Sign In</a><a href="/auth/register" class="bt bt-t">Get Started Free</a></div>
+</nav>
+</header>
+
+<div class="hd">
+<div class="hd-badge"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg> AI Act Penalty Calculator</div>
+<h1>What's the maximum fine for your company?</h1>
+<p>Calculate penalties under Art. 99 of the EU AI Act.</p>
+</div>
+
+<div class="crd">
+<!-- INPUT -->
+<div class="inp-sec">
+<label class="inp-label">Annual Revenue (Worldwide Turnover)</label>
+<div class="inp-wrap">
+<span class="inp-prefix">€</span>
+<input class="inp" id="revenue" type="text" placeholder="5,000,000" inputmode="numeric" oninput="fmtInput(this)" onkeydown="if(event.key==='Enter')calc()">
+</div>
+<div class="presets">
+<span class="preset" onclick="setRev(1000000)">€1M</span>
+<span class="preset" onclick="setRev(5000000)">€5M</span>
+<span class="preset" onclick="setRev(10000000)">€10M</span>
+<span class="preset" onclick="setRev(50000000)">€50M</span>
+<span class="preset" onclick="setRev(100000000)">€100M</span>
+<span class="preset" onclick="setRev(500000000)">€500M</span>
+<span class="preset" onclick="setRev(1000000000)">€1B</span>
+</div>
+<button class="calc-btn" onclick="calc()">
+<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+Calculate Maximum Fine
+</button>
+</div>
+
+<div class="divider"></div>
+
+<!-- RESULTS -->
+<div class="res-sec" id="results">
+<div class="res-title">Your Maximum Penalties</div>
+
+<!-- Tier 1: Prohibited -->
+<div class="tier tier-red">
+<div class="tier-header"><div class="tier-dot"></div><div class="tier-name">Prohibited AI Practices</div></div>
+<div class="tier-amount" id="t1amt">€35,000,000</div>
+<div class="tier-rule"><code>Art. 99(3)</code> — 7% of worldwide annual turnover or €35M, whichever is higher</div>
+<div class="tier-which" id="t1which"></div>
+</div>
+
+<!-- Tier 2: High-risk -->
+<div class="tier tier-amber">
+<div class="tier-header"><div class="tier-dot"></div><div class="tier-name">High-Risk Non-Compliance</div></div>
+<div class="tier-amount" id="t2amt">€15,000,000</div>
+<div class="tier-rule"><code>Art. 99(4)</code> — 3% of worldwide annual turnover or €15M, whichever is higher</div>
+<div class="tier-which" id="t2which"></div>
+</div>
+
+<!-- Tier 3: Other -->
+<div class="tier tier-yellow">
+<div class="tier-header"><div class="tier-dot"></div><div class="tier-name">Other Violations</div></div>
+<div class="tier-amount" id="t3amt">€7,500,000</div>
+<div class="tier-rule"><code>Art. 99(4)</code> — 1.5% of worldwide annual turnover or €7.5M, whichever is higher</div>
+<div class="tier-which" id="t3which"></div>
+</div>
+
+<!-- SME note -->
+<div class="sme-note" id="smeNote" style="display:none">
+<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+<div id="smeText"></div>
+</div>
+
+<!-- CTA -->
+<div class="res-cta">
+<button class="bn bn-o" onclick="shareResult()"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share Result</button>
+<a href="/auth/register?plan=free" class="bn bn-p">Create Account <svg viewBox="0 0 24 24"><polyline points="12 5 19 12 12 19"/></svg></a>
+</div>
+
+<div class="res-ref"><code>Art. 99</code> Regulation (EU) 2024/1689 — <a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689" target="_blank">EU AI Act</a></div>
+</div>
+</div>
+
+<div class="ft">
+<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M9 12l2 2 4-4"/></svg>
+No account required · <a href="/check">Take AI Act Quick Check</a> · <a href="/">complior.ai</a>
+</div>
+
+<div class="toast" id="toast">Link copied to clipboard!</div>
+
+<script>
+function fmtNum(n){return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+
+function fmtInput(el){
+  var raw=el.value.replace(/[^0-9]/g,'');
+  if(raw)el.value=fmtNum(parseInt(raw));
+  else el.value='';
+}
+
+function setRev(n){
+  document.getElementById('revenue').value=fmtNum(n);
+  calc();
+}
+
+function parseRev(){
+  var raw=document.getElementById('revenue').value.replace(/[^0-9]/g,'');
+  return raw?parseInt(raw):0;
+}
+
+function fmtEur(n){
+  if(n>=1e9)return '\u20AC'+fmtNum(Math.round(n/1e6))+'M';
+  if(n>=1e6)return '\u20AC'+fmtNum(n);
+  return '\u20AC'+fmtNum(n);
+}
+
+function calc(){
+  var rev=parseRev();
+  if(!rev){document.getElementById('revenue').style.borderColor='var(--coral)';return}
+  document.getElementById('revenue').style.borderColor='';
+
+  // Art. 99 tiers
+  var t1_pct=rev*0.07, t1_min=35000000, t1=Math.max(t1_pct,t1_min);
+  var t2_pct=rev*0.03, t2_min=15000000, t2=Math.max(t2_pct,t2_min);
+  var t3_pct=rev*0.015,t3_min=7500000,  t3=Math.max(t3_pct,t3_min);
+
+  // Animate results
+  var res=document.getElementById('results');
+  res.classList.remove('on');
+  res.style.display='none';
+
+  setTimeout(function(){
+    document.getElementById('t1amt').textContent=fmtEur(t1);
+    document.getElementById('t2amt').textContent=fmtEur(t2);
+    document.getElementById('t3amt').textContent=fmtEur(t3);
+
+    // Which is higher
+    document.getElementById('t1which').innerHTML=t1_pct>t1_min
+      ?'<em>7% turnover</em> applies (\u20AC'+fmtNum(Math.round(t1_pct))+' > \u20AC35M floor)'
+      :'\u20AC35M <em>minimum floor</em> applies (7% = \u20AC'+fmtNum(Math.round(t1_pct))+')';
+    document.getElementById('t2which').innerHTML=t2_pct>t2_min
+      ?'<em>3% turnover</em> applies (\u20AC'+fmtNum(Math.round(t2_pct))+' > \u20AC15M floor)'
+      :'\u20AC15M <em>minimum floor</em> applies (3% = \u20AC'+fmtNum(Math.round(t2_pct))+')';
+    document.getElementById('t3which').innerHTML=t3_pct>t3_min
+      ?'<em>1.5% turnover</em> applies (\u20AC'+fmtNum(Math.round(t3_pct))+' > \u20AC7.5M floor)'
+      :'\u20AC7.5M <em>minimum floor</em> applies (1.5% = \u20AC'+fmtNum(Math.round(t3_pct))+')';
+
+    // SME note for smaller companies
+    var sme=document.getElementById('smeNote');
+    var smeTxt=document.getElementById('smeText');
+    if(rev<=10000000){
+      sme.style.display='flex';
+      smeTxt.innerHTML='<strong>SME/Startup note:</strong> Art. 99(6) provides that for SMEs and startups, the penalty caps mentioned above apply as absolute maximums. Your actual fine would likely be proportionate to your company size.';
+    } else if(rev<=50000000){
+      sme.style.display='flex';
+      smeTxt.innerHTML='<strong>Note:</strong> Actual fines are determined by national market surveillance authorities and consider factors like severity, duration, prior infringements, and cooperation (Art. 99(7)).';
+    } else {
+      sme.style.display='none';
+    }
+
+    res.style.display='block';
+    res.classList.add('on');
+  },100);
+
+  // Update URL for sharing
+  history.replaceState(null,'','?revenue='+rev);
+}
+
+function shareResult(){
+  var rev=parseRev();
+  var url=window.location.origin+window.location.pathname+'?revenue='+rev;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){showToast('Link copied to clipboard!')});
+  } else {
+    var ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    showToast('Link copied to clipboard!');
+  }
+}
+
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show')},2500);
+}
+
+// Pre-fill from URL
+(function(){
+  var p=new URLSearchParams(window.location.search);
+  var r=p.get('revenue');
+  if(r&&parseInt(r)){
+    document.getElementById('revenue').value=fmtNum(parseInt(r));
+    setTimeout(calc,200);
+  }
+})();
+</script>
+</body>
+</html>
