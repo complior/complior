@@ -1,0 +1,11 @@
+{
+  "name": "complior",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["engine"],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a3ka/complior"
+  }
+}

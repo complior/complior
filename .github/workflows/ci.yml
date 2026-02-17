@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  rust-check:
+    name: Rust (check + clippy + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace -- -D warnings
+      - run: cargo test --workspace
+
+  ts-check:
+    name: TypeScript (typecheck + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: cd engine && bun install --frozen-lockfile
+      - run: cd engine && bun run typecheck
+      - run: cd engine && bun run test
