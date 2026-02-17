@@ -1,0 +1,41 @@
+# Internal development workspace (not published)
+.dev/
+
+# Complior project data
+.complior/
+
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock
+
+# TypeScript / Node
+node_modules/
+dist/
+.tsbuildinfo
+*.tgz
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / Coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Build artifacts
+*.wasm
+*.node

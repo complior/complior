@@ -1,0 +1,23 @@
+[package]
+name = "complior-tui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Compliance-First AI Coding Assistant — TUI"
+
+[[bin]]
+name = "complior"
+path = "src/main.rs"
+
+[dependencies]
+ratatui = "0.30"
+crossterm = "0.28"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+termimad = "0.30"
+syntect = "5"
+toml = "0.8"
+dirs = "5"
+color-eyre = "0.6"
