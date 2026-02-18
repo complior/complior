@@ -119,14 +119,15 @@ fn render_scan_summary(frame: &mut Frame, area: Rect, app: &App, t: &theme::Them
         .iter()
         .take(area.height as usize)
         .map(|cat| {
-            let (icon, color) = if cat.failed == 0 {
+            let failed = cat.obligation_count.saturating_sub(cat.passed_count);
+            let (icon, color) = if failed == 0 {
                 ("✓", t.zone_green)
             } else {
                 ("✗", t.zone_red)
             };
             ListItem::new(Line::from(vec![
                 Span::styled(format!(" {icon} "), Style::default().fg(color)),
-                Span::raw(&cat.category_name),
+                Span::raw(&cat.category),
             ]))
         })
         .collect();
