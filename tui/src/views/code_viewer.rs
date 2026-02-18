@@ -9,13 +9,23 @@ use crate::theme;
 use crate::types::InputMode;
 
 pub fn render_code_viewer(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
-    let title = app
-        .open_file_path
-        .as_deref()
-        .unwrap_or("Code Viewer");
+    let t = theme::theme();
+
+    let file_name = app.open_file_path.as_deref().unwrap_or("Code Viewer");
+    let ext = file_name
+        .rsplit('.')
+        .next()
+        .unwrap_or("");
+
+    let title = if let Some(content) = &app.code_content {
+        let total = content.lines().count();
+        format!(" {file_name} [{total} lines] ")
+    } else {
+        format!(" {file_name} ")
+    };
 
     let block = Block::default()
-        .title(format!(" {title} "))
+        .title(title)
         .title_style(theme::title_style())
         .borders(Borders::ALL)
         .border_style(theme::border_style(focused));
@@ -30,51 +40,53 @@ pub fn render_code_viewer(frame: &mut Frame, area: Rect, app: &App, focused: boo
         return;
     };
 
-    let code_lines: Vec<&str> = content.lines().collect();
-    let total_lines = code_lines.len();
+    // Use syntax highlighting if available
+    let highlighted = highlight_code(content, ext);
+    let code_lines_count = highlighted.len();
     let visible_height = inner.height as usize;
 
     // Clamp scroll
-    let scroll = app.code_scroll.min(total_lines.saturating_sub(visible_height));
+    let scroll = app
+        .code_scroll
+        .min(code_lines_count.saturating_sub(visible_height));
 
     let mut lines: Vec<Line<'_>> = Vec::new();
-    let end = (scroll + visible_height).min(total_lines);
+    let end = (scroll + visible_height).min(code_lines_count);
 
-    for (i, &code_line) in code_lines.iter().enumerate().skip(scroll).take(end - scroll) {
+    for (i, styled_spans) in highlighted.iter().enumerate().skip(scroll).take(end - scroll) {
         let line_num = i + 1;
         let is_selected = app.input_mode == InputMode::Visual
-            && app.selection.as_ref().is_some_and(|sel| {
-                i >= sel.start_line && i <= sel.end_line
-            });
+            && app
+                .selection
+                .as_ref()
+                .is_some_and(|sel| i >= sel.start_line && i <= sel.end_line);
 
         let num_style = if is_selected {
             Style::default()
-                .fg(theme::ACCENT)
+                .fg(t.accent)
                 .add_modifier(Modifier::BOLD)
         } else {
             theme::muted_style()
         };
 
-        let code_style = if is_selected {
-            Style::default().bg(theme::SELECTION_BG)
-        } else {
-            Style::default()
-        };
+        let mut spans = vec![Span::styled(format!("{line_num:4} | "), num_style)];
+
+        // Add syntax-highlighted spans
+        for (style, text) in styled_spans {
+            let merged = if is_selected {
+                style.bg(t.selection_bg)
+            } else {
+                *style
+            };
+            spans.push(Span::styled(text.clone(), merged));
+        }
 
         // Check for compliance annotations
-        let annotation = app.last_scan.as_ref().and_then(|scan| {
+        if let Some(finding) = app.last_scan.as_ref().and_then(|scan| {
             scan.findings.iter().find(|f| {
-                f.r#type == "fail"
-                    && f.message.contains(&format!("line {line_num}"))
+                f.r#type == "fail" && f.message.contains(&format!("line {line_num}"))
             })
-        });
-
-        let mut spans = vec![
-            Span::styled(format!("{line_num:4} | "), num_style),
-            Span::styled(code_line, code_style),
-        ];
-
-        if let Some(finding) = annotation {
+        }) {
             spans.push(Span::styled(
                 format!("  ! {}", finding.message),
                 Style::default().fg(theme::severity_color(finding.severity)),
