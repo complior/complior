@@ -1,6 +1,9 @@
 # Internal development workspace (not published)
 .dev/
 
+# Temporary work files
+tmp/
+
 # Complior project data
 .complior/
 
