@@ -69,6 +69,11 @@ async fn main() -> color_eyre::Result<()> {
     theme::init_theme(&config.theme);
 
     // Engine manager: auto-launch or external
+    // Workspace root is parent of tui/ (CARGO_MANIFEST_DIR at compile time)
+    let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."));
+
     #[allow(clippy::option_if_let_else)]
     let mut engine_mgr = if let Some(ref url) = config.engine_url_override {
         // External mode — extract port for display
@@ -79,7 +84,7 @@ async fn main() -> color_eyre::Result<()> {
             .unwrap_or(3099);
         EngineManager::external(port)
     } else {
-        let mut mgr = EngineManager::new();
+        let mut mgr = EngineManager::new(workspace_root);
         match mgr.start() {
             Ok(port) => {
                 tracing::info!("Engine auto-launched on port {port}");
