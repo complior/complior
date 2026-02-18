@@ -10,8 +10,9 @@ import chatRoutes from './routes/chat.js';
 import fileRoutes from './routes/file.js';
 import shellRoutes from './routes/shell.js';
 import gitRoutes from './routes/git.js';
+import providerRoutes from './routes/provider.js';
 
-const PORT = Number(process.env['PORT'] ?? 3001);
+const PORT = Number(process.env['PORT'] ?? 3099);
 
 const app = new Hono();
 
@@ -38,6 +39,7 @@ app.route('/', chatRoutes);
 app.route('/', fileRoutes);
 app.route('/', shellRoutes);
 app.route('/', gitRoutes);
+app.route('/', providerRoutes);
 
 // Health check
 app.get('/health', (c) => c.json({ ok: true }));

@@ -1,3 +1,4 @@
+import type { CoreMessage } from 'ai';
 import type { RegulationData } from './data/regulation-loader.js';
 import type { ProjectMemory, ScanResult } from './types/common.types.js';
 
@@ -8,6 +9,7 @@ export interface EngineContext {
   readonly version: string;
   lastScanResult: ScanResult | null;
   projectMemory: ProjectMemory | null;
+  conversationHistory: CoreMessage[];
 }
 
 let _ctx: EngineContext | null = null;
@@ -30,6 +32,7 @@ export const initEngineContext = (
     version: '0.1.0',
     lastScanResult: null,
     projectMemory: null,
+    conversationHistory: [],
   };
   return _ctx;
 };

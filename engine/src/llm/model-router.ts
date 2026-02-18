@@ -24,6 +24,13 @@ const MODEL_MAP: Record<ProviderName, Record<TaskType, string>> = {
     classify: 'claude-haiku-4-5-20251001',
     chat: 'claude-sonnet-4-5-20250929',
   },
+  openrouter: {
+    qa: 'anthropic/claude-haiku-4-5-20251001',
+    code: 'anthropic/claude-sonnet-4-5-20250929',
+    report: 'anthropic/claude-sonnet-4-5-20250929',
+    classify: 'anthropic/claude-haiku-4-5-20251001',
+    chat: 'anthropic/claude-sonnet-4-5-20250929',
+  },
 };
 
 const TASK_REASONS: Record<TaskType, string> = {
