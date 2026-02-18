@@ -1,0 +1,482 @@
+{
+  "stage_1_metadata": {
+    "regulation_id": "eu-ai-act",
+    "official_name": "Regulation (EU) 2024/1689 of the European Parliament and of the Council of 13 June 2024 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act)",
+    "official_name_en": "EU Artificial Intelligence Act (EU AI Act)",
+    "jurisdiction": "European Union (all 27 Member States + EEA relevance)",
+    "jurisdiction_code": "EU",
+    "type": "comprehensive",
+    "status": "in-force",
+    "enacted_date": "2024-06-13",
+    "published_date": "2024-07-12",
+    "entry_into_force_date": "2024-08-01",
+    "enforcement_dates": [
+      {
+        "phase": "Phase 0 — Entry into force",
+        "date": "2024-08-01",
+        "what_applies": "Regulation enters into force. No obligations yet enforceable."
+      },
+      {
+        "phase": "Phase 1 — Prohibited practices + AI literacy",
+        "date": "2025-02-02",
+        "what_applies": "Article 5 prohibitions (banned AI practices: social scoring, manipulative AI, predictive policing by profiling, real-time remote biometric ID in public except narrow exceptions). Article 4 AI literacy obligation for all operators."
+      },
+      {
+        "phase": "Phase 2 — GPAI rules + Governance + Penalties",
+        "date": "2025-08-02",
+        "what_applies": "Chapter V obligations for general-purpose AI (GPAI) model providers (Articles 51–56). Governance bodies operational (AI Office, AI Board, Advisory Forum, Scientific Panel). Member States designate national competent authorities. Penalty regime under Article 99 becomes applicable. Codes of Practice for GPAI finalized."
+      },
+      {
+        "phase": "Phase 3 — Majority of provisions including high-risk AI (Annex III)",
+        "date": "2026-08-02",
+        "what_applies": "High-risk AI systems under Annex III (standalone high-risk): full compliance required (Articles 6–49 for high-risk). Transparency obligations (Article 50). Deployer obligations (Article 26). Fundamental rights impact assessments (Article 27). Registration in EU database (Article 49). Innovation sandboxes required (Article 57). Post-market monitoring (Article 72). Serious incident reporting (Article 73)."
+      },
+      {
+        "phase": "Phase 4 — Full enforcement including Annex II high-risk (product safety)",
+        "date": "2027-08-02",
+        "what_applies": "High-risk AI systems under Article 6(1) / Annex II (AI as safety component of products covered by EU harmonization legislation, e.g., medical devices, machinery, toys). Legacy GPAI models placed on market before Aug 2025 must be compliant. Full scope of AI Act applies to all risk categories."
+      },
+      {
+        "phase": "Phase 5 — Large-scale IT systems in AFSJ",
+        "date": "2030-12-31",
+        "what_applies": "AI systems that are components of large-scale IT systems in the Area of Freedom, Security and Justice (Annex X) placed on market before Aug 2027 must be brought into compliance."
+      }
+    ],
+    "full_enforcement_date": "2027-08-02",
+    "regulatory_body": "European AI Office (EU-level for GPAI), National Market Surveillance Authorities (Member State level for most AI systems), European Artificial Intelligence Board (coordination)",
+    "max_penalty": "€35,000,000 or 7% of total worldwide annual turnover, whichever is higher",
+    "penalty_details": {
+      "tier_1_prohibited_practices": "Up to €35M or 7% of worldwide annual turnover (whichever higher) — for violations of Article 5 prohibited AI practices",
+      "tier_2_other_obligations": "Up to €15M or 3% of worldwide annual turnover (whichever higher) — for violations of provider/deployer/importer/distributor/notified body obligations",
+      "tier_3_incorrect_information": "Up to €7.5M or 1% of worldwide annual turnover (whichever higher) — for supplying incorrect, incomplete, or misleading information to authorities",
+      "gpai_providers": "Up to €15M or 3% of worldwide annual turnover (whichever higher) — imposed by European Commission under Article 101",
+      "sme_rule": "For SMEs and start-ups, fines are capped at the LOWER of the percentage or fixed amount (instead of higher)",
+      "eu_institutions": "Up to €1.5M for prohibited practices violations, up to €750K for other violations (Article 100)"
+    },
+    "official_text_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689",
+    "language": "All 24 official EU languages (English reference text widely used)",
+    "extraterritorial": true,
+    "extraterritorial_conditions": "Applies to: (a) providers placing AI systems/GPAI models on EU market regardless of location; (b) deployers established or located in EU; (c) providers and deployers in third countries where AI output is used in the EU; (d) importers and distributors in EU; (e) product manufacturers placing AI+product on EU market; (f) authorised representatives of non-EU providers; (g) affected persons located in EU. Does NOT apply to: purely personal non-professional use, R&D before market placement, military/defence/national security, third-country public authorities under international cooperation agreements with adequate safeguards.",
+    "risk_based": true,
+    "risk_levels": [
+      "Unacceptable risk (prohibited)",
+      "High risk",
+      "Limited risk (transparency obligations)",
+      "Minimal/No risk",
+      "General-purpose AI (GPAI) — separate classification track",
+      "GPAI with systemic risk — elevated GPAI obligations"
+    ],
+    "key_definitions": {
+      "AI system": "A machine-based system that is designed to operate with varying levels of autonomy and that may exhibit adaptiveness after deployment, and that, for explicit or implicit objectives, infers, from the input it receives, how to generate outputs such as predictions, content, recommendations, or decisions that can influence physical or virtual environments (Art. 3(1))",
+      "provider": "A natural or legal person, public authority, agency or other body that develops an AI system or a general-purpose AI model or that has an AI system or a general-purpose AI model developed and places it on the market or puts the AI system into service under its own name or trademark, whether for payment or free of charge (Art. 3(3))",
+      "deployer": "A natural or legal person, public authority, agency or other body using an AI system under its authority except where the AI system is used in the course of a personal non-professional activity (Art. 3(4))",
+      "authorised_representative": "A natural or legal person located or established in the Union who has received and accepted a written mandate from a provider of an AI system or a GPAI model to carry out obligations under the AI Act on its behalf (Art. 3(5))",
+      "importer": "A natural or legal person located or established in the Union that places on the market an AI system that bears the name or trademark of a natural or legal person established in a third country (Art. 3(6))",
+      "distributor": "A natural or legal person in the supply chain, other than the provider or the importer, that makes an AI system available on the Union market (Art. 3(7))",
+      "operator": "A provider, product manufacturer, deployer, authorised representative, importer or distributor (Art. 3(8))",
+      "placing_on_the_market": "The first making available of an AI system or a general-purpose AI model on the Union market (Art. 3(9))",
+      "putting_into_service": "The supply of an AI system for first use directly to the deployer or for own use in the Union for its intended purpose (Art. 3(11))",
+      "intended_purpose": "The use for which an AI system is intended by the provider, including the specific context and conditions of use, as specified in the information supplied by the provider (Art. 3(12))",
+      "reasonably_foreseeable_misuse": "The use of an AI system in a way that is not in accordance with its intended purpose, but which may result from reasonably foreseeable human behaviour or interaction with other systems (Art. 3(13))",
+      "high_risk_AI_system": "An AI system that falls under Article 6 criteria — either as safety component of products under Annex II legislation requiring third-party conformity assessment, or listed in Annex III use cases",
+      "general_purpose_AI_model": "An AI model, including where trained with a large amount of data using self-supervision at scale, that displays significant generality and is capable of competently performing a wide range of distinct tasks regardless of the way the model is placed on the market and that can be integrated into a variety of downstream systems or applications (Art. 3(63))",
+      "general_purpose_AI_model_with_systemic_risk": "A GPAI model with high impact capabilities evaluated on the basis of appropriate technical tools and methodologies, including indicators and benchmarks (Art. 3(65)), presumed when cumulative compute > 10^25 FLOPs (Art. 51(2))",
+      "deep_fake": "AI-generated or manipulated image, audio or video content that resembles existing persons, objects, places, entities or events and would falsely appear to a person to be authentic or truthful (Art. 3(60))",
+      "AI_literacy": "Skills, knowledge and understanding that allows providers, deployers and affected persons, taking into account their respective rights and obligations, to make an informed deployment of AI systems, to become aware of the opportunities and risks of AI and possible harm it can cause (Art. 3(56))",
+      "substantial_modification": "A change to an AI system after its placing on the market or putting into service which is not foreseen or planned in the initial conformity assessment carried out by the provider and as a result of which the compliance of the AI system with the requirements is affected or the intended purpose is modified (Art. 3(23))",
+      "fundamental_rights_impact_assessment": "Assessment that public deployers (and certain private deployers) of high-risk AI must conduct before putting the system into use to evaluate risks to fundamental rights (Art. 27)",
+      "post_market_monitoring": "All activities carried out by providers to collect and review experience gained from the use of AI systems for the purpose of identifying any need to immediately apply corrective or preventive actions (Art. 3(25))",
+      "serious_incident": "An incident or malfunctioning of an AI system that directly or indirectly leads to death, serious damage to health, serious disruption of critical infrastructure, violation of fundamental rights obligations, or serious damage to property or environment (Art. 3(49))"
+    }
+  },
+  "stage_2_role_mapping": {
+    "roles": [
+      {
+        "role_id": "eu-ai-act-role-provider",
+        "name_in_law": "Provider (fournisseur)",
+        "name_en": "Provider",
+        "definition": "A natural or legal person, public authority, agency or other body that develops an AI system or a GPAI model or that has an AI system or a GPAI model developed and places it on the market or puts the AI system into service under its own name or trademark, whether for payment or free of charge (Art. 3(3))",
+        "maps_to_complior": "provider",
+        "obligations_summary": "Most extensive obligations: risk management system (Art. 9), data governance (Art. 10), technical documentation (Art. 11), record-keeping/logging (Art. 12), transparency and provision of information to deployers (Art. 13), human oversight design (Art. 14), accuracy/robustness/cybersecurity (Art. 15), quality management system (Art. 17), conformity assessment (Art. 43), CE marking (Art. 48), EU database registration (Art. 49), post-market monitoring (Art. 72), serious incident reporting (Art. 73), cooperation with authorities (Art. 21).",
+        "relevant_articles": [
+          "Art. 3(3)",
+          "Art. 9",
+          "Art. 10",
+          "Art. 11",
+          "Art. 12",
+          "Art. 13",
+          "Art. 14",
+          "Art. 15",
+          "Art. 16",
+          "Art. 17",
+          "Art. 18",
+          "Art. 20",
+          "Art. 21",
+          "Art. 43",
+          "Art. 47",
+          "Art. 48",
+          "Art. 49",
+          "Art. 50(1)",
+          "Art. 50(2)",
+          "Art. 50(4)",
+          "Art. 72",
+          "Art. 73"
+        ]
+      },
+      {
+        "role_id": "eu-ai-act-role-deployer",
+        "name_in_law": "Deployer (déployeur)",
+        "name_en": "Deployer",
+        "definition": "A natural or legal person, public authority, agency or other body using an AI system under its authority except where the AI system is used in the course of a personal non-professional activity (Art. 3(4))",
+        "maps_to_complior": "deployer",
+        "obligations_summary": "Use AI in accordance with instructions (Art. 26(1)), assign human oversight to competent persons (Art. 26(2)), ensure input data is relevant (Art. 26(4)), monitor AI operation (Art. 26(5)), keep logs (Art. 26(6)), inform workers/representatives (Art. 26(7)), fundamental rights impact assessment for public deployers and certain private deployers (Art. 27), inform affected persons of AI decisions (Art. 26(11)), transparency obligations for AI interaction (Art. 50), cooperation with authorities (Art. 26(10)).",
+        "relevant_articles": [
+          "Art. 3(4)",
+          "Art. 4",
+          "Art. 26",
+          "Art. 27",
+          "Art. 50(3)",
+          "Art. 50(4)",
+          "Art. 86",
+          "Art. 95"
+        ]
+      },
+      {
+        "role_id": "eu-ai-act-role-importer",
+        "name_in_law": "Importer (importateur)",
+        "name_en": "Importer",
+        "definition": "A natural or legal person located or established in the Union that places on the market an AI system that bears the name or trademark of a natural or legal person established in a third country (Art. 3(6))",
+        "maps_to_complior": "other",
+        "obligations_summary": "Verify conformity assessment completed, CE marking present, technical documentation available, provider has appointed authorised representative. Ensure storage/transport conditions do not jeopardize compliance. Keep copy of EU declaration of conformity. (Art. 23)",
+        "relevant_articles": [
+          "Art. 3(6)",
+          "Art. 23"
+        ]
+      },
+      {
+        "role_id": "eu-ai-act-role-distributor",
+        "name_in_law": "Distributor (distributeur)",
+        "name_en": "Distributor",
+        "definition": "A natural or legal person in the supply chain, other than the provider or the importer, that makes an AI system available on the Union market (Art. 3(7))",
+        "maps_to_complior": "other",
+        "obligations_summary": "Verify CE marking present, required documentation accompanies system, provider and importer have fulfilled labeling obligations. Not make available non-conforming systems. (Art. 24)",
+        "relevant_articles": [
+          "Art. 3(7)",
+          "Art. 24"
+        ]
+      },
+      {
+        "role_id": "eu-ai-act-role-authorised-rep",
+        "name_in_law": "Authorised representative (mandataire)",
+        "name_en": "Authorised Representative",
+        "definition": "A natural or legal person located or established in the EU who has received and accepted a written mandate from a non-EU provider to carry out AI Act obligations on its behalf (Art. 3(5))",
+        "maps_to_complior": "other",
+        "obligations_summary": "Perform obligations per mandate: verify conformity, keep documentation, provide information to authorities, cooperate with enforcement, terminate mandate if provider acts contrary to AI Act. (Art. 22)",
+        "relevant_articles": [
+          "Art. 3(5)",
+          "Art. 22"
+        ]
+      },
+      {
+        "role_id": "eu-ai-act-role-product-manufacturer",
+        "name_in_law": "Product manufacturer",
+        "name_en": "Product Manufacturer",
+        "definition": "Entity placing on the market or putting into service an AI system together with their product and under their own name or trademark (Art. 2(1)(e))",
+        "maps_to_complior": "provider",
+        "obligations_summary": "When integrating AI as safety component into regulated products, assumes provider obligations for the AI component. Must ensure product-level conformity assessment covers AI requirements.",
+        "relevant_articles": [
+          "Art. 2(1)(e)",
+          "Art. 25"
+        ]
+      },
+      {
+        "role_id": "eu-ai-act-role-gpai-provider",
+        "name_in_law": "Provider of general-purpose AI model",
+        "name_en": "GPAI Model Provider",
+        "definition": "Provider that develops or has developed a general-purpose AI model and places it on the EU market, regardless of establishment location",
+        "maps_to_complior": "provider",
+        "obligations_summary": "Technical documentation (Art. 53 + Annex XI), transparency information to downstream providers (Art. 53 + Annex XII), copyright compliance policy (Art. 53(1)(c)), summary of training content (Art. 53(1)(d)). Additional for systemic risk: model evaluation (Art. 55), adversarial testing (Art. 55), serious incident tracking and reporting (Art. 55), cybersecurity (Art. 55).",
+        "relevant_articles": [
+          "Art. 51",
+          "Art. 52",
+          "Art. 53",
+          "Art. 54",
+          "Art. 55",
+          "Art. 56"
+        ]
+      },
+      {
+        "role_id": "eu-ai-act-role-affected-person",
+        "name_in_law": "Affected person (personne concernée)",
+        "name_en": "Affected Person",
+        "definition": "A natural person or a group of persons who are subject to or otherwise affected by an AI system (implicit across multiple articles, e.g., Art. 86)",
+        "maps_to_complior": "other",
+        "obligations_summary": "No obligations — holder of rights: right to explanation of individual AI decisions (Art. 86), right to lodge complaint with market surveillance authority (Art. 85), right to effective judicial remedy (Art. 87).",
+        "relevant_articles": [
+          "Art. 85",
+          "Art. 86",
+          "Art. 87"
+        ]
+      }
+    ]
+  },
+  "stage_3_risk_classification": {
+    "system": "The EU AI Act uses a risk-based pyramid approach with four primary tiers plus a separate GPAI track. AI systems are classified based on their intended purpose, the domain of use, and the potential impact on fundamental rights, health, and safety. Higher risk = more obligations. Unacceptable risk systems are banned outright. High-risk systems face the heaviest regulatory burden. Limited-risk systems have transparency obligations. Minimal-risk systems are essentially unregulated (voluntary codes of conduct only).",
+    "levels": [
+      {
+        "level_id": "unacceptable",
+        "name_in_law": "Prohibited AI practices",
+        "name_en": "Unacceptable Risk (Prohibited)",
+        "definition": "AI systems and practices that are deemed to pose a clear threat to the safety, livelihoods, and fundamental rights of persons and are therefore prohibited from being placed on the market, put into service, or used in the EU.",
+        "criteria": [
+          "AI systems that deploy subliminal, manipulative, or deceptive techniques to distort behavior and impair informed decision-making, causing significant harm",
+          "AI systems that exploit vulnerabilities of persons due to age, disability, or specific social/economic situation",
+          "Social scoring systems: AI that evaluates/classifies persons based on social behavior or personal characteristics leading to detrimental or disproportionate treatment",
+          "AI systems for making risk assessments of natural persons to predict criminal offending based solely on profiling or personality traits",
+          "AI systems that create or expand facial recognition databases through untargeted scraping of facial images from internet/CCTV",
+          "AI systems that infer emotions in workplace and educational settings (except for medical/safety reasons)",
+          "Biometric categorization systems using sensitive characteristics (race, political opinions, religion, sexual orientation, etc.)",
+          "Real-time remote biometric identification in publicly accessible spaces for law enforcement (with narrow exceptions)"
+        ],
+        "obligations_level": "banned",
+        "examples_from_law": [
+          "AI system using subliminal techniques in advertising to manipulate purchasing decisions causing financial harm",
+          "AI scoring citizens based on social behavior to determine access to public services",
+          "AI predicting likelihood of committing crime based solely on facial features or personality profile",
+          "Scraping social media to build facial recognition database without consent or legal basis",
+          "AI emotion recognition in school classroom or office workplace (non-safety contexts)",
+          "Real-time facial recognition in public streets by police (except specific exceptions like missing children, imminent terrorist threats)"
+        ],
+        "our_mapping_logic": "If the AI system's use case matches ANY of the Article 5 prohibited practices → UNACCEPTABLE. Check against each prohibited category. Even if the system itself is benign, using it for a prohibited purpose triggers this level."
+      },
+      {
+        "level_id": "high",
+        "name_in_law": "High-risk AI system",
+        "name_en": "High Risk",
+        "definition": "AI systems that (a) are intended to be used as a safety component of products covered by EU harmonization legislation listed in Annex II and requiring third-party conformity assessment, OR (b) fall under one of the specific use-case areas listed in Annex III, unless the provider demonstrates the system does not pose a significant risk to health, safety or fundamental rights.",
+        "criteria": [
+          "TRACK A (Art. 6(1) — Annex II products): AI is a safety component of a product covered by EU harmonization legislation (machinery, toys, lifts, medical devices, motor vehicles, aviation, etc.) AND the product requires third-party conformity assessment",
+          "TRACK B (Art. 6(2) — Annex III use cases): AI is used in any of 8 high-risk domains: (1) biometrics, (2) critical infrastructure, (3) education & vocational training, (4) employment & worker management, (5) access to essential services (credit, insurance, public benefits), (6) law enforcement, (7) migration/asylum/border control, (8) administration of justice & democratic processes",
+          "Exception (Art. 6(3)): An Annex III system is NOT high-risk if it does not pose a significant risk of harm to health/safety/fundamental rights, including by not materially influencing decision-making outcome. This exception does NOT apply if the AI performs profiling."
+        ],
+        "obligations_level": "heavy",
+        "examples_from_law": [
+          "AI system used for CV screening / recruitment decision-making (Annex III area 4)",
+          "AI credit scoring system determining loan eligibility (Annex III area 5)",
+          "AI system managing power grid operations (Annex III area 2 — critical infrastructure)",
+          "AI-based medical diagnostic tool embedded in a medical device (Annex II — MDR)",
+          "AI for student assessment/grading that determines academic progression (Annex III area 3)",
+          "AI used to evaluate asylum applications (Annex III area 7)",
+          "AI used for predictive policing at specific locations (Annex III area 6)",
+          "AI assisting judges in legal research and fact-finding (Annex III area 8)"
+        ],
+        "our_mapping_logic": "Step 1: Is the AI a safety component of an Annex II regulated product requiring 3rd-party conformity assessment? → HIGH RISK. Step 2: Does the AI's intended purpose fall under any Annex III category? → Presumed HIGH RISK, unless provider can demonstrate non-significant risk (Art. 6(3) exception — not available for profiling systems). Step 3: If neither → not high-risk under this classification."
+      },
+      {
+        "level_id": "limited",
+        "name_in_law": "AI systems with specific transparency obligations",
+        "name_en": "Limited Risk (Transparency Obligations)",
+        "definition": "AI systems that interact with natural persons, generate synthetic content (text, audio, image, video), or are used for emotion recognition or biometric categorization — subject to transparency/disclosure obligations under Article 50 even if not classified as high-risk.",
+        "criteria": [
+          "AI systems intended to directly interact with natural persons (chatbots, voice assistants, etc.)",
+          "AI systems that generate synthetic audio, image, video or text content (generative AI outputs)",
+          "AI systems used for emotion recognition (not in prohibited category)",
+          "AI systems used for biometric categorization (not in prohibited category)",
+          "Deep fake generation systems"
+        ],
+        "obligations_level": "moderate",
+        "examples_from_law": [
+          "Customer service chatbot — must disclose AI interaction to users",
+          "AI image generator (Midjourney, DALL-E type) — output must be machine-readable marked as AI-generated",
+          "AI text generator used for news articles — must label content as AI-generated when published on matters of public interest",
+          "AI voice cloning system — must disclose content is artificially generated",
+          "Deep fake video tool — output must be clearly labeled"
+        ],
+        "our_mapping_logic": "Does the AI system (a) interact directly with people (chat/voice)? (b) generate synthetic content? (c) perform emotion recognition? (d) perform biometric categorization? (e) generate deep fakes? If YES to any → LIMITED RISK with Article 50 transparency obligations."
+      },
+      {
+        "level_id": "minimal",
+        "name_in_law": "Minimal risk (no specific obligations)",
+        "name_en": "Minimal/No Risk",
+        "definition": "AI systems that do not fall into any of the above categories. The vast majority of AI systems currently used in the EU fall into this category (e.g., AI-powered spam filters, AI in video games, inventory management AI).",
+        "criteria": [
+          "Does not fall under prohibited practices (Art. 5)",
+          "Does not meet high-risk criteria (Art. 6, Annex II/III)",
+          "Does not have specific transparency triggers (Art. 50)",
+          "General-purpose AI model obligations may still apply to the model provider separately"
+        ],
+        "obligations_level": "light",
+        "examples_from_law": [
+          "AI-powered spam filters",
+          "AI in video games",
+          "AI-based inventory management systems",
+          "AI recommendation engines (unless in high-risk domain)",
+          "AI-powered translation tools"
+        ],
+        "our_mapping_logic": "If the system fails to match any criteria for unacceptable, high, or limited risk → MINIMAL. Note: AI literacy (Art. 4) and voluntary codes of conduct (Art. 95) still apply."
+      },
+      {
+        "level_id": "gpai",
+        "name_in_law": "General-purpose AI model",
+        "name_en": "General-Purpose AI (GPAI)",
+        "definition": "A separate classification track for AI models (not systems) that display significant generality and can perform a wide range of tasks. GPAI providers have specific obligations regardless of downstream risk level. A subset of GPAI with systemic risk has elevated obligations.",
+        "criteria": [
+          "GPAI Model (Art. 51): Model displays significant generality, capable of competently performing wide range of distinct tasks, can be integrated into variety of downstream systems/applications",
+          "GPAI with Systemic Risk (Art. 51(2)): GPAI model with high impact capabilities — PRESUMED if cumulative training compute exceeds 10^25 FLOPs, or designated by Commission based on Annex XIII criteria"
+        ],
+        "obligations_level": "moderate to heavy (depending on systemic risk)",
+        "examples_from_law": [
+          "GPT-4, Claude, Gemini — large language models → GPAI, likely with systemic risk",
+          "Stable Diffusion, Midjourney — image generation models → GPAI",
+          "Smaller fine-tuned models below 10^25 FLOPs threshold → GPAI without systemic risk",
+          "Open-source GPAI models — some exemptions on documentation if parameters/weights made publicly available (Art. 53(2))"
+        ],
+        "our_mapping_logic": "Is the entity providing a FOUNDATION MODEL that can perform diverse tasks? → GPAI. Was cumulative training compute ≥ 10^25 FLOPs or is it designated by Commission? → GPAI WITH SYSTEMIC RISK. This is a PROVIDER-side classification. Deployers using GPAI-based systems classify the SYSTEM itself (not the model) under the standard risk pyramid."
+      }
+    ],
+    "classification_questions": [
+      {
+        "question_id": "CQ1",
+        "question": "Does your AI system manipulate people's behavior without their awareness, exploit vulnerable groups, or assign social scores that affect people's rights?",
+        "answers": [
+          {
+            "text": "Yes, or we're not sure",
+            "points_to_level": "unacceptable",
+            "explanation": "These uses are prohibited under Article 5. The system cannot be deployed in the EU."
+          },
+          {
+            "text": "No, our system does none of these things",
+            "points_to_level": "continue_to_next",
+            "explanation": "Proceed to further classification."
+          }
+        ]
+      },
+      {
+        "question_id": "CQ2",
+        "question": "Is your AI system a safety component built into a physical product that requires a CE mark or similar EU product certification (e.g., medical device, machinery, vehicle)?",
+        "answers": [
+          {
+            "text": "Yes, it is embedded in a certified/regulated product",
+            "points_to_level": "high",
+            "explanation": "Falls under Article 6(1) / Annex II — high-risk as product safety component."
+          },
+          {
+            "text": "No, it is standalone software / SaaS",
+            "points_to_level": "continue_to_next",
+            "explanation": "Not product-embedded. Check Annex III use cases."
+          }
+        ]
+      },
+      {
+        "question_id": "CQ3",
+        "question": "Is your AI system used for any of these purposes: hiring/recruitment, credit scoring, student grading, benefits eligibility, law enforcement, border control, or judicial decisions?",
+        "answers": [
+          {
+            "text": "Yes, it's used in one or more of these areas",
+            "points_to_level": "high",
+            "explanation": "These are Annex III high-risk use cases. Full high-risk compliance required."
+          },
+          {
+            "text": "No, none of these apply",
+            "points_to_level": "continue_to_next",
+            "explanation": "Not an Annex III high-risk system. Check other use cases."
+          }
+        ]
+      },
+      {
+        "question_id": "CQ4",
+        "question": "Does your AI system manage or control critical infrastructure (energy, water, transport, telecom, digital infrastructure)?",
+        "answers": [
+          {
+            "text": "Yes",
+            "points_to_level": "high",
+            "explanation": "Annex III area 2 — critical infrastructure AI is high-risk."
+          },
+          {
+            "text": "No",
+            "points_to_level": "continue_to_next",
+            "explanation": "Continue classification."
+          }
+        ]
+      },
+      {
+        "question_id": "CQ5",
+        "question": "Does your AI system use biometric data (face recognition, fingerprints, voice prints, gait analysis) to identify, categorize, or detect emotions of people?",
+        "answers": [
+          {
+            "text": "Yes, for identification in law enforcement or public spaces",
+            "points_to_level": "unacceptable",
+            "explanation": "Real-time remote biometric ID in public spaces is generally prohibited (Art. 5)."
+          },
+          {
+            "text": "Yes, for other biometric purposes (not real-time law enforcement in public)",
+            "points_to_level": "high",
+            "explanation": "Biometric identification/categorization falls under Annex III area 1 — high-risk."
+          },
+          {
+            "text": "No biometric processing",
+            "points_to_level": "continue_to_next",
+            "explanation": "Continue classification."
+          }
+        ]
+      },
+      {
+        "question_id": "CQ6",
+        "question": "Does your AI system directly interact with people (chatbot, voice assistant, virtual agent) or generate synthetic content (text, images, audio, video)?",
+        "answers": [
+          {
+            "text": "Yes, it interacts with people or generates content",
+            "points_to_level": "limited",
+            "explanation": "Article 50 transparency obligations apply — must disclose AI interaction and label AI-generated content."
+          },
+          {
+            "text": "No, it works in the background without user interaction and doesn't generate content",
+            "points_to_level": "minimal",
+            "explanation": "Likely minimal risk. Only general obligations (AI literacy, voluntary codes) apply."
+          }
+        ]
+      },
+      {
+        "question_id": "CQ7",
+        "question": "Are you developing/providing an AI foundation model (large language model, large image model) that can be used for many different purposes by downstream developers?",
+        "answers": [
+          {
+            "text": "Yes, we provide a general-purpose AI model",
+            "points_to_level": "gpai",
+            "explanation": "GPAI model provider obligations under Chapter V apply (Articles 51–56)."
+          },
+          {
+            "text": "No, we use or deploy specific AI applications",
+            "points_to_level": "continue_to_next",
+            "explanation": "Standard risk classification applies based on use case."
+          }
+        ]
+      },
+      {
+        "question_id": "CQ8",
+        "question": "Does your AI system make or significantly assist decisions that have legal effects or similarly significant effects on natural persons (e.g., contract decisions, access to public services)?",
+        "answers": [
+          {
+            "text": "Yes, it influences decisions with legal or significant individual impact",
+            "points_to_level": "high",
+            "explanation": "Likely falls under Annex III high-risk categories. Check specific domain against Annex III list."
+          },
+          {
+            "text": "No, decisions are low-stakes or advisory only",
+            "points_to_level": "limited",
+            "explanation": "May still have transparency obligations if user-facing. Otherwise minimal risk."
+          }
+        ]
+      }
+    ]
+  },
+  "version": {
+    "framework_version": "3.0-production",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "notes": "Production-grade framework with granular obligation decomposition, full what_not_to_do coverage, expanded deployer obligations, and comprehensive tech specs for scanner."
+  }
+}

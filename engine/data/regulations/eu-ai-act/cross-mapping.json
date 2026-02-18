@@ -1,0 +1,175 @@
+{
+  "cross_mapping_note": "Since the EU AI Act IS the baseline regulation for Complior, this file maps EU AI Act obligations to other known AI regulations. When additional regulations are processed (US state laws, Korea, Canada, etc.), this file will be enriched with specific obligation-level cross-references. For now, it provides the mapping framework and identifies EU AI Act obligations that have known parallels in other jurisdictions.",
+  "cross_mapping": [
+    {
+      "this_obligation": "eu-ai-act-OBL-001",
+      "this_requirement_summary": "AI literacy training for all staff interacting with AI systems",
+      "known_parallels": {
+        "us-co-sb205": {
+          "overlap": "partial",
+          "note": "Colorado SB 205 requires deployers to implement risk management programs which implicitly include training, but no explicit AI literacy mandate."
+        },
+        "eu-gdpr": {
+          "overlap": "partial",
+          "note": "GDPR Art. 39(1)(b) requires DPO to provide awareness-raising and training for staff involved in processing. AI literacy extends this concept to AI-specific knowledge."
+        }
+      },
+      "conflicts_with": []
+    },
+    {
+      "this_obligation": "eu-ai-act-OBL-002",
+      "this_requirement_summary": "Prohibition of specific AI practices (social scoring, manipulation, etc.)",
+      "known_parallels": {
+        "council-of-europe-ai-convention": {
+          "overlap": "partial",
+          "note": "Council of Europe Framework Convention on AI (2024) requires parties to address risks to human rights but does not provide an explicit prohibited practices list."
+        },
+        "brazil-ai-act-draft": {
+          "overlap": "partial",
+          "note": "Brazil's AI Bill includes prohibitions on social scoring and subliminal manipulation, similar scope but differences in exceptions."
+        }
+      },
+      "conflicts_with": []
+    },
+    {
+      "this_obligation": "eu-ai-act-OBL-013",
+      "this_requirement_summary": "Fundamental Rights Impact Assessment (FRIA) before deploying high-risk AI",
+      "known_parallels": {
+        "us-co-sb205": {
+          "overlap": "partial",
+          "strictness": "eu_stricter",
+          "note": "Colorado requires an impact assessment but calls it 'risk management policy and impact assessment'. EU FRIA is more structured with specific elements required under Art. 27(3)."
+        },
+        "us-nyc-ll144": {
+          "overlap": "partial",
+          "strictness": "equivalent",
+          "note": "NYC Local Law 144 requires bias audits for automated employment decision tools. Narrower scope (employment only) but similar concept."
+        },
+        "canada-aida-draft": {
+          "overlap": "partial",
+          "note": "Canada's proposed AIDA includes impact assessment requirements for high-impact AI systems."
+        }
+      },
+      "conflicts_with": []
+    },
+    {
+      "this_obligation": "eu-ai-act-OBL-015",
+      "this_requirement_summary": "Disclose AI interaction to users (chatbot disclosure)",
+      "known_parallels": {
+        "us-ca-bot-disclosure": {
+          "overlap": "full",
+          "strictness": "equivalent",
+          "note": "California SB 1001 (Bot Disclosure Act) requires bots to disclose non-human identity. Similar requirement, narrower scope (CA only)."
+        },
+        "china-ai-provisions": {
+          "overlap": "full",
+          "note": "China's Provisions on the Management of Algorithmic Recommendations (2022) and Generative AI rules require disclosure of AI-generated content."
+        }
+      },
+      "conflicts_with": []
+    },
+    {
+      "this_obligation": "eu-ai-act-OBL-016",
+      "this_requirement_summary": "Mark AI-generated content as artificially generated (machine-readable)",
+      "known_parallels": {
+        "us-executive-order-14110": {
+          "overlap": "partial",
+          "note": "US EO 14110 on AI Safety (2023) directed NIST to develop content authentication standards. Voluntary, not mandatory."
+        },
+        "china-deep-synthesis-rules": {
+          "overlap": "full",
+          "strictness": "this_is_stricter",
+          "note": "China's Deep Synthesis Provisions (2023) require labeling of AI-generated content. EU AI Act adds machine-readable requirement and is more specific on technical implementation."
+        }
+      },
+      "conflicts_with": []
+    },
+    {
+      "this_obligation": "eu-ai-act-OBL-024",
+      "this_requirement_summary": "Provide explanation of AI decisions to affected persons",
+      "known_parallels": {
+        "eu-gdpr-art22": {
+          "overlap": "partial",
+          "strictness": "this_is_stricter",
+          "note": "GDPR Art. 22 provides right not to be subject to solely automated decisions with legal effects, with right to obtain meaningful information. EU AI Act Art. 86 provides broader right to explanation beyond solely automated decisions."
+        },
+        "us-co-sb205": {
+          "overlap": "partial",
+          "note": "Colorado requires notice and ability to appeal when consequential AI decisions are adverse. Similar but different scope and process."
+        }
+      },
+      "conflicts_with": []
+    },
+    {
+      "this_obligation": "eu-ai-act-OBL-003",
+      "this_requirement_summary": "Risk management system for high-risk AI",
+      "known_parallels": {
+        "iso-42001": {
+          "overlap": "partial",
+          "note": "ISO/IEC 42001 (AI Management System) provides a framework for AI risk management that can support EU AI Act compliance but is voluntary and broader in scope."
+        },
+        "nist-ai-rmf": {
+          "overlap": "partial",
+          "note": "NIST AI Risk Management Framework (AI RMF 1.0) provides voluntary risk management guidance. Good complementary framework but not legally required."
+        }
+      },
+      "conflicts_with": []
+    },
+    {
+      "this_obligation": "eu-ai-act-OBL-022",
+      "this_requirement_summary": "GPAI technical documentation and downstream transparency",
+      "known_parallels": {
+        "us-executive-order-14110": {
+          "overlap": "partial",
+          "note": "US EO 14110 required reporting for large AI models (>10^26 FLOPs) but focused on national security. Different threshold and scope."
+        }
+      },
+      "conflicts_with": [
+        {
+          "regulation": "us-executive-order-14110",
+          "conflict_type": "none",
+          "description": "No true conflict. US EO had a higher compute threshold (10^26 FLOPs) vs EU AI Act (10^25 FLOPs). EU AI Act is stricter and broader.",
+          "resolution": "Comply with EU AI Act threshold (10^25 FLOPs) to cover both."
+        }
+      ]
+    }
+  ],
+  "strictest_rule_wins_matrix": {
+    "description": "When a Complior customer operates under multiple jurisdictions, the platform applies the strictest rule. This matrix summarizes which regulation is typically strictest for key obligation categories.",
+    "categories": {
+      "prohibited_practices": {
+        "strictest": "eu-ai-act",
+        "reason": "Most comprehensive list of prohibited AI practices globally. No other jurisdiction has as broad a prohibition list."
+      },
+      "transparency_disclosure": {
+        "strictest": "eu-ai-act",
+        "reason": "Requires both user-facing disclosure AND machine-readable content marking. Most jurisdictions only require one or the other."
+      },
+      "impact_assessment": {
+        "strictest": "eu-ai-act",
+        "reason": "FRIA under Art. 27 is the most structured impact assessment requirement with specific mandatory elements. Colorado SB 205 is close but less prescriptive."
+      },
+      "data_governance": {
+        "strictest": "eu-ai-act + eu-gdpr (combined)",
+        "reason": "EU AI Act Art. 10 data quality requirements combined with GDPR create the strictest data governance regime globally."
+      },
+      "penalties": {
+        "strictest": "eu-ai-act",
+        "reason": "7% of global turnover for prohibited practices violations is the highest AI-specific fine globally."
+      },
+      "worker_notification": {
+        "strictest": "eu-ai-act",
+        "reason": "Explicit worker notification requirement under Art. 26(7) is unique to EU AI Act."
+      }
+    }
+  },
+  "version": {
+    "framework_version": "3.0-production",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "notes": "Production-grade framework with granular obligation decomposition, full what_not_to_do coverage, expanded deployer obligations, and comprehensive tech specs for scanner."
+  }
+}

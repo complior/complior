@@ -1,0 +1,160 @@
+{
+  "timeline": {
+    "regulation_id": "eu-ai-act",
+    "key_dates": [
+      {
+        "date": "2024-06-13",
+        "event": "EU AI Act adopted by European Parliament and Council",
+        "impact_on_product": "Begin processing regulation content. Start building compliance framework.",
+        "status": "passed"
+      },
+      {
+        "date": "2024-07-12",
+        "event": "Published in Official Journal of the European Union",
+        "impact_on_product": "Official text available. Finalize regulatory parsing.",
+        "status": "passed"
+      },
+      {
+        "date": "2024-08-01",
+        "event": "Entry into force (20 days after publication)",
+        "impact_on_product": "Regulation is law. Countdown timers start for all phases.",
+        "status": "passed"
+      },
+      {
+        "date": "2025-02-02",
+        "event": "Phase 1: Prohibited practices (Art. 5) and AI literacy (Art. 4) apply",
+        "impact_on_product": "Prohibited practices screening and AI literacy modules must be live. Article 5 checklist and training templates must be available.",
+        "status": "passed"
+      },
+      {
+        "date": "2025-02-02",
+        "event": "Commission published Guidelines on Prohibited AI Practices and AI System Definition",
+        "impact_on_product": "Update prohibited practices screening logic and definition matching based on official guidelines.",
+        "status": "passed"
+      },
+      {
+        "date": "2025-08-02",
+        "event": "Phase 2: GPAI rules apply. Governance bodies operational. Penalty regime in force.",
+        "impact_on_product": "GPAI compliance modules must be live. Annex XI/XII documentation templates available. Code of Practice integration. Penalty calculator active.",
+        "status": "passed"
+      },
+      {
+        "date": "2025-08-02",
+        "event": "GPAI Code of Practice finalized and published",
+        "impact_on_product": "Integrate Code of Practice requirements into GPAI provider workflow. Update technical documentation templates.",
+        "status": "passed"
+      },
+      {
+        "date": "2025-08-02",
+        "event": "Member States designate national competent authorities. Penalty rules notified.",
+        "impact_on_product": "Build authority directory per Member State. Enable jurisdiction-specific penalty calculations. Map enforcement contacts.",
+        "status": "passed"
+      },
+      {
+        "date": "2025-12-17",
+        "event": "Commission published first draft Code of Practice on marking/labeling AI-generated content",
+        "impact_on_product": "Update content marking SDK requirements per Code of Practice. Integrate C2PA and marking standards referenced.",
+        "status": "passed"
+      },
+      {
+        "date": "2026-02-02",
+        "event": "Expected: Commission guidelines on high-risk AI classification (detailed examples for Annex III categories)",
+        "impact_on_product": "Update risk classification questionnaire with official examples and edge cases. Refine classification logic.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2026-08-02",
+        "event": "Phase 3: MAJORITY OF PROVISIONS APPLY. High-risk AI (Annex III) rules. Transparency (Art. 50). Deployer obligations (Art. 26). FRIA (Art. 27). Registration (Art. 49). Sandboxes (Art. 57). Post-market monitoring (Art. 72). Incident reporting (Art. 73).",
+        "impact_on_product": "CRITICAL DEADLINE. All deployer and provider modules for high-risk AI must be fully operational. FRIA templates, monitoring dashboards, incident reporting workflows, EU database registration guidance, transparency compliance (disclosure + content marking) all live. This is the main enforcement date.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2026-08-02",
+        "event": "GPAI administrative fines (Art. 101) become enforceable by AI Office",
+        "impact_on_product": "Update penalty information for GPAI providers. Ensure GPAI compliance scoring reflects enforcement risk.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2027-08-02",
+        "event": "Phase 4: Full enforcement. Annex II high-risk (product safety AI). Legacy GPAI compliance deadline.",
+        "impact_on_product": "All remaining modules operational. Product safety AI compliance workflows. Full cross-regulation scoring. Legacy GPAI provider remediation tracking.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2027-12-31",
+        "event": "Expected: Harmonised standards for AI published by European standardisation organisations (CEN/CENELEC)",
+        "impact_on_product": "Integrate harmonised standards references into conformity assessment workflows. Update technical requirements against formal standards.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2028-08-02",
+        "event": "Commission evaluation of AI Office functioning (Art. 112)",
+        "impact_on_product": "Monitor for potential structural changes in enforcement landscape.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2029-08-02",
+        "event": "Commission evaluation of impact/effectiveness of voluntary codes of conduct (Art. 112)",
+        "impact_on_product": "Monitor for potential shift from voluntary to mandatory for minimal-risk AI.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2030-08-02",
+        "event": "Commission review of entire AI Act — potential amendments to scope, classification, governance",
+        "impact_on_product": "Major review cycle. Prepare for potential framework changes. Monitor legislative proposals.",
+        "status": "upcoming"
+      },
+      {
+        "date": "2030-12-31",
+        "event": "Large-scale IT systems in AFSJ (Annex X) compliance deadline",
+        "impact_on_product": "Final compliance deadline for legacy systems in justice/security domain.",
+        "status": "upcoming"
+      }
+    ],
+    "expected_amendments": [
+      "Digital Omnibus Package (proposed 2025): Commission proposed simplification amendments including adjusting high-risk timeline to link application to availability of harmonised standards. May extend some deadlines by up to 16 months.",
+      "Potential amendment to Annex III: Commission can expand or modify the high-risk use case list through delegated acts (Art. 7). Monitor for new high-risk categories.",
+      "GPAI systemic risk threshold: The 10^25 FLOPs threshold may be revised as compute capabilities evolve (Art. 51(3)).",
+      "Content marking standards: Technical standards for AI content marking are still being developed. Expect updates to implementation requirements."
+    ],
+    "codes_of_practice": [
+      {
+        "title": "General-Purpose AI Code of Practice",
+        "status": "finalized_august_2025",
+        "description": "Voluntary guidelines for GPAI model providers covering transparency, documentation, copyright compliance, and safety testing.",
+        "url": "https://digital-strategy.ec.europa.eu/en/policies/ai-pact"
+      },
+      {
+        "title": "Code of Practice on Marking and Labelling AI-Generated Content",
+        "status": "first_draft_december_2025",
+        "description": "Guidelines for machine-readable marking of AI-generated content (images, audio, video, text). Covers C2PA, watermarking, and metadata standards.",
+        "url": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai"
+      },
+      {
+        "title": "Harmonised Standards for AI (CEN/CENELEC)",
+        "status": "in_development",
+        "description": "Formal European harmonised standards for AI systems. When published, compliance with these standards provides presumption of conformity with AI Act requirements.",
+        "expected_date": "2027"
+      }
+    ],
+    "monitoring_sources": [
+      "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai — European Commission AI policy page (primary)",
+      "https://ai-act-service-desk.ec.europa.eu/ — Official EU AI Act Service Desk",
+      "https://artificialintelligenceact.eu/ — Comprehensive AI Act reference (Future of Life Institute)",
+      "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689 — Official text on EUR-Lex",
+      "https://www.europarl.europa.eu/topics/en/article/20230601STO93804/eu-ai-act-first-regulation-on-artificial-intelligence — European Parliament AI Act overview",
+      "https://ec.europa.eu/commission/presscorner/home/en — European Commission press releases",
+      "EU AI Office announcements — monitor for enforcement actions, guidelines, and delegated acts"
+    ],
+    "review_frequency": "monthly — critical regulatory implementation period through August 2027. Switch to quarterly after full enforcement."
+  },
+  "version": {
+    "framework_version": "3.0-production",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "notes": "Production-grade framework with granular obligation decomposition, full what_not_to_do coverage, expanded deployer obligations, and comprehensive tech specs for scanner."
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "localization": {
+    "regulation_id": "eu-ai-act",
+    "primary_language": "English (reference text), plus all 24 official EU languages",
+    "ui_language_needed": [
+      "en",
+      "de",
+      "fr",
+      "es",
+      "it",
+      "nl",
+      "pt",
+      "pl",
+      "sv",
+      "da",
+      "fi",
+      "el",
+      "cs",
+      "ro",
+      "hu",
+      "bg",
+      "hr",
+      "sk",
+      "sl",
+      "lt",
+      "lv",
+      "et",
+      "ga",
+      "mt"
+    ],
+    "priority_ui_languages": [
+      "en",
+      "de",
+      "fr",
+      "es",
+      "it",
+      "nl"
+    ],
+    "document_languages": [
+      "English (universal — all templates must be available in EN)",
+      "German (largest EU economy, strong AI ecosystem)",
+      "French (co-official EU language, France has significant AI activity)",
+      "Spanish (large market, Latin America bridge)",
+      "Italian (major economy)",
+      "Dutch (Netherlands is major tech hub)",
+      "Polish (large Eastern EU market)",
+      "Swedish (strong Nordic AI ecosystem)"
+    ],
+    "terminology": [
+      {
+        "english_term": "AI system",
+        "local_terms": {
+          "de": "KI-System",
+          "fr": "système d'IA",
+          "es": "sistema de IA",
+          "it": "sistema di IA",
+          "nl": "AI-systeem",
+          "pt": "sistema de IA",
+          "pl": "system sztucznej inteligencji"
+        },
+        "definition": "A machine-based system designed to operate with varying levels of autonomy that infers from input how to generate outputs (Art. 3(1))",
+        "usage_context": "Core term used throughout all UI screens, documents, and compliance workflows"
+      },
+      {
+        "english_term": "Provider",
+        "local_terms": {
+          "de": "Anbieter",
+          "fr": "fournisseur",
+          "es": "proveedor",
+          "it": "fornitore",
+          "nl": "aanbieder",
+          "pt": "prestador",
+          "pl": "dostawca"
+        },
+        "definition": "Entity that develops an AI system or GPAI model and places it on market under its own name (Art. 3(3))",
+        "usage_context": "Role selector in onboarding, obligation filtering, dashboard labels"
+      },
+      {
+        "english_term": "Deployer",
+        "local_terms": {
+          "de": "Betreiber",
+          "fr": "déployeur",
+          "es": "responsable del despliegue",
+          "it": "deployer (utilizzatore)",
+          "nl": "gebruiksverantwoordelijke",
+          "pt": "responsável pela implantação",
+          "pl": "podmiot stosujący"
+        },
+        "definition": "Entity using an AI system under its authority, except for personal non-professional use (Art. 3(4))",
+        "usage_context": "Role selector in onboarding, obligation filtering, dashboard labels"
+      },
+      {
+        "english_term": "High-risk AI system",
+        "local_terms": {
+          "de": "Hochrisiko-KI-System",
+          "fr": "système d'IA à haut risque",
+          "es": "sistema de IA de alto riesgo",
+          "it": "sistema di IA ad alto rischio",
+          "nl": "AI-systeem met een hoog risico",
+          "pt": "sistema de IA de alto risco",
+          "pl": "system sztucznej inteligencji wysokiego ryzyka"
+        },
+        "definition": "AI system falling under Article 6 criteria (Annex II product safety or Annex III use cases)",
+        "usage_context": "Risk classification results, obligation cards, compliance score breakdown"
+      },
+      {
+        "english_term": "Conformity assessment",
+        "local_terms": {
+          "de": "Konformitätsbewertung",
+          "fr": "évaluation de la conformité",
+          "es": "evaluación de la conformidad",
+          "it": "valutazione della conformità",
+          "nl": "conformiteitsbeoordeling",
+          "pt": "avaliação da conformidade",
+          "pl": "ocena zgodności"
+        },
+        "definition": "Process of verifying that a high-risk AI system meets all AI Act requirements (Art. 43)",
+        "usage_context": "Provider compliance workflow, assessment status tracking"
+      },
+      {
+        "english_term": "Fundamental rights impact assessment",
+        "local_terms": {
+          "de": "Grundrechte-Folgenabschätzung",
+          "fr": "analyse d'impact sur les droits fondamentaux",
+          "es": "evaluación de impacto en derechos fundamentales",
+          "it": "valutazione d'impatto sui diritti fondamentali",
+          "nl": "effectbeoordeling op grondrechten",
+          "pt": "avaliação de impacto nos direitos fundamentais",
+          "pl": "ocena wpływu na prawa podstawowe"
+        },
+        "definition": "Assessment public/certain private deployers must conduct before deploying high-risk AI (Art. 27)",
+        "usage_context": "FRIA workflow, deployer compliance dashboard, document templates"
+      },
+      {
+        "english_term": "General-purpose AI model",
+        "local_terms": {
+          "de": "KI-Modell mit allgemeinem Verwendungszweck",
+          "fr": "modèle d'IA à usage général",
+          "es": "modelo de IA de uso general",
+          "it": "modello di IA per finalità generali",
+          "nl": "AI-model voor algemene doeleinden",
+          "pt": "modelo de IA de finalidade geral",
+          "pl": "model sztucznej inteligencji ogólnego przeznaczenia"
+        },
+        "definition": "AI model displaying significant generality, capable of performing wide range of distinct tasks (Art. 3(63))",
+        "usage_context": "Classification workflow, GPAI provider obligations section"
+      },
+      {
+        "english_term": "AI literacy",
+        "local_terms": {
+          "de": "KI-Kompetenz",
+          "fr": "maîtrise de l'IA",
+          "es": "alfabetización en materia de IA",
+          "it": "alfabetizzazione in materia di IA",
+          "nl": "AI-geletterdheid",
+          "pt": "literacia em matéria de IA",
+          "pl": "umiejętność korzystania z AI"
+        },
+        "definition": "Skills, knowledge and understanding allowing informed deployment and use of AI systems (Art. 3(56))",
+        "usage_context": "Training module, AI literacy obligation card, compliance checklist"
+      }
+    ],
+    "date_format": "DD/MM/YYYY (EU standard) or YYYY-MM-DD (ISO 8601 for technical/API use)",
+    "currency": "EUR (€) — all fines and financial references in euros",
+    "cultural_notes": [
+      "EU is not a monolithic market — compliance culture, enforcement intensity, and AI adoption vary significantly across Member States",
+      "Germany has the strongest compliance culture and is likely to be among the first/strictest enforcers. Prioritize DE localization.",
+      "France has a strong AI industry (Mistral, etc.) and active regulatory engagement. FR localization is high priority.",
+      "Netherlands is a major tech hub with relatively pragmatic regulatory approach.",
+      "Nordic countries (SE, DK, FI) have high AI adoption and value transparency — green/sustainability positioning resonates.",
+      "Southern/Eastern EU markets may have longer adoption curves but are catching up rapidly.",
+      "Works councils (Betriebsräte in Germany) are a major factor in worker notification obligations — strong cultural and legal importance.",
+      "Data protection culture is deeply ingrained in EU — GDPR compliance is baseline expectation. AI Act compliance should be positioned as GDPR's natural extension.",
+      "Many EU companies already have ISO 27001 or similar certifications — position AI Act compliance as complementary to existing frameworks."
+    ]
+  },
+  "version": {
+    "framework_version": "3.0-production",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "notes": "Production-grade framework with granular obligation decomposition, full what_not_to_do coverage, expanded deployer obligations, and comprehensive tech specs for scanner."
+  }
+}

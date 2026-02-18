@@ -1,0 +1,342 @@
+{
+  "scoring": {
+    "regulation_id": "eu-ai-act",
+    "total_obligations": 108,
+    "critical_obligations": 37,
+    "critical_obligation_ids": [
+      "eu-ai-act-OBL-002",
+      "eu-ai-act-OBL-002a",
+      "eu-ai-act-OBL-002b",
+      "eu-ai-act-OBL-002c",
+      "eu-ai-act-OBL-002d",
+      "eu-ai-act-OBL-002e",
+      "eu-ai-act-OBL-002f",
+      "eu-ai-act-OBL-002g",
+      "eu-ai-act-OBL-003",
+      "eu-ai-act-OBL-005",
+      "eu-ai-act-OBL-008",
+      "eu-ai-act-OBL-008b",
+      "eu-ai-act-OBL-011",
+      "eu-ai-act-OBL-013",
+      "eu-ai-act-OBL-019",
+      "eu-ai-act-OBL-021",
+      "eu-ai-act-OBL-022",
+      "eu-ai-act-OBL-023",
+      "eu-ai-act-OBL-023a",
+      "eu-ai-act-OBL-023b",
+      "eu-ai-act-OBL-011c",
+      "eu-ai-act-OBL-034",
+      "eu-ai-act-OBL-039",
+      "eu-ai-act-OBL-HR-001",
+      "eu-ai-act-OBL-HR-002",
+      "eu-ai-act-OBL-FIN-001",
+      "eu-ai-act-OBL-FIN-002",
+      "eu-ai-act-OBL-FIN-003",
+      "eu-ai-act-OBL-MED-001",
+      "eu-ai-act-OBL-EDU-001",
+      "eu-ai-act-OBL-EDU-002",
+      "eu-ai-act-OBL-LAW-001",
+      "eu-ai-act-OBL-MIG-001",
+      "eu-ai-act-OBL-JUS-001",
+      "eu-ai-act-OBL-INF-001",
+      "eu-ai-act-OBL-BIO-001",
+      "eu-ai-act-OBL-AV-001"
+    ],
+    "critical_obligations_note": "If ANY critical obligation scores 0%, the overall score is capped at 40% (Red zone) regardless of other scores. These are 'gateway' obligations without which meaningful compliance is impossible.",
+    "weighted_categories": [
+      {
+        "category": "prohibited_practices",
+        "weight": 13,
+        "weight_reasoning": "Binary pass/fail. Using a prohibited AI system is the most severe violation.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-002"
+        ]
+      },
+      {
+        "category": "risk_management",
+        "weight": 17,
+        "weight_reasoning": "Risk management is the foundation of the AI Act's high-risk framework. Underpins all other obligations.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-003",
+          "eu-ai-act-OBL-009",
+          "eu-ai-act-OBL-010"
+        ]
+      },
+      {
+        "category": "documentation",
+        "weight": 13,
+        "weight_reasoning": "Technical documentation and conformity assessment are primary evidence for regulators.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-005",
+          "eu-ai-act-OBL-019",
+          "eu-ai-act-OBL-022"
+        ]
+      },
+      {
+        "category": "transparency",
+        "weight": 17,
+        "weight_reasoning": "Transparency obligations are the most publicly visible and easiest for regulators to test.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-007",
+          "eu-ai-act-OBL-015",
+          "eu-ai-act-OBL-016",
+          "eu-ai-act-OBL-017",
+          "eu-ai-act-OBL-018",
+          "eu-ai-act-OBL-024"
+        ]
+      },
+      {
+        "category": "technical_safeguards",
+        "weight": 9,
+        "weight_reasoning": "Logging, human oversight, accuracy, and cybersecurity are essential but harder to audit externally.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-006",
+          "eu-ai-act-OBL-008"
+        ]
+      },
+      {
+        "category": "organizational",
+        "weight": 9,
+        "weight_reasoning": "QMS, training, and cooperation are organizational backbone but take time to evaluate.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-001",
+          "eu-ai-act-OBL-010",
+          "eu-ai-act-OBL-011",
+          "eu-ai-act-OBL-025"
+        ]
+      },
+      {
+        "category": "monitoring_and_reporting",
+        "weight": 9,
+        "weight_reasoning": "Post-market monitoring and incident reporting demonstrate ongoing compliance commitment.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-012",
+          "eu-ai-act-OBL-014",
+          "eu-ai-act-OBL-020",
+          "eu-ai-act-OBL-021",
+          "eu-ai-act-OBL-023"
+        ]
+      },
+      {
+        "category": "deployer_specific",
+        "weight": 13,
+        "weight_reasoning": "Deployer obligations are critical for companies using AI tools. Covers use-per-instructions, monitoring, log retention, worker notification, FRIA.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-011",
+          "eu-ai-act-OBL-011a",
+          "eu-ai-act-OBL-011b",
+          "eu-ai-act-OBL-012",
+          "eu-ai-act-OBL-013",
+          "eu-ai-act-OBL-017",
+          "eu-ai-act-OBL-018",
+          "eu-ai-act-OBL-024",
+          "eu-ai-act-OBL-029",
+          "eu-ai-act-OBL-031",
+          "eu-ai-act-OBL-011c",
+          "eu-ai-act-OBL-011d",
+          "eu-ai-act-OBL-011e",
+          "eu-ai-act-OBL-013a",
+          "eu-ai-act-OBL-012a"
+        ]
+      }
+    ],
+    "score_formula": "1. For each obligation, assess compliance: Fully Met (100%), Partially Met (50%), Not Met (0%), Not Applicable (excluded). 2. Calculate category score: average of obligation scores within category. 3. Calculate weighted total: sum of (category_score * category_weight / 100). 4. Apply critical obligation cap: if any critical obligation = 0%, cap total at max 40%. 5. Apply applicable obligations filter: only score obligations that apply to the company's role (deployer vs provider) and risk level. 6. Final score = weighted total as percentage (0-100%).",
+    "score_interpretation": {
+      "for_deployers": "Deployer score focuses on 15 deployer-specific obligations including: use-per-instructions, human oversight assignment, monitoring, log retention (6 months), worker notification, FRIA (if applicable), system suspension procedures, and provider communication.",
+      "for_providers": "Provider score covers all obligation categories with heavier weight on documentation, risk management, technical safeguards, and conformity assessment.",
+      "for_both": "Companies that both build and deploy AI are scored against the union of all applicable obligations.",
+      "domain_scoring": "Domain-specific categories are scored ONLY when the company operates in that domain. They are added as supplementary score on top of the base score, weighted by the number of applicable domain obligations vs total applicable obligations."
+    },
+    "thresholds": {
+      "red": {
+        "range": "0-49%",
+        "label": "Critical Non-Compliance",
+        "description": "Significant compliance gaps exist. Immediate action required. High risk of enforcement, fines, and reputational damage. Should not continue operating high-risk AI systems until critical obligations are addressed.",
+        "action": "Urgent remediation plan required. Consider suspending high-risk AI operations until critical gaps are closed."
+      },
+      "yellow": {
+        "range": "50-79%",
+        "label": "Partial Compliance — Action Needed",
+        "description": "Foundation is in place but important gaps remain. Moderate enforcement risk. Some obligations are partially met but need completion.",
+        "action": "Develop 90-day remediation plan. Prioritize completing partially-met critical obligations. Schedule follow-up assessment."
+      },
+      "green": {
+        "range": "80-100%",
+        "label": "Substantially Compliant",
+        "description": "Core obligations are met. Minor gaps may exist but are being actively addressed. Low enforcement risk. Good compliance posture for market positioning.",
+        "action": "Maintain compliance through ongoing monitoring and periodic reviews. Address remaining minor gaps. Consider pursuing voluntary compliance certificate."
+      }
+    },
+    "minimum_for_certificate": 85,
+    "certificate_additional_requirements": [
+      "All critical obligations must be Fully Met (100%)",
+      "No obligation scored at 0% (Not Met)",
+      "Evidence documentation reviewed and accepted",
+      "Human oversight mechanisms tested and verified",
+      "Assessment conducted within last 12 months"
+    ],
+    "score_update_triggers": [
+      "New AI system deployed or existing system substantially modified",
+      "New regulation or amendment enters into force",
+      "Annual review cycle",
+      "After a compliance incident",
+      "After remediation of a previously identified gap"
+    ],
+    "domain_specific_categories": [
+      {
+        "category": "hr_employment",
+        "description": "Domain-specific obligations for hr employment. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-HR-001",
+          "eu-ai-act-OBL-HR-002",
+          "eu-ai-act-OBL-HR-003"
+        ],
+        "applies_when": "Company uses AI in hr employment domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "finance_credit_insurance",
+        "description": "Domain-specific obligations for finance credit insurance. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-FIN-001",
+          "eu-ai-act-OBL-FIN-002",
+          "eu-ai-act-OBL-FIN-003",
+          "eu-ai-act-OBL-FIN-004"
+        ],
+        "applies_when": "Company uses AI in finance credit insurance domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "healthcare_medical",
+        "description": "Domain-specific obligations for healthcare medical. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-MED-001",
+          "eu-ai-act-OBL-MED-002",
+          "eu-ai-act-OBL-MED-003"
+        ],
+        "applies_when": "Company uses AI in healthcare medical domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "education",
+        "description": "Domain-specific obligations for education. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-EDU-001",
+          "eu-ai-act-OBL-EDU-002",
+          "eu-ai-act-OBL-EDU-003"
+        ],
+        "applies_when": "Company uses AI in education domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "law_enforcement",
+        "description": "Domain-specific obligations for law enforcement. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-LAW-001",
+          "eu-ai-act-OBL-LAW-002"
+        ],
+        "applies_when": "Company uses AI in law enforcement domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "justice_legal",
+        "description": "Domain-specific obligations for justice legal. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-JUS-001",
+          "eu-ai-act-OBL-JUS-002"
+        ],
+        "applies_when": "Company uses AI in justice legal domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "migration_border",
+        "description": "Domain-specific obligations for migration border. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-MIG-001",
+          "eu-ai-act-OBL-MIG-002"
+        ],
+        "applies_when": "Company uses AI in migration border domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "infrastructure",
+        "description": "Domain-specific obligations for infrastructure. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-INF-001"
+        ],
+        "applies_when": "Company uses AI in infrastructure domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "biometric",
+        "description": "Domain-specific obligations for biometric. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-BIO-001"
+        ],
+        "applies_when": "Company uses AI in biometric domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "content_generation",
+        "description": "Domain-specific obligations for content generation. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-GEN-001",
+          "eu-ai-act-OBL-GEN-002"
+        ],
+        "applies_when": "Company uses AI in content generation domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "customer_service",
+        "description": "Domain-specific obligations for customer service. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-CSR-001"
+        ],
+        "applies_when": "Company uses AI in customer service domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "marketing_advertising",
+        "description": "Domain-specific obligations for marketing advertising. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-MKT-001"
+        ],
+        "applies_when": "Company uses AI in marketing advertising domain",
+        "weight_when_applicable": 100
+      },
+      {
+        "category": "transport_autonomous",
+        "description": "Domain-specific obligations for transport autonomous. Scored only when company operates in this domain.",
+        "obligations_in_category": [
+          "eu-ai-act-OBL-AV-001"
+        ],
+        "applies_when": "Company uses AI in transport autonomous domain",
+        "weight_when_applicable": 100
+      }
+    ]
+  },
+  "version": {
+    "framework_version": "4.0-full-coverage",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2 + domain decomposition",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "coverage": "~95% of actionable obligations. All 8 Annex III domains + 5 additional domains decomposed.",
+    "domains_covered": [
+      "HR/Employment",
+      "Finance/Credit/Insurance",
+      "Healthcare/Medical",
+      "Education",
+      "Law Enforcement",
+      "Migration/Border",
+      "Justice/Legal",
+      "Critical Infrastructure",
+      "Biometric",
+      "Content Generation",
+      "Customer Service",
+      "Marketing/Advertising",
+      "Transport/Autonomous"
+    ]
+  }
+}
