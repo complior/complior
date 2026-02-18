@@ -1,0 +1,160 @@
+{
+  "applicability_tree": {
+    "regulation_id": "eu-ai-act",
+    "root_question": "Q1",
+    "questions": [
+      {
+        "id": "Q1",
+        "text": "Does your company develop, sell, import, distribute, or USE any AI-powered tools or systems?",
+        "help_text": "This includes using third-party AI tools like ChatGPT, Copilot, AI-powered CRM, AI recruitment tools, AI analytics, etc. — not just building your own AI. 'AI system' under the EU AI Act is broadly defined as any machine-based system that infers outputs (predictions, content, recommendations, decisions) from its inputs.",
+        "answers": [
+          {
+            "text": "Yes, we develop/build AI products or models",
+            "next": "Q2"
+          },
+          {
+            "text": "Yes, we use/deploy AI tools built by others",
+            "next": "Q2"
+          },
+          {
+            "text": "Yes, we both build and use AI",
+            "next": "Q2"
+          },
+          {
+            "text": "No, we don't use any AI",
+            "next": null,
+            "result_if_final": "does-not-apply",
+            "explanation_if_final": "The EU AI Act applies to operators of AI systems. If your company does not develop, deploy, import, distribute, or use AI systems in any capacity, the Act does not apply to you. However, consider whether tools you use may contain AI components (e.g., AI features in Microsoft 365, Salesforce Einstein, etc.)."
+          }
+        ]
+      },
+      {
+        "id": "Q2",
+        "text": "Does your company have any connection to the European Union?",
+        "help_text": "Connection means ANY of: (a) your company is established/located in the EU, (b) you sell/offer AI products or services to customers in the EU, (c) the output of your AI is used by anyone in the EU, (d) your AI system affects people located in the EU. The EU AI Act has extraterritorial reach — similar to GDPR.",
+        "answers": [
+          {
+            "text": "Yes, we are established in the EU or EEA",
+            "next": "Q3"
+          },
+          {
+            "text": "Yes, we serve customers or users in the EU (even though we're based elsewhere)",
+            "next": "Q3"
+          },
+          {
+            "text": "Yes, our AI's output is used by people in the EU",
+            "next": "Q3"
+          },
+          {
+            "text": "No EU connection at all — no EU customers, users, or affected persons",
+            "next": null,
+            "result_if_final": "does-not-apply",
+            "explanation_if_final": "The EU AI Act applies based on market presence and output use in the EU. If your AI system has genuinely zero connection to the EU (no EU customers, no EU users, no outputs used in the EU), the Act does not apply. But verify carefully — even indirect connections (e.g., a US client with EU operations using your tool) may bring you in scope."
+          }
+        ]
+      },
+      {
+        "id": "Q3",
+        "text": "Is your AI use purely for personal, non-professional purposes OR exclusively for scientific research before market placement?",
+        "help_text": "The AI Act exempts: (a) individuals using AI for personal non-professional activities, (b) AI developed solely for scientific R&D before any market placement or deployment. Military/defence/national security AI is also excluded.",
+        "answers": [
+          {
+            "text": "Yes, purely personal use or pre-market R&D only",
+            "next": null,
+            "result_if_final": "does-not-apply",
+            "explanation_if_final": "The EU AI Act exempts purely personal non-professional AI use and pre-market scientific R&D. However, once the system is placed on the market or put into service (even for free), the exemption ends."
+          },
+          {
+            "text": "No, it's used in a professional or commercial context",
+            "next": "Q4"
+          }
+        ]
+      },
+      {
+        "id": "Q4",
+        "text": "What is your company's role with respect to AI systems?",
+        "help_text": "Provider = you build/develop the AI (or have it built) and offer it under your name. Deployer = you use AI tools built by others in your business operations. You can be both if you build some AI and use third-party AI tools.",
+        "answers": [
+          {
+            "text": "We are a PROVIDER — we build/develop AI products",
+            "next": "Q5"
+          },
+          {
+            "text": "We are a DEPLOYER — we use AI tools from other companies",
+            "next": "Q5"
+          },
+          {
+            "text": "We are BOTH — we build some AI and deploy others",
+            "next": "Q5"
+          },
+          {
+            "text": "We import or distribute AI systems into the EU",
+            "next": "Q5"
+          }
+        ]
+      },
+      {
+        "id": "Q5",
+        "text": "Could any of your AI systems fall under a PROHIBITED practice? (social scoring, subliminal manipulation, exploitation of vulnerable groups, untargeted facial scraping, emotion recognition in workplace/school, real-time biometric ID in public spaces)",
+        "help_text": "These are completely banned under Article 5. Think about whether any AI tool you build or use could: manipulate behavior without awareness, exploit children/elderly/disabled, score people's social behavior, scrape faces from internet, detect emotions in office/classroom, or identify people in real-time in public via biometrics.",
+        "answers": [
+          {
+            "text": "Yes, or possibly — need to check",
+            "next": null,
+            "result_if_final": "applies",
+            "explanation_if_final": "CRITICAL: The EU AI Act applies to you, and you may be operating a prohibited AI system. Prohibited practices carry the highest fines (€35M or 7% of global turnover). You should immediately conduct a detailed assessment of each AI system against Article 5 prohibited practices and cease any prohibited use. Prohibition has been in force since February 2, 2025."
+          },
+          {
+            "text": "No, none of our AI does any of these things",
+            "next": "Q6"
+          }
+        ]
+      },
+      {
+        "id": "Q6",
+        "text": "Is any of your AI used in a HIGH-RISK area? (hiring/HR, credit/lending, insurance, education grading, healthcare/medical devices, critical infrastructure, law enforcement, border control, justice system)",
+        "help_text": "High-risk covers AI used in decisions that significantly affect people's lives: getting a job, a loan, insurance, grades, medical treatment, interactions with police, immigration decisions, or court proceedings. Also includes AI as safety component in regulated products (medical devices, machinery, vehicles, etc.).",
+        "answers": [
+          {
+            "text": "Yes, we build or use AI in one or more of these areas",
+            "next": null,
+            "result_if_final": "applies",
+            "explanation_if_final": "The EU AI Act FULLY applies to you with HIGH-RISK obligations. As a provider, you need: risk management system, technical documentation, conformity assessment, CE marking, registration in EU database, post-market monitoring, and more. As a deployer, you need: use per instructions, human oversight, monitoring, log retention, and for public entities a Fundamental Rights Impact Assessment. High-risk rules apply from August 2, 2026 (Annex III) or August 2, 2027 (Annex II product-related). Start preparing NOW."
+          },
+          {
+            "text": "No, our AI is in other areas (marketing, content, customer service, analytics, etc.)",
+            "next": "Q7"
+          }
+        ]
+      },
+      {
+        "id": "Q7",
+        "text": "Does your AI system directly interact with people (chatbot, voice assistant) OR generate synthetic content (text, images, audio, video)?",
+        "help_text": "This covers any AI that 'talks to' users (customer service bots, AI assistants, virtual agents) or creates content that could be mistaken for human-made (AI-generated articles, images, videos, audio, deep fakes).",
+        "answers": [
+          {
+            "text": "Yes, it interacts with people or generates content",
+            "next": null,
+            "result_if_final": "applies",
+            "explanation_if_final": "The EU AI Act applies to you with TRANSPARENCY obligations (Article 50). You must: disclose AI interaction to users ('You are talking to an AI'), mark AI-generated content as AI-generated in machine-readable format, and label deep fakes clearly. These transparency rules apply from August 2, 2026. Additionally, AI literacy obligation (Art. 4) and general obligations already apply."
+          },
+          {
+            "text": "No, it's backend AI with no direct user interaction or content generation",
+            "next": null,
+            "result_if_final": "partially-applies",
+            "explanation_if_final": "The EU AI Act applies with MINIMAL obligations. You must still: (1) ensure AI literacy of your staff (Art. 4 — already in force since Feb 2025), (2) ensure no prohibited practices, and (3) comply with any voluntary codes of conduct you've adopted (Art. 95). While the regulatory burden is light, you should maintain an AI inventory and regularly reassess risk classification, as AI uses may evolve into higher-risk categories."
+          }
+        ]
+      }
+    ]
+  },
+  "version": {
+    "framework_version": "3.0-production",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "notes": "Production-grade framework with granular obligation decomposition, full what_not_to_do coverage, expanded deployer obligations, and comprehensive tech specs for scanner."
+  }
+}

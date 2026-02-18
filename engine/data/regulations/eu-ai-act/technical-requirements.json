@@ -1,0 +1,2590 @@
+{
+  "_version": "2.0",
+  "_note": "Expanded from v1 (6 specs) to v2 (14 specs). Covers all CLI-checkable and SDK-required obligations.",
+  "technical_requirements": [
+    {
+      "obligation_id": "eu-ai-act-OBL-006",
+      "feature_type": "logging",
+      "sdk_implementation": {
+        "description": "Middleware intercepts all AI interactions and logs them to compliant storage with integrity protection.",
+        "middleware_behavior": "On every AI API call: capture timestamp, session_id, user_ref (anonymized), input_hash, full output, model_version, confidence, latency, human_oversight_flags.",
+        "data_to_log": [
+          "timestamp",
+          "session_id",
+          "user_ref_anonymized",
+          "input_data_hash",
+          "output_data",
+          "model_id_version",
+          "confidence_score",
+          "processing_time_ms",
+          "human_oversight_flag",
+          "human_override_action",
+          "error_code"
+        ],
+        "configuration_options": {
+          "log_retention_days": "Min 180. Default: 365.",
+          "storage_backend": "local_encrypted | cloud_eu | complior_managed",
+          "input_data_retention": "hash_only | full_input | redacted_input",
+          "integrity_protection": "hmac | immutable_storage"
+        },
+        "code_example": "```python\nfrom complior import ComplianceMiddleware\nmiddleware = ComplianceMiddleware(regulation='eu-ai-act', risk_level='high')\n\n@middleware.log_interaction\ndef call_ai(prompt, user_id):\n    return openai.chat.completions.create(model='gpt-4', messages=[{'role':'user','content':prompt}])\n```"
+      },
+      "cli_check": {
+        "what_to_scan": "AI interaction endpoints",
+        "positive_signals": [
+          "Structured logging wrapping AI calls",
+          "Log entries with timestamp+session+input+output",
+          "Retention config >= 180 days",
+          "HMAC/immutable log storage"
+        ],
+        "negative_signals": [
+          "AI API calls without logging",
+          "console.log only",
+          "No retention policy",
+          "Mutable logs without integrity"
+        ],
+        "warning_message": "WARNING [OBL-006]: High-risk AI interactions without compliant logging. Article 12 requires automatic event recording.",
+        "fix_suggestion": "Add ComplianceMiddleware.log_interaction() to AI endpoints. Set retention >= 180 days.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-006a",
+      "feature_type": "logging",
+      "cli_check": {
+        "what_to_scan": "Log storage and retention configuration",
+        "positive_signals": [
+          "retention_days >= 180 in config",
+          "Log rotation preserves minimum period",
+          "Log archive/backup configured"
+        ],
+        "negative_signals": [
+          "retention_days < 180",
+          "Log purge cron running daily without retention guard",
+          "No retention configuration found"
+        ],
+        "warning_message": "WARNING [OBL-006a]: Log retention configured below 6-month minimum. Article 19/26(6) requires minimum 6-month log retention.",
+        "fix_suggestion": "Set log_retention_days >= 180 in logging configuration. Disable any purge jobs that would delete logs before 6 months.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015",
+      "feature_type": "disclosure",
+      "sdk_implementation": {
+        "description": "Auto-inject AI disclosure notices into chatbot/assistant interfaces before first message.",
+        "middleware_behavior": "Before first AI message: inject disclosure in user's language. Track disclosure shown event.",
+        "configuration_options": {
+          "disclosure_text": "Default: 'You are interacting with an AI system.'",
+          "disclosure_position": "pre_conversation_banner | first_message_prefix | persistent_header",
+          "disclosure_languages": "Auto-detect or explicit. Default: all EU langs.",
+          "require_acknowledgment": "false (not legally required)"
+        },
+        "code_example": "```javascript\nimport { AIDisclosure } from '@complior/sdk';\nconst disclosure = new AIDisclosure({ text: 'You are chatting with an AI assistant.' });\napp.post('/chat', disclosure.middleware(), chatHandler);\n```"
+      },
+      "cli_check": {
+        "what_to_scan": "Chat/conversation UI code and API endpoints",
+        "positive_signals": [
+          "AI disclosure component in chat UI",
+          "Disclosure middleware on conversation endpoints",
+          "Text containing 'AI', 'artificial intelligence', 'automated'"
+        ],
+        "negative_signals": [
+          "Chat endpoints without disclosure",
+          "Chatbot UI with no AI label",
+          "Disclosure only in ToS (insufficient)"
+        ],
+        "warning_message": "WARNING [OBL-015]: Chat endpoint without AI disclosure. Article 50(1) requires informing users of AI interaction.",
+        "fix_suggestion": "Add AIDisclosure.middleware() to conversation endpoints.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015a",
+      "feature_type": "disclosure",
+      "cli_check": {
+        "what_to_scan": "Voice/telephony AI code",
+        "positive_signals": [
+          "Audio disclosure asset in voice pipeline",
+          "TTS disclosure before first AI response",
+          "IVR flow with disclosure node"
+        ],
+        "negative_signals": [
+          "Voice AI without audio disclosure step",
+          "Voice bot answering without identifying as AI"
+        ],
+        "warning_message": "WARNING [OBL-015a]: Voice AI detected without audio disclosure. Article 50(1) applies to voice interactions.",
+        "fix_suggestion": "Add audio AI disclosure at start of voice interaction. Play before first AI-generated response.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015b",
+      "feature_type": "disclosure",
+      "cli_check": {
+        "what_to_scan": "Email sending and messaging bot code",
+        "positive_signals": [
+          "AI disclosure in email templates/footers",
+          "'AI generated' in email signature config",
+          "First-message disclosure in messaging bots"
+        ],
+        "negative_signals": [
+          "AI-generated emails sent without disclosure",
+          "Bot messages without identifying as AI",
+          "Auto-reply without AI label"
+        ],
+        "warning_message": "WARNING [OBL-015b]: AI-generated emails/messages without disclosure. Article 50(1) requires AI identification.",
+        "fix_suggestion": "Add 'This message was generated by an AI system' to email footer/message header.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015c",
+      "feature_type": "disclosure",
+      "cli_check": {
+        "what_to_scan": "API response middleware",
+        "positive_signals": [
+          "X-AI-Generated header in API responses",
+          "AI metadata in response body",
+          "API docs documenting AI generation metadata"
+        ],
+        "negative_signals": [
+          "AI API serving content without any generation metadata",
+          "No AI disclosure headers"
+        ],
+        "warning_message": "WARNING [OBL-015c]: API responses lack AI generation metadata. Include X-AI-Generated header for downstream deployer compliance.",
+        "fix_suggestion": "Add response header X-AI-Generated: true to all AI-powered API endpoints. Document in API reference.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-016",
+      "feature_type": "content-marking",
+      "sdk_implementation": {
+        "description": "Auto-embed machine-readable AI markers into synthetic outputs. Supports C2PA, IPTC, watermark, text provenance.",
+        "middleware_behavior": "After generation, before delivery: inject C2PA manifest for images, audio watermark for audio/video, provenance metadata for text.",
+        "configuration_options": {
+          "image_marking": "c2pa_manifest | iptc_metadata | invisible_watermark | all",
+          "audio_marking": "metadata_embed | audio_watermark | both",
+          "text_marking": "metadata_header | provenance_json",
+          "robustness_level": "standard | high"
+        },
+        "code_example": "```python\nfrom complior import ContentMarker\nmarker = ContentMarker(regulation='eu-ai-act')\nmarked_image = marker.mark_image(raw_bytes, model_id='dall-e-3', method=['c2pa','watermark'])\n```"
+      },
+      "cli_check": {
+        "what_to_scan": "Content generation pipelines",
+        "positive_signals": [
+          "C2PA library in image pipeline",
+          "Watermarking in content output",
+          "Metadata injection before delivery"
+        ],
+        "negative_signals": [
+          "AI content generation without marking step",
+          "Raw AI output delivered directly"
+        ],
+        "warning_message": "WARNING [OBL-016]: AI content generation without machine-readable marking. Article 50(2) requires marking.",
+        "fix_suggestion": "Add ContentMarker to generation pipeline before delivery.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-004a",
+      "feature_type": "bias-testing",
+      "sdk_implementation": {
+        "description": "Bias detection and fairness testing tools analyzing AI outputs across protected characteristics.",
+        "middleware_behavior": "Batch mode: analyze historical outputs. Live mode: real-time monitoring with threshold alerts.",
+        "configuration_options": {
+          "protected_characteristics": "gender | age | ethnicity | disability | religion",
+          "fairness_metrics": "statistical_parity | equal_opportunity | predictive_parity",
+          "threshold": "0.8 (four-fifths rule)",
+          "test_frequency": "on_deploy | weekly | monthly | continuous"
+        },
+        "code_example": "```python\nfrom complior import BiasDetector\ndetector = BiasDetector(protected_characteristics=['gender','age','ethnicity'])\nresults = detector.test(predictions=outputs, sensitive_features=demographics)\nresults.export_report('bias_Q1.pdf')\n```"
+      },
+      "cli_check": {
+        "what_to_scan": "Model evaluation and data pipeline code",
+        "positive_signals": [
+          "fairlearn/aif360 imported",
+          "Fairness metrics in test suite",
+          "Protected characteristics in evaluation"
+        ],
+        "negative_signals": [
+          "No bias testing in evaluation",
+          "No fairness metrics",
+          "Protected characteristics available but untested"
+        ],
+        "warning_message": "WARNING [OBL-004a]: No bias testing detected. Article 10(2)(f) requires bias detection and mitigation.",
+        "fix_suggestion": "Add BiasDetector to evaluation pipeline. Test across gender, age, ethnicity.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-008",
+      "feature_type": "human-oversight",
+      "sdk_implementation": {
+        "description": "Human-in-the-loop workflow: confidence thresholds, override buttons, review queues, audit trail.",
+        "middleware_behavior": "Check confidence against threshold → route below-threshold decisions to human queue. Log all human decisions.",
+        "configuration_options": {
+          "confidence_threshold": "0.7 (auto-escalate below this)",
+          "review_queue_type": "fifo | priority | round_robin",
+          "max_review_time": "24h before escalation",
+          "stop_mechanism": "enabled for all high-risk"
+        },
+        "code_example": "```python\nfrom complior import HumanOversight\noversight = HumanOversight(confidence_threshold=0.7)\n@oversight.with_human_review\ndef credit_decision(data): return model.predict(data)\n```"
+      },
+      "cli_check": {
+        "what_to_scan": "Decision endpoints and AI output delivery code",
+        "positive_signals": [
+          "Human review queue",
+          "Confidence threshold checks",
+          "Override/reject UI",
+          "Emergency stop endpoint"
+        ],
+        "negative_signals": [
+          "AI decisions delivered without human review option",
+          "No confidence checks",
+          "No stop mechanism"
+        ],
+        "warning_message": "WARNING [OBL-008]: High-risk decision endpoint without human oversight. Article 14 requires effective human oversight.",
+        "fix_suggestion": "Add HumanOversight wrapper. Configure confidence thresholds and emergency stop.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-024",
+      "feature_type": "explainability",
+      "sdk_implementation": {
+        "description": "Automated explanation generation for AI decisions using SHAP/LIME/rule extraction.",
+        "middleware_behavior": "On significant decision: generate human-readable explanation with top factors. Include contestation info.",
+        "configuration_options": {
+          "explanation_method": "shap | lime | rule_extraction | counterfactual",
+          "detail_level": "summary (3-5 factors) | detailed | technical",
+          "include_contestation_info": "true"
+        },
+        "code_example": "```python\nfrom complior import ExplainableDecision\nexplainer = ExplainableDecision(method='shap', contact_email='complaints@co.com')\n@explainer.explain\ndef loan_decision(applicant): return model.predict(applicant)\n```"
+      },
+      "cli_check": {
+        "what_to_scan": "Decision output endpoints",
+        "positive_signals": [
+          "SHAP/LIME/eli5 imported",
+          "Explanation generation on decision endpoints",
+          "Contestation info in output"
+        ],
+        "negative_signals": [
+          "Decision endpoints returning only approve/deny",
+          "No explainability library",
+          "No appeal mechanism"
+        ],
+        "warning_message": "WARNING [OBL-024]: Decision endpoint without explanation. Articles 26(11)/86 require explanations for significant AI decisions.",
+        "fix_suggestion": "Add ExplainableDecision wrapper. Include top factors and contestation info.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002f",
+      "feature_type": "prohibited-practice-scan",
+      "cli_check": {
+        "what_to_scan": "Codebase for emotion recognition in workplace/education contexts",
+        "positive_signals": [
+          "Emotion detection explicitly disabled in HR/LMS modules",
+          "Configuration blocking emotion features in workplace context"
+        ],
+        "negative_signals": [
+          "Emotion detection libraries (Affectiva, Azure Face emotion, fer, deepface emotion) imported in HR/LMS/workplace code",
+          "Sentiment analysis applied to employee communications (Slack, email)",
+          "Emotion scoring in performance review systems"
+        ],
+        "warning_message": "CRITICAL [OBL-002f]: Emotion recognition detected in workplace/education context. This is a PROHIBITED PRACTICE under Article 5(1)(f). Maximum fine: €35M / 7% turnover.",
+        "fix_suggestion": "Remove emotion recognition from all workplace and educational applications immediately. Medical/safety exceptions require documented justification.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-005",
+      "feature_type": "documentation-check",
+      "cli_check": {
+        "what_to_scan": "Repository documentation structure for Annex IV compliance",
+        "positive_signals": [
+          "TECHNICAL_DOCUMENTATION.md or /docs/annex-iv/ exists",
+          "Sections covering: system description, development process, data governance, risk management, testing, post-market monitoring",
+          "Version history maintained",
+          "Performance metrics documented"
+        ],
+        "negative_signals": [
+          "No technical documentation file in repository",
+          "README only covers installation, not compliance",
+          "No risk management section",
+          "No performance metrics documented"
+        ],
+        "warning_message": "WARNING [OBL-005]: Technical documentation missing or incomplete. Article 11/Annex IV requires comprehensive docs before market placement.",
+        "fix_suggestion": "Create TECHNICAL_DOCUMENTATION.md following Annex IV structure: (1) System description, (2) Development process, (3) Data governance, (4) Risk management, (5) Testing results, (6) Post-market monitoring plan.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022",
+      "feature_type": "gpai-documentation-check",
+      "cli_check": {
+        "what_to_scan": "Repository for GPAI model documentation per Annex XI",
+        "positive_signals": [
+          "MODEL_CARD.md exists with required sections",
+          "Training process documented",
+          "Evaluation results published",
+          "Capabilities and limitations described",
+          "TRAINING_DATA_SUMMARY.md exists",
+          "COPYRIGHT_POLICY.md exists",
+          "DOWNSTREAM_PROVIDER_INFO.md or integration guide exists"
+        ],
+        "negative_signals": [
+          "No model card or model documentation",
+          "Training process undocumented",
+          "No evaluation results",
+          "No training data summary",
+          "No copyright compliance policy",
+          "No downstream provider information"
+        ],
+        "warning_message": "WARNING [OBL-022]: GPAI model documentation incomplete. Article 53/Annex XI requires technical documentation, training data summary, copyright policy, and downstream provider information.",
+        "fix_suggestion": "Create: MODEL_CARD.md (Annex XI), TRAINING_DATA_SUMMARY.md (Art. 53(1)(d)), COPYRIGHT_POLICY.md (Art. 53(1)(c)), DOWNSTREAM_PROVIDER_INFO.md (Annex XII).",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-010",
+      "feature_type": "compliance-infrastructure-check",
+      "cli_check": {
+        "what_to_scan": "Repository for compliance governance infrastructure",
+        "positive_signals": [
+          "COMPLIANCE.md or /docs/compliance/ directory exists",
+          "QMS documentation present",
+          "AI_POLICY.md or AI governance document",
+          "RISK_REGISTER.json or equivalent",
+          "Incident response procedure documented"
+        ],
+        "negative_signals": [
+          "No compliance directory or documentation",
+          "No QMS documentation",
+          "No AI governance policy",
+          "No risk register",
+          "No incident response plan"
+        ],
+        "warning_message": "WARNING [OBL-010]: Quality management system documentation missing. Article 17 requires documented QMS for high-risk AI providers.",
+        "fix_suggestion": "Create /docs/compliance/ with: COMPLIANCE.md (QMS overview), AI_POLICY.md (governance), RISK_REGISTER.json (identified risks), INCIDENT_RESPONSE.md (procedures).",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-001",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": "Generate AI Literacy documentation template",
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Project root and docs/ for AI literacy training documentation",
+        "positive_signals": [
+          "File matching AI-LITERACY.md or ai-training-policy.*",
+          "Document contains 'training level' or 'AI literacy' sections",
+          "Training schedule with dates present",
+          "Training record template or completion tracking"
+        ],
+        "negative_signals": [
+          "No AI literacy or training documentation found",
+          "Document exists but missing required sections (scope, levels, schedule)",
+          "No training records or completion tracking mechanism"
+        ],
+        "warning_message": "No AI Literacy documentation found. Article 4 requires all organizations using AI to ensure staff have sufficient AI literacy. This obligation is already in force since February 2, 2025.",
+        "fix_suggestion": "Run 'ai-comply fix --literacy' to generate AI Literacy Policy template with all required sections.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002",
+      "feature_type": "prohibited-practice-scan",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Dependency tree and import statements for prohibited AI practice patterns",
+        "positive_signals": [
+          "PROHIBITED-PRACTICES-SCREENING.md or art5-screening.* present",
+          "No imports from known prohibited-use libraries",
+          "Screening report with sign-off and date"
+        ],
+        "negative_signals": [
+          "No Art. 5 screening documentation",
+          "Imports from facial recognition mass-scraping libraries (e.g., face_recognition with scraping patterns)",
+          "Social scoring calculation patterns in code",
+          "Criminal profiling logic without objective fact inputs"
+        ],
+        "warning_message": "No Article 5 Prohibited Practices Screening found. Prohibited practices carry the highest fines (€35M / 7% turnover) and are already in force since February 2, 2025.",
+        "fix_suggestion": "Run 'ai-comply fix --art5' to generate Prohibited Practices Screening template. Review each AI system against 8 prohibited categories.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002a",
+      "feature_type": "prohibited-practice-scan",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Code patterns indicating subliminal or manipulative AI techniques",
+        "positive_signals": [
+          "No dark pattern libraries imported",
+          "No behavioral manipulation logic detected"
+        ],
+        "negative_signals": [
+          "Import of dark pattern or persuasion profiling libraries",
+          "A/B testing on vulnerable user segments without consent safeguards",
+          "Algorithmic content recommendations designed to maximize engagement without user control"
+        ],
+        "warning_message": "Potential subliminal/manipulative AI technique pattern detected. Art. 5(1)(a) prohibits AI that deploys techniques beyond a person's consciousness to materially distort behavior.",
+        "fix_suggestion": "Review flagged code for compliance with Art. 5(1)(a). Add user control mechanisms and transparent disclosure of AI-driven recommendations.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Project documentation for risk management system artifacts",
+        "positive_signals": [
+          "RISK-MANAGEMENT.md or risk-assessment.* present",
+          "Document contains sections: identified risks, misuse scenarios, mitigations, test results",
+          "Risk register with severity ratings",
+          "Evidence of periodic risk review (dates, sign-offs)"
+        ],
+        "negative_signals": [
+          "No risk management documentation",
+          "Risk document exists but missing misuse scenarios",
+          "No evidence of testing or review dates",
+          "Risk management is only in TODO/draft state"
+        ],
+        "warning_message": "No Risk Management System documentation found. Article 9 requires providers of high-risk AI to establish and maintain a continuous risk management system.",
+        "fix_suggestion": "Run 'ai-comply fix --risk-mgmt' to generate Risk Management System template with all Art. 9 required sections.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003c",
+      "feature_type": "testing-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Test infrastructure for AI system validation before deployment",
+        "positive_signals": [
+          "Test directory with AI-specific test cases (bias, accuracy, robustness)",
+          "CI/CD pipeline includes AI validation step",
+          "Test reports with documented metrics and pass/fail thresholds"
+        ],
+        "negative_signals": [
+          "No AI-specific tests in test suite",
+          "No CI/CD validation gate for AI model performance",
+          "Test directory empty or contains only unit tests without AI validation"
+        ],
+        "warning_message": "No AI system testing infrastructure found. Art. 9(7) requires testing high-risk AI systems before market placement with appropriate metrics.",
+        "fix_suggestion": "Add AI validation tests: bias testing, accuracy benchmarking, robustness checks. Integrate into CI/CD pipeline.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-004b",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Data governance documentation — training data sources and processing",
+        "positive_signals": [
+          "DATA-GOVERNANCE.md or data-sources.* documentation present",
+          "Training data manifest with source, license, date, processing steps",
+          "Data quality assessment report"
+        ],
+        "negative_signals": [
+          "No data governance documentation",
+          "Training data used without documented provenance",
+          "No data quality or bias assessment records"
+        ],
+        "warning_message": "No data governance documentation found. Art. 10 requires documenting training data sources, processing, and quality measures.",
+        "fix_suggestion": "Run 'ai-comply fix --data-gov' to generate Data Governance template with data provenance fields.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-007",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Instructions for Use documentation for high-risk AI system",
+        "positive_signals": [
+          "INSTRUCTIONS-FOR-USE.md or provider-instructions.* present",
+          "Document covers: intended purpose, limitations, known risks, performance metrics",
+          "Human oversight requirements documented",
+          "Installation and configuration instructions included"
+        ],
+        "negative_signals": [
+          "No instructions for use documentation",
+          "README exists but missing required sections (purpose, limitations, risks)",
+          "No performance metrics or accuracy statements"
+        ],
+        "warning_message": "No Instructions for Use documentation found. Art. 13 requires providers to supply clear instructions enabling deployers to use high-risk AI correctly.",
+        "fix_suggestion": "Run 'ai-comply fix --instructions' to generate Instructions for Use template per Art. 13 requirements.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-008a",
+      "feature_type": "human-oversight",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Emergency stop / interrupt mechanism in AI system code",
+        "positive_signals": [
+          "Emergency stop function or endpoint defined",
+          "Kill switch or circuit breaker pattern in AI pipeline",
+          "Admin override API endpoint",
+          "Graceful shutdown mechanism for AI processing"
+        ],
+        "negative_signals": [
+          "No emergency stop or interrupt mechanism found",
+          "AI pipeline runs without any override capability",
+          "No admin API for system control",
+          "AI decisions execute automatically without intervention point"
+        ],
+        "warning_message": "No emergency stop mechanism found. Art. 14(4)(e) requires high-risk AI to have an interrupt or stop mechanism accessible to human overseers.",
+        "fix_suggestion": "Implement an emergency stop endpoint/function that immediately halts AI system processing. Add circuit breaker pattern to AI pipeline.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-009a",
+      "feature_type": "accuracy-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Accuracy metrics declaration and test results",
+        "positive_signals": [
+          "MODEL-CARD.md or model-metrics.* with accuracy/performance metrics",
+          "Test results with precision, recall, F1, or domain-specific metrics",
+          "Benchmark comparison against stated performance claims",
+          "Confidence intervals or uncertainty quantification"
+        ],
+        "negative_signals": [
+          "No accuracy metrics documented",
+          "Performance claims without supporting test data",
+          "No benchmark or evaluation dataset specified",
+          "Metrics only on training set, not on held-out test/validation set"
+        ],
+        "warning_message": "No accuracy metrics declaration found. Art. 15(1) requires high-risk AI providers to declare accuracy levels and test them with appropriate metrics.",
+        "fix_suggestion": "Add MODEL-CARD.md with accuracy metrics, test methodology, evaluation dataset description, and confidence intervals.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-009b",
+      "feature_type": "cybersecurity-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Cybersecurity and adversarial robustness measures",
+        "positive_signals": [
+          "Input validation/sanitization on AI inputs",
+          "Rate limiting on AI endpoints",
+          "Prompt injection protection (for LLM-based systems)",
+          "Model access controls and authentication",
+          "Adversarial test results documented"
+        ],
+        "negative_signals": [
+          "No input validation on AI-facing endpoints",
+          "AI model accessible without authentication",
+          "No rate limiting on inference endpoints",
+          "No prompt injection or data poisoning mitigations",
+          "No adversarial robustness testing documented"
+        ],
+        "warning_message": "Insufficient cybersecurity measures for AI system. Art. 15(4) requires resilience against adversarial attacks including data poisoning and model manipulation.",
+        "fix_suggestion": "Add input validation, rate limiting, authentication on AI endpoints. Implement prompt injection protection for LLM systems. Document adversarial testing results.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011b",
+      "feature_type": "data-quality-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Input data validation for deployer-side data quality",
+        "positive_signals": [
+          "Input validation schemas defined (Zod, JSON Schema, etc.)",
+          "Data quality checks before AI system input",
+          "Data preprocessing pipeline with documented transformations"
+        ],
+        "negative_signals": [
+          "Raw user input passed directly to AI system without validation",
+          "No input schema or data quality checks",
+          "No data preprocessing or cleaning before AI consumption"
+        ],
+        "warning_message": "No input data quality checks found. Art. 26(4) requires deployers to ensure input data is relevant and representative for the system's intended purpose.",
+        "fix_suggestion": "Add input validation schema. Implement data quality checks before feeding data to AI system.",
+        "severity": "info"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011d",
+      "feature_type": "logging",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Deployer-side log retention configuration",
+        "positive_signals": [
+          "Log retention config >= 180 days",
+          "Log storage with access controls configured",
+          "Log backup or archival policy documented"
+        ],
+        "negative_signals": [
+          "Log retention < 180 days",
+          "No log retention configuration found",
+          "Log rotation set to delete logs prematurely",
+          "Logs stored without access controls"
+        ],
+        "warning_message": "Log retention appears insufficient. Art. 26(6) requires deployers to retain high-risk AI system logs for minimum 6 months (180 days).",
+        "fix_suggestion": "Set log retention to minimum 180 days. Configure secure log storage with access controls. Document retention policy.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-016a",
+      "feature_type": "content-marking",
+      "sdk_implementation": {
+        "description": "Embed C2PA/IPTC metadata in AI-generated images",
+        "middleware_behavior": "Post-processing: after image generation, inject C2PA manifest with AI provenance data",
+        "data_to_log": [
+          "image_hash",
+          "generation_model",
+          "timestamp",
+          "c2pa_manifest_id"
+        ],
+        "user_facing_output": "AI-generated images contain embedded C2PA metadata indicating artificial origin",
+        "configuration_options": {
+          "c2pa_enabled": "boolean, default true",
+          "watermark_visible": "boolean, default false (machine-readable only per Art. 50)",
+          "provider_attribution": "string, provider name in C2PA manifest"
+        },
+        "code_example": "import { signC2PA } from '@complior/content-marking';\nconst signedImage = await signC2PA(generatedImage, { model: 'dall-e-3', provider: 'OpenAI' });"
+      },
+      "cli_check": {
+        "what_to_scan": "Image generation pipeline for C2PA/watermark embedding",
+        "positive_signals": [
+          "C2PA library imported (c2pa-node, c2patool integration)",
+          "Post-processing step adding metadata to generated images",
+          "IPTC metadata fields populated on image output"
+        ],
+        "negative_signals": [
+          "Image generation without any metadata embedding",
+          "Generated images served directly without post-processing",
+          "EXIF/IPTC stripping in image processing pipeline"
+        ],
+        "warning_message": "AI-generated images lack C2PA/watermark metadata. Art. 50(2) requires machine-readable marking of AI-generated content.",
+        "fix_suggestion": "Add C2PA signing to image generation pipeline. Use @complior/content-marking or c2pa-node library.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-016b",
+      "feature_type": "content-marking",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Text generation pipeline for AI provenance metadata",
+        "positive_signals": [
+          "AI-generated text tagged with metadata (HTML meta, JSON field, header)",
+          "Content-Type or custom header indicating AI-generated text",
+          "Structured output includes 'ai_generated: true' field"
+        ],
+        "negative_signals": [
+          "AI-generated text returned as plain string without any metadata",
+          "No distinction between human-written and AI-generated text in output",
+          "API responses lack AI attribution fields"
+        ],
+        "warning_message": "AI-generated text lacks provenance metadata. Art. 50(2) requires machine-readable marking indicating content was artificially generated.",
+        "fix_suggestion": "Add 'ai_generated: true' field to text output JSON. Add X-AI-Generated header to API responses. Include AI attribution metadata in structured outputs.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-017",
+      "feature_type": "transparency",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Notification mechanism for emotion recognition or biometric categorization",
+        "positive_signals": [
+          "User notification component before biometric/emotion processing",
+          "Consent mechanism for biometric data collection",
+          "Disclosure text mentioning emotion recognition or biometric categorization"
+        ],
+        "negative_signals": [
+          "Biometric processing without prior notification",
+          "Emotion recognition SDK imported without user notification UI",
+          "No consent mechanism for biometric data"
+        ],
+        "warning_message": "Emotion recognition or biometric categorization detected without user notification. Art. 50(3) requires informing exposed individuals.",
+        "fix_suggestion": "Add notification component before biometric processing. Implement consent mechanism. Display disclosure text explaining what biometric data is processed and why.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-018",
+      "feature_type": "content-marking",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Deepfake / synthetic media labeling mechanism",
+        "positive_signals": [
+          "Visible label on AI-generated video/audio output",
+          "C2PA metadata on synthetic media files",
+          "Watermark embedding in generated audio/video"
+        ],
+        "negative_signals": [
+          "Synthetic media generation without any labeling",
+          "Deepfake output served without disclosure",
+          "Audio/video generation pipeline without watermark step"
+        ],
+        "warning_message": "AI-generated deepfake content lacks labeling. Art. 50(4) requires deployers to disclose that content is artificially generated or manipulated.",
+        "fix_suggestion": "Add visible label and machine-readable metadata to all synthetic media outputs. Implement C2PA signing for generated audio/video.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-020",
+      "feature_type": "monitoring-check",
+      "sdk_implementation": {
+        "description": "Post-market monitoring data collection and alerting",
+        "middleware_behavior": "Collect performance metrics, user feedback, error rates continuously",
+        "data_to_log": [
+          "prediction_accuracy",
+          "error_rate",
+          "user_complaints",
+          "drift_metrics"
+        ],
+        "user_facing_output": "Monitoring dashboard showing system health and compliance metrics",
+        "configuration_options": {
+          "monitoring_interval": "string, default '1h'",
+          "alert_threshold_accuracy_drop": "number, default 0.05",
+          "alert_threshold_error_rate": "number, default 0.01"
+        },
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Post-market monitoring infrastructure",
+        "positive_signals": [
+          "Monitoring configuration file (prometheus, datadog, custom)",
+          "Alert rules defined for AI performance metrics",
+          "POST-MARKET-MONITORING-PLAN.md or equivalent documentation",
+          "Feedback collection mechanism for users"
+        ],
+        "negative_signals": [
+          "No monitoring configuration for AI system performance",
+          "No alerting on model drift or accuracy degradation",
+          "No post-market monitoring plan documentation",
+          "No user feedback collection mechanism"
+        ],
+        "warning_message": "No post-market monitoring system found. Art. 72 requires providers of high-risk AI to establish and document a post-market monitoring system.",
+        "fix_suggestion": "Set up monitoring for AI performance metrics (accuracy, error rate, drift). Create POST-MARKET-MONITORING-PLAN.md. Configure alerts for degradation.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022b",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "GPAI copyright compliance policy",
+        "positive_signals": [
+          "COPYRIGHT-POLICY.md or copyright-compliance.* document",
+          "Policy describes approach to rights holder opt-out mechanisms",
+          "Training data licensing documented"
+        ],
+        "negative_signals": [
+          "No copyright compliance policy",
+          "Training data used without license documentation",
+          "No opt-out mechanism for rights holders"
+        ],
+        "warning_message": "No copyright compliance policy found. Art. 53(1)(d) requires GPAI providers to have a policy to comply with EU copyright law including opt-out mechanisms.",
+        "fix_suggestion": "Create COPYRIGHT-POLICY.md documenting your approach to copyright compliance, training data licensing, and rights holder opt-out mechanisms.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022c",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "GPAI training data summary publication",
+        "positive_signals": [
+          "TRAINING-DATA-SUMMARY.md or training-data.* documentation",
+          "Summary describes data sources at category level",
+          "Publication or public availability of summary"
+        ],
+        "negative_signals": [
+          "No training data summary",
+          "Training data undisclosed",
+          "Data sources described vaguely without actionable information"
+        ],
+        "warning_message": "No training data summary found. Art. 53(1)(d) requires GPAI providers to publish a sufficiently detailed summary of training data content.",
+        "fix_suggestion": "Create TRAINING-DATA-SUMMARY.md describing training data sources, categories, sizes, and processing. Follow the template provided by the AI Office.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-023c",
+      "feature_type": "cybersecurity-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "GPAI systemic risk cybersecurity measures",
+        "positive_signals": [
+          "Model access protected by authentication and authorization",
+          "Inference API rate-limited and monitored",
+          "Model weights encrypted at rest",
+          "Adversarial robustness test results documented",
+          "Incident response plan for model security breaches"
+        ],
+        "negative_signals": [
+          "Model API accessible without authentication",
+          "No rate limiting on model inference",
+          "Model weights stored unencrypted",
+          "No adversarial testing documented",
+          "No security incident response plan"
+        ],
+        "warning_message": "Insufficient cybersecurity for GPAI with systemic risk. Art. 55(1)(d) requires ensuring adequate level of cybersecurity protection.",
+        "fix_suggestion": "Implement: model access authentication, rate limiting, weight encryption, adversarial testing program, security incident response plan.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-026",
+      "feature_type": "traceability-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "AI system inventory and version traceability",
+        "positive_signals": [
+          "AI-INVENTORY.md or ai-systems.json listing all AI components",
+          "Semantic versioning on AI models and systems",
+          "CHANGELOG.md with AI system changes documented",
+          "Git tags for AI model releases"
+        ],
+        "negative_signals": [
+          "No AI system inventory documentation",
+          "AI models deployed without version tracking",
+          "No changelog for AI system modifications",
+          "No traceability between model versions and deployments"
+        ],
+        "warning_message": "No AI system inventory or traceability found. Providers must maintain records of AI system versions, modifications, and deployment history.",
+        "fix_suggestion": "Create AI-INVENTORY.md listing all AI systems. Use semantic versioning for models. Maintain CHANGELOG.md for AI changes.",
+        "severity": "info"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-029",
+      "feature_type": "classification-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Substantial modification indicators in deployer codebase",
+        "positive_signals": [
+          "No custom model fine-tuning on top of provider model",
+          "Using provider API as-is without significant output modification",
+          "Clear documentation that system is used within provider's intended purpose"
+        ],
+        "negative_signals": [
+          "Custom fine-tuning scripts on provider's base model",
+          "Significant post-processing that changes AI system behavior",
+          "System used for purpose different from provider's intended purpose",
+          "Custom training data applied to modify model behavior"
+        ],
+        "warning_message": "Potential deployer-becomes-provider situation detected. Art. 25(1)(c): if a deployer substantially modifies a high-risk AI system or changes its intended purpose, they assume provider obligations including conformity assessment.",
+        "fix_suggestion": "Review modifications against Art. 25 criteria. If substantial modification confirmed, assume provider obligations. Document assessment in MODIFICATION-ASSESSMENT.md.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-032",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Open-source GPAI reduced documentation compliance",
+        "positive_signals": [
+          "Open-source license file (MIT, Apache, etc.)",
+          "GPAI model card with training methodology description",
+          "Model published on public repository with documentation",
+          "No systemic risk classification (under 10^25 FLOPs)"
+        ],
+        "negative_signals": [
+          "Open-source model without any documentation",
+          "Missing model card despite GPAI classification",
+          "Model exceeds systemic risk threshold but claims open-source exemption"
+        ],
+        "warning_message": "Open-source GPAI model with insufficient documentation. Art. 53(2) provides reduced obligations only if model is under systemic risk threshold and documentation is published.",
+        "fix_suggestion": "Publish model card with: training methodology, data summary, evaluation results. Verify model is below systemic risk threshold (10^25 FLOPs).",
+        "severity": "info"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011c",
+      "feature_type": "incident-response",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Deployer incident response and system suspension procedures",
+        "positive_signals": [
+          "INCIDENT-RESPONSE.md or incident-response-plan.* documentation",
+          "Suspension criteria defined for AI system",
+          "Provider notification template or procedure",
+          "Authority notification contact information documented"
+        ],
+        "negative_signals": [
+          "No incident response documentation",
+          "No defined criteria for system suspension",
+          "No provider notification mechanism",
+          "No contact information for market surveillance authority"
+        ],
+        "warning_message": "No AI incident response plan found. Art. 26(5) requires deployers to suspend high-risk AI if risk is identified and notify provider and authorities.",
+        "fix_suggestion": "Create INCIDENT-RESPONSE.md with: suspension criteria, notification templates, authority contacts, escalation procedures.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011e",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Provider instructions for use archived by deployer",
+        "positive_signals": [
+          "Vendor documentation directory (vendor-docs/, provider-docs/)",
+          "Provider instructions for use (PDF, MD) present in project",
+          "Documentation references provider-specific configuration"
+        ],
+        "negative_signals": [
+          "No vendor or provider documentation directory",
+          "No provider instructions for use found in project",
+          "AI system configured without reference to provider guidance"
+        ],
+        "warning_message": "No provider instructions for use found. Art. 26(1) requires deployers to obtain and follow provider's instructions for use of high-risk AI systems.",
+        "fix_suggestion": "Create vendor-docs/ directory. Archive provider's instructions for use. Reference in system configuration documentation.",
+        "severity": "info"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-013a",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "FRIA aligned with existing GDPR DPIA",
+        "positive_signals": [
+          "Both DPIA and FRIA documents present",
+          "FRIA cross-references DPIA findings",
+          "FRIA covers fundamental rights beyond data protection"
+        ],
+        "negative_signals": [
+          "FRIA present without DPIA reference (if DPIA exists)",
+          "DPIA present but no FRIA for high-risk AI deployer",
+          "FRIA covers only data protection rights (duplicating DPIA without extending)"
+        ],
+        "warning_message": "FRIA should complement existing GDPR DPIA per Art. 27(4). Ensure FRIA cross-references DPIA and extends to cover all fundamental rights.",
+        "fix_suggestion": "Create FRIA that cross-references existing DPIA. Add sections for: non-discrimination, dignity, expression, effective remedy, children's rights, workers' rights.",
+        "severity": "info"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002b",
+      "feature_type": "prohibited-practice-scan",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Code patterns exploiting vulnerable groups (age, disability, economic)",
+        "positive_signals": [
+          "Age verification before AI interaction",
+          "Vulnerability safeguards in user segmentation",
+          "No targeting based on disability/economic status"
+        ],
+        "negative_signals": [
+          "User segmentation by age/disability/economic status for differential AI behavior",
+          "Targeting minors or elderly with AI-driven persuasion",
+          "Exploiting economic vulnerability indicators in AI recommendations"
+        ],
+        "warning_message": "Potential exploitation of vulnerable groups detected. Art. 5(1)(b) prohibits AI exploiting vulnerabilities due to age, disability, or social/economic situation.",
+        "fix_suggestion": "Remove vulnerability-based targeting. Add safeguards for vulnerable user groups. Implement age verification where applicable.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002c",
+      "feature_type": "prohibited-practice-scan",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Social scoring patterns aggregating behavior across contexts",
+        "positive_signals": [
+          "No cross-context behavioral scoring",
+          "Scoring limited to relevant context only",
+          "No access restriction based on behavioral scores"
+        ],
+        "negative_signals": [
+          "Cross-context behavior aggregation into unified score",
+          "User scores affecting unrelated service access",
+          "Social behavior data merged across domains"
+        ],
+        "warning_message": "Potential social scoring system detected. Art. 5(1)(c) prohibits evaluating persons based on social behavior leading to detrimental treatment in unrelated contexts.",
+        "fix_suggestion": "Ensure scoring is context-specific. Do not aggregate behavior across unrelated domains. Do not restrict service access based on behavioral scores.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002d",
+      "feature_type": "prohibited-practice-scan",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Criminal risk profiling based on demographics or personality",
+        "positive_signals": [
+          "No criminal risk assessment functionality",
+          "Risk assessment based on objective verifiable facts only"
+        ],
+        "negative_signals": [
+          "Criminal risk prediction based on demographics",
+          "Personality trait-based risk scoring",
+          "Profiling without objective fact basis"
+        ],
+        "warning_message": "Potential criminal risk profiling detected. Art. 5(1)(d) prohibits assessing criminal risk based solely on profiling or personality traits.",
+        "fix_suggestion": "Remove demographic/personality-based criminal profiling. If risk assessment needed, base on objective verifiable facts only.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002e",
+      "feature_type": "prohibited-practice-scan",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Untargeted facial image collection or scraping patterns",
+        "positive_signals": [
+          "No facial image collection functionality",
+          "Facial data processing with explicit consent only",
+          "No internet or CCTV scraping"
+        ],
+        "negative_signals": [
+          "Web scraping for facial images (BeautifulSoup/Scrapy + face detection)",
+          "Bulk image download from social media",
+          "CCTV feed processing for facial recognition database building"
+        ],
+        "warning_message": "Potential untargeted facial scraping detected. Art. 5(1)(e) prohibits creating or expanding facial recognition databases through untargeted scraping.",
+        "fix_suggestion": "Remove facial image scraping. Use only consensual, targeted facial data collection with documented lawful basis.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002g",
+      "feature_type": "prohibited-practice-scan",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Biometric categorization by sensitive characteristics",
+        "positive_signals": [
+          "No biometric categorization functionality",
+          "No sensitive attribute inference from biometric data"
+        ],
+        "negative_signals": [
+          "Biometric data used to infer race, religion, political opinion",
+          "Facial analysis for ethnicity classification",
+          "Voice analysis for sensitive characteristic inference"
+        ],
+        "warning_message": "Potential biometric categorization by sensitive characteristics. Art. 5(1)(g) prohibits using biometric data to categorize persons by race, political opinions, religion, sex life, or sexual orientation.",
+        "fix_suggestion": "Remove sensitive characteristic inference from biometric processing. Do not classify individuals by protected characteristics using biometric data.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003a",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Risk identification and analysis documentation",
+        "positive_signals": [
+          "Risk register with identified risks",
+          "Severity and likelihood ratings for each risk",
+          "Mitigation measures documented per risk"
+        ],
+        "negative_signals": [
+          "No risk register or risk analysis documentation",
+          "Risks identified without severity ratings",
+          "No mitigation measures for identified risks"
+        ],
+        "warning_message": "No risk identification/analysis documentation found. Art. 9(2)(a) requires identifying and analyzing known and reasonably foreseeable risks.",
+        "fix_suggestion": "Create risk register documenting: each identified risk, severity, likelihood, affected persons, mitigation measures.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003b",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Misuse risk evaluation documentation",
+        "positive_signals": [
+          "Misuse scenario documentation",
+          "Foreseeable misuse cases analyzed",
+          "Mitigations for misuse scenarios documented"
+        ],
+        "negative_signals": [
+          "No misuse scenarios documented",
+          "Only intended use documented without misuse analysis",
+          "No mitigations for foreseeable misuse"
+        ],
+        "warning_message": "No misuse risk evaluation found. Art. 9(2)(b) requires evaluating risks from reasonably foreseeable misuse.",
+        "fix_suggestion": "Document at least 5 foreseeable misuse scenarios with analysis and mitigations.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-020a",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Corrective action and withdrawal procedures",
+        "positive_signals": [
+          "CORRECTIVE-ACTIONS.md or corrective-action-policy.*",
+          "Procedure for withdrawing non-compliant AI system",
+          "Authority notification process for corrective actions"
+        ],
+        "negative_signals": [
+          "No corrective action procedures",
+          "No withdrawal process documented",
+          "No authority notification for non-compliance discovered"
+        ],
+        "warning_message": "No corrective action procedures found. Art. 20 requires providers to take corrective actions including withdrawal when AI system is non-compliant.",
+        "fix_suggestion": "Document corrective action procedures: identification, assessment, action, notification, verification.",
+        "severity": "info"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022a",
+      "feature_type": "documentation-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "GPAI downstream provider information (Annex XII)",
+        "positive_signals": [
+          "DOWNSTREAM-INFO.md or annex-xii.* documentation",
+          "Model capabilities and limitations documented for integrators",
+          "Integration guidelines with compliance requirements for downstream use"
+        ],
+        "negative_signals": [
+          "No downstream provider information",
+          "Model distributed without integration compliance guidance",
+          "No documentation of model limitations for downstream providers"
+        ],
+        "warning_message": "No downstream provider information found. Art. 53(1)(b) requires GPAI providers to supply Annex XII information to downstream providers integrating the model.",
+        "fix_suggestion": "Create DOWNSTREAM-INFO.md documenting: model capabilities, limitations, intended downstream uses, compliance requirements for integrators.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-008b",
+      "feature_type": "human-oversight",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Biometric identification double verification mechanism",
+        "positive_signals": [
+          "Two-step verification for biometric identification results",
+          "Human confirmation required before biometric match action",
+          "No automated action on single biometric match"
+        ],
+        "negative_signals": [
+          "Automated action on single biometric match without human verification",
+          "No confirmation step after biometric identification",
+          "Direct decision based on biometric match alone"
+        ],
+        "warning_message": "No double verification for biometric identification. Art. 14(5) requires at least two natural persons to verify biometric identification results before action.",
+        "fix_suggestion": "Implement two-step human verification: biometric match must be confirmed by second person before any action is taken.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-004",
+      "feature_type": "data-governance-check",
+      "sdk_implementation": {
+        "description": "Data quality validation middleware for training pipelines",
+        "middleware_behavior": "Pre-training validation: check data completeness, balance, and bias indicators",
+        "data_to_log": [
+          "data_source",
+          "sample_count",
+          "class_distribution",
+          "bias_metrics"
+        ],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Training data quality and governance infrastructure",
+        "positive_signals": [
+          "Data quality validation scripts in training pipeline",
+          "Dataset documentation (datasheet, data card)",
+          "Bias testing in data preprocessing",
+          "Data versioning (DVC, MLflow, etc.)"
+        ],
+        "negative_signals": [
+          "No data validation in training pipeline",
+          "Undocumented training data sources",
+          "No bias checking on training data",
+          "No data versioning or tracking"
+        ],
+        "warning_message": "No training data governance found. Art. 10 requires providers to use high-quality training data with appropriate governance measures including bias examination.",
+        "fix_suggestion": "Add data validation pipeline. Create dataset documentation. Implement bias checking. Use data versioning (DVC or similar).",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-009",
+      "feature_type": "accuracy-robustness-check",
+      "sdk_implementation": {
+        "description": "Accuracy and robustness testing framework",
+        "middleware_behavior": null,
+        "data_to_log": [
+          "accuracy_metrics",
+          "robustness_score",
+          "test_date"
+        ],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Accuracy, robustness, and cybersecurity measures for AI system",
+        "positive_signals": [
+          "Benchmark test suite with accuracy metrics",
+          "Adversarial robustness testing",
+          "Input validation and sanitization",
+          "Model versioning with performance tracking",
+          "Security headers on AI endpoints"
+        ],
+        "negative_signals": [
+          "No accuracy benchmarks or test suites",
+          "No adversarial or robustness testing",
+          "No input validation on AI inputs",
+          "AI model deployed without performance metrics",
+          "No cybersecurity measures on AI endpoints"
+        ],
+        "warning_message": "Insufficient accuracy, robustness, or cybersecurity measures. Art. 15 requires high-risk AI to achieve appropriate levels of accuracy, robustness, and cybersecurity.",
+        "fix_suggestion": "Implement: accuracy benchmarks with held-out test set, adversarial testing, input validation, model versioning, endpoint security.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-023",
+      "feature_type": "gpai-evaluation",
+      "sdk_implementation": {
+        "description": "GPAI systemic risk evaluation and adversarial testing framework",
+        "middleware_behavior": null,
+        "data_to_log": [
+          "evaluation_results",
+          "red_team_findings",
+          "test_date"
+        ],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "GPAI model evaluation and adversarial testing infrastructure",
+        "positive_signals": [
+          "Model evaluation suite with standardized benchmarks",
+          "Red-teaming or adversarial testing results documented",
+          "Safety testing (OWASP LLM Top 10 or equivalent)",
+          "Evaluation results published or available",
+          "Systemic risk assessment documentation"
+        ],
+        "negative_signals": [
+          "No model evaluation suite",
+          "No adversarial or red-team testing",
+          "No safety benchmark results",
+          "GPAI model deployed without documented evaluation",
+          "No systemic risk assessment for high-capability model"
+        ],
+        "warning_message": "No GPAI model evaluation found. Art. 55(1)(a) requires GPAI providers with systemic risk to perform model evaluations including adversarial testing.",
+        "fix_suggestion": "Implement: standardized model evaluation benchmarks, red-teaming program, safety testing per OWASP LLM Top 10. Document all results.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-033",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Assess High-Risk Classification of AI System",
+        "positive_signals": [
+          "Documentation for Assess High-Risk Classification of AI System",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Assess High-Risk Classification of AI System",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Assess High-Risk Classification of AI System. Review obligation requirements.",
+        "fix_suggestion": "Address Assess High-Risk Classification of AI System per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-033a",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Document Art. 6(3) Non-High-Risk Exception",
+        "positive_signals": [
+          "Documentation for Document Art. 6(3) Non-High-Risk Exception",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Document Art. 6(3) Non-High-Risk Exception",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Document Art. 6(3) Non-High-Risk Exception. Review obligation requirements.",
+        "fix_suggestion": "Address Document Art. 6(3) Non-High-Risk Exception per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-034",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Provider: Master Compliance Checklist for High-Risk AI",
+        "positive_signals": [
+          "Documentation for Provider: Master Compliance Checklist for High-Risk AI",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Provider: Master Compliance Checklist for High-Risk AI",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Provider: Master Compliance Checklist for High-Risk AI. Review obligation requirements.",
+        "fix_suggestion": "Address Provider: Master Compliance Checklist for High-Risk AI per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-010a",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: QMS: Document All Required Procedures",
+        "positive_signals": [
+          "Documentation for QMS: Document All Required Procedures",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for QMS: Document All Required Procedures",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: QMS: Document All Required Procedures. Review obligation requirements.",
+        "fix_suggestion": "Address QMS: Document All Required Procedures per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-035",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Provide Information to Authorities Upon Reasoned Request",
+        "positive_signals": [
+          "Documentation for Provide Information to Authorities Upon Reasoned Request",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Provide Information to Authorities Upon Reasoned Request",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Provide Information to Authorities Upon Reasoned Request. Review obligation requirements.",
+        "fix_suggestion": "Address Provide Information to Authorities Upon Reasoned Request per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-036",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Recognize When You Become a Provider (Value Chain Liability)",
+        "positive_signals": [
+          "Documentation for Recognize When You Become a Provider (Value Chain Liability)",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Recognize When You Become a Provider (Value Chain Liability)",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Recognize When You Become a Provider (Value Chain Liability). Review obligation requirements.",
+        "fix_suggestion": "Address Recognize When You Become a Provider (Value Chain Liability) per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-037",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Affix CE Marking to High-Risk AI System",
+        "positive_signals": [
+          "Documentation for Affix CE Marking to High-Risk AI System",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Affix CE Marking to High-Risk AI System",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Affix CE Marking to High-Risk AI System. Review obligation requirements.",
+        "fix_suggestion": "Address Affix CE Marking to High-Risk AI System per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-014a",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Register Self and System in EU Database Before Deployment",
+        "positive_signals": [
+          "Documentation for Register Self and System in EU Database Before Deployment",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Register Self and System in EU Database Before Deployment",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Register Self and System in EU Database Before Deployment. Review obligation requirements.",
+        "fix_suggestion": "Address Register Self and System in EU Database Before Deployment per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-020b",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Post-Market Monitoring: Active Systematic Data Collection",
+        "positive_signals": [
+          "Documentation for Post-Market Monitoring: Active Systematic Data Collection",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Post-Market Monitoring: Active Systematic Data Collection",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Post-Market Monitoring: Active Systematic Data Collection. Review obligation requirements.",
+        "fix_suggestion": "Address Post-Market Monitoring: Active Systematic Data Collection per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-030a",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Inform Affected Persons of Right to Complaint to Authorities",
+        "positive_signals": [
+          "Documentation for Inform Affected Persons of Right to Complaint to Authorities",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Inform Affected Persons of Right to Complaint to Authorities",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Inform Affected Persons of Right to Complaint to Authorities. Review obligation requirements.",
+        "fix_suggestion": "Address Inform Affected Persons of Right to Complaint to Authorities per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-039",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Complete Correct Conformity Assessment Procedure",
+        "positive_signals": [
+          "Documentation for Complete Correct Conformity Assessment Procedure",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Complete Correct Conformity Assessment Procedure",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Complete Correct Conformity Assessment Procedure. Review obligation requirements.",
+        "fix_suggestion": "Address Complete Correct Conformity Assessment Procedure per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-006b",
+      "feature_type": "compliance-check",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Compliance check: Logging: Provider Must Generate and Store System Logs",
+        "positive_signals": [
+          "Documentation for Logging: Provider Must Generate and Store System Logs",
+          "Evidence of obligation fulfillment"
+        ],
+        "negative_signals": [
+          "No documentation for Logging: Provider Must Generate and Store System Logs",
+          "No evidence of compliance"
+        ],
+        "warning_message": "Compliance gap: Logging: Provider Must Generate and Store System Logs. Review obligation requirements.",
+        "fix_suggestion": "Address Logging: Provider Must Generate and Store System Logs per obligation requirements.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-HR-001",
+      "feature_type": "hr-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "HR AI recruitment pipeline compliance",
+        "positive_signals": [
+          "Bias testing suite for hiring AI (fairness metrics)",
+          "Applicant notification component about AI use",
+          "Human review workflow for AI-assisted rejections",
+          "FRIA document for recruitment use case",
+          "Works council notification template"
+        ],
+        "negative_signals": [
+          "No bias testing in recruitment pipeline",
+          "No applicant notification about AI involvement",
+          "Automated rejection without human review step",
+          "Emotion recognition SDK used in interview context (PROHIBITED)",
+          "No FRIA for high-risk HR AI"
+        ],
+        "warning_message": "HR recruitment AI compliance gap detected. HR: AI in Recruitment and Candidate Selection is High-Risk — full high-risk obligations apply including FRIA, bias testing, and worker notification.",
+        "fix_suggestion": "Add bias testing to recruitment pipeline. Create applicant AI notification. Implement human review for rejections. Generate FRIA template.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-HR-002",
+      "feature_type": "hr-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Workplace AI and employee monitoring compliance",
+        "positive_signals": [
+          "Worker notification templates",
+          "Works council consultation documentation",
+          "Human oversight for personnel decisions",
+          "No emotion recognition imports",
+          "Performance evaluation bias testing"
+        ],
+        "negative_signals": [
+          "Emotion recognition SDK (fer, deepface emotion, affectiva) — PROHIBITED in workplace",
+          "Employee monitoring without notification documentation",
+          "Automated termination/demotion decisions without human review",
+          "No bias testing for performance AI"
+        ],
+        "warning_message": "Workplace AI compliance gap. HR: AI in Employee Management and Workplace Monitoring is High-Risk — emotion recognition in workplace is PROHIBITED (Art. 5(1)(f)).",
+        "fix_suggestion": "Remove emotion recognition from workplace context. Add worker notifications. Implement human oversight for personnel decisions.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-HR-003",
+      "feature_type": "hr-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Workplace AI and employee monitoring compliance",
+        "positive_signals": [
+          "Worker notification templates",
+          "Works council consultation documentation",
+          "Human oversight for personnel decisions",
+          "No emotion recognition imports",
+          "Performance evaluation bias testing"
+        ],
+        "negative_signals": [
+          "Emotion recognition SDK (fer, deepface emotion, affectiva) — PROHIBITED in workplace",
+          "Employee monitoring without notification documentation",
+          "Automated termination/demotion decisions without human review",
+          "No bias testing for performance AI"
+        ],
+        "warning_message": "Workplace AI compliance gap. HR: AI Processing of Employee Personal Data — emotion recognition in workplace is PROHIBITED (Art. 5(1)(f)).",
+        "fix_suggestion": "Remove emotion recognition from workplace context. Add worker notifications. Implement human oversight for personnel decisions.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-001",
+      "feature_type": "finance-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Credit scoring AI compliance",
+        "positive_signals": [
+          "Bias testing for credit model (disparate impact analysis)",
+          "FRIA for credit use case",
+          "Human review for adverse credit decisions",
+          "Decision explanation component",
+          "Credit decision logging with confidence scores"
+        ],
+        "negative_signals": [
+          "No bias testing for credit model",
+          "No FRIA for credit AI (mandatory under Art. 27)",
+          "Automated credit denial without human review",
+          "No explanation for adverse decisions",
+          "Credit decisions not logged"
+        ],
+        "warning_message": "Credit AI compliance gap. Finance: AI Credit Scoring and Lending Decisions is High-Risk — FRIA is mandatory for credit scoring (Art. 27).",
+        "fix_suggestion": "Add disparate impact testing. Create FRIA. Implement human review for denials. Add decision explanations.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-002",
+      "feature_type": "finance-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Insurance AI pricing and risk assessment compliance",
+        "positive_signals": [
+          "Pricing fairness analysis",
+          "Proxy discrimination testing",
+          "FRIA for insurance use case",
+          "Health data protection measures"
+        ],
+        "negative_signals": [
+          "No pricing fairness testing",
+          "Proxy variables correlated with protected characteristics",
+          "No FRIA for insurance AI",
+          "Health data processed without special safeguards"
+        ],
+        "warning_message": "Insurance AI compliance gap. Finance: AI in Insurance Pricing and Risk Assessment is High-Risk.",
+        "fix_suggestion": "Add pricing fairness analysis. Test for proxy discrimination. Create FRIA. Implement health data safeguards.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-003",
+      "feature_type": "finance-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Public benefits eligibility AI compliance",
+        "positive_signals": [
+          "FRIA with vulnerable population focus",
+          "Human review for benefit denials",
+          "Bias testing against low-income groups",
+          "Appeal mechanism"
+        ],
+        "negative_signals": [
+          "Automated benefit denial without review",
+          "No vulnerable population bias testing",
+          "No appeal mechanism",
+          "No FRIA"
+        ],
+        "warning_message": "Benefits eligibility AI gap. Finance: AI in Public Benefits Eligibility is High-Risk.",
+        "fix_suggestion": "Add FRIA for benefits. Implement human review for denials. Test bias. Add appeal mechanism.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-004",
+      "feature_type": "finance-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Investment advice AI compliance",
+        "positive_signals": [
+          "AI disclosure in financial UI",
+          "Suitability assessment mechanism",
+          "Recommendation logging",
+          "Human advisor access option"
+        ],
+        "negative_signals": [
+          "No AI disclosure in investment interface",
+          "No suitability assessment",
+          "Recommendations not logged",
+          "No human advisor option"
+        ],
+        "warning_message": "Investment AI compliance gap. Finance: AI in Investment Advice and Robo-Advisory.",
+        "fix_suggestion": "Add AI disclosure. Implement suitability assessment. Log recommendations. Offer human advisor.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MED-001",
+      "feature_type": "healthcare-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Medical AI device compliance (AI Act + MDR)",
+        "positive_signals": [
+          "Clinical validation documentation",
+          "MDR conformity reference",
+          "Demographic accuracy testing",
+          "Clinician-in-the-loop architecture",
+          "Clinical decision logging"
+        ],
+        "negative_signals": [
+          "No clinical validation",
+          "No MDR conformity",
+          "Accuracy untested across demographics",
+          "Autonomous diagnosis without clinician review",
+          "Clinical decisions not logged"
+        ],
+        "warning_message": "Medical AI compliance gap. Healthcare: AI as Medical Device Component is High-Risk — dual AI Act + MDR conformity required.",
+        "fix_suggestion": "Add clinical validation. Ensure MDR conformity. Test across demographics. Implement clinician oversight.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MED-002",
+      "feature_type": "healthcare-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Health AI disclosure and limitations",
+        "positive_signals": [
+          "AI disclosure in health interface",
+          "Medical disclaimer component",
+          "Professional referral mechanism",
+          "Health data GDPR safeguards"
+        ],
+        "negative_signals": [
+          "Health chatbot without AI disclosure",
+          "No medical disclaimer",
+          "No referral to professional",
+          "Health data without special protection"
+        ],
+        "warning_message": "Health AI transparency gap. Healthcare: AI Health Advice Requires Disclosure and Limitations.",
+        "fix_suggestion": "Add AI disclosure. Add medical disclaimer. Implement professional referral.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MED-003",
+      "feature_type": "data-governance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Health data AI protection compliance",
+        "positive_signals": [
+          "Health data encryption at rest and transit",
+          "GDPR Art. 9 legal basis documentation",
+          "Access controls for health data",
+          "Data pseudonymization"
+        ],
+        "negative_signals": [
+          "Health data unencrypted",
+          "No GDPR Art. 9 basis",
+          "No access controls on health data",
+          "Health data stored in plain text"
+        ],
+        "warning_message": "Health data protection gap. Healthcare: AI Processing Health Data — Special Category — GDPR Art. 9 applies.",
+        "fix_suggestion": "Encrypt health data. Document Art. 9 legal basis. Implement access controls.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-EDU-001",
+      "feature_type": "education-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Education admissions AI compliance",
+        "positive_signals": [
+          "Bias testing for admissions model",
+          "FRIA for education use case",
+          "Human review for rejections",
+          "Explanation mechanism for applicants"
+        ],
+        "negative_signals": [
+          "No bias testing in admissions",
+          "No FRIA",
+          "Automated rejection without review",
+          "No explanation for applicants"
+        ],
+        "warning_message": "Education admissions AI gap. Education: AI in Admissions and Access Determination is High-Risk.",
+        "fix_suggestion": "Add bias testing. Create FRIA. Implement human review. Add explanations.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-EDU-002",
+      "feature_type": "education-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Education grading and proctoring AI compliance",
+        "positive_signals": [
+          "Student notification of AI use",
+          "Appeal mechanism for AI-influenced grades",
+          "Proctoring false-positive testing",
+          "No emotion recognition SDK imports"
+        ],
+        "negative_signals": [
+          "Emotion recognition in education context (PROHIBITED Art. 5(1)(f))",
+          "No student notification",
+          "No appeal mechanism",
+          "Proctoring bias untested"
+        ],
+        "warning_message": "Education AI gap. Education: AI in Grading, Assessment and Proctoring is High-Risk — emotion recognition in education is PROHIBITED.",
+        "fix_suggestion": "Remove emotion recognition. Notify students. Add appeal mechanism. Test proctoring fairness.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-EDU-003",
+      "feature_type": "education-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "AI tutoring transparency and minor protection",
+        "positive_signals": [
+          "AI disclosure in education interface",
+          "Minor user protections",
+          "Student data safeguards",
+          "Parental notification mechanism"
+        ],
+        "negative_signals": [
+          "No AI disclosure in tutoring interface",
+          "No minor-specific protections",
+          "Student data collected without safeguards"
+        ],
+        "warning_message": "AI tutoring transparency gap. Education: AI Tutoring and Personalized Learning — Transparency.",
+        "fix_suggestion": "Add AI disclosure. Implement minor protections. Secure student data.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-LAW-001",
+      "feature_type": "law-enforcement-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Law enforcement AI compliance",
+        "positive_signals": [
+          "FRIA for law enforcement use case",
+          "Prohibited biometric screening",
+          "Human oversight documentation",
+          "Bias testing across demographics"
+        ],
+        "negative_signals": [
+          "Biometric identification in public spaces without authorization",
+          "No bias testing",
+          "No FRIA",
+          "Autonomous decisions without human oversight"
+        ],
+        "warning_message": "Law enforcement AI gap. Law Enforcement: AI in Policing is High-Risk with Prohibitions.",
+        "fix_suggestion": "Conduct FRIA. Screen biometric prohibitions. Test for bias. Ensure human oversight.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-LAW-002",
+      "feature_type": "law-enforcement-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Law enforcement notification compliance",
+        "positive_signals": [
+          "Explanation mechanism",
+          "Notification templates",
+          "Delay justification documentation"
+        ],
+        "negative_signals": [
+          "No explanation mechanism",
+          "No notification process",
+          "Permanent withholding of AI involvement information"
+        ],
+        "warning_message": "Law enforcement AI gap. Law Enforcement: Notify Affected Persons of AI-Influenced Decisions.",
+        "fix_suggestion": "Add explanation mechanism. Create notification templates.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-JUS-001",
+      "feature_type": "justice-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Judicial AI compliance",
+        "positive_signals": [
+          "Advisory-only output configuration",
+          "Bias testing for case predictions",
+          "Explainability components",
+          "Judge final authority documentation"
+        ],
+        "negative_signals": [
+          "Autonomous judicial decisions",
+          "Opaque model without explainability",
+          "No bias testing",
+          "AI involvement hidden from parties"
+        ],
+        "warning_message": "Judicial AI gap. Justice: AI in Judicial Decision-Making is High-Risk — highest explainability standard required.",
+        "fix_suggestion": "Configure advisory-only. Add explainability. Test for bias. Document judge authority.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-JUS-002",
+      "feature_type": "legal-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Legal practice AI compliance",
+        "positive_signals": [
+          "Client AI disclosure component",
+          "Lawyer review workflow",
+          "Legal research audit trail"
+        ],
+        "negative_signals": [
+          "No client disclosure of AI use",
+          "AI analysis presented as lawyer work without review",
+          "No audit trail"
+        ],
+        "warning_message": "Legal AI gap. Legal: AI in Law Firm Practice (Contract Review, Legal Research, Due Diligence).",
+        "fix_suggestion": "Add client disclosure. Implement lawyer review. Log AI research.",
+        "severity": "warning"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-INF-001",
+      "feature_type": "infrastructure-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Critical infrastructure AI compliance",
+        "positive_signals": [
+          "Failsafe mechanism documentation",
+          "Redundancy architecture",
+          "Cybersecurity assessment (NIS2)",
+          "Human override mechanism",
+          "Real-time monitoring"
+        ],
+        "negative_signals": [
+          "No failsafe mechanism",
+          "Single point of failure on AI",
+          "No cybersecurity assessment",
+          "No human override",
+          "No real-time monitoring"
+        ],
+        "warning_message": "Infrastructure AI gap. Infrastructure: AI in Critical Infrastructure Management is High-Risk — NIS2 intersection.",
+        "fix_suggestion": "Implement failsafe. Add redundancy. Conduct cybersecurity assessment. Add human override. Set up monitoring.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-BIO-001",
+      "feature_type": "biometric-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Biometric AI compliance with prohibitions",
+        "positive_signals": [
+          "Art. 5 biometric prohibition screening",
+          "Demographic accuracy testing (skin tone, age, gender)",
+          "Double human verification mechanism",
+          "GDPR Art. 9 consent/basis",
+          "Anti-spoofing measures"
+        ],
+        "negative_signals": [
+          "Untargeted facial scraping (PROHIBITED)",
+          "Emotion recognition in workplace/education (PROHIBITED)",
+          "Sensitive characteristic categorization (PROHIBITED)",
+          "Single biometric match without human verification",
+          "Biometric data without GDPR Art. 9 basis"
+        ],
+        "warning_message": "Biometric AI gap. Biometric: AI Biometric Systems are High-Risk with Prohibitions — multiple prohibitions apply (Art. 5).",
+        "fix_suggestion": "Screen all biometric prohibitions. Test demographic accuracy. Add double verification. Document GDPR Art. 9 basis.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-GEN-001",
+      "feature_type": "content-marking",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "AI content generation marking compliance",
+        "positive_signals": [
+          "C2PA library integration",
+          "Watermark embedding in generation pipeline",
+          "Machine-readable marking on all outputs",
+          "Deepfake visible labeling"
+        ],
+        "negative_signals": [
+          "Content generation without marking",
+          "No C2PA or watermark",
+          "Metadata stripped from outputs"
+        ],
+        "warning_message": "Content generation marking gap. Content Generation: AI Image/Video/Audio Generation Transparency.",
+        "fix_suggestion": "Integrate C2PA. Embed watermarks. Add machine-readable marking.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-GEN-002",
+      "feature_type": "content-marking",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Deepfake disclosure compliance",
+        "positive_signals": [
+          "Content disclosure labels",
+          "Deepfake labeling in publishing pipeline"
+        ],
+        "negative_signals": [
+          "Published deepfakes without disclosure",
+          "No labeling mechanism"
+        ],
+        "warning_message": "Content generation marking gap. Content Generation: Deployer Deepfake Disclosure Obligation.",
+        "fix_suggestion": "Add deepfake disclosure labels. Implement labeling pipeline.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-CSR-001",
+      "feature_type": "chatbot-disclosure",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Customer service chatbot AI disclosure",
+        "positive_signals": [
+          "AI disclosure component at start of chat",
+          "Clear 'You are talking to AI' message",
+          "Human agent escalation option",
+          "Disclosure maintained throughout conversation"
+        ],
+        "negative_signals": [
+          "Chatbot without AI disclosure",
+          "Disclosure buried in ToS",
+          "No human escalation option",
+          "AI designed to appear human"
+        ],
+        "warning_message": "Chatbot disclosure gap. Customer Service: AI Chatbot Interaction Disclosure — Art. 50(1) requires disclosure.",
+        "fix_suggestion": "Add AI disclosure at start of chat. Provide human escalation. Maintain disclosure throughout.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MKT-001",
+      "feature_type": "marketing-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Marketing AI manipulation screening and transparency",
+        "positive_signals": [
+          "Art. 5(1)(a) screening for manipulation",
+          "User opt-out mechanism for AI personalization",
+          "Recommendation transparency",
+          "No dark patterns in AI targeting"
+        ],
+        "negative_signals": [
+          "Dark pattern libraries or manipulation techniques",
+          "No user opt-out for AI recommendations",
+          "Hidden AI personalization",
+          "Exploiting user vulnerabilities for targeting"
+        ],
+        "warning_message": "Marketing AI gap. Marketing: AI in Advertising and Recommendation Systems — manipulation = prohibited practice (maximum penalty).",
+        "fix_suggestion": "Screen for manipulation (Art. 5). Add user opt-out. Add transparency. Remove dark patterns.",
+        "severity": "error"
+      }
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-AV-001",
+      "feature_type": "transport-compliance",
+      "sdk_implementation": {
+        "description": null,
+        "middleware_behavior": null,
+        "data_to_log": [],
+        "user_facing_output": null,
+        "configuration_options": {},
+        "code_example": null
+      },
+      "cli_check": {
+        "what_to_scan": "Autonomous vehicle / transport AI compliance",
+        "positive_signals": [
+          "Fail-safe behavior documentation",
+          "Diverse condition testing reports",
+          "Human override mechanism",
+          "Safety-critical decision logging"
+        ],
+        "negative_signals": [
+          "No fail-safe behavior",
+          "Testing only in ideal conditions",
+          "No human override",
+          "Safety decisions not logged"
+        ],
+        "warning_message": "Transport AI gap. Transport: AI in Autonomous Vehicles and Traffic Management is High-Risk.",
+        "fix_suggestion": "Implement fail-safe. Test in adverse conditions. Add human override. Log safety decisions.",
+        "severity": "error"
+      }
+    }
+  ],
+  "version": {
+    "framework_version": "4.0-full-coverage",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2 + domain decomposition",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "coverage": "~95% of actionable obligations. All 8 Annex III domains + 5 additional domains decomposed.",
+    "domains_covered": [
+      "HR/Employment",
+      "Finance/Credit/Insurance",
+      "Healthcare/Medical",
+      "Education",
+      "Law Enforcement",
+      "Migration/Border",
+      "Justice/Legal",
+      "Critical Infrastructure",
+      "Biometric",
+      "Content Generation",
+      "Customer Service",
+      "Marketing/Advertising",
+      "Transport/Autonomous"
+    ]
+  }
+}

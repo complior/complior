@@ -1,0 +1,3981 @@
+{
+  "_version": "2.0",
+  "_note": "Expanded from v1 (25 obligations) to v2 (57 obligations). Original OBL-001 through OBL-025 retained and supplemented with granular sub-obligations (OBL-026 through OBL-057). Each sub-obligation is a discrete, scanner-checkable item.",
+  "obligations": [
+    {
+      "obligation_id": "eu-ai-act-OBL-001",
+      "article_reference": "Article 4",
+      "title": "Ensure AI Literacy of Staff",
+      "description": "Every company that uses or builds AI must train their staff so they understand AI risks and responsible use. Training must be proportionate to role and risk level.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable",
+        "high",
+        "limited",
+        "minimal",
+        "gpai"
+      ],
+      "obligation_type": "training",
+      "what_to_do": [
+        "Conduct skills gap assessment",
+        "Develop role-based AI literacy training",
+        "Document training completion",
+        "Annual refresh cycle"
+      ],
+      "evidence_required": "Training records, curriculum, policy document, completion certificates",
+      "deadline": "2025-02-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "€15M / 3% turnover",
+      "severity": "medium",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: AI-LITERACY.md or ai-training-policy.* files in project root. Verifies document contains required sections (scope, training levels, schedule, records). Template auto-generates if missing.",
+      "document_template_needed": true,
+      "document_template_type": "policy",
+      "sdk_feature_needed": false,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for AI_LITERACY_POLICY.md or equivalent in repo root or /docs. Verify training records directory exists.",
+      "what_not_to_do": [
+        "Do NOT allow staff to use AI systems without any training",
+        "Do NOT treat AI literacy as a one-time event — it requires annual refresh",
+        "Do NOT apply same training level to all roles — tailor to responsibility"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-001a",
+      "article_reference": "Article 4",
+      "parent_obligation": "eu-ai-act-OBL-001",
+      "title": "AI Literacy: Maintain Training Records",
+      "description": "Keep documented records of who was trained, when, on what topics, and their assessment results. Records must be available for auditors.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "all"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Create training register with: employee name, role, training date, topics, score",
+        "Store records securely for audit",
+        "Update when new staff join or roles change"
+      ],
+      "evidence_required": "Training register (spreadsheet or system), individual completion records",
+      "deadline": "2025-02-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "€15M / 3% turnover",
+      "severity": "low",
+      "automatable": "full",
+      "document_template_needed": true,
+      "document_template_type": "record",
+      "sdk_feature_needed": false,
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT destroy or fail to maintain training completion records",
+        "Do NOT accept unverified self-attestation as training evidence"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002",
+      "article_reference": "Article 5",
+      "title": "Do Not Deploy Prohibited AI Systems",
+      "description": "Screen all AI systems against Article 5 prohibited practices. Eight categories of banned AI uses.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Audit all AI systems against Art. 5 list",
+        "Document screening results",
+        "Establish pre-deployment screening process"
+      ],
+      "evidence_required": "AI inventory with Art. 5 screening results per system",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover (HIGHEST tier)",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "report",
+      "sdk_feature_needed": false,
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for emotion recognition, facial recognition, social scoring library imports. Flag if used in HR/education context.",
+      "what_not_to_do": [
+        "Do NOT deploy any AI system matching prohibited categories without legal review",
+        "Do NOT assume third-party tools are automatically compliant with Art. 5"
+      ],
+      "automation_approach": "Scanner performs static analysis for prohibited practice patterns: import statements for emotion detection SDKs, facial recognition APIs, social scoring libraries. Flags packages matching prohibited use signatures in dependency tree."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002a",
+      "article_reference": "Article 5(1)(a)",
+      "parent_obligation": "eu-ai-act-OBL-002",
+      "title": "Prohibited: Subliminal/Manipulative AI Techniques",
+      "description": "Verify no AI system uses subliminal, manipulative, or deceptive techniques to distort behavior beyond a person's consciousness, causing significant harm.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "For each AI system: assess whether it could manipulate user behavior through deceptive patterns, dark patterns, or subliminal techniques",
+        "Document assessment rationale"
+      ],
+      "evidence_required": "Per-system manipulation risk assessment document",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for dark pattern libraries, A/B testing frameworks used in manipulative contexts, urgency/scarcity timers driven by AI personalization.",
+      "what_not_to_do": [
+        "Do NOT use dark patterns, persuasion profiling, or behavioral nudging that bypasses user awareness",
+        "Do NOT deploy recommendation systems that materially distort behavior causing significant harm"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002b",
+      "article_reference": "Article 5(1)(b)",
+      "parent_obligation": "eu-ai-act-OBL-002",
+      "title": "Prohibited: Exploitation of Vulnerable Groups",
+      "description": "Verify no AI system exploits vulnerabilities of specific groups (age, disability, social/economic situation) to distort behavior causing significant harm.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Identify if AI targets vulnerable populations (children, elderly, disabled, economically disadvantaged)",
+        "Assess exploitation risk",
+        "Document findings"
+      ],
+      "evidence_required": "Vulnerability exploitation risk assessment per system",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for age-targeting, disability-targeting, or financial-vulnerability-targeting in AI model configurations or user segmentation code.",
+      "what_not_to_do": [
+        "Do NOT target elderly, disabled, or economically vulnerable users with manipulative AI features",
+        "Do NOT exploit cognitive limitations of specific user groups"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002c",
+      "article_reference": "Article 5(1)(c)",
+      "parent_obligation": "eu-ai-act-OBL-002",
+      "title": "Prohibited: Social Scoring Systems",
+      "description": "Verify no AI system evaluates or classifies persons based on social behavior or personal characteristics leading to detrimental treatment unrelated to the original context.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Check if any AI system scores individuals based on social behavior",
+        "Verify scores are not used to deny services/rights in unrelated contexts"
+      ],
+      "evidence_required": "Social scoring screening assessment",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for 'social score', 'reputation score', 'trust score' in codebase used for access control or service eligibility outside original context.",
+      "what_not_to_do": [
+        "Do NOT aggregate personal behavior scores across unrelated contexts",
+        "Do NOT restrict access to services based on AI-scored social behavior"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002d",
+      "article_reference": "Article 5(1)(d)",
+      "parent_obligation": "eu-ai-act-OBL-002",
+      "title": "Prohibited: Criminal Risk Profiling",
+      "description": "Verify no AI system assesses criminal risk of individuals based solely on profiling or personality traits (without concrete behavioral facts).",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Check if any AI predicts criminal behavior from personal traits alone",
+        "Ensure law enforcement AI uses objective factual indicators, not profiling"
+      ],
+      "evidence_required": "Criminal profiling screening assessment",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for predictive policing models, recidivism prediction, criminal risk scoring based on demographic/personality features.",
+      "what_not_to_do": [
+        "Do NOT use AI to predict criminal risk based solely on demographics or personality traits",
+        "Do NOT profile individuals without objective verifiable fact basis"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002e",
+      "article_reference": "Article 5(1)(e)",
+      "parent_obligation": "eu-ai-act-OBL-002",
+      "title": "Prohibited: Untargeted Facial Image Scraping",
+      "description": "Verify no AI system creates or expands facial recognition databases through untargeted scraping from internet or CCTV.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Check if any AI component scrapes facial images",
+        "Verify face databases are not built from untargeted web/CCTV scraping"
+      ],
+      "evidence_required": "Facial data sourcing audit",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for face scraping scripts, web crawlers targeting image sources, facial recognition training data pipelines sourcing from public internet.",
+      "what_not_to_do": [
+        "Do NOT scrape facial images from the internet or CCTV without targeted lawful basis",
+        "Do NOT build or expand facial recognition databases through mass collection"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002f",
+      "article_reference": "Article 5(1)(f)",
+      "parent_obligation": "eu-ai-act-OBL-002",
+      "title": "Prohibited: Workplace/Education Emotion Recognition",
+      "description": "Verify no AI system infers emotions of persons in workplace or educational settings (except for medical or safety reasons).",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Identify any emotion recognition AI",
+        "Verify it is NOT used in workplace or education context",
+        "If medical/safety exception claimed, document justification"
+      ],
+      "evidence_required": "Emotion recognition context audit",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover",
+      "severity": "critical",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for emotion detection libraries (Affectiva, Azure Face emotion, etc.). Flag if imported in HR, LMS, or workplace monitoring code. Check for sentiment analysis on employee communications.",
+      "what_not_to_do": [
+        "Do NOT use emotion recognition AI in workplace or educational settings",
+        "Do NOT infer employee mood, stress, or engagement via facial/voice analysis (exception: medical/safety)"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-002g",
+      "article_reference": "Article 5(1)(g)",
+      "parent_obligation": "eu-ai-act-OBL-002",
+      "title": "Prohibited: Sensitive Biometric Categorization",
+      "description": "Verify no AI system categorizes persons based on biometric data to infer sensitive characteristics (race, political opinions, religion, sexual orientation).",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "unacceptable"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Check if any AI uses biometric data to infer race, religion, political views, or sexual orientation",
+        "Document absence of such functionality"
+      ],
+      "evidence_required": "Biometric categorization screening",
+      "deadline": "2025-02-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "€35M / 7% turnover",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for biometric categorization models, ethnicity/race/religion classifiers applied to facial/voice/gait data.",
+      "what_not_to_do": [
+        "Do NOT use biometric data to categorize individuals by race, religion, political opinion, or sexual orientation",
+        "Do NOT infer sensitive attributes from biometric inputs"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003",
+      "article_reference": "Article 9",
+      "title": "Establish Risk Management System",
+      "description": "Continuous risk management system throughout the high-risk AI lifecycle covering identification, evaluation, mitigation, and testing of risks.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Create documented RMS",
+        "Identify and analyze known/foreseeable risks",
+        "Adopt mitigation measures",
+        "Test system",
+        "Review and update regularly"
+      ],
+      "evidence_required": "RMS plan, risk register, mitigation log, testing reports",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "€15M / 3% turnover",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "impact-assessment",
+      "sdk_feature_needed": false,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for RISK_MANAGEMENT.md, risk_register.json, or equivalent in /docs or /compliance directory.",
+      "what_not_to_do": [
+        "Do NOT operate high-risk AI without a documented risk management system",
+        "Do NOT treat risk management as a one-time assessment — it must be continuous"
+      ],
+      "automation_approach": "Scanner checks for RISK-MANAGEMENT.md or risk-assessment.* documents. Verifies structure includes: identified risks, misuse scenarios, mitigation measures, test results. Auto-generates template with required sections."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003a",
+      "article_reference": "Article 9(2)",
+      "parent_obligation": "eu-ai-act-OBL-003",
+      "title": "RMS: Identify and Analyze Known Risks",
+      "description": "Identify and analyze risks to health, safety, and fundamental rights that are known or reasonably foreseeable when the system is used as intended.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Systematic risk identification workshop",
+        "Document each risk with likelihood and severity",
+        "Consider risks to different user groups including vulnerable persons"
+      ],
+      "evidence_required": "Risk register with identified risks, likelihood, severity, affected groups",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT ignore known risks documented by provider or reported by users",
+        "Do NOT omit foreseeable misuse scenarios from risk analysis"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003b",
+      "article_reference": "Article 9(2)(b)",
+      "parent_obligation": "eu-ai-act-OBL-003",
+      "title": "RMS: Evaluate Risks from Misuse",
+      "description": "Estimate and evaluate risks not only from intended use but also from reasonably foreseeable misuse of the high-risk AI system.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Brainstorm foreseeable misuse scenarios",
+        "Assess risks from each misuse scenario",
+        "Document evaluation and residual risk"
+      ],
+      "evidence_required": "Misuse risk assessment document, residual risk acceptance rationale",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT assume users will only use the system as intended",
+        "Do NOT skip misuse scenario testing"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-003c",
+      "article_reference": "Article 9(6)-(8)",
+      "parent_obligation": "eu-ai-act-OBL-003",
+      "title": "RMS: Test System Before Market Placement",
+      "description": "Test the high-risk AI system to identify appropriate risk management measures. Testing must be against defined metrics prior to market placement.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Define test plan with metrics",
+        "Execute tests including real-world conditions where appropriate (Art. 60)",
+        "Document test results against acceptance criteria",
+        "Test prior to market AND throughout lifecycle"
+      ],
+      "evidence_required": "Test plan, test results, acceptance criteria, test logs signed by responsible person",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for test suites specific to AI model evaluation (accuracy, fairness, robustness tests). Verify test results are stored and versioned.",
+      "what_not_to_do": [
+        "Do NOT place high-risk AI on market without testing against defined metrics",
+        "Do NOT use production data for testing without proper safeguards"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-004",
+      "article_reference": "Article 10",
+      "title": "Ensure Training Data Quality and Governance",
+      "description": "Training, validation, and testing datasets must meet quality criteria: relevant, representative, free of errors, complete. Bias detection required.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Implement data governance practices",
+        "Document data sources",
+        "Assess for bias",
+        "Address special category data under GDPR"
+      ],
+      "evidence_required": "Data governance policy, data quality reports, bias analysis, GDPR documentation",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for data validation scripts, bias testing frameworks, data documentation files (datasheets, data cards).",
+      "what_not_to_do": [
+        "Do NOT train AI on biased, incomplete, or unrepresentative datasets",
+        "Do NOT skip data quality assessment before training"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-004a",
+      "article_reference": "Article 10(2)(f)",
+      "parent_obligation": "eu-ai-act-OBL-004",
+      "title": "Data Governance: Bias Detection and Mitigation",
+      "description": "Examine training data specifically for possible biases that could lead to discrimination, especially regarding protected characteristics.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Run statistical bias analysis on training data",
+        "Test for representation gaps across gender, age, ethnicity, disability",
+        "Implement bias mitigation (resampling, reweighting, debiasing)",
+        "Document findings and actions"
+      ],
+      "evidence_required": "Bias analysis report, mitigation actions log, before/after fairness metrics",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "full",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for bias detection library imports (fairlearn, aif360), fairness metric calculations in evaluation scripts, data representativeness checks.",
+      "what_not_to_do": [
+        "Do NOT deploy AI systems without bias testing across protected characteristics",
+        "Do NOT ignore disparate impact in model outputs"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-004b",
+      "article_reference": "Article 10(2)(a)-(e)",
+      "parent_obligation": "eu-ai-act-OBL-004",
+      "title": "Data Governance: Document Data Sources and Processing",
+      "description": "Document all data collection, labeling, storage, and processing choices. Include data source descriptions and representativeness rationale.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Create data sheet / data card for each training dataset",
+        "Document collection methodology, labeling process, storage, and preprocessing",
+        "Assess and document representativeness"
+      ],
+      "evidence_required": "Data sheets/data cards, data processing records, representativeness assessment",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "medium",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for datasheet.md, data_card.json, or MODEL_CARD.md in /data or /docs directories. Verify data source documentation exists.",
+      "what_not_to_do": [
+        "Do NOT use training data without documenting provenance and processing steps",
+        "Do NOT omit data source limitations from documentation"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-005",
+      "article_reference": "Article 11 / Annex IV",
+      "title": "Create and Maintain Technical Documentation",
+      "description": "Comprehensive technical documentation per Annex IV before market placement. Keep for 10 years.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Prepare docs per Annex IV",
+        "Include system description, development process, risk management, performance metrics, changes",
+        "Keep updated for 10 years"
+      ],
+      "evidence_required": "Complete Annex IV documentation, version history",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "report",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "metadata",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for TECHNICAL_DOCUMENTATION.md or /docs/annex-iv/ directory. Verify sections cover: system description, development process, data governance, risk management, testing, post-market monitoring.",
+      "what_not_to_do": [
+        "Do NOT place high-risk AI on market without Annex IV technical documentation",
+        "Do NOT treat documentation as optional or post-hoc"
+      ],
+      "automation_approach": "Scanner checks for TECHNICAL-DOCUMENTATION.md matching Annex IV structure. Verifies 7 required sections: general description, system elements, monitoring/control, risk management, lifecycle changes, standards, post-market plan."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-006",
+      "article_reference": "Article 12",
+      "title": "Implement Automatic Event Logging",
+      "description": "High-risk AI must automatically record events (logs) for traceability: periods of use, input references, outputs, human interventions.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Design logging from architecture phase",
+        "Log: timestamps, inputs, outputs, human oversight actions, errors",
+        "Integrity protection on logs",
+        "Provide deployer guidance on log access"
+      ],
+      "evidence_required": "Architecture docs showing logging, sample logs, retention policy, integrity mechanism",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "full",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "logging",
+      "cli_check_possible": true,
+      "cli_check_description": "Verify logging middleware on AI endpoints. Check log format includes timestamp, session_id, input hash, output, model version. Verify log retention >= 180 days.",
+      "what_not_to_do": [
+        "Do NOT deploy high-risk AI without automatic event logging enabled",
+        "Do NOT log only errors — log all events specified by provider"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-006a",
+      "article_reference": "Article 19 / Article 26(6)",
+      "parent_obligation": "eu-ai-act-OBL-006",
+      "title": "Log Retention: Keep Logs Minimum 6 Months",
+      "description": "Deployers must keep automatically generated logs for at least 6 months, or longer if required by sector regulation. Providers must store logs under their control.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Configure log retention period >= 6 months",
+        "Ensure logs are not purged before retention period",
+        "If sector regulation requires longer retention, configure accordingly",
+        "Implement access controls on logs"
+      ],
+      "evidence_required": "Log retention configuration, log lifecycle management policy, evidence logs exist for required period",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "medium",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Check log retention configuration. Verify retention_days >= 180. Check for log rotation/purge settings that would violate retention requirement.",
+      "what_not_to_do": [
+        "Do NOT configure log rotation shorter than 180 days",
+        "Do NOT store logs in unencrypted or publicly accessible locations"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-007",
+      "article_reference": "Article 13",
+      "title": "Provide Transparency and Instructions for Use",
+      "description": "High-risk AI must come with clear instructions covering: provider identity, capabilities, limitations, intended purpose, performance metrics, human oversight, maintenance.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Create Instructions for Use per Art. 13(3)",
+        "Distribute to all deployers",
+        "Update on changes"
+      ],
+      "evidence_required": "Instructions for Use document, distribution records",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "report",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for INSTRUCTIONS_FOR_USE.md, README with AI system capabilities/limitations, or /docs/deployer-guide. Verify it includes: intended purpose, limitations, performance metrics, human oversight instructions.",
+      "what_not_to_do": [
+        "Do NOT deliver high-risk AI without clear instructions for use",
+        "Do NOT use overly technical jargon that deployers cannot understand"
+      ],
+      "automation_approach": "Scanner checks for INSTRUCTIONS-FOR-USE.md or instructions.* file. Verifies it contains: intended purpose, limitations, known risks, performance metrics, human oversight requirements."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-008",
+      "article_reference": "Article 14",
+      "title": "Design for Human Oversight",
+      "description": "High-risk AI must enable effective human oversight: understand outputs, decide not to use, override, intervene, stop the system.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Build override/stop mechanisms",
+        "Implement explainability",
+        "HITL/HOTL/HIC mechanisms",
+        "For biometric ID: require 2 independent human verifications"
+      ],
+      "evidence_required": "Design docs showing oversight mechanisms, UI screenshots, testing reports",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "critical",
+      "automatable": "partial",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "logging",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for human override functions, emergency stop endpoints, confidence threshold escalation, human review queue implementation.",
+      "what_not_to_do": [
+        "Do NOT design high-risk AI without human oversight capability",
+        "Do NOT make override mechanisms inaccessible or complex to use"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-008a",
+      "article_reference": "Article 14(4)(b)",
+      "parent_obligation": "eu-ai-act-OBL-008",
+      "title": "Human Oversight: Emergency Stop Mechanism",
+      "description": "Provider must implement a mechanism to stop the AI system immediately. Deployer must have access to this mechanism.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Implement kill switch / emergency stop endpoint",
+        "Document stop procedure",
+        "Ensure deployer can trigger stop without provider intervention"
+      ],
+      "evidence_required": "Stop mechanism documentation, test evidence showing it works, deployer access confirmation",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan for emergency stop / kill switch endpoints, circuit breaker patterns, system disable functions accessible to deployer.",
+      "what_not_to_do": [
+        "Do NOT deploy high-risk AI without an emergency stop or interrupt mechanism",
+        "Do NOT make emergency stop dependent on AI system cooperation"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-008b",
+      "article_reference": "Article 14(5)",
+      "parent_obligation": "eu-ai-act-OBL-008",
+      "title": "Human Oversight: Biometric ID Double Verification",
+      "description": "For high-risk AI used to identify natural persons: no action based solely on AI identification — require at least two independent human verifications before acting.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "If AI identifies a person (biometric), require 2 separate humans to verify before any action",
+        "Document dual verification process",
+        "Log all verification decisions"
+      ],
+      "evidence_required": "Dual verification procedure document, verification logs showing two independent checks per identification",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "For biometric ID systems: check for dual approval workflow, verify at least 2 approval steps before action on identification results.",
+      "what_not_to_do": [
+        "Do NOT use biometric identification without requiring human verification of results",
+        "Do NOT automate decisions based on single biometric match"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-009",
+      "article_reference": "Article 15",
+      "title": "Ensure Accuracy, Robustness, and Cybersecurity",
+      "description": "Appropriate levels of accuracy, robustness against errors/faults, and cybersecurity. Resilience against adversarial attacks.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Define accuracy metrics",
+        "Test for subgroup fairness",
+        "Protect against adversarial attacks",
+        "Implement cybersecurity measures",
+        "Regular vulnerability assessment"
+      ],
+      "evidence_required": "Accuracy test results, robustness tests, cybersecurity assessment, adversarial testing",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Run accuracy benchmarks, check for security configs (API key management, rate limiting, input validation), scan for known vulnerability patterns.",
+      "what_not_to_do": [
+        "Do NOT deploy AI systems without tested accuracy, robustness, and cybersecurity measures",
+        "Do NOT skip adversarial testing"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-009a",
+      "article_reference": "Article 15(1)",
+      "parent_obligation": "eu-ai-act-OBL-009",
+      "title": "Accuracy: Declare and Test Performance Metrics",
+      "description": "Define, declare, and test accuracy metrics appropriate to the AI system's purpose. Include metrics in Instructions for Use.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Define accuracy/performance metrics (precision, recall, F1, AUC, RMSE, etc.)",
+        "Test and document results",
+        "Include confidence intervals",
+        "Declare in Instructions for Use and technical documentation"
+      ],
+      "evidence_required": "Performance metrics definition, test results with confidence intervals, inclusion in Instructions for Use",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for model evaluation scripts computing standard metrics (accuracy, precision, recall, F1). Verify results are saved to documentation directory.",
+      "what_not_to_do": [
+        "Do NOT claim accuracy levels without documented test results",
+        "Do NOT use irrelevant metrics to mask poor performance"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-009b",
+      "article_reference": "Article 15(4)",
+      "parent_obligation": "eu-ai-act-OBL-009",
+      "title": "Cybersecurity: Protect Against Adversarial Attacks",
+      "description": "Implement measures to protect against data poisoning, model manipulation, adversarial examples, prompt injection, and model extraction.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Implement input validation and sanitization",
+        "Add rate limiting",
+        "Protect model weights (access control, encryption)",
+        "Test for adversarial robustness",
+        "Implement prompt injection defenses (for LLM-based systems)",
+        "Conduct penetration testing"
+      ],
+      "evidence_required": "Cybersecurity assessment, adversarial testing results, penetration test report, security configuration documentation",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for input validation on AI endpoints, rate limiting config, prompt injection guards, API key rotation, model access controls, encryption at rest/in transit.",
+      "what_not_to_do": [
+        "Do NOT ignore adversarial attack vectors in system design",
+        "Do NOT deploy without data poisoning and model manipulation protections"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-010",
+      "article_reference": "Article 17",
+      "title": "Establish Quality Management System",
+      "description": "Documented QMS covering compliance strategy, design control, testing procedures, data management, risk management, post-market monitoring, incident reporting, accountability.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Develop QMS per Art. 17(1)(a)-(l)",
+        "Conduct internal audits",
+        "Keep for 10 years"
+      ],
+      "evidence_required": "QMS documentation, internal audit reports, named accountability persons",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "policy",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for COMPLIANCE.md, QMS.md, or /docs/quality-management directory. Verify existence of compliance policy files.",
+      "what_not_to_do": [
+        "Do NOT operate as high-risk AI provider without a quality management system",
+        "Do NOT treat QMS as documentation-only — it must be implemented and auditable"
+      ],
+      "automation_approach": "Scanner checks for QMS configuration: .complior/ directory, quality-policy.md, audit-schedule config, version control compliance (git hooks for documentation updates)."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011",
+      "article_reference": "Article 26(1)-(5)",
+      "title": "Deployer: Use High-Risk AI Per Instructions and Monitor",
+      "description": "Use system per instructions, assign human oversight, ensure input data quality, monitor operations, keep logs 6+ months.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Implement provider instructions",
+        "Assign named human oversight persons",
+        "Verify input data quality",
+        "Active monitoring",
+        "Log retention min 6 months"
+      ],
+      "evidence_required": "Implementation evidence, oversight assignments, monitoring logs, log retention records",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "policy",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "logging",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT use high-risk AI contrary to provider's instructions",
+        "Do NOT skip monitoring of AI system outputs and performance"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011a",
+      "article_reference": "Article 26(2)",
+      "parent_obligation": "eu-ai-act-OBL-011",
+      "title": "Deployer: Assign Named Human Oversight Persons",
+      "description": "Assign specific competent persons with authority, training, and resources for human oversight of each high-risk AI system.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "For each high-risk AI system, designate named oversight person(s)",
+        "Ensure they have: relevant competence, authority to override, training on the specific system, adequate time/resources",
+        "Document assignments and training"
+      ],
+      "evidence_required": "Human oversight assignment matrix (system → person), training records for each person, authority delegation documents",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT assign human oversight to untrained persons",
+        "Do NOT designate oversight as secondary duty without adequate time allocation"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011b",
+      "article_reference": "Article 26(4)",
+      "parent_obligation": "eu-ai-act-OBL-011",
+      "title": "Deployer: Ensure Input Data Relevance",
+      "description": "Deployer must ensure input data provided to the high-risk AI system is relevant and representative for the intended purpose.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Review what input data you provide to the AI system",
+        "Verify data relevance for intended purpose",
+        "Assess representativeness",
+        "Document data quality checks"
+      ],
+      "evidence_required": "Input data quality assessment, relevance verification document",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "medium",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for data validation steps before AI model input. Verify schema validation, null checks, and data quality gates in data pipelines feeding high-risk AI.",
+      "what_not_to_do": [
+        "Do NOT feed irrelevant, incorrect, or biased data into high-risk AI systems",
+        "Do NOT ignore data quality requirements specified by provider"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-012",
+      "article_reference": "Article 26(7)",
+      "title": "Inform Workers About High-Risk AI Use",
+      "description": "Employers must inform workers and their representatives before deploying high-risk AI in the workplace.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Notify worker representatives (works council/union)",
+        "Notify affected workers individually",
+        "Provide: what AI does, how it affects them, their rights"
+      ],
+      "evidence_required": "Notification records, content provided, acknowledgment receipts",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "notice",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT deploy high-risk AI in workplace without informing affected workers beforehand",
+        "Do NOT notify workers after deployment has already begun"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-013",
+      "article_reference": "Article 27",
+      "title": "Conduct Fundamental Rights Impact Assessment (FRIA)",
+      "description": "Public bodies and certain private deployers must conduct FRIA before deploying high-risk AI. Cover: processes, affected persons, risks, oversight, governance.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Determine if FRIA required (public body, public service, credit/insurance)",
+        "Conduct FRIA per Art. 27(3)",
+        "Notify market surveillance authority",
+        "Update FRIA on changes"
+      ],
+      "evidence_required": "FRIA document, authority notification, update records",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT deploy high-risk AI without conducting FRIA (if public sector, credit, insurance, or HR)",
+        "Do NOT conduct FRIA as a formality — it must assess actual fundamental rights impact"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-014",
+      "article_reference": "Article 49",
+      "title": "Register High-Risk AI in EU Database",
+      "description": "Providers register Annex III high-risk AI before market placement. Public body deployers register intended use.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "registration",
+      "what_to_do": [
+        "Register in EU database (Art. 71) before market placement",
+        "Keep registration updated"
+      ],
+      "evidence_required": "Registration confirmation/number",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "medium",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT operate high-risk AI without registering it in the EU database",
+        "Do NOT provide false or incomplete information in registration"
+      ],
+      "automation_approach": "Scanner generates EU database registration form data from project metadata. Pre-fills: system name, provider, intended purpose, risk level. Outputs JSON ready for submission."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015",
+      "article_reference": "Article 50(1)",
+      "title": "Disclose AI Interaction to Users — Chatbot/Assistant",
+      "description": "AI systems interacting directly with persons must inform them they are interacting with AI, unless obvious from context.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high",
+        "limited",
+        "minimal"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Display clear notice before/at start of interaction",
+        "Multi-language support",
+        "Document disclosure mechanism"
+      ],
+      "evidence_required": "Screenshots showing disclosure, UI documentation, disclosure text in all languages",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "full",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "disclosure",
+      "cli_check_possible": true,
+      "cli_check_description": "Scan chat/conversation UI code for AI disclosure text. Check for disclosure middleware on conversation endpoints.",
+      "what_not_to_do": [
+        "Do NOT allow AI chatbots to interact with users without disclosing AI nature",
+        "Do NOT bury disclosure in terms of service — it must be prominent and timely"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015a",
+      "article_reference": "Article 50(1)",
+      "parent_obligation": "eu-ai-act-OBL-015",
+      "title": "Disclose AI Interaction — Voice/Phone Systems",
+      "description": "Voice AI systems (phone bots, voice assistants) must disclose AI nature via audio at the start of interaction.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high",
+        "limited",
+        "minimal"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Play audio disclosure at start of voice interaction",
+        "Disclosure must be in user's language",
+        "Log that disclosure was played"
+      ],
+      "evidence_required": "Audio recording of disclosure, call flow diagram showing disclosure point, disclosure play logs",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "In voice/telephony code: check for disclosure audio asset, verify it plays before first AI response, check IVR flow for disclosure node.",
+      "what_not_to_do": [
+        "Do NOT use AI voice assistants without audio disclosure at start of interaction",
+        "Do NOT use human-sounding voices to deceive users about AI nature"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015b",
+      "article_reference": "Article 50(1)",
+      "parent_obligation": "eu-ai-act-OBL-015",
+      "title": "Disclose AI Interaction — Email/Messaging Bots",
+      "description": "AI systems that send emails or messages on behalf of humans must disclose their AI nature.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high",
+        "limited",
+        "minimal"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Include AI disclosure in email footer or message header",
+        "Example: 'This message was generated by an AI system on behalf of [Company]'",
+        "For auto-reply bots: disclose at first message"
+      ],
+      "evidence_required": "Sample emails/messages showing disclosure, email template configuration",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "medium",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Check email sending code for AI disclosure in templates. Scan messaging bot code for disclosure in first message. Check for 'AI generated' or equivalent in email signature configs.",
+      "what_not_to_do": [
+        "Do NOT send AI-generated emails/messages without indicating AI involvement",
+        "Do NOT disguise automated responses as human-written"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-015c",
+      "article_reference": "Article 50(1)",
+      "parent_obligation": "eu-ai-act-OBL-015",
+      "title": "Disclose AI Interaction — API Responses",
+      "description": "When AI outputs are served via API that reaches end users, the API should include metadata indicating AI generation so downstream deployers can implement disclosure.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high",
+        "limited",
+        "minimal"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Include AI generation metadata in API response headers (e.g., X-AI-Generated: true)",
+        "Document metadata in API docs so deployers can implement user-facing disclosure",
+        "Log API calls with disclosure metadata status"
+      ],
+      "evidence_required": "API documentation showing AI metadata headers, sample API responses with headers, deployer integration guide",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "medium",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Check API response middleware for AI disclosure headers (X-AI-Generated, X-Content-Source: ai). Verify API documentation mentions AI generation metadata.",
+      "what_not_to_do": [
+        "Do NOT return AI API responses without AI-identification metadata headers",
+        "Do NOT strip AI provenance metadata from API responses"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-016",
+      "article_reference": "Article 50(2)",
+      "title": "Mark AI-Generated Content — Machine-Readable",
+      "description": "AI-generated synthetic content (text, image, audio, video) must be machine-readably marked as AI-generated.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high",
+        "limited",
+        "gpai"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Implement C2PA/IPTC metadata for images",
+        "Embed audio/video watermarks",
+        "Implement text provenance marking",
+        "Follow Commission Code of Practice on content marking"
+      ],
+      "evidence_required": "Technical docs of marking implementation, sample marked outputs, interoperability test results",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "full",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "content-marking",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for C2PA, watermarking library imports in content generation pipeline. Verify marking step exists before content delivery.",
+      "what_not_to_do": [
+        "Do NOT generate content without machine-readable AI provenance marking",
+        "Do NOT rely only on visible watermarks — machine-readable marking is required"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-016a",
+      "article_reference": "Article 50(2)",
+      "parent_obligation": "eu-ai-act-OBL-016",
+      "title": "Mark AI-Generated Images — C2PA/Watermark",
+      "description": "AI-generated images must include C2PA manifest and/or invisible watermark indicating AI generation.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high",
+        "limited",
+        "gpai"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Integrate C2PA signing into image generation pipeline",
+        "Add IPTC DigitalSourceType metadata",
+        "Apply invisible watermark if technically feasible",
+        "Test robustness: marking should survive compression, cropping, format conversion"
+      ],
+      "evidence_required": "C2PA manifest examples, IPTC metadata verification, watermark robustness test results",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for c2pa-python, c2patool, IPTC metadata libraries in image generation code. Verify marking step in image output pipeline.",
+      "what_not_to_do": [
+        "Do NOT generate images without C2PA or equivalent watermark metadata",
+        "Do NOT strip EXIF/IPTC/C2PA metadata from AI-generated images"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-016b",
+      "article_reference": "Article 50(2)",
+      "parent_obligation": "eu-ai-act-OBL-016",
+      "title": "Mark AI-Generated Text — Provenance Metadata",
+      "description": "AI-generated text must include machine-readable provenance signals indicating AI generation.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high",
+        "limited",
+        "gpai"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Implement text provenance metadata (JSON-LD, response headers, or embedded metadata)",
+        "For API-served text: include generation metadata in response",
+        "For published text: include provenance in document metadata"
+      ],
+      "evidence_required": "Text provenance implementation documentation, sample outputs with provenance metadata",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "medium",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Check text generation API responses for provenance metadata fields. Verify text outputs include generation source in metadata or headers.",
+      "what_not_to_do": [
+        "Do NOT generate text without provenance metadata in output format",
+        "Do NOT remove AI attribution from generated text when publishing"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-017",
+      "article_reference": "Article 50(3)",
+      "title": "Notify Individuals of Emotion Recognition / Biometric Categorization",
+      "description": "Deployers of emotion recognition or biometric categorization systems must inform exposed individuals in advance.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high",
+        "limited"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Identify systems performing emotion recognition or biometric categorization",
+        "Inform all exposed individuals clearly in advance",
+        "Comply with GDPR",
+        "Document notification"
+      ],
+      "evidence_required": "Notification records, signage photos, GDPR documentation",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "notice",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT use emotion recognition or biometric categorization without informing affected individuals",
+        "Do NOT process biometric data without explicit notification"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-018",
+      "article_reference": "Article 50(4)",
+      "title": "Label Deep Fakes and AI-Generated Content for Public",
+      "description": "Deployers of deep fake AI or AI-generated text for public interest must label content as AI-generated.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "limited"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Add visible label to AI-generated/manipulated content",
+        "Preserve machine-readable markings from provider",
+        "Exception for artistic/satirical with editorial safeguards"
+      ],
+      "evidence_required": "Examples of labeled content, labeling policy",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "content-marking",
+      "cli_check_possible": true,
+      "cli_check_description": "Check content publishing pipelines for AI content detection and label overlay. Verify published AI content includes visible labels.",
+      "what_not_to_do": [
+        "Do NOT publish AI-generated deepfakes without clear labeling",
+        "Do NOT remove AI-generation labels from synthetic media"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-019",
+      "article_reference": "Article 43 / Article 47 / Article 48",
+      "title": "Complete Conformity Assessment, Declaration, and CE Marking",
+      "description": "Before market placement: conformity assessment (internal or notified body), EU Declaration of Conformity, CE marking.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Determine assessment path (Annex VI internal or Annex VII notified body)",
+        "Complete assessment",
+        "Issue EU Declaration of Conformity (Art. 47)",
+        "Affix CE marking (Art. 48)",
+        "Keep records 10 years"
+      ],
+      "evidence_required": "Conformity assessment report, EU Declaration, CE marking evidence",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "certificate",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT place high-risk AI on market without conformity assessment and CE marking",
+        "Do NOT self-certify when third-party assessment is required"
+      ],
+      "automation_approach": "Scanner checks for DECLARATION-OF-CONFORMITY.md or .pdf matching Art. 47 structure. Verifies required elements: system identification, provider details, standards applied, conformity procedure."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-020",
+      "article_reference": "Article 72",
+      "title": "Implement Post-Market Monitoring System",
+      "description": "Continuously monitor deployed high-risk AI: collect data from deployers, analyze performance, identify new risks, take corrective action.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "monitoring",
+      "what_to_do": [
+        "Establish post-market monitoring plan",
+        "Collect and analyze performance data",
+        "Take corrective action on issues",
+        "Report serious incidents (Art. 73)"
+      ],
+      "evidence_required": "Monitoring plan, data logs, analysis reports, corrective action records",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "logging",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for monitoring configuration, performance metric collection, anomaly detection setup, alert/notification system for performance degradation.",
+      "what_not_to_do": [
+        "Do NOT stop monitoring AI system after market placement",
+        "Do NOT ignore user feedback or incident reports"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-020a",
+      "article_reference": "Article 20",
+      "parent_obligation": "eu-ai-act-OBL-020",
+      "title": "Corrective Actions and Duty of Information",
+      "description": "When a high-risk AI system is found non-compliant, the provider must take corrective actions (bring into compliance, withdraw, or recall) and inform deployers, distributors, and authorities.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Establish corrective action process",
+        "When non-compliance found: (a) bring system into compliance, (b) withdraw/recall if needed",
+        "Notify all deployers, distributors, and representatives",
+        "Notify national competent authorities of the non-compliance and corrective actions"
+      ],
+      "evidence_required": "Corrective action procedure, incident records, notification evidence to deployers and authorities",
+      "deadline": "2026-08-02",
+      "frequency": "per-incident",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT fail to implement corrective actions when issues are identified",
+        "Do NOT delay withdrawal of non-compliant AI systems"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-021",
+      "article_reference": "Article 73",
+      "title": "Report Serious Incidents to Authorities",
+      "description": "Report serious incidents (death, serious health damage, critical infrastructure disruption, fundamental rights violation) within 15 days.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "reporting",
+      "what_to_do": [
+        "Establish incident detection process",
+        "Report to market surveillance authority within 15 days",
+        "Include: system ID, incident description, cause, corrective measures"
+      ],
+      "evidence_required": "Incident reports filed with authorities, internal incident logs, corrective action records",
+      "deadline": "2026-08-02",
+      "frequency": "per-incident",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "report",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT fail to report serious incidents within required timeline",
+        "Do NOT suppress or downplay incident severity"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022",
+      "article_reference": "Article 53(1)(a)-(b) / Annex XI / Annex XII",
+      "title": "GPAI: Technical Documentation per Annex XI",
+      "description": "GPAI model providers must create technical documentation of the model covering training process, testing, evaluation results.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Create documentation per Annex XI",
+        "Include: model description, training process, testing methodology, evaluation results, capabilities, limitations"
+      ],
+      "evidence_required": "Annex XI documentation, version history",
+      "deadline": "2025-08-02",
+      "frequency": "per-model",
+      "severity": "critical",
+      "automatable": "partial",
+      "document_template_needed": true,
+      "document_template_type": "report",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for MODEL_CARD.md, annex_xi_documentation.md, or /docs/model-documentation. Verify covers: model description, training process, evaluation results, capabilities, limitations.",
+      "what_not_to_do": [
+        "Do NOT offer GPAI model without Annex XI technical documentation",
+        "Do NOT provide incomplete or misleading technical documentation"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022a",
+      "article_reference": "Article 53(1)(b) / Annex XII",
+      "parent_obligation": "eu-ai-act-OBL-022",
+      "title": "GPAI: Downstream Provider Information (Annex XII)",
+      "description": "Provide downstream AI system providers with information needed to integrate and comply: capabilities, limitations, risks, API docs, usage instructions.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Create Annex XII information package",
+        "Include: integration guidance, capabilities/limitations, foreseeable risks, API documentation, usage instructions",
+        "Distribute to all downstream providers BEFORE they integrate your model"
+      ],
+      "evidence_required": "Annex XII documentation, distribution records to downstream providers",
+      "deadline": "2025-08-02",
+      "frequency": "per-model",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for DOWNSTREAM_PROVIDER_INFO.md or API documentation including model capabilities, limitations, and risk information. Check for /docs/integration-guide.",
+      "what_not_to_do": [
+        "Do NOT distribute GPAI to downstream providers without Annex XII information",
+        "Do NOT omit limitations and risk information from downstream documentation"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022b",
+      "article_reference": "Article 53(1)(c)",
+      "parent_obligation": "eu-ai-act-OBL-022",
+      "title": "GPAI: Copyright Compliance Policy",
+      "description": "Implement and document a policy to comply with EU copyright law, in particular regarding the identification and respect of opt-outs from text and data mining.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Create copyright compliance policy for training data",
+        "Implement mechanism to honor robots.txt and TDM opt-outs",
+        "Document data sources and copyright status",
+        "Make policy publicly available"
+      ],
+      "evidence_required": "Copyright compliance policy document, TDM opt-out implementation evidence, data source audit",
+      "deadline": "2025-08-02",
+      "frequency": "per-model",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for COPYRIGHT_POLICY.md or TDM compliance documentation. Scan data collection scripts for robots.txt/TDM opt-out respect.",
+      "what_not_to_do": [
+        "Do NOT train GPAI models without a copyright compliance policy",
+        "Do NOT ignore opt-out mechanisms for rights holders"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-022c",
+      "article_reference": "Article 53(1)(d)",
+      "parent_obligation": "eu-ai-act-OBL-022",
+      "title": "GPAI: Publish Training Data Summary",
+      "description": "Make publicly available a sufficiently detailed summary of the content used for training the GPAI model, per Commission template.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Prepare training data summary",
+        "Follow Commission template format",
+        "Publish publicly (website, model card, registry)",
+        "Include: data types, sources, volume, preprocessing methods, but not individual data points"
+      ],
+      "evidence_required": "Published training data summary, URL where it's accessible",
+      "deadline": "2025-08-02",
+      "frequency": "per-model",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for TRAINING_DATA_SUMMARY.md or public model card with training data section. Verify it's accessible via public URL.",
+      "what_not_to_do": [
+        "Do NOT withhold training data summary from public",
+        "Do NOT provide misleading or incomplete training data descriptions"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-023",
+      "article_reference": "Article 55",
+      "title": "GPAI Systemic Risk: Model Evaluation and Adversarial Testing",
+      "description": "GPAI with systemic risk must perform model evaluations including adversarial testing (red-teaming).",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Perform standardized model evaluations",
+        "Conduct adversarial testing (red-teaming)",
+        "Follow GPAI Code of Practice"
+      ],
+      "evidence_required": "Evaluation reports, red-team results, Code of Practice adherence evidence",
+      "deadline": "2025-08-02",
+      "frequency": "ongoing",
+      "severity": "critical",
+      "automatable": "partial",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for red-teaming scripts, adversarial test suites, model evaluation benchmarks. Verify results stored and versioned.",
+      "what_not_to_do": [
+        "Do NOT deploy GPAI with systemic risk without adversarial testing",
+        "Do NOT skip red-teaming exercises for high-capability models"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-023a",
+      "article_reference": "Article 55(1)(b)",
+      "parent_obligation": "eu-ai-act-OBL-023",
+      "title": "GPAI Systemic Risk: Assess and Mitigate Systemic Risks",
+      "description": "Assess and mitigate possible systemic risks at Union level, including risks from model misuse and emergent capabilities.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Conduct systemic risk assessment (cross-border, societal-level risks)",
+        "Identify risks from: misuse, emergent capabilities, concentration effects, single points of failure",
+        "Implement mitigation measures",
+        "Document assessment and mitigations"
+      ],
+      "evidence_required": "Systemic risk assessment document, mitigation measures log",
+      "deadline": "2025-08-02",
+      "frequency": "ongoing",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT ignore systemic risk indicators in model behavior",
+        "Do NOT deploy without documented risk mitigation plan"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-023b",
+      "article_reference": "Article 55(1)(c)",
+      "parent_obligation": "eu-ai-act-OBL-023",
+      "title": "GPAI Systemic Risk: Track and Report Serious Incidents to AI Office",
+      "description": "Track serious incidents and near-misses related to the GPAI model, report to AI Office and relevant national authorities without undue delay.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "reporting",
+      "what_to_do": [
+        "Establish incident tracking system for GPAI-related incidents",
+        "Report serious incidents to AI Office without undue delay",
+        "Also report to relevant national competent authorities",
+        "Include: model identification, incident description, corrective measures"
+      ],
+      "evidence_required": "Incident tracking records, reports filed with AI Office, national authority notifications",
+      "deadline": "2025-08-02",
+      "frequency": "per-incident",
+      "severity": "critical",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT fail to report GPAI serious incidents to AI Office",
+        "Do NOT delay reporting beyond required timeline"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-023c",
+      "article_reference": "Article 55(1)(d)",
+      "parent_obligation": "eu-ai-act-OBL-023",
+      "title": "GPAI Systemic Risk: Ensure Adequate Cybersecurity",
+      "description": "GPAI providers with systemic risk must ensure adequate cybersecurity protection for the model and its physical infrastructure.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Implement cybersecurity measures for model protection (access control, encryption, monitoring)",
+        "Protect model weights from theft/unauthorized access",
+        "Protect training infrastructure",
+        "Conduct security assessments"
+      ],
+      "evidence_required": "Cybersecurity assessment, access control documentation, encryption configuration, security audit reports",
+      "deadline": "2025-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for model weight encryption, access control on model endpoints, API authentication, rate limiting, infrastructure security configurations.",
+      "what_not_to_do": [
+        "Do NOT deploy GPAI with systemic risk without adequate cybersecurity measures",
+        "Do NOT ignore model security (prompt injection, data poisoning, model theft)"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-024",
+      "article_reference": "Article 26(11) / Article 86",
+      "title": "Provide Explanation of AI Decisions to Affected Persons",
+      "description": "When AI produces decisions with legal/significant effects, provide affected persons with clear explanation of AI's role and main decision factors.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Identify all AI-influenced decisions with legal/significant effects",
+        "Generate and provide explanation: AI's role, main factors, right to contest",
+        "Establish explanation request process"
+      ],
+      "evidence_required": "Explanation process documentation, template notices, records of explanations provided",
+      "deadline": "2026-08-02",
+      "frequency": "per-incident",
+      "severity": "high",
+      "automatable": "partial",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "disclosure",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for explainability libraries (SHAP, LIME), explanation generation code on decision endpoints, contestation information in output.",
+      "what_not_to_do": [
+        "Do NOT deny affected persons explanation of AI-influenced decisions",
+        "Do NOT provide explanations only in technical jargon"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-025",
+      "article_reference": "Article 26(10) / Article 21",
+      "title": "Cooperate with Regulatory Authorities",
+      "description": "Provide information, documentation, and access to AI systems upon request from competent authorities.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "all"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Designate regulatory contact person",
+        "Maintain accessible compliance documentation",
+        "Respond promptly and completely to requests"
+      ],
+      "evidence_required": "Designated contact details, documentation access procedures",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT obstruct regulatory authority inspections or information requests",
+        "Do NOT destroy evidence relevant to compliance investigations"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-026",
+      "article_reference": "Article 16(a)-(j) / Article 25",
+      "title": "Provider: Maintain AI System Inventory and Traceability",
+      "description": "Provider must ensure each high-risk AI system is traceable: unique identification, type, serial number, provider identity on system or packaging.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Assign unique system identifier to each high-risk AI system",
+        "Label system with: provider name, address, contact, system type, serial/version number",
+        "Maintain registry of all systems placed on market with traceability data"
+      ],
+      "evidence_required": "System registry/inventory with unique IDs, labeling evidence, traceability records",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "medium",
+      "automatable": "full",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for system version/identifier in package metadata, build configs, or deployment manifests. Verify provider contact info is present.",
+      "what_not_to_do": [
+        "Do NOT lose track of AI system versions, changes, or deployment history",
+        "Do NOT modify systems without updating traceability records"
+      ],
+      "automation_approach": "Scanner checks git history for version tags, CHANGELOG.md, deployment records. Verifies traceability chain: version → changes → deployment date → affected users."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-027",
+      "article_reference": "Article 22",
+      "title": "Non-EU Provider: Appoint Authorised Representative in EU",
+      "description": "Providers of high-risk AI established outside the EU must appoint an authorised representative in the EU BEFORE placing the system on market.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "If provider is not established in EU: identify and appoint an authorised representative (natural or legal person) in the EU",
+        "Execute written mandate defining representative's obligations",
+        "Ensure representative can provide compliance documentation and cooperate with authorities on provider's behalf"
+      ],
+      "evidence_required": "Written mandate with authorised representative, representative contact details, mandate scope documentation",
+      "deadline": "2026-08-02",
+      "frequency": "one-time",
+      "severity": "high",
+      "automatable": "manual",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT operate high-risk AI in EU market without EU-based authorised representative",
+        "Do NOT appoint a representative without proper mandate documentation"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-028",
+      "article_reference": "Article 54",
+      "title": "GPAI Non-EU Provider: Appoint Authorised Representative",
+      "description": "GPAI model providers established outside the EU must appoint an authorised representative in the EU before placing the model on market.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Appoint authorised representative in EU for GPAI compliance",
+        "Written mandate defining scope",
+        "Representative must be able to demonstrate provider compliance"
+      ],
+      "evidence_required": "Written mandate, representative details, mandate scope",
+      "deadline": "2025-08-02",
+      "frequency": "one-time",
+      "severity": "high",
+      "automatable": "manual",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT provide GPAI models in EU without EU-based authorised representative",
+        "Do NOT appoint a representative without proper mandate for GPAI obligations"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-029",
+      "article_reference": "Article 25(1)",
+      "title": "Deployer-Becomes-Provider: Assume Provider Obligations When Modifying System",
+      "description": "A deployer becomes a provider if they: (a) put their name/trademark on the high-risk AI, (b) make a substantial modification, or (c) modify the intended purpose to become high-risk.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Assess if any actions make you a provider under Art. 25",
+        "If you rebrand, substantially modify, or change intended purpose of a high-risk AI → you assume full provider obligations",
+        "In such cases: comply with all provider obligations (Art. 16)"
+      ],
+      "evidence_required": "Assessment of whether Art. 25 triggers apply, documentation of any modifications",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check if AI model has been fine-tuned or significantly modified from original. Flag if modifications may trigger deployer-to-provider reclassification.",
+      "what_not_to_do": [
+        "Do NOT substantially modify a high-risk AI system and continue using provider's CE marking",
+        "Do NOT avoid provider obligations by calling modifications 'configurations'"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-030",
+      "article_reference": "Article 85",
+      "title": "Provide Complaint Mechanism for Affected Persons",
+      "description": "Affected persons must have the right to lodge a complaint with a market surveillance authority. Deployers/providers should facilitate this.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Establish and publish a complaint mechanism for affected persons",
+        "Provide contact information for lodging complaints",
+        "Inform affected persons of their right to complain to market surveillance authority",
+        "Process complaints in a timely manner"
+      ],
+      "evidence_required": "Complaint mechanism documentation, published contact information, complaint log",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "severity": "medium",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT operate without a mechanism for affected persons to lodge complaints",
+        "Do NOT make complaint process unreasonably difficult"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-031",
+      "article_reference": "Article 26(9)",
+      "title": "Deployer: Inform Provider of Misuse or Non-Compliance",
+      "description": "If a deployer discovers a risk, malfunction, or potential non-compliance of the AI system, they must inform the provider and/or distributor without undue delay.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "obligation_type": "reporting",
+      "what_to_do": [
+        "Establish internal process to detect and escalate AI system issues",
+        "When risk/malfunction detected: notify provider immediately",
+        "Suspend use if system presents risk at national level",
+        "Document all notifications and actions taken"
+      ],
+      "evidence_required": "Issue escalation procedure, notification records to provider, suspension records if applicable",
+      "deadline": "2026-08-02",
+      "frequency": "per-incident",
+      "severity": "high",
+      "automatable": "partial",
+      "cli_check_possible": false,
+      "what_not_to_do": [
+        "Do NOT hide detected misuse or non-compliance from the AI system provider",
+        "Do NOT delay informing provider of risks discovered during deployment"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-032",
+      "article_reference": "Article 53(2) / Article 56",
+      "title": "GPAI Open-Source: Reduced Documentation (with Conditions)",
+      "description": "Open-source GPAI models have reduced documentation requirements IF parameters/weights are publicly available. Does NOT exempt from systemic risk obligations or copyright compliance.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "gpai"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "If model is open-source (publicly available parameters/weights): reduced Annex XI requirements apply",
+        "STILL MUST: publish training data summary (Art. 53(1)(d)), comply with copyright (Art. 53(1)(c))",
+        "If open-source + systemic risk: FULL Art. 55 obligations apply regardless of open-source status",
+        "Document open-source status and reduced obligations rationale"
+      ],
+      "evidence_required": "Open-source license, public model repository, training data summary, copyright compliance policy, systemic risk assessment (if applicable)",
+      "deadline": "2025-08-02",
+      "frequency": "per-model",
+      "severity": "medium",
+      "automatable": "partial",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for open-source license file, public model weights distribution, verify training data summary still exists even for open-source models.",
+      "what_not_to_do": [
+        "Do NOT claim open-source documentation exemption if model has systemic risk classification",
+        "Do NOT omit safety-relevant information from open-source model documentation"
+      ]
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011c",
+      "parent_obligation": "eu-ai-act-OBL-011",
+      "article_reference": "Article 26(5)",
+      "article_text_original": "Where the deployer has reasons to consider that the use of the high-risk AI system in accordance with the instructions may result in that AI system presenting a risk, it shall without undue delay inform the provider or distributor and the relevant market surveillance authority and shall suspend the use of that system.",
+      "article_text_en": "Deployer must suspend high-risk AI system if risk is identified and notify provider and market surveillance authority without undue delay.",
+      "title": "Deployer: Suspend System on Risk and Notify Provider",
+      "description": "If a deployer identifies that using a high-risk AI system may present a risk to health, safety, or fundamental rights, they must immediately suspend use, inform the provider/distributor, and notify the relevant market surveillance authority.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "monitoring",
+      "what_to_do": [
+        "Implement internal process for risk identification during AI system use",
+        "Define clear criteria for when system use should be suspended",
+        "Create notification template for provider and market surveillance authority",
+        "Document every suspension decision with rationale and timeline",
+        "Do not resume use until provider confirms risk is mitigated"
+      ],
+      "what_not_to_do": [
+        "Do NOT continue using a high-risk AI system when a risk has been identified",
+        "Do NOT delay notification to provider or authorities",
+        "Do NOT resume system use without documented risk resolution"
+      ],
+      "evidence_required": "Suspension log, provider notification records, market surveillance authority correspondence, risk resolution documentation",
+      "deadline": "2026-08-02",
+      "frequency": "per-incident",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Continued use of a risky AI system can cause direct harm to individuals and exposes deployer to maximum penalties.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: incident response config files, suspension procedures in documentation, provider notification endpoints in code. Auto-generate suspension log template.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "incident-response",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "monitoring",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for incident response documentation, suspension procedure configs, provider notification mechanism in codebase."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011d",
+      "parent_obligation": "eu-ai-act-OBL-011",
+      "article_reference": "Article 26(6)",
+      "article_text_original": "Deployers of high-risk AI systems shall keep the logs automatically generated by that high-risk AI system to the extent such logs are under their control, for a period appropriate to the intended purpose of the high-risk AI system, of at least six months.",
+      "article_text_en": "Deployers must retain automatically generated logs from high-risk AI systems for at least 6 months.",
+      "title": "Deployer: Retain AI System Logs for Minimum 6 Months",
+      "description": "Deployers of high-risk AI systems are required to keep all automatically generated logs for at least 6 months, or longer if required by sector-specific regulation. Logs must be accessible for inspection by authorities.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Configure log storage with minimum 6-month retention policy",
+        "Ensure logs are stored securely with access controls",
+        "Verify log format is compatible with authority inspection requirements",
+        "Document log retention policy including storage location and access procedures",
+        "Test log retrieval process periodically"
+      ],
+      "what_not_to_do": [
+        "Do NOT set log rotation/deletion shorter than 6 months",
+        "Do NOT store logs without access controls or encryption",
+        "Do NOT discard logs upon system upgrade or migration without backup"
+      ],
+      "evidence_required": "Log retention configuration, storage policy document, sample log access demonstration, retention period verification",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Logs are primary evidence for compliance audits and incident investigations. Without logs, deployer cannot demonstrate compliance.",
+      "automatable": "full",
+      "automation_approach": "Scanner checks log retention configuration in deployment configs (Docker, K8s, cloud provider settings). Verify retention >= 180 days. Check for log rotation policies that may prematurely delete.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check deployment configs for log retention >= 180 days. Scan for log rotation settings. Verify log storage configuration."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-011e",
+      "parent_obligation": "eu-ai-act-OBL-011",
+      "article_reference": "Article 26(1)",
+      "article_text_original": "Deployers of high-risk AI systems shall take appropriate technical and organisational measures to ensure they use such systems in accordance with the instructions for use accompanying the systems.",
+      "article_text_en": "Deployers must verify they have received and follow the provider's instructions for use.",
+      "title": "Deployer: Verify and Follow Provider Instructions for Use",
+      "description": "Before deploying a high-risk AI system, the deployer must obtain the provider's instructions for use and ensure the system is operated strictly according to these instructions. Any deviation must be documented and risk-assessed.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Obtain and archive provider's instructions for use before deployment",
+        "Train operators on instructions specific to each AI system",
+        "Document any configuration choices or deviations from default instructions",
+        "Periodically verify system is still being used per instructions",
+        "Request updated instructions from provider when system is updated"
+      ],
+      "what_not_to_do": [
+        "Do NOT deploy a high-risk AI system without reading instructions for use",
+        "Do NOT modify system configuration beyond what instructions permit without provider consultation",
+        "Do NOT ignore provider-specified limitations or contraindications"
+      ],
+      "evidence_required": "Archived instructions for use, operator training records, deviation log (if any), periodic compliance check records",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Operating a high-risk AI system contrary to instructions transfers liability to deployer and undermines all provider safety measures.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: presence of vendor documentation folder, README references to provider instructions, configuration files matching provider defaults. Cannot verify behavioral compliance automatically.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "policy",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for vendor documentation directory, provider instruction files (PDF/MD), configuration documentation."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-013a",
+      "parent_obligation": "eu-ai-act-OBL-013",
+      "article_reference": "Article 27(4)",
+      "article_text_original": "If any of the obligations referred to in paragraph 1 is already met through the data protection impact assessment conducted pursuant to Article 35 of Regulation (EU) 2016/679, the fundamental rights impact assessment referred to in paragraph 1 shall complement that data protection impact assessment.",
+      "article_text_en": "FRIA must complement existing GDPR DPIA rather than duplicating it.",
+      "title": "FRIA: Align with Existing GDPR DPIA",
+      "description": "When a GDPR Data Protection Impact Assessment already exists for the same AI system, the Fundamental Rights Impact Assessment should complement it rather than duplicate. Cross-reference DPIA findings and extend to cover fundamental rights not addressed by GDPR.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "public sector deployers",
+        "credit scoring",
+        "insurance",
+        "HR screening"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Check if GDPR DPIA exists for the AI system",
+        "Cross-reference DPIA findings in FRIA document",
+        "Extend FRIA to cover fundamental rights beyond data protection (dignity, non-discrimination, expression, etc.)",
+        "Ensure consistent risk ratings between DPIA and FRIA",
+        "Submit FRIA to market surveillance authority as required"
+      ],
+      "what_not_to_do": [
+        "Do NOT assume GDPR DPIA alone satisfies FRIA requirements",
+        "Do NOT contradict DPIA findings in FRIA without explanation",
+        "Do NOT omit non-data-protection fundamental rights from FRIA"
+      ],
+      "evidence_required": "FRIA document with DPIA cross-reference, both documents available for audit, market surveillance authority submission receipt",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Incomplete FRIA that ignores existing DPIA creates audit risk and demonstrates poor governance maturity.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: DPIA document presence, FRIA document presence, cross-references between them. Template auto-generates FRIA sections that complement DPIA.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for DPIA and FRIA documents. Verify FRIA references DPIA. Check for fundamental rights assessment sections."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-012a",
+      "parent_obligation": "eu-ai-act-OBL-012",
+      "article_reference": "Article 26(7)",
+      "article_text_original": "Before putting into service or using a high-risk AI system at the workplace, deployers who are employers shall inform workers' representatives and the affected workers that they will be subject to the use of the high-risk AI system.",
+      "article_text_en": "Employers must inform workers' representatives AND affected workers before deploying high-risk AI in the workplace.",
+      "title": "Worker Notification: Inform Both Representatives and Individual Workers",
+      "description": "Before deploying high-risk AI in the workplace, the employer must notify both workers' representatives (works council, union) AND the individual workers who will be affected. Notification must happen BEFORE deployment, not after.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "workplace AI",
+        "HR AI",
+        "employee monitoring",
+        "performance evaluation"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Identify all workers who will be subject to the high-risk AI system",
+        "Notify workers' representatives (works council/union) in writing before deployment",
+        "Notify individual affected workers in writing before deployment",
+        "Include: system name, purpose, how it affects workers, their rights, contact for questions",
+        "Keep signed acknowledgments as evidence"
+      ],
+      "what_not_to_do": [
+        "Do NOT deploy workplace AI before notification is complete",
+        "Do NOT notify only management — individual workers must be informed",
+        "Do NOT use generic company-wide announcements instead of specific notification to affected workers"
+      ],
+      "evidence_required": "Worker notification letters with acknowledgment signatures, works council consultation record, timeline showing notification preceded deployment",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Worker notification is a visible, testable obligation. Works councils in Germany can block deployment. Non-notification creates immediate legal exposure.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: worker notification template in project docs, works council consultation documentation, deployment checklist referencing notification step.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "notice",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": false,
+      "cli_check_description": null
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-033",
+      "article_reference": "Article 6(2)-(3)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Assess High-Risk Classification of AI System",
+      "description": "Providers must formally assess whether their AI system qualifies as high-risk under Annex III. Art. 6(3) provides exceptions when AI does not pose significant risk — but this must be documented and justified.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "all"
+      ],
+      "applies_to_use_cases": [
+        "all"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Conduct formal risk classification assessment for each AI system",
+        "Evaluate against all 8 Annex III categories and Annex II product list",
+        "If claiming Art. 6(3) exception: document reasons why system does not pose significant risk",
+        "Register non-high-risk assessment in internal records",
+        "Re-assess upon any significant system modification"
+      ],
+      "what_not_to_do": [
+        "Do NOT assume your AI is not high-risk without formal assessment",
+        "Do NOT claim Art. 6(3) exception without documented justification",
+        "Do NOT skip re-assessment when system is modified"
+      ],
+      "evidence_required": "Risk classification document, Annex III mapping, Art. 6(3) exception justification (if claimed)",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Incorrect classification = missing all high-risk obligations.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for RISK-CLASSIFICATION.md or risk-classification.* document with Annex III evaluation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "assessment",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for risk classification documentation against Annex III categories."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-033a",
+      "article_reference": "Article 6(3)-(4)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Document Art. 6(3) Non-High-Risk Exception",
+      "description": "If provider determines Annex III system is NOT high-risk under Art. 6(3), they must document this and notify national authority before market placement.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "limited",
+        "minimal"
+      ],
+      "applies_to_use_cases": [
+        "all Annex III edge cases"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Document why system does not pose significant risk",
+        "Describe specific Art. 6(3) conditions met",
+        "Notify national competent authority before market placement",
+        "Keep documentation updated"
+      ],
+      "what_not_to_do": [
+        "Do NOT rely on exception without written justification",
+        "Do NOT skip authority notification",
+        "Do NOT use exception for systems significantly affecting individuals"
+      ],
+      "evidence_required": "Art. 6(3) assessment, authority notification receipt",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Claiming exception without documentation is a violation.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for Art. 6(3) exception documentation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "assessment",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for Art. 6(3) exception documentation and authority notification.",
+      "parent_obligation": "eu-ai-act-OBL-033"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-034",
+      "article_reference": "Article 16",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Provider: Master Compliance Checklist for High-Risk AI",
+      "description": "Article 16 lists 11 core obligations for providers of high-risk AI. This is the comprehensive checklist: risk management, data governance, documentation, logging, transparency, oversight, accuracy, QMS, conformity, registration, corrective actions.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Ensure compliance with all Section 2 requirements (Art. 9-15)",
+        "Maintain quality management system (Art. 17)",
+        "Keep technical documentation (Art. 11/Annex IV)",
+        "Keep automatically generated logs (Art. 12/19)",
+        "Ensure conformity assessment before market placement (Art. 43)",
+        "Register system in EU database (Art. 49)",
+        "Take corrective actions when non-compliant (Art. 20)",
+        "Affix CE marking (Art. 48)",
+        "Draw up EU Declaration of Conformity (Art. 47)",
+        "Cooperate with competent authorities",
+        "Demonstrate conformity upon reasoned request"
+      ],
+      "what_not_to_do": [
+        "Do NOT place high-risk AI on market without completing ALL Art. 16 obligations",
+        "Do NOT treat any sub-obligation as optional",
+        "Do NOT self-certify when third-party assessment is required"
+      ],
+      "evidence_required": "Complete compliance file: technical documentation, conformity certificate, CE marking, EU Declaration, QMS, logs, registration",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Master provider obligation. Non-compliance with any sub-item is a violation.",
+      "automatable": "partial",
+      "automation_approach": "Scanner runs full high-risk provider compliance check across all Art. 9-17 requirements.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "report",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Run comprehensive high-risk provider compliance check."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-010a",
+      "article_reference": "Article 17(1)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "QMS: Document All Required Procedures",
+      "description": "Art. 17 specifies QMS must contain: compliance strategy, design/development procedures, quality control, test/validation procedures, technical standards, data management, risk management references, post-market monitoring, incident reporting, communication with authorities.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Document regulatory compliance strategy",
+        "Define design and development procedures",
+        "Define quality control and assurance procedures",
+        "Define test and validation procedures",
+        "Specify technical standards applied",
+        "Document data management procedures",
+        "Document resource management and accountability",
+        "Include all Art. 17(1)(a)-(l) sections"
+      ],
+      "what_not_to_do": [
+        "Do NOT have QMS without concrete procedures",
+        "Do NOT treat QMS as one-time document — maintain continuously"
+      ],
+      "evidence_required": "QMS document with all Art. 17(1)(a)-(l) sections, implementation evidence",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "QMS is auditable. Missing sections = non-compliance.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks QMS documentation for all Art. 17(1) required sections.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "policy",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check QMS document structure against Art. 17(1)(a)-(l) checklist.",
+      "parent_obligation": "eu-ai-act-OBL-010"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-035",
+      "article_reference": "Article 23",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Provide Information to Authorities Upon Reasoned Request",
+      "description": "Providers and deployers must respond to authority requests with all necessary conformity documentation in official EU language. Refusal is a separate violation.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "all"
+      ],
+      "applies_to_use_cases": [
+        "all"
+      ],
+      "obligation_type": "reporting",
+      "what_to_do": [
+        "Maintain compliance documentation ready for inspection",
+        "Respond to authority requests within reasonable timeframe",
+        "Provide in official EU language as requested",
+        "Designate internal contact for regulatory inquiries",
+        "Keep all compliance records accessible and organized"
+      ],
+      "what_not_to_do": [
+        "Do NOT refuse or delay responding to authority requests",
+        "Do NOT provide incomplete or misleading information",
+        "Do NOT destroy records that may be requested"
+      ],
+      "evidence_required": "Internal procedure for authority requests, designated contact, compliance file ready",
+      "deadline": "2025-08-02",
+      "frequency": "per-incident",
+      "penalty_for_non_compliance": "Up to €7,500,000 or 1% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Non-cooperation escalates enforcement action.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for regulatory contact info and organized compliance documentation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for designated regulatory contact and compliance file organization."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-036",
+      "article_reference": "Article 25(1)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Recognize When You Become a Provider (Value Chain Liability)",
+      "description": "Any party becomes a provider (and assumes ALL provider obligations) if they: (a) rebrand high-risk AI under their name, (b) substantially modify it, or (c) change its intended purpose to make it high-risk. Common trap for companies customizing third-party AI.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Assess whether modifications trigger provider status under Art. 25",
+        "Document modification scope assessment for each AI system",
+        "If triggered: assume all Art. 16 provider obligations",
+        "If rebranding/white-labeling: assume provider obligations",
+        "If changing intended purpose: re-classify risk level"
+      ],
+      "what_not_to_do": [
+        "Do NOT rebrand third-party high-risk AI without assuming provider obligations",
+        "Do NOT substantially modify and keep using original CE marking",
+        "Do NOT change intended purpose without re-classification"
+      ],
+      "evidence_required": "Art. 25 assessment per system, modification log, re-classification record",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Unknowingly becoming provider without meeting obligations is a common trap.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: fine-tuning scripts, custom training, white-label config, intended purpose documentation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for substantial modifications to third-party AI."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-037",
+      "article_reference": "Article 48",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Affix CE Marking to High-Risk AI System",
+      "description": "Providers must affix CE marking to high-risk AI before market placement. For software: include in UI, documentation, or packaging. Include notified body number if third-party assessment was used.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Add CE marking to system UI or documentation",
+        "Ensure CE marking is visible and legible",
+        "Include notified body number if applicable",
+        "Affix before market placement"
+      ],
+      "what_not_to_do": [
+        "Do NOT place on market without CE marking",
+        "Do NOT affix CE without completed conformity assessment",
+        "Do NOT use CE marking on non-high-risk systems (misleading)"
+      ],
+      "evidence_required": "CE marking visible on system/docs/packaging, link to EU Declaration",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "CE marking is the visible compliance symbol. Missing = immediately detectable.",
+      "automatable": "full",
+      "automation_approach": "Scanner checks for CE marking reference in UI, README, docs, package metadata.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for CE marking reference in UI, documentation, and package metadata."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-014a",
+      "article_reference": "Article 49(1)-(3)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Register Self and System in EU Database Before Deployment",
+      "description": "Providers must register both themselves and each high-risk AI system in EU database BEFORE market placement. Deployers in public sector or certain private uses must also register.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk",
+        "public sector deployers"
+      ],
+      "obligation_type": "registration",
+      "what_to_do": [
+        "Register as entity in EU database (Art. 71)",
+        "Register each high-risk AI system with required info",
+        "Complete registration BEFORE market placement",
+        "Update registration when system is modified",
+        "Include all Art. 71(2)-(4) information"
+      ],
+      "what_not_to_do": [
+        "Do NOT deploy without prior database registration",
+        "Do NOT provide false registration data",
+        "Do NOT omit updates from registration"
+      ],
+      "evidence_required": "Registration confirmation, registration number, date preceding deployment",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €7,500,000 or 1% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Registration is prerequisite for legal market placement.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for EU database registration reference in metadata.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "registration",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for EU database registration ID.",
+      "parent_obligation": "eu-ai-act-OBL-014"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-020b",
+      "article_reference": "Article 72(1)-(3)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Post-Market Monitoring: Active Systematic Data Collection",
+      "description": "Post-market monitoring must be ACTIVE and SYSTEMATIC — not passive. Requires defined data collection methods, analysis schedule, corrective action triggers.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "monitoring",
+      "what_to_do": [
+        "Define active data collection methods (feedback, metrics, complaints)",
+        "Establish systematic analysis schedule",
+        "Define indicators triggering corrective actions",
+        "Document plan proportionate to risk",
+        "Integrate with incident reporting (Art. 73)"
+      ],
+      "what_not_to_do": [
+        "Do NOT rely on passive monitoring (waiting for complaints)",
+        "Do NOT analyze data ad-hoc only",
+        "Do NOT ignore negative trends"
+      ],
+      "evidence_required": "Post-market monitoring plan, collection records, analysis reports",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Active monitoring is legally distinct from passive. Regulators will check.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for monitoring config, data pipelines, analysis schedule.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for post-market monitoring with active data collection.",
+      "parent_obligation": "eu-ai-act-OBL-020"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-030a",
+      "article_reference": "Article 85",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Inform Affected Persons of Right to Complaint to Authorities",
+      "description": "Operators must inform individuals they have the right to lodge complaints with market surveillance authorities about AI Act violations. Separate from operator's own complaint mechanism.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high",
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "all"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Include complaint rights info in user documentation",
+        "Provide market surveillance authority contacts",
+        "Ensure process is accessible and understandable",
+        "Do not create barriers to complaints"
+      ],
+      "what_not_to_do": [
+        "Do NOT hide complaint rights in fine print",
+        "Do NOT make process unreasonably difficult",
+        "Do NOT retaliate against complainants"
+      ],
+      "evidence_required": "User documentation with complaint rights, authority contacts",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "medium",
+      "severity_reasoning": "Right to complaint is fundamental for enforcement.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for complaint rights in user documentation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for complaint rights information in user docs.",
+      "parent_obligation": "eu-ai-act-OBL-030"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-038",
+      "article_reference": "Article 95",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Voluntary Codes of Conduct for Non-High-Risk AI",
+      "description": "Providers/deployers of non-high-risk AI may voluntarily adopt codes applying high-risk-like requirements. Once adopted, compliance becomes an obligation.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "limited",
+        "minimal"
+      ],
+      "applies_to_use_cases": [
+        "all non-high-risk"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Evaluate whether voluntary codes are relevant",
+        "If adopted: implement as binding internal obligations",
+        "Document which codes adopted",
+        "Monitor for code updates"
+      ],
+      "what_not_to_do": [
+        "Do NOT claim adherence without implementation",
+        "Do NOT ignore adopted code requirements"
+      ],
+      "evidence_required": "Code adoption record, implementation evidence",
+      "deadline": "ongoing",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Reputational (no statutory fine for voluntary codes)",
+      "severity": "low",
+      "severity_reasoning": "Voluntary but recommended. Demonstrates good practice.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for voluntary code documentation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": false,
+      "cli_check_description": null
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-039",
+      "article_reference": "Article 43",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Complete Correct Conformity Assessment Procedure",
+      "description": "High-risk AI providers must follow the correct conformity assessment route: self-assessment (Annex VI) for most systems, or third-party (Annex VII) for biometric identification and critical infrastructure AI. Using wrong procedure invalidates compliance.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "assessment",
+      "what_to_do": [
+        "Determine correct conformity assessment route (Annex VI or VII)",
+        "For biometric ID systems: mandatory third-party assessment (Art. 43(1))",
+        "For other high-risk: internal assessment (Annex VI) or QMS-based (Annex VII) accepted",
+        "Document conformity assessment procedure and results",
+        "Keep conformity evidence for 10 years after last system on market"
+      ],
+      "what_not_to_do": [
+        "Do NOT self-certify when third-party assessment is required",
+        "Do NOT destroy conformity assessment documentation",
+        "Do NOT use expired conformity assessments"
+      ],
+      "evidence_required": "Conformity assessment report, notified body certificate (if third-party), 10-year retention evidence",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Wrong conformity route = invalid compliance. Re-assessment required.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for conformity assessment documentation and correct route determination.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "assessment",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check for conformity assessment documentation and route correctness."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-006b",
+      "article_reference": "Article 12 + Article 19",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Logging: Provider Must Generate and Store System Logs",
+      "description": "Providers must design high-risk AI to automatically generate logs, and keep those logs under their control for duration of system lifecycle. Logs must capture events relevant to identifying risk and substantial modifications.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all high-risk"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Design system to automatically generate logs per Art. 12",
+        "Log events: operation periods, input data reference, identified risks, substantial modifications",
+        "Store logs securely for entire system lifecycle",
+        "Make logs available for authorities upon request",
+        "Implement tamper-proof logging (immutable audit trail)"
+      ],
+      "what_not_to_do": [
+        "Do NOT disable automatic logging",
+        "Do NOT allow log tampering or deletion during lifecycle",
+        "Do NOT store logs without access controls"
+      ],
+      "evidence_required": "Logging architecture documentation, sample logs, retention policy, access control evidence",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Logs are primary audit evidence. Tamper-proof logging builds trust.",
+      "automatable": "full",
+      "automation_approach": "Scanner checks for logging infrastructure: structured logging, retention config, immutability measures.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "logging",
+      "cli_check_possible": true,
+      "cli_check_description": "Check for automatic event logging infrastructure with retention and immutability.",
+      "parent_obligation": "eu-ai-act-OBL-006"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-HR-001",
+      "article_reference": "Annex III point 4(a)-(b)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "HR: AI in Recruitment and Candidate Selection is High-Risk",
+      "description": "Any AI used for recruitment (CV screening, candidate ranking, interview evaluation, targeted job ads, automated selection) is HIGH-RISK under Annex III. Full high-risk obligations apply. Includes AI in LinkedIn Recruiter, HireVue, Pymetrics, Workable AI, etc.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "recruitment",
+        "CV screening",
+        "interview assessment",
+        "job ad targeting",
+        "candidate ranking"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify all AI recruitment tools as high-risk",
+        "Conduct FRIA before deploying AI recruitment tools",
+        "Notify all job applicants that AI is used in the process",
+        "Ensure human review of all AI-assisted rejection decisions",
+        "Test for bias against protected characteristics (gender, race, age, disability)",
+        "Notify works council/union before deployment",
+        "Retain recruitment AI logs for minimum 6 months",
+        "Provide rejected candidates with explanation of AI involvement"
+      ],
+      "what_not_to_do": [
+        "Do NOT use AI to screen candidates without human oversight",
+        "Do NOT deploy recruitment AI without bias testing",
+        "Do NOT fail to inform applicants about AI use",
+        "Do NOT automate final rejection decisions without human review",
+        "Do NOT use AI to infer protected characteristics from CVs",
+        "Do NOT use emotion recognition in interviews (PROHIBITED Art. 5(1)(f))"
+      ],
+      "evidence_required": "FRIA, bias audit results, applicant notification evidence, human oversight assignment, works council consultation, log retention",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "HR AI directly affects livelihoods. High litigation risk. Equality law intersection.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: bias testing in HR pipeline, applicant notification components, human review workflow, works council template, FRIA.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Check HR compliance: bias testing, applicant notifications, human review.",
+      "domain": "HR-"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-HR-002",
+      "article_reference": "Annex III point 4(c)-(d)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "HR: AI in Employee Management and Workplace Monitoring is High-Risk",
+      "description": "AI for performance reviews, promotion decisions, task allocation, scheduling, productivity monitoring, termination decisions, or any workplace decision affecting employment terms is HIGH-RISK. Includes Workday AI, SAP SuccessFactors, time-tracking AI, productivity monitors.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "performance evaluation",
+        "promotion",
+        "task allocation",
+        "employee monitoring",
+        "termination",
+        "scheduling"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify all workplace management AI as high-risk",
+        "Conduct FRIA before deployment",
+        "Notify ALL affected workers before deployment (Art. 26(7))",
+        "Notify works council with specifics of how AI affects workers",
+        "Assign human oversight for all AI-influenced personnel decisions",
+        "Ensure no termination decision is made solely by AI",
+        "Test for bias in performance evaluations across protected groups",
+        "Provide workers right to explanation (Art. 86)"
+      ],
+      "what_not_to_do": [
+        "Do NOT monitor employees with AI without prior notification",
+        "Do NOT base termination solely on AI output",
+        "Do NOT use emotion recognition in workplace (PROHIBITED Art. 5(1)(f))",
+        "Do NOT evaluate workers using biometric categorization",
+        "Do NOT deploy without works council consultation (legally required in DE, NL, AT)"
+      ],
+      "evidence_required": "FRIA, worker notification records, works council consultation, human oversight assignment, bias testing, Art. 86 explanation mechanism",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Workplace AI directly impacts worker rights. Works councils can block deployment.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: worker notification templates, emotion recognition imports (prohibited), performance bias testing.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "monitoring",
+      "cli_check_possible": true,
+      "cli_check_description": "Check workplace AI: worker notifications, emotion recognition prohibition, bias testing.",
+      "domain": "HR-"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-HR-003",
+      "article_reference": "Annex III point 4 + GDPR",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "HR: AI Processing of Employee Personal Data",
+      "description": "HR AI systems process sensitive employee data (performance, attendance, health, behaviour). Must comply with both AI Act high-risk requirements AND GDPR employee data protections.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all HR AI"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Conduct DPIA under GDPR Art. 35 for HR AI",
+        "Establish lawful basis for employee data processing (legitimate interest or consent)",
+        "Implement data minimization — only process data necessary for stated purpose",
+        "Ensure employee access rights to their processed data",
+        "Define retention periods for employee AI data",
+        "Align FRIA with GDPR DPIA"
+      ],
+      "what_not_to_do": [
+        "Do NOT process employee data beyond stated purpose",
+        "Do NOT retain employee AI data longer than necessary",
+        "Do NOT deny employees access to their AI-processed data",
+        "Do NOT use employee data from one context for unrelated AI purpose"
+      ],
+      "evidence_required": "GDPR DPIA for HR AI, lawful basis documentation, data minimization assessment, retention schedule, employee data access procedure",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "HR data is sensitive. GDPR + AI Act dual compliance required.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for DPIA documentation, data retention config, employee data access mechanism.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check HR data compliance: DPIA, retention, employee data access.",
+      "domain": "HR-"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-001",
+      "article_reference": "Annex III point 5(b)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Finance: AI Credit Scoring and Lending Decisions is High-Risk",
+      "description": "AI for credit decisions, loan approvals, credit scoring, creditworthiness assessment is HIGH-RISK. Applies to banks, fintechs, BNPL services, and any platform using AI to assess financial reliability of individuals.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "credit scoring",
+        "loan approval",
+        "creditworthiness",
+        "BNPL",
+        "lending"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify all credit AI as high-risk under Annex III 5(b)",
+        "Conduct mandatory FRIA (credit explicitly listed in Art. 27)",
+        "Ensure non-discrimination across protected groups",
+        "Provide explanation of AI-influenced credit decisions",
+        "Implement right to human review of adverse decisions",
+        "Test for disparate impact on minorities, gender, age",
+        "Log all credit decisions with AI confidence scores",
+        "Comply with CRD/CCD alongside AI Act"
+      ],
+      "what_not_to_do": [
+        "Do NOT deny credit based solely on AI score without human review option",
+        "Do NOT use proxies for protected characteristics in credit models",
+        "Do NOT train on biased historical lending data without mitigation",
+        "Do NOT skip FRIA — credit is explicitly listed in Art. 27"
+      ],
+      "evidence_required": "FRIA, bias audit with no disparate impact, human review mechanism, decision logging, explanation mechanism",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Credit AI affects financial access. Discrimination in lending heavily regulated.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: credit model bias testing, FRIA, human review workflow, decision explanation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Check credit AI: bias testing, FRIA, human review for adverse decisions.",
+      "domain": "FIN"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-002",
+      "article_reference": "Annex III point 5(c)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Finance: AI in Insurance Pricing and Risk Assessment is High-Risk",
+      "description": "AI for insurance risk assessment, premium calculation, underwriting, or claims assessment for life/health insurance is HIGH-RISK. Applies to insurers, insurtechs, reinsurance companies.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "insurance underwriting",
+        "premium pricing",
+        "risk assessment",
+        "claims assessment",
+        "life insurance",
+        "health insurance"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify insurance AI as high-risk under Annex III 5(c)",
+        "Conduct mandatory FRIA",
+        "Ensure pricing models do not discriminate on protected characteristics",
+        "Test for proxy discrimination (e.g., zip code as proxy for race)",
+        "Provide explanation of AI-influenced insurance decisions",
+        "Log all risk assessments with contributing factors",
+        "Comply with Insurance Distribution Directive alongside AI Act"
+      ],
+      "what_not_to_do": [
+        "Do NOT use health data for discriminatory pricing without legal basis",
+        "Do NOT use genetic data for insurance decisions",
+        "Do NOT systematically deny coverage to vulnerable groups",
+        "Do NOT price based on inferred sensitive characteristics"
+      ],
+      "evidence_required": "FRIA, bias audit for pricing, explanation mechanism, decision logs, proxy discrimination testing",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Insurance AI can deny essential services. Anti-discrimination laws heavily apply.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: insurance model bias testing, health data safeguards, pricing fairness.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Check insurance AI: bias testing, health data safeguards, pricing fairness.",
+      "domain": "FIN"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-003",
+      "article_reference": "Annex III point 5(a)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Finance: AI in Public Benefits Eligibility is High-Risk",
+      "description": "AI for determining eligibility for social benefits, welfare, unemployment, housing assistance, or detecting benefit fraud is HIGH-RISK. Applies to government agencies and contractors.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "benefits eligibility",
+        "welfare",
+        "unemployment",
+        "housing assistance",
+        "fraud detection"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify benefits eligibility AI as high-risk",
+        "Conduct FRIA with emphasis on vulnerable populations",
+        "Ensure human review of all benefit denial decisions",
+        "Test for bias against low-income and minority populations",
+        "Provide clear explanation of AI role in eligibility",
+        "Implement accessible appeal mechanism"
+      ],
+      "what_not_to_do": [
+        "Do NOT automate benefit denials without human review",
+        "Do NOT use AI disproportionately affecting vulnerable applicants",
+        "Do NOT use opaque scoring for benefits eligibility"
+      ],
+      "evidence_required": "FRIA, human review records, bias testing, explanation mechanism, appeal records",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Benefits AI affects vulnerable populations. Dutch childcare scandal as warning.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: FRIA, human review workflow, bias testing against vulnerable populations.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Check benefits AI: FRIA, human review, vulnerability bias testing.",
+      "domain": "FIN"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-FIN-004",
+      "article_reference": "Annex III point 5(d) + Finance context",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Finance: AI in Investment Advice and Robo-Advisory",
+      "description": "AI providing personalized investment advice, portfolio recommendations, or automated trading decisions falls under financial regulation (MiFID II) and may be high-risk when evaluating individual suitability. AI Act transparency obligations always apply.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high",
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "investment advice",
+        "robo-advisory",
+        "algorithmic trading",
+        "portfolio management"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Assess whether investment AI is high-risk (individual suitability assessment = likely yes)",
+        "Disclose AI nature in all client interactions (Art. 50)",
+        "Ensure MiFID II suitability assessment requirements are met",
+        "Provide human financial advisor access for consequential decisions",
+        "Log all AI investment recommendations with rationale",
+        "Test for bias in investment recommendations across client segments"
+      ],
+      "what_not_to_do": [
+        "Do NOT present AI investment advice as equivalent to human financial advisor",
+        "Do NOT hide AI involvement in investment recommendations",
+        "Do NOT skip MiFID II suitability requirements because tool is AI",
+        "Do NOT automate consequential investment decisions without human option"
+      ],
+      "evidence_required": "AI disclosure in client interface, MiFID II compliance evidence, suitability assessment records, recommendation logs",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Investment advice AI intersects with MiFID II. Client protection paramount.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: AI disclosure in financial UI, suitability assessment, recommendation logging.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "disclosure",
+      "cli_check_possible": true,
+      "cli_check_description": "Check investment AI: disclosure, suitability assessment, recommendation logging.",
+      "domain": "FIN"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MED-001",
+      "article_reference": "Annex II Section A + MDR",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Healthcare: AI as Medical Device Component is High-Risk",
+      "description": "AI as safety component in medical devices (diagnostic AI, clinical decision support, imaging analysis, patient monitoring, drug dosing) is HIGH-RISK under both AI Act and Medical Device Regulation. Double regulatory framework.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "medical diagnosis",
+        "clinical decision support",
+        "medical imaging",
+        "patient monitoring",
+        "drug dosing",
+        "surgical robotics"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Classify AI medical device components as high-risk under BOTH AI Act and MDR/IVDR",
+        "Complete conformity assessment under BOTH frameworks",
+        "Clinical evaluation per MDR in addition to AI Act",
+        "Implement medical-grade human oversight (clinician in the loop)",
+        "Ensure AI outputs are presented as support, not diagnosis",
+        "Log all clinical AI decisions with confidence levels",
+        "Test accuracy across demographic groups (age, sex, ethnicity)",
+        "Comply with HIPAA/GDPR for health data"
+      ],
+      "what_not_to_do": [
+        "Do NOT present AI output as definitive diagnosis without clinician review",
+        "Do NOT deploy clinical AI without clinical validation studies",
+        "Do NOT train medical AI on non-representative demographic data",
+        "Do NOT skip MDR conformity for AI medical devices"
+      ],
+      "evidence_required": "MDR conformity certificate, AI Act conformity, clinical evaluation report, demographic testing, clinician oversight records",
+      "deadline": "2027-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Medical AI errors directly harm patients. Double regulatory framework. Highest liability.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: clinical validation docs, MDR references, demographic bias testing, clinician oversight.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "logging",
+      "cli_check_possible": true,
+      "cli_check_description": "Check medical AI: clinical validation, MDR conformity, demographic testing.",
+      "domain": "MED"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MED-002",
+      "article_reference": "Article 50 + Healthcare context",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Healthcare: AI Health Advice Requires Disclosure and Limitations",
+      "description": "AI chatbots/apps providing health advice, symptom checking, mental health support, wellness recommendations must disclose AI nature and clearly state it does not replace professional medical advice.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "health advice chatbot",
+        "symptom checker",
+        "mental health AI",
+        "wellness AI",
+        "telemedicine AI"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Disclose AI nature at start of every health interaction",
+        "Include prominent disclaimer: 'This is AI, not medical advice'",
+        "Recommend consulting healthcare professional for serious symptoms",
+        "Do not provide specific diagnoses or treatment recommendations",
+        "Log health interactions for safety monitoring",
+        "Mark AI-generated health content as AI-generated"
+      ],
+      "what_not_to_do": [
+        "Do NOT allow health AI to present as doctor or medical professional",
+        "Do NOT provide specific diagnoses or prescriptions",
+        "Do NOT downplay symptom severity without directing to professional",
+        "Do NOT store health data without GDPR health data protections"
+      ],
+      "evidence_required": "AI disclosure UI element, medical disclaimer, professional referral mechanism, health data protection docs",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Health misinformation can cause physical harm. High regulatory scrutiny.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: health disclaimer components, AI disclosure, professional referral mechanism.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "disclosure",
+      "cli_check_possible": true,
+      "cli_check_description": "Check health AI: disclosure, medical disclaimers, professional referral.",
+      "domain": "MED"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MED-003",
+      "article_reference": "Annex III + GDPR Art. 9",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Healthcare: AI Processing Health Data — Special Category",
+      "description": "AI systems processing health data must comply with GDPR Art. 9 (special category data) requirements in addition to AI Act. Explicit consent or specific legal basis required. Health data has highest protection level.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high",
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "all healthcare AI"
+      ],
+      "obligation_type": "documentation",
+      "what_to_do": [
+        "Establish GDPR Art. 9 legal basis for health data processing",
+        "Conduct DPIA for health data AI processing",
+        "Implement health data encryption at rest and in transit",
+        "Ensure pseudonymization or anonymization where possible",
+        "Define strict access controls for health data",
+        "Implement right to data portability for patients",
+        "Align AI Act FRIA with GDPR DPIA"
+      ],
+      "what_not_to_do": [
+        "Do NOT process health data without explicit GDPR Art. 9 basis",
+        "Do NOT store health data in unencrypted form",
+        "Do NOT share health data with unauthorized parties",
+        "Do NOT retain health data beyond defined retention period"
+      ],
+      "evidence_required": "GDPR Art. 9 legal basis doc, DPIA, encryption evidence, access control records, retention policy",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Health data is special category. Breach consequences severe.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: health data encryption config, access controls, GDPR Art. 9 documentation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check health data protection: encryption, access controls, GDPR Art. 9.",
+      "domain": "MED"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-EDU-001",
+      "article_reference": "Annex III point 3(a)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Education: AI in Admissions and Access Determination is High-Risk",
+      "description": "AI for student admissions, university selection, vocational training access, scholarship allocation is HIGH-RISK. Applies to educational institutions and their technology vendors.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "university admissions",
+        "school selection",
+        "scholarship allocation",
+        "vocational training access"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify admissions AI as high-risk",
+        "Conduct FRIA focused on equal access to education",
+        "Test for bias across socioeconomic background, ethnicity, gender, disability",
+        "Ensure human review of all AI-influenced rejection decisions",
+        "Provide applicants explanation of AI role",
+        "Log all admissions decisions with AI scores"
+      ],
+      "what_not_to_do": [
+        "Do NOT automate admissions rejections without human review",
+        "Do NOT use socioeconomic proxies perpetuating inequality",
+        "Do NOT deny educational access solely on AI scoring"
+      ],
+      "evidence_required": "FRIA, bias testing, human review records, explanation mechanism, decision logs",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Education access is fundamental right. Bias perpetuates inequality.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: admissions AI bias testing, FRIA, human review, explanation components.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "bias-testing",
+      "cli_check_possible": true,
+      "cli_check_description": "Check education admissions AI: bias testing, FRIA, human review.",
+      "domain": "EDU"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-EDU-002",
+      "article_reference": "Annex III point 3(b)-(c)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Education: AI in Grading, Assessment and Proctoring is High-Risk",
+      "description": "AI for automated grading, essay scoring, exam proctoring, cheating detection, learning outcome evaluation is HIGH-RISK. Includes Turnitin AI detection, proctoring software, automated essay graders.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "automated grading",
+        "exam proctoring",
+        "cheating detection",
+        "essay scoring",
+        "learning assessment"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify grading/proctoring AI as high-risk",
+        "Conduct FRIA focused on student rights",
+        "Ensure human review for all consequential grade decisions",
+        "Test proctoring AI for false positives across demographics",
+        "Do NOT use emotion recognition in education (PROHIBITED Art. 5(1)(f))",
+        "Provide students right to appeal AI-influenced grades",
+        "Inform students about AI use in assessment"
+      ],
+      "what_not_to_do": [
+        "Do NOT use emotion recognition for exam monitoring (PROHIBITED)",
+        "Do NOT base final grades solely on AI",
+        "Do NOT use proctoring AI without informing students",
+        "Do NOT ignore disproportionate false positives for minority students"
+      ],
+      "evidence_required": "FRIA, student notification, appeal mechanism, proctoring bias testing, Art. 5 emotion recognition screening",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Education AI affects futures. Emotion recognition in education explicitly prohibited.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: emotion recognition imports (prohibited), student notification, proctoring bias testing.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check education AI: prohibited emotion recognition, student notifications, proctoring fairness.",
+      "domain": "EDU"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-EDU-003",
+      "article_reference": "Annex III point 3 + AI Literacy",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Education: AI Tutoring and Personalized Learning — Transparency",
+      "description": "AI tutoring systems, personalized learning platforms, and adaptive learning tools that directly interact with students must comply with transparency obligations. While not always high-risk, they must disclose AI nature.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "limited",
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "AI tutoring",
+        "personalized learning",
+        "adaptive learning",
+        "educational chatbot"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Disclose AI nature to students at start of interaction",
+        "Inform parents/guardians about AI use for minor students",
+        "Ensure AI tutor does not replace human teacher oversight",
+        "Mark AI-generated educational content as AI-generated",
+        "Protect student learning data under GDPR (minors)",
+        "Implement age-appropriate interaction design"
+      ],
+      "what_not_to_do": [
+        "Do NOT interact with minor students without parental awareness",
+        "Do NOT present AI tutor as equivalent to human teacher",
+        "Do NOT collect unnecessary student data",
+        "Do NOT use student data for purposes beyond education"
+      ],
+      "evidence_required": "AI disclosure, parental notification for minors, student data protection, age-appropriate design documentation",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "AI in education involves minors. Extra data protection and transparency required.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: AI disclosure in education context, minor user protections, student data safeguards.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "disclosure",
+      "cli_check_possible": true,
+      "cli_check_description": "Check education AI: AI disclosure, minor protections, student data.",
+      "domain": "EDU"
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-LAW-001",
+      "article_reference": "Annex III point 6(a)-(d) + Article 5(1)(h)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Law Enforcement: AI in Policing is High-Risk with Prohibitions",
+      "description": "AI for predictive policing, individual risk assessment, deception detection, criminal profiling, crime analytics is HIGH-RISK. Real-time biometric ID in public spaces is PROHIBITED (Art. 5(1)(h)) with very narrow exceptions.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "predictive policing",
+        "risk assessment",
+        "criminal profiling",
+        "deception detection",
+        "crime analytics"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify all law enforcement AI as high-risk",
+        "Verify no prohibited real-time biometric ID in public spaces",
+        "If using narrow exception: obtain judicial authorization per Art. 5(2)",
+        "Conduct enhanced FRIA with fundamental rights emphasis",
+        "Ensure strict human oversight for all decisions",
+        "Test for racial and ethnic bias",
+        "Log all AI-assisted law enforcement decisions",
+        "Ensure right to explanation for affected persons"
+      ],
+      "what_not_to_do": [
+        "Do NOT use real-time biometric ID in public spaces without Art. 5(2) authorization",
+        "Do NOT use AI for mass surveillance",
+        "Do NOT deploy predictive policing without bias testing",
+        "Do NOT base arrest or detention solely on AI output"
+      ],
+      "evidence_required": "Art. 5 screening, judicial authorization (if exception), FRIA, bias testing, human oversight records",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €35,000,000 or 7% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Law enforcement AI intersects with most fundamental rights. Maximum penalties.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: biometric identification patterns, law enforcement context, FRIA.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check law enforcement AI: prohibited biometric ID, bias testing, FRIA."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-LAW-002",
+      "article_reference": "Annex III point 6 + Article 26(10)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Law Enforcement: Notify Affected Persons of AI-Influenced Decisions",
+      "description": "Persons subject to AI-influenced law enforcement decisions have the right to explanation under Art. 86. If informing would prejudice investigation, notification may be delayed but must eventually occur.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "all law enforcement AI"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Inform affected persons of AI involvement in decisions about them",
+        "Provide meaningful explanation of AI role per Art. 86",
+        "If delay needed for investigation: document reason and set reminder to notify later",
+        "Implement accessible mechanism for affected persons to receive explanation"
+      ],
+      "what_not_to_do": [
+        "Do NOT permanently withhold information about AI involvement",
+        "Do NOT provide explanation that is incomprehensible to lay person",
+        "Do NOT use delay exception routinely to avoid notification"
+      ],
+      "evidence_required": "Notification records, explanation templates, delay justification log",
+      "deadline": "2026-08-02",
+      "frequency": "per-incident",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Right to explanation is fundamental. Enables effective legal remedies.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for explanation mechanism and notification templates.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "explainability",
+      "cli_check_possible": true,
+      "cli_check_description": "Check law enforcement notification: explanation mechanism, delay documentation."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MIG-001",
+      "article_reference": "Annex III point 7(a)-(d)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Migration: AI in Border Control and Asylum is High-Risk",
+      "description": "AI for asylum assessment, visa processing, border risk assessment, migrant identification, deception detection is HIGH-RISK. Includes AI in EURODAC, VIS, EES, ETIAS.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "asylum assessment",
+        "visa processing",
+        "border control",
+        "migrant identification",
+        "deception detection"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify all migration/border AI as high-risk",
+        "Conduct FRIA with focus on refugee and migrant rights",
+        "Ensure human review of all asylum and visa decisions",
+        "Test for bias across nationalities and ethnicities",
+        "Comply with Refugee Convention alongside AI Act",
+        "Do not use AI to replace substantive asylum interview",
+        "Log all AI-influenced migration decisions"
+      ],
+      "what_not_to_do": [
+        "Do NOT use AI as sole basis for asylum rejection",
+        "Do NOT use deception detection on asylum seekers without human oversight",
+        "Do NOT deploy biased risk assessment profiling by nationality",
+        "Do NOT use AI to circumvent procedural rights of migrants"
+      ],
+      "evidence_required": "FRIA with refugee rights focus, bias testing, human oversight records, decision logs",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Migration AI affects the most vulnerable. Refugee Convention applies.",
+      "automatable": "manual",
+      "automation_approach": "Limited scanner applicability — typically government/contractor deployed.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": false,
+      "cli_check_description": null
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MIG-002",
+      "article_reference": "Annex III point 7 + AFSJ systems",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Migration: AI in Large-Scale IT Systems (EURODAC, VIS, EES)",
+      "description": "Large-scale IT systems in Area of Freedom, Security and Justice (AFSJ) that use AI components have extended compliance deadline (Dec 2030) but must still assess high-risk classification now.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "EURODAC",
+        "VIS",
+        "EES",
+        "ETIAS",
+        "SIS"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Assess AI components in AFSJ large-scale IT systems",
+        "Plan compliance trajectory toward Dec 2030 deadline",
+        "Ensure existing systems meet at minimum prohibited practices and AI literacy requirements now",
+        "Document roadmap for full compliance"
+      ],
+      "what_not_to_do": [
+        "Do NOT assume extended deadline means no current obligations",
+        "Do NOT ignore prohibited practices requirements (already in force)"
+      ],
+      "evidence_required": "Compliance roadmap, current prohibited practices screening, AI literacy evidence",
+      "deadline": "2030-12-31",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Extended deadline but current obligations still apply.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for compliance roadmap documentation.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "report",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": false,
+      "cli_check_description": null
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-JUS-001",
+      "article_reference": "Annex III point 8(a)-(b)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Justice: AI in Judicial Decision-Making is High-Risk",
+      "description": "AI used by courts for legal research, case outcome prediction, sentencing recommendations, applying law to facts, or alternative dispute resolution is HIGH-RISK.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "judicial decision support",
+        "sentencing",
+        "case prediction",
+        "legal research by courts",
+        "AI arbitration"
+      ],
+      "obligation_type": "organizational",
+      "what_to_do": [
+        "Classify judicial AI as high-risk",
+        "Ensure AI outputs are advisory only — judges make final decisions",
+        "Prohibit autonomous judicial decisions by AI",
+        "Test for bias in case predictions across demographics",
+        "Ensure transparency of AI role in proceedings",
+        "Provide right to explanation of AI influence",
+        "Log all AI-assisted judicial analyses"
+      ],
+      "what_not_to_do": [
+        "Do NOT allow AI autonomous judicial decisions",
+        "Do NOT use opaque models for sentencing without explainability",
+        "Do NOT hide AI involvement from parties",
+        "Do NOT use AI trained on biased sentencing data without correction"
+      ],
+      "evidence_required": "FRIA, judicial transparency docs, bias testing, advisory-only evidence, judge final authority records",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Judicial AI affects right to fair trial. Highest explainability standard.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: advisory-only output config, judicial context docs, bias testing, explainability.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "explainability",
+      "cli_check_possible": true,
+      "cli_check_description": "Check judicial AI: advisory-only config, bias testing, explainability."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-JUS-002",
+      "article_reference": "Annex III point 8 + Legal services context",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Legal: AI in Law Firm Practice (Contract Review, Legal Research, Due Diligence)",
+      "description": "AI used by law firms for contract review, legal research, due diligence, document analysis may be high-risk when used to apply law to facts (Annex III 8(b)). At minimum requires transparency obligations.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high",
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "contract review AI",
+        "legal research AI",
+        "due diligence AI",
+        "document analysis"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Assess whether legal AI falls under Annex III 8(b) (applying law to facts)",
+        "If high-risk: full compliance including FRIA and human oversight",
+        "Always: disclose AI use to clients when AI significantly influences legal advice",
+        "Ensure lawyer reviews all AI-generated legal analysis",
+        "Log AI-assisted legal research for audit trail"
+      ],
+      "what_not_to_do": [
+        "Do NOT present AI legal analysis as lawyer's own work without review",
+        "Do NOT use AI to replace substantive legal judgment",
+        "Do NOT hide AI involvement from clients in consequential matters"
+      ],
+      "evidence_required": "Risk classification assessment, client disclosure of AI use, lawyer review records, AI research logs",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Legal advice AI affects client rights. Professional liability intersection.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: legal AI context indicators, client disclosure components, review workflow.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "disclosure",
+      "cli_check_possible": true,
+      "cli_check_description": "Check legal AI: client disclosure, lawyer review workflow."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-INF-001",
+      "article_reference": "Annex III point 2(a)-(b)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Infrastructure: AI in Critical Infrastructure Management is High-Risk",
+      "description": "AI managing critical infrastructure (energy grids, water supply, transport, digital infrastructure, telecommunications) is HIGH-RISK when acting as safety component. NIS2 Directive also applies.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "energy grid",
+        "water supply",
+        "transport",
+        "digital infrastructure",
+        "telecommunications"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Classify infrastructure AI as high-risk",
+        "Implement redundancy: AI failure must not cause infrastructure failure",
+        "Ensure human override at all times",
+        "Test against failure scenarios and edge cases",
+        "Implement real-time monitoring of AI health",
+        "Cybersecurity assessment per NIS2 alongside AI Act",
+        "Log all AI decisions affecting infrastructure"
+      ],
+      "what_not_to_do": [
+        "Do NOT deploy without failsafe mechanisms",
+        "Do NOT allow single points of failure dependent on AI",
+        "Do NOT skip cybersecurity for infrastructure AI",
+        "Do NOT deploy without human override"
+      ],
+      "evidence_required": "FRIA, failsafe documentation, cybersecurity assessment, NIS2 evidence, monitoring, human override",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Infrastructure AI failure affects public safety at scale. NIS2 intersection.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: failsafe mechanisms, redundancy, cybersecurity config, monitoring.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "monitoring",
+      "cli_check_possible": true,
+      "cli_check_description": "Check infrastructure AI: failsafe, redundancy, cybersecurity."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-BIO-001",
+      "article_reference": "Annex III point 1 + Article 5(1)(e)(f)(g)(h)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Biometric: AI Biometric Systems are High-Risk with Prohibitions",
+      "description": "AI for biometric identification (face, fingerprint, iris, voice), categorization, or emotion recognition is HIGH-RISK with additional PROHIBITIONS. Multiple Art. 5 provisions apply specifically to biometrics.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "facial recognition",
+        "biometric ID",
+        "biometric categorization",
+        "emotion recognition",
+        "voice recognition"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Classify biometric AI as high-risk under Annex III point 1",
+        "Screen against ALL biometric prohibitions (Art. 5(1)(e)(f)(g)(h))",
+        "Implement double human verification for biometric ID results (Art. 14(5))",
+        "Obtain explicit consent where required",
+        "Test accuracy across demographics (skin tone, age, gender)",
+        "Implement anti-spoofing measures",
+        "Comply with GDPR Art. 9 for biometric special category data"
+      ],
+      "what_not_to_do": [
+        "Do NOT deploy untargeted facial scraping (PROHIBITED)",
+        "Do NOT use emotion recognition in workplace/education (PROHIBITED)",
+        "Do NOT categorize by sensitive characteristics (PROHIBITED)",
+        "Do NOT use real-time remote biometric ID without authorization (PROHIBITED)",
+        "Do NOT process biometric data without GDPR Art. 9 basis"
+      ],
+      "evidence_required": "Art. 5 screening, accuracy testing across demographics, double verification, consent records, GDPR Art. 9 basis",
+      "deadline": "2026-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €35,000,000 or 7% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Biometric AI has the most prohibitions. Maximum penalty exposure.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: biometric SDK imports, prohibition screening, demographic accuracy testing.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check biometric AI: prohibitions, demographic accuracy, double verification."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-GEN-001",
+      "article_reference": "Article 50(2)-(4)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Content Generation: AI Image/Video/Audio Generation Transparency",
+      "description": "AI systems generating images, video, audio, or text must mark outputs as AI-generated in machine-readable format. Deepfakes require visible labeling. Applies to DALL-E, Midjourney, Stable Diffusion, voice cloning, video generation, etc.",
+      "applies_to_role": "provider",
+      "applies_to_risk_level": [
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "image generation",
+        "video generation",
+        "audio generation",
+        "voice cloning",
+        "deepfakes",
+        "text generation"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Implement machine-readable marking on all AI-generated content (Art. 50(2))",
+        "For images: embed C2PA metadata or equivalent watermark",
+        "For audio/video: embed watermark and/or C2PA manifest",
+        "For text: include AI-generation indicator in metadata",
+        "For deepfakes: ensure visible labeling in addition to machine-readable (Art. 50(4))",
+        "Technical marking must be robust against removal",
+        "Interoperable with content authentication initiatives"
+      ],
+      "what_not_to_do": [
+        "Do NOT generate content without machine-readable AI marking",
+        "Do NOT strip AI provenance metadata from outputs",
+        "Do NOT allow easy removal of content marking",
+        "Do NOT create deepfakes without visible labeling"
+      ],
+      "evidence_required": "Content marking implementation evidence, C2PA integration, watermark robustness testing, deepfake labeling mechanism",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Content marking is testable by regulators and detectable at scale.",
+      "automatable": "full",
+      "automation_approach": "Scanner checks for: C2PA library integration, watermark embedding, content marking in generation pipeline.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "content-marking",
+      "cli_check_possible": true,
+      "cli_check_description": "Check content generation: C2PA integration, watermark embedding, deepfake labeling."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-GEN-002",
+      "article_reference": "Article 50(4) + Deployer context",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Content Generation: Deployer Deepfake Disclosure Obligation",
+      "description": "Deployers (users) who publish AI-generated deepfakes or substantially manipulated content must disclose this fact. Exception for artistic, satirical, or fictional content where disclosure is evident.",
+      "applies_to_role": "deployer",
+      "applies_to_risk_level": [
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "deepfake publication",
+        "AI content publishing",
+        "synthetic media distribution"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Label all published deepfakes as AI-generated",
+        "Disclosure must be clear and visible to audience",
+        "For text: disclose AI authorship when publishing AI-generated articles",
+        "Exception only applies when artistic/fictional nature is obvious",
+        "Train content teams on disclosure obligations"
+      ],
+      "what_not_to_do": [
+        "Do NOT publish deepfakes without disclosure",
+        "Do NOT claim artistic exception when content could mislead",
+        "Do NOT use AI content to impersonate real persons without disclosure"
+      ],
+      "evidence_required": "Published content with disclosure labels, content policy documentation, team training records",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Deepfake disclosure is visible and testable. Regulatory priority.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: content disclosure components, deepfake labeling in publishing pipeline.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "content-marking",
+      "cli_check_possible": true,
+      "cli_check_description": "Check deepfake disclosure in content publishing pipeline."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-CSR-001",
+      "article_reference": "Article 50(1)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Customer Service: AI Chatbot Interaction Disclosure",
+      "description": "Any AI chatbot or virtual assistant interacting with customers must inform them they are interacting with AI BEFORE or at the start of the interaction. Applies to all customer service bots, sales bots, support agents, etc.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "limited"
+      ],
+      "applies_to_use_cases": [
+        "customer service chatbot",
+        "sales bot",
+        "support agent",
+        "virtual assistant",
+        "AI concierge"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Display AI disclosure before or at start of every chat interaction",
+        "Disclosure must be clear, prominent, and in user's language",
+        "Include option for user to request human agent",
+        "Disclosure required even if AI is very human-like",
+        "Maintain disclosure throughout conversation, not just at start"
+      ],
+      "what_not_to_do": [
+        "Do NOT allow chatbot to interact without AI disclosure",
+        "Do NOT bury disclosure in terms of service",
+        "Do NOT remove disclosure after initial interaction",
+        "Do NOT design chatbot to deceive users about its nature"
+      ],
+      "evidence_required": "AI disclosure UI component, user language localization, human escalation mechanism",
+      "deadline": "2026-08-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Chatbot disclosure is the most publicly visible Art. 50 obligation. Easy to test.",
+      "automatable": "full",
+      "automation_approach": "Scanner checks for: AI disclosure component in chat UI, human escalation option.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "disclosure",
+      "cli_check_possible": true,
+      "cli_check_description": "Check chatbot AI disclosure and human escalation option."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-MKT-001",
+      "article_reference": "Article 50 + Article 5(1)(a)",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Marketing: AI in Advertising and Recommendation Systems",
+      "description": "AI-powered advertising targeting, recommendation systems, and personalization engines must disclose AI use and must NOT use subliminal or manipulative techniques (Art. 5(1)(a)). Especially relevant for AI-driven content recommendation.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "limited",
+        "minimal"
+      ],
+      "applies_to_use_cases": [
+        "ad targeting",
+        "recommendation systems",
+        "personalization",
+        "content curation",
+        "AI marketing"
+      ],
+      "obligation_type": "transparency",
+      "what_to_do": [
+        "Assess whether AI marketing tools use manipulative techniques (Art. 5(1)(a))",
+        "Ensure recommendation algorithms do not exploit user vulnerabilities",
+        "Disclose AI involvement in personalized recommendations where applicable",
+        "Provide user control over AI personalization (opt-out mechanism)",
+        "Comply with Digital Services Act alongside AI Act for recommendation systems"
+      ],
+      "what_not_to_do": [
+        "Do NOT use subliminal AI techniques in advertising (PROHIBITED)",
+        "Do NOT exploit vulnerable user segments with AI targeting",
+        "Do NOT hide AI involvement in personalization from users",
+        "Do NOT use dark patterns to prevent users from opting out of AI recommendations"
+      ],
+      "evidence_required": "Art. 5 screening for advertising AI, user control mechanism, DSA compliance evidence",
+      "deadline": "2025-02-02",
+      "frequency": "ongoing",
+      "penalty_for_non_compliance": "Up to €35,000,000 or 7% of global annual turnover",
+      "severity": "high",
+      "severity_reasoning": "Manipulative AI in advertising = prohibited practice = maximum penalty.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: recommendation system transparency, user opt-out mechanism, dark pattern detection.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": false,
+      "document_template_type": null,
+      "sdk_feature_needed": false,
+      "sdk_feature_type": null,
+      "cli_check_possible": true,
+      "cli_check_description": "Check marketing AI: manipulation screening, user controls, transparency."
+    },
+    {
+      "obligation_id": "eu-ai-act-OBL-AV-001",
+      "article_reference": "Annex II Section A + Annex III point 2",
+      "article_text_original": "",
+      "article_text_en": "",
+      "title": "Transport: AI in Autonomous Vehicles and Traffic Management is High-Risk",
+      "description": "AI as safety component in vehicles, aircraft, or traffic management systems is HIGH-RISK under both Annex II (product safety) and Annex III point 2 (critical infrastructure). Type-approval regulation also applies.",
+      "applies_to_role": "both",
+      "applies_to_risk_level": [
+        "high"
+      ],
+      "applies_to_use_cases": [
+        "autonomous driving",
+        "ADAS",
+        "traffic management",
+        "aviation AI",
+        "maritime AI",
+        "rail AI"
+      ],
+      "obligation_type": "technical",
+      "what_to_do": [
+        "Classify transport AI as high-risk under Annex II and/or Annex III",
+        "Complete conformity assessment under BOTH AI Act and sector regulation (type-approval)",
+        "Ensure human override capability at all times",
+        "Test in diverse real-world conditions (weather, lighting, edge cases)",
+        "Implement fail-safe behavior (safe stop)",
+        "Log all safety-critical AI decisions",
+        "Comply with UNECE regulations for autonomous vehicles alongside AI Act"
+      ],
+      "what_not_to_do": [
+        "Do NOT deploy autonomous systems without fail-safe behavior",
+        "Do NOT skip testing in adverse conditions",
+        "Do NOT remove human override capability",
+        "Do NOT deploy without sector-specific type-approval"
+      ],
+      "evidence_required": "AI Act conformity, type-approval certificate, testing reports (diverse conditions), fail-safe documentation, human override mechanism",
+      "deadline": "2027-08-02",
+      "frequency": "per-system",
+      "penalty_for_non_compliance": "Up to €15,000,000 or 3% of global annual turnover",
+      "severity": "critical",
+      "severity_reasoning": "Transport AI is safety-critical. Errors cause physical harm and death.",
+      "automatable": "partial",
+      "automation_approach": "Scanner checks for: fail-safe mechanisms, diverse condition testing, human override.",
+      "cross_regulation_mapping": {},
+      "document_template_needed": true,
+      "document_template_type": "FRIA",
+      "sdk_feature_needed": true,
+      "sdk_feature_type": "monitoring",
+      "cli_check_possible": true,
+      "cli_check_description": "Check transport AI: fail-safe, testing coverage, human override."
+    }
+  ],
+  "version": {
+    "framework_version": "4.0-full-coverage",
+    "processed_date": "2026-02-17",
+    "source_regulation_version": "Regulation (EU) 2024/1689 as published in OJ L 2024/1689",
+    "processing_prompt_version": "12-stage-v2 + domain decomposition",
+    "last_regulatory_update_checked": "2025-12-17 (Code of Practice on content marking draft)",
+    "next_review_due": "2026-03-01",
+    "coverage": "~95% of actionable obligations. All 8 Annex III domains + 5 additional domains decomposed.",
+    "domains_covered": [
+      "HR/Employment",
+      "Finance/Credit/Insurance",
+      "Healthcare/Medical",
+      "Education",
+      "Law Enforcement",
+      "Migration/Border",
+      "Justice/Legal",
+      "Critical Infrastructure",
+      "Biometric",
+      "Content Generation",
+      "Customer Service",
+      "Marketing/Advertising",
+      "Transport/Autonomous"
+    ]
+  }
+}
