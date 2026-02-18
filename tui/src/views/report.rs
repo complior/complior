@@ -74,9 +74,10 @@ pub fn generate_report_markdown(scan: &ScanResult) -> String {
         md.push_str("| Category | Score | Passed | Failed |\n");
         md.push_str("|----------|------:|-------:|-------:|\n");
         for cat in &scan.score.category_scores {
+            let failed = cat.obligation_count.saturating_sub(cat.passed_count);
             md.push_str(&format!(
                 "| {} | {:.0}% | {} | {} |\n",
-                cat.category_name, cat.score, cat.passed, cat.failed,
+                cat.category, cat.score, cat.passed_count, failed,
             ));
         }
         md.push('\n');

@@ -39,12 +39,11 @@ pub struct Finding {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CategoryScore {
-    pub category_id: String,
-    pub category_name: String,
+    pub category: String,
+    pub weight: f64,
     pub score: f64,
-    pub passed: u32,
-    pub failed: u32,
-    pub skipped: u32,
+    pub obligation_count: u32,
+    pub passed_count: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -91,13 +90,12 @@ impl Serialize for ScoreBreakdown {
 impl Serialize for CategoryScore {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("CategoryScore", 6)?;
-        state.serialize_field("categoryId", &self.category_id)?;
-        state.serialize_field("categoryName", &self.category_name)?;
+        let mut state = s.serialize_struct("CategoryScore", 5)?;
+        state.serialize_field("category", &self.category)?;
+        state.serialize_field("weight", &self.weight)?;
         state.serialize_field("score", &self.score)?;
-        state.serialize_field("passed", &self.passed)?;
-        state.serialize_field("failed", &self.failed)?;
-        state.serialize_field("skipped", &self.skipped)?;
+        state.serialize_field("obligationCount", &self.obligation_count)?;
+        state.serialize_field("passedCount", &self.passed_count)?;
         state.end()
     }
 }

@@ -83,15 +83,16 @@ fn render_score_details(
         .category_scores
         .iter()
         .map(|cat| {
-            let icon = if cat.failed == 0 { "+" } else { "x" };
-            let style = if cat.failed == 0 {
+            let failed = cat.obligation_count.saturating_sub(cat.passed_count);
+            let icon = if failed == 0 { "+" } else { "x" };
+            let style = if failed == 0 {
                 Style::default().fg(t.zone_green)
             } else {
                 Style::default().fg(t.zone_red)
             };
             ListItem::new(Line::from(vec![
                 Span::styled(format!(" {icon} "), style),
-                Span::raw(format!("{}: ", cat.category_name)),
+                Span::raw(format!("{}: ", cat.category)),
                 Span::styled(format!("{:.0}%", cat.score), style),
             ]))
         })

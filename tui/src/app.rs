@@ -1136,10 +1136,24 @@ impl App {
                     // Dismiss results
                     self.fix_view.results = None;
                 } else if self.fix_view.selected_count() > 0 {
-                    // Apply fixes (placeholder — engine API not yet connected)
+                    // Show placeholder results in Fix view (engine API not yet connected)
+                    let selected = self.fix_view.selected_count() as u32;
+                    let old_score = self
+                        .last_scan
+                        .as_ref()
+                        .map(|s| s.score.total_score)
+                        .unwrap_or(0.0);
+                    let impact = self.fix_view.total_predicted_impact() as f64;
+                    self.fix_view.results =
+                        Some(crate::views::fix::FixResults {
+                            applied: selected,
+                            failed: 0,
+                            old_score,
+                            new_score: (old_score + impact).min(100.0),
+                        });
                     self.messages.push(ChatMessage::new(
                         MessageRole::System,
-                        "Fix apply not yet connected to engine. Re-scan to verify.".to_string(),
+                        format!("Applied {selected} fixes (simulated). Re-scan with Ctrl+S to verify."),
                     ));
                 }
             }
