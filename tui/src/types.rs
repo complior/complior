@@ -230,6 +230,91 @@ pub enum ChatBlock {
     ToolResult { tool_name: String, result: String, is_error: bool },
 }
 
+/// Top-level view (screen) — keys 1-6 in Normal mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewState {
+    Dashboard,
+    Scan,
+    Fix,
+    Chat,
+    Timeline,
+    Report,
+}
+
+impl ViewState {
+    /// Map key digit to view (1-based).
+    pub fn from_key(digit: u8) -> Option<Self> {
+        match digit {
+            1 => Some(Self::Dashboard),
+            2 => Some(Self::Scan),
+            3 => Some(Self::Fix),
+            4 => Some(Self::Chat),
+            5 => Some(Self::Timeline),
+            6 => Some(Self::Report),
+            _ => None,
+        }
+    }
+
+    /// 0-based index for tab highlighting.
+    pub fn index(self) -> usize {
+        match self {
+            Self::Dashboard => 0,
+            Self::Scan => 1,
+            Self::Fix => 2,
+            Self::Chat => 3,
+            Self::Timeline => 4,
+            Self::Report => 5,
+        }
+    }
+
+    /// Short display name for footer tabs.
+    pub fn short_name(self) -> &'static str {
+        match self {
+            Self::Dashboard => "Dashboard",
+            Self::Scan => "Scan",
+            Self::Fix => "Fix",
+            Self::Chat => "Chat",
+            Self::Timeline => "Timeline",
+            Self::Report => "Report",
+        }
+    }
+
+    pub const ALL: [ViewState; 6] = [
+        Self::Dashboard,
+        Self::Scan,
+        Self::Fix,
+        Self::Chat,
+        Self::Timeline,
+        Self::Report,
+    ];
+}
+
+/// Operating mode — cycles with Tab in Normal mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    Scan,
+    Fix,
+    Watch,
+}
+
+impl Mode {
+    pub fn next(self) -> Self {
+        match self {
+            Self::Scan => Self::Fix,
+            Self::Fix => Self::Watch,
+            Self::Watch => Self::Scan,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Scan => "SCAN",
+            Self::Fix => "FIX",
+            Self::Watch => "WATCH",
+        }
+    }
+}
+
 /// Overlay state for popups (command palette, file picker, help, getting started, providers)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Overlay {

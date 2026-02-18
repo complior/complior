@@ -8,7 +8,7 @@ use crate::input::Action;
 use crate::providers::ProviderConfig;
 use crate::types::{
     ChatBlock, ChatMessage, DiffContent, EngineConnectionStatus, FileEntry, InputMode,
-    MessageRole, Overlay, Panel, ScanResult, Selection,
+    MessageRole, Mode, Overlay, Panel, ScanResult, Selection, ViewState,
 };
 use crate::views::file_browser;
 
@@ -18,6 +18,8 @@ pub struct App {
     pub active_panel: Panel,
     pub input_mode: InputMode,
     pub config: TuiConfig,
+    pub view_state: ViewState,
+    pub mode: Mode,
 
     // Engine
     pub engine_status: EngineConnectionStatus,
@@ -103,6 +105,8 @@ impl App {
             active_panel: Panel::Chat,
             input_mode: InputMode::Insert,
             config,
+            view_state: ViewState::Dashboard,
+            mode: Mode::Scan,
             engine_status: EngineConnectionStatus::Connecting,
             engine_client,
             messages: vec![ChatMessage::new(
@@ -573,6 +577,14 @@ impl App {
                 self.provider_setup_error = None;
                 None
             }
+            Action::SwitchView(view) => {
+                self.view_state = view;
+                None
+            }
+            Action::ToggleMode => {
+                self.mode = self.mode.next();
+                None
+            }
             Action::FocusPanel(panel) => {
                 self.active_panel = panel;
                 None
@@ -766,6 +778,7 @@ impl App {
                         "  /clear         — Clear terminal output\n",
                         "  /reconnect     — Reconnect to engine\n",
                         "  /theme <name>  — Switch theme (dark/light/high-contrast)\n",
+                        "  /view <1-6>    — Switch to view (Dashboard/Scan/Fix/Chat/Timeline/Report)\n",
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
@@ -777,7 +790,8 @@ impl App {
                         "Shortcuts:\n",
                         "  @file          — Reference file in message\n",
                         "  !cmd           — Run shell command directly\n",
-                        "  Tab            — Switch panel / complete command\n",
+                        "  1-6            — Switch view (Normal mode)\n",
+                        "  Tab            — Toggle mode (Scan/Fix/Watch)\n",
                         "  Alt+1..5       — Jump to panel\n",
                         "  Ctrl+P         — Command palette\n",
                         "  Ctrl+B         — Toggle sidebar\n",
@@ -809,6 +823,20 @@ impl App {
                         "No providers configured. Use /provider first.".to_string(),
                     ));
                 }
+                None
+            }
+            Some("view") => {
+                let num_str = parts.get(1).unwrap_or(&"").trim();
+                if let Ok(num) = num_str.parse::<u8>() {
+                    if let Some(view) = ViewState::from_key(num) {
+                        self.view_state = view;
+                        return None;
+                    }
+                }
+                self.messages.push(ChatMessage::new(
+                    MessageRole::System,
+                    "Usage: /view <1-6> (Dashboard/Scan/Fix/Chat/Timeline/Report)".to_string(),
+                ));
                 None
             }
             Some("welcome") => {
@@ -1076,5 +1104,24 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         let cmd = app.handle_command("theme light");
         assert!(matches!(cmd, Some(AppCommand::SwitchTheme(n)) if n == "light"));
+    }
+
+    #[test]
+    fn test_view_command() {
+        let mut app = App::new(TuiConfig::default());
+        assert_eq!(app.view_state, ViewState::Dashboard);
+
+        let cmd = app.handle_command("view 4");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Chat);
+
+        let cmd = app.handle_command("view 2");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Scan);
+
+        // Invalid view number
+        let cmd = app.handle_command("view 9");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Scan);
     }
 }

@@ -15,6 +15,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ("/clear", "Clear terminal output"),
     ("/reconnect", "Reconnect to engine"),
     ("/theme", "Switch color theme"),
+    ("/view", "Switch to view (1-6)"),
     ("/save", "Save current session"),
     ("/load", "Load saved session"),
     ("/sessions", "List saved sessions"),

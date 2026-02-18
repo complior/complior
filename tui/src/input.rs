@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 
 use crate::app::App;
-use crate::types::{InputMode, Overlay, Panel};
+use crate::types::{InputMode, Overlay, Panel, ViewState};
 
 pub enum Action {
     Quit,
@@ -42,6 +42,8 @@ pub enum Action {
     ShowModelSelector,
     ShowProviderSetup,
     GotoLine,
+    SwitchView(ViewState),
+    ToggleMode,
     None,
 }
 
@@ -125,7 +127,13 @@ fn handle_insert_mode(key: KeyEvent) -> Action {
 fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
     match key.code {
         KeyCode::Char('q') => Action::Quit,
-        KeyCode::Tab => Action::NextPanel,
+        KeyCode::Tab => Action::ToggleMode,
+        KeyCode::Char('1') => Action::SwitchView(ViewState::Dashboard),
+        KeyCode::Char('2') => Action::SwitchView(ViewState::Scan),
+        KeyCode::Char('3') => Action::SwitchView(ViewState::Fix),
+        KeyCode::Char('4') => Action::SwitchView(ViewState::Chat),
+        KeyCode::Char('5') => Action::SwitchView(ViewState::Timeline),
+        KeyCode::Char('6') => Action::SwitchView(ViewState::Report),
         KeyCode::Char('i') => Action::EnterInsertMode,
         KeyCode::Char('/') => Action::EnterCommandMode,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
