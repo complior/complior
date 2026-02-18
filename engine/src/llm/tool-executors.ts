@@ -3,7 +3,8 @@ import { createFile, editFile, readFile, listFiles } from '../coding/file-ops.js
 import { search } from '../coding/search.js';
 import { runCommand } from '../coding/shell.js';
 import { gitOperation } from '../coding/git.js';
-import { collectFiles, createScanner } from '../core/scanner/index.js';
+import { collectFiles } from '../domain/scanner/file-collector.js';
+import { createScanner } from '../domain/scanner/create-scanner.js';
 import { getEngineContext } from '../context.js';
 
 export type ToolExecutor = (args: Record<string, unknown>) => Promise<string>;

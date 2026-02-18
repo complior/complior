@@ -44,6 +44,10 @@ pub enum Action {
     GotoLine,
     SwitchView(ViewState),
     ToggleMode,
+    StartScan,
+    ViewKey(char),
+    ViewEnter,
+    ViewEscape,
     None,
 }
 
@@ -57,6 +61,7 @@ pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
             KeyCode::Char('f') => return Action::ToggleFilesPanel,
             KeyCode::Char('p') => return Action::ShowCommandPalette,
             KeyCode::Char('m') => return Action::ShowModelSelector,
+            KeyCode::Char('s') => return Action::StartScan,
             KeyCode::Char('k') if app.input_mode == InputMode::Visual => {
                 return Action::SendSelectionToAi;
             }
@@ -145,13 +150,28 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('@') => Action::ShowFilePicker,
         KeyCode::Enter => match app.active_panel {
             Panel::FileBrowser => Action::OpenFile,
+            _ if matches!(app.view_state, ViewState::Scan | ViewState::Fix) => Action::ViewEnter,
             _ => Action::SubmitInput,
         },
+        KeyCode::Char(' ') if app.view_state == ViewState::Fix => Action::ViewKey(' '),
         KeyCode::Char(' ') if app.active_panel == Panel::FileBrowser => Action::ToggleExpand,
         KeyCode::Char('y') if app.active_panel == Panel::DiffPreview => Action::AcceptDiff,
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
+        // View-specific Esc
+        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix) => {
+            Action::ViewEscape
+        }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,
+        // View-specific char keys (a/c/h/m/l/f/d/e/n) — only in Scan/Fix/Report views
+        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'n'))
+            if matches!(
+                app.view_state,
+                ViewState::Scan | ViewState::Fix | ViewState::Report
+            ) =>
+        {
+            Action::ViewKey(c)
+        }
         _ => Action::None,
     }
 }

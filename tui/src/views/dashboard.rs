@@ -29,10 +29,10 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     match app.view_state {
         ViewState::Dashboard => render_dashboard_view(frame, body_area, app),
         ViewState::Chat => render_chat_full_view(frame, body_area, app),
-        ViewState::Scan => render_placeholder_view(frame, body_area, "Scan", "Run compliance scans and review results. Use /scan to start."),
-        ViewState::Fix => render_placeholder_view(frame, body_area, "Fix", "AI-assisted code fixes for compliance findings. Select a finding to begin."),
-        ViewState::Timeline => render_placeholder_view(frame, body_area, "Timeline", "View compliance activity history, scan events, and changes over time."),
-        ViewState::Report => render_placeholder_view(frame, body_area, "Report", "Generate and export compliance reports. PDF and HTML formats."),
+        ViewState::Scan => super::scan::render_scan_view(frame, body_area, app),
+        ViewState::Fix => super::fix::render_fix_view(frame, body_area, app),
+        ViewState::Timeline => super::timeline::render_timeline_view(frame, body_area, app),
+        ViewState::Report => super::report::render_report_view(frame, body_area, app),
     }
 
     // 2-line footer at bottom

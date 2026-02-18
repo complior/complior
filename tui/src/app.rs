@@ -11,6 +11,10 @@ use crate::types::{
     MessageRole, Mode, Overlay, Panel, ScanResult, Selection, ViewState,
 };
 use crate::views::file_browser;
+use crate::views::fix::FixViewState;
+use crate::views::report::ReportViewState;
+use crate::views::scan::ScanViewState;
+use crate::views::timeline::TimelineViewState;
 
 pub struct App {
     // Core state
@@ -81,6 +85,12 @@ pub struct App {
     pub provider_setup_error: Option<String>,
     pub model_selector_index: usize,
 
+    // View-specific state
+    pub scan_view: ScanViewState,
+    pub fix_view: FixViewState,
+    pub timeline_view: TimelineViewState,
+    pub report_view: ReportViewState,
+
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -146,6 +156,10 @@ impl App {
             provider_setup_key_input: String::new(),
             provider_setup_error: None,
             model_selector_index: 0,
+            scan_view: ScanViewState::default(),
+            fix_view: FixViewState::default(),
+            timeline_view: TimelineViewState::default(),
+            report_view: ReportViewState::default(),
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -334,47 +348,76 @@ impl App {
                 None
             }
             Action::ScrollUp => {
-                match self.active_panel {
-                    Panel::CodeViewer => {
-                        self.code_scroll = self.code_scroll.saturating_sub(1);
+                match self.view_state {
+                    ViewState::Scan => {
+                        let count = self.filtered_findings_count();
+                        self.scan_view.navigate_up();
+                        let _ = count; // used for bounds checking inside navigate_up
                     }
-                    Panel::FileBrowser => {
-                        self.file_browser_index = self.file_browser_index.saturating_sub(1);
+                    ViewState::Fix => self.fix_view.navigate_up(),
+                    ViewState::Timeline => {
+                        self.timeline_view.scroll_offset =
+                            self.timeline_view.scroll_offset.saturating_sub(1);
                     }
-                    Panel::Terminal => {
-                        self.terminal_scroll = self.terminal_scroll.saturating_sub(1);
-                        self.terminal_auto_scroll = false;
+                    ViewState::Report => {
+                        self.report_view.scroll_offset =
+                            self.report_view.scroll_offset.saturating_sub(1);
                     }
-                    Panel::Chat => {
-                        self.chat_scroll = self.chat_scroll.saturating_sub(1);
-                        self.chat_auto_scroll = false;
-                    }
-                    _ => {}
+                    _ => match self.active_panel {
+                        Panel::CodeViewer => {
+                            self.code_scroll = self.code_scroll.saturating_sub(1);
+                        }
+                        Panel::FileBrowser => {
+                            self.file_browser_index =
+                                self.file_browser_index.saturating_sub(1);
+                        }
+                        Panel::Terminal => {
+                            self.terminal_scroll =
+                                self.terminal_scroll.saturating_sub(1);
+                            self.terminal_auto_scroll = false;
+                        }
+                        Panel::Chat => {
+                            self.chat_scroll = self.chat_scroll.saturating_sub(1);
+                            self.chat_auto_scroll = false;
+                        }
+                        _ => {}
+                    },
                 }
                 None
             }
             Action::ScrollDown => {
-                match self.active_panel {
-                    Panel::CodeViewer => {
-                        self.code_scroll += 1;
+                match self.view_state {
+                    ViewState::Scan => {
+                        let count = self.filtered_findings_count();
+                        self.scan_view.navigate_down(count);
                     }
-                    Panel::FileBrowser => {
-                        if self.file_browser_index + 1 < self.file_tree.len() {
-                            self.file_browser_index += 1;
+                    ViewState::Fix => self.fix_view.navigate_down(),
+                    ViewState::Timeline => {
+                        self.timeline_view.scroll_offset += 1;
+                    }
+                    ViewState::Report => {
+                        self.report_view.scroll_offset += 1;
+                    }
+                    _ => match self.active_panel {
+                        Panel::CodeViewer => {
+                            self.code_scroll += 1;
                         }
-                    }
-                    Panel::Terminal => {
-                        self.terminal_scroll += 1;
-                        // Re-enable auto-scroll if at bottom
-                        if self.terminal_scroll + 1 >= self.terminal_output.len() {
-                            self.terminal_auto_scroll = true;
+                        Panel::FileBrowser => {
+                            if self.file_browser_index + 1 < self.file_tree.len() {
+                                self.file_browser_index += 1;
+                            }
                         }
-                    }
-                    Panel::Chat => {
-                        self.chat_scroll += 1;
-                        // Re-enable auto-scroll if near bottom
-                    }
-                    _ => {}
+                        Panel::Terminal => {
+                            self.terminal_scroll += 1;
+                            if self.terminal_scroll + 1 >= self.terminal_output.len() {
+                                self.terminal_auto_scroll = true;
+                            }
+                        }
+                        Panel::Chat => {
+                            self.chat_scroll += 1;
+                        }
+                        _ => {}
+                    },
                 }
                 None
             }
@@ -579,6 +622,12 @@ impl App {
             }
             Action::SwitchView(view) => {
                 self.view_state = view;
+                // Populate Fix view from latest scan when switching to it
+                if view == ViewState::Fix {
+                    if let Some(scan) = &self.last_scan {
+                        self.fix_view = FixViewState::from_scan(&scan.findings);
+                    }
+                }
                 None
             }
             Action::ToggleMode => {
@@ -588,6 +637,27 @@ impl App {
             Action::FocusPanel(panel) => {
                 self.active_panel = panel;
                 None
+            }
+            Action::StartScan => {
+                self.messages.push(ChatMessage::new(
+                    MessageRole::System,
+                    "Scanning project...".to_string(),
+                ));
+                self.operation_start = Some(Instant::now());
+                self.scan_view.scanning = true;
+                return Some(AppCommand::Scan);
+            }
+            Action::ViewKey(c) => {
+                self.handle_view_key(c);
+                return None;
+            }
+            Action::ViewEnter => {
+                self.handle_view_enter();
+                return None;
+            }
+            Action::ViewEscape => {
+                self.handle_view_escape();
+                return None;
             }
             Action::GotoLine => {
                 // Parse `:N` from command input
@@ -937,6 +1007,11 @@ impl App {
             ),
         ));
 
+        // Update scan view state
+        self.scan_view.set_complete(result.files_scanned);
+        self.scan_view.selected_finding = None;
+        self.scan_view.detail_open = false;
+
         self.last_scan = Some(result);
         self.operation_start = None;
         self.chat_auto_scroll = true;
@@ -977,6 +1052,116 @@ impl App {
         self.open_file_path = data.open_file_path;
         self.terminal_output = data.terminal_output;
         self.last_scan = data.last_scan;
+    }
+
+    /// Count findings matching the current scan view filter.
+    fn filtered_findings_count(&self) -> usize {
+        self.last_scan
+            .as_ref()
+            .map_or(0, |s| {
+                s.findings
+                    .iter()
+                    .filter(|f| self.scan_view.findings_filter.matches(f.severity))
+                    .count()
+            })
+    }
+
+    /// Handle view-specific single-char key presses (Normal mode).
+    fn handle_view_key(&mut self, c: char) {
+        match self.view_state {
+            ViewState::Scan => {
+                if let Some(filter) =
+                    crate::views::scan::FindingsFilter::from_key(c)
+                {
+                    self.scan_view.findings_filter = filter;
+                    self.scan_view.selected_finding = Some(0);
+                } else if c == 'f' && self.scan_view.detail_open {
+                    // Go to Fix View with current finding
+                    self.scan_view.detail_open = false;
+                    self.view_state = ViewState::Fix;
+                    if let Some(scan) = &self.last_scan {
+                        self.fix_view = FixViewState::from_scan(&scan.findings);
+                    }
+                }
+            }
+            ViewState::Fix => match c {
+                ' ' => self.fix_view.toggle_current(),
+                'a' => self.fix_view.select_all(),
+                'n' => self.fix_view.deselect_all(),
+                'd' => self.fix_view.diff_visible = !self.fix_view.diff_visible,
+                _ => {}
+            },
+            ViewState::Report => {
+                if c == 'e' {
+                    if let Some(scan) = &self.last_scan {
+                        match crate::views::report::export_report(scan) {
+                            Ok(path) => {
+                                self.report_view.export_status =
+                                    crate::views::report::ExportStatus::Done(path.clone());
+                                self.messages.push(ChatMessage::new(
+                                    MessageRole::System,
+                                    format!("Report exported: {path}"),
+                                ));
+                            }
+                            Err(e) => {
+                                self.report_view.export_status =
+                                    crate::views::report::ExportStatus::Error(e.clone());
+                                self.messages.push(ChatMessage::new(
+                                    MessageRole::System,
+                                    format!("Export failed: {e}"),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle Enter key in view context.
+    fn handle_view_enter(&mut self) {
+        match self.view_state {
+            ViewState::Scan => {
+                if self.scan_view.detail_open {
+                    // Close detail
+                    self.scan_view.detail_open = false;
+                } else if self.last_scan.is_some() {
+                    // Open finding detail
+                    self.scan_view.detail_open = true;
+                }
+            }
+            ViewState::Fix => {
+                if self.fix_view.results.is_some() {
+                    // Dismiss results
+                    self.fix_view.results = None;
+                } else if self.fix_view.selected_count() > 0 {
+                    // Apply fixes (placeholder — engine API not yet connected)
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        "Fix apply not yet connected to engine. Re-scan to verify.".to_string(),
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle Esc key in view context.
+    fn handle_view_escape(&mut self) {
+        match self.view_state {
+            ViewState::Scan => {
+                if self.scan_view.detail_open {
+                    self.scan_view.detail_open = false;
+                }
+            }
+            ViewState::Fix => {
+                if self.fix_view.results.is_some() {
+                    self.fix_view.results = None;
+                }
+            }
+            _ => {}
+        }
     }
 }
 
