@@ -1,0 +1,20 @@
+document: tech-documentation
+obligation: OBL-005
+article: "Art. 11"
+file_patterns:
+  - "TECH-DOCUMENTATION.md"
+  - "TECH_DOCUMENTATION.md"
+  - "tech-documentation.md"
+  - "technical-documentation.md"
+  - "TECHNICAL-DOCUMENTATION.md"
+required_sections:
+  - title: "System Description"
+    required: true
+  - title: "Architecture"
+    required: true
+  - title: "Data Sources"
+    required: true
+  - title: "Performance Metrics"
+    required: false
+  - title: "Limitations"
+    required: false

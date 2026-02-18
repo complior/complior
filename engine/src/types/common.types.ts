@@ -51,6 +51,8 @@ export interface Finding {
   readonly articleReference?: string;
   readonly fix?: string;
   readonly priority?: number;
+  readonly confidence?: number;
+  readonly confidenceLevel?: string;
 }
 
 // --- Score ---
@@ -63,6 +65,15 @@ export interface CategoryScore {
   readonly passedCount: number;
 }
 
+export interface ConfidenceSummary {
+  readonly pass: number;
+  readonly likelyPass: number;
+  readonly uncertain: number;
+  readonly likelyFail: number;
+  readonly fail: number;
+  readonly total: number;
+}
+
 export interface ScoreBreakdown {
   readonly totalScore: number;
   readonly zone: ScoreZone;
@@ -72,6 +83,7 @@ export interface ScoreBreakdown {
   readonly passedChecks: number;
   readonly failedChecks: number;
   readonly skippedChecks: number;
+  readonly confidenceSummary?: ConfidenceSummary;
 }
 
 export interface ScoreDiff {
