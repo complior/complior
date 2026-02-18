@@ -1,56 +1,17 @@
-import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { AppError } from './types/errors.js';
-import { loadRegulationData } from './data/regulation-loader.js';
+import { loadApplication } from './composition-root.js';
+
+// Also initialize old context for backward compatibility during migration
 import { initEngineContext } from './context.js';
-import scanRoutes from './routes/scan.js';
-import statusRoutes from './routes/status.js';
-import memoryRoutes from './routes/memory.js';
-import chatRoutes from './routes/chat.js';
-import fileRoutes from './routes/file.js';
-import shellRoutes from './routes/shell.js';
-import gitRoutes from './routes/git.js';
-import providerRoutes from './routes/provider.js';
 
 const PORT = Number(process.env['PORT'] ?? 3099);
 
-const app = new Hono();
-
-// Global error handler
-app.onError((err, c) => {
-  if (err instanceof AppError) {
-    return c.json(
-      { error: err.code, message: err.message },
-      err.statusCode as 400 | 404 | 500 | 502,
-    );
-  }
-  console.error('Unexpected error:', err);
-  return c.json(
-    { error: 'INTERNAL', message: 'Internal server error' },
-    500,
-  );
-});
-
-// Mount routes
-app.route('/', statusRoutes);
-app.route('/', scanRoutes);
-app.route('/', memoryRoutes);
-app.route('/', chatRoutes);
-app.route('/', fileRoutes);
-app.route('/', shellRoutes);
-app.route('/', gitRoutes);
-app.route('/', providerRoutes);
-
-// Health check
-app.get('/health', (c) => c.json({ ok: true }));
-
 const start = async (): Promise<void> => {
   console.log('Loading regulation data...');
-  const regulationData = await loadRegulationData();
-  console.log(`Loaded ${regulationData.obligations.obligations.length} obligations`);
+  const { app, state } = await loadApplication();
 
-  const projectPath = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
-  initEngineContext(regulationData, projectPath);
+  // Keep old context in sync for any remaining legacy consumers
+  initEngineContext(state.regulationData, state.projectPath);
 
   const server = serve({ fetch: app.fetch, port: PORT }, () => {
     console.log(`Complior Engine v0.1.0 running on http://127.0.0.1:${PORT}`);
