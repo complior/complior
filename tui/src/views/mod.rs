@@ -4,4 +4,5 @@ pub mod dashboard;
 pub mod diff;
 pub mod file_browser;
 pub mod score;
+pub mod sidebar;
 pub mod terminal;

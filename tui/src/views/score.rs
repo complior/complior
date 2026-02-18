@@ -30,6 +30,8 @@ fn render_score_details(
     scan: &crate::types::ScanResult,
     history: &[f64],
 ) {
+    let t = theme::theme();
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -60,12 +62,12 @@ fn render_score_details(
     let stats = Line::from(vec![
         Span::styled(
             format!("{} passed", scan.score.passed_checks),
-            Style::default().fg(theme::ZONE_GREEN),
+            Style::default().fg(t.zone_green),
         ),
         Span::raw(" | "),
         Span::styled(
             format!("{} failed", scan.score.failed_checks),
-            Style::default().fg(theme::ZONE_RED),
+            Style::default().fg(t.zone_red),
         ),
         Span::raw(" | "),
         Span::styled(
@@ -83,9 +85,9 @@ fn render_score_details(
         .map(|cat| {
             let icon = if cat.failed == 0 { "+" } else { "x" };
             let style = if cat.failed == 0 {
-                Style::default().fg(theme::ZONE_GREEN)
+                Style::default().fg(t.zone_green)
             } else {
-                Style::default().fg(theme::ZONE_RED)
+                Style::default().fg(t.zone_red)
             };
             ListItem::new(Line::from(vec![
                 Span::styled(format!(" {icon} "), style),
@@ -108,7 +110,7 @@ fn render_score_details(
         let spark_text = history
             .iter()
             .map(|&s| {
-                let bar = match s as u32 {
+                match s as u32 {
                     0..=12 => '_',
                     13..=25 => '.',
                     26..=37 => '-',
@@ -117,8 +119,7 @@ fn render_score_details(
                     63..=75 => '#',
                     76..=87 => '%',
                     _ => '@',
-                };
-                bar
+                }
             })
             .collect::<String>();
 
@@ -127,7 +128,7 @@ fn render_score_details(
             Span::styled(
                 spark_text,
                 Style::default()
-                    .fg(theme::ACCENT)
+                    .fg(t.accent)
                     .add_modifier(Modifier::BOLD),
             ),
         ]);
@@ -160,6 +161,7 @@ mod tests {
 
     #[test]
     fn test_score_panel_no_scan() {
+        crate::theme::init_theme("dark");
         let backend = TestBackend::new(40, 20);
         let mut terminal = Terminal::new(backend).expect("terminal");
         let app = App::new(crate::config::TuiConfig::default());

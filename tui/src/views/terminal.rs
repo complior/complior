@@ -17,7 +17,8 @@ pub fn render_terminal(frame: &mut Frame, area: Rect, app: &App, focused: bool) 
     frame.render_widget(block, area);
 
     if app.terminal_output.is_empty() {
-        let msg = Paragraph::new("No command output yet.").style(theme::muted_style());
+        let msg = Paragraph::new("No command output yet. Use !cmd or /run cmd.")
+            .style(theme::muted_style());
         frame.render_widget(msg, inner);
         return;
     }
@@ -26,16 +27,20 @@ pub fn render_terminal(frame: &mut Frame, area: Rect, app: &App, focused: bool) 
         .terminal_output
         .iter()
         .map(|line| {
-            // Basic ANSI color stripping — render as plain text
             let clean = strip_ansi(line);
             Line::from(Span::raw(clean))
         })
         .collect();
 
-    // Auto-scroll to bottom
+    // Smart scroll: auto-scroll to bottom, or respect manual scroll position
     let total = lines.len();
     let visible = inner.height as usize;
-    let scroll = total.saturating_sub(visible);
+
+    let scroll = if app.terminal_auto_scroll {
+        total.saturating_sub(visible)
+    } else {
+        app.terminal_scroll.min(total.saturating_sub(visible))
+    };
 
     let paragraph = Paragraph::new(lines)
         .wrap(Wrap { trim: false })

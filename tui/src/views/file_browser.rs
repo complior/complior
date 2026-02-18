@@ -9,6 +9,8 @@ use crate::theme;
 use crate::types::FileEntry;
 
 pub fn render_file_browser(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
+    let t = theme::theme();
+
     let block = Block::default()
         .title(" Files ")
         .title_style(theme::title_style())
@@ -30,23 +32,23 @@ pub fn render_file_browser(frame: &mut Frame, area: Rect, app: &App, focused: bo
                 file_icon(&entry.name)
             };
 
-            let style = if entry.is_dir {
-                Style::default().fg(theme::ACCENT)
+            let (icon_color, name_color) = if entry.is_dir {
+                (t.accent, t.accent)
             } else {
-                Style::default().fg(theme::FG)
+                (file_type_color(&entry.name, &t), t.fg)
             };
 
             ListItem::new(Line::from(vec![
                 Span::raw(indent),
-                Span::styled(icon, style),
-                Span::styled(&entry.name, style),
+                Span::styled(icon, Style::default().fg(icon_color)),
+                Span::styled(&entry.name, Style::default().fg(name_color)),
             ]))
         })
         .collect();
 
     let list = List::new(items)
         .block(block)
-        .highlight_style(Style::default().bg(theme::SELECTION_BG));
+        .highlight_style(Style::default().bg(t.selection_bg));
 
     let mut state = ListState::default();
     state.select(Some(app.file_browser_index));
@@ -63,7 +65,20 @@ fn file_icon(name: &str) -> &'static str {
         Some("md") => "* ",
         Some("py") => "~ ",
         Some("go") => "& ",
+        Some("html" | "css") => "< ",
+        Some("sh" | "bash") => "! ",
         _ => "  ",
+    }
+}
+
+fn file_type_color(name: &str, t: &theme::ThemeColors) -> ratatui::style::Color {
+    match name.rsplit('.').next() {
+        Some("rs") => t.zone_yellow,
+        Some("ts" | "tsx") => t.accent,
+        Some("js" | "jsx") => t.zone_yellow,
+        Some("json" | "toml" | "yaml" | "yml") => t.zone_green,
+        Some("md" | "txt") => t.muted,
+        _ => t.fg,
     }
 }
 
@@ -113,8 +128,6 @@ fn collect_entries(dir: &std::path::Path, depth: usize, entries: &mut Vec<FileEn
             depth,
             expanded: false,
         });
-
-        // Don't auto-expand — user toggles expansion
     }
 }
 

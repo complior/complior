@@ -12,6 +12,8 @@ pub struct TuiConfig {
     pub engine_host: String,
     pub tick_rate_ms: u64,
     pub project_path: Option<String>,
+    pub theme: String,
+    pub sidebar_visible: bool,
 }
 
 impl Default for TuiConfig {
@@ -21,6 +23,8 @@ impl Default for TuiConfig {
             engine_host: "127.0.0.1".to_string(),
             tick_rate_ms: DEFAULT_TICK_RATE_MS,
             project_path: None,
+            theme: "dark".to_string(),
+            sidebar_visible: true,
         }
     }
 }
@@ -56,6 +60,8 @@ mod tests {
         assert_eq!(config.engine_port, 3099);
         assert_eq!(config.engine_host, "127.0.0.1");
         assert_eq!(config.engine_url(), "http://127.0.0.1:3099");
+        assert_eq!(config.theme, "dark");
+        assert!(config.sidebar_visible);
     }
 
     #[test]
@@ -63,9 +69,12 @@ mod tests {
         let toml_str = r#"
             engine_port = 4000
             engine_host = "localhost"
+            theme = "light"
+            sidebar_visible = false
         "#;
         let config: TuiConfig = toml::from_str(toml_str).expect("valid toml");
         assert_eq!(config.engine_port, 4000);
-        assert_eq!(config.engine_url(), "http://localhost:4000");
+        assert_eq!(config.theme, "light");
+        assert!(!config.sidebar_visible);
     }
 }

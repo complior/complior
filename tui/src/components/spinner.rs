@@ -1,4 +1,5 @@
-const FRAMES: &[&str] = &[".", "..", "...", ".."];
+/// Braille-based spinner for smooth loading animation.
+const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 pub struct Spinner {
     tick: usize,
@@ -29,16 +30,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_spinner_cycles() {
+    fn test_spinner_cycles_all_10_frames() {
         let mut spinner = Spinner::new();
-        assert_eq!(spinner.frame(), ".");
+        assert_eq!(spinner.frame(), "⠋");
+        for _ in 0..9 {
+            spinner.advance();
+        }
+        assert_eq!(spinner.frame(), "⠏");
         spinner.advance();
-        assert_eq!(spinner.frame(), "..");
-        spinner.advance();
-        assert_eq!(spinner.frame(), "...");
-        spinner.advance();
-        assert_eq!(spinner.frame(), "..");
-        spinner.advance();
-        assert_eq!(spinner.frame(), ".");
+        assert_eq!(spinner.frame(), "⠋"); // wraps
     }
 }
