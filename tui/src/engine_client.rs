@@ -47,6 +47,17 @@ impl EngineClient {
         }
     }
 
+    pub fn from_url(url: &str) -> Self {
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .expect("HTTP client must be constructable");
+        Self {
+            client,
+            base_url: url.trim_end_matches('/').to_string(),
+        }
+    }
+
     pub fn clone_for_stream(&self) -> Self {
         Self {
             client: self.client.clone(),
