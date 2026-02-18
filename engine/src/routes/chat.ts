@@ -1,11 +1,23 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
-import { ValidationError, LLMError } from '../types/errors.js';
+import { streamText, stepCountIs, type CoreMessage } from 'ai';
+import { ValidationError } from '../types/errors.js';
+import { routeModel } from '../llm/model-router.js';
+import { getModel } from '../llm/provider-registry.js';
+import { getEngineContext } from '../context.js';
+import { createCodingTools } from '../llm/tool-definitions.js';
+import { buildSystemPrompt } from '../llm/system-prompt.js';
+import {
+  sseThinking, sseText, sseToolCall, sseToolResult,
+  sseUsage, sseDone, sseError,
+} from '../llm/sse-protocol.js';
 
 const ChatRequestSchema = z.object({
   message: z.string().min(1),
   model: z.string().optional(),
+  provider: z.enum(['anthropic', 'openai', 'openrouter']).optional(),
+  apiKey: z.string().optional(),
 });
 
 const app = new Hono();
@@ -19,25 +31,100 @@ app.post('/chat', async (c) => {
     throw new ValidationError(`Invalid request: ${parsed.error.message}`);
   }
 
-  const hasProvider =
-    process.env['OPENAI_API_KEY'] !== undefined ||
-    process.env['ANTHROPIC_API_KEY'] !== undefined;
+  const ctx = getEngineContext();
+  const { provider, modelId } = parsed.data.provider && parsed.data.model
+    ? { provider: parsed.data.provider, modelId: parsed.data.model }
+    : routeModel('chat');
+  const model = await getModel(provider, modelId, parsed.data.apiKey);
+  const systemPrompt = buildSystemPrompt();
+  const tools = createCodingTools(ctx.projectPath);
 
-  if (!hasProvider) {
-    throw new LLMError(
-      'No LLM provider configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.',
-    );
-  }
+  // Append user message to conversation history
+  const userMessage: CoreMessage = { role: 'user', content: parsed.data.message };
+  ctx.conversationHistory.push(userMessage);
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE({
-      event: 'message',
-      data: JSON.stringify({
-        role: 'assistant',
-        content: `Received: "${parsed.data.message}". LLM streaming will be implemented in the next sprint.`,
-      }),
-    });
-    await stream.writeSSE({ event: 'done', data: '{}' });
+    try {
+      const result = streamText({
+        model: model as Parameters<typeof streamText>[0]['model'],
+        system: systemPrompt,
+        messages: ctx.conversationHistory,
+        tools,
+        stopWhen: stepCountIs(10),
+      });
+
+      let assistantText = '';
+
+      for await (const part of result.fullStream) {
+        switch (part.type) {
+          case 'text-delta': {
+            const text = (part as { text?: string; textDelta?: string }).text
+              ?? (part as { textDelta?: string }).textDelta ?? '';
+            assistantText += text;
+            const payload = sseText(text);
+            await stream.writeSSE({ event: payload.event, data: payload.data });
+            break;
+          }
+          case 'reasoning-delta': {
+            const text = (part as { text?: string; textDelta?: string }).text
+              ?? (part as { textDelta?: string }).textDelta ?? '';
+            const payload = sseThinking(text);
+            await stream.writeSSE({ event: payload.event, data: payload.data });
+            break;
+          }
+          case 'tool-call': {
+            const tc = part as { toolCallId?: string; toolUseId?: string; toolName: string; args?: object; input?: unknown };
+            const id = tc.toolCallId ?? tc.toolUseId ?? '';
+            const args = tc.args ?? tc.input ?? {};
+            const payload = sseToolCall(id, tc.toolName, args as object);
+            await stream.writeSSE({ event: payload.event, data: payload.data });
+            break;
+          }
+          case 'tool-result': {
+            const tr = part as { toolCallId?: string; toolUseId?: string; toolName: string; result?: unknown; output?: unknown };
+            const id = tr.toolCallId ?? tr.toolUseId ?? '';
+            const resultStr = typeof tr.result === 'string' ? tr.result
+              : typeof tr.output === 'string' ? tr.output
+              : JSON.stringify(tr.result ?? tr.output ?? '');
+            const isError = resultStr.includes('"error":true') || resultStr.includes('"error": true');
+            const payload = sseToolResult(id, tr.toolName, resultStr, isError);
+            await stream.writeSSE({ event: payload.event, data: payload.data });
+            break;
+          }
+          case 'finish': {
+            const totalUsage = (part as unknown as { totalUsage: { inputTokens?: number; outputTokens?: number; promptTokens?: number; completionTokens?: number } }).totalUsage;
+            if (totalUsage) {
+              const prompt = totalUsage.promptTokens ?? totalUsage.inputTokens ?? 0;
+              const completion = totalUsage.completionTokens ?? totalUsage.outputTokens ?? 0;
+              const payload = sseUsage(prompt, completion);
+              await stream.writeSSE({ event: payload.event, data: payload.data });
+            }
+            break;
+          }
+          case 'error': {
+            const payload = sseError(String((part as { error: unknown }).error));
+            await stream.writeSSE({ event: payload.event, data: payload.data });
+            break;
+          }
+          default:
+            break;
+        }
+      }
+
+      // Append assistant response to history
+      if (assistantText) {
+        ctx.conversationHistory.push({ role: 'assistant', content: assistantText });
+      }
+
+      const done = sseDone();
+      await stream.writeSSE({ event: done.event, data: done.data });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const payload = sseError(message);
+      await stream.writeSSE({ event: payload.event, data: payload.data });
+      const done = sseDone();
+      await stream.writeSSE({ event: done.event, data: done.data });
+    }
   });
 });
 
