@@ -9,6 +9,9 @@ export interface EventMap {
   readonly 'fix.validated': { readonly checkId: string; readonly passed: boolean; readonly scoreDelta: number };
   readonly 'fix.undone': { readonly checkId: string; readonly restoredFiles: readonly string[] };
   readonly 'badge.generated': { readonly path: string; readonly score: number; readonly zone: ScoreZone };
+  readonly 'share.created': { readonly id: string; readonly score: number };
+  readonly 'external-scan.completed': { readonly url: string; readonly score: number };
+  readonly 'report.generated': { readonly path: string; readonly format: 'pdf' | 'markdown' };
 }
 
 export type EventHandler<T> = (payload: T) => void;
