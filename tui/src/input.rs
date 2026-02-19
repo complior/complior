@@ -65,7 +65,8 @@ pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
             KeyCode::Char('b') => return Action::ToggleSidebar,
             KeyCode::Char('f') => return Action::ToggleFilesPanel,
             KeyCode::Char('p') => return Action::ShowCommandPalette,
-            KeyCode::Char('m') => return Action::ShowModelSelector,
+            // Note: Ctrl+M is indistinguishable from Enter in terminals (both send CR).
+            // Model selector is mapped to 'M' (Shift+M) in Normal mode instead.
             KeyCode::Char('s') => return Action::StartScan,
             KeyCode::Char('k') if app.input_mode == InputMode::Visual => {
                 return Action::SendSelectionToAi;
@@ -90,7 +91,7 @@ pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
 
     // If an overlay is active, route input there
     if app.overlay != Overlay::None {
-        return handle_overlay_keys(key);
+        return handle_overlay_keys(key, &app.overlay);
     }
 
     match app.input_mode {
@@ -109,10 +110,14 @@ pub fn handle_mouse_event(event: MouseEvent, _app: &App) -> Action {
     }
 }
 
-fn handle_overlay_keys(key: KeyEvent) -> Action {
+fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
+    // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
+    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding);
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
+        KeyCode::Char('j') | KeyCode::Down if navigable => Action::ScrollDown,
+        KeyCode::Char('k') | KeyCode::Up if navigable => Action::ScrollUp,
         KeyCode::Char(c) => Action::InsertChar(c),
         KeyCode::Backspace => Action::DeleteChar,
         _ => Action::None,
@@ -158,6 +163,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('G') => Action::ScrollToBottom,
         KeyCode::Char('v') | KeyCode::Char('V') => Action::EnterVisualMode,
         KeyCode::Char('w') => Action::WatchToggle,
+        KeyCode::Char('M') => Action::ShowModelSelector,
         KeyCode::Char('T') => Action::ShowThemePicker,
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
@@ -223,11 +229,59 @@ mod tests {
     #[test]
     fn test_watch_key_w_action() {
         let app = App::new(crate::config::TuiConfig::default());
-        // First switch to Normal mode where 'w' is bound
         let mut test_app = app;
         test_app.input_mode = InputMode::Normal;
 
         let action = handle_key_event(key(KeyCode::Char('w')), &test_app);
         assert!(matches!(action, Action::WatchToggle));
+    }
+
+    #[test]
+    fn test_theme_picker_overlay_jk_navigation() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::ThemePicker;
+
+        let action_j = handle_key_event(key(KeyCode::Char('j')), &app);
+        assert!(matches!(action_j, Action::ScrollDown));
+
+        let action_k = handle_key_event(key(KeyCode::Char('k')), &app);
+        assert!(matches!(action_k, Action::ScrollUp));
+
+        let action_down = handle_key_event(key(KeyCode::Down), &app);
+        assert!(matches!(action_down, Action::ScrollDown));
+
+        let action_up = handle_key_event(key(KeyCode::Up), &app);
+        assert!(matches!(action_up, Action::ScrollUp));
+    }
+
+    #[test]
+    fn test_onboarding_overlay_jk_navigation() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::Onboarding;
+
+        let action_j = handle_key_event(key(KeyCode::Char('j')), &app);
+        assert!(matches!(action_j, Action::ScrollDown));
+
+        let action_k = handle_key_event(key(KeyCode::Char('k')), &app);
+        assert!(matches!(action_k, Action::ScrollUp));
+    }
+
+    #[test]
+    fn test_non_navigable_overlay_jk_inserts() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::CommandPalette;
+
+        // In non-navigable overlays, j/k should produce InsertChar
+        let action_j = handle_key_event(key(KeyCode::Char('j')), &app);
+        assert!(matches!(action_j, Action::InsertChar('j')));
+    }
+
+    #[test]
+    fn test_model_selector_shift_m_in_normal_mode() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = InputMode::Normal;
+
+        let action = handle_key_event(key(KeyCode::Char('M')), &app);
+        assert!(matches!(action, Action::ShowModelSelector));
     }
 }

@@ -1123,7 +1123,7 @@ impl App {
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
                         "  /provider      — Configure LLM provider\n",
-                        "  /model         — Switch model (also Ctrl+M)\n",
+                        "  /model         — Switch model (also M in Normal mode)\n",
                         "  /welcome       — Show getting started\n",
                         "  /help          — Show this help\n",
                         "\n",
