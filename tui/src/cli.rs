@@ -75,6 +75,29 @@ pub enum Command {
 
     /// Diagnose system health (engine connection, config, etc.)
     Doctor,
+
+    /// Generate compliance report (markdown or PDF)
+    Report {
+        /// Output format: md or pdf (default: md)
+        #[arg(long, default_value = "md")]
+        format: String,
+
+        /// Output path (default: auto-generated)
+        #[arg(long, short)]
+        output: Option<String>,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+
+    /// Initialize .complior/ configuration in project
+    Init {
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+
+    /// Check for and install updates
+    Update,
 }
 
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
@@ -84,7 +107,7 @@ pub fn is_headless(cli: &Cli) -> bool {
             *ci || *json || *sarif || *no_tui
         }
         Some(Command::Fix { dry_run, json, .. }) => *dry_run || *json,
-        Some(Command::Version | Command::Doctor) => true,
+        Some(Command::Version | Command::Doctor | Command::Report { .. } | Command::Init { .. } | Command::Update) => true,
         None => false,
     }
 }

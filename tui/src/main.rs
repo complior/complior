@@ -98,6 +98,18 @@ async fn main() -> color_eyre::Result<()> {
                 headless::run_doctor(&config).await;
                 return Ok(());
             }
+            Some(cli::Command::Report { format, output, path }) => {
+                let code = headless::run_report(format, output.as_deref(), path.as_deref(), &config).await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Init { path }) => {
+                headless::run_init(path.as_deref());
+                return Ok(());
+            }
+            Some(cli::Command::Update) => {
+                headless::run_update().await;
+                return Ok(());
+            }
             None => unreachable!(),
         }
     }

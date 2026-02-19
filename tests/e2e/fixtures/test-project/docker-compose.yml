@@ -1,0 +1,12 @@
+# Intentionally low log retention — violates OBL-006a, Art. 12
+version: "3.8"
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"  # Only 7 days retention — violates OBL-006a (6 months required)
