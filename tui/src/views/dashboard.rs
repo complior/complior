@@ -18,6 +18,12 @@ use super::terminal::render_terminal;
 pub fn render_dashboard(frame: &mut Frame, app: &App) {
     let area = frame.area();
 
+    // T08: Splash screen — full-screen owl during startup fade-in
+    if let Some(opacity) = app.animation.splash_opacity() {
+        render_splash_screen(frame, area, opacity);
+        return;
+    }
+
     // T08: Owl header (2 lines)
     let owl_height: u16 = 2;
     let owl_area = Rect {
@@ -65,6 +71,78 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
 
     // Overlay on top of everything
     render_overlay(frame, app);
+}
+
+/// Full-screen splash with owl mascot, fades in during startup (500ms).
+fn render_splash_screen(frame: &mut Frame, area: Rect, _opacity: f64) {
+    let t = theme::theme();
+
+    // Block-art owl (10 lines)
+    let owl_lines = [
+        "       ▄▄           ▄▄",
+        "      ████▄▄▄▄▄▄▄▄████",
+        "      █  ▄████▄▄████▄  █",
+        "      █  ██◉◉████◉◉██  █",
+        "      █  ▀████▀▀████▀  █",
+        "      █      ▄▼▄      █",
+        "      ██   ▀▀▀▀▀   ██",
+        "       ██▀█▀█▀█▀█▀██",
+        "        █▀█     █▀█",
+        "        ▀▄▀     ▀▄▀",
+    ];
+
+    let owl_height = owl_lines.len() as u16;
+    let title_height = 2;
+    let total = owl_height + title_height + 1;
+
+    if area.height < total {
+        // Too small — just show text
+        let line = Line::from(Span::styled(
+            "c o m p l i o r",
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+        ));
+        let y = area.y + area.height / 2;
+        let splash_area = Rect { x: area.x, y, width: area.width, height: 1 };
+        frame.render_widget(Paragraph::new(line).alignment(ratatui::layout::Alignment::Center), splash_area);
+        return;
+    }
+
+    let start_y = area.y + (area.height.saturating_sub(total)) / 2;
+
+    // Render owl lines
+    for (i, line_str) in owl_lines.iter().enumerate() {
+        let line = Line::from(Span::styled(*line_str, Style::default().fg(t.accent)));
+        let y = start_y + i as u16;
+        let line_area = Rect { x: area.x, y, width: area.width, height: 1 };
+        frame.render_widget(
+            Paragraph::new(line).alignment(ratatui::layout::Alignment::Center),
+            line_area,
+        );
+    }
+
+    // Title: "c o m p l i o r"
+    let title_y = start_y + owl_height + 1;
+    let title = Line::from(Span::styled(
+        "c o m p l i o r",
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+    ));
+    let title_area = Rect { x: area.x, y: title_y, width: area.width, height: 1 };
+    frame.render_widget(
+        Paragraph::new(title).alignment(ratatui::layout::Alignment::Center),
+        title_area,
+    );
+
+    // Subtitle
+    let sub_y = title_y + 1;
+    let subtitle = Line::from(Span::styled(
+        "AI Compliance · Made Simple",
+        Style::default().fg(t.muted),
+    ));
+    let sub_area = Rect { x: area.x, y: sub_y, width: area.width, height: 1 };
+    frame.render_widget(
+        Paragraph::new(subtitle).alignment(ratatui::layout::Alignment::Center),
+        sub_area,
+    );
 }
 
 /// Owl ASCII header — 2 lines at top of every view.

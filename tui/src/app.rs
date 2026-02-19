@@ -270,7 +270,7 @@ impl App {
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> Option<AppCommand> {
         self.spinner.advance();
         self.toasts.gc();
         // Update context usage
@@ -291,11 +291,74 @@ impl App {
             self.idle_suggestions.fetch_pending = true;
             return Some(AppCommand::FetchSuggestions);
         }
+        None
     }
 
     /// Elapsed seconds since operation started.
     pub fn elapsed_secs(&self) -> Option<u64> {
         self.operation_start.map(|s| s.elapsed().as_secs())
+    }
+
+    /// Rebuild mouse click targets based on current terminal size and view state.
+    pub fn rebuild_click_areas(&mut self, width: u16, height: u16) {
+        use crate::types::ClickTarget;
+        self.click_areas.clear();
+
+        // Footer view tabs (last 2 lines): "1 dash 2 scan 3 fix 4 chat 5 time 6 report"
+        // Each tab is ~8 chars wide, spread across the bottom line
+        let footer_y = height.saturating_sub(1);
+        let tab_width: u16 = 10;
+        let views = [
+            ViewState::Dashboard,
+            ViewState::Scan,
+            ViewState::Fix,
+            ViewState::Chat,
+            ViewState::Timeline,
+            ViewState::Report,
+        ];
+        for (i, view) in views.iter().enumerate() {
+            let x = (i as u16) * tab_width;
+            if x + tab_width <= width {
+                self.click_areas.push((
+                    Rect::new(x, footer_y, tab_width, 1),
+                    ClickTarget::ViewTab(*view),
+                ));
+            }
+        }
+
+        // Sidebar area (if visible) — click on sidebar to toggle
+        let bp = crate::layout::Breakpoint::from_width(width);
+        if bp.show_sidebar() && self.sidebar_visible {
+            let sb_w = bp.sidebar_width();
+            let sb_x = width.saturating_sub(sb_w);
+            self.click_areas.push((
+                Rect::new(sb_x, 0, sb_w, height.saturating_sub(2)),
+                ClickTarget::SidebarToggle,
+            ));
+        }
+
+        // Scan view: finding rows
+        if self.view_state == ViewState::Scan {
+            let count = self.last_scan.as_ref().map_or(0, |s| s.findings.len());
+            let start_y: u16 = 5; // approximate start of findings list
+            for i in 0..count.min(20) {
+                self.click_areas.push((
+                    Rect::new(0, start_y + i as u16, width / 2, 1),
+                    ClickTarget::FindingRow(i),
+                ));
+            }
+        }
+
+        // Fix view: checkboxes
+        if self.view_state == ViewState::Fix {
+            let start_y: u16 = 3;
+            for i in 0..self.fix_view.fixable_findings.len().min(20) {
+                self.click_areas.push((
+                    Rect::new(0, start_y + i as u16, width / 2, 1),
+                    ClickTarget::FixCheckbox(i),
+                ));
+            }
+        }
     }
 
     pub fn next_panel(&mut self) {
@@ -2193,5 +2256,69 @@ mod tests {
         assert!(cmd.is_none());
         assert_eq!(app.overlay, Overlay::ThemePicker);
         assert!(app.theme_picker.is_some());
+    }
+
+    // ── T08 Tests ──
+
+    #[test]
+    fn test_click_areas_rebuilt_on_dashboard() {
+        let mut app = App::new(TuiConfig::default());
+        app.view_state = ViewState::Dashboard;
+        app.rebuild_click_areas(120, 40);
+        // Should have at least 6 view tabs in footer
+        let tab_count = app.click_areas.iter()
+            .filter(|(_, t)| matches!(t, crate::types::ClickTarget::ViewTab(_)))
+            .count();
+        assert_eq!(tab_count, 6);
+    }
+
+    #[test]
+    fn test_click_areas_sidebar_toggle_when_visible() {
+        let mut app = App::new(TuiConfig::default());
+        app.sidebar_visible = true;
+        app.rebuild_click_areas(120, 40); // Medium breakpoint, sidebar visible
+        let has_sidebar = app.click_areas.iter()
+            .any(|(_, t)| matches!(t, crate::types::ClickTarget::SidebarToggle));
+        assert!(has_sidebar, "Medium width with sidebar visible should have SidebarToggle");
+    }
+
+    #[test]
+    fn test_click_areas_no_sidebar_on_small_terminal() {
+        let mut app = App::new(TuiConfig::default());
+        app.sidebar_visible = true;
+        app.rebuild_click_areas(80, 30); // Small breakpoint
+        let has_sidebar = app.click_areas.iter()
+            .any(|(_, t)| matches!(t, crate::types::ClickTarget::SidebarToggle));
+        assert!(!has_sidebar, "Small terminal should not have SidebarToggle");
+    }
+
+    #[test]
+    fn test_idle_suggestion_triggers_fetch() {
+        let mut app = App::new(TuiConfig::default());
+        app.input_mode = InputMode::Normal;
+        // Simulate 15s idle
+        app.idle_suggestions.last_input = std::time::Instant::now() - std::time::Duration::from_secs(15);
+        let cmd = app.tick();
+        assert!(matches!(cmd, Some(AppCommand::FetchSuggestions)));
+        assert!(app.idle_suggestions.fetch_pending);
+    }
+
+    #[test]
+    fn test_idle_no_fetch_when_insert_mode() {
+        let mut app = App::new(TuiConfig::default());
+        app.input_mode = InputMode::Insert;
+        app.idle_suggestions.last_input = std::time::Instant::now() - std::time::Duration::from_secs(15);
+        let cmd = app.tick();
+        assert!(cmd.is_none(), "Should not trigger fetch in insert mode");
+    }
+
+    #[test]
+    fn test_colon_mode_activation() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+        app.input_mode = InputMode::Normal;
+        let _cmd = app.apply_action(Action::EnterColonMode);
+        assert!(app.colon_mode);
+        assert_eq!(app.input_mode, InputMode::Command);
     }
 }

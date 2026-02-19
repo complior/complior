@@ -118,6 +118,8 @@ async fn main() -> color_eyre::Result<()> {
     let mut app = App::new(config);
     // Override engine client with the effective URL
     app.engine_client = engine_client::EngineClient::from_url(&effective_url);
+    // Start splash animation (only in production, not in tests)
+    app.animation.start_splash();
 
     // Check for --resume flag
     if resume
@@ -249,6 +251,11 @@ async fn run_event_loop(
     let health_check_interval: u32 = 20; // 20 ticks × 250ms = 5s
 
     while app.running {
+        // Compute click areas for mouse support
+        if let Ok(size) = crossterm::terminal::size() {
+            app.rebuild_click_areas(size.0, size.1);
+        }
+
         // Render
         terminal.draw(|frame| render_dashboard(frame, app))?;
 
@@ -288,7 +295,9 @@ async fn run_event_loop(
 
             // Tick for general state + health checks (250ms)
             _ = tick_interval.tick() => {
-                app.tick();
+                if let Some(cmd) = app.tick() {
+                    execute_command(app, cmd, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
+                }
                 tick_count += 1;
 
                 // Periodic engine health check
@@ -554,6 +563,7 @@ async fn execute_command(
                         msg.to_string(),
                     );
                     app.push_activity(types::ActivityKind::Fix, "Undo");
+                    app.animation.start_checkmark();
                 }
                 Err(_) => {
                     app.toasts.push(
@@ -653,5 +663,48 @@ async fn execute_command(
                 }
             }
         }
+    }
+}
+
+/// Build a context-aware suggestion from local app state when engine /suggestions is unavailable.
+fn build_local_suggestion(app: &App) -> components::suggestions::Suggestion {
+    use components::suggestions::{Suggestion, SuggestionKind};
+
+    // Priority 1: If no scan yet, suggest scanning
+    if app.last_scan.is_none() {
+        return Suggestion {
+            kind: SuggestionKind::Tip,
+            text: "Try /scan to check your project's compliance score".into(),
+            detail: Some("Press any key to dismiss".into()),
+        };
+    }
+
+    let scan = app.last_scan.as_ref().unwrap();
+    let score = scan.score.total_score;
+
+    // Priority 2: Findings present — suggest fix
+    let finding_count = scan.findings.len();
+    if finding_count > 0 {
+        return Suggestion {
+            kind: SuggestionKind::Fix,
+            text: format!("Score {score:.0}/100. {finding_count} findings to fix — press 3 for Fix view"),
+            detail: Some("Quick wins can boost your score significantly".into()),
+        };
+    }
+
+    // Priority 3: Deadline warning
+    if score < 80.0 {
+        return Suggestion {
+            kind: SuggestionKind::DeadlineWarning,
+            text: format!("Score {score:.0}/100 — EU AI Act full enforcement Aug 2, 2026"),
+            detail: Some("Press 5 for Timeline view".into()),
+        };
+    }
+
+    // Priority 4: High score celebration
+    Suggestion {
+        kind: SuggestionKind::ScoreImprovement,
+        text: format!("Score {score:.0}/100 — Looking good! Run /scan to verify latest changes"),
+        detail: None,
     }
 }
