@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 
 use crate::app::App;
+use crate::layout::{Breakpoint, compute_layout};
 use crate::theme;
 use crate::types::{Overlay, Panel, ViewState};
 
@@ -17,12 +18,25 @@ use super::terminal::render_terminal;
 pub fn render_dashboard(frame: &mut Frame, app: &App) {
     let area = frame.area();
 
-    // Reserve 2 lines at bottom for footer
-    let body_area = Rect {
+    // T08: Owl header (2 lines)
+    let owl_height: u16 = 2;
+    let owl_area = Rect {
         x: area.x,
         y: area.y,
         width: area.width,
-        height: area.height.saturating_sub(2),
+        height: owl_height.min(area.height),
+    };
+    render_owl_header(frame, owl_area);
+
+    // Reserve 2 lines for owl header + 2 lines for footer
+    let suggestion_height: u16 = if app.idle_suggestions.current.is_some() { 2 } else { 0 };
+    let footer_height: u16 = 2;
+    let overhead = owl_height + footer_height + suggestion_height;
+    let body_area = Rect {
+        x: area.x,
+        y: area.y + owl_height,
+        width: area.width,
+        height: area.height.saturating_sub(overhead),
     };
 
     // Dispatch to the active view
@@ -35,6 +49,17 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
         ViewState::Report => super::report::render_report_view(frame, body_area, app),
     }
 
+    // T08: Idle suggestion area (above footer)
+    if let Some(ref suggestion) = app.idle_suggestions.current {
+        let suggestion_area = Rect {
+            x: area.x,
+            y: area.y + area.height.saturating_sub(footer_height + suggestion_height),
+            width: area.width,
+            height: suggestion_height,
+        };
+        crate::components::suggestions::render_suggestion(frame, suggestion_area, suggestion);
+    }
+
     // 2-line footer at bottom
     render_view_footer(frame, app);
 
@@ -42,19 +67,125 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     render_overlay(frame, app);
 }
 
-/// Dashboard view — the original multi-panel layout.
-fn render_dashboard_view(frame: &mut Frame, body_area: Rect, app: &App) {
-    if app.sidebar_visible {
-        let main_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Min(40), Constraint::Length(28)])
-            .split(body_area);
-
-        render_dashboard_content(frame, main_layout[0], app);
-        render_sidebar(frame, main_layout[1], app);
-    } else {
-        render_dashboard_content(frame, body_area, app);
+/// Owl ASCII header — 2 lines at top of every view.
+fn render_owl_header(frame: &mut Frame, area: Rect) {
+    let t = theme::theme();
+    if area.height < 2 {
+        return;
     }
+    let lines = vec![
+        Line::from(vec![
+            Span::styled("(o)(o)", Style::default().fg(t.accent)),
+            Span::raw("  "),
+        ]),
+        Line::from(vec![
+            Span::styled(" \\__/ ", Style::default().fg(t.accent)),
+            Span::styled(" complior v1.0", Style::default().fg(t.muted)),
+        ]),
+    ];
+    frame.render_widget(Paragraph::new(lines), area);
+}
+
+/// Dashboard view — responsive multi-panel layout (T803).
+fn render_dashboard_view(frame: &mut Frame, body_area: Rect, app: &App) {
+    let bp = Breakpoint::from_width(body_area.width);
+
+    match bp {
+        Breakpoint::Tiny => {
+            // Minimal: single-line score summary
+            render_tiny_dashboard(frame, body_area, app);
+        }
+        Breakpoint::Small => {
+            // No sidebar, just content
+            render_dashboard_content(frame, body_area, app);
+        }
+        Breakpoint::Medium => {
+            // Sidebar if visible (20 cols)
+            if app.sidebar_visible {
+                let rl = compute_layout(body_area, Some(true));
+                render_dashboard_content(frame, rl.main_area, app);
+                if let Some(sb) = rl.sidebar_area {
+                    render_sidebar(frame, sb, app);
+                }
+            } else {
+                render_dashboard_content(frame, body_area, app);
+            }
+        }
+        Breakpoint::Large => {
+            // 3-column: main + sidebar (20) + detail (30)
+            if app.sidebar_visible {
+                let rl = compute_layout(body_area, Some(true));
+                render_dashboard_content(frame, rl.main_area, app);
+                if let Some(sb) = rl.sidebar_area {
+                    render_sidebar(frame, sb, app);
+                }
+                if let Some(detail) = rl.detail_area {
+                    render_detail_panel(frame, detail, app);
+                }
+            } else {
+                render_dashboard_content(frame, body_area, app);
+            }
+        }
+    }
+}
+
+/// Tiny terminal mode — minimal summary.
+fn render_tiny_dashboard(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let score_text = if let Some(scan) = &app.last_scan {
+        let s = scan.score.total_score;
+        format!("Score: {s:.0}/100 | {} findings | {} files", scan.findings.len(), scan.files_scanned)
+    } else {
+        "No scan data. Press Ctrl+S or :scan".to_string()
+    };
+
+    let lines = vec![
+        Line::from(Span::styled(score_text, Style::default().fg(t.fg))),
+    ];
+    frame.render_widget(Paragraph::new(lines), area);
+}
+
+/// Detail panel for Large breakpoint (rightmost column).
+fn render_detail_panel(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let block = Block::default()
+        .title(" Detail ")
+        .title_style(theme::title_style())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.border));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let lines = if let Some(scan) = &app.last_scan {
+        let mut l = vec![
+            Line::from(Span::styled(
+                format!(" Checks: {}/{}", scan.score.passed_checks, scan.score.total_checks),
+                Style::default().fg(t.fg),
+            )),
+            Line::from(Span::styled(
+                format!(" Failed: {}", scan.score.failed_checks),
+                Style::default().fg(t.zone_red),
+            )),
+            Line::from(Span::styled(
+                format!(" Categories: {}", scan.score.category_scores.len()),
+                Style::default().fg(t.fg),
+            )),
+        ];
+        if scan.score.critical_cap_applied {
+            l.push(Line::from(Span::styled(
+                " Critical cap applied",
+                Style::default().fg(t.zone_red),
+            )));
+        }
+        l
+    } else {
+        vec![Line::from(Span::styled(
+            " Run a scan to see details",
+            Style::default().fg(t.muted),
+        ))]
+    };
+    frame.render_widget(Paragraph::new(lines), inner);
 }
 
 /// Chat full-width view — full chat + optional sidebar.
@@ -196,15 +327,21 @@ fn render_bottom_widgets(frame: &mut Frame, area: Rect, app: &App) {
     render_score_history_line(frame, bottom_row[1], app);
 }
 
-/// Score gauge widget — colored by threshold, with zone label.
+/// Score gauge widget — colored by threshold, with zone label + animation support.
 fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
 
     if let Some(scan) = &app.last_scan {
-        let score = scan.score.total_score;
-        let (color, zone_label) = score_zone_info(score, &t);
+        let real_score = scan.score.total_score;
+        // T08: Use animated counter value if available
+        let display_score = app
+            .animation
+            .counter_value()
+            .map(|v| v as f64)
+            .unwrap_or(real_score);
+        let (color, zone_label) = score_zone_info(display_score, &t);
 
-        let ratio = (score / 100.0).clamp(0.0, 1.0);
+        let ratio = (display_score / 100.0).clamp(0.0, 1.0);
         let gauge = ratatui::widgets::Gauge::default()
             .block(
                 Block::default()
@@ -215,7 +352,7 @@ fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {
             )
             .gauge_style(Style::default().fg(color))
             .ratio(ratio)
-            .label(format!("{score:.0}/100 — {zone_label}"));
+            .label(format!("{display_score:.0}/100 — {zone_label}"));
 
         frame.render_widget(gauge, area);
     }
@@ -563,11 +700,15 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         height: 1,
     };
 
-    let mode_str = match app.input_mode {
-        crate::types::InputMode::Normal => " NORMAL ",
-        crate::types::InputMode::Insert => " INSERT ",
-        crate::types::InputMode::Command => " CMD ",
-        crate::types::InputMode::Visual => " VISUAL ",
+    let mode_str = if app.colon_mode {
+        " COLON "
+    } else {
+        match app.input_mode {
+            crate::types::InputMode::Normal => " NORMAL ",
+            crate::types::InputMode::Insert => " INSERT ",
+            crate::types::InputMode::Command => " CMD ",
+            crate::types::InputMode::Visual => " VISUAL ",
+        }
     };
 
     let hint_text = footer_hints_for_view(app.view_state);
@@ -577,19 +718,37 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         Span::raw(" "),
     ];
 
-    // Parse hint text into styled spans (key:desc pairs)
-    for part in hint_text.split(' ') {
-        if let Some((key, desc)) = part.split_once(':') {
-            hint_spans.push(Span::styled(key, Style::default().fg(t.accent)));
-            hint_spans.push(Span::styled(
-                format!(":{desc} "),
-                Style::default().fg(t.muted),
-            ));
-        } else if !part.is_empty() {
-            hint_spans.push(Span::styled(
-                format!("{part} "),
-                Style::default().fg(t.muted),
-            ));
+    if app.colon_mode {
+        // Show `:input` + autocomplete hint
+        hint_spans.push(Span::styled(":", Style::default().fg(t.accent)));
+        hint_spans.push(Span::styled(&*app.input, Style::default().fg(t.fg)));
+        hint_spans.push(Span::styled("▌", Style::default().fg(t.accent)));
+        // Autocomplete hint
+        if let Some(hint) = crate::components::command_palette::complete_colon_command(&app.input) {
+            if hint != app.input {
+                let remaining = &hint[app.input.len()..];
+                hint_spans.push(Span::styled(remaining, Style::default().fg(t.muted)));
+            }
+        }
+        hint_spans.push(Span::styled(
+            "  Tab:complete Enter:run Esc:cancel",
+            Style::default().fg(t.muted),
+        ));
+    } else {
+        // Parse hint text into styled spans (key:desc pairs)
+        for part in hint_text.split(' ') {
+            if let Some((key, desc)) = part.split_once(':') {
+                hint_spans.push(Span::styled(key, Style::default().fg(t.accent)));
+                hint_spans.push(Span::styled(
+                    format!(":{desc} "),
+                    Style::default().fg(t.muted),
+                ));
+            } else if !part.is_empty() {
+                hint_spans.push(Span::styled(
+                    format!("{part} "),
+                    Style::default().fg(t.muted),
+                ));
+            }
         }
     }
 
@@ -599,7 +758,7 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 /// View-specific footer hints (line 2).
 pub fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
-        ViewState::Dashboard => "1-6:view Tab:mode e:zoom i:ins /:cmd ^P:palette ^B:sidebar w:watch ?:help",
+        ViewState::Dashboard => "1-6:view Tab:mode e:zoom i:ins /:cmd ::colon ^Z:undo U:history ?:help",
         ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix x:explain d:dismiss o:open j/k:nav",
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
         ViewState::Chat => "Tab:complete @OBL:ref !cmd Enter:send",
@@ -656,6 +815,9 @@ fn render_overlay(frame: &mut Frame, app: &App) {
             if let Some(modal) = &app.dismiss_modal {
                 render_dismiss_modal(frame, modal);
             }
+        }
+        Overlay::UndoHistory => {
+            crate::components::undo_history::render_undo_history(frame, &app.undo_history);
         }
     }
 
@@ -1225,7 +1387,7 @@ mod tests {
     fn test_footer_hints_per_view() {
         let dashboard_hints = footer_hints_for_view(ViewState::Dashboard);
         assert!(dashboard_hints.contains("1-6:view"));
-        assert!(dashboard_hints.contains("w:watch"));
+        assert!(dashboard_hints.contains("::colon"));
         assert!(dashboard_hints.contains("?:help"));
 
         let scan_hints = footer_hints_for_view(ViewState::Scan);
@@ -1490,7 +1652,9 @@ mod tests {
     #[test]
     fn e2e_t504_status_bar_shows_no_model_when_unconfigured() {
         crate::theme::init_theme("dark");
-        let app = App::new(crate::config::TuiConfig::default());
+        let mut app = App::new(crate::config::TuiConfig::default());
+        // Force empty provider config (disk may have a real provider configured)
+        app.provider_config = crate::providers::ProviderConfig::default();
 
         let buf = render_to_string(&app, 120, 40);
         assert!(buf.contains("no model"), "Status bar should show 'no model' when no provider configured");
@@ -1624,8 +1788,8 @@ mod tests {
         app.view_state = ViewState::Dashboard;
         let buf = render_to_string(&app, 120, 40);
         let last_line = buf.lines().last().unwrap_or("");
-        assert!(last_line.contains("palette"), "Dashboard footer should mention palette");
-        assert!(last_line.contains("watch"), "Dashboard footer should mention watch");
+        assert!(last_line.contains("colon"), "Dashboard footer should mention colon");
+        assert!(last_line.contains("undo"), "Dashboard footer should mention undo");
 
         // Chat view — should show chat-specific hints
         app.view_state = ViewState::Chat;
@@ -2168,5 +2332,166 @@ mod tests {
                 view
             );
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Sprint T08 — Advanced UX Part 2 + Polish
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ─── T803: Responsive Layout ───
+
+    #[test]
+    fn e2e_t803_responsive_tiny() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
+        app.sidebar_visible = false;
+
+        // Tiny terminal (40 cols) — should not panic and show minimal summary
+        let buf = render_to_string(&app, 40, 10);
+        assert!(!buf.is_empty(), "Tiny terminal should render something");
+    }
+
+    // ─── T806: Mouse Support ───
+
+    #[test]
+    fn t806_scroll_accel_slow() {
+        let app = App::new(crate::config::TuiConfig::default());
+        // No recent scroll events → should be 1 line
+        let lines = crate::input::scroll_line_count_for_test(&app);
+        assert_eq!(lines, 1);
+    }
+
+    #[test]
+    fn t806_scroll_accel_fast() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        let now = std::time::Instant::now();
+        // Add 4 recent scroll events
+        for _ in 0..4 {
+            app.scroll_events.push(now);
+        }
+        let lines = crate::input::scroll_line_count_for_test(&app);
+        assert!(lines > 1, "Fast scrolling should accelerate (got {lines})");
+    }
+
+    #[test]
+    fn t806_click_target_view_tab() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        assert_eq!(app.view_state, ViewState::Dashboard);
+
+        app.apply_action(crate::input::Action::ClickAt(
+            crate::types::ClickTarget::ViewTab(ViewState::Scan),
+        ));
+        assert_eq!(app.view_state, ViewState::Scan, "Click on Scan tab should switch view");
+    }
+
+    #[test]
+    fn t806_click_noop_empty() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        // No click areas registered — click should be no-op
+        let mouse = crossterm::event::MouseEvent {
+            kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
+            column: 50,
+            row: 10,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = crate::input::handle_mouse_event(mouse, &app);
+        assert!(matches!(action, crate::input::Action::None));
+    }
+
+    // ─── T804: Colon-Command Mode ───
+
+    #[test]
+    fn t804_colon_enters_mode() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Normal;
+
+        app.apply_action(crate::input::Action::EnterColonMode);
+        assert!(app.colon_mode, "EnterColonMode should set colon_mode");
+        assert_eq!(app.input_mode, crate::types::InputMode::Command);
+        assert!(app.input.is_empty());
+    }
+
+    #[test]
+    fn t804_colon_cmd_scan() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.colon_mode = true;
+        app.input_mode = crate::types::InputMode::Command;
+        app.input = "scan".to_string();
+        app.input_cursor = 4;
+
+        let cmd = app.apply_action(crate::input::Action::SubmitInput);
+        assert!(matches!(cmd, Some(crate::app::AppCommand::Scan)), "`:scan` should return Scan command");
+        assert!(!app.colon_mode, "colon_mode should be cleared after submit");
+    }
+
+    #[test]
+    fn t804_colon_cmd_quit() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.colon_mode = true;
+        app.input_mode = crate::types::InputMode::Command;
+        app.input = "quit".to_string();
+        app.input_cursor = 4;
+
+        let cmd = app.apply_action(crate::input::Action::SubmitInput);
+        assert!(cmd.is_none());
+        assert!(!app.running, "`:quit` should set running=false");
+    }
+
+    #[test]
+    fn t804_colon_tab_complete() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.colon_mode = true;
+        app.input_mode = crate::types::InputMode::Command;
+        app.input = "sc".to_string();
+        app.input_cursor = 2;
+
+        app.apply_action(crate::input::Action::TabComplete);
+        assert_eq!(app.input, "scan", "Tab should complete 'sc' to 'scan'");
+    }
+
+    #[test]
+    fn t804_colon_esc() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.colon_mode = true;
+        app.input_mode = crate::types::InputMode::Command;
+
+        app.apply_action(crate::input::Action::EnterNormalMode);
+        assert!(!app.colon_mode, "Esc should clear colon_mode");
+        assert_eq!(app.input_mode, crate::types::InputMode::Normal);
+    }
+
+    // ─── T08: Owl Header + Animations ───
+
+    #[test]
+    fn e2e_t08_owl_header_renders() {
+        crate::theme::init_theme("dark");
+        let app = App::new(crate::config::TuiConfig::default());
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("(o)(o)"), "Owl header should render");
+        assert!(buf.contains("complior"), "Owl header should show version");
+    }
+
+    #[test]
+    fn e2e_t08_undo_overlay_renders() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::UndoHistory;
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("Undo History"), "Undo History overlay should render");
+    }
+
+    #[test]
+    fn e2e_t08_colon_mode_footer() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.colon_mode = true;
+        app.input_mode = crate::types::InputMode::Command;
+        app.input = "the".to_string();
+
+        let buf = render_to_string(&app, 120, 40);
+        let last_line = buf.lines().last().unwrap_or("");
+        assert!(last_line.contains("COLON"), "Footer should show COLON mode badge");
     }
 }

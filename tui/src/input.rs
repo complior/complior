@@ -1,7 +1,7 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind, MouseButton};
 
 use crate::app::App;
-use crate::types::{InputMode, Overlay, Panel, ViewState};
+use crate::types::{ClickTarget, InputMode, Overlay, Panel, ViewState};
 
 pub enum Action {
     Quit,
@@ -28,6 +28,7 @@ pub enum Action {
     EnterNormalMode,
     EnterVisualMode,
     EnterCommandMode,
+    EnterColonMode,
     SelectionUp,
     SelectionDown,
     SendSelectionToAi,
@@ -50,6 +51,10 @@ pub enum Action {
     CodeSearch,
     CodeSearchNext,
     CodeSearchPrev,
+    Undo,
+    ShowUndoHistory,
+    ClickAt(ClickTarget),
+    ScrollLines(i32),
     ViewKey(char),
     ViewEnter,
     ViewEscape,
@@ -71,6 +76,7 @@ pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
             KeyCode::Char('k') if app.input_mode == InputMode::Visual => {
                 return Action::SendSelectionToAi;
             }
+            KeyCode::Char('z') => return Action::Undo,
             KeyCode::Char('d') => return Action::ScrollHalfPageDown,
             KeyCode::Char('u') => return Action::ScrollHalfPageUp,
             _ => {}
@@ -102,17 +108,59 @@ pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
     }
 }
 
-pub fn handle_mouse_event(event: MouseEvent, _app: &App) -> Action {
+pub fn handle_mouse_event(event: MouseEvent, app: &App) -> Action {
     match event.kind {
-        MouseEventKind::ScrollUp => Action::ScrollUp,
-        MouseEventKind::ScrollDown => Action::ScrollDown,
+        MouseEventKind::ScrollUp => {
+            let lines = scroll_line_count(app);
+            Action::ScrollLines(-lines)
+        }
+        MouseEventKind::ScrollDown => {
+            let lines = scroll_line_count(app);
+            Action::ScrollLines(lines)
+        }
+        MouseEventKind::Down(MouseButton::Left) => {
+            let col = event.column;
+            let row = event.row;
+            // Hit-test against registered click areas
+            for (rect, target) in &app.click_areas {
+                if col >= rect.x
+                    && col < rect.x + rect.width
+                    && row >= rect.y
+                    && row < rect.y + rect.height
+                {
+                    return Action::ClickAt(target.clone());
+                }
+            }
+            Action::None
+        }
         _ => Action::None,
     }
 }
 
+/// Compute scroll lines based on recent scroll event frequency (acceleration).
+fn scroll_line_count(app: &App) -> i32 {
+    let now = std::time::Instant::now();
+    let recent = app
+        .scroll_events
+        .iter()
+        .filter(|&&t| now.duration_since(t).as_millis() < 300)
+        .count();
+    if recent >= 3 {
+        let accel = app.config.scroll_acceleration;
+        (accel * 3.0) as i32
+    } else {
+        1
+    }
+}
+
+#[cfg(test)]
+pub fn scroll_line_count_for_test(app: &App) -> i32 {
+    scroll_line_count(app)
+}
+
 fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
     // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
-    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog);
+    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory);
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
@@ -162,6 +210,8 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('g') => Action::ScrollToTop,
         KeyCode::Char('G') => Action::ScrollToBottom,
         KeyCode::Char('v') | KeyCode::Char('V') => Action::EnterVisualMode,
+        KeyCode::Char(':') => Action::EnterColonMode,
+        KeyCode::Char('U') => Action::ShowUndoHistory,
         KeyCode::Char('w') => Action::WatchToggle,
         KeyCode::Char('M') => Action::ShowModelSelector,
         KeyCode::Char('T') => Action::ShowThemePicker,

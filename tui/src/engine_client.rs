@@ -181,6 +181,43 @@ impl EngineClient {
         Ok(file_resp.content)
     }
 
+    pub async fn undo(&self, id: Option<u32>) -> Result<serde_json::Value> {
+        let mut body = serde_json::json!({});
+        if let Some(id) = id {
+            body["id"] = serde_json::Value::Number(serde_json::Number::from(id));
+        }
+        let resp = self
+            .client
+            .post(format!("{}/fix/undo", self.base_url))
+            .json(&body)
+            .send()
+            .await?;
+        let result = resp.json::<serde_json::Value>().await?;
+        Ok(result)
+    }
+
+    pub async fn undo_history(&self) -> Result<Vec<serde_json::Value>> {
+        let resp = self
+            .client
+            .get(format!("{}/fix/history", self.base_url))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await?;
+        let result = resp.json::<Vec<serde_json::Value>>().await?;
+        Ok(result)
+    }
+
+    pub async fn suggestions(&self) -> Result<Vec<serde_json::Value>> {
+        let resp = self
+            .client
+            .get(format!("{}/suggestions", self.base_url))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await?;
+        let result = resp.json::<Vec<serde_json::Value>>().await?;
+        Ok(result)
+    }
+
     pub async fn edit_file(&self, path: &str, old_str: &str, new_str: &str) -> Result<String> {
         let resp = self
             .client

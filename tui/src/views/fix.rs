@@ -116,6 +116,12 @@ impl FixViewState {
         }
     }
 
+    pub fn toggle_at(&mut self, idx: usize) {
+        if let Some(item) = self.fixable_findings.get_mut(idx) {
+            item.selected = !item.selected;
+        }
+    }
+
     pub fn select_all(&mut self) {
         for item in &mut self.fixable_findings {
             item.selected = true;
