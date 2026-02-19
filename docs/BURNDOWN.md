@@ -74,53 +74,40 @@
 ### Итоги Спринта 1
 
 **Фаза 0–1: Настройка + Типы (3 SP)**
-- Vitest конфиг, структура каталогов, npm-зависимости (@hono/node-server, tsx, @ai-sdk/openai, @ai-sdk/anthropic)
-- `types/common.types.ts` — 18 общих типов (RiskLevel, Severity, CheckResult, Finding, ScanResult, ScoreBreakdown, ProjectProfile, GateResult и др.)
-- `types/errors.ts` — иерархия AppError (6 классов: Validation, NotFound, Config, Scan, LLM, Tool)
+- Инфраструктура проекта: конфиг тестов, структура каталогов, 18 доменных типов (RiskLevel, Finding, ScanResult и др.), иерархия ошибок (6 классов)
 
 **US-002 — Слой данных (5 SP)**
-- `data/schemas.ts` — Zod-схемы для всех 8 JSON регуляций (nullable/optional поля под реальные данные)
-- `data/regulation-loader.ts` — параллельная загрузка + валидация 108 обязательств, ленивый кэш-синглтон, <500мс
+- Загрузка и Zod-валидация 108 обязательств EU AI Act из 8 JSON-файлов. Параллельная загрузка с ленивым кэшированием, время инициализации <500мс
 
-**US-003 — Сканер (10 SP)**
-- `core/scanner/file-collector.ts` — рекурсивный обход файлов, исключения, лимиты 500 файлов / 1МБ
-- 7 чистых проверок: ai-disclosure, content-marking, interaction-logging, ai-literacy, gpai-transparency, compliance-metadata, documentation
-- `core/scanner/index.ts` — оркестратор сканера, запуск всех проверок, конвертация в Findings
+**US-003 — Сканер L1 (10 SP)**
+- Первый уровень сканера: рекурсивный обход файлов проекта и 7 проверок на соответствие (AI disclosure, маркировка контента, логирование взаимодействий, AI literacy, GPAI-прозрачность, compliance-метаданные, документация). Каждая проверка привязана к конкретной статье AI Act
 
 **US-004 — Движок скоринга (5 SP)**
-- `core/scanner/score-calculator.ts` — взвешенный скоринг (8 категорий из scoring.json), критический потолок (→ макс 40%), зоны red/yellow/green, отслеживание дельты
+- Взвешенный compliance-скор по 8 категориям из базы регуляций. Критический потолок (при критических нарушениях макс. 40%), три зоны (зелёная ≥80 / жёлтая 50-79 / красная <50), отслеживание дельты между сканами
 
 **US-005 — LLM-провайдер (5 SP)**
-- `llm/provider-registry.ts` — мульти-провайдер (OpenAI, Anthropic) из env-переменных
-- `llm/model-router.ts` — маршрутизация по типу задачи (qa→cheap, code→balanced, report→powerful)
-- `llm/tool-definitions.ts` — 8 определений инструментов Vercel AI SDK с Zod-параметрами
+- Мульти-провайдерный AI (OpenAI, Anthropic) через Vercel AI SDK. Умная маршрутизация: дешёвая модель для Q&A, мощная для отчётов. 8 tool definitions для функционального вызова инструментов
 
 **US-006 — Файловые операции (3 SP)**
-- `coding/file-ops.ts` — createFile, editFile, readFile, listFiles с защитой от path traversal
+- 4 операции над файлами (создание, редактирование, чтение, листинг) с защитой от path traversal — основа для авто-фиксера
 
 **US-007 — Shell + Git (3 SP)**
-- `coding/shell.ts` — песочница runCommand (блокированные команды, таймаут 30с)
-- `coding/git.ts` — обёртка simple-git (status, diff, log, add, commit, branch)
-- `coding/search.ts` — обёртка ripgrep с фолбэком на нативный Node.js
+- Песочница для выполнения shell-команд (блоклист опасных команд, таймаут 30с). Git-операции (status, diff, log, commit). Поиск по коду через ripgrep
 
 **US-008 — Compliance Gate (3 SP)**
-- `coding/compliance-gate.ts` — повторный скан после операций, дельта score + предупреждения при регрессии
+- Автоматический ре-скан после каждого изменения кода. Вычисление дельты скора и предупреждение при регрессии — центральный механизм compliance-first workflow
 
 **US-009 — Детектор фреймворков (3 SP)**
-- `core/detector/framework-detector.ts` — detectFramework(), detectAiTools(), detectModelsInSource()
+- Автоматическое определение фреймворка (Next.js, Express, FastAPI и др.), используемых AI SDK и моделей в исходном коде — основа для контекстных рекомендаций
 
 **US-010 — Детектор проекта (2 SP)**
-- `core/detector/project-detector.ts` — оркестратор с I/O, чтение package.json + исходников
+- Профилирование проекта: анализ package.json, зависимостей и исходников для построения контекста, используемого сканером и фиксером
 
-**US-011 — Приоритизатор + Память + Конфиг (5 SP)**
-- `core/classifier/risk-prioritizer.ts` — scoreFinding(), prioritizeFindings() (чувствительность 40% + критичность 30% + экспозиция 20% + сложность фикса 10%)
-- `memory/project-memory.ts` — фабрика createProjectMemoryManager() (load, save, recordScan, recordFix)
-- `config/config-loader.ts` — cosmiconfig + Zod-валидация для .compliorrc.json
+**US-011 — Приоритизация + Память + Конфиг (5 SP)**
+- Ранжирование найденных нарушений по 4 факторам (чувствительность данных 40%, серьёзность регуляции 30%, экспозиция 20%, сложность фикса 10%). Память проекта (сохранение результатов сканов и фиксов между сессиями). Конфигурация через `.compliorrc.json`
 
 **US-001 — HTTP-сервер + Маршруты (5 SP)**
-- `server.ts` — Hono-приложение, монтирование маршрутов, глобальный обработчик ошибок, graceful shutdown
-- `context.ts` — синглтон EngineContext (regulationData, scanner, memory)
-- 7 модулей маршрутов: scan, status, memory, chat (SSE), file, shell, git
+- Hono HTTP-сервер с SSE-стримингом ответов AI. 7 групп маршрутов (scan, status, memory, chat, file, shell, git). Graceful shutdown и глобальная обработка ошибок
 
 ### Исправления в процессе
 - Несовпадение Zod-схем: obligations.json содержал null-значения → поля сделаны `.optional()` + `.nullable()`, добавлен `.passthrough()`
@@ -166,47 +153,25 @@
 ### Итоги Спринта 2
 
 **US-012 — Дашборд TUI + Навигация (8 SP)**
-- `app.rs` — машина состояний AppState (15+ полей: панели, режимы, чат, скор, файлы, терминал, дифф)
-- `views/dashboard.rs` — Ratatui layout: контент (70%) | сайдбар (30%), 2-3 вертикальных сплита
-- `input.rs` — обработчик событий клавиатуры: 4 режима (Normal/Insert/Command/Visual), 25+ действий
-- `theme.rs` — цветовая палитра (зоны скора, severity, дифф, чат, выделение), 10 стилевых хелперов
-- `main.rs` — Tokio async точка входа, `tokio::select!` event loop (клавиатура + SSE + тик)
-- Tab переключает панели, resize адаптирует layout, q/Ctrl+C — выход с graceful shutdown
+- Главное окно TUI-приложения: раскладка контент (70%) + сайдбар (30%), 4 режима управления (Normal/Insert/Command/Visual, 25+ действий), цветовая тема с зонами скора и severity. Tokio async event loop обрабатывает клавиатуру, SSE-стриминг и таймеры параллельно
 
 **US-013 — Чат-интерфейс + IPC-клиент (5 SP)**
-- `engine_client.rs` — reqwest HTTP-клиент: status, scan, chat_stream (SSE), read_file, run_command, edit_file
-- `views/chat.rs` — чат-панель: список сообщений (user/assistant/system со стилями), авто-скролл, поле ввода с курсором
-- SSE-парсер: извлечение токенов из `data:` строк, обработка `[DONE]`, форматы Vercel AI SDK + plain text
-- Потоковый вывод токен-за-токеном с индикатором курсора `_`
+- Чат с AI-ассистентом: HTTP-клиент к Engine (scan, chat, file ops), SSE-стриминг ответов токен-за-токеном с индикатором курсора. Парсинг формата Vercel AI SDK, стилизованные сообщения user/assistant/system и авто-скролл
 
 **US-014 — Файловый браузер + Просмотр кода (8 SP)**
-- `views/file_browser.rs` — древовидное представление с раскрываемыми папками, исключения node_modules/.git/target/dist
-- Папки сортируются первыми, затем файлы по алфавиту; иконки типов файлов (# rs, @ ts, $ js, { json и др.)
-- `views/code_viewer.rs` — отображение кода с номерами строк, скролл, подсветка синтаксиса через syntect
-- `highlight_code()` — интеграция syntect с конвертацией в ratatui Styles (тема base16-ocean.dark)
-- Оверлей аннотаций комплаенса: findings с привязкой к строкам показываются inline
+- Файловый браузер с раскрывающимся деревом каталогов (иконки по типу файла, фильтрация служебных папок), просмотрщик кода с подсветкой синтаксиса (syntect, 20+ языков). Оверлей аннотаций compliance: findings привязаны к строкам кода и показываются inline
 
 **US-015 — Выделение кода → AI (8 SP)**
-- Визуальный режим: `V` начинает выделение строк, `j`/`k` расширяют, `Esc` отменяет
-- `Ctrl+K` отправляет выделенный блок в чат AI с контекстом: `[selected N lines from file:L1-L2]`
-- Подсветка выделения цветом `SELECTION_BG`
-- Подготовлен inline diff рендеринг для ответов AI
+- Визуальный режим выделения строк кода (V-mode): выделяешь фрагмент → Ctrl+K отправляет в AI-чат с контекстом файла и номерами строк. Основа для интерактивного исправления compliance-нарушений прямо в коде
 
 **US-016 — Gauge скора + Статусбар (3 SP)**
-- `views/score.rs` — виджет Gauge (цвет по зоне), статистика pass/fail/skip, разбивка по категориям
-- Спарклайн истории скора (текстовый: `_.-~=#%@` для диапазона 0-100)
-- Статусбар: индикатор режима (NORMAL/INSERT/COMMAND/VISUAL), активная панель, подсказки клавиш
-- Отображение статуса подключения к движку (Connecting/Connected/Disconnected)
+- Визуальный индикатор compliance-скора: gauge с цветом по зоне (зелёный/жёлтый/красный), статистика pass/fail/skip по категориям, текстовый спарклайн истории скора. Статусбар: режим, панель, статус подключения к Engine
 
 **US-017 — Терминальная панель (3 SP)**
-- `views/terminal.rs` — read-only панель вывода, удаление ANSI escape-кодов
-- `Ctrl+T` переключает видимость, авто-скролл к последнему выводу
-- `/run <cmd>` отправляет команду на shell-эндпоинт движка
+- Встроенная терминальная панель для выполнения shell-команд через Engine: `/run <cmd>` запускает команду, вывод с очисткой ANSI-кодов, авто-скролл. Ctrl+T переключает видимость
 
 **US-018 — Предпросмотр диффа (3 SP)**
-- `views/diff.rs` — рендер unified diff: +/- строки с цветами, @@ заголовки стилизованы
-- `parse_unified_diff()` — парсинг стандартного формата unified diff
-- Подсказки действий: y (принять), n (отклонить), Esc (отмена)
+- Предпросмотр unified diff перед применением фиксов: цветовое выделение +/- строк, заголовки @@, кнопки accept/reject/cancel. Основа для review-workflow авто-фиксера
 
 ### Архитектура
 
@@ -272,28 +237,13 @@ tui/src/ (19 файлов, 2 444 строки)
 ### Итоги Спринта 2.5
 
 **Engine (8 SP)**
-- OpenRouter provider — подключение к 500+ моделям через единый API
-- Per-request `apiKey` — пользователь может передавать ключ при каждом запросе
-- `POST /provider/verify` — верификация API-ключа провайдера
-- AI SDK v5 миграция: `ai@5.0.135` + `@ai-sdk/anthropic@2.0.65` + `@ai-sdk/openai@2.0.91`
-- Chat endpoint принимает `provider`, `model`, `apiKey` параметры
-- Порт по умолчанию: 3099
+- OpenRouter провайдер: доступ к 500+ моделям через единый API. Верификация API-ключей, per-request apiKey, миграция на AI SDK v5. Chat endpoint поддерживает переключение провайдера/модели/ключа на лету
 
 **TUI (12 SP)**
-- `providers.rs` — конфигурация провайдеров + TOML + каталог моделей (50+ моделей)
-- `ProviderSetup` overlay — 4-шаговый визард: выбор провайдера → ввод API key → верификация → сохранение
-- `ModelSelector` overlay — выбор модели из каталога провайдера, поиск, фильтрация
-- `Ctrl+M` — горячая клавиша переключения модели
-- `/provider` + `/model` — слеш-команды для быстрого переключения
-- Статус-бар: отображение текущей модели
-- Автоматическое открытие ProviderSetup при первом запуске (если нет провайдера)
+- 4-шаговый визард настройки AI-провайдера (выбор → API key → верификация → сохранение), каталог 50+ моделей с поиском и фильтрацией. Ctrl+M переключает модель, `/provider` и `/model` — слеш-команды. Первый запуск автоматически открывает визард
 
-**Также завершено (UX Polish, из Sprint 2.5 backlog)**
-- `sidebar.rs` — информационная боковая панель (проект, файлы, скан, quick actions)
-- `command_palette.rs` — Ctrl+P командная палитра с fuzzy search
-- `file_picker.rs` — fuzzy file search popup (@файлы)
-- `markdown.rs` — парсер markdown → styled spans для чата
-- `session.rs` — session save/load/list (JSON persistence)
+**UX Polish (5 SP)**
+- Sidebar с информацией о проекте и быстрыми действиями, Ctrl+P командная палитра с fuzzy search, файловый пикер, markdown-парсер для чата, система сессий с save/load/list
 
 ### Статистика файлов
 - 12 новых файлов, ~3 000 строк
@@ -333,28 +283,20 @@ tui/src/ (19 файлов, 2 444 строки)
 
 ### Итоги Спринта E03
 
-**US-E301 — Scanner L2: Document Structure Validator (5 SP)**
-- YAML-валидаторы для анализа Markdown-заголовков (AI Literacy, FRIA, Technical Docs, Risk Management и др.)
-- Проверка наличия обязательных секций в документации
-- Привязка к obligations по Article/Section mapping
+**US-E301 — Сканер L2: Валидатор структуры документов (5 SP)**
+- Второй уровень сканера: анализ структуры Markdown-документации проекта. Проверяет наличие обязательных секций (AI Literacy, FRIA, Risk Management и др.) в документах и привязывает находки к конкретным obligations EU AI Act
 
-**US-E302 — Scanner L3: Config & Dependency Scanner (5 SP)**
-- Парсинг package.json / requirements.txt / Cargo.toml — детекция AI-зависимостей
-- Анализ .env файлов на наличие API-ключей провайдеров (OpenAI, Anthropic, Google AI)
-- Проверка конфигураций фреймворков (Next.js, Express, FastAPI)
+**US-E302 — Сканер L3: Анализ зависимостей и конфигурации (5 SP)**
+- Третий уровень сканера: детекция AI-библиотек в package.json/requirements.txt/Cargo.toml, поиск API-ключей провайдеров в .env, проверка конфигураций фреймворков (Next.js, Express, FastAPI)
 
-**US-E303 — Scanner L4: Pattern Matching (5 SP)**
-- Regex-паттерны для AI SDK usage, disclosure компонентов, logging, kill switch
-- Привязка паттернов к конкретным obligations (Art. 13, 14, 50, 52)
-- Поддержка TS/JS/Python/Rust файлов
+**US-E303 — Сканер L4: Pattern Matching в исходном коде (5 SP)**
+- Четвёртый уровень сканера: regex-паттерны для обнаружения AI SDK usage, disclosure-компонентов, логирования, kill switch. Поддержка TS/JS/Python/Rust, привязка к конкретным статьям (Art. 13, 14, 50, 52)
 
-**US-E304 — 5-Tier Confidence Levels (5 SP)**
-- 5 уровней: PASS (≥95%) / LIKELY_PASS (70-95%) / UNCERTAIN (40-70%) / LIKELY_FAIL (70-95%) / FAIL (≥95%)
-- Confidence агрегация из всех слоёв (L1-L4)
-- ScoreCalculator использует confidence в weighted scoring
+**US-E304 — 5-уровневая система Confidence (5 SP)**
+- Пятиуровневая оценка уверенности: PASS (≥95%) / LIKELY_PASS / UNCERTAIN / LIKELY_FAIL / FAIL. Агрегация из всех слоёв сканера (L1-L4), интеграция в взвешенный скоринг — позволяет отличить подтверждённые нарушения от предположительных
 
-**Clean Architecture Refactor**
-- 6-layer engine restructure: types → data → domain → core → http → cli
+**Рефакторинг Clean Architecture**
+- Реструктуризация Engine в 6 слоёв: types → data → domain → core → http → cli — разделение ответственности для масштабирования
 
 ### Статистика файлов
 - Engine: ~20 файлов изменено/добавлено, ~2 500 строк
@@ -392,46 +334,20 @@ tui/src/ (19 файлов, 2 444 строки)
 
 ### Итоги Спринта E04
 
-**US-E401 — Auto-Fixer Engine (5 SP)**
-- `domain/fixer/create-fixer.ts` — фабрика Fixer сервиса: `generateFix()`, `generateFixes()`, `previewFix()`
-- `domain/fixer/strategies.ts` — 5 стратегий фиксов: Disclosure (Art. 50.1), Content Marking (Art. 50.2), Logging (Art. 12), Documentation (шаблоны), Metadata (.well-known)
-- `domain/fixer/diff.ts` — генерация unified diff для модификаций и новых файлов
-- `domain/fixer/types.ts` — FixPlan, FixResult, FixStrategy, FixAction
-- `services/fix-service.ts` — оркестрация: preview, apply, backup (.complior/backups/), re-scan
-- `http/routes/fix.route.ts` — 4 эндпоинта: GET/POST /fix/preview, POST /fix/apply, POST /fix/apply-all
-- Framework-aware: React/Next.js, Express/Hono адаптация
+**US-E401 — Движок авто-фиксов (5 SP)**
+- 5 стратегий автоматического исправления нарушений: Disclosure (Art. 50.1), Content Marking (Art. 50.2), Logging (Art. 12), Documentation (шаблоны), Metadata (.well-known). Полный workflow: preview → apply → backup → re-scan. Framework-aware генерация кода для React/Next.js, Express/Hono
 
-**US-E402 — 8 Document Templates (5 SP)**
-- `domain/fixer/template-engine.ts` — загрузка шаблонов, заполнение placeholders ([Company Name], [Date], [X.Y])
-- 8 шаблонов в `engine/data/templates/eu-ai-act/`:
-  1. AI Literacy Policy (Art. 4)
-  2. Art. 5 Risk Screening (Art. 5)
-  3. FRIA (Art. 27)
-  4. Worker Notification (Art. 26.7)
-  5. Technical Documentation (Art. 11)
-  6. Incident Report (Art. 73)
-  7. Declaration of Conformity (Art. 47)
-  8. Monitoring Policy (Art. 26)
-- Mapping obligationId → template → output file
+**US-E402 — 8 шаблонов документов EU AI Act (5 SP)**
+- Готовые шаблоны обязательных документов: AI Literacy Policy (Art. 4), Risk Screening (Art. 5), FRIA (Art. 27), Worker Notification (Art. 26.7), Technical Documentation (Art. 11), Incident Report (Art. 73), Declaration of Conformity (Art. 47), Monitoring Policy (Art. 26). Автоматическое заполнение placeholders из контекста проекта
 
-**US-E403 — Compliance Metadata Standard (4 SP)**
-- `domain/metadata/generator.ts` — 4 формата метаданных:
-  - `.well-known/ai-compliance.json` (Zod-валидация)
-  - HTML meta-теги (`<meta name="ai-compliance-score">`)
-  - HTTP-заголовки (`X-AI-Compliance-Score`)
-  - JS object (`window.__AI_COMPLIANCE__`)
-- Auto-update после каждого скана
+**US-E403 — Стандарт compliance-метаданных (4 SP)**
+- Машинно-читаемые метаданные соответствия в 4 форматах: `.well-known/ai-compliance.json` (с Zod-валидацией), HTML meta-теги, HTTP-заголовки, JS-объект. Авто-обновление после каждого скана — позволяет внешним системам проверять compliance-статус
 
-**US-E404 — Headless CLI Mode (5 SP)**
-- `cli/ci-mode.ts` — CLI флаги: `--ci`, `--fail-on`, `--sarif`, `--json`, `--threshold`, `--auto`
-- `output/sarif.ts` — SARIF 2.1.0 output (GitHub Code Scanning совместимый)
-- `output/json-output.ts` — structured JSON export
-- Exit code 0/1 для CI/CD pipeline
+**US-E404 — Headless CLI для CI/CD (5 SP)**
+- Безголовый режим для интеграции в CI/CD pipeline: флаги `--ci`, `--fail-on`, `--threshold`, `--auto`. Вывод в SARIF 2.1.0 (совместим с GitHub Code Scanning) и structured JSON. Exit code 0/1 для автоматического гейтинга в pipeline
 
-**US-E405 — Git Hooks + Export Formats (3 SP)**
-- `hooks/installer.ts` — 3 git hooks (pre-commit, pre-push, commit-msg), backup существующих
-- `output/github-issue.ts` — Markdown checklist для GitHub Issues
-- `output/jira-csv.ts` — CSV export для Jira bulk import
+**US-E405 — Git Hooks + экспорт (3 SP)**
+- 3 git hooks (pre-commit, pre-push, commit-msg) с бэкапом существующих — compliance-проверка встраивается в git workflow. Экспорт findings: Markdown checklist для GitHub Issues, CSV для Jira bulk import
 
 ### Статистика файлов
 - 13 core файлов, ~1 770 строк
@@ -470,29 +386,17 @@ tui/src/ (19 файлов, 2 444 строки)
 
 ### Итоги Спринта T03
 
-**US-T301 — 6-View State Machine (5 SP)**
-- `ViewState` enum: Dashboard, Scan, Fix, Chat, Timeline, Report
-- Переключение клавишами `1`-`6` в Normal mode
-- `Mode` enum: Scan, Fix, Watch — Tab toggle между режимами
-- View dispatcher в dashboard.rs — маршрутизация рендера по ViewState
-- Заглушки (placeholder) для 4 новых views
+**US-T301 — Машина состояний 6 представлений (5 SP)**
+- Архитектурный скелет TUI: 6 представлений (Dashboard, Scan, Fix, Chat, Timeline, Report) с переключением клавишами 1-6. Tab toggle между режимами (Scan/Fix/Watch). Маршрутизация рендера по текущему view — фундамент для всех последующих TUI-спринтов
 
-**US-T302 — Auto-Launch Engine (5 SP)**
-- `engine_process.rs` — управление Engine как child process
-- Health checks: `/status` ping каждые 5 секунд
-- Авто-перезапуск при crash (до 3 раз)
-- Graceful shutdown при выходе из TUI
-- Логирование stdout/stderr Engine в терминальную панель
+**US-T302 — Автозапуск Engine (5 SP)**
+- TUI автоматически запускает Engine как дочерний процесс: health check каждые 5с, авто-перезапуск при crash (до 3 раз), graceful shutdown при выходе. Пользователю не нужно вручную запускать сервер — всё работает из одной команды `complior`
 
-**US-T303 — Chat View Enhancement (3 SP)**
-- Миграция чата в 6-view систему (View 4)
-- Сохранение состояния чата при переключении views
-- Обновлённый layout: полноэкранный чат без sidebar
+**US-T303 — Обновлённый Chat View (3 SP)**
+- Миграция чата в 6-view систему: полноэкранный layout без sidebar, сохранение истории чата при переключении между views
 
-**US-T304 — Dashboard Layout Enhancement (3 SP)**
-- Расширенный dashboard: score gauge + deadlines + critical findings
-- Виджет quick actions (scan, fix, watch)
-- Footer с динамическими подсказками per-view
+**US-T304 — Обновлённый Dashboard (3 SP)**
+- Расширенный dashboard: score gauge + deadlines + critical findings в верхней части, quick actions (scan, fix, watch) внизу. Footer с динамическими подсказками по текущему view
 
 ### Исправления
 - Engine auto-launch: правильный spawn command (`npx tsx`), cwd, fix restart spam (health check race condition)
@@ -535,30 +439,16 @@ tui/src/ (19 файлов, 2 444 строки)
 ### Итоги Спринта T04
 
 **US-T401 — Scan View (8 SP)**
-- 5-layer прогресс-бары (L1 File Presence, L2 Document, L3 Config, L4 Pattern, L5 LLM)
-- Findings list с severity-цветами (Critical/High/Medium/Low)
-- Фильтры: `a` All, `c` Critical, `h` High, `m` Medium, `l` Low
-- Finding detail popup: obligation, article, description, file:line, confidence
-- Animated scan progress с процентом per-layer
+- Визуализация 5-уровневого скана: прогресс-бары для каждого слоя (L1-L5), список findings с цветами severity (Critical/High/Medium/Low), фильтры по уровню серьёзности. Popup с деталями: obligation, статья, описание, файл:строка, confidence
 
 **US-T402 — Fix View (8 SP)**
-- Checklist fixable items со `Space` toggle, `a` select all, `n` deselect all
-- Diff preview справа (split-view)
-- Score impact predictor: `72 → 84 (+12)` с цветовым индикатором
-- `Enter` — apply selected fixes, batch mode
-- Привязка к obligation id для каждого fix item
+- Интерфейс для пакетного применения фиксов: чеклист с Space/a/n toggle, diff preview справа (split-view), предсказание влияния на скор (`72 → 84 (+12)`). Enter — применить выбранные фиксы одним batch-запросом
 
 **US-T403 — Timeline View (2 SP)**
-- Вертикальная timeline EU AI Act 2024-2030 (7 milestones)
-- `YOU ARE HERE` маркер с текущей датой
-- Countdown per milestone (дни до/после)
-- Цвета: прошедшее=зелёный, текущее=жёлтый, будущее=серый, просроченное=красный
+- Визуальная timeline EU AI Act 2024-2030 (7 milestones): маркер «YOU ARE HERE» с текущей датой, countdown до каждого дедлайна. Цвета: прошедшее=зелёный, текущее=жёлтый, будущее=серый, просроченное=красный
 
 **US-T404 — Report View (2 SP)**
-- In-TUI markdown preview всего отчёта
-- Секции: Executive Summary, Score Breakdown, Findings, Remediation Plan, Evidence
-- `e` export в Markdown файл (`complior-report-YYYY-MM-DD.md`)
-- Scroll с j/k
+- Полный compliance-отчёт прямо в TUI: Executive Summary, Score Breakdown, Findings, Remediation Plan, Evidence. Экспорт в Markdown файл одной клавишей (`e`)
 
 ### Исправления
 - `CategoryScore` deserialization: JSON → Rust struct mapping fix
@@ -601,36 +491,20 @@ tui/src/ (19 файлов, 2 444 строки)
 
 ### Итоги Спринта T05
 
-**US-T501 — Enhanced Dashboard: 2x2 Widget Grid (5 SP)**
-- Замена 2-column layout на 2x2 grid: Score Gauge | Deadline Countdown / Activity Log | Score Sparkline
-- Score Gauge: зональная метка (GREEN — Compliant / YELLOW — Partial / RED — Non-Compliant)
-- Deadline Countdown: вычисление дней до дедлайна, цвета: past=red, <90d=yellow, >90d=green
-- Activity Log: последние 10 записей с иконками `[HH:MM] S|F|C|W|O detail`
-- `ActivityEntry`, `ActivityKind` типы в types.rs
+**US-T501 — Расширенный Dashboard: 2x2 виджет-сетка (5 SP)**
+- Замена 2-column layout на 2x2 grid: Score Gauge с зональной меткой | Countdown дедлайнов с цветами urgency | Activity Log (последние 10 действий) | Score Sparkline из истории. Дашборд теперь показывает полную картину compliance одним взглядом
 
-**US-T502 — Watch Mode: авто-скан при изменении файлов (5 SP)**
-- `watcher.rs` — `notify` crate v6, `spawn_blocking` + `recommended_watcher`
-- Фильтрация: только Create/Modify, пропуск hidden файлов, `node_modules/`, `target/`, `dist/`, `build/`
-- Debounce: 500ms (track `last_sent: Instant`)
-- 4-й `select!` arm в main.rs event loop
-- `ToggleWatch` / `AutoScan` команды, клавиша `w`, `/watch` команда
-- Regression detection: diff < -5 → "REGRESSION", diff > 0 → "IMPROVED"
-- `watch_on_start` в config.rs
+**US-T502 — Watch Mode: авто-скан при изменениях (5 SP)**
+- Режим наблюдения за файлами: при сохранении файла автоматически запускается скан. Debounce 500ms, фильтрация служебных файлов. Детекция регрессии: если скор упал > 5 пунктов — предупреждение «REGRESSION». Клавиша `w` или `/watch` для переключения
 
-**US-T503 — @OBL/@Art References в Chat (3 SP)**
-- `obligations.rs` — 15 EU AI Act obligations (Art. 5, 6, 9-15, 26-27, 50, 52-53, 55)
-- `autocomplete_obl(prefix)` — fuzzy match по id, article, title
-- Tab-complete для `@OBL-`, `@OBL`, `@Art.`, `@Art` в Insert mode
-- `inject_obligation_context(message)` — подмена @OBL-xxx токенов контекстом для LLM
-- `highlight_obl_tokens()` в chat.rs — accent color для @OBL-xxx
+**US-T503 — @OBL/@Art ссылки на обязательства в чате (3 SP)**
+- Система ссылок на обязательства EU AI Act прямо в чате: ввод `@OBL-001` или `@Art.50` с Tab-автодополнением. При отправке сообщения контекст обязательства автоматически инжектируется в промпт LLM. Подсветка ссылок акцентным цветом
 
-**US-T504 — Status Bar: 6 индикаторов (3 SP)**
-- Model+Provider (accent) | Score badge `[75]` (zone color) | View `[3 Fix]` | Watch `[W]` (green when active) | Context `[ctx:45%]` (red>80%, yellow>50%) | Cost `[$0.000]` (always visible)
+**US-T504 — Статус-бар: 6 индикаторов (3 SP)**
+- Полноценная строка состояния: модель+провайдер | скор-badge с цветом зоны | текущий view | Watch-индикатор | контекст-загрузка (% от лимита) | стоимость запроса. Все 6 индикаторов видны всегда
 
-**US-T505 — Dynamic Footer + Help Overlay (2 SP)**
-- `footer_hints_for_view()` — view-specific shortcuts per view (Dashboard/Scan/Fix/Chat/Timeline/Report)
-- Scrollable Help overlay (`?`): view-specific section first, global shortcuts, j/k scroll
-- `help_scroll` field в App
+**US-T505 — Динамический footer + Help overlay (2 SP)**
+- Контекстные подсказки клавиш: footer меняется в зависимости от текущего view (разные хоткеи для Scan/Fix/Chat и др.). Прокручиваемый Help overlay (`?`) с view-specific секцией в начале
 
 ### Исправления
 - `inject_obligation_context`: trailing punctuation strip для `@OBL-001?`
