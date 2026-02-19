@@ -14,6 +14,7 @@ pub struct TuiConfig {
     pub project_path: Option<String>,
     pub theme: String,
     pub sidebar_visible: bool,
+    pub watch_on_start: bool,
     #[serde(skip)]
     pub engine_url_override: Option<String>,
 }
@@ -27,6 +28,7 @@ impl Default for TuiConfig {
             project_path: None,
             theme: "dark".to_string(),
             sidebar_visible: true,
+            watch_on_start: false,
             engine_url_override: None,
         }
     }

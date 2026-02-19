@@ -19,6 +19,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ("/save", "Save current session"),
     ("/load", "Load saved session"),
     ("/sessions", "List saved sessions"),
+    ("/watch", "Toggle file watch mode"),
 ];
 
 pub fn render_command_palette(frame: &mut Frame, filter: &str) {

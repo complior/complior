@@ -5,11 +5,13 @@ mod engine_client;
 mod engine_process;
 mod error;
 mod input;
+mod obligations;
 mod providers;
 mod session;
 mod theme;
 mod types;
 mod views;
+mod watcher;
 
 use std::io;
 use std::time::Duration;
@@ -201,6 +203,10 @@ async fn run_event_loop(
     // SSE channel for streaming responses
     let (sse_tx, mut sse_rx) = mpsc::unbounded_channel::<SseEvent>();
 
+    // Watch mode channel + handle
+    let (watch_tx, mut watch_rx) = mpsc::unbounded_channel::<std::path::PathBuf>();
+    let mut watch_handle: Option<tokio::task::JoinHandle<()>> = None;
+
     // Try to connect to engine (if we haven't already from auto-launch)
     if app.engine_status != types::EngineConnectionStatus::Connected {
         match app.engine_client.status().await {
@@ -221,6 +227,16 @@ async fn run_event_loop(
         }
     }
 
+    // Auto-start watch if configured
+    if app.config.watch_on_start {
+        watch_handle = Some(watcher::spawn_watcher(app.project_path.clone(), watch_tx.clone()));
+        app.watch_active = true;
+        app.messages.push(types::ChatMessage::new(
+            types::MessageRole::System,
+            "Watch mode started (auto).".to_string(),
+        ));
+    }
+
     // Tick counter for periodic health checks (~5s at 250ms tick)
     let mut tick_count: u32 = 0;
     let health_check_interval: u32 = 20; // 20 ticks × 250ms = 5s
@@ -237,13 +253,13 @@ async fn run_event_loop(
                     Some(Ok(Event::Key(key))) => {
                         let action = input::handle_key_event(key, app);
                         if let Some(cmd) = app.apply_action(action) {
-                            execute_command(app, cmd, sse_tx.clone()).await;
+                            execute_command(app, cmd, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
                         }
                     }
                     Some(Ok(Event::Mouse(mouse))) => {
                         let action = input::handle_mouse_event(mouse, app);
                         if let Some(cmd) = app.apply_action(action) {
-                            execute_command(app, cmd, sse_tx.clone()).await;
+                            execute_command(app, cmd, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
                         }
                     }
                     _ => {
@@ -255,6 +271,12 @@ async fn run_event_loop(
             // SSE events from engine
             Some(event) = sse_rx.recv() => {
                 app.handle_sse_event(event);
+            }
+
+            // File watch events
+            Some(path) = watch_rx.recv(), if app.watch_active => {
+                app.push_activity(types::ActivityKind::Watch, path.display().to_string());
+                execute_command(app, AppCommand::AutoScan, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
             }
 
             // Tick for animations + health checks
@@ -292,12 +314,90 @@ async fn run_event_loop(
         }
     }
 
+    // Clean up watcher on exit
+    if let Some(handle) = watch_handle.take() {
+        handle.abort();
+    }
+
     Ok(())
 }
 
 #[allow(clippy::too_many_lines)]
-async fn execute_command(app: &mut App, cmd: AppCommand, sse_tx: mpsc::UnboundedSender<SseEvent>) {
+async fn execute_command(
+    app: &mut App,
+    cmd: AppCommand,
+    sse_tx: mpsc::UnboundedSender<SseEvent>,
+    watch_tx: &mpsc::UnboundedSender<std::path::PathBuf>,
+    watch_handle: &mut Option<tokio::task::JoinHandle<()>>,
+) {
     match cmd {
+        AppCommand::ToggleWatch => {
+            if app.watch_active {
+                // Stop watcher
+                if let Some(handle) = watch_handle.take() {
+                    handle.abort();
+                }
+                app.watch_active = false;
+                app.mode = types::Mode::Scan;
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    "Watch mode stopped.".to_string(),
+                ));
+            } else {
+                // Start watcher
+                *watch_handle = Some(watcher::spawn_watcher(
+                    app.project_path.clone(),
+                    watch_tx.clone(),
+                ));
+                app.watch_active = true;
+                app.mode = types::Mode::Watch;
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    "Watch mode started. Editing files will trigger auto-scan.".to_string(),
+                ));
+            }
+        }
+        AppCommand::AutoScan => {
+            // Save previous score for regression detection
+            let prev_score = app.last_scan.as_ref().map(|s| s.score.total_score);
+            app.watch_last_score = prev_score;
+
+            let path = app.project_path.to_string_lossy().to_string();
+            match app.engine_client.scan(&path).await {
+                Ok(result) => {
+                    let new_score = result.score.total_score;
+                    app.set_scan_result(result);
+
+                    // Regression detection
+                    if let Some(old) = prev_score {
+                        let diff = new_score - old;
+                        if diff < -5.0 {
+                            app.messages.push(types::ChatMessage::new(
+                                types::MessageRole::System,
+                                format!(
+                                    "REGRESSION: Score dropped {:.0} → {:.0} ({diff:+.0})",
+                                    old, new_score
+                                ),
+                            ));
+                        } else if diff > 0.0 {
+                            app.messages.push(types::ChatMessage::new(
+                                types::MessageRole::System,
+                                format!(
+                                    "IMPROVED: Score {:.0} → {:.0} ({diff:+.0})",
+                                    old, new_score
+                                ),
+                            ));
+                        }
+                    }
+                }
+                Err(e) => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        format!("Auto-scan failed: {e}"),
+                    ));
+                }
+            }
+        }
         AppCommand::Scan => {
             let path = app.project_path.to_string_lossy().to_string();
             match app.engine_client.scan(&path).await {

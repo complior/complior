@@ -1,7 +1,7 @@
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 
 use crate::app::App;
@@ -72,66 +72,17 @@ fn render_chat_full_view(frame: &mut Frame, body_area: Rect, app: &App) {
     }
 }
 
-/// Placeholder view for not-yet-implemented views (Scan, Fix, Timeline, Report).
-fn render_placeholder_view(frame: &mut Frame, area: Rect, title: &str, description: &str) {
-    let t = theme::theme();
-
-    let block = Block::default()
-        .title(format!(" {title} "))
-        .title_style(theme::title_style())
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(t.border));
-
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    let lines = vec![
-        Line::raw(""),
-        Line::from(Span::styled(
-            format!("  {title} View"),
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::raw(""),
-        Line::from(Span::styled(
-            format!("  {description}"),
-            Style::default().fg(t.fg),
-        )),
-        Line::raw(""),
-        Line::from(Span::styled(
-            "  Coming soon in a future sprint.",
-            Style::default().fg(t.muted),
-        )),
-        Line::raw(""),
-        Line::from(vec![
-            Span::styled("  Press ", Style::default().fg(t.muted)),
-            Span::styled("1", Style::default().fg(t.accent)),
-            Span::styled(" to return to Dashboard", Style::default().fg(t.muted)),
-        ]),
-    ];
-
-    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
-    frame.render_widget(paragraph, inner);
-}
-
 /// Dashboard content area — multi-panel layout with chat, files, terminal.
 fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App) {
-    // Top section: score gauge + critical findings | chat
-    // Bottom section: deadlines + history | quick input (if scan data exists)
     if app.last_scan.is_some() {
         let v_split = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(area);
 
-        // Top: chat + files/code
         render_top_panels(frame, v_split[0], app);
-
-        // Bottom: dashboard widgets
         render_bottom_widgets(frame, v_split[1], app);
     } else {
-        // No scan data — use the old multi-panel layout
         render_content_panels(frame, area, app);
     }
 }
@@ -197,45 +148,47 @@ fn render_top_panels(frame: &mut Frame, area: Rect, app: &App) {
     }
 }
 
-/// Bottom dashboard widgets: score gauge | findings | deadlines | history.
+/// Bottom dashboard widgets: 2x2 grid.
+///
+/// ```text
+/// ┌───────────────────┬────────────────────┐
+/// │  Score Gauge      │  Deadline Countdown │
+/// ├───────────────────┼────────────────────┤
+/// │  Activity Log     │  Score Sparkline   │
+/// └───────────────────┴────────────────────┘
+/// ```
 fn render_bottom_widgets(frame: &mut Frame, area: Rect, app: &App) {
-    let h_split = Layout::default()
-        .direction(Direction::Horizontal)
+    let v_split = Layout::default()
+        .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Left: score gauge + critical findings
-    let left_split = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(3)])
-        .split(h_split[0]);
-
-    render_score_gauge(frame, left_split[0], app);
-    render_critical_findings(frame, left_split[1], app);
-
-    // Right: deadlines + score history
-    let right_split = Layout::default()
-        .direction(Direction::Vertical)
+    // Top row: Score Gauge | Deadline Countdown
+    let top_row = Layout::default()
+        .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(h_split[1]);
+        .split(v_split[0]);
 
-    render_deadlines(frame, right_split[0]);
-    render_score_history_line(frame, right_split[1], app);
+    render_score_gauge(frame, top_row[0], app);
+    render_deadline_countdown(frame, top_row[1]);
+
+    // Bottom row: Activity Log | Score Sparkline
+    let bottom_row = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(v_split[1]);
+
+    render_activity_log(frame, bottom_row[0], app);
+    render_score_history_line(frame, bottom_row[1], app);
 }
 
-/// Score gauge widget — colored by threshold.
+/// Score gauge widget — colored by threshold, with zone label.
 fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
 
     if let Some(scan) = &app.last_scan {
         let score = scan.score.total_score;
-        let color = if score < 50.0 {
-            t.zone_red
-        } else if score < 80.0 {
-            t.zone_yellow
-        } else {
-            t.zone_green
-        };
+        let (color, zone_label) = score_zone_info(score, &t);
 
         let ratio = (score / 100.0).clamp(0.0, 1.0);
         let gauge = ratatui::widgets::Gauge::default()
@@ -248,60 +201,14 @@ fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {
             )
             .gauge_style(Style::default().fg(color))
             .ratio(ratio)
-            .label(format!("{score:.0}/100"));
+            .label(format!("{score:.0}/100 — {zone_label}"));
 
         frame.render_widget(gauge, area);
     }
 }
 
-/// Top-3 critical findings by severity.
-fn render_critical_findings(frame: &mut Frame, area: Rect, app: &App) {
-    let t = theme::theme();
-
-    let block = Block::default()
-        .title(" Critical Findings ")
-        .title_style(theme::title_style())
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(t.border));
-
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    if let Some(scan) = &app.last_scan {
-        let mut findings = scan.findings.clone();
-        findings.sort_by(|a, b| severity_rank(a.severity).cmp(&severity_rank(b.severity)));
-
-        let lines: Vec<Line<'_>> = findings
-            .iter()
-            .take(3)
-            .map(|f| {
-                let sev_color = theme::severity_color(f.severity);
-                Line::from(vec![
-                    Span::styled(
-                        format!(" {:?} ", f.severity).to_uppercase(),
-                        Style::default().fg(sev_color).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(&f.message, Style::default().fg(t.fg)),
-                ])
-            })
-            .collect();
-
-        if lines.is_empty() {
-            frame.render_widget(
-                Paragraph::new(Line::from(Span::styled(
-                    " No findings",
-                    Style::default().fg(t.muted),
-                ))),
-                inner,
-            );
-        } else {
-            frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
-        }
-    }
-}
-
-/// EU AI Act deadline widget.
-fn render_deadlines(frame: &mut Frame, area: Rect) {
+/// Deadline countdown widget — computes days from now, colors by urgency.
+fn render_deadline_countdown(frame: &mut Frame, area: Rect) {
     let t = theme::theme();
 
     let block = Block::default()
@@ -313,20 +220,83 @@ fn render_deadlines(frame: &mut Frame, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let lines = vec![
-        Line::from(vec![
-            Span::styled(" 02 Feb 2025  ", Style::default().fg(t.zone_red)),
-            Span::styled("Art. 5 — Prohibited AI practices", Style::default().fg(t.fg)),
-        ]),
-        Line::from(vec![
-            Span::styled(" 02 Aug 2025  ", Style::default().fg(t.zone_yellow)),
-            Span::styled("Art. 50 — Transparency obligations", Style::default().fg(t.fg)),
-        ]),
-        Line::from(vec![
-            Span::styled(" 02 Aug 2026  ", Style::default().fg(t.zone_green)),
-            Span::styled("Art. 6 — High-risk AI classification", Style::default().fg(t.fg)),
-        ]),
+    let deadlines = [
+        ("2025-02-02", "Art. 5 — Prohibited AI practices"),
+        ("2025-08-02", "Art. 50 — Transparency obligations"),
+        ("2026-08-02", "Art. 6 — High-risk AI classification"),
     ];
+
+    let now = current_epoch_days();
+
+    let lines: Vec<Line<'_>> = deadlines
+        .iter()
+        .map(|(date_str, desc)| {
+            let deadline_days = parse_epoch_days(date_str);
+            let diff = deadline_days - now;
+            let (label, color) = deadline_label(diff, &t);
+            Line::from(vec![
+                Span::styled(format!(" {label:<14}"), Style::default().fg(color)),
+                Span::styled(*desc, Style::default().fg(t.fg)),
+            ])
+        })
+        .collect();
+
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+/// Activity log widget — last 10 items.
+fn render_activity_log(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+
+    let block = Block::default()
+        .title(" Activity Log ")
+        .title_style(theme::title_style())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.border));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    if app.activity_log.is_empty() {
+        frame.render_widget(
+            Paragraph::new(Line::from(Span::styled(
+                " No activity yet",
+                Style::default().fg(t.muted),
+            ))),
+            inner,
+        );
+        return;
+    }
+
+    let lines: Vec<Line<'_>> = app
+        .activity_log
+        .iter()
+        .rev()
+        .take(inner.height as usize)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .map(|entry| {
+            let icon_color = match entry.kind {
+                crate::types::ActivityKind::Scan => t.zone_green,
+                crate::types::ActivityKind::Fix => t.zone_yellow,
+                crate::types::ActivityKind::Chat => t.accent,
+                crate::types::ActivityKind::Watch => t.zone_yellow,
+                crate::types::ActivityKind::FileOpen => t.muted,
+            };
+            Line::from(vec![
+                Span::styled(
+                    format!(" [{}] ", entry.timestamp),
+                    Style::default().fg(t.muted),
+                ),
+                Span::styled(
+                    format!("{} ", entry.kind.icon()),
+                    Style::default().fg(icon_color).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(&*entry.detail, Style::default().fg(t.fg)),
+            ])
+        })
+        .collect();
 
     frame.render_widget(Paragraph::new(lines), inner);
 }
@@ -382,23 +352,15 @@ fn render_score_history_line(frame: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(color),
         )),
         Line::from(Span::styled(
-            format!(" Latest: {last_score:.0}/100  ({} scans)", app.score_history.len()),
+            format!(
+                " Latest: {last_score:.0}/100  ({} scans)",
+                app.score_history.len()
+            ),
             Style::default().fg(t.muted),
         )),
     ];
 
     frame.render_widget(Paragraph::new(lines), inner);
-}
-
-/// Severity rank for sorting (lower = more severe).
-const fn severity_rank(severity: crate::types::Severity) -> u8 {
-    match severity {
-        crate::types::Severity::Critical => 0,
-        crate::types::Severity::High => 1,
-        crate::types::Severity::Medium => 2,
-        crate::types::Severity::Low => 3,
-        crate::types::Severity::Info => 4,
-    }
 }
 
 /// Original content panels layout (no scan data).
@@ -462,12 +424,16 @@ fn render_content_panels(frame: &mut Frame, area: Rect, app: &App) {
     }
 }
 
-/// 2-line footer: Line 1 = view tabs + mode badge + engine + model; Line 2 = input mode + hints.
+// ═══════════════════════════════════════════════════════════════════════
+// Footer: Line 1 = status bar (6 indicators), Line 2 = dynamic hints
+// ═══════════════════════════════════════════════════════════════════════
+
+/// 2-line footer: Line 1 = 6-indicator status bar; Line 2 = view-specific hints.
 fn render_view_footer(frame: &mut Frame, app: &App) {
     let t = theme::theme();
     let area = frame.area();
 
-    // Line 1: View tabs + mode badge + engine status + model
+    // ── Line 1: Status bar with 6 indicators ──
     let line1_area = Rect {
         x: area.x,
         y: area.y + area.height.saturating_sub(2),
@@ -477,48 +443,77 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 
     let mut spans: Vec<Span<'_>> = Vec::new();
 
-    // View tabs (current highlighted inverted)
-    for view in ViewState::ALL {
-        if view == app.view_state {
-            spans.push(Span::styled(
-                format!(" {} ", view.short_name()),
-                Style::default()
-                    .bg(t.accent)
-                    .fg(t.bg)
-                    .add_modifier(Modifier::BOLD),
-            ));
-        } else {
-            spans.push(Span::styled(
-                format!(" {} ", view.short_name()),
-                Style::default().fg(t.muted),
-            ));
-        }
+    // Indicator 1: Model + Provider
+    if crate::providers::is_configured(&app.provider_config) {
+        let model_name =
+            crate::providers::display_model_name(&app.provider_config.active_model);
+        spans.push(Span::styled(
+            format!(" {model_name} "),
+            Style::default().fg(t.accent),
+        ));
+    } else {
+        spans.push(Span::styled(" no model ", Style::default().fg(t.muted)));
+    }
+
+    // Indicator 2: Score badge [75]
+    if let Some(scan) = &app.last_scan {
+        let score = scan.score.total_score;
+        let (color, _) = score_zone_info(score, &t);
+        spans.push(Span::styled(
+            format!("[{score:.0}]"),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        ));
     }
 
     spans.push(Span::raw(" "));
 
-    // Mode badge
+    // Indicator 3: View [N Name]
     spans.push(Span::styled(
-        format!(" {} ", app.mode.label()),
-        Style::default()
-            .bg(t.zone_yellow)
-            .fg(t.bg)
-            .add_modifier(Modifier::BOLD),
+        format!("[{} {}]", app.view_state.index() + 1, app.view_state.short_name()),
+        Style::default().fg(t.fg),
     ));
 
     spans.push(Span::raw(" "));
 
-    // Engine status indicator
-    let engine_indicator = match app.engine_status {
-        crate::types::EngineConnectionStatus::Connected => {
-            Span::styled("●", Style::default().fg(t.zone_green))
-        }
-        crate::types::EngineConnectionStatus::Connecting => {
-            Span::styled("○", Style::default().fg(t.zone_yellow))
-        }
-        _ => Span::styled("✗", Style::default().fg(t.zone_red)),
+    // Indicator 4: Watch [W]
+    if app.watch_active {
+        spans.push(Span::styled(
+            "[W]",
+            Style::default()
+                .fg(t.zone_green)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+
+    spans.push(Span::raw(" "));
+
+    // Indicator 5: Context usage [ctx:N%]
+    let ctx_pct = (app.messages.len() as u32).saturating_mul(100) / 32;
+    let ctx_color = if ctx_pct > 80 {
+        t.zone_red
+    } else if ctx_pct > 50 {
+        t.zone_yellow
+    } else {
+        t.muted
     };
-    spans.push(engine_indicator);
+    spans.push(Span::styled(
+        format!("[ctx:{ctx_pct}%]"),
+        Style::default().fg(ctx_color),
+    ));
+
+    spans.push(Span::raw(" "));
+
+    // Indicator 6: Cost [$0.xxx] — always visible, defaults to $0.000
+    let cost = if let Some((prompt, completion)) = app.last_token_usage {
+        // Rough cost estimate: $0.003/1k prompt + $0.015/1k completion (Claude-class)
+        f64::from(prompt) * 0.000_003 + f64::from(completion) * 0.000_015
+    } else {
+        0.0
+    };
+    spans.push(Span::styled(
+        format!("[${cost:.3}]"),
+        Style::default().fg(t.muted),
+    ));
 
     // Show elapsed time if operation in progress
     if let Some(secs) = app.elapsed_secs() {
@@ -532,26 +527,21 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         ));
     }
 
-    // Active model indicator
-    if crate::providers::is_configured(&app.provider_config) {
-        let model_name = crate::providers::display_model_name(&app.provider_config.active_model);
-        spans.push(Span::styled(
-            format!(" [{model_name}]"),
-            Style::default().fg(t.accent),
-        ));
-    }
-
-    // Token usage
-    if let Some((prompt, completion)) = app.last_token_usage {
-        spans.push(Span::styled(
-            format!(" [{} tok]", prompt + completion),
-            Style::default().fg(t.muted),
-        ));
-    }
+    // Engine status indicator
+    let engine_indicator = match app.engine_status {
+        crate::types::EngineConnectionStatus::Connected => {
+            Span::styled(" ●", Style::default().fg(t.zone_green))
+        }
+        crate::types::EngineConnectionStatus::Connecting => {
+            Span::styled(" ○", Style::default().fg(t.zone_yellow))
+        }
+        _ => Span::styled(" ✗", Style::default().fg(t.zone_red)),
+    };
+    spans.push(engine_indicator);
 
     frame.render_widget(Paragraph::new(Line::from(spans)), line1_area);
 
-    // Line 2: Input mode + keyboard hints
+    // ── Line 2: Input mode + view-specific hints ──
     let line2_area = Rect {
         x: area.x,
         y: area.y + area.height.saturating_sub(1),
@@ -566,27 +556,47 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         crate::types::InputMode::Visual => " VISUAL ",
     };
 
-    let hints = Line::from(vec![
+    let hint_text = footer_hints_for_view(app.view_state);
+
+    let mut hint_spans: Vec<Span<'_>> = vec![
         Span::styled(mode_str, theme::status_bar_style()),
         Span::raw(" "),
-        Span::styled("1-6", Style::default().fg(t.accent)),
-        Span::styled(":view ", Style::default().fg(t.muted)),
-        Span::styled("Tab", Style::default().fg(t.accent)),
-        Span::styled(":mode ", Style::default().fg(t.muted)),
-        Span::styled("i", Style::default().fg(t.accent)),
-        Span::styled(":ins ", Style::default().fg(t.muted)),
-        Span::styled("/", Style::default().fg(t.accent)),
-        Span::styled(":cmd ", Style::default().fg(t.muted)),
-        Span::styled("^P", Style::default().fg(t.accent)),
-        Span::styled(":palette ", Style::default().fg(t.muted)),
-        Span::styled("^B", Style::default().fg(t.accent)),
-        Span::styled(":sidebar ", Style::default().fg(t.muted)),
-        Span::styled("?", Style::default().fg(t.accent)),
-        Span::styled(":help", Style::default().fg(t.muted)),
-    ]);
+    ];
 
-    frame.render_widget(Paragraph::new(hints), line2_area);
+    // Parse hint text into styled spans (key:desc pairs)
+    for part in hint_text.split(' ') {
+        if let Some((key, desc)) = part.split_once(':') {
+            hint_spans.push(Span::styled(key, Style::default().fg(t.accent)));
+            hint_spans.push(Span::styled(
+                format!(":{desc} "),
+                Style::default().fg(t.muted),
+            ));
+        } else if !part.is_empty() {
+            hint_spans.push(Span::styled(
+                format!("{part} "),
+                Style::default().fg(t.muted),
+            ));
+        }
+    }
+
+    frame.render_widget(Paragraph::new(Line::from(hint_spans)), line2_area);
 }
+
+/// View-specific footer hints (line 2).
+pub fn footer_hints_for_view(view: ViewState) -> &'static str {
+    match view {
+        ViewState::Dashboard => "1-6:view Tab:mode i:ins /:cmd ^P:palette ^B:sidebar w:watch ?:help",
+        ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix j/k:nav",
+        ViewState::Fix => "Space:toggle a:all n:none d:diff Enter:apply j/k:nav",
+        ViewState::Chat => "Tab:complete @OBL:ref !cmd Enter:send",
+        ViewState::Timeline => "j/k:scroll",
+        ViewState::Report => "e:export j/k:scroll",
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Overlays
+// ═══════════════════════════════════════════════════════════════════════
 
 fn render_overlay(frame: &mut Frame, app: &App) {
     match &app.overlay {
@@ -604,7 +614,7 @@ fn render_overlay(frame: &mut Frame, app: &App) {
                 &app.file_tree,
             );
         }
-        Overlay::Help => render_help_overlay(frame),
+        Overlay::Help => render_help_overlay(frame, app),
         Overlay::GettingStarted => render_getting_started_overlay(frame),
         Overlay::ProviderSetup => {
             crate::components::provider_setup::render_provider_setup(frame, app);
@@ -615,7 +625,8 @@ fn render_overlay(frame: &mut Frame, app: &App) {
     }
 }
 
-fn render_help_overlay(frame: &mut Frame) {
+/// Scrollable help overlay — shows view-specific section first, then global shortcuts.
+fn render_help_overlay(frame: &mut Frame, app: &App) {
     use ratatui::widgets::Clear;
 
     let t = theme::theme();
@@ -632,55 +643,114 @@ fn render_help_overlay(frame: &mut Frame) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let lines = vec![
-        Line::from(Span::styled(
-            " General",
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
-        )),
-        shortcut_line("  Ctrl+C", "Quit", &t),
-        shortcut_line("  1-6", "Switch view", &t),
-        shortcut_line("  Tab", "Toggle mode (Scan/Fix/Watch)", &t),
-        shortcut_line("  Alt+1..5", "Jump to panel", &t),
-        shortcut_line("  i", "Insert mode", &t),
-        shortcut_line("  Esc", "Normal mode", &t),
-        shortcut_line("  /", "Command mode", &t),
-        Line::raw(""),
-        Line::from(Span::styled(
-            " Navigation",
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
-        )),
-        shortcut_line("  j/k", "Scroll up/down", &t),
-        shortcut_line("  Ctrl+D/U", "Half-page down/up", &t),
-        shortcut_line("  g/G", "Top/bottom", &t),
-        shortcut_line("  Up/Down", "History (insert mode)", &t),
-        Line::raw(""),
-        Line::from(Span::styled(
-            " Features",
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
-        )),
-        shortcut_line("  Ctrl+P", "Command palette", &t),
-        shortcut_line("  Ctrl+B", "Toggle sidebar", &t),
-        shortcut_line("  Ctrl+T", "Toggle terminal", &t),
-        shortcut_line("  @", "File picker", &t),
-        shortcut_line("  !cmd", "Run shell command", &t),
-        shortcut_line("  V", "Visual select", &t),
-        shortcut_line("  Ctrl+K", "Send selection to AI", &t),
-        shortcut_line("  Ctrl+M", "Switch model", &t),
-        Line::raw(""),
-        Line::from(Span::styled(
-            " Press Esc to close",
-            Style::default().fg(t.muted),
-        )),
-    ];
+    let mut lines: Vec<Line<'_>> = Vec::new();
 
-    let paragraph = Paragraph::new(lines);
+    // View-specific section first
+    let view_section = help_section_for_view(app.view_state, &t);
+    if !view_section.is_empty() {
+        lines.push(Line::from(Span::styled(
+            format!(" {} View", app.view_state.short_name()),
+            Style::default()
+                .fg(t.accent)
+                .add_modifier(Modifier::BOLD),
+        )));
+        lines.extend(view_section);
+        lines.push(Line::raw(""));
+    }
+
+    // Global section
+    lines.push(Line::from(Span::styled(
+        " General",
+        Style::default()
+            .fg(t.accent)
+            .add_modifier(Modifier::BOLD),
+    )));
+    lines.push(shortcut_line("  Ctrl+C", "Quit", &t));
+    lines.push(shortcut_line("  1-6", "Switch view", &t));
+    lines.push(shortcut_line("  Tab", "Toggle mode (Scan/Fix/Watch)", &t));
+    lines.push(shortcut_line("  w", "Toggle watch mode", &t));
+    lines.push(shortcut_line("  Alt+1..5", "Jump to panel", &t));
+    lines.push(shortcut_line("  i", "Insert mode", &t));
+    lines.push(shortcut_line("  Esc", "Normal mode", &t));
+    lines.push(shortcut_line("  /", "Command mode", &t));
+    lines.push(Line::raw(""));
+    lines.push(Line::from(Span::styled(
+        " Navigation",
+        Style::default()
+            .fg(t.accent)
+            .add_modifier(Modifier::BOLD),
+    )));
+    lines.push(shortcut_line("  j/k", "Scroll up/down", &t));
+    lines.push(shortcut_line("  Ctrl+D/U", "Half-page down/up", &t));
+    lines.push(shortcut_line("  g/G", "Top/bottom", &t));
+    lines.push(shortcut_line("  Up/Down", "History (insert mode)", &t));
+    lines.push(Line::raw(""));
+    lines.push(Line::from(Span::styled(
+        " Features",
+        Style::default()
+            .fg(t.accent)
+            .add_modifier(Modifier::BOLD),
+    )));
+    lines.push(shortcut_line("  Ctrl+P", "Command palette", &t));
+    lines.push(shortcut_line("  Ctrl+B", "Toggle sidebar", &t));
+    lines.push(shortcut_line("  Ctrl+T", "Toggle terminal", &t));
+    lines.push(shortcut_line("  Ctrl+S", "Start scan", &t));
+    lines.push(shortcut_line("  @", "File picker", &t));
+    lines.push(shortcut_line("  @OBL-", "Obligation reference", &t));
+    lines.push(shortcut_line("  !cmd", "Run shell command", &t));
+    lines.push(shortcut_line("  V", "Visual select", &t));
+    lines.push(shortcut_line("  Ctrl+K", "Send selection to AI", &t));
+    lines.push(shortcut_line("  Ctrl+M", "Switch model", &t));
+    lines.push(Line::raw(""));
+    lines.push(Line::from(Span::styled(
+        " j/k to scroll, Esc to close",
+        Style::default().fg(t.muted),
+    )));
+
+    // Apply scroll
+    let scroll = app.help_scroll.min(lines.len().saturating_sub(1));
+    let paragraph = Paragraph::new(lines)
+        .scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
     frame.render_widget(paragraph, inner);
+}
+
+/// View-specific help lines.
+fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<Line<'a>> {
+    match view {
+        ViewState::Dashboard => vec![
+            shortcut_line("  1-6", "Switch view", t),
+            shortcut_line("  Tab", "Toggle mode", t),
+            shortcut_line("  w", "Toggle watch", t),
+            shortcut_line("  ^B", "Toggle sidebar", t),
+        ],
+        ViewState::Scan => vec![
+            shortcut_line("  a", "Show all findings", t),
+            shortcut_line("  c/h/m/l", "Filter by severity", t),
+            shortcut_line("  Enter", "Open/close detail", t),
+            shortcut_line("  f", "Fix selected finding", t),
+            shortcut_line("  j/k", "Navigate findings", t),
+        ],
+        ViewState::Fix => vec![
+            shortcut_line("  Space", "Toggle current fix", t),
+            shortcut_line("  a", "Select all fixes", t),
+            shortcut_line("  n", "Deselect all", t),
+            shortcut_line("  d", "Toggle diff preview", t),
+            shortcut_line("  Enter", "Apply selected fixes", t),
+        ],
+        ViewState::Chat => vec![
+            shortcut_line("  Tab", "Autocomplete (@OBL-, /cmd)", t),
+            shortcut_line("  @OBL-xxx", "Reference obligation", t),
+            shortcut_line("  !cmd", "Run shell command", t),
+            shortcut_line("  Enter", "Send message", t),
+        ],
+        ViewState::Timeline => vec![
+            shortcut_line("  j/k", "Scroll timeline", t),
+        ],
+        ViewState::Report => vec![
+            shortcut_line("  e", "Export report", t),
+            shortcut_line("  j/k", "Scroll report", t),
+        ],
+    }
 }
 
 fn render_getting_started_overlay(frame: &mut Frame) {
@@ -765,6 +835,59 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
         .split(v[1])[1]
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Date helpers for deadline countdown
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Approximate current epoch days from system time.
+fn current_epoch_days() -> i64 {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    (secs / 86400) as i64
+}
+
+/// Parse "YYYY-MM-DD" into approximate epoch days.
+fn parse_epoch_days(date: &str) -> i64 {
+    let parts: Vec<&str> = date.split('-').collect();
+    if parts.len() != 3 {
+        return 0;
+    }
+    let y: i64 = parts[0].parse().unwrap_or(2025);
+    let m: i64 = parts[1].parse().unwrap_or(1);
+    let d: i64 = parts[2].parse().unwrap_or(1);
+    // Approximate: 365.25 * year + 30.44 * month + day from epoch
+    // More accurate: days from 1970-01-01
+    let days = (y - 1970) * 365 + (y - 1969) / 4 - (y - 1901) / 100 + (y - 1601) / 400
+        + (m - 1) * 30 + (m + 1) / 2 - if m > 2 { 2 } else { 0 }
+        + d - 1;
+    days
+}
+
+/// Format deadline diff into human-readable label with urgency color.
+fn deadline_label(days_diff: i64, t: &theme::ThemeColors) -> (String, ratatui::style::Color) {
+    if days_diff < 0 {
+        let abs = -days_diff;
+        (format!("{abs}d overdue"), t.zone_red)
+    } else if days_diff < 90 {
+        (format!("{days_diff}d left"), t.zone_yellow)
+    } else {
+        (format!("{days_diff}d left"), t.zone_green)
+    }
+}
+
+/// Score → (color, zone label).
+fn score_zone_info(score: f64, t: &theme::ThemeColors) -> (ratatui::style::Color, &'static str) {
+    if score < 50.0 {
+        (t.zone_red, "RED — Non-Compliant")
+    } else if score < 80.0 {
+        (t.zone_yellow, "YELLOW — Partial")
+    } else {
+        (t.zone_green, "GREEN — Compliant")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ratatui::backend::TestBackend;
@@ -832,17 +955,34 @@ mod tests {
     fn test_score_color_thresholds() {
         crate::theme::init_theme("dark");
         let t = crate::theme::theme();
-        // Test the color logic directly
         let score_low: f64 = 30.0;
-        let color_low = if score_low < 50.0 { t.zone_red } else if score_low < 80.0 { t.zone_yellow } else { t.zone_green };
+        let color_low = if score_low < 50.0 {
+            t.zone_red
+        } else if score_low < 80.0 {
+            t.zone_yellow
+        } else {
+            t.zone_green
+        };
         assert_eq!(color_low, t.zone_red);
 
         let score_mid: f64 = 65.0;
-        let color_mid = if score_mid < 50.0 { t.zone_red } else if score_mid < 80.0 { t.zone_yellow } else { t.zone_green };
+        let color_mid = if score_mid < 50.0 {
+            t.zone_red
+        } else if score_mid < 80.0 {
+            t.zone_yellow
+        } else {
+            t.zone_green
+        };
         assert_eq!(color_mid, t.zone_yellow);
 
         let score_high: f64 = 90.0;
-        let color_high = if score_high < 50.0 { t.zone_red } else if score_high < 80.0 { t.zone_yellow } else { t.zone_green };
+        let color_high = if score_high < 50.0 {
+            t.zone_red
+        } else if score_high < 80.0 {
+            t.zone_yellow
+        } else {
+            t.zone_green
+        };
         assert_eq!(color_high, t.zone_green);
     }
 
@@ -866,7 +1006,6 @@ mod tests {
         let mut terminal = Terminal::new(backend).expect("terminal");
         let mut app = App::new(crate::config::TuiConfig::default());
 
-        // Inject mock scan data
         app.last_scan = Some(crate::types::ScanResult {
             score: crate::types::ScoreBreakdown {
                 total_score: 75.0,
@@ -897,5 +1036,144 @@ mod tests {
         terminal
             .draw(|frame| render_dashboard(frame, &app))
             .expect("render");
+    }
+
+    // ── New T501 tests ──
+
+    #[test]
+    fn test_dashboard_2x2_grid_no_panic() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // With scan data to trigger the 2x2 grid
+        app.last_scan = Some(crate::types::ScanResult {
+            score: crate::types::ScoreBreakdown {
+                total_score: 85.0,
+                zone: crate::types::Zone::Green,
+                category_scores: vec![],
+                critical_cap_applied: false,
+                total_checks: 20,
+                passed_checks: 17,
+                failed_checks: 3,
+                skipped_checks: 0,
+            },
+            findings: vec![],
+            project_path: ".".to_string(),
+            scanned_at: "2026-01-01".to_string(),
+            duration: 500,
+            files_scanned: 10,
+        });
+        app.score_history = vec![50.0, 60.0, 70.0, 80.0, 85.0];
+
+        // Add some activity entries
+        app.push_activity(crate::types::ActivityKind::Scan, "85/100");
+        app.push_activity(crate::types::ActivityKind::Chat, "AI response");
+        app.push_activity(crate::types::ActivityKind::FileOpen, "src/main.rs");
+
+        terminal
+            .draw(|frame| render_dashboard(frame, &app))
+            .expect("2x2 grid render should not panic");
+    }
+
+    #[test]
+    fn test_deadline_countdown_colors() {
+        crate::theme::init_theme("dark");
+        let t = crate::theme::theme();
+
+        // Past deadline → red
+        let (label, color) = deadline_label(-30, &t);
+        assert!(label.contains("overdue"));
+        assert_eq!(color, t.zone_red);
+
+        // Within 90 days → yellow
+        let (label, color) = deadline_label(45, &t);
+        assert!(label.contains("left"));
+        assert_eq!(color, t.zone_yellow);
+
+        // Far future → green
+        let (label, color) = deadline_label(200, &t);
+        assert!(label.contains("left"));
+        assert_eq!(color, t.zone_green);
+    }
+
+    // ── New T504 tests ──
+
+    #[test]
+    fn test_status_bar_score_badge() {
+        crate::theme::init_theme("dark");
+        let t = crate::theme::theme();
+
+        let (color, label) = score_zone_info(30.0, &t);
+        assert_eq!(color, t.zone_red);
+        assert!(label.contains("RED"));
+
+        let (color, label) = score_zone_info(65.0, &t);
+        assert_eq!(color, t.zone_yellow);
+        assert!(label.contains("YELLOW"));
+
+        let (color, label) = score_zone_info(90.0, &t);
+        assert_eq!(color, t.zone_green);
+        assert!(label.contains("GREEN"));
+    }
+
+    #[test]
+    fn test_status_bar_watch_indicator() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        assert!(!app.watch_active);
+
+        app.watch_active = true;
+        assert!(app.watch_active);
+    }
+
+    // ── New T505 tests ──
+
+    #[test]
+    fn test_footer_hints_per_view() {
+        let dashboard_hints = footer_hints_for_view(ViewState::Dashboard);
+        assert!(dashboard_hints.contains("1-6:view"));
+        assert!(dashboard_hints.contains("w:watch"));
+        assert!(dashboard_hints.contains("?:help"));
+
+        let scan_hints = footer_hints_for_view(ViewState::Scan);
+        assert!(scan_hints.contains("a:All"));
+        assert!(scan_hints.contains("j/k:nav"));
+
+        let fix_hints = footer_hints_for_view(ViewState::Fix);
+        assert!(fix_hints.contains("Space:toggle"));
+
+        let chat_hints = footer_hints_for_view(ViewState::Chat);
+        assert!(chat_hints.contains("@OBL:ref"));
+
+        let timeline_hints = footer_hints_for_view(ViewState::Timeline);
+        assert!(timeline_hints.contains("j/k:scroll"));
+
+        let report_hints = footer_hints_for_view(ViewState::Report);
+        assert!(report_hints.contains("e:export"));
+    }
+
+    #[test]
+    fn test_help_overlay_scroll() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::Help;
+        app.help_scroll = 0;
+
+        // Scroll down
+        app.help_scroll += 5;
+        assert_eq!(app.help_scroll, 5);
+
+        // Scroll up
+        app.help_scroll = app.help_scroll.saturating_sub(3);
+        assert_eq!(app.help_scroll, 2);
+
+        // Render with scroll should not panic
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+
+        terminal
+            .draw(|frame| render_dashboard(frame, &app))
+            .expect("help overlay with scroll should render");
     }
 }

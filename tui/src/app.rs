@@ -7,8 +7,8 @@ use crate::engine_client::{EngineClient, SseEvent};
 use crate::input::Action;
 use crate::providers::ProviderConfig;
 use crate::types::{
-    ChatBlock, ChatMessage, DiffContent, EngineConnectionStatus, FileEntry, InputMode,
-    MessageRole, Mode, Overlay, Panel, ScanResult, Selection, ViewState,
+    ActivityEntry, ActivityKind, ChatBlock, ChatMessage, DiffContent, EngineConnectionStatus,
+    FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult, Selection, ViewState,
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
@@ -91,6 +91,16 @@ pub struct App {
     pub timeline_view: TimelineViewState,
     pub report_view: ReportViewState,
 
+    // Activity log (Dashboard widget)
+    pub activity_log: Vec<ActivityEntry>,
+
+    // Watch mode
+    pub watch_active: bool,
+    pub watch_last_score: Option<f64>,
+
+    // Help overlay scroll
+    pub help_scroll: usize,
+
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -99,6 +109,7 @@ pub struct App {
 
 const MAX_HISTORY: usize = 50;
 const MAX_TERMINAL_LINES: usize = 1000;
+const MAX_ACTIVITY_LOG: usize = 10;
 
 impl App {
     pub fn new(config: TuiConfig) -> Self {
@@ -160,6 +171,10 @@ impl App {
             fix_view: FixViewState::default(),
             timeline_view: TimelineViewState::default(),
             report_view: ReportViewState::default(),
+            activity_log: Vec::new(),
+            watch_active: false,
+            watch_last_score: None,
+            help_scroll: 0,
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -253,6 +268,25 @@ impl App {
         }
         if self.terminal_auto_scroll {
             self.terminal_scroll = self.terminal_output.len().saturating_sub(1);
+        }
+    }
+
+    pub fn push_activity(&mut self, kind: ActivityKind, detail: impl Into<String>) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let hours = (now % 86400) / 3600;
+        let mins = (now % 3600) / 60;
+        let timestamp = format!("{hours:02}:{mins:02}");
+
+        self.activity_log.push(ActivityEntry {
+            timestamp,
+            kind,
+            detail: detail.into(),
+        });
+        if self.activity_log.len() > MAX_ACTIVITY_LOG {
+            self.activity_log.remove(0);
         }
     }
 
@@ -516,13 +550,14 @@ impl App {
                     return self.handle_command(cmd);
                 }
 
-                // Chat message
+                // Chat message — inject obligation context if @OBL-xxx tokens present
+                let chat_text = crate::obligations::inject_obligation_context(&text);
                 self.messages.push(ChatMessage::new(
                     MessageRole::User,
-                    text.clone(),
+                    text,
                 ));
                 self.chat_auto_scroll = true;
-                Some(AppCommand::Chat(text))
+                Some(AppCommand::Chat(chat_text))
             }
             Action::SendSelectionToAi => {
                 if let (Some(content), Some(sel)) = (&self.code_content, &self.selection) {
@@ -597,6 +632,7 @@ impl App {
             }
             Action::ShowHelp => {
                 self.overlay = Overlay::Help;
+                self.help_scroll = 0;
                 None
             }
             Action::ShowModelSelector => {
@@ -637,6 +673,9 @@ impl App {
             Action::FocusPanel(panel) => {
                 self.active_panel = panel;
                 None
+            }
+            Action::WatchToggle => {
+                return Some(AppCommand::ToggleWatch);
             }
             Action::StartScan => {
                 self.messages.push(ChatMessage::new(
@@ -730,6 +769,15 @@ impl App {
                 }
                 None
             }
+            // Help overlay scroll with j/k
+            Action::ScrollUp if self.overlay == Overlay::Help => {
+                self.help_scroll = self.help_scroll.saturating_sub(1);
+                None
+            }
+            Action::ScrollDown if self.overlay == Overlay::Help => {
+                self.help_scroll += 1;
+                None
+            }
             // Ignore no-op keys (arrows etc.) — don't dismiss overlay
             Action::None | Action::ScrollUp | Action::ScrollDown
             | Action::HistoryUp | Action::HistoryDown => None,
@@ -752,6 +800,46 @@ impl App {
             if let Some(completed) = crate::components::command_palette::complete_command(partial) {
                 self.input = completed.to_string();
                 self.input_cursor = self.input.len();
+            }
+            return;
+        }
+
+        let before_cursor = &self.input[..self.input_cursor];
+
+        // Obligation completion: scan backwards for @OBL- or @OBL (without dash)
+        if let Some(start) = before_cursor.rfind("@OBL-") {
+            let prefix = &self.input[start + 5..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
+            }
+        } else if let Some(start) = before_cursor.rfind("@OBL") {
+            // "@OBL" without dash — insert dash and complete
+            let prefix = &self.input[start + 4..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
+            }
+        } else if let Some(start) = before_cursor.rfind("@Art.") {
+            let prefix = &self.input[start + 5..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
+            }
+        } else if let Some(start) = before_cursor.rfind("@Art") {
+            // "@Art" without dot — still complete
+            let prefix = &self.input[start + 4..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
             }
         }
     }
@@ -848,6 +936,7 @@ impl App {
                         "  /clear         — Clear terminal output\n",
                         "  /reconnect     — Reconnect to engine\n",
                         "  /theme <name>  — Switch theme (dark/light/high-contrast)\n",
+                        "  /watch         — Toggle file watch mode\n",
                         "  /view <1-6>    — Switch to view (Dashboard/Scan/Fix/Chat/Timeline/Report)\n",
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
@@ -909,6 +998,7 @@ impl App {
                 ));
                 None
             }
+            Some("watch") => Some(AppCommand::ToggleWatch),
             Some("welcome") => {
                 self.overlay = Overlay::GettingStarted;
                 None
@@ -964,6 +1054,7 @@ impl App {
                         }
                     }
                     msg.blocks.push(ChatBlock::Text(msg.content.clone()));
+                    self.push_activity(ActivityKind::Chat, "AI response");
                     self.messages.push(msg);
                     self.chat_auto_scroll = true;
                 }
@@ -984,6 +1075,7 @@ impl App {
 
     pub fn set_scan_result(&mut self, result: ScanResult) {
         let score = result.score.total_score;
+        self.push_activity(ActivityKind::Scan, format!("{score:.0}/100"));
         self.score_history.push(score);
         if self.score_history.len() > 20 {
             self.score_history.remove(0);
@@ -1022,6 +1114,7 @@ impl App {
     }
 
     pub fn open_file(&mut self, path: &str, content: String) {
+        self.push_activity(ActivityKind::FileOpen, path.to_string());
         self.code_content = Some(content);
         self.open_file_path = Some(path.to_string());
         self.code_scroll = 0;
@@ -1182,6 +1275,7 @@ impl App {
 #[derive(Debug)]
 pub enum AppCommand {
     Scan,
+    AutoScan,
     Chat(String),
     OpenFile(String),
     RunCommand(String),
@@ -1189,6 +1283,7 @@ pub enum AppCommand {
     SwitchTheme(String),
     SaveSession(String),
     LoadSession(String),
+    ToggleWatch,
 }
 
 #[cfg(test)]
@@ -1292,6 +1387,36 @@ mod tests {
     }
 
     #[test]
+    fn test_activity_log_capped_at_10() {
+        use crate::types::ActivityKind;
+        let mut app = App::new(TuiConfig::default());
+        for i in 0..15 {
+            app.push_activity(ActivityKind::Scan, format!("scan {i}"));
+        }
+        assert_eq!(app.activity_log.len(), 10);
+        // Oldest entries should have been dropped
+        assert!(app.activity_log[0].detail.contains("5"));
+        assert!(app.activity_log[9].detail.contains("14"));
+    }
+
+    #[test]
+    fn test_score_history_load_from_disk() {
+        let mut app = App::new(TuiConfig::default());
+        // Simulate loading score history (as from session restore)
+        let history = vec![42.0, 55.0, 68.0, 75.0, 82.0];
+        app.score_history = history.clone();
+        assert_eq!(app.score_history.len(), 5);
+        assert_eq!(app.score_history, history);
+    }
+
+    #[test]
+    fn test_watch_command_returns_toggle() {
+        let mut app = App::new(TuiConfig::default());
+        let cmd = app.handle_command("watch");
+        assert!(matches!(cmd, Some(AppCommand::ToggleWatch)));
+    }
+
+    #[test]
     fn test_reconnect_command() {
         let mut app = App::new(TuiConfig::default());
         let cmd = app.handle_command("reconnect");
@@ -1322,5 +1447,28 @@ mod tests {
         let cmd = app.handle_command("view 9");
         assert!(cmd.is_none());
         assert_eq!(app.view_state, ViewState::Scan);
+    }
+
+    #[test]
+    fn test_obl_tab_complete_without_dash() {
+        let mut app = App::new(TuiConfig::default());
+        app.input = "@OBL".to_string();
+        app.input_cursor = 4;
+        app.input_mode = InputMode::Insert;
+        app.apply_action(crate::input::Action::TabComplete);
+        // Should complete to @OBL-001 (first obligation)
+        assert!(app.input.starts_with("@OBL-0"));
+        assert!(app.input.len() > 4);
+    }
+
+    #[test]
+    fn test_obl_tab_complete_with_dash() {
+        let mut app = App::new(TuiConfig::default());
+        app.input = "@OBL-".to_string();
+        app.input_cursor = 5;
+        app.input_mode = InputMode::Insert;
+        app.apply_action(crate::input::Action::TabComplete);
+        // Should complete to @OBL-001
+        assert_eq!(app.input, "@OBL-001");
     }
 }
