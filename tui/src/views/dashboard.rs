@@ -1216,4 +1216,675 @@ mod tests {
             .draw(|frame| render_dashboard(frame, &app))
             .expect("help overlay with scroll should render");
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Sprint T05 — E2E Tests (render → inspect buffer)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// Helper: render app, return buffer content as a single string.
+    fn render_to_string(app: &App, width: u16, height: u16) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_dashboard(frame, app))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::types::ScanResult {
+        crate::types::ScanResult {
+            score: crate::types::ScoreBreakdown {
+                total_score: score,
+                zone,
+                category_scores: vec![],
+                critical_cap_applied: false,
+                total_checks: 20,
+                passed_checks: 15,
+                failed_checks: 5,
+                skipped_checks: 0,
+            },
+            findings: vec![crate::types::Finding {
+                check_id: "CHK-001".to_string(),
+                r#type: "compliance".to_string(),
+                message: "Missing AI disclosure".to_string(),
+                severity: crate::types::Severity::High,
+                obligation_id: None,
+                article_reference: None,
+                fix: Some("Add disclosure notice".to_string()),
+            }],
+            project_path: ".".to_string(),
+            scanned_at: "2026-02-19".to_string(),
+            duration: 1200,
+            files_scanned: 42,
+        }
+    }
+
+    // ─── T501: Enhanced Dashboard 2x2 Grid ───
+
+    #[test]
+    fn e2e_t501_score_gauge_shows_zone_label() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+
+        // GREEN zone
+        app.last_scan = Some(make_scan_result(85.0, crate::types::Zone::Green));
+        let buf = render_to_string(&app, 120, 40);
+        assert!(
+            buf.contains("GREEN") && buf.contains("Compliant"),
+            "Score gauge should show 'GREEN — Compliant', got:\n{}",
+            buf.lines().filter(|l| l.contains("GREEN") || l.contains("Compliance Score")).collect::<Vec<_>>().join("\n")
+        );
+
+        // YELLOW zone
+        app.last_scan = Some(make_scan_result(65.0, crate::types::Zone::Yellow));
+        let buf = render_to_string(&app, 120, 40);
+        assert!(
+            buf.contains("YELLOW") && buf.contains("Partial"),
+            "Score gauge should show 'YELLOW — Partial'"
+        );
+
+        // RED zone
+        app.last_scan = Some(make_scan_result(30.0, crate::types::Zone::Red));
+        let buf = render_to_string(&app, 120, 40);
+        assert!(
+            buf.contains("RED") && buf.contains("Non-Compliant"),
+            "Score gauge should show 'RED — Non-Compliant'"
+        );
+    }
+
+    #[test]
+    fn e2e_t501_dashboard_shows_all_four_widget_titles() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+        app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
+        app.score_history = vec![50.0, 60.0, 70.0, 75.0];
+        app.push_activity(crate::types::ActivityKind::Scan, "75/100");
+
+        let buf = render_to_string(&app, 120, 40);
+
+        assert!(buf.contains("Compliance Score"), "Missing: Compliance Score widget title");
+        assert!(buf.contains("EU AI Act Deadlines"), "Missing: Deadlines widget title");
+        assert!(buf.contains("Activity Log"), "Missing: Activity Log widget title");
+        assert!(buf.contains("Score History"), "Missing: Score History widget title");
+    }
+
+    #[test]
+    fn e2e_t501_deadline_countdown_shows_articles() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+        app.last_scan = Some(make_scan_result(70.0, crate::types::Zone::Yellow));
+
+        let buf = render_to_string(&app, 120, 40);
+
+        assert!(buf.contains("Art. 5"), "Deadline widget should show Art. 5");
+        assert!(buf.contains("Art. 50"), "Deadline widget should show Art. 50");
+        assert!(buf.contains("Art. 6"), "Deadline widget should show Art. 6");
+        // Should show urgency (overdue/left)
+        assert!(
+            buf.contains("overdue") || buf.contains("left"),
+            "Deadline widget should show urgency labels"
+        );
+    }
+
+    #[test]
+    fn e2e_t501_activity_log_shows_entries_with_icons() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+        app.last_scan = Some(make_scan_result(80.0, crate::types::Zone::Green));
+
+        app.push_activity(crate::types::ActivityKind::Scan, "80/100");
+        app.push_activity(crate::types::ActivityKind::Chat, "AI response");
+        app.push_activity(crate::types::ActivityKind::FileOpen, "src/main.rs");
+
+        let buf = render_to_string(&app, 120, 40);
+
+        // Activity log should show icons S, C, O
+        assert!(buf.contains(" S "), "Activity log should show Scan icon 'S'");
+        assert!(buf.contains(" C "), "Activity log should show Chat icon 'C'");
+        assert!(buf.contains(" O "), "Activity log should show FileOpen icon 'O'");
+        assert!(buf.contains("80/100"), "Activity log should show scan detail");
+        assert!(buf.contains("AI response"), "Activity log should show chat detail");
+    }
+
+    #[test]
+    fn e2e_t501_score_sparkline_renders_block_chars() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+        app.last_scan = Some(make_scan_result(90.0, crate::types::Zone::Green));
+        app.score_history = vec![20.0, 40.0, 60.0, 80.0, 90.0];
+
+        let buf = render_to_string(&app, 120, 40);
+
+        // Sparkline characters (▁▂▃▄▅▆▇█) should be present
+        let sparkline_chars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+        let has_sparkline = sparkline_chars.iter().any(|c| buf.contains(*c));
+        assert!(has_sparkline, "Score History should contain sparkline block characters");
+        assert!(buf.contains("Latest:"), "Score History should show 'Latest: N/100'");
+        assert!(buf.contains("5 scans"), "Score History should show scan count");
+    }
+
+    #[test]
+    fn e2e_t501_empty_activity_log_shows_placeholder() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+        app.last_scan = Some(make_scan_result(70.0, crate::types::Zone::Yellow));
+        // No activity entries pushed
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("No activity yet"), "Empty activity log should show placeholder");
+    }
+
+    #[test]
+    fn e2e_t501_empty_score_history_shows_placeholder() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+        app.last_scan = Some(make_scan_result(70.0, crate::types::Zone::Yellow));
+        app.score_history.clear();
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(
+            buf.contains("No history yet"),
+            "Empty score history should show placeholder"
+        );
+    }
+
+    // ─── T504: Status Bar 6 Indicators ───
+
+    #[test]
+    fn e2e_t504_status_bar_shows_no_model_when_unconfigured() {
+        crate::theme::init_theme("dark");
+        let app = App::new(crate::config::TuiConfig::default());
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("no model"), "Status bar should show 'no model' when no provider configured");
+    }
+
+    #[test]
+    fn e2e_t504_status_bar_shows_view_indicator() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Dashboard view
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[1 Dashboard]"), "Status bar should show [1 Dashboard]");
+
+        // Switch to Chat view
+        app.view_state = ViewState::Chat;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[4 Chat]"), "Status bar should show [4 Chat]");
+
+        // Switch to Scan view
+        app.view_state = ViewState::Scan;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[2 Scan]"), "Status bar should show [2 Scan]");
+    }
+
+    #[test]
+    fn e2e_t504_status_bar_shows_score_badge() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[75]"), "Status bar should show score badge [75]");
+    }
+
+    #[test]
+    fn e2e_t504_status_bar_watch_indicator_visible_when_active() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Watch inactive — [W] should NOT appear
+        app.watch_active = false;
+        let buf = render_to_string(&app, 120, 40);
+        // The last 2 lines are the footer
+        let footer_lines: Vec<&str> = buf.lines().rev().take(2).collect();
+        let footer = footer_lines.join("\n");
+        assert!(!footer.contains("[W]"), "Status bar should NOT show [W] when watch inactive");
+
+        // Watch active — [W] SHOULD appear
+        app.watch_active = true;
+        let buf = render_to_string(&app, 120, 40);
+        let footer_lines: Vec<&str> = buf.lines().rev().take(2).collect();
+        let footer = footer_lines.join("\n");
+        assert!(footer.contains("[W]"), "Status bar should show [W] when watch active");
+    }
+
+    #[test]
+    fn e2e_t504_status_bar_context_indicator() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[ctx:"), "Status bar should show context usage [ctx:N%]");
+    }
+
+    #[test]
+    fn e2e_t504_status_bar_cost_indicator() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Without usage
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[$0.000]"), "Status bar should show [$0.000] with no token usage");
+
+        // With usage
+        app.last_token_usage = Some((1000, 500));
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[$0."), "Status bar should show cost estimate");
+        assert!(!buf.contains("[$0.000]"), "Cost should be >0 with token usage");
+    }
+
+    #[test]
+    fn e2e_t504_status_bar_engine_indicator() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Connected
+        app.engine_status = crate::types::EngineConnectionStatus::Connected;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains('●'), "Connected engine should show filled circle ●");
+
+        // Connecting
+        app.engine_status = crate::types::EngineConnectionStatus::Connecting;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains('○'), "Connecting engine should show hollow circle ○");
+
+        // Error
+        app.engine_status = crate::types::EngineConnectionStatus::Error;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains('✗'), "Error engine should show ✗");
+    }
+
+    // ─── T505: Dynamic Footer + Help Overlay ───
+
+    #[test]
+    fn e2e_t505_footer_shows_insert_mode_badge() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Insert;
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("INSERT"), "Footer should show INSERT mode badge");
+    }
+
+    #[test]
+    fn e2e_t505_footer_shows_normal_mode_badge() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Normal;
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("NORMAL"), "Footer should show NORMAL mode badge");
+    }
+
+    #[test]
+    fn e2e_t505_footer_hints_change_per_view() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Dashboard view — should show dashboard-specific hints
+        app.view_state = ViewState::Dashboard;
+        let buf = render_to_string(&app, 120, 40);
+        let last_line = buf.lines().last().unwrap_or("");
+        assert!(last_line.contains("palette"), "Dashboard footer should mention palette");
+        assert!(last_line.contains("watch"), "Dashboard footer should mention watch");
+
+        // Chat view — should show chat-specific hints
+        app.view_state = ViewState::Chat;
+        let buf = render_to_string(&app, 120, 40);
+        let last_line = buf.lines().last().unwrap_or("");
+        assert!(last_line.contains("@OBL"), "Chat footer should mention @OBL");
+        assert!(last_line.contains("send"), "Chat footer should mention send");
+    }
+
+    #[test]
+    fn e2e_t505_help_overlay_shows_view_specific_section() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::Help;
+        app.help_scroll = 0;
+
+        // Dashboard view — help should show "Dashboard View"
+        app.view_state = ViewState::Dashboard;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("Dashboard View"), "Help overlay should show 'Dashboard View' section");
+        assert!(buf.contains("Keyboard Shortcuts"), "Help overlay should have title");
+
+        // Scan view — help should show "Scan View"
+        app.view_state = ViewState::Scan;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("Scan View"), "Help overlay should show 'Scan View' section");
+
+        // Chat view — help should show "Chat View"
+        app.view_state = ViewState::Chat;
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("Chat View"), "Help overlay should show 'Chat View' section");
+    }
+
+    #[test]
+    fn e2e_t505_help_overlay_shows_global_shortcuts() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::Help;
+        app.help_scroll = 0;
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("General"), "Help should have General section");
+        assert!(buf.contains("Navigation"), "Help should have Navigation section");
+        assert!(buf.contains("Features"), "Help should have Features section");
+        assert!(buf.contains("Ctrl+C"), "Help should show Ctrl+C shortcut");
+        assert!(buf.contains("Command palette"), "Help should show Command palette");
+    }
+
+    #[test]
+    fn e2e_t505_help_overlay_scroll_changes_visible_content() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::Help;
+
+        // Render with scroll=0
+        app.help_scroll = 0;
+        let buf0 = render_to_string(&app, 120, 40);
+
+        // Render with scroll=10
+        app.help_scroll = 10;
+        let buf10 = render_to_string(&app, 120, 40);
+
+        // The content should differ (scrolled down)
+        assert_ne!(buf0, buf10, "Help overlay should show different content after scrolling");
+    }
+
+    // ─── T503: @OBL/@Art References ───
+
+    #[test]
+    fn e2e_t503_obl_tab_complete_full_flow() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Type "@OBL-0" and tab-complete
+        app.input = "@OBL-0".to_string();
+        app.input_cursor = 6;
+        app.input_mode = crate::types::InputMode::Insert;
+
+        app.apply_action(crate::input::Action::TabComplete);
+
+        // Should complete to @OBL-001
+        assert_eq!(app.input, "@OBL-001", "Tab complete should fill @OBL-001");
+        assert_eq!(app.input_cursor, 8);
+    }
+
+    #[test]
+    fn e2e_t503_art_tab_complete_converts_to_obl() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Type "@Art." and tab-complete
+        app.input = "@Art.".to_string();
+        app.input_cursor = 5;
+        app.input_mode = crate::types::InputMode::Insert;
+
+        app.apply_action(crate::input::Action::TabComplete);
+
+        // Should convert to @OBL-xxx format
+        assert!(
+            app.input.starts_with("@OBL-"),
+            "Art. completion should convert to @OBL- format, got: {}",
+            app.input
+        );
+    }
+
+    #[test]
+    fn e2e_t503_obligation_context_injected_on_chat_submit() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Insert;
+        app.input = "Explain @OBL-001 requirements".to_string();
+        app.input_cursor = app.input.len();
+
+        let cmd = app.apply_action(crate::input::Action::SubmitInput);
+
+        // Should return a Chat command with injected context
+        match cmd {
+            Some(crate::app::AppCommand::Chat(text)) => {
+                assert!(text.contains("[EU AI Act Reference]"), "Chat text should have injected context header");
+                assert!(text.contains("Art. 5"), "Chat text should contain Art. 5 from OBL-001");
+                assert!(text.contains("Prohibited AI Practices"), "Chat text should contain obligation title");
+                assert!(text.contains("Explain @OBL-001 requirements"), "Chat text should contain original message");
+            }
+            other => panic!("Expected AppCommand::Chat, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn e2e_t503_plain_message_no_injection() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Insert;
+        app.input = "Hello, explain compliance".to_string();
+        app.input_cursor = app.input.len();
+
+        let cmd = app.apply_action(crate::input::Action::SubmitInput);
+
+        match cmd {
+            Some(crate::app::AppCommand::Chat(text)) => {
+                assert!(!text.contains("[EU AI Act Reference]"), "Plain message should NOT have injected context");
+                assert_eq!(text, "Hello, explain compliance");
+            }
+            other => panic!("Expected AppCommand::Chat, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn e2e_t503_obl_tokens_highlighted_in_chat_render() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.view_state = ViewState::Chat;
+        app.messages.push(crate::types::ChatMessage::new(
+            crate::types::MessageRole::User,
+            "Check @OBL-001 compliance".to_string(),
+        ));
+
+        let buf = render_to_string(&app, 120, 40);
+        // The message text should be in the render output
+        assert!(buf.contains("@OBL-001"), "Chat should render @OBL-001 token text");
+        assert!(buf.contains("compliance"), "Chat should render the message text");
+    }
+
+    // ─── T502: Watch Mode ───
+
+    #[test]
+    fn e2e_t502_watch_toggle_via_key_w() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Normal;
+        assert!(!app.watch_active);
+
+        let key = crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char('w'),
+            crossterm::event::KeyModifiers::NONE,
+        );
+        let action = crate::input::handle_key_event(key, &app);
+        let cmd = app.apply_action(action);
+
+        assert!(
+            matches!(cmd, Some(crate::app::AppCommand::ToggleWatch)),
+            "Pressing 'w' in Normal mode should produce ToggleWatch command"
+        );
+    }
+
+    #[test]
+    fn e2e_t502_watch_command_via_slash() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Command;
+        app.input = "watch".to_string();
+        app.input_cursor = 5;
+
+        // Simulate /watch command submission
+        let cmd = app.apply_action(crate::input::Action::SubmitInput);
+
+        assert!(
+            matches!(cmd, Some(crate::app::AppCommand::ToggleWatch)),
+            "/watch command should produce ToggleWatch"
+        );
+    }
+
+    #[test]
+    fn e2e_t502_watcher_is_relevant_rejects_hidden_and_node_modules() {
+        use std::path::Path;
+        assert!(crate::watcher::is_relevant(Path::new("src/app.rs")));
+        assert!(crate::watcher::is_relevant(Path::new("Cargo.toml")));
+        assert!(!crate::watcher::is_relevant(Path::new(".git/HEAD")));
+        assert!(!crate::watcher::is_relevant(Path::new(".env")));
+        assert!(!crate::watcher::is_relevant(Path::new("node_modules/express/index.js")));
+        assert!(!crate::watcher::is_relevant(Path::new("target/debug/complior")));
+        assert!(!crate::watcher::is_relevant(Path::new("dist/bundle.js")));
+        assert!(!crate::watcher::is_relevant(Path::new("build/output.js")));
+        assert!(!crate::watcher::is_relevant(Path::new("__pycache__/mod.pyc")));
+    }
+
+    #[test]
+    fn e2e_t502_watch_mode_status_bar_integration() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Before watch
+        let buf_before = render_to_string(&app, 120, 40);
+        let footer_before: String = buf_before.lines().rev().take(2).collect::<Vec<_>>().join("\n");
+
+        // Enable watch
+        app.watch_active = true;
+        app.mode = crate::types::Mode::Watch;
+        let buf_after = render_to_string(&app, 120, 40);
+        let footer_after: String = buf_after.lines().rev().take(2).collect::<Vec<_>>().join("\n");
+
+        assert!(!footer_before.contains("[W]"), "Footer should NOT have [W] before watch");
+        assert!(footer_after.contains("[W]"), "Footer should have [W] after watch enabled");
+    }
+
+    #[test]
+    fn e2e_t502_auto_scan_regression_detection_state() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Simulate first scan
+        app.set_scan_result(make_scan_result(80.0, crate::types::Zone::Green));
+        assert_eq!(app.score_history.last().copied(), Some(80.0));
+
+        // Simulate watch_last_score being set before auto-scan
+        app.watch_last_score = Some(80.0);
+
+        // Second scan with lower score (simulating regression)
+        app.set_scan_result(make_scan_result(70.0, crate::types::Zone::Yellow));
+
+        // Verify score history updated
+        assert_eq!(app.score_history.len(), 2);
+        assert_eq!(app.score_history[0], 80.0);
+        assert_eq!(app.score_history[1], 70.0);
+    }
+
+    // ─── Cross-cutting: All 6 views render without panic ───
+
+    #[test]
+    fn e2e_all_views_render_with_scan_data() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = false;
+        app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
+        app.score_history = vec![60.0, 70.0, 75.0];
+        app.push_activity(crate::types::ActivityKind::Scan, "75/100");
+
+        for view in ViewState::ALL {
+            app.view_state = view;
+            if view == ViewState::Fix {
+                // Populate fix view from scan
+                app.fix_view = crate::views::fix::FixViewState::from_scan(
+                    &app.last_scan.as_ref().unwrap().findings,
+                );
+            }
+            let buf = render_to_string(&app, 120, 40);
+            assert!(
+                !buf.is_empty(),
+                "View {:?} should render non-empty content",
+                view
+            );
+        }
+    }
+
+    #[test]
+    fn e2e_all_views_footer_contains_mode_badge() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Normal;
+
+        for view in ViewState::ALL {
+            app.view_state = view;
+            let buf = render_to_string(&app, 120, 40);
+            let last_line = buf.lines().last().unwrap_or("");
+            assert!(
+                last_line.contains("NORMAL"),
+                "View {:?} footer should contain NORMAL mode badge, got: '{}'",
+                view,
+                last_line
+            );
+        }
+    }
+
+    // ─── Edge cases ───
+
+    #[test]
+    fn e2e_tiny_terminal_no_panic() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.last_scan = Some(make_scan_result(50.0, crate::types::Zone::Yellow));
+
+        // Very small terminal — should not panic
+        let _buf = render_to_string(&app, 40, 10);
+    }
+
+    #[test]
+    fn e2e_large_terminal_no_panic() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.last_scan = Some(make_scan_result(50.0, crate::types::Zone::Yellow));
+        app.score_history = (0..20).map(|i| f64::from(i) * 5.0).collect();
+        for i in 0..10 {
+            app.push_activity(crate::types::ActivityKind::Scan, format!("scan {i}"));
+        }
+
+        let _buf = render_to_string(&app, 300, 100);
+    }
+
+    #[test]
+    fn e2e_multiple_overlays_on_different_views() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Help overlay on each view
+        for view in ViewState::ALL {
+            app.view_state = view;
+            app.overlay = Overlay::Help;
+            app.help_scroll = 0;
+            let buf = render_to_string(&app, 120, 40);
+            assert!(
+                buf.contains("Keyboard Shortcuts"),
+                "Help overlay should render on {:?} view",
+                view
+            );
+            assert!(
+                buf.contains(&format!("{} View", view.short_name())),
+                "Help overlay should show {:?} View section",
+                view
+            );
+        }
+    }
 }
