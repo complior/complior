@@ -115,6 +115,30 @@ pub struct App {
     // Diff overlay (Selection→AI result)
     pub diff_overlay: Option<crate::components::diff_overlay::DiffOverlayState>,
 
+    // T07: Toast notifications
+    pub toasts: crate::components::toast::ToastStack,
+
+    // T07: Confirmation dialog
+    pub confirm_dialog: Option<crate::components::confirm_dialog::ConfirmDialog>,
+
+    // T07: Widget zoom
+    pub zoom: crate::components::zoom::ZoomState,
+
+    // T07: Fix split ratio (percentage for left panel, 25-75)
+    pub fix_split_pct: u16,
+
+    // T07: Context usage
+    pub context_pct: u8,
+    pub context_max_messages: usize,
+
+    // T07: Complior Zen
+    pub zen_messages_used: u32,
+    pub zen_messages_limit: u32,
+    pub zen_active: bool,
+
+    // T07: Dismiss modal
+    pub dismiss_modal: Option<crate::components::quick_actions::DismissModal>,
+
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -195,6 +219,16 @@ impl App {
             code_search_matches: Vec::new(),
             code_search_current: 0,
             diff_overlay: None,
+            toasts: crate::components::toast::ToastStack::new(),
+            confirm_dialog: None,
+            zoom: crate::components::zoom::ZoomState::new(),
+            fix_split_pct: 40,
+            context_pct: 0,
+            context_max_messages: 32,
+            zen_messages_used: 0,
+            zen_messages_limit: 1000,
+            zen_active: false,
+            dismiss_modal: None,
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -203,6 +237,10 @@ impl App {
 
     pub fn tick(&mut self) {
         self.spinner.advance();
+        self.toasts.gc();
+        // Update context usage
+        self.context_pct =
+            crate::widgets::context_meter::context_pct(self.messages.len(), self.context_max_messages);
     }
 
     /// Elapsed seconds since operation started.
@@ -808,6 +846,7 @@ impl App {
                         MessageRole::System,
                         format!("Theme: {name}"),
                     ));
+                    self.toasts.push(crate::components::toast::ToastKind::Info, format!("Theme: {name}"));
                 }
                 None
             }
@@ -898,6 +937,57 @@ impl App {
             return self.handle_onboarding_action(action);
         }
 
+        // --- Confirm Dialog overlay ---
+        if self.overlay == Overlay::ConfirmDialog {
+            match action {
+                Action::InsertChar('y' | 'Y') => {
+                    self.confirm_dialog = None;
+                    self.overlay = Overlay::None;
+                    self.toasts.push(crate::components::toast::ToastKind::Success, "Confirmed");
+                }
+                Action::EnterNormalMode | Action::Quit
+                | Action::InsertChar('n' | 'N') => {
+                    self.confirm_dialog = None;
+                    self.overlay = Overlay::None;
+                }
+                _ => {}
+            }
+            return None;
+        }
+
+        // --- Dismiss Modal overlay ---
+        if self.overlay == Overlay::DismissModal {
+            match action {
+                Action::ScrollDown => {
+                    if let Some(modal) = &mut self.dismiss_modal {
+                        modal.move_down();
+                    }
+                }
+                Action::ScrollUp => {
+                    if let Some(modal) = &mut self.dismiss_modal {
+                        modal.move_up();
+                    }
+                }
+                Action::SubmitInput => {
+                    if let Some(modal) = &self.dismiss_modal {
+                        let reason = modal.selected_reason();
+                        self.toasts.push(
+                            crate::components::toast::ToastKind::Info,
+                            format!("Dismissed: {reason:?}"),
+                        );
+                    }
+                    self.dismiss_modal = None;
+                    self.overlay = Overlay::None;
+                }
+                Action::EnterNormalMode | Action::Quit => {
+                    self.dismiss_modal = None;
+                    self.overlay = Overlay::None;
+                }
+                _ => {}
+            }
+            return None;
+        }
+
         match action {
             Action::EnterNormalMode | Action::Quit => {
                 if self.overlay == Overlay::GettingStarted {
@@ -946,6 +1036,14 @@ impl App {
                         self.overlay = Overlay::None;
                     }
                     Overlay::ProviderSetup | Overlay::ModelSelector => {
+                        self.overlay = Overlay::None;
+                    }
+                    Overlay::ConfirmDialog => {
+                        self.confirm_dialog = None;
+                        self.overlay = Overlay::None;
+                    }
+                    Overlay::DismissModal => {
+                        self.dismiss_modal = None;
                         self.overlay = Overlay::None;
                     }
                     Overlay::None | Overlay::ThemePicker | Overlay::Onboarding => {}
@@ -1288,6 +1386,17 @@ impl App {
         self.last_scan = Some(result);
         self.operation_start = None;
         self.chat_auto_scroll = true;
+
+        // T07: Toast notification for scan completion
+        let toast_msg = format!("Scan complete: {score:.0}/100 ({zone})");
+        let kind = if score >= 80.0 {
+            crate::components::toast::ToastKind::Success
+        } else if score >= 50.0 {
+            crate::components::toast::ToastKind::Warning
+        } else {
+            crate::components::toast::ToastKind::Error
+        };
+        self.toasts.push(kind, toast_msg);
     }
 
     pub fn load_file_tree(&mut self) {
@@ -1341,7 +1450,7 @@ impl App {
     }
 
     /// Handle view-specific single-char key presses (Normal mode).
-    fn handle_view_key(&mut self, c: char) {
+    pub fn handle_view_key(&mut self, c: char) {
         match self.view_state {
             ViewState::Scan => {
                 if let Some(filter) =
@@ -1356,6 +1465,40 @@ impl App {
                     if let Some(scan) = &self.last_scan {
                         self.fix_view = FixViewState::from_scan(&scan.findings);
                     }
+                } else if c == 'x' {
+                    // Quick action: Explain selected finding
+                    if let Some(idx) = self.scan_view.selected_finding {
+                        if let Some(scan) = &self.last_scan {
+                            if let Some(finding) = scan.findings.get(idx) {
+                                let msg = format!("Explain this finding: {}", finding.message);
+                                self.messages.push(ChatMessage::new(MessageRole::User, msg.clone()));
+                                self.toasts.push(
+                                    crate::components::toast::ToastKind::Info,
+                                    "Explaining finding...",
+                                );
+                            }
+                        }
+                    }
+                } else if c == 'o' {
+                    // Quick action: Open related file
+                    if let Some(idx) = self.scan_view.selected_finding {
+                        if let Some(scan) = &self.last_scan {
+                            if let Some(finding) = scan.findings.get(idx) {
+                                self.toasts.push(
+                                    crate::components::toast::ToastKind::Info,
+                                    format!("Finding: {}", finding.check_id),
+                                );
+                            }
+                        }
+                    }
+                } else if c == 'd' {
+                    // Quick action: Dismiss finding (open dismiss modal)
+                    if let Some(idx) = self.scan_view.selected_finding {
+                        self.dismiss_modal = Some(
+                            crate::components::quick_actions::DismissModal::new(idx),
+                        );
+                        self.overlay = Overlay::DismissModal;
+                    }
                 }
             }
             ViewState::Fix => match c {
@@ -1363,6 +1506,19 @@ impl App {
                 'a' => self.fix_view.select_all(),
                 'n' => self.fix_view.deselect_all(),
                 'd' => self.fix_view.diff_visible = !self.fix_view.diff_visible,
+                '<' => {
+                    self.fix_split_pct = self.fix_split_pct.saturating_sub(5).max(25);
+                }
+                '>' => {
+                    self.fix_split_pct = (self.fix_split_pct + 5).min(75);
+                }
+                _ => {}
+            },
+            ViewState::Dashboard => match c {
+                'e' => {
+                    // Toggle widget zoom
+                    self.zoom.toggle();
+                }
                 _ => {}
             },
             ViewState::Report => {
@@ -1438,6 +1594,11 @@ impl App {
     /// Handle Esc key in view context.
     fn handle_view_escape(&mut self) {
         match self.view_state {
+            ViewState::Dashboard => {
+                if self.zoom.is_zoomed() {
+                    self.zoom.close();
+                }
+            }
             ViewState::Scan => {
                 if self.scan_view.detail_open {
                     self.scan_view.detail_open = false;

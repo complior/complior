@@ -355,4 +355,6 @@ pub enum Overlay {
     ModelSelector,
     ThemePicker,
     Onboarding,
+    ConfirmDialog,
+    DismissModal,
 }

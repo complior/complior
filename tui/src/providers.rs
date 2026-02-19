@@ -35,6 +35,11 @@ pub struct ModelInfo {
 pub fn available_models() -> Vec<ModelInfo> {
     vec![
         ModelInfo {
+            id: "complior-zen-v1",
+            display_name: "Complior Zen (Free)",
+            provider: "complior",
+        },
+        ModelInfo {
             id: "claude-sonnet-4-5-20250929",
             display_name: "Claude Sonnet 4.5",
             provider: "anthropic",
@@ -185,7 +190,7 @@ mod tests {
     #[test]
     fn test_available_models_count() {
         let models = available_models();
-        assert_eq!(models.len(), 12);
+        assert_eq!(models.len(), 13);
     }
 
     #[test]

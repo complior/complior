@@ -166,9 +166,11 @@ pub fn render_fix_view(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     if app.fix_view.diff_visible {
+        let left_pct = u16::from(app.fix_split_pct.clamp(25, 75));
+        let right_pct = 100 - left_pct;
         let layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+            .constraints([Constraint::Percentage(left_pct), Constraint::Percentage(right_pct)])
             .split(area);
         render_checklist(frame, layout[0], app);
         render_diff_preview(frame, layout[1], app);
