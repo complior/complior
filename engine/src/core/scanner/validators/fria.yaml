@@ -1,0 +1,19 @@
+document: fria
+obligation: OBL-013
+article: "Art. 27"
+file_patterns:
+  - "FRIA.md"
+  - "fria.md"
+  - "fundamental-rights-impact-assessment.md"
+  - "FUNDAMENTAL-RIGHTS-IMPACT-ASSESSMENT.md"
+required_sections:
+  - title: "Risk Assessment"
+    required: true
+  - title: "Impact Analysis"
+    required: true
+  - title: "Mitigation Measures"
+    required: true
+  - title: "Stakeholder Consultation"
+    required: false
+  - title: "Monitoring Plan"
+    required: false

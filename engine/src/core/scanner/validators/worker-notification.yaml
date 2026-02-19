@@ -1,0 +1,19 @@
+document: worker-notification
+obligation: OBL-012
+article: "Art. 26(7)"
+file_patterns:
+  - "WORKER-NOTIFICATION.md"
+  - "WORKER_NOTIFICATION.md"
+  - "worker-notification.md"
+  - "employee-ai-notification.md"
+required_sections:
+  - title: "Notification Scope"
+    required: true
+  - title: "Affected Workers"
+    required: true
+  - title: "Timeline"
+    required: true
+  - title: "Communication Channels"
+    required: false
+  - title: "Acknowledgment Process"
+    required: false

@@ -1,0 +1,19 @@
+document: monitoring-policy
+obligation: OBL-011
+article: "Art. 26"
+file_patterns:
+  - "MONITORING-POLICY.md"
+  - "MONITORING_POLICY.md"
+  - "monitoring-policy.md"
+  - "ai-monitoring-policy.md"
+required_sections:
+  - title: "Monitoring Scope"
+    required: true
+  - title: "Frequency"
+    required: true
+  - title: "Escalation Procedures"
+    required: true
+  - title: "Responsible Parties"
+    required: false
+  - title: "Reporting Requirements"
+    required: false

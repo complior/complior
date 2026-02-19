@@ -1,5 +1,5 @@
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::Style;
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
@@ -9,6 +9,7 @@ use crate::components::markdown;
 use crate::theme;
 use crate::types::{ChatBlock, InputMode, MessageRole};
 
+/// Render chat as a panel within the dashboard (original layout).
 pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
     let block = Block::default()
         .title(" Chat ")
@@ -27,6 +28,41 @@ pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
 
     render_messages(frame, chunks[0], app);
     render_input(frame, chunks[1], app, focused);
+}
+
+/// Full-screen chat view (`ViewState::Chat`) — input placement depends on chat state.
+pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
+    let focused = true; // Always focused when it's the main view
+    let has_messages = app.messages.len() > 1 || app.streaming_response.is_some();
+
+    let block = Block::default()
+        .title(" Chat ")
+        .title_style(theme::title_style())
+        .borders(Borders::ALL)
+        .border_style(theme::border_style(focused));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    if has_messages {
+        // Messages exist: input at bottom (standard layout)
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(3), Constraint::Length(3)])
+            .split(inner);
+
+        render_messages(frame, chunks[0], app);
+        render_input(frame, chunks[1], app, focused);
+    } else {
+        // Empty chat: input at top + tips panel below
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(3)])
+            .split(inner);
+
+        render_input(frame, chunks[0], app, focused);
+        render_tips(frame, chunks[1]);
+    }
 }
 
 fn render_messages(frame: &mut Frame, area: Rect, app: &App) {
@@ -54,6 +90,11 @@ fn render_messages(frame: &mut Frame, area: Rect, app: &App) {
             ]));
             let md_lines = markdown::parse_markdown(&msg.content);
             lines.extend(md_lines);
+        } else if msg.role == MessageRole::User {
+            // User messages: highlight @OBL-xxx tokens
+            let mut msg_spans = vec![time_span, Span::styled(prefix, style)];
+            msg_spans.extend(highlight_obl_tokens(&msg.content, &t));
+            lines.push(Line::from(msg_spans));
         } else {
             lines.push(Line::from(vec![
                 time_span,
@@ -113,12 +154,12 @@ fn render_messages(frame: &mut Frame, area: Rect, app: &App) {
         ]));
     }
 
-    // Streaming response
+    // Streaming response (cursor: | instead of _)
     if let Some(streaming) = &app.streaming_response {
         lines.push(Line::from(vec![
             Span::styled("AI: ", Style::default().fg(t.assistant_msg)),
             Span::raw(streaming.as_str()),
-            Span::styled("_", Style::default().fg(t.accent)),
+            Span::styled("|", Style::default().fg(t.accent)),
         ]));
     }
 
@@ -161,10 +202,105 @@ fn render_input(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
 
     // Show cursor in insert/command mode
     if focused && matches!(app.input_mode, InputMode::Insert | InputMode::Command) {
+        #[allow(clippy::cast_possible_truncation)]
         let cursor_x = area.x + 1 + prefix.len() as u16 + app.input_cursor as u16;
         let cursor_y = area.y + 1;
         frame.set_cursor_position((cursor_x, cursor_y));
     }
+}
+
+/// Highlight @OBL-xxx tokens in accent color.
+fn highlight_obl_tokens<'a>(
+    text: &'a str,
+    t: &theme::ThemeColors,
+) -> Vec<Span<'a>> {
+    let mut spans = Vec::new();
+    let mut remaining = text;
+
+    while let Some(start) = remaining.find("@OBL-") {
+        // Text before the token
+        if start > 0 {
+            spans.push(Span::raw(&remaining[..start]));
+        }
+
+        // Find end of token (alphanumeric after @OBL-)
+        let token_start = start;
+        let after_prefix = &remaining[start + 5..];
+        let token_len = 5 + after_prefix
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '-')
+            .count();
+        let token_end = start + token_len;
+
+        spans.push(Span::styled(
+            &remaining[token_start..token_end],
+            Style::default()
+                .fg(t.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+        remaining = &remaining[token_end..];
+    }
+
+    // Remaining text
+    if !remaining.is_empty() {
+        spans.push(Span::raw(remaining));
+    }
+
+    if spans.is_empty() {
+        spans.push(Span::raw(text));
+    }
+
+    spans
+}
+
+/// Tips panel shown when chat is empty.
+fn render_tips(frame: &mut Frame, area: Rect) {
+    let t = theme::theme();
+
+    let block = Block::default()
+        .title(" Quick Start ")
+        .title_style(theme::title_style())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.border));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let lines = vec![
+        Line::raw(""),
+        Line::from(Span::styled(
+            "  Tips",
+            Style::default()
+                .fg(t.accent)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::raw(""),
+        Line::from(vec![
+            Span::styled("  /scan      ", Style::default().fg(t.accent)),
+            Span::styled("Run compliance scan on your project", Style::default().fg(t.fg)),
+        ]),
+        Line::from(vec![
+            Span::styled("  /help      ", Style::default().fg(t.accent)),
+            Span::styled("Show all available commands", Style::default().fg(t.fg)),
+        ]),
+        Line::from(vec![
+            Span::styled("  @file      ", Style::default().fg(t.accent)),
+            Span::styled("Reference a file in your message", Style::default().fg(t.fg)),
+        ]),
+        Line::from(vec![
+            Span::styled("  !cmd       ", Style::default().fg(t.accent)),
+            Span::styled("Run a shell command", Style::default().fg(t.fg)),
+        ]),
+        Line::raw(""),
+        Line::from(Span::styled(
+            "  Type a message or command to get started",
+            Style::default().fg(t.muted),
+        )),
+    ];
+
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
+    frame.render_widget(paragraph, inner);
 }
 
 #[cfg(test)]
@@ -193,6 +329,49 @@ mod tests {
 
         terminal
             .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
+    }
+
+    #[test]
+    fn test_streaming_cursor_present() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        app.streaming_response = Some("Hello world".to_string());
+
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
+
+        // Verify the buffer contains the pipe cursor
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol().to_string()).collect();
+        assert!(content.contains('|'), "Streaming cursor '|' should be present");
+    }
+
+    #[test]
+    fn test_chat_view_no_regression() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let app = App::new(crate::config::TuiConfig::default());
+
+        // Empty chat should render tips
+        terminal
+            .draw(|frame| render_chat_view(frame, frame.area(), &app))
+            .expect("render");
+
+        // With messages should render standard layout
+        let mut app2 = App::new(crate::config::TuiConfig::default());
+        app2.messages.push(ChatMessage::new(
+            MessageRole::User,
+            "hello".to_string(),
+        ));
+
+        terminal
+            .draw(|frame| render_chat_view(frame, frame.area(), &app2))
             .expect("render");
     }
 }

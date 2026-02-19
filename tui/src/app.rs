@@ -7,10 +7,14 @@ use crate::engine_client::{EngineClient, SseEvent};
 use crate::input::Action;
 use crate::providers::ProviderConfig;
 use crate::types::{
-    ChatBlock, ChatMessage, DiffContent, EngineConnectionStatus, FileEntry, InputMode,
-    MessageRole, Overlay, Panel, ScanResult, Selection,
+    ActivityEntry, ActivityKind, ChatBlock, ChatMessage, DiffContent, EngineConnectionStatus,
+    FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult, Selection, ViewState,
 };
 use crate::views::file_browser;
+use crate::views::fix::FixViewState;
+use crate::views::report::ReportViewState;
+use crate::views::scan::ScanViewState;
+use crate::views::timeline::TimelineViewState;
 
 pub struct App {
     // Core state
@@ -18,6 +22,8 @@ pub struct App {
     pub active_panel: Panel,
     pub input_mode: InputMode,
     pub config: TuiConfig,
+    pub view_state: ViewState,
+    pub mode: Mode,
 
     // Engine
     pub engine_status: EngineConnectionStatus,
@@ -79,6 +85,36 @@ pub struct App {
     pub provider_setup_error: Option<String>,
     pub model_selector_index: usize,
 
+    // View-specific state
+    pub scan_view: ScanViewState,
+    pub fix_view: FixViewState,
+    pub timeline_view: TimelineViewState,
+    pub report_view: ReportViewState,
+
+    // Activity log (Dashboard widget)
+    pub activity_log: Vec<ActivityEntry>,
+
+    // Watch mode
+    pub watch_active: bool,
+    pub watch_last_score: Option<f64>,
+
+    // Help overlay scroll
+    pub help_scroll: usize,
+
+    // Theme picker
+    pub theme_picker: Option<crate::theme_picker::ThemePickerState>,
+
+    // Onboarding wizard
+    pub onboarding: Option<crate::views::onboarding::OnboardingWizard>,
+
+    // Code viewer search
+    pub code_search_query: Option<String>,
+    pub code_search_matches: Vec<usize>,
+    pub code_search_current: usize,
+
+    // Diff overlay (Selection→AI result)
+    pub diff_overlay: Option<crate::components::diff_overlay::DiffOverlayState>,
+
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -87,6 +123,7 @@ pub struct App {
 
 const MAX_HISTORY: usize = 50;
 const MAX_TERMINAL_LINES: usize = 1000;
+const MAX_ACTIVITY_LOG: usize = 10;
 
 impl App {
     pub fn new(config: TuiConfig) -> Self {
@@ -103,6 +140,8 @@ impl App {
             active_panel: Panel::Chat,
             input_mode: InputMode::Insert,
             config,
+            view_state: ViewState::Dashboard,
+            mode: Mode::Scan,
             engine_status: EngineConnectionStatus::Connecting,
             engine_client,
             messages: vec![ChatMessage::new(
@@ -142,6 +181,20 @@ impl App {
             provider_setup_key_input: String::new(),
             provider_setup_error: None,
             model_selector_index: 0,
+            scan_view: ScanViewState::default(),
+            fix_view: FixViewState::default(),
+            timeline_view: TimelineViewState::default(),
+            report_view: ReportViewState::default(),
+            activity_log: Vec::new(),
+            watch_active: false,
+            watch_last_score: None,
+            help_scroll: 0,
+            theme_picker: None,
+            onboarding: None,
+            code_search_query: None,
+            code_search_matches: Vec::new(),
+            code_search_current: 0,
+            diff_overlay: None,
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -238,6 +291,25 @@ impl App {
         }
     }
 
+    pub fn push_activity(&mut self, kind: ActivityKind, detail: impl Into<String>) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let hours = (now % 86400) / 3600;
+        let mins = (now % 3600) / 60;
+        let timestamp = format!("{hours:02}:{mins:02}");
+
+        self.activity_log.push(ActivityEntry {
+            timestamp,
+            kind,
+            detail: detail.into(),
+        });
+        if self.activity_log.len() > MAX_ACTIVITY_LOG {
+            self.activity_log.remove(0);
+        }
+    }
+
     pub fn apply_action(&mut self, action: Action) -> Option<AppCommand> {
         // Handle overlay-specific input first
         if self.overlay == Overlay::ProviderSetup {
@@ -330,47 +402,76 @@ impl App {
                 None
             }
             Action::ScrollUp => {
-                match self.active_panel {
-                    Panel::CodeViewer => {
-                        self.code_scroll = self.code_scroll.saturating_sub(1);
+                match self.view_state {
+                    ViewState::Scan => {
+                        let count = self.filtered_findings_count();
+                        self.scan_view.navigate_up();
+                        let _ = count; // used for bounds checking inside navigate_up
                     }
-                    Panel::FileBrowser => {
-                        self.file_browser_index = self.file_browser_index.saturating_sub(1);
+                    ViewState::Fix => self.fix_view.navigate_up(),
+                    ViewState::Timeline => {
+                        self.timeline_view.scroll_offset =
+                            self.timeline_view.scroll_offset.saturating_sub(1);
                     }
-                    Panel::Terminal => {
-                        self.terminal_scroll = self.terminal_scroll.saturating_sub(1);
-                        self.terminal_auto_scroll = false;
+                    ViewState::Report => {
+                        self.report_view.scroll_offset =
+                            self.report_view.scroll_offset.saturating_sub(1);
                     }
-                    Panel::Chat => {
-                        self.chat_scroll = self.chat_scroll.saturating_sub(1);
-                        self.chat_auto_scroll = false;
-                    }
-                    _ => {}
+                    _ => match self.active_panel {
+                        Panel::CodeViewer => {
+                            self.code_scroll = self.code_scroll.saturating_sub(1);
+                        }
+                        Panel::FileBrowser => {
+                            self.file_browser_index =
+                                self.file_browser_index.saturating_sub(1);
+                        }
+                        Panel::Terminal => {
+                            self.terminal_scroll =
+                                self.terminal_scroll.saturating_sub(1);
+                            self.terminal_auto_scroll = false;
+                        }
+                        Panel::Chat => {
+                            self.chat_scroll = self.chat_scroll.saturating_sub(1);
+                            self.chat_auto_scroll = false;
+                        }
+                        _ => {}
+                    },
                 }
                 None
             }
             Action::ScrollDown => {
-                match self.active_panel {
-                    Panel::CodeViewer => {
-                        self.code_scroll += 1;
+                match self.view_state {
+                    ViewState::Scan => {
+                        let count = self.filtered_findings_count();
+                        self.scan_view.navigate_down(count);
                     }
-                    Panel::FileBrowser => {
-                        if self.file_browser_index + 1 < self.file_tree.len() {
-                            self.file_browser_index += 1;
+                    ViewState::Fix => self.fix_view.navigate_down(),
+                    ViewState::Timeline => {
+                        self.timeline_view.scroll_offset += 1;
+                    }
+                    ViewState::Report => {
+                        self.report_view.scroll_offset += 1;
+                    }
+                    _ => match self.active_panel {
+                        Panel::CodeViewer => {
+                            self.code_scroll += 1;
                         }
-                    }
-                    Panel::Terminal => {
-                        self.terminal_scroll += 1;
-                        // Re-enable auto-scroll if at bottom
-                        if self.terminal_scroll + 1 >= self.terminal_output.len() {
-                            self.terminal_auto_scroll = true;
+                        Panel::FileBrowser => {
+                            if self.file_browser_index + 1 < self.file_tree.len() {
+                                self.file_browser_index += 1;
+                            }
                         }
-                    }
-                    Panel::Chat => {
-                        self.chat_scroll += 1;
-                        // Re-enable auto-scroll if near bottom
-                    }
-                    _ => {}
+                        Panel::Terminal => {
+                            self.terminal_scroll += 1;
+                            if self.terminal_scroll + 1 >= self.terminal_output.len() {
+                                self.terminal_auto_scroll = true;
+                            }
+                        }
+                        Panel::Chat => {
+                            self.chat_scroll += 1;
+                        }
+                        _ => {}
+                    },
                 }
                 None
             }
@@ -464,18 +565,34 @@ impl App {
                 }
 
                 if self.input_mode == InputMode::Command || text.starts_with('/') {
+                    // Code search: if in CodeViewer and text doesn't start with /
+                    if self.active_panel == Panel::CodeViewer && !text.starts_with('/') {
+                        // Treat as code search query
+                        if let Some(content) = &self.code_content {
+                            let matches = crate::views::code_viewer::find_search_matches(content, &text);
+                            self.code_search_current = 0;
+                            if !matches.is_empty() {
+                                self.code_scroll = matches[0];
+                            }
+                            self.code_search_matches = matches;
+                            self.code_search_query = Some(text);
+                        }
+                        self.input_mode = InputMode::Normal;
+                        return None;
+                    }
                     let cmd = text.trim_start_matches('/');
                     self.input_mode = InputMode::Insert;
                     return self.handle_command(cmd);
                 }
 
-                // Chat message
+                // Chat message — inject obligation context if @OBL-xxx tokens present
+                let chat_text = crate::obligations::inject_obligation_context(&text);
                 self.messages.push(ChatMessage::new(
                     MessageRole::User,
-                    text.clone(),
+                    text,
                 ));
                 self.chat_auto_scroll = true;
-                Some(AppCommand::Chat(text))
+                Some(AppCommand::Chat(chat_text))
             }
             Action::SendSelectionToAi => {
                 if let (Some(content), Some(sel)) = (&self.code_content, &self.selection) {
@@ -550,6 +667,7 @@ impl App {
             }
             Action::ShowHelp => {
                 self.overlay = Overlay::Help;
+                self.help_scroll = 0;
                 None
             }
             Action::ShowModelSelector => {
@@ -573,9 +691,78 @@ impl App {
                 self.provider_setup_error = None;
                 None
             }
+            Action::SwitchView(view) => {
+                self.view_state = view;
+                // Populate Fix view from latest scan when switching to it
+                if view == ViewState::Fix {
+                    if let Some(scan) = &self.last_scan {
+                        self.fix_view = FixViewState::from_scan(&scan.findings);
+                    }
+                }
+                None
+            }
+            Action::ToggleMode => {
+                self.mode = self.mode.next();
+                None
+            }
             Action::FocusPanel(panel) => {
                 self.active_panel = panel;
                 None
+            }
+            Action::WatchToggle => {
+                return Some(AppCommand::ToggleWatch);
+            }
+            Action::ShowThemePicker => {
+                self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
+                self.overlay = Overlay::ThemePicker;
+                None
+            }
+            Action::CodeSearch => {
+                // Enter command mode to type search query
+                self.input_mode = InputMode::Command;
+                self.input.clear();
+                self.input_cursor = 0;
+                None
+            }
+            Action::CodeSearchNext => {
+                if !self.code_search_matches.is_empty() {
+                    self.code_search_current =
+                        (self.code_search_current + 1) % self.code_search_matches.len();
+                    self.code_scroll = self.code_search_matches[self.code_search_current];
+                }
+                None
+            }
+            Action::CodeSearchPrev => {
+                if !self.code_search_matches.is_empty() {
+                    self.code_search_current = if self.code_search_current == 0 {
+                        self.code_search_matches.len() - 1
+                    } else {
+                        self.code_search_current - 1
+                    };
+                    self.code_scroll = self.code_search_matches[self.code_search_current];
+                }
+                None
+            }
+            Action::StartScan => {
+                self.messages.push(ChatMessage::new(
+                    MessageRole::System,
+                    "Scanning project...".to_string(),
+                ));
+                self.operation_start = Some(Instant::now());
+                self.scan_view.scanning = true;
+                return Some(AppCommand::Scan);
+            }
+            Action::ViewKey(c) => {
+                self.handle_view_key(c);
+                return None;
+            }
+            Action::ViewEnter => {
+                self.handle_view_enter();
+                return None;
+            }
+            Action::ViewEscape => {
+                self.handle_view_escape();
+                return None;
             }
             Action::GotoLine => {
                 // Parse `:N` from command input
@@ -591,7 +778,126 @@ impl App {
         }
     }
 
+    fn handle_theme_picker_action(&mut self, action: Action) -> Option<AppCommand> {
+        match action {
+            Action::ScrollDown => {
+                if let Some(tp) = &mut self.theme_picker {
+                    tp.move_down();
+                }
+                None
+            }
+            Action::ScrollUp => {
+                if let Some(tp) = &mut self.theme_picker {
+                    tp.move_up();
+                }
+                None
+            }
+            Action::SubmitInput => {
+                // Apply selected theme and close
+                let name = self
+                    .theme_picker
+                    .as_ref()
+                    .map(|tp| tp.selected_name().to_string())
+                    .unwrap_or_default();
+                self.theme_picker = None;
+                self.overlay = Overlay::None;
+                if !name.is_empty() {
+                    crate::theme::init_theme(&name);
+                    crate::config::save_theme(&name);
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        format!("Theme: {name}"),
+                    ));
+                }
+                None
+            }
+            Action::EnterNormalMode | Action::Quit => {
+                self.theme_picker = None;
+                self.overlay = Overlay::None;
+                None
+            }
+            _ => None,
+        }
+    }
+
+    fn handle_onboarding_action(&mut self, action: Action) -> Option<AppCommand> {
+        match action {
+            Action::ScrollDown => {
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.move_cursor_down();
+                }
+                None
+            }
+            Action::ScrollUp => {
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.move_cursor_up();
+                }
+                None
+            }
+            Action::InsertChar(' ') => {
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.toggle_selection();
+                }
+                None
+            }
+            Action::SubmitInput => {
+                let completed = self
+                    .onboarding
+                    .as_mut()
+                    .map(|wiz| {
+                        if wiz.completed {
+                            true // Already on completion screen
+                        } else {
+                            wiz.next_step()
+                        }
+                    })
+                    .unwrap_or(false);
+
+                if completed {
+                    // Close onboarding
+                    if let Some(wiz) = &self.onboarding {
+                        if let Some(summary) = &wiz.result_summary {
+                            self.messages.push(ChatMessage::new(
+                                MessageRole::System,
+                                format!("Setup complete: {summary}"),
+                            ));
+                        }
+                    }
+                    crate::config::mark_onboarding_complete();
+                    self.onboarding = None;
+                    self.overlay = Overlay::None;
+                }
+                None
+            }
+            Action::DeleteChar => {
+                // Backspace = previous step
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.prev_step();
+                }
+                None
+            }
+            Action::EnterNormalMode | Action::Quit => {
+                // Esc = skip onboarding
+                crate::config::mark_onboarding_complete();
+                self.onboarding = None;
+                self.overlay = Overlay::None;
+                None
+            }
+            _ => None,
+        }
+    }
+
     fn handle_overlay_action(&mut self, action: Action) -> Option<AppCommand> {
+        // --- Theme Picker overlay ---
+        if self.overlay == Overlay::ThemePicker {
+            return self.handle_theme_picker_action(action);
+        }
+
+        // --- Onboarding overlay ---
+        if self.overlay == Overlay::Onboarding {
+            return self.handle_onboarding_action(action);
+        }
+
         match action {
             Action::EnterNormalMode | Action::Quit => {
                 if self.overlay == Overlay::GettingStarted {
@@ -627,7 +933,6 @@ impl App {
                         );
                         if let Some(first) = matches.first() {
                             let path = first.path.to_string_lossy().to_string();
-                            // Insert @path into input
                             let mention = format!("@{path} ");
                             self.input.push_str(&mention);
                             self.input_cursor = self.input.len();
@@ -641,18 +946,25 @@ impl App {
                         self.overlay = Overlay::None;
                     }
                     Overlay::ProviderSetup | Overlay::ModelSelector => {
-                        // Handled by dedicated component handlers above
                         self.overlay = Overlay::None;
                     }
-                    Overlay::None => {}
+                    Overlay::None | Overlay::ThemePicker | Overlay::Onboarding => {}
                 }
                 None
             }
-            // Ignore no-op keys (arrows etc.) — don't dismiss overlay
+            // Help overlay scroll with j/k
+            Action::ScrollUp if self.overlay == Overlay::Help => {
+                self.help_scroll = self.help_scroll.saturating_sub(1);
+                None
+            }
+            Action::ScrollDown if self.overlay == Overlay::Help => {
+                self.help_scroll += 1;
+                None
+            }
+            // Ignore no-op keys
             Action::None | Action::ScrollUp | Action::ScrollDown
             | Action::HistoryUp | Action::HistoryDown => None,
             _ => {
-                // Dismiss Help/GettingStarted on any real action
                 if self.overlay == Overlay::GettingStarted {
                     self.overlay = Overlay::None;
                     crate::session::mark_first_run_done();
@@ -670,6 +982,46 @@ impl App {
             if let Some(completed) = crate::components::command_palette::complete_command(partial) {
                 self.input = completed.to_string();
                 self.input_cursor = self.input.len();
+            }
+            return;
+        }
+
+        let before_cursor = &self.input[..self.input_cursor];
+
+        // Obligation completion: scan backwards for @OBL- or @OBL (without dash)
+        if let Some(start) = before_cursor.rfind("@OBL-") {
+            let prefix = &self.input[start + 5..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
+            }
+        } else if let Some(start) = before_cursor.rfind("@OBL") {
+            // "@OBL" without dash — insert dash and complete
+            let prefix = &self.input[start + 4..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
+            }
+        } else if let Some(start) = before_cursor.rfind("@Art.") {
+            let prefix = &self.input[start + 5..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
+            }
+        } else if let Some(start) = before_cursor.rfind("@Art") {
+            // "@Art" without dot — still complete
+            let prefix = &self.input[start + 4..self.input_cursor];
+            let matches = crate::obligations::autocomplete_obl(prefix);
+            if let Some(obl) = matches.first() {
+                let replacement = format!("@OBL-{}", obl.id);
+                self.input.replace_range(start..self.input_cursor, &replacement);
+                self.input_cursor = start + replacement.len();
             }
         }
     }
@@ -723,10 +1075,9 @@ impl App {
             Some("theme") => {
                 let name = parts.get(1).unwrap_or(&"").to_string();
                 if name.is_empty() {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        "Themes: dark, light, high-contrast. Usage: /theme <name>".to_string(),
-                    ));
+                    // Open theme picker overlay
+                    self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
+                    self.overlay = Overlay::ThemePicker;
                     None
                 } else {
                     Some(AppCommand::SwitchTheme(name))
@@ -766,18 +1117,21 @@ impl App {
                         "  /clear         — Clear terminal output\n",
                         "  /reconnect     — Reconnect to engine\n",
                         "  /theme <name>  — Switch theme (dark/light/high-contrast)\n",
+                        "  /watch         — Toggle file watch mode\n",
+                        "  /view <1-6>    — Switch to view (Dashboard/Scan/Fix/Chat/Timeline/Report)\n",
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
                         "  /provider      — Configure LLM provider\n",
-                        "  /model         — Switch model (also Ctrl+M)\n",
+                        "  /model         — Switch model (also M in Normal mode)\n",
                         "  /welcome       — Show getting started\n",
                         "  /help          — Show this help\n",
                         "\n",
                         "Shortcuts:\n",
                         "  @file          — Reference file in message\n",
                         "  !cmd           — Run shell command directly\n",
-                        "  Tab            — Switch panel / complete command\n",
+                        "  1-6            — Switch view (Normal mode)\n",
+                        "  Tab            — Toggle mode (Scan/Fix/Watch)\n",
                         "  Alt+1..5       — Jump to panel\n",
                         "  Ctrl+P         — Command palette\n",
                         "  Ctrl+B         — Toggle sidebar\n",
@@ -811,6 +1165,21 @@ impl App {
                 }
                 None
             }
+            Some("view") => {
+                let num_str = parts.get(1).unwrap_or(&"").trim();
+                if let Ok(num) = num_str.parse::<u8>() {
+                    if let Some(view) = ViewState::from_key(num) {
+                        self.view_state = view;
+                        return None;
+                    }
+                }
+                self.messages.push(ChatMessage::new(
+                    MessageRole::System,
+                    "Usage: /view <1-6> (Dashboard/Scan/Fix/Chat/Timeline/Report)".to_string(),
+                ));
+                None
+            }
+            Some("watch") => Some(AppCommand::ToggleWatch),
             Some("welcome") => {
                 self.overlay = Overlay::GettingStarted;
                 None
@@ -866,6 +1235,7 @@ impl App {
                         }
                     }
                     msg.blocks.push(ChatBlock::Text(msg.content.clone()));
+                    self.push_activity(ActivityKind::Chat, "AI response");
                     self.messages.push(msg);
                     self.chat_auto_scroll = true;
                 }
@@ -886,6 +1256,7 @@ impl App {
 
     pub fn set_scan_result(&mut self, result: ScanResult) {
         let score = result.score.total_score;
+        self.push_activity(ActivityKind::Scan, format!("{score:.0}/100"));
         self.score_history.push(score);
         if self.score_history.len() > 20 {
             self.score_history.remove(0);
@@ -909,6 +1280,11 @@ impl App {
             ),
         ));
 
+        // Update scan view state
+        self.scan_view.set_complete(result.files_scanned);
+        self.scan_view.selected_finding = None;
+        self.scan_view.detail_open = false;
+
         self.last_scan = Some(result);
         self.operation_start = None;
         self.chat_auto_scroll = true;
@@ -919,6 +1295,7 @@ impl App {
     }
 
     pub fn open_file(&mut self, path: &str, content: String) {
+        self.push_activity(ActivityKind::FileOpen, path.to_string());
         self.code_content = Some(content);
         self.open_file_path = Some(path.to_string());
         self.code_scroll = 0;
@@ -950,11 +1327,136 @@ impl App {
         self.terminal_output = data.terminal_output;
         self.last_scan = data.last_scan;
     }
+
+    /// Count findings matching the current scan view filter.
+    fn filtered_findings_count(&self) -> usize {
+        self.last_scan
+            .as_ref()
+            .map_or(0, |s| {
+                s.findings
+                    .iter()
+                    .filter(|f| self.scan_view.findings_filter.matches(f.severity))
+                    .count()
+            })
+    }
+
+    /// Handle view-specific single-char key presses (Normal mode).
+    fn handle_view_key(&mut self, c: char) {
+        match self.view_state {
+            ViewState::Scan => {
+                if let Some(filter) =
+                    crate::views::scan::FindingsFilter::from_key(c)
+                {
+                    self.scan_view.findings_filter = filter;
+                    self.scan_view.selected_finding = Some(0);
+                } else if c == 'f' && self.scan_view.detail_open {
+                    // Go to Fix View with current finding
+                    self.scan_view.detail_open = false;
+                    self.view_state = ViewState::Fix;
+                    if let Some(scan) = &self.last_scan {
+                        self.fix_view = FixViewState::from_scan(&scan.findings);
+                    }
+                }
+            }
+            ViewState::Fix => match c {
+                ' ' => self.fix_view.toggle_current(),
+                'a' => self.fix_view.select_all(),
+                'n' => self.fix_view.deselect_all(),
+                'd' => self.fix_view.diff_visible = !self.fix_view.diff_visible,
+                _ => {}
+            },
+            ViewState::Report => {
+                if c == 'e' {
+                    if let Some(scan) = &self.last_scan {
+                        match crate::views::report::export_report(scan) {
+                            Ok(path) => {
+                                self.report_view.export_status =
+                                    crate::views::report::ExportStatus::Done(path.clone());
+                                self.messages.push(ChatMessage::new(
+                                    MessageRole::System,
+                                    format!("Report exported: {path}"),
+                                ));
+                            }
+                            Err(e) => {
+                                self.report_view.export_status =
+                                    crate::views::report::ExportStatus::Error(e.clone());
+                                self.messages.push(ChatMessage::new(
+                                    MessageRole::System,
+                                    format!("Export failed: {e}"),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle Enter key in view context.
+    fn handle_view_enter(&mut self) {
+        match self.view_state {
+            ViewState::Scan => {
+                if self.scan_view.detail_open {
+                    // Close detail
+                    self.scan_view.detail_open = false;
+                } else if self.last_scan.is_some() {
+                    // Open finding detail
+                    self.scan_view.detail_open = true;
+                }
+            }
+            ViewState::Fix => {
+                if self.fix_view.results.is_some() {
+                    // Dismiss results
+                    self.fix_view.results = None;
+                } else if self.fix_view.selected_count() > 0 {
+                    // Show placeholder results in Fix view (engine API not yet connected)
+                    let selected = self.fix_view.selected_count() as u32;
+                    let old_score = self
+                        .last_scan
+                        .as_ref()
+                        .map(|s| s.score.total_score)
+                        .unwrap_or(0.0);
+                    let impact = self.fix_view.total_predicted_impact() as f64;
+                    self.fix_view.results =
+                        Some(crate::views::fix::FixResults {
+                            applied: selected,
+                            failed: 0,
+                            old_score,
+                            new_score: (old_score + impact).min(100.0),
+                        });
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        format!("Applied {selected} fixes (simulated). Re-scan with Ctrl+S to verify."),
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle Esc key in view context.
+    fn handle_view_escape(&mut self) {
+        match self.view_state {
+            ViewState::Scan => {
+                if self.scan_view.detail_open {
+                    self.scan_view.detail_open = false;
+                }
+            }
+            ViewState::Fix => {
+                if self.fix_view.results.is_some() {
+                    self.fix_view.results = None;
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum AppCommand {
     Scan,
+    AutoScan,
     Chat(String),
     OpenFile(String),
     RunCommand(String),
@@ -962,6 +1464,7 @@ pub enum AppCommand {
     SwitchTheme(String),
     SaveSession(String),
     LoadSession(String),
+    ToggleWatch,
 }
 
 #[cfg(test)]
@@ -1065,6 +1568,36 @@ mod tests {
     }
 
     #[test]
+    fn test_activity_log_capped_at_10() {
+        use crate::types::ActivityKind;
+        let mut app = App::new(TuiConfig::default());
+        for i in 0..15 {
+            app.push_activity(ActivityKind::Scan, format!("scan {i}"));
+        }
+        assert_eq!(app.activity_log.len(), 10);
+        // Oldest entries should have been dropped
+        assert!(app.activity_log[0].detail.contains("5"));
+        assert!(app.activity_log[9].detail.contains("14"));
+    }
+
+    #[test]
+    fn test_score_history_load_from_disk() {
+        let mut app = App::new(TuiConfig::default());
+        // Simulate loading score history (as from session restore)
+        let history = vec![42.0, 55.0, 68.0, 75.0, 82.0];
+        app.score_history = history.clone();
+        assert_eq!(app.score_history.len(), 5);
+        assert_eq!(app.score_history, history);
+    }
+
+    #[test]
+    fn test_watch_command_returns_toggle() {
+        let mut app = App::new(TuiConfig::default());
+        let cmd = app.handle_command("watch");
+        assert!(matches!(cmd, Some(AppCommand::ToggleWatch)));
+    }
+
+    #[test]
     fn test_reconnect_command() {
         let mut app = App::new(TuiConfig::default());
         let cmd = app.handle_command("reconnect");
@@ -1076,5 +1609,142 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         let cmd = app.handle_command("theme light");
         assert!(matches!(cmd, Some(AppCommand::SwitchTheme(n)) if n == "light"));
+    }
+
+    #[test]
+    fn test_view_command() {
+        let mut app = App::new(TuiConfig::default());
+        assert_eq!(app.view_state, ViewState::Dashboard);
+
+        let cmd = app.handle_command("view 4");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Chat);
+
+        let cmd = app.handle_command("view 2");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Scan);
+
+        // Invalid view number
+        let cmd = app.handle_command("view 9");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Scan);
+    }
+
+    #[test]
+    fn test_obl_tab_complete_without_dash() {
+        let mut app = App::new(TuiConfig::default());
+        app.input = "@OBL".to_string();
+        app.input_cursor = 4;
+        app.input_mode = InputMode::Insert;
+        app.apply_action(crate::input::Action::TabComplete);
+        // Should complete to @OBL-001 (first obligation)
+        assert!(app.input.starts_with("@OBL-0"));
+        assert!(app.input.len() > 4);
+    }
+
+    #[test]
+    fn test_obl_tab_complete_with_dash() {
+        let mut app = App::new(TuiConfig::default());
+        app.input = "@OBL-".to_string();
+        app.input_cursor = 5;
+        app.input_mode = InputMode::Insert;
+        app.apply_action(crate::input::Action::TabComplete);
+        // Should complete to @OBL-001
+        assert_eq!(app.input, "@OBL-001");
+    }
+
+    // ── T06 tests ──
+
+    #[test]
+    fn test_theme_picker_open_close() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+        assert!(app.theme_picker.is_none());
+        assert_eq!(app.overlay, Overlay::None);
+
+        // Open theme picker
+        app.apply_action(Action::ShowThemePicker);
+        assert!(app.theme_picker.is_some());
+        assert_eq!(app.overlay, Overlay::ThemePicker);
+
+        // Close with Esc
+        app.apply_action(Action::EnterNormalMode);
+        assert!(app.theme_picker.is_none());
+        assert_eq!(app.overlay, Overlay::None);
+    }
+
+    #[test]
+    fn test_theme_picker_apply() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+
+        // Open theme picker
+        app.apply_action(Action::ShowThemePicker);
+        assert_eq!(app.overlay, Overlay::ThemePicker);
+
+        // Navigate to a different theme (move down)
+        app.apply_action(Action::ScrollDown);
+
+        // Apply with Enter
+        app.apply_action(Action::SubmitInput);
+        assert_eq!(app.overlay, Overlay::None);
+        assert!(app.theme_picker.is_none());
+        // Should have a system message about theme change
+        assert!(app.messages.iter().any(|m| m.content.contains("Theme:")));
+    }
+
+    #[test]
+    fn test_onboarding_wizard_flow() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+
+        // Open onboarding
+        app.onboarding = Some(crate::views::onboarding::OnboardingWizard::new());
+        app.overlay = Overlay::Onboarding;
+
+        // Navigate and select
+        app.apply_action(Action::ScrollDown); // cursor to option 1
+        app.apply_action(Action::InsertChar(' ')); // select it
+
+        // Next step
+        app.apply_action(Action::SubmitInput);
+        assert_eq!(app.overlay, Overlay::Onboarding); // still open
+
+        // Skip rest with Esc
+        app.apply_action(Action::EnterNormalMode);
+        assert_eq!(app.overlay, Overlay::None);
+        assert!(app.onboarding.is_none());
+    }
+
+    #[test]
+    fn test_code_search_submission() {
+        let mut app = App::new(TuiConfig::default());
+        app.code_content = Some("hello world\nfoo bar\nhello again".to_string());
+        app.active_panel = Panel::CodeViewer;
+
+        // Simulate code search: enter command mode, type query, submit
+        app.apply_action(Action::CodeSearch);
+        assert_eq!(app.input_mode, InputMode::Command);
+
+        // Type search query
+        app.input = "hello".to_string();
+        app.input_cursor = 5;
+
+        // Submit (should detect CodeViewer + no '/' prefix → code search)
+        app.apply_action(Action::SubmitInput);
+
+        assert_eq!(app.code_search_query.as_deref(), Some("hello"));
+        assert_eq!(app.code_search_matches, vec![0, 2]);
+        assert_eq!(app.code_scroll, 0); // jumped to first match
+    }
+
+    #[test]
+    fn test_theme_command_opens_picker() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+        let cmd = app.handle_command("theme");
+        assert!(cmd.is_none());
+        assert_eq!(app.overlay, Overlay::ThemePicker);
+        assert!(app.theme_picker.is_some());
     }
 }

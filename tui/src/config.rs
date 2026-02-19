@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const DEFAULT_ENGINE_PORT: u16 = 3099;
 const DEFAULT_TICK_RATE_MS: u64 = 250;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct TuiConfig {
     pub engine_port: u16,
@@ -14,6 +14,10 @@ pub struct TuiConfig {
     pub project_path: Option<String>,
     pub theme: String,
     pub sidebar_visible: bool,
+    pub watch_on_start: bool,
+    pub onboarding_completed: bool,
+    #[serde(skip)]
+    pub engine_url_override: Option<String>,
 }
 
 impl Default for TuiConfig {
@@ -25,6 +29,9 @@ impl Default for TuiConfig {
             project_path: None,
             theme: "dark".to_string(),
             sidebar_visible: true,
+            watch_on_start: false,
+            onboarding_completed: false,
+            engine_url_override: None,
         }
     }
 }
@@ -41,6 +48,31 @@ pub fn load_config() -> TuiConfig {
         Ok(content) => toml::from_str(&content).unwrap_or_default(),
         Err(_) => TuiConfig::default(),
     }
+}
+
+/// Save specific fields to TOML config file (merge-friendly).
+pub fn save_config(config: &TuiConfig) {
+    let path = config_file_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(content) = toml::to_string_pretty(config) {
+        let _ = std::fs::write(&path, content);
+    }
+}
+
+/// Save just the theme name to config.
+pub fn save_theme(name: &str) {
+    let mut config = load_config();
+    config.theme = name.to_string();
+    save_config(&config);
+}
+
+/// Mark onboarding as completed in config.
+pub fn mark_onboarding_complete() {
+    let mut config = load_config();
+    config.onboarding_completed = true;
+    save_config(&config);
 }
 
 fn config_file_path() -> PathBuf {
@@ -62,6 +94,7 @@ mod tests {
         assert_eq!(config.engine_url(), "http://127.0.0.1:3099");
         assert_eq!(config.theme, "dark");
         assert!(config.sidebar_visible);
+        assert!(!config.onboarding_completed);
     }
 
     #[test]
@@ -71,10 +104,25 @@ mod tests {
             engine_host = "localhost"
             theme = "light"
             sidebar_visible = false
+            onboarding_completed = true
         "#;
         let config: TuiConfig = toml::from_str(toml_str).expect("valid toml");
         assert_eq!(config.engine_port, 4000);
         assert_eq!(config.theme, "light");
         assert!(!config.sidebar_visible);
+        assert!(config.onboarding_completed);
+    }
+
+    #[test]
+    fn test_config_toml_roundtrip() {
+        let config = TuiConfig {
+            theme: "Dracula".to_string(),
+            onboarding_completed: true,
+            ..TuiConfig::default()
+        };
+        let serialized = toml::to_string_pretty(&config).expect("serialize");
+        let deserialized: TuiConfig = toml::from_str(&serialized).expect("deserialize");
+        assert_eq!(deserialized.theme, "Dracula");
+        assert!(deserialized.onboarding_completed);
     }
 }
