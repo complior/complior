@@ -228,6 +228,36 @@ pub enum ChatBlock {
     ToolResult { tool_name: String, result: String, is_error: bool },
 }
 
+/// Activity log entry for the Dashboard widget.
+#[derive(Debug, Clone)]
+pub struct ActivityEntry {
+    pub timestamp: String,
+    pub kind: ActivityKind,
+    pub detail: String,
+}
+
+/// Kind of activity logged to the Dashboard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivityKind {
+    Scan,
+    Fix,
+    Chat,
+    Watch,
+    FileOpen,
+}
+
+impl ActivityKind {
+    pub fn icon(self) -> char {
+        match self {
+            Self::Scan => 'S',
+            Self::Fix => 'F',
+            Self::Chat => 'C',
+            Self::Watch => 'W',
+            Self::FileOpen => 'O',
+        }
+    }
+}
+
 /// Top-level view (screen) — keys 1-6 in Normal mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewState {

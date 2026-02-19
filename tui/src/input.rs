@@ -45,6 +45,7 @@ pub enum Action {
     SwitchView(ViewState),
     ToggleMode,
     StartScan,
+    WatchToggle,
     ViewKey(char),
     ViewEnter,
     ViewEscape,
@@ -146,6 +147,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('g') => Action::ScrollToTop,
         KeyCode::Char('G') => Action::ScrollToBottom,
         KeyCode::Char('V') => Action::EnterVisualMode,
+        KeyCode::Char('w') => Action::WatchToggle,
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         KeyCode::Enter => match app.active_panel {
@@ -195,5 +197,26 @@ fn handle_visual_mode(key: KeyEvent) -> Action {
         KeyCode::Char('y') => Action::AcceptDiff,
         KeyCode::Char('n') => Action::RejectDiff,
         _ => Action::None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn test_watch_key_w_action() {
+        let app = App::new(crate::config::TuiConfig::default());
+        // First switch to Normal mode where 'w' is bound
+        let mut test_app = app;
+        test_app.input_mode = InputMode::Normal;
+
+        let action = handle_key_event(key(KeyCode::Char('w')), &test_app);
+        assert!(matches!(action, Action::WatchToggle));
     }
 }

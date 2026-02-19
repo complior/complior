@@ -90,6 +90,11 @@ fn render_messages(frame: &mut Frame, area: Rect, app: &App) {
             ]));
             let md_lines = markdown::parse_markdown(&msg.content);
             lines.extend(md_lines);
+        } else if msg.role == MessageRole::User {
+            // User messages: highlight @OBL-xxx tokens
+            let mut msg_spans = vec![time_span, Span::styled(prefix, style)];
+            msg_spans.extend(highlight_obl_tokens(&msg.content, &t));
+            lines.push(Line::from(msg_spans));
         } else {
             lines.push(Line::from(vec![
                 time_span,
@@ -202,6 +207,51 @@ fn render_input(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
         let cursor_y = area.y + 1;
         frame.set_cursor_position((cursor_x, cursor_y));
     }
+}
+
+/// Highlight @OBL-xxx tokens in accent color.
+fn highlight_obl_tokens<'a>(
+    text: &'a str,
+    t: &theme::ThemeColors,
+) -> Vec<Span<'a>> {
+    let mut spans = Vec::new();
+    let mut remaining = text;
+
+    while let Some(start) = remaining.find("@OBL-") {
+        // Text before the token
+        if start > 0 {
+            spans.push(Span::raw(&remaining[..start]));
+        }
+
+        // Find end of token (alphanumeric after @OBL-)
+        let token_start = start;
+        let after_prefix = &remaining[start + 5..];
+        let token_len = 5 + after_prefix
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '-')
+            .count();
+        let token_end = start + token_len;
+
+        spans.push(Span::styled(
+            &remaining[token_start..token_end],
+            Style::default()
+                .fg(t.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+        remaining = &remaining[token_end..];
+    }
+
+    // Remaining text
+    if !remaining.is_empty() {
+        spans.push(Span::raw(remaining));
+    }
+
+    if spans.is_empty() {
+        spans.push(Span::raw(text));
+    }
+
+    spans
 }
 
 /// Tips panel shown when chat is empty.
