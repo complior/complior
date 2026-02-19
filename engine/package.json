@@ -14,6 +14,7 @@
     "@ai-sdk/anthropic": "^2.0.65",
     "@ai-sdk/openai": "^2.0.91",
     "@hono/node-server": "^1.19.9",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "ai": "^5.0.135",
     "better-sqlite3": "^11.0.0",
     "chokidar": "^4.0.0",

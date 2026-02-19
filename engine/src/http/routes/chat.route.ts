@@ -10,12 +10,16 @@ import {
   sseUsage, sseDone, sseError,
 } from '../../llm/sse-protocol.js';
 import { createCodingTools } from '../../llm/tool-definitions.js';
+import type { AgentMode } from '../../llm/tools/types.js';
+import { getAgentConfig, getAllModes } from '../../llm/agents/modes.js';
+import { createCostTracker, type CostTracker } from '../../llm/routing/cost-tracker.js';
 
 const ChatRequestSchema = z.object({
   message: z.string().min(1),
   model: z.string().optional(),
   provider: z.enum(['anthropic', 'openai', 'openrouter']).optional(),
   apiKey: z.string().optional(),
+  mode: z.enum(['build', 'comply', 'audit', 'learn']).optional(),
 });
 
 export interface ChatRouteDeps {
@@ -23,9 +27,37 @@ export interface ChatRouteDeps {
   readonly llm: LlmPort;
 }
 
+/** Parse /command from message. Returns { command, arg } or null. */
+const parseCommand = (msg: string): { command: string; arg: string } | null => {
+  const match = msg.trim().match(/^\/(\w+)\s*(.*)/);
+  return match ? { command: match[1], arg: match[2].trim() } : null;
+};
+
 export const createChatRoute = (deps: ChatRouteDeps) => {
   const { chatService, llm } = deps;
   const app = new Hono();
+
+  // Session state
+  let currentMode: AgentMode = 'build';
+  let modelOverride: string | undefined;
+  const costTracker: CostTracker = createCostTracker();
+
+  // GET /mode — current mode info
+  app.get('/mode', (c) => c.json({ mode: currentMode, config: getAgentConfig(currentMode) }));
+
+  // POST /mode — switch mode
+  app.post('/mode', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const mode = (body as { mode?: string }).mode;
+    if (!mode || !getAllModes().includes(mode as AgentMode)) {
+      return c.json({ error: 'INVALID_MODE', valid: getAllModes() }, 400);
+    }
+    currentMode = mode as AgentMode;
+    return c.json({ mode: currentMode, config: getAgentConfig(currentMode) });
+  });
+
+  // GET /cost — session cost breakdown
+  app.get('/cost', (c) => c.json(costTracker.getBreakdown()));
 
   app.post('/chat', async (c) => {
     const body = await c.req.json().catch(() => {
@@ -36,11 +68,37 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
       throw new ValidationError(`Invalid request: ${parsed.error.message}`);
     }
 
+    // Handle slash commands
+    const cmd = parseCommand(parsed.data.message);
+    if (cmd) {
+      if (cmd.command === 'mode' && cmd.arg) {
+        if (getAllModes().includes(cmd.arg as AgentMode)) {
+          currentMode = cmd.arg as AgentMode;
+          const config = getAgentConfig(currentMode);
+          return c.json({ type: 'command', command: 'mode', mode: currentMode, label: config.label, writeEnabled: config.writeEnabled });
+        }
+        return c.json({ type: 'command', command: 'mode', error: `Invalid mode. Valid: ${getAllModes().join(', ')}` });
+      }
+      if (cmd.command === 'cost') {
+        return c.json({ type: 'command', command: 'cost', ...costTracker.getBreakdown() });
+      }
+      if (cmd.command === 'model' && cmd.arg) {
+        modelOverride = cmd.arg === 'auto' ? undefined : cmd.arg;
+        return c.json({ type: 'command', command: 'model', model: modelOverride ?? 'auto-routing', message: modelOverride ? `Model locked to ${modelOverride}` : 'Auto-routing enabled' });
+      }
+    }
+
+    // Apply mode from request or session
+    if (parsed.data.mode) currentMode = parsed.data.mode;
+
     const { provider, modelId } = parsed.data.provider && parsed.data.model
       ? { provider: parsed.data.provider, modelId: parsed.data.model }
-      : llm.routeModel('chat');
+      : llm.routeModel(modelOverride ?? 'chat');
     const model = await llm.getModel(provider, modelId, parsed.data.apiKey);
-    const systemPrompt = chatService.buildSystemPrompt();
+
+    // Use mode-specific system prompt
+    const modeConfig = getAgentConfig(currentMode);
+    const systemPrompt = `${modeConfig.systemPrompt}\n\n${chatService.buildSystemPrompt()}`;
     const tools = createCodingTools(chatService.getProjectPath());
 
     // Append user message to conversation history
@@ -100,6 +158,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
               if (totalUsage) {
                 const prompt = totalUsage.promptTokens ?? totalUsage.inputTokens ?? 0;
                 const completion = totalUsage.completionTokens ?? totalUsage.outputTokens ?? 0;
+                costTracker.record('qa', modelId, prompt, completion);
                 const payload = sseUsage(prompt, completion);
                 await stream.writeSSE({ event: payload.event, data: payload.data });
               }
