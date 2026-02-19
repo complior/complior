@@ -1,4 +1,5 @@
 import type { AgentMode } from '../tools/types.js';
+import { getDisclaimer } from '../../domain/disclaimer.js';
 
 export interface AgentConfig {
   readonly mode: AgentMode;
@@ -7,7 +8,7 @@ export interface AgentConfig {
   readonly writeEnabled: boolean;
 }
 
-const DISCLAIMER = 'You are Complior, a compliance ASSISTANT — not a legal advisor. You NEVER state that a project "is compliant" or "meets all requirements". You ALWAYS frame results as "based on automated scanning" and recommend professional legal review for definitive compliance assessment.';
+const DISCLAIMER = getDisclaimer('system_prompt');
 
 const AGENT_CONFIGS: Record<AgentMode, AgentConfig> = {
   build: {
