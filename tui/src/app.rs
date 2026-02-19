@@ -101,6 +101,20 @@ pub struct App {
     // Help overlay scroll
     pub help_scroll: usize,
 
+    // Theme picker
+    pub theme_picker: Option<crate::theme_picker::ThemePickerState>,
+
+    // Onboarding wizard
+    pub onboarding: Option<crate::views::onboarding::OnboardingWizard>,
+
+    // Code viewer search
+    pub code_search_query: Option<String>,
+    pub code_search_matches: Vec<usize>,
+    pub code_search_current: usize,
+
+    // Diff overlay (Selection→AI result)
+    pub diff_overlay: Option<crate::components::diff_overlay::DiffOverlayState>,
+
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -175,6 +189,12 @@ impl App {
             watch_active: false,
             watch_last_score: None,
             help_scroll: 0,
+            theme_picker: None,
+            onboarding: None,
+            code_search_query: None,
+            code_search_matches: Vec::new(),
+            code_search_current: 0,
+            diff_overlay: None,
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -545,6 +565,21 @@ impl App {
                 }
 
                 if self.input_mode == InputMode::Command || text.starts_with('/') {
+                    // Code search: if in CodeViewer and text doesn't start with /
+                    if self.active_panel == Panel::CodeViewer && !text.starts_with('/') {
+                        // Treat as code search query
+                        if let Some(content) = &self.code_content {
+                            let matches = crate::views::code_viewer::find_search_matches(content, &text);
+                            self.code_search_current = 0;
+                            if !matches.is_empty() {
+                                self.code_scroll = matches[0];
+                            }
+                            self.code_search_matches = matches;
+                            self.code_search_query = Some(text);
+                        }
+                        self.input_mode = InputMode::Normal;
+                        return None;
+                    }
                     let cmd = text.trim_start_matches('/');
                     self.input_mode = InputMode::Insert;
                     return self.handle_command(cmd);
@@ -677,6 +712,37 @@ impl App {
             Action::WatchToggle => {
                 return Some(AppCommand::ToggleWatch);
             }
+            Action::ShowThemePicker => {
+                self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
+                self.overlay = Overlay::ThemePicker;
+                None
+            }
+            Action::CodeSearch => {
+                // Enter command mode to type search query
+                self.input_mode = InputMode::Command;
+                self.input.clear();
+                self.input_cursor = 0;
+                None
+            }
+            Action::CodeSearchNext => {
+                if !self.code_search_matches.is_empty() {
+                    self.code_search_current =
+                        (self.code_search_current + 1) % self.code_search_matches.len();
+                    self.code_scroll = self.code_search_matches[self.code_search_current];
+                }
+                None
+            }
+            Action::CodeSearchPrev => {
+                if !self.code_search_matches.is_empty() {
+                    self.code_search_current = if self.code_search_current == 0 {
+                        self.code_search_matches.len() - 1
+                    } else {
+                        self.code_search_current - 1
+                    };
+                    self.code_scroll = self.code_search_matches[self.code_search_current];
+                }
+                None
+            }
             Action::StartScan => {
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
@@ -712,7 +778,126 @@ impl App {
         }
     }
 
+    fn handle_theme_picker_action(&mut self, action: Action) -> Option<AppCommand> {
+        match action {
+            Action::ScrollDown => {
+                if let Some(tp) = &mut self.theme_picker {
+                    tp.move_down();
+                }
+                None
+            }
+            Action::ScrollUp => {
+                if let Some(tp) = &mut self.theme_picker {
+                    tp.move_up();
+                }
+                None
+            }
+            Action::SubmitInput => {
+                // Apply selected theme and close
+                let name = self
+                    .theme_picker
+                    .as_ref()
+                    .map(|tp| tp.selected_name().to_string())
+                    .unwrap_or_default();
+                self.theme_picker = None;
+                self.overlay = Overlay::None;
+                if !name.is_empty() {
+                    crate::theme::init_theme(&name);
+                    crate::config::save_theme(&name);
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        format!("Theme: {name}"),
+                    ));
+                }
+                None
+            }
+            Action::EnterNormalMode | Action::Quit => {
+                self.theme_picker = None;
+                self.overlay = Overlay::None;
+                None
+            }
+            _ => None,
+        }
+    }
+
+    fn handle_onboarding_action(&mut self, action: Action) -> Option<AppCommand> {
+        match action {
+            Action::ScrollDown => {
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.move_cursor_down();
+                }
+                None
+            }
+            Action::ScrollUp => {
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.move_cursor_up();
+                }
+                None
+            }
+            Action::InsertChar(' ') => {
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.toggle_selection();
+                }
+                None
+            }
+            Action::SubmitInput => {
+                let completed = self
+                    .onboarding
+                    .as_mut()
+                    .map(|wiz| {
+                        if wiz.completed {
+                            true // Already on completion screen
+                        } else {
+                            wiz.next_step()
+                        }
+                    })
+                    .unwrap_or(false);
+
+                if completed {
+                    // Close onboarding
+                    if let Some(wiz) = &self.onboarding {
+                        if let Some(summary) = &wiz.result_summary {
+                            self.messages.push(ChatMessage::new(
+                                MessageRole::System,
+                                format!("Setup complete: {summary}"),
+                            ));
+                        }
+                    }
+                    crate::config::mark_onboarding_complete();
+                    self.onboarding = None;
+                    self.overlay = Overlay::None;
+                }
+                None
+            }
+            Action::DeleteChar => {
+                // Backspace = previous step
+                if let Some(wiz) = &mut self.onboarding {
+                    wiz.prev_step();
+                }
+                None
+            }
+            Action::EnterNormalMode | Action::Quit => {
+                // Esc = skip onboarding
+                crate::config::mark_onboarding_complete();
+                self.onboarding = None;
+                self.overlay = Overlay::None;
+                None
+            }
+            _ => None,
+        }
+    }
+
     fn handle_overlay_action(&mut self, action: Action) -> Option<AppCommand> {
+        // --- Theme Picker overlay ---
+        if self.overlay == Overlay::ThemePicker {
+            return self.handle_theme_picker_action(action);
+        }
+
+        // --- Onboarding overlay ---
+        if self.overlay == Overlay::Onboarding {
+            return self.handle_onboarding_action(action);
+        }
+
         match action {
             Action::EnterNormalMode | Action::Quit => {
                 if self.overlay == Overlay::GettingStarted {
@@ -748,7 +933,6 @@ impl App {
                         );
                         if let Some(first) = matches.first() {
                             let path = first.path.to_string_lossy().to_string();
-                            // Insert @path into input
                             let mention = format!("@{path} ");
                             self.input.push_str(&mention);
                             self.input_cursor = self.input.len();
@@ -762,10 +946,9 @@ impl App {
                         self.overlay = Overlay::None;
                     }
                     Overlay::ProviderSetup | Overlay::ModelSelector => {
-                        // Handled by dedicated component handlers above
                         self.overlay = Overlay::None;
                     }
-                    Overlay::None => {}
+                    Overlay::None | Overlay::ThemePicker | Overlay::Onboarding => {}
                 }
                 None
             }
@@ -778,11 +961,10 @@ impl App {
                 self.help_scroll += 1;
                 None
             }
-            // Ignore no-op keys (arrows etc.) — don't dismiss overlay
+            // Ignore no-op keys
             Action::None | Action::ScrollUp | Action::ScrollDown
             | Action::HistoryUp | Action::HistoryDown => None,
             _ => {
-                // Dismiss Help/GettingStarted on any real action
                 if self.overlay == Overlay::GettingStarted {
                     self.overlay = Overlay::None;
                     crate::session::mark_first_run_done();
@@ -893,10 +1075,9 @@ impl App {
             Some("theme") => {
                 let name = parts.get(1).unwrap_or(&"").to_string();
                 if name.is_empty() {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        "Themes: dark, light, high-contrast. Usage: /theme <name>".to_string(),
-                    ));
+                    // Open theme picker overlay
+                    self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
+                    self.overlay = Overlay::ThemePicker;
                     None
                 } else {
                     Some(AppCommand::SwitchTheme(name))
@@ -1470,5 +1651,100 @@ mod tests {
         app.apply_action(crate::input::Action::TabComplete);
         // Should complete to @OBL-001
         assert_eq!(app.input, "@OBL-001");
+    }
+
+    // ── T06 tests ──
+
+    #[test]
+    fn test_theme_picker_open_close() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+        assert!(app.theme_picker.is_none());
+        assert_eq!(app.overlay, Overlay::None);
+
+        // Open theme picker
+        app.apply_action(Action::ShowThemePicker);
+        assert!(app.theme_picker.is_some());
+        assert_eq!(app.overlay, Overlay::ThemePicker);
+
+        // Close with Esc
+        app.apply_action(Action::EnterNormalMode);
+        assert!(app.theme_picker.is_none());
+        assert_eq!(app.overlay, Overlay::None);
+    }
+
+    #[test]
+    fn test_theme_picker_apply() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+
+        // Open theme picker
+        app.apply_action(Action::ShowThemePicker);
+        assert_eq!(app.overlay, Overlay::ThemePicker);
+
+        // Navigate to a different theme (move down)
+        app.apply_action(Action::ScrollDown);
+
+        // Apply with Enter
+        app.apply_action(Action::SubmitInput);
+        assert_eq!(app.overlay, Overlay::None);
+        assert!(app.theme_picker.is_none());
+        // Should have a system message about theme change
+        assert!(app.messages.iter().any(|m| m.content.contains("Theme:")));
+    }
+
+    #[test]
+    fn test_onboarding_wizard_flow() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+
+        // Open onboarding
+        app.onboarding = Some(crate::views::onboarding::OnboardingWizard::new());
+        app.overlay = Overlay::Onboarding;
+
+        // Navigate and select
+        app.apply_action(Action::ScrollDown); // cursor to option 1
+        app.apply_action(Action::InsertChar(' ')); // select it
+
+        // Next step
+        app.apply_action(Action::SubmitInput);
+        assert_eq!(app.overlay, Overlay::Onboarding); // still open
+
+        // Skip rest with Esc
+        app.apply_action(Action::EnterNormalMode);
+        assert_eq!(app.overlay, Overlay::None);
+        assert!(app.onboarding.is_none());
+    }
+
+    #[test]
+    fn test_code_search_submission() {
+        let mut app = App::new(TuiConfig::default());
+        app.code_content = Some("hello world\nfoo bar\nhello again".to_string());
+        app.active_panel = Panel::CodeViewer;
+
+        // Simulate code search: enter command mode, type query, submit
+        app.apply_action(Action::CodeSearch);
+        assert_eq!(app.input_mode, InputMode::Command);
+
+        // Type search query
+        app.input = "hello".to_string();
+        app.input_cursor = 5;
+
+        // Submit (should detect CodeViewer + no '/' prefix → code search)
+        app.apply_action(Action::SubmitInput);
+
+        assert_eq!(app.code_search_query.as_deref(), Some("hello"));
+        assert_eq!(app.code_search_matches, vec![0, 2]);
+        assert_eq!(app.code_scroll, 0); // jumped to first match
+    }
+
+    #[test]
+    fn test_theme_command_opens_picker() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+        let cmd = app.handle_command("theme");
+        assert!(cmd.is_none());
+        assert_eq!(app.overlay, Overlay::ThemePicker);
+        assert!(app.theme_picker.is_some());
     }
 }

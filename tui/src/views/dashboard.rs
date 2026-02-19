@@ -622,6 +622,16 @@ fn render_overlay(frame: &mut Frame, app: &App) {
         Overlay::ModelSelector => {
             crate::components::model_selector::render_model_selector(frame, app);
         }
+        Overlay::ThemePicker => {
+            if let Some(state) = &app.theme_picker {
+                crate::theme_picker::render_theme_picker(frame, state);
+            }
+        }
+        Overlay::Onboarding => {
+            if let Some(wizard) = &app.onboarding {
+                crate::views::onboarding::render_onboarding(frame, wizard);
+            }
+        }
     }
 }
 
@@ -1151,6 +1161,36 @@ mod tests {
 
         let report_hints = footer_hints_for_view(ViewState::Report);
         assert!(report_hints.contains("e:export"));
+    }
+
+    #[test]
+    fn test_theme_picker_overlay_renders() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        app.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
+        app.overlay = Overlay::ThemePicker;
+
+        terminal
+            .draw(|frame| render_dashboard(frame, &app))
+            .expect("theme picker overlay should render");
+    }
+
+    #[test]
+    fn test_onboarding_overlay_renders() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        app.onboarding = Some(crate::views::onboarding::OnboardingWizard::new());
+        app.overlay = Overlay::Onboarding;
+
+        terminal
+            .draw(|frame| render_dashboard(frame, &app))
+            .expect("onboarding overlay should render");
     }
 
     #[test]

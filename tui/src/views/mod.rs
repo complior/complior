@@ -4,6 +4,7 @@ pub mod dashboard;
 pub mod diff;
 pub mod file_browser;
 pub mod fix;
+pub mod onboarding;
 pub mod report;
 pub mod scan;
 pub mod score;

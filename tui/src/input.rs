@@ -46,6 +46,10 @@ pub enum Action {
     ToggleMode,
     StartScan,
     WatchToggle,
+    ShowThemePicker,
+    CodeSearch,
+    CodeSearchNext,
+    CodeSearchPrev,
     ViewKey(char),
     ViewEnter,
     ViewEscape,
@@ -141,13 +145,20 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('5') => Action::SwitchView(ViewState::Timeline),
         KeyCode::Char('6') => Action::SwitchView(ViewState::Report),
         KeyCode::Char('i') => Action::EnterInsertMode,
+        // '/' opens code search when in CodeViewer, command mode otherwise
+        KeyCode::Char('/') if app.active_panel == Panel::CodeViewer => Action::CodeSearch,
         KeyCode::Char('/') => Action::EnterCommandMode,
+        KeyCode::Char('n') if app.active_panel == Panel::CodeViewer
+            && app.code_search_query.is_some() => Action::CodeSearchNext,
+        KeyCode::Char('N') if app.active_panel == Panel::CodeViewer
+            && app.code_search_query.is_some() => Action::CodeSearchPrev,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
         KeyCode::Char('g') => Action::ScrollToTop,
         KeyCode::Char('G') => Action::ScrollToBottom,
-        KeyCode::Char('V') => Action::EnterVisualMode,
+        KeyCode::Char('v') | KeyCode::Char('V') => Action::EnterVisualMode,
         KeyCode::Char('w') => Action::WatchToggle,
+        KeyCode::Char('T') => Action::ShowThemePicker,
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         KeyCode::Enter => match app.active_panel {

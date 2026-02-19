@@ -9,6 +9,7 @@ mod obligations;
 mod providers;
 mod session;
 mod theme;
+mod theme_picker;
 mod types;
 mod views;
 mod watcher;
