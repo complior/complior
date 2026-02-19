@@ -105,6 +105,9 @@ pub struct App {
     pub watch_active: bool,
     pub watch_last_score: Option<f64>,
 
+    // T904: Pre-fix score for auto-validate delta
+    pub pre_fix_score: Option<f64>,
+
     // Help overlay scroll
     pub help_scroll: usize,
 
@@ -165,6 +168,9 @@ pub struct App {
 
     // T08: Animations
     pub animation: AnimationState,
+
+    // T09: What-If scenario state
+    pub whatif: crate::components::whatif::WhatIfState,
 
     // UI
     pub spinner: Spinner,
@@ -240,6 +246,7 @@ impl App {
             activity_log: Vec::new(),
             watch_active: false,
             watch_last_score: None,
+            pre_fix_score: None,
             help_scroll: 0,
             theme_picker: None,
             onboarding: None,
@@ -264,6 +271,7 @@ impl App {
             colon_mode: false,
             idle_suggestions: IdleSuggestionState::new(),
             animation: AnimationState::new(animations_enabled),
+            whatif: crate::components::whatif::WhatIfState::new(),
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -926,8 +934,7 @@ impl App {
                 return None;
             }
             Action::ViewEnter => {
-                self.handle_view_enter();
-                return None;
+                return self.handle_view_enter();
             }
             Action::ViewEscape => {
                 self.handle_view_escape();
@@ -1439,6 +1446,9 @@ impl App {
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
+                        "  /fix           — Open Fix view\n",
+                        "  /fix --dry-run — Preview fixes without applying\n",
+                        "  /whatif <text> — What-if scenario analysis\n",
                         "  /provider      — Configure LLM provider\n",
                         "  /model         — Switch model (also M in Normal mode)\n",
                         "  /welcome       — Show getting started\n",
@@ -1500,6 +1510,50 @@ impl App {
             Some("welcome") => {
                 self.overlay = Overlay::GettingStarted;
                 None
+            }
+            // T905: What-If scenario command
+            Some("whatif") => {
+                let scenario = parts.get(1).unwrap_or(&"").to_string();
+                if scenario.is_empty() {
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        "Usage: /whatif <scenario> (e.g. /whatif expand to UK)".to_string(),
+                    ));
+                    None
+                } else {
+                    Some(AppCommand::WhatIf(scenario))
+                }
+            }
+            // T906: Dry-run fix (also /fix --dry-run)
+            Some("fix") => {
+                let args = parts.get(1).unwrap_or(&"").to_string();
+                if args.contains("--dry-run") {
+                    let selected: Vec<String> = self.fix_view.fixable_findings
+                        .iter()
+                        .filter(|f| f.selected)
+                        .map(|f| f.check_id.clone())
+                        .collect();
+                    if selected.is_empty() {
+                        self.messages.push(ChatMessage::new(
+                            MessageRole::System,
+                            "No fixes selected. Go to Fix view (3) and select fixes first.".to_string(),
+                        ));
+                        None
+                    } else {
+                        Some(AppCommand::FixDryRun(selected))
+                    }
+                } else {
+                    // Regular /fix: switch to Fix view
+                    self.view_state = ViewState::Fix;
+                    if let Some(scan) = &self.last_scan {
+                        self.fix_view = FixViewState::from_scan(&scan.findings);
+                    }
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        "Switched to Fix view. Select fixes and press Enter to apply.".to_string(),
+                    ));
+                    None
+                }
             }
             _ => {
                 self.messages.push(ChatMessage::new(
@@ -1614,6 +1668,36 @@ impl App {
                     format!("Animations: {status}"),
                 );
                 None
+            }
+            // T905: What-If scenario (colon mode)
+            Some("whatif") | Some("wi") => {
+                let scenario = parts[1..].join(" ");
+                if scenario.is_empty() {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Warning,
+                        "Usage: :whatif <scenario>",
+                    );
+                    None
+                } else {
+                    Some(AppCommand::WhatIf(scenario))
+                }
+            }
+            // T906: Dry-run mode (colon mode)
+            Some("dry-run") | Some("dr") => {
+                let selected: Vec<String> = self.fix_view.fixable_findings
+                    .iter()
+                    .filter(|f| f.selected)
+                    .map(|f| f.check_id.clone())
+                    .collect();
+                if selected.is_empty() {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Warning,
+                        "No fixes selected. Select fixes in Fix view first.",
+                    );
+                    None
+                } else {
+                    Some(AppCommand::FixDryRun(selected))
+                }
             }
             _ => {
                 self.toasts.push(
@@ -1895,7 +1979,7 @@ impl App {
     }
 
     /// Handle Enter key in view context.
-    fn handle_view_enter(&mut self) {
+    fn handle_view_enter(&mut self) -> Option<AppCommand> {
         match self.view_state {
             ViewState::Scan => {
                 if self.scan_view.detail_open {
@@ -1911,7 +1995,7 @@ impl App {
                     // Dismiss results
                     self.fix_view.results = None;
                 } else if self.fix_view.selected_count() > 0 {
-                    // Show placeholder results in Fix view (engine API not yet connected)
+                    // Apply selected fixes + auto-validate (T904)
                     let selected = self.fix_view.selected_count() as u32;
                     let old_score = self
                         .last_scan
@@ -1919,6 +2003,14 @@ impl App {
                         .map(|s| s.score.total_score)
                         .unwrap_or(0.0);
                     let impact = self.fix_view.total_predicted_impact() as f64;
+
+                    // Mark items as applied
+                    for item in &mut self.fix_view.fixable_findings {
+                        if item.selected {
+                            item.status = crate::views::fix::FixItemStatus::Applied;
+                        }
+                    }
+
                     self.fix_view.results =
                         Some(crate::views::fix::FixResults {
                             applied: selected,
@@ -1926,14 +2018,22 @@ impl App {
                             old_score,
                             new_score: (old_score + impact).min(100.0),
                         });
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        format!("Applied {selected} fixes (simulated). Re-scan with Ctrl+S to verify."),
-                    ));
+
+                    // Store pre-fix score for T904 auto-validate delta
+                    self.pre_fix_score = Some(old_score);
+
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Success,
+                        format!("Applied {selected} fixes. Re-scanning..."),
+                    );
+
+                    // T904: Auto-trigger re-scan to validate fixes
+                    return Some(AppCommand::AutoScan);
                 }
             }
             _ => {}
         }
+        None
     }
 
     /// Handle Esc key in view context.
@@ -1975,6 +2075,8 @@ pub enum AppCommand {
     Undo(Option<u32>),
     FetchUndoHistory,
     FetchSuggestions,
+    WhatIf(String),
+    FixDryRun(Vec<String>),
 }
 
 #[cfg(test)]

@@ -1,10 +1,12 @@
 mod animation;
 mod app;
+mod cli;
 mod components;
 mod config;
 mod engine_client;
 mod engine_process;
 mod error;
+mod headless;
 mod input;
 mod layout;
 mod obligations;
@@ -32,6 +34,8 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use tokio::sync::mpsc;
 
+use clap::Parser;
+
 use app::{App, AppCommand};
 use config::load_config;
 use engine_client::SseEvent;
@@ -49,27 +53,54 @@ async fn main() -> color_eyre::Result<()> {
 
     let mut config = load_config();
 
-    // Parse CLI args
-    let args: Vec<String> = std::env::args().collect();
-    let mut resume = false;
-    let mut engine_url_override: Option<String> = None;
+    // Parse CLI args with clap
+    let parsed_cli = cli::Cli::parse();
+    let resume = parsed_cli.resume;
+    config.engine_url_override = parsed_cli.engine_url.clone();
 
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--resume" => resume = true,
-            "--engine-url" => {
-                if i + 1 < args.len() {
-                    engine_url_override = Some(args[i + 1].clone());
-                    i += 1;
-                }
-            }
-            _ => {}
-        }
-        i += 1;
+    // Apply theme from CLI if provided
+    if let Some(ref theme_name) = parsed_cli.theme {
+        config.theme = theme_name.clone();
     }
 
-    config.engine_url_override = engine_url_override;
+    // Handle headless commands (non-TUI)
+    if cli::is_headless(&parsed_cli) {
+        match &parsed_cli.command {
+            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, path }) => {
+                let code = headless::run_headless_scan(
+                    *ci,
+                    *json,
+                    *sarif,
+                    *no_tui,
+                    *threshold,
+                    fail_on.as_deref(),
+                    path.as_deref(),
+                    &config,
+                )
+                .await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Fix { dry_run, json, path }) => {
+                let code = headless::run_headless_fix(
+                    *dry_run,
+                    *json,
+                    path.as_deref(),
+                    &config,
+                )
+                .await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Version) => {
+                headless::run_version();
+                return Ok(());
+            }
+            Some(cli::Command::Doctor) => {
+                headless::run_doctor(&config).await;
+                return Ok(());
+            }
+            None => unreachable!(),
+        }
+    }
 
     // Initialize theme from config
     theme::init_theme(&config.theme);
@@ -383,35 +414,68 @@ async fn execute_command(
             let prev_score = app.last_scan.as_ref().map(|s| s.score.total_score);
             app.watch_last_score = prev_score;
 
+            // T904: Check if this auto-scan is a fix validation
+            let is_fix_validation = app.pre_fix_score.is_some();
+            let fix_old_score = app.pre_fix_score.take();
+
             let path = app.project_path.to_string_lossy().to_string();
             match app.engine_client.scan(&path).await {
                 Ok(result) => {
                     let new_score = result.score.total_score;
                     app.set_scan_result(result);
 
-                    // Regression detection
-                    if let Some(old) = prev_score {
-                        let diff = new_score - old;
-                        if diff < -5.0 {
+                    if is_fix_validation {
+                        // T904: Fix validation — show delta toast
+                        if let Some(old) = fix_old_score {
+                            let diff = new_score - old;
+                            let msg = format!("Fix verified: Score {old:.0} → {new_score:.0} ({diff:+.0})");
+                            if diff > 0.0 {
+                                app.toasts.push(
+                                    components::toast::ToastKind::Success,
+                                    &msg,
+                                );
+                            } else {
+                                app.toasts.push(
+                                    components::toast::ToastKind::Warning,
+                                    &msg,
+                                );
+                            }
                             app.messages.push(types::ChatMessage::new(
                                 types::MessageRole::System,
-                                format!(
-                                    "REGRESSION: Score dropped {:.0} → {:.0} ({diff:+.0})",
-                                    old, new_score
-                                ),
+                                msg,
                             ));
-                        } else if diff > 0.0 {
-                            app.messages.push(types::ChatMessage::new(
-                                types::MessageRole::System,
-                                format!(
-                                    "IMPROVED: Score {:.0} → {:.0} ({diff:+.0})",
-                                    old, new_score
-                                ),
-                            ));
+                        }
+                    } else {
+                        // Regular watch-mode regression detection
+                        if let Some(old) = prev_score {
+                            let diff = new_score - old;
+                            if diff < -5.0 {
+                                app.messages.push(types::ChatMessage::new(
+                                    types::MessageRole::System,
+                                    format!(
+                                        "REGRESSION: Score dropped {:.0} → {:.0} ({diff:+.0})",
+                                        old, new_score
+                                    ),
+                                ));
+                            } else if diff > 0.0 {
+                                app.messages.push(types::ChatMessage::new(
+                                    types::MessageRole::System,
+                                    format!(
+                                        "IMPROVED: Score {:.0} → {:.0} ({diff:+.0})",
+                                        old, new_score
+                                    ),
+                                ));
+                            }
                         }
                     }
                 }
                 Err(e) => {
+                    if is_fix_validation {
+                        app.toasts.push(
+                            components::toast::ToastKind::Warning,
+                            "Re-scan failed after fix. Run /scan manually.",
+                        );
+                    }
                     app.messages.push(types::ChatMessage::new(
                         types::MessageRole::System,
                         format!("Auto-scan failed: {e}"),
@@ -660,6 +724,142 @@ async fn execute_command(
                     // Engine doesn't have /suggestions or returned empty — use local context
                     let suggestion = build_local_suggestion(app);
                     app.idle_suggestions.current = Some(suggestion);
+                }
+            }
+        }
+        // T905: What-If scenario analysis
+        AppCommand::WhatIf(scenario) => {
+            app.whatif.pending = true;
+            let current_score = app
+                .last_scan
+                .as_ref()
+                .map_or(50.0, |s| s.score.total_score);
+
+            match app.engine_client.whatif(&scenario).await {
+                Ok(result) => {
+                    // Parse engine response
+                    let projected = result
+                        .get("projectedScore")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(current_score - 5.0);
+                    let obligations: Vec<String> = result
+                        .get("newObligations")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    let effort = result
+                        .get("effortDays")
+                        .and_then(|v| v.as_u64())
+                        .map(|d| d as u32);
+
+                    let whatif_result = components::whatif::WhatIfResult {
+                        scenario: scenario.clone(),
+                        current_score,
+                        projected_score: projected,
+                        new_obligations: obligations,
+                        effort_days: effort,
+                    };
+                    let msg = components::whatif::format_whatif_message(&whatif_result);
+                    app.whatif.result = Some(whatif_result);
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::Assistant,
+                        msg,
+                    ));
+                }
+                Err(_) => {
+                    // Offline fallback: use mock data
+                    let whatif_result =
+                        components::whatif::mock_whatif(&scenario, current_score);
+                    let msg = components::whatif::format_whatif_message(&whatif_result);
+                    app.whatif.result = Some(whatif_result);
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::Assistant,
+                        msg,
+                    ));
+                    app.toasts.push(
+                        components::toast::ToastKind::Info,
+                        "What-if analysis (offline estimate)",
+                    );
+                }
+            }
+            app.whatif.pending = false;
+        }
+        // T906: Dry-run mode
+        AppCommand::FixDryRun(selected) => {
+            match app.engine_client.fix_dry_run(&selected).await {
+                Ok(result) => {
+                    // Parse dry-run response
+                    let changes: Vec<String> = result
+                        .get("changes")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| {
+                                    let path = v.get("path")?.as_str()?;
+                                    let action = v.get("action")?.as_str().unwrap_or("MODIFY");
+                                    let delta = v.get("scoreDelta")?.as_f64().unwrap_or(0.0);
+                                    Some(format!("  {path:<40} [{action}]  +{delta:.0} score"))
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    let predicted = result
+                        .get("predictedScore")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+
+                    let current = app
+                        .last_scan
+                        .as_ref()
+                        .map_or(0.0, |s| s.score.total_score);
+                    let delta = predicted - current;
+                    let mut msg = format!(
+                        "Dry-Run Fix Analysis (no files modified)\n\
+                         Would modify {} files:\n",
+                        changes.len()
+                    );
+                    for change in &changes {
+                        msg.push_str(change);
+                        msg.push('\n');
+                    }
+                    msg.push_str(&format!(
+                        "\nPredicted score: {current:.0} -> {predicted:.0} ({delta:+.0})\n\
+                         Run /fix to apply."
+                    ));
+
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::Assistant,
+                        msg,
+                    ));
+                }
+                Err(_) => {
+                    // Offline: simulate from predicted impact
+                    let current = app
+                        .last_scan
+                        .as_ref()
+                        .map_or(0.0, |s| s.score.total_score);
+                    let impact = app.fix_view.total_predicted_impact() as f64;
+                    let predicted = (current + impact).min(100.0);
+                    let msg = format!(
+                        "Dry-Run Fix Analysis (offline estimate)\n\
+                         Selected fixes: {}\n\
+                         Predicted score: {current:.0} -> {predicted:.0} (+{impact:.0})\n\n\
+                         Note: Detailed file changes unavailable offline.\n\
+                         Run /fix to apply.",
+                        selected.len()
+                    );
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::Assistant,
+                        msg,
+                    ));
+                    app.toasts.push(
+                        components::toast::ToastKind::Info,
+                        "Dry-run estimate (offline)",
+                    );
                 }
             }
         }

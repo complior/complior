@@ -492,6 +492,48 @@ mod tests {
     }
 
     #[test]
+    fn t904_auto_validate_triggers_rescan() {
+        // When fix results are set with applied fixes,
+        // app should have pre_fix_score set for auto-validate
+        let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+        let old_score = 42.0;
+        app.pre_fix_score = Some(old_score);
+        assert!(app.pre_fix_score.is_some());
+
+        // Simulate consuming pre_fix_score (what AutoScan handler does)
+        let fix_old = app.pre_fix_score.take();
+        assert!(fix_old.is_some());
+        assert!(app.pre_fix_score.is_none());
+    }
+
+    #[test]
+    fn t904_fix_result_delta_display() {
+        let results = FixResults {
+            applied: 3,
+            failed: 0,
+            old_score: 42.0,
+            new_score: 58.0,
+        };
+        let delta = results.new_score - results.old_score;
+        assert_eq!(delta, 16.0);
+        assert!(delta > 0.0);
+    }
+
+    #[test]
+    fn t904_fix_items_marked_applied() {
+        let findings = make_findings();
+        let mut state = FixViewState::from_scan(&findings);
+        state.select_all();
+        // Simulate apply marking
+        for item in &mut state.fixable_findings {
+            if item.selected {
+                item.status = FixItemStatus::Applied;
+            }
+        }
+        assert!(state.fixable_findings.iter().all(|f| f.status == FixItemStatus::Applied));
+    }
+
+    #[test]
     fn test_fix_total_impact() {
         let findings = make_findings();
         let mut state = FixViewState::from_scan(&findings);

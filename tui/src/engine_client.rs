@@ -218,6 +218,35 @@ impl EngineClient {
         Ok(result)
     }
 
+    /// T905: What-if scenario analysis.
+    pub async fn whatif(&self, scenario: &str) -> Result<serde_json::Value> {
+        let resp = self
+            .client
+            .post(format!("{}/whatif", self.base_url))
+            .json(&serde_json::json!({ "scenario": scenario }))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+        let result = resp.json::<serde_json::Value>().await?;
+        Ok(result)
+    }
+
+    /// T906: Dry-run fix — simulate without writing files.
+    pub async fn fix_dry_run(&self, selected: &[String]) -> Result<serde_json::Value> {
+        let resp = self
+            .client
+            .post(format!("{}/fix", self.base_url))
+            .json(&serde_json::json!({
+                "checks": selected,
+                "dry_run": true
+            }))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+        let result = resp.json::<serde_json::Value>().await?;
+        Ok(result)
+    }
+
     pub async fn edit_file(&self, path: &str, old_str: &str, new_str: &str) -> Result<String> {
         let resp = self
             .client
