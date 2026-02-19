@@ -1,4 +1,4 @@
-import type { Finding, Severity } from '../../../types/common.types.js';
+import type { Finding } from '../../../types/common.types.js';
 
 export type PromptType = 'code_pattern_check' | 'documentation_check' | 'config_check' | 'architecture_check' | 'data_handling_check';
 
@@ -43,9 +43,12 @@ const PROMPT_KEYWORDS: Record<PromptType, readonly string[]> = {
 export const selectPromptType = (finding: Finding): PromptType => {
   const text = `${finding.checkId} ${finding.message}`.toLowerCase();
 
+  const isPromptType = (s: string): s is PromptType =>
+    s in PROMPT_KEYWORDS;
+
   for (const [type, keywords] of Object.entries(PROMPT_KEYWORDS)) {
-    if (keywords.some((kw) => text.includes(kw))) {
-      return type as PromptType;
+    if (keywords.some((kw) => text.includes(kw)) && isPromptType(type)) {
+      return type;
     }
   }
   return 'code_pattern_check';
@@ -153,20 +156,25 @@ export const createLayer5 = (deps: L5AnalyzerDeps) => {
         // Parse LLM response
         const jsonMatch = response.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]) as {
-            verdict: string;
-            confidence: number;
-            reasoning: string;
-            evidence: string[];
-          };
+          const isRec = (v: unknown): v is Record<string, unknown> =>
+            typeof v === 'object' && v !== null;
+          const raw: unknown = JSON.parse(jsonMatch[0]);
+          const parsed = isRec(raw) ? raw : {};
 
+          const rawVerdict = typeof parsed['verdict'] === 'string' ? parsed['verdict'] : '';
+          const verdict = rawVerdict === 'pass' ? 'pass'
+            : rawVerdict === 'fail' ? 'fail'
+            : 'uncertain';
+          const rawEvidence = Array.isArray(parsed['evidence'])
+            ? parsed['evidence'].filter((e): e is string => typeof e === 'string')
+            : [];
           results.push({
             findingId: finding.checkId,
             originalConfidence: finding.confidence ?? 50,
-            newConfidence: parsed.confidence,
-            verdict: parsed.verdict as 'pass' | 'fail' | 'uncertain',
-            reasoning: parsed.reasoning,
-            evidence: parsed.evidence ?? [],
+            newConfidence: typeof parsed['confidence'] === 'number' ? parsed['confidence'] : (finding.confidence ?? 50),
+            verdict,
+            reasoning: typeof parsed['reasoning'] === 'string' ? parsed['reasoning'] : 'Could not parse LLM response',
+            evidence: rawEvidence,
             promptType,
             cost,
           });
@@ -212,14 +220,14 @@ export const createLayer5 = (deps: L5AnalyzerDeps) => {
 
       return {
         ...f,
-        type: result.verdict === 'pass' ? 'pass' as const : result.verdict === 'fail' ? 'fail' as const : f.type,
+        type: result.verdict === 'pass' ? 'pass' : result.verdict === 'fail' ? 'fail' : f.type,
         confidence: result.newConfidence,
         confidenceLevel: result.newConfidence >= 95 ? 'PASS'
           : result.newConfidence >= 70 ? 'LIKELY_PASS'
           : result.newConfidence >= 40 ? 'UNCERTAIN'
           : result.newConfidence >= 5 ? 'LIKELY_FAIL'
           : 'FAIL',
-        severity: result.verdict === 'pass' ? 'info' as Severity : f.severity,
+        severity: result.verdict === 'pass' ? 'info' : f.severity,
       };
     });
   };

@@ -1,3 +1,4 @@
+import type { LanguageModel } from 'ai';
 import type { LlmPort, ProviderName, ProviderInfo, ModelSelection } from '../ports/llm.port.js';
 import { LLMError } from '../types/errors.js';
 
@@ -59,14 +60,17 @@ export const createLlmAdapter = (): LlmPort => {
     return available[0]!.name;
   };
 
+  const isTaskType = (s: string): s is TaskType => s in TASK_REASONS;
+
   const routeModel = (taskType: string, preferredProvider?: ProviderName): ModelSelection => {
     const provider = preferredProvider ?? getDefaultProvider();
-    const modelId = MODEL_MAP[provider][taskType as TaskType];
+    const validType = isTaskType(taskType) ? taskType : 'chat';
+    const modelId = MODEL_MAP[provider][validType];
 
     return {
       provider,
       modelId,
-      reason: TASK_REASONS[taskType as TaskType],
+      reason: TASK_REASONS[validType],
     };
   };
 
@@ -74,7 +78,7 @@ export const createLlmAdapter = (): LlmPort => {
     provider: ProviderName,
     modelId: string,
     apiKey?: string,
-  ): Promise<unknown> => {
+  ): Promise<LanguageModel> => {
     switch (provider) {
       case 'openai': {
         const { createOpenAI } = await import('@ai-sdk/openai');

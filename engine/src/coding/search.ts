@@ -33,14 +33,18 @@ const ripgrepSearch = async (
     for (const line of stdout.split('\n')) {
       if (line.trim() === '') continue;
       try {
-        const parsed = JSON.parse(line) as { type: string; data?: { path?: { text?: string }; line_number?: number; lines?: { text?: string } } };
-        if (parsed.type === 'match' && parsed.data !== undefined) {
-          results.push({
-            file: parsed.data.path?.text ?? '',
-            line: parsed.data.line_number ?? 0,
-            content: parsed.data.lines?.text?.trim() ?? '',
-          });
-        }
+        const isRec = (v: unknown): v is Record<string, unknown> =>
+          typeof v === 'object' && v !== null;
+        const raw: unknown = JSON.parse(line);
+        if (!isRec(raw) || raw['type'] !== 'match') continue;
+        const data = isRec(raw['data']) ? raw['data'] : {};
+        const pathObj = isRec(data['path']) ? data['path'] : {};
+        const linesObj = isRec(data['lines']) ? data['lines'] : {};
+        results.push({
+          file: typeof pathObj['text'] === 'string' ? pathObj['text'] : '',
+          line: typeof data['line_number'] === 'number' ? data['line_number'] : 0,
+          content: typeof linesObj['text'] === 'string' ? linesObj['text'].trim() : '',
+        });
       } catch {
         // skip malformed JSON lines
       }

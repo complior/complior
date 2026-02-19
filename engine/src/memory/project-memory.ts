@@ -13,10 +13,14 @@ export interface ProjectMemoryManager {
 export const createProjectMemoryManager = (memoryDir: string): ProjectMemoryManager => {
   const filePath = join(memoryDir, 'memory.json');
 
+  const isProjectMemory = (v: unknown): v is ProjectMemory =>
+    typeof v === 'object' && v !== null && 'version' in v && 'projectPath' in v && 'scanHistory' in v;
+
   const load = async (): Promise<ProjectMemory | null> => {
     const content = await readFile(filePath, 'utf-8').catch(() => null);
     if (content === null) return null;
-    return JSON.parse(content) as ProjectMemory;
+    const parsed: unknown = JSON.parse(content);
+    return isProjectMemory(parsed) ? parsed : null;
   };
 
   const save = async (memory: ProjectMemory): Promise<void> => {

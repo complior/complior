@@ -41,12 +41,16 @@ export const createSessionMemory = (memoryDir: string) => {
   const filePath = join(memoryDir, 'session.json');
   let nextId = 1;
 
+  const isSessionStore = (v: unknown): v is SessionStore =>
+    typeof v === 'object' && v !== null && 'sessions' in v && 'events' in v;
+
   const loadStore = async (): Promise<SessionStore> => {
     const content = await readFile(filePath, 'utf-8').catch(() => null);
     if (!content) return { sessions: [], events: [], nextEventId: 1 };
-    const store = JSON.parse(content) as SessionStore;
-    nextId = store.nextEventId ?? 1;
-    return store;
+    const parsed: unknown = JSON.parse(content);
+    if (!isSessionStore(parsed)) return { sessions: [], events: [], nextEventId: 1 };
+    nextId = parsed.nextEventId ?? 1;
+    return parsed;
   };
 
   const saveStore = async (store: SessionStore): Promise<void> => {
@@ -83,9 +87,9 @@ export const createSessionMemory = (memoryDir: string) => {
     store.nextEventId = nextId;
 
     // Update session lastActive
-    const session = store.sessions.find((s) => s.id === sessionId);
-    if (session) {
-      (session as { lastActive: string }).lastActive = event.timestamp;
+    const sessionIdx = store.sessions.findIndex((s) => s.id === sessionId);
+    if (sessionIdx >= 0) {
+      store.sessions[sessionIdx] = { ...store.sessions[sessionIdx], lastActive: event.timestamp };
     }
 
     await saveStore(store);
@@ -106,11 +110,11 @@ export const createSessionMemory = (memoryDir: string) => {
     const keyDecisions = sessionEvents.filter((e) => e.type === 'decision');
     const scoreHistory = sessionEvents
       .filter((e) => e.type === 'scan' && e.data['score'] !== undefined)
-      .map((e) => ({ score: e.data['score'] as number, timestamp: e.timestamp }));
+      .map((e) => ({ score: Number(e.data['score']), timestamp: e.timestamp }));
     const activeFiles = [...new Set(
       sessionEvents
         .filter((e) => e.type === 'file_edit' && e.data['file'])
-        .map((e) => e.data['file'] as string),
+        .map((e) => String(e.data['file'])),
     )];
 
     const eventCount = sessionEvents.length;
@@ -148,7 +152,12 @@ export const createSessionMemory = (memoryDir: string) => {
   }> => {
     const store = await loadStore();
     const events = store.events.filter((e) => e.sessionId === sessionId);
-    const files = new Set(events.filter((e) => e.type === 'file_edit').map((e) => e.data['file'] as string));
+    const files = new Set(
+      events
+        .filter((e) => e.type === 'file_edit')
+        .map((e) => e.data['file'])
+        .filter((f): f is string => typeof f === 'string'),
+    );
     return {
       eventCount: events.length,
       filesTouched: files.size,

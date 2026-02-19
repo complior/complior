@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { gitOperation } from '../../coding/git.js';
+import { gitOperation } from '../../infra/git-adapter.js';
 import { ValidationError } from '../../types/errors.js';
 
 const GitRequestSchema = z.object({
