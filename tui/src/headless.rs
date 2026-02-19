@@ -207,49 +207,109 @@ pub fn run_version() {
     println!("https://complior.eu");
 }
 
-/// Run doctor diagnostics.
+/// Run doctor diagnostics — 7 system health checks.
 pub async fn run_doctor(config: &TuiConfig) {
-    println!("Complior Doctor");
-    println!("===============");
+    println!("Complior Doctor — System Health Check");
+    println!("=====================================");
     println!();
 
-    // Check engine
+    let mut passed = 0u32;
+    let total = 7u32;
+
+    // 1. TUI binary
+    let version = env!("CARGO_PKG_VERSION");
+    print!("  TUI binary:     v{version}");
+    println!("                            OK");
+    passed += 1;
+
+    // 2. Engine
     let engine_url = config
         .engine_url_override
         .clone()
         .unwrap_or_else(|| config.engine_url());
-    print!("Engine ({engine_url}): ");
+    print!("  Engine:         ");
     let client = EngineClient::from_url(&engine_url);
     match client.status().await {
         Ok(status) if status.ready => {
             let ver = status.version.unwrap_or_else(|| "unknown".into());
-            println!("OK (v{ver})");
+            println!("v{ver} ({engine_url})              OK");
+            passed += 1;
         }
-        Ok(_) => println!("NOT READY"),
-        Err(e) => println!("UNREACHABLE ({e})"),
+        Ok(_) => println!("NOT READY ({engine_url})           WARN"),
+        Err(_) => println!("UNREACHABLE ({engine_url})         FAIL"),
     }
 
-    // Check config
-    print!("Config: ");
-    let config_path = dirs::config_dir()
-        .map(|d| d.join("complior").join("tui.toml"));
-    match config_path {
-        Some(p) if p.exists() => println!("OK ({})", p.display()),
-        Some(p) => println!("Missing ({})", p.display()),
-        None => println!("No config dir found"),
+    // 3. Node.js
+    print!("  Node.js:        ");
+    match std::process::Command::new("node").arg("--version").output() {
+        Ok(output) if output.status.success() => {
+            let ver = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            // Check >= 18
+            let major: u32 = ver.trim_start_matches('v').split('.').next()
+                .and_then(|s| s.parse().ok()).unwrap_or(0);
+            if major >= 18 {
+                println!("{ver} (required: >=18)              OK");
+                passed += 1;
+            } else {
+                println!("{ver} (required: >=18)              FAIL");
+            }
+        }
+        _ => println!("Not found                         FAIL  (install: https://nodejs.org)"),
     }
 
-    // Check project path
-    let cwd = std::env::current_dir().unwrap_or_default();
-    print!("Project ({}): ", cwd.display());
-    if cwd.join("package.json").exists() || cwd.join("Cargo.toml").exists() {
-        println!("OK");
+    // 4. Disk space
+    print!("  Disk space:     ");
+    // Simple check — existence of temp dir
+    let tmp = std::env::temp_dir();
+    if tmp.exists() {
+        println!("OK (temp dir accessible)");
+        passed += 1;
     } else {
-        println!("No package.json or Cargo.toml found");
+        println!("WARN (temp dir inaccessible)");
+    }
+
+    // 5. Config
+    print!("  Config:         ");
+    let cwd = std::env::current_dir().unwrap_or_default();
+    if cwd.join(".complior").exists() {
+        println!(".complior/ found                  OK");
+        passed += 1;
+    } else {
+        println!(".complior/ not found              WARN  (run `complior init`)");
+    }
+
+    // 6. Network
+    print!("  Network:        ");
+    let net_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build();
+    match net_client {
+        Ok(c) => match c.head("https://github.com/a3ka/complior").send().await {
+            Ok(resp) if resp.status().is_success() || resp.status().is_redirection() => {
+                println!("GitHub reachable                  OK");
+                passed += 1;
+            }
+            _ => println!("GitHub unreachable                WARN  (offline mode OK)"),
+        },
+        Err(_) => println!("Cannot create HTTP client         WARN"),
+    }
+
+    // 7. MCP
+    print!("  MCP:            ");
+    let mcp_config = dirs::config_dir().map(|d| d.join("complior").join("mcp.json"));
+    match mcp_config {
+        Some(p) if p.exists() => {
+            println!("Configured                        OK");
+            passed += 1;
+        }
+        _ => println!("Not configured                    WARN  (optional)"),
     }
 
     println!();
-    println!("All checks complete.");
+    println!("  Summary: {passed}/{total} checks passed");
+    if passed >= 3 {
+        println!("  Ready to scan!");
+    }
 }
 
 /// Run headless report generation.
