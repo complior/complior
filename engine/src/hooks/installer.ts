@@ -2,19 +2,33 @@ import { resolve } from 'node:path';
 import { writeFile, chmod, readFile, mkdir } from 'node:fs/promises';
 
 const PRE_COMMIT_TEMPLATE = (threshold: number) => `#!/bin/sh
-# Complior pre-commit hook — blocks commits below score threshold
+# Complior pre-commit hook — warns about compliance score (non-blocking)
 # Installed by: complior hook install
 
-npx ai-comply scan --ci --threshold ${threshold} --fail-on critical
-exit $?
+RESULT=$(npx ai-comply scan --ci --threshold ${threshold} --fail-on critical 2>&1)
+STATUS=$?
+if [ $STATUS -ne 0 ]; then
+  echo ""
+  echo "⚠ [Complior] Compliance warning:"
+  echo "$RESULT"
+  echo ""
+fi
+exit 0
 `;
 
 const PRE_PUSH_TEMPLATE = `#!/bin/sh
-# Complior pre-push hook — full compliance scan before push
+# Complior pre-push hook — compliance scan report (non-blocking)
 # Installed by: complior hook install
 
-npx ai-comply scan --ci --json
-exit $?
+RESULT=$(npx ai-comply scan --ci --json 2>&1)
+STATUS=$?
+if [ $STATUS -ne 0 ]; then
+  echo ""
+  echo "⚠ [Complior] Compliance issues detected (push continues):"
+  echo "$RESULT" | head -20
+  echo ""
+fi
+exit 0
 `;
 
 const COMMIT_MSG_TEMPLATE = `#!/bin/sh
