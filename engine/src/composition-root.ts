@@ -6,6 +6,7 @@ import type { ScanResult, ProjectMemory } from './types/common.types.js';
 import type { RegulationData } from './data/regulation-loader.js';
 import { loadRegulationData } from './infra/regulation-loader.js';
 import { createEventBus } from './infra/event-bus.js';
+import { createLogger } from './infra/logger.js';
 import { createLlmAdapter } from './infra/llm-adapter.js';
 import { createScanner } from './domain/scanner/create-scanner.js';
 import { collectFiles } from './domain/scanner/file-collector.js';
@@ -34,9 +35,11 @@ export interface Application {
 }
 
 export const loadApplication = async (): Promise<Application> => {
+  const log = createLogger('app');
+
   // 1. Load regulation data
   const regulationData = await loadRegulationData();
-  console.log(`Loaded ${regulationData.obligations.obligations.length} obligations`);
+  log.info(`Loaded ${regulationData.obligations.obligations.length} obligations`);
 
   // 2. Create mutable application state
   const projectPath = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
@@ -72,8 +75,8 @@ export const loadApplication = async (): Promise<Application> => {
     getExistingFiles: () => {
       const scan = state.lastScanResult;
       return scan?.findings
-        .filter((f) => f.file)
-        .map((f) => f.file as string) ?? [];
+        .filter((f): f is typeof f & { file: string } => typeof f.file === 'string')
+        .map((f) => f.file) ?? [];
     },
   });
 
@@ -131,8 +134,16 @@ export const loadApplication = async (): Promise<Application> => {
     getProjectMemory: () => state.projectMemory,
   });
 
+  // 7. Wire Compliance Gate: file.changed → background re-scan
+  events.on('file.changed', () => {
+    scanService.scan(state.projectPath).then(
+      (result) => events.emit('scan.completed', { result }),
+      (err: unknown) => log.error('Background re-scan failed:', err),
+    );
+  });
+
   const shutdown = (): void => {
-    console.log('Application shutdown');
+    log.info('Application shutdown');
   };
 
   return { app, state, shutdown };

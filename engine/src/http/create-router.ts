@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { AppError } from '../types/errors.js';
+import { createLogger } from '../infra/logger.js';
 import type { ScanService } from '../services/scan-service.js';
 import type { ChatService } from '../services/chat-service.js';
 import type { FileService } from '../services/file-service.js';
@@ -29,16 +30,21 @@ export interface RouterDeps {
 
 export const createRouter = (deps: RouterDeps) => {
   const app = new Hono();
+  const log = createLogger('http');
 
   // Global error handler
   app.onError((err, c) => {
     if (err instanceof AppError) {
+      const status = err.statusCode === 400 ? 400
+        : err.statusCode === 404 ? 404
+        : err.statusCode === 502 ? 502
+        : 500;
       return c.json(
         { error: err.code, message: err.message },
-        err.statusCode as 400 | 404 | 500 | 502,
+        status,
       );
     }
-    console.error('Unexpected error:', err);
+    log.error('Unexpected error:', err);
     return c.json(
       { error: 'INTERNAL', message: 'Internal server error' },
       500,

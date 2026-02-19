@@ -83,8 +83,16 @@ export const autoDetect = async (projectPath: string): Promise<AutoDetectResult>
   const pkgContent = await readFile(pkgPath, 'utf-8').catch(() => null);
 
   if (pkgContent) {
-    const pkg = JSON.parse(pkgContent) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    const isRec = (v: unknown): v is Record<string, unknown> =>
+      typeof v === 'object' && v !== null;
+    const raw: unknown = JSON.parse(pkgContent);
+    const pkg = isRec(raw) ? raw : {};
+    const rawDeps = isRec(pkg['dependencies']) ? pkg['dependencies'] : {};
+    const rawDevDeps = isRec(pkg['devDependencies']) ? pkg['devDependencies'] : {};
+    const deps: Record<string, string> = {};
+    for (const [k, v] of Object.entries({ ...rawDeps, ...rawDevDeps })) {
+      if (typeof v === 'string') deps[k] = v;
+    }
     language = detectLanguage(deps);
     framework = detectFramework(deps);
     signals += 2;

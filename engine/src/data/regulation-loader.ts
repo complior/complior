@@ -37,7 +37,8 @@ const loadJsonFile = async (filename: string): Promise<unknown> => {
   const filePath = join(DATA_DIR, filename);
   try {
     const content = await readFile(filePath, 'utf-8');
-    return JSON.parse(content) as unknown;
+    const parsed: unknown = JSON.parse(content);
+    return parsed;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new ConfigError(`Failed to load ${filename}: ${message}`);

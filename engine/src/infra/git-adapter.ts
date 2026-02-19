@@ -56,8 +56,8 @@ export const gitOperation = async (
 
     case 'add': {
       const files = args?.['files'];
-      if (Array.isArray(files)) {
-        await git.add(files.filter((f): f is string => typeof f === 'string'));
+      if (Array.isArray(files) && files.every((f): f is string => typeof f === 'string')) {
+        await git.add(files);
       } else {
         await git.add('.');
       }

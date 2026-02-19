@@ -56,7 +56,7 @@ const disclosureStrategy: FixStrategy = (finding, context) => {
   const content = `// AI Disclosure Middleware (EU AI Act, Art. 50.1)
 // Adds transparency headers to all AI-related responses
 
-export const aiDisclosureMiddleware = (req: any, res: any, next: any) => {
+export const aiDisclosureMiddleware = (req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
   res.setHeader('X-AI-Disclosure', 'This service uses artificial intelligence');
   res.setHeader('X-AI-Provider', 'See /api/ai-disclosure for details');
   next();

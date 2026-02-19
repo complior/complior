@@ -54,15 +54,18 @@ export const runCommand = async (
 
     return { stdout, stderr, exitCode: 0 };
   } catch (error: unknown) {
-    if (error !== null && typeof error === 'object' && 'killed' in error && error.killed) {
+    const isRec = (v: unknown): v is Record<string, unknown> =>
+      typeof v === 'object' && v !== null;
+
+    if (isRec(error) && 'killed' in error && error['killed'] === true) {
       throw new ToolError(`Command timed out after ${effectiveTimeout}ms`);
     }
 
-    const execError = error as { stdout?: string; stderr?: string; code?: number };
+    const rec = isRec(error) ? error : {};
     return {
-      stdout: execError.stdout ?? '',
-      stderr: execError.stderr ?? '',
-      exitCode: execError.code ?? 1,
+      stdout: typeof rec['stdout'] === 'string' ? rec['stdout'] : '',
+      stderr: typeof rec['stderr'] === 'string' ? rec['stderr'] : '',
+      exitCode: typeof rec['code'] === 'number' ? rec['code'] : 1,
     };
   }
 };

@@ -93,13 +93,29 @@ export const computeApplicableObligations = (
   return obligations;
 };
 
+const answerStr = (answers: OnboardingAnswers, key: string, fallback: string): string => {
+  const v = answers[key];
+  return typeof v === 'string' ? v : fallback;
+};
+
+const answerArr = (answers: OnboardingAnswers, key: string, fallback: string[]): string[] => {
+  const v = answers[key];
+  return Array.isArray(v) ? v : fallback;
+};
+
+const SystemTypeSchema = z.enum(['feature', 'standalone', 'platform', 'internal']);
+const RoleSchema = z.enum(['provider', 'deployer', 'both']);
+const CompanySizeSchema = z.enum(['startup', 'sme', 'enterprise']);
+const StorageSchema = z.enum(['eu', 'us', 'mixed']);
+const BudgetSchema = z.enum(['minimal', 'moderate', 'full']);
+
 export const buildProfile = (
   autoDetected: AutoDetectResult,
   answers: OnboardingAnswers,
 ): OnboardingProfile => {
-  const domain = (answers['domain'] as string) ?? 'general';
-  const dataTypes = (answers['data_types'] as string[]) ?? ['public'];
-  const systemType = (answers['system_type'] as string) ?? 'feature';
+  const domain = answerStr(answers, 'domain', 'general');
+  const dataTypes = answerArr(answers, 'data_types', ['public']);
+  const systemType = answerStr(answers, 'system_type', 'feature');
 
   const riskLevel = computeRiskLevel(domain, dataTypes, systemType);
   const applicableObligations = computeApplicableObligations(domain, riskLevel);
@@ -117,27 +133,27 @@ export const buildProfile = (
       detectedModels: [...autoDetected.detectedModels],
     },
     aiSystem: {
-      type: systemType as OnboardingProfile['aiSystem']['type'],
-      outputTypes: (answers['output_types'] as string[]) ?? ['text'],
+      type: SystemTypeSchema.catch('feature').parse(systemType),
+      outputTypes: answerArr(answers, 'output_types', ['text']),
     },
     jurisdiction: {
-      primary: (answers['primary_jurisdiction'] as string) ?? 'EU',
+      primary: answerStr(answers, 'primary_jurisdiction', 'EU'),
       regulations: ['eu-ai-act'],
     },
     organization: {
-      role: (answers['org_role'] as string as OnboardingProfile['organization']['role']) ?? 'deployer',
+      role: RoleSchema.catch('deployer').parse(answerStr(answers, 'org_role', 'deployer')),
     },
     business: {
       domain,
-      companySize: (answers['company_size'] as string as OnboardingProfile['business']['companySize']) ?? 'startup',
+      companySize: CompanySizeSchema.catch('startup').parse(answerStr(answers, 'company_size', 'startup')),
     },
     data: {
       types: dataTypes,
-      storage: (answers['data_storage'] as string as OnboardingProfile['data']['storage']) ?? 'eu',
+      storage: StorageSchema.catch('eu').parse(answerStr(answers, 'data_storage', 'eu')),
     },
     goals: {
-      priority: (answers['priority'] as string) ?? 'full',
-      budget: (answers['budget'] as string as OnboardingProfile['goals']['budget']) ?? 'moderate',
+      priority: answerStr(answers, 'priority', 'full'),
+      budget: BudgetSchema.catch('moderate').parse(answerStr(answers, 'budget', 'moderate')),
     },
     computed: {
       riskLevel,

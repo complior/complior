@@ -1,3 +1,5 @@
+import type { LanguageModel } from 'ai';
+
 export type ProviderName = 'openai' | 'anthropic' | 'openrouter';
 
 export interface ProviderInfo {
@@ -13,7 +15,7 @@ export interface ModelSelection {
 }
 
 export interface LlmPort {
-  readonly getModel: (provider: ProviderName, modelId: string, apiKey?: string) => Promise<unknown>;
+  readonly getModel: (provider: ProviderName, modelId: string, apiKey?: string) => Promise<LanguageModel>;
   readonly detectProviders: () => readonly ProviderInfo[];
   readonly getAvailableProviders: () => readonly ProviderInfo[];
   readonly getDefaultProvider: () => ProviderName;

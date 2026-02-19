@@ -2,6 +2,7 @@ import type { ScanService } from '../services/scan-service.js';
 import type { FixService } from '../services/fix-service.js';
 import type { ScanResult } from '../types/common.types.js';
 import type { RegulationData } from '../data/regulation-loader.js';
+import type { Obligation } from '../data/schemas.js';
 import { toJsonOutput } from '../output/json-output.js';
 import { toGithubIssue } from '../output/github-issue.js';
 
@@ -114,10 +115,10 @@ export const createMcpHandlers = (deps: McpHandlerDeps) => {
     const query = args.article.toLowerCase();
 
     // Search obligations
-    const matches = data.obligations.obligations.filter((o: any) =>
-      o.id?.toLowerCase().includes(query) ||
-      o.article?.toLowerCase().includes(query) ||
-      o.title?.toLowerCase().includes(query),
+    const matches = data.obligations.obligations.filter((o: Obligation) =>
+      o.obligation_id.toLowerCase().includes(query) ||
+      o.article_reference.toLowerCase().includes(query) ||
+      o.title.toLowerCase().includes(query),
     );
 
     if (matches.length === 0) {
@@ -126,14 +127,14 @@ export const createMcpHandlers = (deps: McpHandlerDeps) => {
       };
     }
 
-    const explanations = matches.slice(0, 5).map((o: any) => ({
-      id: o.id,
-      article: o.article,
+    const explanations = matches.slice(0, 5).map((o: Obligation) => ({
+      id: o.obligation_id,
+      article: o.article_reference,
       title: o.title,
       description: o.description,
       severity: o.severity,
       deadline: o.deadline,
-      role: o.role,
+      role: o.applies_to_role,
     }));
 
     return {
