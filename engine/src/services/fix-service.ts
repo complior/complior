@@ -3,8 +3,9 @@ import { mkdir, copyFile, readFile, writeFile } from 'node:fs/promises';
 import type { Finding, ScanResult } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { Fixer } from '../domain/fixer/create-fixer.js';
-import type { FixPlan, FixResult } from '../domain/fixer/types.js';
+import type { FixPlan, FixResult, FixValidation } from '../domain/fixer/types.js';
 import type { ScanService } from './scan-service.js';
+import type { UndoService } from './undo-service.js';
 
 export interface FixServiceDeps {
   readonly fixer: Fixer;
@@ -13,10 +14,11 @@ export interface FixServiceDeps {
   readonly getProjectPath: () => string;
   readonly getLastScanResult: () => ScanResult | null;
   readonly loadTemplate: (templateFile: string) => Promise<string>;
+  readonly undoService?: UndoService;
 }
 
 export const createFixService = (deps: FixServiceDeps) => {
-  const { fixer, scanService, events, getProjectPath, getLastScanResult, loadTemplate } = deps;
+  const { fixer, scanService, events, getProjectPath, getLastScanResult, loadTemplate, undoService } = deps;
 
   const backupFile = async (filePath: string): Promise<string> => {
     const projectPath = getProjectPath();
@@ -81,13 +83,19 @@ export const createFixService = (deps: FixServiceDeps) => {
 
       events.emit('score.updated', { before: scoreBefore, after: scoreAfter });
 
-      return {
+      const result: FixResult = {
         plan,
         applied: true,
         scoreBefore,
         scoreAfter,
         backedUpFiles: backedUp,
       };
+
+      if (undoService) {
+        await undoService.recordFix(result, plan);
+      }
+
+      return result;
     } catch (err) {
       return {
         plan,
@@ -100,6 +108,55 @@ export const createFixService = (deps: FixServiceDeps) => {
     }
   };
 
+  const applyAndValidate = async (plan: FixPlan): Promise<FixResult & { validation: FixValidation }> => {
+    const lastScan = getLastScanResult();
+    const findingBefore = lastScan?.findings.find(
+      (f) => f.checkId === plan.checkId && (!plan.obligationId || f.obligationId === plan.obligationId),
+    );
+    const beforeType = findingBefore?.type ?? 'fail';
+
+    const result = await applyFix(plan);
+
+    const newScan = getLastScanResult();
+    const findingAfter = newScan?.findings.find(
+      (f) => f.checkId === plan.checkId && (!plan.obligationId || f.obligationId === plan.obligationId),
+    );
+    const afterType = findingAfter?.type ?? (result.applied ? 'pass' : beforeType);
+    const scoreDelta = result.scoreAfter - result.scoreBefore;
+
+    const validation: FixValidation = {
+      checkId: plan.checkId,
+      obligationId: plan.obligationId,
+      article: plan.article,
+      before: beforeType,
+      after: afterType,
+      scoreDelta,
+      totalScore: result.scoreAfter,
+    };
+
+    events.emit('fix.validated', {
+      checkId: plan.checkId,
+      passed: afterType === 'pass',
+      scoreDelta,
+    });
+
+    return { ...result, validation };
+  };
+
+  const applyAllAndValidate = async (): Promise<{
+    results: readonly (FixResult & { validation: FixValidation })[];
+    totalDelta: number;
+  }> => {
+    const plans = previewAll();
+    const results: (FixResult & { validation: FixValidation })[] = [];
+    for (const plan of plans) {
+      const result = await applyAndValidate(plan);
+      results.push(result);
+    }
+    const totalDelta = results.reduce((sum, r) => sum + r.validation.scoreDelta, 0);
+    return { results, totalDelta };
+  };
+
   const applyAll = async (): Promise<readonly FixResult[]> => {
     const plans = previewAll();
     const results: FixResult[] = [];
@@ -110,7 +167,7 @@ export const createFixService = (deps: FixServiceDeps) => {
     return results;
   };
 
-  return Object.freeze({ preview, previewAll, applyFix, applyAll });
+  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate });
 };
 
 export type FixService = ReturnType<typeof createFixService>;
