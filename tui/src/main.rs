@@ -13,6 +13,7 @@ mod theme_picker;
 mod types;
 mod views;
 mod watcher;
+mod widgets;
 
 use std::io;
 use std::time::Duration;

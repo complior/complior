@@ -158,6 +158,20 @@ fn render_top_panels(frame: &mut Frame, area: Rect, app: &App) {
 /// └───────────────────┴────────────────────┘
 /// ```
 fn render_bottom_widgets(frame: &mut Frame, area: Rect, app: &App) {
+    use crate::components::zoom::ZoomedWidget;
+
+    // T702: If a widget is zoomed, render it full-screen
+    if let Some(zoomed) = app.zoom.zoomed {
+        match zoomed {
+            ZoomedWidget::ScoreGauge => render_score_gauge(frame, area, app),
+            ZoomedWidget::DeadlineCountdown => render_deadline_countdown(frame, area),
+            ZoomedWidget::ActivityLog => render_activity_log(frame, area, app),
+            ZoomedWidget::ScoreSparkline => render_score_history_line(frame, area, app),
+            ZoomedWidget::FindingsList => render_activity_log(frame, area, app),
+        }
+        return;
+    }
+
     let v_split = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -585,9 +599,9 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 /// View-specific footer hints (line 2).
 pub fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
-        ViewState::Dashboard => "1-6:view Tab:mode i:ins /:cmd ^P:palette ^B:sidebar w:watch ?:help",
-        ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix j/k:nav",
-        ViewState::Fix => "Space:toggle a:all n:none d:diff Enter:apply j/k:nav",
+        ViewState::Dashboard => "1-6:view Tab:mode e:zoom i:ins /:cmd ^P:palette ^B:sidebar w:watch ?:help",
+        ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix x:explain d:dismiss o:open j/k:nav",
+        ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
         ViewState::Chat => "Tab:complete @OBL:ref !cmd Enter:send",
         ViewState::Timeline => "j/k:scroll",
         ViewState::Report => "e:export j/k:scroll",
@@ -632,7 +646,21 @@ fn render_overlay(frame: &mut Frame, app: &App) {
                 crate::views::onboarding::render_onboarding(frame, wizard);
             }
         }
+        Overlay::ConfirmDialog => {
+            if let Some(dialog) = &app.confirm_dialog {
+                crate::components::confirm_dialog::render_confirm_dialog(frame, dialog);
+            }
+        }
+        Overlay::DismissModal => {
+            // Render dismiss reason picker as a simple centered overlay
+            if let Some(modal) = &app.dismiss_modal {
+                render_dismiss_modal(frame, modal);
+            }
+        }
     }
+
+    // Always render toasts on top of everything
+    crate::components::toast::render_toasts(frame, frame.area(), &app.toasts);
 }
 
 /// Scrollable help overlay — shows view-specific section first, then global shortcuts.
@@ -730,6 +758,7 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
         ViewState::Dashboard => vec![
             shortcut_line("  1-6", "Switch view", t),
             shortcut_line("  Tab", "Toggle mode", t),
+            shortcut_line("  e", "Zoom/expand widget", t),
             shortcut_line("  w", "Toggle watch", t),
             shortcut_line("  ^B", "Toggle sidebar", t),
         ],
@@ -738,6 +767,9 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
             shortcut_line("  c/h/m/l", "Filter by severity", t),
             shortcut_line("  Enter", "Open/close detail", t),
             shortcut_line("  f", "Fix selected finding", t),
+            shortcut_line("  x", "Explain finding", t),
+            shortcut_line("  d", "Dismiss finding", t),
+            shortcut_line("  o", "Open related file", t),
             shortcut_line("  j/k", "Navigate findings", t),
         ],
         ViewState::Fix => vec![
@@ -745,6 +777,7 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
             shortcut_line("  a", "Select all fixes", t),
             shortcut_line("  n", "Deselect all", t),
             shortcut_line("  d", "Toggle diff preview", t),
+            shortcut_line("  </> ", "Resize split panel", t),
             shortcut_line("  Enter", "Apply selected fixes", t),
         ],
         ViewState::Chat => vec![
@@ -843,6 +876,55 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(v[1])[1]
+}
+
+/// Render dismiss reason picker modal.
+fn render_dismiss_modal(frame: &mut Frame, modal: &crate::components::quick_actions::DismissModal) {
+    use ratatui::widgets::Clear;
+
+    let t = theme::theme();
+    let area = centered_rect(40, 30, frame.area());
+
+    frame.render_widget(Clear, area);
+
+    let block = Block::default()
+        .title(" Dismiss Finding ")
+        .title_style(theme::title_style())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.accent));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let reasons = crate::components::quick_actions::DismissReason::all();
+    let lines: Vec<Line<'_>> = reasons
+        .iter()
+        .enumerate()
+        .map(|(i, reason)| {
+            let marker = if i == modal.cursor { "> " } else { "  " };
+            let color = if i == modal.cursor { t.accent } else { t.fg };
+            Line::from(Span::styled(
+                format!("{marker}{reason:?}"),
+                Style::default().fg(color),
+            ))
+        })
+        .collect();
+
+    let mut all_lines = vec![
+        Line::from(Span::styled(
+            " Select reason:",
+            Style::default().fg(t.muted),
+        )),
+        Line::raw(""),
+    ];
+    all_lines.extend(lines);
+    all_lines.push(Line::raw(""));
+    all_lines.push(Line::from(Span::styled(
+        " Enter:confirm  Esc:cancel",
+        Style::default().fg(t.muted),
+    )));
+
+    frame.render_widget(Paragraph::new(all_lines), inner);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1862,6 +1944,206 @@ mod tests {
         }
 
         let _buf = render_to_string(&app, 300, 100);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Sprint T07 — Complior Zen + Advanced UX E2E Tests
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ─── T704: Toast Notifications ───
+
+    #[test]
+    fn e2e_t704_toast_appears_after_scan() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        assert!(app.toasts.is_empty());
+
+        app.set_scan_result(make_scan_result(85.0, crate::types::Zone::Green));
+        assert!(!app.toasts.is_empty(), "Toast should appear after scan");
+        let toast = &app.toasts.toasts[0];
+        assert!(toast.message.contains("85"), "Toast should contain score");
+    }
+
+    #[test]
+    fn e2e_t704_toast_overlay_renders() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.toasts.push(crate::components::toast::ToastKind::Info, "Test toast");
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("[i]"), "Toast [i] marker should render in overlay");
+        assert!(buf.contains("Test toast"), "Toast message should render");
+    }
+
+    #[test]
+    fn e2e_t704_confirm_dialog_y_closes() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.confirm_dialog = Some(crate::components::confirm_dialog::ConfirmDialog {
+            title: "Confirm".to_string(),
+            message: "Apply all?".to_string(),
+            file_count: 3,
+            score_impact: Some(5.0),
+            on_confirm: crate::components::confirm_dialog::ConfirmAction::BatchApply,
+        });
+        app.overlay = Overlay::ConfirmDialog;
+
+        // Press 'y' to confirm
+        app.apply_action(crate::input::Action::InsertChar('y'));
+        assert_eq!(app.overlay, Overlay::None, "ConfirmDialog should close on 'y'");
+        assert!(app.confirm_dialog.is_none());
+    }
+
+    #[test]
+    fn e2e_t704_confirm_dialog_n_cancels() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.confirm_dialog = Some(crate::components::confirm_dialog::ConfirmDialog {
+            title: "Confirm".to_string(),
+            message: "Apply?".to_string(),
+            file_count: 1,
+            score_impact: None,
+            on_confirm: crate::components::confirm_dialog::ConfirmAction::BatchApply,
+        });
+        app.overlay = Overlay::ConfirmDialog;
+
+        app.apply_action(crate::input::Action::InsertChar('n'));
+        assert_eq!(app.overlay, Overlay::None, "ConfirmDialog should close on 'n'");
+    }
+
+    // ─── T702: Widget Zoom ───
+
+    #[test]
+    fn e2e_t702_zoom_toggle_via_e_key() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.input_mode = crate::types::InputMode::Normal;
+        app.view_state = ViewState::Dashboard;
+        assert!(!app.zoom.is_zoomed());
+
+        // Press 'e' to zoom
+        app.apply_action(crate::input::Action::ViewKey('e'));
+        assert!(app.zoom.is_zoomed(), "'e' on Dashboard should toggle zoom");
+
+        // Press 'e' again to unzoom
+        app.apply_action(crate::input::Action::ViewKey('e'));
+        assert!(!app.zoom.is_zoomed(), "'e' again should unzoom");
+    }
+
+    // ─── T703: Split-View Fix ───
+
+    #[test]
+    fn e2e_t703_fix_split_resize() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.view_state = ViewState::Fix;
+        assert_eq!(app.fix_split_pct, 40, "Default split should be 40%");
+
+        // Resize left '<'
+        app.handle_view_key('<');
+        assert_eq!(app.fix_split_pct, 35, "'<' should decrease split by 5");
+
+        // Resize right '>'
+        app.handle_view_key('>');
+        app.handle_view_key('>');
+        assert_eq!(app.fix_split_pct, 45, "'>' twice should increase split to 45");
+
+        // Clamp at bounds
+        for _ in 0..20 {
+            app.handle_view_key('<');
+        }
+        assert_eq!(app.fix_split_pct, 25, "Split should clamp at 25% min");
+
+        for _ in 0..20 {
+            app.handle_view_key('>');
+        }
+        assert_eq!(app.fix_split_pct, 75, "Split should clamp at 75% max");
+    }
+
+    #[test]
+    fn e2e_t703_fix_view_uses_split_pct() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.view_state = ViewState::Fix;
+        app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
+        app.fix_view = crate::views::fix::FixViewState::from_scan(
+            &app.last_scan.as_ref().unwrap().findings,
+        );
+        app.fix_split_pct = 30;
+
+        // Should render without panic with custom split
+        let _buf = render_to_string(&app, 120, 40);
+    }
+
+    // ─── T705: Context Meter + Quick Actions ───
+
+    #[test]
+    fn e2e_t705_context_pct_updates_on_tick() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        assert_eq!(app.context_pct, 0);
+
+        // Add messages to increase context
+        for i in 0..10 {
+            app.messages.push(crate::types::ChatMessage::new(
+                crate::types::MessageRole::User,
+                format!("msg {i}"),
+            ));
+        }
+
+        app.tick();
+        // 11 messages (1 welcome + 10) / 32 max = 34%
+        assert!(app.context_pct > 0, "Context pct should update on tick");
+        assert!(app.context_pct < 50, "Context pct should be reasonable");
+    }
+
+    #[test]
+    fn e2e_t705_sidebar_shows_context_and_zen() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.sidebar_visible = true;
+        app.zen_active = true;
+        app.context_pct = 45;
+
+        let buf = render_to_string(&app, 120, 40);
+        assert!(buf.contains("Ctx:"), "Sidebar should show context meter");
+        assert!(buf.contains("Zen"), "Sidebar should show Zen status");
+    }
+
+    #[test]
+    fn e2e_t705_quick_action_d_opens_dismiss_modal() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.view_state = ViewState::Scan;
+        app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
+        app.scan_view.selected_finding = Some(0);
+
+        // Press 'd' for dismiss
+        app.handle_view_key('d');
+        assert_eq!(app.overlay, Overlay::DismissModal, "'d' should open dismiss modal");
+        assert!(app.dismiss_modal.is_some());
+    }
+
+    #[test]
+    fn e2e_t705_dismiss_modal_close_on_esc() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.dismiss_modal = Some(crate::components::quick_actions::DismissModal::new(0));
+        app.overlay = Overlay::DismissModal;
+
+        app.apply_action(crate::input::Action::EnterNormalMode);
+        assert_eq!(app.overlay, Overlay::None, "Dismiss modal should close on Esc");
+        assert!(app.dismiss_modal.is_none());
+    }
+
+    // ─── T701: Complior Zen ───
+
+    #[test]
+    fn e2e_t701_zen_provider_in_catalog() {
+        let models = crate::providers::available_models();
+        let zen = models.iter().find(|m| m.provider == "complior");
+        assert!(zen.is_some(), "Complior Zen should be in the model catalog");
+        assert_eq!(zen.unwrap().display_name, "Complior Zen (Free)");
+    }
+
+    #[test]
+    fn e2e_t701_zen_is_first_model() {
+        let models = crate::providers::available_models();
+        assert_eq!(models[0].provider, "complior", "Zen should be the first model");
     }
 
     #[test]

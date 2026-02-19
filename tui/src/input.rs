@@ -112,7 +112,7 @@ pub fn handle_mouse_event(event: MouseEvent, _app: &App) -> Action {
 
 fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
     // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
-    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding);
+    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog);
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
@@ -178,15 +178,15 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific Esc
-        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix) => {
+        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard) => {
             Action::ViewEscape
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,
-        // View-specific char keys (a/c/h/m/l/f/d/e/n) — only in Scan/Fix/Report views
-        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'n'))
+        // View-specific char keys — Scan/Fix/Report/Dashboard views
+        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'n' | 'x' | 'o' | '<' | '>'))
             if matches!(
                 app.view_state,
-                ViewState::Scan | ViewState::Fix | ViewState::Report
+                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard
             ) =>
         {
             Action::ViewKey(c)
