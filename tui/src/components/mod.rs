@@ -1,4 +1,5 @@
 pub mod command_palette;
+pub mod diff_overlay;
 pub mod file_picker;
 pub mod input_box;
 pub mod markdown;

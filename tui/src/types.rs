@@ -353,4 +353,6 @@ pub enum Overlay {
     GettingStarted,
     ProviderSetup,
     ModelSelector,
+    ThemePicker,
+    Onboarding,
 }
