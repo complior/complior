@@ -563,7 +563,9 @@ tui/src/ (19 файлов, 2 444 строки)
 - **TypeScript:** 0 ошибок (`tsc --noEmit`)
 - **Новые тесты:** 38 (5 MCP, 9 tools, 7 agents, 9 cost/routing, 8 disclaimer)
 - **Всего тестов:** 324 (227 TS Engine + 97 Rust TUI)
+- **MCP Wiring:** `mcp/index.ts` — entry point с реальными зависимостями (composition root для MCP)
 - **Коммит:** `bd308f4`
+- **⚠️ Ручное тестирование:** НЕ проведено. Все 5 US проверены только автотестами (vitest). MCP Server, Tool Definitions, Agent Modes, Cost Routing, Disclaimer — требуют ручной верификации
 
 ---
 
