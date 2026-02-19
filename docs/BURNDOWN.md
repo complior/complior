@@ -1,8 +1,8 @@
 # Complior — Burndown
 
 > **Последнее обновление:** 2026-02-19
-> **Текущее состояние:** 11 спринтов завершено, 7 осталось | 229 SP / ~365 SP (63%)
-> **Тесты:** 324 (227 Engine + 97 TUI) | **User Stories:** 50 / 83
+> **Текущее состояние:** 12 спринтов завершено, 6 осталось | 251 SP / ~365 SP (69%)
+> **Тесты:** 367 (270 Engine + 97 TUI) | **User Stories:** 55 / 83
 
 ---
 
@@ -10,16 +10,16 @@
 
 | Метрика | Значение |
 |---------|----------|
-| Спринтов завершено | 11 (Phase 0, Data, E01, T02, T02.5, E03, E04, T03, T04, T05, E05) |
-| Спринтов осталось | 7 (E06, E07, E08, T06, T07, T08, L09) |
-| SP завершено | **229** |
-| SP осталось | **136** |
+| Спринтов завершено | 12 (Phase 0, Data, E01, T02, T02.5, E03, E04, T03, T04, T05, E05, E06) |
+| Спринтов осталось | 6 (E07, E08, T06, T07, T08, L09) |
+| SP завершено | **251** |
+| SP осталось | **114** |
 | SP итого | **~365** |
-| Тесты Engine | **227** (24 test files, Vitest) |
+| Тесты Engine | **270** (29 test files, Vitest) |
 | Тесты TUI | **97** (cargo test, Rust) |
-| Тесты итого | **324** |
-| User Stories завершено | **50** |
-| Средняя скорость | **22.9 SP/спринт** |
+| Тесты итого | **367** |
+| User Stories завершено | **55** |
+| Средняя скорость | **22.8 SP/спринт** |
 
 ---
 
@@ -569,6 +569,46 @@ tui/src/ (19 файлов, 2 444 строки)
 
 ---
 
+## Спринт E06 (Onboarding + Memory L2/L3 + Scanner L5 + What-If)
+
+**Story Points:** 22
+**Длительность:** 2026-02-19 (1 день)
+**Команда:** Claude Code (Opus 4.6)
+
+### Данные бурндауна
+
+| День | Дата | SP осталось | Идеал | Заметки |
+|------|------|-------------|-------|---------|
+| 0 | 2026-02-19 | 22 | 22 | Старт: E05 завершён |
+| 1 | 2026-02-19 | 0 | 0 | Все 5 US готовы, 270 тестов |
+
+### User Stories
+
+| US | Название | SP | Статус |
+|----|----------|-----|--------|
+| US-E601 | Onboarding Wizard — авто-детект + 6 блоков вопросов + profile.json | 5 | ✅ |
+| US-E602 | Memory L2 — Session Context (JSON-based, sliding window 50 events) | 4 | ✅ |
+| US-E603 | Memory L3 — Knowledge Tools (3 tools + LRU cache 100 entries) | 3 | ✅ |
+| US-E604 | Scanner L5 — LLM Deep Analysis (5 промптов, snippet extraction, guard rails) | 5 | ✅ |
+| US-E605 | What-If Scenario Modeling (3 типа) + Config Fixer (3 конфига) | 5 | ✅ |
+
+### Описание завершённых US
+
+- **US-E601** — Визард онбординга: авто-детект (package.json, CI/CD, Docker, AI libraries, models), 6 блоков вопросов (AI System, Jurisdiction, Role, Business, Data, Goals), вычисление risk level + applicable obligations, генерация `.complior/profile.json` с Zod-валидацией.
+- **US-E602** — Session memory (JSON-файл): запись событий (scan, fix, decision, file_edit, question, mode_switch), sliding window 50 последних событий, агрегация контекста (scoreHistory, activeFiles, keyDecisions), авто-очистка событий старше 7 дней.
+- **US-E603** — 3 knowledge tools: `lookupRegulation` (поиск по статье/ID/keyword), `lookupObligation` (детали обязательства), `getApplicableRules` (фильтрация по risk level + role). LRU cache (max 100, TTL 1 час) с hit/miss статистикой.
+- **US-E604** — Scanner L5 LLM: анализ UNCERTAIN findings (confidence 40-70%). 5 специализированных промптов (code_pattern, documentation, config, architecture, data_handling). Snippet extraction (max 500 строк), reclassification UNCERTAIN→PASS/FAIL, guard rails (max 20 findings, graceful error handling).
+- **US-E605** — What-If: 3 типа сценариев (jurisdiction expansion, new AI tool, risk level change) с score projection и obligation diff. Config Fixer: генерация docker-compose.compliance.yml, .env.compliance.example, GitHub Actions CI/CD workflow. Адаптация по risk level и domain.
+
+### Ревью
+- **Тесты Engine:** 270/270 проходят (29 test files, 875мс)
+- **TypeScript:** 0 ошибок (`tsc --noEmit`)
+- **Новые тесты:** 43 (10 onboarding, 5 memory-l2, 7 memory-l3, 11 scanner-l5, 10 whatif)
+- **Всего тестов:** 367 (270 TS Engine + 97 Rust TUI)
+- **⚠️ Ручное тестирование:** НЕ проведено
+
+---
+
 ## Кумулятивная скорость
 
 | Спринт | SP план | SP факт | Длительность | Скорость (SP/день) |
@@ -583,7 +623,8 @@ tui/src/ (19 файлов, 2 444 строки)
 | T04 | 20 | 20 | 1 день | 20.0 |
 | T05 | 18 | 18 | 1 день | 18.0 |
 | E05 | 20 | 20 | 1 день | 20.0 |
-| **Итого** | **226** | **226** | **9 дней** | **25.1 avg** |
+| E06 | 22 | 22 | 1 день | 22.0 |
+| **Итого** | **248** | **248** | **10 дней** | **24.8 avg** |
 
 ## Рост тестов
 
@@ -599,6 +640,7 @@ tui/src/ (19 файлов, 2 444 строки)
 | T04 | 189 | 80 | 269 | +16 |
 | T05 | 189 | 97 | 286 | +17 |
 | E05 | 227 | 97 | 324 | +38 |
+| E06 | 270 | 97 | 367 | +43 |
 
 ## Burndown (SP оставшиеся)
 
@@ -618,25 +660,26 @@ SP remaining
     │              ■
     │                ■
 156 ┤                  ■
-136 ┤                    ■ ← СЕЙЧАС (63% done)
-    │                      ·
-    │                        · ·
- 80 ┤                            · ·
-    │                                · ·
-  0 ┤                                    ·
+136 ┤                    ■
+114 ┤                       ■ ← СЕЙЧАС (69% done)
+    │                         ·
+ 80 ┤                           · ·
+    │                               · ·
+  0 ┤                                   ·
     └──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
        P0 E1 T2 2.5 E3 E4 T3 T4 T5 E5 E6 E7 E8 T6 T7 T8 L9
-       ─── выполнено ──────────────────────┤  ├── заплан. ──
+       ─── выполнено ────────────────────────┤  ├─ заплан.──
 ```
 
 ## Рост тестов (кумулятивно)
 
 ```
 Tests
- 430 ┤                                                        ○ ~430
-     │                                                 ○ ○ ○
- 330 ┤                                        ■  ○ ○
- 324 ┤                                     ■ ← СЕЙЧАС
+ 470 ┤                                                           ○ ~470
+     │                                                    ○ ○ ○
+ 390 ┤                                           ○  ○ ○
+ 367 ┤                                        ■ ← СЕЙЧАС
+ 324 ┤                                     ■
  286 ┤                                 ■
      │                              ■  ■
  253 ┤                           ■
@@ -649,7 +692,7 @@ Tests
    0 ┤■
      └──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
         P0 E1 T2 2.5 E3 E4 T3 T4 T5 E5 E6 E7 E8 T6 T7 T8 L9
-        ── ■ actual ───────────────────────┤  ├── ○ projected─
+        ── ■ actual ──────────────────────────┤  ├─○ projected
 ```
 
 ---
@@ -658,8 +701,8 @@ Tests
 
 | # | Sprint | Трек | SP | US | Новые тесты | Зависимости |
 |---|--------|------|----|----|-------------|-------------|
-| 12 | **E06** — Onboarding + Memory + Scanner L5 | Engine | 22 | 5 | ~18 | E05 ✅ |
-| 13 | **E07** — SDK Middleware + Badge + Undo | Engine | 22 | 5 | ~18 | E06 |
+| 12 | ~~**E06** — Onboarding + Memory + Scanner L5~~ | Engine | 22 | 5 | 43 | ✅ Done |
+| 13 | **E07** — SDK Middleware + Badge + Undo | Engine | 22 | 5 | ~18 | E06 ✅ |
 | 14 | **E08** — External Scan + PDF Report + Session | Engine | 18 | 4 | ~11 | E07 |
 | 15 | **T06** — Themes + Onboarding TUI + Code Viewer | TUI | 20 | 4 | ~16 | T05 ✅, E05 ✅ |
 | 16 | **T07** — Complior Zen + Advanced UX Part 1 | TUI | 18 | 5 | ~15 | T06, E05 ✅ |
