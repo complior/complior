@@ -17,6 +17,10 @@ import { createFileService } from './services/file-service.js';
 import { createFixService } from './services/fix-service.js';
 import { createUndoService } from './services/undo-service.js';
 import { createBadgeService } from './services/badge-service.js';
+import { createShareService } from './services/share-service.js';
+import { createReportService } from './services/report-service.js';
+import { createExternalScanService } from './services/external-scan-service.js';
+import { createHeadlessBrowser } from './infra/headless-browser.js';
 import { createStatusService } from './services/status-service.js';
 import { createRouter } from './http/create-router.js';
 
@@ -135,6 +139,27 @@ export const loadApplication = async (): Promise<Application> => {
     getVersion: () => state.version,
   });
 
+  const shareService = createShareService({
+    events,
+    getProjectPath: () => state.projectPath,
+    getLastScanResult: () => state.lastScanResult,
+    getVersion: () => state.version,
+  });
+
+  const reportService = createReportService({
+    events,
+    getProjectPath: () => state.projectPath,
+    getLastScanResult: () => state.lastScanResult,
+    getVersion: () => state.version,
+  });
+
+  const browser = createHeadlessBrowser();
+  const externalScanService = createExternalScanService({
+    browser,
+    events,
+    getProjectPath: () => state.projectPath,
+  });
+
   const statusService = createStatusService({
     getVersion: () => state.version,
     getStartedAt: () => state.startedAt,
@@ -149,6 +174,9 @@ export const loadApplication = async (): Promise<Application> => {
     fixService,
     undoService,
     badgeService,
+    shareService,
+    reportService,
+    externalScanService,
     statusService,
     llm,
     getProjectMemory: () => state.projectMemory,
@@ -163,6 +191,7 @@ export const loadApplication = async (): Promise<Application> => {
   });
 
   const shutdown = (): void => {
+    externalScanService.close().catch(() => {});
     log.info('Application shutdown');
   };
 

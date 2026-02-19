@@ -1,0 +1,15 @@
+# VulnerAI — Intentionally non-compliant logging config
+# Log retention: 7 days (EU AI Act requires minimum 180 days for high-risk AI)
+version: "3.8"
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
