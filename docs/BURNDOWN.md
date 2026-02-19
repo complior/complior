@@ -2,7 +2,7 @@
 
 > **Последнее обновление:** 2026-02-19
 > **Текущее состояние:** 13 спринтов завершено, 5 осталось | 271 SP / ~365 SP (74%)
-> **Тесты:** 390 (270 Engine + 120 TUI) | **User Stories:** 59 / 83
+> **Тесты:** 394 (270 Engine + 124 TUI) | **User Stories:** 59 / 83
 
 ---
 
@@ -16,8 +16,8 @@
 | SP осталось | **94** |
 | SP итого | **~365** |
 | Тесты Engine | **270** (29 test files, Vitest) |
-| Тесты TUI | **120** (cargo test, Rust) |
-| Тесты итого | **390** |
+| Тесты TUI | **124** (cargo test, Rust) |
+| Тесты итого | **394** |
 | User Stories завершено | **59** |
 | Средняя скорость | **22.6 SP/спринт** |
 
@@ -638,12 +638,24 @@ tui/src/ (19 файлов, 2 444 строки)
 - 10 файлов изменено: app.rs, input.rs, theme.rs, config.rs, types.rs, main.rs, views/dashboard.rs, views/code_viewer.rs, views/mod.rs, components/mod.rs
 - ~1 700 строк добавлено
 
+### Bugfixes после E2E (2 бага найдены и исправлены)
+
+**BUG-1: Theme Picker навигация не работала**
+- **Причина:** `handle_overlay_keys()` маршрутизировал все `Char(c)` → `InsertChar(c)`, а `handle_theme_picker_action()` ожидал `ScrollDown/ScrollUp`
+- **Фикс:** `handle_overlay_keys()` принимает `&Overlay`; для `ThemePicker` и `Onboarding` j/k/↓/↑ → `ScrollDown/ScrollUp`
+- **Тесты:** +3 (theme_picker_overlay_jk, onboarding_overlay_jk, non_navigable_overlay_inserts)
+
+**BUG-2: Ctrl+M не работал в терминале**
+- **Причина:** Ctrl+M отправляет CR (0x0D) = Enter в любом терминале — аппаратное ограничение
+- **Фикс:** Удалена привязка Ctrl+M; добавлена `M` (Shift+M) в Normal mode → ShowModelSelector. Обновлены все тексты помощи
+- **Тесты:** +1 (model_selector_shift_m_in_normal_mode)
+
 ### Ревью
 - **Сборка:** `cargo build` — 0 ошибок
 - **Clippy:** `cargo clippy` — 0 предупреждений в новом коде
-- **Тесты TUI:** 120/120 проходят (23 новых)
+- **Тесты TUI:** 124/124 проходят (23 новых + 4 bugfix)
 - **Тесты Engine:** 270/270 проходят
-- **Всего тестов:** 390 (270 TS Engine + 120 Rust TUI)
+- **Всего тестов:** 394 (270 TS Engine + 124 Rust TUI)
 - **Коммит:** `3c5d2b7`
 
 ---
@@ -681,7 +693,7 @@ tui/src/ (19 файлов, 2 444 строки)
 | T05 | 189 | 97 | 286 | +17 |
 | E05 | 227 | 97 | 324 | +38 |
 | E06 | 270 | 97 | 367 | +43 |
-| T06 | 270 | 120 | 390 | +23 |
+| T06 | 270 | 124 | 394 | +27 |
 
 ## Burndown (SP оставшиеся)
 
@@ -721,7 +733,7 @@ Tests
      │                                                     ○ ○
  440 ┤                                                 ○ ○
      │
- 390 ┤                                           ■ ← СЕЙЧАС
+ 394 ┤                                           ■ ← СЕЙЧАС
  367 ┤                                        ■
  324 ┤                                     ■
  286 ┤                                 ■
@@ -738,6 +750,72 @@ Tests
         P0 E1 T2 2.5 E3 E4 T3 T4 T5 E5 E6 T6 E7 E8 T7 T8 L9
         ── ■ actual ───────────────────────────┤  ├─○ projctd─
 ```
+
+---
+
+## Уровни тестирования
+
+| Уровень | Описание | Статус | Покрытие |
+|---------|----------|--------|----------|
+| **Unit / Mock** | Модульные тесты на моках: Vitest (Engine), `cargo test` (TUI). Проверяют отдельные функции, типы, обработчики | ✅ Активно | 394 теста (270 Engine + 124 TUI) |
+| **E2E (ручное)** | Запуск реального бинарника через tmux, отправка клавиш, захват экрана. Проверяет реальное поведение от клавиши до рендера | ✅ Проведено | 46 тестов (41 pass, 2 fail→fixed, 2 partial, 1 inconclusive) |
+| **Пользовательское** | Тестирование реальными пользователями: UX, accessibility, edge cases, полный workflow | 🔜 Запланировано | L09 (Launch sprint) |
+
+### E2E тестирование — результаты (Sprint T06)
+
+**Метод:** tmux session → `tmux send-keys` + `tmux capture-pane -p`
+**Бинарник:** `/home/openclaw/complior/target/release/complior`
+
+| # | Фича | Результат |
+|---|-------|-----------|
+| 1 | Getting Started overlay | ✅ PASS |
+| 2 | Ctrl+S scan (Engine auto-launch) | ✅ PASS |
+| 3 | Scan View: 5-layer progress, findings | ✅ PASS |
+| 4 | Scan View: Finding Detail popup | ✅ PASS |
+| 5 | Fix View: навигация из detail (f) | ✅ PASS |
+| 6 | Fix View: Space toggle | ✅ PASS |
+| 7 | Fix View: Select All (a) | ✅ PASS |
+| 8 | Fix View: Deselect + j/k навигация | ✅ PASS |
+| 9 | Chat View: layout + sidebar | ✅ PASS |
+| 10 | Insert mode: ввод текста | ✅ PASS |
+| 11 | Timeline View: milestones, YOU ARE HERE | ✅ PASS |
+| 12 | Report View: отчёт + таблицы | ✅ PASS |
+| 13 | Dashboard: 2x2 grid (gauge/deadlines/activity/sparkline) | ✅ PASS |
+| 14 | Theme Picker: overlay + palette bars | ✅ PASS |
+| 15 | Theme Picker: j/k навигация | ✅ PASS (после bugfix) |
+| 16 | Help overlay: shortcuts по views | ✅ PASS |
+| 17 | Command Palette: 12 команд + search | ✅ PASS |
+| 18 | Ctrl+F: toggle Files panel | ✅ PASS |
+| 19 | File Browser: expand directory | ✅ PASS |
+| 20 | File open: Code Viewer + syntax highlighting | ✅ PASS |
+| 21 | Code Viewer: scroll + close | ✅ PASS |
+| 22 | Ctrl+B: toggle Sidebar | ✅ PASS |
+| 23 | Watch Mode: w toggle + auto-scan | ✅ PASS |
+| 24 | Tab: mode cycling | ✅ PASS |
+| 25 | M: Model Selector | ✅ PASS (после bugfix) |
+| 26 | /help: inline help | ✅ PASS |
+| 27 | /save: save session | ✅ PASS |
+| 28 | /sessions: list sessions | ✅ PASS |
+| 29 | !cmd: shell command | ⚠️ INCONCLUSIVE (tmux escapes `!`) |
+| 30 | /provider: provider setup | ✅ PASS |
+| 31 | Ctrl+T: Terminal panel | ✅ PASS |
+| 32 | Code Search: / → find matches | ✅ PASS |
+| 33 | Code Search: n/N next/prev | ✅ PASS |
+| 34 | Visual mode (v) | ✅ PASS |
+| 35 | Report Export (e) → .md file | ✅ PASS |
+| 36 | /load: load session | ✅ PASS |
+| 37 | /clear: clear messages | ✅ PASS |
+| 38 | @OBL Tab completion | ✅ PASS |
+| 39 | g/G: scroll top/bottom | ✅ PASS |
+| 40 | Scan filters: m/l/a | ✅ PASS |
+| 41 | Ctrl+D/U: half-page scroll | ✅ PASS |
+| 42 | Alt+N: panel focus | ✅ PASS |
+| 43 | /welcome: Getting Started | ✅ PASS |
+| 44 | /theme with arg: apply theme | ⚠️ PARTIAL (visual unverifiable via text) |
+| 45 | Status bar: 6 indicators | ✅ PASS |
+| 46 | q: quit | ✅ PASS |
+
+**Итого E2E:** 43/46 PASS (93%), 2 PARTIAL, 1 INCONCLUSIVE
 
 ---
 

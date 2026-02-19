@@ -710,7 +710,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
     lines.push(shortcut_line("  !cmd", "Run shell command", &t));
     lines.push(shortcut_line("  V", "Visual select", &t));
     lines.push(shortcut_line("  Ctrl+K", "Send selection to AI", &t));
-    lines.push(shortcut_line("  Ctrl+M", "Switch model", &t));
+    lines.push(shortcut_line("  M", "Switch model", &t));
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(
         " j/k to scroll, Esc to close",
