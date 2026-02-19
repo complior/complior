@@ -1,0 +1,19 @@
+document: ai-literacy
+obligation: OBL-001
+article: "Art. 4"
+file_patterns:
+  - "AI-LITERACY.md"
+  - "AI_LITERACY.md"
+  - "ai-literacy.md"
+  - "ai-literacy-policy.md"
+required_sections:
+  - title: "Training Program"
+    required: true
+  - title: "Training Levels"
+    required: true
+  - title: "Assessment Methods"
+    required: true
+  - title: "Record Keeping"
+    required: false
+  - title: "Roles and Responsibilities"
+    required: false

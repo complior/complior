@@ -1,0 +1,20 @@
+document: declaration-conformity
+obligation: OBL-019
+article: "Art. 47"
+file_patterns:
+  - "DECLARATION-OF-CONFORMITY.md"
+  - "DECLARATION_OF_CONFORMITY.md"
+  - "declaration-of-conformity.md"
+  - "declaration-conformity.md"
+  - "CONFORMITY.md"
+required_sections:
+  - title: "Conformity Statement"
+    required: true
+  - title: "Standards Applied"
+    required: true
+  - title: "Evidence"
+    required: true
+  - title: "Signatory"
+    required: false
+  - title: "Date of Declaration"
+    required: false

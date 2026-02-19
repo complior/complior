@@ -1,0 +1,19 @@
+document: incident-report
+obligation: OBL-021
+article: "Art. 73"
+file_patterns:
+  - "INCIDENT-REPORT.md"
+  - "INCIDENT_REPORT.md"
+  - "incident-report.md"
+  - "ai-incident-report.md"
+required_sections:
+  - title: "Incident Description"
+    required: true
+  - title: "Root Cause"
+    required: true
+  - title: "Corrective Actions"
+    required: true
+  - title: "Timeline of Events"
+    required: false
+  - title: "Lessons Learned"
+    required: false

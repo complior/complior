@@ -1,0 +1,19 @@
+document: art5-screening
+obligation: OBL-002
+article: "Art. 5"
+file_patterns:
+  - "ART5-SCREENING.md"
+  - "ART5_SCREENING.md"
+  - "art5-screening.md"
+  - "prohibited-practices.md"
+required_sections:
+  - title: "Prohibited Practices"
+    required: true
+  - title: "Screening Results"
+    required: true
+  - title: "Mitigations"
+    required: true
+  - title: "Risk Assessment"
+    required: false
+  - title: "Review Schedule"
+    required: false

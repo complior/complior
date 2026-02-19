@@ -39,12 +39,11 @@ pub struct Finding {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CategoryScore {
-    pub category_id: String,
-    pub category_name: String,
+    pub category: String,
+    pub weight: f64,
     pub score: f64,
-    pub passed: u32,
-    pub failed: u32,
-    pub skipped: u32,
+    pub obligation_count: u32,
+    pub passed_count: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -91,13 +90,12 @@ impl Serialize for ScoreBreakdown {
 impl Serialize for CategoryScore {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("CategoryScore", 6)?;
-        state.serialize_field("categoryId", &self.category_id)?;
-        state.serialize_field("categoryName", &self.category_name)?;
+        let mut state = s.serialize_struct("CategoryScore", 5)?;
+        state.serialize_field("category", &self.category)?;
+        state.serialize_field("weight", &self.weight)?;
         state.serialize_field("score", &self.score)?;
-        state.serialize_field("passed", &self.passed)?;
-        state.serialize_field("failed", &self.failed)?;
-        state.serialize_field("skipped", &self.skipped)?;
+        state.serialize_field("obligationCount", &self.obligation_count)?;
+        state.serialize_field("passedCount", &self.passed_count)?;
         state.end()
     }
 }
@@ -230,6 +228,121 @@ pub enum ChatBlock {
     ToolResult { tool_name: String, result: String, is_error: bool },
 }
 
+/// Activity log entry for the Dashboard widget.
+#[derive(Debug, Clone)]
+pub struct ActivityEntry {
+    pub timestamp: String,
+    pub kind: ActivityKind,
+    pub detail: String,
+}
+
+/// Kind of activity logged to the Dashboard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivityKind {
+    Scan,
+    Fix,
+    Chat,
+    Watch,
+    FileOpen,
+}
+
+impl ActivityKind {
+    pub fn icon(self) -> char {
+        match self {
+            Self::Scan => 'S',
+            Self::Fix => 'F',
+            Self::Chat => 'C',
+            Self::Watch => 'W',
+            Self::FileOpen => 'O',
+        }
+    }
+}
+
+/// Top-level view (screen) — keys 1-6 in Normal mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewState {
+    Dashboard,
+    Scan,
+    Fix,
+    Chat,
+    Timeline,
+    Report,
+}
+
+impl ViewState {
+    /// Map key digit to view (1-based).
+    pub fn from_key(digit: u8) -> Option<Self> {
+        match digit {
+            1 => Some(Self::Dashboard),
+            2 => Some(Self::Scan),
+            3 => Some(Self::Fix),
+            4 => Some(Self::Chat),
+            5 => Some(Self::Timeline),
+            6 => Some(Self::Report),
+            _ => None,
+        }
+    }
+
+    /// 0-based index for tab highlighting.
+    pub fn index(self) -> usize {
+        match self {
+            Self::Dashboard => 0,
+            Self::Scan => 1,
+            Self::Fix => 2,
+            Self::Chat => 3,
+            Self::Timeline => 4,
+            Self::Report => 5,
+        }
+    }
+
+    /// Short display name for footer tabs.
+    pub fn short_name(self) -> &'static str {
+        match self {
+            Self::Dashboard => "Dashboard",
+            Self::Scan => "Scan",
+            Self::Fix => "Fix",
+            Self::Chat => "Chat",
+            Self::Timeline => "Timeline",
+            Self::Report => "Report",
+        }
+    }
+
+    pub const ALL: [ViewState; 6] = [
+        Self::Dashboard,
+        Self::Scan,
+        Self::Fix,
+        Self::Chat,
+        Self::Timeline,
+        Self::Report,
+    ];
+}
+
+/// Operating mode — cycles with Tab in Normal mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    Scan,
+    Fix,
+    Watch,
+}
+
+impl Mode {
+    pub fn next(self) -> Self {
+        match self {
+            Self::Scan => Self::Fix,
+            Self::Fix => Self::Watch,
+            Self::Watch => Self::Scan,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Scan => "SCAN",
+            Self::Fix => "FIX",
+            Self::Watch => "WATCH",
+        }
+    }
+}
+
 /// Overlay state for popups (command palette, file picker, help, getting started, providers)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Overlay {
@@ -240,4 +353,6 @@ pub enum Overlay {
     GettingStarted,
     ProviderSetup,
     ModelSelector,
+    ThemePicker,
+    Onboarding,
 }
