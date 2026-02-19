@@ -912,20 +912,28 @@ tui/src/ (19 файлов, 2 444 строки)
 
 **Метод:** HTTP-запросы к реальному серверу (Engine на порту 3199, project path → VulnerAI)
 
-| # | Фича | Результат |
-|---|-------|-----------|
-| 1 | POST /scan (VulnerAI) → score 17/100, red zone, 9 fail findings | PASS |
-| 2 | POST /share → unique ID, URL, expiration, findings count | PASS |
-| 3 | GET /share/:id → full payload, top 5 findings, no file paths | PASS |
-| 4 | GET /share/nonexistent → 404 | PASS |
-| 5 | POST /share with custom options (jurisdiction, 90-day expiry) | PASS |
-| 6 | GET /shares → list of 2 shares sorted by date | PASS |
-| 7 | POST /report/pdf → PDF file on disk (6.3KB) | PASS |
-| 8 | GET /badge → SVG with correct score 17% (red) | PASS |
-| 9 | POST /scan-url without Playwright → graceful error | PASS |
-| 10 | POST /scan-url with invalid URL → validation error | PASS |
+| # | US | Фича | Результат |
+|---|-----|-------|-----------|
+| 1 | E804 | POST /scan (VulnerAI) → score 27.44/100, red zone, critical cap | ✅ PASS |
+| 2 | E804 | 8/7+ violations found (all expected + bonus ai-disclosure) | ✅ PASS |
+| 3 | E804 | Apply 2 fixes → score 27.44 → 40 (+12.6 points) | ✅ PASS |
+| 4 | E803 | POST /share → cpl_sh_<base62>, URL, 30-day expiry | ✅ PASS |
+| 5 | E803 | POST /share custom options (90-day, UK jurisdiction) | ✅ PASS |
+| 6 | E803 | GET /share/:id → full payload, top 5 findings, no file paths | ✅ PASS |
+| 7 | E803 | GET /share/nonexistent → 404 | ✅ PASS |
+| 8 | E803 | GET /shares → 2 shares listed, newest first | ✅ PASS |
+| 9 | E803 | 5 generated share IDs all unique | ✅ PASS |
+| 10 | E802 | POST /report/pdf → 6 pages, 6.0 KB, valid %PDF header | ✅ PASS |
+| 11 | E802 | PDF magic bytes verification (%PDF-1.3) | ✅ PASS |
+| 12 | E802 | pdftotext → 12/12 content sections (Executive Summary, Score, Findings, Remediation, Appendix, ACME Corp, EU AI Act, Methodology, Timeline, DISCLAIMER, Watermark, Score 40/100) | ✅ PASS |
+| 13 | E802 | POST /report/markdown → COMPLIANCE.md with 6 sections | ✅ PASS |
+| 14 | E801 | POST /scan-url invalid URL → VALIDATION_ERROR (Zod) | ✅ PASS |
+| 15 | E801 | POST /scan-url missing URL → Required field error | ✅ PASS |
+| 16 | E801 | POST /scan-url valid URL → graceful error (no Playwright) | ✅ PASS |
+| 17 | E801 | POST /scan-url optional params (level, timeout) accepted | ✅ PASS |
+| 18 | E801 | Multiple URL formats (http, ftp) handled correctly | ✅ PASS |
 
-**Итого E2E E08:** 10/10 PASS (100%)
+**Итого E2E E08:** 18/18 PASS (100%)
 
 ### Статистика файлов
 
@@ -1058,7 +1066,7 @@ Tests
 | Уровень | Описание | Статус | Покрытие |
 |---------|----------|--------|----------|
 | **Unit / Mock** | Модульные тесты на моках: Vitest (Engine + SDK), `cargo test` (TUI). Проверяют отдельные функции, типы, обработчики | ✅ Активно | 511 тестов (315 Engine + 9 SDK + 187 TUI) |
-| **E2E (ручное)** | Запуск реального сервера / бинарника, HTTP-запросы, tmux захват. Проверяет реальное поведение end-to-end | ✅ Проведено | 76 тестов (E2E T06: 43, E2E T07: 13, E2E E07: 20, E2E E08: 10) — всё 100% PASS |
+| **E2E (ручное)** | Запуск реального сервера / бинарника, HTTP-запросы, tmux захват. Проверяет реальное поведение end-to-end | ✅ Проведено | 94 теста (E2E T06: 43, E2E T07: 13, E2E E07: 20, E2E E08: 18) — всё 100% PASS |
 | **Пользовательское** | Тестирование реальными пользователями: UX, accessibility, edge cases, полный workflow | 🔜 Запланировано | L09 (Launch sprint) |
 
 ### E2E тестирование — результаты (Sprint T06)
