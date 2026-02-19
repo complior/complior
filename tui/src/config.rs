@@ -16,6 +16,8 @@ pub struct TuiConfig {
     pub sidebar_visible: bool,
     pub watch_on_start: bool,
     pub onboarding_completed: bool,
+    pub animations_enabled: bool,
+    pub scroll_acceleration: f32,
     #[serde(skip)]
     pub engine_url_override: Option<String>,
 }
@@ -31,6 +33,8 @@ impl Default for TuiConfig {
             sidebar_visible: true,
             watch_on_start: false,
             onboarding_completed: false,
+            animations_enabled: true,
+            scroll_acceleration: 1.5,
             engine_url_override: None,
         }
     }

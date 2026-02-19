@@ -1,3 +1,4 @@
+mod animation;
 mod app;
 mod components;
 mod config;
@@ -5,6 +6,7 @@ mod engine_client;
 mod engine_process;
 mod error;
 mod input;
+mod layout;
 mod obligations;
 mod providers;
 mod session;
@@ -202,6 +204,9 @@ async fn run_event_loop(
     let tick_rate = Duration::from_millis(app.config.tick_rate_ms);
     let mut tick_interval = tokio::time::interval(tick_rate);
 
+    // Animation tick: 50ms (20fps) — only fires when animations are active
+    let mut anim_interval = tokio::time::interval(Duration::from_millis(50));
+
     // SSE channel for streaming responses
     let (sse_tx, mut sse_rx) = mpsc::unbounded_channel::<SseEvent>();
 
@@ -281,7 +286,7 @@ async fn run_event_loop(
                 execute_command(app, AppCommand::AutoScan, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
             }
 
-            // Tick for animations + health checks
+            // Tick for general state + health checks (250ms)
             _ = tick_interval.tick() => {
                 app.tick();
                 tick_count += 1;
@@ -312,6 +317,11 @@ async fn run_event_loop(
                         }
                     }
                 }
+            }
+
+            // Animation tick (50ms, 20fps) — only when animations active
+            _ = anim_interval.tick(), if app.animation.active() => {
+                app.animation.step();
             }
         }
     }
@@ -532,5 +542,116 @@ async fn execute_command(
                 ));
             }
         },
+        AppCommand::Undo(id) => {
+            match app.engine_client.undo(id).await {
+                Ok(result) => {
+                    let msg = result
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Undo applied");
+                    app.toasts.push(
+                        components::toast::ToastKind::Success,
+                        msg.to_string(),
+                    );
+                    app.push_activity(types::ActivityKind::Fix, "Undo");
+                }
+                Err(_) => {
+                    app.toasts.push(
+                        components::toast::ToastKind::Warning,
+                        "Nothing to undo",
+                    );
+                }
+            }
+        }
+        AppCommand::FetchUndoHistory => {
+            match app.engine_client.undo_history().await {
+                Ok(entries) => {
+                    app.undo_history.entries = entries
+                        .iter()
+                        .filter_map(|v| {
+                            Some(components::undo_history::UndoEntry {
+                                id: v.get("id")?.as_u64()? as u32,
+                                timestamp: v
+                                    .get("timestamp")
+                                    .and_then(|t| t.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                                action: v
+                                    .get("action")
+                                    .and_then(|a| a.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                                status: match v
+                                    .get("status")
+                                    .and_then(|s| s.as_str())
+                                    .unwrap_or("applied")
+                                {
+                                    "undone" => {
+                                        components::undo_history::UndoStatus::Undone
+                                    }
+                                    "baseline" => {
+                                        components::undo_history::UndoStatus::Baseline
+                                    }
+                                    _ => {
+                                        components::undo_history::UndoStatus::Applied
+                                    }
+                                },
+                                score_delta: v
+                                    .get("scoreDelta")
+                                    .and_then(|d| d.as_f64()),
+                            })
+                        })
+                        .collect();
+                    app.undo_history.selected = 0;
+                }
+                Err(_) => {
+                    app.undo_history.entries.clear();
+                }
+            }
+        }
+        AppCommand::FetchSuggestions => {
+            app.idle_suggestions.fetch_pending = false;
+            match app.engine_client.suggestions().await {
+                Ok(items) if !items.is_empty() => {
+                    if let Some(first) = items.first() {
+                        let kind_str = first
+                            .get("kind")
+                            .and_then(|k| k.as_str())
+                            .unwrap_or("tip");
+                        let kind = match kind_str {
+                            "fix" => components::suggestions::SuggestionKind::Fix,
+                            "deadline" => {
+                                components::suggestions::SuggestionKind::DeadlineWarning
+                            }
+                            "score" => {
+                                components::suggestions::SuggestionKind::ScoreImprovement
+                            }
+                            "new" => {
+                                components::suggestions::SuggestionKind::NewFeature
+                            }
+                            _ => components::suggestions::SuggestionKind::Tip,
+                        };
+                        app.idle_suggestions.current =
+                            Some(components::suggestions::Suggestion {
+                                kind,
+                                text: first
+                                    .get("text")
+                                    .and_then(|t| t.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                                detail: first
+                                    .get("detail")
+                                    .and_then(|d| d.as_str())
+                                    .map(String::from),
+                            });
+                    }
+                }
+                _ => {
+                    // Engine doesn't have /suggestions or returned empty — use local context
+                    let suggestion = build_local_suggestion(app);
+                    app.idle_suggestions.current = Some(suggestion);
+                }
+            }
+        }
     }
 }

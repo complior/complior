@@ -8,5 +8,7 @@ pub mod model_selector;
 pub mod provider_setup;
 pub mod quick_actions;
 pub mod spinner;
+pub mod suggestions;
 pub mod toast;
+pub mod undo_history;
 pub mod zoom;

@@ -1,14 +1,21 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
+use ratatui::layout::Rect;
+
+use crate::animation::AnimationState;
 use crate::components::spinner::Spinner;
+use crate::components::suggestions::IdleSuggestionState;
+use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
 use crate::engine_client::{EngineClient, SseEvent};
 use crate::input::Action;
+use crate::layout::Breakpoint;
 use crate::providers::ProviderConfig;
 use crate::types::{
-    ActivityEntry, ActivityKind, ChatBlock, ChatMessage, DiffContent, EngineConnectionStatus,
-    FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult, Selection, ViewState,
+    ActivityEntry, ActivityKind, ChatBlock, ChatMessage, ClickTarget, DiffContent,
+    EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult,
+    Selection, ViewState,
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
@@ -139,6 +146,26 @@ pub struct App {
     // T07: Dismiss modal
     pub dismiss_modal: Option<crate::components::quick_actions::DismissModal>,
 
+    // T08: Responsive layout breakpoint
+    #[allow(dead_code)]
+    pub breakpoint: Breakpoint,
+
+    // T08: Mouse click areas (populated each render frame)
+    pub click_areas: Vec<(Rect, ClickTarget)>,
+    pub scroll_events: Vec<Instant>,
+
+    // T08: Undo history
+    pub undo_history: UndoHistoryState,
+
+    // T08: Colon-command mode
+    pub colon_mode: bool,
+
+    // T08: Idle suggestions
+    pub idle_suggestions: IdleSuggestionState,
+
+    // T08: Animations
+    pub animation: AnimationState,
+
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -153,6 +180,7 @@ impl App {
     pub fn new(config: TuiConfig) -> Self {
         let engine_client = EngineClient::new(&config);
         let sidebar_visible = config.sidebar_visible;
+        let animations_enabled = config.animations_enabled;
         let project_path = config
             .project_path
             .as_deref()
@@ -229,6 +257,13 @@ impl App {
             zen_messages_limit: 1000,
             zen_active: false,
             dismiss_modal: None,
+            breakpoint: Breakpoint::Medium,
+            click_areas: Vec::new(),
+            scroll_events: Vec::new(),
+            undo_history: UndoHistoryState::new(),
+            colon_mode: false,
+            idle_suggestions: IdleSuggestionState::new(),
+            animation: AnimationState::new(animations_enabled),
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -241,6 +276,21 @@ impl App {
         // Update context usage
         self.context_pct =
             crate::widgets::context_meter::context_pct(self.messages.len(), self.context_max_messages);
+
+        // Idle suggestion: check if idle > 10s and no blockers
+        if self.idle_suggestions.current.is_none()
+            && self.idle_suggestions.is_idle(10)
+            && !self.scan_view.scanning
+            && self.overlay == Overlay::None
+            && self.input_mode != InputMode::Insert
+            && self.streaming_response.is_none()
+            && !self.idle_suggestions.recently_dismissed()
+            && !self.idle_suggestions.fetch_pending
+        {
+            // Mark fetch as pending so we don't re-trigger every tick
+            self.idle_suggestions.fetch_pending = true;
+            return Some(AppCommand::FetchSuggestions);
+        }
     }
 
     /// Elapsed seconds since operation started.
@@ -349,6 +399,16 @@ impl App {
     }
 
     pub fn apply_action(&mut self, action: Action) -> Option<AppCommand> {
+        // Reset idle suggestion timer on any non-None action
+        if !matches!(action, Action::None) {
+            self.idle_suggestions.reset_timer();
+        }
+
+        // Dismiss idle suggestion on any action
+        if self.idle_suggestions.current.is_some() && !matches!(action, Action::None) {
+            self.idle_suggestions.dismiss();
+        }
+
         // Handle overlay-specific input first
         if self.overlay == Overlay::ProviderSetup {
             return crate::components::provider_setup::handle_provider_setup_action(self, action);
@@ -548,6 +608,7 @@ impl App {
             Action::EnterNormalMode => {
                 self.input_mode = InputMode::Normal;
                 self.selection = None;
+                self.colon_mode = false;
                 None
             }
             Action::EnterVisualMode => {
@@ -600,6 +661,13 @@ impl App {
                         ));
                         return Some(AppCommand::RunCommand(cmd.to_string()));
                     }
+                }
+
+                // Colon-command mode: route to handle_colon_command
+                if self.colon_mode {
+                    self.colon_mode = false;
+                    self.input_mode = InputMode::Normal;
+                    return self.handle_colon_command(&text);
                 }
 
                 if self.input_mode == InputMode::Command || text.starts_with('/') {
@@ -812,6 +880,62 @@ impl App {
                 }
                 None
             }
+            Action::Undo => {
+                return Some(AppCommand::Undo(None));
+            }
+            Action::ShowUndoHistory => {
+                self.overlay = Overlay::UndoHistory;
+                return Some(AppCommand::FetchUndoHistory);
+            }
+            Action::EnterColonMode => {
+                self.input_mode = InputMode::Command;
+                self.colon_mode = true;
+                self.input.clear();
+                self.input_cursor = 0;
+                None
+            }
+            Action::ClickAt(target) => {
+                match target {
+                    ClickTarget::ViewTab(view) => {
+                        self.view_state = view;
+                        if view == ViewState::Fix {
+                            if let Some(scan) = &self.last_scan {
+                                self.fix_view = FixViewState::from_scan(&scan.findings);
+                            }
+                        }
+                    }
+                    ClickTarget::PanelFocus(panel) => {
+                        self.active_panel = panel;
+                    }
+                    ClickTarget::FindingRow(idx) => {
+                        self.scan_view.selected_finding = Some(idx);
+                    }
+                    ClickTarget::FixCheckbox(idx) => {
+                        self.fix_view.toggle_at(idx);
+                    }
+                    ClickTarget::SidebarToggle => {
+                        self.sidebar_visible = !self.sidebar_visible;
+                    }
+                }
+                None
+            }
+            Action::ScrollLines(lines) => {
+                self.scroll_events.push(Instant::now());
+                // Trim old events (keep last 500ms)
+                let cutoff = Instant::now() - std::time::Duration::from_millis(500);
+                self.scroll_events.retain(|&t| t > cutoff);
+
+                if lines > 0 {
+                    for _ in 0..lines {
+                        self.apply_action(Action::ScrollDown);
+                    }
+                } else {
+                    for _ in 0..(-lines) {
+                        self.apply_action(Action::ScrollUp);
+                    }
+                }
+                None
+            }
             Action::None => None,
         }
     }
@@ -955,6 +1079,27 @@ impl App {
             return None;
         }
 
+        // --- Undo History overlay ---
+        if self.overlay == Overlay::UndoHistory {
+            match action {
+                Action::ScrollDown => self.undo_history.navigate_down(),
+                Action::ScrollUp => self.undo_history.navigate_up(),
+                Action::SubmitInput => {
+                    // Undo selected entry
+                    let id = self.undo_history.selected_id();
+                    self.overlay = Overlay::None;
+                    if let Some(id) = id {
+                        return Some(AppCommand::Undo(Some(id)));
+                    }
+                }
+                Action::EnterNormalMode | Action::Quit => {
+                    self.overlay = Overlay::None;
+                }
+                _ => {}
+            }
+            return None;
+        }
+
         // --- Dismiss Modal overlay ---
         if self.overlay == Overlay::DismissModal {
             match action {
@@ -1046,7 +1191,8 @@ impl App {
                         self.dismiss_modal = None;
                         self.overlay = Overlay::None;
                     }
-                    Overlay::None | Overlay::ThemePicker | Overlay::Onboarding => {}
+                    Overlay::None | Overlay::ThemePicker | Overlay::Onboarding
+                    | Overlay::UndoHistory => {}
                 }
                 None
             }
@@ -1075,6 +1221,16 @@ impl App {
     }
 
     fn try_tab_complete(&mut self) {
+        // Colon mode tab completion
+        if self.colon_mode {
+            let partial = &self.input;
+            if let Some(completed) = crate::components::command_palette::complete_colon_command(partial) {
+                self.input = completed.to_string();
+                self.input_cursor = self.input.len();
+            }
+            return;
+        }
+
         if self.input.starts_with('/') {
             let partial = &self.input[1..];
             if let Some(completed) = crate::components::command_palette::complete_command(partial) {
@@ -1292,6 +1448,120 @@ impl App {
         }
     }
 
+    /// Handle colon-command input (`:cmd` syntax from Normal mode).
+    fn handle_colon_command(&mut self, input: &str) -> Option<AppCommand> {
+        let parts: Vec<&str> = input.splitn(2, ' ').collect();
+        match parts.first().copied() {
+            Some("scan") | Some("s") => {
+                self.messages.push(ChatMessage::new(
+                    MessageRole::System,
+                    "Scanning project...".to_string(),
+                ));
+                self.operation_start = Some(Instant::now());
+                Some(AppCommand::Scan)
+            }
+            Some("fix") => {
+                let target = parts.get(1).unwrap_or(&"").to_string();
+                if target.is_empty() {
+                    self.view_state = ViewState::Fix;
+                    if let Some(scan) = &self.last_scan {
+                        self.fix_view = FixViewState::from_scan(&scan.findings);
+                    }
+                    self.toasts.push(crate::components::toast::ToastKind::Info, "Fix view opened");
+                } else {
+                    self.toasts.push(crate::components::toast::ToastKind::Info, format!("Fix: {target}"));
+                }
+                None
+            }
+            Some("theme") => {
+                let name = parts.get(1).unwrap_or(&"").to_string();
+                if name.is_empty() {
+                    self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
+                    self.overlay = Overlay::ThemePicker;
+                    None
+                } else {
+                    Some(AppCommand::SwitchTheme(name))
+                }
+            }
+            Some("export") => {
+                let format = parts.get(1).unwrap_or(&"md");
+                if let Some(scan) = &self.last_scan {
+                    match crate::views::report::export_report(scan) {
+                        Ok(path) => {
+                            self.toasts.push(
+                                crate::components::toast::ToastKind::Success,
+                                format!("Exported: {path}"),
+                            );
+                        }
+                        Err(e) => {
+                            self.toasts.push(
+                                crate::components::toast::ToastKind::Error,
+                                format!("Export failed: {e}"),
+                            );
+                        }
+                    }
+                } else {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Warning,
+                        format!("No scan data. Run :scan first (format: {format})"),
+                    );
+                }
+                None
+            }
+            Some("watch") | Some("w") => Some(AppCommand::ToggleWatch),
+            Some("quit") | Some("q") => {
+                self.running = false;
+                None
+            }
+            Some("help") | Some("h") => {
+                self.overlay = Overlay::Help;
+                self.help_scroll = 0;
+                None
+            }
+            Some("undo") | Some("u") => {
+                Some(AppCommand::Undo(None))
+            }
+            Some("view") | Some("v") => {
+                let num_str = parts.get(1).unwrap_or(&"").trim();
+                if let Ok(num) = num_str.parse::<u8>() {
+                    if let Some(view) = ViewState::from_key(num) {
+                        self.view_state = view;
+                        return None;
+                    }
+                }
+                self.toasts.push(
+                    crate::components::toast::ToastKind::Warning,
+                    "Usage: :view <1-6>",
+                );
+                None
+            }
+            Some("provider") | Some("p") => {
+                self.overlay = Overlay::ProviderSetup;
+                self.provider_setup_step = 0;
+                self.provider_setup_selected = 0;
+                self.provider_setup_key_input.clear();
+                self.provider_setup_error = None;
+                None
+            }
+            Some("animations") => {
+                self.animation.enabled = !self.animation.enabled;
+                let status = if self.animation.enabled { "on" } else { "off" };
+                self.toasts.push(
+                    crate::components::toast::ToastKind::Info,
+                    format!("Animations: {status}"),
+                );
+                None
+            }
+            _ => {
+                self.toasts.push(
+                    crate::components::toast::ToastKind::Warning,
+                    format!("Unknown: :{input}. Try :help"),
+                );
+                None
+            }
+        }
+    }
+
     pub fn handle_sse_event(&mut self, event: SseEvent) {
         match event {
             SseEvent::Thinking(text) => {
@@ -1354,8 +1624,20 @@ impl App {
 
     pub fn set_scan_result(&mut self, result: ScanResult) {
         let score = result.score.total_score;
+        let old_score = self.score_history.last().copied().unwrap_or(0.0);
         self.push_activity(ActivityKind::Scan, format!("{score:.0}/100"));
         self.score_history.push(score);
+
+        // T08: Push counter animation on score change
+        if self.animation.enabled && (old_score - score).abs() > 0.5 {
+            self.animation.push(crate::animation::Animation::new(
+                crate::animation::AnimKind::Counter {
+                    from: old_score as u32,
+                    to: score as u32,
+                },
+                800,
+            ));
+        }
         if self.score_history.len() > 20 {
             self.score_history.remove(0);
         }
@@ -1615,6 +1897,7 @@ impl App {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum AppCommand {
     Scan,
     AutoScan,
@@ -1626,6 +1909,9 @@ pub enum AppCommand {
     SaveSession(String),
     LoadSession(String),
     ToggleWatch,
+    Undo(Option<u32>),
+    FetchUndoHistory,
+    FetchSuggestions,
 }
 
 #[cfg(test)]
