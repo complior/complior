@@ -10,7 +10,10 @@ use crate::theme;
 use crate::types::{ChatBlock, InputMode, MessageRole};
 
 /// Render chat as a panel within the dashboard (original layout).
+/// T903: Input at top when chat is empty, at bottom when messages exist.
 pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
+    let has_messages = app.messages.len() > 1 || app.streaming_response.is_some();
+
     let block = Block::default()
         .title(" Chat ")
         .title_style(theme::title_style())
@@ -20,14 +23,25 @@ pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Split: messages area + input area
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(3), Constraint::Length(3)])
-        .split(inner);
+    if has_messages {
+        // Messages exist: input at bottom (standard layout)
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(3), Constraint::Length(3)])
+            .split(inner);
 
-    render_messages(frame, chunks[0], app);
-    render_input(frame, chunks[1], app, focused);
+        render_messages(frame, chunks[0], app);
+        render_input(frame, chunks[1], app, focused);
+    } else {
+        // Empty chat: input at top + tips below (T903)
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(3)])
+            .split(inner);
+
+        render_input(frame, chunks[0], app, focused);
+        render_tips(frame, chunks[1]);
+    }
 }
 
 /// Full-screen chat view (`ViewState::Chat`) — input placement depends on chat state.
@@ -349,6 +363,45 @@ mod tests {
         let buffer = terminal.backend().buffer().clone();
         let content: String = buffer.content().iter().map(|cell| cell.symbol().to_string()).collect();
         assert!(content.contains('|'), "Streaming cursor '|' should be present");
+    }
+
+    #[test]
+    fn t903_empty_chat_input_top() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        // Only the default system welcome message
+        let app = App::new(crate::config::TuiConfig::default());
+
+        // Empty chat: has_messages = false (messages.len() <= 1)
+        assert!(app.messages.len() <= 1);
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
+
+        // Verify tips text is present (input-top layout shows tips)
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol().to_string()).collect();
+        assert!(content.contains("Quick Start") || content.contains("Tips"),
+            "Empty chat should show tips panel (input at top)");
+    }
+
+    #[test]
+    fn t903_chat_with_messages_input_bottom() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Add user message + assistant response
+        app.messages.push(ChatMessage::new(MessageRole::User, "hello".into()));
+        app.messages.push(ChatMessage::new(MessageRole::Assistant, "world".into()));
+
+        // has_messages = true (messages.len() > 1)
+        assert!(app.messages.len() > 1);
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
     }
 
     #[test]

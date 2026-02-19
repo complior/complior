@@ -11,4 +11,5 @@ pub mod spinner;
 pub mod suggestions;
 pub mod toast;
 pub mod undo_history;
+pub mod whatif;
 pub mod zoom;

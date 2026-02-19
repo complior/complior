@@ -27,6 +27,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = "0.3"
 unicode-width = "0.2"
 notify = "6"
+clap = { version = "4", features = ["derive"] }
 
 [dev-dependencies]
 insta = "1"
