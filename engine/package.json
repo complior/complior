@@ -1,9 +1,17 @@
 {
   "name": "@complior/engine",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "src/index.ts",
   "license": "Apache-2.0",
+  "description": "AI Act Compliance Engine — scanner, fixer, reporter for EU AI Act",
+  "homepage": "https://complior.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a3ka/complior",
+    "directory": "engine"
+  },
+  "keywords": ["ai", "compliance", "eu-ai-act", "scanner", "fixer", "hono"],
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc",

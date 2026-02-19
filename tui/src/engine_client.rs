@@ -247,6 +247,19 @@ impl EngineClient {
         Ok(result)
     }
 
+    /// Generic POST with JSON body — used for report generation and other endpoints.
+    pub async fn post_json(&self, endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
+        let resp = self
+            .client
+            .post(format!("{}{endpoint}", self.base_url))
+            .json(body)
+            .timeout(std::time::Duration::from_secs(30))
+            .send()
+            .await?;
+        let result = resp.json::<serde_json::Value>().await?;
+        Ok(result)
+    }
+
     pub async fn edit_file(&self, path: &str, old_str: &str, new_str: &str) -> Result<String> {
         let resp = self
             .client

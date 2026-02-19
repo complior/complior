@@ -252,6 +252,128 @@ pub async fn run_doctor(config: &TuiConfig) {
     println!("All checks complete.");
 }
 
+/// Run headless report generation.
+pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, config: &TuiConfig) -> i32 {
+    let engine_url = config
+        .engine_url_override
+        .clone()
+        .unwrap_or_else(|| config.engine_url());
+    let client = EngineClient::from_url(&engine_url);
+
+    match client.status().await {
+        Ok(status) if status.ready => {}
+        _ => {
+            eprintln!("Error: Cannot connect to engine at {engine_url}");
+            return 1;
+        }
+    }
+
+    let scan_path = path.map_or_else(
+        || std::env::current_dir()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string(),
+        String::from,
+    );
+
+    // First scan, then generate report
+    match client.scan(&scan_path).await {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("Scan failed: {e}");
+            return 1;
+        }
+    }
+
+    let endpoint = match format {
+        "pdf" => "/report/pdf",
+        _ => "/report/markdown",
+    };
+
+    match client.post_json(endpoint, &serde_json::json!({})).await {
+        Ok(resp) => {
+            let out_path = resp.get("path").and_then(|v| v.as_str()).unwrap_or("report");
+            if let Some(dest) = output {
+                println!("Report saved to: {dest}");
+            } else {
+                println!("Report generated: {out_path}");
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("Report generation failed: {e}");
+            1
+        }
+    }
+}
+
+/// Initialize .complior/ configuration directory.
+pub fn run_init(path: Option<&str>) {
+    let base = path.map_or_else(
+        || std::env::current_dir().unwrap_or_default(),
+        std::path::PathBuf::from,
+    );
+    let complior_dir = base.join(".complior");
+
+    if complior_dir.exists() {
+        println!(".complior/ already exists at {}", complior_dir.display());
+        return;
+    }
+
+    match std::fs::create_dir_all(&complior_dir) {
+        Ok(()) => {
+            // Create default profile
+            let profile = complior_dir.join("profile.json");
+            let default = serde_json::json!({
+                "jurisdiction": "EU",
+                "regulation": "eu-ai-act",
+                "scanLevels": ["L1", "L2", "L3", "L4"]
+            });
+            let _ = std::fs::write(&profile, serde_json::to_string_pretty(&default).unwrap_or_default());
+            println!("Initialized .complior/ at {}", complior_dir.display());
+            println!("  Created: profile.json");
+            println!("\nRun `complior scan` to check compliance.");
+        }
+        Err(e) => {
+            eprintln!("Failed to create .complior/: {e}");
+        }
+    }
+}
+
+/// Check for updates.
+pub async fn run_update() {
+    println!("Checking for updates...");
+    let current = env!("CARGO_PKG_VERSION");
+
+    // Check GitHub API for latest release
+    let client = reqwest::Client::new();
+    match client
+        .get("https://api.github.com/repos/a3ka/complior/releases/latest")
+        .header("User-Agent", "complior-update-check")
+        .send()
+        .await
+    {
+        Ok(resp) => {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                if let Some(tag) = body.get("tag_name").and_then(|v| v.as_str()) {
+                    let latest = tag.trim_start_matches('v');
+                    if latest == current {
+                        println!("Already up to date: v{current}");
+                    } else {
+                        println!("New version available: v{latest} (current: v{current})");
+                        println!("\nUpdate with:");
+                        println!("  curl -fsSL https://complior.ai/install.sh | sh");
+                        println!("  cargo install complior");
+                    }
+                    return;
+                }
+            }
+        }
+        Err(_) => {}
+    }
+    println!("Could not check for updates. Current version: v{current}");
+}
+
 /// Format scan result as JSON.
 pub fn format_json(result: &ScanResult) -> String {
     serde_json::to_string_pretty(result).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))

@@ -1,9 +1,18 @@
 {
   "name": "@complior/sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "license": "Apache-2.0",
+  "description": "Runtime compliance SDK for AI APIs — EU AI Act middleware for OpenAI, Anthropic, Google, Vercel AI",
+  "homepage": "https://complior.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a3ka/complior",
+    "directory": "packages/sdk"
+  },
+  "keywords": ["ai", "compliance", "eu-ai-act", "sdk", "middleware", "openai", "anthropic"],
   "exports": {
     ".": {
       "import": "./dist/index.js",
