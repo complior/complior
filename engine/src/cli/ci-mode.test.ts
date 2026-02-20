@@ -3,6 +3,7 @@ import type { ScanResult, Finding, ScoreBreakdown } from '../types/common.types.
 import { parseCliArgs, shouldFail } from './ci-mode.js';
 import { toSarif } from '../output/sarif.js';
 import { toJsonOutput } from '../output/json-output.js';
+import { ENGINE_VERSION } from '../version.js';
 
 // --- Helpers ---
 
@@ -109,7 +110,7 @@ describe('toSarif', () => {
       ],
     });
 
-    const sarif = toSarif(result, '0.1.0');
+    const sarif = toSarif(result, ENGINE_VERSION);
     expect(sarif.version).toBe('2.1.0');
     expect(sarif.runs).toHaveLength(1);
     expect(sarif.runs[0].tool.driver.name).toBe('Complior');
@@ -123,7 +124,7 @@ describe('toSarif', () => {
     const result = makeResult({
       findings: [makeFinding({ file: 'src/app.ts', line: 42 })],
     });
-    const sarif = toSarif(result, '0.1.0');
+    const sarif = toSarif(result, ENGINE_VERSION);
     const loc = sarif.runs[0].results[0].locations;
     expect(loc).toBeDefined();
     expect(loc![0].physicalLocation?.artifactLocation.uri).toBe('src/app.ts');
@@ -136,9 +137,9 @@ describe('toSarif', () => {
 describe('toJsonOutput', () => {
   it('produces structured JSON', () => {
     const result = makeResult();
-    const json = toJsonOutput(result, '0.1.0');
+    const json = toJsonOutput(result, ENGINE_VERSION);
     expect(json.scanner).toBe('complior');
-    expect(json.version).toBe('0.1.0');
+    expect(json.version).toBe(ENGINE_VERSION);
     expect(json.score).toBe(42);
     expect(json.zone).toBe('red');
     expect(json.findings).toHaveLength(1);

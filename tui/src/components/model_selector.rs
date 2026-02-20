@@ -4,11 +4,26 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
 
-use crate::app::{App, AppCommand};
+use crate::app::App;
 use crate::input::Action;
 use crate::providers;
 use crate::theme;
-use crate::types::Overlay;
+
+/// Result of handling a model selector action. Applied by `app.rs`.
+pub enum ModelSelectorResult {
+    /// Navigation: update the selector index.
+    Navigate(usize),
+    /// Model selected: (model_id, provider_id, display_message).
+    Select {
+        model_id: String,
+        provider_id: String,
+        message: String,
+    },
+    /// Close overlay without selection.
+    Close,
+    /// No state change.
+    Noop,
+}
 
 /// A flat list entry for the model selector UI, combining provider group headers
 /// and model items into one navigable list.
@@ -166,46 +181,37 @@ pub fn render_model_selector(frame: &mut Frame, app: &App) {
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
-pub fn handle_model_selector_action(app: &mut App, action: Action) -> Option<AppCommand> {
+pub fn handle_model_selector_action(app: &App, action: Action) -> ModelSelectorResult {
     let entries = build_selector_list(app);
     let count = model_count(&entries);
 
     match action {
         Action::ScrollDown | Action::InsertChar('j') => {
             if count > 0 && app.model_selector_index + 1 < count {
-                app.model_selector_index += 1;
+                ModelSelectorResult::Navigate(app.model_selector_index + 1)
+            } else {
+                ModelSelectorResult::Noop
             }
-            None
         }
         Action::ScrollUp | Action::InsertChar('k') => {
-            app.model_selector_index = app.model_selector_index.saturating_sub(1);
-            None
+            ModelSelectorResult::Navigate(app.model_selector_index.saturating_sub(1))
         }
         Action::SubmitInput => {
             if let Some((id, _name, provider)) = nth_model(&entries, app.model_selector_index) {
-                app.provider_config.active_model = id.to_string();
-                app.provider_config.active_provider = provider.to_string();
-
-                if let Err(e) = providers::save_provider_config(&app.provider_config) {
-                    tracing::warn!("Failed to save provider config: {e}");
-                }
-
-                app.messages.push(crate::types::ChatMessage::new(
-                    crate::types::MessageRole::System,
-                    format!(
+                ModelSelectorResult::Select {
+                    model_id: id.to_string(),
+                    provider_id: provider.to_string(),
+                    message: format!(
                         "Model switched to: {}",
                         providers::display_model_name(id)
                     ),
-                ));
+                }
+            } else {
+                ModelSelectorResult::Close
             }
-            app.overlay = Overlay::None;
-            None
         }
-        Action::EnterNormalMode | Action::Quit => {
-            app.overlay = Overlay::None;
-            None
-        }
-        _ => None,
+        Action::EnterNormalMode | Action::Quit => ModelSelectorResult::Close,
+        _ => ModelSelectorResult::Noop,
     }
 }
 

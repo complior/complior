@@ -1,27 +1,24 @@
 import { serve } from '@hono/node-server';
 import { loadApplication } from './composition-root.js';
+import { createLogger } from './infra/logger.js';
+import { ENGINE_VERSION } from './version.js';
 
-// Also initialize old context for backward compatibility during migration
-import { initEngineContext } from './context.js';
-
+const log = createLogger('server');
 const PORT = Number(process.env['PORT'] ?? 3099);
 const isMcpMode = process.argv.includes('mcp-server');
 
 const startHttp = async (): Promise<void> => {
-  console.log('Loading regulation data...');
-  const { app, state } = await loadApplication();
-
-  // Keep old context in sync for any remaining legacy consumers
-  initEngineContext(state.regulationData, state.projectPath);
+  log.info('Loading regulation data...');
+  const { app } = await loadApplication();
 
   const server = serve({ fetch: app.fetch, port: PORT }, () => {
-    console.log(`Complior Engine v0.1.0 running on http://127.0.0.1:${PORT}`);
+    log.info(`Complior Engine v${ENGINE_VERSION} running on http://127.0.0.1:${PORT}`);
   });
 
   const shutdown = (): void => {
-    console.log('\nGraceful shutdown...');
+    log.info('Graceful shutdown...');
     server.close(() => {
-      console.log('Server closed');
+      log.info('Server closed');
       process.exit(0);
     });
   };
@@ -32,7 +29,6 @@ const startHttp = async (): Promise<void> => {
 
 const startMcp = async (): Promise<void> => {
   const { state } = await loadApplication();
-  initEngineContext(state.regulationData, state.projectPath);
 
   const { createMcpHandlers } = await import('./mcp/handlers.js');
   const { createMcpServer } = await import('./mcp/server.js');
@@ -89,7 +85,7 @@ const startMcp = async (): Promise<void> => {
 };
 
 const main = isMcpMode ? startMcp : startHttp;
-main().catch((err) => {
-  console.error(`Failed to start engine${isMcpMode ? ' (MCP mode)' : ''}:`, err);
+main().catch((err: unknown) => {
+  log.error(`Failed to start engine${isMcpMode ? ' (MCP mode)' : ''}:`, err);
   process.exit(1);
 });

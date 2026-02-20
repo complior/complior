@@ -1,0 +1,14 @@
+{
+  "name": "vulnerai-test-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "next": "^14.0.0",
+    "openai": "^4.56.0",
+    "react": "^18.2.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build"
+  }
+}

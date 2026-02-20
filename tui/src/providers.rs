@@ -35,6 +35,11 @@ pub struct ModelInfo {
 pub fn available_models() -> Vec<ModelInfo> {
     vec![
         ModelInfo {
+            id: "complior-zen-v1",
+            display_name: "Complior Zen (Free)",
+            provider: "complior",
+        },
+        ModelInfo {
             id: "claude-sonnet-4-5-20250929",
             display_name: "Claude Sonnet 4.5",
             provider: "anthropic",
@@ -119,20 +124,20 @@ pub fn load_provider_config() -> ProviderConfig {
     }
 }
 
-pub fn save_provider_config(config: &ProviderConfig) -> color_eyre::Result<()> {
+pub async fn save_provider_config(config: &ProviderConfig) -> color_eyre::Result<()> {
     let path = provider_config_path();
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
+        tokio::fs::create_dir_all(parent).await?;
     }
     let content = toml::to_string_pretty(config)?;
-    std::fs::write(&path, &content)?;
+    tokio::fs::write(&path, &content).await?;
 
     // Set file permissions to 0600 (owner read/write only) for API key security
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o600);
-        std::fs::set_permissions(&path, perms)?;
+        tokio::fs::set_permissions(&path, perms).await?;
     }
 
     Ok(())
@@ -185,7 +190,7 @@ mod tests {
     #[test]
     fn test_available_models_count() {
         let models = available_models();
-        assert_eq!(models.len(), 12);
+        assert_eq!(models.len(), 13);
     }
 
     #[test]

@@ -5,6 +5,7 @@ import { streamText, stepCountIs, type CoreMessage } from 'ai';
 import { ValidationError } from '../../types/errors.js';
 import type { ChatService } from '../../services/chat-service.js';
 import type { LlmPort } from '../../ports/llm.port.js';
+import type { ToolExecutorDeps } from '../../llm/tool-executors.js';
 import {
   sseThinking, sseText, sseToolCall, sseToolResult,
   sseUsage, sseDone, sseError,
@@ -25,7 +26,30 @@ const ChatRequestSchema = z.object({
 export interface ChatRouteDeps {
   readonly chatService: ChatService;
   readonly llm: LlmPort;
+  readonly toolExecutorDeps: ToolExecutorDeps;
+  readonly getMode: () => AgentMode;
+  readonly setMode: (mode: AgentMode) => void;
 }
+
+const AGENT_MODE_SET = new Set<string>(['build', 'comply', 'audit', 'learn']);
+const isAgentMode = (s: string): s is AgentMode => AGENT_MODE_SET.has(s);
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null;
+
+/** Safe property access helpers for stream parts */
+const prop = (obj: unknown, key: string): unknown =>
+  isRecord(obj) && key in obj ? obj[key] : undefined;
+
+const strProp = (obj: unknown, key: string, fallback = ''): string => {
+  const v = prop(obj, key);
+  return typeof v === 'string' ? v : fallback;
+};
+
+const numProp = (obj: unknown, key: string, fallback = 0): number => {
+  const v = prop(obj, key);
+  return typeof v === 'number' ? v : fallback;
+};
 
 /** Parse /command from message. Returns { command, arg } or null. */
 const parseCommand = (msg: string): { command: string; arg: string } | null => {
@@ -34,26 +58,25 @@ const parseCommand = (msg: string): { command: string; arg: string } | null => {
 };
 
 export const createChatRoute = (deps: ChatRouteDeps) => {
-  const { chatService, llm } = deps;
+  const { chatService, llm, toolExecutorDeps, getMode, setMode } = deps;
   const app = new Hono();
 
   // Session state
-  let currentMode: AgentMode = 'build';
   let modelOverride: string | undefined;
   const costTracker: CostTracker = createCostTracker();
 
   // GET /mode — current mode info
-  app.get('/mode', (c) => c.json({ mode: currentMode, config: getAgentConfig(currentMode) }));
+  app.get('/mode', (c) => c.json({ mode: getMode(), config: getAgentConfig(getMode()) }));
 
   // POST /mode — switch mode
   app.post('/mode', async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    const mode = (body as { mode?: string }).mode;
-    if (!mode || !getAllModes().includes(mode as AgentMode)) {
+    const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
+    const mode = typeof body['mode'] === 'string' ? body['mode'] : undefined;
+    if (!mode || !isAgentMode(mode)) {
       return c.json({ error: 'INVALID_MODE', valid: getAllModes() }, 400);
     }
-    currentMode = mode as AgentMode;
-    return c.json({ mode: currentMode, config: getAgentConfig(currentMode) });
+    setMode(mode);
+    return c.json({ mode: getMode(), config: getAgentConfig(getMode()) });
   });
 
   // GET /cost — session cost breakdown
@@ -72,10 +95,10 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     const cmd = parseCommand(parsed.data.message);
     if (cmd) {
       if (cmd.command === 'mode' && cmd.arg) {
-        if (getAllModes().includes(cmd.arg as AgentMode)) {
-          currentMode = cmd.arg as AgentMode;
-          const config = getAgentConfig(currentMode);
-          return c.json({ type: 'command', command: 'mode', mode: currentMode, label: config.label, writeEnabled: config.writeEnabled });
+        if (isAgentMode(cmd.arg)) {
+          setMode(cmd.arg);
+          const config = getAgentConfig(getMode());
+          return c.json({ type: 'command', command: 'mode', mode: getMode(), label: config.label, writeEnabled: config.writeEnabled });
         }
         return c.json({ type: 'command', command: 'mode', error: `Invalid mode. Valid: ${getAllModes().join(', ')}` });
       }
@@ -89,7 +112,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     }
 
     // Apply mode from request or session
-    if (parsed.data.mode) currentMode = parsed.data.mode;
+    if (parsed.data.mode) setMode(parsed.data.mode);
 
     const { provider, modelId } = parsed.data.provider && parsed.data.model
       ? { provider: parsed.data.provider, modelId: parsed.data.model }
@@ -97,9 +120,9 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     const model = await llm.getModel(provider, modelId, parsed.data.apiKey);
 
     // Use mode-specific system prompt
-    const modeConfig = getAgentConfig(currentMode);
+    const modeConfig = getAgentConfig(getMode());
     const systemPrompt = `${modeConfig.systemPrompt}\n\n${chatService.buildSystemPrompt()}`;
-    const tools = createCodingTools(chatService.getProjectPath());
+    const tools = createCodingTools(chatService.getProjectPath(), toolExecutorDeps);
 
     // Append user message to conversation history
     const userMessage: CoreMessage = { role: 'user', content: parsed.data.message };
@@ -108,7 +131,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     return streamSSE(c, async (stream) => {
       try {
         const result = streamText({
-          model: model as Parameters<typeof streamText>[0]['model'],
+          model: model,
           system: systemPrompt,
           messages: chatService.getConversationHistory(),
           tools,
@@ -120,44 +143,42 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
         for await (const part of result.fullStream) {
           switch (part.type) {
             case 'text-delta': {
-              const text = (part as { text?: string; textDelta?: string }).text
-                ?? (part as { textDelta?: string }).textDelta ?? '';
+              const text = strProp(part, 'text') || strProp(part, 'textDelta');
               assistantText += text;
               const payload = sseText(text);
               await stream.writeSSE({ event: payload.event, data: payload.data });
               break;
             }
             case 'reasoning-delta': {
-              const text = (part as { text?: string; textDelta?: string }).text
-                ?? (part as { textDelta?: string }).textDelta ?? '';
+              const text = strProp(part, 'text') || strProp(part, 'textDelta');
               const payload = sseThinking(text);
               await stream.writeSSE({ event: payload.event, data: payload.data });
               break;
             }
             case 'tool-call': {
-              const tc = part as { toolCallId?: string; toolUseId?: string; toolName: string; args?: object; input?: unknown };
-              const id = tc.toolCallId ?? tc.toolUseId ?? '';
-              const args = tc.args ?? tc.input ?? {};
-              const payload = sseToolCall(id, tc.toolName, args as object);
+              const id = strProp(part, 'toolCallId') || strProp(part, 'toolUseId');
+              const toolName = strProp(part, 'toolName');
+              const rawArgs = prop(part, 'args') ?? prop(part, 'input');
+              const toolArgs = isRecord(rawArgs) ? rawArgs : {};
+              const payload = sseToolCall(id, toolName, toolArgs);
               await stream.writeSSE({ event: payload.event, data: payload.data });
               break;
             }
             case 'tool-result': {
-              const tr = part as { toolCallId?: string; toolUseId?: string; toolName: string; result?: unknown; output?: unknown };
-              const id = tr.toolCallId ?? tr.toolUseId ?? '';
-              const resultStr = typeof tr.result === 'string' ? tr.result
-                : typeof tr.output === 'string' ? tr.output
-                : JSON.stringify(tr.result ?? tr.output ?? '');
+              const id = strProp(part, 'toolCallId') || strProp(part, 'toolUseId');
+              const toolName = strProp(part, 'toolName');
+              const resultVal = prop(part, 'result') ?? prop(part, 'output') ?? '';
+              const resultStr = typeof resultVal === 'string' ? resultVal : JSON.stringify(resultVal);
               const isError = resultStr.includes('"error":true') || resultStr.includes('"error": true');
-              const payload = sseToolResult(id, tr.toolName, resultStr, isError);
+              const payload = sseToolResult(id, toolName, resultStr, isError);
               await stream.writeSSE({ event: payload.event, data: payload.data });
               break;
             }
             case 'finish': {
-              const totalUsage = (part as unknown as { totalUsage: { inputTokens?: number; outputTokens?: number; promptTokens?: number; completionTokens?: number } }).totalUsage;
-              if (totalUsage) {
-                const prompt = totalUsage.promptTokens ?? totalUsage.inputTokens ?? 0;
-                const completion = totalUsage.completionTokens ?? totalUsage.outputTokens ?? 0;
+              const totalUsage = prop(part, 'totalUsage');
+              if (totalUsage && typeof totalUsage === 'object') {
+                const prompt = numProp(totalUsage, 'promptTokens') || numProp(totalUsage, 'inputTokens');
+                const completion = numProp(totalUsage, 'completionTokens') || numProp(totalUsage, 'outputTokens');
                 costTracker.record('qa', modelId, prompt, completion);
                 const payload = sseUsage(prompt, completion);
                 await stream.writeSSE({ event: payload.event, data: payload.data });
@@ -165,7 +186,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
               break;
             }
             case 'error': {
-              const payload = sseError(String((part as { error: unknown }).error));
+              const payload = sseError(String(prop(part, 'error')));
               await stream.writeSSE({ event: payload.event, data: payload.data });
               break;
             }

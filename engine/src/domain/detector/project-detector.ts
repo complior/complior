@@ -56,15 +56,16 @@ export const detectProject = async (projectPath: string): Promise<ProjectProfile
     };
   }
 
-  const packageJson = JSON.parse(packageJsonContent) as {
-    readonly dependencies?: Readonly<Record<string, string>>;
-    readonly devDependencies?: Readonly<Record<string, string>>;
-  };
-
-  const allDeps: Record<string, string> = {
-    ...packageJson.dependencies,
-    ...packageJson.devDependencies,
-  };
+  const isRec = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null;
+  const raw: unknown = JSON.parse(packageJsonContent);
+  const pkg = isRec(raw) ? raw : {};
+  const rawDeps = isRec(pkg['dependencies']) ? pkg['dependencies'] : {};
+  const rawDevDeps = isRec(pkg['devDependencies']) ? pkg['devDependencies'] : {};
+  const allDeps: Record<string, string> = {};
+  for (const [k, v] of Object.entries({ ...rawDeps, ...rawDevDeps })) {
+    if (typeof v === 'string') allDeps[k] = v;
+  }
 
   const frameworks = detectFrameworks(allDeps);
   const aiTools = detectAiTools(allDeps);

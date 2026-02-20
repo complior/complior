@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import type { McpHandlers } from './handlers.js';
 import { MCP_TOOL_SCHEMAS } from './tools.js';
+import { createLogger } from '../infra/logger.js';
 
 export interface McpServerDeps {
   readonly handlers: McpHandlers;
@@ -70,7 +71,8 @@ export const createMcpServer = (deps: McpServerDeps) => {
   const start = async (): Promise<void> => {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error(`Complior MCP Server v${version} started on stdio`);
+    const log = createLogger('mcp');
+    log.info(`Complior MCP Server v${version} started on stdio`);
   };
 
   return Object.freeze({ start, server });

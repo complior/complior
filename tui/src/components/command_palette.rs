@@ -20,7 +20,24 @@ const COMMANDS: &[(&str, &str)] = &[
     ("/load", "Load saved session"),
     ("/sessions", "List saved sessions"),
     ("/watch", "Toggle file watch mode"),
+    ("/undo", "Undo last fix"),
+    ("/animations", "Toggle animations on/off"),
 ];
+
+/// Colon commands — used for tab completion in colon mode.
+pub const COLON_COMMANDS: &[&str] = &[
+    "scan", "fix", "theme", "export", "watch", "quit", "help",
+    "undo", "view", "provider", "animations",
+];
+
+/// Complete a partial colon-mode command against known commands.
+pub fn complete_colon_command(partial: &str) -> Option<&'static str> {
+    let lower = partial.to_lowercase();
+    COLON_COMMANDS
+        .iter()
+        .find(|cmd| cmd.starts_with(&lower))
+        .copied()
+}
 
 pub fn render_command_palette(frame: &mut Frame, filter: &str) {
     let area = frame.area();

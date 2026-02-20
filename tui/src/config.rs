@@ -16,6 +16,8 @@ pub struct TuiConfig {
     pub sidebar_visible: bool,
     pub watch_on_start: bool,
     pub onboarding_completed: bool,
+    pub animations_enabled: bool,
+    pub scroll_acceleration: f32,
     #[serde(skip)]
     pub engine_url_override: Option<String>,
 }
@@ -31,6 +33,8 @@ impl Default for TuiConfig {
             sidebar_visible: true,
             watch_on_start: false,
             onboarding_completed: false,
+            animations_enabled: true,
+            scroll_acceleration: 1.5,
             engine_url_override: None,
         }
     }
@@ -51,28 +55,28 @@ pub fn load_config() -> TuiConfig {
 }
 
 /// Save specific fields to TOML config file (merge-friendly).
-pub fn save_config(config: &TuiConfig) {
+pub async fn save_config(config: &TuiConfig) {
     let path = config_file_path();
     if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
+        let _ = tokio::fs::create_dir_all(parent).await;
     }
     if let Ok(content) = toml::to_string_pretty(config) {
-        let _ = std::fs::write(&path, content);
+        let _ = tokio::fs::write(&path, content).await;
     }
 }
 
 /// Save just the theme name to config.
-pub fn save_theme(name: &str) {
+pub async fn save_theme(name: &str) {
     let mut config = load_config();
     config.theme = name.to_string();
-    save_config(&config);
+    save_config(&config).await;
 }
 
 /// Mark onboarding as completed in config.
-pub fn mark_onboarding_complete() {
+pub async fn mark_onboarding_complete() {
     let mut config = load_config();
     config.onboarding_completed = true;
-    save_config(&config);
+    save_config(&config).await;
 }
 
 fn config_file_path() -> PathBuf {

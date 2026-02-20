@@ -1,14 +1,25 @@
+mod commands;
+mod sse;
+mod view_keys;
+
 use std::path::PathBuf;
 use std::time::Instant;
 
+use ratatui::layout::Rect;
+
+use crate::animation::AnimationState;
 use crate::components::spinner::Spinner;
+use crate::components::suggestions::IdleSuggestionState;
+use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
-use crate::engine_client::{EngineClient, SseEvent};
+use crate::engine_client::EngineClient;
 use crate::input::Action;
+use crate::layout::Breakpoint;
 use crate::providers::ProviderConfig;
 use crate::types::{
-    ActivityEntry, ActivityKind, ChatBlock, ChatMessage, DiffContent, EngineConnectionStatus,
-    FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult, Selection, ViewState,
+    ActivityEntry, ActivityKind, ChatMessage, ClickTarget, DiffContent,
+    EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult,
+    Selection, ViewState,
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
@@ -98,6 +109,9 @@ pub struct App {
     pub watch_active: bool,
     pub watch_last_score: Option<f64>,
 
+    // T904: Pre-fix score for auto-validate delta
+    pub pre_fix_score: Option<f64>,
+
     // Help overlay scroll
     pub help_scroll: usize,
 
@@ -115,6 +129,53 @@ pub struct App {
     // Diff overlay (Selection→AI result)
     pub diff_overlay: Option<crate::components::diff_overlay::DiffOverlayState>,
 
+    // T07: Toast notifications
+    pub toasts: crate::components::toast::ToastStack,
+
+    // T07: Confirmation dialog
+    pub confirm_dialog: Option<crate::components::confirm_dialog::ConfirmDialog>,
+
+    // T07: Widget zoom
+    pub zoom: crate::components::zoom::ZoomState,
+
+    // T07: Fix split ratio (percentage for left panel, 25-75)
+    pub fix_split_pct: u16,
+
+    // T07: Context usage
+    pub context_pct: u8,
+    pub context_max_messages: usize,
+
+    // T07: Complior Zen
+    pub zen_messages_used: u32,
+    pub zen_messages_limit: u32,
+    pub zen_active: bool,
+
+    // T07: Dismiss modal
+    pub dismiss_modal: Option<crate::components::quick_actions::DismissModal>,
+
+    // T08: Responsive layout breakpoint
+    #[allow(dead_code)] // TODO(T10): use for responsive widget selection
+    pub breakpoint: Breakpoint,
+
+    // T08: Mouse click areas (populated each render frame)
+    pub click_areas: Vec<(Rect, ClickTarget)>,
+    pub scroll_events: Vec<Instant>,
+
+    // T08: Undo history
+    pub undo_history: UndoHistoryState,
+
+    // T08: Colon-command mode
+    pub colon_mode: bool,
+
+    // T08: Idle suggestions
+    pub idle_suggestions: IdleSuggestionState,
+
+    // T08: Animations
+    pub animation: AnimationState,
+
+    // T09: What-If scenario state
+    pub whatif: crate::components::whatif::WhatIfState,
+
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -129,6 +190,7 @@ impl App {
     pub fn new(config: TuiConfig) -> Self {
         let engine_client = EngineClient::new(&config);
         let sidebar_visible = config.sidebar_visible;
+        let animations_enabled = config.animations_enabled;
         let project_path = config
             .project_path
             .as_deref()
@@ -188,6 +250,7 @@ impl App {
             activity_log: Vec::new(),
             watch_active: false,
             watch_last_score: None,
+            pre_fix_score: None,
             help_scroll: 0,
             theme_picker: None,
             onboarding: None,
@@ -195,19 +258,119 @@ impl App {
             code_search_matches: Vec::new(),
             code_search_current: 0,
             diff_overlay: None,
+            toasts: crate::components::toast::ToastStack::new(),
+            confirm_dialog: None,
+            zoom: crate::components::zoom::ZoomState::new(),
+            fix_split_pct: 40,
+            context_pct: 0,
+            context_max_messages: 32,
+            zen_messages_used: 0,
+            zen_messages_limit: 1000,
+            zen_active: false,
+            dismiss_modal: None,
+            breakpoint: Breakpoint::Medium,
+            click_areas: Vec::new(),
+            scroll_events: Vec::new(),
+            undo_history: UndoHistoryState::new(),
+            colon_mode: false,
+            idle_suggestions: IdleSuggestionState::new(),
+            animation: AnimationState::new(animations_enabled),
+            whatif: crate::components::whatif::WhatIfState::new(),
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> Option<AppCommand> {
         self.spinner.advance();
+        self.toasts.gc();
+        // Update context usage
+        self.context_pct =
+            crate::widgets::context_meter::context_pct(self.messages.len(), self.context_max_messages);
+
+        // Idle suggestion: check if idle > 10s and no blockers
+        if self.idle_suggestions.current.is_none()
+            && self.idle_suggestions.is_idle(10)
+            && !self.scan_view.scanning
+            && self.overlay == Overlay::None
+            && self.input_mode != InputMode::Insert
+            && self.streaming_response.is_none()
+            && !self.idle_suggestions.recently_dismissed()
+            && !self.idle_suggestions.fetch_pending
+        {
+            // Mark fetch as pending so we don't re-trigger every tick
+            self.idle_suggestions.fetch_pending = true;
+            return Some(AppCommand::FetchSuggestions);
+        }
+        None
     }
 
     /// Elapsed seconds since operation started.
     pub fn elapsed_secs(&self) -> Option<u64> {
         self.operation_start.map(|s| s.elapsed().as_secs())
+    }
+
+    /// Rebuild mouse click targets based on current terminal size and view state.
+    pub fn rebuild_click_areas(&mut self, width: u16, height: u16) {
+        use crate::types::ClickTarget;
+        self.click_areas.clear();
+
+        // Footer view tabs (last 2 lines): "1 dash 2 scan 3 fix 4 chat 5 time 6 report"
+        // Each tab is ~8 chars wide, spread across the bottom line
+        let footer_y = height.saturating_sub(1);
+        let tab_width: u16 = 10;
+        let views = [
+            ViewState::Dashboard,
+            ViewState::Scan,
+            ViewState::Fix,
+            ViewState::Chat,
+            ViewState::Timeline,
+            ViewState::Report,
+        ];
+        for (i, view) in views.iter().enumerate() {
+            let x = (i as u16) * tab_width;
+            if x + tab_width <= width {
+                self.click_areas.push((
+                    Rect::new(x, footer_y, tab_width, 1),
+                    ClickTarget::ViewTab(*view),
+                ));
+            }
+        }
+
+        // Sidebar area (if visible) — click on sidebar to toggle
+        let bp = crate::layout::Breakpoint::from_width(width);
+        if bp.show_sidebar() && self.sidebar_visible {
+            let sb_w = bp.sidebar_width();
+            let sb_x = width.saturating_sub(sb_w);
+            self.click_areas.push((
+                Rect::new(sb_x, 0, sb_w, height.saturating_sub(2)),
+                ClickTarget::SidebarToggle,
+            ));
+        }
+
+        // Scan view: finding rows
+        if self.view_state == ViewState::Scan {
+            let count = self.last_scan.as_ref().map_or(0, |s| s.findings.len());
+            let start_y: u16 = 5; // approximate start of findings list
+            for i in 0..count.min(20) {
+                self.click_areas.push((
+                    Rect::new(0, start_y + i as u16, width / 2, 1),
+                    ClickTarget::FindingRow(i),
+                ));
+            }
+        }
+
+        // Fix view: checkboxes
+        if self.view_state == ViewState::Fix {
+            let start_y: u16 = 3;
+            for i in 0..self.fix_view.fixable_findings.len().min(20) {
+                self.click_areas.push((
+                    Rect::new(0, start_y + i as u16, width / 2, 1),
+                    ClickTarget::FixCheckbox(i),
+                ));
+            }
+        }
     }
 
     pub fn next_panel(&mut self) {
@@ -311,12 +474,26 @@ impl App {
     }
 
     pub fn apply_action(&mut self, action: Action) -> Option<AppCommand> {
+        // Reset idle suggestion timer on any non-None action
+        if !matches!(action, Action::None) {
+            self.idle_suggestions.reset_timer();
+        }
+
+        // Dismiss idle suggestion on any action
+        if self.idle_suggestions.current.is_some() && !matches!(action, Action::None) {
+            self.idle_suggestions.dismiss();
+        }
+
         // Handle overlay-specific input first
         if self.overlay == Overlay::ProviderSetup {
-            return crate::components::provider_setup::handle_provider_setup_action(self, action);
+            return self.apply_provider_setup_result(
+                crate::components::provider_setup::handle_provider_setup_action(self, action),
+            );
         }
         if self.overlay == Overlay::ModelSelector {
-            return crate::components::model_selector::handle_model_selector_action(self, action);
+            return self.apply_model_selector_result(
+                crate::components::model_selector::handle_model_selector_action(self, action),
+            );
         }
         if self.overlay != Overlay::None {
             return self.handle_overlay_action(action);
@@ -510,6 +687,7 @@ impl App {
             Action::EnterNormalMode => {
                 self.input_mode = InputMode::Normal;
                 self.selection = None;
+                self.colon_mode = false;
                 None
             }
             Action::EnterVisualMode => {
@@ -562,6 +740,13 @@ impl App {
                         ));
                         return Some(AppCommand::RunCommand(cmd.to_string()));
                     }
+                }
+
+                // Colon-command mode: route to handle_colon_command
+                if self.colon_mode {
+                    self.colon_mode = false;
+                    self.input_mode = InputMode::Normal;
+                    return self.handle_colon_command(&text);
                 }
 
                 if self.input_mode == InputMode::Command || text.starts_with('/') {
@@ -753,12 +938,10 @@ impl App {
                 return Some(AppCommand::Scan);
             }
             Action::ViewKey(c) => {
-                self.handle_view_key(c);
-                return None;
+                return self.handle_view_key(c);
             }
             Action::ViewEnter => {
-                self.handle_view_enter();
-                return None;
+                return self.handle_view_enter();
             }
             Action::ViewEscape => {
                 self.handle_view_escape();
@@ -774,7 +957,159 @@ impl App {
                 }
                 None
             }
+            Action::Undo => {
+                return Some(AppCommand::Undo(None));
+            }
+            Action::ShowUndoHistory => {
+                self.overlay = Overlay::UndoHistory;
+                return Some(AppCommand::FetchUndoHistory);
+            }
+            Action::EnterColonMode => {
+                self.input_mode = InputMode::Command;
+                self.colon_mode = true;
+                self.input.clear();
+                self.input_cursor = 0;
+                None
+            }
+            Action::ClickAt(target) => {
+                match target {
+                    ClickTarget::ViewTab(view) => {
+                        self.view_state = view;
+                        if view == ViewState::Fix {
+                            if let Some(scan) = &self.last_scan {
+                                self.fix_view = FixViewState::from_scan(&scan.findings);
+                            }
+                        }
+                    }
+                    ClickTarget::PanelFocus(panel) => {
+                        self.active_panel = panel;
+                    }
+                    ClickTarget::FindingRow(idx) => {
+                        self.scan_view.selected_finding = Some(idx);
+                    }
+                    ClickTarget::FixCheckbox(idx) => {
+                        self.fix_view.toggle_at(idx);
+                    }
+                    ClickTarget::SidebarToggle => {
+                        self.sidebar_visible = !self.sidebar_visible;
+                    }
+                }
+                None
+            }
+            Action::ScrollLines(lines) => {
+                self.scroll_events.push(Instant::now());
+                // Trim old events (keep last 500ms)
+                let cutoff = Instant::now() - std::time::Duration::from_millis(500);
+                self.scroll_events.retain(|&t| t > cutoff);
+
+                if lines > 0 {
+                    for _ in 0..lines {
+                        self.apply_action(Action::ScrollDown);
+                    }
+                } else {
+                    for _ in 0..(-lines) {
+                        self.apply_action(Action::ScrollUp);
+                    }
+                }
+                None
+            }
             Action::None => None,
+        }
+    }
+
+    fn apply_model_selector_result(
+        &mut self,
+        result: crate::components::model_selector::ModelSelectorResult,
+    ) -> Option<AppCommand> {
+        use crate::components::model_selector::ModelSelectorResult;
+        match result {
+            ModelSelectorResult::Navigate(idx) => {
+                self.model_selector_index = idx;
+                None
+            }
+            ModelSelectorResult::Select {
+                model_id,
+                provider_id,
+                message,
+            } => {
+                self.provider_config.active_model = model_id;
+                self.provider_config.active_provider = provider_id;
+                self.messages
+                    .push(ChatMessage::new(MessageRole::System, message));
+                self.overlay = Overlay::None;
+                Some(AppCommand::SaveProviderConfig)
+            }
+            ModelSelectorResult::Close => {
+                self.overlay = Overlay::None;
+                None
+            }
+            ModelSelectorResult::Noop => None,
+        }
+    }
+
+    fn apply_provider_setup_result(
+        &mut self,
+        result: crate::components::provider_setup::ProviderSetupResult,
+    ) -> Option<AppCommand> {
+        use crate::components::provider_setup::ProviderSetupResult;
+        match result {
+            ProviderSetupResult::NavigateProvider(idx) => {
+                self.provider_setup_selected = idx;
+                None
+            }
+            ProviderSetupResult::AdvanceToKeyInput => {
+                self.provider_setup_step = 1;
+                self.provider_setup_key_input.clear();
+                None
+            }
+            ProviderSetupResult::KeyChar(c) => {
+                self.provider_setup_key_input.push(c);
+                None
+            }
+            ProviderSetupResult::KeyBackspace => {
+                self.provider_setup_key_input.pop();
+                None
+            }
+            ProviderSetupResult::SubmitKey {
+                provider_id,
+                api_key,
+                first_model_id,
+            } => {
+                self.provider_config.providers.insert(
+                    provider_id.clone(),
+                    crate::providers::ProviderEntry {
+                        api_key,
+                    },
+                );
+                if self.provider_config.active_provider.is_empty() {
+                    self.provider_config.active_provider = provider_id;
+                    if let Some(model_id) = first_model_id {
+                        self.provider_config.active_model = model_id;
+                    }
+                }
+                self.provider_setup_error = None;
+                self.provider_setup_step = 3;
+                Some(AppCommand::SaveProviderConfig)
+            }
+            ProviderSetupResult::BackToSelect => {
+                self.provider_setup_step = 0;
+                None
+            }
+            ProviderSetupResult::Retry => {
+                self.provider_setup_step = 1;
+                self.provider_setup_key_input.clear();
+                self.provider_setup_error = None;
+                None
+            }
+            ProviderSetupResult::ConfirmSuccess => {
+                self.overlay = Overlay::None;
+                None
+            }
+            ProviderSetupResult::Close => {
+                self.overlay = Overlay::None;
+                None
+            }
+            ProviderSetupResult::Noop => None,
         }
     }
 
@@ -803,11 +1138,12 @@ impl App {
                 self.overlay = Overlay::None;
                 if !name.is_empty() {
                     crate::theme::init_theme(&name);
-                    crate::config::save_theme(&name);
                     self.messages.push(ChatMessage::new(
                         MessageRole::System,
                         format!("Theme: {name}"),
                     ));
+                    self.toasts.push(crate::components::toast::ToastKind::Info, format!("Theme: {name}"));
+                    return Some(AppCommand::SaveTheme(name));
                 }
                 None
             }
@@ -863,9 +1199,9 @@ impl App {
                             ));
                         }
                     }
-                    crate::config::mark_onboarding_complete();
                     self.onboarding = None;
                     self.overlay = Overlay::None;
+                    return Some(AppCommand::MarkOnboardingComplete);
                 }
                 None
             }
@@ -878,10 +1214,9 @@ impl App {
             }
             Action::EnterNormalMode | Action::Quit => {
                 // Esc = skip onboarding
-                crate::config::mark_onboarding_complete();
                 self.onboarding = None;
                 self.overlay = Overlay::None;
-                None
+                Some(AppCommand::MarkOnboardingComplete)
             }
             _ => None,
         }
@@ -898,13 +1233,86 @@ impl App {
             return self.handle_onboarding_action(action);
         }
 
+        // --- Confirm Dialog overlay ---
+        if self.overlay == Overlay::ConfirmDialog {
+            match action {
+                Action::InsertChar('y' | 'Y') => {
+                    self.confirm_dialog = None;
+                    self.overlay = Overlay::None;
+                    self.toasts.push(crate::components::toast::ToastKind::Success, "Confirmed");
+                }
+                Action::EnterNormalMode | Action::Quit
+                | Action::InsertChar('n' | 'N') => {
+                    self.confirm_dialog = None;
+                    self.overlay = Overlay::None;
+                }
+                _ => {}
+            }
+            return None;
+        }
+
+        // --- Undo History overlay ---
+        if self.overlay == Overlay::UndoHistory {
+            match action {
+                Action::ScrollDown => self.undo_history.navigate_down(),
+                Action::ScrollUp => self.undo_history.navigate_up(),
+                Action::SubmitInput => {
+                    // Undo selected entry
+                    let id = self.undo_history.selected_id();
+                    self.overlay = Overlay::None;
+                    if let Some(id) = id {
+                        return Some(AppCommand::Undo(Some(id)));
+                    }
+                }
+                Action::EnterNormalMode | Action::Quit => {
+                    self.overlay = Overlay::None;
+                }
+                _ => {}
+            }
+            return None;
+        }
+
+        // --- Dismiss Modal overlay ---
+        if self.overlay == Overlay::DismissModal {
+            match action {
+                Action::ScrollDown => {
+                    if let Some(modal) = &mut self.dismiss_modal {
+                        modal.move_down();
+                    }
+                }
+                Action::ScrollUp => {
+                    if let Some(modal) = &mut self.dismiss_modal {
+                        modal.move_up();
+                    }
+                }
+                Action::SubmitInput => {
+                    if let Some(modal) = &self.dismiss_modal {
+                        let reason = modal.selected_reason();
+                        self.toasts.push(
+                            crate::components::toast::ToastKind::Info,
+                            format!("Dismissed: {reason:?}"),
+                        );
+                    }
+                    self.dismiss_modal = None;
+                    self.overlay = Overlay::None;
+                }
+                Action::EnterNormalMode | Action::Quit => {
+                    self.dismiss_modal = None;
+                    self.overlay = Overlay::None;
+                }
+                _ => {}
+            }
+            return None;
+        }
+
         match action {
             Action::EnterNormalMode | Action::Quit => {
-                if self.overlay == Overlay::GettingStarted {
-                    crate::session::mark_first_run_done();
-                }
+                let was_getting_started = self.overlay == Overlay::GettingStarted;
                 self.overlay = Overlay::None;
                 self.overlay_filter.clear();
+                if was_getting_started {
+                    return Some(AppCommand::MarkFirstRunDone);
+                }
                 None
             }
             Action::InsertChar(c) => {
@@ -940,7 +1348,7 @@ impl App {
                     }
                     Overlay::GettingStarted => {
                         self.overlay = Overlay::None;
-                        crate::session::mark_first_run_done();
+                        return Some(AppCommand::MarkFirstRunDone);
                     }
                     Overlay::Help => {
                         self.overlay = Overlay::None;
@@ -948,7 +1356,16 @@ impl App {
                     Overlay::ProviderSetup | Overlay::ModelSelector => {
                         self.overlay = Overlay::None;
                     }
-                    Overlay::None | Overlay::ThemePicker | Overlay::Onboarding => {}
+                    Overlay::ConfirmDialog => {
+                        self.confirm_dialog = None;
+                        self.overlay = Overlay::None;
+                    }
+                    Overlay::DismissModal => {
+                        self.dismiss_modal = None;
+                        self.overlay = Overlay::None;
+                    }
+                    Overlay::None | Overlay::ThemePicker | Overlay::Onboarding
+                    | Overlay::UndoHistory => {}
                 }
                 None
             }
@@ -967,7 +1384,7 @@ impl App {
             _ => {
                 if self.overlay == Overlay::GettingStarted {
                     self.overlay = Overlay::None;
-                    crate::session::mark_first_run_done();
+                    return Some(AppCommand::MarkFirstRunDone);
                 } else if self.overlay == Overlay::Help {
                     self.overlay = Overlay::None;
                 }
@@ -976,288 +1393,22 @@ impl App {
         }
     }
 
-    fn try_tab_complete(&mut self) {
-        if self.input.starts_with('/') {
-            let partial = &self.input[1..];
-            if let Some(completed) = crate::components::command_palette::complete_command(partial) {
-                self.input = completed.to_string();
-                self.input_cursor = self.input.len();
-            }
-            return;
-        }
-
-        let before_cursor = &self.input[..self.input_cursor];
-
-        // Obligation completion: scan backwards for @OBL- or @OBL (without dash)
-        if let Some(start) = before_cursor.rfind("@OBL-") {
-            let prefix = &self.input[start + 5..self.input_cursor];
-            let matches = crate::obligations::autocomplete_obl(prefix);
-            if let Some(obl) = matches.first() {
-                let replacement = format!("@OBL-{}", obl.id);
-                self.input.replace_range(start..self.input_cursor, &replacement);
-                self.input_cursor = start + replacement.len();
-            }
-        } else if let Some(start) = before_cursor.rfind("@OBL") {
-            // "@OBL" without dash — insert dash and complete
-            let prefix = &self.input[start + 4..self.input_cursor];
-            let matches = crate::obligations::autocomplete_obl(prefix);
-            if let Some(obl) = matches.first() {
-                let replacement = format!("@OBL-{}", obl.id);
-                self.input.replace_range(start..self.input_cursor, &replacement);
-                self.input_cursor = start + replacement.len();
-            }
-        } else if let Some(start) = before_cursor.rfind("@Art.") {
-            let prefix = &self.input[start + 5..self.input_cursor];
-            let matches = crate::obligations::autocomplete_obl(prefix);
-            if let Some(obl) = matches.first() {
-                let replacement = format!("@OBL-{}", obl.id);
-                self.input.replace_range(start..self.input_cursor, &replacement);
-                self.input_cursor = start + replacement.len();
-            }
-        } else if let Some(start) = before_cursor.rfind("@Art") {
-            // "@Art" without dot — still complete
-            let prefix = &self.input[start + 4..self.input_cursor];
-            let matches = crate::obligations::autocomplete_obl(prefix);
-            if let Some(obl) = matches.first() {
-                let replacement = format!("@OBL-{}", obl.id);
-                self.input.replace_range(start..self.input_cursor, &replacement);
-                self.input_cursor = start + replacement.len();
-            }
-        }
-    }
-
-    fn handle_command(&mut self, cmd: &str) -> Option<AppCommand> {
-        let parts: Vec<&str> = cmd.splitn(2, ' ').collect();
-        match parts.first().copied() {
-            Some("scan") => {
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    "Scanning project...".to_string(),
-                ));
-                self.operation_start = Some(Instant::now());
-                Some(AppCommand::Scan)
-            }
-            Some("edit") => {
-                let path = parts.get(1).unwrap_or(&"").to_string();
-                if path.is_empty() {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        "Usage: /edit <file-path>".to_string(),
-                    ));
-                    None
-                } else {
-                    Some(AppCommand::OpenFile(path))
-                }
-            }
-            Some("run") => {
-                let command = parts.get(1).unwrap_or(&"").to_string();
-                if command.is_empty() {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        "Usage: /run <command>".to_string(),
-                    ));
-                    None
-                } else {
-                    self.terminal_visible = true;
-                    Some(AppCommand::RunCommand(command))
-                }
-            }
-            Some("clear") => {
-                self.terminal_output.clear();
-                self.terminal_scroll = 0;
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    "Terminal cleared.".to_string(),
-                ));
-                None
-            }
-            Some("reconnect") => Some(AppCommand::Reconnect),
-            Some("theme") => {
-                let name = parts.get(1).unwrap_or(&"").to_string();
-                if name.is_empty() {
-                    // Open theme picker overlay
-                    self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
-                    self.overlay = Overlay::ThemePicker;
-                    None
-                } else {
-                    Some(AppCommand::SwitchTheme(name))
-                }
-            }
-            Some("save") => {
-                let name = parts.get(1).unwrap_or(&"latest").to_string();
-                Some(AppCommand::SaveSession(name))
-            }
-            Some("load") => {
-                let name = parts.get(1).unwrap_or(&"latest").to_string();
-                Some(AppCommand::LoadSession(name))
-            }
-            Some("sessions") => {
-                let sessions = crate::session::list_sessions();
-                if sessions.is_empty() {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        "No saved sessions.".to_string(),
-                    ));
-                } else {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        format!("Sessions: {}", sessions.join(", ")),
-                    ));
-                }
-                None
-            }
-            Some("help") => {
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    concat!(
-                        "Commands:\n",
-                        "  /scan          — Scan project for compliance\n",
-                        "  /edit <path>   — Open file in viewer\n",
-                        "  /run <cmd>     — Run shell command\n",
-                        "  /clear         — Clear terminal output\n",
-                        "  /reconnect     — Reconnect to engine\n",
-                        "  /theme <name>  — Switch theme (dark/light/high-contrast)\n",
-                        "  /watch         — Toggle file watch mode\n",
-                        "  /view <1-6>    — Switch to view (Dashboard/Scan/Fix/Chat/Timeline/Report)\n",
-                        "  /save [name]   — Save session\n",
-                        "  /load [name]   — Load session\n",
-                        "  /sessions      — List saved sessions\n",
-                        "  /provider      — Configure LLM provider\n",
-                        "  /model         — Switch model (also M in Normal mode)\n",
-                        "  /welcome       — Show getting started\n",
-                        "  /help          — Show this help\n",
-                        "\n",
-                        "Shortcuts:\n",
-                        "  @file          — Reference file in message\n",
-                        "  !cmd           — Run shell command directly\n",
-                        "  1-6            — Switch view (Normal mode)\n",
-                        "  Tab            — Toggle mode (Scan/Fix/Watch)\n",
-                        "  Alt+1..5       — Jump to panel\n",
-                        "  Ctrl+P         — Command palette\n",
-                        "  Ctrl+B         — Toggle sidebar\n",
-                        "  Ctrl+T         — Toggle terminal\n",
-                        "  V              — Visual select (code viewer)\n",
-                        "  Ctrl+K         — Send selection to AI\n",
-                        "  ?              — Help (Normal mode)\n",
-                        "  q              — Quit\n",
-                    )
-                    .to_string(),
-                ));
-                None
-            }
-            Some("provider") => {
-                self.overlay = Overlay::ProviderSetup;
-                self.provider_setup_step = 0;
-                self.provider_setup_selected = 0;
-                self.provider_setup_key_input.clear();
-                self.provider_setup_error = None;
-                None
-            }
-            Some("model") => {
-                if crate::providers::is_configured(&self.provider_config) {
-                    self.overlay = Overlay::ModelSelector;
-                    self.model_selector_index = 0;
-                } else {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        "No providers configured. Use /provider first.".to_string(),
-                    ));
-                }
-                None
-            }
-            Some("view") => {
-                let num_str = parts.get(1).unwrap_or(&"").trim();
-                if let Ok(num) = num_str.parse::<u8>() {
-                    if let Some(view) = ViewState::from_key(num) {
-                        self.view_state = view;
-                        return None;
-                    }
-                }
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    "Usage: /view <1-6> (Dashboard/Scan/Fix/Chat/Timeline/Report)".to_string(),
-                ));
-                None
-            }
-            Some("watch") => Some(AppCommand::ToggleWatch),
-            Some("welcome") => {
-                self.overlay = Overlay::GettingStarted;
-                None
-            }
-            _ => {
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    format!("Unknown command: /{cmd}. Type /help for usage."),
-                ));
-                None
-            }
-        }
-    }
-
-    pub fn handle_sse_event(&mut self, event: SseEvent) {
-        match event {
-            SseEvent::Thinking(text) => {
-                let thinking = self.streaming_thinking.get_or_insert_with(String::new);
-                thinking.push_str(&text);
-            }
-            SseEvent::Token(token) => {
-                let response = self.streaming_response.get_or_insert_with(String::new);
-                response.push_str(&token);
-            }
-            SseEvent::ToolCall { id: _, tool_name, args } => {
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    format!("Tool call: {tool_name}"),
-                ));
-                if let Some(msg) = self.messages.last_mut() {
-                    msg.blocks.push(ChatBlock::ToolCall { tool_name, args });
-                }
-            }
-            SseEvent::ToolResult { id: _, tool_name, result, is_error } => {
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    format!("Tool result: {tool_name}{}",
-                        if is_error { " (error)" } else { "" }),
-                ));
-                if let Some(msg) = self.messages.last_mut() {
-                    msg.blocks.push(ChatBlock::ToolResult { tool_name, result, is_error });
-                }
-            }
-            SseEvent::Usage { prompt_tokens, completion_tokens } => {
-                self.last_token_usage = Some((prompt_tokens, completion_tokens));
-            }
-            SseEvent::Done => {
-                if let Some(response) = self.streaming_response.take() {
-                    let mut msg = ChatMessage::new(MessageRole::Assistant, response);
-                    if let Some(thinking) = self.streaming_thinking.take() {
-                        if !thinking.is_empty() {
-                            msg.blocks.insert(0, ChatBlock::Thinking(thinking));
-                        }
-                    }
-                    msg.blocks.push(ChatBlock::Text(msg.content.clone()));
-                    self.push_activity(ActivityKind::Chat, "AI response");
-                    self.messages.push(msg);
-                    self.chat_auto_scroll = true;
-                }
-                self.streaming_thinking = None;
-                self.operation_start = None;
-            }
-            SseEvent::Error(err) => {
-                self.messages.push(ChatMessage::new(
-                    MessageRole::System,
-                    format!("Error: {err}"),
-                ));
-                self.streaming_response = None;
-                self.streaming_thinking = None;
-                self.operation_start = None;
-            }
-        }
-    }
-
     pub fn set_scan_result(&mut self, result: ScanResult) {
         let score = result.score.total_score;
+        let old_score = self.score_history.last().copied().unwrap_or(0.0);
         self.push_activity(ActivityKind::Scan, format!("{score:.0}/100"));
         self.score_history.push(score);
+
+        // T08: Push counter animation on score change
+        if self.animation.enabled && (old_score - score).abs() > 0.5 {
+            self.animation.push(crate::animation::Animation::new(
+                crate::animation::AnimKind::Counter {
+                    from: old_score as u32,
+                    to: score as u32,
+                },
+                800,
+            ));
+        }
         if self.score_history.len() > 20 {
             self.score_history.remove(0);
         }
@@ -1288,10 +1439,28 @@ impl App {
         self.last_scan = Some(result);
         self.operation_start = None;
         self.chat_auto_scroll = true;
+
+        // T07: Toast notification for scan completion
+        let toast_msg = format!("Scan complete: {score:.0}/100 ({zone})");
+        let kind = if score >= 80.0 {
+            crate::components::toast::ToastKind::Success
+        } else if score >= 50.0 {
+            crate::components::toast::ToastKind::Warning
+        } else {
+            crate::components::toast::ToastKind::Error
+        };
+        self.toasts.push(kind, toast_msg);
     }
 
-    pub fn load_file_tree(&mut self) {
-        self.file_tree = file_browser::build_file_tree(&self.project_path);
+    pub async fn load_file_tree(&mut self) {
+        let path = self.project_path.clone();
+        if let Ok(tree) = tokio::task::spawn_blocking(move || {
+            file_browser::build_file_tree(&path)
+        })
+        .await
+        {
+            self.file_tree = tree;
+        }
     }
 
     pub fn open_file(&mut self, path: &str, content: String) {
@@ -1340,120 +1509,13 @@ impl App {
             })
     }
 
-    /// Handle view-specific single-char key presses (Normal mode).
-    fn handle_view_key(&mut self, c: char) {
-        match self.view_state {
-            ViewState::Scan => {
-                if let Some(filter) =
-                    crate::views::scan::FindingsFilter::from_key(c)
-                {
-                    self.scan_view.findings_filter = filter;
-                    self.scan_view.selected_finding = Some(0);
-                } else if c == 'f' && self.scan_view.detail_open {
-                    // Go to Fix View with current finding
-                    self.scan_view.detail_open = false;
-                    self.view_state = ViewState::Fix;
-                    if let Some(scan) = &self.last_scan {
-                        self.fix_view = FixViewState::from_scan(&scan.findings);
-                    }
-                }
-            }
-            ViewState::Fix => match c {
-                ' ' => self.fix_view.toggle_current(),
-                'a' => self.fix_view.select_all(),
-                'n' => self.fix_view.deselect_all(),
-                'd' => self.fix_view.diff_visible = !self.fix_view.diff_visible,
-                _ => {}
-            },
-            ViewState::Report => {
-                if c == 'e' {
-                    if let Some(scan) = &self.last_scan {
-                        match crate::views::report::export_report(scan) {
-                            Ok(path) => {
-                                self.report_view.export_status =
-                                    crate::views::report::ExportStatus::Done(path.clone());
-                                self.messages.push(ChatMessage::new(
-                                    MessageRole::System,
-                                    format!("Report exported: {path}"),
-                                ));
-                            }
-                            Err(e) => {
-                                self.report_view.export_status =
-                                    crate::views::report::ExportStatus::Error(e.clone());
-                                self.messages.push(ChatMessage::new(
-                                    MessageRole::System,
-                                    format!("Export failed: {e}"),
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    /// Handle Enter key in view context.
-    fn handle_view_enter(&mut self) {
-        match self.view_state {
-            ViewState::Scan => {
-                if self.scan_view.detail_open {
-                    // Close detail
-                    self.scan_view.detail_open = false;
-                } else if self.last_scan.is_some() {
-                    // Open finding detail
-                    self.scan_view.detail_open = true;
-                }
-            }
-            ViewState::Fix => {
-                if self.fix_view.results.is_some() {
-                    // Dismiss results
-                    self.fix_view.results = None;
-                } else if self.fix_view.selected_count() > 0 {
-                    // Show placeholder results in Fix view (engine API not yet connected)
-                    let selected = self.fix_view.selected_count() as u32;
-                    let old_score = self
-                        .last_scan
-                        .as_ref()
-                        .map(|s| s.score.total_score)
-                        .unwrap_or(0.0);
-                    let impact = self.fix_view.total_predicted_impact() as f64;
-                    self.fix_view.results =
-                        Some(crate::views::fix::FixResults {
-                            applied: selected,
-                            failed: 0,
-                            old_score,
-                            new_score: (old_score + impact).min(100.0),
-                        });
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        format!("Applied {selected} fixes (simulated). Re-scan with Ctrl+S to verify."),
-                    ));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    /// Handle Esc key in view context.
-    fn handle_view_escape(&mut self) {
-        match self.view_state {
-            ViewState::Scan => {
-                if self.scan_view.detail_open {
-                    self.scan_view.detail_open = false;
-                }
-            }
-            ViewState::Fix => {
-                if self.fix_view.results.is_some() {
-                    self.fix_view.results = None;
-                }
-            }
-            _ => {}
-        }
-    }
 }
 
+/// Commands that `apply_action()` can emit for async execution by the event loop.
+/// Some variants are dispatched indirectly (e.g., `SaveTheme` via overlay confirmation)
+/// so not all call sites are statically visible.
 #[derive(Debug)]
+#[allow(dead_code)] // TODO(T10): wire remaining variants or remove after feature audit
 pub enum AppCommand {
     Scan,
     AutoScan,
@@ -1465,11 +1527,29 @@ pub enum AppCommand {
     SaveSession(String),
     LoadSession(String),
     ToggleWatch,
+    Undo(Option<u32>),
+    FetchUndoHistory,
+    FetchSuggestions,
+    WhatIf(String),
+    FixDryRun(Vec<String>),
+    /// Async: persist theme name to config file.
+    SaveTheme(String),
+    /// Async: mark onboarding as completed in config.
+    MarkOnboardingComplete,
+    /// Async: mark first-run marker file.
+    MarkFirstRunDone,
+    /// Async: list saved sessions.
+    ListSessions,
+    /// Async: export compliance report to markdown file.
+    ExportReport,
+    /// Async: save provider config after model/provider change.
+    SaveProviderConfig,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine_client::SseEvent;
 
     #[test]
     fn test_app_creation() {
@@ -1746,5 +1826,69 @@ mod tests {
         assert!(cmd.is_none());
         assert_eq!(app.overlay, Overlay::ThemePicker);
         assert!(app.theme_picker.is_some());
+    }
+
+    // ── T08 Tests ──
+
+    #[test]
+    fn test_click_areas_rebuilt_on_dashboard() {
+        let mut app = App::new(TuiConfig::default());
+        app.view_state = ViewState::Dashboard;
+        app.rebuild_click_areas(120, 40);
+        // Should have at least 6 view tabs in footer
+        let tab_count = app.click_areas.iter()
+            .filter(|(_, t)| matches!(t, crate::types::ClickTarget::ViewTab(_)))
+            .count();
+        assert_eq!(tab_count, 6);
+    }
+
+    #[test]
+    fn test_click_areas_sidebar_toggle_when_visible() {
+        let mut app = App::new(TuiConfig::default());
+        app.sidebar_visible = true;
+        app.rebuild_click_areas(120, 40); // Medium breakpoint, sidebar visible
+        let has_sidebar = app.click_areas.iter()
+            .any(|(_, t)| matches!(t, crate::types::ClickTarget::SidebarToggle));
+        assert!(has_sidebar, "Medium width with sidebar visible should have SidebarToggle");
+    }
+
+    #[test]
+    fn test_click_areas_no_sidebar_on_small_terminal() {
+        let mut app = App::new(TuiConfig::default());
+        app.sidebar_visible = true;
+        app.rebuild_click_areas(80, 30); // Small breakpoint
+        let has_sidebar = app.click_areas.iter()
+            .any(|(_, t)| matches!(t, crate::types::ClickTarget::SidebarToggle));
+        assert!(!has_sidebar, "Small terminal should not have SidebarToggle");
+    }
+
+    #[test]
+    fn test_idle_suggestion_triggers_fetch() {
+        let mut app = App::new(TuiConfig::default());
+        app.input_mode = InputMode::Normal;
+        // Simulate 15s idle
+        app.idle_suggestions.last_input = std::time::Instant::now() - std::time::Duration::from_secs(15);
+        let cmd = app.tick();
+        assert!(matches!(cmd, Some(AppCommand::FetchSuggestions)));
+        assert!(app.idle_suggestions.fetch_pending);
+    }
+
+    #[test]
+    fn test_idle_no_fetch_when_insert_mode() {
+        let mut app = App::new(TuiConfig::default());
+        app.input_mode = InputMode::Insert;
+        app.idle_suggestions.last_input = std::time::Instant::now() - std::time::Duration::from_secs(15);
+        let cmd = app.tick();
+        assert!(cmd.is_none(), "Should not trigger fetch in insert mode");
+    }
+
+    #[test]
+    fn test_colon_mode_activation() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(TuiConfig::default());
+        app.input_mode = InputMode::Normal;
+        let _cmd = app.apply_action(Action::EnterColonMode);
+        assert!(app.colon_mode);
+        assert_eq!(app.input_mode, InputMode::Command);
     }
 }

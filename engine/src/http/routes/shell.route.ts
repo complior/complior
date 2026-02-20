@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { runCommand } from '../../coding/shell.js';
+import { runCommand } from '../../infra/shell-adapter.js';
 import { ValidationError } from '../../types/errors.js';
 
 const ShellRequestSchema = z.object({

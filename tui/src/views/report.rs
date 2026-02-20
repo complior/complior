@@ -147,7 +147,7 @@ pub fn generate_report_markdown(scan: &ScanResult) -> String {
 }
 
 /// Export report to a Markdown file.
-pub fn export_report(scan: &ScanResult) -> Result<String, String> {
+pub async fn export_report(scan: &ScanResult) -> Result<String, String> {
     let md = generate_report_markdown(scan);
 
     // Generate filename with date
@@ -163,7 +163,9 @@ pub fn export_report(scan: &ScanResult) -> Result<String, String> {
     let day = remaining % 30 + 1;
     let filename = format!("COMPLIANCE-REPORT-{year}-{month:02}-{day:02}.md");
 
-    std::fs::write(&filename, &md).map_err(|e| format!("Failed to write {filename}: {e}"))?;
+    tokio::fs::write(&filename, &md)
+        .await
+        .map_err(|e| format!("Failed to write {filename}: {e}"))?;
     Ok(filename)
 }
 

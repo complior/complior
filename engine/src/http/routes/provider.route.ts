@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { generateText } from 'ai';
 import { ValidationError } from '../../types/errors.js';
-import type { LlmPort, ProviderName } from '../../ports/llm.port.js';
+import type { LlmPort } from '../../ports/llm.port.js';
 
 const VerifySchema = z.object({
   provider: z.enum(['anthropic', 'openai', 'openrouter']),
@@ -30,10 +30,10 @@ export const createProviderRoute = (llm: LlmPort) => {
           ? 'claude-haiku-4-5-20251001'
           : 'gpt-4o-mini';
 
-      const model = await llm.getModel(provider as ProviderName, testModelId, apiKey);
+      const model = await llm.getModel(provider, testModelId, apiKey);
 
       await generateText({
-        model: model as Parameters<typeof generateText>[0]['model'],
+        model,
         prompt: 'Say "ok"',
         maxOutputTokens: 1,
       });
