@@ -3,6 +3,7 @@ mod app;
 mod cli;
 mod components;
 mod config;
+mod credentials;
 mod engine_client;
 mod engine_process;
 mod error;
@@ -158,7 +159,7 @@ async fn main() -> color_eyre::Result<()> {
             }
         });
 
-    let mut app = App::new(config);
+    let mut app = App::new(config.clone());
     // Override engine client with the effective URL
     app.engine_client = engine_client::EngineClient::from_url(&effective_url);
     // Start splash animation (only in production, not in tests)
@@ -172,9 +173,24 @@ async fn main() -> color_eyre::Result<()> {
         tracing::info!("Resumed session 'latest'");
     }
 
-    // Show getting started on first run, or provider setup if no providers
-    if !session::first_run_done().await {
-        app.overlay = types::Overlay::GettingStarted;
+    // Parse --yes flag for non-interactive onboarding
+    let skip_onboarding = parsed_cli.yes
+        || std::env::var("CI").is_ok();
+
+    // Show onboarding on first run, or provider setup if no providers
+    if !config.onboarding_completed && !skip_onboarding {
+        // Check for partial resume
+        let wiz = if let Some(last_step) = config.onboarding_last_step {
+            crate::views::onboarding::OnboardingWizard::resume(last_step)
+        } else {
+            crate::views::onboarding::OnboardingWizard::new()
+        };
+        app.onboarding = Some(wiz);
+        app.overlay = types::Overlay::Onboarding;
+    } else if !config.onboarding_completed && skip_onboarding {
+        // --yes or CI: apply defaults and mark complete
+        config::mark_onboarding_complete().await;
+        app.config.onboarding_completed = true;
     } else if !providers::is_configured(&app.provider_config) {
         app.overlay = types::Overlay::ProviderSetup;
     }
@@ -928,6 +944,80 @@ async fn execute_command(
             if let Err(e) = providers::save_provider_config(&app.provider_config).await {
                 tracing::warn!("Failed to save provider config: {e}");
             }
+        }
+        AppCommand::CompleteOnboarding => {
+            // 1. Save config + credentials from wizard
+            if let Some(ref wiz) = app.onboarding {
+                config::save_onboarding_results(wiz).await;
+
+                // Also update the provider config if a key was provided
+                let provider = wiz.selected_config_value("ai_provider");
+                let api_key_step = wiz.steps.iter().find(|s| s.id == "ai_provider");
+                if let Some(step) = api_key_step
+                    && !step.text_value.is_empty()
+                    && provider != "offline"
+                {
+                    app.provider_config.active_provider.clone_from(&provider);
+                    app.provider_config.providers.insert(
+                        provider.clone(),
+                        providers::ProviderEntry {
+                            api_key: step.text_value.clone(),
+                        },
+                    );
+                    let _ = providers::save_provider_config(&app.provider_config).await;
+                }
+            }
+
+            // 2. Determine project type for post-completion action
+            let project_type = app
+                .onboarding
+                .as_ref()
+                .and_then(|w| w.project_type.clone())
+                .unwrap_or_else(|| "existing".to_string());
+
+            // 3. Close wizard
+            app.onboarding = None;
+            app.overlay = types::Overlay::None;
+            app.config.onboarding_completed = true;
+
+            // 4. Post-completion action based on project_type
+            match project_type.as_str() {
+                "existing" => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        "Running first scan...".to_string(),
+                    ));
+                    // Trigger scan directly (avoid recursive execute_command)
+                    let path = app.project_path.to_string_lossy().to_string();
+                    match app.engine_client.scan(&path).await {
+                        Ok(result) => app.set_scan_result(result),
+                        Err(e) => {
+                            app.messages.push(types::ChatMessage::new(
+                                types::MessageRole::System,
+                                format!("First scan failed: {e}. Use /scan to retry."),
+                            ));
+                        }
+                    }
+                }
+                "new" => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        "Compliance structure created. Use /scan when you add AI tools."
+                            .to_string(),
+                    ));
+                }
+                "demo" => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        "Demo mode active. Run `complior init` in your project to start for real."
+                            .to_string(),
+                    ));
+                }
+                _ => {}
+            }
+        }
+        AppCommand::SaveOnboardingPartial(last_step) => {
+            config::save_onboarding_partial(last_step).await;
         }
     }
 }
