@@ -325,6 +325,66 @@ mod tests {
     use super::*;
     use crate::types::ChatMessage;
 
+    /// Replace `[HH:MM]` timestamps with `[00:00]` for deterministic snapshots.
+    fn normalize_timestamps(s: &str) -> String {
+        let mut result = String::with_capacity(s.len());
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if i + 7 <= bytes.len()
+                && bytes[i] == b'['
+                && bytes[i + 1].is_ascii_digit()
+                && bytes[i + 2].is_ascii_digit()
+                && bytes[i + 3] == b':'
+                && bytes[i + 4].is_ascii_digit()
+                && bytes[i + 5].is_ascii_digit()
+                && bytes[i + 6] == b']'
+            {
+                result.push_str("[00:00]");
+                i += 7;
+            } else {
+                result.push(bytes[i] as char);
+                i += 1;
+            }
+        }
+        result
+    }
+
+    fn render_chat_to_string(app: &App, width: u16, height: u16) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), app, true))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_chat_with_messages() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.messages.push(ChatMessage::new(
+            MessageRole::User,
+            "scan my project".to_string(),
+        ));
+        app.messages.push(ChatMessage::new(
+            MessageRole::Assistant,
+            "Scanning...".to_string(),
+        ));
+        let buf = render_chat_to_string(&app, 80, 24);
+        // Normalize timestamps [HH:MM] to [00:00] for deterministic snapshots
+        let buf = normalize_timestamps(&buf);
+        insta::assert_snapshot!(buf);
+    }
+
     #[test]
     fn test_chat_renders_messages() {
         crate::theme::init_theme("dark");

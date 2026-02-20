@@ -11,8 +11,10 @@ pub struct EngineClient {
     base_url: String,
 }
 
+/// Server-Sent Events from the compliance engine SSE stream.
+/// Variants are constructed by the SSE parser; not all are consumed yet.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[allow(dead_code)] // TODO(T10): consume all variants in SSE handler
 pub enum SseEvent {
     Token(String),
     Thinking(String),

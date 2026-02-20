@@ -5,6 +5,7 @@ import { streamText, stepCountIs, type CoreMessage } from 'ai';
 import { ValidationError } from '../../types/errors.js';
 import type { ChatService } from '../../services/chat-service.js';
 import type { LlmPort } from '../../ports/llm.port.js';
+import type { ToolExecutorDeps } from '../../llm/tool-executors.js';
 import {
   sseThinking, sseText, sseToolCall, sseToolResult,
   sseUsage, sseDone, sseError,
@@ -25,6 +26,9 @@ const ChatRequestSchema = z.object({
 export interface ChatRouteDeps {
   readonly chatService: ChatService;
   readonly llm: LlmPort;
+  readonly toolExecutorDeps: ToolExecutorDeps;
+  readonly getMode: () => AgentMode;
+  readonly setMode: (mode: AgentMode) => void;
 }
 
 const AGENT_MODE_SET = new Set<string>(['build', 'comply', 'audit', 'learn']);
@@ -54,16 +58,15 @@ const parseCommand = (msg: string): { command: string; arg: string } | null => {
 };
 
 export const createChatRoute = (deps: ChatRouteDeps) => {
-  const { chatService, llm } = deps;
+  const { chatService, llm, toolExecutorDeps, getMode, setMode } = deps;
   const app = new Hono();
 
   // Session state
-  let currentMode: AgentMode = 'build';
   let modelOverride: string | undefined;
   const costTracker: CostTracker = createCostTracker();
 
   // GET /mode — current mode info
-  app.get('/mode', (c) => c.json({ mode: currentMode, config: getAgentConfig(currentMode) }));
+  app.get('/mode', (c) => c.json({ mode: getMode(), config: getAgentConfig(getMode()) }));
 
   // POST /mode — switch mode
   app.post('/mode', async (c) => {
@@ -72,8 +75,8 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     if (!mode || !isAgentMode(mode)) {
       return c.json({ error: 'INVALID_MODE', valid: getAllModes() }, 400);
     }
-    currentMode = mode;
-    return c.json({ mode: currentMode, config: getAgentConfig(currentMode) });
+    setMode(mode);
+    return c.json({ mode: getMode(), config: getAgentConfig(getMode()) });
   });
 
   // GET /cost — session cost breakdown
@@ -93,9 +96,9 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     if (cmd) {
       if (cmd.command === 'mode' && cmd.arg) {
         if (isAgentMode(cmd.arg)) {
-          currentMode = cmd.arg;
-          const config = getAgentConfig(currentMode);
-          return c.json({ type: 'command', command: 'mode', mode: currentMode, label: config.label, writeEnabled: config.writeEnabled });
+          setMode(cmd.arg);
+          const config = getAgentConfig(getMode());
+          return c.json({ type: 'command', command: 'mode', mode: getMode(), label: config.label, writeEnabled: config.writeEnabled });
         }
         return c.json({ type: 'command', command: 'mode', error: `Invalid mode. Valid: ${getAllModes().join(', ')}` });
       }
@@ -109,7 +112,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     }
 
     // Apply mode from request or session
-    if (parsed.data.mode) currentMode = parsed.data.mode;
+    if (parsed.data.mode) setMode(parsed.data.mode);
 
     const { provider, modelId } = parsed.data.provider && parsed.data.model
       ? { provider: parsed.data.provider, modelId: parsed.data.model }
@@ -117,9 +120,9 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     const model = await llm.getModel(provider, modelId, parsed.data.apiKey);
 
     // Use mode-specific system prompt
-    const modeConfig = getAgentConfig(currentMode);
+    const modeConfig = getAgentConfig(getMode());
     const systemPrompt = `${modeConfig.systemPrompt}\n\n${chatService.buildSystemPrompt()}`;
-    const tools = createCodingTools(chatService.getProjectPath());
+    const tools = createCodingTools(chatService.getProjectPath(), toolExecutorDeps);
 
     // Append user message to conversation history
     const userMessage: CoreMessage = { role: 'user', content: parsed.data.message };

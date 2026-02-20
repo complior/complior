@@ -4,16 +4,43 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
 
-use crate::app::{App, AppCommand};
+use crate::app::App;
 use crate::input::Action;
 use crate::theme;
-use crate::types::Overlay;
 
 const PROVIDERS: &[(&str, &str)] = &[
     ("anthropic", "Anthropic"),
     ("openai", "OpenAI"),
     ("openrouter", "OpenRouter"),
 ];
+
+/// Result of handling a provider setup action. Applied by `app.rs`.
+pub enum ProviderSetupResult {
+    /// Navigate provider list: new selected index.
+    NavigateProvider(usize),
+    /// Advance to API key input step.
+    AdvanceToKeyInput,
+    /// Append char to key input buffer.
+    KeyChar(char),
+    /// Delete last char from key input buffer.
+    KeyBackspace,
+    /// Submit API key: (provider_id, api_key). Also sets as active if first provider.
+    SubmitKey {
+        provider_id: String,
+        api_key: String,
+        first_model_id: Option<String>,
+    },
+    /// Go back to provider selection step.
+    BackToSelect,
+    /// Retry after error — go back to key input.
+    Retry,
+    /// Success confirmed — close overlay.
+    ConfirmSuccess,
+    /// Close the overlay.
+    Close,
+    /// No state change.
+    Noop,
+}
 
 pub fn render_provider_setup(frame: &mut Frame, app: &App) {
     let t = theme::theme();
@@ -161,122 +188,81 @@ fn render_step_result(frame: &mut Frame, area: Rect, app: &App, t: &theme::Theme
     frame.render_widget(Paragraph::new(lines), area);
 }
 
-pub fn handle_provider_setup_action(app: &mut App, action: Action) -> Option<AppCommand> {
+pub fn handle_provider_setup_action(app: &App, action: Action) -> ProviderSetupResult {
     match app.provider_setup_step {
         0 => handle_step_select(app, action),
         1 => handle_step_key_input(app, action),
-        2 => None, // Waiting for verification, ignore input
+        2 => ProviderSetupResult::Noop, // Waiting for verification, ignore input
         3 => handle_step_result_input(app, action),
-        _ => None,
+        _ => ProviderSetupResult::Noop,
     }
 }
 
-fn handle_step_select(app: &mut App, action: Action) -> Option<AppCommand> {
+fn handle_step_select(app: &App, action: Action) -> ProviderSetupResult {
     match action {
         Action::ScrollDown | Action::InsertChar('j') => {
             if app.provider_setup_selected + 1 < PROVIDERS.len() {
-                app.provider_setup_selected += 1;
+                ProviderSetupResult::NavigateProvider(app.provider_setup_selected + 1)
+            } else {
+                ProviderSetupResult::Noop
             }
-            None
         }
         Action::ScrollUp | Action::InsertChar('k') => {
-            app.provider_setup_selected = app.provider_setup_selected.saturating_sub(1);
-            None
+            ProviderSetupResult::NavigateProvider(app.provider_setup_selected.saturating_sub(1))
         }
-        Action::SubmitInput => {
-            app.provider_setup_step = 1;
-            app.provider_setup_key_input.clear();
-            None
-        }
-        Action::EnterNormalMode | Action::Quit => {
-            app.overlay = Overlay::None;
-            None
-        }
-        _ => None,
+        Action::SubmitInput => ProviderSetupResult::AdvanceToKeyInput,
+        Action::EnterNormalMode | Action::Quit => ProviderSetupResult::Close,
+        _ => ProviderSetupResult::Noop,
     }
 }
 
-fn handle_step_key_input(app: &mut App, action: Action) -> Option<AppCommand> {
+fn handle_step_key_input(app: &App, action: Action) -> ProviderSetupResult {
     match action {
-        Action::InsertChar(c) => {
-            app.provider_setup_key_input.push(c);
-            None
-        }
-        Action::DeleteChar => {
-            app.provider_setup_key_input.pop();
-            None
-        }
+        Action::InsertChar(c) => ProviderSetupResult::KeyChar(c),
+        Action::DeleteChar => ProviderSetupResult::KeyBackspace,
         Action::SubmitInput => {
             if app.provider_setup_key_input.is_empty() {
-                return None;
+                return ProviderSetupResult::Noop;
             }
-            // Save the provider config immediately (skip verification for now,
-            // Task #9 will wire up async engine verification)
             let provider_id = PROVIDERS
                 .get(app.provider_setup_selected)
                 .map_or("unknown", |p| p.0);
             let key = app.provider_setup_key_input.clone();
 
-            app.provider_config.providers.insert(
-                provider_id.to_string(),
-                crate::providers::ProviderEntry { api_key: key },
-            );
-
-            // Set as active provider if first one
-            if app.provider_config.active_provider.is_empty() {
-                app.provider_config.active_provider = provider_id.to_string();
-                // Pick first model for this provider
+            // Determine first model if this is the first provider
+            let first_model_id = if app.provider_config.active_provider.is_empty() {
                 let models = crate::providers::models_for_provider(provider_id);
-                if let Some(first) = models.first() {
-                    app.provider_config.active_model = first.id.to_string();
-                }
-            }
+                models.first().map(|m| m.id.to_string())
+            } else {
+                None
+            };
 
-            if let Err(e) = crate::providers::save_provider_config(&app.provider_config) {
-                app.provider_setup_error = Some(format!("Save failed: {e}"));
-                app.provider_setup_step = 3;
-                return None;
+            ProviderSetupResult::SubmitKey {
+                provider_id: provider_id.to_string(),
+                api_key: key,
+                first_model_id,
             }
-
-            // Success
-            app.provider_setup_error = None;
-            app.provider_setup_step = 3;
-            None
         }
-        Action::EnterNormalMode => {
-            // Go back to provider selection
-            app.provider_setup_step = 0;
-            None
-        }
-        Action::Quit => {
-            app.overlay = Overlay::None;
-            None
-        }
-        _ => None,
+        Action::EnterNormalMode => ProviderSetupResult::BackToSelect,
+        Action::Quit => ProviderSetupResult::Close,
+        _ => ProviderSetupResult::Noop,
     }
 }
 
-fn handle_step_result_input(app: &mut App, action: Action) -> Option<AppCommand> {
+fn handle_step_result_input(app: &App, action: Action) -> ProviderSetupResult {
     match action {
         Action::SubmitInput => {
             if app.provider_setup_error.is_none() {
-                // Success — close overlay
-                app.overlay = Overlay::None;
+                ProviderSetupResult::ConfirmSuccess
+            } else {
+                ProviderSetupResult::Noop
             }
-            None
         }
         Action::InsertChar('r') if app.provider_setup_error.is_some() => {
-            // Retry — go back to API key input
-            app.provider_setup_step = 1;
-            app.provider_setup_key_input.clear();
-            app.provider_setup_error = None;
-            None
+            ProviderSetupResult::Retry
         }
-        Action::EnterNormalMode | Action::Quit => {
-            app.overlay = Overlay::None;
-            None
-        }
-        _ => None,
+        Action::EnterNormalMode | Action::Quit => ProviderSetupResult::Close,
+        _ => ProviderSetupResult::Noop,
     }
 }
 

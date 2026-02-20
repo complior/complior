@@ -1,18 +1,36 @@
 import type { BrowserPort } from '../ports/browser.port.js';
 import type { PageData } from '../domain/scanner/external/types.js';
+import { ENGINE_VERSION } from '../version.js';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+interface PlaywrightBrowser {
+  newContext(options?: Record<string, unknown>): Promise<PlaywrightContext>;
+  close(): Promise<void>;
+}
+
+interface PlaywrightContext {
+  newPage(): Promise<PlaywrightPage>;
+  close(): Promise<void>;
+}
+
+interface PlaywrightPage {
+  goto(url: string, options?: Record<string, unknown>): Promise<{ allHeaders(): Promise<Record<string, string>> } | null>;
+  content(): Promise<string>;
+  title(): Promise<string>;
+  evaluate<T, A extends unknown[]>(fn: (...args: A) => T, ...args: A): Promise<T>;
+  screenshot(options?: Record<string, unknown>): Promise<void>;
+  close(): Promise<void>;
+}
 
 export const createHeadlessBrowser = (): BrowserPort => {
-  let browser: any = null;
+  let browser: PlaywrightBrowser | null = null;
 
-  const ensureBrowser = async (): Promise<any> => {
+  const ensureBrowser = async (): Promise<PlaywrightBrowser> => {
     if (browser) return browser;
     try {
       // @ts-expect-error playwright is an optional dependency
-      const pw = await import('playwright');
+      const pw = await import('playwright') as { chromium: { launch(opts: Record<string, unknown>): Promise<PlaywrightBrowser> } };
       browser = await pw.chromium.launch({ headless: true });
-      return browser;
+      return browser!;
     } catch {
       throw new Error(
         'Playwright is not installed. Run `npm install playwright` and `npx playwright install chromium` to enable external scanning.',
@@ -23,7 +41,7 @@ export const createHeadlessBrowser = (): BrowserPort => {
   const crawl = async (url: string, timeout = 30000): Promise<PageData> => {
     const b = await ensureBrowser();
     const context = await b.newContext({
-      userAgent: 'Complior/0.1.0 (Compliance Scanner)',
+      userAgent: `Complior/${ENGINE_VERSION} (Compliance Scanner)`,
     });
     const page = await context.newPage();
 
@@ -31,7 +49,7 @@ export const createHeadlessBrowser = (): BrowserPort => {
       const response = await page.goto(url, { timeout, waitUntil: 'networkidle' });
       const headers: Record<string, string> = {};
       if (response) {
-        const allHeaders = await response.allHeaders() as Record<string, string>;
+        const allHeaders = await response.allHeaders();
         for (const [k, v] of Object.entries(allHeaders)) {
           headers[k] = String(v);
         }

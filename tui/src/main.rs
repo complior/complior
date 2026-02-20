@@ -166,21 +166,21 @@ async fn main() -> color_eyre::Result<()> {
 
     // Check for --resume flag
     if resume
-        && let Ok(data) = session::load_session("latest")
+        && let Ok(data) = session::load_session("latest").await
     {
         app.load_session_data(data);
         tracing::info!("Resumed session 'latest'");
     }
 
     // Show getting started on first run, or provider setup if no providers
-    if !session::first_run_done() {
+    if !session::first_run_done().await {
         app.overlay = types::Overlay::GettingStarted;
     } else if !providers::is_configured(&app.provider_config) {
         app.overlay = types::Overlay::ProviderSetup;
     }
 
     // Build initial file tree
-    app.load_file_tree();
+    app.load_file_tree().await;
 
     // Setup terminal
     enable_raw_mode()?;
@@ -223,7 +223,7 @@ async fn main() -> color_eyre::Result<()> {
     engine_mgr.shutdown();
 
     // Auto-save session on exit
-    if let Err(e) = session::save_session(&app.to_session_data(), "latest") {
+    if let Err(e) = session::save_session(&app.to_session_data(), "latest").await {
         tracing::warn!("Failed to save session: {e}");
     }
 
@@ -597,7 +597,7 @@ async fn execute_command(
         }
         AppCommand::SaveSession(name) => {
             let data = app.to_session_data();
-            match session::save_session(&data, &name) {
+            match session::save_session(&data, &name).await {
                 Ok(()) => {
                     app.messages.push(types::ChatMessage::new(
                         types::MessageRole::System,
@@ -612,7 +612,7 @@ async fn execute_command(
                 }
             }
         }
-        AppCommand::LoadSession(name) => match session::load_session(&name) {
+        AppCommand::LoadSession(name) => match session::load_session(&name).await {
             Ok(data) => {
                 app.load_session_data(data);
                 app.messages.push(types::ChatMessage::new(
@@ -875,6 +875,60 @@ async fn execute_command(
                 }
             }
         }
+        AppCommand::SaveTheme(name) => {
+            config::save_theme(&name).await;
+        }
+        AppCommand::MarkOnboardingComplete => {
+            config::mark_onboarding_complete().await;
+        }
+        AppCommand::MarkFirstRunDone => {
+            session::mark_first_run_done().await;
+        }
+        AppCommand::ListSessions => {
+            let sessions = session::list_sessions().await;
+            if sessions.is_empty() {
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    "No saved sessions.".to_string(),
+                ));
+            } else {
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    format!("Sessions: {}", sessions.join(", ")),
+                ));
+            }
+        }
+        AppCommand::ExportReport => {
+            if let Some(scan) = &app.last_scan {
+                match views::report::export_report(scan).await {
+                    Ok(path) => {
+                        app.report_view.export_status =
+                            views::report::ExportStatus::Done(path.clone());
+                        app.toasts.push(
+                            components::toast::ToastKind::Success,
+                            format!("Exported: {path}"),
+                        );
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            format!("Report exported: {path}"),
+                        ));
+                    }
+                    Err(e) => {
+                        app.report_view.export_status =
+                            views::report::ExportStatus::Error(e.clone());
+                        app.toasts.push(
+                            components::toast::ToastKind::Error,
+                            format!("Export failed: {e}"),
+                        );
+                    }
+                }
+            }
+        }
+        AppCommand::SaveProviderConfig => {
+            if let Err(e) = providers::save_provider_config(&app.provider_config).await {
+                tracing::warn!("Failed to save provider config: {e}");
+            }
+        }
     }
 }
 
@@ -891,7 +945,7 @@ fn build_local_suggestion(app: &App) -> components::suggestions::Suggestion {
         };
     }
 
-    let scan = app.last_scan.as_ref().unwrap();
+    let scan = app.last_scan.as_ref().expect("last_scan: guarded by is_none check above");
     let score = scan.score.total_score;
 
     // Priority 2: Findings present — suggest fix

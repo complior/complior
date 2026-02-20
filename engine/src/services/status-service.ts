@@ -2,12 +2,13 @@ import type { EngineStatus, ScanResult } from '../types/common.types.js';
 
 export interface StatusServiceDeps {
   readonly getVersion: () => string;
+  readonly getMode: () => string;
   readonly getStartedAt: () => number;
   readonly getLastScanResult: () => ScanResult | null;
 }
 
 export const createStatusService = (deps: StatusServiceDeps) => {
-  const { getVersion, getStartedAt, getLastScanResult } = deps;
+  const { getVersion, getMode, getStartedAt, getLastScanResult } = deps;
 
   const getStatus = (): EngineStatus => {
     const lastScan = getLastScanResult();
@@ -15,6 +16,7 @@ export const createStatusService = (deps: StatusServiceDeps) => {
     return {
       ready: true,
       version: getVersion(),
+      mode: getMode(),
       uptime: Date.now() - getStartedAt(),
       lastScan: lastScan
         ? {

@@ -110,7 +110,7 @@ pub fn mock_whatif(scenario: &str, current_score: f64) -> WhatIfResult {
     }
 }
 
-#[allow(dead_code)]
+#[allow(dead_code)] // TODO(T10): wire into dashboard overlay dispatch
 pub fn render_whatif_overlay(frame: &mut Frame, area: Rect, result: &WhatIfResult) {
     let t = theme::theme();
 

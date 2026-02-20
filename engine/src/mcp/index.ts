@@ -16,7 +16,8 @@ import { createMcpServer } from './server.js';
 const main = async (): Promise<void> => {
   const regulationData = await loadRegulationData();
   const projectPath = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
-  const version = '0.1.0';
+  const { ENGINE_VERSION } = await import('../version.js');
+  const version = ENGINE_VERSION;
 
   let lastScanResult: ScanResult | null = null;
 

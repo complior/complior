@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getDisclaimer, appendDisclaimer, getReportFooter, containsBannedPhrase } from './disclaimer.js';
+import { ENGINE_VERSION } from '../version.js';
 
 describe('Disclaimer Framework', () => {
   it('system prompt contains legal advisor warning', () => {
@@ -31,8 +32,8 @@ describe('Disclaimer Framework', () => {
   });
 
   it('getReportFooter includes version and date', () => {
-    const footer = getReportFooter('0.1.0');
-    expect(footer).toContain('complior v0.1.0');
+    const footer = getReportFooter(ENGINE_VERSION);
+    expect(footer).toContain(`complior v${ENGINE_VERSION}`);
     expect(footer).toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 });

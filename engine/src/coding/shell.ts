@@ -4,20 +4,11 @@ import { ToolError } from '../types/errors.js';
 
 const execAsync = promisify(exec);
 
-const BLOCKED_COMMANDS = new Set([
-  'rm -rf /',
-  'rm -rf /*',
-  'mkfs',
-  'dd if=',
-  ':(){:|:&};:',
-  'chmod -R 777 /',
-  'chown -R',
-  'shutdown',
-  'reboot',
-  'poweroff',
-  'halt',
-  'init 0',
-  'init 6',
+const ALLOWED_COMMANDS = new Set([
+  'bun', 'npm', 'npx', 'node', 'tsc', 'eslint', 'prettier',
+  'git', 'cargo', 'rustc', 'rustfmt', 'clippy',
+  'ls', 'cat', 'head', 'tail', 'wc', 'find', 'grep',
+  'echo', 'mkdir', 'cp', 'mv', 'touch', 'diff',
 ]);
 
 const DEFAULT_TIMEOUT = 30_000;
@@ -34,12 +25,9 @@ export const runCommand = async (
   cwd?: string,
   timeout?: number,
 ): Promise<CommandResult> => {
-  const normalizedCmd = command.trim().toLowerCase();
-
-  for (const blocked of BLOCKED_COMMANDS) {
-    if (normalizedCmd.includes(blocked)) {
-      throw new ToolError(`Blocked command: ${command}`);
-    }
+  const baseCmd = command.trim().split(/\s+/)[0] ?? '';
+  if (!ALLOWED_COMMANDS.has(baseCmd)) {
+    throw new ToolError(`Command not allowed: ${baseCmd}. Allowed: ${[...ALLOWED_COMMANDS].join(', ')}`);
   }
 
   const effectiveTimeout = Math.min(timeout ?? DEFAULT_TIMEOUT, MAX_TIMEOUT);

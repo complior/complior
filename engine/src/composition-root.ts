@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CoreMessage } from 'ai';
 import type { ScanResult, ProjectMemory } from './types/common.types.js';
+import type { AgentMode } from './llm/tools/types.js';
 import type { RegulationData } from './data/regulation-loader.js';
 import { loadRegulationData } from './infra/regulation-loader.js';
 import { createEventBus } from './infra/event-bus.js';
@@ -23,15 +24,19 @@ import { createExternalScanService } from './services/external-scan-service.js';
 import { createHeadlessBrowser } from './infra/headless-browser.js';
 import { createStatusService } from './services/status-service.js';
 import { createRouter } from './http/create-router.js';
+import { createOnboardingWizard } from './onboarding/wizard.js';
+import { ENGINE_VERSION } from './version.js';
 
 export interface ApplicationState {
   readonly regulationData: RegulationData;
   readonly projectPath: string;
   readonly startedAt: number;
   readonly version: string;
+  /** Mutable fields — modified via event handlers and service callbacks */
   lastScanResult: ScanResult | null;
   projectMemory: ProjectMemory | null;
   conversationHistory: CoreMessage[];
+  currentMode: AgentMode;
 }
 
 export interface Application {
@@ -53,10 +58,11 @@ export const loadApplication = async (): Promise<Application> => {
     regulationData,
     projectPath,
     startedAt: Date.now(),
-    version: '0.1.0',
+    version: ENGINE_VERSION,
     lastScanResult: null,
     projectMemory: null,
     conversationHistory: [],
+    currentMode: 'build',
   };
 
   // 3. Create infrastructure
@@ -162,8 +168,14 @@ export const loadApplication = async (): Promise<Application> => {
 
   const statusService = createStatusService({
     getVersion: () => state.version,
+    getMode: () => state.currentMode,
     getStartedAt: () => state.startedAt,
     getLastScanResult: () => state.lastScanResult,
+  });
+
+  // 5b. Create onboarding wizard
+  const onboardingWizard = createOnboardingWizard({
+    getProjectPath: () => state.projectPath,
   });
 
   // 6. Create router
@@ -180,6 +192,16 @@ export const loadApplication = async (): Promise<Application> => {
     statusService,
     llm,
     getProjectMemory: () => state.projectMemory,
+    getMode: () => state.currentMode,
+    setMode: (mode) => { state.currentMode = mode; },
+    toolExecutorDeps: {
+      getScoringData: () => state.regulationData.scoring?.scoring,
+      setLastScanResult: (result) => { state.lastScanResult = result; },
+    },
+    onboardingWizard,
+    getVersion: () => state.version,
+    loadProfile: () => onboardingWizard.loadProfile(),
+    getLastScore: () => state.lastScanResult?.score ?? null,
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan

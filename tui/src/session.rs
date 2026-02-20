@@ -20,56 +20,58 @@ fn sessions_dir() -> PathBuf {
         .join("sessions")
 }
 
-pub fn save_session(data: &SessionData, name: &str) -> Result<(), String> {
+pub async fn save_session(data: &SessionData, name: &str) -> Result<(), String> {
     let dir = sessions_dir();
-    std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir: {e}"))?;
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|e| format!("mkdir: {e}"))?;
 
     let path = dir.join(format!("{name}.json"));
     let json = serde_json::to_string_pretty(data).map_err(|e| format!("serialize: {e}"))?;
-    std::fs::write(&path, json).map_err(|e| format!("write: {e}"))?;
+    tokio::fs::write(&path, json)
+        .await
+        .map_err(|e| format!("write: {e}"))?;
     Ok(())
 }
 
-pub fn load_session(name: &str) -> Result<SessionData, String> {
+pub async fn load_session(name: &str) -> Result<SessionData, String> {
     let path = sessions_dir().join(format!("{name}.json"));
-    let content = std::fs::read_to_string(&path).map_err(|e| format!("read: {e}"))?;
+    let content = tokio::fs::read_to_string(&path)
+        .await
+        .map_err(|e| format!("read: {e}"))?;
     serde_json::from_str(&content).map_err(|e| format!("parse: {e}"))
 }
 
-pub fn list_sessions() -> Vec<String> {
+pub async fn list_sessions() -> Vec<String> {
     let dir = sessions_dir();
-    let Ok(entries) = std::fs::read_dir(&dir) else {
+    let Ok(mut entries) = tokio::fs::read_dir(&dir).await else {
         return Vec::new();
     };
 
-    let mut names: Vec<String> = entries
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.path()
-                .extension()
-                .is_some_and(|ext| ext == "json")
-        })
-        .filter_map(|e| {
-            e.path()
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
-        })
-        .collect();
+    let mut names = Vec::new();
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "json") {
+            if let Some(stem) = path.file_stem() {
+                names.push(stem.to_string_lossy().to_string());
+            }
+        }
+    }
 
     names.sort();
     names
 }
 
-pub fn first_run_done() -> bool {
+pub async fn first_run_done() -> bool {
     let marker = sessions_dir().join(".first_run_done");
-    marker.exists()
+    tokio::fs::try_exists(&marker).await.unwrap_or(false)
 }
 
-pub fn mark_first_run_done() {
+pub async fn mark_first_run_done() {
     let dir = sessions_dir();
-    let _ = std::fs::create_dir_all(&dir);
+    let _ = tokio::fs::create_dir_all(&dir).await;
     let marker = dir.join(".first_run_done");
-    let _ = std::fs::write(marker, "done");
+    let _ = tokio::fs::write(marker, "done").await;
 }
 
 #[cfg(test)]

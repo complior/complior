@@ -1,4 +1,5 @@
 import type { ScanResult, Finding, CategoryScore } from '../../types/common.types.js';
+import { ENGINE_VERSION } from '../../version.js';
 
 export interface AuditReportData {
   readonly title: string;
@@ -95,7 +96,7 @@ export const buildAuditReportData = (
     score: scanResult.score.totalScore,
     zone: zoneLabel,
     jurisdiction: options.jurisdiction ?? 'EU AI Act',
-    version: options.version ?? '0.1.0',
+    version: options.version ?? ENGINE_VERSION,
     executiveSummary: {
       overallStatus: zoneLabel,
       criticalIssues: critical.length,

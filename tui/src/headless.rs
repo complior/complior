@@ -1,3 +1,10 @@
+//! Headless (non-TUI) mode for CI/CD pipelines and scripted usage.
+//!
+//! This module uses `println!`/`eprintln!` instead of `tracing` because its
+//! output is user-facing CLI output (exit codes, JSON, SARIF), not diagnostic
+//! logging. The output goes directly to stdout/stderr for consumption by CI
+//! runners, shell scripts, and human operators.
+
 use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 use crate::types::{ScanResult, Severity};

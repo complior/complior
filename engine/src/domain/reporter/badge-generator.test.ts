@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { generateBadgeSvg } from './badge-generator.js';
 import { generateComplianceMd } from './compliance-md.js';
 import { createMockScanResult, createMockFinding } from '../../test-helpers/factories.js';
+import { ENGINE_VERSION } from '../../version.js';
 
 describe('badge-generator', () => {
   it('generates SVG with correct color per zone', () => {
@@ -37,7 +38,7 @@ describe('compliance-md', () => {
       ],
     });
 
-    const md = generateComplianceMd(result, '0.1.0');
+    const md = generateComplianceMd(result, ENGINE_VERSION);
 
     expect(md).toContain('# Compliance Report');
     expect(md).toContain('75%');

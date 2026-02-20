@@ -209,6 +209,31 @@ mod tests {
 
     use super::*;
 
+    fn render_sidebar_to_string(app: &App, width: u16, height: u16) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_sidebar(frame, frame.area(), app))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_sidebar_default() {
+        crate::theme::init_theme("dark");
+        let app = App::new(crate::config::TuiConfig::default());
+        let buf = render_sidebar_to_string(&app, 30, 20);
+        insta::assert_snapshot!(buf);
+    }
+
     #[test]
     fn test_sidebar_renders_without_scan() {
         crate::theme::init_theme("dark");

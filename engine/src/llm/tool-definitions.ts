@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { tool } from 'ai';
-import { createToolExecutors, type ToolExecutor } from './tool-executors.js';
+import { createToolExecutors, type ToolExecutor, type ToolExecutorDeps } from './tool-executors.js';
 
-export const createCodingTools = (projectPath: string) => {
-  const executors = createToolExecutors(projectPath);
+export const createCodingTools = (projectPath: string, deps: ToolExecutorDeps) => {
+  const executors = createToolExecutors(projectPath, deps);
 
   const safeExec = (executor: ToolExecutor) =>
     async (args: Record<string, unknown>): Promise<string> => {
