@@ -26,11 +26,13 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
         vec![
             Constraint::Length(5),  // Project
             Constraint::Length(6),  // Scan Summary
+            Constraint::Length(3),  // Context + Zen
             Constraint::Min(3),    // Quick Actions
         ]
     } else {
         vec![
             Constraint::Length(5), // Project
+            Constraint::Length(3),  // Context + Zen
             Constraint::Min(3),   // Quick Actions
         ]
     };
@@ -45,9 +47,11 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
 
     if has_scan {
         render_scan_summary(frame, chunks[1], app, &t);
-        render_quick_actions(frame, chunks[2], &t);
+        render_context_zen_section(frame, chunks[2], app, &t);
+        render_quick_actions(frame, chunks[3], &t);
     } else {
-        render_quick_actions(frame, chunks[1], &t);
+        render_context_zen_section(frame, chunks[1], app, &t);
+        render_quick_actions(frame, chunks[2], &t);
     }
 }
 
@@ -142,6 +146,36 @@ fn render_scan_summary(frame: &mut Frame, area: Rect, app: &App, t: &theme::Them
     frame.render_widget(list, area);
 }
 
+fn render_context_zen_section(frame: &mut Frame, area: Rect, app: &App, t: &theme::ThemeColors) {
+    let ctx_color = crate::widgets::context_meter::context_color(app.context_pct);
+    let zen_status = if app.zen_active {
+        format!("Zen {}/{}", app.zen_messages_used, app.zen_messages_limit)
+    } else {
+        "Zen: off".to_string()
+    };
+
+    let lines = vec![
+        Line::from(vec![
+            Span::styled(" Ctx: ", Style::default().fg(t.muted)),
+            Span::styled(
+                format!("{}%", app.context_pct),
+                Style::default().fg(ctx_color),
+            ),
+            Span::styled(
+                format!("  {zen_status}"),
+                Style::default().fg(if app.zen_active { t.zone_green } else { t.muted }),
+            ),
+        ]),
+    ];
+
+    let p = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_style(Style::default().fg(t.border)),
+    );
+    frame.render_widget(p, area);
+}
+
 fn render_quick_actions(frame: &mut Frame, area: Rect, t: &theme::ThemeColors) {
     let lines = vec![
         Line::from(vec![
@@ -174,6 +208,31 @@ mod tests {
     use ratatui::Terminal;
 
     use super::*;
+
+    fn render_sidebar_to_string(app: &App, width: u16, height: u16) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_sidebar(frame, frame.area(), app))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_sidebar_default() {
+        crate::theme::init_theme("dark");
+        let app = App::new(crate::config::TuiConfig::default());
+        let buf = render_sidebar_to_string(&app, 30, 20);
+        insta::assert_snapshot!(buf);
+    }
 
     #[test]
     fn test_sidebar_renders_without_scan() {

@@ -1,6 +1,10 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
 import { BIAS_TESTING_PACKAGES, isBannedPackage, isAiSdkPackage } from '../rules/banned-packages.js';
+import {
+  parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod,
+  type ParsedDependency,
+} from './layer3-parsers.js';
 
 // --- Types ---
 
@@ -23,78 +27,6 @@ export interface L3CheckResult {
   readonly file?: string;
   readonly penalty?: string;
 }
-
-// --- Dependency Parsers ---
-
-interface ParsedDependency {
-  readonly name: string;
-  readonly version: string;
-  readonly ecosystem: string;
-}
-
-const parsePackageJson = (content: string): readonly ParsedDependency[] => {
-  try {
-    const pkg = JSON.parse(content) as Record<string, unknown>;
-    const deps: ParsedDependency[] = [];
-    for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
-      const section = pkg[field];
-      if (section !== null && typeof section === 'object') {
-        for (const [name, version] of Object.entries(section as Record<string, string>)) {
-          deps.push({ name, version, ecosystem: 'npm' });
-        }
-      }
-    }
-    return deps;
-  } catch {
-    return [];
-  }
-};
-
-const parseRequirementsTxt = (content: string): readonly ParsedDependency[] => {
-  return content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith('#') && !line.startsWith('-'))
-    .map((line) => {
-      const match = line.match(/^([a-zA-Z0-9_.-]+)\s*(?:[>=<~!]+\s*(.+))?$/);
-      if (match === null) return null;
-      return { name: match[1], version: match[2] ?? '*', ecosystem: 'pip' };
-    })
-    .filter((d): d is ParsedDependency => d !== null);
-};
-
-const parseCargoToml = (content: string): readonly ParsedDependency[] => {
-  const deps: ParsedDependency[] = [];
-  const depSection = /\[dependencies\]([\s\S]*?)(?:\[|$)/;
-  const match = content.match(depSection);
-  if (match === null) return deps;
-
-  const lines = match[1].split('\n');
-  for (const line of lines) {
-    const depMatch = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*"?([^"}\s]+)"?/);
-    if (depMatch !== null) {
-      deps.push({ name: depMatch[1], version: depMatch[2], ecosystem: 'cargo' });
-    }
-  }
-  return deps;
-};
-
-const parseGoMod = (content: string): readonly ParsedDependency[] => {
-  const deps: ParsedDependency[] = [];
-  const requireBlock = /require\s*\(([\s\S]*?)\)/;
-  const match = content.match(requireBlock);
-  const lines = match !== null
-    ? match[1].split('\n')
-    : content.split('\n');
-
-  for (const line of lines) {
-    const depMatch = line.trim().match(/^([\w./\-@]+)\s+(v[\d.]+)/);
-    if (depMatch !== null) {
-      deps.push({ name: depMatch[1], version: depMatch[2], ecosystem: 'go' });
-    }
-  }
-  return deps;
-};
 
 // --- Config Checks ---
 

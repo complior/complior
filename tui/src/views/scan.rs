@@ -155,17 +155,116 @@ pub fn render_scan_view(frame: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),
-            Constraint::Length(7),
-            Constraint::Length(1),
-            Constraint::Min(5),
+            Constraint::Length(3),  // Puzzle room header: locks + owl
+            Constraint::Length(1),  // Scan status line
+            Constraint::Length(7),  // Layer progress gauges
+            Constraint::Length(1),  // Filter bar
+            Constraint::Min(5),    // Findings list
         ])
         .split(area);
 
-    render_scan_header(frame, chunks[0], app);
-    render_layer_progress(frame, chunks[1], app);
-    render_filter_bar(frame, chunks[2], app);
-    render_findings_list(frame, chunks[3], app);
+    render_puzzle_header(frame, chunks[0], &app.scan_view);
+    render_scan_header(frame, chunks[1], app);
+    render_layer_progress(frame, chunks[2], app);
+    render_filter_bar(frame, chunks[3], app);
+    render_findings_list(frame, chunks[4], app);
+}
+
+/// Puzzle room header: locks per layer + owl position.
+/// ```text
+///   [X] L1 Files    [~] L2 Docs    [.] L3 Config   [ ] L4 Code   [ ] L5 LLM
+///   ████ 95%         ███░ 60%       ██░░ 40%        ░░░░ ---      ░░░░ ---
+///                                    ^
+/// ```
+fn render_puzzle_header(frame: &mut Frame, area: Rect, scan_view: &ScanViewState) {
+    let t = theme::theme();
+    if area.height < 2 {
+        return;
+    }
+
+    // Line 1: Lock icons per layer
+    let mut lock_spans: Vec<Span<'_>> = vec![Span::raw(" ")];
+    for layer in &scan_view.layer_progress {
+        let (icon, color) = match layer.status {
+            LayerStatus::Complete => ("[X]", t.zone_green),
+            LayerStatus::Running => ("[~]", t.zone_yellow),
+            LayerStatus::Waiting => ("[ ]", t.muted),
+            LayerStatus::Skipped => ("[-]", t.muted),
+        };
+        lock_spans.push(Span::styled(icon, Style::default().fg(color)));
+        lock_spans.push(Span::styled(
+            format!(" {} {:<8} ", layer.short, layer.name),
+            Style::default().fg(t.fg),
+        ));
+    }
+
+    // Line 2: Mini progress bars (5 chars each)
+    let mut bar_spans: Vec<Span<'_>> = vec![Span::raw("  ")];
+    for layer in &scan_view.layer_progress {
+        let (ratio, label) = match layer.status {
+            LayerStatus::Complete => (1.0, "100%".to_string()),
+            LayerStatus::Running if layer.total > 0 => {
+                let r = layer.current as f64 / layer.total as f64;
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let pct = (r * 100.0) as u32;
+                (r, format!("{pct}%"))
+            }
+            _ => (0.0, "---".to_string()),
+        };
+        let filled = (ratio * 4.0).round() as usize;
+        let empty = 4_usize.saturating_sub(filled);
+        let bar_color = if ratio >= 0.8 {
+            t.zone_green
+        } else if ratio >= 0.5 {
+            t.zone_yellow
+        } else if ratio > 0.0 {
+            t.zone_red
+        } else {
+            t.muted
+        };
+        bar_spans.push(Span::styled(
+            "█".repeat(filled),
+            Style::default().fg(bar_color),
+        ));
+        bar_spans.push(Span::styled(
+            "░".repeat(empty),
+            Style::default().fg(t.muted),
+        ));
+        bar_spans.push(Span::styled(
+            format!(" {label:<6}    "),
+            Style::default().fg(t.muted),
+        ));
+    }
+
+    // Line 3: Owl position indicator
+    let owl_idx = owl_position(&scan_view.layer_progress);
+    let mut owl_spans: Vec<Span<'_>> = vec![Span::raw("  ")];
+    for (i, layer) in scan_view.layer_progress.iter().enumerate() {
+        let col_width = 3 + 1 + layer.short.len() + 1 + 8 + 1; // "[X] L1 Files    "
+        if i == owl_idx && layer.status == LayerStatus::Running {
+            let pad = col_width / 2;
+            owl_spans.push(Span::raw(" ".repeat(pad.saturating_sub(1))));
+            owl_spans.push(Span::styled("^", Style::default().fg(t.accent)));
+            owl_spans.push(Span::raw(" ".repeat(col_width.saturating_sub(pad))));
+        } else {
+            owl_spans.push(Span::raw(" ".repeat(col_width)));
+        }
+    }
+
+    let lines = vec![
+        Line::from(lock_spans),
+        Line::from(bar_spans),
+        Line::from(owl_spans),
+    ];
+    frame.render_widget(Paragraph::new(lines), area);
+}
+
+/// Find the index of the currently running layer (for owl position).
+fn owl_position(layers: &[LayerProgress; 5]) -> usize {
+    layers
+        .iter()
+        .position(|l| l.status == LayerStatus::Running)
+        .unwrap_or(0)
 }
 
 fn render_no_scan(frame: &mut Frame, area: Rect) {
@@ -539,6 +638,62 @@ mod tests {
         }
         assert!(!state.scanning);
         assert!(!state.detail_open);
+    }
+
+    #[test]
+    fn t902_puzzle_header_all_locked() {
+        let state = ScanViewState::default();
+        // All waiting — owl should be at position 0
+        let pos = owl_position(&state.layer_progress);
+        assert_eq!(pos, 0);
+        for layer in &state.layer_progress {
+            assert_eq!(layer.status, LayerStatus::Waiting);
+        }
+    }
+
+    #[test]
+    fn t902_puzzle_header_partial() {
+        let mut state = ScanViewState::default();
+        state.layer_progress[0].status = LayerStatus::Complete;
+        state.layer_progress[1].status = LayerStatus::Complete;
+        state.layer_progress[2].status = LayerStatus::Running;
+        state.layer_progress[2].current = 3;
+        state.layer_progress[2].total = 5;
+        let pos = owl_position(&state.layer_progress);
+        assert_eq!(pos, 2); // Owl at L3
+    }
+
+    #[test]
+    fn t902_owl_position_running() {
+        let mut state = ScanViewState::default();
+        state.layer_progress[3].status = LayerStatus::Running;
+        let pos = owl_position(&state.layer_progress);
+        assert_eq!(pos, 3); // Owl at L4
+    }
+
+    fn render_scan_to_string(app: &crate::app::App, width: u16, height: u16) -> String {
+        let backend = ratatui::backend::TestBackend::new(width, height);
+        let mut terminal = ratatui::Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_scan_view(frame, frame.area(), app))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_scan_no_results() {
+        crate::theme::init_theme("dark");
+        let app = crate::app::App::new(crate::config::TuiConfig::default());
+        let buf = render_scan_to_string(&app, 80, 24);
+        insta::assert_snapshot!(buf);
     }
 
     #[test]

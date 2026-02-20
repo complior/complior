@@ -63,11 +63,16 @@ export const loadValidators = (): readonly DocumentValidator[] => {
   const dirPath = new URL('.', VALIDATORS_DIR).pathname;
   const files = readdirSync(dirPath).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
 
+  const isDocumentValidator = (v: unknown): v is DocumentValidator =>
+    typeof v === 'object' && v !== null && 'document' in v && 'obligation' in v && 'file_patterns' in v;
+
   const validators: DocumentValidator[] = [];
   for (const file of files) {
     const content = readFileSync(join(dirPath, file), 'utf-8');
-    const parsed = parseYaml(content) as DocumentValidator;
-    validators.push(parsed);
+    const parsed: unknown = parseYaml(content);
+    if (isDocumentValidator(parsed)) {
+      validators.push(parsed);
+    }
   }
 
   cachedValidators = validators;

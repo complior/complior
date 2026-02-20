@@ -3,7 +3,12 @@ name = "complior-tui"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Compliance-First AI Coding Assistant — TUI"
+repository.workspace = true
+description = "AI Act Compliance Scanner & Fixer — terminal UI"
+homepage = "https://complior.ai"
+keywords = ["compliance", "ai", "eu-ai-act", "scanner", "terminal"]
+categories = ["development-tools", "command-line-utilities"]
+readme = "../README.md"
 
 [[bin]]
 name = "complior"
@@ -27,6 +32,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = "0.3"
 unicode-width = "0.2"
 notify = "6"
+clap = { version = "4", features = ["derive"] }
 
 [dev-dependencies]
 insta = "1"

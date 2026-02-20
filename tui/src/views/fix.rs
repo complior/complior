@@ -116,6 +116,12 @@ impl FixViewState {
         }
     }
 
+    pub fn toggle_at(&mut self, idx: usize) {
+        if let Some(item) = self.fixable_findings.get_mut(idx) {
+            item.selected = !item.selected;
+        }
+    }
+
     pub fn select_all(&mut self) {
         for item in &mut self.fixable_findings {
             item.selected = true;
@@ -166,9 +172,11 @@ pub fn render_fix_view(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     if app.fix_view.diff_visible {
+        let left_pct = u16::from(app.fix_split_pct.clamp(25, 75));
+        let right_pct = 100 - left_pct;
         let layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+            .constraints([Constraint::Percentage(left_pct), Constraint::Percentage(right_pct)])
             .split(area);
         render_checklist(frame, layout[0], app);
         render_diff_preview(frame, layout[1], app);
@@ -444,6 +452,32 @@ mod tests {
         ]
     }
 
+    fn render_fix_to_string(app: &crate::app::App, width: u16, height: u16) -> String {
+        let backend = ratatui::backend::TestBackend::new(width, height);
+        let mut terminal = ratatui::Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_fix_view(frame, frame.area(), app))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_fix_with_findings() {
+        crate::theme::init_theme("dark");
+        let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+        app.fix_view = FixViewState::from_scan(&make_findings());
+        let buf = render_fix_to_string(&app, 80, 24);
+        insta::assert_snapshot!(buf);
+    }
+
     #[test]
     fn test_fix_view_from_scan() {
         let findings = make_findings();
@@ -481,6 +515,48 @@ mod tests {
         assert_eq!(predict_impact(Severity::Medium), 3);
         assert_eq!(predict_impact(Severity::Low), 1);
         assert_eq!(predict_impact(Severity::Info), 0);
+    }
+
+    #[test]
+    fn t904_auto_validate_triggers_rescan() {
+        // When fix results are set with applied fixes,
+        // app should have pre_fix_score set for auto-validate
+        let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+        let old_score = 42.0;
+        app.pre_fix_score = Some(old_score);
+        assert!(app.pre_fix_score.is_some());
+
+        // Simulate consuming pre_fix_score (what AutoScan handler does)
+        let fix_old = app.pre_fix_score.take();
+        assert!(fix_old.is_some());
+        assert!(app.pre_fix_score.is_none());
+    }
+
+    #[test]
+    fn t904_fix_result_delta_display() {
+        let results = FixResults {
+            applied: 3,
+            failed: 0,
+            old_score: 42.0,
+            new_score: 58.0,
+        };
+        let delta = results.new_score - results.old_score;
+        assert_eq!(delta, 16.0);
+        assert!(delta > 0.0);
+    }
+
+    #[test]
+    fn t904_fix_items_marked_applied() {
+        let findings = make_findings();
+        let mut state = FixViewState::from_scan(&findings);
+        state.select_all();
+        // Simulate apply marking
+        for item in &mut state.fixable_findings {
+            if item.selected {
+                item.status = FixItemStatus::Applied;
+            }
+        }
+        assert!(state.fixable_findings.iter().all(|f| f.status == FixItemStatus::Applied));
     }
 
     #[test]

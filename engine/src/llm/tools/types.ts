@@ -7,7 +7,7 @@ export interface ToolDefinition {
   readonly description: string;
   readonly category: ToolCategory;
   readonly parameters: z.ZodType;
-  readonly execute: (args: any) => Promise<string>;
+  readonly execute: (args: Record<string, unknown>) => Promise<string>;
 }
 
 export type AgentMode = 'build' | 'comply' | 'audit' | 'learn';

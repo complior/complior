@@ -1,8 +1,15 @@
 pub mod command_palette;
+pub mod confirm_dialog;
 pub mod diff_overlay;
 pub mod file_picker;
 pub mod input_box;
 pub mod markdown;
 pub mod model_selector;
 pub mod provider_setup;
+pub mod quick_actions;
 pub mod spinner;
+pub mod suggestions;
+pub mod toast;
+pub mod undo_history;
+pub mod whatif;
+pub mod zoom;

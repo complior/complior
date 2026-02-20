@@ -355,4 +355,17 @@ pub enum Overlay {
     ModelSelector,
     ThemePicker,
     Onboarding,
+    ConfirmDialog,
+    DismissModal,
+    UndoHistory,
+}
+
+/// Click target for mouse hit-testing (T806).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClickTarget {
+    ViewTab(ViewState),
+    PanelFocus(Panel),
+    FindingRow(usize),
+    FixCheckbox(usize),
+    SidebarToggle,
 }

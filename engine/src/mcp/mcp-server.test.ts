@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { MCP_TOOL_SCHEMAS } from './tools.js';
 import { createMcpHandlers } from './handlers.js';
 import type { ScanResult, ScoreBreakdown } from '../types/common.types.js';
+import { ENGINE_VERSION } from '../version.js';
 
 const makeScore = (): ScoreBreakdown => ({
   totalScore: 42,
@@ -32,7 +33,7 @@ const mockHandlers = createMcpHandlers({
   getProjectPath: () => '/test',
   getLastScanResult: () => makeScanResult(),
   getRegulationData: () => ({ obligations: { obligations: [{ id: 'OBL-001', article: 'Art. 4', title: 'AI Literacy', description: 'Test', severity: 'high', deadline: '2025-02-02', role: 'both' }] }, scoring: {} }) as any,
-  version: '0.1.0',
+  version: ENGINE_VERSION,
 });
 
 describe('MCP Tool Schemas', () => {

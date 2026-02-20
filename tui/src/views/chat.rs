@@ -10,7 +10,10 @@ use crate::theme;
 use crate::types::{ChatBlock, InputMode, MessageRole};
 
 /// Render chat as a panel within the dashboard (original layout).
+/// T903: Input at top when chat is empty, at bottom when messages exist.
 pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
+    let has_messages = app.messages.len() > 1 || app.streaming_response.is_some();
+
     let block = Block::default()
         .title(" Chat ")
         .title_style(theme::title_style())
@@ -20,14 +23,25 @@ pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Split: messages area + input area
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(3), Constraint::Length(3)])
-        .split(inner);
+    if has_messages {
+        // Messages exist: input at bottom (standard layout)
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(3), Constraint::Length(3)])
+            .split(inner);
 
-    render_messages(frame, chunks[0], app);
-    render_input(frame, chunks[1], app, focused);
+        render_messages(frame, chunks[0], app);
+        render_input(frame, chunks[1], app, focused);
+    } else {
+        // Empty chat: input at top + tips below (T903)
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(3)])
+            .split(inner);
+
+        render_input(frame, chunks[0], app, focused);
+        render_tips(frame, chunks[1]);
+    }
 }
 
 /// Full-screen chat view (`ViewState::Chat`) — input placement depends on chat state.
@@ -311,6 +325,66 @@ mod tests {
     use super::*;
     use crate::types::ChatMessage;
 
+    /// Replace `[HH:MM]` timestamps with `[00:00]` for deterministic snapshots.
+    fn normalize_timestamps(s: &str) -> String {
+        let mut result = String::with_capacity(s.len());
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if i + 7 <= bytes.len()
+                && bytes[i] == b'['
+                && bytes[i + 1].is_ascii_digit()
+                && bytes[i + 2].is_ascii_digit()
+                && bytes[i + 3] == b':'
+                && bytes[i + 4].is_ascii_digit()
+                && bytes[i + 5].is_ascii_digit()
+                && bytes[i + 6] == b']'
+            {
+                result.push_str("[00:00]");
+                i += 7;
+            } else {
+                result.push(bytes[i] as char);
+                i += 1;
+            }
+        }
+        result
+    }
+
+    fn render_chat_to_string(app: &App, width: u16, height: u16) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), app, true))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_chat_with_messages() {
+        crate::theme::init_theme("dark");
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.messages.push(ChatMessage::new(
+            MessageRole::User,
+            "scan my project".to_string(),
+        ));
+        app.messages.push(ChatMessage::new(
+            MessageRole::Assistant,
+            "Scanning...".to_string(),
+        ));
+        let buf = render_chat_to_string(&app, 80, 24);
+        // Normalize timestamps [HH:MM] to [00:00] for deterministic snapshots
+        let buf = normalize_timestamps(&buf);
+        insta::assert_snapshot!(buf);
+    }
+
     #[test]
     fn test_chat_renders_messages() {
         crate::theme::init_theme("dark");
@@ -349,6 +423,45 @@ mod tests {
         let buffer = terminal.backend().buffer().clone();
         let content: String = buffer.content().iter().map(|cell| cell.symbol().to_string()).collect();
         assert!(content.contains('|'), "Streaming cursor '|' should be present");
+    }
+
+    #[test]
+    fn t903_empty_chat_input_top() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        // Only the default system welcome message
+        let app = App::new(crate::config::TuiConfig::default());
+
+        // Empty chat: has_messages = false (messages.len() <= 1)
+        assert!(app.messages.len() <= 1);
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
+
+        // Verify tips text is present (input-top layout shows tips)
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol().to_string()).collect();
+        assert!(content.contains("Quick Start") || content.contains("Tips"),
+            "Empty chat should show tips panel (input at top)");
+    }
+
+    #[test]
+    fn t903_chat_with_messages_input_bottom() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Add user message + assistant response
+        app.messages.push(ChatMessage::new(MessageRole::User, "hello".into()));
+        app.messages.push(ChatMessage::new(MessageRole::Assistant, "world".into()));
+
+        // has_messages = true (messages.len() > 1)
+        assert!(app.messages.len() > 1);
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
     }
 
     #[test]

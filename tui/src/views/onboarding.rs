@@ -264,7 +264,7 @@ pub fn render_onboarding(frame: &mut Frame, wizard: &OnboardingWizard) {
     // --- Step header ---
     let step_num = wizard.current_step + 1;
     let total = wizard.total_steps();
-    let step = wizard.current().unwrap();
+    let step = wizard.current().expect("current step always valid while rendering");
 
     let header = Paragraph::new(vec![
         Line::from(Span::styled(

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types/common.types.js';
 import { loadRegulationData } from '../infra/regulation-loader.js';
+import { createLogger } from '../infra/logger.js';
 import { createEventBus } from '../infra/event-bus.js';
 import { createScanner } from '../domain/scanner/create-scanner.js';
 import { collectFiles } from '../domain/scanner/file-collector.js';
@@ -15,7 +16,8 @@ import { createMcpServer } from './server.js';
 const main = async (): Promise<void> => {
   const regulationData = await loadRegulationData();
   const projectPath = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
-  const version = '0.1.0';
+  const { ENGINE_VERSION } = await import('../version.js');
+  const version = ENGINE_VERSION;
 
   let lastScanResult: ScanResult | null = null;
 
@@ -33,7 +35,7 @@ const main = async (): Promise<void> => {
     },
     getProjectPath: () => projectPath,
     getExistingFiles: () =>
-      lastScanResult?.findings.filter((f) => f.file).map((f) => f.file as string) ?? [],
+      lastScanResult?.findings.filter((f): f is typeof f & { file: string } => typeof f.file === 'string').map((f) => f.file) ?? [],
   });
 
   const scanService = createScanService({
@@ -73,7 +75,8 @@ const main = async (): Promise<void> => {
   await mcpServer.start();
 };
 
-main().catch((err) => {
-  console.error('Complior MCP Server failed to start:', err);
+const log = createLogger('mcp');
+main().catch((err: unknown) => {
+  log.error('Complior MCP Server failed to start:', err);
   process.exit(1);
 });

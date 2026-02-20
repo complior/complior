@@ -21,10 +21,13 @@ const SEVERITY_RANK: Record<Severity, number> = {
   info: 0,
 };
 
+const isSeverity = (v: string | null): v is Severity =>
+  v !== null && v in SEVERITY_RANK;
+
 export const parseCliArgs = (args: readonly string[]): CliOptions => {
   const opts: CliOptions = {
     ci: args.includes('--ci'),
-    failOn: (getArgValue(args, '--fail-on') as Severity) ?? 'critical',
+    failOn: (() => { const v = getArgValue(args, '--fail-on'); return isSeverity(v) ? v : 'critical'; })(),
     sarif: getArgValue(args, '--sarif') ?? undefined,
     json: args.includes('--json'),
     threshold: parseInt(getArgValue(args, '--threshold') ?? '0', 10),
