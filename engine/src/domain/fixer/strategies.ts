@@ -1,6 +1,7 @@
 import type { Finding } from '../../types/common.types.js';
 import type { FixPlan, FixContext, FixStrategy, FixAction, TemplateMapping } from './types.js';
 import { generateCreateDiff } from './diff.js';
+import { ENGINE_VERSION } from '../../version.js';
 
 // --- Template mapping: obligationId → template file ---
 
@@ -222,7 +223,7 @@ const metadataStrategy: FixStrategy = (finding, context) => {
   const metadataPath = '.well-known/ai-compliance.json';
   const content = JSON.stringify({
     version: '1.0',
-    scanner: 'complior/0.1.0',
+    scanner: `complior/${ENGINE_VERSION}`,
     scannedAt: '[SCAN_DATE]',
     organization: '[TO BE SET]',
     ai_systems: [

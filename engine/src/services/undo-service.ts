@@ -1,10 +1,33 @@
 import { resolve, dirname } from 'node:path';
 import { mkdir, copyFile, unlink, readFile, writeFile } from 'node:fs/promises';
+import { z } from 'zod';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { ScanService } from './scan-service.js';
 import type { FixPlan, FixResult, FixValidation, FixHistory, FixHistoryEntry, FixHistoryFile } from '../domain/fixer/types.js';
 import type { ScanResult } from '../types/common.types.js';
 import { createEmptyHistory, addEntry, markUndone, getLastApplied, getById } from '../domain/fixer/fix-history.js';
+
+const FixHistoryFileSchema = z.object({
+  path: z.string(),
+  action: z.enum(['create', 'edit']),
+  backupPath: z.string(),
+});
+
+const FixHistoryEntrySchema = z.object({
+  id: z.number(),
+  checkId: z.string(),
+  obligationId: z.string(),
+  fixType: z.enum(['code_injection', 'template_generation', 'config_fix', 'metadata_generation']),
+  status: z.enum(['applied', 'undone']),
+  timestamp: z.string(),
+  files: z.array(FixHistoryFileSchema),
+  scoreBefore: z.number(),
+  scoreAfter: z.number(),
+});
+
+const FixHistorySchema = z.object({
+  fixes: z.array(FixHistoryEntrySchema),
+});
 
 export interface UndoServiceDeps {
   readonly events: EventBusPort;
@@ -20,7 +43,7 @@ export const createUndoService = (deps: UndoServiceDeps) => {
   const loadHistory = async (): Promise<FixHistory> => {
     try {
       const raw = await readFile(getHistoryPath(), 'utf-8');
-      return JSON.parse(raw) as FixHistory;
+      return FixHistorySchema.parse(JSON.parse(raw));
     } catch {
       return createEmptyHistory();
     }

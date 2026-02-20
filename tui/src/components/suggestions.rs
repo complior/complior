@@ -50,7 +50,7 @@ impl IdleSuggestionState {
     }
 
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // TODO(T10): use in render loop to conditionally show suggestions
     pub const fn should_show(&self, app_busy: bool) -> bool {
         self.current.is_some() && !app_busy
     }

@@ -1,0 +1,24 @@
+---
+source: tui/src/views/sidebar.rs
+expression: buf
+---
+┌ Info ──────────────────────┐
+│ tui/                       │
+│ No scan yet                │
+│                            │
+│                            │
+│                            │
+│────────────────────────────│
+│ Ctx: 0%  Zen: off          │
+│                            │
+│ Actions ───────────────────│
+│ /scan  rescan project      │
+│ /help  all commands        │
+│ Ctrl+P command palette     │
+│                            │
+│                            │
+│                            │
+│                            │
+│                            │
+│                            │
+└────────────────────────────┘

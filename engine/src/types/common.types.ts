@@ -181,6 +181,7 @@ export interface GateResult {
 export interface EngineStatus {
   readonly ready: boolean;
   readonly version: string;
+  readonly mode: string;
   readonly uptime: number;
   readonly lastScan?: ScanRecord;
 }

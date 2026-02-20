@@ -6,9 +6,15 @@ import { runCommand } from '../coding/shell.js';
 import { gitOperation } from '../coding/git.js';
 import { collectFiles } from '../domain/scanner/file-collector.js';
 import { createScanner } from '../domain/scanner/create-scanner.js';
-import { getEngineContext } from '../context.js';
+import type { ScanResult } from '../types/common.types.js';
+import type { ScoringData } from '../data/schemas.js';
 
 export type ToolExecutor = (args: Record<string, unknown>) => Promise<string>;
+
+export interface ToolExecutorDeps {
+  readonly getScoringData: () => ScoringData | undefined;
+  readonly setLastScanResult: (result: ScanResult) => void;
+}
 
 const ScanArgs = z.object({ path: z.string().default('.') });
 const FileArgs = z.object({ path: z.string(), content: z.string() });
@@ -19,16 +25,15 @@ const SearchArgs = z.object({ pattern: z.string(), path: z.string().default('.')
 const CmdArgs = z.object({ command: z.string(), cwd: z.string().optional() });
 const GitArgs = z.object({ action: z.string(), args: z.record(z.unknown()).optional() });
 
-export const createToolExecutors = (projectPath: string): Record<string, ToolExecutor> => ({
+export const createToolExecutors = (projectPath: string, deps: ToolExecutorDeps): Record<string, ToolExecutor> => ({
   scan_project: async (raw) => {
     const args = ScanArgs.parse(raw);
     const scanPath = resolve(projectPath, args.path);
-    const ctx = getEngineContext();
-    const scoringData = ctx.regulationData.scoring?.scoring;
+    const scoringData = deps.getScoringData();
     const scanContext = await collectFiles(scanPath);
     const scanner = createScanner(scoringData);
     const result = scanner.scan(scanContext);
-    ctx.lastScanResult = result;
+    deps.setLastScanResult(result);
     return JSON.stringify({ score: result.score.totalScore, zone: result.score.zone, findings: result.findings.length, filesScanned: result.filesScanned });
   },
   create_file: async (raw) => {

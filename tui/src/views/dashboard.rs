@@ -1228,6 +1228,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn snapshot_dashboard_default() {
+        crate::theme::init_theme("dark");
+        let app = App::new(crate::config::TuiConfig::default());
+        let buf = render_to_string(&app, 120, 40);
+        insta::assert_snapshot!(buf);
+    }
+
+    #[test]
     fn test_dashboard_renders_without_panic() {
         crate::theme::init_theme("dark");
         let backend = TestBackend::new(120, 40);

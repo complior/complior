@@ -3,61 +3,120 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKi
 use crate::app::App;
 use crate::types::{ClickTarget, InputMode, Overlay, Panel, ViewState};
 
+/// User actions produced by keyboard/mouse input mapping.
+///
+/// Each variant represents a semantic action that the app can handle.
+/// Key bindings are defined in `handle_key_event()` below.
 pub enum Action {
+    /// Quit the application (Ctrl+C).
     Quit,
+    /// Cycle to the next panel (Tab in Insert mode).
     NextPanel,
+    /// Toggle the terminal panel (Ctrl+T).
     ToggleTerminal,
+    /// Toggle the sidebar panel (Ctrl+B).
     ToggleSidebar,
+    /// Toggle the files panel (Ctrl+F).
     ToggleFilesPanel,
+    /// Close the currently open file viewer.
     CloseFile,
+    /// Submit the current input (Enter in Insert mode).
     SubmitInput,
+    /// Insert a character into the input buffer.
     InsertChar(char),
+    /// Delete the character before the cursor (Backspace).
     DeleteChar,
+    /// Move cursor left in input buffer.
     MoveCursorLeft,
+    /// Move cursor right in input buffer.
     MoveCursorRight,
+    /// Navigate input history up (Arrow Up).
     HistoryUp,
+    /// Navigate input history down (Arrow Down).
     HistoryDown,
+    /// Trigger tab completion for commands, @OBL- references, etc.
     TabComplete,
+    /// Scroll content up by one line (k / Arrow Up in Normal mode).
     ScrollUp,
+    /// Scroll content down by one line (j / Arrow Down in Normal mode).
     ScrollDown,
+    /// Scroll half a page up (Ctrl+U).
     ScrollHalfPageUp,
+    /// Scroll half a page down (Ctrl+D).
     ScrollHalfPageDown,
+    /// Scroll to top of content (g in Normal mode).
     ScrollToTop,
+    /// Scroll to bottom of content (G in Normal mode).
     ScrollToBottom,
+    /// Enter Insert mode (i in Normal mode).
     EnterInsertMode,
+    /// Enter Normal mode (Esc).
     EnterNormalMode,
+    /// Enter Visual select mode (V in Normal mode).
     EnterVisualMode,
+    /// Enter command mode (/ prefix).
     EnterCommandMode,
+    /// Enter colon-command mode (: in Normal mode).
     EnterColonMode,
+    /// Extend visual selection up.
     SelectionUp,
+    /// Extend visual selection down.
     SelectionDown,
+    /// Send visual selection to AI chat (Ctrl+K in Visual mode).
     SendSelectionToAi,
+    /// Accept a proposed diff.
     AcceptDiff,
+    /// Reject a proposed diff.
     RejectDiff,
+    /// Toggle expand/collapse of a tree node.
     ToggleExpand,
+    /// Open the selected file in the viewer.
     OpenFile,
+    /// Open the command palette overlay (Ctrl+P).
     ShowCommandPalette,
+    /// Open the file picker overlay.
     ShowFilePicker,
+    /// Open the help overlay (? in Normal mode).
     ShowHelp,
+    /// Focus a specific panel (Alt+1..5).
     FocusPanel(Panel),
+    /// Open the model selector overlay (M in Normal mode).
     ShowModelSelector,
+    /// Open the provider setup overlay.
     ShowProviderSetup,
+    /// Jump to a specific line number.
     GotoLine,
+    /// Switch to a numbered view (1-6 in Normal mode).
     SwitchView(ViewState),
+    /// Toggle mode (Scan/Fix/Watch via Tab in Normal mode).
     ToggleMode,
+    /// Trigger a compliance scan (Ctrl+S).
     StartScan,
+    /// Toggle file watcher mode.
     WatchToggle,
+    /// Open the theme picker overlay.
     ShowThemePicker,
+    /// Start inline code search (/ in Normal mode on code viewer).
     CodeSearch,
+    /// Jump to next code search match (n).
     CodeSearchNext,
+    /// Jump to previous code search match (N).
     CodeSearchPrev,
+    /// Undo the last action (Ctrl+Z).
     Undo,
+    /// Show the undo history overlay (U in Normal mode).
     ShowUndoHistory,
+    /// Mouse click at a specific UI target.
     ClickAt(ClickTarget),
+    /// Mouse scroll by N lines (positive = down, negative = up).
     ScrollLines(i32),
+    /// View-specific single-char key press (delegated to active view).
     ViewKey(char),
+    /// View-specific Enter key press.
     ViewEnter,
+    /// View-specific Escape key press.
     ViewEscape,
+    /// No action (unhandled key).
     None,
 }
 

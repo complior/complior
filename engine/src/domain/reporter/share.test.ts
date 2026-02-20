@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createSharePayload, generateShareId } from './share.js';
 import type { ScanResult } from '../../types/common.types.js';
+import { ENGINE_VERSION } from '../../version.js';
 
 const makeScanResult = (overrides?: Partial<ScanResult>): ScanResult => ({
   score: {
@@ -41,7 +42,7 @@ describe('share', () => {
   describe('createSharePayload', () => {
     it('creates payload with correct score and findings count', () => {
       const result = makeScanResult();
-      const payload = createSharePayload(result, '0.1.0');
+      const payload = createSharePayload(result, ENGINE_VERSION);
 
       expect(payload.score).toBe(72);
       expect(payload.findingsCount.high).toBe(2);
@@ -50,12 +51,12 @@ describe('share', () => {
       expect(payload.findingsCount.low).toBe(0);
       expect(payload.jurisdiction).toBe('EU AI Act');
       expect(payload.scanType).toBe('code');
-      expect(payload.compliorVersion).toBe('0.1.0');
+      expect(payload.compliorVersion).toBe(ENGINE_VERSION);
     });
 
     it('returns top 5 findings sorted by severity (no file paths)', () => {
       const result = makeScanResult();
-      const payload = createSharePayload(result, '0.1.0');
+      const payload = createSharePayload(result, ENGINE_VERSION);
 
       expect(payload.topFindings.length).toBe(3); // only 3 fail findings
       expect(payload.topFindings[0].severity).toBe('high');
@@ -69,7 +70,7 @@ describe('share', () => {
 
     it('sets expiration based on options', () => {
       const result = makeScanResult();
-      const payload = createSharePayload(result, '0.1.0', { expirationDays: 90 });
+      const payload = createSharePayload(result, ENGINE_VERSION, { expirationDays: 90 });
 
       const created = new Date(payload.createdAt);
       const expires = new Date(payload.expiresAt);
@@ -79,7 +80,7 @@ describe('share', () => {
 
     it('respects custom jurisdiction and scanType', () => {
       const result = makeScanResult();
-      const payload = createSharePayload(result, '0.1.0', {
+      const payload = createSharePayload(result, ENGINE_VERSION, {
         jurisdiction: 'UK AI Framework',
         scanType: 'external',
       });

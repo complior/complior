@@ -452,6 +452,32 @@ mod tests {
         ]
     }
 
+    fn render_fix_to_string(app: &crate::app::App, width: u16, height: u16) -> String {
+        let backend = ratatui::backend::TestBackend::new(width, height);
+        let mut terminal = ratatui::Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_fix_view(frame, frame.area(), app))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_fix_with_findings() {
+        crate::theme::init_theme("dark");
+        let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+        app.fix_view = FixViewState::from_scan(&make_findings());
+        let buf = render_fix_to_string(&app, 80, 24);
+        insta::assert_snapshot!(buf);
+    }
+
     #[test]
     fn test_fix_view_from_scan() {
         let findings = make_findings();

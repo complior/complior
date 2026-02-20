@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server';
 import { loadApplication } from './composition-root.js';
 import { createLogger } from './infra/logger.js';
+import { ENGINE_VERSION } from './version.js';
 
 const log = createLogger('server');
 const PORT = Number(process.env['PORT'] ?? 3099);
@@ -11,7 +12,7 @@ const startHttp = async (): Promise<void> => {
   const { app } = await loadApplication();
 
   const server = serve({ fetch: app.fetch, port: PORT }, () => {
-    log.info(`Complior Engine v0.1.0 running on http://127.0.0.1:${PORT}`);
+    log.info(`Complior Engine v${ENGINE_VERSION} running on http://127.0.0.1:${PORT}`);
   });
 
   const shutdown = (): void => {

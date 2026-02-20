@@ -35,7 +35,7 @@ impl Breakpoint {
 }
 
 pub struct ResponsiveLayout {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // TODO(T10): use for responsive widget selection
     pub breakpoint: Breakpoint,
     pub main_area: Rect,
     pub sidebar_area: Option<Rect>,

@@ -671,6 +671,31 @@ mod tests {
         assert_eq!(pos, 3); // Owl at L4
     }
 
+    fn render_scan_to_string(app: &crate::app::App, width: u16, height: u16) -> String {
+        let backend = ratatui::backend::TestBackend::new(width, height);
+        let mut terminal = ratatui::Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| render_scan_view(frame, frame.area(), app))
+            .expect("render");
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn snapshot_scan_no_results() {
+        crate::theme::init_theme("dark");
+        let app = crate::app::App::new(crate::config::TuiConfig::default());
+        let buf = render_scan_to_string(&app, 80, 24);
+        insta::assert_snapshot!(buf);
+    }
+
     #[test]
     fn test_scan_view_no_results() {
         crate::theme::init_theme("dark");
