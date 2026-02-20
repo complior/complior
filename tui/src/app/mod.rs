@@ -1157,51 +1157,141 @@ impl App {
     }
 
     fn handle_onboarding_action(&mut self, action: Action) -> Option<AppCommand> {
+        use crate::views::onboarding::{OnboardingWizard, StepKind};
+
+        // Determine current step kind
+        let step_kind = self
+            .onboarding
+            .as_ref()
+            .and_then(|wiz| wiz.current().map(|s| s.kind.clone()));
+
+        // Special handling for TextInput steps (substep routing)
+        if let Some(StepKind::TextInput { .. }) = &step_kind {
+            return self.handle_onboarding_text_input(action);
+        }
+
         match action {
             Action::ScrollDown => {
                 if let Some(wiz) = &mut self.onboarding {
                     wiz.move_cursor_down();
+                    // ThemeSelect: live preview on cursor move
+                    if matches!(step_kind, Some(StepKind::ThemeSelect)) {
+                        let theme_names = ["dark", "light", "nord", "solarized-light"];
+                        if let Some(name) = theme_names.get(wiz.cursor) {
+                            crate::theme::init_theme(name);
+                        }
+                    }
                 }
                 None
             }
             Action::ScrollUp => {
                 if let Some(wiz) = &mut self.onboarding {
                     wiz.move_cursor_up();
+                    // ThemeSelect: live preview on cursor move
+                    if matches!(step_kind, Some(StepKind::ThemeSelect)) {
+                        let theme_names = ["dark", "light", "nord", "solarized-light"];
+                        if let Some(name) = theme_names.get(wiz.cursor) {
+                            crate::theme::init_theme(name);
+                        }
+                    }
                 }
                 None
             }
             Action::InsertChar(' ') => {
-                if let Some(wiz) = &mut self.onboarding {
-                    wiz.toggle_selection();
+                if matches!(step_kind, Some(StepKind::Checkbox | StepKind::Radio | StepKind::ThemeSelect)) {
+                    if let Some(wiz) = &mut self.onboarding {
+                        wiz.toggle_selection();
+                    }
+                }
+                None
+            }
+            Action::InsertChar('a') => {
+                if matches!(step_kind, Some(StepKind::Checkbox))
+                    && let Some(wiz) = &mut self.onboarding
+                {
+                    wiz.select_all();
+                }
+                None
+            }
+            Action::InsertChar('n') => {
+                if matches!(step_kind, Some(StepKind::Checkbox))
+                    && let Some(wiz) = &mut self.onboarding
+                {
+                    wiz.select_minimum();
                 }
                 None
             }
             Action::SubmitInput => {
+                // Handle post-step side effects before advancing
+                if let Some(wiz) = &mut self.onboarding {
+                    if wiz.completed {
+                        // Already on completion screen — close wizard
+                        let summary = wiz.result_summary.clone();
+                        if let Some(s) = &summary {
+                            self.messages.push(ChatMessage::new(
+                                MessageRole::System,
+                                format!("Setup complete: {s}"),
+                            ));
+                        }
+                        self.onboarding = None;
+                        self.overlay = Overlay::None;
+                        return Some(AppCommand::CompleteOnboarding);
+                    }
+
+                    let current_id = wiz.current().map(|s| s.id);
+
+                    // Step 5 (workspace_trust): "No, exit" → quit
+                    if current_id == Some("workspace_trust") {
+                        let selected_idx = wiz.steps[wiz.current_step]
+                            .selected
+                            .first()
+                            .copied()
+                            .unwrap_or(0);
+                        if selected_idx == 1 {
+                            // "No, exit"
+                            self.messages.push(ChatMessage::new(
+                                MessageRole::System,
+                                "Run complior in a trusted folder.".to_string(),
+                            ));
+                            self.onboarding = None;
+                            self.overlay = Overlay::None;
+                            self.running = false;
+                            return None;
+                        }
+                    }
+                }
+
+                // Advance to next step
                 let completed = self
                     .onboarding
                     .as_mut()
-                    .map(|wiz| {
-                        if wiz.completed {
-                            true // Already on completion screen
-                        } else {
-                            wiz.next_step()
-                        }
-                    })
-                    .unwrap_or(false);
+                    .is_some_and(OnboardingWizard::next_step);
+
+                // Post-advance side effects
+                if let Some(wiz) = &mut self.onboarding {
+                    let prev_step = wiz
+                        .active_steps
+                        .iter()
+                        .position(|&i| i == wiz.current_step)
+                        .and_then(|pos| pos.checked_sub(1).map(|p| wiz.active_steps[p]));
+
+                    // After Step 4 (project_type): update project_type and recalculate skips
+                    if prev_step.and_then(|ps| wiz.steps.get(ps)).map(|s| s.id) == Some("project_type") {
+                        let pt = wiz.selected_config_value("project_type");
+                        wiz.project_type = Some(pt);
+                        wiz.recalculate_active_steps();
+                    }
+
+                    // After Step 1 (welcome_theme): apply selected theme
+                    if prev_step.and_then(|ps| wiz.steps.get(ps)).map(|s| s.id) == Some("welcome_theme") {
+                        let theme_name = wiz.selected_config_value("welcome_theme");
+                        crate::theme::init_theme(&theme_name);
+                    }
+                }
 
                 if completed {
-                    // Close onboarding
-                    if let Some(wiz) = &self.onboarding {
-                        if let Some(summary) = &wiz.result_summary {
-                            self.messages.push(ChatMessage::new(
-                                MessageRole::System,
-                                format!("Setup complete: {summary}"),
-                            ));
-                        }
-                    }
-                    self.onboarding = None;
-                    self.overlay = Overlay::None;
-                    return Some(AppCommand::MarkOnboardingComplete);
+                    // Show summary step — not closing yet
+                    // The summary step's SubmitInput will close
                 }
                 None
             }
@@ -1213,13 +1303,223 @@ impl App {
                 None
             }
             Action::EnterNormalMode | Action::Quit => {
-                // Esc = skip onboarding
+                // Esc = save partial + close wizard
+                let last_step = self
+                    .onboarding
+                    .as_ref()
+                    .map(|wiz| wiz.current_step)
+                    .unwrap_or(0);
                 self.onboarding = None;
                 self.overlay = Overlay::None;
-                Some(AppCommand::MarkOnboardingComplete)
+                Some(AppCommand::SaveOnboardingPartial(last_step))
             }
             _ => None,
         }
+    }
+
+    /// Handle input for TextInput steps (Step 3: AI Provider).
+    fn handle_onboarding_text_input(&mut self, action: Action) -> Option<AppCommand> {
+        let substep = self
+            .onboarding
+            .as_ref()
+            .map(|wiz| wiz.provider_substep)
+            .unwrap_or(0);
+
+        match substep {
+            0 => {
+                // Provider select (radio-like)
+                match action {
+                    Action::ScrollDown => {
+                        if let Some(wiz) = &mut self.onboarding {
+                            wiz.move_cursor_down();
+                        }
+                    }
+                    Action::ScrollUp => {
+                        if let Some(wiz) = &mut self.onboarding {
+                            wiz.move_cursor_up();
+                        }
+                    }
+                    Action::SubmitInput => {
+                        if let Some(wiz) = &mut self.onboarding {
+                            let selected = wiz.cursor;
+                            wiz.steps[wiz.current_step].selected = vec![selected];
+                            if selected == 3 {
+                                // Offline mode — skip key input, advance
+                                wiz.validation_message =
+                                    Some("Offline mode: static scan only.".to_string());
+                                return self.advance_onboarding();
+                            }
+                            // Go to key input substep
+                            wiz.provider_substep = 1;
+                            wiz.steps[wiz.current_step].text_value.clear();
+                            wiz.text_cursor = 0;
+                        }
+                    }
+                    Action::DeleteChar => {
+                        // Backspace = previous step
+                        if let Some(wiz) = &mut self.onboarding {
+                            wiz.prev_step();
+                        }
+                    }
+                    Action::EnterNormalMode | Action::Quit => {
+                        let last_step = self
+                            .onboarding
+                            .as_ref()
+                            .map(|wiz| wiz.current_step)
+                            .unwrap_or(0);
+                        self.onboarding = None;
+                        self.overlay = Overlay::None;
+                        return Some(AppCommand::SaveOnboardingPartial(last_step));
+                    }
+                    _ => {}
+                }
+            }
+            1 => {
+                // Key text input
+                match action {
+                    Action::InsertChar(c) => {
+                        if let Some(wiz) = &mut self.onboarding {
+                            wiz.steps[wiz.current_step].text_value.push(c);
+                            wiz.text_cursor += 1;
+                        }
+                    }
+                    Action::DeleteChar => {
+                        if let Some(wiz) = &mut self.onboarding {
+                            let val = &mut wiz.steps[wiz.current_step].text_value;
+                            if !val.is_empty() {
+                                val.pop();
+                                wiz.text_cursor = wiz.text_cursor.saturating_sub(1);
+                            } else {
+                                // Empty text + backspace → go back to provider select
+                                wiz.provider_substep = 0;
+                            }
+                        }
+                    }
+                    Action::SubmitInput => {
+                        if let Some(wiz) = &mut self.onboarding {
+                            let key = wiz.steps[wiz.current_step].text_value.clone();
+                            if key.is_empty() {
+                                return None;
+                            }
+                            // Simple format validation
+                            let provider = wiz.selected_config_value("ai_provider");
+                            let valid = match provider.as_str() {
+                                "openrouter" => key.starts_with("sk-or-"),
+                                "anthropic" => key.starts_with("sk-ant-"),
+                                "openai" => key.starts_with("sk-"),
+                                _ => true,
+                            };
+                            if valid {
+                                wiz.validation_message =
+                                    Some("Valid. Key accepted.".to_string());
+                                wiz.provider_substep = 3;
+                            } else {
+                                wiz.validation_message = Some(format!(
+                                    "Invalid key format for {provider}. Check your key."
+                                ));
+                                wiz.provider_substep = 3;
+                            }
+                        }
+                    }
+                    Action::EnterNormalMode => {
+                        // Esc → back to provider select
+                        if let Some(wiz) = &mut self.onboarding {
+                            wiz.provider_substep = 0;
+                            wiz.steps[wiz.current_step].text_value.clear();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            3 => {
+                // Result screen
+                match action {
+                    Action::SubmitInput => {
+                        if let Some(wiz) = &self.onboarding {
+                            let msg = wiz.validation_message.as_deref().unwrap_or("");
+                            if msg.starts_with("Invalid") {
+                                // Retry
+                                if let Some(wiz) = &mut self.onboarding {
+                                    wiz.provider_substep = 1;
+                                    wiz.steps[wiz.current_step].text_value.clear();
+                                    wiz.text_cursor = 0;
+                                }
+                            } else {
+                                // Valid — advance to next step
+                                return self.advance_onboarding();
+                            }
+                        }
+                    }
+                    Action::DeleteChar => {
+                        // Back to key input
+                        if let Some(wiz) = &mut self.onboarding {
+                            wiz.provider_substep = 1;
+                            wiz.steps[wiz.current_step].text_value.clear();
+                            wiz.text_cursor = 0;
+                        }
+                    }
+                    Action::EnterNormalMode | Action::Quit => {
+                        let last_step = self
+                            .onboarding
+                            .as_ref()
+                            .map(|wiz| wiz.current_step)
+                            .unwrap_or(0);
+                        self.onboarding = None;
+                        self.overlay = Overlay::None;
+                        return Some(AppCommand::SaveOnboardingPartial(last_step));
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    /// Helper: advance onboarding wizard to next step and handle side effects.
+    fn advance_onboarding(&mut self) -> Option<AppCommand> {
+        let completed = self
+            .onboarding
+            .as_mut()
+            .map(|wiz| wiz.next_step())
+            .unwrap_or(false);
+
+        // Post-advance side effects
+        if let Some(wiz) = &mut self.onboarding {
+            if let Some(prev_step) = wiz
+                .active_steps
+                .iter()
+                .position(|&i| i == wiz.current_step)
+                .and_then(|pos| {
+                    if pos > 0 {
+                        Some(wiz.active_steps[pos - 1])
+                    } else {
+                        None
+                    }
+                })
+            {
+                if wiz.steps.get(prev_step).map(|s| s.id) == Some("project_type") {
+                    let pt = wiz.selected_config_value("project_type");
+                    wiz.project_type = Some(pt);
+                    wiz.recalculate_active_steps();
+                }
+            }
+        }
+
+        if completed {
+            if let Some(wiz) = &self.onboarding {
+                if let Some(summary) = &wiz.result_summary {
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        format!("Setup complete: {summary}"),
+                    ));
+                }
+            }
+            self.onboarding = None;
+            self.overlay = Overlay::None;
+            return Some(AppCommand::CompleteOnboarding);
+        }
+        None
     }
 
     fn handle_overlay_action(&mut self, action: Action) -> Option<AppCommand> {
@@ -1544,6 +1844,10 @@ pub enum AppCommand {
     ExportReport,
     /// Async: save provider config after model/provider change.
     SaveProviderConfig,
+    /// Complete onboarding: save config + credentials, trigger post-completion action.
+    CompleteOnboarding,
+    /// Save partial onboarding progress for resume.
+    SaveOnboardingPartial(usize),
 }
 
 #[cfg(test)]

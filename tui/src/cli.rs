@@ -22,6 +22,10 @@ pub struct Cli {
     /// Color theme (dark, light, dracula, nord, solarized)
     #[arg(long, global = true)]
     pub theme: Option<String>,
+
+    /// Skip interactive onboarding, use defaults (EU, deployer, general)
+    #[arg(long, short = 'y', global = true)]
+    pub yes: bool,
 }
 
 #[derive(Subcommand)]
@@ -154,6 +158,19 @@ mod tests {
         let cli = Cli::parse_from(["complior", "--engine-url", "http://localhost:4000", "--resume"]);
         assert_eq!(cli.engine_url.as_deref(), Some("http://localhost:4000"));
         assert!(cli.resume);
+    }
+
+    #[test]
+    fn cli_parse_yes_flag() {
+        let cli = Cli::parse_from(["complior", "--yes"]);
+        assert!(cli.yes);
+        assert!(!is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_y_shorthand() {
+        let cli = Cli::parse_from(["complior", "-y"]);
+        assert!(cli.yes);
     }
 
     #[test]
