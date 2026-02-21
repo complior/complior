@@ -219,7 +219,7 @@ pub fn scroll_line_count_for_test(app: &App) -> i32 {
 
 fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
     // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
-    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory);
+    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette);
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
@@ -378,11 +378,23 @@ mod tests {
     #[test]
     fn test_non_navigable_overlay_jk_inserts() {
         let mut app = App::new(crate::config::TuiConfig::default());
-        app.overlay = Overlay::CommandPalette;
+        app.overlay = Overlay::FilePicker;
 
         // In non-navigable overlays, j/k should produce InsertChar
         let action_j = handle_key_event(key(KeyCode::Char('j')), &app);
         assert!(matches!(action_j, Action::InsertChar('j')));
+    }
+
+    #[test]
+    fn test_command_palette_jk_navigates() {
+        let mut app = App::new(crate::config::TuiConfig::default());
+        app.overlay = Overlay::CommandPalette;
+
+        // CommandPalette is navigable — j/k should scroll
+        let action_j = handle_key_event(key(KeyCode::Char('j')), &app);
+        assert!(matches!(action_j, Action::ScrollDown));
+        let action_k = handle_key_event(key(KeyCode::Char('k')), &app);
+        assert!(matches!(action_k, Action::ScrollUp));
     }
 
     #[test]

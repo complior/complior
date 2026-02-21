@@ -39,7 +39,31 @@ pub fn complete_colon_command(partial: &str) -> Option<&'static str> {
         .copied()
 }
 
-pub fn render_command_palette(frame: &mut Frame, filter: &str) {
+/// Return filtered commands matching the filter string.
+fn filtered_commands(filter: &str) -> Vec<(&'static str, &'static str)> {
+    let filter_lower = filter.to_lowercase();
+    COMMANDS
+        .iter()
+        .filter(|(cmd, desc)| {
+            filter_lower.is_empty()
+                || cmd.to_lowercase().contains(&filter_lower)
+                || desc.to_lowercase().contains(&filter_lower)
+        })
+        .copied()
+        .collect()
+}
+
+/// Count of commands matching the current filter.
+pub fn filtered_count(filter: &str) -> usize {
+    filtered_commands(filter).len()
+}
+
+/// Get command at index from filtered list.
+pub fn filtered_command(filter: &str, index: usize) -> Option<&'static str> {
+    filtered_commands(filter).get(index).map(|(cmd, _)| *cmd)
+}
+
+pub fn render_command_palette(frame: &mut Frame, filter: &str, selected: usize) {
     let area = frame.area();
     let popup = centered_rect(50, 40, area);
 
@@ -73,29 +97,31 @@ pub fn render_command_palette(frame: &mut Frame, filter: &str) {
     );
     frame.render_widget(input, chunks[0]);
 
-    // Filtered command list
-    let filter_lower = filter.to_lowercase();
-    let items: Vec<ListItem<'_>> = COMMANDS
+    // Filtered command list with cursor highlight
+    let matches = filtered_commands(filter);
+    let items: Vec<ListItem<'_>> = matches
         .iter()
-        .filter(|(cmd, desc)| {
-            filter_lower.is_empty()
-                || cmd.to_lowercase().contains(&filter_lower)
-                || desc.to_lowercase().contains(&filter_lower)
-        })
-        .map(|(cmd, desc)| {
+        .enumerate()
+        .map(|(i, (cmd, desc))| {
+            let (cmd_style, desc_style) = if i == selected {
+                (
+                    Style::default().fg(t.bg).bg(t.accent).add_modifier(Modifier::BOLD),
+                    Style::default().fg(t.bg).bg(t.accent),
+                )
+            } else {
+                (
+                    Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+                    Style::default().fg(t.muted),
+                )
+            };
             ListItem::new(Line::from(vec![
-                Span::styled(
-                    format!("{cmd:<14}"),
-                    Style::default()
-                        .fg(t.accent)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(*desc, Style::default().fg(t.muted)),
+                Span::styled(format!("{cmd:<14}"), cmd_style),
+                Span::styled(*desc, desc_style),
             ]))
         })
         .collect();
 
-    let list = List::new(items).highlight_style(Style::default().bg(t.selection_bg));
+    let list = List::new(items);
     frame.render_widget(list, chunks[1]);
 }
 
