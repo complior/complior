@@ -17,6 +17,13 @@ use super::terminal::render_terminal;
 /// Top-level render entry point — dispatches to view-specific renderer.
 pub fn render_dashboard(frame: &mut Frame, app: &App) {
     let area = frame.area();
+    let t = theme::theme();
+
+    // Paint entire screen with theme background so all areas update on theme switch
+    frame.render_widget(
+        Block::default().style(Style::default().bg(t.bg).fg(t.fg)),
+        area,
+    );
 
     // T08: Splash screen — full-screen owl during startup fade-in
     if let Some(opacity) = app.animation.splash_opacity() {
