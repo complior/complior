@@ -87,6 +87,7 @@ pub struct App {
     // Overlay popups
     pub overlay: Overlay,
     pub overlay_filter: String,
+    pub palette_index: usize,
 
     // Provider / model selection
     pub provider_config: ProviderConfig,
@@ -237,6 +238,7 @@ impl App {
             files_panel_visible: true,
             overlay: Overlay::None,
             overlay_filter: String::new(),
+            palette_index: 0,
             provider_config: crate::providers::load_provider_config(),
             provider_setup_step: 0,
             provider_setup_selected: 0,
@@ -843,6 +845,7 @@ impl App {
             Action::ShowCommandPalette => {
                 self.overlay = Overlay::CommandPalette;
                 self.overlay_filter.clear();
+                self.palette_index = 0;
                 None
             }
             Action::ShowFilePicker => {
@@ -1615,12 +1618,25 @@ impl App {
                 }
                 None
             }
+            Action::ScrollDown if self.overlay == Overlay::CommandPalette => {
+                let count = crate::components::command_palette::filtered_count(&self.overlay_filter);
+                if count > 0 {
+                    self.palette_index = (self.palette_index + 1).min(count - 1);
+                }
+                None
+            }
+            Action::ScrollUp if self.overlay == Overlay::CommandPalette => {
+                self.palette_index = self.palette_index.saturating_sub(1);
+                None
+            }
             Action::InsertChar(c) => {
                 self.overlay_filter.push(c);
+                self.palette_index = 0;
                 None
             }
             Action::DeleteChar => {
                 self.overlay_filter.pop();
+                self.palette_index = 0;
                 None
             }
             Action::SubmitInput => {
@@ -1628,7 +1644,7 @@ impl App {
                 match self.overlay {
                     Overlay::CommandPalette => {
                         self.overlay = Overlay::None;
-                        if let Some(cmd) = crate::components::command_palette::complete_command(&filter) {
+                        if let Some(cmd) = crate::components::command_palette::filtered_command(&filter, self.palette_index) {
                             let cmd = cmd.trim_start_matches('/');
                             return self.handle_command(cmd);
                         }

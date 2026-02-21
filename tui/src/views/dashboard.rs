@@ -856,6 +856,7 @@ fn render_overlay(frame: &mut Frame, app: &App) {
             crate::components::command_palette::render_command_palette(
                 frame,
                 &app.overlay_filter,
+                app.palette_index,
             );
         }
         Overlay::FilePicker => {
