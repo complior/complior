@@ -1177,12 +1177,9 @@ impl App {
             Action::ScrollDown => {
                 if let Some(wiz) = &mut self.onboarding {
                     wiz.move_cursor_down();
-                    // ThemeSelect: live preview on cursor move
+                    // ThemeSelect: auto-select at cursor so preview updates
                     if matches!(step_kind, Some(StepKind::ThemeSelect)) {
-                        let theme_names = ["dark", "light", "nord", "solarized-light"];
-                        if let Some(name) = theme_names.get(wiz.cursor) {
-                            crate::theme::init_theme(name);
-                        }
+                        wiz.toggle_selection();
                     }
                 }
                 None
@@ -1190,12 +1187,9 @@ impl App {
             Action::ScrollUp => {
                 if let Some(wiz) = &mut self.onboarding {
                     wiz.move_cursor_up();
-                    // ThemeSelect: live preview on cursor move
+                    // ThemeSelect: auto-select at cursor so preview updates
                     if matches!(step_kind, Some(StepKind::ThemeSelect)) {
-                        let theme_names = ["dark", "light", "nord", "solarized-light"];
-                        if let Some(name) = theme_names.get(wiz.cursor) {
-                            crate::theme::init_theme(name);
-                        }
+                        wiz.toggle_selection();
                     }
                 }
                 None
