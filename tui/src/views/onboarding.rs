@@ -320,14 +320,11 @@ impl OnboardingWizard {
         };
         let idx = step.selected.first().copied().unwrap_or(0);
         match step_id {
-            "welcome_theme" => match idx {
-                0 => "dark",
-                1 => "light",
-                2 => "nord",       // Dark colorblind → Nord
-                3 => "solarized-light", // Light colorblind → Solarized Light
-                _ => "dark",
+            "welcome_theme" => {
+                let names = ["dark", "light", "solarized-dark", "solarized-light",
+                             "dracula", "nord", "monokai", "gruvbox"];
+                names.get(idx).unwrap_or(&"dark").to_string()
             }
-            .to_string(),
             "navigation" => match idx {
                 0 => "standard",
                 1 => "vim",
@@ -424,10 +421,14 @@ fn build_steps() -> Vec<OnboardingStep> {
             description: "Choose the text style that looks best with your terminal.\nTo change this later, run /theme",
             kind: StepKind::ThemeSelect,
             options: vec![
-                StepOption::new("Dark mode"),
-                StepOption::new("Light mode"),
-                StepOption::new("Dark mode (colorblind-friendly)"),
-                StepOption::new("Light mode (colorblind-friendly)"),
+                StepOption::new("Complior Dark"),
+                StepOption::new("Complior Light"),
+                StepOption::new("Solarized Dark"),
+                StepOption::new("Solarized Light"),
+                StepOption::new("Dracula"),
+                StepOption::new("Nord"),
+                StepOption::new("Monokai"),
+                StepOption::new("Gruvbox"),
             ],
             selected: vec![0],
             text_value: String::new(),
@@ -605,7 +606,7 @@ fn build_steps() -> Vec<OnboardingStep> {
 /// Render the Onboarding Wizard as a full-screen centered overlay.
 pub fn render_onboarding(frame: &mut Frame, wizard: &OnboardingWizard) {
     let t = theme::theme();
-    let area = centered_rect(70, 28, frame.area());
+    let area = centered_rect(70, 34, frame.area());
 
     frame.render_widget(Clear, area);
 
@@ -697,20 +698,17 @@ fn render_theme_select(
     let content_area = render_header(frame, area, wizard, t);
 
     let chunks = Layout::vertical([
-        Constraint::Min(6),    // theme options
+        Constraint::Min(10),   // theme options (8 themes)
         Constraint::Length(6), // preview
         Constraint::Length(1), // footer
     ])
     .split(content_area);
 
-    // Theme options with palette bars
+    // Theme options with palette bars — all 8 built-in themes
     let themes = theme::list_themes();
-    let theme_labels = ["Dark mode", "Light mode", "Dark mode (colorblind)", "Light mode (colorblind)"];
-    let theme_indices = [0usize, 1, 5, 3]; // Complior Dark, Complior Light, Nord, Solarized Light
-
     let step = wizard.current().expect("step valid");
     let mut lines: Vec<Line> = Vec::new();
-    for (i, label) in theme_labels.iter().enumerate() {
+    for (i, theme_colors) in themes.iter().enumerate() {
         let is_cursor = i == wizard.cursor;
         let is_selected = step.selected.contains(&i);
 
@@ -721,14 +719,13 @@ fn render_theme_select(
             Style::default().fg(t.fg)
         };
 
-        let mut spans = vec![Span::styled(format!("  {marker}{label:<34}"), style)];
+        let label = theme_colors.name;
+        let mut spans = vec![Span::styled(format!("  {marker}{label:<22}"), style)];
 
         // Add palette color bar
-        if let Some(theme_colors) = themes.get(theme_indices[i]) {
-            let palette = theme_colors.palette_colors();
-            for color in &palette {
-                spans.push(Span::styled("██", Style::default().fg(*color)));
-            }
+        let palette = theme_colors.palette_colors();
+        for color in &palette {
+            spans.push(Span::styled("██", Style::default().fg(*color)));
         }
 
         lines.push(Line::from(spans));
@@ -737,8 +734,7 @@ fn render_theme_select(
 
     // Preview area — show a mini preview of the selected theme
     let preview_idx = step.selected.first().copied().unwrap_or(0);
-    let preview_theme_idx = theme_indices.get(preview_idx).copied().unwrap_or(0);
-    if let Some(preview_theme) = themes.get(preview_theme_idx) {
+    if let Some(preview_theme) = themes.get(preview_idx) {
         let preview_block = Block::default()
             .title(" Preview ")
             .borders(Borders::ALL)
@@ -1310,7 +1306,7 @@ mod tests {
     #[test]
     fn test_selected_config_value() {
         let wiz = OnboardingWizard::new();
-        assert_eq!(wiz.selected_config_value("welcome_theme"), "dark");
+        assert_eq!(wiz.selected_config_value("welcome_theme"), "dark"); // idx 0 = Complior Dark
         assert_eq!(wiz.selected_config_value("navigation"), "standard");
         assert_eq!(wiz.selected_config_value("jurisdiction"), "eu");
         assert_eq!(wiz.selected_config_value("role"), "deployer");
