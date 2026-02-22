@@ -178,6 +178,11 @@ const TABLE_ORDER = [
   'ImpactAssessment',
   'Notification',
   'AuditLog',
+  'RegistryTool',
+  'Obligation',
+  'ScoringRule',
+  'ApiKey',
+  'ApiUsage',
 ];
 
 // Migrations — idempotent ALTER TABLEs for existing databases
@@ -188,11 +193,21 @@ const MIGRATIONS = [
    ADD COLUMN IF NOT EXISTS "billingPeriod" varchar DEFAULT 'monthly'`,
   `ALTER TABLE "Subscription"
    ADD COLUMN IF NOT EXISTS "trialEndsAt" timestamp with time zone`,
+  // Sprint 7: Ory → WorkOS migration
+  `DO $$ BEGIN
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'User' AND column_name = 'oryId')
+     THEN
+       ALTER TABLE "User" RENAME COLUMN "oryId" TO "workosUserId";
+     END IF;
+   END $$`,
+  `ALTER TABLE "Organization"
+   ADD COLUMN IF NOT EXISTS "workosOrgId" varchar UNIQUE`,
 ];
 
 const INDEXES = [
   'CREATE INDEX IF NOT EXISTS idx_user_org ON "User"("organizationId")',
-  'CREATE INDEX IF NOT EXISTS idx_user_ory_id ON "User"("oryId")',
+  'CREATE INDEX IF NOT EXISTS idx_user_workos_id ON "User"("workosUserId")',
   'CREATE INDEX IF NOT EXISTS idx_aitool_org ON "AITool"("organizationId")',
   'CREATE INDEX IF NOT EXISTS idx_aitool_risk ON "AITool"("riskLevel")',
   'CREATE INDEX IF NOT EXISTS ' +
@@ -219,6 +234,18 @@ const INDEXES = [
     'idx_invitation_token ON "Invitation"("token")',
   'CREATE INDEX IF NOT EXISTS ' +
     'idx_invitation_email_status ON "Invitation"("email", "status")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_registrytool_category ON "RegistryTool"("category")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_registrytool_risk ON "RegistryTool"("riskLevel")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_obligation_regulation ON "Obligation"("regulation")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_obligation_risk ON "Obligation"("riskLevel")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_apikey_hash ON "ApiKey"("keyHash")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_apikey_org ON "ApiKey"("organizationId")',
 ];
 
 const loadSchemas = async () => {
@@ -339,6 +366,62 @@ const seedCourses = async (client) => {
   console.log(`  Seeded ${courses.length} courses with modules`);
 };
 
+const seedRegistryTools = async (client) => {
+  const tools = require(path.join(SEEDS_DIR, 'registry-tools.js'));
+  for (const tool of tools) {
+    await client.query(
+      `INSERT INTO "RegistryTool"
+       ("name", "provider", "category", "riskLevel",
+       "description", "websiteUrl", "vendorCountry",
+       "dataResidency", "capabilities", "jurisdictions",
+       "detectionPatterns", "evidence", "active")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT ("name") DO NOTHING`,
+      [tool.name, tool.provider, tool.category, tool.riskLevel,
+        tool.description, tool.websiteUrl, tool.vendorCountry,
+        tool.dataResidency, JSON.stringify(tool.capabilities),
+        JSON.stringify(tool.jurisdictions),
+        JSON.stringify(tool.detectionPatterns),
+        JSON.stringify(tool.evidence), tool.active],
+    );
+  }
+  console.log(`  Seeded ${tools.length} registry tools`);
+};
+
+const seedObligations = async (client) => {
+  const obligations = require(path.join(SEEDS_DIR, 'obligations.js'));
+  for (const obl of obligations) {
+    await client.query(
+      `INSERT INTO "Obligation"
+       ("code", "regulation", "name", "description",
+       "articleReference", "riskLevel", "category",
+       "checkCriteria", "sortOrder")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT ("code") DO NOTHING`,
+      [obl.code, obl.regulation, obl.name, obl.description,
+        obl.articleReference, obl.riskLevel, obl.category,
+        JSON.stringify(obl.checkCriteria), obl.sortOrder],
+    );
+  }
+  console.log(`  Seeded ${obligations.length} obligations`);
+};
+
+const seedScoringRules = async (client) => {
+  const rules = require(path.join(SEEDS_DIR, 'scoring-rules.js'));
+  for (const rule of rules) {
+    await client.query(
+      `INSERT INTO "ScoringRule"
+       ("regulation", "checkId", "weight", "maxScore",
+       "riskLevel", "description")
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT ("checkId") DO NOTHING`,
+      [rule.regulation, rule.checkId, rule.weight, rule.maxScore,
+        rule.riskLevel, rule.description],
+    );
+  }
+  console.log(`  Seeded ${rules.length} scoring rules`);
+};
+
 const seedCatalog = async (client) => {
   const catalog = require(path.join(SEEDS_DIR, 'catalog.js'));
   for (const tool of catalog) {
@@ -399,6 +482,9 @@ const run = async () => {
     await seedRoles(client);
     await seedCourses(client);
     await seedCatalog(client);
+    await seedRegistryTools(client);
+    await seedObligations(client);
+    await seedScoringRules(client);
 
     console.log('\nSetup complete!');
     console.log(`  Tables: ${TABLE_ORDER.length}`);
@@ -449,6 +535,9 @@ const initDatabase = async (pool) => {
     await seedRoles(client);
     await seedCourses(client);
     await seedCatalog(client);
+    await seedRegistryTools(client);
+    await seedObligations(client);
+    await seedScoringRules(client);
 
     console.log('Setup complete!');
     console.log(`  Tables: ${TABLE_ORDER.length}, Indexes: ${INDEXES.length}`);

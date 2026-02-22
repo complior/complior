@@ -45,16 +45,14 @@ const initHealth = (server) => {
     await Promise.all([
       checkDatabase(checks),
       checkService(
-        checks, 'ory',
-        'ORY_SDK_URL', '/health/alive',
-      ),
-      checkService(
         checks, 'gotenberg',
         'GOTENBERG_URL', '/health',
       ),
     ]);
+    // WorkOS is a managed service — no health endpoint needed
+    checks.workos = process.env.WORKOS_CLIENT_ID ? 'configured' : 'not_configured';
     const allOk = Object.values(checks).every(
-      (v) => v === 'ok' || v === 'not_configured',
+      (v) => v === 'ok' || v === 'not_configured' || v === 'configured',
     );
     return {
       status: allOk ? 'ok' : 'degraded',
@@ -153,25 +151,35 @@ const initErrorHandler = (server) => {
   });
 };
 
-const initSessionHook = (server, oryClient) => {
+const initSessionHook = (server, workosClient) => {
   server.addHook('onRequest', async (request) => {
     request.session = null;
     request.user = null;
 
     const { url } = request;
     if (!url.startsWith('/api/')) return;
-    if (url.startsWith('/api/auth/webhook')) return;
+    if (url.startsWith('/api/auth/callback')) return;
+    if (url.startsWith('/api/auth/login')) return;
     if (url.startsWith('/api/webhooks/')) return;
     if (url.startsWith('/api/public/')) return;
     if (url === '/health') return;
 
-    const cookie = request.headers.cookie || '';
-    const token = request.headers['x-session-token'] || '';
-    if (!cookie && !token) return;
+    const cookieHeader = request.headers.cookie || '';
+    if (!cookieHeader) return;
 
+    // Extract wos-session cookie
+    const match = cookieHeader.match(/(?:^|;\s*)wos-session=([^;]+)/);
+    if (!match) return;
+
+    const sessionData = match[1];
     try {
-      const session = await oryClient.verifySession(token, cookie);
-      request.session = session;
+      const result = await workosClient.verifySessionCookie(sessionData);
+      if (result.authenticated) {
+        request.session = {
+          user: result.user,
+          organizationId: result.organizationId,
+        };
+      }
     } catch {
       // Session invalid — leave null, handlers decide if auth required
     }
@@ -228,9 +236,40 @@ const registerSandboxRoutes = (server, api) => {
         session: request.session,
       });
       const statusCode = result?._statusCode || 200;
+
+      // Set cookie if returned by handler
+      if (result?._cookie) {
+        const { name, value, options } = result._cookie;
+        reply.setCookie(name, value, options);
+      }
+
+      // Set custom headers (ETag, Cache-Control, etc.)
+      if (result?._headers) {
+        for (const [key, value] of Object.entries(result._headers)) {
+          reply.header(key, value);
+        }
+      }
+
+      // Handle redirects
+      if (result?._redirect) {
+        const rest = { ...result };
+        delete rest._statusCode;
+        delete rest._redirect;
+        delete rest._cookie;
+        delete rest._headers;
+        return reply.code(statusCode === 302 ? 302 : statusCode).redirect(result._redirect);
+      }
+
       if (result && result._statusCode !== undefined) {
         const rest = { ...result };
         delete rest._statusCode;
+        delete rest._cookie;
+        delete rest._headers;
+        return reply.code(statusCode).send(rest);
+      }
+      if (result?._headers) {
+        const rest = { ...result };
+        delete rest._headers;
         return reply.code(statusCode).send(rest);
       }
       return reply.code(statusCode).send(result);

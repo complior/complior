@@ -8,14 +8,6 @@ const VALID_INDUSTRIES = [
 ];
 const VALID_SIZES = ['micro_1_9', 'small_10_49', 'medium_50_249', 'large_250_plus'];
 
-const WebhookSchema = z.object({
-  identity_id: z.string().min(1),
-  email: z.string().email(),
-  name: z.object({ first: z.string(), last: z.string() }).optional(),
-  locale: z.string().optional(),
-  event: z.string(),
-});
-
 const UpdateOrganizationSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   industry: z.enum(VALID_INDUSTRIES).optional(),
@@ -183,6 +175,29 @@ const ChangeRoleSchema = z.object({
   role: z.enum(VALID_INVITE_ROLES),
 });
 
+// === Registry API Schemas ===
+
+const RegistryToolSearchSchema = z.object({
+  q: z.string().optional(),
+  category: z.string().optional(),
+  risk: z.string().optional(),
+  jurisdiction: z.string().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+const RegistryToolIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+const ObligationSearchSchema = z.object({
+  regulation: z.string().optional(),
+  risk: z.string().optional(),
+  category: z.string().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 // === GDPR Schemas ===
 
 const AccountDeleteSchema = z.object({
@@ -202,7 +217,6 @@ module.exports = {
   VALID_INVITE_ROLES,
   VALID_QUICK_CHECK_DOMAINS,
   RequirementUpdateSchema,
-  WebhookSchema,
   UpdateOrganizationSchema,
   AuditQuerySchema,
   CatalogSearchSchema,
@@ -224,6 +238,9 @@ module.exports = {
   AccountDeleteSchema,
   AdminListSchema,
   AdminSubscriptionSchema,
+  RegistryToolSearchSchema,
+  RegistryToolIdSchema,
+  ObligationSearchSchema,
   VALID_PAID_PLANS,
   VALID_BILLING_PERIODS,
 };
