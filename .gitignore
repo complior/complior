@@ -1,5 +1,5 @@
-# Internal development workspace (not published)
-.dev/
+# All documentation — internal workspace (not published)
+docs/
 
 # Temporary work files
 tmp/
