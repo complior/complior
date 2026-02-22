@@ -1,0 +1,38 @@
+{
+  "slug": "grok",
+  "name": "Grok",
+  "level": "verified",
+  "provider": {
+    "name": "xAI",
+    "website": "https://grok.x.ai"
+  },
+  "website": "https://grok.x.ai",
+  "categories": [
+    "chatbot",
+    "text-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Grok subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018",
+      "OBL-CS-001"
+    ]
+  },
+  "compliance_score": {
+    "total": 100,
+    "max": 100,
+    "grade": "compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Grok — EU AI Act Compliance | Complior",
+    "description": "Grok by xAI: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Grok — EU AI Act Compliance Guide"
+  }
+}

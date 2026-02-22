@@ -4,8 +4,27 @@
 # Temporary work files
 tmp/
 
+# Claude Code local settings (personal, not shared)
+.claude/
+
 # Complior project data
 .complior/
+
+# AI Registry — generated/scraped data (too large for git, rebuilt by scripts)
+engine/data/registry/all_tools.json
+engine/data/registry/directory.json
+engine/data/registry/scraped-tools.json
+engine/data/registry/scanned/
+engine/data/registry/media-tests/
+engine/data/registry/human-tests/
+engine/data/registry/detection/
+engine/data/registry/assessments/
+engine/data/registry/openrouter/
+engine/data/registry/web-search/
+engine/data/registry/github/
+engine/data/registry/media/
+engine/data/registry/BATCH-SCAN-RESULTS.md
+engine/data/registry/TZ-COMPLIANCE-REPORT.md
 
 # Rust
 target/

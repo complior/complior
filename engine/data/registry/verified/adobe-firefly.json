@@ -1,0 +1,36 @@
+{
+  "slug": "adobe-firefly",
+  "name": "Adobe Firefly",
+  "level": "verified",
+  "provider": {
+    "name": "Adobe",
+    "website": "https://firefly.adobe.com"
+  },
+  "website": "https://firefly.adobe.com",
+  "categories": [
+    "image-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Adobe Firefly subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 100,
+    "max": 100,
+    "grade": "compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Adobe Firefly — EU AI Act Compliance | Complior",
+    "description": "Adobe Firefly by Adobe: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Adobe Firefly — EU AI Act Compliance Guide"
+  }
+}

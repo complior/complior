@@ -1,0 +1,43 @@
+{
+  "slug": "github-copilot",
+  "name": "GitHub Copilot",
+  "level": "verified",
+  "provider": {
+    "name": "Microsoft",
+    "website": "https://github.com/features/copilot"
+  },
+  "website": "https://github.com/features/copilot",
+  "categories": [
+    "code-assistant"
+  ],
+  "risk_classification": {
+    "level": "gpai_systemic",
+    "reasoning": "GitHub Copilot classified as GPAI model with systemic risk under Article 51-56 EU AI Act. Model exceeds 10M MAU threshold. Additional obligations apply including adversarial testing and incident reporting.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-018",
+      "OBL-022",
+      "OBL-022a",
+      "OBL-022b",
+      "OBL-022c",
+      "OBL-023",
+      "OBL-024",
+      "OBL-024a",
+      "OBL-025"
+    ]
+  },
+  "compliance_score": {
+    "total": 46,
+    "max": 100,
+    "grade": "needs_improvement",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "GitHub Copilot — EU AI Act Compliance | Complior",
+    "description": "GitHub Copilot by Microsoft: gpai_systemic risk. 14 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "GitHub Copilot — EU AI Act Compliance Guide"
+  }
+}

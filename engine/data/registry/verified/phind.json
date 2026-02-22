@@ -1,0 +1,38 @@
+{
+  "slug": "phind",
+  "name": "Phind",
+  "level": "verified",
+  "provider": {
+    "name": "Phind",
+    "website": "https://phind.com"
+  },
+  "website": "https://phind.com",
+  "categories": [
+    "chatbot",
+    "text-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Phind subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018",
+      "OBL-CS-001"
+    ]
+  },
+  "compliance_score": {
+    "total": 0,
+    "max": 100,
+    "grade": "non_compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Phind — EU AI Act Compliance | Complior",
+    "description": "Phind by Phind: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Phind — EU AI Act Compliance Guide"
+  }
+}

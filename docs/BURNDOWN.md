@@ -1,8 +1,59 @@
 # Complior — Burndown
 
-> **Последнее обновление:** 2026-02-19
-> **Текущее состояние:** 19 спринтов завершено, 0 осталось | 365 SP / 365 SP (100%) | **v1.0.0 RELEASE READY**
-> **Тесты:** 568 (315 Engine + 9 SDK + 253 TUI) | **User Stories:** 84 / 84
+> **Последнее обновление:** 2026-02-21
+> **Текущее состояние:** v6 Reboot — Phase 0 (Architecture) | v1 завершён: 365 SP, 568 тестов
+
+---
+
+## v6 — Wrapper-Оркестратор (текущий)
+
+**Статус:** Phase 0 — Architecture & Planning
+
+v6 — полная переархитектура. Из "compliance-first coding assistant" (v1) в "wrapper-оркестратор" (v6). Новая бизнес-модель: Free TUI → Paid Dashboard.
+
+### v6 Burndown
+
+| Спринт | Период | Статус | Фич | Фокус |
+|--------|--------|--------|-----|-------|
+| Phase 0 | Фев 2026 | 📋 В работе | — | Architecture, docs, backlog |
+| S01 | Нед 1-2 | 📋 | ~25 | Regulation DB, AI Registry, Scanner, AST, TUI каркас |
+| S02 | Нед 3-4 | 📋 | ~30 | PTY Wrapper, Auto-Fix, LLM, Memory, Compliance Gate |
+| S03 | Нед 5-6 | 📋 | ~25 | Themes, Multi-Agent, MCP, GH Action, Reports |
+| S04 | Нед 7-8 | 📋 | ~20 | FRIA, Discovery, Polish, **Запуск** |
+| S05 | Мес 1-2 | 📋 | ~20 | Runtime Control, SDK Adapters, Templates |
+| S06 | Мес 2-3 | 📋 | ~15 | Agent Governance, VS Code, +3 юрисдикции |
+| S07 | Мес 3-4 | 📋 | ~8 | Docker scan, Infrastructure Remediation |
+| S08 | Мес 4-5 | 📋 | ~6 | Monitoring, Drift Detection |
+| S09 | Мес 5-6 | 📋 | ~5 | Agent Sandbox, Kill Switch |
+| S10 | Мес 6+ | 📋 | ~5 | +4 юрисдикции, 2000 tools, Plugins |
+
+### v6 Phase 0 — Documents
+
+| Документ | Статус |
+|----------|--------|
+| UNIFIED-ARCHITECTURE.md | ✅ Готово |
+| PRODUCT-VISION.md (v6) | ✅ Готово |
+| ARCHITECTURE.md (v6) | ✅ Готово |
+| PRODUCT-BACKLOG.md (v6) | ✅ Готово |
+| DATA-FLOWS.md (v6) | ✅ Готово |
+| WALKTHROUGH.md (v6) | ✅ Готово |
+| CLAUDE.md (v6) | ✅ Готово |
+| README.md (v6) | ✅ Готово |
+| BURNDOWN.md (v6 section) | ✅ Готово |
+| Sprint backlogs S01-S10 | 📋 Запланировано |
+
+### Что сохраняется от v1
+
+- TS Engine: scanner (19 checks), fixer (6 templates), regulation DB, AI registry, LLM integration, memory — **15K LOC, 315 tests**
+- TUI: ratatui framework, layout engine, chat widget, score gauge — **253 tests**
+- SDK: @complior/openai, @complior/anthropic — **9 tests**
+- Итого: **568 тестов** переносятся в v6
+
+---
+
+## v1 — Compliance-First Coding Assistant (завершён)
+
+> **Итог:** 19 спринтов, 365 SP, 84 User Stories, 568 тестов, v1.0.0 RELEASE READY
 
 ---
 

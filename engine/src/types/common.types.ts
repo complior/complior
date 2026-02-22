@@ -1,6 +1,6 @@
 // --- Risk & Severity ---
 
-export type RiskLevel = 'unacceptable' | 'high' | 'limited' | 'minimal' | 'gpai';
+export type RiskLevel = 'unacceptable' | 'high' | 'limited' | 'minimal' | 'gpai' | 'gpai_systemic';
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 

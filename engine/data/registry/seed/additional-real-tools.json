@@ -1,0 +1,982 @@
+[
+  {
+    "name": "ProWritingAid",
+    "provider": "ProWritingAid",
+    "website": "https://prowritingaid.com",
+    "categories": ["writing"],
+    "description": "Advanced grammar checker and style editor for writers"
+  },
+  {
+    "name": "Hemingway Editor",
+    "provider": "Hemingway App",
+    "website": "https://hemingwayapp.com",
+    "categories": ["writing"],
+    "description": "Makes your writing bold and clear"
+  },
+  {
+    "name": "ParagraphAI",
+    "provider": "ParagraphAI",
+    "website": "https://paragraphai.com",
+    "categories": ["writing"],
+    "description": "AI writing assistant for all your writing needs"
+  },
+  {
+    "name": "Moonbeam",
+    "provider": "Moonbeam",
+    "website": "https://gomoonbeam.com",
+    "categories": ["writing"],
+    "description": "AI writing assistant for long-form content"
+  },
+  {
+    "name": "Jenni AI",
+    "provider": "Jenni AI",
+    "website": "https://jenni.ai",
+    "categories": ["writing", "research"],
+    "description": "AI assistant for academic writing and research"
+  },
+  {
+    "name": "Wordvice AI",
+    "provider": "Wordvice",
+    "website": "https://wordvice.ai",
+    "categories": ["writing"],
+    "description": "AI proofreading and paraphrasing tool"
+  },
+  {
+    "name": "Trinka AI",
+    "provider": "Crimson AI",
+    "website": "https://trinka.ai",
+    "categories": ["writing"],
+    "description": "AI writing assistant for academic and technical writing"
+  },
+  {
+    "name": "Writer.com",
+    "provider": "Writer",
+    "website": "https://writer.com",
+    "categories": ["writing"],
+    "description": "AI writing platform for teams"
+  },
+  {
+    "name": "Compose AI",
+    "provider": "Compose AI",
+    "website": "https://compose.ai",
+    "categories": ["writing", "productivity"],
+    "description": "AI-powered writing assistant Chrome extension"
+  },
+  {
+    "name": "Yaara AI",
+    "provider": "Yaara",
+    "website": "https://yaara.ai",
+    "categories": ["writing", "marketing"],
+    "description": "AI content generation platform"
+  },
+  {
+    "name": "Riku AI",
+    "provider": "Riku",
+    "website": "https://riku.ai",
+    "categories": ["writing", "chatbot"],
+    "description": "Build AI apps without code"
+  },
+  {
+    "name": "Bearly AI",
+    "provider": "Bearly",
+    "website": "https://bearly.ai",
+    "categories": ["writing", "productivity"],
+    "description": "AI assistant for reading, writing, and research"
+  },
+  {
+    "name": "Koala Writer",
+    "provider": "Koala",
+    "website": "https://koala.sh",
+    "categories": ["writing", "seo"],
+    "description": "AI SEO article writer"
+  },
+  {
+    "name": "Surfer SEO",
+    "provider": "Surfer",
+    "website": "https://surferseo.com",
+    "categories": ["writing", "seo", "marketing"],
+    "description": "SEO content optimization platform"
+  },
+  {
+    "name": "GrowthBar",
+    "provider": "GrowthBar",
+    "website": "https://growthbarseo.com",
+    "categories": ["writing", "seo"],
+    "description": "AI SEO tool for content creation"
+  },
+  {
+    "name": "MarketMuse",
+    "provider": "MarketMuse",
+    "website": "https://marketmuse.com",
+    "categories": ["writing", "seo", "marketing"],
+    "description": "AI content planning and optimization"
+  },
+  {
+    "name": "Clearscope",
+    "provider": "Clearscope",
+    "website": "https://clearscope.io",
+    "categories": ["writing", "seo"],
+    "description": "SEO content optimization platform"
+  },
+  {
+    "name": "CopySmith",
+    "provider": "CopySmith",
+    "website": "https://copysmith.ai",
+    "categories": ["writing", "marketing"],
+    "description": "Enterprise AI content creation"
+  },
+  {
+    "name": "Content at Scale",
+    "provider": "Content at Scale",
+    "website": "https://contentatscale.ai",
+    "categories": ["writing", "seo"],
+    "description": "AI SEO content automation"
+  },
+  {
+    "name": "Bramework",
+    "provider": "Bramework",
+    "website": "https://bramework.com",
+    "categories": ["writing", "seo"],
+    "description": "AI blog writing assistant"
+  },
+  {
+    "name": "LongShot AI",
+    "provider": "LongShot",
+    "website": "https://longshot.ai",
+    "categories": ["writing", "research"],
+    "description": "AI long-form content assistant with research"
+  },
+  {
+    "name": "CopyMonkey",
+    "provider": "CopyMonkey",
+    "website": "https://copymonkey.ai",
+    "categories": ["writing", "marketing"],
+    "description": "AI Amazon listing optimization"
+  },
+  {
+    "name": "WriterZen",
+    "provider": "WriterZen",
+    "website": "https://writerzen.net",
+    "categories": ["writing", "seo"],
+    "description": "SEO content workflow solution"
+  },
+  {
+    "name": "Narrato",
+    "provider": "Narrato",
+    "website": "https://narrato.io",
+    "categories": ["writing", "productivity"],
+    "description": "AI content workspace and workflow"
+  },
+  {
+    "name": "Hypotenuse AI",
+    "provider": "Hypotenuse",
+    "website": "https://hypotenuse.ai",
+    "categories": ["writing", "marketing"],
+    "description": "AI writing assistant for ecommerce and marketing"
+  },
+  {
+    "name": "SmartWriter",
+    "provider": "SmartWriter",
+    "website": "https://smartwriter.ai",
+    "categories": ["writing", "sales"],
+    "description": "AI personalized outreach emails"
+  },
+  {
+    "name": "Snazzy AI",
+    "provider": "Snazzy",
+    "website": "https://snazzy.ai",
+    "categories": ["writing"],
+    "description": "AI copywriting tool"
+  },
+  {
+    "name": "Headlime",
+    "provider": "Headlime",
+    "website": "https://headlime.com",
+    "categories": ["writing", "marketing"],
+    "description": "AI marketing copy generator"
+  },
+  {
+    "name": "Creaitor AI",
+    "provider": "Creaitor",
+    "website": "https://creaitor.ai",
+    "categories": ["writing"],
+    "description": "AI content writing platform"
+  },
+  {
+    "name": "GetGenie",
+    "provider": "GetGenie",
+    "website": "https://getgenie.ai",
+    "categories": ["writing", "seo"],
+    "description": "WordPress AI assistant for content and SEO"
+  },
+  {
+    "name": "Smodin",
+    "provider": "Smodin",
+    "website": "https://smodin.io",
+    "categories": ["writing"],
+    "description": "AI writing and homework tools"
+  },
+  {
+    "name": "WordAI",
+    "provider": "WordAI",
+    "website": "https://wordai.com",
+    "categories": ["writing"],
+    "description": "AI text rewriter and content spinner"
+  },
+  {
+    "name": "Spinbot",
+    "provider": "Spinbot",
+    "website": "https://spinbot.com",
+    "categories": ["writing"],
+    "description": "Free article rewriter and paraphraser"
+  },
+  {
+    "name": "RightBlogger",
+    "provider": "RightBlogger",
+    "website": "https://rightblogger.com",
+    "categories": ["writing"],
+    "description": "AI blogging tools for content creators"
+  },
+  {
+    "name": "Texta.ai",
+    "provider": "Texta",
+    "website": "https://texta.ai",
+    "categories": ["writing", "seo"],
+    "description": "AI blog post writer"
+  },
+  {
+    "name": "Reword",
+    "provider": "Reword",
+    "website": "https://reword.co",
+    "categories": ["writing"],
+    "description": "AI editor for article writing"
+  },
+  {
+    "name": "Outranking",
+    "provider": "Outranking",
+    "website": "https://outranking.io",
+    "categories": ["writing", "seo"],
+    "description": "AI SEO content optimization"
+  },
+  {
+    "name": "ContentEdge",
+    "provider": "ContentEdge",
+    "website": "https://contentedge.com",
+    "categories": ["writing", "seo"],
+    "description": "AI SEO copywriting software"
+  },
+  {
+    "name": "Wordplay",
+    "provider": "Wordplay",
+    "website": "https://wordplay.ai",
+    "categories": ["writing"],
+    "description": "AI long-form content creation"
+  },
+  {
+    "name": "Bertha AI",
+    "provider": "Bertha",
+    "website": "https://bertha.ai",
+    "categories": ["writing"],
+    "description": "WordPress AI writing assistant"
+  },
+  {
+    "name": "Eilla AI",
+    "provider": "Eilla",
+    "website": "https://eilla.ai",
+    "categories": ["writing", "finance"],
+    "description": "AI assistant for M&A and VC"
+  },
+  {
+    "name": "Cuppa AI",
+    "provider": "Cuppa",
+    "website": "https://cuppa.sh",
+    "categories": ["writing", "seo"],
+    "description": "AI SEO blog post generator"
+  },
+  {
+    "name": "Neural Writer",
+    "provider": "Neural Writer",
+    "website": "https://neuralwriter.com",
+    "categories": ["writing"],
+    "description": "AI paraphrasing and summarizing tool"
+  },
+  {
+    "name": "Penelope AI",
+    "provider": "Penelope",
+    "website": "https://penelopeai.com",
+    "categories": ["writing"],
+    "description": "AI markdown editor for writing"
+  },
+  {
+    "name": "Ideogram",
+    "provider": "Ideogram",
+    "website": "https://ideogram.ai",
+    "categories": ["image-generation"],
+    "description": "AI image generation with text rendering"
+  },
+  {
+    "name": "Adobe Firefly",
+    "provider": "Adobe",
+    "website": "https://firefly.adobe.com",
+    "categories": ["image-generation", "design"],
+    "description": "Adobe generative AI for creative workflows"
+  },
+  {
+    "name": "Microsoft Designer",
+    "provider": "Microsoft",
+    "website": "https://designer.microsoft.com",
+    "categories": ["image-generation", "design"],
+    "description": "Microsoft AI graphic design tool"
+  },
+  {
+    "name": "Krea AI",
+    "provider": "Krea",
+    "website": "https://krea.ai",
+    "categories": ["image-generation"],
+    "description": "Real-time AI image generation"
+  },
+  {
+    "name": "InstantArt",
+    "provider": "InstantArt",
+    "website": "https://instantart.io",
+    "categories": ["image-generation"],
+    "description": "Free unlimited Stable Diffusion"
+  },
+  {
+    "name": "Tensor.Art",
+    "provider": "Tensor.Art",
+    "website": "https://tensor.art",
+    "categories": ["image-generation"],
+    "description": "AI model hosting and image generation"
+  },
+  {
+    "name": "CivitAI",
+    "provider": "Civitai",
+    "website": "https://civitai.com",
+    "categories": ["image-generation"],
+    "description": "Community for AI art models"
+  },
+  {
+    "name": "PromptHero",
+    "provider": "PromptHero",
+    "website": "https://prompthero.com",
+    "categories": ["image-generation", "search"],
+    "description": "Search engine for AI art prompts"
+  },
+  {
+    "name": "DiffusionBee",
+    "provider": "DiffusionBee",
+    "website": "https://diffusionbee.com",
+    "categories": ["image-generation"],
+    "description": "Stable Diffusion app for Mac"
+  },
+  {
+    "name": "Invoke AI",
+    "provider": "Invoke",
+    "website": "https://invoke.ai",
+    "categories": ["image-generation"],
+    "description": "Professional creative AI generation"
+  },
+  {
+    "name": "ComfyUI",
+    "provider": "ComfyUI",
+    "website": "https://github.com/comfyanonymous/ComfyUI",
+    "categories": ["image-generation", "developer-tools"],
+    "description": "Node-based Stable Diffusion GUI"
+  },
+  {
+    "name": "Fooocus",
+    "provider": "Fooocus",
+    "website": "https://github.com/lllyasviel/Fooocus",
+    "categories": ["image-generation"],
+    "description": "Simplified Stable Diffusion interface"
+  },
+  {
+    "name": "Dreamlike Art",
+    "provider": "Dreamlike",
+    "website": "https://dreamlike.art",
+    "categories": ["image-generation"],
+    "description": "AI art generation platform"
+  },
+  {
+    "name": "Neural.love",
+    "provider": "Neural.love",
+    "website": "https://neural.love",
+    "categories": ["image-generation", "photo-editing"],
+    "description": "AI art generator and image enhancer"
+  },
+  {
+    "name": "ImgCreator",
+    "provider": "ImgCreator",
+    "website": "https://imgcreator.ai",
+    "categories": ["image-generation"],
+    "description": "Text to image AI art generator"
+  },
+  {
+    "name": "Recraft AI",
+    "provider": "Recraft",
+    "website": "https://recraft.ai",
+    "categories": ["image-generation", "design"],
+    "description": "AI design tool for vector art"
+  },
+  {
+    "name": "Napkin AI",
+    "provider": "Napkin",
+    "website": "https://napkin.ai",
+    "categories": ["image-generation", "presentation"],
+    "description": "Turn text into visuals instantly"
+  },
+  {
+    "name": "Visme AI",
+    "provider": "Visme",
+    "website": "https://visme.co",
+    "categories": ["design", "presentation"],
+    "description": "AI-powered visual content creation"
+  },
+  {
+    "name": "Snappa AI",
+    "provider": "Snappa",
+    "website": "https://snappa.com",
+    "categories": ["design"],
+    "description": "Online graphic design with AI"
+  },
+  {
+    "name": "Glorify AI",
+    "provider": "Glorify",
+    "website": "https://glorify.com",
+    "categories": ["design", "marketing"],
+    "description": "AI graphic design for entrepreneurs"
+  },
+  {
+    "name": "Vectorizer AI",
+    "provider": "Vectorizer",
+    "website": "https://vectorizer.ai",
+    "categories": ["design"],
+    "description": "AI image vectorization tool"
+  },
+  {
+    "name": "Meshy AI",
+    "provider": "Meshy",
+    "website": "https://meshy.ai",
+    "categories": ["3d-generation"],
+    "description": "AI text to 3D model generator"
+  },
+  {
+    "name": "Tripo AI",
+    "provider": "Tripo",
+    "website": "https://tripo3d.ai",
+    "categories": ["3d-generation"],
+    "description": "AI 3D model generation from images"
+  },
+  {
+    "name": "Rodin AI",
+    "provider": "Rodin",
+    "website": "https://rodin.ai",
+    "categories": ["3d-generation"],
+    "description": "3D generation from text or images"
+  },
+  {
+    "name": "Spline AI",
+    "provider": "Spline",
+    "website": "https://spline.design",
+    "categories": ["3d-generation", "design"],
+    "description": "3D design tool with AI features"
+  },
+  {
+    "name": "SkyBox AI",
+    "provider": "Blockade Labs",
+    "website": "https://skybox.blockadelabs.com",
+    "categories": ["image-generation", "3d-generation"],
+    "description": "AI 360° skybox generation"
+  },
+  {
+    "name": "Interior AI",
+    "provider": "Interior AI",
+    "website": "https://interiorai.com",
+    "categories": ["image-generation", "design"],
+    "description": "AI interior design generator"
+  },
+  {
+    "name": "ReImagine Home",
+    "provider": "ReImagine",
+    "website": "https://reimaginehome.ai",
+    "categories": ["image-generation", "design"],
+    "description": "AI interior design ideas"
+  },
+  {
+    "name": "Vizcom",
+    "provider": "Vizcom",
+    "website": "https://vizcom.ai",
+    "categories": ["design"],
+    "description": "AI product design sketching"
+  },
+  {
+    "name": "CapCut",
+    "provider": "ByteDance",
+    "website": "https://capcut.com",
+    "categories": ["video-generation", "video-editing"],
+    "description": "AI video editing app"
+  },
+  {
+    "name": "Filmora AI",
+    "provider": "Wondershare",
+    "website": "https://filmora.wondershare.com",
+    "categories": ["video-generation", "video-editing"],
+    "description": "AI video editing software"
+  },
+  {
+    "name": "Vidu AI",
+    "provider": "Vidu",
+    "website": "https://vidu.studio",
+    "categories": ["video-generation"],
+    "description": "AI video generation platform"
+  },
+  {
+    "name": "Minimax Video",
+    "provider": "Minimax",
+    "website": "https://minimax.chat",
+    "categories": ["video-generation"],
+    "description": "AI video generation from text"
+  },
+  {
+    "name": "Hailuo AI",
+    "provider": "Hailuo",
+    "website": "https://hailuoai.com",
+    "categories": ["video-generation"],
+    "description": "AI video creation platform"
+  },
+  {
+    "name": "Genmo",
+    "provider": "Genmo",
+    "website": "https://genmo.ai",
+    "categories": ["video-generation"],
+    "description": "Creative AI for video and images"
+  },
+  {
+    "name": "Stable Video Diffusion",
+    "provider": "Stability AI",
+    "website": "https://stability.ai/stable-video",
+    "categories": ["video-generation"],
+    "description": "AI video generation model"
+  },
+  {
+    "name": "AnimateDiff",
+    "provider": "AnimateDiff",
+    "website": "https://github.com/guoyww/AnimateDiff",
+    "categories": ["video-generation"],
+    "description": "Animate Stable Diffusion models"
+  },
+  {
+    "name": "LTX Studio",
+    "provider": "Lightricks",
+    "website": "https://ltx.studio",
+    "categories": ["video-generation"],
+    "description": "AI filmmaking platform"
+  },
+  {
+    "name": "Domo AI",
+    "provider": "Domo",
+    "website": "https://domoai.app",
+    "categories": ["video-generation"],
+    "description": "AI video style transformation"
+  },
+  {
+    "name": "Captions AI",
+    "provider": "Captions",
+    "website": "https://captions.ai",
+    "categories": ["video-generation"],
+    "description": "AI video editing and subtitles"
+  },
+  {
+    "name": "Submagic",
+    "provider": "Submagic",
+    "website": "https://submagic.co",
+    "categories": ["video-generation"],
+    "description": "AI video captions and effects"
+  },
+  {
+    "name": "Vizard AI",
+    "provider": "Vizard",
+    "website": "https://vizard.ai",
+    "categories": ["video-generation"],
+    "description": "AI video repurposing for social media"
+  },
+  {
+    "name": "Munch",
+    "provider": "Munch",
+    "website": "https://munch.app",
+    "categories": ["video-generation"],
+    "description": "AI video repurposing platform"
+  },
+  {
+    "name": "Vidyo.ai",
+    "provider": "Vidyo",
+    "website": "https://vidyo.ai",
+    "categories": ["video-generation"],
+    "description": "AI short clips from long videos"
+  },
+  {
+    "name": "Chopcast",
+    "provider": "Chopcast",
+    "website": "https://chopcast.io",
+    "categories": ["video-generation"],
+    "description": "AI video clipping for B2B content"
+  },
+  {
+    "name": "Type Studio",
+    "provider": "Type Studio",
+    "website": "https://typestudio.co",
+    "categories": ["video-generation", "transcription"],
+    "description": "Text-based video editing"
+  },
+  {
+    "name": "Zubtitle",
+    "provider": "Zubtitle",
+    "website": "https://zubtitle.com",
+    "categories": ["video-generation"],
+    "description": "AI video subtitles and captions"
+  },
+  {
+    "name": "Headliner",
+    "provider": "Headliner",
+    "website": "https://headliner.app",
+    "categories": ["video-generation"],
+    "description": "Create videos for social media"
+  },
+  {
+    "name": "Recast Studio",
+    "provider": "Recast",
+    "website": "https://recast.studio",
+    "categories": ["video-generation"],
+    "description": "AI podcast to video shorts"
+  },
+  {
+    "name": "Klap",
+    "provider": "Klap",
+    "website": "https://klap.app",
+    "categories": ["video-generation"],
+    "description": "Turn videos into viral shorts with AI"
+  },
+  {
+    "name": "Kapwing AI",
+    "provider": "Kapwing",
+    "website": "https://kapwing.com",
+    "categories": ["video-generation", "video-editing"],
+    "description": "Online video editor with AI"
+  },
+  {
+    "name": "Animoto AI",
+    "provider": "Animoto",
+    "website": "https://animoto.com",
+    "categories": ["video-generation"],
+    "description": "AI video maker for marketing"
+  },
+  {
+    "name": "Biteable",
+    "provider": "Biteable",
+    "website": "https://biteable.com",
+    "categories": ["video-generation"],
+    "description": "Video maker for businesses"
+  },
+  {
+    "name": "Promo.com",
+    "provider": "Promo",
+    "website": "https://promo.com",
+    "categories": ["video-generation", "marketing"],
+    "description": "AI video maker for social media"
+  },
+  {
+    "name": "Wave.video",
+    "provider": "Wave.video",
+    "website": "https://wave.video",
+    "categories": ["video-generation"],
+    "description": "AI online video editor and maker"
+  },
+  {
+    "name": "Moovly",
+    "provider": "Moovly",
+    "website": "https://moovly.com",
+    "categories": ["video-generation"],
+    "description": "Video creation platform"
+  },
+  {
+    "name": "Powtoon",
+    "provider": "Powtoon",
+    "website": "https://powtoon.com",
+    "categories": ["video-generation"],
+    "description": "Video and presentation creator"
+  },
+  {
+    "name": "Animaker",
+    "provider": "Animaker",
+    "website": "https://animaker.com",
+    "categories": ["video-generation"],
+    "description": "DIY video animation software"
+  },
+  {
+    "name": "Vyond",
+    "provider": "Vyond",
+    "website": "https://vyond.com",
+    "categories": ["video-generation"],
+    "description": "Animated video maker for businesses"
+  },
+  {
+    "name": "Renderforest",
+    "provider": "Renderforest",
+    "website": "https://renderforest.com",
+    "categories": ["video-generation", "design"],
+    "description": "AI video and design platform"
+  },
+  {
+    "name": "FlexClip",
+    "provider": "FlexClip",
+    "website": "https://flexclip.com",
+    "categories": ["video-generation"],
+    "description": "AI video maker and editor"
+  },
+  {
+    "name": "Wisecut",
+    "provider": "Wisecut",
+    "website": "https://wisecut.video",
+    "categories": ["video-generation"],
+    "description": "AI video editor with auto-cutting"
+  },
+  {
+    "name": "Gling",
+    "provider": "Gling",
+    "website": "https://gling.ai",
+    "categories": ["video-generation"],
+    "description": "AI video editing for YouTubers"
+  },
+  {
+    "name": "Podcastle",
+    "provider": "Podcastle",
+    "website": "https://podcastle.ai",
+    "categories": ["audio-editing", "transcription"],
+    "description": "AI podcast recording and editing"
+  },
+  {
+    "name": "Peech",
+    "provider": "Peech",
+    "website": "https://peech-ai.com",
+    "categories": ["video-generation"],
+    "description": "AI video platform for content teams"
+  },
+  {
+    "name": "Topaz Video AI",
+    "provider": "Topaz Labs",
+    "website": "https://topazlabs.com/topaz-video-ai",
+    "categories": ["video-editing"],
+    "description": "AI video enhancement and upscaling"
+  },
+  {
+    "name": "Character.AI",
+    "provider": "Character Technologies",
+    "website": "https://character.ai",
+    "categories": ["chatbot"],
+    "description": "Conversational AI character chat"
+  },
+  {
+    "name": "Replika",
+    "provider": "Luka",
+    "website": "https://replika.com",
+    "categories": ["chatbot"],
+    "description": "AI companion chatbot"
+  },
+  {
+    "name": "Pi",
+    "provider": "Inflection AI",
+    "website": "https://pi.ai",
+    "categories": ["chatbot"],
+    "description": "Personal AI assistant"
+  },
+  {
+    "name": "Poe",
+    "provider": "Quora",
+    "website": "https://poe.com",
+    "categories": ["chatbot"],
+    "description": "Platform for AI chatbots"
+  },
+  {
+    "name": "Chai AI",
+    "provider": "Chai Research",
+    "website": "https://chai.ml",
+    "categories": ["chatbot"],
+    "description": "Chat with AI characters"
+  },
+  {
+    "name": "Botpress",
+    "provider": "Botpress",
+    "website": "https://botpress.com",
+    "categories": ["chatbot", "developer-tools"],
+    "description": "Open-source chatbot builder"
+  },
+  {
+    "name": "Voiceflow",
+    "provider": "Voiceflow",
+    "website": "https://voiceflow.com",
+    "categories": ["chatbot", "voice-tts"],
+    "description": "Conversation design platform"
+  },
+  {
+    "name": "Landbot",
+    "provider": "Landbot",
+    "website": "https://landbot.io",
+    "categories": ["chatbot", "no-code"],
+    "description": "No-code chatbot builder"
+  },
+  {
+    "name": "Chatbase",
+    "provider": "Chatbase",
+    "website": "https://chatbase.co",
+    "categories": ["chatbot"],
+    "description": "Custom ChatGPT for your data"
+  },
+  {
+    "name": "CustomGPT",
+    "provider": "CustomGPT",
+    "website": "https://customgpt.ai",
+    "categories": ["chatbot"],
+    "description": "Build custom ChatGPT for business"
+  },
+  {
+    "name": "SiteGPT",
+    "provider": "SiteGPT",
+    "website": "https://sitegpt.ai",
+    "categories": ["chatbot"],
+    "description": "AI chatbot for your website"
+  },
+  {
+    "name": "DocsBot",
+    "provider": "DocsBot",
+    "website": "https://docsbot.ai",
+    "categories": ["chatbot"],
+    "description": "Custom chatbot trained on documentation"
+  },
+  {
+    "name": "Botsonic",
+    "provider": "Writesonic",
+    "website": "https://botsonic.writesonic.com",
+    "categories": ["chatbot"],
+    "description": "No-code AI chatbot builder"
+  },
+  {
+    "name": "Kommunicate",
+    "provider": "Kommunicate",
+    "website": "https://kommunicate.io",
+    "categories": ["chatbot", "customer-service"],
+    "description": "Customer service automation platform"
+  },
+  {
+    "name": "Verloop",
+    "provider": "Verloop",
+    "website": "https://verloop.io",
+    "categories": ["chatbot", "customer-service"],
+    "description": "Conversational AI for customer support"
+  },
+  {
+    "name": "Haptik",
+    "provider": "Reliance Jio Haptik",
+    "website": "https://haptik.ai",
+    "categories": ["chatbot", "customer-service"],
+    "description": "Enterprise conversational AI"
+  },
+  {
+    "name": "Yellow.ai",
+    "provider": "Yellow.ai",
+    "website": "https://yellow.ai",
+    "categories": ["chatbot", "customer-service"],
+    "description": "Enterprise conversational AI platform"
+  },
+  {
+    "name": "Kore.ai",
+    "provider": "Kore.ai",
+    "website": "https://kore.ai",
+    "categories": ["chatbot", "automation"],
+    "description": "Enterprise conversational AI platform"
+  },
+  {
+    "name": "Cognigy",
+    "provider": "Cognigy",
+    "website": "https://cognigy.com",
+    "categories": ["chatbot", "customer-service"],
+    "description": "Enterprise conversational AI"
+  },
+  {
+    "name": "Boost.ai",
+    "provider": "Boost.ai",
+    "website": "https://boost.ai",
+    "categories": ["chatbot", "customer-service"],
+    "description": "Conversational AI for enterprises"
+  },
+  {
+    "name": "Amelia",
+    "provider": "IPsoft",
+    "website": "https://amelia.ai",
+    "categories": ["chatbot", "automation"],
+    "description": "Enterprise conversational AI platform"
+  },
+  {
+    "name": "Digital Genius",
+    "provider": "Digital Genius",
+    "website": "https://digitalgenius.com",
+    "categories": ["chatbot", "customer-service"],
+    "description": "AI customer experience platform"
+  },
+  {
+    "name": "Netomi",
+    "provider": "Netomi",
+    "website": "https://netomi.com",
+    "categories": ["chatbot", "customer-service"],
+    "description": "AI customer service platform"
+  },
+  {
+    "name": "Thankful",
+    "provider": "Thankful",
+    "website": "https://thankful.ai",
+    "categories": ["chatbot", "customer-service"],
+    "description": "AI agent for customer service"
+  },
+  {
+    "name": "Certainly",
+    "provider": "Certainly",
+    "website": "https://certainly.io",
+    "categories": ["chatbot", "customer-service"],
+    "description": "Conversational AI for ecommerce"
+  },
+  {
+    "name": "Capacity",
+    "provider": "Capacity",
+    "website": "https://capacity.com",
+    "categories": ["chatbot", "automation"],
+    "description": "AI-powered support automation"
+  },
+  {
+    "name": "Aisera",
+    "provider": "Aisera",
+    "website": "https://aisera.com",
+    "categories": ["chatbot", "automation"],
+    "description": "AI service management platform"
+  },
+  {
+    "name": "Moveworks",
+    "provider": "Moveworks",
+    "website": "https://moveworks.com",
+    "categories": ["chatbot", "automation"],
+    "description": "AI platform for employee support"
+  },
+  {
+    "name": "Espressive",
+    "provider": "Espressive",
+    "website": "https://espressive.com",
+    "categories": ["chatbot", "automation"],
+    "description": "AI virtual support agent"
+  },
+  {
+    "name": "Character AI",
+    "provider": "Character.AI",
+    "website": "https://beta.character.ai",
+    "categories": ["chatbot"],
+    "description": "Conversational AI characters"
+  }
+]

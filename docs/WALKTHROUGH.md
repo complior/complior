@@ -1,110 +1,220 @@
-# Complior Walkthrough — From 25/100 to 85/100 in 2 Minutes
+# Complior v6 Walkthrough — Wrapper Mode Demo
 
-## Prerequisites
+> VulnerAI: от 25/100 до 85/100 за 2 минуты.
+> Complior оборачивает Claude Code и мониторит compliance в реальном времени.
+
+---
+
+## Предусловия
 
 ```bash
-# Install Complior (one command)
+# Установка Complior
 curl -fsSL https://complior.ai/install.sh | sh
-
-# Or use npm / cargo / Docker
-npx ai-comply
-cargo install complior
-docker run -it -v $(pwd):/project complior/complior
+# Или: npx complior / brew install complior / cargo install complior
 ```
 
-## Step 1: Clone the Demo Project
+## Шаг 1: Запуск с Claude Code
 
 ```bash
-git clone https://github.com/complior/vulnerai-demo
 cd vulnerai-demo
+complior --agent claude-code
 ```
 
-The VulnerAI demo is a Next.js 14 project with intentional EU AI Act violations:
+Complior запускается как wrapper:
 
-| Violation | File | Obligation | Impact |
-|-----------|------|------------|--------|
-| No AI disclosure | `src/app/chat/page.tsx` | OBL-015 (Art. 50) | -8 pts |
-| No C2PA marking | `src/lib/ai.ts` | OBL-016 (Art. 50) | -5 pts |
-| No AI Literacy doc | — (missing) | OBL-001 (Art. 4) | -5 pts |
-| No FRIA | — (missing) | OBL-013 (Art. 27) | -8 pts |
-| Low log retention | `docker-compose.yml` | OBL-006a (Art. 12) | -3 pts |
-| No kill switch | `src/lib/ai.ts` | OBL-010 (Art. 14) | -5 pts |
-| No monitoring policy | — (missing) | OBL-011 (Art. 26) | -5 pts |
-| No incident template | — (missing) | OBL-021 (Art. 73) | -3 pts |
+```
+┌── Agent: Claude Code ────────────────┐ ┌── Compliance ──────┐
+│                                       │ │ ● Score: 25/100    │
+│  claude> Ready. Working directory:   │ │ █████░░░░░░░░ 25%  │
+│  /home/user/vulnerai-demo            │ │ RED                │
+│                                       │ │                    │
+│                                       │ │ ── Checks ──────  │
+│                                       │ │ ✗ disclosure       │
+│                                       │ │ ✗ marking          │
+│                                       │ │ ✗ logging          │
+│                                       │ │ ✗ literacy         │
+│                                       │ │ ✗ documentation    │
+│                                       │ │ ✗ metadata         │
+│                                       │ │ ~ GPAI_basic       │
+│                                       │ │                    │
+│                                       │ │ ── Deadlines ───  │
+│                                       │ │ 🔴 163d Art.6      │
+│                                       │ │                    │
+│                                       │ │ [Scan] [Fix all]   │
+└───────────────────────────────────────┘ └────────────────────┘
+┌── Activity Log ────────────────────┐ ┌── Score History ─────┐
+│ 18:00 ★ Initial scan: 25/100 RED  │ │ 25 ████             │
+│ 18:00 ⚙ Engine started            │ │                      │
+└────────────────────────────────────┘ └──────────────────────┘
+```
 
-## Step 2: Scan
+## Шаг 2: Первый Fix — AI Disclosure
+
+Нажимаем [Fix] рядом с `✗ disclosure` или вводим `/fix disclosure`.
+
+Complior формирует промпт и передаёт Claude Code:
+
+```
+┌── Agent: Claude Code ────────────────┐ ┌── Compliance ──────┐
+│                                       │ │ ● Score: 33/100    │
+│  claude> Creating AI disclosure      │ │ ██████░░░░░░░ 33%  │
+│  component for Art. 50.1...          │ │ RED                │
+│                                       │ │                    │
+│  ✓ Created src/components/           │ │ ✓ disclosure  NEW  │
+│    AiDisclosure.tsx                  │ │ ✗ marking          │
+│  ✓ Updated src/app/chat/page.tsx     │ │ ✗ logging     [F]  │
+│                                       │ │ ✗ literacy    [F]  │
+│                                       │ │                    │
+└───────────────────────────────────────┘ └────────────────────┘
+
+┌─────────────────────────────────────┐
+│ ✓ Score increased: 25 → 33 (+8)    │
+│ disclosure check PASSED             │
+│ [View Diff] [Dismiss]       3s     │
+└─────────────────────────────────────┘
+```
+
+## Шаг 3: Batch Fix
+
+Нажимаем [Fix all] или `/fix`:
+
+```
+Complior → Claude Code (серия промптов):
+
+  1. ✓ Interaction Logging (Art.12)    +7  → 40/100
+     Created lib/compliance-logger.ts
+
+  2. ✓ Content Marking (Art.50.2)      +5  → 45/100
+     Created lib/ai-output-wrapper.ts
+
+  3. ✓ Compliance Metadata (Art.50.4)  +5  → 50/100
+     Created .well-known/ai-compliance.json
+
+  4. ✓ Documentation (Art.11)          +8  → 58/100
+     Generated COMPLIANCE.md
+
+  5. ✓ AI Literacy (Art.4)             +5  → 63/100
+     Generated docs/ai-literacy.md
+```
+
+## Шаг 4: Генерация документов
+
+```
+claude> /fria
+```
+
+FRIA Generator запускается — 80% пре-заполнено из профиля:
+
+```
+✓ FRIA generated: docs/fria.md         +8  → 71/100
+  Art. 27: Fundamental Rights Impact Assessment
+  80% pre-filled from compliance profile
+```
+
+```
+claude> /docs tech
+```
+
+```
+✓ Technical docs: docs/technical.md     +7  → 78/100
+  Art. 11: Technical Documentation
+```
+
+## Шаг 5: Runtime Middleware
+
+```
+claude> /runtime
+```
+
+Complior генерирует middleware для production:
+
+```
+✓ Runtime middleware generated:
+  lib/complior-wrap.ts    — AI Response Wrapper (compliorWrap())
+  lib/compliance-marker.ts — Content Marking Engine
+  Updated: src/lib/ai.ts  — wrapped AI calls with compliorWrap()
+
+  Score: 78 → 85/100 (+7) 🟢 GREEN
+```
+
+## Результат
+
+```
+┌── Agent: Claude Code ────────────────┐ ┌── Compliance ──────┐
+│                                       │ │ ● Score: 85/100    │
+│  claude> All fixes applied!          │ │ █████████████░ 85%  │
+│  Score improved from 25 to 85.       │ │ GREEN              │
+│                                       │ │                    │
+│  Remaining improvements:             │ │ ✓ disclosure       │
+│  - Risk Management Plan (Art.9)      │ │ ✓ marking          │
+│  - Post-Market Plan (Art.72)         │ │ ✓ logging          │
+│  - Incident Response (Art.73)        │ │ ✓ literacy         │
+│                                       │ │ ✓ documentation    │
+│  These require manual input.         │ │ ✓ metadata         │
+│                                       │ │ ✓ GPAI_basic       │
+│                                       │ │ ✓ FRIA             │
+│                                       │ │ ~ risk_management  │
+│                                       │ │ ~ post_market      │
+│                                       │ │                    │
+└───────────────────────────────────────┘ └────────────────────┘
+┌── Score History ─────────────────────────────────────────────┐
+│  85┤                                              ████       │
+│  70┤                                    ████████████         │
+│  55┤                          ██████████                     │
+│  40┤                ██████████                               │
+│  25┤████████████████                                         │
+│    └─ scan ── disc ── batch ── fria ── docs ── runtime ──   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## Шаг 6: Badge + Report
 
 ```bash
-complior scan
+# Генерация badge
+complior badge
+# → Created: compliance-badge.svg (Score: 85/100, EU AI Act)
+
+# Генерация отчёта
+complior report --pdf
+# → Created: compliance-report.pdf (with Complior watermark — Free tier)
+
+# CI/CD проверка
+complior scan --ci --threshold 80
+# → ✓ PASS (score 85 >= threshold 80)
 ```
 
-**Result:**
-```
-Score: 25/100 (Red Zone)
-Checks: 108 total, 27 passed, 23 failed, 58 skipped
-Files scanned: 6 in 2.3s
+## Альтернативные сценарии
 
-Findings (23):
-  CRITICAL: 3
-  HIGH: 8
-  MEDIUM: 7
-  LOW: 5
-```
-
-## Step 3: Fix
+### Multi-Agent Mode
 
 ```bash
-complior fix --all
+complior --agents "odelix, claude-code"
+# Odelix пишет код, Claude Code ревьюит — Complior мониторит ОБОИХ
 ```
 
-Complior auto-generates:
-- `docs/AI-LITERACY.md` — AI literacy training document
-- `docs/FRIA.md` — Fundamental Rights Impact Assessment
-- `docs/MONITORING-POLICY.md` — Human oversight policy
-- `docs/INCIDENT-REPORT-TEMPLATE.md` — Incident reporting template
-- Adds `<AIDisclosure />` component to chat page
-- Updates `docker-compose.yml` log retention to 6 months
-- Adds kill switch mechanism to AI utility
-
-**After fix:**
-```
-Re-scanning... Score: 85/100 (Green Zone) (+60!)
-```
-
-## Step 4: Generate Report
+### Headless (CI/CD)
 
 ```bash
-complior report --format md
-complior report --format pdf
+# GitHub Action
+complior scan --ci --threshold 80 --sarif report.sarif
+# → SARIF file for GitHub Code Scanning
+
+# Pre-commit hook
+complior scan --threshold 70
+# → exit 0 (pass) / exit 1 (fail)
 ```
 
-Generates a comprehensive compliance audit report with:
-- Executive summary
-- Score breakdown by category
-- Findings table with remediation status
-- Timeline and recommendations
+### MCP (Cursor/Windsurf)
 
-## Step 5: CI Integration
+```
+Cursor: "Scan this file for compliance"
+→ MCP tool: complior_scan → {score: 72, findings: [...]}
 
-```bash
-# Add to your CI pipeline
-complior scan --ci --threshold 70
-
-# SARIF output for IDE integration
-complior scan --sarif > results.sarif
+Cursor: "Fix Art.50.1 violation"
+→ MCP tool: complior_fix → {diff: "...", explanation: "..."}
 ```
 
-## Interactive Mode
+---
 
-Launch the full TUI for an interactive experience:
-
-```bash
-complior
-```
-
-Features:
-- Real-time score gauge with animation
-- 6-view dashboard (Dashboard, Scan, Fix, Score, Report, Chat)
-- AI chat assistant for compliance questions
-- Watch mode for continuous monitoring
-- Theme picker (6 themes)
+**Время:** ~2 минуты от 25/100 RED до 85/100 GREEN.
+**Автор:** Marcus (CTO) via Claude Code (Opus 4.6)

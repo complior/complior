@@ -1,0 +1,37 @@
+{
+  "slug": "canva-ai",
+  "name": "Canva AI",
+  "level": "verified",
+  "provider": {
+    "name": "Canva",
+    "website": "https://canva.com"
+  },
+  "website": "https://canva.com",
+  "categories": [
+    "design",
+    "image-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Canva AI subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 0,
+    "max": 100,
+    "grade": "non_compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Canva AI — EU AI Act Compliance | Complior",
+    "description": "Canva AI by Canva: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Canva AI — EU AI Act Compliance Guide"
+  }
+}
