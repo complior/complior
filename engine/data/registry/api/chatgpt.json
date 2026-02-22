@@ -1,0 +1,194 @@
+{
+  "api_version": "1.0",
+  "generated_at": "2026-02-21T23:52:52.204Z",
+  "tool": {
+    "slug": "chatgpt",
+    "name": "ChatGPT",
+    "tagline": "AI chatbot powered by GPT models with web browsing and plugins",
+    "level": "verified",
+    "provider": {
+      "name": "OpenAI",
+      "website": "https://chat.openai.com"
+    },
+    "product": {
+      "website": "https://chat.openai.com",
+      "categories": [
+        "chatbot",
+        "text-generation"
+      ]
+    },
+    "usage_metrics": {
+      "estimated_mau": 300000000,
+      "company_size": "enterprise"
+    },
+    "eu_ai_act_compliance": {
+      "assessment": {
+        "risk_level": "limited",
+        "reasoning": "ChatGPT subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+        "confidence": "approximate",
+        "assessed_at": "2026-02-21T12:22:57.372Z"
+      },
+      "compliance_score": {
+        "total": 0,
+        "max": 100,
+        "percentage": 0,
+        "grade": "non_compliant"
+      },
+      "applicable_obligations": [
+        {
+          "id": "eu-ai-act-OBL-001",
+          "article": "Article 4",
+          "title": "Ensure AI Literacy of Staff",
+          "description": "Every company that uses or builds AI must train their staff so they understand AI risks and responsible use. Training must be proportionate to role and risk level.",
+          "applies_to": "both",
+          "severity": "medium",
+          "deadline": "2025-02-02"
+        },
+        {
+          "id": "eu-ai-act-OBL-015",
+          "article": "Article 50(1)",
+          "title": "Disclose AI Interaction to Users — Chatbot/Assistant",
+          "description": "AI systems interacting directly with persons must inform them they are interacting with AI, unless obvious from context.",
+          "applies_to": "provider",
+          "severity": "high",
+          "deadline": "2026-08-02"
+        },
+        {
+          "id": "eu-ai-act-OBL-016",
+          "article": "Article 50(2)",
+          "title": "Mark AI-Generated Content — Machine-Readable",
+          "description": "AI-generated synthetic content (text, image, audio, video) must be machine-readably marked as AI-generated.",
+          "applies_to": "provider",
+          "severity": "high",
+          "deadline": "2026-08-02"
+        },
+        {
+          "id": "eu-ai-act-OBL-016a",
+          "article": "Article 50(2)",
+          "title": "Mark AI-Generated Images — C2PA/Watermark",
+          "description": "AI-generated images must include C2PA manifest and/or invisible watermark indicating AI generation.",
+          "applies_to": "provider",
+          "severity": "high",
+          "deadline": "2026-08-02"
+        },
+        {
+          "id": "eu-ai-act-OBL-017",
+          "article": "Article 50(3)",
+          "title": "Notify Individuals of Emotion Recognition / Biometric Categorization",
+          "description": "Deployers of emotion recognition or biometric categorization systems must inform exposed individuals in advance.",
+          "applies_to": "deployer",
+          "severity": "high",
+          "deadline": "2026-08-02"
+        },
+        {
+          "id": "eu-ai-act-OBL-018",
+          "article": "Article 50(4)",
+          "title": "Label Deep Fakes and AI-Generated Content for Public",
+          "description": "Deployers of deep fake AI or AI-generated text for public interest must label content as AI-generated.",
+          "applies_to": "deployer",
+          "severity": "high",
+          "deadline": "2026-08-02"
+        },
+        {
+          "id": "OBL-CS-001",
+          "title": "OBL-CS-001",
+          "note": "Obligation details not found"
+        }
+      ],
+      "obligations_summary": {
+        "total": 7
+      }
+    },
+    "evidence": {
+      "disclosure": {
+        "visible_in_ui": true,
+        "text": "ChatGPT can make mistakes. Check important info.",
+        "location": "Bottom of chat interface, below input box",
+        "screenshot": "screenshots/chatgpt.png",
+        "verified_at": "2026-02-20T00:00:00Z"
+      },
+      "privacy_policy": {
+        "mentions_ai": false,
+        "mentions_eu": false,
+        "gdpr_compliant": false,
+        "uses_data_for_training": false,
+        "training_opt_out": false,
+        "opt_out_mechanism": "none",
+        "retention_specified": false,
+        "retention_period": null,
+        "deletion_right": false,
+        "last_updated": null
+      },
+      "terms_of_service": {
+        "ai_disclaimer": false,
+        "prohibited_uses": false,
+        "prohibited_list": [],
+        "liability_disclaimer": false
+      },
+      "content_marking": {
+        "c2pa": false,
+        "watermark": false,
+        "exif_ai_tag": false
+      },
+      "user_controls": {
+        "memory": {
+          "feature_exists": true,
+          "disableable": true,
+          "path": "Profile > Settings > Personalization > Memory (toggle off)"
+        },
+        "opt_out": {
+          "exists": true,
+          "path": "Profile > Settings > Data Controls > Improve the model for everyone",
+          "clicks": 3,
+          "default_state": "on"
+        }
+      },
+      "infrastructure": {
+        "blocks_ai_crawlers": true,
+        "blocked_bots": [
+          "CCBot",
+          "Google-Extended",
+          "anthropic-ai",
+          "Bytespider"
+        ],
+        "has_cookie_consent": false,
+        "consent_platform": null,
+        "has_public_api": false,
+        "has_pricing_page": false,
+        "offers_free_tier": false,
+        "has_ai_plugin": false
+      }
+    },
+    "compliance_history": {
+      "gdpr_enforcement": [
+        "Italy temporary ban March 2023",
+        "Poland GDPR complaint 2024"
+      ],
+      "security_incidents": [
+        "ChatGPT data leak March 2023",
+        "Payment data exposure"
+      ],
+      "media_coverage": {
+        "eu_ai_act_mentions": 500
+      }
+    },
+    "testing_results": {
+      "llm_tests": null
+    },
+    "resources": {
+      "official": [
+        {
+          "type": "homepage",
+          "url": "https://chat.openai.com",
+          "label": "ChatGPT Homepage"
+        }
+      ]
+    },
+    "seo": {
+      "title": "ChatGPT — EU AI Act Compliance | Complior",
+      "description": "ChatGPT by OpenAI: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+      "h1": "ChatGPT — EU AI Act Compliance Guide"
+    },
+    "last_updated": "2026-02-21T12:22:57.372Z"
+  }
+}

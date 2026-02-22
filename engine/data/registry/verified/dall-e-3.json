@@ -1,0 +1,36 @@
+{
+  "slug": "dall-e-3",
+  "name": "DALL-E 3",
+  "level": "verified",
+  "provider": {
+    "name": "OpenAI",
+    "website": "https://openai.com/dall-e-3"
+  },
+  "website": "https://openai.com/dall-e-3",
+  "categories": [
+    "image-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "DALL-E 3 subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 50,
+    "max": 100,
+    "grade": "needs_improvement",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "DALL-E 3 — EU AI Act Compliance | Complior",
+    "description": "DALL-E 3 by OpenAI: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "DALL-E 3 — EU AI Act Compliance Guide"
+  }
+}

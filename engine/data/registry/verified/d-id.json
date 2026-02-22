@@ -1,0 +1,36 @@
+{
+  "slug": "d-id",
+  "name": "D-ID",
+  "level": "verified",
+  "provider": {
+    "name": "D-ID",
+    "website": "https://d-id.com"
+  },
+  "website": "https://d-id.com",
+  "categories": [
+    "video-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "D-ID subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 100,
+    "max": 100,
+    "grade": "compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "D-ID — EU AI Act Compliance | Complior",
+    "description": "D-ID by D-ID: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "D-ID — EU AI Act Compliance Guide"
+  }
+}

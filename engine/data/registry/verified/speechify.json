@@ -1,0 +1,36 @@
+{
+  "slug": "speechify",
+  "name": "Speechify",
+  "level": "verified",
+  "provider": {
+    "name": "Speechify",
+    "website": "https://speechify.com"
+  },
+  "website": "https://speechify.com",
+  "categories": [
+    "voice-tts"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Speechify subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 100,
+    "max": 100,
+    "grade": "compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Speechify — EU AI Act Compliance | Complior",
+    "description": "Speechify by Speechify: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Speechify — EU AI Act Compliance Guide"
+  }
+}

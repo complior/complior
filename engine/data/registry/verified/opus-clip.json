@@ -1,0 +1,36 @@
+{
+  "slug": "opus-clip",
+  "name": "Opus Clip",
+  "level": "verified",
+  "provider": {
+    "name": "Opus",
+    "website": "https://opus.pro"
+  },
+  "website": "https://opus.pro",
+  "categories": [
+    "video-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Opus Clip subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 50,
+    "max": 100,
+    "grade": "needs_improvement",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Opus Clip — EU AI Act Compliance | Complior",
+    "description": "Opus Clip by Opus: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Opus Clip — EU AI Act Compliance Guide"
+  }
+}

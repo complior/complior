@@ -1,0 +1,36 @@
+{
+  "slug": "fliki",
+  "name": "Fliki",
+  "level": "verified",
+  "provider": {
+    "name": "Fliki",
+    "website": "https://fliki.ai"
+  },
+  "website": "https://fliki.ai",
+  "categories": [
+    "video-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Fliki subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 100,
+    "max": 100,
+    "grade": "compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Fliki — EU AI Act Compliance | Complior",
+    "description": "Fliki by Fliki: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Fliki — EU AI Act Compliance Guide"
+  }
+}

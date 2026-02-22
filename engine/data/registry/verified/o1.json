@@ -1,0 +1,43 @@
+{
+  "slug": "o1",
+  "name": "o1",
+  "level": "verified",
+  "provider": {
+    "name": "OpenAI",
+    "website": "https://openai.com"
+  },
+  "website": "https://openai.com",
+  "categories": [
+    "foundation-model"
+  ],
+  "risk_classification": {
+    "level": "gpai_systemic",
+    "reasoning": "o1 classified as GPAI model with systemic risk under Article 51-56 EU AI Act. Model exceeds 10M MAU threshold. Additional obligations apply including adversarial testing and incident reporting.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-018",
+      "OBL-022",
+      "OBL-022a",
+      "OBL-022b",
+      "OBL-022c",
+      "OBL-023",
+      "OBL-024",
+      "OBL-024a",
+      "OBL-025"
+    ]
+  },
+  "compliance_score": {
+    "total": 70,
+    "max": 100,
+    "grade": "progressing",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "o1 — EU AI Act Compliance | Complior",
+    "description": "o1 by OpenAI: gpai_systemic risk. 14 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "o1 — EU AI Act Compliance Guide"
+  }
+}

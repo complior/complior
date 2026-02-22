@@ -1,0 +1,38 @@
+{
+  "slug": "jasper-chat",
+  "name": "Jasper Chat",
+  "level": "verified",
+  "provider": {
+    "name": "Jasper",
+    "website": "https://jasper.ai/chat"
+  },
+  "website": "https://jasper.ai/chat",
+  "categories": [
+    "chatbot",
+    "text-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Jasper Chat subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018",
+      "OBL-CS-001"
+    ]
+  },
+  "compliance_score": {
+    "total": 100,
+    "max": 100,
+    "grade": "compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Jasper Chat — EU AI Act Compliance | Complior",
+    "description": "Jasper Chat by Jasper: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Jasper Chat — EU AI Act Compliance Guide"
+  }
+}

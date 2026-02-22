@@ -1,0 +1,58 @@
+{
+  "slug": "hirevue",
+  "name": "HireVue",
+  "level": "verified",
+  "provider": {
+    "name": "HireVue",
+    "website": "https://hirevue.com"
+  },
+  "website": "https://hirevue.com",
+  "categories": [
+    "hr-recruitment",
+    "hr-screening"
+  ],
+  "risk_classification": {
+    "level": "high",
+    "reasoning": "HireVue classified as high-risk under Annex III EU AI Act. Categories: hr-recruitment, hr-screening. Full provider and deployer obligations apply.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-002",
+      "OBL-003",
+      "OBL-004",
+      "OBL-004a",
+      "OBL-004b",
+      "OBL-005",
+      "OBL-006",
+      "OBL-006a",
+      "OBL-007",
+      "OBL-008",
+      "OBL-008a",
+      "OBL-009",
+      "OBL-010",
+      "OBL-011",
+      "OBL-012",
+      "OBL-013",
+      "OBL-014",
+      "OBL-015",
+      "OBL-016",
+      "OBL-019",
+      "OBL-020",
+      "OBL-020a",
+      "OBL-021",
+      "OBL-HR-001",
+      "OBL-HR-002",
+      "OBL-HR-003"
+    ]
+  },
+  "compliance_score": {
+    "total": 60,
+    "max": 100,
+    "grade": "progressing",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "HireVue — EU AI Act Compliance | Complior",
+    "description": "HireVue by HireVue: high risk. 34 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "HireVue — EU AI Act Compliance Guide"
+  }
+}

@@ -1,0 +1,828 @@
+[
+  {
+    "name": "Waymo",
+    "provider": "Alphabet",
+    "website": "https://waymo.com",
+    "categories": ["autonomous-vehicles"],
+    "description": "Autonomous ride-hailing service"
+  },
+  {
+    "name": "Cruise",
+    "provider": "GM",
+    "website": "https://getcruise.com",
+    "categories": ["autonomous-vehicles"],
+    "description": "Self-driving vehicle technology"
+  },
+  {
+    "name": "Aurora",
+    "provider": "Aurora Innovation",
+    "website": "https://aurora.tech",
+    "categories": ["autonomous-vehicles"],
+    "description": "Self-driving technology for trucks and cars"
+  },
+  {
+    "name": "Nuro",
+    "provider": "Nuro",
+    "website": "https://nuro.ai",
+    "categories": ["autonomous-vehicles", "robotics"],
+    "description": "Autonomous delivery vehicles"
+  },
+  {
+    "name": "Applied Intuition",
+    "provider": "Applied Intuition",
+    "website": "https://appliedintuition.com",
+    "categories": ["autonomous-vehicles", "simulation"],
+    "description": "Simulation and tools for autonomous vehicles"
+  },
+  {
+    "name": "Motional",
+    "provider": "Motional",
+    "website": "https://motional.com",
+    "categories": ["autonomous-vehicles"],
+    "description": "Driverless vehicle technology"
+  },
+  {
+    "name": "Zoox",
+    "provider": "Amazon",
+    "website": "https://zoox.com",
+    "categories": ["autonomous-vehicles"],
+    "description": "Autonomous ride-hailing and vehicle development"
+  },
+  {
+    "name": "TuSimple",
+    "provider": "TuSimple",
+    "website": "https://tusimple.com",
+    "categories": ["autonomous-vehicles"],
+    "description": "Autonomous trucking technology"
+  },
+  {
+    "name": "Plus",
+    "provider": "Plus",
+    "website": "https://plus.ai",
+    "categories": ["autonomous-vehicles"],
+    "description": "Autonomous driving for trucks"
+  },
+  {
+    "name": "Embark Trucks",
+    "provider": "Embark",
+    "website": "https://embarktrucks.com",
+    "categories": ["autonomous-vehicles"],
+    "description": "Self-driving technology for trucking"
+  },
+  {
+    "name": "Kodiak Robotics",
+    "provider": "Kodiak",
+    "website": "https://kodiak.ai",
+    "categories": ["autonomous-vehicles"],
+    "description": "Autonomous trucking"
+  },
+  {
+    "name": "Argo AI",
+    "provider": "Argo AI",
+    "website": "https://argo.ai",
+    "categories": ["autonomous-vehicles"],
+    "description": "Self-driving technology platform"
+  },
+  {
+    "name": "Mobileye",
+    "provider": "Intel",
+    "website": "https://mobileye.com",
+    "categories": ["autonomous-vehicles"],
+    "description": "Vision-based advanced driver assistance"
+  },
+  {
+    "name": "NVIDIA DRIVE",
+    "provider": "NVIDIA",
+    "website": "https://nvidia.com/drive",
+    "categories": ["autonomous-vehicles", "ai-hardware"],
+    "description": "AI platform for autonomous vehicles"
+  },
+  {
+    "name": "Wayve",
+    "provider": "Wayve",
+    "website": "https://wayve.ai",
+    "categories": ["autonomous-vehicles"],
+    "description": "Embodied AI for autonomous driving"
+  },
+  {
+    "name": "Boston Dynamics",
+    "provider": "Hyundai",
+    "website": "https://bostondynamics.com",
+    "categories": ["robotics"],
+    "description": "Advanced robotics and mobility"
+  },
+  {
+    "name": "Figure AI",
+    "provider": "Figure",
+    "website": "https://figure.ai",
+    "categories": ["robotics"],
+    "description": "General purpose humanoid robots"
+  },
+  {
+    "name": "1X Technologies",
+    "provider": "1X",
+    "website": "https://1x.tech",
+    "categories": ["robotics"],
+    "description": "Humanoid robotics for work"
+  },
+  {
+    "name": "Sanctuary AI",
+    "provider": "Sanctuary",
+    "website": "https://sanctuary.ai",
+    "categories": ["robotics"],
+    "description": "Human-like intelligence in general purpose robots"
+  },
+  {
+    "name": "Agility Robotics",
+    "provider": "Agility",
+    "website": "https://agilityrobotics.com",
+    "categories": ["robotics"],
+    "description": "Bipedal mobile manipulation robots"
+  },
+  {
+    "name": "Unitree Robotics",
+    "provider": "Unitree",
+    "website": "https://unitree.com",
+    "categories": ["robotics"],
+    "description": "Quadruped and humanoid robots"
+  },
+  {
+    "name": "ANYbotics",
+    "provider": "ANYbotics",
+    "website": "https://anybotics.com",
+    "categories": ["robotics"],
+    "description": "Autonomous inspection robots"
+  },
+  {
+    "name": "Spot",
+    "provider": "Boston Dynamics",
+    "website": "https://bostondynamics.com/spot",
+    "categories": ["robotics"],
+    "description": "Quadruped robot for inspection"
+  },
+  {
+    "name": "Covariant",
+    "provider": "Covariant",
+    "website": "https://covariant.ai",
+    "categories": ["robotics"],
+    "description": "AI for robotic automation"
+  },
+  {
+    "name": "Vicarious",
+    "provider": "Intrinsic",
+    "website": "https://vicarious.com",
+    "categories": ["robotics"],
+    "description": "AI for warehouse robotics"
+  },
+  {
+    "name": "Fetch Robotics",
+    "provider": "Zebra",
+    "website": "https://fetchrobotics.com",
+    "categories": ["robotics"],
+    "description": "Autonomous mobile robots for warehouses"
+  },
+  {
+    "name": "Locus Robotics",
+    "provider": "Locus",
+    "website": "https://locusrobotics.com",
+    "categories": ["robotics", "supply-chain"],
+    "description": "Warehouse automation robots"
+  },
+  {
+    "name": "6 River Systems",
+    "provider": "Ocado",
+    "website": "https://6river.com",
+    "categories": ["robotics", "supply-chain"],
+    "description": "Warehouse fulfillment solutions"
+  },
+  {
+    "name": "GreyOrange",
+    "provider": "GreyOrange",
+    "website": "https://greyorange.com",
+    "categories": ["robotics", "supply-chain"],
+    "description": "AI-powered warehouse automation"
+  },
+  {
+    "name": "Berkshire Grey",
+    "provider": "Berkshire Grey",
+    "website": "https://berkshiregrey.com",
+    "categories": ["robotics", "supply-chain"],
+    "description": "Intelligent automation for logistics"
+  },
+  {
+    "name": "Built Robotics",
+    "provider": "Built",
+    "website": "https://builtrobotics.com",
+    "categories": ["robotics", "construction"],
+    "description": "Autonomous construction equipment"
+  },
+  {
+    "name": "Doxel",
+    "provider": "Doxel",
+    "website": "https://doxel.ai",
+    "categories": ["construction", "analytics"],
+    "description": "AI for construction progress monitoring"
+  },
+  {
+    "name": "OpenSpace",
+    "provider": "OpenSpace",
+    "website": "https://openspace.ai",
+    "categories": ["construction", "analytics"],
+    "description": "AI-powered construction documentation"
+  },
+  {
+    "name": "Togal.AI",
+    "provider": "Togal",
+    "website": "https://togal.ai",
+    "categories": ["construction"],
+    "description": "AI for construction estimating"
+  },
+  {
+    "name": "Procore AI",
+    "provider": "Procore",
+    "website": "https://procore.com",
+    "categories": ["construction", "productivity"],
+    "description": "Construction management software with AI"
+  },
+  {
+    "name": "Indus.ai",
+    "provider": "Indus",
+    "website": "https://indus.ai",
+    "categories": ["construction"],
+    "description": "AI platform for construction intelligence"
+  },
+  {
+    "name": "John Deere Operations Center",
+    "provider": "Deere & Company",
+    "website": "https://deere.com",
+    "categories": ["agriculture", "analytics"],
+    "description": "Precision agriculture platform"
+  },
+  {
+    "name": "Climate FieldView",
+    "provider": "Bayer",
+    "website": "https://climate.com",
+    "categories": ["agriculture", "analytics"],
+    "description": "Digital farming platform"
+  },
+  {
+    "name": "Farmers Edge",
+    "provider": "Farmers Edge",
+    "website": "https://farmersedge.ca",
+    "categories": ["agriculture", "analytics"],
+    "description": "Precision agriculture and insights"
+  },
+  {
+    "name": "Taranis",
+    "provider": "Taranis",
+    "website": "https://taranis.ag",
+    "categories": ["agriculture", "analytics"],
+    "description": "AI-powered crop monitoring"
+  },
+  {
+    "name": "Blue River Technology",
+    "provider": "John Deere",
+    "website": "https://bluerivertechnology.com",
+    "categories": ["agriculture", "robotics"],
+    "description": "See & Spray precision agriculture"
+  },
+  {
+    "name": "Prospera",
+    "provider": "Prospera",
+    "website": "https://prospera.ag",
+    "categories": ["agriculture", "analytics"],
+    "description": "AI for commercial growers"
+  },
+  {
+    "name": "aWhere",
+    "provider": "aWhere",
+    "website": "https://awhere.com",
+    "categories": ["agriculture", "analytics"],
+    "description": "Agricultural intelligence platform"
+  },
+  {
+    "name": "Connecterra",
+    "provider": "Connecterra",
+    "website": "https://connecterra.io",
+    "categories": ["agriculture"],
+    "description": "AI for dairy farming"
+  },
+  {
+    "name": "AgShift",
+    "provider": "AgShift",
+    "website": "https://agshift.com",
+    "categories": ["agriculture", "analytics"],
+    "description": "AI quality assessment for food"
+  },
+  {
+    "name": "Granular",
+    "provider": "Corteva",
+    "website": "https://granular.ag",
+    "categories": ["agriculture", "analytics"],
+    "description": "Farm management software"
+  },
+  {
+    "name": "PathAI",
+    "provider": "PathAI",
+    "website": "https://pathai.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI-powered pathology"
+  },
+  {
+    "name": "Tempus",
+    "provider": "Tempus",
+    "website": "https://tempus.com",
+    "categories": ["medical-diagnosis", "analytics"],
+    "description": "Precision medicine platform"
+  },
+  {
+    "name": "Freenome",
+    "provider": "Freenome",
+    "website": "https://freenome.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for early cancer detection"
+  },
+  {
+    "name": "Paige AI",
+    "provider": "Paige",
+    "website": "https://paige.ai",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for cancer diagnosis"
+  },
+  {
+    "name": "Enlitic",
+    "provider": "Enlitic",
+    "website": "https://enlitic.com",
+    "categories": ["medical-diagnosis"],
+    "description": "Medical imaging AI"
+  },
+  {
+    "name": "Arterys",
+    "provider": "Arterys",
+    "website": "https://arterys.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI medical imaging cloud"
+  },
+  {
+    "name": "Zebra Medical Vision",
+    "provider": "Nanox",
+    "website": "https://zebra-med.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI radiology assistant"
+  },
+  {
+    "name": "Butterfly Network",
+    "provider": "Butterfly",
+    "website": "https://butterflynetwork.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI ultrasound imaging"
+  },
+  {
+    "name": "RapidAI",
+    "provider": "RapidAI",
+    "website": "https://rapidai.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for stroke and vascular care"
+  },
+  {
+    "name": "Qure.ai",
+    "provider": "Qure.ai",
+    "website": "https://qure.ai",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for medical imaging"
+  },
+  {
+    "name": "iCAD",
+    "provider": "iCAD",
+    "website": "https://icadmed.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for cancer detection"
+  },
+  {
+    "name": "HeartFlow",
+    "provider": "HeartFlow",
+    "website": "https://heartflow.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for coronary artery disease"
+  },
+  {
+    "name": "Caption Health",
+    "provider": "GE HealthCare",
+    "website": "https://captionhealth.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI-guided ultrasound"
+  },
+  {
+    "name": "Neko Health",
+    "provider": "Neko",
+    "website": "https://nekohealth.com",
+    "categories": ["medical-diagnosis"],
+    "description": "Preventive health screening with AI"
+  },
+  {
+    "name": "Ezra",
+    "provider": "Ezra",
+    "website": "https://ezra.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI-powered cancer screening"
+  },
+  {
+    "name": "Regard",
+    "provider": "Regard",
+    "website": "https://regard.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for clinical diagnosis"
+  },
+  {
+    "name": "Glass Health",
+    "provider": "Glass",
+    "website": "https://glass.health",
+    "categories": ["medical-diagnosis"],
+    "description": "AI clinical decision support"
+  },
+  {
+    "name": "Hippocratic AI",
+    "provider": "Hippocratic",
+    "website": "https://hippocratic.ai",
+    "categories": ["medical-diagnosis"],
+    "description": "Generative AI for healthcare"
+  },
+  {
+    "name": "Nuance DAX",
+    "provider": "Microsoft",
+    "website": "https://nuance.com/dax",
+    "categories": ["medical-diagnosis", "transcription"],
+    "description": "AI clinical documentation"
+  },
+  {
+    "name": "Abridge",
+    "provider": "Abridge",
+    "website": "https://abridge.com",
+    "categories": ["medical-diagnosis", "transcription"],
+    "description": "AI medical conversation notes"
+  },
+  {
+    "name": "Suki AI",
+    "provider": "Suki",
+    "website": "https://suki.ai",
+    "categories": ["medical-diagnosis", "transcription"],
+    "description": "AI voice assistant for doctors"
+  },
+  {
+    "name": "Ambience Healthcare",
+    "provider": "Ambience",
+    "website": "https://ambiencehealthcare.com",
+    "categories": ["medical-diagnosis", "transcription"],
+    "description": "AI operating system for healthcare"
+  },
+  {
+    "name": "Notable Health",
+    "provider": "Notable",
+    "website": "https://notablehealth.com",
+    "categories": ["medical-diagnosis", "automation"],
+    "description": "AI platform for healthcare operations"
+  },
+  {
+    "name": "Corti",
+    "provider": "Corti",
+    "website": "https://corti.ai",
+    "categories": ["medical-diagnosis"],
+    "description": "AI for emergency medical services"
+  },
+  {
+    "name": "K Health",
+    "provider": "K Health",
+    "website": "https://khealth.com",
+    "categories": ["medical-diagnosis"],
+    "description": "AI-powered primary care"
+  },
+  {
+    "name": "Babylon Health",
+    "provider": "Babylon",
+    "website": "https://babylonhealth.com",
+    "categories": ["medical-diagnosis", "chatbot"],
+    "description": "AI health assessments and consultations"
+  },
+  {
+    "name": "Ada Health",
+    "provider": "Ada",
+    "website": "https://ada.com",
+    "categories": ["medical-diagnosis", "chatbot"],
+    "description": "AI symptom assessment"
+  },
+  {
+    "name": "Darktrace",
+    "provider": "Darktrace",
+    "website": "https://darktrace.com",
+    "categories": ["security"],
+    "description": "AI cybersecurity and threat detection"
+  },
+  {
+    "name": "CrowdStrike Falcon",
+    "provider": "CrowdStrike",
+    "website": "https://crowdstrike.com",
+    "categories": ["security"],
+    "description": "AI endpoint protection"
+  },
+  {
+    "name": "SentinelOne",
+    "provider": "SentinelOne",
+    "website": "https://sentinelone.com",
+    "categories": ["security"],
+    "description": "Autonomous AI security platform"
+  },
+  {
+    "name": "Vectra AI",
+    "provider": "Vectra",
+    "website": "https://vectra.ai",
+    "categories": ["security"],
+    "description": "AI-driven threat detection"
+  },
+  {
+    "name": "Cybereason",
+    "provider": "Cybereason",
+    "website": "https://cybereason.com",
+    "categories": ["security"],
+    "description": "AI-powered endpoint protection"
+  },
+  {
+    "name": "Cylance",
+    "provider": "BlackBerry",
+    "website": "https://cylance.com",
+    "categories": ["security"],
+    "description": "AI cybersecurity prevention"
+  },
+  {
+    "name": "Abnormal Security",
+    "provider": "Abnormal",
+    "website": "https://abnormalsecurity.com",
+    "categories": ["security", "email"],
+    "description": "AI email security"
+  },
+  {
+    "name": "Tessian",
+    "provider": "Proofpoint",
+    "website": "https://tessian.com",
+    "categories": ["security", "email"],
+    "description": "AI email security and DLP"
+  },
+  {
+    "name": "Armorblox",
+    "provider": "Cisco",
+    "website": "https://armorblox.com",
+    "categories": ["security", "email"],
+    "description": "AI email security"
+  },
+  {
+    "name": "Recorded Future",
+    "provider": "Recorded Future",
+    "website": "https://recordedfuture.com",
+    "categories": ["security", "analytics"],
+    "description": "Threat intelligence platform"
+  },
+  {
+    "name": "Anomali",
+    "provider": "Anomali",
+    "website": "https://anomali.com",
+    "categories": ["security"],
+    "description": "AI threat intelligence"
+  },
+  {
+    "name": "Rapid7",
+    "provider": "Rapid7",
+    "website": "https://rapid7.com",
+    "categories": ["security"],
+    "description": "Security analytics and automation"
+  },
+  {
+    "name": "Splunk AI",
+    "provider": "Cisco",
+    "website": "https://splunk.com",
+    "categories": ["security", "analytics"],
+    "description": "Security information and event management"
+  },
+  {
+    "name": "Exabeam",
+    "provider": "Exabeam",
+    "website": "https://exabeam.com",
+    "categories": ["security", "analytics"],
+    "description": "AI-driven security operations"
+  },
+  {
+    "name": "Datadog Security",
+    "provider": "Datadog",
+    "website": "https://datadoghq.com/security",
+    "categories": ["security", "devops"],
+    "description": "Application security monitoring"
+  },
+  {
+    "name": "Lacework",
+    "provider": "Fortinet",
+    "website": "https://lacework.com",
+    "categories": ["security", "devops"],
+    "description": "Cloud security platform"
+  },
+  {
+    "name": "Wiz",
+    "provider": "Wiz",
+    "website": "https://wiz.io",
+    "categories": ["security", "devops"],
+    "description": "Cloud security platform"
+  },
+  {
+    "name": "Orca Security",
+    "provider": "Orca",
+    "website": "https://orca.security",
+    "categories": ["security", "devops"],
+    "description": "Cloud security platform"
+  },
+  {
+    "name": "Sysdig",
+    "provider": "Sysdig",
+    "website": "https://sysdig.com",
+    "categories": ["security", "devops"],
+    "description": "Cloud-native security platform"
+  },
+  {
+    "name": "Aqua Security",
+    "provider": "Aqua",
+    "website": "https://aquasec.com",
+    "categories": ["security", "devops"],
+    "description": "Cloud-native application protection"
+  },
+  {
+    "name": "Snyk",
+    "provider": "Snyk",
+    "website": "https://snyk.io",
+    "categories": ["security", "developer-tools"],
+    "description": "Developer security platform"
+  },
+  {
+    "name": "GitGuardian",
+    "provider": "GitGuardian",
+    "website": "https://gitguardian.com",
+    "categories": ["security", "developer-tools"],
+    "description": "Secrets detection and remediation"
+  },
+  {
+    "name": "Socket",
+    "provider": "Socket",
+    "website": "https://socket.dev",
+    "categories": ["security", "developer-tools"],
+    "description": "Supply chain security for JavaScript"
+  },
+  {
+    "name": "Checkmarx",
+    "provider": "Checkmarx",
+    "website": "https://checkmarx.com",
+    "categories": ["security", "developer-tools"],
+    "description": "Application security testing"
+  },
+  {
+    "name": "Veracode",
+    "provider": "Veracode",
+    "website": "https://veracode.com",
+    "categories": ["security", "developer-tools"],
+    "description": "Application security platform"
+  },
+  {
+    "name": "FourKites",
+    "provider": "FourKites",
+    "website": "https://fourkites.com",
+    "categories": ["supply-chain", "analytics"],
+    "description": "Supply chain visibility platform"
+  },
+  {
+    "name": "Project44",
+    "provider": "project44",
+    "website": "https://project44.com",
+    "categories": ["supply-chain", "analytics"],
+    "description": "Supply chain visibility"
+  },
+  {
+    "name": "Coupa AI",
+    "provider": "Coupa",
+    "website": "https://coupa.com",
+    "categories": ["supply-chain", "finance"],
+    "description": "Business spend management with AI"
+  },
+  {
+    "name": "Blue Yonder",
+    "provider": "Blue Yonder",
+    "website": "https://blueyonder.com",
+    "categories": ["supply-chain", "analytics"],
+    "description": "Supply chain and retail planning"
+  },
+  {
+    "name": "o9 Solutions",
+    "provider": "o9",
+    "website": "https://o9solutions.com",
+    "categories": ["supply-chain", "analytics"],
+    "description": "AI-powered planning platform"
+  },
+  {
+    "name": "Kinaxis",
+    "provider": "Kinaxis",
+    "website": "https://kinaxis.com",
+    "categories": ["supply-chain", "analytics"],
+    "description": "Supply chain planning"
+  },
+  {
+    "name": "Llamasoft",
+    "provider": "Coupa",
+    "website": "https://llamasoft.com",
+    "categories": ["supply-chain", "analytics"],
+    "description": "Supply chain design and planning"
+  },
+  {
+    "name": "Logility",
+    "provider": "Logility",
+    "website": "https://logility.com",
+    "categories": ["supply-chain", "analytics"],
+    "description": "AI-powered supply chain solutions"
+  },
+  {
+    "name": "Manhattan Associates",
+    "provider": "Manhattan",
+    "website": "https://manh.com",
+    "categories": ["supply-chain"],
+    "description": "Supply chain and omnichannel commerce"
+  },
+  {
+    "name": "Flexport",
+    "provider": "Flexport",
+    "website": "https://flexport.com",
+    "categories": ["supply-chain"],
+    "description": "Digital freight forwarding"
+  },
+  {
+    "name": "Sight Machine",
+    "provider": "Sight Machine",
+    "website": "https://sightmachine.com",
+    "categories": ["manufacturing", "analytics"],
+    "description": "Manufacturing analytics platform"
+  },
+  {
+    "name": "Uptake",
+    "provider": "Uptake",
+    "website": "https://uptake.com",
+    "categories": ["manufacturing", "analytics"],
+    "description": "Industrial AI and analytics"
+  },
+  {
+    "name": "SparkCognition",
+    "provider": "SparkCognition",
+    "website": "https://sparkcognition.com",
+    "categories": ["manufacturing", "analytics"],
+    "description": "AI for industrial operations"
+  },
+  {
+    "name": "C3 AI",
+    "provider": "C3.ai",
+    "website": "https://c3.ai",
+    "categories": ["manufacturing", "analytics"],
+    "description": "Enterprise AI application platform"
+  },
+  {
+    "name": "Augury",
+    "provider": "Augury",
+    "website": "https://augury.com",
+    "categories": ["manufacturing", "analytics"],
+    "description": "Machine health and process optimization"
+  },
+  {
+    "name": "Falkonry",
+    "provider": "Falkonry",
+    "website": "https://falkonry.com",
+    "categories": ["manufacturing", "analytics"],
+    "description": "Industrial AI for predictive operations"
+  },
+  {
+    "name": "Senseye",
+    "provider": "Siemens",
+    "website": "https://senseye.io",
+    "categories": ["manufacturing", "analytics"],
+    "description": "Predictive maintenance"
+  },
+  {
+    "name": "Tulip",
+    "provider": "Tulip",
+    "website": "https://tulip.co",
+    "categories": ["manufacturing", "no-code"],
+    "description": "Frontline operations platform"
+  },
+  {
+    "name": "Fictiv",
+    "provider": "Fictiv",
+    "website": "https://fictiv.com",
+    "categories": ["manufacturing"],
+    "description": "Digital manufacturing platform"
+  },
+  {
+    "name": "Xometry",
+    "provider": "Xometry",
+    "website": "https://xometry.com",
+    "categories": ["manufacturing"],
+    "description": "AI-powered manufacturing marketplace"
+  }
+]

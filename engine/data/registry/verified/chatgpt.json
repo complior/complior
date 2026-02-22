@@ -1,0 +1,38 @@
+{
+  "slug": "chatgpt",
+  "name": "ChatGPT",
+  "level": "verified",
+  "provider": {
+    "name": "OpenAI",
+    "website": "https://chat.openai.com"
+  },
+  "website": "https://chat.openai.com",
+  "categories": [
+    "chatbot",
+    "text-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "ChatGPT subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018",
+      "OBL-CS-001"
+    ]
+  },
+  "compliance_score": {
+    "total": 0,
+    "max": 100,
+    "grade": "non_compliant",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "ChatGPT — EU AI Act Compliance | Complior",
+    "description": "ChatGPT by OpenAI: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "ChatGPT — EU AI Act Compliance Guide"
+  }
+}

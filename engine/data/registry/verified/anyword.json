@@ -1,0 +1,31 @@
+{
+  "slug": "anyword",
+  "name": "Anyword",
+  "level": "verified",
+  "provider": {
+    "name": "Anyword",
+    "website": "https://anyword.com"
+  },
+  "website": "https://anyword.com",
+  "categories": [
+    "writing"
+  ],
+  "risk_classification": {
+    "level": "minimal",
+    "reasoning": "Anyword classified as minimal risk. Only AI literacy (Article 4) obligations apply. Voluntary codes of conduct encouraged.",
+    "applicable_obligation_ids": [
+      "OBL-001"
+    ]
+  },
+  "compliance_score": {
+    "total": null,
+    "max": 100,
+    "grade": "unknown",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Anyword — EU AI Act Compliance | Complior",
+    "description": "Anyword by Anyword: minimal risk. 2 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Anyword — EU AI Act Compliance Guide"
+  }
+}

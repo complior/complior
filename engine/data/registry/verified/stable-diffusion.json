@@ -1,0 +1,36 @@
+{
+  "slug": "stable-diffusion",
+  "name": "Stable Diffusion",
+  "level": "verified",
+  "provider": {
+    "name": "Stability AI",
+    "website": "https://stability.ai"
+  },
+  "website": "https://stability.ai",
+  "categories": [
+    "image-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Stable Diffusion subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 75,
+    "max": 100,
+    "grade": "progressing",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Stable Diffusion — EU AI Act Compliance | Complior",
+    "description": "Stable Diffusion by Stability AI: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Stable Diffusion — EU AI Act Compliance Guide"
+  }
+}

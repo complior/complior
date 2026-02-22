@@ -1,0 +1,36 @@
+{
+  "slug": "udio",
+  "name": "Udio",
+  "level": "verified",
+  "provider": {
+    "name": "Udio",
+    "website": "https://udio.com"
+  },
+  "website": "https://udio.com",
+  "categories": [
+    "music-generation"
+  ],
+  "risk_classification": {
+    "level": "limited",
+    "reasoning": "Udio subject to Article 50 transparency obligations. Users must be informed of AI interaction and generated content must be marked.",
+    "applicable_obligation_ids": [
+      "OBL-001",
+      "OBL-015",
+      "OBL-016",
+      "OBL-016a",
+      "OBL-017",
+      "OBL-018"
+    ]
+  },
+  "compliance_score": {
+    "total": 50,
+    "max": 100,
+    "grade": "needs_improvement",
+    "confidence": "approximate"
+  },
+  "seo": {
+    "title": "Udio — EU AI Act Compliance | Complior",
+    "description": "Udio by Udio: limited risk. 7 obligations. EU AI Act classification, checklist, and compliance guide.",
+    "h1": "Udio — EU AI Act Compliance Guide"
+  }
+}
