@@ -1,58 +1,74 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { createRecoveryFlow, submitRecovery, extractCsrfToken } from '@/lib/ory';
+import { sendPasswordReset } from '@/lib/auth';
+
+const ShieldCheckIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="M9 12l2 2 4-4" />
+  </svg>
+);
+const MailIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 7L2 7" />
+  </svg>
+);
+const CheckCircleIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><path d="M9 12l2 2 4-4" />
+  </svg>
+);
 
 export default function ForgotPasswordPage() {
   const locale = useLocale();
   const t = useTranslations('auth');
+  const tc = useTranslations('common');
+
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [resent, setResent] = useState(false);
-  const resendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
-  const validateEmail = (value: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateEmail(email)) {
-      setEmailError(true);
-      return;
-    }
+  const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  const handleSubmit = async () => {
     setEmailError(false);
+    if (!validateEmail(email)) { setEmailError(true); return; }
+
     setLoading(true);
     try {
-      const flow = await createRecoveryFlow();
-      await submitRecovery(flow.id, { method: 'link', csrf_token: extractCsrfToken(flow), email });
+      await sendPasswordReset(email);
       setSent(true);
+      setCooldown(60);
     } catch {
-      // Always show success (security-conscious)
+      // Always show success to prevent enumeration
       setSent(true);
+      setCooldown(60);
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
+    if (cooldown > 0) return;
+    setLoading(true);
     try {
-      const flow = await createRecoveryFlow();
-      await submitRecovery(flow.id, { method: 'link', csrf_token: extractCsrfToken(flow), email });
+      await sendPasswordReset(email);
+      setCooldown(60);
     } catch {
-      // Silently fail
+      // silent
+    } finally {
+      setLoading(false);
     }
-    setResent(true);
-    if (resendTimerRef.current) clearTimeout(resendTimerRef.current);
-    resendTimerRef.current = setTimeout(() => setResent(false), 2500);
-  };
-
-  const handleEmailInput = (value: string) => {
-    setEmail(value);
-    if (emailError) setEmailError(false);
   };
 
   return (
@@ -62,327 +78,137 @@ export default function ForgotPasswordPage() {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        .field-input-fp:focus {
+          border-color: var(--teal) !important;
+          box-shadow: 0 0 0 3px var(--teal-dim) !important;
+        }
+        .field-input-fp::placeholder { color: var(--dark5); }
+        .btn-primary-fp:hover {
+          background: var(--teal2) !important;
+          box-shadow: 0 4px 16px var(--teal-glow) !important;
+          transform: translateY(-1px);
+        }
+        .btn-primary-fp:active { transform: translateY(0); }
+        .btn-primary-fp:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+        .btn-ghost-fp:hover { color: var(--teal) !important; }
         @media (max-width: 480px) {
-          .auth-card {
-            padding: 2rem 1.5rem !important;
-            border-radius: 12px !important;
-          }
-          .auth-title {
-            font-size: 1.25rem !important;
-          }
+          .auth-card-fp { padding: 2rem 1.5rem !important; border-radius: 12px !important; }
+          .auth-title-fp { font-size: 1.25rem !important; }
         }
       `}</style>
 
-      <div
-        style={{
-          minHeight: 'calc(100vh - 56px)',
-          padding: '2rem',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {/* Auth Card */}
-        <div
-          className="auth-card"
-          style={{
-            maxWidth: 420,
-            width: '100%',
-            padding: '2.5rem',
-            borderRadius: 14,
-            border: '1px solid var(--b2)',
-            background: 'var(--card)',
-            boxShadow: '0 16px 48px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.03)',
-            animation: 'cardIn 0.5s ease both',
-          }}
-        >
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minHeight: 'calc(100vh - 56px)', padding: '2rem',
+      }}>
+        <div className="auth-card-fp" style={{
+          maxWidth: '420px', width: '100%', padding: '2.5rem', borderRadius: '14px',
+          border: '1px solid var(--b2)', background: 'var(--card)',
+          boxShadow: '0 16px 48px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.03)',
+          animation: 'cardIn .5s ease both',
+        }}>
+          {/* Logo */}
+          <Link href={`/${locale}`} style={{
+            fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: '1.25rem',
+            color: 'var(--dark)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.5rem', letterSpacing: '-0.02em', marginBottom: '2rem', textDecoration: 'none',
+          }}>
+            Complior<span style={{ fontFamily: 'var(--f-mono)', fontSize: '0.625rem', fontWeight: 500, color: 'var(--teal)', opacity: 0.7 }}>.ai</span>
+          </Link>
+
           {!sent ? (
-            /* ═══ STATE 1: Enter Email Form ═══ */
             <>
-              {/* Lock Icon */}
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 14,
-                  background: 'var(--teal-dim)',
-                  border: '1px solid var(--teal-glow)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  marginBottom: '1.25rem',
-                }}
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--teal)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-              </div>
-
-              {/* Title */}
-              <h1
-                className="auth-title"
-                style={{
-                  fontFamily: 'var(--f-display)',
-                  fontSize: '1.5rem',
-                  fontWeight: 700,
-                  color: 'var(--dark)',
-                  marginBottom: '0.375rem',
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                {t('forgotTitle')}
-              </h1>
-
-              {/* Subtitle */}
-              <p
-                style={{
-                  fontSize: '0.875rem',
-                  color: 'var(--dark4)',
-                  marginBottom: '2rem',
-                  lineHeight: 1.6,
-                }}
-              >
+              <h1 className="auth-title-fp" style={{
+                fontFamily: 'var(--f-display)', fontSize: '1.5rem', fontWeight: 700,
+                color: 'var(--dark)', marginBottom: '0.375rem', letterSpacing: '-0.02em', textAlign: 'center',
+              }}>{t('forgotTitle')}</h1>
+              <p style={{ fontSize: '0.875rem', color: 'var(--dark4)', marginBottom: '2rem', textAlign: 'center', lineHeight: 1.5 }}>
                 {t('forgotSub')}
               </p>
 
-              <form onSubmit={handleSubmit}>
-                {/* Email Field */}
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <label
-                    htmlFor="resetEmail"
-                    style={{
-                      display: 'block',
-                      fontFamily: 'var(--f-mono)',
-                      fontSize: '0.5625rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      color: 'var(--dark4)',
-                      marginBottom: '0.4375rem',
-                    }}
-                  >
-                    {t('email')}
-                  </label>
+              {/* Email field */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{
+                  display: 'block', fontFamily: 'var(--f-mono)', fontSize: '0.5625rem', fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--dark4)', marginBottom: '0.4375rem',
+                }}>{t('email')}</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--dark5)' }}>
+                    <MailIcon />
+                  </span>
                   <input
-                    id="resetEmail"
+                    className="field-input-fp"
                     type="email"
                     placeholder={t('emailPlaceholder')}
                     autoComplete="email"
                     value={email}
-                    onChange={(e) => handleEmailInput(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
                     style={{
-                      width: '100%',
-                      padding: '0.6875rem 0.875rem',
-                      border: `1.5px solid ${emailError ? 'var(--coral)' : 'var(--b2)'}`,
-                      borderRadius: 8,
-                      fontFamily: 'var(--f-body)',
-                      fontSize: '0.875rem',
-                      color: 'var(--dark)',
-                      background: 'var(--bg)',
-                      outline: 'none',
-                      transition: 'border-color 0.25s, box-shadow 0.25s',
-                      boxShadow: emailError
-                        ? '0 0 0 3px rgba(231,76,60,.06)'
-                        : 'none',
-                    }}
-                    onFocus={(e) => {
-                      if (!emailError) {
-                        e.currentTarget.style.borderColor = 'var(--teal)';
-                        e.currentTarget.style.boxShadow = '0 0 0 3px var(--teal-dim)';
-                      }
-                    }}
-                    onBlur={(e) => {
-                      if (!emailError) {
-                        e.currentTarget.style.borderColor = 'var(--b2)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }
+                      width: '100%', padding: '0.6875rem 0.875rem 0.6875rem 2.5rem',
+                      border: `1.5px solid ${emailError ? 'var(--coral)' : 'var(--b2)'}`, borderRadius: '8px',
+                      fontFamily: 'var(--f-body)', fontSize: '0.875rem', color: 'var(--dark)',
+                      background: 'var(--bg)', outline: 'none', transition: 'border-color .25s, box-shadow .25s',
+                      ...(emailError ? { boxShadow: '0 0 0 3px rgba(231,76,60,.06)' } : {}),
                     }}
                   />
-                  {emailError && (
-                    <div
-                      style={{
-                        fontSize: '0.6875rem',
-                        color: 'var(--coral)',
-                        marginTop: '0.3125rem',
-                      }}
-                    >
-                      {t('emailError')}
-                    </div>
-                  )}
                 </div>
+                {emailError && <div style={{ fontSize: '0.6875rem', color: 'var(--coral)', marginTop: '0.3125rem' }}>{t('emailError')}</div>}
+              </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 1.25rem',
-                    borderRadius: 8,
-                    fontFamily: 'var(--f-body)',
-                    fontWeight: 700,
-                    fontSize: '0.875rem',
-                    cursor: loading ? 'default' : 'pointer',
-                    border: 'none',
-                    background: 'var(--teal)',
-                    color: '#fff',
-                    boxShadow: '0 2px 8px var(--teal-glow)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    transition: '0.25s',
-                    opacity: loading ? 0.7 : 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loading) {
-                      e.currentTarget.style.background = 'var(--teal2)';
-                      e.currentTarget.style.boxShadow = '0 4px 16px var(--teal-glow)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--teal)';
-                    e.currentTarget.style.boxShadow = '0 2px 8px var(--teal-glow)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                  </svg>
-                  {t('sendResetLink')}
-                </button>
-              </form>
+              {/* CTA */}
+              <button className="btn-primary-fp" onClick={handleSubmit} disabled={loading} style={{
+                width: '100%', padding: '0.75rem 1.25rem', borderRadius: '8px',
+                fontFamily: 'var(--f-body)', fontWeight: 700, fontSize: '0.875rem',
+                cursor: 'pointer', border: 'none', transition: '0.25s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                background: 'var(--teal)', color: '#fff', boxShadow: '0 2px 8px var(--teal-glow)',
+              }}>
+                {loading ? tc('loading') : t('sendResetLink')}
+              </button>
             </>
           ) : (
-            /* ═══ STATE 2: Sent Confirmation ═══ */
             <div style={{ textAlign: 'center' }}>
-              {/* Checkmark Icon */}
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 14,
-                  background: 'var(--teal-dim)',
-                  border: '1px solid var(--teal-glow)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  margin: '0 auto 1.25rem',
-                }}
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--teal)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                <CheckCircleIcon />
               </div>
-
-              {/* Title */}
-              <h2
-                style={{
-                  fontFamily: 'var(--f-display)',
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--dark)',
-                  marginBottom: '0.375rem',
-                }}
-              >
-                {t('resetSentTitle')}
-              </h2>
-
-              {/* Email display */}
-              <div
-                style={{
-                  fontFamily: 'var(--f-mono)',
-                  fontSize: '0.75rem',
-                  color: 'var(--teal)',
-                  marginBottom: '1.25rem',
-                  wordBreak: 'break-all',
-                }}
-              >
-                {email}
-              </div>
-
-              {/* Hint text */}
-              <p
-                style={{
-                  fontSize: '0.8125rem',
-                  color: 'var(--dark4)',
-                  marginBottom: '1.5rem',
-                  lineHeight: 1.6,
-                }}
-              >
+              <h1 className="auth-title-fp" style={{
+                fontFamily: 'var(--f-display)', fontSize: '1.5rem', fontWeight: 700,
+                color: 'var(--dark)', marginBottom: '0.5rem', letterSpacing: '-0.02em',
+              }}>{t('resetSentTitle')}</h1>
+              <p style={{ fontSize: '0.875rem', color: 'var(--dark4)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
                 {t('resetSentHint')}
               </p>
 
-              {/* Resend button */}
-              <button
-                onClick={handleResend}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: resent ? 'var(--green)' : 'var(--teal)',
-                  fontFamily: 'var(--f-body)',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: '0.2s',
-                }}
-              >
-                {resent ? t('resent') : t('didntReceive')}
+              {/* Resend */}
+              <button className="btn-ghost-fp" onClick={handleResend} disabled={cooldown > 0 || loading} style={{
+                background: 'none', color: cooldown > 0 ? 'var(--dark5)' : 'var(--teal)', border: 'none',
+                fontSize: '0.8125rem', fontWeight: 600, cursor: cooldown > 0 ? 'not-allowed' : 'pointer',
+                transition: '0.2s', fontFamily: 'var(--f-body)', padding: '0.5rem',
+              }}>
+                {cooldown > 0 ? `${t('resendLink')} (${cooldown}s)` : t('didntReceive')}
               </button>
             </div>
           )}
+
+          {/* Back to sign in */}
+          <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+            <Link href={`/${locale}/auth/login`} style={{
+              fontSize: '0.8125rem', color: 'var(--dark4)', textDecoration: 'none', fontWeight: 500,
+            }}>
+              {t('backToSignIn')}
+            </Link>
+          </div>
         </div>
 
-        {/* Back Link */}
-        <div style={{ marginTop: '1.75rem', textAlign: 'center' }}>
-          <Link
-            href={`/${locale}/auth/login`}
-            style={{
-              color: 'var(--teal)',
-              fontWeight: 600,
-              fontSize: '0.8125rem',
-              textDecoration: 'none',
-              transition: '0.2s',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none';
-            }}
-          >
-            {t('backToSignIn')}
-          </Link>
+        {/* Trust line */}
+        <div style={{
+          marginTop: '1.5rem', textAlign: 'center', fontFamily: 'var(--f-mono)',
+          fontSize: '0.5rem', color: 'var(--dark5)', letterSpacing: '0.04em',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem',
+        }}>
+          <ShieldCheckIcon />
+          <span>{t('trustLine')}</span>
         </div>
       </div>
     </>

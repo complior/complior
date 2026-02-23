@@ -1,9 +1,11 @@
 # TECH-STACK.md — AI Act Compliance Platform
 
-**Version:** 2.1.0
-**Last updated:** 2026-02-12
+**Version:** 3.0.0
+**Last updated:** 2026-02-21
 **Author:** Marcus (CTO) via Claude Code
 
+> **v3.0.0 (2026-02-21):** Auth: Ory Kratos → WorkOS (managed auth, AuthKit, SSO). Registry API: публичные эндпоинты для TUI DataProvider (API Key auth, ETag caching, rate limits per plan).
+>
 > **v2.1.0 (2026-02-12):** Added Eva Pre-filter (Mistral Small 3.1) for topic boundary enforcement.
 >
 > **v2.0.0 (2026-02-09):** Полное обновление — актуализация стека после Sprint 0-1, deployer-first pivot, интеграция исследований (Vercel AI SDK, Claude Agent SDK, Nango). Удалены устаревшие технологии (Prisma, NextAuth, DeepSeek).
@@ -71,10 +73,11 @@
 **Provider:** OpenRouter (https://openrouter.ai/api/v1)
 
 ## Auth & Email
-- **Auth:** Ory Kratos (self-hosted, Hetzner EU) — [ADR-006](ADR-006-ory-vs-workos.md)
-  - Identity, sessions, MFA, magic links, webhook sync → our DB
-  - Apache 2.0, Германия, EU data residency
-  - Отклонён WorkOS (нет EU data residency — US only)
+- **Auth:** WorkOS (managed) — [ADR-007](ADR-007-workos-migration.md), supersedes [ADR-006](ADR-006-ory-vs-workos.md)
+  - AuthKit (hosted login/registration), SSO (SAML/OIDC бесплатно до 1M MAU)
+  - MFA, magic links, org management native
+  - SDK: `@workos-inc/node`
+  - Ранее: Ory Kratos (self-hosted EU) — заменён на WorkOS для упрощения ops и SSO
 - **Email:** Brevo (Франция) — transactional API, 300/day free
 
 ## PDF & Storage
@@ -90,11 +93,20 @@
 - **Analytics:** Plausible (Эстония) — €9/мес, без cookies, GDPR by design
 - **CDN/DDoS:** Cloudflare (edge only, no data storage)
 
+## Public API (v3.0)
+- **Registry API:** REST endpoints для TUI DataProvider (`/v1/registry/tools`, `/v1/regulations/obligations`)
+  - Auth: API Key (HMAC-SHA256), rate limits per plan
+  - Caching: ETag + If-None-Match (304 Not Modified)
+  - Rate limits: Free 100/day → Starter 1K/day → Growth 10K/day → Scale 100K/day
+- **Bundle Distribution:** Offline data bundles для TUI (`/v1/data/bundle`)
+  - SHA-256 checksum verification
+  - Hetzner S3 redirect for download
+
 ## Отклонённые технологии (Feb 2026)
 
 | Технология | Причина отказа | Альтернатива |
 |-----------|---------------|-------------|
-| **WorkOS** | US-only data residency — блокирует EU compliance | Ory Kratos (self-hosted EU) |
+| **Ory Kratos** | Self-hosting burden, нет SSO из коробки, сложная конфигурация | WorkOS (managed, SSO free до 1M MAU) — ADR-007 |
 | **Convex.dev** | Несовместим с PostgreSQL/MetaSQL/DDD архитектурой | PostgreSQL + pg-boss |
 | **Composio.dev** | US data, нет EU hosting | Nango (self-hosted EU) — planned |
 | **Greptile** | Marcus + Leo уже покрывают code review | Existing agent workflow |
@@ -104,4 +116,4 @@
 
 ---
 
-**Последнее обновление:** 2026-02-12 (v2.1.0)
+**Последнее обновление:** 2026-02-21 (v3.0.0)

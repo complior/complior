@@ -76,7 +76,7 @@ const createMockDb = (currentUser = MOCK_OWNER) => {
       return { rows: permissions };
     }
     // User query (resolveSession)
-    if (sql.includes('FROM "User" u') && sql.includes('oryId') && sql.includes('GROUP BY')) {
+    if (sql.includes('FROM "User" u') && sql.includes('workosUserId') && sql.includes('GROUP BY')) {
       return { rows: [currentUser] };
     }
     // Target user query (changeRole / removeMember)
@@ -156,10 +156,7 @@ const buildServer = async (currentUser) => {
 
   server.addHook('onRequest', (req, _reply, done) => {
     req.session = {
-      identity: {
-        id: `ory-${currentUser.id}`,
-        traits: { email: currentUser.email, name: { first: currentUser.fullName.split(' ')[0], last: currentUser.fullName.split(' ')[1] } },
-      },
+      user: { id: `wos-${currentUser.id}` },
     };
     done();
   });

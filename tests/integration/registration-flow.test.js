@@ -50,14 +50,14 @@ describe('Integration: Registration flow (real DB)', () => {
     assert.strictEqual(result.rows.length, 1, 'Free plan not found');
   });
 
-  it('webhook creates user + org + role + subscription', async () => {
-    const userSync = sandbox.application.iam.syncUserFromOry;
+  it('WorkOS sync creates user + org + role + subscription', async () => {
+    const userSync = sandbox.application.iam.syncUserFromWorkOS;
 
-    const result = await userSync.syncFromWebhook({
-      identity_id: 'ory-integration-test-1',
+    const result = await userSync.syncUser({
+      id: 'user_integration_test_1',
       email: 'integration@test.example.com',
-      name: { first: 'Test', last: 'User' },
-      locale: 'en',
+      firstName: 'Test',
+      lastName: 'User',
     });
 
     assert.strictEqual(result.created, true);
@@ -66,12 +66,11 @@ describe('Integration: Registration flow (real DB)', () => {
 
     // Verify user in DB
     const userRow = await pool.query(
-      'SELECT * FROM "User" WHERE "oryId" = $1',
-      ['ory-integration-test-1'],
+      'SELECT * FROM "User" WHERE "workosUserId" = $1',
+      ['user_integration_test_1'],
     );
     assert.strictEqual(userRow.rows.length, 1);
     assert.strictEqual(userRow.rows[0].email, 'integration@test.example.com');
-    assert.strictEqual(userRow.rows[0].locale, 'en');
 
     // Verify organization created
     const orgRow = await pool.query(
@@ -103,12 +102,14 @@ describe('Integration: Registration flow (real DB)', () => {
     assert.strictEqual(subRow.rows[0].status, 'active');
   });
 
-  it('webhook is idempotent (same oryId returns existing)', async () => {
-    const userSync = sandbox.application.iam.syncUserFromOry;
+  it('sync is idempotent (same workosUserId returns existing)', async () => {
+    const userSync = sandbox.application.iam.syncUserFromWorkOS;
 
-    const result = await userSync.syncFromWebhook({
-      identity_id: 'ory-integration-test-1',
+    const result = await userSync.syncUser({
+      id: 'user_integration_test_1',
       email: 'integration@test.example.com',
+      firstName: 'Test',
+      lastName: 'User',
     });
 
     assert.strictEqual(result.created, false);
@@ -136,20 +137,20 @@ describe('Integration: Registration flow (real DB)', () => {
   });
 
   it('tenant isolation: user cannot see other org data', async () => {
-    const userSync = sandbox.application.iam.syncUserFromOry;
+    const userSync = sandbox.application.iam.syncUserFromWorkOS;
 
     // Create second user/org
-    const result2 = await userSync.syncFromWebhook({
-      identity_id: 'ory-integration-test-2',
+    const result2 = await userSync.syncUser({
+      id: 'user_integration_test_2',
       email: 'tenant2@test.example.com',
-      name: { first: 'Other', last: 'User' },
-      locale: 'de',
+      firstName: 'Other',
+      lastName: 'User',
     });
 
     // Verify different organizations
     const user1 = await pool.query(
-      'SELECT "organizationId" FROM "User" WHERE "oryId" = $1',
-      ['ory-integration-test-1'],
+      'SELECT "organizationId" FROM "User" WHERE "workosUserId" = $1',
+      ['user_integration_test_1'],
     );
     assert.notStrictEqual(
       user1.rows[0].organizationId,
@@ -162,8 +163,8 @@ describe('Integration: Registration flow (real DB)', () => {
     const audit = sandbox.lib.audit;
 
     const user = await pool.query(
-      'SELECT "id", "organizationId" FROM "User" WHERE "oryId" = $1',
-      ['ory-integration-test-1'],
+      'SELECT "id", "organizationId" FROM "User" WHERE "workosUserId" = $1',
+      ['user_integration_test_1'],
     );
     const { id: userId, organizationId } = user.rows[0];
 

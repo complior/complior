@@ -24,7 +24,10 @@ const permissions = [
   { role: 'owner', resource: 'Notification', action: 'manage' },
   { role: 'owner', resource: 'Conversation', action: 'manage' },
 
+  { role: 'owner', resource: 'ApiKey', action: 'manage' },
+
   // Admin — manage tools + compliance + team, no billing
+  { role: 'admin', resource: 'ApiKey', action: 'manage' },
   { role: 'admin', resource: 'AITool', action: 'manage' },
   { role: 'admin', resource: 'RiskClassification', action: 'manage' },
   { role: 'admin', resource: 'ComplianceDocument', action: 'manage' },

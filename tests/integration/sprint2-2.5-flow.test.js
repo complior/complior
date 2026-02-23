@@ -26,11 +26,11 @@ describe('Integration: Sprint 2 + 2.5 (real DB)', () => {
     sandbox.application = application;
 
     // Create owner user via webhook (Sprint 1 baseline)
-    const result = await sandbox.application.iam.syncUserFromOry.syncFromWebhook({
-      identity_id: 'ory-s2-owner',
+    const result = await sandbox.application.iam.syncUserFromWorkOS.syncUser({
+      id: 'wos-s2-owner',
       email: 'owner@sprint2.test',
-      name: { first: 'Sprint2', last: 'Owner' },
-      locale: 'en',
+      firstName: 'Sprint2',
+      lastName: 'Owner',
     });
     ownerUser = result.user;
   });
@@ -373,11 +373,11 @@ describe('Integration: Sprint 2 + 2.5 (real DB)', () => {
     });
 
     it('new user registers with pending invite → joins existing org', async () => {
-      const result = await sandbox.application.iam.syncUserFromOry.syncFromWebhook({
-        identity_id: 'ory-invited-user',
+      const result = await sandbox.application.iam.syncUserFromWorkOS.syncUser({
+        id: 'wos-invited-user',
         email: 'invited@sprint2.test',
-        name: { first: 'Invited', last: 'User' },
-        locale: 'en',
+        firstName: 'Invited',
+        lastName: 'User',
       });
 
       assert.strictEqual(result.created, true);
@@ -401,11 +401,11 @@ describe('Integration: Sprint 2 + 2.5 (real DB)', () => {
 
     it('existing user accepts invitation → org transfer', async () => {
       // 1. Create user FIRST (no pending invite → gets own org)
-      const otherUser = await sandbox.application.iam.syncUserFromOry.syncFromWebhook({
-        identity_id: 'ory-transfer-user',
+      const otherUser = await sandbox.application.iam.syncUserFromWorkOS.syncUser({
+        id: 'wos-transfer-user',
         email: 'transfer@sprint2.test',
-        name: { first: 'Transfer', last: 'User' },
-        locale: 'en',
+        firstName: 'Transfer',
+        lastName: 'User',
       });
       assert.notStrictEqual(otherUser.user.organizationId, ownerUser.organizationId,
         'Other user should be in different org initially');
@@ -688,11 +688,11 @@ describe('Integration: Sprint 2 + 2.5 (real DB)', () => {
     let otherOrgId;
 
     before(async () => {
-      const other = await sandbox.application.iam.syncUserFromOry.syncFromWebhook({
-        identity_id: 'ory-other-org',
+      const other = await sandbox.application.iam.syncUserFromWorkOS.syncUser({
+        id: 'wos-other-org',
         email: 'other@other-org.test',
-        name: { first: 'Other', last: 'Org' },
-        locale: 'de',
+        firstName: 'Other',
+        lastName: 'Org',
       });
       otherOrgId = other.user.organizationId;
     });

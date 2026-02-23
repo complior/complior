@@ -46,7 +46,7 @@ const createMockDb = (opts = {}) => {
         return { rows: permissions };
       }
       // User query (syncOnLogin)
-      if (sql.includes('FROM "User"') && sql.includes('oryId')) {
+      if (sql.includes('FROM "User"') && sql.includes('workosUserId')) {
         return { rows: [MOCK_USER] };
       }
       // Update lastLoginAt
@@ -112,10 +112,7 @@ describe('AI Tool CRUD API', () => {
     // Inject mock session
     server.addHook('onRequest', (req, _reply, done) => {
       req.session = {
-        identity: {
-          id: 'ory-123',
-          traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } },
-        },
+        user: { id: 'wos-123' },
       };
       done();
     });
@@ -260,7 +257,7 @@ describe('maxTools Enforcement — US-036', () => {
     initRequestId(srv);
     initErrorHandler(srv);
     srv.addHook('onRequest', (req, _reply, done) => {
-      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      req.session = { user: { id: 'wos-123' } };
       done();
     });
     registerSandboxRoutes(srv, { tools: api.tools });
@@ -290,7 +287,7 @@ describe('maxTools Enforcement — US-036', () => {
     initRequestId(srv);
     initErrorHandler(srv);
     srv.addHook('onRequest', (req, _reply, done) => {
-      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      req.session = { user: { id: 'wos-123' } };
       done();
     });
     registerSandboxRoutes(srv, { tools: api.tools });
@@ -333,7 +330,7 @@ describe('maxTools Enforcement — US-036', () => {
     initRequestId(srv);
     initErrorHandler(srv);
     srv.addHook('onRequest', (req, _reply, done) => {
-      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      req.session = { user: { id: 'wos-123' } };
       done();
     });
     registerSandboxRoutes(srv, { tools: api.tools });
@@ -363,7 +360,7 @@ describe('maxTools Enforcement — US-036', () => {
     initRequestId(srv);
     initErrorHandler(srv);
     srv.addHook('onRequest', (req, _reply, done) => {
-      req.session = { identity: { id: 'ory-123', traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'User' } } } };
+      req.session = { user: { id: 'wos-123' } };
       done();
     });
     registerSandboxRoutes(srv, { tools: api.tools });

@@ -26,7 +26,7 @@ describe('Config validation', () => {
 
   it('returns warnings for missing optional vars', () => {
     process.env.DATABASE_URL = 'postgres://test';
-    delete process.env.ORY_WEBHOOK_SECRET;
+    delete process.env.WORKOS_COOKIE_PASSWORD;
     delete process.env.BREVO_API_KEY;
     delete process.env.S3_ENDPOINT;
     const validate = require(modulePath);
@@ -36,7 +36,9 @@ describe('Config validation', () => {
 
   it('passes with all vars set', () => {
     process.env.DATABASE_URL = 'postgres://test';
-    process.env.ORY_WEBHOOK_SECRET = 'secret';
+    process.env.WORKOS_CLIENT_ID = 'client_01ABC';
+    process.env.WORKOS_API_KEY = 'sk_test_123abc';
+    process.env.WORKOS_COOKIE_PASSWORD = 'secret';
     process.env.BREVO_API_KEY = 'key';
     process.env.S3_ENDPOINT = 'https://s3.example.com';
     process.env.STRIPE_SECRET_KEY = 'sk_test_123';

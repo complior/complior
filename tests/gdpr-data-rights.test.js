@@ -12,7 +12,7 @@ const createMockDb = (userData = {}, toolData = []) => ({
     if (sql.includes('FROM "User"') && sql.includes('GROUP BY')) {
       return {
         rows: [{
-          id: 1, oryId: 'ory-123', email: 'test@example.com',
+          id: 1, workosUserId: 'user_01ABC', email: 'test@example.com',
           fullName: 'Test User', active: true,
           organizationId: 10, locale: 'en', roles: ['owner'],
           ...userData,
@@ -85,7 +85,6 @@ describe('GDPR Data Export (application)', () => {
 describe('GDPR Account Deletion (application)', () => {
   it('anonymizes user PII and deactivates account', async () => {
     let updatedEmail = null;
-    let updatedName = null;
     const mockDb = {
       query: async (sql, params) => {
         if (sql.includes('FROM "Permission"')) {
@@ -103,7 +102,7 @@ describe('GDPR Account Deletion (application)', () => {
     };
     const { application } = await buildFullSandbox(mockDb);
     const result = await application.iam.deleteAccount.deleteAccount({
-      userId: 42, organizationId: 10, oryId: 'ory-123',
+      userId: 42, organizationId: 10, workosUserId: 'user_01ABC',
     });
     assert.strictEqual(result.deleted, true);
     assert.strictEqual(updatedEmail, 'deleted_42@deleted.local');
@@ -128,7 +127,7 @@ describe('GDPR Account Deletion (application)', () => {
     };
     const { application } = await buildFullSandbox(mockDb);
     await application.iam.deleteAccount.deleteAccount({
-      userId: 42, organizationId: 10, oryId: 'ory-123',
+      userId: 42, organizationId: 10, workosUserId: 'user_01ABC',
     });
     assert.ok(auditDetails);
     assert.ok(auditDetails.reason.includes('Art. 17'));
@@ -139,7 +138,6 @@ describe('AccountDeleteSchema (validation)', () => {
   let AccountDeleteSchema;
 
   before(async () => {
-    const { buildFullSandbox: bfs } = require('./helpers/test-sandbox.js');
     const schemas = require('../server/lib/schemas.js');
     AccountDeleteSchema = schemas.AccountDeleteSchema;
   });

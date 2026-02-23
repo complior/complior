@@ -16,10 +16,20 @@
     "test:integration": "node --test tests/integration/**/*.test.js",
     "db:generate": "node app/setup.js generate",
     "db:seed": "node app/setup.js seed",
-    "db:setup": "node app/setup.js"
+    "db:setup": "node app/setup.js",
+    "migrate:regulations": "node scripts/run-migration.js",
+    "migrate:registry": "node scripts/run-ai-registry-migration.js",
+    "export:registry": "node scripts/export-registry.js",
+    "export:regulation": "node scripts/export-regulation-db.js",
+    "export:all": "npm run export:registry && npm run export:regulation",
+    "seed:detection-patterns": "node scripts/run-detection-patterns-seed.js"
   },
   "engines": {
     "node": ">=20.0.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@workos-inc/node": "^8.5.0",
+    "pg-boss": "^12.13.0"
+  }
 }

@@ -1,5 +1,13 @@
 # Operations Runbook
 
+> **Версия:** 3.0.0 | **Дата:** 2026-02-21
+
+### Changelog
+
+- **v3.0.0** (2026-02-21): Auth: удалены операции Kratos (бэкап identity DB, миграция, отладка сессий). Добавлены операции WorkOS (ротация API key, SSO конфигурация). Добавлены операции Registry API (инвалидация кэша, управление API ключами).
+
+---
+
 ## Service Management
 
 ### Start all services
@@ -90,6 +98,114 @@ docker exec -it complior-postgres psql -U complior -d complior
 ### List backups
 ```bash
 ls -lh /home/complior/PROJECT/backups/
+```
+
+---
+
+## WorkOS (Auth)
+
+### Ротация API ключа
+```bash
+# 1. Сгенерировать новый ключ в WorkOS Dashboard → API Keys
+# 2. Обновить .env.production
+sed -i 's/^WORKOS_API_KEY=.*/WORKOS_API_KEY=sk_live_NEW_KEY/' /home/complior/PROJECT/.env.production
+
+# 3. Перезапустить backend
+docker compose -f docker-compose.production.yml restart backend
+
+# 4. Проверить health
+curl -s http://127.0.0.1:8000/health | jq .
+
+# 5. Отозвать старый ключ в WorkOS Dashboard
+```
+
+### SSO конфигурация (SAML/OIDC)
+```bash
+# Настройка через WorkOS Dashboard → Organizations → SSO
+# 1. Создать Organization в WorkOS
+# 2. Настроить SSO Connection (SAML или OIDC)
+# 3. Передать клиенту ACS URL и Entity ID
+# 4. Проверить: WorkOS Dashboard → Events → SSO login events
+```
+
+### Отладка проблем авторизации
+```bash
+# Проверить статус WorkOS
+curl -s https://status.workos.com/api/v2/status.json | jq .status
+
+# Проверить логи backend на ошибки auth
+docker compose -f docker-compose.production.yml logs backend --tail=50 | grep -i "workos\|auth\|session"
+
+# Проверить события в WorkOS Dashboard → Events
+# Фильтры: authentication.*, user.*, sso.*, organization.*
+```
+
+### Синхронизация организаций
+```bash
+# Проверить что организации синхронизированы
+docker exec -it complior-postgres psql -U complior -d complior \
+  -c "SELECT id, name, workos_org_id, updated_at FROM organizations ORDER BY updated_at DESC LIMIT 10;"
+
+# Если рассинхронизация — проверить webhook endpoint
+curl -s http://127.0.0.1:8000/api/webhooks/workos/health | jq .
+```
+
+---
+
+## Registry API
+
+### Управление API ключами
+```bash
+# Создать новый API ключ
+docker compose -f docker-compose.production.yml exec -T backend \
+  node -e "require('./app/scripts/registry-keys.js').create({ name: 'tui-prod', scope: 'registry:read' })"
+
+# Список активных ключей
+docker exec -it complior-postgres psql -U complior -d complior \
+  -c "SELECT id, name, scope, created_at, last_used_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC;"
+
+# Отозвать ключ
+docker compose -f docker-compose.production.yml exec -T backend \
+  node -e "require('./app/scripts/registry-keys.js').revoke('<key-id>')"
+
+# Ротация ключа (создать новый + отозвать старый)
+docker compose -f docker-compose.production.yml exec -T backend \
+  node -e "require('./app/scripts/registry-keys.js').rotate('<key-id>')"
+```
+
+### Инвалидация кэша (ETag reset)
+```bash
+# Сбросить ETag для конкретного ресурса
+docker compose -f docker-compose.production.yml exec -T backend \
+  node -e "require('./app/scripts/registry-cache.js').invalidate({ resource: '<resource-path>' })"
+
+# Сбросить весь кэш registry
+docker compose -f docker-compose.production.yml exec -T backend \
+  node -e "require('./app/scripts/registry-cache.js').invalidateAll()"
+```
+
+### Генерация и публикация бандлов
+```bash
+# Сгенерировать бандл для текущей версии правил
+docker compose -f docker-compose.production.yml exec -T backend \
+  node -e "require('./app/scripts/registry-bundle.js').generate()"
+
+# Опубликовать бандл
+docker compose -f docker-compose.production.yml exec -T backend \
+  node -e "require('./app/scripts/registry-bundle.js').publish({ version: '<semver>' })"
+
+# Проверить статус публикации
+curl -s http://127.0.0.1:8000/api/registry/bundles | jq .
+```
+
+### Мониторинг rate limits
+```bash
+# Проверить текущее использование rate limits
+docker compose -f docker-compose.production.yml logs backend --tail=100 | grep -i "rate.limit"
+
+# Статистика запросов к registry API
+docker exec -it complior-postgres psql -U complior -d complior \
+  -c "SELECT api_key_id, COUNT(*), DATE_TRUNC('hour', created_at) AS hour FROM api_requests WHERE path LIKE '/api/registry/%' GROUP BY api_key_id, hour ORDER BY hour DESC LIMIT 20;"
 ```
 
 ---

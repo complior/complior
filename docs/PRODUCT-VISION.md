@@ -1,13 +1,25 @@
 # Product Vision — AI Act Compliance Platform (Deployer-First)
 
 **Статус:** ✅ Заполнен Product Owner
-**Дата:** 2026-02-12
-**Версия:** 2.3.0 (Sprint 6: Admin Panel + Stripe + Deploy)
-**Источники:** project1.pdf, eu_sovereign_llm_strategy.md.pdf, llm_strategy_and_product_ux.md.pdf, COMPETITOR-ANALYSIS.md
+**Дата:** 2026-02-21
+**Версия:** 3.0.0 (TUI+SaaS Dual-Product Model)
+**Источники:** project1.pdf, eu_sovereign_llm_strategy.md.pdf, llm_strategy_and_product_ux.md.pdf, COMPETITOR-ANALYSIS.md, UNIFIED-ARCHITECTURE.md
 
 ---
 
 ## Changelog
+
+### v3.0.0 (2026-02-21) — TUI+SaaS Dual-Product Model
+
+**Стратегическое расширение:** SaaS становится облачной частью двухкомпонентной системы Complior.
+
+- **Позиционирование:** Free TUI (open-source, `complior` repo) → Paid Dashboard (this SaaS). TUI сканирует код, SaaS агрегирует данные всей организации.
+- **Auth миграция (S7):** Ory Kratos → **WorkOS** (managed auth, SSO free до 1M MAU, org management native). Supersedes ADR-006. См. ADR-007.
+- **Registry API (S7):** Новый публичный API для TUI DataProvider: `/v1/registry/tools`, `/v1/regulations/obligations`. API Key auth, rate limits per plan.
+- **Dashboard v2 (S8):** Cross-System Map (org-wide GitHub/GitLab scan), Agent Governance UI, Score Trends, Monitoring Dashboard.
+- **Новые фичи (F25-F36, без F27):** WorkOS миграция, Registry API, Dashboard v2, SaaS Discovery, Monitoring, Enterprise SSO, ML Registry connectors, White-label, Multi-language dashboard, Compliance Marketplace.
+- **Тарифы:** обновлённое наполнение — Free TUI scan → Starter €49 (API + Dashboard) → Growth €149 → Scale €399 → Enterprise.
+- **Воронка конверсии:** Разработчик → `npx complior` → scan → score → "Хочу Dashboard для всей организации" → €49-399/мес.
 
 ### v2.3.0 (2026-02-15) — Sprint 6: Admin Panel + Stripe + Deploy
 - **Sprint 4 completed:** Production deployment (Docker, Caddy, Kratos, GDPR, CI/CD)
@@ -52,12 +64,17 @@
 
 ### Решение (Solution)
 
-**Self-service SaaS платформа для компаний, которые ИСПОЛЬЗУЮТ AI:**
+**Двухкомпонентная платформа: Free TUI (разработчики) + Paid Dashboard (CTO/DPO):**
 
 ```
-Узнай какой AI использует → Оцени риски → Обучи сотрудников → Получи compliance
-твоя компания               по AI Act      (Art. 4)            за €49/мес
+РАЗРАБОТЧИК:  npx complior → scan → score 72/100 → fix → 85/100 → badge → COMPLIANCE.md
+                  │
+                  │  "Хочу видеть ВСЕ проекты организации на одном дашборде"
+                  ▼
+CTO/DPO:      app.complior.eu → Dashboard → Cross-System Map → Action Plan → €49-399/мес
 ```
+
+**SaaS — облачная часть системы:**
 
 1. **AI Tool Inventory** — зарегистрируй все AI-инструменты компании (manual wizard + каталог 200+ инструментов + employee self-service registration с approval workflow)
 2. **Risk Classification** — гибридный движок (rules + LLM) определяет risk level каждого инструмента с точки зрения deployer
@@ -154,10 +171,10 @@
   - Monorepo, Fastify backend, MetaSQL schemas, Docker Compose (Ory + Gotenberg + PG)
   - CI/CD, rate limiting, monitoring, analytics
 
-- **IAM — Ory Auth** (Sprint 1)
-  - Ory (self-hosted, Hetzner): регистрация, login, magic links, sessions
-  - Brevo (Франция): email для magic links
-  - Ory webhook → Organization + User + Role + Subscription(free)
+- **IAM — Auth** (Sprint 1 → S7 WorkOS Migration)
+  - S1-S6: Ory Kratos (self-hosted). **S7: миграция на WorkOS** (managed, SSO native, org management)
+  - Brevo (Франция): email для magic links, notifications
+  - WorkOS AuthKit → Organization + User + Role + Subscription(free)
   - Multi-tenancy: всё фильтруется по organizationId
 
 - **AI Tool Inventory** (Sprint 1-2)
@@ -261,7 +278,7 @@
 - pg-boss (job queues — PostgreSQL-native, без Redis на MVP)
 
 **Auth & Email:**
-- Ory (self-hosted, Hetzner EU) — identity, sessions, MFA, magic links
+- WorkOS (managed) — AuthKit, SSO (SAML/OIDC free до 1M MAU), org management. Миграция с Ory Kratos (S7, см. ADR-007)
 - Brevo (Франция) — transactional email, 300/day free
 
 **PDF & Storage:**
@@ -477,7 +494,7 @@ So that I fulfill Art. 27 deployer obligations
 |--------|:---:|:---:|:---:|
 | AI модели | Mistral (Франция) | ? | OpenAI (US) |
 | Хостинг | Hetzner (Германия) | AWS Europe | AWS US |
-| Auth | Ory (self-hosted EU) | ? | US-managed |
+| Auth | WorkOS (managed, SCC) | ? | US-managed |
 | Email | Brevo (Франция) | ? | US services |
 | PDF | Gotenberg (self-hosted) | ? | US services |
 | US CLOUD Act | Не применим | Риск (AWS) | Применим |
@@ -680,29 +697,63 @@ PRODUCT (данные клиентов):          DEV TEAM (наш код):
 
 ---
 
-## 14. 6-системная архитектура
+## 14. 8-системная архитектура (v3.0)
 
-### 6 ключевых систем для проектирования:
+### 8 ключевых систем для проектирования:
 
 1. **AI Tool Classifier** — rule-based + LLM + cross-validation + deployer requirements mapping
 2. **AI Literacy Platform** — курсы, модули, quiz, tracking, certificates
 3. **Eva Deployer Consultant** — conversation + context injection + tool calling + streaming
 4. **Deployer Compliance Dashboard** — AI inventory, risk levels, literacy progress, compliance score
-5. **User & Organization Management** — Ory + multi-tenant + roles + billing (Stripe)
+5. **User & Organization Management** — WorkOS (AuthKit, SSO, org management) + multi-tenant + roles + billing (Stripe)
 6. **Document Generator** — FRIA, Monitoring Plan, AI Usage Policy, Employee Notification + PDF export
+7. **Registry API** — публичные эндпоинты для TUI DataProvider: tools, obligations, scoring rules. API Key auth, rate limits per plan, ETag caching
 
 ---
 
-## 15. Next Steps
+## 15. TUI + SaaS интеграция (v3.0)
+
+### Новые спринты SaaS (после S6)
+
+| Спринт | Период | Фокус |
+|--------|--------|-------|
+| **S7** | 2-3 нед | WorkOS миграция + Registry API + Eva (deferred) |
+| **S8** | Мес 3-4 | Dashboard v2 (Cross-System Map) + SaaS Discovery |
+| **S9** | Мес 4-5 | Monitoring + Enterprise (SSO, audit, API v1.0) |
+| **S10** | Мес 6+ | ML Registry + White-label + Multi-language + Scale |
+
+### Воронка конверсии: Free TUI → Paid Dashboard
+
+```
+1. Разработчик устанавливает: npx complior
+2. Сканирует проект: score 72/100, 3 нарушения
+3. Фиксит: score → 85/100 GREEN
+4. Хочет видеть все проекты организации → Dashboard
+5. CTO → app.complior.eu → Cross-System Map → €49-399/мес
+```
+
+### Кросс-проектные зависимости
+
+```
+Open-Source S1 (Scanner types) ──HARD──→ SaaS S7 (Registry API schema)
+Open-Source S6 (Agent Governance) ──MEDIUM──→ SaaS S8 (Agent Registry UI)
+Open-Source S8 (Drift Engine) ──MEDIUM──→ SaaS S9 (Monitoring)
+```
+
+Подробнее: см. `complior/docs/UNIFIED-ARCHITECTURE.md`
+
+---
+
+## 16. Next Steps
 
 1. ✅ Product Vision v2.0 (Deployer-First Pivot)
-2. → Обновить PRODUCT-BACKLOG.md (deployer features + new features 18-20)
-3. → Обновить ARCHITECTURE.md (bounded contexts + new modules)
-4. → Обновить DATABASE.md (new tables + seed data)
-5. → Обновить DATA-FLOWS.md (deployer flows)
-6. → Обновить SPRINT-BACKLOG.md (Sprint 0 adjustments)
-7. → Создать COMPETITOR-ANALYSIS.md
-8. → Sprint 0 начинается
+2. ✅ Sprints S1-S6 completed
+3. ✅ Product Vision v3.0 (TUI+SaaS Dual-Product Model)
+4. → ADR-007: WorkOS миграция (supersedes ADR-006)
+5. → ARCHITECTURE.md v3.0 (WorkOS, Registry API — 9 BCs)
+6. → DATABASE.md v3.0 (+5 новых таблиц)
+7. → DATA-FLOWS.md v3.0 (+8-10 новых потоков)
+8. → Sprint S7 backlog
 
 ---
 

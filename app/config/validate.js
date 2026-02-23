@@ -16,11 +16,17 @@ const validate = () => {
   }
 
   const warnings = [];
-  if (!process.env.ORY_WEBHOOK_SECRET) {
+  if (!process.env.WORKOS_CLIENT_ID) {
+    warnings.push('WORKOS_CLIENT_ID not set — WorkOS auth disabled');
+  }
+  if (!process.env.WORKOS_API_KEY) {
+    warnings.push('WORKOS_API_KEY not set — WorkOS auth disabled');
+  }
+  if (!process.env.WORKOS_COOKIE_PASSWORD) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('ORY_WEBHOOK_SECRET is required in production');
+      throw new Error('WORKOS_COOKIE_PASSWORD is required in production');
     }
-    warnings.push('ORY_WEBHOOK_SECRET not set — webhook verification disabled');
+    warnings.push('WORKOS_COOKIE_PASSWORD not set — session sealing disabled');
   }
   if (!process.env.BREVO_API_KEY) {
     warnings.push('BREVO_API_KEY not set — email sending disabled');

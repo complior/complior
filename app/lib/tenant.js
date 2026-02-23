@@ -2,7 +2,7 @@
   const TENANT_TABLES = new Set([
     'AITool', 'AuditLog', 'Subscription', 'Conversation', 'Notification',
     'AIToolDiscovery', 'ComplianceDocument', 'FRIAAssessment',
-    'LiteracyCompletion', 'User', 'Invitation',
+    'LiteracyCompletion', 'User', 'Invitation', 'ApiKey',
   ]);
 
   const GLOBAL_TABLES = new Set([

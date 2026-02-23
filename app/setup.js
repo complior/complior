@@ -183,6 +183,13 @@ const TABLE_ORDER = [
   'ScoringRule',
   'ApiKey',
   'ApiUsage',
+  // New regulation tables (Phase 1)
+  'RegulationMeta',
+  'TechnicalRequirement',
+  'TimelineEvent',
+  'CrossMapping',
+  'LocalizationTerm',
+  'ApplicabilityNode',
 ];
 
 // Migrations — idempotent ALTER TABLEs for existing databases
@@ -377,7 +384,7 @@ const seedRegistryTools = async (client) => {
        "detectionPatterns", "evidence", "active")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        ON CONFLICT ("name") DO NOTHING`,
-      [tool.name, tool.provider, tool.category, tool.riskLevel,
+      [tool.name, JSON.stringify(tool.provider), tool.category, tool.riskLevel,
         tool.description, tool.websiteUrl, tool.vendorCountry,
         tool.dataResidency, JSON.stringify(tool.capabilities),
         JSON.stringify(tool.jurisdictions),
@@ -535,9 +542,11 @@ const initDatabase = async (pool) => {
     await seedRoles(client);
     await seedCourses(client);
     await seedCatalog(client);
-    await seedRegistryTools(client);
-    await seedObligations(client);
-    await seedScoringRules(client);
+    // Skip seedRegistryTools — using migrated data from ~/complior (4,983 tools)
+    // await seedRegistryTools(client);
+    // Skip seedObligations/ScoringRules — using migrated data from ~/complior (108 obligations)
+    // await seedObligations(client);
+    // await seedScoringRules(client);
 
     console.log('Setup complete!');
     console.log(`  Tables: ${TABLE_ORDER.length}, Indexes: ${INDEXES.length}`);

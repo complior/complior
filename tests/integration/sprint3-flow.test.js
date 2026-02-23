@@ -13,8 +13,8 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
   let pool;
   let server;
 
-  const OWNER_ORY = 'ory-sprint3-owner';
-  const MEMBER_ORY = 'ory-sprint3-member';
+  const OWNER_WOS = 'wos-sprint3-owner';
+  const MEMBER_WOS = 'wos-sprint3-member';
 
   let ownerUserId;
   let ownerOrgId;
@@ -31,7 +31,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
   const inject = (method, url, opts = {}) => {
     const headers = {};
-    if (opts.oryId) headers['x-test-ory-id'] = opts.oryId;
+    if (opts.workosId) headers['x-test-workos-id'] = opts.workosId;
     const config = { method, url, headers };
     if (opts.payload) config.payload = opts.payload;
     if (opts.query) {
@@ -53,24 +53,19 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
       'UPDATE "Plan" SET "maxUsers" = 10, "maxTools" = 50 WHERE "name" = \'free\'',
     );
 
-    const { api } = await buildFullSandbox(pool, {
-      ory: { verifyWebhookSecret: () => true, verifySession: async () => null },
-    });
+    const { api, application } = await buildFullSandbox(pool);
 
     server = fastify({ logger: false });
     initRequestId(server);
     initErrorHandler(server);
 
-    // Mock session: x-test-ory-id → request.session.identity.id
+    // Mock session: x-test-workos-id → request.session.user.id
     server.addHook('onRequest', (req, _reply, done) => {
       req.session = null;
-      const oryId = req.headers['x-test-ory-id'];
-      if (oryId) {
+      const workosId = req.headers['x-test-workos-id'];
+      if (workosId) {
         req.session = {
-          identity: {
-            id: oryId,
-            traits: { email: '', name: { first: 'Test', last: 'User' } },
-          },
+          user: { id: workosId },
         };
       }
       done();
@@ -80,22 +75,18 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     await server.ready();
 
     // ── Create owner user + org ──
-    const regRes = await inject('POST', '/api/auth/webhook', {
-      payload: {
-        event: 'registration',
-        identity_id: OWNER_ORY,
-        email: 'sprint3@e2e.test',
-        name: { first: 'Sprint3', last: 'Owner' },
-        locale: 'en',
-      },
+    const regResult = await application.iam.syncUserFromWorkOS.syncUser({
+      id: OWNER_WOS,
+      email: 'sprint3@e2e.test',
+      firstName: 'Sprint3',
+      lastName: 'Owner',
     });
-    const regBody = json(regRes);
-    ownerUserId = regBody.userId;
-    ownerOrgId = regBody.organizationId;
+    ownerUserId = regResult.user.id;
+    ownerOrgId = regResult.user.organizationId;
 
     // ── Invite + create member user ──
     const invRes = await inject('POST', '/api/team/invite', {
-      oryId: OWNER_ORY,
+      workosId: OWNER_WOS,
       payload: { email: 'member-sprint3@e2e.test', role: 'member' },
     });
     const invId = json(invRes).id;
@@ -104,38 +95,35 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     );
     inviteToken = tokenRow.rows[0].token;
 
-    const memRegRes = await inject('POST', '/api/auth/webhook', {
-      payload: {
-        event: 'registration',
-        identity_id: MEMBER_ORY,
-        email: 'member-sprint3@e2e.test',
-        name: { first: 'Member', last: 'User' },
-        locale: 'en',
-      },
+    const memRegResult = await application.iam.syncUserFromWorkOS.syncUser({
+      id: MEMBER_WOS,
+      email: 'member-sprint3@e2e.test',
+      firstName: 'Member',
+      lastName: 'User',
     });
-    memberUserId = json(memRegRes).userId;
+    memberUserId = memRegResult.user.id;
 
     // Accept invitation
     await inject('POST', '/api/team/accept-invite', {
-      oryId: MEMBER_ORY,
+      workosId: MEMBER_WOS,
       payload: { token: inviteToken },
     });
 
     // ── Register tool ──
     const toolRes = await inject('POST', '/api/tools', {
-      oryId: OWNER_ORY,
+      workosId: OWNER_WOS,
       payload: { name: 'Sprint3 TestBot', vendorName: 'TestCorp' },
     });
     toolId = Number(json(toolRes).id);
 
     // ── Complete wizard (steps 2-4): employment domain → high risk ──
     await inject('PATCH', `/api/tools/${toolId}`, {
-      oryId: OWNER_ORY,
+      workosId: OWNER_WOS,
       payload: { step: 2, purpose: 'HR screening chatbot', domain: 'employment' },
     });
 
     await inject('PATCH', `/api/tools/${toolId}`, {
-      oryId: OWNER_ORY,
+      workosId: OWNER_WOS,
       payload: {
         step: 3,
         dataTypes: ['personal', 'biometric'],
@@ -145,7 +133,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     await inject('PATCH', `/api/tools/${toolId}`, {
-      oryId: OWNER_ORY,
+      workosId: OWNER_WOS,
       payload: {
         step: 4,
         autonomyLevel: 'semi_autonomous',
@@ -156,7 +144,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     // ── Classify tool → creates requirements + classification ──
     const classRes = await inject('POST', `/api/tools/${toolId}/classify`, {
-      oryId: OWNER_ORY,
+      workosId: OWNER_WOS,
     });
     const classBody = json(classRes);
     assert(classBody.riskLevel, 'Classification should return riskLevel');
@@ -178,7 +166,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
   describe('US-025: ComplianceScoreCalculator', () => {
     it('newly classified tool has complianceScore = 0 (all requirements pending)', async () => {
       const res = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const body = json(res);
       assert.strictEqual(body.complianceScore, 0,
@@ -188,7 +176,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     it('completing one requirement increases score proportionally', async () => {
       // Get all requirements
       const reqRes = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const reqBody = json(reqRes);
       allRequirementIds = [];
@@ -202,7 +190,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
       // Complete the first requirement
       const patchRes = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'completed' },
       });
       const patchBody = json(patchRes);
@@ -218,7 +206,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
       if (!secondRequirementId) return;
 
       const patchRes = await inject('PATCH', `/api/tools/${toolId}/requirements/${secondRequirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'in_progress', progress: 50 },
       });
       const body = json(patchRes);
@@ -234,13 +222,13 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
       // Complete all remaining requirements
       for (const reqId of allRequirementIds) {
         await inject('PATCH', `/api/tools/${toolId}/requirements/${reqId}`, {
-          oryId: OWNER_ORY,
+          workosId: OWNER_WOS,
           payload: { status: 'completed' },
         });
       }
 
       const res = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const body = json(res);
       assert.strictEqual(body.complianceScore, 100, 'All completed → score must be 100');
@@ -257,7 +245,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     it('un-completing drops score and reverts complianceStatus to in_progress', async () => {
       // Un-complete the first requirement
       await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'pending' },
       });
 
@@ -273,12 +261,12 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     it('not_applicable requirements are excluded from denominator', async () => {
       // Mark first requirement as not_applicable
       await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'not_applicable' },
       });
 
       const res = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const body = json(res);
 
@@ -288,7 +276,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
       // Reset back to pending for further tests
       await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'pending' },
       });
     });
@@ -301,7 +289,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
   describe('US-026: GET /api/tools/:id/requirements', () => {
     it('200 — returns requirements grouped by article with correct structure', async () => {
       const res = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
@@ -317,7 +305,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('200 — each group has articleReference + requirements array', async () => {
       const res = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const body = json(res);
 
@@ -334,7 +322,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('200 — each requirement has deployer-specific fields', async () => {
       const res = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const body = json(res);
       const firstReq = body.groups[0].requirements[0];
@@ -352,7 +340,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('200 — sum of all group requirements equals totalRequirements', async () => {
       const res = await inject('GET', `/api/tools/${toolId}/requirements`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const body = json(res);
       let sum = 0;
@@ -365,7 +353,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('404 — non-existent tool', async () => {
       const res = await inject('GET', '/api/tools/99999/requirements', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 404);
     });
@@ -383,7 +371,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
   describe('US-027: PATCH /api/tools/:id/requirements/:requirementId', () => {
     it('200 — updates status to in_progress with progress', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'in_progress', progress: 50 },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -395,7 +383,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('200 — status=completed auto-sets progress=100 + completedAt', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'completed' },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -415,7 +403,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('200 — un-completing clears completedAt', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'in_progress', progress: 75 },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -425,7 +413,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('200 — updates notes field', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { notes: 'Reviewed by legal team on 2026-02-12' },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -435,7 +423,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('400 — empty body rejected by Zod refine', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: {},
       });
       assert.strictEqual(res.statusCode, 400);
@@ -443,7 +431,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('400 — invalid status value', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'invalid_status' },
       });
       assert.strictEqual(res.statusCode, 400);
@@ -451,7 +439,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('400 — progress out of range (101)', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { progress: 101 },
       });
       assert.strictEqual(res.statusCode, 400);
@@ -459,7 +447,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('404 — non-existent tool', async () => {
       const res = await inject('PATCH', `/api/tools/99999/requirements/${requirementId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'completed' },
       });
       assert.strictEqual(res.statusCode, 404);
@@ -467,7 +455,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('404 — non-existent requirement', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}/requirements/99999`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { status: 'completed' },
       });
       assert.strictEqual(res.statusCode, 404);
@@ -498,7 +486,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
       // Complete one more requirement
       if (secondRequirementId) {
         await inject('PATCH', `/api/tools/${toolId}/requirements/${secondRequirementId}`, {
-          oryId: OWNER_ORY,
+          workosId: OWNER_WOS,
           payload: { status: 'completed' },
         });
       }
@@ -517,7 +505,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
   describe('US-028: GET /api/tools/:id/classification-history', () => {
     it('200 — returns current classification with correct fields', async () => {
       const res = await inject('GET', `/api/tools/${toolId}/classification-history`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
@@ -535,10 +523,10 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('200 — after re-classify: 2 versions, history sorted DESC', async () => {
       // Re-classify to create history
-      await inject('POST', `/api/tools/${toolId}/classify`, { oryId: OWNER_ORY });
+      await inject('POST', `/api/tools/${toolId}/classify`, { workosId: OWNER_WOS });
 
       const res = await inject('GET', `/api/tools/${toolId}/classification-history`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
@@ -554,10 +542,10 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     it('200 — after 3rd re-classify: 3 versions, history sorted by version DESC', async () => {
-      await inject('POST', `/api/tools/${toolId}/classify`, { oryId: OWNER_ORY });
+      await inject('POST', `/api/tools/${toolId}/classify`, { workosId: OWNER_WOS });
 
       const res = await inject('GET', `/api/tools/${toolId}/classification-history`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       const body = json(res);
 
@@ -572,13 +560,13 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     it('200 — unclassified tool returns null current', async () => {
       // Register a new tool without classifying
       const draftRes = await inject('POST', '/api/tools', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { name: 'Unclassified Tool', vendorName: 'V' },
       });
       const draftId = Number(json(draftRes).id);
 
       const res = await inject('GET', `/api/tools/${draftId}/classification-history`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
@@ -590,7 +578,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
     it('404 — non-existent tool', async () => {
       const res = await inject('GET', '/api/tools/99999/classification-history', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 404);
     });
@@ -607,7 +595,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
 
   describe('US-029: GET /api/dashboard/summary', () => {
     it('200 — tool counts match real DB state', async () => {
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
 
@@ -620,7 +608,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     it('200 — riskDistribution matches classified tools', async () => {
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       const body = json(res);
 
       // Our tool is high risk (employment + biometric + applicants)
@@ -641,7 +629,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     it('200 — complianceScore is calculated from real tools', async () => {
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       const body = json(res);
 
       assert(typeof body.complianceScore === 'number');
@@ -654,7 +642,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
       // (business logic only flags tools with score === 0)
       for (const reqId of allRequirementIds) {
         await inject('PATCH', `/api/tools/${toolId}/requirements/${reqId}`, {
-          oryId: OWNER_ORY,
+          workosId: OWNER_WOS,
           payload: { status: 'pending' },
         });
       }
@@ -665,7 +653,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
       );
       assert.strictEqual(toolRow.rows[0].complianceScore, 0, 'Score should be 0 after resetting all');
 
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       const body = json(res);
 
       assert(Array.isArray(body.requiresAttention));
@@ -677,7 +665,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     it('200 — AI Literacy stub returns zeros with future message', async () => {
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       const body = json(res);
 
       assert.strictEqual(body.aiLiteracy.totalEmployees, 0);
@@ -688,7 +676,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     it('200 — timeline has 3 AI Act dates with daysUntil', async () => {
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       const body = json(res);
 
       assert.strictEqual(body.timeline.length, 3);
@@ -705,7 +693,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     it('200 — recentActivity shows audit log entries', async () => {
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       const body = json(res);
 
       assert(Array.isArray(body.recentActivity));
@@ -714,7 +702,7 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     });
 
     it('200 — planLimits shows tools + users limits', async () => {
-      const res = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
       const body = json(res);
 
       assert(body.planLimits, 'Should have planLimits');
@@ -733,14 +721,14 @@ describe('E2E: Sprint 3 — Compliance Score, Requirements, Dashboard, Classific
     it('200 — member sees only own tools, not all org tools', async () => {
       // Register a tool as member
       const memberToolRes = await inject('POST', '/api/tools', {
-        oryId: MEMBER_ORY,
+        workosId: MEMBER_WOS,
         payload: { name: 'Member Only Tool', vendorName: 'V' },
       });
       assert.strictEqual(memberToolRes.statusCode, 201);
 
       // Member dashboard should show fewer tools than owner
-      const memberDash = await inject('GET', '/api/dashboard/summary', { oryId: MEMBER_ORY });
-      const ownerDash = await inject('GET', '/api/dashboard/summary', { oryId: OWNER_ORY });
+      const memberDash = await inject('GET', '/api/dashboard/summary', { workosId: MEMBER_WOS });
+      const ownerDash = await inject('GET', '/api/dashboard/summary', { workosId: OWNER_WOS });
 
       const memberBody = json(memberDash);
       const ownerBody = json(ownerDash);

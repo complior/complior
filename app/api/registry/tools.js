@@ -21,6 +21,7 @@
         category: parsed.category || null,
         risk: parsed.risk || null,
         jurisdiction: parsed.jurisdiction || null,
+        hasDetectionPatterns: parsed.hasDetectionPatterns ?? null,
         page: parsed.page,
         limit: parsed.limit,
       });

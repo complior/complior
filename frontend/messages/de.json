@@ -49,7 +49,8 @@
     "adminOverview": "Übersicht",
     "adminUsers": "Benutzer",
     "adminOrganizations": "Organisationen",
-    "adminSubscriptions": "Abonnements"
+    "adminSubscriptions": "Abonnements",
+    "settings": "Einstellungen"
   },
   "footer": {
     "brand": "Automatisierte EU AI Act Compliance. Entwickelt in Europa, für die Welt.",
@@ -305,7 +306,7 @@
     "brevoRole": "E-Mail",
     "plausible": "Plausible",
     "plausibleRole": "Analytik",
-    "ory": "Ory",
+    "ory": "WorkOS",
     "oryRole": "Auth",
     "betterUptime": "Better Uptime",
     "betterUptimeRole": "Monitoring",
@@ -436,7 +437,22 @@
     "verifyTitle": "E-Mail-Verifizierung",
     "verifySuccess": "Ihre E-Mail wurde erfolgreich verifiziert!",
     "verifyError": "Verifizierung fehlgeschlagen. Der Link ist möglicherweise abgelaufen.",
-    "verifyRedirect": "Weiterleitung zum Dashboard..."
+    "verifyRedirect": "Weiterleitung zum Dashboard...",
+    "enterCode": "Code eingeben",
+    "codeSubtitle": "Wir haben einen 6-stelligen Code gesendet an",
+    "invalidCode": "Ungültiger oder abgelaufener Code. Bitte versuchen Sie es erneut.",
+    "codeSent": "Code gesendet!",
+    "signInWithGoogle": "Mit Google anmelden",
+    "signInWithGithub": "Mit GitHub anmelden",
+    "orContinueWith": "Oder fortfahren mit",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "passwordsDontMatch": "Passwörter stimmen nicht überein",
+    "passwordReset": "Passwort zurücksetzen",
+    "passwordResetSuccess": "Passwort erfolgreich zurückgesetzt!",
+    "setNewPassword": "Neues Passwort festlegen",
+    "invalidToken": "Ungültiger oder abgelaufener Reset-Link. Bitte fordern Sie einen neuen an.",
+    "emailExists": "Ein Konto mit dieser E-Mail existiert bereits. Versuchen Sie sich anzumelden."
   },
   "pricing": {
     "title": "Einfache, transparente Preise",
@@ -791,5 +807,27 @@
     "subscriptionStatus": "Abonnement-Status",
     "recentSignupsTitle": "Neueste Anmeldungen",
     "signupDate": "Registriert am"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "tabProfile": "Profil",
+    "tabSSO": "SSO",
+    "tabTeam": "Team",
+    "tabBilling": "Abrechnung",
+    "ssoTitle": "Enterprise Single Sign-On",
+    "ssoDescription": "Aktivieren Sie SAML- oder OIDC-Single-Sign-On für Ihre Organisation. SSO ermöglicht es Teammitgliedern, sich über den Identitätsanbieter Ihres Unternehmens anzumelden.",
+    "ssoAvailableOn": "SSO ist in den Scale- und Enterprise-Plänen verfügbar.",
+    "ssoConfigured": "Konfiguriert",
+    "ssoNotConfigured": "Nicht konfiguriert",
+    "ssoSetupLink": "SSO im WorkOS Dashboard konfigurieren",
+    "ssoSupportedProviders": "Unterstützte Anbieter",
+    "ssoProvidersList": "Okta, Azure AD, Google Workspace, OneLogin und jeder SAML 2.0 / OIDC-Anbieter.",
+    "ssoContactSetup": "Kontaktieren Sie support@complior.ai, um SSO für Ihre Organisation zu aktivieren.",
+    "ssoLearnMore": "Mehr über SSO-Einrichtung erfahren",
+    "comingSoon": "Demnächst verfügbar",
+    "comingSoonDesc": "Dieser Bereich wird in einem zukünftigen Update verfügbar sein.",
+    "profileTitle": "Organisationsprofil",
+    "teamTitle": "Teammitglieder",
+    "billingTitle": "Abrechnung & Abonnement"
   }
 }

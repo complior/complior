@@ -1,38 +1,154 @@
 # SECURITY-POLICY.md — AI Act Compliance Platform
 
-**Status:** 🚧 TODO — Leo должен заполнить во время работы
-**Version:** 0.1.0 (placeholder)
-**Last updated:** 2026-02-04
+**Version:** 3.0.0
+**Дата:** 2026-02-21
+**Автор:** Marcus (CTO) via Claude Code
+**Статус:** Phase 0 — Утверждён
+**Зависимости:** ARCHITECTURE.md v3.0.0
 
-## Цель документа
-Security policies, OWASP Top 10 checklist, known CVEs, incident response protocol.
-
-## OWASP Top 10 Checklist
-- [ ] A01: Broken Access Control
-- [ ] A02: Cryptographic Failures
-- [ ] A03: Injection (SQL, XSS, Command)
-- [ ] A04: Insecure Design
-- [ ] A05: Security Misconfiguration
-- [ ] A06: Vulnerable Components
-- [ ] A07: Identification & Authentication Failures
-- [ ] A08: Software & Data Integrity Failures
-- [ ] A09: Security Logging & Monitoring Failures
-- [ ] A10: Server-Side Request Forgery (SSRF)
-
-## Known CVEs
-TODO: Leo обновляет при обнаружении уязвимостей в dependencies
-
-## Security Best Practices
-- NEVER hardcode secrets (use .env + GitHub Secrets)
-- ALWAYS sanitize user input (backend + frontend)
-- ALWAYS use HTTPS in production
-- ALWAYS enable CORS properly
-- ALWAYS implement rate limiting
-- ALWAYS log security events
-
-## Incident Response Protocol
-TODO: Leo создаст протокол реагирования на инциденты
+> **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product. Auth: Ory → WorkOS. Добавлены: Registry API security, TUI ↔ SaaS communication security, telemetry data privacy.
+>
+> **v0.1.0 (2026-02-04):** Placeholder.
 
 ---
 
-**Maintenance:** Leo обновляет этот файл по мере работы.
+## 1. Модель безопасности
+
+### Authentication
+
+| Компонент | Механизм | Провайдер |
+|-----------|----------|-----------|
+| **Dashboard (SaaS)** | WorkOS AuthKit (hosted login/registration) | WorkOS (managed) |
+| **SSO (Enterprise)** | SAML/OIDC через WorkOS | WorkOS + IdP клиента |
+| **MFA** | TOTP, SMS | WorkOS |
+| **Sessions** | httpOnly cookies + WorkOS session tokens | WorkOS |
+| **Registry API** | API Key (HMAC-SHA256) | Наша реализация |
+| **TUI ↔ SaaS** | API Key (тот же что Registry API) | Наша реализация |
+
+### Authorization
+
+| Уровень | Механизм |
+|---------|----------|
+| **RBAC** | Permission(role, resource, action) — наша таблица поверх WorkOS identity |
+| **System roles** | owner, admin, member, viewer, platform_admin |
+| **Multi-tenancy** | Row-level isolation via organizationId в каждом запросе |
+| **Platform Admin** | Double gate: RBAC (`PlatformAdmin:manage`) + env whitelist (`PLATFORM_ADMIN_EMAILS`) |
+| **API rate limits** | Per-plan limits: Free 100/day → Starter 1K → Growth 10K → Scale 100K |
+
+---
+
+## 2. OWASP Top 10 — Наши меры
+
+| # | Угроза | Мера | Статус |
+|---|--------|------|--------|
+| A01 | Broken Access Control | RBAC, multi-tenancy (organizationId filter), `checkPermission()` на каждом endpoint | ✅ Реализовано (Sprint 1) |
+| A02 | Cryptographic Failures | TLS 1.3 (Caddy auto-TLS), AES-256 at rest (Hetzner), API keys HMAC-SHA256 | ✅ Реализовано |
+| A03 | Injection (SQL, XSS, Command) | Parameterized queries (pg pool), React auto-escaping, Zod validation, CSP headers | ✅ Реализовано |
+| A04 | Insecure Design | DDD с Bounded Contexts, VM Sandbox isolation, threat modeling в architecture docs | ✅ Design-level |
+| A05 | Security Misconfiguration | Docker non-root, security headers (Caddy), env-only secrets, no default credentials | ✅ Реализовано (Sprint 4) |
+| A06 | Vulnerable Components | `npm audit` в CI/CD, Dependabot (planned), minimal dependencies | ⚠️ Частично (CI audit) |
+| A07 | Auth Failures | WorkOS (managed auth, MFA, brute-force protection, Radar bot detection) | ✅ WorkOS handles |
+| A08 | Software & Data Integrity | Docker image pinning, Caddy binary verification, signed commits (planned) | ⚠️ Частично |
+| A09 | Security Logging | AuditLog на все data access (7 лет retention), Sentry (PII filtered) | ✅ Реализовано (Sprint 1) |
+| A10 | SSRF | Нет user-controlled URL fetching в backend. EUR-Lex scraper → whitelist domains only | ✅ N/A |
+
+---
+
+## 3. Data Security
+
+### Классификация данных
+
+| Категория | Примеры | Хранение | Шифрование |
+|-----------|---------|----------|------------|
+| **Auth credentials** | Пароли, sessions, MFA | WorkOS (managed, US, SCC) | WorkOS manages |
+| **Compliance data** (sensitive) | AI tool classifications, FRIA, compliance docs | PostgreSQL (Hetzner DE) | AES-256 at rest |
+| **PII** | Email, fullName, company | PostgreSQL (Hetzner DE) | AES-256 at rest |
+| **Telemetry** (TUI) | Scan scores, violations, tool IDs | PostgreSQL (Hetzner DE) | AES-256 at rest |
+| **API keys** | Registry API / TUI keys | PostgreSQL (hash only) | HMAC-SHA256 |
+| **PDFs** | FRIA reports, certificates | Hetzner Object Storage (DE) | TLS in transit, S3 at rest |
+
+### GDPR Compliance
+
+- **Art. 17 Right to Erasure:** User anonymization + WorkOS user deletion + Stripe customer deletion
+- **Art. 20 Data Portability:** JSON export of all user data
+- **Data Residency:** Compliance data = EU only (Hetzner DE). Auth tokens = WorkOS (US, SCC-compliant)
+- **PII Stripping:** TUI telemetry anonymizes project paths before sending to SaaS
+- **Retention:** Classifications 7 лет, chat 2 года, notifications 90 дней, audit logs 7 лет
+
+---
+
+## 4. Registry API Security
+
+| Мера | Реализация |
+|------|------------|
+| **API Key auth** | HMAC-SHA256 hash stored, key shown once on creation |
+| **Rate limiting** | Per-plan daily limits, tracked in APIUsage table |
+| **ETag caching** | Reduces unnecessary data transfer, 304 Not Modified |
+| **Input validation** | Zod schemas on all query parameters |
+| **Response filtering** | Free tier: limited fields. Paid: full evidence/assessments |
+| **Abuse detection** | Anomalous request patterns → alert + temporary block |
+| **Key rotation** | Create new → grace period → revoke old |
+
+---
+
+## 5. TUI ↔ SaaS Communication
+
+| Мера | Реализация |
+|------|------------|
+| **Transport** | TLS 1.3 (HTTPS only) |
+| **Authentication** | API Key в `X-API-Key` header |
+| **Idempotency** | HMAC-based dedup keys для scan results |
+| **PII stripping** | Project paths anonymized, no source code transmitted |
+| **Data minimization** | TUI отправляет только: scores, violation IDs, tool IDs, agent types |
+| **Payload size** | Max 1MB per request, gzip compression |
+| **Node identity** | HMAC(hostname + install_id) — стабильный, не содержит PII |
+
+---
+
+## 6. Infrastructure Security
+
+| Компонент | Мера |
+|-----------|------|
+| **Docker** | Non-root containers, read-only filesystem where possible, no `--privileged` |
+| **Network** | PostgreSQL not exposed externally, internal Docker network only |
+| **Caddy** | Auto-TLS (Let's Encrypt), HTTP/3, HSTS, security headers |
+| **Secrets** | Environment variables only, Docker secrets for DB password |
+| **Backups** | Automated PostgreSQL backups, encrypted, stored in Hetzner S3 (EU) |
+| **Monitoring** | Better Uptime (Литва) for uptime, Sentry for errors (PII filtered) |
+| **CI/CD** | `npm audit` on every PR, lint + type-check, test suite (229 tests) |
+
+---
+
+## 7. Incident Response Protocol
+
+### Уровни инцидентов
+
+| Уровень | Описание | Время реакции |
+|---------|----------|---------------|
+| **P1 Critical** | Data breach, auth bypass, data loss | 1 час |
+| **P2 High** | Service down, significant vulnerability | 4 часа |
+| **P3 Medium** | Degraded performance, minor vulnerability | 24 часа |
+| **P4 Low** | Cosmetic issue, non-sensitive info exposure | 1 неделя |
+
+### Процедура
+
+1. **Detect:** Monitoring alerts (Better Uptime), Sentry errors, user reports
+2. **Triage:** Определить уровень (P1-P4), назначить ответственного
+3. **Contain:** Изолировать затронутый компонент (revoke keys, block IP, disable feature)
+4. **Fix:** Разработать и deploy fix
+5. **Notify:** Уведомить затронутых пользователей (GDPR Art. 33: 72 часа для DPA при data breach)
+6. **Post-mortem:** Документировать причину, fix, preventive measures
+
+---
+
+## 8. Known CVEs
+
+Обновляется при обнаружении уязвимостей в dependencies. `npm audit` запускается в CI/CD на каждый PR.
+
+| Дата | CVE | Компонент | Severity | Статус |
+|------|-----|-----------|----------|--------|
+| — | — | — | — | Нет известных CVE на момент v3.0.0 |
+
+---
+
+**Maintenance:** Leo (SecOps) обновляет этот файл при обнаружении уязвимостей и изменениях в security architecture.

@@ -17,7 +17,27 @@ const createTestSandbox = (mockDb, extras = {}) => ({
   schemas,
   zod,
   config: {},
-  ory: { verifyWebhookSecret: () => false, verifySession: async () => null },
+  workos: {
+    getAuthorizationUrl: () => 'https://authkit.workos.com/test',
+    authenticateWithCode: async () => ({
+      user: { id: 'wos_user_test', email: 'test@example.com', firstName: 'Test', lastName: 'User' },
+      sealedSession: 'sealed-session-data',
+    }),
+    authenticateWithPassword: async () => ({
+      user: { id: 'wos_user_test', email: 'test@example.com', firstName: 'Test', lastName: 'User' },
+      sealedSession: 'sealed-session-data',
+    }),
+    createUser: async () => ({ id: 'wos_user_new', email: 'new@example.com', firstName: 'New', lastName: 'User' }),
+    sendMagicAuth: async () => ({ id: 'magic_01' }),
+    authenticateWithMagicAuth: async () => ({
+      user: { id: 'wos_user_test', email: 'test@example.com', firstName: 'Test', lastName: 'User' },
+      sealedSession: 'sealed-session-data',
+    }),
+    sendPasswordReset: async () => ({ id: 'reset_01' }),
+    resetPassword: async () => ({ user: { id: 'wos_user_test' } }),
+    verifySessionCookie: async () => ({ authenticated: true, user: { id: 'wos_user_test' } }),
+    deleteUser: async () => {},
+  },
   brevo: { sendTransactional: async () => ({}) },
   gotenberg: { convertHtmlToPdf: async () => Buffer.alloc(0) },
   s3: { upload: async () => ({}), download: async () => null },

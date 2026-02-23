@@ -182,6 +182,7 @@ const RegistryToolSearchSchema = z.object({
   category: z.string().optional(),
   risk: z.string().optional(),
   jurisdiction: z.string().optional(),
+  hasDetectionPatterns: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -196,6 +197,49 @@ const ObligationSearchSchema = z.object({
   category: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+// === API Key Schemas ===
+
+const ApiKeyCreateSchema = z.object({
+  name: z.string().min(1).max(255),
+  expiresInDays: z.coerce.number().int().min(1).max(365).optional(),
+});
+
+const ApiKeyIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+// === Auth (Headless) Schemas ===
+
+const LoginPasswordSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1).max(256),
+});
+
+const LoginMagicSchema = z.object({
+  email: z.string().email(),
+});
+
+const LoginMagicVerifySchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(6).max(6),
+});
+
+const RegisterPasswordSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(256),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+});
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const ResetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8).max(256),
 });
 
 // === GDPR Schemas ===
@@ -241,6 +285,14 @@ module.exports = {
   RegistryToolSearchSchema,
   RegistryToolIdSchema,
   ObligationSearchSchema,
+  ApiKeyCreateSchema,
+  ApiKeyIdSchema,
+  LoginPasswordSchema,
+  LoginMagicSchema,
+  LoginMagicVerifySchema,
+  RegisterPasswordSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
   VALID_PAID_PLANS,
   VALID_BILLING_PERIODS,
 };

@@ -49,7 +49,8 @@
     "adminOverview": "Overview",
     "adminUsers": "Users",
     "adminOrganizations": "Organizations",
-    "adminSubscriptions": "Subscriptions"
+    "adminSubscriptions": "Subscriptions",
+    "settings": "Settings"
   },
   "footer": {
     "brand": "Automated EU AI Act compliance. Built in Europe, for the world.",
@@ -305,7 +306,7 @@
     "brevoRole": "Email",
     "plausible": "Plausible",
     "plausibleRole": "Analytics",
-    "ory": "Ory",
+    "ory": "WorkOS",
     "oryRole": "Auth",
     "betterUptime": "Better Uptime",
     "betterUptimeRole": "Monitoring",
@@ -436,7 +437,22 @@
     "verifyTitle": "Email Verification",
     "verifySuccess": "Your email has been verified successfully!",
     "verifyError": "Verification failed. The link may have expired.",
-    "verifyRedirect": "Redirecting to dashboard..."
+    "verifyRedirect": "Redirecting to dashboard...",
+    "enterCode": "Enter your code",
+    "codeSubtitle": "We sent a 6-digit code to",
+    "invalidCode": "Invalid or expired code. Please try again.",
+    "codeSent": "Code sent!",
+    "signInWithGoogle": "Sign in with Google",
+    "signInWithGithub": "Sign in with GitHub",
+    "orContinueWith": "Or continue with",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "passwordsDontMatch": "Passwords do not match",
+    "passwordReset": "Reset Password",
+    "passwordResetSuccess": "Password reset successfully!",
+    "setNewPassword": "Set a new password",
+    "invalidToken": "Invalid or expired reset link. Please request a new one.",
+    "emailExists": "An account with this email already exists. Try signing in instead."
   },
   "pricing": {
     "title": "Simple, transparent pricing",
@@ -791,5 +807,27 @@
     "subscriptionStatus": "Subscription Status",
     "recentSignupsTitle": "Recent Signups",
     "signupDate": "Signed Up"
+  },
+  "settings": {
+    "title": "Settings",
+    "tabProfile": "Profile",
+    "tabSSO": "SSO",
+    "tabTeam": "Team",
+    "tabBilling": "Billing",
+    "ssoTitle": "Enterprise Single Sign-On",
+    "ssoDescription": "Enable SAML or OIDC single sign-on for your organization. SSO allows team members to sign in using your company's identity provider.",
+    "ssoAvailableOn": "SSO is available on Scale and Enterprise plans.",
+    "ssoConfigured": "Configured",
+    "ssoNotConfigured": "Not configured",
+    "ssoSetupLink": "Configure SSO in WorkOS Dashboard",
+    "ssoSupportedProviders": "Supported providers",
+    "ssoProvidersList": "Okta, Azure AD, Google Workspace, OneLogin, and any SAML 2.0 / OIDC provider.",
+    "ssoContactSetup": "Contact support@complior.ai to enable SSO for your organization.",
+    "ssoLearnMore": "Learn more about SSO setup",
+    "comingSoon": "Coming Soon",
+    "comingSoonDesc": "This section will be available in a future update.",
+    "profileTitle": "Organization Profile",
+    "teamTitle": "Team Members",
+    "billingTitle": "Billing & Subscription"
   }
 }

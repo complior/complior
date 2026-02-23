@@ -18,7 +18,7 @@
     "prefer-const": "error",
     "arrow-parens": ["error", "always"],
     "no-console": "warn",
-    "camelcase": ["error", { "allow": ["^_", "identity_id"] }],
+    "camelcase": ["error", { "allow": ["^_"] }],
     "max-len": ["error", { "code": 100, "ignoreUrls": true, "ignoreStrings": true, "ignoreTemplateLiterals": true }],
     "object-curly-spacing": ["error", "always"],
     "comma-style": ["error", "last"],
@@ -61,7 +61,7 @@
         "schemas": "readonly",
         "zod": "readonly",
         "config": "readonly",
-        "ory": "readonly",
+        "workos": "readonly",
         "brevo": "readonly",
         "gotenberg": "readonly",
         "s3": "readonly",
@@ -75,7 +75,7 @@
         "strict": "off",
         "no-console": "off",
         "semi": "off",
-        "camelcase": ["error", { "allow": ["^_", "identity_id", "session_id"] }]
+        "camelcase": ["error", { "allow": ["^_", "session_id"] }]
       }
     }
   ]

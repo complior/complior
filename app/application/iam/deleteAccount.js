@@ -1,5 +1,5 @@
 ({
-  deleteAccount: async ({ userId, organizationId, oryId }) => {
+  deleteAccount: async ({ userId, organizationId, workosUserId }) => {
     const deletedEmail = `deleted_${userId}@deleted.local`;
 
     await db.query(
@@ -13,9 +13,9 @@
     );
 
     try {
-      await ory.deleteIdentity(oryId);
+      await workos.deleteUser(workosUserId);
     } catch (err) {
-      console.warn('Failed to delete Ory identity (may already be deleted):', err.message);
+      console.warn('Failed to delete WorkOS user (may already be deleted):', err.message);
     }
 
     await db.query(

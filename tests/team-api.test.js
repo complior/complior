@@ -63,7 +63,7 @@ const createMockDb = (currentUser = MOCK_OWNER) => {
         return { rows: permissions };
       }
       // User query (resolveSession)
-      if (sql.includes('FROM "User" u') && sql.includes('oryId')) {
+      if (sql.includes('FROM "User" u') && sql.includes('workosUserId')) {
         return { rows: [currentUser] };
       }
       // Members query (listTeamMembers)
@@ -104,9 +104,11 @@ describe('Team API — US-034: List Team Members', () => {
 
     server.addHook('onRequest', (req, _reply, done) => {
       req.session = {
-        identity: {
-          id: 'ory-owner-123',
-          traits: { email: MOCK_OWNER.email, name: { first: 'Owner', last: 'User' } },
+        user: {
+          id: 'wos-owner-123',
+          email: MOCK_OWNER.email,
+          firstName: 'Owner',
+          lastName: 'User',
         },
       };
       done();
@@ -168,9 +170,11 @@ describe('Team API — US-034: List Team Members', () => {
 
     viewerServer.addHook('onRequest', (req, _reply, done) => {
       req.session = {
-        identity: {
-          id: 'ory-viewer-456',
-          traits: { email: MOCK_VIEWER.email, name: { first: 'Viewer', last: 'User' } },
+        user: {
+          id: 'wos-viewer-456',
+          email: MOCK_VIEWER.email,
+          firstName: 'Viewer',
+          lastName: 'User',
         },
       };
       done();

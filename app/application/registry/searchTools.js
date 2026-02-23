@@ -1,5 +1,5 @@
 ({
-  search: async ({ q, category, risk, jurisdiction, page = 1, limit = 20 }) => {
+  search: async ({ q, category, risk, jurisdiction, hasDetectionPatterns, page = 1, limit = 20 }) => {
     const conditions = ['"active" = true'];
     const values = [];
     let idx = 1;
@@ -25,6 +25,12 @@
     if (jurisdiction) {
       conditions.push(`"jurisdictions"::text ILIKE $${idx++}`);
       values.push(`%${jurisdiction}%`);
+    }
+
+    if (hasDetectionPatterns === true) {
+      conditions.push(`"detectionPatterns" IS NOT NULL AND "detectionPatterns" != 'null'::jsonb`);
+    } else if (hasDetectionPatterns === false) {
+      conditions.push(`("detectionPatterns" IS NULL OR "detectionPatterns" = 'null'::jsonb)`);
     }
 
     const whereClause = conditions.join(' AND ');

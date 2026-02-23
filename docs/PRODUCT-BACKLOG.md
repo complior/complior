@@ -1,14 +1,21 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform (Deployer-First)
 
-**Версия:** 3.6.0
-**Дата:** 2026-02-15
+**Версия:** 4.0.0
+**Дата:** 2026-02-21
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** ✅ Утверждено PO (2026-02-10)
-**Зависимости:** PRODUCT-VISION.md v2.1 ✅
+**Статус:** ✅ Утверждено PO (2026-02-21)
+**Зависимости:** PRODUCT-VISION.md v3.0.0, ARCHITECTURE.md v3.0.0
 
 ---
 
 ## Changelog
+
+### v4.0.0 (2026-02-21) — TUI+SaaS Dual-Product Model
+- **Auth:** Ory Kratos → WorkOS (ADR-007). Feature 02 обновлён.
+- **12 новых фич (F25-F36):** WorkOS Migration (F25), Registry API (F26), TUI Data Collection (F27), Dashboard v2 (F28), SaaS Discovery (F29), Agent Governance Cloud (F30), Remediation Cloud (F31), Monitoring Cloud (F32), Enterprise (F33), Growth & Marketing (F34), Marketplace (F35), White-Label (F36)
+- **Новые спринты:** S7 (WorkOS + Registry API), S8 (Dashboard v2 + Discovery), S9 (Monitoring + Enterprise), S10 (Scale + International)
+- **Кросс-зависимости:** Engine (open-source) features = C.xxx. SaaS features = F01-F36.
+- **Архитектурные решения:** обновлены (Ory → WorkOS, + Registry API, + TUI Data Collection, Cross-System Map = TUI scans + GitHub/GitLab scan)
 
 ### v3.6.0 (2026-02-15) — Sprint 6: Admin Panel + Stripe + Deploy
 - **NEW Feature 24:** Platform Admin Panel (P1, Sprint 6) — cross-org read-only admin API + frontend UI for SaaS owner to view all users, organizations, subscriptions, and MRR
@@ -1017,48 +1024,260 @@ Feature 01 (infrastructure), Feature 04a (classification for Free Classification
 
 ---
 
+---
+
+## Feature 25: WorkOS Migration (NEW — Sprint 7)
+
+**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 7
+
+### Бизнес-ценность
+Замена self-hosted Ory Kratos на managed WorkOS. Enterprise SSO бесплатно до 1M MAU, AuthKit (hosted login), упрощение ops (минус Docker service).
+
+### Описание
+- Убрать Kratos Docker service, Caddy `.ory/*` routes, webhook sync
+- Добавить WorkOS SDK (`@workos-inc/node`), AuthKit callback, session middleware
+- Миграция: `User.oryId` → `User.workosUserId`, `Organization` += `workosOrgId`
+- Enterprise SSO: SAML/OIDC через WorkOS Organizations
+- **Supersedes:** ADR-006. См. ADR-007.
+
+### Зависимости
+- Блокирует: F26 (Registry API), F27 (TUI Data Collection), F28 (Dashboard v2)
+
+---
+
+## Feature 26: Registry API (NEW — Sprint 7)
+
+**Приоритет:** P0 (Must Have) | **Размер:** M | **Спринт:** 7
+
+### Бизнес-ценность
+Публичные API эндпоинты для TUI Engine DataProvider. Обогащение данных сканера (2,477 tools, 108 obligations). API Key monetization.
+
+### Описание
+- `GET /v1/registry/tools` — поиск/фильтрация AI tools
+- `GET /v1/regulations/obligations` — compliance obligations
+- `GET /v1/data/bundle` — offline data bundle (~530KB)
+- API Key auth (HMAC-SHA256), rate limits per plan, ETag caching
+- Новые таблицы: RegistryTool, Obligation, ScoringRule, APIKey, APIUsage
+
+### Зависимости
+- Зависит от: F25 (WorkOS — auth infrastructure)
+- Кросс-зависимость: Engine C.040-C.046 (AI Registry DataProvider port)
+
+---
+
+## Feature 27: TUI Data Collection (NEW — Sprint 7)
+
+**Приоритет:** P1 (Should Have) | **Размер:** S | **Спринт:** 7
+
+### Бизнес-ценность
+Если пользователь купил доступ к Dashboard, его TUI автоматически загружает результаты сканирования и обнаруженные AI-системы. Это основа Cross-System Map — org-wide compliance view без необходимости ручного ввода.
+
+### Описание
+- `POST /v1/tui/scans` — загрузка результата скана: score, findings, toolsDetected, regulation, scannedAt
+- Idempotent: HMAC(orgId + projectPath + scannedAt) — повторные загрузки игнорируются
+- Новая таблица: ScanResult (organizationId, projectPath, score, findings, toolsDetected)
+- Dashboard получает SSE push при каждой загрузке → Cross-System Map обновляется в реальном времени
+- **Без heartbeat, без TUINode** — отслеживание нод не нужно
+
+### Зависимости
+- Зависит от: F26 (Registry API — API Key auth инфраструктура)
+- Кросс-зависимость: Engine C.F02 (codebase scan) — TUI сканирует → результат уходит в SaaS
+
+---
+
+## Feature 28: Dashboard v2 — Cross-System Map (NEW — Sprint 8)
+
+**Приоритет:** P1 (Should Have) | **Размер:** L | **Спринт:** 8
+
+### Бизнес-ценность
+Cross-System Map, Agent Registry UI, Score Trends, Monitoring. Ключевые экраны для конверсии Free TUI → Paid Dashboard.
+
+### Описание
+- **Cross-System Map** (Screen 24): org-wide compliance overview — все AI tools организации, risk scores, топология
+- **GitHub/GitLab Scan**: автоматический скан всех репозиториев организации через OAuth API — обнаружение AI patterns
+- **Agent Governance UI** (Screen 25): таблица AI coding agents организации (локальные данные из Engine)
+- **Registry API Settings** (Screen 27): API ключи, usage stats, rate limit monitoring
+- **Score Trends** (Screen 29): аналитика compliance по времени (на основе AITool history)
+- Role-based views (CTO → high-level, DPO → violations, Developer → fixes)
+
+### Зависимости
+- Зависит от: F27 (TUI Data Collection — данные от TUI), F25 (WorkOS — GitHub/GitLab OAuth)
+- Кросс-зависимость: Engine C.F13-F22 (Agent Governance local data)
+
+---
+
+## Feature 29: SaaS Discovery Connectors (NEW — Sprint 8-9)
+
+**Приоритет:** P2 (Could Have) | **Размер:** M | **Спринт:** 8-9
+
+### Бизнес-ценность
+Cloud-based AI tool discovery: IdP integration, API traffic analysis, bot discovery, shadow AI detection.
+
+### Описание
+- Discovery via IdP (WorkOS Organizations → connected apps → AI tools)
+- API Traffic parser (CloudTrail/proxy logs → AI API calls)
+- Bot Discovery (detect AI bots in Slack/Teams via Webhook)
+- Shadow AI detection dashboard
+- ML Model Registry connectors (MLflow, SageMaker, Vertex AI)
+
+### Зависимости
+- Зависит от: F25 (WorkOS — IdP data), F27 (TUI Data Collection — discovery data)
+- Кросс-зависимость: Engine C.F01-F12 (local discovery → SaaS enrichment)
+
+---
+
+## Feature 30: Agent Governance Cloud (NEW — Sprint 9)
+
+**Приоритет:** P2 (Could Have) | **Размер:** M | **Спринт:** 9
+
+### Описание
+- Permissions Matrix UI (CRUD per agent per resource)
+- Agent Lifecycle management (provision → approve → monitor → decommission)
+- Cross-Agent dependency map
+- Audit trail for agent actions
+
+### Зависимости
+- Кросс-зависимость: Engine C.F13-F22 (local agent governance → SaaS UI)
+
+---
+
+## Feature 31: Remediation Cloud (NEW — Sprint 9)
+
+**Приоритет:** P2 (Could Have) | **Размер:** M | **Спринт:** 9
+
+### Описание
+- Org-wide remediation plans (cross all TUI nodes)
+- Vendor Assessment automation (questionnaires to AI vendors)
+- Compliance Proxy hosted (paid tier — compliorWrap() as cloud service)
+- Shadow AI enforcement (block non-compliant tools org-wide)
+
+### Зависимости
+- Кросс-зависимость: Engine C.F23-F30 (local remediation → SaaS aggregation)
+
+---
+
+## Feature 32: Monitoring Cloud (NEW — Sprint 9-10)
+
+**Приоритет:** P2 (Could Have) | **Размер:** L | **Спринт:** 9-10
+
+### Описание
+- **Monitoring Dashboard** (Screen 26): drift alerts, anomaly detection, heatmaps
+- Regulation change monitoring (EUR-Lex → impact assessment)
+- Anomaly detection (sudden score drops, unusual agent activity)
+- Scheduled reports (weekly/monthly compliance digest via email)
+- SLA tracking (compliance score guarantees per plan)
+- Incident response workflow (violation → alert → fix → verify)
+- Vendor monitoring (vendor compliance status changes)
+
+### Зависимости
+- Зависит от: F28 (Dashboard v2 — UI)
+
+---
+
+## Feature 33: Enterprise Features (NEW — Sprint 9-10)
+
+**Приоритет:** P2 (Could Have) | **Размер:** L | **Спринт:** 9-10
+
+### Описание
+- Team Dashboard (per-department compliance views)
+- Organization-wide scan (all TUI nodes + cloud discovery)
+- SSO (SAML/OIDC) — already free via WorkOS (F25)
+- Audit trail export (CSV/JSON for regulators)
+- Custom roles (beyond owner/admin/member/viewer)
+- Custom compliance rules (org-specific checks)
+- White-label reports (remove Complior branding)
+- API v1.0 (stable, versioned, documented)
+
+### Зависимости
+- Зависит от: F25 (WorkOS SSO), F28 (Dashboard v2)
+
+---
+
+## Feature 34: Growth & Marketing (NEW — Sprint 10+)
+
+**Приоритет:** P3 (Future) | **Размер:** M | **Спринт:** 10+
+
+### Описание
+- State of AI Compliance Report (annual industry report, lead gen)
+- Compliance Leaderboard (anonymized org rankings)
+- SEO pages: 27.5K pages (2,477 tools × 11 jurisdictions)
+- Blog + knowledge base (AI Act articles explained)
+
+---
+
+## Feature 35: Marketplace (NEW — Future)
+
+**Приоритет:** P3 (Future) | **Размер:** L | **Спринт:** Future
+
+### Описание
+- Plugin marketplace (compliance rule packs, jurisdiction packs)
+- Template marketplace (FRIA templates, policy templates)
+- Integration marketplace (3rd-party agent connectors)
+
+---
+
+## Feature 36: White-Label & Self-Hosted (NEW — Future)
+
+**Приоритет:** P3 (Future) | **Размер:** XL | **Спринт:** Future
+
+### Описание
+- White-label SaaS (for consulting firms, law firms)
+- Self-hosted enterprise package (Docker image, air-gapped)
+- Custom branding, custom domain, custom compliance rules
+
+---
+
 ## Сводка по приоритетам
 
-### P0 — Must Have (Deployer MVP)
+### P0 — Must Have (Deployer MVP + TUI+SaaS Core)
 
-| # | Feature | Размер | Спринт |
-|---|---------|--------|--------|
-| 01 | Инфраструктура | M | 0 |
-| 02 | IAM (Ory) + Invite + Team + Enforcement | L | 1 + 2.5 |
-| 03 | AI Tool Inventory + Wizard + Alternatives | L | 1-3 |
-| 04a | Rule Engine (deployer) | L | 2 |
-| 04b | Classification History + Reclassification | S | 3 |
-| 04c | Deployer Requirements Mapping | M | 3 |
-| 05 | Deployer Dashboard | L | 3 (backend) + 5+ (frontend) |
-| 06 | Eva — Conversational Onboarding | L | 4 |
+| # | Feature | Размер | Спринт | Статус |
+|---|---------|--------|--------|--------|
+| 01 | Инфраструктура | M | 0 | ✅ |
+| 02 | IAM (Ory → WorkOS) + Invite + Team + Enforcement | L | 1 + 2.5 + 7 | ✅ (S1-2.5), 📋 (S7 WorkOS) |
+| 03 | AI Tool Inventory + Wizard + Alternatives | L | 1-3 | ✅ |
+| 04a | Rule Engine (deployer) | L | 2 | ✅ |
+| 04b | Classification History + Reclassification | S | 3 | ✅ |
+| 04c | Deployer Requirements Mapping | M | 3 | ✅ |
+| 05 | Deployer Dashboard | L | 3 + 5 | ✅ |
+| 06 | Eva — Conversational Onboarding | L | 7 | 📋 |
+| **25** | **WorkOS Migration** | **M** | **7** | **📋** |
+| **26** | **Registry API** | **M** | **7** | **📋** |
 
-**MVP-ready: Sprint 4 (неделя 8-10)** — inventory, classification, dashboard, Eva
+**MVP-ready: Sprint 6 (frontend + admin)**. TUI+SaaS core: Sprint 7.
 
 ### P1 — Should Have
 
-| # | Feature | Размер | Спринт |
-|---|---------|--------|--------|
-| 07 | Deployer Doc Generation | L | 4-5 |
-| 08 | Gap Analysis | M | 5 |
-| 19 | FRIA Generator (Art. 27) | M | 5 |
-| **23** | **Free Lead Gen Tools (Quick Check, Penalty Calc → 3.5; Free Classification → 5)** | **M** | **3.5 + 5** |
-| 09 | Billing (Stripe Checkout → 3.5; full management → 5-6) | M | 3.5 + 5-6 |
-| 10 | Eva tool calling | S | 6 |
-| 11 | Onboarding + Notifications | M | 6 |
+| # | Feature | Размер | Спринт | Статус |
+|---|---------|--------|--------|--------|
+| 07 | Deployer Doc Generation | L | 7-8 | 📋 |
+| 08 | Gap Analysis | M | 8 | 📋 |
+| 19 | FRIA Generator (Art. 27) | M | 8 | 📋 |
+| 23 | Free Lead Gen Tools | M | 3.5 + 5 | ✅ |
+| 09 | Billing (Stripe) | M | 3.5 + 6 | ✅ |
+| 10 | Eva tool calling | S | 8 | 📋 |
+| 11 | Onboarding + Notifications | M | 8 | 📋 |
+| **27** | **TUI Data Collection** | **S** | **7** | **📋** |
+| **28** | **Dashboard v2 (Cross-System Map)** | **L** | **8** | **📋** |
 
-**Product-ready: Sprint 6 (неделя 12-14)**
+**Product-ready: Sprint 8**
 
 ### P2 — Could Have
 
 | # | Feature | Размер | Спринт |
 |---|---------|--------|--------|
-| 12 | Regulatory Monitor | M | 7 |
-| 20 | KI-Compliance Siegel | S | 7 |
-| **21** | **Provider-Lite Wizard** | **M** | **7-8** |
-| **22** | **Compliance Checklist Generator** | **S** | **7+** |
-| 13 | Доп. deployer-документы | M | 7-8 |
-| 18 | **AI Literacy Module (WEDGE, EN-first)** | L | 8+ |
-| 14 | Multi-language (+ DE, FR) | M | post-MVP |
+| 12 | Regulatory Monitor | M | 9 |
+| 20 | KI-Compliance Siegel | S | 9 |
+| 21 | Provider-Lite Wizard | M | 9 |
+| 22 | Compliance Checklist Generator | S | 9 |
+| 13 | Доп. deployer-документы | M | 9 |
+| 18 | AI Literacy Module (WEDGE, EN-first) | L | 10+ |
+| 14 | Multi-language (+ DE, FR) | M | 10+ |
+| **29** | **SaaS Discovery Connectors** | **M** | **8-9** |
+| **30** | **Agent Governance Cloud** | **M** | **9** |
+| **31** | **Remediation Cloud** | **M** | **9** |
+| **32** | **Monitoring Cloud** | **L** | **9-10** |
+| **33** | **Enterprise Features** | **L** | **9-10** |
 
 ### P3 — Future
 
@@ -1067,6 +1286,9 @@ Feature 01 (infrastructure), Feature 04a (classification for Free Classification
 | 15 | Compliance Copilot | M |
 | 16 | Shadow AI Auto-Discovery (EU) | L |
 | 17 | Autonomous Agent | XL |
+| **34** | **Growth & Marketing** | **M** |
+| **35** | **Marketplace** | **L** |
+| **36** | **White-Label & Self-Hosted** | **XL** |
 | — | Provider Features (Art. 11, 43, 47, 51-56, 49) — full providers only | XL |
 
 ---
@@ -1074,32 +1296,30 @@ Feature 01 (infrastructure), Feature 04a (classification for Free Classification
 ## Roadmap
 
 ```
-Sprint 0     ██ Feature 01: Infrastructure                                        ✅
-Sprint 1     ████ Feature 02: IAM + Feature 03: AI Tool Inventory (start)         ✅
-Sprint 2     ████ Feature 03 (end) + Feature 04a: Rules + Feature 04c (mapping)   ✅
-Sprint 2.5   ████ Feature 02: Invite Flow + Team Management + Enforcement (24 SP) ✅
-Sprint 3     ████ Feature 04b: History + Feature 04c: Requirements API            ✅
-                  + Feature 05: Dashboard API + Feature 03: Alternatives
-Sprint 3.5   ████ Feature 09 (partial): Stripe Checkout + Webhook                ✅
-                  + Feature 23 (partial): Quick Check + Penalty Calculator
-                  + Feature 02: Plan-aware Registration + Pricing Page
-Sprint 4     ████ Production Deployment: Docker, Caddy, Kratos, GDPR, CI/CD      ✅
-Sprint 5     ████ Frontend: Landing (15 sections), Auth, Pricing, Tools, i18n     ✅
+Sprint 0     ██ F01: Infrastructure                                               ✅
+Sprint 1     ████ F02: IAM + F03: AI Tool Inventory (start)                       ✅
+Sprint 2     ████ F03 (end) + F04a: Rules + F04c (mapping)                        ✅
+Sprint 2.5   ████ F02: Invite Flow + Team Management + Enforcement                ✅
+Sprint 3     ████ F04b: History + F04c: Requirements API + F05: Dashboard API     ✅
+Sprint 3.5   ████ F09 (partial): Stripe Checkout + F23: Quick Check + Penalty     ✅
+Sprint 4     ████ Production Deployment: Docker, Caddy, Kratos, GDPR, CI/CD       ✅
+Sprint 5     ████ Frontend Rebuild: Landing, Auth, Pricing, Tools                  ✅
+Sprint 6     ████ F24: Admin Panel + F09: Stripe Test + Production Deploy          ✅
              ── MVP FRONTEND READY ──
-Sprint 6     ████ Feature 24: Platform Admin Panel (Backend + Frontend)
-                  + Feature 09: Stripe Test Mode Setup
-                  + Production Deploy: Frontend Docker + Caddy proxy
-Sprint 7     ████ Feature 06: Eva Conversational Onboarding
-             ── MVP READY ──
-Sprint 7-8   ████ Feature 07: Deployer Docs + Feature 08: Gap + Feature 19: FRIA
-                  + Feature 09: Full Billing (portal, invoices, plan changes)
-Sprint 8     ██ Feature 10: Eva tools + Feature 11: Onboarding
+Sprint 7     ████ F25: WorkOS Migration + F26: Registry API + F27: TUI Data       📋
+                  + F06: Eva Conversational Onboarding
+             ── TUI+SaaS CORE READY ──
+Sprint 8     ████ F28: Dashboard v2 + F29: SaaS Discovery                        📋
+                  + F07: Deployer Docs + F08: Gap + F19: FRIA
+                  + F10: Eva tools + F11: Onboarding
              ── PRODUCT READY ──
-Sprint 7-8   ████ Feature 12: Reg Monitor + Feature 20: KI-Siegel
-                  + Feature 21: Provider-Lite Wizard + Feature 22: Checklist
-Sprint 8     ████ Feature 13: Docs
+Sprint 9     ████ F30: Agent Governance + F31: Remediation + F32: Monitoring       📋
+                  + F33: Enterprise + F12: Reg Monitor + F20: KI-Siegel
+                  + F21: Provider-Lite + F22: Checklist
+Sprint 10    ████ F18: AI Literacy + F14: Multi-language                           📋
+                  + F34: Growth & Marketing
              ── FULL SCOPE ──
-Sprint 8+    ████ Feature 18: AI Literacy (EN-first) + Feature 14: i18n (+ DE, FR)
+Future       ████ F35: Marketplace + F36: White-Label + F15-F17: Agent features
 ```
 
 ---
@@ -1111,9 +1331,11 @@ Sprint 8+    ████ Feature 18: AI Literacy (EN-first) + Feature 14: i18n 
 | **Deployer-first** вместо universal | 125K+ deployers vs 1.1K providers в Германии. Рынок в 120x больше, не обслужен. Provider features → P3 |
 | **AI Literacy как wedge product** | Art. 4 уже обязателен (Feb 2025). 70% сотрудников не обучены. Standalone за €49/мес |
 | **AI Tool Catalog (seed 200+)** | Упрощает onboarding: не нужно описывать инструмент с нуля, выбери из каталога |
-| **Shadow AI Auto-Discovery: EU-sovereign** | Без M365/Google. DNS logs + browser extension + Ory OAuth |
+| **Shadow AI Auto-Discovery: EU-sovereign** | Без M365/Google. DNS logs + browser extension + WorkOS IdP |
 | **pg-boss** вместо BullMQ+Redis | PostgreSQL-only на MVP |
-| **Ory (self-hosted)** вместо custom auth | EU, Apache 2.0, webhook sync |
+| **WorkOS (managed)** вместо Ory (self-hosted) | SSO бесплатно до 1M MAU, AuthKit, нет ops burden (ADR-007) |
+| **Registry API** | Монетизация данных: Free bundle → Paid API. TUI DataProvider port |
+| **TUI Data Collection** + **Registry API** | Конверсия: Free TUI работает offline → апгрейд подключает SaaS: данные скана уходят в Dashboard, Registry API обогащает данные |
 | **Brevo** вместо custom email | EU (Франция), 300/day free |
 | **Gotenberg** для PDF | Self-hosted, certificates + FRIA + docs |
 | **Hetzner Object Storage** для файлов | S3-compatible, €5.27/TB, EU |
@@ -1124,6 +1346,16 @@ Sprint 8+    ████ Feature 18: AI Literacy (EN-first) + Feature 14: i18n 
 
 ---
 
-✅ **APPROVED:** Deployer-First Backlog утверждён PO (2026-02-10).
+✅ **APPROVED:** TUI+SaaS Dual-Product Backlog v4.0.0 утверждён PO (2026-02-21).
 
-💡 **Следующий шаг:** Sprint 6 реализация (Feature 24: Platform Admin Panel + Feature 09: Stripe Test Mode + Production Frontend Deploy) — см. `SPRINT-BACKLOG-006.md`
+💡 **Следующий шаг:** Sprint 7 реализация (F25: WorkOS Migration + F26: Registry API + F06: Eva) — см. `SPRINT-BACKLOG-007.md`
+
+### Кросс-проектные зависимости (Engine ↔ SaaS)
+
+| SaaS Feature | Engine Feature | Тип |
+|-------------|---------------|-----|
+| F26: Registry API | C.040-C.046: AI Registry DataProvider | ЖЁСТКАЯ (shared types) |
+| F27: TUI Data Collection | C.F02: codebase scan → ScanResult upload | СРЕДНЯЯ (Dashboard может начать с mock) |
+| F28: Dashboard v2 | C.F13-F22: Agent Governance | МЯГКАЯ (mock data до готовности Engine) |
+| F29: SaaS Discovery | C.F01-F12: Local Discovery | МЯГКАЯ (разные источники) |
+| F32: Monitoring Cloud | C.F31-F38: Local Monitoring | МЯГКАЯ (aggregation layer) |

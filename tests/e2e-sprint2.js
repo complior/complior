@@ -8,7 +8,7 @@
  */
 
 const BASE = process.env.BASE_URL || 'http://localhost:8000';
-const ORY = process.env.ORY_SDK_URL || 'http://localhost:4433';
+const WORKOS = process.env.WORKOS_SDK_URL || 'http://localhost:4433';
 
 const EMAIL = `e2e-${Date.now()}@testcorp.eu`;
 const PASSWORD = 'E2eTestPass_2026!';
@@ -49,18 +49,18 @@ const assert = (cond, label, detail) => {
 
 const section = (title) => console.log(`\n── ${title} ${'─'.repeat(60 - title.length)}`);
 
-// ── 0. Ory Registration + Login ─────────────────────────────────────────
+// ── 0. WorkOS Registration + Login ───────────────────────────────────────
 
 const setupSession = async () => {
-  section('Ory: Register + Login');
+  section('WorkOS: Register + Login');
 
   // Step 1: init registration flow
-  const flow = await http(`${ORY}/self-service/registration/api`);
+  const flow = await http(`${WORKOS}/self-service/registration/api`);
   assert(flow.status === 200, 'Registration flow created', flow.json?.id);
   const flowId = flow.json.id;
 
   // Step 2: submit profile traits
-  await http(`${ORY}/self-service/registration?flow=${flowId}`, {
+  await http(`${WORKOS}/self-service/registration?flow=${flowId}`, {
     method: 'POST',
     body: {
       method: 'profile',
@@ -69,7 +69,7 @@ const setupSession = async () => {
   });
 
   // Step 3: submit password
-  const reg = await http(`${ORY}/self-service/registration?flow=${flowId}`, {
+  const reg = await http(`${WORKOS}/self-service/registration?flow=${flowId}`, {
     method: 'POST',
     body: {
       method: 'password',
@@ -85,8 +85,8 @@ const setupSession = async () => {
   }
 
   // Fallback: login if already registered
-  const loginFlow = await http(`${ORY}/self-service/login/api`);
-  const login = await http(`${ORY}/self-service/login?flow=${loginFlow.json.id}`, {
+  const loginFlow = await http(`${WORKOS}/self-service/login/api`);
+  const login = await http(`${WORKOS}/self-service/login?flow=${loginFlow.json.id}`, {
     method: 'POST',
     body: { method: 'password', identifier: EMAIL, password: PASSWORD },
   });
@@ -392,14 +392,14 @@ const testDelete = async () => {
 const testMultiTenancy = async () => {
   section('Multi-tenancy: cross-org isolation');
 
-  // Register second user via raw fetch (no session token to Ory)
+  // Register second user via raw fetch (no session token to WorkOS)
   const email2 = `e2e-other-${Date.now()}@othercorp.eu`;
-  const flowRes = await fetch(`${ORY}/self-service/registration/api`);
+  const flowRes = await fetch(`${WORKOS}/self-service/registration/api`);
   const flow = await flowRes.json();
   const flowId = flow.id;
 
   // Profile step (may 400 on two-step flow, that's ok)
-  await fetch(`${ORY}/self-service/registration?flow=${flowId}`, {
+  await fetch(`${WORKOS}/self-service/registration?flow=${flowId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -409,7 +409,7 @@ const testMultiTenancy = async () => {
   });
 
   // Password step
-  const regRes = await fetch(`${ORY}/self-service/registration?flow=${flowId}`, {
+  const regRes = await fetch(`${WORKOS}/self-service/registration?flow=${flowId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -477,7 +477,7 @@ const testCatalog = async () => {
   console.log('║   Sprint 2 — Real-Time E2E Tests (Node.js)                 ║');
   console.log('╚══════════════════════════════════════════════════════════════╝');
   console.log(`Server: ${BASE}`);
-  console.log(`Ory:    ${ORY}`);
+  console.log(`WorkOS: ${WORKOS}`);
 
   try {
     await setupSession();

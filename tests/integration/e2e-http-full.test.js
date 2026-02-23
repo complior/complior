@@ -12,11 +12,12 @@ const {
 describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   let pool;
   let server;
+  let application;
 
   // Shared state across tests (populated as we go)
-  const OWNER_ORY = 'ory-e2e-owner';
-  const MEMBER_ORY = 'ory-e2e-member';
-  const OTHER_ORY = 'ory-e2e-other-org';
+  const OWNER_WOS = 'wos-e2e-owner';
+  const MEMBER_WOS = 'wos-e2e-member';
+  const OTHER_WOS = 'wos-e2e-other-org';
 
   let ownerUserId;
   let ownerOrgId;
@@ -30,7 +31,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
   const inject = (method, url, opts = {}) => {
     const headers = {};
-    if (opts.oryId) headers['x-test-ory-id'] = opts.oryId;
+    if (opts.workosId) headers['x-test-workos-id'] = opts.workosId;
     const config = { method, url, headers };
     if (opts.payload) config.payload = opts.payload;
     if (opts.query) {
@@ -52,24 +53,20 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
       'UPDATE "Plan" SET "maxUsers" = 1, "maxTools" = 5 WHERE "name" = \'free\'',
     );
 
-    const { api } = await buildFullSandbox(pool, {
-      ory: { verifyWebhookSecret: () => true, verifySession: async () => null },
-    });
+    const { api, application: app } = await buildFullSandbox(pool);
+    application = app;
 
     server = fastify({ logger: false });
     initRequestId(server);
     initErrorHandler(server);
 
-    // Mock session: x-test-ory-id → request.session.identity.id
+    // Mock session: x-test-workos-id → request.session.user.id
     server.addHook('onRequest', (req, _reply, done) => {
       req.session = null;
-      const oryId = req.headers['x-test-ory-id'];
-      if (oryId) {
+      const workosId = req.headers['x-test-workos-id'];
+      if (workosId) {
         req.session = {
-          identity: {
-            id: oryId,
-            traits: { email: '', name: { first: 'Test', last: 'User' } },
-          },
+          user: { id: workosId },
         };
       }
       done();
@@ -89,59 +86,30 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   //  SPRINT 1: IAM + Catalog + Audit
   // ════════════════════════════════════════════════════════════════════
 
-  describe('Sprint 1: POST /api/auth/webhook', () => {
-    it('201 — creates new user + org + role + subscription', async () => {
-      const res = await inject('POST', '/api/auth/webhook', {
-        payload: {
-          event: 'registration',
-          identity_id: OWNER_ORY,
-          email: 'owner@e2e.test',
-          name: { first: 'Owner', last: 'User' },
-          locale: 'en',
-        },
+  describe('Sprint 1: User Sync via WorkOS', () => {
+    it('creates new user + org + role + subscription', async () => {
+      const result = await application.iam.syncUserFromWorkOS.syncUser({
+        id: OWNER_WOS, email: 'owner@e2e.test', firstName: 'Owner', lastName: 'User',
       });
-      assert.strictEqual(res.statusCode, 201);
-      const body = json(res);
-      assert.strictEqual(body.status, 'created');
-      assert(body.userId, 'Should return userId');
-      assert(body.organizationId, 'Should return organizationId');
+      assert.strictEqual(result.created, true);
+      assert(result.user.id, 'Should return userId');
+      assert(result.user.organizationId, 'Should return organizationId');
 
-      ownerUserId = body.userId;
-      ownerOrgId = body.organizationId;
+      ownerUserId = result.user.id;
+      ownerOrgId = result.user.organizationId;
     });
 
-    it('200 — idempotent for same oryId', async () => {
-      const res = await inject('POST', '/api/auth/webhook', {
-        payload: {
-          event: 'registration',
-          identity_id: OWNER_ORY,
-          email: 'owner@e2e.test',
-          name: { first: 'Owner', last: 'User' },
-        },
+    it('idempotent for same workosUserId', async () => {
+      const result = await application.iam.syncUserFromWorkOS.syncUser({
+        id: OWNER_WOS, email: 'owner@e2e.test', firstName: 'Owner', lastName: 'User',
       });
-      assert.strictEqual(res.statusCode, 200);
-      assert.strictEqual(json(res).status, 'exists');
-    });
-
-    it('200 — ignores non-registration events', async () => {
-      const res = await inject('POST', '/api/auth/webhook', {
-        payload: { event: 'login', identity_id: 'ory-x', email: 'x@x.com' },
-      });
-      assert.strictEqual(res.statusCode, 200);
-      assert.strictEqual(json(res).status, 'ignored');
-    });
-
-    it('400 — missing required fields', async () => {
-      const res = await inject('POST', '/api/auth/webhook', {
-        payload: { event: 'registration' },
-      });
-      assert.strictEqual(res.statusCode, 400);
+      assert.strictEqual(result.created, false);
     });
   });
 
   describe('Sprint 1: GET /api/auth/me', () => {
     it('200 — returns user profile', async () => {
-      const res = await inject('GET', '/api/auth/me', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/auth/me', { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
       assert.strictEqual(body.email, 'owner@e2e.test');
@@ -203,7 +171,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Sprint 1: PATCH /api/organizations/:id', () => {
     it('200 — owner updates org name', async () => {
       const res = await inject('PATCH', `/api/organizations/${ownerOrgId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { name: 'E2E Corp' },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -226,7 +194,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
   describe('Sprint 1: GET /api/auth/audit', () => {
     it('200 — returns audit entries', async () => {
-      const res = await inject('GET', '/api/auth/audit', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/auth/audit', { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
       assert(body.data, 'Should have data array');
@@ -246,7 +214,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Sprint 2: POST /api/tools — Register', () => {
     it('201 — registers new tool', async () => {
       const res = await inject('POST', '/api/tools', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { name: 'E2E Bot', vendorName: 'E2E Vendor' },
       });
       assert.strictEqual(res.statusCode, 201);
@@ -268,7 +236,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
   describe('Sprint 2: GET /api/tools — List', () => {
     it('200 — lists tools in org', async () => {
-      const res = await inject('GET', '/api/tools', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/tools', { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
       assert(body.data.length >= 1, 'Should have at least 1 tool');
@@ -279,7 +247,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
   describe('Sprint 2: GET /api/tools/:id — Detail', () => {
     it('200 — returns tool detail', async () => {
-      const res = await inject('GET', `/api/tools/${toolId}`, { oryId: OWNER_ORY });
+      const res = await inject('GET', `/api/tools/${toolId}`, { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
       assert.strictEqual(body.tool.name, 'E2E Bot');
@@ -288,7 +256,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
     });
 
     it('404 — unknown tool', async () => {
-      const res = await inject('GET', '/api/tools/99999', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/tools/99999', { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 404);
     });
   });
@@ -296,7 +264,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Sprint 2: PATCH /api/tools/:id — Wizard Steps', () => {
     it('200 — step 2 (purpose + domain)', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { step: 2, purpose: 'Customer chatbot', domain: 'customer_service' },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -305,7 +273,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('200 — step 3 (dataTypes + affectedPersons)', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: {
           step: 3,
           dataTypes: ['personal'],
@@ -319,7 +287,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('200 — step 4 → wizardCompleted=true', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: {
           step: 4,
           autonomyLevel: 'advisory',
@@ -333,7 +301,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('400 — invalid step data', async () => {
       const res = await inject('PATCH', `/api/tools/${toolId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { step: 2, purpose: '', domain: 'invalid_domain' },
       });
       assert.strictEqual(res.statusCode, 400);
@@ -343,7 +311,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Sprint 2: POST /api/tools/:id/classify', () => {
     it('200 — classifies completed tool', async () => {
       const res = await inject('POST', `/api/tools/${toolId}/classify`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
@@ -356,13 +324,13 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
     it('400 — cannot classify incomplete wizard', async () => {
       // Register a draft tool (step 1 only)
       const draft = await inject('POST', '/api/tools', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { name: 'Draft Bot', vendorName: 'V' },
       });
       const draftId = json(draft).id;
 
       const res = await inject('POST', `/api/tools/${draftId}/classify`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 400);
     });
@@ -371,12 +339,12 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Sprint 2: DELETE /api/tools/:id', () => {
     it('200 — hard-deletes draft tool', async () => {
       const draft = await inject('POST', '/api/tools', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { name: 'Deletable', vendorName: 'V' },
       });
       const draftId = json(draft).id;
 
-      const res = await inject('DELETE', `/api/tools/${draftId}`, { oryId: OWNER_ORY });
+      const res = await inject('DELETE', `/api/tools/${draftId}`, { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(json(res).success, true);
 
@@ -390,7 +358,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('200 — soft-deletes classified tool', async () => {
       const res = await inject('DELETE', `/api/tools/${classifiedToolId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
 
@@ -417,7 +385,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('201 — creates invitation', async () => {
       const res = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'invited@e2e.test', role: 'member' },
       });
       assert.strictEqual(res.statusCode, 201);
@@ -435,7 +403,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('409 — duplicate pending invitation', async () => {
       const res = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'invited@e2e.test', role: 'member' },
       });
       assert.strictEqual(res.statusCode, 409);
@@ -446,7 +414,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
         'UPDATE "Plan" SET "maxUsers" = 1 WHERE "name" = \'free\'',
       );
       const res = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'blocked@e2e.test', role: 'member' },
       });
       assert.strictEqual(res.statusCode, 403);
@@ -489,20 +457,13 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
   describe('Sprint 2.5: New user + Accept Invitation', () => {
     it('new user registers with pending invite → joins existing org', async () => {
-      const res = await inject('POST', '/api/auth/webhook', {
-        payload: {
-          event: 'registration',
-          identity_id: MEMBER_ORY,
-          email: 'invited@e2e.test',
-          name: { first: 'Invited', last: 'Member' },
-          locale: 'en',
-        },
+      const result = await application.iam.syncUserFromWorkOS.syncUser({
+        id: MEMBER_WOS, email: 'invited@e2e.test', firstName: 'Invited', lastName: 'Member',
       });
-      assert.strictEqual(res.statusCode, 201);
-      const body = json(res);
-      assert.strictEqual(body.organizationId, ownerOrgId,
+      assert.strictEqual(result.created, true);
+      assert.strictEqual(result.user.organizationId, ownerOrgId,
         'New user should join inviter org');
-      memberUserId = body.userId;
+      memberUserId = result.user.id;
     });
 
     it('invitation now marked as accepted', async () => {
@@ -515,19 +476,13 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('existing user accepts invitation → org transfer', async () => {
       // 1. Create another user in their own org
-      await inject('POST', '/api/auth/webhook', {
-        payload: {
-          event: 'registration',
-          identity_id: 'ory-e2e-xfer',
-          email: 'xfer@e2e.test',
-          name: { first: 'Transfer', last: 'User' },
-          locale: 'en',
-        },
+      await application.iam.syncUserFromWorkOS.syncUser({
+        id: 'wos-e2e-xfer', email: 'xfer@e2e.test', firstName: 'Transfer', lastName: 'User',
       });
 
       // 2. Create invitation for xfer user's email
       const inv = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'xfer@e2e.test', role: 'admin' },
       });
       assert.strictEqual(inv.statusCode, 201);
@@ -540,7 +495,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
       // 4. Accept (authenticated as the xfer user)
       const res = await inject('POST', '/api/team/invite/accept', {
-        oryId: 'ory-e2e-xfer',
+        workosId: 'wos-e2e-xfer',
         payload: { token: tokenRow.rows[0].token },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -550,7 +505,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('403 — email mismatch on accept', async () => {
       const inv = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'mismatch@e2e.test', role: 'member' },
       });
       const tokenRow = await pool.query(
@@ -560,7 +515,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
       // Owner tries to accept — email mismatch (owner is owner@e2e.test)
       const res = await inject('POST', '/api/team/invite/accept', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { token: tokenRow.rows[0].token },
       });
       assert.strictEqual(res.statusCode, 403);
@@ -569,7 +524,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
   describe('Sprint 2.5: GET /api/team/members', () => {
     it('200 — returns members + invitations + limits', async () => {
-      const res = await inject('GET', '/api/team/members', { oryId: OWNER_ORY });
+      const res = await inject('GET', '/api/team/members', { workosId: OWNER_WOS });
       assert.strictEqual(res.statusCode, 200);
       const body = json(res);
       assert(body.members.length >= 2, 'Should have owner + invited member');
@@ -589,7 +544,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Sprint 2.5: PATCH /api/team/members/:userId — Change Role', () => {
     it('200 — owner changes member to admin', async () => {
       const res = await inject('PATCH', `/api/team/members/${memberUserId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { role: 'admin' },
       });
       assert.strictEqual(res.statusCode, 200);
@@ -608,7 +563,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('403 — cannot change own role', async () => {
       const res = await inject('PATCH', `/api/team/members/${ownerUserId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { role: 'member' },
       });
       assert.strictEqual(res.statusCode, 403);
@@ -616,7 +571,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('403 — admin cannot change owner role', async () => {
       const res = await inject('PATCH', `/api/team/members/${ownerUserId}`, {
-        oryId: MEMBER_ORY,
+        workosId: MEMBER_WOS,
         payload: { role: 'member' },
       });
       assert.strictEqual(res.statusCode, 403);
@@ -626,7 +581,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Sprint 2.5: DELETE /api/team/members/:userId — Remove', () => {
     it('403 — cannot remove owner', async () => {
       const res = await inject('DELETE', `/api/team/members/${ownerUserId}`, {
-        oryId: MEMBER_ORY,
+        workosId: MEMBER_WOS,
       });
       assert.strictEqual(res.statusCode, 403);
     });
@@ -634,12 +589,12 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
     it('200 — owner removes member (soft delete)', async () => {
       // Change member back to member role first
       await inject('PATCH', `/api/team/members/${memberUserId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { role: 'member' },
       });
 
       const res = await inject('DELETE', `/api/team/members/${memberUserId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(json(res).success, true);
@@ -657,7 +612,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     before(async () => {
       const inv = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'revokeme@e2e.test', role: 'viewer' },
       });
       revokeInvId = json(inv).id;
@@ -665,7 +620,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('200 — revokes pending invitation', async () => {
       const res = await inject('DELETE', `/api/team/invitations/${revokeInvId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(json(res).success, true);
@@ -679,7 +634,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('400 — cannot revoke already-revoked', async () => {
       const res = await inject('DELETE', `/api/team/invitations/${revokeInvId}`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 400);
     });
@@ -690,7 +645,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     before(async () => {
       const inv = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'resend@e2e.test', role: 'member' },
       });
       resendInvId = json(inv).id;
@@ -698,7 +653,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
 
     it('200 — resends pending invitation email', async () => {
       const res = await inject('POST', `/api/team/invitations/${resendInvId}/resend`, {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
       });
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(json(res).success, true);
@@ -721,7 +676,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
       );
 
       const res = await inject('POST', '/api/tools', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { name: 'Blocked', vendorName: 'V' },
       });
       assert.strictEqual(res.statusCode, 403);
@@ -740,25 +695,19 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Multi-tenancy: cross-org isolation', () => {
     before(async () => {
       // Create user in a separate org
-      await inject('POST', '/api/auth/webhook', {
-        payload: {
-          event: 'registration',
-          identity_id: OTHER_ORY,
-          email: 'other@other-org.test',
-          name: { first: 'Other', last: 'Org' },
-          locale: 'de',
-        },
+      await application.iam.syncUserFromWorkOS.syncUser({
+        id: OTHER_WOS, email: 'other@other-org.test', firstName: 'Other', lastName: 'Org',
       });
     });
 
     it('other org sees zero tools', async () => {
-      const res = await inject('GET', '/api/tools', { oryId: OTHER_ORY });
+      const res = await inject('GET', '/api/tools', { workosId: OTHER_WOS });
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(json(res).data.length, 0);
     });
 
     it('other org sees only own members', async () => {
-      const res = await inject('GET', '/api/team/members', { oryId: OTHER_ORY });
+      const res = await inject('GET', '/api/team/members', { workosId: OTHER_WOS });
       assert.strictEqual(res.statusCode, 200);
       const emails = json(res).members.map((m) => m.email);
       assert(!emails.includes('owner@e2e.test'), 'Should not see owner org');
@@ -766,7 +715,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
     });
 
     it('other org sees only own audit', async () => {
-      const res = await inject('GET', '/api/auth/audit', { oryId: OTHER_ORY });
+      const res = await inject('GET', '/api/auth/audit', { workosId: OTHER_WOS });
       assert.strictEqual(res.statusCode, 200);
       // Should have 0 or only own entries (not owner org entries)
       const body = json(res);
@@ -782,35 +731,29 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   // ════════════════════════════════════════════════════════════════════
 
   describe('RBAC: viewer permissions', () => {
-    const VIEWER_ORY = 'ory-e2e-viewer';
+    const VIEWER_WOS = 'wos-e2e-viewer';
 
     before(async () => {
       // Create a viewer user in owner org via invite+register
       const inv = await inject('POST', '/api/team/invite', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         payload: { email: 'viewer@e2e.test', role: 'viewer' },
       });
       assert.strictEqual(inv.statusCode, 201);
 
-      await inject('POST', '/api/auth/webhook', {
-        payload: {
-          event: 'registration',
-          identity_id: VIEWER_ORY,
-          email: 'viewer@e2e.test',
-          name: { first: 'View', last: 'Only' },
-          locale: 'en',
-        },
+      await application.iam.syncUserFromWorkOS.syncUser({
+        id: VIEWER_WOS, email: 'viewer@e2e.test', firstName: 'View', lastName: 'Only',
       });
     });
 
     it('viewer can GET /api/tools (read)', async () => {
-      const res = await inject('GET', '/api/tools', { oryId: VIEWER_ORY });
+      const res = await inject('GET', '/api/tools', { workosId: VIEWER_WOS });
       assert.strictEqual(res.statusCode, 200);
     });
 
     it('viewer cannot POST /api/tools (create → 403)', async () => {
       const res = await inject('POST', '/api/tools', {
-        oryId: VIEWER_ORY,
+        workosId: VIEWER_WOS,
         payload: { name: 'ViewerTool', vendorName: 'V' },
       });
       assert.strictEqual(res.statusCode, 403);
@@ -819,14 +762,14 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
     it('viewer cannot DELETE /api/tools/:id (manage → 403)', async () => {
       // Use the classified tool from earlier
       const res = await inject('DELETE', `/api/tools/${classifiedToolId}`, {
-        oryId: VIEWER_ORY,
+        workosId: VIEWER_WOS,
       });
       assert.strictEqual(res.statusCode, 403);
     });
 
     it('viewer cannot POST /api/team/invite (manage User → 403)', async () => {
       const res = await inject('POST', '/api/team/invite', {
-        oryId: VIEWER_ORY,
+        workosId: VIEWER_WOS,
         payload: { email: 'nope@e2e.test', role: 'member' },
       });
       assert.strictEqual(res.statusCode, 403);
@@ -840,7 +783,7 @@ describe('E2E: Full HTTP Stack — Sprints 1, 2, 2.5 (real DB)', () => {
   describe('Audit trail — all actions logged', () => {
     it('audit log has entries for tool CRUD + team management', async () => {
       const res = await inject('GET', '/api/auth/audit', {
-        oryId: OWNER_ORY,
+        workosId: OWNER_WOS,
         query: { pageSize: '100' },
       });
       assert.strictEqual(res.statusCode, 200);

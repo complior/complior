@@ -1,10 +1,17 @@
 # CODING-STANDARDS.md — AI Act Compliance Platform
 
-**Версия:** 1.0.0
-**Дата:** 2026-02-07
+**Версия:** 3.0.0
+**Дата:** 2026-02-21
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ✅ Утверждён Product Owner (2026-02-07)
 **Зависимости:** ARCHITECTURE.md ✅
+
+### Changelog
+
+| Версия | Дата | Изменения |
+|--------|------|-----------|
+| 1.0.0 | 2026-02-07 | Начальная версия — FP-first, DDD/Onion, VM Sandbox, Ory Auth |
+| 3.0.0 | 2026-02-21 | Миграция Ory → WorkOS AuthKit, Registry API (API Key auth, ETag caching, rate limits per plan) |
 
 ---
 
@@ -712,9 +719,9 @@ const { db } = require('../../infrastructure/db'); // VIOLATION!
     // 1. Validate input (Zod)
     const { id } = ClassifyParamsSchema.parse(params);
 
-    // 2. Resolve user from Ory session (явный, не middleware!)
+    // 2. Resolve user from WorkOS session (явный, не middleware!)
     const user = await db.User.query(
-      'SELECT * FROM "User" WHERE "oryId" = $1', [session.identity.id]
+      'SELECT * FROM "User" WHERE "workosUserId" = $1', [session.identity.id]
     );
 
     // 3. Authorization check (явный, не middleware!)
@@ -734,6 +741,56 @@ const { db } = require('../../infrastructure/db'); // VIOLATION!
     return { status: 200, body: result };
   },
 });
+```
+
+### WorkOS Auth Patterns (v3.0)
+
+```javascript
+// ✅ Session middleware — WorkOS AuthKit
+const resolveSession = async (req) => {
+  const sessionToken = req.cookies['wos-session'];
+  if (!sessionToken) throw new AppError('UNAUTHORIZED', 401);
+  const { user } = await workos.userManagement.authenticateWithSessionCookie({
+    sessionData: sessionToken,
+    cookiePassword: config.workos.cookiePassword,
+  });
+  return db.User.findOne({ workosUserId: user.id });
+};
+
+// ✅ Organization context from WorkOS
+const resolveOrganization = async (user) => {
+  const memberships = await workos.userManagement.listOrganizationMemberships({
+    userId: user.workosUserId,
+  });
+  return memberships.data[0]?.organizationId;
+};
+```
+
+### Registry API Patterns (v3.0)
+
+```javascript
+// ✅ API Key auth middleware
+const validateAPIKey = async (req) => {
+  const key = req.headers['x-api-key'];
+  if (!key) throw new AppError('API_KEY_REQUIRED', 401);
+  const keyHash = crypto.createHmac('sha256', config.apiKeySecret).update(key).digest('hex');
+  const apiKey = await db.APIKey.findOne({ keyHash, active: true });
+  if (!apiKey) throw new AppError('INVALID_API_KEY', 401);
+  if (apiKey.expiresAt && apiKey.expiresAt < new Date()) throw new AppError('API_KEY_EXPIRED', 401);
+  // Check rate limit
+  const today = new Date().toISOString().slice(0, 10);
+  const usage = await db.APIUsage.findOne({ apiKeyId: apiKey.apiKeyId, usageDate: today });
+  if (usage && usage.requestCount >= apiKey.rateLimit) throw new AppError('RATE_LIMIT_EXCEEDED', 429);
+  return apiKey;
+};
+
+// ✅ ETag caching for Registry API
+const withETag = (handler) => async (req, reply) => {
+  const data = await handler(req);
+  const etag = crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
+  if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+  reply.header('ETag', etag).send(data);
+};
 ```
 
 ### Error Handling
@@ -1032,7 +1089,7 @@ const moduleContext = Object.freeze({
   config: Object.freeze(config),      // Конфигурация (read-only)
   db: Object.freeze(db),              // Database CRUD builder (read-only reference)
   domain: Object.freeze(domain),      // Domain layer
-  auth: Object.freeze(oryClient),     // Ory client (verify session, get identity)
+  auth: Object.freeze(workosClient),   // WorkOS client (verify session, get identity)
   email: Object.freeze(brevoClient),  // Brevo client (transactional email, EU)
   llm: Object.freeze(llmAdapter),     // LLM client (Mistral API)
   storage: Object.freeze(s3Client),   // Hetzner Object Storage (S3-compatible)
@@ -1055,7 +1112,7 @@ const moduleContext = Object.freeze({
 | Threat | Mitigation |
 |--------|------------|
 | **Injection (SQL/NoSQL)** | Parameterized queries ONLY. No string concatenation in SQL. |
-| **Broken Auth** | Ory (self-hosted, EU) — magic links, password hashing, session management, MFA |
+| **Broken Auth** | WorkOS AuthKit (managed) — SSO, password hashing, session management, MFA |
 | **Sensitive Data Exposure** | TLS 1.3, AES-256 at rest, no PII in logs |
 | **XXE** | JSON only (no XML parsing) |
 | **Broken Access Control** | RBAC on every endpoint, organizationId filter |
@@ -1180,7 +1237,7 @@ describe('RuleEngine', () => {
 | `style` | Formatting (no logic change) |
 | `perf` | Performance improvement |
 
-**Scopes:** `auth`, `classification`, `compliance`, `consultation`, `dashboard`, `billing`, `infra`, `ci`
+**Scopes:** `auth`, `classification`, `compliance`, `consultation`, `dashboard`, `billing`, `registry`, `tui`, `infra`, `ci`
 
 ### Branch Naming
 
@@ -1333,5 +1390,5 @@ PO approves: develop → main
 
 ✅ **APPROVED:** Product Owner утвердил документ 2026-02-07. Marcus проверяет соблюдение при code review.
 
-**Последнее обновление:** 2026-02-07
+**Последнее обновление:** 2026-02-21
 **Следующий документ:** PRODUCT-BACKLOG.md (ЭТАП 6) ⛔ Требует PO approval

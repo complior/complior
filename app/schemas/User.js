@@ -2,9 +2,9 @@
   Registry: {},
 
   organization: { type: 'Organization', delete: 'cascade' },
-  oryId: {
+  workosUserId: {
     type: 'string', unique: true, index: true,
-    note: 'Ory identity UUID',
+    note: 'WorkOS user ID',
   },
   email: {
     type: 'string', length: { min: 6, max: 255 },

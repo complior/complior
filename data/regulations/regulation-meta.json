@@ -1,0 +1,42 @@
+{
+  "regulationMetaId": "2",
+  "jurisdictionId": "eu-ai-act",
+  "officialName": "Regulation (EU) 2024/1689 of the European Parliament and of the Council of 13 June 2024 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act)",
+  "jurisdiction": "European Union (all 27 Member States + EEA relevance)",
+  "status": "in-force",
+  "enactedDate": "2024-06-13",
+  "entryIntoForceDate": "2024-08-01",
+  "maxPenalty": "€35,000,000 or 7% of total worldwide annual turnover, whichever is higher",
+  "riskLevels": [
+    "Unacceptable risk (prohibited)",
+    "High risk",
+    "Limited risk (transparency obligations)",
+    "Minimal/No risk",
+    "General-purpose AI (GPAI) — separate classification track",
+    "GPAI with systemic risk — elevated GPAI obligations"
+  ],
+  "keyDefinitions": {
+    "deployer": "A natural or legal person, public authority, agency or other body using an AI system under its authority except where the AI system is used in the course of a personal non-professional activity (Art. 3(4))",
+    "importer": "A natural or legal person located or established in the Union that places on the market an AI system that bears the name or trademark of a natural or legal person established in a third country (Art. 3(6))",
+    "operator": "A provider, product manufacturer, deployer, authorised representative, importer or distributor (Art. 3(8))",
+    "provider": "A natural or legal person, public authority, agency or other body that develops an AI system or a general-purpose AI model or that has an AI system or a general-purpose AI model developed and places it on the market or puts the AI system into service under its own name or trademark, whether for payment or free of charge (Art. 3(3))",
+    "AI system": "A machine-based system that is designed to operate with varying levels of autonomy and that may exhibit adaptiveness after deployment, and that, for explicit or implicit objectives, infers, from the input it receives, how to generate outputs such as predictions, content, recommendations, or decisions that can influence physical or virtual environments (Art. 3(1))",
+    "deep_fake": "AI-generated or manipulated image, audio or video content that resembles existing persons, objects, places, entities or events and would falsely appear to a person to be authentic or truthful (Art. 3(60))",
+    "AI_literacy": "Skills, knowledge and understanding that allows providers, deployers and affected persons, taking into account their respective rights and obligations, to make an informed deployment of AI systems, to become aware of the opportunities and risks of AI and possible harm it can cause (Art. 3(56))",
+    "distributor": "A natural or legal person in the supply chain, other than the provider or the importer, that makes an AI system available on the Union market (Art. 3(7))",
+    "intended_purpose": "The use for which an AI system is intended by the provider, including the specific context and conditions of use, as specified in the information supplied by the provider (Art. 3(12))",
+    "serious_incident": "An incident or malfunctioning of an AI system that directly or indirectly leads to death, serious damage to health, serious disruption of critical infrastructure, violation of fundamental rights obligations, or serious damage to property or environment (Art. 3(49))",
+    "high_risk_AI_system": "An AI system that falls under Article 6 criteria — either as safety component of products under Annex II legislation requiring third-party conformity assessment, or listed in Annex III use cases",
+    "putting_into_service": "The supply of an AI system for first use directly to the deployer or for own use in the Union for its intended purpose (Art. 3(11))",
+    "placing_on_the_market": "The first making available of an AI system or a general-purpose AI model on the Union market (Art. 3(9))",
+    "post_market_monitoring": "All activities carried out by providers to collect and review experience gained from the use of AI systems for the purpose of identifying any need to immediately apply corrective or preventive actions (Art. 3(25))",
+    "general_purpose_AI_model": "An AI model, including where trained with a large amount of data using self-supervision at scale, that displays significant generality and is capable of competently performing a wide range of distinct tasks regardless of the way the model is placed on the market and that can be integrated into a variety of downstream systems or applications (Art. 3(63))",
+    "substantial_modification": "A change to an AI system after its placing on the market or putting into service which is not foreseen or planned in the initial conformity assessment carried out by the provider and as a result of which the compliance of the AI system with the requirements is affected or the intended purpose is modified (Art. 3(23))",
+    "authorised_representative": "A natural or legal person located or established in the Union who has received and accepted a written mandate from a provider of an AI system or a GPAI model to carry out obligations under the AI Act on its behalf (Art. 3(5))",
+    "reasonably_foreseeable_misuse": "The use of an AI system in a way that is not in accordance with its intended purpose, but which may result from reasonably foreseeable human behaviour or interaction with other systems (Art. 3(13))",
+    "fundamental_rights_impact_assessment": "Assessment that public deployers (and certain private deployers) of high-risk AI must conduct before putting the system into use to evaluate risks to fundamental rights (Art. 27)",
+    "general_purpose_AI_model_with_systemic_risk": "A GPAI model with high impact capabilities evaluated on the basis of appropriate technical tools and methodologies, including indicators and benchmarks (Art. 3(65)), presumed when cumulative compute > 10^25 FLOPs (Art. 51(2))"
+  },
+  "roles": [],
+  "classificationQuestions": []
+}

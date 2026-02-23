@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/app/providers';
-import { logout } from '@/lib/ory';
+import { logout } from '@/lib/auth';
 
 const LOCALES = [
   { code: 'en', label: 'English', flag: '\u{1F1EC}\u{1F1E7}' },
@@ -61,6 +61,7 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
     { href: `/${locale}/dashboard`, label: t('dashboard') },
     { href: `/${locale}/tools/inventory`, label: t('inventory') },
     { href: `/${locale}/tools/catalog`, label: t('catalog') },
+    { href: `/${locale}/settings`, label: t('settings') },
   ];
 
   const adminLinks = [

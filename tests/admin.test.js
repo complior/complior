@@ -23,11 +23,11 @@ const MOCK_REGULAR_USER = {
 };
 
 const MOCK_SESSION_ADMIN = {
-  identity: { id: 'ory-admin-uuid' },
+  user: { id: 'wos-admin-uuid' },
 };
 
 const MOCK_SESSION_REGULAR = {
-  identity: { id: 'ory-user-uuid' },
+  user: { id: 'wos-user-uuid' },
 };
 
 const createAdminMockDb = () => ({
@@ -43,12 +43,12 @@ const createAdminMockDb = () => ({
       };
     }
 
-    // resolveUser — return admin or regular user based on oryId
-    if (sql.includes('FROM "User"') && sql.includes('"oryId"')) {
-      if (params && params[0] === 'ory-admin-uuid') {
+    // resolveUser — return admin or regular user based on workosUserId
+    if (sql.includes('FROM "User"') && sql.includes('"workosUserId"')) {
+      if (params && params[0] === 'wos-admin-uuid') {
         return { rows: [MOCK_ADMIN] };
       }
-      if (params && params[0] === 'ory-user-uuid') {
+      if (params && params[0] === 'wos-user-uuid') {
         return { rows: [MOCK_REGULAR_USER] };
       }
       return { rows: [] };

@@ -160,6 +160,9 @@ const initSessionHook = (server, workosClient) => {
     if (!url.startsWith('/api/')) return;
     if (url.startsWith('/api/auth/callback')) return;
     if (url.startsWith('/api/auth/login')) return;
+    if (url.startsWith('/api/auth/register')) return;
+    if (url.startsWith('/api/auth/forgot-password')) return;
+    if (url.startsWith('/api/auth/reset-password')) return;
     if (url.startsWith('/api/webhooks/')) return;
     if (url.startsWith('/api/public/')) return;
     if (url === '/health') return;
@@ -182,6 +185,69 @@ const initSessionHook = (server, workosClient) => {
       }
     } catch {
       // Session invalid — leave null, handlers decide if auth required
+    }
+  });
+};
+
+const initApiKeyHook = (server, pool) => {
+  server.addHook('onRequest', async (request) => {
+    request.apiKey = null;
+
+    const { url } = request;
+    if (!url.startsWith('/v1/')) return;
+
+    const headerKey = request.headers['x-api-key']
+      || (request.headers.authorization || '').replace(/^Bearer\s+/i, '') || '';
+    if (!headerKey) return;
+
+    const keyHash = crypto.createHash('sha256').update(headerKey).digest('hex');
+
+    try {
+      const result = await pool.query(
+        `SELECT "apiKeyId", "organizationId", "plan", "rateLimit", "expiresAt"
+         FROM "ApiKey" WHERE "keyHash" = $1 AND "active" = true`,
+        [keyHash],
+      );
+      if (result.rows.length === 0) return;
+
+      const key = result.rows[0];
+      if (key.expiresAt && new Date(key.expiresAt) < new Date()) return;
+
+      request.apiKey = {
+        apiKeyId: key.apiKeyId,
+        organizationId: key.organizationId,
+        plan: key.plan,
+        rateLimit: key.rateLimit,
+      };
+
+      // Track usage (upsert daily counter)
+      const today = new Date().toISOString().slice(0, 10);
+      await pool.query(
+        `INSERT INTO "ApiUsage" ("apiKeyId", "usageDate", "requestCount", "bytesTransferred")
+         VALUES ($1, $2, 1, 0)
+         ON CONFLICT ("apiKeyId", "usageDate")
+         DO UPDATE SET "requestCount" = "ApiUsage"."requestCount" + 1`,
+        [key.apiKeyId, today],
+      );
+
+      // Update lastUsedAt
+      await pool.query(
+        `UPDATE "ApiKey" SET "lastUsedAt" = NOW() WHERE "apiKeyId" = $1`,
+        [key.apiKeyId],
+      );
+
+      // Check daily rate limit
+      const usageResult = await pool.query(
+        `SELECT "requestCount" FROM "ApiUsage"
+         WHERE "apiKeyId" = $1 AND "usageDate" = $2`,
+        [key.apiKeyId, today],
+      );
+      const count = usageResult.rows[0]?.requestCount || 0;
+      if (count > key.rateLimit) {
+        request.apiKeyRateLimited = true;
+      }
+    } catch {
+      // DB error — leave apiKey null, don't block public endpoints
     }
   });
 };
@@ -280,5 +346,5 @@ const registerSandboxRoutes = (server, api) => {
 module.exports = {
   registerSandboxRoutes, initHealth, initRateLimit,
   initRequestId, initErrorHandler, initSessionHook,
-  initSecurityHeaders, initRawBodyForWebhooks,
+  initSecurityHeaders, initRawBodyForWebhooks, initApiKeyHook,
 };

@@ -7,10 +7,9 @@
 		reverse_proxy backend:8000
 	}
 
-	# Ory Kratos public API → kratos
-	handle /.ory/* {
-		uri strip_prefix /.ory
-		reverse_proxy kratos:4433
+	# Registry API → backend
+	handle /v1/* {
+		reverse_proxy backend:8000
 	}
 
 	# Frontend → Next.js

@@ -20,6 +20,10 @@
     default: '\'["deployer"]\'',
     note: 'AI Act roles: provider, deployer, distributor, importer. Array, multiple allowed.',
   },
+  workosOrgId: {
+    type: 'string', unique: true, required: false, index: true,
+    note: 'WorkOS organization ID for SSO',
+  },
   settings: {
     type: 'json', required: false,
     note: 'Organization-level settings',

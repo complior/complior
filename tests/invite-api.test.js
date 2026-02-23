@@ -42,7 +42,7 @@ const createMockDb = (overrides = {}) => {
         };
       }
       // Resolve user (syncOnLogin)
-      if (sql.includes('FROM "User"') && sql.includes('oryId')) {
+      if (sql.includes('FROM "User"') && sql.includes('workosUserId')) {
         return { rows: [MOCK_USER] };
       }
       // Update lastLoginAt
@@ -108,10 +108,7 @@ describe('POST /api/team/invite', () => {
 
     srv.addHook('onRequest', (req, _reply, done) => {
       req.session = {
-        identity: {
-          id: 'ory-123',
-          traits: { email: MOCK_USER.email, name: { first: 'Test', last: 'Owner' } },
-        },
+        user: { id: 'wos-123' },
       };
       done();
     });

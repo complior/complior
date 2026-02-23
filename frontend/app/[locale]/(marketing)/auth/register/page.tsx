@@ -4,11 +4,11 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { getSession, createRegistrationFlow, submitRegistration, extractCsrfToken } from '@/lib/ory';
+import { getSession, registerWithPassword, getSocialLoginUrl } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
 
-/* ── Plan data ─────────────────────────────────────────────── */
+/* -- Plan data ------------------------------------------------------------ */
 const PLAN_DATA: Record<string, { priceCentsMonthly: number; priceCentsAnnual: number; featureKeys: string[] }> = {
   free:    { priceCentsMonthly: 0,     priceCentsAnnual: 0,     featureKeys: ['1 AI tool', '1 user', 'Basic classification', 'AI tool catalog'] },
   starter: { priceCentsMonthly: 4900,  priceCentsAnnual: 49000,  featureKeys: ['5 AI tools, 2 users', '15 AI literacy seats', 'Eva AI (200 msg/mo)', '90-day audit trail'] },
@@ -17,17 +17,7 @@ const PLAN_DATA: Record<string, { priceCentsMonthly: number; priceCentsAnnual: n
 };
 const PAID_PLANS = ['starter', 'growth', 'scale'];
 
-/* ── SVG Icons (inline) ───────────────────────────────────── */
-const SparkleIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-  </svg>
-);
-const UserIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-  </svg>
-);
+/* -- SVG Icons (inline) --------------------------------------------------- */
 const InfoIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
     <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
@@ -59,26 +49,16 @@ const ArrowIcon = () => (
   </svg>
 );
 
-/* ── Chevron SVG for selects ──────────────────────────────── */
 const CHEVRON_SVG = `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;
 
-/* ── Password strength ────────────────────────────────────── */
-function calcStrength(pw: string): number {
-  let s = 0;
-  if (pw.length >= 8) s++;
-  if (/[A-Z]/.test(pw)) s++;
-  if (/[0-9]/.test(pw)) s++;
-  if (/[^A-Za-z0-9]/.test(pw)) s++;
-  return s;
-}
-
-/* ═══════════════════════════════════════════════════════════ */
-/*  REGISTER CONTENT (wrapped in Suspense at bottom)         */
-/* ═══════════════════════════════════════════════════════════ */
+/* ========================================================================= */
+/*  REGISTER CONTENT                                                         */
+/* ========================================================================= */
 function RegisterContent() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('auth');
+  const tc = useTranslations('common');
   const tCheckout = useTranslations('checkout');
   const searchParams = useSearchParams();
 
@@ -87,51 +67,46 @@ function RegisterContent() {
   const periodParam = (rawPeriod === 'annual' ? 'yearly' : rawPeriod) as 'monthly' | 'yearly';
   const plan = PLAN_DATA[planParam] ? planParam : 'free';
   const isPaid = PAID_PLANS.includes(plan);
-  const totalSteps = isPaid ? 3 : 2;
   const planInfo = PLAN_DATA[plan];
 
-  const [step, setStep] = useState(1);
+  // step=2 comes from callback after WorkOS auth (user already created)
+  const initialStep = searchParams.get('step') === '2' ? 2 : 1;
+  const [step, setStep] = useState(initialStep);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [userProfile, setUserProfile] = useState<{ organizationId: number } | null>(null);
 
-  /* ── Step 1 fields ── */
+  /* -- Step 1 fields -- */
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
 
-  /* ── Step 2 fields ── */
+  /* -- Step 2 fields -- */
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
   const [companySize, setCompanySize] = useState('');
   const [country, setCountry] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
 
-  const pwStrength = useMemo(() => calcStrength(password), [password]);
+  const totalSteps = isPaid ? 3 : 2;
 
-  /* ── Session check ── */
+  /* -- Session check -- */
   useEffect(() => {
-    getSession().then((session) => {
-      if (session?.active) {
-        api.auth.me().then((profile) => {
-          setUserProfile(profile);
-          setStep(2);
-          setCheckingSession(false);
-        }).catch(() => {
-          router.replace(`/${locale}/dashboard`);
-        });
-      } else {
-        setCheckingSession(false);
+    getSession().then((user) => {
+      if (user?.active) {
+        setUserProfile({ organizationId: user.organizationId });
+        // Already logged in, go to step 2
+        setStep(2);
       }
+      setCheckingSession(false);
     }).catch(() => {
       setCheckingSession(false);
     });
   }, [router, locale]);
 
-  /* ── Plan badge text ── */
+  /* -- Plan badge text -- */
   const planBadgeText = useMemo(() => {
     const priceShow = periodParam === 'yearly'
       ? formatPrice(planInfo.priceCentsAnnual, locale, 'yearly')
@@ -148,73 +123,68 @@ function RegisterContent() {
     return `${label} \u2014 ${priceShow}${suffix}`;
   }, [plan, periodParam, locale, planInfo, tCheckout]);
 
-  /* ── Price display for trial card ── */
+  /* -- Price display for trial card -- */
   const priceDisplay = useMemo(() => {
     const cents = periodParam === 'yearly' ? planInfo.priceCentsAnnual : planInfo.priceCentsMonthly;
     return formatPrice(cents, locale, periodParam === 'yearly' ? 'yearly' : 'monthly');
   }, [periodParam, planInfo, locale]);
 
-  /* ── Trial end date ── */
+  /* -- Trial end date -- */
   const trialEndDate = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 14);
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }, []);
 
-  /* ── Validate email ── */
-  const validateEmail = useCallback((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e), []);
+  /* -- Password strength -- */
+  const getPasswordStrength = (pw: string): { level: number; label: string; color: string } => {
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    if (score <= 1) return { level: score, label: t('pwWeak'), color: 'var(--coral)' };
+    if (score <= 2) return { level: score, label: t('pwMedium'), color: '#f0ad4e' };
+    return { level: score, label: t('pwStrong'), color: 'var(--teal)' };
+  };
+  const pwStrength = getPasswordStrength(regPassword);
 
-  /* ── Step 1 submit ── */
+  /* -- Step 1 submit -- */
   const handleStep1 = async () => {
-    const errors: Record<string, boolean> = {};
-    if (!firstName.trim()) errors.firstName = true;
-    if (!lastName.trim()) errors.lastName = true;
-    if (!validateEmail(email)) errors.email = true;
-    if (password.length < 8) errors.password = true;
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    const errs: Record<string, boolean> = {};
+    if (!firstName.trim()) errs.firstName = true;
+    if (!lastName.trim()) errs.lastName = true;
+    if (!regEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) errs.regEmail = true;
+    if (!regPassword || regPassword.length < 8) errs.regPassword = true;
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
     setError(null);
     try {
-      const flow = await createRegistrationFlow();
-      const result = await submitRegistration(flow.id, {
-        method: 'password',
-        csrf_token: extractCsrfToken(flow),
-        traits: { email, name: { first: firstName, last: lastName } },
-        password,
+      const result = await registerWithPassword({
+        firstName, lastName, email: regEmail, password: regPassword,
       });
-      if (result.identity) {
-        try {
-          const profile = await api.auth.me();
-          setUserProfile(profile);
-        } catch {
-          // Session cookie may not work across domains (dev/tunnel) —
-          // proceed without profile, step 2 will skip org update
+      if (result.success) {
+        // Fetch session to get org info
+        const session = await getSession();
+        if (session?.active) {
+          setUserProfile({ organizationId: session.organizationId });
         }
         setStep(2);
+      } else if (result.error?.code === 'CONFLICT') {
+        setError(t('emailExists'));
       } else {
-        // Extract errors from Kratos response (top-level + per-node messages)
-        const msgs: string[] = [];
-        if (result.error?.message) msgs.push(result.error.message);
-        result.ui?.messages?.forEach((m: { text: string; type: string }) => {
-          if (m.type === 'error') msgs.push(m.text);
-        });
-        result.ui?.nodes?.forEach((node: { messages?: Array<{ text: string; type: string }> }) => {
-          node.messages?.forEach((m) => {
-            if (m.type === 'error') msgs.push(m.text);
-          });
-        });
-        setError(msgs.length > 0 ? msgs.join('. ') : 'Registration failed');
+        setError(result.error?.message || 'Registration failed');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+    } catch {
+      setError('Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  /* ── Step 2 submit ── */
+  /* -- Step 2 submit -- */
   const handleStep2 = async () => {
     const errors: Record<string, boolean> = {};
     if (!companyName.trim()) errors.companyName = true;
@@ -244,7 +214,7 @@ function RegisterContent() {
     }
   };
 
-  /* ── Step 3: start trial ── */
+  /* -- Step 3: start trial -- */
   const handleStartTrial = async () => {
     setLoading(true);
     try {
@@ -259,7 +229,7 @@ function RegisterContent() {
     }
   };
 
-  /* ── Clear field error on input ── */
+  /* -- Clear field error on input -- */
   const clearError = (field: string) => {
     setFieldErrors(prev => {
       if (!prev[field]) return prev;
@@ -269,19 +239,19 @@ function RegisterContent() {
     });
   };
 
-  /* ── Step labels ── */
+  /* -- Step labels -- */
   const stepLabels = isPaid
     ? [t('stepAccount'), t('stepCompany'), t('stepTrial')]
     : [t('stepAccount'), t('stepCompany')];
 
-  /* ── Plan features for trial card (use checkout keys) ── */
+  /* -- Plan features for trial card -- */
   const planFeatureKeys: Record<string, string[]> = {
     starter: ['starterF1', 'starterF2', 'starterF3', 'starterF4', 'starterF5'],
     growth: ['growthF1', 'growthF2', 'growthF3', 'growthF4', 'growthF5', 'growthF6'],
     scale: ['scaleF1', 'scaleF2', 'scaleF3', 'scaleF4', 'scaleF5'],
   };
 
-  /* ── Period text for trial card ── */
+  /* -- Period text for trial card -- */
   const periodText = useMemo(() => {
     if (periodParam === 'yearly') {
       const symbol = locale === 'de' ? '\u20ac' : '$';
@@ -291,7 +261,7 @@ function RegisterContent() {
     return t('trialBilledMonthly');
   }, [periodParam, planInfo, locale, t]);
 
-  /* ── Inline styles ── */
+  /* -- Inline styles -- */
   const styles = {
     container: {
       minHeight: 'calc(100vh - 56px)',
@@ -358,22 +328,6 @@ function RegisterContent() {
       transition: 'background .35s, border-color .35s, box-shadow .35s',
       animation: 'cardIn .5s ease both',
     },
-    planBadge: (isFree: boolean) => ({
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '0.375rem',
-      fontFamily: 'var(--f-mono)',
-      fontSize: '0.5625rem',
-      fontWeight: 700,
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.06em',
-      padding: '0.3rem 0.75rem',
-      borderRadius: '8px',
-      marginBottom: '1.5rem',
-      ...(isFree
-        ? { background: 'var(--bg2)', color: 'var(--dark4)', border: '1px solid var(--b2)' }
-        : { background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid var(--teal-glow)' }),
-    }),
     title: {
       fontFamily: 'var(--f-display)',
       fontSize: '1.5rem',
@@ -597,73 +551,28 @@ function RegisterContent() {
       fontWeight: 600,
       textDecoration: 'none' as const,
     },
-    pwWrap: {
-      position: 'relative' as const,
-    },
-    pwToggle: {
-      position: 'absolute' as const,
-      right: '0.75rem',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      color: 'var(--dark5)',
-      fontSize: '0.75rem',
-      padding: 0,
-      lineHeight: 1,
-    },
-    pwStrengthRow: {
-      display: 'flex',
-      gap: '3px',
-      marginTop: '0.375rem',
-    },
-    pwBar: (active: boolean, level: number) => {
-      let bg = 'var(--bg3)';
-      if (active) {
-        if (level <= 2) bg = 'var(--coral)';
-        else if (level === 3) bg = '#f59e0b';
-        else bg = 'var(--green)';
-      }
-      return {
-        height: '3px',
-        flex: 1,
-        borderRadius: '2px',
-        background: bg,
-        transition: 'background 0.3s',
-      };
-    },
-    pwLabel: (strength: number) => ({
-      fontFamily: 'var(--f-mono)',
-      fontSize: '0.5rem',
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.06em',
-      marginTop: '0.25rem',
-      transition: 'color 0.3s',
-      color: strength >= 4 ? 'var(--green)' : strength >= 3 ? '#f59e0b' : strength >= 1 ? 'var(--coral)' : 'var(--dark5)',
-    }),
     req: {
       color: 'var(--coral)',
     },
   };
 
-  /* ── Loading state ── */
+  /* -- Loading state -- */
   if (checkingSession) {
     return (
       <div style={styles.container}>
-        <p style={{ color: 'var(--dark5)' }}>{t('passwordStrength') === 'Password strength' ? 'Loading...' : 'Loading...'}</p>
+        <p style={{ color: 'var(--dark5)' }}>Loading...</p>
       </div>
     );
   }
 
-  /* ── Step state helpers ── */
+  /* -- Step state helpers -- */
   const getStepState = (i: number): 'active' | 'done' | 'pending' => {
     if (i + 1 < step) return 'done';
     if (i + 1 === step) return 'active';
     return 'pending';
   };
 
-  /* ── Plan name map ── */
+  /* -- Plan name map -- */
   const planNameMap: Record<string, string> = {
     starter: tCheckout('starterName'),
     growth: tCheckout('growthName'),
@@ -731,7 +640,7 @@ function RegisterContent() {
       `}</style>
 
       <div style={styles.container}>
-        {/* ── Progress stepper ── */}
+        {/* -- Progress stepper -- */}
         {step <= totalSteps && (
           <div style={styles.progress}>
             {stepLabels.map((label, i) => {
@@ -751,28 +660,51 @@ function RegisterContent() {
           </div>
         )}
 
-        {/* ── Auth card ── */}
+        {/* -- Auth card -- */}
         <div className="auth-card-r" style={styles.card}>
 
-          {/* ═══ STEP 1: Account ═══ */}
+          {/* === STEP 1: Account === */}
           {step === 1 && (
             <div className="step-section">
-              {/* Plan badge */}
-              <div style={styles.planBadge(plan === 'free')}>
-                {plan === 'free' ? <UserIcon /> : <SparkleIcon />}
-                <span>{planBadgeText}</span>
-              </div>
-
-              <h1 className="auth-title-r" style={styles.title}>{t('createAccount')}</h1>
-              <p style={styles.subtitle}>
-                {isPaid ? t('createAccountSubTrial') : plan === 'free' ? t('createAccountSubFree') : t('createAccountSub')}
-              </p>
+              <h1 className="auth-title-r" style={styles.title}>
+                {isPaid ? t('createAccountSubTrial') : t('createAccountSubFree')}
+              </h1>
+              <p style={styles.subtitle}>{t('createAccountSub')}</p>
 
               {error && (
                 <div style={styles.errorBox}>
                   <p style={styles.errorText}>{error}</p>
                 </div>
               )}
+
+              {/* Social OAuth */}
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <button className="btn-primary-r" onClick={() => { window.location.href = getSocialLoginUrl('google'); }} style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  padding: '0.6875rem', border: '1.5px solid var(--b2)', borderRadius: '8px',
+                  background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--f-body)',
+                  fontSize: '0.8125rem', fontWeight: 600, color: 'var(--dark3)', transition: '0.25s',
+                  boxShadow: 'none',
+                }}>
+                  Google
+                </button>
+                <button className="btn-primary-r" onClick={() => { window.location.href = getSocialLoginUrl('github'); }} style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  padding: '0.6875rem', border: '1.5px solid var(--b2)', borderRadius: '8px',
+                  background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--f-body)',
+                  fontSize: '0.8125rem', fontWeight: 600, color: 'var(--dark3)', transition: '0.25s',
+                  boxShadow: 'none',
+                }}>
+                  GitHub
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--b2)' }} />
+                <span style={{ fontFamily: 'var(--f-mono)', fontSize: '0.5625rem', color: 'var(--dark5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>or</span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--b2)' }} />
+              </div>
 
               {/* Name row */}
               <div className="field-row-r" style={styles.fieldRow}>
@@ -818,11 +750,11 @@ function RegisterContent() {
                   type="email"
                   placeholder={t('emailPlaceholder')}
                   autoComplete="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); clearError('email'); }}
-                  style={styles.fieldInput(!!fieldErrors.email)}
+                  value={regEmail}
+                  onChange={(e) => { setRegEmail(e.target.value); clearError('regEmail'); }}
+                  style={styles.fieldInput(!!fieldErrors.regEmail)}
                 />
-                {fieldErrors.email && <div style={styles.fieldError}>{t('emailError')}</div>}
+                {fieldErrors.regEmail && <div style={styles.fieldError}>{t('emailError')}</div>}
               </div>
 
               {/* Password */}
@@ -830,41 +762,34 @@ function RegisterContent() {
                 <label style={styles.fieldLabel}>
                   {t('password')} <span style={styles.req}>*</span>
                 </label>
-                <div style={styles.pwWrap}>
-                  <input
-                    className="field-input-r"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder={t('passwordMin')}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); clearError('password'); }}
-                    style={{ ...styles.fieldInput(!!fieldErrors.password), paddingRight: '2.75rem' }}
-                  />
-                  <button
-                    type="button"
-                    style={styles.pwToggle}
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label="Show password"
-                  >
-                    {showPassword ? '\uD83D\uDE48' : '\uD83D\uDC41'}
-                  </button>
-                </div>
-                {/* Strength meter */}
-                <div style={styles.pwStrengthRow}>
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} style={styles.pwBar(i <= pwStrength, pwStrength)} />
-                  ))}
-                </div>
-                <div style={styles.pwLabel(pwStrength)}>
-                  {pwStrength === 0
-                    ? t('passwordStrength')
-                    : pwStrength <= 2
-                    ? t('pwWeak')
-                    : pwStrength === 3
-                    ? t('pwMedium')
-                    : t('pwStrong')}
-                </div>
-                {fieldErrors.password && <div style={styles.fieldError}>{t('pwMinError')}</div>}
+                <input
+                  className="field-input-r"
+                  type="password"
+                  placeholder={t('passwordMin')}
+                  autoComplete="new-password"
+                  value={regPassword}
+                  onChange={(e) => { setRegPassword(e.target.value); clearError('regPassword'); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleStep1(); }}
+                  style={styles.fieldInput(!!fieldErrors.regPassword)}
+                />
+                {fieldErrors.regPassword && <div style={styles.fieldError}>{t('pwMinError')}</div>}
+                {/* Password strength meter */}
+                {regPassword && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '0.25rem' }}>
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} style={{
+                          flex: 1, height: '3px', borderRadius: '2px',
+                          background: i <= pwStrength.level ? pwStrength.color : 'var(--b2)',
+                          transition: '0.3s',
+                        }} />
+                      ))}
+                    </div>
+                    <div style={{ fontFamily: 'var(--f-mono)', fontSize: '0.5rem', color: pwStrength.color, letterSpacing: '0.04em' }}>
+                      {t('passwordStrength')}: {pwStrength.label}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* CTA */}
@@ -874,12 +799,12 @@ function RegisterContent() {
                 onClick={handleStep1}
                 disabled={loading}
               >
-                {loading ? 'Creating...' : t('createAccountBtn')}
+                <span>{loading ? tc('loading') : t('createAccountBtn')}</span>
               </button>
             </div>
           )}
 
-          {/* ═══ STEP 2: Company ═══ */}
+          {/* === STEP 2: Company === */}
           {step === 2 && (
             <div className="step-section">
               <h1 className="auth-title-r" style={styles.title}>{t('companyInfo')}</h1>
@@ -1005,7 +930,7 @@ function RegisterContent() {
             </div>
           )}
 
-          {/* ═══ STEP 3: Trial Confirmation (paid only) ═══ */}
+          {/* === STEP 3: Trial Confirmation (paid only) === */}
           {step === 3 && isPaid && (
             <div className="step-section">
               <h1 className="auth-title-r" style={styles.title}>{t('trialTitle')}</h1>
@@ -1076,7 +1001,7 @@ function RegisterContent() {
           )}
         </div>
 
-        {/* ── Trust line ── */}
+        {/* -- Trust line -- */}
         <div style={styles.trustLine}>
           <ShieldCheckIcon />
           <span>
@@ -1084,7 +1009,7 @@ function RegisterContent() {
           </span>
         </div>
 
-        {/* ── Footer ── */}
+        {/* -- Footer -- */}
         {step <= 2 && (
           <div style={styles.footer}>
             {t('hasAccount')}{' '}
@@ -1098,9 +1023,9 @@ function RegisterContent() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════ */
-/*  DEFAULT EXPORT — Suspense wrapper for useSearchParams    */
-/* ═══════════════════════════════════════════════════════════ */
+/* ========================================================================= */
+/*  DEFAULT EXPORT -- Suspense wrapper for useSearchParams                   */
+/* ========================================================================= */
 export default function RegisterPage() {
   return (
     <Suspense

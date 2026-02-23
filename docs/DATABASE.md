@@ -1,11 +1,20 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 2.4.0
-**Дата:** 2026-02-15
+**Версия:** 3.0.0
+**Дата:** 2026-02-21
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
-**Зависимости:** ARCHITECTURE.md v2.1.0
+**Зависимости:** ARCHITECTURE.md v3.0.0
 
+> **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model.
+> - **Auth:** Ory → WorkOS: User.oryId → User.workosUserId. Organization += workosOrgId.
+> - **6 новых таблиц (2 новых BC):**
+>   - Registry API: RegistryTool (2,477+ AI tools), Obligation (108), ScoringRule, APIKey, APIUsage
+>   - TUI Data Collection: ScanResult (compliance data от TUI-инсталляций, привязка к Organization)
+> - **Изменены:** User (oryId → workosUserId), Organization (+workosOrgId)
+> - **Убрано:** Ory webhook паттерн → WorkOS AuthKit callback. Без TUINode, без heartbeat.
+> - **Всего:** ~36 таблиц в 10 Bounded Contexts
+>
 > **v2.4.0 (2026-02-15):** Sprint 6 — New seed: `platform_admin` role + `PlatformAdmin:manage` permission in `app/seeds/roles.js`. Admin cross-org query pattern: queries bypass tenant filter (`organizationId`) for platform-wide visibility. Double gate security: RBAC permission check + env whitelist (`PLATFORM_ADMIN_EMAILS`).
 >
 > **v2.3.0 (2026-02-12):** Sprint 3 Additions — AIToolCatalog category enum: added `api_platform`. Plan seed data: replaced duplicated values with reference to `app/config/plans.js` (Pricing v3.0). Catalog seed: 200+ → 220+ tools.
@@ -68,7 +77,7 @@ MetaSQL определяет 4 типа сущностей:
 
 ```mermaid
 erDiagram
-    %% IAM Context (Ory manages identity + sessions)
+    %% IAM Context (WorkOS manages identity + sessions)
     Organization ||--o{ User : "has members"
     Organization ||--o{ Invitation : "has invitations"
     Organization ||--o{ AITool : "uses"
@@ -118,6 +127,14 @@ erDiagram
     %% Audit
     User ||--o{ AuditLog : "performed by"
 
+    %% Registry API Context (NEW v3.0)
+    RegistryTool ||--o{ Obligation : "has obligations"
+    Organization ||--o{ APIKey : "owns keys"
+    APIKey ||--o{ APIUsage : "tracked by"
+
+    %% TUI Data Collection Context (NEW v3.0)
+    Organization ||--o{ ScanResult : "receives scans"
+
     %% === Entity definitions ===
 
     Organization {
@@ -127,17 +144,83 @@ erDiagram
         string size
         string country
         jsonb aiActRoles "default deployer"
+        string workosOrgId UK "WorkOS org ID"
         datetime createdAt
     }
 
     User {
         bigint id PK
         bigint organizationId FK
-        string oryId UK
+        string workosUserId UK "WorkOS user ID"
         string email UK
         string fullName
         boolean active
         datetime createdAt
+    }
+
+    RegistryTool {
+        bigint registryToolId PK
+        string name UK
+        string provider
+        string category
+        string riskLevel
+        jsonb capabilities
+        jsonb jurisdictions
+        jsonb evidence
+        jsonb detectionPatterns
+        datetime updatedAt
+    }
+
+    Obligation {
+        bigint obligationId PK
+        string code UK
+        string regulation
+        string riskLevel
+        string articleReference
+        text description
+        jsonb checkCriteria
+        integer sortOrder
+    }
+
+    ScoringRule {
+        bigint scoringRuleId PK
+        string regulation
+        string checkId UK
+        string riskLevel
+        integer weight
+        text description
+    }
+
+    APIKey {
+        bigint apiKeyId PK
+        bigint organizationId FK
+        string keyHash UK "HMAC-SHA256"
+        string keyPrefix "first 8 chars"
+        string plan
+        integer rateLimit "per day"
+        datetime lastUsedAt
+        datetime expiresAt
+        boolean active
+    }
+
+    APIUsage {
+        bigint apiUsageId PK
+        bigint apiKeyId FK
+        date usageDate
+        integer requestCount
+        integer bytesTransferred
+    }
+
+    ScanResult {
+        bigint scanResultId PK
+        bigint organizationId FK
+        string projectPath
+        integer score
+        jsonb findings
+        jsonb toolsDetected
+        string regulation
+        datetime scannedAt
+        string idempotencyKey UK
     }
 
     Invitation {
@@ -415,8 +498,10 @@ erDiagram
 | **Consultation** | Conversation, ChatMessage | 2 |
 | **Monitoring** | RegulatoryUpdate, ImpactAssessment, Notification | 3 |
 | **Billing** | Subscription, Plan | 2 |
+| **Registry API** _(v3.0)_ | RegistryTool, Obligation, ScoringRule, APIKey, APIUsage | 5 |
+| **TUI Data Collection** _(v3.0)_ | ScanResult | 1 |
 | **Cross-cutting** | AuditLog | 1 |
-| **Total** | | **30** |
+| **Total** | | **~36** |
 
 ---
 
@@ -446,6 +531,7 @@ erDiagram
   },
   website: { type: 'string', required: false },
   vatId: { type: 'string', required: false, note: 'EU VAT number' },
+  workosOrgId: { type: 'string', unique: true, required: false, index: true, note: 'WorkOS organization ID (v3.0)' },
   settings: { type: 'json', required: false, note: 'Organization-level settings: { allowEmployeeRegistration: boolean, ... }' },
 });
 ```
@@ -460,6 +546,7 @@ erDiagram
 | aiActRoles | jsonb | DEFAULT '["deployer"]' | AI Act roles: provider, deployer, distributor, importer (Art. 3) |
 | website | varchar | nullable | Company website |
 | vatId | varchar | nullable | EU VAT identification number |
+| workosOrgId | varchar | UNIQUE, nullable | WorkOS organization ID (v3.0) |
 | settings | jsonb | nullable | Configurable settings (`{ allowEmployeeRegistration: bool }`) |
 | creation | timestamptz | DEFAULT now() | From Identifier |
 | change | timestamptz | DEFAULT now() | From Identifier |
@@ -470,11 +557,11 @@ erDiagram
 
 ```javascript
 // schemas/User.js — migrated from Account.js
-// Auth (password, magic link, sessions) управляется Ory — здесь только бизнес-данные
+// Auth (password, magic link, sessions) управляется WorkOS — здесь только бизнес-данные
 ({
   Registry: {},
   organization: { type: 'Organization', delete: 'cascade' },
-  oryId: { type: 'string', unique: true, index: true, note: 'Ory identity UUID' },
+  workosUserId: { type: 'string', unique: true, index: true, note: 'WorkOS user ID (replaces oryId)' },
   email: { type: 'string', length: { min: 6, max: 255 }, unique: true, index: true },
   fullName: { type: 'string', length: { max: 255 } },
   active: { type: 'boolean', default: true },
@@ -488,16 +575,16 @@ erDiagram
 |--------|------|------------|----------|
 | id | bigint | PK, identity | Inherits from Identifier |
 | organizationId | bigint | FK → Organization.id, CASCADE | Tenant isolation |
-| oryId | varchar | UNIQUE, INDEX, NOT NULL | Ory identity UUID (sync via webhook) |
-| email | varchar(255) | UNIQUE, INDEX, NOT NULL | Login identifier (sync from Ory) |
+| workosUserId | varchar | UNIQUE, INDEX, NOT NULL | WorkOS user ID (sync via AuthKit callback) |
+| email | varchar(255) | UNIQUE, INDEX, NOT NULL | Login identifier (sync from WorkOS) |
 | fullName | varchar(255) | NOT NULL | Display name |
 | active | boolean | DEFAULT true | Soft delete |
 | locale | varchar(5) | DEFAULT 'en' | UI language (en, de, fr) |
-| lastLoginAt | timestamptz | nullable | Updated via Ory webhook |
+| lastLoginAt | timestamptz | nullable | Updated via WorkOS AuthKit callback |
 | creation | timestamptz | DEFAULT now() | Registration date |
 | change | timestamptz | DEFAULT now() | Last profile update |
 
-> **Note:** Пароли, magic links, sessions управляются Ory. Наша таблица User содержит только бизнес-данные + oryId для связки.
+> **Note:** Пароли, magic links, sessions управляются WorkOS (AuthKit). Наша таблица User содержит только бизнес-данные + workosUserId для связки.
 
 **Junction Table:** UserRole (userId, roleId) — CASCADE on delete
 
@@ -580,7 +667,7 @@ erDiagram
 
 ---
 
-> **Session:** Удалена — sessions управляются Ory (self-hosted, Hetzner EU).
+> **Session:** Удалена — sessions управляются WorkOS (managed, AuthKit).
 
 ---
 
@@ -1303,6 +1390,148 @@ erDiagram
 
 ---
 
+### 4.9 Registry API Context (NEW — v3.0.0)
+
+#### RegistryTool (Entity) — полная запись AI-инструмента из Engine
+
+```javascript
+// schemas/RegistryTool.js (NEW — v3.0)
+// Source of truth для AI tool registry. Обогащённая версия AIToolCatalog (2,477+ tools).
+// TUI Engine потребляет через DataProvider API.
+({
+  Entity: {},
+  name: { type: 'string', length: { max: 255 }, unique: true },
+  provider: { type: 'string', length: { max: 255 }, index: true },
+  category: {
+    enum: ['chatbot', 'coding_assistant', 'image_generator', 'video_generator',
+           'voice_assistant', 'recommendation', 'analytics', 'hr_tool',
+           'legal_tool', 'healthcare', 'education', 'api_platform',
+           'framework', 'infrastructure', 'other'],
+  },
+  riskLevel: {
+    enum: ['prohibited', 'high', 'gpai', 'limited', 'minimal'],
+    required: false, index: true,
+  },
+  capabilities: { type: 'json', note: 'Array: text_generation, image_generation, decision_making, etc.' },
+  jurisdictions: { type: 'json', note: 'Array: eu_ai_act, colorado_sb205, etc.' },
+  evidence: { type: 'json', required: false, note: 'Certification, audit reports, vendor statements' },
+  detectionPatterns: { type: 'json', note: 'npm packages, imports, API endpoints for scanner' },
+  description: { type: 'text' },
+  vendorUrl: { type: 'string', required: false },
+  lastVerifiedAt: { type: 'datetime', required: false },
+});
+```
+
+#### Obligation (Entity) — compliance obligation per regulation/risk level
+
+```javascript
+// schemas/Obligation.js (NEW — v3.0)
+// 108 obligations from Engine regulation database.
+// TUI scoring rules reference these.
+({
+  Entity: {},
+  code: { type: 'string', unique: true, note: 'e.g., EU_AI_ACT_ART50_1' },
+  regulation: { type: 'string', index: true, note: 'eu_ai_act, colorado_sb205, etc.' },
+  riskLevel: {
+    enum: ['all', 'prohibited', 'high', 'gpai', 'limited', 'minimal'],
+    index: true,
+  },
+  articleReference: { type: 'string', note: 'Art. 50(1), §6-1-1402(1)' },
+  title: { type: 'string', length: { max: 500 } },
+  description: { type: 'text' },
+  checkCriteria: { type: 'json', note: 'Machine-readable check criteria for scanner' },
+  sortOrder: { type: 'number', default: 0 },
+});
+```
+
+#### ScoringRule (Entity) — правило расчёта compliance score
+
+```javascript
+// schemas/ScoringRule.js (NEW — v3.0)
+({
+  Entity: {},
+  regulation: { type: 'string', index: true },
+  checkId: { type: 'string', unique: true, note: 'e.g., disclosure, marking, logging' },
+  riskLevel: { type: 'string', note: 'Applicable risk level' },
+  weight: { type: 'number', note: 'Score weight (1-10)' },
+  maxScore: { type: 'number', note: 'Max points for this check' },
+  description: { type: 'text' },
+});
+```
+
+#### APIKey (Entity) — API ключ для TUI DataProvider
+
+```javascript
+// schemas/APIKey.js (NEW — v3.0)
+({
+  Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  keyHash: { type: 'string', unique: true, index: true, note: 'HMAC-SHA256 hash of API key' },
+  keyPrefix: { type: 'string', length: { max: 8 }, note: 'First 8 chars for identification' },
+  name: { type: 'string', length: { max: 255 }, note: 'User-friendly key name' },
+  plan: {
+    enum: ['free', 'starter', 'growth', 'scale', 'enterprise'],
+    default: 'free',
+  },
+  rateLimit: { type: 'number', note: 'Requests per day', default: 100 },
+  lastUsedAt: { type: 'datetime', required: false },
+  expiresAt: { type: 'datetime', required: false },
+  active: { type: 'boolean', default: true },
+});
+```
+
+#### APIUsage (Details) — daily usage tracking per API key
+
+```javascript
+// schemas/APIUsage.js (NEW — v3.0)
+({
+  Details: {},
+  apiKey: { type: 'APIKey', delete: 'cascade' },
+  usageDate: { type: 'date', note: 'Day granularity' },
+  requestCount: { type: 'number', default: 0 },
+  bytesTransferred: { type: 'number', default: 0 },
+  naturalKey: { unique: ['apiKey', 'usageDate'] },
+});
+```
+
+---
+
+### 4.10 TUI Data Collection Context (NEW — v3.0.0)
+
+#### ScanResult (Details) — результат скана, загруженный из TUI
+
+```javascript
+// schemas/ScanResult.js (NEW — v3.0)
+// TUI загружает результаты compliance-скана в SaaS при наличии API key (платный план).
+// Данные агрегируются в Cross-System Map на Dashboard.
+// Idempotency: HMAC(orgId + projectPath + scannedAt) предотвращает дубликаты.
+({
+  Details: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  projectPath: { type: 'string', length: { max: 500 }, note: 'Anonymized project path (no PII)' },
+  score: { type: 'number', note: '0-100 compliance score' },
+  findings: { type: 'json', note: 'Array of { checkId, severity, article, message }' },
+  toolsDetected: { type: 'json', note: 'Array of AI systems found: { name, provider, riskLevel }' },
+  regulation: { type: 'string', default: "'eu_ai_act'", note: 'Primary regulation scanned' },
+  scannedAt: 'datetime',
+  idempotencyKey: { type: 'string', unique: true, index: true, note: 'HMAC for dedup' },
+});
+```
+
+| Column | Type | Constraints | Описание |
+|--------|------|------------|----------|
+| id | bigint | PK, identity | Inherits from Details |
+| organizationId | bigint | FK(Organization), NOT NULL | Tenant binding |
+| projectPath | varchar(500) | NOT NULL | Anonymized project path (без hostname, без PII) |
+| score | integer | NOT NULL | 0-100 compliance score |
+| findings | jsonb | NOT NULL | Нарушения: checkId, severity, article |
+| toolsDetected | jsonb | NOT NULL | AI-системы обнаруженные в проекте |
+| regulation | varchar | NOT NULL, DEFAULT 'eu_ai_act' | Юрисдикция скана |
+| scannedAt | timestamptz | NOT NULL | Время скана (от TUI) |
+| idempotencyKey | varchar | UNIQUE, NOT NULL | HMAC-dedup ключ |
+
+---
+
 ## 5. Indexes Strategy
 
 ### Performance Indexes
@@ -1321,7 +1550,16 @@ erDiagram
 | ChatMessage | idx_msg_conv | conversationId | Messages in conversation |
 | Notification | idx_notif_org_user_read | organizationId, userId, read | Unread notifications per tenant |
 | AuditLog | idx_audit_org_time | organizationId, creation DESC | Audit trail queries |
-| User | idx_user_ory_id | oryId (UNIQUE) | Ory webhook sync lookup |
+| User | idx_user_workos_id | workosUserId (UNIQUE) | WorkOS AuthKit callback sync lookup |
+| RegistryTool | idx_registry_provider | provider | Filter by provider |
+| RegistryTool | idx_registry_risk | riskLevel | Filter by risk level |
+| Obligation | idx_obligation_reg_risk | regulation, riskLevel | Filter per regulation |
+| APIKey | idx_apikey_org | organizationId | Keys per org |
+| APIKey | idx_apikey_hash | keyHash (UNIQUE) | Key lookup |
+| APIUsage | ak_apiusage_key_date | apiKeyId, usageDate (UNIQUE) | Daily usage tracking |
+| ScanResult | idx_scanresult_org | organizationId | Scans per org (Cross-System Map) |
+| ScanResult | idx_scanresult_org_time | organizationId, scannedAt DESC | Timeline queries |
+| ScanResult | ak_scanresult_idemp | idempotencyKey (UNIQUE) | Deduplication |
 
 ### Full-Text Search (post-MVP)
 
@@ -1358,6 +1596,9 @@ Organization
   ├── AIToolDiscovery (organizationId)
   ├── LiteracyRequirement (organizationId)
   ├── Subscription (organizationId)
+  ├── APIKey (organizationId)
+  │   └── APIUsage (→ apiKeyId → organizationId)
+  ├── ScanResult (organizationId)
   └── AuditLog (organizationId)
 ```
 
@@ -1401,13 +1642,13 @@ migrations/
 
 | Existing Schema | New Schema | Migration |
 |----------------|-----------|-----------|
-| Account | User | Rename + add oryId, organizationId, locale (remove password — Ory manages auth) |
+| Account | User | Rename + add workosUserId, organizationId, locale (remove password — WorkOS manages auth) |
 | Division | Organization | Rename + add industry, size, country, vatId |
 | Chat | Conversation | Rename + add aiToolId, context, metadata |
 | Message | ChatMessage | Rename + restructure content, add role, toolCalls |
 | Role | Role | Add organizationId (nullable for system roles) |
 | Permission | Permission | Replace identifierId with resource + action strings |
-| Session | — | Remove (Ory manages sessions) |
+| Session | — | Remove (WorkOS manages sessions) |
 | ChatMember | — | Remove (Eva is 1:1 conversation, not group chat) |
 | Area | — | Remove (not needed for compliance platform) |
 | Catalog | — | Remove (not needed) |
@@ -1429,7 +1670,7 @@ migrations/
 | Compliance Documents | 7 years | Legal requirement |
 | Chat Messages | 2 years | Utility period |
 | Audit Logs | 7 years | Compliance audit trail |
-| Sessions | Managed by Ory | Ory session TTL configuration |
+| Sessions | Managed by WorkOS | WorkOS session TTL configuration |
 | Notifications | 90 days | UX utility |
 
 ### GDPR Right to Erasure (Art. 17)
@@ -1437,7 +1678,7 @@ migrations/
 При запросе на удаление данных:
 
 1. **Soft delete User:** `active = false`, anonymize PII (email, fullName)
-2. **Delete Ory identity:** Ory Admin API → delete identity (удаляет sessions, credentials)
+2. **Delete WorkOS user:** WorkOS Admin API → delete user (удаляет sessions, credentials)
 3. **Keep audit trail:** Classifications и documents сохраняются (legal basis: legitimate interest for AI Act compliance), но PII анонимизируется
 4. **Delete chat messages:** Anonymize user references
 5. **Stripe:** Cancel subscription, delete customer via Stripe API
@@ -1446,13 +1687,13 @@ migrations/
 // Anonymization strategy
 const anonymizeUser = async (userId) => {
   const user = await db.User.read(userId);
-  // 1. Delete Ory identity (sessions + credentials)
-  await oryClient.deleteIdentity(user.oryId);
+  // 1. Delete WorkOS user (sessions + credentials)
+  await workos.userManagement.deleteUser(user.workosUserId);
   // 2. Anonymize in our DB
   await db.User.update(userId, {
     email: `deleted_${userId}@anonymized.local`,
     fullName: 'Deleted User',
-    oryId: `deleted_${userId}`,
+    workosUserId: `deleted_${userId}`,
     active: false,
   });
 ```

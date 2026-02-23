@@ -39,9 +39,9 @@ const createMockDb = () => {
       if (sql.includes('FROM "Permission"')) {
         return { rows: permissions };
       }
-      if (sql.includes('FROM "User"') && sql.includes('oryId')) {
-        const oryId = params?.[0];
-        if (oryId === 'ory-member') return { rows: [MOCK_MEMBER] };
+      if (sql.includes('FROM "User"') && sql.includes('workosUserId')) {
+        const workosId = params?.[0];
+        if (workosId === 'wos-member') return { rows: [MOCK_MEMBER] };
         return { rows: [MOCK_USER] };
       }
       if (sql.includes('UPDATE "User"')) {
@@ -112,7 +112,7 @@ describe('Stripe Checkout API', () => {
       initErrorHandler(authedServer);
       authedServer.addHook('onRequest', (req, _reply, done) => {
         req.session = {
-          identity: { id: 'ory-123', traits: { email: MOCK_USER.email } },
+          user: { id: 'wos-123' },
         };
         done();
       });
@@ -168,7 +168,7 @@ describe('Stripe Checkout API', () => {
       });
       memberServer.addHook('onRequest', (req, _reply, done) => {
         req.session = {
-          identity: { id: 'ory-member', traits: { email: MOCK_MEMBER.email } },
+          user: { id: 'wos-member' },
         };
         done();
       });
@@ -250,7 +250,7 @@ describe('Stripe Checkout API', () => {
       initErrorHandler(server);
       server.addHook('onRequest', (req, _reply, done) => {
         req.session = {
-          identity: { id: 'ory-123', traits: { email: MOCK_USER.email } },
+          user: { id: 'wos-123' },
         };
         done();
       });

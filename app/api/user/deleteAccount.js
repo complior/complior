@@ -16,7 +16,7 @@
     await application.iam.deleteAccount.deleteAccount({
       userId: user.id,
       organizationId: user.organizationId,
-      oryId: user.oryId,
+      workosUserId: user.workosUserId,
     });
 
     return { _statusCode: 200, deleted: true };

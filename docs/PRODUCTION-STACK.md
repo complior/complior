@@ -1,5 +1,13 @@
 # Production Stack — Complior
 
+> **Версия:** 3.0.0 | **Дата:** 2026-02-21
+
+### Changelog
+
+- **v3.0.0** (2026-02-21): Auth: сервис Ory Kratos удалён → WorkOS (managed). Docker стек: 7 → 6 сервисов (минус Kratos). Caddy: удалены `.ory/*` proxy маршруты. Добавлены WorkOS env vars.
+
+---
+
 ## Архитектура
 
 ```
@@ -16,15 +24,16 @@ Internet → :443/:80
    │Backend │ │Gotenberg │  HTML→PDF
    │Fastify │ │:3000     │
    │:8000   │ └──────────┘
-   └──┬──┬──┘
-      │  │
- ┌────┴┐ ┌┴──────┐
- │ PG  │ │Kratos │  Identity & Auth
- │:5432│ │:4433  │
- └─────┘ └───────┘
+   └────┬───┘
+        │
+   ┌────┴┐
+   │ PG  │    Auth → WorkOS (managed cloud, без контейнера)
+   │:5432│
+   └─────┘
 
 Все сервисы в Docker network `complior_net`.
 Наружу открыт ТОЛЬКО Caddy (:80, :443).
+Auth обрабатывается WorkOS (managed) — не требует Docker контейнера.
 ```
 
 ## Сервисы
@@ -32,22 +41,28 @@ Internet → :443/:80
 | Сервис | Контейнер | Образ | Роль |
 |--------|-----------|-------|------|
 | PostgreSQL | complior-postgres | postgres:16-alpine | БД (user: `complior`, db: `complior`) |
-| Kratos | complior-kratos | oryd/kratos:v1.3.1 | Авторизация, сессии |
 | Gotenberg | complior-gotenberg | gotenberg/gotenberg:8 | PDF генерация |
 | Backend | complior-backend | build: Dockerfile.production | Fastify API |
 | Caddy | complior-caddy | caddy:2-alpine | Reverse proxy + TLS |
+| **WorkOS** | — (managed) | — | Авторизация, SSO, сессии (облачный сервис) |
 
 ## Ключевые файлы
 
 ```
-docker-compose.production.yml   — оркестрация всех сервисов
+docker-compose.production.yml   — оркестрация 6 сервисов
 Dockerfile.production            — backend multi-stage build
 .env.production                  — секреты (chmod 600, НЕ в git)
 secrets/db_password.txt          — пароль PostgreSQL (Docker secret)
 caddy/Caddyfile                  — маршрутизация + security headers
-ory/kratos.production.yml        — конфиг Kratos (URLs, SMTP, argon2)
-ory/webhook-secret               — webhook secret для Kratos→Backend
 ```
+
+### Переменные окружения WorkOS (в `.env.production`)
+
+| Переменная | Описание |
+|------------|----------|
+| `WORKOS_CLIENT_ID` | WorkOS client ID |
+| `WORKOS_API_KEY` | WorkOS API key |
+| `WORKOS_REDIRECT_URI` | AuthKit callback URL |
 
 ---
 
@@ -99,7 +114,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml build
 ```bash
 docker compose --env-file .env.production -f docker-compose.production.yml up -d --no-deps backend
 ```
-`--no-deps` — не трогать postgres/kratos/gotenberg/caddy, заменить ТОЛЬКО backend.
+`--no-deps` — не трогать postgres/gotenberg/caddy, заменить ТОЛЬКО backend.
 
 Даунтайм: ~3-5 секунд (пока новый контейнер стартует и проходит health check).
 
@@ -114,7 +129,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 docker compose --env-file .env.production -f docker-compose.production.yml exec -T backend \
   wget -qO- http://127.0.0.1:8000/health
 ```
-Ожидаемый ответ: `{"status":"ok","services":{"ory":"ok","gotenberg":"ok","database":"ok"}}`
+Ожидаемый ответ: `{"status":"ok","services":{"workos":"ok","gotenberg":"ok","database":"ok"}}`
 
 ### Одной командой (copy-paste)
 ```bash
@@ -167,10 +182,11 @@ docker compose --env-file .env.production -f docker-compose.production.yml up -d
 docker compose --env-file .env.production -f docker-compose.production.yml logs backend --tail=30
 ```
 
-**Kratos unhealthy:**
+**Проблемы с WorkOS авторизацией:**
 ```bash
-docker compose --env-file .env.production -f docker-compose.production.yml logs kratos --tail=30
-# Обычно: проблема с SMTP или секретами → проверить .env.production
+# Проверить WorkOS env vars в .env.production
+# Проверить статус в WorkOS Dashboard: https://dashboard.workos.com
+# Проверить callback URL (WORKOS_REDIRECT_URI)
 ```
 
 **Нет места на диске:**

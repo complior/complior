@@ -59,15 +59,15 @@ const createMockDb = () => {
         }
         return { rows: [] };
       }
-      // Check pending invitation for syncFromWebhook
+      // Check pending invitation for syncUser
       if (sql.includes('FROM "Invitation"') && sql.includes('"email"') && sql.includes('pending')) {
         if (params[0] === 'invited@example.com') {
           return { rows: [PENDING_INVITATION] };
         }
         return { rows: [] };
       }
-      // Existing user check (syncFromWebhook)
-      if (sql.includes('FROM "User"') && sql.includes('"oryId"') && !sql.includes('JOIN')) {
+      // Existing user check (syncUser)
+      if (sql.includes('FROM "User"') && sql.includes('"workosUserId"') && !sql.includes('JOIN')) {
         return { rows: [] };
       }
       // Role lookup
@@ -200,15 +200,15 @@ describe('acceptInvitation.accept', () => {
   });
 });
 
-describe('syncUserFromOry — invitation flow', () => {
+describe('syncUserFromWorkOS — invitation flow', () => {
   it('new user with pending invite joins existing org', async () => {
     const mockDb = createMockDb();
     const { application } = await buildFullSandbox(mockDb);
-    const result = await application.iam.syncUserFromOry.syncFromWebhook({
-      identity_id: 'ory-new-invite',
+    const result = await application.iam.syncUserFromWorkOS.syncUser({
+      id: 'wos-new-invite',
       email: 'invited@example.com',
-      name: { first: 'Invited', last: 'User' },
-      locale: 'en',
+      firstName: 'Invited',
+      lastName: 'User',
     });
     assert.strictEqual(result.created, true);
     assert.strictEqual(result.source, 'invitation');
@@ -220,11 +220,11 @@ describe('syncUserFromOry — invitation flow', () => {
   it('new user without invite creates new org', async () => {
     const mockDb = createMockDb();
     const { application } = await buildFullSandbox(mockDb);
-    const result = await application.iam.syncUserFromOry.syncFromWebhook({
-      identity_id: 'ory-no-invite',
+    const result = await application.iam.syncUserFromWorkOS.syncUser({
+      id: 'wos-no-invite',
       email: 'noinvite@example.com',
-      name: { first: 'No', last: 'Invite' },
-      locale: 'en',
+      firstName: 'No',
+      lastName: 'Invite',
     });
     assert.strictEqual(result.created, true);
     assert.strictEqual(result.source, 'registration');

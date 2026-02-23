@@ -41,54 +41,6 @@ services:
         max-size: '10m'
         max-file: '3'
 
-  # Ory Kratos — Identity & Auth (self-hosted, EU)
-  kratos-migrate:
-    image: oryd/kratos:v1.3.1
-    container_name: complior-kratos-migrate
-    environment:
-      DSN: postgres://complior:${DB_PASSWORD}@postgres:5432/complior?sslmode=disable
-    volumes:
-      - ./ory:/etc/config/kratos:ro
-    command: migrate sql -e --yes
-    networks:
-      - complior_net
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  kratos:
-    image: oryd/kratos:v1.3.1
-    container_name: complior-kratos
-    restart: unless-stopped
-    environment:
-      DSN: postgres://complior:${DB_PASSWORD}@postgres:5432/complior?sslmode=disable
-      SECRETS_COOKIE: ${KRATOS_COOKIE_SECRET}
-      SECRETS_CIPHER: ${KRATOS_CIPHER_SECRET}
-      COURIER_SMTP_CONNECTION_URI: ${COURIER_SMTP_CONNECTION_URI}
-    volumes:
-      - ./ory:/etc/config/kratos:ro
-    command: serve -c /etc/config/kratos/kratos.dev.yml --dev --watch-courier
-    ports:
-      - '4433:4433'
-      - '4434:4434'
-    networks:
-      - complior_net
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kratos-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:4434/health/alive']
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
   # Gotenberg — HTML → PDF (self-hosted)
   gotenberg:
     image: gotenberg/gotenberg:8
@@ -119,8 +71,6 @@ services:
       - .env.production
     environment:
       DATABASE_URL: postgres://complior:${DB_PASSWORD}@postgres:5432/complior
-      ORY_SDK_URL: http://kratos:4433
-      ORY_ADMIN_URL: http://kratos:4434
       GOTENBERG_URL: http://gotenberg:3000
     ports:
       - '8000:8000'
@@ -129,8 +79,6 @@ services:
     # Port 8000 exposed for Stripe webhook testing (remove in production)
     depends_on:
       postgres:
-        condition: service_healthy
-      kratos:
         condition: service_healthy
       gotenberg:
         condition: service_healthy
@@ -157,7 +105,6 @@ services:
     restart: unless-stopped
     environment:
       BACKEND_URL: http://backend:8000
-      ORY_INTERNAL_URL: http://kratos:4433
       HOSTNAME: 0.0.0.0
       PORT: 3001
     networks:

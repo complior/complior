@@ -1,12 +1,14 @@
 # Design Brief for Nina — Sprint 3+
 
-**Version:** 2.9.0
-**Date:** 2026-02-15
+**Version:** 3.0.0
+**Date:** 2026-02-21
 **From:** PO
 **For:** Nina (Frontend+UX, Claude Opus 4.6)
-**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 3.5 (Stripe + Lead Gen + Pricing Frontend) + Sprint 4 (Production) + Sprint 5 (Frontend) + Sprint 6 (Admin Panel + Deploy)
+**Sprint:** 2.5 (Invite + Team) + Sprint 3 (Requirements + Dashboard + Catalog APIs) + Sprint 3.5 (Stripe + Lead Gen + Pricing Frontend) + Sprint 4 (Production) + Sprint 5 (Frontend) + Sprint 6 (Admin Panel + Deploy) + Sprint 7+ (TUI+SaaS)
 **Ref:** PRODUCT-BACKLOG.md v3.6.0, wireframes/sprint-1-2-wireframes.md
 
+> **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model. Auth: Ory → WorkOS (AuthKit hosted login). 6 новых экранов (Sprint 7-8): Screen 24 (Cross-System Map), Screen 25 (Agent Registry), Screen 26 (Monitoring Dashboard), Screen 27 (Registry API Settings), Screen 28 (TUI Nodes), Screen 29 (Score Trends). Auth screens обновлены (WorkOS AuthKit). EU Trust Bar: Ory → WorkOS. Всего: **29 экранов**.
+>
 > **v2.9.0 (2026-02-15):** Sprint 6 — NEW Screen 23 (Platform Admin): 4 pages — admin dashboard (stat cards: Users, Orgs, Active Subs, MRR + plan distribution table), users table (search + pagination), organizations table (filter by plan), subscriptions table (status badges). Separate route group `(admin)/` with Header mode="admin". Access control via platform_admin role check. Всего: **23 экрана**.
 >
 > **v2.8.0 (2026-02-12):** Sprint 3.5 — Screen 03 (Registration): rewritten as plan-aware flow with conditional 2-step (free) or 3-step (paid: Account → Company → TrialConfirmation → Stripe redirect). NEW Screen 22 (Checkout Success `/checkout/success`). Screen 19 (Pricing): CTAs now link to plan-aware registration. Screen 01 (Hero): CTAs updated with target URLs. Всего: **22 экрана**.
@@ -31,7 +33,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 
 ---
 
-## Полный список экранов (23 screens)
+## Полный список экранов (29 screens)
 
 ### Группа A — Публичные (до авторизации)
 
@@ -86,6 +88,23 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
 | 21 | **Penalty Calculator** | `/penalty-calculator` | 5 | **NEW** | Public, no auth. Revenue input → max fine → shareable card |
 | 22 | **Checkout Success** | `/checkout/success` | 3.5 | **NEW** | Success icon, plan badge, trial started, polls API, auto-redirect |
 
+### Группа G — Platform Admin (Sprint 6)
+
+| # | Экран | Роут | Sprint | Статус | Описание |
+|---|-------|------|--------|--------|----------|
+| 23 | **Platform Admin** | `/admin/*` | 6 | **NEW** | Dashboard, users, orgs, subscriptions — double-gate access |
+
+### Группа H — Dashboard v2 (Sprint 7-8, TUI+SaaS)
+
+| # | Экран | Роут | Sprint | Статус | Описание |
+|---|-------|------|--------|--------|----------|
+| 24 | **Cross-System Map** | `/dashboard/cross-system-map` | 8 | **NEW** | TUI-ноды организации, compliance scores, topology view |
+| 25 | **Agent Registry** | `/dashboard/agents` | 8 | **NEW** | Все AI-агенты, обнаруженные TUI-нодами |
+| 26 | **Monitoring Dashboard** | `/dashboard/monitoring` | 9 | **NEW** | Score trends, drift alerts, anomaly detection |
+| 27 | **Registry API Settings** | `/settings/api` | 7 | **NEW** | API ключи для TUI DataProvider, usage stats |
+| 28 | **TUI Nodes** | `/dashboard/nodes` | 8 | **NEW** | Список TUI-инсталляций, статусы, scan history |
+| 29 | **Score Trends** | `/dashboard/trends` | 9 | **NEW** | Score analytics, per-node/project, exports |
+
 ---
 
 ## Детальные спецификации — Группа A (Публичные)
@@ -106,7 +125,7 @@ Sprint 1-2 завершены. Весь фронтенд сделан как **w
    - Left: **"Using AI in your company?"** (deployers) — 3 bullets + [Start Compliance →] primary
    - Right: **"Building AI for the EU market?"** (provider-lite) — 3 bullets + "Coming soon" badge + [Join Waitlist →] secondary
 6. **Pricing** — 5 тарифов: Free ($0), Starter ($49), Growth ($149, "Most popular" badge), Scale ($399), Enterprise ("Contact us"). Toggle: Monthly / Annual (20% off). Link: [Full comparison →] `/pricing`
-7. **EU Trust Bar** — 6 логотипов EU-сервисов с флагами: 🇩🇪 Hetzner, 🇫🇷 Brevo, 🇪🇪 Plausible, 🇩🇪 Ory, 🇫🇷 Mistral, 🇱🇹 Better Uptime + "Your data NEVER leaves the EU"
+7. **EU Trust Bar** — 6 логотипов сервисов с флагами: 🇩🇪 Hetzner, 🇫🇷 Brevo, 🇪🇪 Plausible, 🇺🇸 WorkOS (SCC), 🇫🇷 Mistral, 🇱🇹 Better Uptime + "Compliance data stored in EU (Hetzner, Germany)"
 8. **Final CTA** — Большая центрированная кнопка
 9. **Footer** — © + юридические ссылки
 
@@ -1064,9 +1083,108 @@ designs/
 
 ---
 
+---
+
+## Детальные спецификации — Группа H (Dashboard v2 — Sprint 7-8, TUI+SaaS)
+
+### Screen 24: Cross-System Map `/dashboard/cross-system-map`
+
+**Sprint:** 8 | **Статус:** NEW
+
+Визуализация всех TUI-инсталляций в организации. Центральный экран для CTO/DPO.
+
+**Layout:**
+- **Header:** "Cross-System Map" + org name + total TUI nodes count
+- **Map view:** Карточки TUI-нод в grid (или topology view):
+  - Каждая нода: hostname, version, last seen, avg compliance score (color: green/yellow/red), agent count
+  - Click → drill-down к scan results этой ноды
+- **Sidebar stats:** Org-wide compliance score (большой gauge), total tools detected, total violations, nodes online/offline
+- **Filter bar:** Status (online/offline), score range, date range
+
+**Mobile:** Карточки стопкой, stats сверху
+
+---
+
+### Screen 25: Agent Registry `/dashboard/agents`
+
+**Sprint:** 8 | **Статус:** NEW
+
+Таблица всех AI-агентов, обнаруженных TUI-нодами в организации.
+
+**Layout:**
+- **Header:** "Agent Registry" + total agent count
+- **Table:** agentName, agentType, TUI node (hostname), status (active/inactive/blocked badge), capabilities (tags), discoveredAt, lastActiveAt
+- **Filters:** agentType, status, TUI node
+- **Search:** по имени агента
+- **Actions:** Block agent (confirmation dialog), view permissions
+
+**Mobile:** Responsive table → card list
+
+---
+
+### Screen 26: Monitoring Dashboard `/dashboard/monitoring`
+
+**Sprint:** 9 | **Статус:** NEW
+
+Score trends, drift alerts, anomaly detection.
+
+**Layout:**
+- **Score Trend Chart:** Line chart, 30/90/365 дней, per-node или org-wide. X = time, Y = compliance score (0-100)
+- **Drift Alerts:** Карточки с alerts (score drop >5 points, new violation, stale node >7 days)
+- **Compliance Heatmap:** Calendar view (GitHub-style), color = daily avg score
+- **Filter:** Per node, per tool, regulation
+
+**Mobile:** Chart scrollable, alerts стопкой
+
+---
+
+### Screen 27: Registry API Settings `/settings/api`
+
+**Sprint:** 7 | **Статус:** NEW
+
+Управление API ключами для TUI DataProvider.
+
+**Layout:**
+- **Tab in Settings page** (extends Screen 16)
+- **API Keys table:** key prefix (last 8 chars), name, plan tier, rate limit, requests today/limit, created, last used, status (active/expired)
+- **Actions:** [Create Key] → dialog (name, optional expiration) → shows full key ONCE
+- **Actions per row:** Copy prefix, Revoke (confirmation), Rotate (creates new, revokes old)
+- **Usage stats:** Daily usage chart (bar chart, 30 days)
+- **Rate limit info:** Current plan limits, upgrade CTA
+
+---
+
+### Screen 28: TUI Nodes `/dashboard/nodes`
+
+**Sprint:** 8 | **Статус:** NEW
+
+Список TUI-инсталляций в организации.
+
+**Layout:**
+- **Header:** "TUI Installations" + node count + [How to connect] link
+- **Table:** hostname, nodeId (prefix), version, OS, last seen (relative time), scan count, avg score, status badge (online = seen <1h, stale = >24h, offline = >7d)
+- **Actions per row:** View scan history, view detected agents, remove node (confirmation)
+- **Empty state:** "No TUI installations connected yet. Install Complior TUI and add your API key to connect." + [Installation Guide]
+
+---
+
+### Screen 29: Score Trends `/dashboard/trends`
+
+**Sprint:** 9 | **Статус:** NEW
+
+Детальная аналитика compliance scores по времени.
+
+**Layout:**
+- **Multi-line chart:** Score per node/project over time, toggleable lines
+- **Comparison view:** Before/after for specific fixes
+- **Top violations table:** Sorted by frequency across all nodes
+- **Regulation breakdown:** Score per regulation (EU AI Act, Colorado SB 205, etc.)
+- **Export:** [Download CSV] [Generate Report]
+
+---
+
 ## Что НЕ дизайнить
 
-- Admin panel (внутренний)
 - Email templates (Brevo обрабатывает)
 - PDF certificate/document layout (Gotenberg server-side)
 - Native mobile app (только responsive web)

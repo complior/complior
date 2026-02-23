@@ -1,11 +1,13 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 2.4.0
-**Дата:** 2026-02-15
+**Версия:** 3.0.0
+**Дата:** 2026-02-21
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
-**Зависимости:** ARCHITECTURE.md v2.1.0, DATABASE.md v2.1.0
+**Зависимости:** ARCHITECTURE.md v3.0.0, DATABASE.md v3.0.0
 
+> **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model. Auth: Ory → WorkOS (all auth flows updated). 8 новых flows: WorkOS Auth, Registry API, TUI Scan Upload, TUI Agent Inventory, TUI Data Sync, TUI License Check, TUI Bundle Download, Cross-System Aggregation.
+>
 > **v2.4.0 (2026-02-15):** Sprint 6 — NEW Flow 22: Platform Admin Data Access (Admin → requirePlatformAdmin guard → cross-org SQL JOINs → paginated results). Admin endpoints bypass tenant filter for global visibility.
 >
 > **v2.3.0 (2026-02-12):** Sprint 3.5 — Modified Flow 1 (Registration): conditional branch — free plan→dashboard, paid plan→Stripe Checkout→success page→dashboard. NEW Flow 21: Stripe Checkout sequence diagram (checkout session creation → Stripe hosted page → webhook → success page polling).
@@ -26,7 +28,7 @@
 sequenceDiagram
     participant User as User (Browser)
     participant Next as Next.js (SSR)
-    participant Ory as Ory (self-hosted)
+    participant WorkOS as WorkOS (managed)
     participant API as Fastify API
     participant Stripe as Stripe API
     participant DB as PostgreSQL
@@ -36,34 +38,36 @@ sequenceDiagram
     User->>Next: GET /auth/register?plan={plan}&period={period}
     Next-->>User: Plan-aware registration page (plan badge shown)
 
-    User->>Ory: POST /self-service/registration {email, password, fullName, company}
-    Ory->>Ory: Create identity, hash password
-    Ory->>Brevo: Send verification email (via Ory SMTP → Brevo)
-    Ory-->>User: Registration success → redirect to /auth/callback
+    User->>WorkOS: Redirect to AuthKit hosted registration
+    WorkOS->>WorkOS: AuthKit hosted login/registration
+    WorkOS-->>User: Registration success → redirect to /auth/callback?code={authCode}
 
-    Note over Ory,API: Ory webhook → after registration
-    Ory->>API: POST /api/auth/webhook {event: 'identity.created', identity}
-    API->>API: Validate webhook signature
+    Note over WorkOS,API: AuthKit callback → after registration
+    User->>Next: GET /auth/callback?code={authCode}
+    Next->>API: POST /api/auth/callback {code: authCode}
+    API->>WorkOS: Exchange code for user profile
+    WorkOS-->>API: {user: {id, email, fullName, ...}}
+    API->>API: syncUserFromWorkOS(workosUser)
     API->>DB: BEGIN TRANSACTION
-    API->>DB: INSERT Organization {name: "${fullName}'s Organization (${oryId.slice(0,8)})"}
+    API->>DB: INSERT Organization {name: "${fullName}'s Organization (${workosUserId.slice(0,8)})"}
     DB-->>API: organizationId
-    API->>DB: INSERT User {oryId, email, fullName, organizationId}
+    API->>DB: INSERT User {workosUserId, email, fullName, organizationId}
     DB-->>API: userId
     API->>DB: INSERT UserRole {userId, roleId: 'owner'}
     API->>DB: INSERT Subscription {organizationId, planId: 'free'}
     API->>DB: INSERT AuditLog {userId, action: 'login', resource: 'User'}
     API->>DB: COMMIT
-    API-->>Ory: 200 OK
+    API-->>Next: 200 OK {user, session}
 
     Note over API,DB: Retry logic: 3 attempts with exponential backoff for race conditions
 
-    Note over Next,DB: Fallback: если webhook не дошёл
-    User->>Next: GET /onboarding (Ory session cookie)
-    Next->>Ory: Verify session (toSession)
-    Ory-->>Next: {identity, session}
-    Next->>API: GET /api/auth/me
-    API->>DB: SELECT User WHERE oryId = identity.id
-    alt User не найден (webhook missed)
+    Note over Next,DB: Fallback: если callback sync не отработал
+    User->>Next: GET /onboarding (WorkOS session)
+    Next->>API: GET /api/auth/me (WorkOS session verification)
+    API->>WorkOS: Verify session
+    WorkOS-->>API: {user: {id, email, ...}}
+    API->>DB: SELECT User WHERE workosUserId = user.id
+    alt User не найден (sync missed)
         API->>DB: BEGIN TRANSACTION → INSERT Org + User + Role + Sub → COMMIT
         API-->>Next: {user, organization} (created on-the-fly)
     else User найден
@@ -231,7 +235,7 @@ sequenceDiagram
 
     User->>Next: useChat().sendMessage("Ist Slack AI high-risk für uns?")
     Next->>API: POST /api/chat (SSE stream)
-    API->>API: Authenticate (Ory session)
+    API->>API: Authenticate (WorkOS session)
 
     Note over API,DB: Step 0: Check Eva message quota per plan
     API->>DB: SELECT Plan.features.eva via Subscription WHERE organizationId
@@ -448,43 +452,43 @@ sequenceDiagram
 
 ---
 
-## 8. Authentication Flow (Ory Magic Link)
+## 8. Authentication Flow (WorkOS AuthKit)
 
 ```mermaid
 sequenceDiagram
     participant User as User (Browser)
-    participant Ory as Ory (self-hosted)
-    participant Brevo as Brevo (email, EU)
+    participant Next as Next.js
+    participant WorkOS as WorkOS (managed)
     participant API as Fastify API
     participant DB as PostgreSQL
 
-    Note over User,Brevo: Login with Magic Link (managed by Ory)
+    Note over User,WorkOS: Login with WorkOS AuthKit (managed)
 
-    User->>Ory: POST /self-service/login {method: 'code', email}
-    Ory->>Ory: Generate magic code/link
-    Ory->>Brevo: Send magic link email (SMTP → Brevo)
-    Note right of Brevo: "Klicken Sie hier, um sich anzumelden"<br/>Link: /self-service/login?code={code}
-    Ory-->>User: 200 OK "Check your email"
+    User->>Next: GET /auth/login
+    Next->>WorkOS: Redirect to AuthKit hosted login
+    WorkOS->>WorkOS: Render login UI (email/password, SSO, magic link)
+    Note right of WorkOS: AuthKit manages all login methods:<br/>email+password, magic link, SSO (SAML/OIDC)
 
-    User->>Ory: GET /self-service/login?code={code}
-    alt Code valid
-        Ory->>Ory: Create session
-        Ory-->>User: 302 Redirect /auth/callback + Set-Cookie: ory_session (httpOnly, Secure, SameSite)
-    else Code invalid/expired
-        Ory-->>User: 401 Invalid or expired link
+    alt Successful authentication
+        WorkOS-->>User: 302 Redirect /auth/callback?code={authCode}
+    else Invalid credentials
+        WorkOS-->>User: Error on AuthKit page
     end
 
-    Note over User,DB: Ory webhook → after login
-    Ory->>API: POST /api/auth/webhook {event: 'session.created', identity}
-    API->>DB: UPDATE User SET lastLoginAt = NOW() WHERE oryId = identity.id
+    Note over User,DB: AuthKit callback → after login
+    User->>Next: GET /auth/callback?code={authCode}
+    Next->>API: POST /api/auth/callback {code: authCode}
+    API->>WorkOS: Exchange code for user profile + session
+    WorkOS-->>API: {user: {id, email, ...}, session}
+    API->>DB: UPDATE User SET lastLoginAt = NOW() WHERE workosUserId = user.id
     API->>DB: INSERT AuditLog {userId, action: 'login'}
-    API-->>Ory: 200 OK
+    API-->>Next: 200 OK {session}
 
     Note over User,DB: Subsequent authenticated requests
-    User->>API: GET /api/systems (Cookie: ory_session)
-    API->>Ory: GET /sessions/whoami (verify session)
-    Ory-->>API: {identity: {id, email, ...}, active: true}
-    API->>DB: SELECT User WHERE oryId = identity.id
+    User->>API: GET /api/systems (WorkOS session)
+    API->>WorkOS: Verify session
+    WorkOS-->>API: {user: {id, email, ...}, active: true}
+    API->>DB: SELECT User WHERE workosUserId = user.id
     DB-->>API: {userId, organizationId}
     API->>DB: Query with organizationId filter (multi-tenancy)
     API-->>User: Response data
@@ -680,7 +684,7 @@ sequenceDiagram
     API-->>User: {imported: 12, matched: 8, needsReview: 4}
 
     Note over User,DB: Method 3 (Future P3): EU-Sovereign Auto-Discovery
-    Note right of User: DNS/proxy log analysis (self-hosted)<br/>Browser extension (self-hosted)<br/>Ory/Keycloak OAuth audit
+    Note right of User: DNS/proxy log analysis (self-hosted)<br/>Browser extension (self-hosted)<br/>WorkOS/Keycloak OAuth audit
 ```
 
 ---
@@ -772,11 +776,11 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant Brevo as Brevo (email, EU)
     participant Invitee as Invitee (Browser)
-    participant Ory as Ory (self-hosted)
+    participant WorkOS as WorkOS (managed)
 
     Note over Owner,Brevo: Step 1: Owner creates invitation
     Owner->>API: POST /api/team/invite {email, role: 'member'}
-    API->>API: Authenticate (Ory session) + checkPermission('User', 'manage')
+    API->>API: Authenticate (WorkOS session) + checkPermission('User', 'manage')
 
     API->>DB: SELECT Plan.maxUsers via Subscription WHERE organizationId
     API->>DB: SELECT COUNT(*) FROM "User" WHERE organizationId AND active=true
@@ -804,7 +808,7 @@ sequenceDiagram
 
     API-->>Owner: 201 {invitationId, email, role, status: 'pending', expiresAt}
 
-    Note over Invitee,Ory: Step 2: Invitee receives email and registers
+    Note over Invitee,WorkOS: Step 2: Invitee receives email and registers
     Invitee->>API: GET /api/team/invite/verify?token={uuid}
     API->>DB: SELECT Invitation WHERE token AND status='pending' AND expiresAt > NOW()
     alt Token valid
@@ -813,19 +817,20 @@ sequenceDiagram
         API-->>Invitee: {valid: false, reason: 'expired' | 'already_accepted'}
     end
 
-    Invitee->>Ory: POST /self-service/registration {email, password, fullName}
-    Ory->>Ory: Create identity
-    Ory->>Brevo: Verification email
-    Ory-->>Invitee: Registration success
+    Invitee->>WorkOS: Redirect to AuthKit hosted registration
+    WorkOS->>WorkOS: AuthKit registration
+    WorkOS-->>Invitee: Registration success → redirect to /auth/callback?code={authCode}
 
-    Note over Ory,DB: Modified webhook (Sprint 2.5 CRITICAL CHANGE)
-    Ory->>API: POST /api/auth/webhook {event: 'identity.created', identity}
-    API->>API: Validate webhook signature
+    Note over WorkOS,DB: AuthKit callback (Sprint 2.5 CRITICAL CHANGE)
+    Invitee->>API: POST /api/auth/callback {code: authCode}
+    API->>WorkOS: Exchange code for user profile
+    WorkOS-->>API: {user: {id, email, fullName, ...}}
+    API->>API: syncUserFromWorkOS(workosUser)
     API->>DB: BEGIN TRANSACTION
-    API->>DB: SELECT Invitation WHERE email=identity.email AND status='pending' AND expiresAt > NOW()
+    API->>DB: SELECT Invitation WHERE email=user.email AND status='pending' AND expiresAt > NOW()
 
     alt Invitation found (INVITE FLOW)
-        API->>DB: INSERT User {oryId, email, fullName, organizationId: invitation.organizationId}
+        API->>DB: INSERT User {workosUserId, email, fullName, organizationId: invitation.organizationId}
         DB-->>API: userId
         API->>DB: INSERT UserRole {userId, roleId: invitation.role}
         Note right of API: НЕ создаём Organization,<br/>НЕ создаём Subscription<br/>(org уже существует)
@@ -833,14 +838,14 @@ sequenceDiagram
         API->>DB: INSERT AuditLog {action: 'create', resource: 'User', newData: {source: 'invitation'}}
     else No invitation (NORMAL FLOW)
         API->>DB: INSERT Organization {name: placeholder}
-        API->>DB: INSERT User {oryId, email, fullName, organizationId}
+        API->>DB: INSERT User {workosUserId, email, fullName, organizationId}
         API->>DB: INSERT UserRole {userId, roleId: 'owner'}
         API->>DB: INSERT Subscription {organizationId, planId: 'free'}
         API->>DB: INSERT AuditLog {action: 'login', resource: 'User'}
     end
 
     API->>DB: COMMIT
-    API-->>Ory: 200 OK
+    API-->>WorkOS: 200 OK
 ```
 
 ---
@@ -859,8 +864,8 @@ sequenceDiagram
     API->>DB: SELECT Invitation WHERE token AND status='pending' AND expiresAt > NOW()
     API-->>User: {valid: true, organizationName: 'ACME Corp', role: 'member'}
 
-    User->>API: POST /api/team/invite/accept (authenticated, Cookie: ory_session)
-    API->>API: Authenticate (Ory session)
+    User->>API: POST /api/team/invite/accept (authenticated, WorkOS session)
+    API->>API: Authenticate (WorkOS session)
     API->>DB: SELECT Invitation WHERE token AND status='pending'
 
     API->>API: Verify: session.email === invitation.email
@@ -1077,7 +1082,7 @@ sequenceDiagram
 
     User->>Next: Click [Start 14-Day Trial] on /pricing or /auth/register step 3
     Next->>API: POST /api/billing/checkout {planId: 'growth', period: 'monthly'}
-    API->>API: Authenticate (Ory session)
+    API->>API: Authenticate (WorkOS session)
     API->>DB: SELECT Subscription WHERE organizationId
     API->>DB: SELECT Plan WHERE id = planId (from plans.js)
 
@@ -1175,6 +1180,304 @@ sequenceDiagram
 
 ---
 
+## 23. WorkOS AuthKit Login (v3.0.0)
+
+> **NEW (v3.0.0):** Единый flow аутентификации через WorkOS AuthKit. Поддерживает email+password, magic link, SSO (SAML/OIDC). Заменяет Flow 8 (Ory Magic Link) как основной auth flow.
+
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant Next as Next.js (SSR)
+    participant WorkOS as WorkOS AuthKit (managed)
+    participant IdP as SAML/OIDC IdP (optional)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+
+    Note over User,DB: Standard login (email+password or magic link)
+
+    User->>Next: GET /auth/login
+    Next->>WorkOS: Redirect to AuthKit hosted login page
+
+    alt Email + Password
+        User->>WorkOS: Enter email + password
+        WorkOS->>WorkOS: Validate credentials
+    else Magic Link
+        User->>WorkOS: Enter email, request magic link
+        WorkOS->>WorkOS: Generate + send magic link email
+        User->>WorkOS: Click magic link → verify code
+    else SSO (Enterprise)
+        User->>WorkOS: Enter email (SSO domain detected)
+        WorkOS->>IdP: SAML/OIDC redirect to corporate IdP
+        IdP->>IdP: Authenticate user
+        IdP-->>WorkOS: SAML assertion / OIDC token
+        WorkOS->>WorkOS: Validate assertion, map user attributes
+    end
+
+    alt Authentication successful
+        WorkOS-->>User: 302 Redirect /auth/callback?code={authCode}
+    else Authentication failed
+        WorkOS-->>User: Error on AuthKit page (retry)
+    end
+
+    Note over User,DB: AuthKit callback → sync user + create session
+
+    User->>Next: GET /auth/callback?code={authCode}
+    Next->>API: POST /api/auth/callback {code: authCode}
+    API->>WorkOS: POST /sso/token {code, client_id, client_secret}
+    WorkOS-->>API: {user: {id, email, firstName, lastName, ...}, accessToken}
+
+    API->>DB: SELECT User WHERE workosUserId = user.id
+    alt User не найден (первый вход)
+        API->>API: syncUserFromWorkOS(workosUser)
+        API->>DB: BEGIN TRANSACTION
+        API->>DB: INSERT Organization {name: "${fullName}'s Organization"}
+        API->>DB: INSERT User {workosUserId, email, fullName, organizationId}
+        API->>DB: INSERT UserRole {userId, roleId: 'owner'}
+        API->>DB: INSERT Subscription {organizationId, planId: 'free'}
+        API->>DB: INSERT AuditLog {action: 'login', resource: 'User'}
+        API->>DB: COMMIT
+    else User найден
+        API->>DB: UPDATE User SET lastLoginAt = NOW()
+        API->>DB: INSERT AuditLog {action: 'login', resource: 'User'}
+    end
+
+    API-->>Next: 200 OK {session, user}
+    Next-->>User: Set session cookie → redirect to /dashboard
+
+    Note over User,DB: Subsequent requests use WorkOS session verification
+```
+
+---
+
+## 24. Registry API — Tool Search (v3.0.0)
+
+> **NEW (v3.0.0):** TUI DataProvider запрашивает данные о AI-инструментах через Registry API. Поддержка ETag для кэширования и минимизации трафика.
+
+```mermaid
+sequenceDiagram
+    participant TUI as TUI Engine (DataProvider)
+    participant API as Fastify API
+    participant Auth as API Key Validator
+    participant RL as Rate Limiter
+    participant DB as PostgreSQL
+
+    Note over TUI,DB: TUI ищет AI-инструмент в реестре
+
+    TUI->>API: GET /v1/registry/tools?q=ChatGPT&category=llm&page=1
+    Note right of TUI: Headers:<br/>X-API-Key: {apiKey}<br/>If-None-Match: {cachedETag}
+
+    API->>Auth: Validate API key
+    Auth->>DB: SELECT APIKey WHERE key = hash(apiKey) AND active = true
+    DB-->>Auth: {organizationId, plan, scopes}
+
+    alt API key invalid or inactive
+        Auth-->>API: 401 Unauthorized
+        API-->>TUI: 401 {code: 'INVALID_API_KEY'}
+    end
+
+    API->>RL: Check rate limit (org: {organizationId}, endpoint: 'registry')
+    Note right of RL: Limits per plan:<br/>Free: 100 req/hour<br/>Starter: 1000 req/hour<br/>Growth+: 10000 req/hour
+
+    alt Rate limit exceeded
+        RL-->>API: 429 Too Many Requests
+        API-->>TUI: 429 {code: 'RATE_LIMIT_EXCEEDED', retryAfter: 60}
+    end
+
+    API->>DB: SELECT RegistryTool WHERE name ILIKE '%ChatGPT%' OR vendor ILIKE '%ChatGPT%'
+    Note right of DB: + category filter, pagination<br/>ORDER BY relevance_score DESC<br/>LIMIT $pageSize OFFSET $offset
+
+    DB-->>API: {tools[], total}
+    API->>API: Calculate ETag from result hash
+
+    alt ETag matches (If-None-Match)
+        API-->>TUI: 304 Not Modified (no body)
+        Note right of TUI: TUI uses cached data, zero transfer
+    else ETag differs or no cache
+        API-->>TUI: 200 OK {tools[], pagination, ETag}
+        Note right of TUI: TUI caches response + ETag for next request
+    end
+```
+
+---
+
+## 25. TUI → SaaS Scan Upload (v3.0.0)
+
+> **NEW (v3.0.0):** TUI загружает результаты compliance-скана в SaaS при наличии API key (платный план). Данные агрегируются в Cross-System Map. Без heartbeat, без TUINode — только compliance данные.
+
+```mermaid
+sequenceDiagram
+    participant TUI as TUI Engine
+    participant API as Fastify API
+    participant Auth as API Key Validator
+    participant DB as PostgreSQL
+    participant SSE as SSE (Dashboard)
+
+    Note over TUI,SSE: TUI завершил скан и загружает результат (если API key настроен)
+
+    TUI->>API: POST /v1/tui/scans
+    Note right of TUI: Headers: X-API-Key: {apiKey}<br/>Body: {<br/>  idempotencyKey: "hmac(orgId+path+ts)",<br/>  projectPath: "/projects/my-app",<br/>  score: 72,<br/>  findings: [{checkId, severity, article}],<br/>  toolsDetected: [{name: "ChatGPT", riskLevel: "limited"}],<br/>  regulation: "eu_ai_act",<br/>  scannedAt: "2026-02-22T10:00:00Z"<br/>}
+
+    API->>Auth: Validate API key
+    Auth->>DB: SELECT APIKey WHERE keyHash = hash(apiKey) AND active = true
+    DB-->>Auth: {organizationId, plan}
+
+    alt API key invalid or no paid plan
+        API-->>TUI: 401/403 — TUI продолжает работу offline
+    end
+
+    API->>DB: SELECT ScanResult WHERE idempotencyKey = $key AND organizationId = $orgId
+    alt Duplicate (idempotency hit)
+        API-->>TUI: 200 OK {status: 'already_exists', scanId}
+    else New scan
+        API->>DB: INSERT ScanResult {organizationId, projectPath, score, findings, toolsDetected, regulation, scannedAt, idempotencyKey}
+        DB-->>API: scanId
+        API->>SSE: Push {type: 'scan_uploaded', organizationId, score, toolCount}
+        Note right of SSE: Dashboard Cross-System Map обновляется
+        API-->>TUI: 201 Created {scanId}
+    end
+```
+
+---
+
+## 26. SaaS → TUI Data Sync (v3.0.0)
+
+> **NEW (v3.0.0):** TUI периодически синхронизирует данные об обязательствах (obligations) с SaaS. ETag + 304 минимизирует трафик при отсутствии изменений.
+
+```mermaid
+sequenceDiagram
+    participant TUI as TUI Engine
+    participant API as Fastify API
+    participant Auth as API Key Validator
+    participant DB as PostgreSQL
+
+    Note over TUI,DB: TUI запрашивает актуальные obligations (при старте + каждые 6 часов)
+
+    TUI->>API: GET /v1/regulations/obligations
+    Note right of TUI: Headers:<br/>X-API-Key: {apiKey}<br/>If-None-Match: {cachedETag}
+
+    API->>Auth: Validate API key
+    Auth->>DB: SELECT APIKey WHERE key = hash(apiKey) AND active = true
+    DB-->>Auth: {organizationId, plan, scopes}
+
+    alt API key invalid
+        API-->>TUI: 401 {code: 'INVALID_API_KEY'}
+    end
+
+    API->>DB: SELECT MAX(updatedAt) FROM Regulation WHERE type = 'obligation'
+    API->>API: Calculate ETag from lastUpdated timestamp
+
+    alt ETag matches (данные не изменились)
+        API-->>TUI: 304 Not Modified
+        Note right of TUI: TUI продолжает использовать локальный кэш
+    else Данные обновились или первый запрос
+        API->>DB: SELECT r.*, GROUP_CONCAT(articles) FROM Regulation r WHERE type = 'obligation'
+        Note right of DB: Включает:<br/>- Art. 4 (AI Literacy)<br/>- Art. 26 (Deployer obligations)<br/>- Art. 27 (FRIA)<br/>- Art. 50 (Transparency)<br/>- Annex III categories
+
+        DB-->>API: {obligations[]}
+
+        API-->>TUI: 200 OK {obligations[], ETag: "{newETag}"}
+        Note right of TUI: TUI обновляет локальный кэш:<br/>~/.complior/cache/obligations.json
+    end
+```
+
+---
+
+## 26. TUI Bundle Download (v3.0.0)
+
+> **NEW (v3.0.0):** TUI загружает data bundle (правила, шаблоны, каталог) при установке и обновлении. Поддержка ETag + checksum верификация.
+
+```mermaid
+sequenceDiagram
+    participant TUI as TUI (install/update)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+    participant S3 as Hetzner Object Storage (EU)
+
+    Note over TUI,S3: TUI загружает актуальный data bundle
+
+    TUI->>API: GET /v1/data/bundle
+    Note right of TUI: Headers:<br/>X-API-Key: {apiKey} (optional — public bundles)<br/>If-None-Match: {cachedETag}
+
+    alt API key provided
+        API->>DB: SELECT APIKey WHERE key = hash(apiKey)
+        Note right of API: Authenticated: доступ к premium bundles
+    else No API key
+        Note right of API: Anonymous: только public bundle
+    end
+
+    API->>API: Resolve latest bundle version (from config or S3 metadata)
+    Note right of API: Bundle содержит:<br/>- rules.json (classification rules)<br/>- templates/ (document templates)<br/>- catalog.json (AI tool catalog)<br/>- obligations.json (regulations)
+
+    API->>API: {version, etag, checksum, s3Key, size}
+
+    alt ETag matches (bundle не обновился)
+        API-->>TUI: 304 Not Modified
+        Note right of TUI: TUI использует текущий bundle
+    else Новая версия доступна
+        API-->>TUI: 302 Redirect → S3 pre-signed URL
+        Note right of TUI: Location: https://s3.eu-central.hetzner.com/complior-bundles/{s3Key}
+
+        TUI->>S3: GET /{s3Key}
+        S3-->>TUI: Bundle archive (tar.gz, ~5MB)
+
+        TUI->>TUI: Verify checksum (SHA-256)
+        alt Checksum valid
+            TUI->>TUI: Extract to ~/.complior/data/
+            TUI->>TUI: Update version marker
+            Note right of TUI: ~/.complior/data/version.json<br/>{version: "2026.02.21", checksum: "abc123..."}
+        else Checksum mismatch
+            TUI->>TUI: Discard download, keep previous version
+            TUI->>TUI: Log warning: "Bundle checksum mismatch, retrying..."
+        end
+    end
+```
+
+---
+
+## 27. Cross-System Map — Org-Wide GitHub/GitLab Scan (v3.0.0 — planned Sprint 8)
+
+> **Planned (Sprint 8):** Dashboard агрегирует compliance данные по всем репозиториям организации через GitHub/GitLab API. SaaS сканирует репозитории напрямую (не через TUI). Cross-System Map = org-wide overview без agent deployment.
+
+```mermaid
+sequenceDiagram
+    participant Dashboard as Dashboard (Browser)
+    participant Next as Next.js (SSR)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+    participant GH as GitHub/GitLab API
+    participant Boss as pg-boss (Scheduler)
+
+    Note over Dashboard,Boss: Пользователь открывает Cross-System Map
+
+    Dashboard->>Next: GET /dashboard/cross-system-map
+    Next->>API: GET /api/dashboard/cross-system-map
+    API->>API: Authenticate (WorkOS session)
+
+    API->>DB: SELECT ait.*, rc.riskLevel, rc.complianceScore FROM AITool ait LEFT JOIN RiskClassification rc ON ait.id = rc.aiToolId WHERE ait.organizationId = $orgId
+    Note right of DB: Все зарегистрированные AI tools организации со scores
+
+    API->>DB: SELECT o.complianceScore, o.lastScanAt FROM Organization o WHERE o.id = $orgId
+
+    API->>API: Aggregate org-wide compliance
+    Note right of API: {<br/>  overallScore: 73,<br/>  toolBreakdown: [...],<br/>  riskBreakdown: {high: 2, limited: 5, minimal: 8},<br/>  topViolations: [...],<br/>  trendData: [...]<br/>}
+
+    API-->>Next: {crossSystemMap}
+    Next-->>Dashboard: Render compliance map
+
+    Note over Boss,GH: Фоновый скан GitHub/GitLab (Sprint 8+)
+
+    Boss->>Boss: trigger('scan-org-repos', { orgId, provider: 'github' })
+    Boss->>GH: GET /orgs/{orgSlug}/repos (OAuth token)
+    GH-->>Boss: [{repo, defaultBranch, language}]
+    loop Для каждого репозитория
+        Boss->>GH: GET /repos/{org}/{repo}/contents — scan for AI patterns
+        Boss->>DB: UPSERT AITool {organizationId, name, source: 'github_scan', repoUrl}
+        Boss->>DB: UPDATE Organization SET lastScanAt = NOW()
+    end
+```
+
+---
+
 ## 18. Data Flow Summary
 
 ### Request → Response Latency Targets
@@ -1199,7 +1502,7 @@ sequenceDiagram
 ### Data Persistence Points
 
 ```
-Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Ory (self-hosted, EU)
+Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → WorkOS (managed)
                                                     → [validate] → PostgreSQL
                                                     → [enqueue]  → pg-boss (PostgreSQL) → Worker
                                                     → [stream]   → WebSocket
@@ -1226,8 +1529,11 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Or
 | InvitationCreated | IAM | Notification (Brevo) | Send invite email to invitee |
 | InvitationAccepted | IAM | Dashboard, Notification | New team member joined, update user count |
 | PlanLimitExceeded | Billing | IAM | Block invitation/tool registration (403) |
+| ScanUploaded | TUI Data Collection | Dashboard, Monitoring | Cross-System Map update, SSE push |
+| BundleDownloaded | Registry API | Monitoring | Track bundle distribution, version adoption |
+| CrossSystemScoreChanged | Aggregation (pg-boss) | Dashboard | SSE push updated compliance score |
 
 ---
 
-**Последнее обновление:** 2026-02-15 (v2.4.0: Sprint 6 — Platform Admin Data Access Flow 22)
+**Последнее обновление:** 2026-02-22 (v3.0.1: TUI Data Collection — только scan results upload (без heartbeat, без TUINode). SaaS→TUI: Registry API data. Flow 25 = TUI→SaaS scan upload. Flows 26-28 = SaaS→TUI data distribution.)
 **Следующий документ:** CODING-STANDARDS.md ✅ Утверждён

@@ -1,11 +1,40 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { getSession, createLoginFlow, submitLogin, extractCsrfToken } from '@/lib/ory';
-import { api } from '@/lib/api';
+import { getSession, loginWithPassword, sendMagicLink, getSocialLoginUrl } from '@/lib/auth';
+
+/* -- SVG Icons ------------------------------------------------------------ */
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24">
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+  </svg>
+);
+const GitHubIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+  </svg>
+);
+const MailIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 7L2 7" />
+  </svg>
+);
+const LockIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+const ShieldCheckIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="M9 12l2 2 4-4" />
+  </svg>
+);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,592 +42,292 @@ export default function LoginPage() {
   const t = useTranslations('auth');
   const tc = useTranslations('common');
 
-  const [checkingSession, setCheckingSession] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [mode, setMode] = useState<'magic' | 'password'>('magic');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [emailErr, setEmailErr] = useState(false);
-  const [password, setPassword] = useState('');
-  const [passwordErr, setPasswordErr] = useState(false);
-  const [showPw, setShowPw] = useState(false);
-  const [pwVisible, setPwVisible] = useState(false);
-  const [magicLinkEmail, setMagicLinkEmail] = useState<string | null>(null);
-  const [resent, setResent] = useState(false);
-  const pwRef = useRef<HTMLInputElement>(null);
-  const resentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const validateEmail = useCallback((v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), []);
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
 
   useEffect(() => {
-    getSession().then((session) => {
-      if (session?.active) {
+    getSession().then((user) => {
+      if (user?.active) {
         router.replace(`/${locale}/dashboard`);
       } else {
-        setCheckingSession(false);
+        setChecking(false);
       }
     }).catch(() => {
-      setCheckingSession(false);
+      setChecking(false);
     });
   }, [router, locale]);
 
-  useEffect(() => {
-    return () => {
-      if (resentTimerRef.current) clearTimeout(resentTimerRef.current);
-    };
-  }, []);
-
-  const handleInputChange = useCallback(() => {
-    setError(null);
-  }, []);
-
-  const handleEmailChange = useCallback((v: string) => {
-    setEmail(v);
-    setEmailErr(false);
-    handleInputChange();
-  }, [handleInputChange]);
-
-  const handlePasswordChange = useCallback((v: string) => {
-    setPassword(v);
-    setPasswordErr(false);
-    handleInputChange();
-  }, [handleInputChange]);
+  const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
   const handleMagicLink = async () => {
-    if (!validateEmail(email)) { setEmailErr(true); return; }
-    setLoading(true);
     setError(null);
+    setEmailError(false);
+    if (!validateEmail(email)) {
+      setEmailError(true);
+      return;
+    }
+    setLoading(true);
     try {
-      const flow = await createLoginFlow();
-      await submitLogin(flow.id, { method: 'code', csrf_token: extractCsrfToken(flow), identifier: email });
-      setMagicLinkEmail(email);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('invalidCredentials'));
+      await sendMagicLink(email);
+      router.push(`/${locale}/auth/verify-code?email=${encodeURIComponent(email)}`);
+    } catch {
+      setError('Failed to send magic link');
     } finally {
       setLoading(false);
     }
   };
 
   const handlePasswordLogin = async () => {
-    let ok = true;
-    if (!validateEmail(email)) { setEmailErr(true); ok = false; }
-    if (password.length < 1) { setPasswordErr(true); ok = false; }
-    if (!ok) return;
-    setLoading(true);
     setError(null);
+    setEmailError(false);
+    setPasswordError(false);
+    if (!validateEmail(email)) { setEmailError(true); return; }
+    if (!password) { setPasswordError(true); return; }
+
+    setLoading(true);
     try {
-      const flow = await createLoginFlow();
-      const result = await submitLogin(flow.id, { method: 'password', csrf_token: extractCsrfToken(flow), identifier: email, password });
-      if (result.session) {
-        await api.auth.me();
+      const result = await loginWithPassword(email, password);
+      if (result.success) {
         router.push(`/${locale}/dashboard`);
-      } else if (result.error) {
-        setError(result.error.message || t('invalidCredentials'));
+      } else {
+        setError(t('invalidCredentials'));
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('invalidCredentials'));
+    } catch {
+      setError(t('invalidCredentials'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResend = async () => {
-    if (resent || !magicLinkEmail) return;
-    try {
-      const flow = await createLoginFlow();
-      await submitLogin(flow.id, { method: 'code', csrf_token: extractCsrfToken(flow), identifier: magicLinkEmail });
-    } catch { /* silent */ }
-    setResent(true);
-    resentTimerRef.current = setTimeout(() => setResent(false), 2500);
-  };
-
-  const togglePassword = () => {
-    setShowPw((p) => {
-      if (!p) setTimeout(() => pwRef.current?.focus(), 0);
-      return !p;
-    });
-  };
-
-  const backToLogin = () => {
-    setMagicLinkEmail(null);
-    setError(null);
-    setResent(false);
-  };
-
-  /* ── Styles ────────────────────────────────────────────── */
-  const s = {
-    container: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: 'calc(100vh - 56px)',
-      padding: '2rem',
-    },
-    card: {
-      maxWidth: '420px',
-      width: '100%',
-      padding: '2.5rem',
-      borderRadius: '14px',
-      border: '1px solid var(--b2)',
-      background: 'var(--card)',
-      boxShadow: '0 16px 48px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.03)',
-      animation: 'cardIn 0.5s ease both',
-      transition: 'background .35s, border-color .35s, box-shadow .35s',
-      position: 'relative' as const,
-    },
-    logo: {
-      fontFamily: 'var(--f-display)',
-      fontWeight: 700,
-      fontSize: '1.25rem',
-      color: 'var(--dark)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      letterSpacing: '-0.02em',
-      marginBottom: '2rem',
-      textDecoration: 'none',
-    },
-    logoDot: {
-      fontFamily: 'var(--f-mono)',
-      fontSize: '0.625rem',
-      fontWeight: 500,
-      color: 'var(--teal)',
-      opacity: 0.7,
-    },
-    title: {
-      fontFamily: 'var(--f-display)',
-      fontSize: '1.5rem',
-      fontWeight: 700,
-      color: 'var(--dark)',
-      marginBottom: '0.375rem',
-      letterSpacing: '-0.02em',
-    },
-    sub: {
-      fontSize: '0.875rem',
-      color: 'var(--dark4)',
-      marginBottom: '2rem',
-    },
-    errorBanner: {
-      background: 'rgba(231,76,60,.06)',
-      border: '1px solid rgba(231,76,60,.15)',
-      borderRadius: '8px',
-      padding: '0.625rem 0.875rem',
-      marginBottom: '1.25rem',
-      fontSize: '0.75rem',
-      color: 'var(--coral)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      lineHeight: 1.5,
-    },
-    field: {
-      marginBottom: '1.25rem',
-    },
-    fieldLabel: {
-      display: 'block',
-      fontFamily: 'var(--f-mono)',
-      fontSize: '0.5625rem',
-      fontWeight: 600,
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.08em',
-      color: 'var(--dark4)',
-      marginBottom: '0.4375rem',
-    },
-    fieldInput: {
-      width: '100%',
-      padding: '0.6875rem 0.875rem',
-      border: '1.5px solid var(--b2)',
-      borderRadius: '8px',
-      fontFamily: 'var(--f-body)',
-      fontSize: '0.875rem',
-      color: 'var(--dark)',
-      background: 'var(--bg)',
-      outline: 'none',
-      transition: 'border-color .25s, box-shadow .25s',
-    },
-    fieldInputErr: {
-      borderColor: 'var(--coral)',
-      boxShadow: '0 0 0 3px rgba(231,76,60,.06)',
-    },
-    fieldError: {
-      fontSize: '0.6875rem',
-      color: 'var(--coral)',
-      marginTop: '0.3125rem',
-    },
-    btn: {
-      width: '100%',
-      padding: '0.75rem 1.25rem',
-      borderRadius: '8px',
-      fontFamily: 'var(--f-body)',
-      fontWeight: 700,
-      fontSize: '0.875rem',
-      cursor: 'pointer',
-      border: 'none',
-      transition: '.25s',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '0.5rem',
-      background: 'var(--teal)',
-      color: '#fff',
-      boxShadow: '0 2px 8px var(--teal-glow)',
-    },
-    divider: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.75rem',
-      margin: '1.5rem 0',
-    },
-    dividerLine: {
-      flex: 1,
-      height: '1px',
-      background: 'var(--b)',
-    },
-    dividerText: {
-      fontFamily: 'var(--f-mono)',
-      fontSize: '0.5rem',
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.1em',
-      color: 'var(--dark5)',
-      cursor: 'pointer',
-      transition: '.2s',
-      whiteSpace: 'nowrap' as const,
-    },
-    pwWrap: {
-      position: 'relative' as const,
-    },
-    pwToggle: {
-      position: 'absolute' as const,
-      right: '0.75rem',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      color: 'var(--dark5)',
-      fontSize: '0.75rem',
-      padding: 0,
-      lineHeight: 1,
-    },
-    forgotLink: {
-      display: 'block',
-      textAlign: 'right' as const,
-      marginTop: '-0.75rem',
-      marginBottom: '1.25rem',
-    },
-    forgotAnchor: {
-      fontSize: '0.75rem',
-      color: 'var(--teal)',
-      textDecoration: 'none',
-      fontWeight: 500,
-      transition: '.2s',
-    },
-    footer: {
-      marginTop: '1.75rem',
-      fontSize: '0.8125rem',
-      color: 'var(--dark4)',
-      textAlign: 'center' as const,
-    },
-    footerLink: {
-      color: 'var(--teal)',
-      fontWeight: 600,
-      textDecoration: 'none',
-      transition: '.2s',
-    },
-    /* magic link sent */
-    mlSent: {
-      textAlign: 'center' as const,
-    },
-    mlIcon: {
-      width: '56px',
-      height: '56px',
-      borderRadius: '14px',
-      background: 'var(--teal-dim)',
-      border: '1px solid var(--teal-glow)',
-      display: 'grid',
-      placeItems: 'center',
-      margin: '0 auto 1.25rem',
-    },
-    mlTitle: {
-      fontFamily: 'var(--f-display)',
-      fontSize: '1.25rem',
-      fontWeight: 700,
-      color: 'var(--dark)',
-      marginBottom: '0.375rem',
-    },
-    mlEmail: {
-      fontFamily: 'var(--f-mono)',
-      fontSize: '0.75rem',
-      color: 'var(--teal)',
-      marginBottom: '1.25rem',
-      wordBreak: 'break-all' as const,
-    },
-    mlHint: {
-      fontSize: '0.8125rem',
-      color: 'var(--dark4)',
-      marginBottom: '1.5rem',
-      lineHeight: 1.6,
-    },
-    mlResend: {
-      background: 'none',
-      border: 'none',
-      color: 'var(--teal)',
-      fontFamily: 'var(--f-body)',
-      fontSize: '0.8125rem',
-      fontWeight: 600,
-      cursor: 'pointer',
-      transition: '.2s',
-    },
-    mlResendDone: {
-      color: 'var(--green)',
-    },
-    linkBtn: {
-      background: 'none',
-      border: 'none',
-      color: 'var(--teal)',
-      fontFamily: 'var(--f-body)',
-      fontSize: '0.8125rem',
-      fontWeight: 600,
-      cursor: 'pointer',
-      transition: '.2s',
-      padding: 0,
-    },
-  };
-
-  /* ── Loading state while checking session ───────────── */
-  if (checkingSession) {
+  if (checking) {
     return (
-      <div style={s.container}>
-        <p style={{ color: 'var(--dark5)' }}>{tc('loading')}</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)' }}>
+        <p style={{ color: 'var(--dark5)', fontSize: '0.875rem' }}>{tc('loading')}</p>
       </div>
     );
   }
 
-  /* ── Magic Link Sent State ──────────────────────────── */
-  if (magicLinkEmail) {
-    return (
-      <>
-        <style jsx>{`
-          .footer-a:hover {
-            text-decoration: underline !important;
-          }
-          @media (max-width: 480px) {
-            .auth-card { padding: 2rem 1.5rem !important; border-radius: 12px !important; }
-          }
-        `}</style>
-        <div style={s.container}>
-          <Link href={`/${locale}`} style={s.logo}>
-            Complior<span style={s.logoDot}>.ai</span>
-          </Link>
-
-          <div className="auth-card" style={s.card}>
-            <div style={s.mlSent}>
-              <div style={s.mlIcon}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
-              </div>
-              <h2 style={s.mlTitle}>{t('checkEmail')}</h2>
-              <div style={s.mlEmail}>{magicLinkEmail}</div>
-              <p style={s.mlHint}>{t('magicLinkHint')}</p>
-              <button
-                type="button"
-                onClick={handleResend}
-                style={{
-                  ...s.mlResend,
-                  ...(resent ? s.mlResendDone : {}),
-                }}
-                onMouseEnter={(e) => { if (!resent) (e.currentTarget.style.textDecoration = 'underline'); }}
-                onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
-              >
-                {resent ? t('resent') : t('resend')}
-              </button>
-              <div style={{ marginTop: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={backToLogin}
-                  style={s.linkBtn}
-                  onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
-                >
-                  {t('backToSignIn')}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div style={s.footer}>
-            {t('noAccount')}{' '}
-            <Link href={`/${locale}/auth/register`} className="footer-a" style={s.footerLink}>
-              {t('createOne')}
-            </Link>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  /* ── Default Login Form State ───────────────────────── */
   return (
     <>
       <style jsx>{`
-        .field-input:focus {
+        @keyframes cardIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .field-input-l:focus {
           border-color: var(--teal) !important;
           box-shadow: 0 0 0 3px var(--teal-dim) !important;
         }
-        .btn-primary:hover {
+        .field-input-l::placeholder { color: var(--dark5); }
+        .btn-primary-l:hover {
           background: var(--teal2) !important;
           box-shadow: 0 4px 16px var(--teal-glow) !important;
           transform: translateY(-1px);
         }
-        .btn-primary:active {
-          transform: translateY(0);
+        .btn-primary-l:active { transform: translateY(0); }
+        .btn-primary-l:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+        .btn-social-l:hover {
+          border-color: var(--dark3) !important;
+          background: var(--bg2) !important;
         }
-        .divider-text:hover {
-          color: var(--teal) !important;
-        }
-        .forgot-a:hover {
-          text-decoration: underline !important;
-        }
-        .footer-a:hover {
-          text-decoration: underline !important;
-        }
-        .pw-toggle-btn:hover {
-          color: var(--dark3) !important;
-        }
+        .toggle-link-l:hover { color: var(--teal) !important; }
+        .footer-link-l:hover { text-decoration: underline; }
         @media (max-width: 480px) {
-          .auth-card {
-            padding: 2rem 1.5rem !important;
-            border-radius: 12px !important;
-          }
-          .auth-title {
-            font-size: 1.25rem !important;
-          }
+          .auth-card-l { padding: 2rem 1.5rem !important; border-radius: 12px !important; }
+          .auth-title-l { font-size: 1.25rem !important; }
         }
       `}</style>
-      <div style={s.container}>
-        {/* Logo */}
-        <Link href={`/${locale}`} style={s.logo}>
-          Complior<span style={s.logoDot}>.ai</span>
-        </Link>
 
-        {/* Auth Card */}
-        <div className="auth-card" style={s.card}>
-          <h1 className="auth-title" style={s.title}>{t('welcomeBack')}</h1>
-          <p style={s.sub}>{t('signInSubtitle')}</p>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minHeight: 'calc(100vh - 56px)', padding: '2rem',
+      }}>
+        <div className="auth-card-l" style={{
+          maxWidth: '420px', width: '100%', padding: '2.5rem', borderRadius: '14px',
+          border: '1px solid var(--b2)', background: 'var(--card)',
+          boxShadow: '0 16px 48px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.03)',
+          animation: 'cardIn .5s ease both',
+        }}>
+          {/* Logo */}
+          <Link href={`/${locale}`} style={{
+            fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: '1.25rem',
+            color: 'var(--dark)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.5rem', letterSpacing: '-0.02em', marginBottom: '2rem', textDecoration: 'none',
+          }}>
+            Complior<span style={{ fontFamily: 'var(--f-mono)', fontSize: '0.625rem', fontWeight: 500, color: 'var(--teal)', opacity: 0.7 }}>.ai</span>
+          </Link>
 
-          {/* Error Banner */}
+          {/* Title */}
+          <h1 className="auth-title-l" style={{
+            fontFamily: 'var(--f-display)', fontSize: '1.5rem', fontWeight: 700,
+            color: 'var(--dark)', marginBottom: '0.375rem', letterSpacing: '-0.02em', textAlign: 'center',
+          }}>{t('welcomeBack')}</h1>
+          <p style={{ fontSize: '0.875rem', color: 'var(--dark4)', marginBottom: '2rem', textAlign: 'center' }}>
+            {t('signInSubtitle')}
+          </p>
+
+          {/* Error banner */}
           {error && (
-            <div style={s.errorBanner}>
-              <svg viewBox="0 0 24 24" style={{ flexShrink: 0, width: '16px', height: '16px' }} fill="none" stroke="var(--coral)" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <span>{error}</span>
+            <div style={{
+              marginBottom: '1rem', borderRadius: '8px', border: '1px solid var(--coral)',
+              background: 'var(--coral-dim)', padding: '0.625rem 0.875rem',
+            }}>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--coral)', margin: 0 }}>{error}</p>
             </div>
           )}
 
-          {/* Email Field */}
-          <div style={s.field}>
-            <label style={s.fieldLabel} htmlFor="login-email">{t('email')}</label>
-            <input
-              className="field-input"
-              id="login-email"
-              type="email"
-              placeholder={t('emailPlaceholder')}
-              autoComplete="email"
-              value={email}
-              onChange={(e) => handleEmailChange(e.target.value)}
-              style={{
-                ...s.fieldInput,
-                ...(emailErr ? s.fieldInputErr : {}),
-              }}
-            />
-            {emailErr && <div style={s.fieldError}>{t('emailError')}</div>}
+          {/* Social OAuth buttons */}
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <button className="btn-social-l" onClick={() => { window.location.href = getSocialLoginUrl('google'); }} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.6875rem', border: '1.5px solid var(--b2)', borderRadius: '8px',
+              background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--f-body)',
+              fontSize: '0.8125rem', fontWeight: 600, color: 'var(--dark3)', transition: '0.25s',
+            }}>
+              <GoogleIcon /> Google
+            </button>
+            <button className="btn-social-l" onClick={() => { window.location.href = getSocialLoginUrl('github'); }} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.6875rem', border: '1.5px solid var(--b2)', borderRadius: '8px',
+              background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--f-body)',
+              fontSize: '0.8125rem', fontWeight: 600, color: 'var(--dark3)', transition: '0.25s',
+            }}>
+              <GitHubIcon /> GitHub
+            </button>
           </div>
-
-          {/* Magic Link Button */}
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleMagicLink}
-            disabled={loading}
-            style={{ ...s.btn, opacity: loading ? 0.7 : 1 }}
-          >
-            <svg viewBox="0 0 24 24" style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-            {t('sendMagicLink')}
-          </button>
 
           {/* Divider */}
-          <div style={s.divider}>
-            <div style={s.dividerLine} />
-            <span className="divider-text" style={s.dividerText} onClick={togglePassword} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') togglePassword(); }}>
-              {t('orPassword')}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem',
+          }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--b2)' }} />
+            <span style={{ fontFamily: 'var(--f-mono)', fontSize: '0.5625rem', color: 'var(--dark5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {tc('or')}
             </span>
-            <div style={s.dividerLine} />
+            <div style={{ flex: 1, height: '1px', background: 'var(--b2)' }} />
           </div>
 
-          {/* Password Section */}
-          {showPw && (
-            <div>
-              <div style={s.field}>
-                <label style={s.fieldLabel} htmlFor="login-password">{t('password')}</label>
-                <div style={s.pwWrap}>
-                  <input
-                    className="field-input"
-                    id="login-password"
-                    ref={pwRef}
-                    type={pwVisible ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => handlePasswordChange(e.target.value)}
-                    style={{
-                      ...s.fieldInput,
-                      paddingRight: '2.75rem',
-                      ...(passwordErr ? s.fieldInputErr : {}),
-                    }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handlePasswordLogin(); }}
-                  />
-                  <button
-                    type="button"
-                    className="pw-toggle-btn"
-                    style={s.pwToggle}
-                    onClick={() => setPwVisible((v) => !v)}
-                    aria-label="Toggle password visibility"
-                  >
-                    {pwVisible ? '\u{1F648}' : '\u{1F441}'}
-                  </button>
-                </div>
-                {passwordErr && <div style={s.fieldError}>{t('passwordRequired')}</div>}
+          {/* Email field */}
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{
+              display: 'block', fontFamily: 'var(--f-mono)', fontSize: '0.5625rem', fontWeight: 600,
+              textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--dark4)', marginBottom: '0.4375rem',
+            }}>{t('email')}</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--dark5)' }}>
+                <MailIcon />
+              </span>
+              <input
+                className="field-input-l"
+                type="email"
+                placeholder={t('emailPlaceholder')}
+                autoComplete="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setEmailError(false); setError(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { mode === 'magic' ? handleMagicLink() : handlePasswordLogin(); } }}
+                style={{
+                  width: '100%', padding: '0.6875rem 0.875rem 0.6875rem 2.5rem',
+                  border: `1.5px solid ${emailError ? 'var(--coral)' : 'var(--b2)'}`, borderRadius: '8px',
+                  fontFamily: 'var(--f-body)', fontSize: '0.875rem', color: 'var(--dark)',
+                  background: 'var(--bg)', outline: 'none', transition: 'border-color .25s, box-shadow .25s',
+                  ...(emailError ? { boxShadow: '0 0 0 3px rgba(231,76,60,.06)' } : {}),
+                }}
+              />
+            </div>
+            {emailError && <div style={{ fontSize: '0.6875rem', color: 'var(--coral)', marginTop: '0.3125rem' }}>{t('emailError')}</div>}
+          </div>
+
+          {/* Password field (shown in password mode) */}
+          {mode === 'password' && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4375rem' }}>
+                <label style={{
+                  fontFamily: 'var(--f-mono)', fontSize: '0.5625rem', fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--dark4)',
+                }}>{t('password')}</label>
+                <Link href={`/${locale}/auth/forgot-password`} style={{
+                  fontFamily: 'var(--f-mono)', fontSize: '0.5625rem', color: 'var(--teal)',
+                  textDecoration: 'none', letterSpacing: '0.04em',
+                }}>{t('forgotPassword')}</Link>
               </div>
-              <div style={s.forgotLink}>
-                <Link href={`/${locale}/auth/forgot-password`} className="forgot-a" style={s.forgotAnchor}>
-                  {t('forgotPassword')}
-                </Link>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--dark5)' }}>
+                  <LockIcon />
+                </span>
+                <input
+                  className="field-input-l"
+                  type="password"
+                  placeholder={t('passwordPlaceholder')}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setPasswordError(false); setError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handlePasswordLogin(); }}
+                  style={{
+                    width: '100%', padding: '0.6875rem 0.875rem 0.6875rem 2.5rem',
+                    border: `1.5px solid ${passwordError ? 'var(--coral)' : 'var(--b2)'}`, borderRadius: '8px',
+                    fontFamily: 'var(--f-body)', fontSize: '0.875rem', color: 'var(--dark)',
+                    background: 'var(--bg)', outline: 'none', transition: 'border-color .25s, box-shadow .25s',
+                    ...(passwordError ? { boxShadow: '0 0 0 3px rgba(231,76,60,.06)' } : {}),
+                  }}
+                />
               </div>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handlePasswordLogin}
-                disabled={loading}
-                style={{ ...s.btn, opacity: loading ? 0.7 : 1 }}
-              >
-                {t('signInBtn')}
-              </button>
+              {passwordError && <div style={{ fontSize: '0.6875rem', color: 'var(--coral)', marginTop: '0.3125rem' }}>{t('passwordRequired')}</div>}
             </div>
           )}
+
+          {/* Primary CTA */}
+          {mode === 'magic' ? (
+            <button className="btn-primary-l" onClick={handleMagicLink} disabled={loading} style={{
+              width: '100%', padding: '0.75rem 1.25rem', borderRadius: '8px',
+              fontFamily: 'var(--f-body)', fontWeight: 700, fontSize: '0.875rem',
+              cursor: 'pointer', border: 'none', transition: '0.25s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              background: 'var(--teal)', color: '#fff', boxShadow: '0 2px 8px var(--teal-glow)',
+            }}>
+              {loading ? tc('loading') : t('sendMagicLink')}
+            </button>
+          ) : (
+            <button className="btn-primary-l" onClick={handlePasswordLogin} disabled={loading} style={{
+              width: '100%', padding: '0.75rem 1.25rem', borderRadius: '8px',
+              fontFamily: 'var(--f-body)', fontWeight: 700, fontSize: '0.875rem',
+              cursor: 'pointer', border: 'none', transition: '0.25s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              background: 'var(--teal)', color: '#fff', boxShadow: '0 2px 8px var(--teal-glow)',
+            }}>
+              {loading ? tc('loading') : t('signInBtn')}
+            </button>
+          )}
+
+          {/* Mode toggle */}
+          <button className="toggle-link-l" onClick={() => { setMode(mode === 'magic' ? 'password' : 'magic'); setError(null); }} style={{
+            width: '100%', background: 'none', color: 'var(--dark4)', border: 'none',
+            fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', marginTop: '0.75rem',
+            transition: '0.2s', fontFamily: 'var(--f-body)', padding: '0.5rem', textAlign: 'center',
+          }}>
+            {mode === 'magic' ? t('orPassword') : t('sendMagicLink')}
+          </button>
+        </div>
+
+        {/* Trust line */}
+        <div style={{
+          marginTop: '1.5rem', textAlign: 'center', fontFamily: 'var(--f-mono)',
+          fontSize: '0.5rem', color: 'var(--dark5)', letterSpacing: '0.04em',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem',
+        }}>
+          <ShieldCheckIcon />
+          <span>{t('trustLine')}</span>
         </div>
 
         {/* Footer */}
-        <div style={s.footer}>
+        <div style={{ marginTop: '1.75rem', fontSize: '0.8125rem', color: 'var(--dark4)', textAlign: 'center' }}>
           {t('noAccount')}{' '}
-          <Link href={`/${locale}/auth/register`} className="footer-a" style={s.footerLink}>
+          <Link href={`/${locale}/auth/register`} className="footer-link-l" style={{ color: 'var(--teal)', fontWeight: 600, textDecoration: 'none' }}>
             {t('createOne')}
           </Link>
         </div>
