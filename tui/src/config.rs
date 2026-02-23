@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 const DEFAULT_ENGINE_PORT: u16 = 3099;
 const DEFAULT_TICK_RATE_MS: u64 = 250;
+const DEFAULT_PROJECT_API_URL: &str = "https://api.complior.ai";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
@@ -31,6 +32,20 @@ pub struct TuiConfig {
 
     #[serde(skip)]
     pub engine_url_override: Option<String>,
+
+    // ── PROJECT API (Sprint 1.5) ──────────────────────────────────────────────
+    /// Base URL for the PROJECT API (registry + regulation data).
+    /// Overridable via env `PROJECT_API_URL`.
+    pub project_api_url: String,
+    /// API key for PROJECT API.  Loaded at startup from
+    /// `~/.config/complior/credentials` (key: `COMPLIOR_API_KEY`).
+    /// Not persisted to TOML — always read from credentials file.
+    #[serde(skip)]
+    pub api_key: Option<String>,
+    /// When `true` (or env `OFFLINE_MODE=1`), skip PROJECT API entirely
+    /// and use `MockDataProvider` as the only data source.
+    #[serde(default)]
+    pub offline_mode: bool,
 }
 
 impl Default for TuiConfig {
@@ -58,6 +73,9 @@ impl Default for TuiConfig {
             ],
             onboarding_last_step: None,
             engine_url_override: None,
+            project_api_url: DEFAULT_PROJECT_API_URL.to_string(),
+            api_key: None,
+            offline_mode: false,
         }
     }
 }
@@ -70,10 +88,49 @@ impl TuiConfig {
 
 pub fn load_config() -> TuiConfig {
     let config_path = config_file_path();
-    match std::fs::read_to_string(&config_path) {
+    let mut config: TuiConfig = match std::fs::read_to_string(&config_path) {
         Ok(content) => toml::from_str(&content).unwrap_or_default(),
         Err(_) => TuiConfig::default(),
+    };
+
+    // Override project_api_url from env (useful for local PROJECT dev)
+    if let Ok(url) = std::env::var("PROJECT_API_URL") {
+        if !url.is_empty() {
+            config.project_api_url = url;
+        }
     }
+
+    // Force offline mode when env OFFLINE_MODE=1
+    if std::env::var("OFFLINE_MODE").as_deref() == Ok("1") {
+        config.offline_mode = true;
+    }
+
+    // Load API key from credentials file (never stored in TOML)
+    config.api_key = load_api_key();
+
+    config
+}
+
+/// Read `COMPLIOR_API_KEY` from `~/.config/complior/credentials`.
+/// Format: one `KEY=value` per line, `#` comments ignored.
+pub fn load_api_key() -> Option<String> {
+    let path = dirs::config_dir()?.join("complior").join("credentials");
+    let content = std::fs::read_to_string(path).ok()?;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = trimmed.split_once('=') {
+            if key.trim() == "COMPLIOR_API_KEY" {
+                let v = value.trim().to_string();
+                if !v.is_empty() {
+                    return Some(v);
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Save specific fields to TOML config file (merge-friendly).

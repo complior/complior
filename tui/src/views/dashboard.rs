@@ -838,7 +838,11 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         ));
     }
 
-    // Engine status indicator
+    // Engine / PROJECT API status indicator
+    // ●  green  = PROJECT API connected (live registry data)
+    // ○  yellow = still connecting (startup)
+    // ○  grey   = offline / mock mode (no key or unreachable)
+    // ✗  red    = connection error
     let engine_indicator = match app.engine_status {
         crate::types::EngineConnectionStatus::Connected => {
             Span::styled(" ●", Style::default().fg(t.zone_green))
@@ -846,7 +850,12 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         crate::types::EngineConnectionStatus::Connecting => {
             Span::styled(" ○", Style::default().fg(t.zone_yellow))
         }
-        _ => Span::styled(" ✗", Style::default().fg(t.zone_red)),
+        crate::types::EngineConnectionStatus::Disconnected => {
+            Span::styled(" ○", Style::default().fg(t.muted))
+        }
+        crate::types::EngineConnectionStatus::Error => {
+            Span::styled(" ✗", Style::default().fg(t.zone_red))
+        }
     };
     spans.push(engine_indicator);
 
@@ -1325,7 +1334,13 @@ mod tests {
         crate::theme::init_theme("dark");
         let app = App::new(crate::config::TuiConfig::default());
         let buf = render_to_string(&app, 120, 40);
-        insta::assert_snapshot!(buf);
+        insta::with_settings!({
+            filters => vec![
+                (r"\[\d{2}:\d{2}\]", "[HH:MM]"),
+            ]
+        }, {
+            insta::assert_snapshot!(buf);
+        });
     }
 
     #[test]

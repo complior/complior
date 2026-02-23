@@ -6,7 +6,7 @@ expression: buf
  \__/  complior v1.0                                                                                                    
 ▸   No agents running  ·  :agent claude-code to start  ·  7 for Agents view                         ┌ Info ────────────┐
 ┌ Status Log ──────────────────────────────────────────────────────────────────────────────────────┐│ tui/             │
-│[10:48] ! Welcome to Complior. Use /scan to start, /help for commands.                            ││ No scan yet      │
+│[HH:MM] ! Welcome to Complior. Use /scan to start, /help for commands.                            ││ No scan yet      │
 │                                                                                                  ││                  │
 │                                                                                                  ││                  │
 │                                                                                                  ││                  │
