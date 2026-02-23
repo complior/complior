@@ -152,6 +152,26 @@ Three processes: thin Rust TUI client, TypeScript compliance engine, and guest a
 | CI/CD | Headless mode | Webhook management |
 | **Price** | **€0** | **€49-399/mo** |
 
+## Cloud API Configuration (Optional)
+
+Connect the TUI to the live AI Registry (4,983+ tools with EU AI Act assessments):
+
+1. Sign up at [complior.ai](https://complior.ai) (free tier available)
+2. Generate an API key: Dashboard → Settings → API Keys
+3. Save to `~/.config/complior/credentials`:
+
+```
+# Complior credentials
+COMPLIOR_API_KEY=cpl_live_...
+```
+
+4. Launch the TUI — the status bar shows `●` (online) when connected.
+
+**Offline mode:** Without an API key, the TUI uses mock data (score 47, 12 demo findings).
+Override API URL for local development: `export PROJECT_API_URL=http://localhost:8000`
+
+---
+
 ## Installation
 
 ```bash
