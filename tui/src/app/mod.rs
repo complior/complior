@@ -13,7 +13,7 @@ use crate::components::spinner::Spinner;
 use crate::components::suggestions::IdleSuggestionState;
 use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
-use crate::data::{DataProvider, MockDataProvider};
+use crate::data::{DataProvider, EngineDataProvider, MockDataProvider};
 use crate::engine_client::EngineClient;
 use crate::input::Action;
 use crate::layout::Breakpoint;
@@ -192,6 +192,41 @@ const MAX_HISTORY: usize = 50;
 const MAX_TERMINAL_LINES: usize = 1000;
 const MAX_ACTIVITY_LOG: usize = 10;
 
+/// Select the `DataProvider` based on config.
+///
+/// Order of preference:
+/// 1. `OFFLINE_MODE=1` → `MockDataProvider` immediately.
+/// 2. `api_key` present → try `EngineDataProvider` (PROJECT API).
+/// 3. Fallback → `MockDataProvider` (returns `Disconnected` status).
+///
+/// The returned `EngineConnectionStatus` is used as the initial value of
+/// `App::engine_status` so the footer indicator is correct from the first frame.
+pub fn create_data_provider(
+    config: &TuiConfig,
+) -> (Arc<dyn DataProvider>, EngineConnectionStatus) {
+    if config.offline_mode {
+        return (
+            Arc::new(MockDataProvider::new()),
+            EngineConnectionStatus::Disconnected,
+        );
+    }
+
+    if let Some(ref key) = config.api_key {
+        if !key.is_empty() {
+            let provider = EngineDataProvider::new(&config.project_api_url, key);
+            if provider.connect().is_ok() {
+                return (Arc::new(provider), EngineConnectionStatus::Connected);
+            }
+        }
+    }
+
+    // No key or API unreachable — fall back to mock
+    (
+        Arc::new(MockDataProvider::new()),
+        EngineConnectionStatus::Disconnected,
+    )
+}
+
 impl App {
     pub fn new(config: TuiConfig) -> Self {
         let engine_client = EngineClient::new(&config);
@@ -203,14 +238,21 @@ impl App {
             .map(PathBuf::from)
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
-        Self {
+        let (data_provider, api_connection_status) = create_data_provider(&config);
+
+        // Show a toast only when an api_key was configured but the API was unreachable.
+        // No toast when there is no key (normal offline-first usage).
+        let offline_hint = matches!(api_connection_status, EngineConnectionStatus::Disconnected)
+            && config.api_key.is_some();
+
+        let mut app = Self {
             running: true,
             active_panel: Panel::Chat,
             input_mode: InputMode::Insert,
             config,
             view_state: ViewState::Dashboard,
             mode: Mode::Scan,
-            engine_status: EngineConnectionStatus::Connecting,
+            engine_status: api_connection_status,
             engine_client,
             messages: vec![ChatMessage::new(
                 MessageRole::System,
@@ -277,12 +319,21 @@ impl App {
             pty_manager: PtyManager::new(),
             focused_agent: None,
             pty_passthrough: false,
-            data_provider: Arc::new(MockDataProvider::new()),
+            data_provider,
             agent_registry: crate::agents::load_registry(),
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
+        };
+
+        if offline_hint {
+            app.toasts.push(
+                crate::components::toast::ToastKind::Info,
+                "ENGINE OFFLINE — showing mock data",
+            );
         }
+
+        app
     }
 
     pub fn tick(&mut self) -> Option<AppCommand> {
