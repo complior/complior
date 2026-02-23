@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 const DEFAULT_ENGINE_PORT: u16 = 3099;
 const DEFAULT_TICK_RATE_MS: u64 = 250;
-const DEFAULT_PROJECT_API_URL: &str = "https://api.complior.ai";
+const DEFAULT_PROJECT_API_URL: &str = "https://app.complior.ai";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]

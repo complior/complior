@@ -28,26 +28,31 @@ pub const DEFAULT_SCORE: f64 = 47.0;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 struct RegistryStatsResponse {
+    #[serde(rename = "totalTools")]
     total: u32,
-    #[allow(dead_code)]
-    scored_count: u32,
+    #[serde(rename = "byRiskLevel")]
     by_risk: HashMap<String, u32>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
 struct RegistryToolsResponse {
-    tools: Vec<RegistryTool>,
+    data: Vec<RegistryTool>,
+    #[allow(dead_code)]
+    pagination: RegistryPagination,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RegistryPagination {
     #[allow(dead_code)]
     total: u32,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
 struct RegistryTool {
-    id: String,
+    slug: String,
     name: String,
-    risk_level: String,
-    #[serde(default)]
-    compliance_status: String,
+    #[serde(rename = "riskLevel")]
+    risk_level: Option<String>,
 }
 
 // ── Cache ────────────────────────────────────────────────────────────────────
@@ -167,7 +172,7 @@ impl EngineDataProvider {
 
     fn fetch_findings(&self, client: &reqwest::blocking::Client) -> Result<Vec<Finding>, String> {
         let url = format!(
-            "{}/v1/registry/tools?limit=50&risk_level=high",
+            "{}/v1/registry/tools?limit=50&risk=high",
             self.base_url
         );
         let resp = client
@@ -182,7 +187,7 @@ impl EngineDataProvider {
         let body = resp
             .json::<RegistryToolsResponse>()
             .map_err(|e| e.to_string())?;
-        Ok(tools_to_findings(&body.tools))
+        Ok(tools_to_findings(&body.data))
     }
 
     fn spawn_refresh_thread(&self) {
@@ -220,14 +225,14 @@ impl EngineDataProvider {
                 let (score, zone) = score_from_stats(&stats);
 
                 let tools_url =
-                    format!("{base_url}/v1/registry/tools?limit=50&risk_level=high");
+                    format!("{base_url}/v1/registry/tools?limit=50&risk=high");
                 let findings = client
                     .get(&tools_url)
                     .header("Authorization", format!("Bearer {api_key}"))
                     .send()
                     .ok()
                     .and_then(|r| r.json::<RegistryToolsResponse>().ok())
-                    .map(|b| tools_to_findings(&b.tools))
+                    .map(|b| tools_to_findings(&b.data))
                     .unwrap_or_default();
 
                 let Ok(mut guard) = cache.write() else { continue };
@@ -276,21 +281,21 @@ fn tools_to_findings(tools: &[RegistryTool]) -> Vec<Finding> {
     tools
         .iter()
         .map(|t| {
-            let severity = match t.risk_level.as_str() {
+            let risk = t.risk_level.as_deref().unwrap_or("minimal");
+            let severity = match risk {
                 "unacceptable" => Severity::Critical,
-                "high" => Severity::High,
-                "limited" => Severity::Medium,
+                "high" | "gpai_systemic" => Severity::High,
+                "gpai" | "limited" => Severity::Medium,
                 _ => Severity::Low,
             };
             Finding {
-                check_id: t.id.clone(),
+                check_id: t.slug.clone(),
                 r#type: "ai_registry".into(),
                 message: format!("{} requires compliance attention", t.name),
                 severity,
                 obligation_id: None,
                 article_reference: None,
-                fix: (t.compliance_status == "needs_disclosure")
-                    .then(|| "Add AI disclosure notice".into()),
+                fix: None,
             }
         })
         .collect()
@@ -334,7 +339,7 @@ mod tests {
 
     fn stats_body(total: u32, high: u32, medium: u32) -> String {
         format!(
-            r#"{{"total":{total},"scored_count":{total},"by_risk":{{"high":{high},"medium":{medium},"low":{}}}}}"#,
+            r#"{{"totalTools":{total},"byRiskLevel":{{"high":{high},"limited":{medium},"minimal":{}}}}}"#,
             total.saturating_sub(high + medium)
         )
     }
@@ -459,9 +464,8 @@ mod tests {
     fn test_score_from_stats_all_compliant() {
         let stats = RegistryStatsResponse {
             total: 50,
-            scored_count: 50,
             by_risk: HashMap::from([
-                ("low".into(), 50u32),
+                ("minimal".into(), 50u32),
             ]),
         };
         let (score, zone) = score_from_stats(&stats);
@@ -473,7 +477,6 @@ mod tests {
     fn test_score_from_stats_all_high_risk() {
         let stats = RegistryStatsResponse {
             total: 10,
-            scored_count: 10,
             by_risk: HashMap::from([("high".into(), 10u32)]),
         };
         let (score, zone) = score_from_stats(&stats);
@@ -485,7 +488,6 @@ mod tests {
     fn test_score_from_stats_empty_registry() {
         let stats = RegistryStatsResponse {
             total: 0,
-            scored_count: 0,
             by_risk: HashMap::new(),
         };
         let (score, _zone) = score_from_stats(&stats);
