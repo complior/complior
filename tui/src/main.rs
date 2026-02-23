@@ -1,9 +1,12 @@
+mod acp;
+mod agents;
 mod animation;
 mod app;
 mod cli;
 mod components;
 mod config;
 mod credentials;
+mod data;
 mod engine_client;
 mod engine_process;
 mod error;
@@ -11,7 +14,9 @@ mod headless;
 mod input;
 mod layout;
 mod obligations;
+mod orchestrator;
 mod providers;
+mod pty;
 mod session;
 mod theme;
 mod theme_picker;
@@ -39,7 +44,6 @@ use clap::Parser;
 
 use app::{App, AppCommand};
 use config::load_config;
-use engine_client::SseEvent;
 use engine_process::EngineManager;
 use views::dashboard::render_dashboard;
 
@@ -191,8 +195,6 @@ async fn main() -> color_eyre::Result<()> {
         // --yes or CI: apply defaults and mark complete
         config::mark_onboarding_complete().await;
         app.config.onboarding_completed = true;
-    } else if !providers::is_configured(&app.provider_config) {
-        app.overlay = types::Overlay::ProviderSetup;
     }
 
     // Build initial file tree
@@ -268,9 +270,6 @@ async fn run_event_loop(
     // Animation tick: 50ms (20fps) — only fires when animations are active
     let mut anim_interval = tokio::time::interval(Duration::from_millis(50));
 
-    // SSE channel for streaming responses
-    let (sse_tx, mut sse_rx) = mpsc::unbounded_channel::<SseEvent>();
-
     // Watch mode channel + handle
     let (watch_tx, mut watch_rx) = mpsc::unbounded_channel::<std::path::PathBuf>();
     let mut watch_handle: Option<tokio::task::JoinHandle<()>> = None;
@@ -326,37 +325,47 @@ async fn run_event_loop(
                     Some(Ok(Event::Key(key))) => {
                         let action = input::handle_key_event(key, app);
                         if let Some(cmd) = app.apply_action(action) {
-                            execute_command(app, cmd, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
+                            execute_command(app, cmd, &watch_tx, &mut watch_handle).await;
                         }
                     }
                     Some(Ok(Event::Mouse(mouse))) => {
                         let action = input::handle_mouse_event(mouse, app);
                         if let Some(cmd) = app.apply_action(action) {
-                            execute_command(app, cmd, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
+                            execute_command(app, cmd, &watch_tx, &mut watch_handle).await;
                         }
                     }
+                    Some(Ok(Event::Resize(w, h))) => {
+                        execute_command(app, AppCommand::ResizeAgents(w, h), &watch_tx, &mut watch_handle).await;
+                    }
                     _ => {
-                        // Resize and other events — terminal re-renders on next loop
+                        // Other events — terminal re-renders on next loop
                     }
                 }
-            }
-
-            // SSE events from engine
-            Some(event) = sse_rx.recv() => {
-                app.handle_sse_event(event);
             }
 
             // File watch events
             Some(path) = watch_rx.recv(), if app.watch_active => {
                 app.push_activity(types::ActivityKind::Watch, path.display().to_string());
-                execute_command(app, AppCommand::AutoScan, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
+                execute_command(app, AppCommand::AutoScan, &watch_tx, &mut watch_handle).await;
             }
 
             // Tick for general state + health checks (250ms)
             _ = tick_interval.tick() => {
                 if let Some(cmd) = app.tick() {
-                    execute_command(app, cmd, sse_tx.clone(), &watch_tx, &mut watch_handle).await;
+                    execute_command(app, cmd, &watch_tx, &mut watch_handle).await;
                 }
+
+                // Poll ACP sessions for new events and surface gate notifications
+                let acp_notifications = app.pty_manager.poll_acp_events().await;
+                for (msg, is_rejection) in acp_notifications {
+                    let kind = if is_rejection {
+                        components::toast::ToastKind::Error
+                    } else {
+                        components::toast::ToastKind::Success
+                    };
+                    app.toasts.push(kind, msg);
+                }
+
                 tick_count += 1;
 
                 // Periodic engine health check
@@ -406,7 +415,6 @@ async fn run_event_loop(
 async fn execute_command(
     app: &mut App,
     cmd: AppCommand,
-    sse_tx: mpsc::UnboundedSender<SseEvent>,
     watch_tx: &mpsc::UnboundedSender<std::path::PathBuf>,
     watch_handle: &mut Option<tokio::task::JoinHandle<()>>,
 ) {
@@ -523,36 +531,6 @@ async fn execute_command(
                     app.operation_start = None;
                 }
             }
-        }
-        AppCommand::Chat(message) => {
-            let client = app.engine_client.clone_for_stream();
-            let provider = if providers::is_configured(&app.provider_config) {
-                Some(app.provider_config.active_provider.clone())
-            } else {
-                None
-            };
-            let model = if provider.is_some() {
-                Some(app.provider_config.active_model.clone())
-            } else {
-                None
-            };
-            let api_key = provider.as_ref().and_then(|p| {
-                app.provider_config.providers.get(p).map(|e| e.api_key.clone())
-            });
-            let error_tx = sse_tx.clone();
-            tokio::spawn(async move {
-                if let Err(e) = client.chat_stream(
-                    &message,
-                    provider.as_deref(),
-                    model.as_deref(),
-                    api_key.as_deref(),
-                    sse_tx,
-                ).await {
-                    tracing::error!("Chat stream error: {e}");
-                    let _ = error_tx.send(SseEvent::Error(format!("Connection error: {e}")));
-                    let _ = error_tx.send(SseEvent::Done);
-                }
-            });
         }
         AppCommand::OpenFile(path) => match app.engine_client.read_file(&path).await {
             Ok(content) => app.open_file(&path, content),
@@ -940,47 +918,56 @@ async fn execute_command(
                 }
             }
         }
-        AppCommand::SaveProviderConfig => {
-            if let Err(e) = providers::save_provider_config(&app.provider_config).await {
-                tracing::warn!("Failed to save provider config: {e}");
-            }
-        }
         AppCommand::CompleteOnboarding => {
-            // 1. Save config + credentials from wizard
+            // 1. Save config from wizard
             if let Some(ref wiz) = app.onboarding {
                 config::save_onboarding_results(wiz).await;
-
-                // Also update the provider config if a key was provided
-                let provider = wiz.selected_config_value("ai_provider");
-                let api_key_step = wiz.steps.iter().find(|s| s.id == "ai_provider");
-                if let Some(step) = api_key_step
-                    && !step.text_value.is_empty()
-                    && provider != "offline"
-                {
-                    app.provider_config.active_provider.clone_from(&provider);
-                    app.provider_config.providers.insert(
-                        provider.clone(),
-                        providers::ProviderEntry {
-                            api_key: step.text_value.clone(),
-                        },
-                    );
-                    let _ = providers::save_provider_config(&app.provider_config).await;
-                }
             }
 
-            // 2. Determine project type for post-completion action
+            // 2. Collect project type for post-completion action
             let project_type = app
                 .onboarding
                 .as_ref()
                 .and_then(|w| w.project_type.clone())
                 .unwrap_or_else(|| "existing".to_string());
 
-            // 3. Close wizard
+            // 3. Auto-launch agents with auto_start: true
+            {
+                let auto_start_agents: Vec<_> = app.agent_registry
+                    .iter()
+                    .filter(|c| c.auto_start)
+                    .cloned()
+                    .collect();
+                let pty_size = if let Ok((w, h)) = crossterm::terminal::size() {
+                    portable_pty::PtySize { rows: h, cols: w, pixel_width: 0, pixel_height: 0 }
+                } else {
+                    portable_pty::PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }
+                };
+                for cfg in auto_start_agents {
+                    let id = cfg.id.clone();
+                    if let Err(e) = app.pty_manager.launch(cfg, pty_size).await {
+                        tracing::warn!("Failed to auto-launch agent {id}: {e}");
+                    }
+                }
+            }
+
+            // 4. Close wizard
             app.onboarding = None;
             app.overlay = types::Overlay::None;
             app.config.onboarding_completed = true;
 
-            // 4. Post-completion action based on project_type
+            // 5a. Show agent launch hint
+            if let Some(first) = app.agent_registry.first() {
+                app.toasts.push(
+                    components::toast::ToastKind::Info,
+                    format!(
+                        "Setup complete! Launch an agent with :agent {}  ·  press 7 to open Agents view",
+                        first.id
+                    ),
+                );
+            }
+
+            // 5b. Post-completion action based on project_type
             match project_type.as_str() {
                 "existing" => {
                     app.messages.push(types::ChatMessage::new(
@@ -1018,6 +1005,67 @@ async fn execute_command(
         }
         AppCommand::SaveOnboardingPartial(last_step) => {
             config::save_onboarding_partial(last_step).await;
+        }
+        AppCommand::LaunchAgent(id) => {
+            // Look up the agent config in the registry
+            if let Some(config) = app.agent_registry.iter().find(|c| c.id == id).cloned() {
+                let size = if let Ok((w, h)) = crossterm::terminal::size() {
+                    portable_pty::PtySize {
+                        rows: h,
+                        cols: w,
+                        pixel_width: 0,
+                        pixel_height: 0,
+                    }
+                } else {
+                    portable_pty::PtySize {
+                        rows: 24,
+                        cols: 80,
+                        pixel_width: 0,
+                        pixel_height: 0,
+                    }
+                };
+                match app.pty_manager.launch(config.clone(), size).await {
+                    Ok(session_id) => {
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            format!("Agent '{}' launched (session #{session_id}).", config.display_name),
+                        ));
+                        app.view_state = types::ViewState::AgentGrid;
+                    }
+                    Err(e) => {
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            format!("Failed to launch agent '{}': {e}", config.display_name),
+                        ));
+                    }
+                }
+            } else {
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    format!("Unknown agent id: {id}. Check agents.toml."),
+                ));
+            }
+        }
+        AppCommand::KillAgentSession(session_id) => {
+            app.pty_manager.kill(session_id);
+            app.messages.push(types::ChatMessage::new(
+                types::MessageRole::System,
+                format!("Agent session #{session_id} killed."),
+            ));
+        }
+        AppCommand::SendToAgentSession(session_id, text) => {
+            if let Some(handle) = app.pty_manager.get_mut(session_id) {
+                handle.send_input(&text);
+            }
+        }
+        AppCommand::ResizeAgents(w, h) => {
+            let size = portable_pty::PtySize {
+                rows: h,
+                cols: w,
+                pixel_width: 0,
+                pixel_height: 0,
+            };
+            app.pty_manager.resize_all(size);
         }
     }
 }

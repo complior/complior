@@ -21,7 +21,6 @@ pub struct TuiConfig {
 
     // Onboarding-derived config fields
     pub navigation: String,
-    pub ai_provider: String,
     pub project_type: String,
     pub jurisdiction: String,
     pub role: String,
@@ -48,7 +47,6 @@ impl Default for TuiConfig {
             animations_enabled: true,
             scroll_acceleration: 1.5,
             navigation: "standard".to_string(),
-            ai_provider: "offline".to_string(),
             project_type: "existing".to_string(),
             jurisdiction: "eu".to_string(),
             role: "deployer".to_string(),
@@ -119,7 +117,6 @@ pub async fn save_onboarding_results(
 
     config.theme = wizard.selected_config_value("welcome_theme");
     config.navigation = wizard.selected_config_value("navigation");
-    config.ai_provider = wizard.selected_config_value("ai_provider");
     config.project_type = wizard.selected_config_value("project_type");
     config.jurisdiction = wizard.selected_config_value("jurisdiction");
     config.role = wizard.selected_config_value("role");
@@ -136,14 +133,6 @@ pub async fn save_onboarding_results(
     config.onboarding_last_step = None;
 
     save_config(&config).await;
-
-    // Save API key to credentials if provided
-    let provider = wizard.selected_config_value("ai_provider");
-    if let Some(step) = wizard.steps.iter().find(|s| s.id == "ai_provider") {
-        if !step.text_value.is_empty() && provider != "offline" {
-            crate::credentials::save_credential(&provider, &step.text_value).await;
-        }
-    }
 }
 
 fn config_file_path() -> PathBuf {
@@ -168,7 +157,6 @@ mod tests {
         assert!(!config.onboarding_completed);
         // Onboarding defaults
         assert_eq!(config.navigation, "standard");
-        assert_eq!(config.ai_provider, "offline");
         assert_eq!(config.project_type, "existing");
         assert_eq!(config.jurisdiction, "eu");
         assert_eq!(config.role, "deployer");

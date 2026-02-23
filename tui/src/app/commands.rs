@@ -183,24 +183,11 @@ impl App {
                 ));
                 None
             }
-            Some("provider") => {
-                self.overlay = Overlay::ProviderSetup;
-                self.provider_setup_step = 0;
-                self.provider_setup_selected = 0;
-                self.provider_setup_key_input.clear();
-                self.provider_setup_error = None;
-                None
-            }
             Some("model") => {
-                if crate::providers::is_configured(&self.provider_config) {
-                    self.overlay = Overlay::ModelSelector;
-                    self.model_selector_index = 0;
-                } else {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        "No providers configured. Use /provider first.".to_string(),
-                    ));
-                }
+                self.messages.push(ChatMessage::new(
+                    MessageRole::System,
+                    "Model selector unavailable in wrapper mode. Complior wraps coding agents, not LLMs directly.".to_string(),
+                ));
                 None
             }
             Some("view") => {
@@ -298,7 +285,41 @@ impl App {
     pub(crate) fn handle_colon_command(&mut self, input: &str) -> Option<AppCommand> {
         let parts: Vec<&str> = input.splitn(2, ' ').collect();
         match parts.first().copied() {
-            Some("scan") | Some("s") => {
+            Some("agent") => {
+            let id = parts.get(1).unwrap_or(&"").trim().to_string();
+            if id.is_empty() {
+                // List available agents
+                let names: Vec<String> = self
+                    .agent_registry
+                    .iter()
+                    .map(|c| format!("{} ({})", c.id, c.display_name))
+                    .collect();
+                if names.is_empty() {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Warning,
+                        "No agents registered. Add entries to ~/.config/complior/agents.toml",
+                    );
+                } else {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Info,
+                        format!("Agents: {}", names.join(", ")),
+                    );
+                }
+                None
+            } else {
+                // Launch the named agent
+                if self.agent_registry.iter().any(|c| c.id == id) {
+                    Some(AppCommand::LaunchAgent(id))
+                } else {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Warning,
+                        format!("Unknown agent '{id}'. Use :agent to list registered agents."),
+                    );
+                    None
+                }
+            }
+        }
+        Some("scan") | Some("s") => {
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
                     "Scanning project...".to_string(),
@@ -371,14 +392,6 @@ impl App {
                     crate::components::toast::ToastKind::Warning,
                     "Usage: :view <1-6>",
                 );
-                None
-            }
-            Some("provider") | Some("p") => {
-                self.overlay = Overlay::ProviderSetup;
-                self.provider_setup_step = 0;
-                self.provider_setup_selected = 0;
-                self.provider_setup_key_input.clear();
-                self.provider_setup_error = None;
                 None
             }
             Some("animations") => {

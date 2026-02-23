@@ -9,7 +9,7 @@ expression: buf
 │                            │
 │                            │
 │────────────────────────────│
-│ Ctx: 0%  Zen: off          │
+│ Ctx: 3%  Zen: off          │
 │                            │
 │ Actions ───────────────────│
 │ /scan  rescan project      │

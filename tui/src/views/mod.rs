@@ -1,3 +1,4 @@
+pub mod agent_grid;
 pub mod chat;
 pub mod code_viewer;
 pub mod dashboard;
