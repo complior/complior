@@ -22,7 +22,8 @@
     "export:registry": "node scripts/export-registry.js",
     "export:regulation": "node scripts/export-regulation-db.js",
     "export:all": "npm run export:registry && npm run export:regulation",
-    "seed:detection-patterns": "node scripts/run-detection-patterns-seed.js"
+    "seed:detection-patterns": "node scripts/run-detection-patterns-seed.js",
+    "create:tui-key": "node scripts/create-tui-api-key.js"
   },
   "engines": {
     "node": ">=20.0.0"
