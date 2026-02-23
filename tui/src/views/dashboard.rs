@@ -60,6 +60,8 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
         ViewState::Fix => super::fix::render_fix_view(frame, body_area, app),
         ViewState::Timeline => super::timeline::render_timeline_view(frame, body_area, app),
         ViewState::Report => super::report::render_report_view(frame, body_area, app),
+        ViewState::AgentGrid => super::agent_grid::render_agent_grid(frame, body_area, app),
+        ViewState::Orchestrator => crate::orchestrator::menu::render_orchestrator_view(frame, body_area, app),
     }
 
     // T08: Idle suggestion area (above footer)
@@ -290,16 +292,100 @@ fn render_chat_full_view(frame: &mut Frame, body_area: Rect, app: &App) {
 
 /// Dashboard content area — multi-panel layout with chat, files, terminal.
 fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App) {
-    if app.last_scan.is_some() {
-        let v_split = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-            .split(area);
-
-        render_top_panels(frame, v_split[0], app);
-        render_bottom_widgets(frame, v_split[1], app);
+    // S00: Top row — agent status cards (running) or no-agents CTA banner
+    let top_row_height: u16 = if app.pty_manager.session_count() > 0 { 3 } else { 1 };
+    let top_area = Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: top_row_height.min(area.height),
+    };
+    if app.pty_manager.session_count() > 0 {
+        render_agent_status_row(frame, top_area, app);
     } else {
-        render_content_panels(frame, area, app);
+        render_no_agents_banner(frame, top_area, app);
+    }
+    let remaining_area = Rect {
+        x: area.x,
+        y: area.y + top_row_height,
+        width: area.width,
+        height: area.height.saturating_sub(top_row_height),
+    };
+
+    let v_split = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+        .split(remaining_area);
+
+    render_top_panels(frame, v_split[0], app);
+    render_bottom_widgets(frame, v_split[1], app);
+}
+
+/// 1-row call-to-action banner shown in Dashboard when no agents are running.
+fn render_no_agents_banner(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let hint = if let Some(first) = app.agent_registry.first() {
+        format!(
+            "  No agents running  ·  :agent {} to start  ·  7 for Agents view",
+            first.id
+        )
+    } else {
+        "  No agents running  ·  Add agents to ~/.config/complior/agents.toml".to_string()
+    };
+    let line = Line::from(vec![
+        Span::styled("▸ ", Style::default().fg(t.accent)),
+        Span::styled(hint, Style::default().fg(t.muted)),
+    ]);
+    frame.render_widget(Paragraph::new(vec![line]), area);
+}
+
+/// Render a compact agent status row — one card per active session.
+fn render_agent_status_row(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let sessions = app.pty_manager.sessions();
+    if sessions.is_empty() {
+        return;
+    }
+    let count = sessions.len() as u16;
+    let card_width = area.width / count;
+
+    for (i, session) in sessions.iter().enumerate() {
+        let card_area = Rect {
+            x: area.x + (i as u16) * card_width,
+            y: area.y,
+            width: card_width,
+            height: area.height,
+        };
+
+        let state_color = match session.state() {
+            crate::pty::session::AgentState::Starting => t.zone_yellow,
+            crate::pty::session::AgentState::Ready => t.zone_green,
+            crate::pty::session::AgentState::Working => t.accent,
+            crate::pty::session::AgentState::Dead => t.zone_red,
+        };
+
+        let last_line = session.last_lines(1).into_iter().next().unwrap_or_default();
+
+        // Truncate last_line to fit card
+        let max_w = card_width.saturating_sub(4) as usize;
+        let truncated = if last_line.len() > max_w {
+            format!("{}…", &last_line[..max_w.saturating_sub(1)])
+        } else {
+            last_line
+        };
+
+        let title = format!(" {} ", session.config().display_name);
+        let block = Block::default()
+            .title(title)
+            .title_style(Style::default().fg(state_color).add_modifier(Modifier::BOLD))
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(state_color));
+
+        let inner = block.inner(card_area);
+        frame.render_widget(block, card_area);
+
+        let line = Line::from(Span::styled(truncated, Style::default().fg(t.muted)));
+        frame.render_widget(Paragraph::new(line), inner);
     }
 }
 
@@ -416,31 +502,37 @@ fn render_bottom_widgets(frame: &mut Frame, area: Rect, app: &App) {
 fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
 
-    if let Some(scan) = &app.last_scan {
-        let real_score = scan.score.total_score;
-        // T08: Use animated counter value if available
-        let display_score = app
-            .animation
-            .counter_value()
-            .map(|v| v as f64)
-            .unwrap_or(real_score);
-        let (color, zone_label) = score_zone_info(display_score, &t);
+    // Use real scan data if available; fall back to data_provider (mock)
+    let real_score = if let Some(scan) = &app.last_scan {
+        scan.score.total_score
+    } else {
+        app.data_provider.score()
+    };
 
-        let ratio = (display_score / 100.0).clamp(0.0, 1.0);
-        let gauge = ratatui::widgets::Gauge::default()
-            .block(
-                Block::default()
-                    .title(" Compliance Score ")
-                    .title_style(theme::title_style())
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(t.border)),
-            )
-            .gauge_style(Style::default().fg(color))
-            .ratio(ratio)
-            .label(format!("{display_score:.0}/100 — {zone_label}"));
+    // T08: Use animated counter value if available
+    let display_score = app
+        .animation
+        .counter_value()
+        .map(|v| v as f64)
+        .unwrap_or(real_score);
 
-        frame.render_widget(gauge, area);
-    }
+    let (color, zone_label) = score_zone_info(display_score, &t);
+    let mock_suffix = if app.last_scan.is_none() { " (demo)" } else { "" };
+
+    let ratio = (display_score / 100.0).clamp(0.0, 1.0);
+    let gauge = ratatui::widgets::Gauge::default()
+        .block(
+            Block::default()
+                .title(" Compliance Score ")
+                .title_style(theme::title_style())
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(t.border)),
+        )
+        .gauge_style(Style::default().fg(color))
+        .ratio(ratio)
+        .label(format!("{display_score:.0}/100 — {zone_label}{mock_suffix}"));
+
+    frame.render_widget(gauge, area);
 }
 
 /// Deadline countdown widget — computes days from now, colors by urgency.
@@ -679,21 +771,13 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 
     let mut spans: Vec<Span<'_>> = Vec::new();
 
-    // Indicator 1: Model + Provider
-    if crate::providers::is_configured(&app.provider_config) {
-        let model_name =
-            crate::providers::display_model_name(&app.provider_config.active_model);
-        spans.push(Span::styled(
-            format!(" {model_name} "),
-            Style::default().fg(t.accent),
-        ));
-    } else {
-        spans.push(Span::styled(" no model ", Style::default().fg(t.muted)));
-    }
-
-    // Indicator 2: Score badge [75]
-    if let Some(scan) = &app.last_scan {
-        let score = scan.score.total_score;
+    // Indicator 1: Score badge [75] — real scan takes priority, falls back to data_provider
+    {
+        let score = if let Some(scan) = &app.last_scan {
+            scan.score.total_score
+        } else {
+            app.data_provider.score()
+        };
         let (color, _) = score_zone_info(score, &t);
         spans.push(Span::styled(
             format!("[{score:.0}]"),
@@ -739,17 +823,8 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 
     spans.push(Span::raw(" "));
 
-    // Indicator 6: Cost [$0.xxx] — always visible, defaults to $0.000
-    let cost = if let Some((prompt, completion)) = app.last_token_usage {
-        // Rough cost estimate: $0.003/1k prompt + $0.015/1k completion (Claude-class)
-        f64::from(prompt) * 0.000_003 + f64::from(completion) * 0.000_015
-    } else {
-        0.0
-    };
-    spans.push(Span::styled(
-        format!("[${cost:.3}]"),
-        Style::default().fg(t.muted),
-    ));
+    // Indicator 5: Cost — always $0.000 in wrapper mode (no LLM)
+    spans.push(Span::styled("[wrapper]", Style::default().fg(t.muted)));
 
     // Show elapsed time if operation in progress
     if let Some(secs) = app.elapsed_secs() {
@@ -796,7 +871,11 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         }
     };
 
-    let hint_text = footer_hints_for_view(app.view_state);
+    let hint_text = if app.pty_passthrough {
+        "PTY PASSTHROUGH — all keys → agent  Ctrl+]:exit"
+    } else {
+        footer_hints_for_view(app.view_state)
+    };
 
     let mut hint_spans: Vec<Span<'_>> = vec![
         Span::styled(mode_str, theme::status_bar_style()),
@@ -843,12 +922,14 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 /// View-specific footer hints (line 2).
 pub fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
-        ViewState::Dashboard => "1-6:view Tab:mode e:zoom i:ins /:cmd ::colon ^Z:undo U:history ?:help",
+        ViewState::Dashboard => "A:agents O:orch D:dash S:scan F:fix C:chat R:report Tab:mode e:zoom ?:help",
         ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix x:explain d:dismiss o:open j/k:nav",
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
-        ViewState::Chat => "Tab:complete @OBL:ref !cmd Enter:send",
+        ViewState::Chat => "/:command !:shell @OBL:ref Enter:run",
         ViewState::Timeline => "j/k:scroll",
         ViewState::Report => "e:export j/k:scroll",
+        ViewState::AgentGrid => "1-6:focus i:interact K:kill A:grid O:orch D:dash j/k:scroll",
+        ViewState::Orchestrator => "A:agents D:dash s:send k:kill r:restart b:broadcast",
     }
 }
 
@@ -875,12 +956,6 @@ fn render_overlay(frame: &mut Frame, app: &App) {
         }
         Overlay::Help => render_help_overlay(frame, app),
         Overlay::GettingStarted => render_getting_started_overlay(frame),
-        Overlay::ProviderSetup => {
-            crate::components::provider_setup::render_provider_setup(frame, app);
-        }
-        Overlay::ModelSelector => {
-            crate::components::model_selector::render_model_selector(frame, app);
-        }
         Overlay::ThemePicker => {
             if let Some(state) = &app.theme_picker {
                 crate::theme_picker::render_theme_picker(frame, state);
@@ -905,6 +980,7 @@ fn render_overlay(frame: &mut Frame, app: &App) {
         Overlay::UndoHistory => {
             crate::components::undo_history::render_undo_history(frame, &app.undo_history);
         }
+        Overlay::OrchestratorMenu => {}
     }
 
     // Always render toasts on top of everything
@@ -1040,6 +1116,15 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
         ViewState::Report => vec![
             shortcut_line("  e", "Export report", t),
             shortcut_line("  j/k", "Scroll report", t),
+        ],
+        ViewState::AgentGrid => vec![
+            shortcut_line("  1-6", "Focus agent pane", t),
+            shortcut_line("  j/k", "Scroll agent output", t),
+        ],
+        ViewState::Orchestrator => vec![
+            shortcut_line("  s", "Send to agent", t),
+            shortcut_line("  k", "Kill agent", t),
+            shortcut_line("  b", "Broadcast to all", t),
         ],
     }
 }
@@ -1264,7 +1349,9 @@ mod tests {
         assert_eq!(ViewState::from_key(5), Some(ViewState::Timeline));
         assert_eq!(ViewState::from_key(6), Some(ViewState::Report));
         assert_eq!(ViewState::from_key(0), None);
-        assert_eq!(ViewState::from_key(7), None);
+        assert_eq!(ViewState::from_key(7), Some(ViewState::AgentGrid));
+        assert_eq!(ViewState::from_key(8), Some(ViewState::Orchestrator));
+        assert_eq!(ViewState::from_key(9), None);
     }
 
     #[test]
@@ -1480,8 +1567,8 @@ mod tests {
     #[test]
     fn test_footer_hints_per_view() {
         let dashboard_hints = footer_hints_for_view(ViewState::Dashboard);
-        assert!(dashboard_hints.contains("1-6:view"));
-        assert!(dashboard_hints.contains("::colon"));
+        assert!(dashboard_hints.contains("A:agents"));
+        assert!(dashboard_hints.contains("Tab:mode"));
         assert!(dashboard_hints.contains("?:help"));
 
         let scan_hints = footer_hints_for_view(ViewState::Scan);
@@ -1744,14 +1831,13 @@ mod tests {
     // ─── T504: Status Bar 6 Indicators ───
 
     #[test]
-    fn e2e_t504_status_bar_shows_no_model_when_unconfigured() {
+    fn e2e_t504_status_bar_shows_wrapper_label() {
         crate::theme::init_theme("dark");
-        let mut app = App::new(crate::config::TuiConfig::default());
-        // Force empty provider config (disk may have a real provider configured)
-        app.provider_config = crate::providers::ProviderConfig::default();
+        let app = App::new(crate::config::TuiConfig::default());
 
         let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("no model"), "Status bar should show 'no model' when no provider configured");
+        // Model/provider indicator removed; footer shows [wrapper] instead
+        assert!(buf.contains("[wrapper]"), "Status bar should show [wrapper] label");
     }
 
     #[test]
@@ -1815,19 +1901,13 @@ mod tests {
     }
 
     #[test]
-    fn e2e_t504_status_bar_cost_indicator() {
+    fn e2e_t504_status_bar_wrapper_indicator() {
         crate::theme::init_theme("dark");
-        let mut app = App::new(crate::config::TuiConfig::default());
+        let app = App::new(crate::config::TuiConfig::default());
 
-        // Without usage
+        // Footer now shows [wrapper] instead of cost indicator
         let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("[$0.000]"), "Status bar should show [$0.000] with no token usage");
-
-        // With usage
-        app.last_token_usage = Some((1000, 500));
-        let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("[$0."), "Status bar should show cost estimate");
-        assert!(!buf.contains("[$0.000]"), "Cost should be >0 with token usage");
+        assert!(buf.contains("[wrapper]"), "Status bar should show [wrapper] label");
     }
 
     #[test]
@@ -1882,15 +1962,15 @@ mod tests {
         app.view_state = ViewState::Dashboard;
         let buf = render_to_string(&app, 120, 40);
         let last_line = buf.lines().last().unwrap_or("");
-        assert!(last_line.contains("colon"), "Dashboard footer should mention colon");
-        assert!(last_line.contains("undo"), "Dashboard footer should mention undo");
+        assert!(last_line.contains("agents"), "Dashboard footer should mention agents");
+        assert!(last_line.contains("help"), "Dashboard footer should mention help");
 
-        // Chat view — should show chat-specific hints
+        // Status Log view — should show command-specific hints
         app.view_state = ViewState::Chat;
         let buf = render_to_string(&app, 120, 40);
         let last_line = buf.lines().last().unwrap_or("");
-        assert!(last_line.contains("@OBL"), "Chat footer should mention @OBL");
-        assert!(last_line.contains("send"), "Chat footer should mention send");
+        assert!(last_line.contains("@OBL"), "Status Log footer should mention @OBL");
+        assert!(last_line.contains("run"), "Status Log footer should mention run");
     }
 
     #[test]
@@ -1988,7 +2068,7 @@ mod tests {
     }
 
     #[test]
-    fn e2e_t503_obligation_context_injected_on_chat_submit() {
+    fn e2e_t503_plain_input_shows_unknown_command_message() {
         let mut app = App::new(crate::config::TuiConfig::default());
         app.input_mode = crate::types::InputMode::Insert;
         app.input = "Explain @OBL-001 requirements".to_string();
@@ -1996,20 +2076,15 @@ mod tests {
 
         let cmd = app.apply_action(crate::input::Action::SubmitInput);
 
-        // Should return a Chat command with injected context
-        match cmd {
-            Some(crate::app::AppCommand::Chat(text)) => {
-                assert!(text.contains("[EU AI Act Reference]"), "Chat text should have injected context header");
-                assert!(text.contains("Art. 5"), "Chat text should contain Art. 5 from OBL-001");
-                assert!(text.contains("Prohibited AI Practices"), "Chat text should contain obligation title");
-                assert!(text.contains("Explain @OBL-001 requirements"), "Chat text should contain original message");
-            }
-            other => panic!("Expected AppCommand::Chat, got: {other:?}"),
-        }
+        // LLM chat removed: plain text returns None + System message
+        assert!(cmd.is_none(), "Plain text submit should return None (no LLM)");
+        let last_msg = app.messages.last().unwrap();
+        assert_eq!(last_msg.role, crate::types::MessageRole::System);
+        assert!(last_msg.content.contains("Unknown input"));
     }
 
     #[test]
-    fn e2e_t503_plain_message_no_injection() {
+    fn e2e_t503_plain_message_no_llm_dispatch() {
         let mut app = App::new(crate::config::TuiConfig::default());
         app.input_mode = crate::types::InputMode::Insert;
         app.input = "Hello, explain compliance".to_string();
@@ -2017,29 +2092,24 @@ mod tests {
 
         let cmd = app.apply_action(crate::input::Action::SubmitInput);
 
-        match cmd {
-            Some(crate::app::AppCommand::Chat(text)) => {
-                assert!(!text.contains("[EU AI Act Reference]"), "Plain message should NOT have injected context");
-                assert_eq!(text, "Hello, explain compliance");
-            }
-            other => panic!("Expected AppCommand::Chat, got: {other:?}"),
-        }
+        // LLM chat removed: plain text returns None
+        assert!(cmd.is_none(), "Plain text submit should return None (no LLM)");
     }
 
     #[test]
-    fn e2e_t503_obl_tokens_highlighted_in_chat_render() {
+    fn e2e_t503_status_log_renders_system_messages() {
         crate::theme::init_theme("dark");
         let mut app = App::new(crate::config::TuiConfig::default());
         app.view_state = ViewState::Chat;
+        // Status Log only shows System messages (User/Assistant are filtered out)
         app.messages.push(crate::types::ChatMessage::new(
-            crate::types::MessageRole::User,
-            "Check @OBL-001 compliance".to_string(),
+            crate::types::MessageRole::System,
+            "Compliance check for @OBL-001 completed".to_string(),
         ));
 
         let buf = render_to_string(&app, 120, 40);
-        // The message text should be in the render output
-        assert!(buf.contains("@OBL-001"), "Chat should render @OBL-001 token text");
-        assert!(buf.contains("compliance"), "Chat should render the message text");
+        assert!(buf.contains("@OBL-001"), "Status Log should render @OBL-001 in system events");
+        assert!(buf.contains("Compliance"), "Status Log should render the message text");
     }
 
     // ─── T502: Watch Mode ───
@@ -2333,9 +2403,8 @@ mod tests {
     // ─── T705: Context Meter + Quick Actions ───
 
     #[test]
-    fn e2e_t705_context_pct_updates_on_tick() {
+    fn e2e_t705_context_pct_computed_from_messages() {
         let mut app = App::new(crate::config::TuiConfig::default());
-        assert_eq!(app.context_pct, 0);
 
         // Add messages to increase context
         for i in 0..10 {
@@ -2345,10 +2414,11 @@ mod tests {
             ));
         }
 
-        app.tick();
-        // 11 messages (1 welcome + 10) / 32 max = 34%
-        assert!(app.context_pct > 0, "Context pct should update on tick");
-        assert!(app.context_pct < 50, "Context pct should be reasonable");
+        // context_pct is now computed locally, not stored as a field
+        let pct = crate::widgets::context_meter::context_pct(app.messages.len(), 32);
+        // 11 messages (1 welcome + 10) / 32 max ~= 34%
+        assert!(pct > 0, "Context pct should be >0 with messages");
+        assert!(pct < 50, "Context pct should be reasonable");
     }
 
     #[test]
@@ -2357,7 +2427,13 @@ mod tests {
         let mut app = App::new(crate::config::TuiConfig::default());
         app.sidebar_visible = true;
         app.zen_active = true;
-        app.context_pct = 45;
+        // Add ~15 messages to simulate ~45% context (15/32 ≈ 47%)
+        for i in 0..14 {
+            app.messages.push(crate::types::ChatMessage::new(
+                crate::types::MessageRole::System,
+                format!("event {i}"),
+            ));
+        }
 
         let buf = render_to_string(&app, 120, 40);
         assert!(buf.contains("Ctx:"), "Sidebar should show context meter");

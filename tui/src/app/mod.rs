@@ -1,21 +1,24 @@
 mod commands;
-mod sse;
 mod view_keys;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Instant;
 
 use ratatui::layout::Rect;
 
+use crate::agents::registry::AgentConfig;
 use crate::animation::AnimationState;
 use crate::components::spinner::Spinner;
 use crate::components::suggestions::IdleSuggestionState;
 use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
+use crate::data::{DataProvider, MockDataProvider};
 use crate::engine_client::EngineClient;
 use crate::input::Action;
 use crate::layout::Breakpoint;
 use crate::providers::ProviderConfig;
+use crate::pty::PtyManager;
 use crate::types::{
     ActivityEntry, ActivityKind, ChatMessage, ClickTarget, DiffContent,
     EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult,
@@ -40,11 +43,10 @@ pub struct App {
     pub engine_status: EngineConnectionStatus,
     pub engine_client: EngineClient,
 
-    // Chat
+    // Status Log (system messages)
     pub messages: Vec<ChatMessage>,
     pub input: String,
     pub input_cursor: usize,
-    pub streaming_response: Option<String>,
     pub chat_scroll: usize,
     pub chat_auto_scroll: bool,
 
@@ -73,10 +75,6 @@ pub struct App {
     pub terminal_scroll: usize,
     pub terminal_auto_scroll: bool,
 
-    // Streaming thinking + usage
-    pub streaming_thinking: Option<String>,
-    pub last_token_usage: Option<(u32, u32)>,
-
     // Diff
     pub diff_content: Option<DiffContent>,
 
@@ -89,12 +87,9 @@ pub struct App {
     pub overlay_filter: String,
     pub palette_index: usize,
 
-    // Provider / model selection
+    // Provider config (stub — model selection removed in wrapper mode)
     pub provider_config: ProviderConfig,
-    pub provider_setup_step: usize,
-    pub provider_setup_selected: usize,
-    pub provider_setup_key_input: String,
-    pub provider_setup_error: Option<String>,
+    #[allow(dead_code)]
     pub model_selector_index: usize,
 
     // View-specific state
@@ -142,10 +137,6 @@ pub struct App {
     // T07: Fix split ratio (percentage for left panel, 25-75)
     pub fix_split_pct: u16,
 
-    // T07: Context usage
-    pub context_pct: u8,
-    pub context_max_messages: usize,
-
     // T07: Complior Zen
     pub zen_messages_used: u32,
     pub zen_messages_limit: u32,
@@ -176,6 +167,20 @@ pub struct App {
 
     // T09: What-If scenario state
     pub whatif: crate::components::whatif::WhatIfState,
+
+    // S00: PTY manager — guest agent sessions
+    pub pty_manager: PtyManager,
+    /// Session id of the currently focused agent panel (if any).
+    pub focused_agent: Option<usize>,
+    /// When true, all keystrokes are forwarded raw to the focused PTY.
+    /// Exit with Ctrl+].
+    pub pty_passthrough: bool,
+
+    // S00: DataProvider — compliance data abstraction (mock until engine connects)
+    pub data_provider: Arc<dyn DataProvider>,
+
+    // S00: Agent registry loaded from agents.toml
+    pub agent_registry: Vec<AgentConfig>,
 
     // UI
     pub spinner: Spinner,
@@ -209,13 +214,10 @@ impl App {
             engine_client,
             messages: vec![ChatMessage::new(
                 MessageRole::System,
-                "Welcome to Complior. Type a message or /scan to start.".to_string(),
+                "Welcome to Complior. Use /scan to start, /help for commands.".to_string(),
             )],
             input: String::new(),
             input_cursor: 0,
-            streaming_response: None,
-            streaming_thinking: None,
-            last_token_usage: None,
             chat_scroll: 0,
             chat_auto_scroll: true,
             input_history: Vec::new(),
@@ -240,10 +242,6 @@ impl App {
             overlay_filter: String::new(),
             palette_index: 0,
             provider_config: crate::providers::load_provider_config(),
-            provider_setup_step: 0,
-            provider_setup_selected: 0,
-            provider_setup_key_input: String::new(),
-            provider_setup_error: None,
             model_selector_index: 0,
             scan_view: ScanViewState::default(),
             fix_view: FixViewState::default(),
@@ -264,8 +262,6 @@ impl App {
             confirm_dialog: None,
             zoom: crate::components::zoom::ZoomState::new(),
             fix_split_pct: 40,
-            context_pct: 0,
-            context_max_messages: 32,
             zen_messages_used: 0,
             zen_messages_limit: 1000,
             zen_active: false,
@@ -278,6 +274,11 @@ impl App {
             idle_suggestions: IdleSuggestionState::new(),
             animation: AnimationState::new(animations_enabled),
             whatif: crate::components::whatif::WhatIfState::new(),
+            pty_manager: PtyManager::new(),
+            focused_agent: None,
+            pty_passthrough: false,
+            data_provider: Arc::new(MockDataProvider::new()),
+            agent_registry: crate::agents::load_registry(),
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -287,17 +288,31 @@ impl App {
     pub fn tick(&mut self) -> Option<AppCommand> {
         self.spinner.advance();
         self.toasts.gc();
-        // Update context usage
-        self.context_pct =
-            crate::widgets::context_meter::context_pct(self.messages.len(), self.context_max_messages);
 
+        // Poll PTY exits so agent state transitions to Dead
+        self.pty_manager.poll_exits();
+
+        // Auto-exit PTY passthrough if the focused agent has died
+        if self.pty_passthrough {
+            let agent_dead = self
+                .focused_agent
+                .and_then(|id| self.pty_manager.get(id))
+                .map(|h| h.state() == crate::pty::session::AgentState::Dead)
+                .unwrap_or(true);
+            if agent_dead {
+                self.pty_passthrough = false;
+                self.toasts.push(
+                    crate::components::toast::ToastKind::Warning,
+                    "Agent exited — passthrough closed",
+                );
+            }
+        }
         // Idle suggestion: check if idle > 10s and no blockers
         if self.idle_suggestions.current.is_none()
             && self.idle_suggestions.is_idle(10)
             && !self.scan_view.scanning
             && self.overlay == Overlay::None
             && self.input_mode != InputMode::Insert
-            && self.streaming_response.is_none()
             && !self.idle_suggestions.recently_dismissed()
             && !self.idle_suggestions.fetch_pending
         {
@@ -318,19 +333,10 @@ impl App {
         use crate::types::ClickTarget;
         self.click_areas.clear();
 
-        // Footer view tabs (last 2 lines): "1 dash 2 scan 3 fix 4 chat 5 time 6 report"
-        // Each tab is ~8 chars wide, spread across the bottom line
+        // Footer view tabs — letter-key tabs across the bottom line
         let footer_y = height.saturating_sub(1);
         let tab_width: u16 = 10;
-        let views = [
-            ViewState::Dashboard,
-            ViewState::Scan,
-            ViewState::Fix,
-            ViewState::Chat,
-            ViewState::Timeline,
-            ViewState::Report,
-        ];
-        for (i, view) in views.iter().enumerate() {
+        for (i, view) in ViewState::ALL.iter().enumerate() {
             let x = (i as u16) * tab_width;
             if x + tab_width <= width {
                 self.click_areas.push((
@@ -487,16 +493,6 @@ impl App {
         }
 
         // Handle overlay-specific input first
-        if self.overlay == Overlay::ProviderSetup {
-            return self.apply_provider_setup_result(
-                crate::components::provider_setup::handle_provider_setup_action(self, action),
-            );
-        }
-        if self.overlay == Overlay::ModelSelector {
-            return self.apply_model_selector_result(
-                crate::components::model_selector::handle_model_selector_action(self, action),
-            );
-        }
         if self.overlay != Overlay::None {
             return self.handle_overlay_action(action);
         }
@@ -772,14 +768,13 @@ impl App {
                     return self.handle_command(cmd);
                 }
 
-                // Chat message — inject obligation context if @OBL-xxx tokens present
-                let chat_text = crate::obligations::inject_obligation_context(&text);
+                // Plain text — not a command; Complior is a wrapper, not an LLM chat
                 self.messages.push(ChatMessage::new(
-                    MessageRole::User,
-                    text,
+                    MessageRole::System,
+                    "Unknown input. Use /help or :scan".to_string(),
                 ));
                 self.chat_auto_scroll = true;
-                Some(AppCommand::Chat(chat_text))
+                None
             }
             Action::SendSelectionToAi => {
                 if let (Some(content), Some(sel)) = (&self.code_content, &self.selection) {
@@ -858,27 +853,6 @@ impl App {
                 self.help_scroll = 0;
                 None
             }
-            Action::ShowModelSelector => {
-                if crate::providers::is_configured(&self.provider_config) {
-                    self.overlay = Overlay::ModelSelector;
-                    self.model_selector_index = 0;
-                } else {
-                    self.overlay = Overlay::ProviderSetup;
-                    self.provider_setup_step = 0;
-                    self.provider_setup_selected = 0;
-                    self.provider_setup_key_input.clear();
-                    self.provider_setup_error = None;
-                }
-                None
-            }
-            Action::ShowProviderSetup => {
-                self.overlay = Overlay::ProviderSetup;
-                self.provider_setup_step = 0;
-                self.provider_setup_selected = 0;
-                self.provider_setup_key_input.clear();
-                self.provider_setup_error = None;
-                None
-            }
             Action::SwitchView(view) => {
                 self.view_state = view;
                 // Populate Fix view from latest scan when switching to it
@@ -889,6 +863,7 @@ impl App {
                 }
                 None
             }
+
             Action::ToggleMode => {
                 self.mode = self.mode.next();
                 None
@@ -1016,103 +991,58 @@ impl App {
                 }
                 None
             }
-            Action::None => None,
-        }
-    }
-
-    fn apply_model_selector_result(
-        &mut self,
-        result: crate::components::model_selector::ModelSelectorResult,
-    ) -> Option<AppCommand> {
-        use crate::components::model_selector::ModelSelectorResult;
-        match result {
-            ModelSelectorResult::Navigate(idx) => {
-                self.model_selector_index = idx;
+            Action::FocusAgent(idx) => {
+                // Resolve session id from positional index in the sessions slice
+                let session_id = self
+                    .pty_manager
+                    .sessions()
+                    .get(idx)
+                    .map(|s| s.id());
+                self.focused_agent = session_id;
+                // Also switch to the agent grid view so the agent is visible
+                if session_id.is_some() {
+                    self.view_state = ViewState::AgentGrid;
+                }
                 None
             }
-            ModelSelectorResult::Select {
-                model_id,
-                provider_id,
-                message,
-            } => {
-                self.provider_config.active_model = model_id;
-                self.provider_config.active_provider = provider_id;
-                self.messages
-                    .push(ChatMessage::new(MessageRole::System, message));
-                self.overlay = Overlay::None;
-                Some(AppCommand::SaveProviderConfig)
-            }
-            ModelSelectorResult::Close => {
-                self.overlay = Overlay::None;
+            Action::KillAgent(id) => {
+                self.pty_manager.kill(id);
+                if self.focused_agent == Some(id) {
+                    self.focused_agent = None;
+                }
                 None
             }
-            ModelSelectorResult::Noop => None,
-        }
-    }
-
-    fn apply_provider_setup_result(
-        &mut self,
-        result: crate::components::provider_setup::ProviderSetupResult,
-    ) -> Option<AppCommand> {
-        use crate::components::provider_setup::ProviderSetupResult;
-        match result {
-            ProviderSetupResult::NavigateProvider(idx) => {
-                self.provider_setup_selected = idx;
+            Action::SendToAgent(id, text) => {
+                if let Some(session) = self.pty_manager.get_mut(id) {
+                    let _ = session.send_input(&text);
+                }
                 None
             }
-            ProviderSetupResult::AdvanceToKeyInput => {
-                self.provider_setup_step = 1;
-                self.provider_setup_key_input.clear();
-                None
-            }
-            ProviderSetupResult::KeyChar(c) => {
-                self.provider_setup_key_input.push(c);
-                None
-            }
-            ProviderSetupResult::KeyBackspace => {
-                self.provider_setup_key_input.pop();
-                None
-            }
-            ProviderSetupResult::SubmitKey {
-                provider_id,
-                api_key,
-                first_model_id,
-            } => {
-                self.provider_config.providers.insert(
-                    provider_id.clone(),
-                    crate::providers::ProviderEntry {
-                        api_key,
-                    },
+            Action::EnterPtyPassthrough => {
+                // Auto-focus the first available agent if none is focused
+                if self.focused_agent.is_none() {
+                    self.focused_agent = self.pty_manager.sessions().first().map(|s| s.id());
+                }
+                self.pty_passthrough = true;
+                self.toasts.push(
+                    crate::components::toast::ToastKind::Info,
+                    "PTY passthrough — typing goes to agent  ·  Ctrl+] to exit",
                 );
-                if self.provider_config.active_provider.is_empty() {
-                    self.provider_config.active_provider = provider_id;
-                    if let Some(model_id) = first_model_id {
-                        self.provider_config.active_model = model_id;
+                None
+            }
+            Action::ExitPtyPassthrough => {
+                self.pty_passthrough = false;
+                None
+            }
+            Action::ForwardToPty(bytes) => {
+                if let Some(id) = self.focused_agent {
+                    if let Some(handle) = self.pty_manager.get_mut(id) {
+                        handle.send_raw(&bytes);
                     }
                 }
-                self.provider_setup_error = None;
-                self.provider_setup_step = 3;
-                Some(AppCommand::SaveProviderConfig)
-            }
-            ProviderSetupResult::BackToSelect => {
-                self.provider_setup_step = 0;
                 None
             }
-            ProviderSetupResult::Retry => {
-                self.provider_setup_step = 1;
-                self.provider_setup_key_input.clear();
-                self.provider_setup_error = None;
-                None
-            }
-            ProviderSetupResult::ConfirmSuccess => {
-                self.overlay = Overlay::None;
-                None
-            }
-            ProviderSetupResult::Close => {
-                self.overlay = Overlay::None;
-                None
-            }
-            ProviderSetupResult::Noop => None,
+            Action::None => None,
         }
     }
 
@@ -1167,11 +1097,6 @@ impl App {
             .onboarding
             .as_ref()
             .and_then(|wiz| wiz.current().map(|s| s.kind.clone()));
-
-        // Special handling for TextInput steps (substep routing)
-        if let Some(StepKind::TextInput { .. }) = &step_kind {
-            return self.handle_onboarding_text_input(action);
-        }
 
         match action {
             Action::ScrollDown => {
@@ -1312,165 +1237,6 @@ impl App {
             }
             _ => None,
         }
-    }
-
-    /// Handle input for TextInput steps (Step 3: AI Provider).
-    fn handle_onboarding_text_input(&mut self, action: Action) -> Option<AppCommand> {
-        let substep = self
-            .onboarding
-            .as_ref()
-            .map(|wiz| wiz.provider_substep)
-            .unwrap_or(0);
-
-        match substep {
-            0 => {
-                // Provider select (radio-like)
-                match action {
-                    Action::ScrollDown => {
-                        if let Some(wiz) = &mut self.onboarding {
-                            wiz.move_cursor_down();
-                        }
-                    }
-                    Action::ScrollUp => {
-                        if let Some(wiz) = &mut self.onboarding {
-                            wiz.move_cursor_up();
-                        }
-                    }
-                    Action::SubmitInput => {
-                        if let Some(wiz) = &mut self.onboarding {
-                            let selected = wiz.cursor;
-                            wiz.steps[wiz.current_step].selected = vec![selected];
-                            if selected == 3 {
-                                // Offline mode — skip key input, advance
-                                wiz.validation_message =
-                                    Some("Offline mode: static scan only.".to_string());
-                                return self.advance_onboarding();
-                            }
-                            // Go to key input substep
-                            wiz.provider_substep = 1;
-                            wiz.steps[wiz.current_step].text_value.clear();
-                            wiz.text_cursor = 0;
-                        }
-                    }
-                    Action::DeleteChar => {
-                        // Backspace = previous step
-                        if let Some(wiz) = &mut self.onboarding {
-                            wiz.prev_step();
-                        }
-                    }
-                    Action::EnterNormalMode | Action::Quit => {
-                        let last_step = self
-                            .onboarding
-                            .as_ref()
-                            .map(|wiz| wiz.current_step)
-                            .unwrap_or(0);
-                        self.onboarding = None;
-                        self.overlay = Overlay::None;
-                        return Some(AppCommand::SaveOnboardingPartial(last_step));
-                    }
-                    _ => {}
-                }
-            }
-            1 => {
-                // Key text input
-                match action {
-                    Action::InsertChar(c) => {
-                        if let Some(wiz) = &mut self.onboarding {
-                            wiz.steps[wiz.current_step].text_value.push(c);
-                            wiz.text_cursor += 1;
-                        }
-                    }
-                    Action::DeleteChar => {
-                        if let Some(wiz) = &mut self.onboarding {
-                            let val = &mut wiz.steps[wiz.current_step].text_value;
-                            if !val.is_empty() {
-                                val.pop();
-                                wiz.text_cursor = wiz.text_cursor.saturating_sub(1);
-                            } else {
-                                // Empty text + backspace → go back to provider select
-                                wiz.provider_substep = 0;
-                            }
-                        }
-                    }
-                    Action::SubmitInput => {
-                        if let Some(wiz) = &mut self.onboarding {
-                            let key = wiz.steps[wiz.current_step].text_value.clone();
-                            if key.is_empty() {
-                                return None;
-                            }
-                            // Simple format validation
-                            let provider = wiz.selected_config_value("ai_provider");
-                            let valid = match provider.as_str() {
-                                "openrouter" => key.starts_with("sk-or-"),
-                                "anthropic" => key.starts_with("sk-ant-"),
-                                "openai" => key.starts_with("sk-"),
-                                _ => true,
-                            };
-                            if valid {
-                                wiz.validation_message =
-                                    Some("Valid. Key accepted.".to_string());
-                                wiz.provider_substep = 3;
-                            } else {
-                                wiz.validation_message = Some(format!(
-                                    "Invalid key format for {provider}. Check your key."
-                                ));
-                                wiz.provider_substep = 3;
-                            }
-                        }
-                    }
-                    Action::EnterNormalMode => {
-                        // Esc → back to provider select
-                        if let Some(wiz) = &mut self.onboarding {
-                            wiz.provider_substep = 0;
-                            wiz.steps[wiz.current_step].text_value.clear();
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            3 => {
-                // Result screen
-                match action {
-                    Action::SubmitInput => {
-                        if let Some(wiz) = &self.onboarding {
-                            let msg = wiz.validation_message.as_deref().unwrap_or("");
-                            if msg.starts_with("Invalid") {
-                                // Retry
-                                if let Some(wiz) = &mut self.onboarding {
-                                    wiz.provider_substep = 1;
-                                    wiz.steps[wiz.current_step].text_value.clear();
-                                    wiz.text_cursor = 0;
-                                }
-                            } else {
-                                // Valid — advance to next step
-                                return self.advance_onboarding();
-                            }
-                        }
-                    }
-                    Action::DeleteChar => {
-                        // Back to key input
-                        if let Some(wiz) = &mut self.onboarding {
-                            wiz.provider_substep = 1;
-                            wiz.steps[wiz.current_step].text_value.clear();
-                            wiz.text_cursor = 0;
-                        }
-                    }
-                    Action::EnterNormalMode | Action::Quit => {
-                        let last_step = self
-                            .onboarding
-                            .as_ref()
-                            .map(|wiz| wiz.current_step)
-                            .unwrap_or(0);
-                        self.onboarding = None;
-                        self.overlay = Overlay::None;
-                        return Some(AppCommand::SaveOnboardingPartial(last_step));
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        None
     }
 
     /// Helper: advance onboarding wizard to next step and handle side effects.
@@ -1663,9 +1429,6 @@ impl App {
                     Overlay::Help => {
                         self.overlay = Overlay::None;
                     }
-                    Overlay::ProviderSetup | Overlay::ModelSelector => {
-                        self.overlay = Overlay::None;
-                    }
                     Overlay::ConfirmDialog => {
                         self.confirm_dialog = None;
                         self.overlay = Overlay::None;
@@ -1675,7 +1438,8 @@ impl App {
                         self.overlay = Overlay::None;
                     }
                     Overlay::None | Overlay::ThemePicker | Overlay::Onboarding
-                    | Overlay::UndoHistory => {}
+                    | Overlay::UndoHistory | Overlay::OrchestratorMenu => {}
+
                 }
                 None
             }
@@ -1829,7 +1593,6 @@ impl App {
 pub enum AppCommand {
     Scan,
     AutoScan,
-    Chat(String),
     OpenFile(String),
     RunCommand(String),
     Reconnect,
@@ -1852,18 +1615,23 @@ pub enum AppCommand {
     ListSessions,
     /// Async: export compliance report to markdown file.
     ExportReport,
-    /// Async: save provider config after model/provider change.
-    SaveProviderConfig,
     /// Complete onboarding: save config + credentials, trigger post-completion action.
     CompleteOnboarding,
     /// Save partial onboarding progress for resume.
     SaveOnboardingPartial(usize),
+    /// S00: Launch a guest agent by registry id.
+    LaunchAgent(String),
+    /// S00: Kill a guest agent session.
+    KillAgentSession(usize),
+    /// S00: Send text to a guest agent session.
+    SendToAgentSession(usize, String),
+    /// S00: Resize all agent PTY sessions to new terminal dimensions.
+    ResizeAgents(u16, u16),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine_client::SseEvent;
 
     #[test]
     fn test_app_creation() {
@@ -1901,23 +1669,6 @@ mod tests {
         let cmd = app.handle_command("scan");
         assert!(matches!(cmd, Some(AppCommand::Scan)));
         assert!(app.operation_start.is_some());
-    }
-
-    #[test]
-    fn test_sse_token_streaming() {
-        let mut app = App::new(TuiConfig::default());
-        app.handle_sse_event(SseEvent::Token("Hello".to_string()));
-        assert_eq!(app.streaming_response.as_deref(), Some("Hello"));
-
-        app.handle_sse_event(SseEvent::Token(" world".to_string()));
-        assert_eq!(app.streaming_response.as_deref(), Some("Hello world"));
-
-        app.handle_sse_event(SseEvent::Done);
-        assert!(app.streaming_response.is_none());
-        assert_eq!(
-            app.messages.last().map(|m| m.content.as_str()),
-            Some("Hello world")
-        );
     }
 
     #[test]
@@ -2149,11 +1900,11 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         app.view_state = ViewState::Dashboard;
         app.rebuild_click_areas(120, 40);
-        // Should have at least 6 view tabs in footer
+        // Should have 8 view tabs in footer (6 original + AgentGrid + Orchestrator)
         let tab_count = app.click_areas.iter()
             .filter(|(_, t)| matches!(t, crate::types::ClickTarget::ViewTab(_)))
             .count();
-        assert_eq!(tab_count, 6);
+        assert_eq!(tab_count, 8);
     }
 
     #[test]

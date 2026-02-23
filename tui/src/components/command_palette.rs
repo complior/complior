@@ -26,8 +26,8 @@ const COMMANDS: &[(&str, &str)] = &[
 
 /// Colon commands — used for tab completion in colon mode.
 pub const COLON_COMMANDS: &[&str] = &[
-    "scan", "fix", "theme", "export", "watch", "quit", "help",
-    "undo", "view", "provider", "animations",
+    "agent", "scan", "fix", "theme", "export", "watch", "quit", "help",
+    "undo", "view", "animations",
 ];
 
 /// Complete a partial colon-mode command against known commands.

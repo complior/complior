@@ -3,6 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKi
 use crate::app::App;
 use crate::types::{ClickTarget, InputMode, Overlay, Panel, ViewState};
 
+
 /// User actions produced by keyboard/mouse input mapping.
 ///
 /// Each variant represents a semantic action that the app can handle.
@@ -80,10 +81,6 @@ pub enum Action {
     ShowHelp,
     /// Focus a specific panel (Alt+1..5).
     FocusPanel(Panel),
-    /// Open the model selector overlay (M in Normal mode).
-    ShowModelSelector,
-    /// Open the provider setup overlay.
-    ShowProviderSetup,
     /// Jump to a specific line number.
     GotoLine,
     /// Switch to a numbered view (1-6 in Normal mode).
@@ -116,11 +113,35 @@ pub enum Action {
     ViewEnter,
     /// View-specific Escape key press.
     ViewEscape,
+    /// Focus a specific agent session by 0-based index.
+    FocusAgent(usize),
+    /// Send text input to a specific agent session.
+    SendToAgent(usize, String),
+    /// Kill a specific agent session.
+    KillAgent(usize),
+    /// Enter PTY passthrough mode — all keystrokes forwarded to focused PTY.
+    EnterPtyPassthrough,
+    /// Exit PTY passthrough mode (triggered by Ctrl+]).
+    ExitPtyPassthrough,
+    /// Forward raw bytes to the focused PTY (passthrough mode).
+    ForwardToPty(Vec<u8>),
     /// No action (unhandled key).
     None,
 }
 
 pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
+    // PTY passthrough: forward all keystrokes directly to the focused PTY.
+    // Escape hatches: Ctrl+] (standard) or Ctrl+\ (fallback for some terminals).
+    if app.pty_passthrough {
+        let is_exit = (key.modifiers.contains(KeyModifiers::CONTROL)
+            && matches!(key.code, KeyCode::Char(']') | KeyCode::Char('\\')))
+            || key.code == KeyCode::F(12); // F12 as last-resort escape
+        if is_exit {
+            return Action::ExitPtyPassthrough;
+        }
+        return key_to_pty_bytes(key);
+    }
+
     // Global shortcuts (always active)
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         match key.code {
@@ -212,6 +233,55 @@ fn scroll_line_count(app: &App) -> i32 {
     }
 }
 
+/// Convert a crossterm key event into raw PTY bytes for passthrough mode.
+///
+/// This mirrors standard terminal escape sequences so interactive programs
+/// (Claude Code, vim, etc.) receive the expected byte sequences.
+fn key_to_pty_bytes(key: KeyEvent) -> Action {
+    let bytes: Vec<u8> = match key.code {
+        KeyCode::Char(c) => {
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                // Ctrl+letter → ASCII control code (Ctrl+A = 0x01 … Ctrl+Z = 0x1A)
+                let b = c as u8;
+                if b.is_ascii_lowercase() || b.is_ascii_uppercase() {
+                    vec![b & 0x1f]
+                } else {
+                    c.to_string().into_bytes()
+                }
+            } else {
+                c.to_string().into_bytes()
+            }
+        }
+        KeyCode::Enter     => vec![b'\r'],
+        KeyCode::Backspace => vec![b'\x7f'],
+        KeyCode::Tab       => vec![b'\t'],
+        KeyCode::Esc       => vec![b'\x1b'],
+        KeyCode::Up        => b"\x1b[A".to_vec(),
+        KeyCode::Down      => b"\x1b[B".to_vec(),
+        KeyCode::Right     => b"\x1b[C".to_vec(),
+        KeyCode::Left      => b"\x1b[D".to_vec(),
+        KeyCode::Home      => b"\x1b[H".to_vec(),
+        KeyCode::End       => b"\x1b[F".to_vec(),
+        KeyCode::PageUp    => b"\x1b[5~".to_vec(),
+        KeyCode::PageDown  => b"\x1b[6~".to_vec(),
+        KeyCode::Delete    => b"\x1b[3~".to_vec(),
+        KeyCode::F(1)      => b"\x1bOP".to_vec(),
+        KeyCode::F(2)      => b"\x1bOQ".to_vec(),
+        KeyCode::F(3)      => b"\x1bOR".to_vec(),
+        KeyCode::F(4)      => b"\x1bOS".to_vec(),
+        KeyCode::F(5)      => b"\x1b[15~".to_vec(),
+        KeyCode::F(6)      => b"\x1b[17~".to_vec(),
+        KeyCode::F(7)      => b"\x1b[18~".to_vec(),
+        KeyCode::F(8)      => b"\x1b[19~".to_vec(),
+        _ => vec![],
+    };
+    if bytes.is_empty() {
+        Action::None
+    } else {
+        Action::ForwardToPty(bytes)
+    }
+}
+
 #[cfg(test)]
 pub fn scroll_line_count_for_test(app: &App) -> i32 {
     scroll_line_count(app)
@@ -219,7 +289,7 @@ pub fn scroll_line_count_for_test(app: &App) -> i32 {
 
 fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
     // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
-    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette);
+    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette | Overlay::OrchestratorMenu);
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
@@ -250,12 +320,16 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
     match key.code {
         KeyCode::Char('q') => Action::Quit,
         KeyCode::Tab => Action::ToggleMode,
-        KeyCode::Char('1') => Action::SwitchView(ViewState::Dashboard),
-        KeyCode::Char('2') => Action::SwitchView(ViewState::Scan),
-        KeyCode::Char('3') => Action::SwitchView(ViewState::Fix),
-        KeyCode::Char('4') => Action::SwitchView(ViewState::Chat),
-        KeyCode::Char('5') => Action::SwitchView(ViewState::Timeline),
-        KeyCode::Char('6') => Action::SwitchView(ViewState::Report),
+        // Number keys 1-6 focus agent slots; 7+ switch to legacy views
+        KeyCode::Char('1') => Action::FocusAgent(0),
+        KeyCode::Char('2') => Action::FocusAgent(1),
+        KeyCode::Char('3') => Action::FocusAgent(2),
+        KeyCode::Char('4') => Action::FocusAgent(3),
+        KeyCode::Char('5') => Action::FocusAgent(4),
+        KeyCode::Char('6') => Action::FocusAgent(5),
+        // 'i' in AgentGrid with any running agent → enter PTY passthrough mode
+        KeyCode::Char('i') if app.view_state == ViewState::AgentGrid
+            && !app.pty_manager.sessions().is_empty() => Action::EnterPtyPassthrough,
         KeyCode::Char('i') => Action::EnterInsertMode,
         // '/' opens code search when in CodeViewer, command mode otherwise
         KeyCode::Char('/') if app.active_panel == Panel::CodeViewer => Action::CodeSearch,
@@ -272,10 +346,19 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char(':') => Action::EnterColonMode,
         KeyCode::Char('U') => Action::ShowUndoHistory,
         KeyCode::Char('w') => Action::WatchToggle,
-        KeyCode::Char('M') => Action::ShowModelSelector,
         KeyCode::Char('T') => Action::ShowThemePicker,
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
+        // Uppercase letter-key view switching (avoids conflict with lowercase ViewKey chars)
+        KeyCode::Char(c @ ('A' | 'C' | 'D' | 'F' | 'O' | 'R' | 'S'))
+            if c != 'M' && c != 'T' && c != 'U' && c != 'G' && c != 'N' && c != 'V' =>
+        {
+            if let Some(view) = ViewState::from_letter(c) {
+                Action::SwitchView(view)
+            } else {
+                Action::None
+            }
+        }
         KeyCode::Enter => match app.active_panel {
             Panel::FileBrowser => Action::OpenFile,
             _ if matches!(app.view_state, ViewState::Scan | ViewState::Fix) => Action::ViewEnter,
@@ -287,7 +370,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific Esc
-        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard) => {
+        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::AgentGrid | ViewState::Orchestrator) => {
             Action::ViewEscape
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,
@@ -398,11 +481,12 @@ mod tests {
     }
 
     #[test]
-    fn test_model_selector_shift_m_in_normal_mode() {
+    fn test_shift_m_no_op_in_normal_mode() {
         let mut app = App::new(crate::config::TuiConfig::default());
         app.input_mode = InputMode::Normal;
 
+        // M is no longer bound (model selector removed in wrapper mode)
         let action = handle_key_event(key(KeyCode::Char('M')), &app);
-        assert!(matches!(action, Action::ShowModelSelector));
+        assert!(matches!(action, Action::None));
     }
 }

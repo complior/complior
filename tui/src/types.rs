@@ -258,7 +258,7 @@ impl ActivityKind {
     }
 }
 
-/// Top-level view (screen) — keys 1-6 in Normal mode.
+/// Top-level view (screen).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewState {
     Dashboard,
@@ -267,10 +267,14 @@ pub enum ViewState {
     Chat,
     Timeline,
     Report,
+    /// Multi-agent PTY grid view.
+    AgentGrid,
+    /// Deterministic orchestrator menu view.
+    Orchestrator,
 }
 
 impl ViewState {
-    /// Map key digit to view (1-based).
+    /// Map key digit to view (1-based) — used by `/view N` command.
     pub fn from_key(digit: u8) -> Option<Self> {
         match digit {
             1 => Some(Self::Dashboard),
@@ -279,6 +283,25 @@ impl ViewState {
             4 => Some(Self::Chat),
             5 => Some(Self::Timeline),
             6 => Some(Self::Report),
+            7 => Some(Self::AgentGrid),
+            8 => Some(Self::Orchestrator),
+            _ => None,
+        }
+    }
+
+    /// Map an uppercase letter to a view for letter-key navigation.
+    ///
+    /// Lowercase letters are reserved for view-specific actions.
+    pub fn from_letter(c: char) -> Option<Self> {
+        match c {
+            'A' => Some(Self::AgentGrid),
+            'O' => Some(Self::Orchestrator),
+            'D' => Some(Self::Dashboard),
+            'S' => Some(Self::Scan),
+            'F' => Some(Self::Fix),
+            'C' => Some(Self::Chat),
+            'R' => Some(Self::Report),
+            // 'T' is reserved for ThemePicker; Timeline accessible via 5 / :view 5
             _ => None,
         }
     }
@@ -292,6 +315,8 @@ impl ViewState {
             Self::Chat => 3,
             Self::Timeline => 4,
             Self::Report => 5,
+            Self::AgentGrid => 6,
+            Self::Orchestrator => 7,
         }
     }
 
@@ -304,10 +329,28 @@ impl ViewState {
             Self::Chat => "Chat",
             Self::Timeline => "Timeline",
             Self::Report => "Report",
+            Self::AgentGrid => "Agents",
+            Self::Orchestrator => "Orch",
         }
     }
 
-    pub const ALL: [ViewState; 6] = [
+    /// Letter key shown in the tab bar for this view.
+    pub fn tab_key(self) -> &'static str {
+        match self {
+            Self::Dashboard => "D",
+            Self::Scan => "S",
+            Self::Fix => "F",
+            Self::Chat => "C",
+            Self::Timeline => "5",
+            Self::Report => "R",
+            Self::AgentGrid => "A",
+            Self::Orchestrator => "O",
+        }
+    }
+
+    pub const ALL: [ViewState; 8] = [
+        Self::AgentGrid,
+        Self::Orchestrator,
         Self::Dashboard,
         Self::Scan,
         Self::Fix,
@@ -343,7 +386,7 @@ impl Mode {
     }
 }
 
-/// Overlay state for popups (command palette, file picker, help, getting started, providers)
+/// Overlay state for popups (command palette, file picker, help, getting started).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Overlay {
     None,
@@ -351,13 +394,13 @@ pub enum Overlay {
     FilePicker,
     Help,
     GettingStarted,
-    ProviderSetup,
-    ModelSelector,
     ThemePicker,
     Onboarding,
     ConfirmDialog,
     DismissModal,
     UndoHistory,
+    /// Orchestrator command menu (send/handoff/kill/restart/broadcast).
+    OrchestratorMenu,
 }
 
 /// Click target for mouse hit-testing (T806).

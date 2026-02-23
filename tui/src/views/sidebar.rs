@@ -147,7 +147,9 @@ fn render_scan_summary(frame: &mut Frame, area: Rect, app: &App, t: &theme::Them
 }
 
 fn render_context_zen_section(frame: &mut Frame, area: Rect, app: &App, t: &theme::ThemeColors) {
-    let ctx_color = crate::widgets::context_meter::context_color(app.context_pct);
+    // Compute context pct locally (field removed from App, always 32-message window)
+    let ctx_pct = crate::widgets::context_meter::context_pct(app.messages.len(), 32);
+    let ctx_color = crate::widgets::context_meter::context_color(ctx_pct);
     let zen_status = if app.zen_active {
         format!("Zen {}/{}", app.zen_messages_used, app.zen_messages_limit)
     } else {
@@ -158,7 +160,7 @@ fn render_context_zen_section(frame: &mut Frame, area: Rect, app: &App, t: &them
         Line::from(vec![
             Span::styled(" Ctx: ", Style::default().fg(t.muted)),
             Span::styled(
-                format!("{}%", app.context_pct),
+                format!("{ctx_pct}%"),
                 Style::default().fg(ctx_color),
             ),
             Span::styled(

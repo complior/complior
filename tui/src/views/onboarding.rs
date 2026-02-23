@@ -15,13 +15,11 @@ use crate::theme;
 pub enum StepKind {
     /// Step 1: theme picker with live preview
     ThemeSelect,
-    /// Steps 2,4,5,6,7,8: single-select
+    /// Single-select options
     Radio,
-    /// Step 3: API key input (masked)
-    TextInput { masked: bool },
-    /// Step 9: multi-select scan scope
+    /// Multi-select scan scope
     Checkbox,
-    /// Step 10: config summary + action
+    /// Config summary + action
     Summary,
 }
 
@@ -75,13 +73,7 @@ pub struct OnboardingWizard {
     pub completed: bool,
     pub result_summary: Option<String>,
 
-    /// Cursor position in text input.
-    pub text_cursor: usize,
-    /// For Step 3 (0=provider select, 1=key input, 2=validating, 3=result).
-    pub provider_substep: u8,
-    /// API key validation result message.
-    pub validation_message: Option<String>,
-    /// Set after Step 4, drives conditional skipping.
+    /// Set after project_type step, drives conditional skipping.
     pub project_type: Option<String>,
     /// Indices of visible steps (recalculated on project_type change).
     pub active_steps: Vec<usize>,
@@ -99,9 +91,6 @@ impl OnboardingWizard {
             cursor: 0,
             completed: false,
             result_summary: None,
-            text_cursor: 0,
-            provider_substep: 0,
-            validation_message: None,
             project_type: None,
             active_steps,
             theme_preview_idx: 0,
@@ -109,10 +98,13 @@ impl OnboardingWizard {
     }
 
     /// Resume from a partially completed onboarding.
+    ///
+    /// If the saved step index is out of range (e.g. after steps were removed),
+    /// the wizard restarts from the beginning.
     pub fn resume(last_completed_step: usize) -> Self {
         let mut wiz = Self::new();
-        let start = (last_completed_step + 1).min(wiz.steps.len().saturating_sub(1));
-        wiz.current_step = start;
+        let start = last_completed_step.saturating_add(1);
+        wiz.current_step = if start < wiz.steps.len() { start } else { 0 };
         wiz
     }
 
@@ -211,11 +203,6 @@ impl OnboardingWizard {
             if pos + 1 < self.active_steps.len() {
                 self.current_step = self.active_steps[pos + 1];
                 self.cursor = 0;
-                self.text_cursor = 0;
-                // Reset provider substep when entering step 3
-                if self.steps[self.current_step].id == "ai_provider" {
-                    self.provider_substep = 0;
-                }
                 false
             } else {
                 self.completed = true;
@@ -237,7 +224,6 @@ impl OnboardingWizard {
             if pos > 0 {
                 self.current_step = self.active_steps[pos - 1];
                 self.cursor = 0;
-                self.text_cursor = 0;
             }
         }
     }
@@ -245,6 +231,7 @@ impl OnboardingWizard {
     /// Recalculate active_steps based on project_type.
     pub fn recalculate_active_steps(&mut self) {
         let pt = self.project_type.as_deref().unwrap_or("existing");
+
         self.active_steps = self
             .steps
             .iter()
@@ -265,27 +252,12 @@ impl OnboardingWizard {
     /// Extract the selected value for a step by id.
     pub fn step_value(&self, id: &str) -> Option<String> {
         let step = self.steps.iter().find(|s| s.id == id)?;
-        match step.kind {
-            StepKind::TextInput { .. } => {
-                if step.text_value.is_empty() {
-                    None
-                } else {
-                    Some(step.text_value.clone())
-                }
-            }
-            _ => {
-                let values: Vec<String> = step
-                    .selected
-                    .iter()
-                    .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
-                    .collect();
-                if values.is_empty() {
-                    None
-                } else {
-                    Some(values.join(", "))
-                }
-            }
-        }
+        let values: Vec<String> = step
+            .selected
+            .iter()
+            .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
+            .collect();
+        if values.is_empty() { None } else { Some(values.join(", ")) }
     }
 
     /// Collect all answers for serialization.
@@ -293,20 +265,11 @@ impl OnboardingWizard {
         self.steps
             .iter()
             .map(|step| {
-                let values: Vec<String> = match step.kind {
-                    StepKind::TextInput { .. } => {
-                        if step.text_value.is_empty() {
-                            vec![]
-                        } else {
-                            vec![step.text_value.clone()]
-                        }
-                    }
-                    _ => step
-                        .selected
-                        .iter()
-                        .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
-                        .collect(),
-                };
+                let values: Vec<String> = step
+                    .selected
+                    .iter()
+                    .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
+                    .collect();
                 (step.id, values)
             })
             .collect()
@@ -329,14 +292,6 @@ impl OnboardingWizard {
                 0 => "standard",
                 1 => "vim",
                 _ => "standard",
-            }
-            .to_string(),
-            "ai_provider" => match idx {
-                0 => "openrouter",
-                1 => "anthropic",
-                2 => "openai",
-                3 => "offline",
-                _ => "offline",
             }
             .to_string(),
             "project_type" => match idx {
@@ -450,28 +405,7 @@ fn build_steps() -> Vec<OnboardingStep> {
             text_value: String::new(),
             skippable: false,
         },
-        // Step 3: AI Provider
-        OnboardingStep {
-            id: "ai_provider",
-            title: "AI Connection",
-            description: "Select how Complior connects to AI.\nAI enables: doc generation, deeper analysis, model compliance testing.",
-            kind: StepKind::TextInput { masked: true },
-            options: vec![
-                StepOption::new("OpenRouter API key")
-                    .with_hint("400+ models (Claude, GPT, Gemini, Mistral, Llama)")
-                    .with_tag("RECOMMENDED"),
-                StepOption::new("Anthropic API key")
-                    .with_hint("Claude models only"),
-                StepOption::new("OpenAI API key")
-                    .with_hint("GPT models only"),
-                StepOption::new("Offline mode")
-                    .with_hint("Static scan, hardcoded rules. No doc generation."),
-            ],
-            selected: vec![],
-            text_value: String::new(),
-            skippable: false,
-        },
-        // Step 4: Project Type
+        // Step 3: Project Type
         OnboardingStep {
             id: "project_type",
             title: "Project Type",
@@ -633,7 +567,6 @@ pub fn render_onboarding(frame: &mut Frame, wizard: &OnboardingWizard) {
     match step.kind {
         StepKind::ThemeSelect => render_theme_select(frame, inner, wizard, &t),
         StepKind::Radio => render_radio(frame, inner, wizard, &t),
-        StepKind::TextInput { .. } => render_text_input(frame, inner, wizard, &t),
         StepKind::Checkbox => render_checkbox(frame, inner, wizard, &t),
         StepKind::Summary => render_summary(frame, inner, wizard, &t),
     }
@@ -855,166 +788,6 @@ fn render_radio(
     frame.render_widget(footer, chunks[1]);
 }
 
-// --- Text Input step (Step 3: AI Provider) ---
-fn render_text_input(
-    frame: &mut Frame,
-    area: Rect,
-    wizard: &OnboardingWizard,
-    t: &theme::ThemeColors,
-) {
-    let content_area = render_header(frame, area, wizard, t);
-
-    let chunks = Layout::vertical([
-        Constraint::Min(1),    // content
-        Constraint::Length(1), // footer
-    ])
-    .split(content_area);
-
-    let step = wizard.current().expect("step valid");
-
-    match wizard.provider_substep {
-        0 => {
-            // Substep 0: Provider select (radio-style)
-            let mut lines: Vec<Line> = Vec::new();
-            for (i, opt) in step.options.iter().enumerate() {
-                let is_cursor = i == wizard.cursor;
-                let style = if is_cursor {
-                    Style::default().fg(t.accent).add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(t.fg)
-                };
-
-                let marker = if is_cursor { "> " } else { "  " };
-                let mut spans = vec![Span::styled(format!("  {marker}"), style)];
-                spans.push(Span::styled(&opt.label, style));
-
-                if let Some(tag) = opt.tag {
-                    spans.push(Span::styled(
-                        format!("  [{tag}]"),
-                        Style::default()
-                            .fg(t.zone_green)
-                            .add_modifier(Modifier::BOLD),
-                    ));
-                }
-
-                lines.push(Line::from(spans));
-
-                if let Some(hint) = &opt.hint {
-                    lines.push(Line::from(Span::styled(
-                        format!("        {hint}"),
-                        Style::default().fg(t.muted),
-                    )));
-                }
-            }
-            lines.push(Line::default());
-            lines.push(Line::from(Span::styled(
-                "  Keys stored locally in ~/.config/complior/credentials",
-                Style::default().fg(t.muted),
-            )));
-            frame.render_widget(Paragraph::new(lines), chunks[0]);
-        }
-        1 => {
-            // Substep 1: Key input (masked)
-            let provider_label = match wizard.cursor {
-                0 => "OpenRouter",
-                1 => "Anthropic",
-                2 => "OpenAI",
-                _ => "Provider",
-            };
-
-            let masked: String = if step.text_value.is_empty() {
-                String::new()
-            } else {
-                let len = step.text_value.len();
-                if len <= 8 {
-                    "\u{2588}".repeat(len)
-                } else {
-                    let prefix = &step.text_value[..4];
-                    let suffix = "\u{2588}".repeat(len - 4);
-                    format!("{prefix}{suffix}")
-                }
-            };
-
-            let lines = vec![
-                Line::from(Span::styled(
-                    format!("  Enter your {provider_label} API key:"),
-                    Style::default().fg(t.fg),
-                )),
-                Line::default(),
-                Line::from(vec![
-                    Span::styled("  > ", Style::default().fg(t.accent)),
-                    Span::styled(
-                        &masked,
-                        Style::default()
-                            .fg(t.fg)
-                            .add_modifier(Modifier::DIM),
-                    ),
-                    Span::styled("_", Style::default().fg(t.accent)),
-                ]),
-                Line::default(),
-                Line::from(Span::styled(
-                    "  Paste your API key. It will be stored locally.",
-                    Style::default().fg(t.muted),
-                )),
-            ];
-            frame.render_widget(Paragraph::new(lines), chunks[0]);
-        }
-        2 => {
-            // Substep 2: Validating
-            let lines = vec![
-                Line::default(),
-                Line::from(Span::styled(
-                    "  Validating...",
-                    Style::default().fg(t.accent),
-                )),
-            ];
-            frame.render_widget(Paragraph::new(lines), chunks[0]);
-        }
-        3 => {
-            // Substep 3: Result
-            let msg = wizard
-                .validation_message
-                .as_deref()
-                .unwrap_or("Key accepted.");
-            let is_valid = !msg.starts_with("Invalid");
-            let color = if is_valid { t.zone_green } else { t.zone_red };
-            let icon = if is_valid { "\u{2713}" } else { "\u{2717}" };
-
-            let mut lines = vec![
-                Line::default(),
-                Line::from(Span::styled(
-                    format!("  {icon} {msg}"),
-                    Style::default().fg(color).add_modifier(Modifier::BOLD),
-                )),
-            ];
-
-            if !is_valid {
-                lines.push(Line::default());
-                lines.push(Line::from(Span::styled(
-                    "  Press Enter to retry, Backspace to go back.",
-                    Style::default().fg(t.muted),
-                )));
-            } else {
-                lines.push(Line::default());
-                lines.push(Line::from(Span::styled(
-                    "  Press Enter to continue.",
-                    Style::default().fg(t.muted),
-                )));
-            }
-            frame.render_widget(Paragraph::new(lines), chunks[0]);
-        }
-        _ => {}
-    }
-
-    let footer_text = match wizard.provider_substep {
-        0 => "j/k: navigate  Enter: select  Backspace: back",
-        1 => "Type key  Enter: submit  Backspace: delete  Esc: cancel",
-        _ => "Enter: continue  Backspace: back",
-    };
-    let footer = Paragraph::new(Span::styled(footer_text, Style::default().fg(t.muted)));
-    frame.render_widget(footer, chunks[1]);
-}
-
 // --- Checkbox step ---
 fn render_checkbox(
     frame: &mut Frame,
@@ -1187,21 +960,21 @@ mod tests {
     #[test]
     fn test_onboarding_10_steps() {
         let wiz = OnboardingWizard::new();
-        assert_eq!(wiz.steps.len(), 10);
+        assert_eq!(wiz.steps.len(), 9);
         assert_eq!(wiz.current_step, 0);
         assert!(!wiz.completed);
-        assert_eq!(wiz.total_visible_steps(), 10);
+        // new() starts with all steps active; recalculate_active_steps() applies skipping
+        assert_eq!(wiz.total_visible_steps(), 9);
     }
 
     #[test]
     fn test_step_kinds() {
         let wiz = OnboardingWizard::new();
-        assert_eq!(wiz.steps[0].kind, StepKind::ThemeSelect);
-        assert_eq!(wiz.steps[1].kind, StepKind::Radio);
-        assert!(matches!(wiz.steps[2].kind, StepKind::TextInput { masked: true }));
-        assert_eq!(wiz.steps[3].kind, StepKind::Radio);
-        assert_eq!(wiz.steps[8].kind, StepKind::Checkbox);
-        assert_eq!(wiz.steps[9].kind, StepKind::Summary);
+        assert_eq!(wiz.steps[0].kind, StepKind::ThemeSelect);   // welcome_theme
+        assert_eq!(wiz.steps[1].kind, StepKind::Radio);          // navigation
+        assert_eq!(wiz.steps[2].kind, StepKind::Radio);          // project_type
+        assert_eq!(wiz.steps[7].kind, StepKind::Checkbox);       // scan_scope
+        assert_eq!(wiz.steps[8].kind, StepKind::Summary);        // summary
     }
 
     #[test]
@@ -1220,25 +993,25 @@ mod tests {
     #[test]
     fn test_checkbox_selection() {
         let mut wiz = OnboardingWizard::new();
-        wiz.current_step = 8; // scan_scope (checkbox)
-        assert_eq!(wiz.steps[8].selected, vec![0, 1, 2]); // defaults
+        wiz.current_step = 7; // scan_scope (checkbox)
+        assert_eq!(wiz.steps[7].selected, vec![0, 1, 2]); // defaults
         wiz.cursor = 3;
         wiz.toggle_selection();
-        assert_eq!(wiz.steps[8].selected, vec![0, 1, 2, 3]);
+        assert_eq!(wiz.steps[7].selected, vec![0, 1, 2, 3]);
         // Toggle off
         wiz.cursor = 1;
         wiz.toggle_selection();
-        assert_eq!(wiz.steps[8].selected, vec![0, 2, 3]);
+        assert_eq!(wiz.steps[7].selected, vec![0, 2, 3]);
     }
 
     #[test]
     fn test_select_all_and_minimum() {
         let mut wiz = OnboardingWizard::new();
-        wiz.current_step = 8;
+        wiz.current_step = 7; // scan_scope
         wiz.select_all();
-        assert_eq!(wiz.steps[8].selected, vec![0, 1, 2, 3, 4]);
+        assert_eq!(wiz.steps[7].selected, vec![0, 1, 2, 3, 4]);
         wiz.select_minimum();
-        assert_eq!(wiz.steps[8].selected, vec![0]);
+        assert_eq!(wiz.steps[7].selected, vec![0]);
     }
 
     #[test]
@@ -1256,7 +1029,8 @@ mod tests {
     #[test]
     fn test_completion() {
         let mut wiz = OnboardingWizard::new();
-        for _ in 0..9 {
+        // 9 active steps by default — need 8 non-completing advances
+        for _ in 0..8 {
             assert!(!wiz.next_step());
         }
         assert!(!wiz.completed);
@@ -1277,10 +1051,11 @@ mod tests {
         let mut wiz = OnboardingWizard::new();
         wiz.project_type = Some("demo".to_string());
         wiz.recalculate_active_steps();
-        // Should skip workspace_trust (idx 4) and scan_scope (idx 8)
-        assert!(!wiz.active_steps.contains(&4));
-        assert!(!wiz.active_steps.contains(&8));
-        assert_eq!(wiz.total_visible_steps(), 8);
+        // Skip: workspace_trust (idx 3 — demo skips it)
+        //        scan_scope (idx 7 — demo skips it)
+        assert!(!wiz.active_steps.contains(&3)); // workspace_trust skipped
+        assert!(!wiz.active_steps.contains(&7)); // scan_scope skipped
+        assert_eq!(wiz.total_visible_steps(), 7);
     }
 
     #[test]
@@ -1288,10 +1063,11 @@ mod tests {
         let mut wiz = OnboardingWizard::new();
         wiz.project_type = Some("new".to_string());
         wiz.recalculate_active_steps();
-        // Should skip scan_scope (idx 8) but keep workspace_trust (idx 4)
-        assert!(wiz.active_steps.contains(&4));
-        assert!(!wiz.active_steps.contains(&8));
-        assert_eq!(wiz.total_visible_steps(), 9);
+        // Skip: scan_scope (idx 7 — "new" skips scan_scope)
+        // Keep: workspace_trust (idx 3 — only skipped for demo)
+        assert!(wiz.active_steps.contains(&3));  // workspace_trust kept
+        assert!(!wiz.active_steps.contains(&7)); // scan_scope skipped
+        assert_eq!(wiz.total_visible_steps(), 8);
     }
 
     #[test]
@@ -1299,8 +1075,8 @@ mod tests {
         let mut wiz = OnboardingWizard::new();
         wiz.project_type = Some("existing".to_string());
         wiz.recalculate_active_steps();
-        // Should keep all steps
-        assert_eq!(wiz.total_visible_steps(), 10);
+        // All steps visible for "existing"
+        assert_eq!(wiz.total_visible_steps(), 9);
     }
 
     #[test]
@@ -1330,6 +1106,13 @@ mod tests {
     }
 
     #[test]
+    fn test_resume_out_of_bounds_restarts() {
+        // Saved step from old config with more steps — should restart from 0
+        let wiz = OnboardingWizard::resume(99);
+        assert_eq!(wiz.current_step, 0, "out-of-bounds resume should restart from step 0");
+    }
+
+    #[test]
     fn test_step_ids_unique() {
         let wiz = OnboardingWizard::new();
         let ids: Vec<&str> = wiz.steps.iter().map(|s| s.id).collect();
@@ -1342,8 +1125,8 @@ mod tests {
     #[test]
     fn test_options_with_hints_and_tags() {
         let wiz = OnboardingWizard::new();
-        // Industry step should have HIGH RISK tags
-        let industry = &wiz.steps[7];
+        // Industry step should have HIGH RISK tags (idx 6)
+        let industry = &wiz.steps[6];
         assert_eq!(industry.id, "industry");
         let high_risk_count = industry
             .options
