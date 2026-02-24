@@ -1,6 +1,7 @@
 {
   "name": "ai-comply",
   "version": "1.0.0",
+  "type": "module",
   "description": "AI Act Compliance Scanner & Fixer — EU AI Act compliance in your terminal",
   "license": "Apache-2.0",
   "homepage": "https://complior.ai",

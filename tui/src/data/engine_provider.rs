@@ -304,14 +304,19 @@ fn tools_to_findings(tools: &[RegistryTool]) -> Vec<Finding> {
 // ── DataProvider impl ─────────────────────────────────────────────────────────
 
 impl DataProvider for EngineDataProvider {
+    /// Always returns `DEFAULT_SCORE`.
+    ///
+    /// The project compliance score is determined by scanning the *local* codebase
+    /// (Engine `POST /scan`) and stored in `App.last_scan`, which the dashboard already
+    /// prioritises over this value.  The PROJECT API only provides AI Registry data
+    /// (global tool statistics), not per-project compliance scores.
     fn score(&self) -> f64 {
-        let c = self.read_cache();
-        if c.is_fresh() { c.score } else { DEFAULT_SCORE }
+        DEFAULT_SCORE
     }
 
+    /// Always returns `Zone::Red` (unknown until a real scan runs).
     fn zone(&self) -> Zone {
-        let c = self.read_cache();
-        if c.is_fresh() { c.zone } else { Zone::Red }
+        Zone::Red
     }
 
     fn findings(&self) -> Vec<Finding> {
@@ -406,34 +411,50 @@ mod tests {
         );
         assert!(provider.connect().is_ok(), "Valid mock server must connect OK");
 
+        // US-S0212: EngineDataProvider.score() always returns DEFAULT_SCORE.
+        // The project compliance score comes from App.last_scan (Engine POST /scan),
+        // not from global AI Registry statistics.
         let score = provider.score();
-        assert!(score > 0.0 && score <= 100.0, "Score must be in 0-100 range, got {score}");
-        // 5 high-risk out of 100 → 95% compliant → score ≈ 95
-        assert!(score > 80.0, "Mostly-compliant registry should yield score > 80, got {score}");
+        assert_eq!(
+            score, DEFAULT_SCORE,
+            "EngineDataProvider.score() must always return DEFAULT_SCORE (not registry %)"
+        );
     }
 
-    // ── B6-4: cache is served while still fresh ───────────────────────────────
+    // ── B6-4: findings are served from cache while fresh ─────────────────────
 
     #[test]
     fn test_cache_valid_within_ttl() {
         let provider =
             EngineDataProvider::new_with_timeout("http://nonexistent", "key", Duration::from_millis(10));
 
-        // Manually inject a fresh cache entry.
+        // Manually inject a fresh cache entry with some findings.
+        let test_finding = Finding {
+            check_id: "test-tool".into(),
+            r#type: "ai_registry".into(),
+            message: "test tool requires compliance attention".into(),
+            severity: Severity::High,
+            obligation_id: None,
+            article_reference: None,
+            fix: None,
+        };
         {
             let mut guard = provider.cache.write().unwrap();
             *guard = EngineCache {
-                score: 75.0,
+                score: 75.0, // stored but not exposed — score() returns DEFAULT_SCORE
                 zone: Zone::Green,
-                findings: Vec::new(),
+                findings: vec![test_finding],
                 fetched_at: Instant::now(),
             };
         }
 
-        assert_eq!(provider.score(), 75.0, "Fresh cache must be served directly");
+        // US-S0212: score() always returns DEFAULT_SCORE regardless of cache
+        assert_eq!(provider.score(), DEFAULT_SCORE, "score() must always return DEFAULT_SCORE");
+        // findings() comes from the cache when fresh
+        assert_eq!(provider.findings().len(), 1, "Fresh cache findings must be served");
     }
 
-    // ── B6-5: expired cache falls back to DEFAULT_SCORE ──────────────────────
+    // ── B6-5: expired cache returns empty findings ────────────────────────────
 
     #[test]
     fn test_cache_expired_after_ttl() {
@@ -446,15 +467,21 @@ mod tests {
             *guard = EngineCache {
                 score: 99.0,
                 zone: Zone::Green,
-                findings: Vec::new(),
+                findings: vec![],
                 fetched_at: Instant::now() - CACHE_TTL - Duration::from_secs(1),
             };
         }
 
+        // score() always returns DEFAULT_SCORE regardless of cache freshness
         assert_eq!(
             provider.score(),
             DEFAULT_SCORE,
-            "Expired cache must fall back to DEFAULT_SCORE, not the stale value"
+            "score() must return DEFAULT_SCORE (US-S0212)"
+        );
+        // findings are empty when cache is expired
+        assert!(
+            provider.findings().is_empty(),
+            "Expired cache must return empty findings"
         );
     }
 
