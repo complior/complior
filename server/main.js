@@ -3,6 +3,7 @@
 const fastify = require('fastify');
 const pino = require('pino');
 const { Pool } = require('pg');
+const fs = require('node:fs');
 const path = require('node:path');
 
 const { Logger } = require('./src/logger.js');
@@ -168,6 +169,25 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
         pinoLogger.info('✅ Detection enrichment job scheduled (Wednesdays 03:00 UTC)');
       } catch (error) {
         pinoLogger.error(error, 'Failed to schedule detection enrichment job');
+      }
+    }
+
+    if (appSandbox.application?.jobs?.['schedule-data-export']) {
+      try {
+        const projectRoot = path.join(__dirname, '..');
+        const exportCtx = {
+          ...jobCtx,
+          writeFile: (relativePath, data) => {
+            const fullPath = path.join(projectRoot, relativePath);
+            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+            fs.writeFileSync(fullPath, data);
+            return fullPath;
+          },
+        };
+        await appSandbox.application.jobs['schedule-data-export'].init(exportCtx);
+        pinoLogger.info('✅ Data export job scheduled (Mondays 04:00 UTC)');
+      } catch (error) {
+        pinoLogger.error(error, 'Failed to schedule data export job');
       }
     }
   }
