@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { AppError } from '../types/errors.js';
 import { createLogger } from '../infra/logger.js';
 import type { ScanService } from '../services/scan-service.js';
@@ -59,6 +60,25 @@ export interface RouterDeps {
 export const createRouter = (deps: RouterDeps) => {
   const app = new Hono();
   const log = createLogger('http');
+
+  // US-S0201: CORS — allow TUI (localhost) and any local dev origin
+  app.use('*', cors({
+    origin: (origin) => {
+      if (!origin) return null; // same-origin requests pass through
+      try {
+        const { hostname } = new URL(origin);
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+          return origin;
+        }
+      } catch {
+        // malformed origin — ignore
+      }
+      return null;
+    },
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: ['X-Complior-Version'],
+  }));
 
   // Global error handler
   app.onError((err, c) => {

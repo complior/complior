@@ -171,3 +171,31 @@ describe('createFixer', () => {
     expect(plan!.fixType).toBe('config_fix');
   });
 });
+
+// US-S0202: FRIA strategy named tests
+
+describe('friaStrategy', () => {
+  const ctx = makeContext();
+
+  it('test_fria_strategy_triggers_on_checkid', () => {
+    const finding = makeFinding({ checkId: 'fria' });
+    const plan = findStrategy(finding, ctx);
+    expect(plan).not.toBeNull();
+    expect(plan!.article).toBe('Art. 27');
+    expect(plan!.fixType).toBe('template_generation');
+  });
+
+  it('test_fria_strategy_triggers_on_obligationid', () => {
+    const finding = makeFinding({ checkId: 'fundamental-rights-impact-assessment', obligationId: 'eu-ai-act-OBL-013' });
+    const plan = findStrategy(finding, ctx);
+    expect(plan).not.toBeNull();
+    expect(plan!.obligationId).toBe('eu-ai-act-OBL-013');
+  });
+
+  it('test_fria_strategy_skips_if_file_exists', () => {
+    const finding = makeFinding({ checkId: 'fria' });
+    const ctxWithFria = makeContext({ existingFiles: ['docs/compliance/fria.md'] });
+    const plan = findStrategy(finding, ctxWithFria);
+    expect(plan).toBeNull();
+  });
+});

@@ -11,13 +11,13 @@ expression: buf
 │────────────────────────────│
 │ Ctx: 3%  Zen: off          │
 │                            │
+│ Deadlines ─────────────────│
+│ ⚠ 158d EU AI Act           │
+│                            │
 │ Actions ───────────────────│
 │ /scan  rescan project      │
 │ /help  all commands        │
 │ Ctrl+P command palette     │
-│                            │
-│                            │
-│                            │
 │                            │
 │                            │
 │                            │
