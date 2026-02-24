@@ -1,5 +1,5 @@
-use ratatui::layout::Rect;
-use ratatui::style::Style;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
@@ -38,6 +38,10 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Render only System-role messages as the status log.
+///
+/// US-S0211: When the log is empty (no system events yet), renders an
+/// "empty state" with a visual command prompt at the top and Quick Start
+/// tips below, guiding the user to run their first command.
 fn render_status_log(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
     let mut lines: Vec<Line<'_>> = Vec::new();
@@ -58,10 +62,8 @@ fn render_status_log(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     if lines.is_empty() {
-        lines.push(Line::from(Span::styled(
-            " No system events yet",
-            Style::default().fg(t.muted),
-        )));
+        render_empty_state(frame, area);
+        return;
     }
 
     let total_lines = lines.len();
@@ -78,6 +80,80 @@ fn render_status_log(frame: &mut Frame, area: Rect, app: &App) {
         .scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
 
     frame.render_widget(paragraph, area);
+}
+
+/// US-S0211: Empty state layout — input prompt at top, Quick Start tips below.
+///
+/// ```text
+/// ┌─────────────────────────────┐
+/// │ > :scan                     │  ← visual command prompt
+/// └─────────────────────────────┘
+///  Quick Start:
+///  • :scan      — scan your project
+///  • :help      — available commands
+///  • Ctrl+P     — command palette
+///  • :watch     — watch mode (auto-rescan)
+/// ```
+fn render_empty_state(frame: &mut Frame, area: Rect) {
+    let t = theme::theme();
+
+    // Split: 3 rows for the input box, remainder for tips
+    let input_height = 3u16;
+    if area.height <= input_height {
+        // Too small — just show a one-liner
+        let line = Paragraph::new(Span::styled(
+            " > :scan to start",
+            Style::default().fg(t.muted),
+        ));
+        frame.render_widget(line, area);
+        return;
+    }
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(input_height), Constraint::Min(0)])
+        .split(area);
+
+    // ── Input box ────────────────────────────────────────────────────────
+    let prompt_text = Line::from(vec![
+        Span::styled("> ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(":scan", Style::default().fg(t.fg)),
+        Span::styled("  or  :help", Style::default().fg(t.muted)),
+    ]);
+    let input_block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.accent));
+    frame.render_widget(
+        Paragraph::new(prompt_text).block(input_block),
+        chunks[0],
+    );
+
+    // ── Quick Start tips ─────────────────────────────────────────────────
+    let tips: Vec<Line<'_>> = vec![
+        Line::from(Span::styled(" Quick Start:", Style::default().fg(t.muted).add_modifier(Modifier::BOLD))),
+        Line::from(vec![
+            Span::styled("  • ", Style::default().fg(t.accent)),
+            Span::styled(":scan     ", Style::default().fg(t.fg)),
+            Span::styled("— scan your project for compliance issues", Style::default().fg(t.muted)),
+        ]),
+        Line::from(vec![
+            Span::styled("  • ", Style::default().fg(t.accent)),
+            Span::styled(":help     ", Style::default().fg(t.fg)),
+            Span::styled("— list available commands", Style::default().fg(t.muted)),
+        ]),
+        Line::from(vec![
+            Span::styled("  • ", Style::default().fg(t.accent)),
+            Span::styled("Ctrl+P    ", Style::default().fg(t.fg)),
+            Span::styled("— open command palette", Style::default().fg(t.muted)),
+        ]),
+        Line::from(vec![
+            Span::styled("  • ", Style::default().fg(t.accent)),
+            Span::styled(":watch    ", Style::default().fg(t.fg)),
+            Span::styled("— watch mode (auto-rescan on file change)", Style::default().fg(t.muted)),
+        ]),
+    ];
+
+    frame.render_widget(Paragraph::new(tips), chunks[1]);
 }
 
 #[cfg(test)]
@@ -213,5 +289,57 @@ mod tests {
         terminal
             .draw(|frame| render_chat_view(frame, frame.area(), &app2))
             .expect("render");
+    }
+
+    // ── US-S0211 tests ────────────────────────────────────────────────────────
+
+    /// US-S0211: Empty status log shows command prompt at top + Quick Start tips.
+    #[test]
+    fn test_empty_chat_input_position() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        // Clear any init messages → empty state
+        app.messages.clear();
+
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|c| c.symbol().to_string()).collect();
+
+        // Quick Start section should appear in empty state
+        assert!(content.contains("Quick Start"), "Empty state must show Quick Start section");
+        assert!(content.contains(":scan"), "Empty state must mention :scan command");
+        assert!(content.contains(":help"), "Empty state must mention :help command");
+        assert!(content.contains("Ctrl+P"), "Empty state must mention Ctrl+P");
+    }
+
+    /// US-S0211: After a system message, normal log layout is shown (no Quick Start).
+    #[test]
+    fn test_chat_layout_after_first_message() {
+        crate::theme::init_theme("dark");
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut app = App::new(crate::config::TuiConfig::default());
+
+        app.messages.push(ChatMessage::new(
+            MessageRole::System,
+            "Scan complete: 80/100".to_string(),
+        ));
+
+        terminal
+            .draw(|frame| render_chat(frame, frame.area(), &app, true))
+            .expect("render");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|c| c.symbol().to_string()).collect();
+
+        // Normal log should show the message, not the Quick Start tips
+        assert!(content.contains("Scan complete"), "Should show system message content");
+        assert!(!content.contains("Quick Start"), "Non-empty log must not show Quick Start");
     }
 }
