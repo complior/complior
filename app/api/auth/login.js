@@ -20,9 +20,25 @@
 
     const url = workos.getAuthorizationUrl(screenHint, state, provider);
 
-    return {
+    const response = {
       _statusCode: 302,
       _redirect: url,
     };
+
+    // Store state in cookie as backup — WorkOS may drop the state param
+    if (state) {
+      response._cookie = {
+        name: 'oauth-state',
+        value: state,
+        options: {
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+          maxAge: 600, // 10 minutes
+        },
+      };
+    }
+
+    return response;
   },
 })

@@ -115,6 +115,15 @@ const createWorkOSClient = (options = config) => {
       return workos.userManagement.resetPassword({ token, newPassword });
     },
 
+    async authenticateWithEmailVerification(code, pendingAuthenticationToken) {
+      return workos.userManagement.authenticateWithEmailVerification({
+        clientId,
+        code,
+        pendingAuthenticationToken,
+        session: { sealSession: true, cookiePassword },
+      });
+    },
+
     async getUser(userId) {
       return workos.userManagement.getUser(userId);
     },

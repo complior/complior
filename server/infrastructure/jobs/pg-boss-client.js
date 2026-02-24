@@ -28,6 +28,11 @@ function createPgBossClient() {
 
   let started = false;
 
+  // Prevent unhandled error crashes — log and continue
+  boss.on('error', (err) => {
+    console.error('pg-boss error:', err.message || err);
+  });
+
   return {
     /**
      * Start the job queue
@@ -56,7 +61,23 @@ function createPgBossClient() {
      * @param {Object} options - Job options (startAfter, retryLimit, etc.)
      */
     async send(name, data = {}, options = {}) {
+      await this.ensureQueue(name);
       return boss.send(name, data, options);
+    },
+
+    /**
+     * Ensure a queue exists before using it
+     * @param {string} name - Queue name
+     */
+    async ensureQueue(name) {
+      try {
+        await boss.createQueue(name);
+      } catch (err) {
+        // Queue already exists — safe to ignore
+        if (!err.message?.includes('already exists') && err.code !== '23505') {
+          throw err;
+        }
+      }
     },
 
     /**
@@ -67,6 +88,7 @@ function createPgBossClient() {
      * @param {Object} options - Job options
      */
     async schedule(name, cron, data = {}, options = {}) {
+      await this.ensureQueue(name);
       return boss.schedule(name, cron, data, options);
     },
 
@@ -83,6 +105,7 @@ function createPgBossClient() {
         options = {};
       }
 
+      await this.ensureQueue(name);
       return boss.work(name, options, async (job) => {
         try {
           const result = await handler(job);

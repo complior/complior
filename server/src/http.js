@@ -163,6 +163,7 @@ const initSessionHook = (server, workosClient) => {
     if (url.startsWith('/api/auth/register')) return;
     if (url.startsWith('/api/auth/forgot-password')) return;
     if (url.startsWith('/api/auth/reset-password')) return;
+    if (url.startsWith('/api/auth/verify-email')) return;
     if (url.startsWith('/api/webhooks/')) return;
     if (url.startsWith('/api/public/')) return;
     if (url === '/health') return;

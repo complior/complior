@@ -5,26 +5,65 @@
   method: async ({ query, headers }) => {
     const code = query.code;
     if (!code) {
-      throw new errors.ValidationError('Missing authorization code');
+      return {
+        _statusCode: 302,
+        _redirect: '/auth/login?error=missing_code',
+      };
     }
+
+    // Read state from query or from oauth-state cookie (WorkOS may drop query state)
+    const cookieHeader = headers.cookie || '';
+    const stateMatch = cookieHeader.match(/(?:^|;\s*)oauth-state=([^;]+)/);
+    const stateParam = query.state || (stateMatch ? stateMatch[1] : '');
 
     let result;
     try {
       result = await workos.authenticateWithCode(code);
     } catch (err) {
-      throw new errors.AuthError('Invalid authorization code');
+      const rawData = err?.rawData || {};
+      const errCode = rawData.code || err?.code || '';
+      const msg = err?.message || rawData.message || 'Unknown';
+      console.error('WorkOS authenticateWithCode failed:', msg, errCode, JSON.stringify(rawData));
+
+      // Handle email verification required — redirect to verify-code page
+      if (errCode === 'email_verification_required') {
+        const token = encodeURIComponent(rawData.pending_authentication_token || '');
+        const email = encodeURIComponent(rawData.email || '');
+        let qs = `email=${email}&token=${token}&type=email`;
+        if (stateParam) qs += `&state=${encodeURIComponent(stateParam)}`;
+        return {
+          _statusCode: 302,
+          _redirect: `/auth/verify-code?${qs}`,
+        };
+      }
+
+      return {
+        _statusCode: 302,
+        _redirect: `/auth/login?error=auth_failed&detail=${encodeURIComponent(msg)}`,
+      };
     }
     const { user, sealedSession } = result;
 
     if (!user || !sealedSession) {
-      throw new errors.AuthError('Authentication failed');
+      return {
+        _statusCode: 302,
+        _redirect: '/auth/login?error=auth_failed',
+      };
     }
 
-    const syncResult = await application.iam.syncUserFromWorkOS.syncUser(user);
+    let syncResult;
+    try {
+      syncResult = await application.iam.syncUserFromWorkOS.syncUser(user);
+    } catch (err) {
+      console.error('syncUser failed after OAuth:', err?.message || err);
+      return {
+        _statusCode: 302,
+        _redirect: `/auth/login?error=sync_failed&detail=${encodeURIComponent(err?.message || 'Unknown')}`,
+      };
+    }
 
     // Decode state for redirect target
     let redirectTo = '/dashboard';
-    const stateParam = query.state;
     if (stateParam) {
       try {
         const state = JSON.parse(Buffer.from(stateParam, 'base64url').toString());

@@ -74,6 +74,13 @@ describe('Headless Auth Endpoints', () => {
         if (token === 'invalid-token') throw new Error('Invalid token');
         return { user: { id: 'user_01' } };
       },
+      authenticateWithEmailVerification: async (code) => {
+        if (code === '000000') throw new Error('Invalid verification code');
+        return {
+          user: { id: 'user_01', email: 'test@example.com', firstName: 'Test', lastName: 'User' },
+          sealedSession: 'sealed-email-verify-session',
+        };
+      },
       verifySessionCookie: async () => ({ authenticated: true, user: { id: 'user_01' } }),
       deleteUser: async () => {},
     };
@@ -92,6 +99,7 @@ describe('Headless Auth Endpoints', () => {
         registerPassword: api.auth.registerPassword,
         forgotPassword: api.auth.forgotPassword,
         resetPassword: api.auth.resetPassword,
+        verifyEmail: api.auth.verifyEmail,
         login: api.auth.login,
       },
     });
@@ -262,5 +270,33 @@ describe('Headless Auth Endpoints', () => {
     });
     assert.strictEqual(res.statusCode, 302);
     assert.ok(res.headers.location.includes('github'), 'Should redirect to GitHub');
+  });
+
+  // 13. verifyEmail — valid code returns session cookie
+  it('POST /api/auth/verify-email — valid code returns session cookie', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/auth/verify-email',
+      payload: { code: '123456', pendingAuthenticationToken: 'valid-token' },
+    });
+    assert.strictEqual(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.strictEqual(body.success, true);
+    const cookies = res.cookies;
+    const sessionCookie = cookies.find(c => c.name === 'wos-session');
+    assert.ok(sessionCookie, 'wos-session cookie should be set');
+    assert.strictEqual(sessionCookie.value, 'sealed-email-verify-session');
+  });
+
+  // 14. verifyEmail — invalid code returns 401
+  it('POST /api/auth/verify-email — invalid code returns 401', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/auth/verify-email',
+      payload: { code: '000000', pendingAuthenticationToken: 'some-token' },
+    });
+    assert.strictEqual(res.statusCode, 401);
+    const body = JSON.parse(res.body);
+    assert.strictEqual(body.error.code, 'AUTH_ERROR');
   });
 });

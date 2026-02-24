@@ -10,6 +10,9 @@ const { load, loadDir, loadDeepDir } = require('../../server/src/loader.js');
 const APP_PATH = path.resolve(__dirname, '../../app');
 
 const createTestSandbox = (mockDb, extras = {}) => ({
+  setTimeout,
+  clearTimeout,
+  Buffer,
   console,
   crypto,
   db: mockDb,
@@ -35,6 +38,10 @@ const createTestSandbox = (mockDb, extras = {}) => ({
     }),
     sendPasswordReset: async () => ({ id: 'reset_01' }),
     resetPassword: async () => ({ user: { id: 'wos_user_test' } }),
+    authenticateWithEmailVerification: async () => ({
+      user: { id: 'wos_user_test', email: 'test@example.com', firstName: 'Test', lastName: 'User' },
+      sealedSession: 'sealed-session-data',
+    }),
     verifySessionCookie: async () => ({ authenticated: true, user: { id: 'wos_user_test' } }),
     deleteUser: async () => {},
   },

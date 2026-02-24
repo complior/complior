@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { getSession, loginWithPassword, sendMagicLink, getSocialLoginUrl } from '@/lib/auth';
@@ -36,11 +36,12 @@ const ShieldCheckIcon = () => (
   </svg>
 );
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('auth');
   const tc = useTranslations('common');
+  const searchParams = useSearchParams();
 
   const [checking, setChecking] = useState(true);
   const [mode, setMode] = useState<'magic' | 'password'>('magic');
@@ -50,6 +51,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
+
+  // Show errors from OAuth callback redirect
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      const detail = searchParams.get('detail');
+      if (errorParam === 'auth_failed') {
+        setError(detail ? `Authentication failed: ${detail}` : t('invalidCredentials'));
+      } else if (errorParam === 'sync_failed') {
+        setError('Failed to complete login. Please try again.');
+      } else {
+        setError(t('invalidCredentials'));
+      }
+    }
+  }, [searchParams, t]);
 
   useEffect(() => {
     getSession().then((user) => {
@@ -95,6 +111,13 @@ export default function LoginPage() {
       const result = await loginWithPassword(email, password);
       if (result.success) {
         router.push(`/${locale}/dashboard`);
+      } else if (result.emailVerificationRequired) {
+        const params = new URLSearchParams({
+          email: result.email || email,
+          token: result.pendingAuthenticationToken || '',
+          type: 'email',
+        });
+        router.push(`/${locale}/auth/verify-code?${params.toString()}`);
       } else {
         setError(t('invalidCredentials'));
       }
@@ -333,5 +356,13 @@ export default function LoginPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)' }}><p style={{ color: 'var(--dark5)', fontSize: '0.875rem' }}>Loading...</p></div>}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

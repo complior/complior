@@ -41,15 +41,31 @@
     }
   };
 
-  const handleDuplicateRetry = async (workosUserId) => {
+  const handleDuplicateRetry = async (workosUserId, email) => {
     for (let attempt = 0; attempt < 3; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+      // Try by workosUserId first
       const retry = await db.query(
         'SELECT "id", "organizationId" FROM "User" WHERE "workosUserId" = $1',
         [workosUserId],
       );
       if (retry.rows.length > 0) {
         return { user: retry.rows[0], created: false };
+      }
+      // Fallback: try by email (user may exist from a different auth method)
+      if (email) {
+        const byEmail = await db.query(
+          'SELECT "id", "organizationId", "workosUserId" FROM "User" WHERE "email" = $1',
+          [email],
+        );
+        if (byEmail.rows.length > 0) {
+          // Update workosUserId to link the account
+          await db.query(
+            'UPDATE "User" SET "workosUserId" = $1, "lastLoginAt" = NOW() WHERE "id" = $2',
+            [workosUserId, byEmail.rows[0].id],
+          );
+          return { user: byEmail.rows[0], created: false };
+        }
       }
     }
     throw new errors.ConflictError('User already exists');
@@ -69,8 +85,9 @@
         throw new errors.ValidationError('Missing required fields', fields);
       }
 
+      // Look up by workosUserId first, then by email (account linking)
       const existing = await db.query(
-        'SELECT "id", "organizationId" FROM "User" WHERE "workosUserId" = $1',
+        'SELECT "id", "organizationId", "workosUserId" FROM "User" WHERE "workosUserId" = $1',
         [workosUserId],
       );
       if (existing.rows.length > 0) {
@@ -79,6 +96,20 @@
           [existing.rows[0].id],
         );
         return { user: existing.rows[0], created: false };
+      }
+
+      // Fallback: find by email (user registered via different auth method)
+      const byEmail = await db.query(
+        'SELECT "id", "organizationId", "workosUserId" FROM "User" WHERE "email" = $1',
+        [email],
+      );
+      if (byEmail.rows.length > 0) {
+        // Link this workosUserId to the existing account
+        await db.query(
+          'UPDATE "User" SET "workosUserId" = $1, "lastLoginAt" = NOW() WHERE "id" = $2',
+          [workosUserId, byEmail.rows[0].id],
+        );
+        return { user: byEmail.rows[0], created: false };
       }
 
       const fullName = `${firstName} ${lastName}`.trim() || email.split('@')[0];
@@ -132,7 +163,7 @@
         };
       } catch (err) {
         await client.query('ROLLBACK');
-        if (err.code === '23505') return handleDuplicateRetry(workosUserId);
+        if (err.code === '23505') return handleDuplicateRetry(workosUserId, email);
         throw err;
       } finally {
         client.release();

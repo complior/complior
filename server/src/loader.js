@@ -56,6 +56,9 @@ const loadApplication = async (appPath, serverContext) => {
 
   // Base sandbox — available to all VM layers
   const sandbox = {
+    setTimeout,
+    clearTimeout,
+    Buffer,
     console: Object.freeze(logger),
     crypto: Object.freeze(crypto),
     db,

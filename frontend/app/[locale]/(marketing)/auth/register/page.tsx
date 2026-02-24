@@ -172,6 +172,13 @@ function RegisterContent() {
           setUserProfile({ organizationId: session.organizationId });
         }
         setStep(2);
+      } else if (result.emailVerificationRequired) {
+        const params = new URLSearchParams({
+          email: result.email || regEmail,
+          token: result.pendingAuthenticationToken || '',
+          type: 'email',
+        });
+        router.push(`/${locale}/auth/verify-code?${params.toString()}`);
       } else if (result.error?.code === 'CONFLICT') {
         setError(t('emailExists'));
       } else {
@@ -679,7 +686,7 @@ function RegisterContent() {
 
               {/* Social OAuth */}
               <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <button className="btn-primary-r" onClick={() => { window.location.href = getSocialLoginUrl('google'); }} style={{
+                <button className="btn-primary-r" onClick={() => { try { sessionStorage.setItem('oauth_plan', JSON.stringify({ plan, period: periodParam })); } catch {} window.location.href = getSocialLoginUrl('google', { plan, period: periodParam }); }} style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                   padding: '0.6875rem', border: '1.5px solid var(--b2)', borderRadius: '8px',
                   background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--f-body)',
@@ -688,7 +695,7 @@ function RegisterContent() {
                 }}>
                   Google
                 </button>
-                <button className="btn-primary-r" onClick={() => { window.location.href = getSocialLoginUrl('github'); }} style={{
+                <button className="btn-primary-r" onClick={() => { try { sessionStorage.setItem('oauth_plan', JSON.stringify({ plan, period: periodParam })); } catch {} window.location.href = getSocialLoginUrl('github', { plan, period: periodParam }); }} style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                   padding: '0.6875rem', border: '1.5px solid var(--b2)', borderRadius: '8px',
                   background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--f-body)',

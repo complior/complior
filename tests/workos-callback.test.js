@@ -72,19 +72,21 @@ describe('GET /api/auth/callback', () => {
     assert.strictEqual(res.statusCode, 302);
   });
 
-  it('returns 401 for missing code', async () => {
+  it('redirects to login with error for missing code', async () => {
     const res = await server.inject({
       method: 'GET',
       url: '/api/auth/callback',
     });
-    assert.strictEqual(res.statusCode, 400);
+    assert.strictEqual(res.statusCode, 302);
+    assert.ok(res.headers.location.includes('/auth/login?error=missing_code'));
   });
 
-  it('returns 401 for invalid code', async () => {
+  it('redirects to login with error for invalid code', async () => {
     const res = await server.inject({
       method: 'GET',
       url: '/api/auth/callback?code=invalid-code',
     });
-    assert.strictEqual(res.statusCode, 401);
+    assert.strictEqual(res.statusCode, 302);
+    assert.ok(res.headers.location.includes('/auth/login?error=auth_failed'));
   });
 });

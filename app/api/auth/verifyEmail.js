@@ -1,30 +1,22 @@
 ({
   access: 'public',
   httpMethod: 'POST',
-  path: '/api/auth/login/password',
+  path: '/api/auth/verify-email',
   method: async ({ body }) => {
-    const parsed = schemas.LoginPasswordSchema.parse(body);
-    const { email, password } = parsed;
+    const parsed = schemas.VerifyEmailSchema.parse(body);
+    const { code, pendingAuthenticationToken } = parsed;
 
     let result;
     try {
-      result = await workos.authenticateWithPassword(email, password);
+      result = await workos.authenticateWithEmailVerification(code, pendingAuthenticationToken);
     } catch (err) {
-      const errCode = err?.rawData?.code || err?.code || '';
-      if (errCode === 'email_verification_required') {
-        return {
-          success: false,
-          emailVerificationRequired: true,
-          pendingAuthenticationToken: err.rawData?.pending_authentication_token || '',
-          email,
-        };
-      }
-      throw new errors.AuthError('Invalid email or password');
+      console.error('WorkOS email verification failed:', err?.message || err);
+      throw new errors.AuthError('Invalid verification code');
     }
 
     const { user, sealedSession } = result;
     if (!user || !sealedSession) {
-      throw new errors.AuthError('Authentication failed');
+      throw new errors.AuthError('Email verification failed');
     }
 
     await application.iam.syncUserFromWorkOS.syncUser(user);

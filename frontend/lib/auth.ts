@@ -5,6 +5,9 @@ export interface AuthResult {
   created?: boolean;
   user?: { id: string; email: string };
   error?: { code: string; message?: string };
+  emailVerificationRequired?: boolean;
+  pendingAuthenticationToken?: string;
+  email?: string;
 }
 
 export async function loginWithPassword(email: string, password: string): Promise<AuthResult> {
@@ -70,8 +73,21 @@ export async function resetPassword(token: string, newPassword: string): Promise
   return res.json();
 }
 
-export function getSocialLoginUrl(provider: 'google' | 'github'): string {
-  return `${API_URL}/api/auth/login?provider=${provider}`;
+export async function verifyEmail(code: string, pendingAuthenticationToken: string): Promise<AuthResult> {
+  const res = await fetch(`${API_URL}/api/auth/verify-email`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, pendingAuthenticationToken }),
+  });
+  return res.json();
+}
+
+export function getSocialLoginUrl(provider: 'google' | 'github', opts?: { plan?: string; period?: string }): string {
+  let url = `${API_URL}/api/auth/login?provider=${provider}`;
+  if (opts?.plan) url += `&plan=${encodeURIComponent(opts.plan)}`;
+  if (opts?.period) url += `&period=${encodeURIComponent(opts.period)}`;
+  return url;
 }
 
 export async function logout(): Promise<void> {

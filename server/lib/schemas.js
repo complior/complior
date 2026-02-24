@@ -242,6 +242,11 @@ const ResetPasswordSchema = z.object({
   newPassword: z.string().min(8).max(256),
 });
 
+const VerifyEmailSchema = z.object({
+  code: z.string().min(6).max(6),
+  pendingAuthenticationToken: z.string().min(1),
+});
+
 // === GDPR Schemas ===
 
 const AccountDeleteSchema = z.object({
@@ -293,6 +298,7 @@ module.exports = {
   RegisterPasswordSchema,
   ForgotPasswordSchema,
   ResetPasswordSchema,
+  VerifyEmailSchema,
   VALID_PAID_PLANS,
   VALID_BILLING_PERIODS,
 };

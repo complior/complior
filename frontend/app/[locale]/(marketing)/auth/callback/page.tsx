@@ -10,21 +10,33 @@ export default function AuthCallbackPage() {
   const locale = useLocale();
   const [error, setError] = useState<string | null>(null);
 
+  const getRedirectPath = () => {
+    try {
+      const stored = sessionStorage.getItem('oauth_plan');
+      if (stored) {
+        const state = JSON.parse(stored);
+        sessionStorage.removeItem('oauth_plan');
+        if (state.plan && state.plan !== 'free') {
+          return `/${locale}/auth/register?plan=${state.plan}&period=${state.period || 'monthly'}&step=2`;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return `/${locale}/dashboard`;
+  };
+
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // The backend /api/auth/callback sets the wos-session cookie and redirects.
-        // If we land here, the cookie should already be set.
-        // Verify the session and redirect to dashboard.
         const user = await getSession();
         if (user?.active) {
-          router.replace(`/${locale}/dashboard`);
+          router.replace(getRedirectPath());
         } else {
-          // Session not yet available — retry once after a short delay
           await new Promise((r) => setTimeout(r, 1000));
           const retry = await getSession();
           if (retry?.active) {
-            router.replace(`/${locale}/dashboard`);
+            router.replace(getRedirectPath());
           } else {
             router.replace(`/${locale}/auth/login`);
           }

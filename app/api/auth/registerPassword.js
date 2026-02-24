@@ -20,7 +20,16 @@
     let authResult;
     try {
       authResult = await workos.authenticateWithPassword(email, password);
-    } catch {
+    } catch (err) {
+      const errCode = err?.rawData?.code || err?.code || '';
+      if (errCode === 'email_verification_required') {
+        return {
+          success: false,
+          emailVerificationRequired: true,
+          pendingAuthenticationToken: err.rawData?.pending_authentication_token || '',
+          email,
+        };
+      }
       throw new errors.AuthError('Account created but authentication failed');
     }
 
