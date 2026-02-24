@@ -259,6 +259,41 @@ const metadataStrategy: FixStrategy = (finding, context) => {
   };
 };
 
+// --- Strategy: FRIA (Fundamental Rights Impact Assessment) ---
+// US-S0202: 6th fixer — generates FRIA.md with 80% pre-filled fields.
+// Triggers on checkId 'fria' or obligationId 'eu-ai-act-OBL-013'.
+
+const friaStrategy: FixStrategy = (finding, context) => {
+  const isFria =
+    finding.checkId === 'fria' ||
+    finding.checkId === 'fundamental-rights-impact-assessment' ||
+    finding.obligationId === 'eu-ai-act-OBL-013';
+  if (!isFria) return null;
+
+  const outputFile = 'docs/compliance/fria.md';
+  if (context.existingFiles.some((f) => f.endsWith('fria.md'))) return null;
+
+  const action: FixAction = {
+    type: 'create',
+    path: outputFile,
+    content: '[TEMPLATE:fria.md]',
+    description: 'Generate Fundamental Rights Impact Assessment (Art. 27)',
+  };
+
+  return {
+    obligationId: finding.obligationId ?? 'eu-ai-act-OBL-013',
+    checkId: finding.checkId,
+    article: finding.articleReference ?? 'Art. 27',
+    fixType: 'template_generation',
+    framework: context.framework,
+    actions: [action],
+    diff: generateCreateDiff(outputFile, '# Fundamental Rights Impact Assessment\n\n[Generated from template: fria.md]'),
+    scoreImpact: 10,
+    commitMessage: 'fix: generate Fundamental Rights Impact Assessment (Art. 27) -- via Complior',
+    description: 'Generate Fundamental Rights Impact Assessment with pre-filled fields (Article 27)',
+  };
+};
+
 // --- Strategy registry ---
 
 const STRATEGIES: readonly FixStrategy[] = [
@@ -266,7 +301,8 @@ const STRATEGIES: readonly FixStrategy[] = [
   contentMarkingStrategy,
   loggingStrategy,
   metadataStrategy,
-  documentationStrategy,  // last: catch-all for obligation-based template fixes
+  friaStrategy,             // US-S0202: 6th fixer — FRIA template generation
+  documentationStrategy,    // last: catch-all for obligation-based template fixes
 ];
 
 export const findStrategy = (finding: Finding, context: FixContext): FixPlan | null => {

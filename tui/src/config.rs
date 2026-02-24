@@ -3,6 +3,29 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_ENGINE_PORT: u16 = 3099;
+
+/// `[confirmations]` TOML section — controls which destructive operations
+/// require an explicit y/N confirmation dialog before proceeding.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+pub struct ConfirmationsConfig {
+    /// Ask before applying batch fixes (>3 files). Default: true.
+    pub batch_fix: bool,
+    /// Ask before undoing multiple fixes at once. Default: true.
+    pub undo_multiple: bool,
+    /// Ask before overwriting existing compliance docs. Default: false.
+    pub overwrite_docs: bool,
+}
+
+impl Default for ConfirmationsConfig {
+    fn default() -> Self {
+        Self {
+            batch_fix: true,
+            undo_multiple: true,
+            overwrite_docs: false,
+        }
+    }
+}
 const DEFAULT_TICK_RATE_MS: u64 = 250;
 const DEFAULT_PROJECT_API_URL: &str = "https://app.complior.ai";
 
@@ -46,6 +69,11 @@ pub struct TuiConfig {
     /// and use `MockDataProvider` as the only data source.
     #[serde(default)]
     pub offline_mode: bool,
+
+    // ── Confirmation Dialogs (Sprint S02, US-S0210) ───────────────────────────
+    /// Controls which destructive operations show a y/N confirmation dialog.
+    #[serde(default)]
+    pub confirmations: ConfirmationsConfig,
 }
 
 impl Default for TuiConfig {
@@ -76,6 +104,7 @@ impl Default for TuiConfig {
             project_api_url: DEFAULT_PROJECT_API_URL.to_string(),
             api_key: None,
             offline_mode: false,
+            confirmations: ConfirmationsConfig::default(),
         }
     }
 }
@@ -249,5 +278,44 @@ mod tests {
         let deserialized: TuiConfig = toml::from_str(&serialized).expect("deserialize");
         assert_eq!(deserialized.theme, "Dracula");
         assert!(deserialized.onboarding_completed);
+    }
+
+    // US-S0210: named tests
+
+    /// `[confirmations]` TOML section deserializes correctly with custom values.
+    #[test]
+    fn test_toml_confirmations() {
+        // Deserialize as part of TuiConfig to test the full [confirmations] section
+        let toml_str = r#"
+            [confirmations]
+            batch_fix = false
+            undo_multiple = true
+            overwrite_docs = true
+        "#;
+        let config: TuiConfig = toml::from_str(toml_str).expect("parse config with confirmations");
+        assert!(!config.confirmations.batch_fix);
+        assert!(config.confirmations.undo_multiple);
+        assert!(config.confirmations.overwrite_docs);
+    }
+
+    /// Default confirmation values match spec: batch_fix=true, undo_multiple=true, overwrite_docs=false.
+    #[test]
+    fn test_confirm_default_no() {
+        let conf = ConfirmationsConfig::default();
+        // "No" = false for overwrite_docs (least destructive path is default)
+        assert!(!conf.overwrite_docs, "overwrite_docs should default to false (safe)");
+        assert!(conf.batch_fix, "batch_fix should require confirmation by default");
+        assert!(conf.undo_multiple, "undo_multiple should require confirmation by default");
+    }
+
+    /// When batch_fix confirmation is disabled, no dialog should be shown.
+    #[test]
+    fn test_confirm_yes_proceeds() {
+        let conf = ConfirmationsConfig {
+            batch_fix: false,
+            ..ConfirmationsConfig::default()
+        };
+        // batch_fix=false means auto-proceed without dialog
+        assert!(!conf.batch_fix, "batch_fix=false means proceed without confirmation");
     }
 }

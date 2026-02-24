@@ -24,6 +24,7 @@ import { createExternalScanService } from './services/external-scan-service.js';
 import { createHeadlessBrowser } from './infra/headless-browser.js';
 import { createStatusService } from './services/status-service.js';
 import { createRouter } from './http/create-router.js';
+import { createFileWatcher } from './infra/file-watcher.js';
 import { createOnboardingWizard } from './onboarding/wizard.js';
 import { ENGINE_VERSION } from './version.js';
 
@@ -43,6 +44,7 @@ export interface Application {
   readonly app: ReturnType<typeof createRouter>;
   readonly state: ApplicationState;
   readonly shutdown: () => void;
+  readonly startWatcher: () => void;
 }
 
 export const loadApplication = async (): Promise<Application> => {
@@ -212,10 +214,14 @@ export const loadApplication = async (): Promise<Application> => {
     );
   });
 
+  // 8. File watcher (US-S0202): start on demand via startWatcher()
+  const fileWatcher = createFileWatcher(state.projectPath, events);
+
   const shutdown = (): void => {
+    fileWatcher.stop().catch(() => {});
     externalScanService.close().catch(() => {});
     log.info('Application shutdown');
   };
 
-  return { app, state, shutdown };
+  return { app, state, shutdown, startWatcher: fileWatcher.start };
 };

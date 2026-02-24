@@ -9,6 +9,10 @@ use crate::theme;
 /// Available commands for the palette.
 const COMMANDS: &[(&str, &str)] = &[
     ("/scan", "Scan project for compliance"),
+    ("/status", "Show compliance status summary"),
+    ("/fix", "Open Fix view to apply compliance fixes"),
+    ("/explain", "Explain the top compliance finding"),
+    ("/report", "Open Report view / export compliance report"),
     ("/help", "Show all commands and shortcuts"),
     ("/edit", "Open file in code viewer"),
     ("/run", "Run shell command"),
@@ -26,7 +30,8 @@ const COMMANDS: &[(&str, &str)] = &[
 
 /// Colon commands — used for tab completion in colon mode.
 pub const COLON_COMMANDS: &[&str] = &[
-    "agent", "scan", "fix", "theme", "export", "watch", "quit", "help",
+    "agent", "scan", "fix", "status", "explain", "report",
+    "theme", "export", "watch", "quit", "help",
     "undo", "view", "animations",
 ];
 

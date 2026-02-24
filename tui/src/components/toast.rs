@@ -187,4 +187,37 @@ mod tests {
         assert_eq!(ToastKind::Warning.marker(), "[!]");
         assert_eq!(ToastKind::Error.marker(), "[X]");
     }
+
+    // US-S0210: named tests
+
+    /// FIFO eviction: when max is exceeded, oldest toast is removed first.
+    #[test]
+    fn test_toast_stack_fifo() {
+        let mut stack = ToastStack::default();
+        for i in 0..=5u8 {
+            stack.push(ToastKind::Info, format!("msg{i}"));
+        }
+        // Oldest "msg0" evicted; "msg5" is newest
+        assert_eq!(stack.toasts.len(), MAX_VISIBLE);
+        assert!(!stack.toasts.iter().any(|t| t.message == "msg0"),
+            "oldest toast should be evicted");
+        assert!(stack.toasts.iter().any(|t| t.message == "msg5"),
+            "newest toast should be present");
+    }
+
+    /// All 4 toast kinds have distinct markers.
+    #[test]
+    fn test_toast_4_kinds() {
+        let kinds = [
+            (ToastKind::Success, "[OK]"),
+            (ToastKind::Info,    "[i]"),
+            (ToastKind::Warning, "[!]"),
+            (ToastKind::Error,   "[X]"),
+        ];
+        for (kind, expected_marker) in kinds {
+            assert_eq!(kind.marker(), expected_marker);
+            let toast = Toast::new(kind, "test");
+            assert_eq!(toast.kind, kind);
+        }
+    }
 }

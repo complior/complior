@@ -9,10 +9,12 @@ const isMcpMode = process.argv.includes('mcp-server');
 
 const startHttp = async (): Promise<void> => {
   log.info('Loading regulation data...');
-  const { app } = await loadApplication();
+  const { app, startWatcher } = await loadApplication();
 
   const server = serve({ fetch: app.fetch, port: PORT }, () => {
     log.info(`Complior Engine v${ENGINE_VERSION} running on http://127.0.0.1:${PORT}`);
+    // US-S0202: start file watcher for Compliance Gate
+    startWatcher();
   });
 
   const shutdown = (): void => {

@@ -27,12 +27,14 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
             Constraint::Length(5),  // Project
             Constraint::Length(6),  // Scan Summary
             Constraint::Length(3),  // Context + Zen
+            Constraint::Length(3),  // Deadlines
             Constraint::Min(3),    // Quick Actions
         ]
     } else {
         vec![
             Constraint::Length(5), // Project
             Constraint::Length(3),  // Context + Zen
+            Constraint::Length(3),  // Deadlines
             Constraint::Min(3),   // Quick Actions
         ]
     };
@@ -48,10 +50,12 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
     if has_scan {
         render_scan_summary(frame, chunks[1], app, &t);
         render_context_zen_section(frame, chunks[2], app, &t);
-        render_quick_actions(frame, chunks[3], &t);
+        render_deadlines(frame, chunks[3], &t);
+        render_quick_actions(frame, chunks[4], &t);
     } else {
         render_context_zen_section(frame, chunks[1], app, &t);
-        render_quick_actions(frame, chunks[2], &t);
+        render_deadlines(frame, chunks[2], &t);
+        render_quick_actions(frame, chunks[3], &t);
     }
 }
 
@@ -172,6 +176,49 @@ fn render_context_zen_section(frame: &mut Frame, area: Rect, app: &App, t: &them
 
     let p = Paragraph::new(lines).block(
         Block::default()
+            .borders(Borders::TOP)
+            .border_style(Style::default().fg(t.border)),
+    );
+    frame.render_widget(p, area);
+}
+
+fn render_deadlines(frame: &mut Frame, area: Rect, t: &theme::ThemeColors) {
+    // EU AI Act enforcement: 2026-08-02
+    // Compute days remaining from system clock
+    let days_remaining = {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let now_secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        // 2026-08-02 00:00:00 UTC = 1785olean
+        // 2026-01-01 = 1767225600, + 213 days = + 18403200
+        const EU_AI_ACT_SECS: u64 = 1_785_628_800; // 2026-08-02 00:00 UTC
+        EU_AI_ACT_SECS.saturating_sub(now_secs) / 86_400
+    };
+
+    let (icon, color) = if days_remaining <= 30 {
+        ("🔴", t.zone_red)
+    } else if days_remaining <= 90 {
+        ("🟡", t.zone_yellow)
+    } else {
+        ("⚠", t.accent)
+    };
+
+    let lines = vec![
+        Line::from(vec![
+            Span::styled(
+                format!(" {icon} {days_remaining}d "),
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("EU AI Act", Style::default().fg(t.muted)),
+        ]),
+    ];
+
+    let p = Paragraph::new(lines).block(
+        Block::default()
+            .title(" Deadlines ")
+            .title_style(Style::default().fg(t.muted))
             .borders(Borders::TOP)
             .border_style(Style::default().fg(t.border)),
     );

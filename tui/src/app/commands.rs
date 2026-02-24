@@ -147,6 +147,11 @@ impl App {
                     concat!(
                         "Commands:\n",
                         "  /scan          — Scan project for compliance\n",
+                        "  /status        — Show compliance status summary\n",
+                        "  /fix           — Open Fix view\n",
+                        "  /fix --dry-run — Preview fixes without applying\n",
+                        "  /explain       — Explain top compliance finding\n",
+                        "  /report        — Open Report view\n",
                         "  /edit <path>   — Open file in viewer\n",
                         "  /run <cmd>     — Run shell command\n",
                         "  /clear         — Clear terminal output\n",
@@ -157,11 +162,7 @@ impl App {
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
-                        "  /fix           — Open Fix view\n",
-                        "  /fix --dry-run — Preview fixes without applying\n",
                         "  /whatif <text> — What-if scenario analysis\n",
-                        "  /provider      — Configure LLM provider\n",
-                        "  /model         — Switch model (also M in Normal mode)\n",
                         "  /welcome       — Show getting started\n",
                         "  /help          — Show this help\n",
                         "\n",
@@ -258,6 +259,66 @@ impl App {
                     ));
                     None
                 }
+            }
+            Some("status") => {
+                if let Some(scan) = &self.last_scan {
+                    let total = scan.score.total_score;
+                    let passed = scan.score.passed_checks;
+                    let failed = scan.score.failed_checks;
+                    let zone = match scan.score.zone {
+                        crate::types::Zone::Green => "Green ✓",
+                        crate::types::Zone::Yellow => "Yellow ⚠",
+                        crate::types::Zone::Red => "Red ✗",
+                    };
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        format!(
+                            "Compliance Status: {total:.0}/100 [{zone}] — {passed} passed, {failed} failed\nRun /fix to apply auto-fixes or /report for full report."
+                        ),
+                    ));
+                } else {
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        "No scan data. Run /scan first.".to_string(),
+                    ));
+                }
+                None
+            }
+            Some("explain") => {
+                if let Some(scan) = &self.last_scan {
+                    if let Some(finding) = scan.findings.iter()
+                        .find(|f| matches!(f.severity, crate::types::Severity::High | crate::types::Severity::Critical))
+                        .or_else(|| scan.findings.first())
+                    {
+                        self.messages.push(ChatMessage::new(
+                            MessageRole::System,
+                            format!(
+                                "Finding: {} [{}]\nSeverity: {:?}\nMessage: {}\nAsk me to /fix this or explain further.",
+                                finding.check_id, finding.obligation_id.as_deref().unwrap_or("-"),
+                                finding.severity, finding.message
+                            ),
+                        ));
+                    } else {
+                        self.messages.push(ChatMessage::new(
+                            MessageRole::System,
+                            "No findings to explain. Run /scan first.".to_string(),
+                        ));
+                    }
+                } else {
+                    self.messages.push(ChatMessage::new(
+                        MessageRole::System,
+                        "No scan data. Run /scan first.".to_string(),
+                    ));
+                }
+                None
+            }
+            Some("report") => {
+                self.view_state = ViewState::Report;
+                self.messages.push(ChatMessage::new(
+                    MessageRole::System,
+                    "Switched to Report view. Use /export to generate a file.".to_string(),
+                ));
+                None
             }
             Some("export") => {
                 if self.last_scan.is_some() {
@@ -369,6 +430,60 @@ impl App {
                     None
                 }
             }
+            Some("status") | Some("st") => {
+                if let Some(scan) = &self.last_scan {
+                    let total = scan.score.total_score;
+                    let passed = scan.score.passed_checks;
+                    let failed = scan.score.failed_checks;
+                    let zone = match scan.score.zone {
+                        crate::types::Zone::Green => "Green ✓",
+                        crate::types::Zone::Yellow => "Yellow ⚠",
+                        crate::types::Zone::Red => "Red ✗",
+                    };
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Info,
+                        format!("Score: {total:.0}/100 [{zone}] — {passed}✓ {failed}✗"),
+                    );
+                } else {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Warning,
+                        "No scan data — run :scan first",
+                    );
+                }
+                None
+            }
+            Some("explain") | Some("ex") => {
+                if let Some(scan) = &self.last_scan {
+                    if let Some(finding) = scan.findings.iter()
+                        .find(|f| matches!(f.severity, crate::types::Severity::High | crate::types::Severity::Critical))
+                        .or_else(|| scan.findings.first())
+                    {
+                        self.toasts.push(
+                            crate::components::toast::ToastKind::Info,
+                            format!("{}: {}", finding.check_id, finding.message),
+                        );
+                    } else {
+                        self.toasts.push(
+                            crate::components::toast::ToastKind::Info,
+                            "No findings — project looks compliant!",
+                        );
+                    }
+                } else {
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Warning,
+                        "No scan data — run :scan first",
+                    );
+                }
+                None
+            }
+            Some("report") | Some("r") => {
+                self.view_state = ViewState::Report;
+                self.toasts.push(
+                    crate::components::toast::ToastKind::Info,
+                    "Report view opened",
+                );
+                None
+            }
             Some("watch") | Some("w") => Some(AppCommand::ToggleWatch),
             Some("quit") | Some("q") => {
                 self.running = false;
@@ -447,5 +562,51 @@ impl App {
                 None
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::app::App;
+    use crate::config::TuiConfig;
+    use crate::types::ViewState;
+
+    fn make_app() -> App {
+        crate::theme::init_theme("dark");
+        App::new(TuiConfig::default())
+    }
+
+    // US-S0204: named tests — slash commands
+
+    /// `/status` with no scan shows a prompt to run /scan.
+    #[test]
+    fn test_slash_status_no_scan() {
+        let mut app = make_app();
+        let cmd = app.handle_command("status");
+        assert!(cmd.is_none());
+        let last = app.messages.last().expect("message pushed");
+        assert!(last.content.contains("/scan") || last.content.contains("No scan"),
+            "status without scan should prompt for /scan");
+    }
+
+    /// `/explain` with no scan pushes an informative message.
+    #[test]
+    fn test_slash_explain_no_scan() {
+        let mut app = make_app();
+        let cmd = app.handle_command("explain");
+        assert!(cmd.is_none());
+        let last = app.messages.last().expect("message pushed");
+        assert!(last.content.contains("scan") || last.content.contains("No scan"),
+            "explain without scan should ask for scan first");
+    }
+
+    /// `/report` switches view to Report.
+    #[test]
+    fn test_slash_report_switches_view() {
+        let mut app = make_app();
+        let cmd = app.handle_command("report");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Report,
+            "/report should switch to Report view");
     }
 }
