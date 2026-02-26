@@ -136,6 +136,144 @@ message = anthropic.messages.create(model="claude-3")
   });
 });
 
+  it('detects data governance patterns', () => {
+    const ctx = createCtx([
+      createFile('src/data/validator.ts', `
+export class DataValidator {
+  validateData(input: unknown) { return true; }
+  checkDataLineage(record: Record<string, unknown>) { return record; }
+}
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const dataGov = results.filter((r) => r.category === 'data-governance');
+    expect(dataGov.some((r) => r.status === 'FOUND')).toBe(true);
+  });
+
+  it('detects record-keeping patterns', () => {
+    const ctx = createCtx([
+      createFile('src/audit/trail.ts', `
+export class AuditTrail {
+  persistAudit(entry: unknown) {}
+  complianceRecord(data: unknown) {}
+}
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const records = results.filter((r) => r.category === 'record-keeping');
+    expect(records.some((r) => r.status === 'FOUND')).toBe(true);
+  });
+
+  it('detects accuracy/robustness patterns', () => {
+    const ctx = createCtx([
+      createFile('src/test/model-validation.ts', `
+export function modelValidation(model: unknown) { return true; }
+export function adversarialTest(input: unknown) { return input; }
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const accuracy = results.filter((r) => r.category === 'accuracy-robustness');
+    expect(accuracy.some((r) => r.status === 'FOUND')).toBe(true);
+  });
+
+  it('detects cybersecurity patterns', () => {
+    const ctx = createCtx([
+      createFile('src/middleware/security.ts', `
+export const rateLimiter = new RateLimiter({ max: 100 });
+export function sanitizeInput(text: string) { return text.replace(/[<>]/g, ''); }
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const cyber = results.filter((r) => r.category === 'cybersecurity');
+    expect(cyber.some((r) => r.status === 'FOUND')).toBe(true);
+  });
+
+  it('detects deployer monitoring patterns', () => {
+    const ctx = createCtx([
+      createFile('src/monitoring/drift.ts', `
+export class ModelMonitor {
+  driftDetect(current: number[], baseline: number[]) {}
+  reportIncident(details: unknown) {}
+}
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const monitoring = results.filter((r) => r.category === 'deployer-monitoring');
+    expect(monitoring.some((r) => r.status === 'FOUND')).toBe(true);
+  });
+
+  it('detects GPAI transparency patterns', () => {
+    const ctx = createCtx([
+      createFile('src/docs/model-card.ts', `
+export const modelCard = { name: 'gpt-4', capabilities: [], limitations: [] };
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const gpai = results.filter((r) => r.category === 'gpai-transparency');
+    expect(gpai.some((r) => r.status === 'FOUND')).toBe(true);
+  });
+
+  it('detects security risk: unsafe eval', () => {
+    const ctx = createCtx([
+      createFile('src/handler.ts', `
+function handleRequest(req: any) {
+  return eval(req.body.code);
+}
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const securityRisks = results.filter((r) => r.category === 'security-risk' && r.status === 'FOUND');
+    expect(securityRisks.length).toBeGreaterThan(0);
+    expect(securityRisks[0].patternType).toBe('negative');
+  });
+
+  it('detects security risk: pickle.load', () => {
+    const ctx = createCtx([
+      createFile('src/loader.py', `
+import pickle
+data = pickle.load(open('model.pkl', 'rb'))
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const pickle = results.filter((r) => r.matchedPattern.includes('pickle'));
+    expect(pickle.length).toBeGreaterThan(0);
+  });
+
+  it('reports missing new positive categories when AI SDK detected', () => {
+    const ctx = createCtx([
+      createFile('src/app.ts', 'const x = 1;'),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const missingCategories = results
+      .filter((r) => r.patternType === 'positive' && r.status === 'NOT_FOUND')
+      .map((r) => r.category);
+
+    expect(missingCategories).toContain('data-governance');
+    expect(missingCategories).toContain('record-keeping');
+    expect(missingCategories).toContain('deployer-monitoring');
+  });
+
+  it('detects conformity assessment patterns', () => {
+    const ctx = createCtx([
+      createFile('src/compliance/declaration.ts', `
+export const conformityDeclaration = { system: 'AI', standard: 'EU AI Act' };
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+    const conformity = results.filter((r) => r.category === 'conformity-assessment');
+    expect(conformity.some((r) => r.status === 'FOUND')).toBe(true);
+  });
+
 describe('layer4ToCheckResults', () => {
   it('converts negative FOUND to fail warning', () => {
     const checkResults = layer4ToCheckResults([{

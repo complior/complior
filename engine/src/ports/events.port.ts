@@ -1,8 +1,10 @@
 import type { ScanResult, GateResult, ScoreZone } from '../types/common.types.js';
+import type { DriftResult } from '../domain/scanner/drift.js';
 
 export interface EventMap {
   readonly 'scan.completed': { readonly result: ScanResult };
   readonly 'scan.started': { readonly projectPath: string };
+  readonly 'scan.drift': { readonly drift: DriftResult };
   readonly 'file.changed': { readonly path: string; readonly action: 'create' | 'edit' | 'delete' };
   readonly 'score.updated': { readonly before: number; readonly after: number };
   readonly 'gate.checked': { readonly result: GateResult };

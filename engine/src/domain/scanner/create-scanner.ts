@@ -6,6 +6,10 @@ import { L1_CHECKS } from './layers/layer1-files.js';
 import { runLayer2, layer2ToCheckResults } from './layers/layer2-docs.js';
 import { runLayer3, layer3ToCheckResults } from './layers/layer3-config.js';
 import { runLayer4, layer4ToCheckResults } from './layers/layer4-patterns.js';
+import type { Layer5Analyzer } from './layers/layer5-llm.js';
+import { runCrossLayerChecks, crossLayerToCheckResults } from './cross-layer.js';
+import { createEvidence, createEvidenceCollector } from './evidence.js';
+import { createRegulationVersion } from './regulation-version.js';
 import {
   l1Confidence,
   l2Confidence,
@@ -77,14 +81,16 @@ const createFallbackScore = (findings: readonly Finding[]) => {
 
 export interface Scanner {
   readonly scan: (ctx: ScanContext) => ScanResult;
+  readonly scanDeep?: (ctx: ScanContext, fileContents: ReadonlyMap<string, string>) => Promise<ScanResult>;
 }
 
-export const createScanner = (scoringData?: ScoringData): Scanner => {
+export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer): Scanner => {
   const scan = (ctx: ScanContext): ScanResult => {
     const startTime = Date.now();
 
     const allResults: CheckResult[] = [];
     const allConfidence: CheckWithConfidence[] = [];
+    const evidenceCollector = createEvidenceCollector();
 
     // L1: File presence checks
     for (const check of L1_CHECKS) {
@@ -96,6 +102,9 @@ export const createScanner = (scoringData?: ScoringData): Scanner => {
             ...l1Confidence(result.type === 'pass'),
             obligationId: result.type === 'fail' ? result.obligationId : undefined,
           });
+          evidenceCollector.add(createEvidence(result.checkId, 'L1', 'file-presence', {
+            snippet: result.type === 'pass' ? `File check passed: ${result.message}` : undefined,
+          }));
         }
       }
     }
@@ -109,6 +118,9 @@ export const createScanner = (scoringData?: ScoringData): Scanner => {
         ...l2Confidence(l2r.status),
         obligationId: l2r.obligationId,
       });
+      evidenceCollector.add(createEvidence(`l2-${l2r.document}`, 'L2', 'heading-match', {
+        snippet: `Status: ${l2r.status}, matched ${l2r.matchedRequired}/${l2r.totalRequired} sections`,
+      }));
     }
 
     // L3: Config & dependency scanning
@@ -120,6 +132,10 @@ export const createScanner = (scoringData?: ScoringData): Scanner => {
         ...l3Confidence(l3r.status),
         obligationId: l3r.obligationId,
       });
+      evidenceCollector.add(createEvidence(`l3-${l3r.type}`, 'L3', 'dependency', {
+        snippet: l3r.message,
+        file: l3r.file,
+      }));
     }
 
     // L4: Pattern matching
@@ -131,9 +147,25 @@ export const createScanner = (scoringData?: ScoringData): Scanner => {
         ...l4Confidence(l4r.patternType, l4r.status),
         obligationId: l4r.obligationId,
       });
+      evidenceCollector.add(createEvidence(`l4-${l4r.category}`, 'L4', 'pattern-match', {
+        snippet: `${l4r.patternType} pattern "${l4r.matchedPattern}" ${l4r.status}`,
+        file: l4r.file,
+        line: l4r.line,
+      }));
     }
 
-    // Build findings with confidence attached
+    // Cross-layer verification
+    const l1Checks = allResults.slice(0, allResults.length - l2Checks.length - l3Checks.length - l4Checks.length);
+    const crossLayerFindings = runCrossLayerChecks(l1Checks, l2Results, l3Results, l4Results);
+    const crossLayerCheckResults = crossLayerToCheckResults(crossLayerFindings);
+    allResults.push(...crossLayerCheckResults);
+    for (const clf of crossLayerFindings) {
+      evidenceCollector.add(createEvidence(clf.ruleId, 'cross-layer', 'cross-layer', {
+        snippet: clf.description,
+      }));
+    }
+
+    // Build findings with confidence and evidence attached
     const findings: Finding[] = [];
     let confidenceIdx = 0;
     for (let i = 0; i < allResults.length; i++) {
@@ -142,7 +174,9 @@ export const createScanner = (scoringData?: ScoringData): Scanner => {
         findings.push(toFinding(result));
       } else {
         const conf = confidenceIdx < allConfidence.length ? allConfidence[confidenceIdx] : undefined;
-        findings.push(toFinding(result, conf));
+        const evidence = evidenceCollector.getByFinding(result.checkId);
+        const finding = toFinding(result, conf);
+        findings.push(evidence.length > 0 ? { ...finding, evidence } : finding);
         confidenceIdx++;
       }
     }
@@ -163,10 +197,48 @@ export const createScanner = (scoringData?: ScoringData): Scanner => {
       scannedAt: new Date().toISOString(),
       duration,
       filesScanned: ctx.files.length,
+      regulationVersion: createRegulationVersion(allResults.length),
     };
   };
 
-  return Object.freeze({ scan });
+  const scanDeep = layer5 !== undefined
+    ? async (ctx: ScanContext, fileContents: ReadonlyMap<string, string>): Promise<ScanResult> => {
+      // Run L1-L4 synchronously first
+      const baseResult = scan(ctx);
+
+      // Pass uncertain findings to L5 for deeper analysis
+      const l5Results = await layer5.analyzeFindings(baseResult.findings, fileContents);
+
+      if (l5Results.length === 0) return baseResult;
+
+      // Merge L5 results back into findings
+      const enhancedFindings = layer5.applyResults(baseResult.findings, l5Results);
+
+      // Recalculate score with enhanced findings
+      const enhancedCheckResults: CheckResult[] = enhancedFindings.map((f): CheckResult => {
+        if (f.type === 'pass') return { type: 'pass', checkId: f.checkId, message: f.message };
+        if (f.type === 'fail') return {
+          type: 'fail', checkId: f.checkId, message: f.message,
+          severity: f.severity, obligationId: f.obligationId, articleReference: f.articleReference, fix: f.fix,
+        };
+        return { type: 'skip', checkId: f.checkId, reason: f.message };
+      });
+
+      const score = scoringData !== undefined
+        ? calculateScore(enhancedCheckResults, scoringData)
+        : createFallbackScore(enhancedFindings);
+
+      return {
+        ...baseResult,
+        score: { ...score, confidenceSummary: baseResult.score.confidenceSummary },
+        findings: enhancedFindings,
+        deepAnalysis: true,
+        l5Cost: layer5.getTotalCost(l5Results),
+      } as ScanResult;
+    }
+    : undefined;
+
+  return Object.freeze({ scan, scanDeep });
 };
 
 // Re-export types for backward compatibility

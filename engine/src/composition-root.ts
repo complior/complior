@@ -10,6 +10,7 @@ import { createEventBus } from './infra/event-bus.js';
 import { createLogger } from './infra/logger.js';
 import { createLlmAdapter } from './infra/llm-adapter.js';
 import { createScanner } from './domain/scanner/create-scanner.js';
+import { createLayer5 } from './domain/scanner/layers/layer5-llm.js';
 import { collectFiles } from './domain/scanner/file-collector.js';
 import { createFixer } from './domain/fixer/create-fixer.js';
 import { createScanService } from './services/scan-service.js';
@@ -72,7 +73,30 @@ export const loadApplication = async (): Promise<Application> => {
   const llm = createLlmAdapter();
 
   // 4. Create domain
-  const scanner = createScanner(regulationData.scoring?.scoring);
+  const layer5 = createLayer5({
+    callLlm: async (prompt: string) => {
+      // Use Vercel AI SDK's generateText with routed model
+      try {
+        const { generateText } = await import('ai');
+        const routing = llm.routeModel('classify');
+        const model = await llm.getModel(routing.provider, routing.modelId);
+        const result = await generateText({ model, prompt });
+        return {
+          text: result.text,
+          inputTokens: result.usage?.promptTokens ?? 0,
+          outputTokens: result.usage?.completionTokens ?? 0,
+        };
+      } catch {
+        return { text: '{"verdict":"uncertain","confidence":50,"reasoning":"LLM unavailable","evidence":[]}', inputTokens: 0, outputTokens: 0 };
+      }
+    },
+    readFile: async (path: string) => {
+      return readFile(path, 'utf-8');
+    },
+    calculateCost: (_model: string, inputTokens: number, outputTokens: number) =>
+      (inputTokens * 0.003 + outputTokens * 0.015) / 1000,
+  });
+  const scanner = createScanner(regulationData.scoring?.scoring, layer5);
 
   const fixer = createFixer({
     getFramework: () => {
