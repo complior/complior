@@ -89,8 +89,6 @@ pub struct App {
 
     // Provider config (stub — model selection removed in wrapper mode)
     pub provider_config: ProviderConfig,
-    #[allow(dead_code)]
-    pub model_selector_index: usize,
 
     // View-specific state
     pub scan_view: ScanViewState,
@@ -121,9 +119,6 @@ pub struct App {
     pub code_search_query: Option<String>,
     pub code_search_matches: Vec<usize>,
     pub code_search_current: usize,
-
-    // Diff overlay (Selection→AI result)
-    pub diff_overlay: Option<crate::components::diff_overlay::DiffOverlayState>,
 
     // T07: Toast notifications
     pub toasts: crate::components::toast::ToastStack,
@@ -286,7 +281,6 @@ impl App {
             overlay_filter: String::new(),
             palette_index: 0,
             provider_config: crate::providers::load_provider_config(),
-            model_selector_index: 0,
             scan_view: ScanViewState::default(),
             fix_view: FixViewState::default(),
             timeline_view: TimelineViewState::default(),
@@ -301,7 +295,6 @@ impl App {
             code_search_query: None,
             code_search_matches: Vec::new(),
             code_search_current: 0,
-            diff_overlay: None,
             toasts: crate::components::toast::ToastStack::new(),
             confirm_dialog: None,
             zoom: crate::components::zoom::ZoomState::new(),

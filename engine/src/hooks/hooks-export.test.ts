@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import type { ScanResult, Finding, ScoreBreakdown } from '../types/common.types.js';
 import { installHooks } from './installer.js';
 import { toGithubIssue } from '../output/github-issue.js';
-import { toJiraCsv } from '../output/jira-csv.js';
+
 
 // --- Helpers ---
 
@@ -79,17 +79,3 @@ describe('toGithubIssue', () => {
   });
 });
 
-// --- Jira CSV export ---
-
-describe('toJiraCsv', () => {
-  it('produces valid CSV', () => {
-    const csv = toJiraCsv(makeResult());
-    expect(csv).toContain('Summary,Description,Priority,Labels,Component');
-    expect(csv).toContain('ai-disclosure');
-    expect(csv).toContain('High');
-    expect(csv).toContain('Medium');
-    // 2 findings: count [Compliance] prefixes in summary column
-    const matches = csv.match(/\[Compliance\]/g);
-    expect(matches).toHaveLength(2);
-  });
-});
