@@ -319,3 +319,72 @@ STEP 7: DEFAULT
 | Art. 6(3) exception applied | 75% |
 | Context modifier changed level | 75% |
 | Default (no rules matched) | 60% |
+
+---
+
+## 11. Compliance Scoring Methodology v3 — Hybrid Observable Score
+
+### Philosophy
+
+**"Score only what you can observe."**
+
+Scoring Engine v2 penalized tools for obligations that are fundamentally unverifiable externally (e.g., risk management systems, human oversight procedures, FRIA documentation, record-keeping). Since evidence-analyzer covers ~12 obligations out of ~108 applicable, the remaining ~70% of weight defaulted to `unknown = 15/100`, producing meaninglessly low scores (87% of tools = grade F).
+
+v3 introduces a **Hybrid Observable Score** — 3 complementary metrics instead of 1 inflated/deflated number.
+
+### Three Metrics
+
+| Metric | Range | What It Measures |
+|--------|-------|------------------|
+| **Compliance Score** | 0–100 (or `null`) | Weighted score across **assessed obligations only** — unknowns excluded from denominator |
+| **Coverage** | 0–100% | `assessed / total_applicable × 100` — how much of the compliance surface was actually evaluated |
+| **Transparency Grade** | A–F | Provider's observable transparency signals (9 indicators, max 100 points → letter grade) |
+
+### Transparency Grade Signals
+
+| # | Signal | Points | Source |
+|---|--------|--------|--------|
+| 1 | AI disclosure visible on website | 15 | passive_scan.disclosure |
+| 2 | Privacy policy mentions AI + EU | 10 | passive_scan.privacy_policy |
+| 3 | Model card with ≥3/4 sections | 15 | passive_scan.model_card |
+| 4 | Responsible AI page | 10 | passive_scan.trust |
+| 5 | EU AI Act dedicated page | 15 | passive_scan.trust |
+| 6 | Published transparency report | 10 | passive_scan.web_search |
+| 7 | C2PA / watermark on content | 10 | passive_scan.content_marking |
+| 8 | Public bias audit | 10 | passive_scan.web_search |
+| 9 | ISO 42001 certification | 5 | passive_scan.trust |
+| | **Maximum** | **100** | |
+
+### Externally Verifiable Obligations
+
+| Category | Example Obligations | Verifiable? | Method |
+|----------|-------------------|-------------|--------|
+| Transparency (Art. 50) | OBL-015, OBL-016, OBL-018 | Yes | Passive scan, LLM tests, media tests |
+| AI Literacy (Art. 4) | OBL-001 | Partial | Responsible AI page presence |
+| Data Governance (Art. 10) | OBL-003, OBL-004 | Partial | Privacy policy analysis |
+| Safety (Art. 9) | OBL-002a | Partial | LLM safety tests |
+| GPAI Documentation (Art. 53) | OBL-022–022c | Yes (for GPAI) | Model card analysis |
+| Risk Management (Art. 9) | OBL-005–008 | **No** | Internal process |
+| Human Oversight (Art. 14) | OBL-009–012 | **No** | Internal process |
+| Record Keeping (Art. 12) | OBL-013–014 | **No** | Internal process |
+| FRIA (Art. 27) | OBL-019–021 | **No** | Internal document |
+| Monitoring (Art. 72) | OBL-023–025 | **No** | Internal process |
+
+### Insufficient Data Gate
+
+When `assessed === 0` (zero obligations have a known status), the scorer returns:
+- `score: null` (not 0, not 15)
+- `reason: 'insufficient_data'`
+- `coverage: 0`
+- `transparencyScore` and `transparencyGrade` are still computed (always available)
+
+### Key Differences from v2
+
+| Aspect | v2 | v3 |
+|--------|----|----|
+| Unknown obligations | Scored as 15/100, included in denominator | Excluded from score denominator |
+| All-unknown tools | Cap at 15, `allUnknown` penalty | `score: null`, `reason: 'insufficient_data'` |
+| Score meaning | "How compliant overall (with heavy guessing)" | "How compliant on assessed obligations only" |
+| Coverage | Not tracked | Explicit 0–100% metric |
+| Transparency | Bonuses only (+3, +2, etc.) | Dedicated grade (A–F) with 9 signals |
+| Algorithm label | `deterministic-v2` | `deterministic-v3` |
