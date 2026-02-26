@@ -1030,7 +1030,14 @@ async fn execute_command(
                             types::MessageRole::System,
                             format!("Agent '{}' launched (session #{session_id}).", config.display_name),
                         ));
+                        app.focused_agent = Some(session_id);
                         app.view_state = types::ViewState::AgentGrid;
+                        app.pty_passthrough = true;
+                        app.last_pty_esc = None;
+                        app.toasts.push(
+                            crate::components::toast::ToastKind::Info,
+                            "PTY passthrough — typing goes to agent  ·  Esc Esc to exit",
+                        );
                     }
                     Err(e) => {
                         app.messages.push(types::ChatMessage::new(

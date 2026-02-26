@@ -300,8 +300,8 @@ impl ViewState {
             'S' => Some(Self::Scan),
             'F' => Some(Self::Fix),
             'C' => Some(Self::Chat),
+            'L' => Some(Self::Timeline),
             'R' => Some(Self::Report),
-            // 'T' is reserved for ThemePicker; Timeline accessible via 5 / :view 5
             _ => None,
         }
     }
@@ -326,7 +326,7 @@ impl ViewState {
             Self::Dashboard => "Dashboard",
             Self::Scan => "Scan",
             Self::Fix => "Fix",
-            Self::Chat => "Chat",
+            Self::Chat => "Log",
             Self::Timeline => "Timeline",
             Self::Report => "Report",
             Self::AgentGrid => "Agents",
@@ -341,7 +341,7 @@ impl ViewState {
             Self::Scan => "S",
             Self::Fix => "F",
             Self::Chat => "C",
-            Self::Timeline => "5",
+            Self::Timeline => "L",
             Self::Report => "R",
             Self::AgentGrid => "A",
             Self::Orchestrator => "O",

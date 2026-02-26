@@ -68,20 +68,26 @@ pub fn render_agent_grid(frame: &mut Frame, area: Rect, app: &App) {
             if i > 0 {
                 spans.push(Span::styled("  ", Style::default()));
             }
+            let is_focused = app.focused_agent == Some(handle.id());
             let state_dot = match handle.state() {
                 AgentState::Starting => Span::styled("◌", Style::default().fg(t.zone_yellow)),
                 AgentState::Ready    => Span::styled("●", Style::default().fg(t.zone_green)),
                 AgentState::Working  => Span::styled("◉", Style::default().fg(t.accent)),
                 AgentState::Dead     => Span::styled("✕", Style::default().fg(t.zone_red)),
             };
-            spans.push(Span::styled(
-                format!("[{}] ", i + 1),
-                Style::default().fg(t.muted),
-            ));
-            spans.push(Span::styled(
-                handle.display_name().to_string(),
-                Style::default().fg(t.fg).add_modifier(Modifier::BOLD),
-            ));
+            let (num_style, name_style) = if is_focused {
+                (
+                    Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+                    Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+                )
+            } else {
+                (
+                    Style::default().fg(t.muted),
+                    Style::default().fg(t.fg),
+                )
+            };
+            spans.push(Span::styled(format!("[{}] ", i + 1), num_style));
+            spans.push(Span::styled(handle.display_name().to_string(), name_style));
             spans.push(Span::raw(" "));
             spans.push(state_dot);
         }
