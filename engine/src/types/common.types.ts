@@ -40,6 +40,16 @@ export type CheckResult = Readonly<
 
 // --- Findings ---
 
+export interface Evidence {
+  readonly findingId: string;
+  readonly layer: string;
+  readonly timestamp: string;
+  readonly source: string;
+  readonly snippet?: string;
+  readonly file?: string;
+  readonly line?: number;
+}
+
 export interface Finding {
   readonly checkId: string;
   readonly type: CheckResultType;
@@ -53,6 +63,7 @@ export interface Finding {
   readonly priority?: number;
   readonly confidence?: number;
   readonly confidenceLevel?: string;
+  readonly evidence?: readonly Evidence[];
 }
 
 // --- Score ---
@@ -96,6 +107,14 @@ export interface ScoreDiff {
 
 // --- Scan ---
 
+export interface RegulationVersion {
+  readonly regulation: string;
+  readonly version: string;
+  readonly rulesVersion: string;
+  readonly checkCount: number;
+  readonly lastUpdated: string;
+}
+
 export interface ScanResult {
   readonly score: ScoreBreakdown;
   readonly findings: readonly Finding[];
@@ -103,6 +122,9 @@ export interface ScanResult {
   readonly scannedAt: string;
   readonly duration: number;
   readonly filesScanned: number;
+  readonly deepAnalysis?: boolean;
+  readonly l5Cost?: number;
+  readonly regulationVersion?: RegulationVersion;
 }
 
 // --- Project Profile ---

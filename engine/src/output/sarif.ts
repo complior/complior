@@ -80,6 +80,23 @@ export const toSarif = (result: ScanResult, version: string): SarifLog => {
           },
         }],
       } : {}),
+      ...(f.evidence && f.evidence.length > 0 ? {
+        codeFlows: [{
+          threadFlows: [{
+            locations: f.evidence
+              .filter((e): e is typeof e & { file: string } => typeof e.file === 'string')
+              .map((e) => ({
+                location: {
+                  physicalLocation: {
+                    artifactLocation: { uri: e.file },
+                    ...(e.line ? { region: { startLine: e.line } } : {}),
+                  },
+                  message: { text: e.snippet ?? `${e.source} evidence from ${e.layer}` },
+                },
+              })),
+          }],
+        }],
+      } : {}),
     };
     return sarifResult;
   });

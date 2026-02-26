@@ -23,5 +23,28 @@ export const createScanRoute = (scanService: ScanService) => {
     return c.json(result);
   });
 
+  app.post('/scan/deep', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = ScanRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await scanService.scanDeep(parsed.data.path);
+    return c.json(result);
+  });
+
+  app.get('/sbom', async (c) => {
+    const path = c.req.query('path');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+
+    const sbom = await scanService.getSbom(path);
+    return c.json(sbom);
+  });
+
   return app;
 };

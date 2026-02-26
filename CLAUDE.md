@@ -7,10 +7,10 @@ Complior v6 = "tmux для AI compliance". Запускает ЛЮБОГО codin
 ## Project Structure
 
 - **Rust TUI**: `tui/` — Ratatui binary, wrapper host, PTY manager, UI rendering, themes
-- **TypeScript Engine**: `engine/` — scanner, fixer, LLM, memory, databases, discovery, runtime middleware, MCP
+- **TypeScript Engine**: `engine/` — Clean Architecture: ports, domain, services, infra, http, data, llm, memory, mcp
+- **Packages**: `packages/sdk/` (@complior/sdk), `packages/npm/` (npm wrapper). Shared types codegen planned, not yet implemented
 - **Public docs**: `docs/` — Phase 0 architecture, backlog, sprint specs
 - **Internal docs**: `.dev/` (gitignored) — legacy v1 docs, agent definitions, ADRs
-- **Shared types**: `shared/` — TypeScript interfaces ↔ Rust structs (codegen)
 
 ## Architecture Rules
 
@@ -18,7 +18,7 @@ Complior v6 = "tmux для AI compliance". Запускает ЛЮБОГО codin
 2. **Deterministic core, AI interface** — LLM NEVER makes compliance determinations. All 19 checks are deterministic (AST + rules). LLM helps understand and fix.
 3. **Compliance Gate** — every file change → background rescan (200ms) → score update → toast notification
 4. **Wrapper principle** — Complior does NOT write code. It wraps coding agents and monitors compliance. Auto-fixes are delegated to the guest agent.
-5. **DataProvider port** — LocalJSON (offline ~530KB) ↔ SaaSAPI (online 2,477+ tools) ↔ Hybrid (auto-fallback)
+5. **DataProvider port** — Engine retains regulation JSON locally (`engine/src/data/`). AI Registry data from PROJECT API (5,011+ tools online). TUI: EngineDataProvider (online) ↔ MockDataProvider (12 demo, offline fallback)
 
 ## Coding Standards
 
@@ -40,7 +40,7 @@ Complior v6 = "tmux для AI compliance". Запускает ЛЮБОГО codin
 - `docs/PRODUCT-VISION.md` — wrapper-orchestrator vision
 - `docs/PRODUCT-BACKLOG.md` — 134 features, 10 sprints
 - `docs/UNIFIED-ARCHITECTURE.md` — how open-source + SaaS work together
-- `docs/DATA-FLOWS.md` — 10 data flow diagrams
+- `docs/DATA-FLOWS.md` — 11 data flow diagrams
 
 ## Important Context
 

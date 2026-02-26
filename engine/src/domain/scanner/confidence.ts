@@ -2,7 +2,7 @@
 
 export type ConfidenceLevel = 'PASS' | 'LIKELY_PASS' | 'UNCERTAIN' | 'LIKELY_FAIL' | 'FAIL';
 
-export type ScannerLayer = 'L1' | 'L2' | 'L3' | 'L4';
+export type ScannerLayer = 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 
 export interface CheckWithConfidence {
   readonly layer: ScannerLayer;
@@ -18,6 +18,7 @@ const LAYER_WEIGHTS: Readonly<Record<ScannerLayer, number>> = {
   L2: 0.95,
   L3: 0.85,
   L4: 0.7,
+  L5: 0.9,
 };
 
 // --- Confidence Level Determination ---
@@ -45,12 +46,14 @@ export const l1Confidence = (found: boolean): CheckWithConfidence => ({
 });
 
 // L2: Document structure (deterministic, high confidence)
-export const l2Confidence = (status: 'VALID' | 'PARTIAL' | 'EMPTY'): CheckWithConfidence => {
+export const l2Confidence = (status: 'VALID' | 'PARTIAL' | 'SHALLOW' | 'EMPTY'): CheckWithConfidence => {
   switch (status) {
     case 'VALID':
       return { layer: 'L2', confidence: 95, level: 'PASS' };
     case 'PARTIAL':
       return { layer: 'L2', confidence: 75, level: 'LIKELY_PASS' };
+    case 'SHALLOW':
+      return { layer: 'L2', confidence: 65, level: 'UNCERTAIN' };
     case 'EMPTY':
       return { layer: 'L2', confidence: 95, level: 'FAIL' };
   }

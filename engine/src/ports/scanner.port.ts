@@ -16,6 +16,7 @@ export type CheckFunction = (ctx: ScanContext) => readonly CheckResult[];
 
 export interface ScannerPort {
   readonly scan: (ctx: ScanContext) => ScanResult;
+  readonly scanDeep?: (ctx: ScanContext, fileContents: ReadonlyMap<string, string>) => Promise<ScanResult>;
 }
 
 export interface FileCollectorPort {

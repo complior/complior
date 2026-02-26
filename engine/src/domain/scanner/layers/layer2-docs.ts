@@ -19,7 +19,16 @@ export interface DocumentValidator {
   readonly required_sections: readonly ValidatorSection[];
 }
 
-export type L2Status = 'VALID' | 'PARTIAL' | 'EMPTY';
+export type L2Status = 'VALID' | 'PARTIAL' | 'SHALLOW' | 'EMPTY';
+
+export interface SectionDepth {
+  readonly wordCount: number;
+  readonly sentenceCount: number;
+  readonly hasLists: boolean;
+  readonly hasTables: boolean;
+  readonly hasSpecifics: boolean;
+  readonly isShallow: boolean;
+}
 
 export interface L2CheckResult {
   readonly obligationId: string;
@@ -30,6 +39,7 @@ export interface L2CheckResult {
   readonly missingSections: readonly string[];
   readonly totalRequired: number;
   readonly matchedRequired: number;
+  readonly shallowSections?: readonly string[];
 }
 
 // --- Heading Parser ---
@@ -51,11 +61,65 @@ const normalize = (text: string): string =>
 const headingMatches = (heading: string, sectionTitle: string): boolean =>
   normalize(heading).includes(normalize(sectionTitle));
 
+// --- Section Depth Analysis ---
+
+const HEADING_SPLIT_REGEX = /^#{1,4}\s+.+$/gm;
+
+const LIST_REGEX = /^[\s]*[-*•]\s+|^\s*\d+\.\s+/m;
+const TABLE_REGEX = /\|.*\|.*\|/;
+const SPECIFICS_REGEX = /\b\d{4}[-/]\d{2}[-/]\d{2}\b|\b\d+%|\b\d+\.\d+\b|€|Art\.\s*\d+/;
+
+const extractSectionContents = (content: string): ReadonlyMap<string, string> => {
+  const sections = new Map<string, string>();
+  const lines = content.split('\n');
+  let currentHeading: string | null = null;
+  let currentContent: string[] = [];
+
+  for (const line of lines) {
+    const headingMatch = /^#{1,4}\s+(.+)$/.exec(line);
+    if (headingMatch) {
+      if (currentHeading !== null) {
+        sections.set(currentHeading, currentContent.join('\n'));
+      }
+      currentHeading = headingMatch[1].trim();
+      currentContent = [];
+    } else if (currentHeading !== null) {
+      currentContent.push(line);
+    }
+  }
+
+  if (currentHeading !== null) {
+    sections.set(currentHeading, currentContent.join('\n'));
+  }
+
+  return sections;
+};
+
+export const measureSectionDepth = (content: string): SectionDepth => {
+  const trimmed = content.trim();
+  const words = trimmed.split(/\s+/).filter((w) => w.length > 0);
+  const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+  const hasLists = LIST_REGEX.test(trimmed);
+  const hasTables = TABLE_REGEX.test(trimmed);
+  const hasSpecifics = SPECIFICS_REGEX.test(trimmed);
+
+  const isShallow = words.length < 50 && !hasLists && !hasTables && !hasSpecifics;
+
+  return {
+    wordCount: words.length,
+    sentenceCount: sentences.length,
+    hasLists,
+    hasTables,
+    hasSpecifics,
+    isShallow,
+  };
+};
+
 // --- Validator Loading ---
 
 let cachedValidators: readonly DocumentValidator[] | null = null;
 
-const VALIDATORS_DIR = new URL('../../../core/scanner/validators/', import.meta.url);
+const VALIDATORS_DIR = new URL('../validators/', import.meta.url);
 
 export const loadValidators = (): readonly DocumentValidator[] => {
   if (cachedValidators !== null) return cachedValidators;
@@ -133,6 +197,41 @@ export const validateDocument = (
     }
   }
 
+  // If all headings present, check content depth for SHALLOW detection
+  if (missing.length === 0 && found.length > 0) {
+    const sectionContents = extractSectionContents(content);
+    const shallowSections: string[] = [];
+
+    for (const sectionTitle of found) {
+      // Find matching heading in extracted contents
+      const matchedHeading = [...sectionContents.keys()].find((h) =>
+        headingMatches(h, sectionTitle),
+      );
+      if (matchedHeading !== undefined) {
+        const sectionContent = sectionContents.get(matchedHeading) ?? '';
+        const depth = measureSectionDepth(sectionContent);
+        if (depth.isShallow) {
+          shallowSections.push(sectionTitle);
+        }
+      }
+    }
+
+    const shallowRatio = found.length > 0 ? shallowSections.length / found.length : 0;
+    const status: L2Status = shallowRatio > 0.5 ? 'SHALLOW' : 'VALID';
+
+    return {
+      obligationId,
+      article: validator.article,
+      document: validator.document,
+      status,
+      foundSections: found,
+      missingSections: missing,
+      totalRequired: requiredSections.length,
+      matchedRequired: found.length,
+      shallowSections: shallowSections.length > 0 ? shallowSections : undefined,
+    };
+  }
+
   const status: L2Status = missing.length === 0
     ? 'VALID'
     : found.length === 0
@@ -174,6 +273,19 @@ export const layer2ToCheckResults = (l2Results: readonly L2CheckResult[]): reado
         type: 'pass',
         checkId: `l2-${r.document}`,
         message: `${r.article}: ${r.document} — all ${r.totalRequired} required sections present`,
+      };
+    }
+
+    if (r.status === 'SHALLOW') {
+      const shallowList = r.shallowSections?.join(', ') ?? 'multiple sections';
+      return {
+        type: 'fail',
+        checkId: `l2-${r.document}`,
+        message: `${r.article}: ${r.document} — headings present but content is shallow in: ${shallowList}`,
+        severity: 'medium',
+        obligationId: r.obligationId,
+        articleReference: r.article,
+        fix: `Expand shallow sections in ${r.document} with details (dates, specifics, lists): ${shallowList}`,
       };
     }
 

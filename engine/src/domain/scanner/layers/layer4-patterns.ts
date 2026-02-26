@@ -102,6 +102,7 @@ export const runLayer4 = (
   if (shouldCheckPositives) {
     const positiveCategories: PatternCategory[] = [
       'disclosure', 'human-oversight', 'kill-switch', 'content-marking', 'logging',
+      'data-governance', 'record-keeping', 'deployer-monitoring',
     ];
 
     for (const category of positiveCategories) {
