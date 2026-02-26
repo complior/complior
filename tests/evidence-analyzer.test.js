@@ -409,6 +409,71 @@ describe('Evidence Analyzer', () => {
     assert.strictEqual(score, 0);
   });
 
+  // ── Provider Obligation Correlation ──────────────────────────────
+
+  it('correlateObligations: inheritable obligations transferred from reference to siblings', () => {
+    const refEnriched = {
+      derivedObligations: {
+        'OBL-002a': { status: 'met', confidence: 0.85, evidence_summary: 'All safety tests passed', signals: ['llm_tests.safety'] },
+        'OBL-003': { status: 'partially_met', confidence: 0.5, evidence_summary: 'Privacy 3/6', signals: ['passive_scan.privacy'] },
+        'OBL-015': { status: 'met', confidence: 0.9, evidence_summary: 'Disclosure visible', signals: ['passive_scan.disclosure'] },
+      },
+      evidenceQuality: 0.6,
+    };
+
+    const siblingEnriched = {
+      derivedObligations: {},
+      evidenceQuality: 0.1,
+    };
+
+    const toolAnalysisMap = {
+      'ref-tool': { enriched: refEnriched, providerName: 'SharedCo' },
+      'sibling-tool': { enriched: siblingEnriched, providerName: 'SharedCo' },
+    };
+
+    const results = analyzer.correlateObligations(toolAnalysisMap);
+    assert.ok(results['sibling-tool'], 'Sibling should receive inherited obligations');
+
+    const inherited = results['sibling-tool'].inheritedObligations;
+    // OBL-002a and OBL-003 are inheritable
+    assert.ok(inherited['OBL-002a'], 'OBL-002a should be inherited');
+    assert.ok(inherited['OBL-003'], 'OBL-003 should be inherited');
+    // OBL-015 is NOT inheritable (tool-specific)
+    assert.ok(!inherited['OBL-015'], 'OBL-015 should NOT be inherited');
+
+    // Confidence should be halved
+    assert.ok(inherited['OBL-002a'].confidence < 0.85, 'Inherited confidence should be reduced');
+    assert.ok(Math.abs(inherited['OBL-002a'].confidence - 0.85 * 0.5) < 0.01, 'Confidence should be × 0.5');
+  });
+
+  it('correlateObligations: does not inherit if sibling already has the obligation', () => {
+    const refEnriched = {
+      derivedObligations: {
+        'OBL-003': { status: 'met', confidence: 0.7, evidence_summary: 'ref met', signals: [] },
+      },
+      evidenceQuality: 0.6,
+    };
+
+    const siblingEnriched = {
+      derivedObligations: {
+        'OBL-003': { status: 'partially_met', confidence: 0.4, evidence_summary: 'own data', signals: [] },
+      },
+      evidenceQuality: 0.2,
+    };
+
+    const toolAnalysisMap = {
+      'ref-tool': { enriched: refEnriched, providerName: 'SharedCo' },
+      'sibling-tool': { enriched: siblingEnriched, providerName: 'SharedCo' },
+    };
+
+    const results = analyzer.correlateObligations(toolAnalysisMap);
+    // Sibling already has OBL-003 with non-unknown status → should NOT be overwritten
+    if (results['sibling-tool']) {
+      assert.ok(!results['sibling-tool'].inheritedObligations['OBL-003'],
+        'OBL-003 should not be inherited when sibling has own data');
+    }
+  });
+
   it('provider correlation: own data NOT overwritten by inherited', () => {
     const tools = [
       makeTool({

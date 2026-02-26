@@ -1,204 +1,204 @@
-# EU AI Act Classification Rules — RuleEngine Specification
+# Правила классификации EU AI Act — Спецификация RuleEngine
 
-> Version 1.0 | Sprint 2 | Source: Regulation (EU) 2024/1689
-> This document codifies the EU AI Act classification rules in a format suitable for programmatic implementation in the RuleEngine domain service.
+> Версия 1.0 | Спринт 2 | Источник: Регламент (ЕС) 2024/1689
+> Данный документ кодифицирует правила классификации EU AI Act в формате, пригодном для программной реализации в доменном сервисе RuleEngine.
 
 ---
 
-## 1. Art. 5 — Prohibited AI Practices (8 Prohibitions)
+## 1. Ст. 5 — Запрещённые практики AI (8 запретов)
 
-All 8 prohibitions apply regardless of the AI system's domain. If any match → `riskLevel: 'prohibited'`.
+Все 8 запретов применяются вне зависимости от домена AI-системы. Если хотя бы один совпадает → `riskLevel: 'prohibited'`.
 
-| Ref | Practice | Trigger Conditions | Exceptions | Detection Keywords |
-|-----|----------|-------------------|------------|-------------------|
-| 5(1)(a) | Subliminal/manipulative/deceptive techniques | Purpose or effect: materially distort behavior of a person or group + causes or is reasonably likely to cause significant harm | None | `subliminal`, `manipulative`, `deceptive`, `dark_pattern` |
-| 5(1)(b) | Exploitation of vulnerabilities | Targets age, disability, or social/economic situation + materially distorts behavior + significant harm | None | `vulnerability_exploitation`, `vulnerableGroups=true` + `purpose` targeting vulnerable |
-| 5(1)(c) | Social scoring | Evaluates/classifies natural persons based on social behavior or personal characteristics → detrimental or unfavorable treatment unrelated to context or disproportionate | None | `social_scoring`, `social_behavior_evaluation` |
-| 5(1)(d) | Individual criminal risk prediction | Predicts risk of committing criminal offense based SOLELY on profiling or personality traits assessment | Exception: AI supporting human assessment based on objective, verifiable facts directly linked to criminal activity | `criminal_prediction`, `profiling` + `sole_basis` |
-| 5(1)(e) | Untargeted facial scraping | Creates or expands facial recognition databases via untargeted scraping from internet or CCTV | None | `facial_scraping`, `untargeted_biometric_collection` |
-| 5(1)(f) | Emotion recognition in workplace/education | Infers emotions of natural persons in workplace or educational institution | Exception: medical reasons or safety reasons (e.g., driver drowsiness) | `emotion_recognition` + domain `employment` or `education` |
-| 5(1)(g) | Biometric categorization by protected characteristics | Categorizes natural persons individually based on biometric data to deduce race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation | Exception: labeling/filtering of lawfully acquired biometric datasets (law enforcement) | `biometric_categorization`, `protected_characteristics` |
-| 5(1)(h) | Real-time remote biometric identification in public spaces | Real-time remote biometric identification in publicly accessible spaces for law enforcement purposes | Strictly limited exceptions for law enforcement only (targeted search for victims, prevention of specific threats, specific criminal offenses) | `realtime_biometric`, `public_spaces`, `remote_identification` |
+| Ссылка | Практика | Условия срабатывания | Исключения | Ключевые слова для детекции |
+|--------|----------|---------------------|------------|----------------------------|
+| 5(1)(a) | Подсознательные/манипулятивные/обманные техники | Цель или эффект: существенное искажение поведения лица или группы + причиняет или с высокой вероятностью причинит значительный вред | Нет | `subliminal`, `manipulative`, `deceptive`, `dark_pattern` |
+| 5(1)(b) | Эксплуатация уязвимостей | Таргетирование по возрасту, инвалидности или социально-экономическому положению + существенное искажение поведения + значительный вред | Нет | `vulnerability_exploitation`, `vulnerableGroups=true` + `purpose` таргетирующий уязвимых |
+| 5(1)(c) | Социальный скоринг | Оценка/классификация физических лиц на основе социального поведения или личных характеристик → ущербное или несправедливое обращение, не связанное с контекстом или непропорциональное | Нет | `social_scoring`, `social_behavior_evaluation` |
+| 5(1)(d) | Прогнозирование индивидуального криминального риска | Прогнозирование риска совершения уголовного преступления ИСКЛЮЧИТЕЛЬНО на основе профилирования или оценки личностных черт | Исключение: AI, поддерживающий человеческую оценку на основе объективных, проверяемых фактов, напрямую связанных с преступной деятельностью | `criminal_prediction`, `profiling` + `sole_basis` |
+| 5(1)(e) | Нецелевой сбор лиц | Создание или расширение баз распознавания лиц путём нецелевого сбора из интернета или видеонаблюдения | Нет | `facial_scraping`, `untargeted_biometric_collection` |
+| 5(1)(f) | Распознавание эмоций на работе/в образовании | Распознавание эмоций физических лиц на рабочем месте или в учебном заведении | Исключение: медицинские или причины безопасности (напр., сонливость водителя) | `emotion_recognition` + домен `employment` или `education` |
+| 5(1)(g) | Биометрическая категоризация по защищённым характеристикам | Индивидуальная категоризация физических лиц по биометрическим данным для определения расы, политических взглядов, членства в профсоюзах, религиозных убеждений, сексуальной жизни или ориентации | Исключение: маркировка/фильтрация законно полученных биометрических наборов данных (правоохранительные органы) | `biometric_categorization`, `protected_characteristics` |
+| 5(1)(h) | Биометрическая идентификация в реальном времени в общественных местах | Удалённая биометрическая идентификация в реальном времени в общедоступных местах для правоохранительных целей | Строго ограниченные исключения только для правоохранительных органов (целевой поиск жертв, предотвращение конкретных угроз, определённые уголовные преступления) | `realtime_biometric`, `public_spaces`, `remote_identification` |
 
-### Prohibited Practice Detection Logic
+### Логика детекции запрещённых практик
 
 ```
 function checkProhibited(tool):
-  // 5(1)(a): Subliminal/manipulative techniques
-  if purpose contains "subliminal" OR "manipulative" OR "deceptive"
-     AND affectsNaturalPersons = true
+  // 5(1)(a): Подсознательные/манипулятивные техники
+  if purpose содержит "subliminal" ИЛИ "manipulative" ИЛИ "deceptive"
+     И affectsNaturalPersons = true
      → PROHIBITED, ref: "Art. 5(1)(a)"
 
-  // 5(1)(b): Vulnerability exploitation
+  // 5(1)(b): Эксплуатация уязвимостей
   if vulnerableGroups = true
-     AND purpose implies targeting vulnerable group's decision-making
+     И purpose подразумевает таргетирование принятия решений уязвимой группы
      → PROHIBITED, ref: "Art. 5(1)(b)"
 
-  // 5(1)(c): Social scoring
-  if purpose contains "social scoring" OR "social behavior evaluation"
-     AND affectsNaturalPersons = true
+  // 5(1)(c): Социальный скоринг
+  if purpose содержит "social scoring" ИЛИ "social behavior evaluation"
+     И affectsNaturalPersons = true
      → PROHIBITED, ref: "Art. 5(1)(c)"
 
-  // 5(1)(d): Criminal prediction by profiling
-  if purpose contains "criminal prediction" OR "recidivism prediction"
-     AND dataTypes excludes "objective_criminal_facts"
+  // 5(1)(d): Криминальное прогнозирование на основе профилирования
+  if purpose содержит "criminal prediction" ИЛИ "recidivism prediction"
+     И dataTypes не содержит "objective_criminal_facts"
      → PROHIBITED, ref: "Art. 5(1)(d)"
 
-  // 5(1)(e): Untargeted facial scraping
-  if purpose contains "facial scraping" OR "face database building"
+  // 5(1)(e): Нецелевой сбор лиц
+  if purpose содержит "facial scraping" ИЛИ "face database building"
      → PROHIBITED, ref: "Art. 5(1)(e)"
 
-  // 5(1)(f): Emotion recognition in workplace/education
-  if dataTypes includes "biometric"
-     AND purpose contains "emotion recognition"
-     AND domain in ["employment", "education"]
-     AND purpose does NOT contain "medical" or "safety"
+  // 5(1)(f): Распознавание эмоций на работе/в образовании
+  if dataTypes включает "biometric"
+     И purpose содержит "emotion recognition"
+     И domain в ["employment", "education"]
+     И purpose НЕ содержит "medical" или "safety"
      → PROHIBITED, ref: "Art. 5(1)(f)"
 
-  // 5(1)(g): Biometric categorization by protected chars
-  if dataTypes includes "biometric"
-     AND purpose contains "categorization by race/religion/politics/sexual orientation"
+  // 5(1)(g): Биометрическая категоризация по защищённым характеристикам
+  if dataTypes включает "biometric"
+     И purpose содержит "categorization by race/religion/politics/sexual orientation"
      → PROHIBITED, ref: "Art. 5(1)(g)"
 
-  // 5(1)(h): Real-time remote biometric ID in public
-  if dataTypes includes "biometric"
-     AND purpose contains "real-time identification" AND "public spaces"
+  // 5(1)(h): Биометрическая идентификация в реальном времени в общественных местах
+  if dataTypes включает "biometric"
+     И purpose содержит "real-time identification" И "public spaces"
      → PROHIBITED, ref: "Art. 5(1)(h)"
 ```
 
 ---
 
-## 2. Art. 6 — High-Risk Classification Rules
+## 2. Ст. 6 — Правила классификации высокого риска
 
-### Pathway 1: Safety Component (Annex I)
-If the AI system is a safety component of a product listed in Annex I (e.g., medical devices, machinery, toys, vehicles, aviation) AND subject to third-party conformity assessment → **HIGH-RISK**.
+### Путь 1: Компонент безопасности (Приложение I)
+Если AI-система является компонентом безопасности продукта из Приложения I (напр., медицинские устройства, машины, игрушки, транспортные средства, авиация) И подлежит оценке соответствия третьей стороной → **ВЫСОКИЙ РИСК**.
 
-> Note: For deployer-focused MVP, Pathway 1 is detected via `catalogDefaultRisk` being set to 'high' by catalog seed data, since deployers typically don't manufacture these products.
+> Примечание: Для MVP, ориентированного на deployer'ов, Путь 1 определяется через `catalogDefaultRisk`, установленный в 'high' сидовыми данными каталога, т.к. deployer'ы обычно не производят эти продукты.
 
-### Pathway 2: Annex III Use Cases
-If the AI system falls within one of the 8 domains and specific use cases in Annex III → **HIGH-RISK** (subject to Art. 6(3) exceptions).
+### Путь 2: Сценарии использования Приложения III
+Если AI-система попадает в один из 8 доменов и конкретных сценариев Приложения III → **ВЫСОКИЙ РИСК** (с учётом исключений ст. 6(3)).
 
-### Art. 6(3) — Exceptions to High-Risk (DOES NOT APPLY if profiling)
-A system listed in Annex III is NOT high-risk if it does NOT pose a significant risk of harm and ALL of the following apply:
-- **(a)** Performs a narrow procedural task
-- **(b)** Improves the result of a previously completed human activity
-- **(c)** Detects decision patterns without replacing human assessment
-- **(d)** Performs only a preparatory task for a relevant assessment
+### Ст. 6(3) — Исключения из высокого риска (НЕ ПРИМЕНЯЕТСЯ при профилировании)
+Система из Приложения III НЕ является высокорисковой, если она НЕ представляет значительного риска вреда и ВСЕ условия выполняются:
+- **(a)** Выполняет узкую процедурную задачу
+- **(b)** Улучшает результат ранее выполненной человеческой деятельности
+- **(c)** Выявляет паттерны решений без замены человеческой оценки
+- **(d)** Выполняет только подготовительную задачу для соответствующей оценки
 
-**CRITICAL OVERRIDE:** If the AI system profiles natural persons (Art. 6(3) final paragraph) → **ALWAYS HIGH-RISK**, no exceptions apply.
-
----
-
-## 3. Annex III — 8 High-Risk Domains (23 Use Cases)
-
-### Domain 1: Biometrics
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 1(a) | Remote biometric identification | Identify natural persons at a distance (excluding verification) | Using facial recognition for access control |
-| 1(b) | Biometric categorization | Assign persons to categories based on biometric data (gender, age, ethnicity) | Using demographic classification tools |
-| 1(c) | Emotion recognition | Infer emotional state from biometric signals | Using sentiment/emotion analysis on employees/customers |
-
-### Domain 2: Critical Infrastructure
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 2(a) | Safety components | AI as safety component in digital infrastructure management, road/water/gas/heating/electricity | Operating AI for infrastructure monitoring |
-| 2(b) | Critical infrastructure mgmt | AI managing critical infrastructure operations | Using AI to manage utility/transport systems |
-
-### Domain 3: Education & Vocational Training
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 3(a) | Admission/assignment | Determine access to or admission to educational institutions | Using AI for student selection |
-| 3(b) | Learning outcome evaluation | Evaluate learning outcomes including for steering learning process | AI-powered grading or assessment tools |
-| 3(c) | Level assessment | Assess appropriate level of education for an individual | AI placement testing |
-| 3(d) | Exam proctoring | Monitor/detect prohibited behavior during tests | AI proctoring software |
-
-### Domain 4: Employment, Workers Management, Self-Employment
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 4(a) | Recruitment & screening | Placing vacancy notices, screening/filtering applications, evaluating candidates | Using AI in hiring (CV screening, interviews) |
-| 4(b) | Work-related decisions | Decisions on promotion, termination, task allocation, performance monitoring | Using AI for performance reviews, work assignment |
-
-### Domain 5: Access to Essential Services
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 5(a) | Public benefits eligibility | Evaluate eligibility for public assistance benefits and services | Government/social services using AI for benefit decisions |
-| 5(b) | Credit scoring | Evaluate creditworthiness of natural persons (except fraud detection) | Banks/fintechs using AI credit scoring |
-| 5(c) | Life/health insurance risk | Risk assessment and pricing for life and health insurance | Insurance companies using AI underwriting |
-| 5(d) | Emergency dispatch | Evaluate and classify emergency calls (priority, dispatch) | Emergency services using AI triage |
-
-### Domain 6: Law Enforcement
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 6(a) | Victim risk assessment | Individual risk assessment of potential victims of criminal offenses | Police using predictive victim protection |
-| 6(b) | Polygraphs/truthfulness | AI polygraph or similar tools to detect deception | Law enforcement using AI deception detection |
-| 6(c) | Evidence reliability | Assess reliability of evidence in criminal investigations | Forensic AI analysis tools |
-| 6(d) | Recidivism assessment | Assess risk of re-offending (with human assessment base) | Corrections using AI risk scores |
-| 6(e) | Profiling in law enforcement | Profiling of natural persons in detection, investigation, prosecution | Police using predictive policing |
-
-### Domain 7: Migration, Asylum, Border Control
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 7(a) | Polygraphs at borders | AI polygraph at border control | Border agencies |
-| 7(b) | Risk assessment | Assess security, irregular migration, health risk | Immigration authorities |
-| 7(c) | Application examination | Examine asylum, visa, residence permit applications | Immigration processing |
-| 7(d) | Border biometrics | Identify persons in migration context via biometrics | Border agencies |
-
-### Domain 8: Administration of Justice & Democratic Processes
-| Ref | Use Case | Description | Deployer Relevance |
-|-----|----------|-------------|--------------------|
-| 8(a) | Judicial AI | AI assisting judicial authorities in researching/interpreting facts and law | Courts using AI for legal research with case impact |
-| 8(b) | Election influence | AI intended to influence outcome of elections or referendums | Political campaign AI tools |
+**КРИТИЧЕСКОЕ ПЕРЕОПРЕДЕЛЕНИЕ:** Если AI-система профилирует физических лиц (ст. 6(3), последний абзац) → **ВСЕГДА ВЫСОКИЙ РИСК**, никакие исключения не применяются.
 
 ---
 
-## 4. Domain Enum → Annex III Mapping
+## 3. Приложение III — 8 доменов высокого риска (23 сценария)
 
-This table maps the `AITool.domain` enum values (from the database schema) to Annex III categories:
+### Домен 1: Биометрия
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 1(a) | Удалённая биометрическая идентификация | Идентификация физических лиц на расстоянии (исключая верификацию) | Использование распознавания лиц для контроля доступа |
+| 1(b) | Биометрическая категоризация | Распределение лиц по категориям на основе биометрических данных (пол, возраст, этничность) | Использование инструментов демографической классификации |
+| 1(c) | Распознавание эмоций | Определение эмоционального состояния по биометрическим сигналам | Использование анализа настроений/эмоций для сотрудников/клиентов |
 
-| domain enum | Annex III Domain | Annex Ref | Always High-Risk? |
-|-------------|-----------------|-----------|-------------------|
-| `biometrics` | 1: Biometrics | 1(a-c) | Yes (check prohibited first) |
-| `critical_infrastructure` | 2: Critical Infrastructure | 2(a-b) | Yes |
-| `education` | 3: Education | 3(a-d) | Yes |
-| `employment` | 4: Employment | 4(a-b) | Yes |
-| `essential_services` | 5: Essential Services | 5(a-d) | Yes |
-| `law_enforcement` | 6: Law Enforcement | 6(a-e) | Yes |
-| `migration` | 7: Migration | 7(a-d) | Yes |
-| `justice` | 8: Justice & Democracy | 8(a-b) | Yes |
-| `customer_service` | — | — | No (check Art. 50) |
-| `marketing` | — | — | No (check Art. 50) |
-| `coding` | — | — | No (minimal) |
-| `analytics` | — | — | No (check context) |
-| `other` | — | — | No (minimal) |
+### Домен 2: Критическая инфраструктура
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 2(a) | Компоненты безопасности | AI как компонент безопасности в управлении цифровой инфраструктурой, дороги/вода/газ/отопление/электричество | Эксплуатация AI для мониторинга инфраструктуры |
+| 2(b) | Управление критической инфраструктурой | AI, управляющий операциями критической инфраструктуры | Использование AI для управления коммунальными/транспортными системами |
+
+### Домен 3: Образование и профессиональное обучение
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 3(a) | Приём/распределение | Определение доступа или приёма в учебные заведения | Использование AI для отбора студентов |
+| 3(b) | Оценка результатов обучения | Оценка результатов обучения, в т.ч. для управления учебным процессом | AI-инструменты оценивания |
+| 3(c) | Определение уровня | Оценка подходящего уровня образования для индивида | AI-тестирование уровня |
+| 3(d) | Прокторинг экзаменов | Мониторинг/выявление запрещённого поведения во время тестов | AI-прокторинг |
+
+### Домен 4: Трудоустройство, управление персоналом, самозанятость
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 4(a) | Рекрутинг и отбор | Размещение вакансий, скрининг/фильтрация заявок, оценка кандидатов | Использование AI при найме (скрининг CV, интервью) |
+| 4(b) | Рабочие решения | Решения о повышении, увольнении, распределении задач, мониторинг производительности | Использование AI для оценки персонала, распределения задач |
+
+### Домен 5: Доступ к важнейшим услугам
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 5(a) | Право на государственные пособия | Оценка права на получение государственной помощи и услуг | Государственные/социальные службы, использующие AI для решений о пособиях |
+| 5(b) | Кредитный скоринг | Оценка кредитоспособности физических лиц (кроме детекции мошенничества) | Банки/финтехи, использующие AI-кредитный скоринг |
+| 5(c) | Страхование жизни/здоровья | Оценка рисков и ценообразование для страхования жизни и здоровья | Страховые компании, использующие AI-андеррайтинг |
+| 5(d) | Диспетчеризация экстренных вызовов | Оценка и классификация экстренных вызовов (приоритет, диспетчеризация) | Службы экстренной помощи, использующие AI-триаж |
+
+### Домен 6: Правоохранительные органы
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 6(a) | Оценка риска для жертв | Индивидуальная оценка риска потенциальных жертв уголовных преступлений | Полиция, использующая предиктивную защиту жертв |
+| 6(b) | Полиграфы/достоверность | AI-полиграф или аналогичные инструменты для выявления обмана | Правоохранительные органы, использующие AI-детекцию обмана |
+| 6(c) | Надёжность доказательств | Оценка надёжности доказательств в уголовных расследованиях | Инструменты AI-криминалистики |
+| 6(d) | Оценка рецидивизма | Оценка риска повторного совершения преступления (на основе человеческой оценки) | Исправительные учреждения, использующие AI-оценку риска |
+| 6(e) | Профилирование в правоохранении | Профилирование физических лиц при раскрытии, расследовании, преследовании | Полиция, использующая предиктивный полисинг |
+
+### Домен 7: Миграция, убежище, пограничный контроль
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 7(a) | Полиграфы на границах | AI-полиграф на пограничном контроле | Пограничные службы |
+| 7(b) | Оценка рисков | Оценка безопасности, нелегальной миграции, риска для здоровья | Иммиграционные органы |
+| 7(c) | Рассмотрение заявлений | Рассмотрение заявлений на убежище, визу, вид на жительство | Иммиграционная обработка |
+| 7(d) | Биометрия на границах | Идентификация лиц в миграционном контексте по биометрии | Пограничные службы |
+
+### Домен 8: Отправление правосудия и демократические процессы
+| Ссылка | Сценарий | Описание | Релевантность для deployer'а |
+|--------|----------|----------|-----------------------------|
+| 8(a) | Судебный AI | AI, помогающий судебным органам в исследовании/интерпретации фактов и права | Суды, использующие AI для юридических исследований с влиянием на дела |
+| 8(b) | Влияние на выборы | AI, предназначенный для влияния на результат выборов или референдумов | Инструменты AI для политических кампаний |
 
 ---
 
-## 5. Art. 50 — Transparency Obligations (Limited Risk)
+## 4. Маппинг Domain Enum → Приложение III
 
-These obligations apply to specific types of AI systems regardless of risk level:
+Таблица связывает значения enum `AITool.domain` (из схемы БД) с категориями Приложения III:
 
-| Ref | Type | Obligation | Detection |
-|-----|------|------------|-----------|
-| 50(1) | AI interacting with humans | Deployer must inform natural persons they are interacting with AI (unless obvious from circumstances) | `domain='customer_service'` + chatbot/conversational purpose |
-| 50(2) | Synthetic content generation | Mark AI-generated content in machine-readable format | Purpose involves content generation |
-| 50(3) | Emotion recognition / biometric categorization | Inform affected persons about operation and processing of data | `dataTypes` includes 'biometric' + emotion/categorization purpose |
-| 50(4) | AI-generated text on public interest | Disclose that text was AI-generated (except editorially reviewed) | AI-generated text published for public information |
-| 50(5) | Deepfakes | Disclose content has been artificially generated or manipulated | Purpose involves image/audio/video manipulation |
+| domain enum | Домен Приложения III | Ссылка | Всегда высокий риск? |
+|-------------|---------------------|--------|---------------------|
+| `biometrics` | 1: Биометрия | 1(a-c) | Да (сначала проверить prohibited) |
+| `critical_infrastructure` | 2: Критическая инфраструктура | 2(a-b) | Да |
+| `education` | 3: Образование | 3(a-d) | Да |
+| `employment` | 4: Трудоустройство | 4(a-b) | Да |
+| `essential_services` | 5: Важнейшие услуги | 5(a-d) | Да |
+| `law_enforcement` | 6: Правоохранение | 6(a-e) | Да |
+| `migration` | 7: Миграция | 7(a-d) | Да |
+| `justice` | 8: Правосудие и демократия | 8(a-b) | Да |
+| `customer_service` | — | — | Нет (проверить ст. 50) |
+| `marketing` | — | — | Нет (проверить ст. 50) |
+| `coding` | — | — | Нет (минимальный) |
+| `analytics` | — | — | Нет (проверить контекст) |
+| `other` | — | — | Нет (минимальный) |
 
-### Transparency Risk Detection
+---
+
+## 5. Ст. 50 — Обязательства по прозрачности (ограниченный риск)
+
+Эти обязательства применяются к определённым типам AI-систем вне зависимости от уровня риска:
+
+| Ссылка | Тип | Обязательство | Детекция |
+|--------|-----|---------------|----------|
+| 50(1) | AI, взаимодействующий с людьми | Deployer обязан информировать физических лиц о взаимодействии с AI (если не очевидно из обстоятельств) | `domain='customer_service'` + чатбот/разговорное назначение |
+| 50(2) | Генерация синтетического контента | Маркировать AI-сгенерированный контент в машиночитаемом формате | Назначение связано с генерацией контента |
+| 50(3) | Распознавание эмоций / биометрическая категоризация | Информировать затронутых лиц об операции и обработке данных | `dataTypes` включает 'biometric' + назначение эмоции/категоризация |
+| 50(4) | AI-генерированный текст по общественным вопросам | Раскрыть, что текст сгенерирован AI (кроме редакционно проверенного) | AI-генерированный текст, опубликованный для общественной информации |
+| 50(5) | Дипфейки | Раскрыть, что контент искусственно сгенерирован или изменён | Назначение включает манипуляцию изображениями/аудио/видео |
+
+### Детекция риска прозрачности
 ```
 function checkTransparency(tool):
-  if domain = 'customer_service' AND purpose contains "chatbot"
+  if domain = 'customer_service' И purpose содержит "chatbot"
      → LIMITED, ref: "Art. 50(1)"
 
-  if purpose contains "content generation" OR "synthetic"
+  if purpose содержит "content generation" ИЛИ "synthetic"
      → LIMITED, ref: "Art. 50(2)"
 
-  if dataTypes includes "biometric" AND purpose contains "emotion" or "categorization"
-     AND NOT prohibited (checked earlier)
+  if dataTypes включает "biometric" И purpose содержит "emotion" или "categorization"
+     И НЕ prohibited (проверено ранее)
      → LIMITED, ref: "Art. 50(3)"
 
-  if purpose contains "deepfake" OR "image generation" OR "video generation"
+  if purpose содержит "deepfake" ИЛИ "image generation" ИЛИ "video generation"
      → LIMITED, ref: "Art. 50(5)"
 
   if catalogDefaultRisk = 'limited'
@@ -207,184 +207,478 @@ function checkTransparency(tool):
 
 ---
 
-## 6. Art. 26 — Deployer Obligations for High-Risk (12 Obligations)
+## 6. Ст. 26 — Обязательства deployer'а для высокого риска (12 обязательств)
 
-When a tool is classified HIGH-RISK, the deployer must fulfill:
+Когда инструмент классифицирован как ВЫСОКИЙ РИСК, deployer обязан выполнить:
 
-| # | Art. | Obligation | Code | Effort |
-|---|------|------------|------|--------|
-| 1 | 26(1) | Use in accordance with instructions | ART_26_USAGE | 4h |
-| 2 | 26(2) | Assign human oversight with competence | ART_26_OVERSIGHT | 8h |
-| 3 | 26(4) | Ensure input data relevance | ART_26_INPUT_DATA | 4h |
-| 4 | 26(5) | Monitor operation | ART_26_MONITORING | 8h |
-| 5 | 26(5) | Report incidents | ART_26_INCIDENT | 4h |
-| 6 | 26(5) | Cease use if risk detected | ART_26_CEASE | 2h |
-| 7 | 26(6) | Retain automatic logs (6+ months) | ART_26_LOGS | 4h |
-| 8 | 26(7) | Inform workers' representatives | ART_26_INFORM_WORKERS | 2h |
-| 9 | 26(8) | Register in EU database | ART_26_REGISTRATION | 2h |
-| 10 | 26(9) | Conduct DPIA if applicable | ART_26_DPIA | 16h |
-| 11 | 26(11) | Cooperate with authorities | ART_26_COOPERATION | 2h |
-| 12 | 26(1) | Support risk management | ART_26_RISK_MGMT_SUPPORT | 8h |
-| 13 | 26(5) | Support post-market monitoring | ART_26_POST_MARKET | 4h |
-
----
-
-## 7. Art. 27 — FRIA Requirements
-
-### Who Must Conduct FRIA
-- Public bodies (all high-risk)
-- Private operators of public services
-- Credit scoring (Annex III 5b)
-- Life/health insurance (Annex III 5c)
-
-### 6 Required Sections
-| # | Section | Code | Effort |
-|---|---------|------|--------|
-| 1 | General description & processes | ART_27_FRIA | 24h |
-| 2 | Affected persons identification | ART_27_AFFECTED_PERSONS | 4h |
-| 3 | Specific risks assessment | ART_27_SPECIFIC_RISKS | 8h |
-| 4 | Human oversight measures | ART_27_OVERSIGHT_MEASURES | 4h |
-| 5 | Risk mitigation measures | ART_27_MITIGATION | 8h |
-| 6 | Notify market surveillance authority | ART_27_NOTIFY_AUTHORITY | 2h |
+| # | Ст. | Обязательство | Код | Трудоёмкость |
+|---|-----|---------------|-----|--------------|
+| 1 | 26(1) | Использование в соответствии с инструкциями | ART_26_USAGE | 4ч |
+| 2 | 26(2) | Назначение компетентного человеческого контроля | ART_26_OVERSIGHT | 8ч |
+| 3 | 26(4) | Обеспечение релевантности входных данных | ART_26_INPUT_DATA | 4ч |
+| 4 | 26(5) | Мониторинг работы | ART_26_MONITORING | 8ч |
+| 5 | 26(5) | Сообщение об инцидентах | ART_26_INCIDENT | 4ч |
+| 6 | 26(5) | Прекращение использования при обнаружении риска | ART_26_CEASE | 2ч |
+| 7 | 26(6) | Хранение автоматических логов (6+ месяцев) | ART_26_LOGS | 4ч |
+| 8 | 26(7) | Информирование представителей работников | ART_26_INFORM_WORKERS | 2ч |
+| 9 | 26(8) | Регистрация в базе данных ЕС | ART_26_REGISTRATION | 2ч |
+| 10 | 26(9) | Проведение DPIA при необходимости | ART_26_DPIA | 16ч |
+| 11 | 26(11) | Сотрудничество с органами власти | ART_26_COOPERATION | 2ч |
+| 12 | 26(1) | Поддержка управления рисками | ART_26_RISK_MGMT_SUPPORT | 8ч |
+| 13 | 26(5) | Поддержка постмаркетингового мониторинга | ART_26_POST_MARKET | 4ч |
 
 ---
 
-## 8. Decision Tree — Classification Algorithm (Deployer Perspective)
+## 7. Ст. 27 — Требования FRIA
+
+### Кто обязан проводить FRIA
+- Государственные органы (все высокорисковые)
+- Частные операторы публичных услуг
+- Кредитный скоринг (Приложение III 5b)
+- Страхование жизни/здоровья (Приложение III 5c)
+
+### 6 обязательных разделов
+| # | Раздел | Код | Трудоёмкость |
+|---|--------|-----|--------------|
+| 1 | Общее описание и процессы | ART_27_FRIA | 24ч |
+| 2 | Идентификация затронутых лиц | ART_27_AFFECTED_PERSONS | 4ч |
+| 3 | Оценка конкретных рисков | ART_27_SPECIFIC_RISKS | 8ч |
+| 4 | Меры человеческого контроля | ART_27_OVERSIGHT_MEASURES | 4ч |
+| 5 | Меры снижения рисков | ART_27_MITIGATION | 8ч |
+| 6 | Уведомление надзорного органа | ART_27_NOTIFY_AUTHORITY | 2ч |
+
+---
+
+## 8. Дерево решений — Алгоритм классификации (перспектива deployer'а)
 
 ```
 classify(tool) → { riskLevel, confidence, matchedRules[], articleReferences[], annexCategory }
 
-STEP 1: PROHIBITED CHECK (Art. 5)
-  For each of 8 prohibited practices:
-    if trigger conditions match AND no exception applies
+ШАГ 1: ПРОВЕРКА ЗАПРЕЩЁННЫХ (Ст. 5)
+  Для каждой из 8 запрещённых практик:
+    если условия совпадают И исключения не применяются
       → return { riskLevel: 'prohibited', confidence: 95, ... }
 
-STEP 2: HIGH-RISK — Annex I Safety Component
-  if catalogDefaultRisk = 'high' AND domain NOT in Annex III
-    → (likely safety component pathway)
+ШАГ 2: ВЫСОКИЙ РИСК — Компонент безопасности Приложения I
+  если catalogDefaultRisk = 'high' И domain НЕ в Приложении III
+    → (вероятно, путь через компонент безопасности)
     → return { riskLevel: 'high', confidence: 85, ... }
 
-STEP 3: HIGH-RISK — Annex III
-  if domain IN [biometrics, critical_infrastructure, education, employment,
+ШАГ 3: ВЫСОКИЙ РИСК — Приложение III
+  если domain В [biometrics, critical_infrastructure, education, employment,
                 essential_services, law_enforcement, migration, justice]
-    → Check profiling override: if affectsNaturalPersons AND purpose implies profiling
-      → return { riskLevel: 'high', confidence: 95, ... }  // No exceptions
-    → Check Art. 6(3) exceptions:
-      if ALL of: narrow procedural, improvement only, pattern detection, preparatory
-      AND NOT profiling
-        → return { riskLevel: 'limited' or 'minimal', confidence: 75, ... }
-    → else
+    → Проверка переопределения профилирования: если affectsNaturalPersons И purpose подразумевает профилирование
+      → return { riskLevel: 'high', confidence: 95, ... }  // Без исключений
+    → Проверка исключений ст. 6(3):
+      если ВСЕ: узкая процедурная, только улучшение, выявление паттернов, подготовительная
+      И НЕ профилирование
+        → return { riskLevel: 'limited' или 'minimal', confidence: 75, ... }
+    → иначе
       → return { riskLevel: 'high', confidence: 90, ... }
 
-STEP 4: GPAI DETECTION
-  if catalogDefaultRisk = 'gpai'
+ШАГ 4: ДЕТЕКЦИЯ GPAI
+  если catalogDefaultRisk = 'gpai'
     → return { riskLevel: 'gpai', confidence: 85, ... }
 
-STEP 5: TRANSPARENCY / LIMITED RISK (Art. 50)
-  if chatbot/synthetic content/deepfake/emotion detection triggers match
+ШАГ 5: ПРОЗРАЧНОСТЬ / ОГРАНИЧЕННЫЙ РИСК (Ст. 50)
+  если совпадают триггеры чатбот/синтетический контент/дипфейк/детекция эмоций
     → return { riskLevel: 'limited', confidence: 85, ... }
 
-STEP 6: CONTEXT MODIFIERS
-  if vulnerableGroups = true → escalate one level (minimal→limited, limited→high)
-  if autonomyLevel = 'autonomous' AND humanOversight = false → escalate one level
-  if autonomyLevel = 'advisory' AND humanOversight = true → de-escalate candidate
+ШАГ 6: КОНТЕКСТНЫЕ МОДИФИКАТОРЫ
+  если vulnerableGroups = true → повысить на один уровень (minimal→limited, limited→high)
+  если autonomyLevel = 'autonomous' И humanOversight = false → повысить на один уровень
+  если autonomyLevel = 'advisory' И humanOversight = true → кандидат на понижение
 
-STEP 7: DEFAULT
+ШАГ 7: ПО УМОЛЧАНИЮ
   → return { riskLevel: 'minimal', confidence: 60, ... }
 ```
 
 ---
 
-## 9. Requirement Mapping by Risk Level
+## 9. Маппинг требований по уровню риска
 
-| Risk Level | Requirement Codes Applied |
-|------------|--------------------------|
-| MINIMAL | ART_4_LITERACY, ART_4_TRAINING_CEO, ART_4_TRAINING_HR, ART_4_TRAINING_DEV, ART_4_TRAINING_GENERAL |
-| LIMITED | All MINIMAL + ART_50_TRANSPARENCY, ART_50_CHATBOT, ART_50_DEEPFAKE, ART_50_EMOTION, ART_50_AI_GENERATED_TEXT |
-| GPAI | Same as LIMITED |
-| HIGH | All LIMITED + ART_26_* (13 deployer obligations) + ART_27_* (6 FRIA sections) |
-| PROHIBITED | ART_5_PROHIBITED, ART_5_SOCIAL_SCORING, ART_5_BIOMETRIC |
-
----
-
-## 10. Confidence Scoring
-
-| Scenario | Confidence |
-|----------|------------|
-| Exact prohibited practice match | 95% |
-| Exact Annex III domain + profiling override | 95% |
-| Annex III domain match (clear) | 90% |
-| Catalog default risk confirms | 85% |
-| Art. 50 transparency match | 85% |
-| Art. 6(3) exception applied | 75% |
-| Context modifier changed level | 75% |
-| Default (no rules matched) | 60% |
+| Уровень риска | Применяемые коды требований |
+|---------------|----------------------------|
+| МИНИМАЛЬНЫЙ | ART_4_LITERACY, ART_4_TRAINING_CEO, ART_4_TRAINING_HR, ART_4_TRAINING_DEV, ART_4_TRAINING_GENERAL |
+| ОГРАНИЧЕННЫЙ | Все МИНИМАЛЬНЫЕ + ART_50_TRANSPARENCY, ART_50_CHATBOT, ART_50_DEEPFAKE, ART_50_EMOTION, ART_50_AI_GENERATED_TEXT |
+| GPAI | Как ОГРАНИЧЕННЫЙ |
+| ВЫСОКИЙ | Все ОГРАНИЧЕННЫЕ + ART_26_* (13 обязательств deployer'а) + ART_27_* (6 разделов FRIA) |
+| ЗАПРЕЩЁННЫЙ | ART_5_PROHIBITED, ART_5_SOCIAL_SCORING, ART_5_BIOMETRIC |
 
 ---
 
-## 11. Compliance Scoring Methodology v3 — Hybrid Observable Score
+## 10. Скоринг уверенности
 
-### Philosophy
+| Сценарий | Уверенность |
+|----------|-------------|
+| Точное совпадение запрещённой практики | 95% |
+| Точное совпадение домена Приложения III + переопределение профилирования | 95% |
+| Совпадение домена Приложения III (явное) | 90% |
+| Подтверждение catalog default risk | 85% |
+| Совпадение прозрачности по ст. 50 | 85% |
+| Применено исключение ст. 6(3) | 75% |
+| Контекстный модификатор изменил уровень | 75% |
+| По умолчанию (нет совпадений правил) | 60% |
 
-**"Score only what you can observe."**
+---
 
-Scoring Engine v2 penalized tools for obligations that are fundamentally unverifiable externally (e.g., risk management systems, human oversight procedures, FRIA documentation, record-keeping). Since evidence-analyzer covers ~12 obligations out of ~108 applicable, the remaining ~70% of weight defaulted to `unknown = 15/100`, producing meaninglessly low scores (87% of tools = grade F).
+## 11. Методология скоринга соответствия v3.1 — Гибридная наблюдаемая оценка (исправление достоверности)
 
-v3 introduces a **Hybrid Observable Score** — 3 complementary metrics instead of 1 inflated/deflated number.
+### Философия
 
-### Three Metrics
+**«Оценивай только то, что можешь наблюдать — но штрафуй за то, что не можешь.»**
 
-| Metric | Range | What It Measures |
-|--------|-------|------------------|
-| **Compliance Score** | 0–100 (or `null`) | Weighted score across **assessed obligations only** — unknowns excluded from denominator |
-| **Coverage** | 0–100% | `assessed / total_applicable × 100` — how much of the compliance surface was actually evaluated |
-| **Transparency Grade** | A–F | Provider's observable transparency signals (9 indicators, max 100 points → letter grade) |
+Scoring Engine v3 ввёл Гибридную наблюдаемую оценку с 3 метриками. Однако v3 имел системную проблему достоверности: крупные провайдеры (Anthropic 18-46, OpenAI 28-39, Google 19) получали оценки НИЖЕ, чем случайные инструменты (claude-mem 77, HeyGen 96) из-за четырёх корневых причин.
 
-### Transparency Grade Signals
+v3.1 исправляет их, сохраняя структуру из 3 метрик.
 
-| # | Signal | Points | Source |
-|---|--------|--------|--------|
-| 1 | AI disclosure visible on website | 15 | passive_scan.disclosure |
-| 2 | Privacy policy mentions AI + EU | 10 | passive_scan.privacy_policy |
-| 3 | Model card with ≥3/4 sections | 15 | passive_scan.model_card |
-| 4 | Responsible AI page | 10 | passive_scan.trust |
-| 5 | EU AI Act dedicated page | 15 | passive_scan.trust |
-| 6 | Published transparency report | 10 | passive_scan.web_search |
-| 7 | C2PA / watermark on content | 10 | passive_scan.content_marking |
-| 8 | Public bias audit | 10 | passive_scan.web_search |
-| 9 | ISO 42001 certification | 5 | passive_scan.trust |
-| | **Maximum** | **100** | |
+### Корневые причины, исправленные в v3.1
 
-### Externally Verifiable Obligations
+| # | Проблема | Причина | Исправление |
+|---|----------|---------|-------------|
+| 1 | **Эксплуатация знаменателя** | Неизвестные обязательства возвращали `null` и исключались из расчёта. Инструмент с 1 met + 5 unknown получал 100% | Unknown = 25/100 в знаменателе (не исключается) |
+| 2 | **Нет минимального порога** | Инструмент с 2 обязательствами и 1 met получал высокую оценку | `total < 3` → `score: null, reason: 'too_few_obligations'` |
+| 3 | **SPA-слепота** | SPA-сайты (claude.ai, openai.com) → сканер находит 1-2 страницы → почти всё unknown → искусственно заниженные/завышенные оценки | Потолок покрытия + бонус за tier провайдера компенсируют |
+| 4 | **Слабая корреляция провайдеров** | Наследовались только 17 инфраструктурных сигналов, НЕ статусы обязательств | Новая `correlateObligations()` — наследуемые обязательства передаются внутри семейства провайдера |
 
-| Category | Example Obligations | Verifiable? | Method |
-|----------|-------------------|-------------|--------|
-| Transparency (Art. 50) | OBL-015, OBL-016, OBL-018 | Yes | Passive scan, LLM tests, media tests |
-| AI Literacy (Art. 4) | OBL-001 | Partial | Responsible AI page presence |
-| Data Governance (Art. 10) | OBL-003, OBL-004 | Partial | Privacy policy analysis |
-| Safety (Art. 9) | OBL-002a | Partial | LLM safety tests |
-| GPAI Documentation (Art. 53) | OBL-022–022c | Yes (for GPAI) | Model card analysis |
-| Risk Management (Art. 9) | OBL-005–008 | **No** | Internal process |
-| Human Oversight (Art. 14) | OBL-009–012 | **No** | Internal process |
-| Record Keeping (Art. 12) | OBL-013–014 | **No** | Internal process |
-| FRIA (Art. 27) | OBL-019–021 | **No** | Internal document |
-| Monitoring (Art. 72) | OBL-023–025 | **No** | Internal process |
+### Три метрики
 
-### Insufficient Data Gate
+| Метрика | Диапазон | Что измеряет |
+|---------|----------|--------------|
+| **Оценка соответствия** | 0–100 (или `null`) | Взвешенная оценка по **всем применимым обязательствам** — unknown оцениваются как 25/100 |
+| **Покрытие** | 0–100% | `applicableAssessed / max(applicableCount, 5) × 100` — какая часть поверхности соответствия фактически оценена (бонусные обязательства исключены) |
+| **Оценка прозрачности** | A–F | Наблюдаемые сигналы прозрачности провайдера (9 индикаторов, макс. 100 баллов → буквенная оценка) |
 
-When `assessed === 0` (zero obligations have a known status), the scorer returns:
-- `score: null` (not 0, not 15)
-- `reason: 'insufficient_data'`
-- `coverage: 0`
-- `transparencyScore` and `transparencyGrade` are still computed (always available)
+### 11-шаговый конвейер скоринга
 
-### Key Differences from v2
+```
+Шаг  1: Загрузка весов + карта обязательств (кэш из БД)
+Шаг  2: Объединение обязательств (deployer + провайдер + применимые + бонусные из evidence)
+Шаг  3: Каскад Родитель→Потомок (not_met у родителя ограничивает потомка)
+Шаг  4: Скоринг на уровне обязательства (статус → баллы, severity × urgency × sector × penalty)
+Шаг  5: Агрегация по категориям + бонус за полноту (80%+ met → +2-5%)
+Шаг  6: Взвешенный итог по категориям (перенормализация для активных категорий)
+Шаг  7: Штрафы (критический потолок 40, высокая severity -10, GDPR -3/случай, безопасность -2/случай)
+         + Потолок покрытия: min(100, 25 + coverage × 1.5)
+Шаг  8: Бонусы (evidence макс. +10, tier провайдера +10/+20)
+Шаг  9: Модель зрелости (5 уровней) + гейт покрытия
+Шаг 10: Доверительный интервал (unknown 0..75, partially_met 0..100)
+Шаг 11: Перцентильный рейтинг (только в пакетном режиме)
+```
 
-| Aspect | v2 | v3 |
-|--------|----|----|
-| Unknown obligations | Scored as 15/100, included in denominator | Excluded from score denominator |
-| All-unknown tools | Cap at 15, `allUnknown` penalty | `score: null`, `reason: 'insufficient_data'` |
-| Score meaning | "How compliant overall (with heavy guessing)" | "How compliant on assessed obligations only" |
-| Coverage | Not tracked | Explicit 0–100% metric |
-| Transparency | Bonuses only (+3, +2, etc.) | Dedicated grade (A–F) with 9 signals |
-| Algorithm label | `deterministic-v2` | `deterministic-v3` |
+### Баллы по статусам
+
+| Статус | Баллы | Значение |
+|--------|-------|----------|
+| `met_verified` | 100 | Выполнено с доказательствами + высокая уверенность |
+| `met_unverified` | 75 | Выполнено без доказательств |
+| `met_low_confidence` | 65 | Выполнено, но уверенность < 0.5 |
+| `partially_met_high` | 60 | Частично выполнено, уверенность ≥ 0.8 |
+| `partially_met` | 50 | Частично выполнено, по умолчанию |
+| `partially_met_low` | 40 | Частично выполнено, уверенность < 0.3 |
+| **`unknown`** | **25** | **Не оценено — включается в знаменатель (было: исключалось)** |
+| `not_met` | 0 | Не выполнено |
+
+### Гейты нулевой оценки
+
+Скорер возвращает `score: null` в следующих случаях (в порядке проверки):
+
+| Гейт | Условие | Причина |
+|------|---------|---------|
+| Нет оценки | Нет данных оценки `eu-ai-act` | `no_assessment` |
+| Нет обязательств | `applicable_obligation_ids` пуст | `no_applicable_obligations` |
+| Нет маппинга | Обязательства не найдены в карте обязательств | `no_mapped_obligations` |
+| **Слишком мало** | **`applicableCount < 3` И провайдер не в tier-листе** | **`too_few_obligations` (v3.1)** |
+| Недостаточно данных | `assessed === 0` И провайдер не в tier-листе | `insufficient_data` |
+
+> **Tier-exempt:** Провайдеры из Tier 1/2 освобождены от гейтов «слишком мало» и «недостаточно данных». Обоснование: крупные AI-компании имеют реальные compliance-инвестиции, даже если пассивный сканер не может собрать достаточно данных (SPA-сайты). Исключение из гейтов позволяет им получить хотя бы базовый скор, отражающий их tier-бонус и доступные evidence.
+
+### Покрытие (Coverage) и потолок покрытия (v3.1)
+
+**Формула покрытия:**
+
+```
+applicableAssessed = assessed - bonus   // только applicable (не бонусные) обязательства
+coverageDenom = max(applicableCount, 5) // минимальный знаменатель 5
+coverage = applicableAssessed / coverageDenom × 100
+```
+
+> **Почему floor = 5:** Без минимального знаменателя инструмент с 1 applicable obligation и 1 assessed получал coverage = 100%, что полностью снимало потолок. Floor 5 означает, что для coverage = 100% нужно минимум 5 оценённых applicable обязательств.
+
+> **Почему бонусные исключены:** Evidence-bonus обязательства — это extra credit за найденные compliance-сигналы вне applicable list. Они не должны раздувать coverage, т.к. не являются частью обязательной compliance surface.
+
+**Потолок покрытия:**
+
+Вместо фиксированного штрафа -5 за низкое покрытие, v3.1 применяет **потолок**, предотвращающий завышенные оценки при малом объёме фактических измерений:
+
+```
+ceiling = min(100, 25 + coverage × 1.5)
+```
+
+| Покрытие | Потолок | Эффект |
+|----------|---------|--------|
+| 0% | 25 | ChatGPT-уровень (SPA, 0 assessed) |
+| 14% | 46 | Уровень покрытия Claude |
+| 20% | 55 | Stability AI (1 applicable из 5 denom) |
+| 33% | 75 | Треть оценена |
+| 50% | 100 | Половина оценена → без ограничений |
+| 100% | 100 | Полностью оценено → без ограничений |
+
+### Бонус за репутацию провайдера (v3.1)
+
+Пассивное сканирование не может обнаружить масштаб инвестиций в соответствие крупных провайдеров (SPA-сайты, нет публичных model card'ов). Tier-лист компенсирует:
+
+| Tier | Бонус | Провайдеры |
+|------|-------|------------|
+| Tier 1 | **+20** | Anthropic, OpenAI, Google, Microsoft, Meta, Amazon, NVIDIA, IBM, Apple, Samsung |
+| Tier 2 | **+10** | Stability AI, Mistral, Cohere, Hugging Face, Adobe, Salesforce, Databricks, DeepSeek, ByteDance, Alibaba, Baidu, Tencent, SAP, Oracle, Palantir |
+| Без tier'а | 0 | Все остальные |
+
+**Ограничение бонусов:** Evidence-бонусы макс. +10, tier провайдера аддитивно. Максимальный итог = 30 (10 evidence + 20 tier).
+
+**Конфиг:** `app/config/enrichment.js` → `providerTiers` (расширяемо без изменений кода).
+
+**Дополнительные привилегии tier-провайдеров:**
+- Освобождение от гейта «слишком мало обязательств» (`applicableCount < 3`)
+- Освобождение от гейта «недостаточно данных» (`assessed === 0`)
+
+### Бонусные обязательства из evidence (v3.1)
+
+Анализатор evidence может обнаружить сигналы соответствия (конфиденциальность, безопасность, предвзятость) для обязательств, НЕ входящих в `applicable_obligation_ids` инструмента. Ранее отбрасывались. v3.1 добавляет их как **бонусные обязательства** с `confidence × 0.8`.
+
+Пример: Инструмент классифицирован как `limited` риск → применимы только обязательства прозрачности. Но анализатор evidence обнаруживает сигналы политики конфиденциальности → OBL-003 (управление данными) добавляется как бонус → оценка увеличивается.
+
+### Наследование обязательств семейства провайдера (v3.1)
+
+v3 наследовал только 17 инфраструктурных сигналов. v3.1 добавляет **наследование на уровне обязательств** между инструментами одного провайдера:
+
+**Наследуемые обязательства (соответствие на уровне провайдера):**
+- OBL-002a (Меры безопасности)
+- OBL-003 (Управление данными)
+- OBL-004 (Управление рисками)
+- OBL-004a (Детекция предвзятости)
+
+**НЕ наследуемые (специфичные для инструмента):**
+- OBL-015 (Раскрытие AI)
+- OBL-016/016a (Маркировка контента)
+- OBL-018 (Маркировка дипфейков)
+- OBL-022 (Документация GPAI)
+
+**Алгоритм:** Референсный инструмент (наивысшее качество evidence) → извлечение derived-обязательств → родственные инструменты получают обязательства с `confidence × 0.5`, если ещё не оценены.
+
+**2-проходный анализ:** анализ всех → `correlateObligations()` → объединение → скоринг.
+
+### Сигналы оценки прозрачности
+
+| # | Сигнал | Баллы | Источник |
+|---|--------|-------|----------|
+| 1 | Раскрытие AI на сайте | 15 | passive_scan.disclosure |
+| 2 | Политика конфиденциальности упоминает AI + ЕС | 10 | passive_scan.privacy_policy |
+| 3 | Model card с ≥3/4 разделами | 15 | passive_scan.model_card |
+| 4 | Страница ответственного AI | 10 | passive_scan.trust |
+| 5 | Специальная страница EU AI Act | 15 | passive_scan.trust |
+| 6 | Опубликованный отчёт о прозрачности | 10 | passive_scan.web_search |
+| 7 | C2PA / водяной знак на контенте | 10 | passive_scan.content_marking |
+| 8 | Публичный аудит предвзятости | 10 | passive_scan.web_search |
+| 9 | Сертификация ISO 42001 | 5 | passive_scan.trust |
+| | **Максимум** | **100** | |
+
+### Внешне верифицируемые обязательства
+
+| Категория | Примеры обязательств | Верифицируемо? | Метод |
+|-----------|---------------------|----------------|-------|
+| Прозрачность (ст. 50) | OBL-015, OBL-016, OBL-018 | Да | Пассивное сканирование, LLM-тесты, медиа-тесты |
+| AI-грамотность (ст. 4) | OBL-001 | Частично | Наличие страницы ответственного AI |
+| Управление данными (ст. 10) | OBL-003, OBL-004 | Частично | Анализ политики конфиденциальности |
+| Безопасность (ст. 9) | OBL-002a | Частично | LLM-тесты безопасности |
+| Документация GPAI (ст. 53) | OBL-022–022c | Да (для GPAI) | Анализ model card |
+| Управление рисками (ст. 9) | OBL-005–008 | **Нет** | Внутренний процесс |
+| Человеческий контроль (ст. 14) | OBL-009–012 | **Нет** | Внутренний процесс |
+| Ведение записей (ст. 12) | OBL-013–014 | **Нет** | Внутренний процесс |
+| FRIA (ст. 27) | OBL-019–021 | **Нет** | Внутренний документ |
+| Мониторинг (ст. 72) | OBL-023–025 | **Нет** | Внутренний процесс |
+
+### Модель зрелости (5 уровней)
+
+| Уровень | Название | Критерии |
+|---------|----------|----------|
+| 4 | Образцовый | Страница EU AI Act + ISO 42001 + ≥90% met + нет критического потолка |
+| 3 | Соответствующий | ≥75% met+partially_met + ≥60% evidence ratio + нет критического потолка |
+| 2 | Внедряющий | ≥40% met+partially_met + любое evidence |
+| 1 | Осведомлённый | Раскрытие AI ИЛИ страница ответственного AI ИЛИ упоминание AI в политике конфиденциальности |
+| 0 | Неосведомлённый | Ничего из вышеперечисленного |
+
+Гейт покрытия: `соответствующий` требует ≥30% покрытия, `образцовый` требует ≥30% покрытия.
+
+### Доверительный интервал (v3.1)
+
+Неизвестные теперь вносят вклад в интервал (ранее пропускались):
+
+| Статус | Оптимистичный | Пессимистичный |
+|--------|--------------|----------------|
+| `unknown` | 75 (met_unverified) | 0 (not_met) |
+| `partially_met` | 100 (met_verified) | 0 (not_met) |
+| `met` / `not_met` | фактическая оценка | фактическая оценка |
+
+### Проблемы калибровки v3.1 и их решения
+
+После первого прогона v3.1 обнаружились две системные проблемы:
+
+**Проблема A: ChatGPT (Tier 1) получал `null` вместо скора**
+
+ChatGPT имеет `riskLevel: limited` → только 2 applicable obligations (OBL-001, OBL-015). Гейт `total < 3` блокировал его. Аналогично — Gemini (2 applicable). При этом claude-mem (2 applicable, no tier) корректно блокировался.
+
+*Решение:* Гейт `too_few_obligations` теперь проверяет `applicableCount < 3` (не `counts.total` с бонусами) и **освобождает tier-провайдеров**. Логика: крупные AI-компании имеют реальные compliance-инвестиции, даже при минимальном количестве applicable obligations. Аналогично для гейта `insufficient_data`.
+
+**Проблема B: Stability AI получал 100 баллов**
+
+Stability AI имеет 1 applicable obligation, но evidence-analyzer нашёл 3 дополнительных (OBL-015, OBL-003, OBL-004 — все `met`). Итого 4/4 assessed → coverage 100% → потолок не срабатывал → score 100.
+
+*Решение:* Двойной фикс формулы coverage:
+1. **Бонусные обязательства исключены из числителя coverage** — они не являются частью обязательной compliance surface
+2. **Минимальный знаменатель = 5** (`coverageDenom = max(applicableCount, 5)`) — инструмент с 1 applicable получает coverage = 1/5 = 20% → ceiling = 55
+
+Результат: Stability AI 100 → **71** (ceiling 55 + tier bonus +10 + evidence bonuses).
+
+**Проблема C: ChatGPT/Gemini (Tier 1) слишком низкие скоры**
+
+После фиксов A и B, ChatGPT получал 37, Gemini 39. Для крупнейших AI-компаний мира это неприемлемо — даже с учётом SPA-слепоты, они инвестируют миллионы в compliance.
+
+*Решение:* Увеличение tier-бонусов: Tier 1 +12 → **+20**, Tier 2 +6 → **+10**. Обоснование: +20 = 20% от макс. скора — значительно, но защитимо для компаний с юридическими отделами, regulatory engagement, публичными commitment'ами к AI safety.
+
+### Итоговые скоры после калибровки
+
+| Инструмент | v3 (до) | v3.1 (после) | Δ | Tier |
+|------------|---------|--------------|---|------|
+| **Claude** | 46 | **68** | +22 | Tier 1 |
+| **Claude 3.5/4.5/4.6** | 23 | **66** | +43 | Tier 1 |
+| **Claude Code** | 18 | **60** | +42 | Tier 1 |
+| **GPT-4o** | 62 | **65** | +3 | Tier 1 |
+| **GPT-4** | 28 | **51** | +23 | Tier 1 |
+| **Gemini** | 19 | **47** | +28 | Tier 1 |
+| **ChatGPT** | 39 | **45** | +6 | Tier 1 |
+| **HeyGen** | 96 | **76** | -20 | — |
+| **Synthesia** | 96 | **76** | -20 | — |
+| **Stability AI** | 56 | **71** | +15 | Tier 2 |
+| **Midjourney** | 12 | **21** | +9 | — |
+| **Claude Mem** | 77 | **null** | — | — (gate) |
+
+### Ключевые различия: v2 → v3 → v3.1
+
+| Аспект | v2 | v3 | v3.1 |
+|--------|----|----|------|
+| Неизвестные обязательства | 15/100 в знаменателе | Исключены из знаменателя | **25/100 в знаменателе** |
+| Инструменты с all-unknown | Потолок на 15 | `null` (insufficient_data) | **`null` (non-tier) / scored (tier)** |
+| Минимальный порог обязательств | Нет | Нет | **applicableCount < 3 → null (non-tier)** |
+| Coverage знаменатель | — | `total` (с бонусами) | **`max(applicableCount, 5)` (без бонусов)** |
+| Низкое покрытие | — | Штраф -5 при < 20% | **Потолок: 25 + coverage × 1.5** |
+| Tier провайдера | — | — | **+20 / +10 бонус + gate exempt** |
+| Бонусные обязательства evidence | — | — | **Неприменимые evidence добавляются** |
+| Наследование обязательств | — | 17 инфра-сигналов | **+ наследуемые статусы обязательств** |
+| Ограничение бонусов | — | Макс. 10 | **Макс. 30 (10 evidence + 20 tier)** |
+| ДИ для unknown | — | Пропускались | **Диапазон 0..75** |
+| 2-проходный анализ | — | — | **анализ всех → корреляция → скоринг** |
+| Метка алгоритма | `deterministic-v2` | `deterministic-v3` | **`deterministic-v3.1`** |
+
+---
+
+## 12. Пассивный сканер v2 — Умное обнаружение
+
+> Добавлен в Спринте 7. Заменяет v1-сканер с 8 захардкоженными URL.
+
+### Проблема
+
+Сканер v1 использовал 8 захардкоженных URL-суффиксов (`/privacy`, `/responsible-ai`, `/model-card` и т.д.). Реальные сайты используют нестандартные пути — например, приватность OpenAI находится по пути `/policies/privacy-policy`, безопасность по `/safety`, model card по `/research/gpt-4-system-card`. Результат: большинство инструментов сканировались лишь 1–2 страницы, порождая неполные evidence и завышенные оценки F.
+
+### Решение: 3-фазный алгоритм
+
+```
+Фаза 1: Основные страницы (бюджет: 3)
+  → Загрузка главной, robots.txt, sitemap.xml (пакетно, параллельно)
+  → Парсинг главной: disclosure, infra, content_marking, company_size
+
+Фаза 2: Обнаружение ссылок (бюджет: 0 — нулевая HTTP-стоимость)
+  → discoverLinksFromHomepage($homepage) — классификация <a href> по ключевым словам сигналов
+  → parseSitemap(sitemapText) — извлечение <loc> URL, классификация по типу сигнала
+  → mergeCandidateUrls() — приоритет: ссылки с главной > sitemap > захардкоженные пробы
+
+Фаза 3: Пробы сигналов (бюджет: оставшийся, макс. 17)
+  → Для каждого типа сигнала [privacy, responsible_ai, eu_ai_act, model_card, about, terms]:
+    → Попробовать URL-кандидаты в порядке приоритета
+    → При первом 200: сохранить в fetchedDocs[signalType], прервать (ранний выход по сигналу)
+  → Ранний выход, когда все 6 сигналов найдены
+```
+
+### 6 типов сигналов × многопутевые пробы
+
+| Тип сигнала | Пути проб |
+|-------------|-----------|
+| privacy | `/privacy`, `/privacy-policy`, `/policies/privacy-policy`, `/legal/privacy`, `/legal/privacy-policy`, `/privacypolicy` |
+| terms | `/terms`, `/terms-of-service`, `/tos`, `/legal/terms`, `/policies/terms-of-use`, `/terms-of-use` |
+| responsible_ai | `/responsible-ai`, `/safety`, `/trust`, `/ai-safety`, `/responsible-use`, `/ethics`, `/ai-principles`, `/trust-center`, `/responsibility` |
+| eu_ai_act | `/eu-ai-act`, `/ai-act`, `/compliance`, `/compliance/eu-ai-act`, `/legal/ai-act`, `/trust/eu-ai-act` |
+| model_card | `/model-card`, `/research`, `/docs/model-card`, `/technical-report`, `/documentation`, `/models` |
+| about | `/about`, `/about-us`, `/company`, `/team` |
+
+### Ключевые слова классификации ссылок
+
+Теги `<a>` на главной странице и записи `<loc>` в sitemap классифицируются путём сопоставления пути + текста ссылки с:
+
+| Сигнал | Ключевые слова |
+|--------|---------------|
+| privacy | `privacy`, `data-protection`, `datenschutz`, `gdpr` |
+| terms | `terms`, `tos`, `legal`, `conditions` |
+| responsible_ai | `safety`, `responsible`, `ethics`, `trust`, `principles`, `governance` |
+| eu_ai_act | `ai-act`, `eu-ai`, `compliance`, `regulation` |
+| model_card | `model-card`, `technical-report`, `research`, `system-card`, `documentation` |
+| about | `about`, `company`, `team` |
+
+### Расширенные regex-паттерны
+
+**Упоминание AI в политике конфиденциальности** (v2):
+```
+/artificial intelligence|machine learning|ai model|ai system|ai.powered|neural network|large language model|llm|generative ai/i
+```
+
+**Детекция model card** (v2):
+```
+/model\s*card|model\s*documentation|technical\s*report|system\s*card|model\s*spec|model\s*overview|safety\s*report/i
+```
+
+**Темы ответственного AI** (v2 — 15 тем):
+```
+fairness, bias, transparency, accountability, safety, privacy, training, education,
+ethics, governance, human oversight, explainability, responsible ai, responsible use,
+ai principles, trustworthy ai, ai governance, model governance
+```
+
+### Конфигурация
+
+| Параметр | По умолчанию | Переменная окружения |
+|----------|-------------|---------------------|
+| `maxPagesPerTool` | 20 | `ENRICHMENT_MAX_PAGES` |
+| `concurrency` | 3 | `ENRICHMENT_SCAN_CONCURRENCY` |
+| `enableLinkDiscovery` | true | `ENRICHMENT_LINK_DISCOVERY` |
+| `enableSitemapParsing` | true | `ENRICHMENT_SITEMAP` |
+| `ratePerSec` | 2 | `ENRICHMENT_SCAN_RATE` |
+| `timeoutMs` | 10000 | `ENRICHMENT_SCAN_TIMEOUT` |
+
+### Производительность
+
+| Метрика | v1 | v2 |
+|---------|----|----|
+| Страниц на инструмент | 8 фиксированных | 3 основных + до 17 проб (ранний выход) |
+| Типичное количество | 1–4 (большинство 404) | 5–8 (находит реальные URL) |
+| Потолок бюджета | 8 | 20 (настраиваемый) |
+| Параллельность пакетов | последовательно | настраиваемая (по умолчанию 3) |
+
+### Проверенные E2E-результаты
+
+| Инструмент | Оценка v1→v2 | Оценка | Страниц | Ключевые находки |
+|------------|--------------|--------|---------|------------------|
+| Eightfold AI | 38→**55** (+17) | F→**D** | 4→7 | Privacy 5/6, страница ответственного AI, аудит предвзятости |
+| HireVue | 33→**36** (+3) | F→**D-** | 5→7 | Найдена страница EU AI Act, hero disclosure, privacy 4/6 |
+
+### Совместимость с нижестоящими компонентами
+
+Формат вывода идентичен v1 — изменения не требуются в evidence-analyzer, registry-scorer, score-validator, refresh-service или фронтенде.

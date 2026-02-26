@@ -655,6 +655,12 @@
 
   // ── Main Analyzer ─────────────────────────────────────────────────────
 
+  // Obligations that can be inherited from provider reference tool (provider-level compliance)
+  const INHERITABLE_OBLIGATIONS = ['OBL-002a', 'OBL-003', 'OBL-004', 'OBL-004a'];
+
+  // Obligations that are tool-specific and should NOT be inherited
+  // OBL-015 (disclosure), OBL-016/016a (content marking), OBL-018 (deepfake), OBL-022 (GPAI docs)
+
   return ({ db }) => {
     const ALL_RULES = [
       ruleDisclosure,
@@ -855,9 +861,77 @@
       return correlations;
     };
 
+    // ── Provider Obligation Correlator ─────────────────────────────
+
+    const correlateObligations = (toolAnalysisMap) => {
+      // Group tools by provider name
+      const byProvider = {};
+      for (const [slug, entry] of Object.entries(toolAnalysisMap)) {
+        const providerName = entry.providerName || 'Unknown';
+        if (!byProvider[providerName]) byProvider[providerName] = [];
+        byProvider[providerName].push({ slug, ...entry });
+      }
+
+      const results = {};
+
+      for (const [providerName, group] of Object.entries(byProvider)) {
+        if (group.length < 2) continue;
+
+        // Find reference tool — highest evidence quality
+        let refEntry = null;
+        let maxQuality = -1;
+        for (const entry of group) {
+          const q = entry.enriched ? entry.enriched.evidenceQuality || 0 : 0;
+          if (q > maxQuality) {
+            maxQuality = q;
+            refEntry = entry;
+          }
+        }
+
+        if (!refEntry || maxQuality === 0) continue;
+
+        const refDerived = refEntry.enriched ? refEntry.enriched.derivedObligations || {} : {};
+
+        // Apply inheritable obligations to siblings
+        for (const entry of group) {
+          if (entry.slug === refEntry.slug) continue;
+
+          const entryDerived = entry.enriched ? entry.enriched.derivedObligations || {} : {};
+          const inherited = {};
+
+          for (const oblId of INHERITABLE_OBLIGATIONS) {
+            const refObl = refDerived[oblId];
+            if (!refObl || refObl.status === 'unknown') continue;
+
+            // Only inherit if sibling hasn't assessed this obligation
+            const siblingObl = entryDerived[oblId];
+            if (siblingObl && siblingObl.status !== 'unknown') continue;
+
+            inherited[oblId] = {
+              ...refObl,
+              confidence: (refObl.confidence || 0.5) * 0.5,
+              evidence_summary: `[INHERITED from ${refEntry.slug}] ${refObl.evidence_summary || ''}`,
+              statusSource: 'provider_correlation',
+              signals: refObl.signals || [],
+            };
+          }
+
+          if (Object.keys(inherited).length > 0) {
+            results[entry.slug] = {
+              inheritedObligations: inherited,
+              referenceToolSlug: refEntry.slug,
+            };
+          }
+        }
+      }
+
+      return results;
+    };
+
     return {
       analyze,
       correlateProvider,
+      correlateObligations,
       computeEvidenceQuality,
       computeTransparencyScore,
       // Exposed for testing

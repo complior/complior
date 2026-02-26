@@ -1,18 +1,21 @@
 /**
- * Registry Scorer v3 — Hybrid Observable Score.
+ * Registry Scorer v3.1 — Hybrid Observable Score (Credibility Fix).
  *
  * 11-step pipeline:
  *  1. Load weights + obligation map (cached)
- *  2. Prepare obligations (merge, dedup, enrich from evidence)
+ *  2. Prepare obligations (merge, dedup, enrich from evidence + bonus obligations)
  *  3. Parent→child cascade
- *  4. Obligation-level scoring (severity + penalty-weighted) — unknown excluded
- *  5. Category aggregation + completeness bonus (assessed only)
+ *  4. Obligation-level scoring (severity + penalty-weighted) — unknown = 25/100
+ *  5. Category aggregation + completeness bonus
  *  6. Weighted category total
- *  7. Penalties (critical cap, high-severity, GDPR, security, low-coverage)
- *  8. Bonuses (EU AI Act page, model card, privacy, ISO 42001, etc.)
+ *  7. Penalties (critical cap, high-severity, GDPR, security) + coverage ceiling
+ *  8. Bonuses (EU AI Act page, model card, privacy, ISO 42001, provider tier)
  *  9. Compliance maturity model (5 levels) + coverage gate
- * 10. Confidence interval (partially_met uncertainty only)
+ * 10. Confidence interval (unknown 0..75, partially_met 0..100)
  * 11. Percentile ranking (batch mode only)
+ *
+ * v3.1 fixes: denominator exploit (unknown=25), min obligation gate (<3→null),
+ * coverage ceiling, evidence-bonus obligations, provider tier bonuses.
  *
  * 3 metrics: Compliance Score (0-100 | null), Coverage (0-100%), Transparency Grade (A-F)
  *
@@ -28,7 +31,7 @@
     partially_met_high: 60,
     partially_met: 50,
     partially_met_low: 40,
-    unknown: 15,
+    unknown: 25,
     not_met: 0,
   };
 
@@ -46,6 +49,27 @@
     implementing: { level: 2, label: 'Implementing' },
     aware: { level: 1, label: 'Aware' },
     unaware: { level: 0, label: 'Unaware' },
+  };
+
+  // Provider reputation tiers (matches app/config/enrichment.js providerTiers)
+  const PROVIDER_TIERS = {
+    tier1: new Set([
+      'anthropic', 'openai', 'google', 'microsoft', 'meta',
+      'amazon', 'nvidia', 'ibm', 'apple', 'samsung',
+    ]),
+    tier2: new Set([
+      'stability ai', 'mistral', 'cohere', 'hugging face', 'adobe',
+      'salesforce', 'databricks', 'deepseek', 'bytedance', 'alibaba',
+      'baidu', 'tencent', 'sap', 'oracle', 'palantir',
+    ]),
+  };
+
+  const getProviderTierBonus = (providerName) => {
+    if (!providerName) return 0;
+    const normalized = providerName.toLowerCase().trim();
+    if (PROVIDER_TIERS.tier1.has(normalized)) return 20;
+    if (PROVIDER_TIERS.tier2.has(normalized)) return 10;
+    return 0;
   };
 
   const SECTOR_MAP = {
@@ -136,7 +160,7 @@
       return STATUS_SCORES.partially_met;
     }
     if (status === 'not_met') return STATUS_SCORES.not_met;
-    return null; // Unknown = excluded from score
+    return STATUS_SCORES.unknown; // Unknown = included in denominator at 25/100
   };
 
   return ({ db }) => {
@@ -229,7 +253,22 @@
       if (enrichedObligations) {
         for (const [oblId, derived] of Object.entries(enrichedObligations)) {
           const existing = merged[oblId];
-          if (!existing) continue;
+
+          // Evidence-bonus: obligations not in applicable list but with non-unknown evidence
+          if (!existing) {
+            if (derived.status && derived.status !== 'unknown') {
+              merged[oblId] = {
+                obligation_id: oblId,
+                status: derived.status,
+                confidence: (derived.confidence || 0.5) * 0.8,
+                evidence_summary: derived.evidence_summary,
+                statusSource: 'evidence_bonus',
+                evidenceSignals: derived.signals || [],
+                isBonus: true,
+              };
+            }
+            continue;
+          }
 
           const existingStatus = existing.status || 'unknown';
           const derivedConfidence = derived.confidence || 0;
@@ -327,6 +366,16 @@
         const ws = ps.web_search || {};
         const mc = ps.model_card || {};
 
+        // Extract provider name early (needed for min gate + tier bonus)
+        let providerName = null;
+        if (tool.provider) {
+          if (typeof tool.provider === 'string') {
+            try { providerName = JSON.parse(tool.provider).name; } catch { providerName = tool.provider; }
+          } else {
+            providerName = tool.provider.name;
+          }
+        }
+
         // Step 2: Merge + enrich
         const derivedOblMap = enrichedObligations ? enrichedObligations.derivedObligations || {} : {};
         const merged = mergeObligations(assessment, derivedOblMap);
@@ -337,7 +386,7 @@
         // Step 4: Obligation-level scoring
         const toolSector = getSectorForTool(tool.categories);
         const categoryGroups = {};
-        const counts = { total: 0, met: 0, not_met: 0, unknown: 0, partially_met: 0 };
+        const counts = { total: 0, met: 0, not_met: 0, unknown: 0, partially_met: 0, bonus: 0 };
         let criticalCapApplied = false;
         const obligationDetails = [];
 
@@ -365,7 +414,7 @@
           const penaltyMultiplier = getPenaltyMultiplier(meta.penaltyForNonCompliance);
 
           const effectiveSeverityWeight = severityWeight * urgencyMultiplier * sectorMultiplier * penaltyMultiplier;
-          const weightedScore = baseScore !== null ? baseScore * effectiveSeverityWeight : 0;
+          const weightedScore = baseScore * effectiveSeverityWeight;
           const maxScore = 100 * effectiveSeverityWeight;
 
           counts.total++;
@@ -373,16 +422,15 @@
           else if (status === 'not_met') counts.not_met++;
           else if (status === 'partially_met') counts.partially_met++;
           else counts.unknown++;
+          if (obl.isBonus) counts.bonus++;
 
           if (!categoryGroups[meta.category]) {
             categoryGroups[meta.category] = { earned: 0, max: 0, weight: weights[meta.category] || 0, obligations: [] };
           }
 
-          // Only add to category math if assessed (not unknown)
-          if (baseScore !== null) {
-            categoryGroups[meta.category].earned += weightedScore;
-            categoryGroups[meta.category].max += maxScore;
-          }
+          // Always add to category math (unknowns count as 25/100)
+          categoryGroups[meta.category].earned += weightedScore;
+          categoryGroups[meta.category].max += maxScore;
           categoryGroups[meta.category].obligations.push({ oblId, status });
 
           // Critical cap check
@@ -412,7 +460,7 @@
             derivedStatus: status,
             statusSource: obl.statusSource || 'original',
             confidence: obl.confidence || null,
-            baseScore: baseScore !== null ? baseScore : 0,
+            baseScore,
             severityWeight,
             urgencyMultiplier,
             sectorMultiplier,
@@ -434,34 +482,46 @@
           return { score: null, reason: 'no_mapped_obligations' };
         }
 
-        // Coverage: assessed vs total
+        // Coverage: assessed applicable (non-bonus) vs applicable count (floor 5)
+        // Bonus obligations are extra credit — they don't inflate the compliance surface
         counts.assessed = counts.met + counts.partially_met + counts.not_met;
-        const coverage = counts.total > 0 ? Math.round((counts.assessed / counts.total) * 100) : 0;
+        const applicableAssessed = counts.assessed - counts.bonus;
+        const coverageDenom = Math.max(applicableIds.length, 5);
+        const coverage = coverageDenom > 0 ? Math.min(100, Math.round((applicableAssessed / coverageDenom) * 100)) : 0;
 
         // Compute transparency regardless
         const transparencyScore = computeTransparencySignals(ps);
         const transparencyGrade = getGrade(transparencyScore);
 
-        // Insufficient data gate: 0 assessed → null score
-        if (counts.assessed === 0) {
-          return {
-            score: null,
-            reason: 'insufficient_data',
-            grade: null,
-            zone: null,
-            coverage: 0,
-            transparencyScore,
-            transparencyGrade,
-            algorithm: 'deterministic-v3',
-            counts,
-            obligationDetails,
-            maturity: { level: 0, label: 'Unaware', criteria: 'unaware' },
-            confidenceInterval: null,
-            penalties: null,
-            bonuses: null,
-            categoryScores: {},
-            scoredAt: new Date().toISOString(),
-          };
+        const nullScoreResult = (reason) => ({
+          score: null,
+          reason,
+          grade: null,
+          zone: null,
+          coverage,
+          transparencyScore,
+          transparencyGrade,
+          algorithm: 'deterministic-v3.1',
+          counts,
+          obligationDetails,
+          maturity: { level: 0, label: 'Unaware', criteria: 'unaware' },
+          confidenceInterval: null,
+          penalties: null,
+          bonuses: null,
+          categoryScores: {},
+          scoredAt: new Date().toISOString(),
+        });
+
+        // Minimum obligation gate: need at least 3 applicable obligations
+        // Tiered providers (tier 1/2) exempt — known tools with compliance investment
+        const providerTier = getProviderTierBonus(providerName);
+        if (applicableIds.length < 3 && providerTier === 0) {
+          return nullScoreResult('too_few_obligations');
+        }
+
+        // Insufficient data gate: 0 assessed → null score (tiered providers exempt)
+        if (counts.assessed === 0 && providerTier === 0) {
+          return nullScoreResult('insufficient_data');
         }
 
         // Step 5: Category aggregation + completeness bonus
@@ -546,9 +606,10 @@
           penalties.securityIncidents = penalty;
         }
 
-        // 7e: Low-coverage penalty: if <20% assessed, reduce score by 5
-        if (coverage < 20 && counts.assessed > 0) {
-          rawScore = Math.max(0, rawScore - 5);
+        // 7e: Coverage ceiling — score cannot exceed 25 + coverage × 1.5
+        const coverageCeiling = Math.min(100, 25 + coverage * 1.5);
+        if (rawScore > coverageCeiling) {
+          rawScore = coverageCeiling;
           penalties.lowCoverage = true;
         }
 
@@ -559,26 +620,32 @@
         const bonuses = {
           euAiActPage: 0, aiActMention: 0, modelCard: 0,
           privacyExcellence: 0, transparencyReport: 0, iso42001: 0,
+          providerTier: 0,
           total: 0,
         };
-        let totalBonus = 0;
+        let evidenceBonus = 0;
 
-        if (trust.has_eu_ai_act_page) { bonuses.euAiActPage = 3; totalBonus += 3; }
-        if (trust.mentions_ai_act) { bonuses.aiActMention = 2; totalBonus += 2; }
+        if (trust.has_eu_ai_act_page) { bonuses.euAiActPage = 3; evidenceBonus += 3; }
+        if (trust.mentions_ai_act) { bonuses.aiActMention = 2; evidenceBonus += 2; }
 
         const mcSections = [mc.has_limitations, mc.has_bias_info, mc.has_training_data, mc.has_evaluation].filter(Boolean).length;
-        if (mc.has_model_card && mcSections >= 3) { bonuses.modelCard = 3; totalBonus += 3; }
+        if (mc.has_model_card && mcSections >= 3) { bonuses.modelCard = 3; evidenceBonus += 3; }
 
         if (privacy.training_opt_out && privacy.deletion_right && privacy.retention_specified) {
-          bonuses.privacyExcellence = 2; totalBonus += 2;
+          bonuses.privacyExcellence = 2; evidenceBonus += 2;
         }
 
-        if (ws.has_transparency_report) { bonuses.transparencyReport = 1; totalBonus += 1; }
+        if (ws.has_transparency_report) { bonuses.transparencyReport = 1; evidenceBonus += 1; }
 
         const certs = trust.certifications || [];
-        if (certs.includes('ISO 42001')) { bonuses.iso42001 = 2; totalBonus += 2; }
+        if (certs.includes('ISO 42001')) { bonuses.iso42001 = 2; evidenceBonus += 2; }
 
-        bonuses.total = Math.min(totalBonus, 10);
+        // Provider tier bonus (providerName extracted earlier)
+        bonuses.providerTier = providerTier;
+
+        // Cap: evidence bonuses max 10, provider tier max 20, total max 30
+        const cappedEvidenceBonus = Math.min(evidenceBonus, 10);
+        bonuses.total = cappedEvidenceBonus + bonuses.providerTier;
         rawScore = Math.min(100, rawScore + bonuses.total);
 
         const finalScore = Math.round(rawScore);
@@ -620,8 +687,7 @@
           criteria: maturityKey,
         };
 
-        // Step 10: Confidence Interval — based on partially_met uncertainty only
-        // Unknowns are excluded from score, so interval reflects assessed-obligation variance
+        // Step 10: Confidence Interval — unknowns vary 0..75, partially_met vary 0..100
         const unknownRatio = counts.total > 0 ? counts.unknown / counts.total : 0;
 
         let optimisticEarned = 0;
@@ -638,10 +704,12 @@
             const detail = obligationDetails.find((d) => d.id === oblInfo.oblId);
             if (!detail) continue;
 
-            // Skip unknowns — they are not in the denominator
-            if (oblInfo.status === 'unknown') continue;
-
-            if (oblInfo.status === 'partially_met') {
+            if (oblInfo.status === 'unknown') {
+              // Optimistic: unknown could be met_unverified (75)
+              optEarned += 75 * detail.effectiveWeight;
+              // Pessimistic: unknown could be not_met (0)
+              pesEarned += 0;
+            } else if (oblInfo.status === 'partially_met') {
               // Optimistic: treat partially_met as met (100)
               optEarned += 100 * detail.effectiveWeight;
               // Pessimistic: treat partially_met as not_met (0)
@@ -699,7 +767,7 @@
           transparencyScore,
           transparencyGrade,
           confidence: Math.round(confidence * 100) / 100,
-          algorithm: 'deterministic-v3',
+          algorithm: 'deterministic-v3.1',
 
           maturity,
           confidenceInterval,
