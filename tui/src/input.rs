@@ -121,8 +121,10 @@ pub enum Action {
     KillAgent(usize),
     /// Enter PTY passthrough mode — all keystrokes forwarded to focused PTY.
     EnterPtyPassthrough,
-    /// Exit PTY passthrough mode (triggered by Ctrl+]).
+    /// Exit PTY passthrough mode (triggered by Esc Esc, Ctrl+], or F12).
     ExitPtyPassthrough,
+    /// Esc pressed in passthrough — may be first of double-Esc or forwarded to agent.
+    PtyEscPressed,
     /// Forward raw bytes to the focused PTY (passthrough mode).
     ForwardToPty(Vec<u8>),
     /// No action (unhandled key).
@@ -131,13 +133,23 @@ pub enum Action {
 
 pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
     // PTY passthrough: forward all keystrokes directly to the focused PTY.
-    // Escape hatches: Ctrl+] (standard) or Ctrl+\ (fallback for some terminals).
+    // Exit: Esc Esc (double-escape within 500ms), Ctrl+], Ctrl+\, or F12.
     if app.pty_passthrough {
-        let is_exit = (key.modifiers.contains(KeyModifiers::CONTROL)
+        // Hard exit keys (always work regardless of state)
+        let is_hard_exit = (key.modifiers.contains(KeyModifiers::CONTROL)
             && matches!(key.code, KeyCode::Char(']') | KeyCode::Char('\\')))
-            || key.code == KeyCode::F(12); // F12 as last-resort escape
-        if is_exit {
+            || key.code == KeyCode::F(12);
+        if is_hard_exit {
             return Action::ExitPtyPassthrough;
+        }
+        // Double-Esc: first Esc records timestamp, second Esc within 500ms exits
+        if key.code == KeyCode::Esc {
+            if let Some(last) = app.last_pty_esc {
+                if last.elapsed() < std::time::Duration::from_millis(500) {
+                    return Action::ExitPtyPassthrough;
+                }
+            }
+            return Action::PtyEscPressed;
         }
         return key_to_pty_bytes(key);
     }
@@ -344,13 +356,21 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('G') => Action::ScrollToBottom,
         KeyCode::Char('v') | KeyCode::Char('V') => Action::EnterVisualMode,
         KeyCode::Char(':') => Action::EnterColonMode,
+        // Kill focused agent in AgentGrid view
+        KeyCode::Char('K') if app.view_state == ViewState::AgentGrid => {
+            if let Some(id) = app.focused_agent {
+                Action::KillAgent(id)
+            } else {
+                Action::None
+            }
+        }
         KeyCode::Char('U') => Action::ShowUndoHistory,
         KeyCode::Char('w') => Action::WatchToggle,
         KeyCode::Char('T') => Action::ShowThemePicker,
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         // Uppercase letter-key view switching (avoids conflict with lowercase ViewKey chars)
-        KeyCode::Char(c @ ('A' | 'C' | 'D' | 'F' | 'O' | 'R' | 'S'))
+        KeyCode::Char(c @ ('A' | 'C' | 'D' | 'F' | 'L' | 'O' | 'R' | 'S'))
             if c != 'M' && c != 'T' && c != 'U' && c != 'G' && c != 'N' && c != 'V' =>
         {
             if let Some(view) = ViewState::from_letter(c) {

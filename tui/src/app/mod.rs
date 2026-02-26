@@ -173,8 +173,10 @@ pub struct App {
     /// Session id of the currently focused agent panel (if any).
     pub focused_agent: Option<usize>,
     /// When true, all keystrokes are forwarded raw to the focused PTY.
-    /// Exit with Ctrl+].
+    /// Exit with Esc Esc (double-escape within 500ms), Ctrl+], or F12.
     pub pty_passthrough: bool,
+    /// Timestamp of last Esc press in passthrough mode (for double-Esc exit).
+    pub last_pty_esc: Option<std::time::Instant>,
 
     // S00: DataProvider — compliance data abstraction (mock until engine connects)
     pub data_provider: Arc<dyn DataProvider>,
@@ -248,7 +250,7 @@ impl App {
         let mut app = Self {
             running: true,
             active_panel: Panel::Chat,
-            input_mode: InputMode::Insert,
+            input_mode: InputMode::Normal,
             config,
             view_state: ViewState::Dashboard,
             mode: Mode::Scan,
@@ -319,6 +321,7 @@ impl App {
             pty_manager: PtyManager::new(),
             focused_agent: None,
             pty_passthrough: false,
+            last_pty_esc: None,
             data_provider,
             agent_registry: crate::agents::load_registry(),
             spinner: Spinner::new(),
@@ -352,11 +355,25 @@ impl App {
                 .unwrap_or(true);
             if agent_dead {
                 self.pty_passthrough = false;
+                self.last_pty_esc = None;
+                self.focused_agent = None;
                 self.toasts.push(
                     crate::components::toast::ToastKind::Warning,
                     "Agent exited — passthrough closed",
                 );
             }
+        }
+
+        // Remove dead agent sessions from the grid
+        let dead_ids: Vec<usize> = self.pty_manager.sessions().iter()
+            .filter(|h| h.state() == crate::pty::session::AgentState::Dead)
+            .map(|h| h.id())
+            .collect();
+        for id in dead_ids {
+            if self.focused_agent == Some(id) {
+                self.focused_agent = None;
+            }
+            self.pty_manager.remove_dead(id);
         }
         // Idle suggestion: check if idle > 10s and no blockers
         if self.idle_suggestions.current.is_none()
@@ -1060,6 +1077,10 @@ impl App {
                 self.pty_manager.kill(id);
                 if self.focused_agent == Some(id) {
                     self.focused_agent = None;
+                    if self.pty_passthrough {
+                        self.pty_passthrough = false;
+                        self.last_pty_esc = None;
+                    }
                 }
                 None
             }
@@ -1075,14 +1096,30 @@ impl App {
                     self.focused_agent = self.pty_manager.sessions().first().map(|s| s.id());
                 }
                 self.pty_passthrough = true;
+                self.last_pty_esc = None;
                 self.toasts.push(
                     crate::components::toast::ToastKind::Info,
-                    "PTY passthrough — typing goes to agent  ·  Ctrl+] to exit",
+                    "PTY passthrough — typing goes to agent  ·  Esc Esc to exit",
                 );
                 None
             }
             Action::ExitPtyPassthrough => {
                 self.pty_passthrough = false;
+                self.last_pty_esc = None;
+                self.toasts.push(
+                    crate::components::toast::ToastKind::Info,
+                    "Exited PTY passthrough — back to Complior",
+                );
+                None
+            }
+            Action::PtyEscPressed => {
+                // Record timestamp for double-Esc detection, and forward Esc to agent
+                self.last_pty_esc = Some(std::time::Instant::now());
+                if let Some(id) = self.focused_agent {
+                    if let Some(handle) = self.pty_manager.get_mut(id) {
+                        handle.send_raw(&[0x1b]); // forward Esc to agent
+                    }
+                }
                 None
             }
             Action::ForwardToPty(bytes) => {
@@ -1689,7 +1726,7 @@ mod tests {
         let app = App::new(TuiConfig::default());
         assert!(app.running);
         assert_eq!(app.active_panel, Panel::Chat);
-        assert_eq!(app.input_mode, InputMode::Insert);
+        assert_eq!(app.input_mode, InputMode::Normal);
         assert_eq!(app.messages.len(), 1);
         assert!(app.sidebar_visible);
     }

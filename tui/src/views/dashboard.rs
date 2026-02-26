@@ -869,7 +869,9 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         height: 1,
     };
 
-    let mode_str = if app.colon_mode {
+    let mode_str = if app.pty_passthrough {
+        " PTY "
+    } else if app.colon_mode {
         " COLON "
     } else {
         match app.input_mode {
@@ -881,7 +883,7 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
     };
 
     let hint_text = if app.pty_passthrough {
-        "PTY PASSTHROUGH — all keys → agent  Ctrl+]:exit"
+        "all keys → agent  ·  Esc Esc:exit"
     } else {
         footer_hints_for_view(app.view_state)
     };
@@ -931,13 +933,13 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 /// View-specific footer hints (line 2).
 pub fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
-        ViewState::Dashboard => "A:agents O:orch D:dash S:scan F:fix C:chat R:report Tab:mode e:zoom ?:help",
+        ViewState::Dashboard => "A:agents D:dash S:scan F:fix R:report C:log L:time O:orch :agent:add ?:help",
         ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix x:explain d:dismiss o:open j/k:nav",
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
-        ViewState::Chat => "/:command !:shell @OBL:ref Enter:run",
+        ViewState::Chat => "/:command !:shell @OBL:ref Enter:run D:dash A:agents",
         ViewState::Timeline => "j/k:scroll",
         ViewState::Report => "e:export j/k:scroll",
-        ViewState::AgentGrid => "1-6:focus i:interact K:kill A:grid O:orch D:dash j/k:scroll",
+        ViewState::AgentGrid => "1-6:focus i:interact K:kill :agent:add D:dash j/k:scroll",
         ViewState::Orchestrator => "A:agents D:dash s:send k:kill r:restart b:broadcast",
     }
 }
@@ -1583,7 +1585,7 @@ mod tests {
     fn test_footer_hints_per_view() {
         let dashboard_hints = footer_hints_for_view(ViewState::Dashboard);
         assert!(dashboard_hints.contains("A:agents"));
-        assert!(dashboard_hints.contains("Tab:mode"));
+        assert!(dashboard_hints.contains(":agent:add"));
         assert!(dashboard_hints.contains("?:help"));
 
         let scan_hints = footer_hints_for_view(ViewState::Scan);
@@ -1867,7 +1869,7 @@ mod tests {
         // Switch to Chat view
         app.view_state = ViewState::Chat;
         let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("[4 Chat]"), "Status bar should show [4 Chat]");
+        assert!(buf.contains("[4 Log]"), "Status bar should show [4 Log]");
 
         // Switch to Scan view
         app.view_state = ViewState::Scan;
@@ -2006,10 +2008,10 @@ mod tests {
         let buf = render_to_string(&app, 120, 40);
         assert!(buf.contains("Scan View"), "Help overlay should show 'Scan View' section");
 
-        // Chat view — help should show "Chat View"
+        // Chat (Log) view — help should show "Log View"
         app.view_state = ViewState::Chat;
         let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("Chat View"), "Help overlay should show 'Chat View' section");
+        assert!(buf.contains("Log View"), "Help overlay should show 'Log View' section");
     }
 
     #[test]
