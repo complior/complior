@@ -52,7 +52,7 @@ const loadDeepDir = async (dir, sandbox) => {
 
 const loadApplication = async (appPath, serverContext) => {
   const { console: logger, db, config, errors, schemas, zod,
-    workos, brevo, gotenberg, s3, stripe } = serverContext;
+    workos, brevo, gotenberg, s3, stripe, fetch, cheerio } = serverContext;
 
   // Base sandbox — available to all VM layers
   const sandbox = {
@@ -71,6 +71,8 @@ const loadApplication = async (appPath, serverContext) => {
     gotenberg: Object.freeze(gotenberg),
     s3: Object.freeze(s3),
     stripe: Object.freeze(stripe),
+    fetch: fetch || globalThis.fetch,
+    cheerio: cheerio ? Object.freeze(cheerio) : undefined,
   };
 
   // Layer 1: lib (permissions, audit, tenant)

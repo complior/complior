@@ -31,6 +31,7 @@
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
     "@workos-inc/node": "^8.5.0",
+    "cheerio": "^1.2.0",
     "pg-boss": "^12.13.0"
   }
 }

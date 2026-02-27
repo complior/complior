@@ -2,7 +2,7 @@
   access: 'public',
   httpMethod: 'GET',
   path: '/v1/regulations/meta',
-  method: async ({ query, db }) => {
+  method: async ({ query }) => {
     const jurisdictionId = query.jurisdictionId || 'eu-ai-act';
 
     const result = await db.query(
@@ -10,11 +10,13 @@
       [jurisdictionId]
     );
 
-    if (result.length === 0) {
+    const rows = result.rows || result;
+
+    if (rows.length === 0) {
       throw new errors.NotFoundError('RegulationMeta', jurisdictionId);
     }
 
-    const meta = result[0];
+    const meta = rows[0];
 
     return {
       jurisdictionId: meta.jurisdictionId,

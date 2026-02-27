@@ -1,9 +1,9 @@
 # SPRINT-BACKLOG-007.md — WorkOS Migration + Registry API
 
-**Версия:** 1.0.0
-**Дата:** 2026-02-21
+**Версия:** 1.1.0
+**Дата:** 2026-02-24
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** Planned
+**Статус:** ✅ Completed
 **Зависимости:** Sprint 6 merged to develop
 
 ---
@@ -12,9 +12,9 @@
 
 Мигрировать авторизацию с Ory Kratos → WorkOS (managed auth, SSO из коробки). Запустить Registry API — публичные эндпоинты для TUI Engine DataProvider (2477+ tools, 108 obligations, offline bundle).
 
-**Capacity:** ~20 SP | **Duration:** 2-3 недели
-**Developers:** Max (Backend — WorkOS + Registry API), Nina (Frontend — auth flow), Leo (Infra — Docker cleanup)
-**Baseline:** ~227 tests → **New: ~15 tests (total: ~242)**
+**Capacity:** ~39 SP (actual) | **Duration:** 2-3 недели
+**Developers:** Max (Backend — WorkOS + Registry API), Nina (Frontend — auth flow + public pages), Leo (Infra — Docker cleanup)
+**Baseline:** ~227 tests → **Final: 343 tests (+116)**
 
 > **Prerequisite:** Sprint 6 merged to develop. Admin Panel работает. Stripe Test Mode настроен. Kratos dev-интеграция работает (будет заменена).
 
@@ -28,11 +28,15 @@
 US-071 (WorkOS Backend) ──→ US-072 (WorkOS Frontend)
 US-071                  ──→ US-073 (Kratos Cleanup)
 US-074 (Registry API)   ──→ US-075 (API Key Management)
+US-074                  ──→ US-076 (Data Migration) ──→ US-077 (Quality Fixes)
+US-074                  ──→ US-078 (findBySlug + filters) ──→ US-079 (Public Pages)
 
 Порядок:
-1. US-071 (WorkOS Backend) — блокирует всё остальное
+1. US-071 (WorkOS Backend) — блокирует auth
 2. US-072 + US-074 параллельно (после US-071)
-3. US-073 + US-075 параллельно (после 072 и 074)
+3. US-073 + US-075 + US-076 параллельно (после 072 и 074)
+4. US-077 + US-078 (после US-076)
+5. US-079 (после US-078, Nina frontend)
 ```
 
 ---
@@ -330,6 +334,90 @@ migrate:regulations, migrate:registry, export:registry, export:regulation, expor
 
 ---
 
+### US-078: Registry API — findBySlug, Level Filter, Sort (2 SP) ✅ COMPLETED 2026-02-24
+
+- **Feature:** F37 (AI Registry Public Pages) + F26 (Registry API) | **Developer:** Max via Claude Code
+
+#### Описание
+
+Как разработчик фронтенда, я хочу получать данные инструмента по slug и фильтровать/сортировать список, чтобы построить SEO-оптимизированные публичные страницы реестра.
+
+#### Что было сделано
+
+**Модифицированные файлы (3):**
+- `app/application/registry/searchTools.js` — добавлен метод `findBySlug` (SELECT по slug), параметр `level` в фильтры, параметр `sort` (name/score/risk) с ORDER BY mapping
+- `app/api/registry/tools.js` — добавлен маршрут `GET /v1/registry/tools/by-slug/:slug` (public, API key optional)
+- `server/lib/schemas.js` — расширен `RegistryToolSearchSchema`: `level` enum (verified/scanned/classified), `sort` enum (name/score/risk)
+
+#### Критерии приёмки
+
+- [x] `GET /v1/registry/tools/by-slug/chatgpt` возвращает полную запись ChatGPT
+- [x] `GET /v1/registry/tools?level=verified` фильтрует по уровню
+- [x] `GET /v1/registry/tools?sort=score` сортирует по priorityScore DESC
+- [x] 343 tests pass, 0 failures, tsc --noEmit clean
+
+---
+
+### US-079: AI Registry Public Pages — Index + Detail (8 SP) ✅ COMPLETED 2026-02-24
+
+- **Feature:** F37 (AI Registry Public Pages) | **Developer:** Nina via Claude Code
+
+#### Описание
+
+Как посетитель сайта, я хочу просматривать публичный реестр AI инструментов с поиском, фильтрами и детальными страницами, чтобы оценить compliance-риски до регистрации на платформе.
+
+#### Что было сделано
+
+**Новые файлы (24):**
+
+*Frontend API Layer (2):*
+- `frontend/lib/registry.ts` — TypeScript типы (RegistryTool, RegistryStats, etc.) + fetch функции (client/server SSR) + вспомогательные helpers
+- `frontend/components/registry/toolValidation.ts` — per-level validation logic (verified/scanned/classified)
+
+*Shared Components (5):*
+- `frontend/components/registry/ToolLogo.tsx` — gradient initial-letter logo (deterministic из name hash)
+- `frontend/components/registry/ScoreBar.tsx` — score progress bar с цветовыми порогами
+- `frontend/components/registry/LevelBadge.tsx` — verified/scanned/classified pill badge
+- `frontend/components/registry/RiskBadge.tsx` — risk level badge (prohibited/high/gpai/limited/minimal)
+- `frontend/components/registry/Pagination.tsx` — page number buttons с ellipsis
+
+*Index Page `/tools` (6):*
+- `frontend/app/(marketing)/tools/page.tsx` — server component с ISR (1 hour), SEO metadata, stats bar
+- `frontend/components/registry/ToolGrid.tsx` — client component: search/filter/sort/pagination с URL sync
+- `frontend/components/registry/RegistrySearch.tsx` — search bar с `/` keyboard shortcut
+- `frontend/components/registry/RiskPillFilter.tsx` — toggleable risk level pills с counts
+- `frontend/components/registry/FeaturedRow.tsx` — 5 featured tool cards
+- `frontend/components/registry/ToolRow.tsx` — tool row для list view
+
+*Detail Page `/tools/[slug]` (8):*
+- `frontend/app/(marketing)/tools/[slug]/page.tsx` — ISR (daily), generateStaticParams (top 100), SEO metadata
+- `frontend/components/registry/ToolHero.tsx` — 2-column hero: info + risk card + score sidebar
+- `frontend/components/registry/ToolTabs.tsx` — 5-tab switcher (Overview, Obligations, Detection, Documents, History)
+- `frontend/components/registry/OverviewTab.tsx` — description + article cards + compliance breakdown bars
+- `frontend/components/registry/ObligationsTab.tsx` — deployer vs provider obligation checklists
+- `frontend/components/registry/DetectionTab.tsx` — code/SaaS detection patterns (dark panels)
+- `frontend/components/registry/SimilarTools.tsx` — 4 similar tool cards
+- `frontend/components/registry/CTABanner.tsx` — bottom CTA с CLI command
+
+**Модифицированные файлы (3):**
+- `frontend/components/Header.tsx` — добавлена "AI Registry" nav link в marketing mode
+- `frontend/messages/en.json` — добавлена секция `nav.registry` + `registry.*` (~45 ключей)
+- `frontend/messages/de.json` — немецкие переводы для тех же ключей
+
+#### Критерии приёмки
+
+- [x] `/tools` рендерит SSR страницу с 2477+ инструментов (paginated, 20/page)
+- [x] Search, risk filter, level filter, sort — все работают с URL sync
+- [x] `/tools/chatgpt` рендерит detail page с 5 tabs
+- [x] ISR: index = 1h revalidation, detail = daily
+- [x] Top 100 tools статически сгенерированы (generateStaticParams)
+- [x] TypeScript: 0 errors (tsc --noEmit clean)
+- [x] Все стили = inline React.CSSProperties (matching codebase pattern)
+- [x] EN + DE translations complete (~45 keys each)
+- [x] 343 tests pass, 0 failures
+
+---
+
 ## Кросс-проектные зависимости
 
 | Зависимость | Тип | Описание |
@@ -350,10 +438,14 @@ migrate:regulations, migrate:registry, export:registry, export:regulation, expor
 | US-075 | API Key Management | Max | 2 | ✅ |
 | US-076 | AI Registry + Regulation DB Data Migration | Max | 7 | ✅ |
 | US-077 | Post-Migration Data Quality Fixes | Max | 2 | ✅ |
-| **Итого** | | | **29** | **7 US** |
+| US-078 | Registry API — findBySlug, Level Filter, Sort | Max | 2 | ✅ |
+| US-079 | AI Registry Public Pages — Index + Detail | Nina | 8 | ✅ |
+| **Итого** | | | **39** | **9 US** |
 
 **Новые таблицы:** RegistryTool, Obligation, ScoringRule, APIKey, APIUsage, RegulationMeta, TechnicalRequirement, TimelineEvent, CrossMapping, LocalizationTerm, ApplicabilityNode (+11)
 **Удалённые сервисы:** Ory Kratos
 **Новые env vars:** WORKOS_CLIENT_ID, WORKOS_API_KEY, WORKOS_REDIRECT_URI
 **DB данные:** 4,983 AI tools + 108 obligations + 89 TechReq + 18 TimelineEvents
 **Новые npm scripts:** migrate:regulations, migrate:registry, export:registry, export:regulation, export:all
+**Frontend:** 24 новых файлов (components + pages), ~45 i18n ключей EN+DE
+**Tests:** 227 → 343 (+116 новых тестов)

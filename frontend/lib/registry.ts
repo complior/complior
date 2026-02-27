@@ -13,6 +13,16 @@ export interface Obligation {
   evidence_summary?: string | null;
 }
 
+export interface PublicDocumentation {
+  grade: string;
+  score: number;
+  total: number;
+  percent: number;
+  items: Array<{ id: string; label: string; found: boolean; signal: string }>;
+  checklist: string;
+  gradedAt: string;
+}
+
 export interface EuAiActAssessment {
   jurisdiction_id?: string;
   risk_level?: string;
@@ -20,6 +30,8 @@ export interface EuAiActAssessment {
   applicable_obligation_ids?: string[];
   deployer_obligations?: Obligation[];
   provider_obligations?: Obligation[];
+  publicDocumentation?: PublicDocumentation;
+  legacyScore?: number | null;
   score?: number | null;
   coverage?: number;
   transparencyScore?: number;
@@ -36,6 +48,7 @@ export interface RegistryTool {
   description: string | null;
   category: string | null;
   riskLevel: string | null;
+  aiActRole: string | null;
   level: 'classified' | 'scanned' | 'verified';
   assessments: {
     'eu-ai-act'?: EuAiActAssessment;
@@ -73,6 +86,7 @@ export interface RegistrySearchParams {
   q?: string;
   category?: string;
   risk?: string;
+  aiActRole?: string;
   level?: string;
   sort?: string;
   page?: number;
@@ -148,9 +162,40 @@ export async function getRegistryStats(revalidate = 3600): Promise<RegistryStats
   }
 }
 
-// Helper: extract score from eu-ai-act assessment
+// Helper: extract score from eu-ai-act assessment (legacy — deprecated)
 export function getToolScore(tool: RegistryTool): number | null {
-  return tool.assessments?.['eu-ai-act']?.score ?? null;
+  return tool.assessments?.['eu-ai-act']?.legacyScore ?? tool.assessments?.['eu-ai-act']?.score ?? null;
+}
+
+// Helper: extract public documentation grade (v4)
+export function getToolGrade(tool: RegistryTool): string | null {
+  return tool.assessments?.['eu-ai-act']?.publicDocumentation?.grade ?? null;
+}
+
+// Helper: extract public documentation object (v4)
+export function getPublicDocumentation(tool: RegistryTool): PublicDocumentation | null {
+  return tool.assessments?.['eu-ai-act']?.publicDocumentation ?? null;
+}
+
+// Helper: get grade color CSS variable
+export function getGradeColor(grade: string | null): string {
+  if (!grade) return 'var(--dark5)';
+  if (grade.startsWith('A')) return 'var(--teal)';
+  if (grade.startsWith('B')) return 'var(--blue)';
+  if (grade.startsWith('C')) return 'var(--amber)';
+  return 'var(--coral)';
+}
+
+// Helper: get AI Act role label for display
+export function getAiActRoleLabel(role: string | null): string {
+  const labels: Record<string, string> = {
+    provider: 'AI Provider',
+    deployer_product: 'Deployer Product',
+    hybrid: 'Hybrid',
+    infrastructure: 'Infrastructure',
+    ai_feature: 'AI Feature',
+  };
+  return labels[role || ''] || 'Unclassified';
 }
 
 // Helper: extract assessment object

@@ -20,11 +20,28 @@
         q: parsed.q || '',
         category: parsed.category || null,
         risk: parsed.risk || null,
+        aiActRole: parsed.aiActRole || null,
         jurisdiction: parsed.jurisdiction || null,
         hasDetectionPatterns: parsed.hasDetectionPatterns ?? null,
+        level: parsed.level || null,
+        sort: parsed.sort || null,
         page: parsed.page,
         limit: parsed.limit,
       });
+    },
+  },
+  {
+    access: 'public',
+    httpMethod: 'GET',
+    path: '/v1/registry/tools/by-slug/:slug',
+    method: async ({ params }) => {
+      const slug = params.slug;
+      if (!slug || typeof slug !== 'string') {
+        throw new errors.ValidationError('Invalid slug');
+      }
+      const tool = await application.registry.searchTools.findBySlug(slug);
+      if (!tool) throw new errors.NotFoundError('RegistryTool', slug);
+      return tool;
     },
   },
   {

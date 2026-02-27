@@ -7,4 +7,4 @@
  * Usage: npm run seed:detection-patterns
  */
 
-require('../app/seeds/seed-detection-patterns.js');
+require('./seed-detection-patterns.js');

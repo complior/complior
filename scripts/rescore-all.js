@@ -43,7 +43,7 @@ const run = async () => {
   const startTime = Date.now();
 
   console.log('═══════════════════════════════════════════════════');
-  console.log('  RE-SCORE ALL TOOLS (Scoring Engine v3.1)');
+  console.log('  RE-SCORE ALL TOOLS (Scoring Engine v3.1 + Doc Grader v4)');
   console.log('═══════════════════════════════════════════════════');
   console.log(`  Mode:       ${opts.dryRun ? 'DRY RUN' : 'LIVE'}`);
   console.log(`  Batch size: ${opts.batch}`);
@@ -53,9 +53,11 @@ const run = async () => {
     const domainDir = path.join(__dirname, '../app/domain/registry');
     const analyzerFactory = loadSandboxModule(path.join(domainDir, 'evidence-analyzer.js'));
     const scorerFactory = loadSandboxModule(path.join(domainDir, 'registry-scorer.js'));
+    const graderFactory = loadSandboxModule(path.join(domainDir, 'public-doc-grader.js'));
 
     const analyzer = analyzerFactory({ db: pool });
     const scorer = scorerFactory({ db: pool });
+    const grader = graderFactory();
 
     // ── Phase 3a: Provider correlation (needs all tools loaded once) ──
     console.log('Phase 3a: Loading tools for provider correlation...');
@@ -83,7 +85,7 @@ const run = async () => {
     console.log('\nPhase 3b: Loading all tools for 2-pass analysis...');
     const allToolsRes = await pool.query(
       `SELECT "registryToolId", slug, name, provider, "riskLevel",
-              level, assessments, evidence, categories
+              level, assessments, evidence, categories, "aiActRole"
        FROM "RegistryTool"
        WHERE active = true
        ORDER BY slug`
@@ -216,6 +218,37 @@ const run = async () => {
       }
     }
 
+    // ── Pass 3: Public Documentation Grading (v4) ──
+    console.log('\n  Pass 3: Public Documentation Grading...');
+    const gradeStats = { 'A+': 0, A: 0, 'A-': 0, 'B+': 0, B: 0, 'B-': 0, C: 0, D: 0, 'D-': 0, F: 0 };
+    let graded = 0;
+
+    for (const tool of allTools) {
+      const docResult = grader.grade(tool);
+
+      if (!opts.dryRun) {
+        // Store publicDocumentation, rename old score to legacyScore, set aiActRole
+        await pool.query(
+          `UPDATE "RegistryTool"
+           SET assessments = jsonb_set(
+             jsonb_set(
+               COALESCE(assessments, '{}'::jsonb),
+               '{eu-ai-act,publicDocumentation}',
+               $1::jsonb
+             ),
+             '{eu-ai-act,legacyScore}',
+             COALESCE(assessments->'eu-ai-act'->'score', 'null'::jsonb)
+           )
+           WHERE slug = $2`,
+          [JSON.stringify(docResult), tool.slug],
+        );
+      }
+
+      gradeStats[docResult.grade] = (gradeStats[docResult.grade] || 0) + 1;
+      graded++;
+    }
+    console.log(`  Graded: ${graded} tools`);
+
     // ── Phase 4: Percentiles ──
     console.log('\nPhase 4: Computing percentiles...');
     const scoredToolsForPercentiles = allTools.filter((t) => t._score != null);
@@ -259,6 +292,11 @@ const run = async () => {
     console.log(`\n  Maturity:`);
     for (const [key, count] of Object.entries(maturityStats)) {
       if (count > 0) console.log(`    ${key}: ${count}`);
+    }
+
+    console.log(`\n  Doc Grade Distribution:`);
+    for (const [grade, count] of Object.entries(gradeStats)) {
+      if (count > 0) console.log(`    ${grade}: ${count}`);
     }
 
     if (scored > 0) {

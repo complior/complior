@@ -1,10 +1,12 @@
 # ARCHITECTURE.md — AI Act Compliance Platform
 
-**Версия:** 3.1.0
-**Дата:** 2026-02-23
+**Версия:** 3.2.0
+**Дата:** 2026-02-24
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Phase 0 — Утверждено
 
+> **v3.2.0 (2026-02-24):** Audit — Implementation Status Matrix added to all Bounded Contexts. Schema counter corrected to 41 (ScanResult not yet created). Tree listing fixed. Code: refresh-service.js bug fix (tools.rows) + FP refactor (IIFE closures). Moved seed-detection-patterns.js from app/ to scripts/. Deleted pre-migration .backup files.
+>
 > **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model.
 > - **Auth:** Ory Kratos → **WorkOS** (managed auth, AuthKit, SSO free до 1M MAU, org management native). Supersedes ADR-006, см. ADR-007.
 > - **Новый BC "Registry API":** Публичные эндпоинты для TUI DataProvider: `/v1/registry/tools`, `/v1/regulations/obligations`. API Key auth, rate limits per plan, ETag caching.
@@ -258,7 +260,25 @@ graph LR
     IAM -->|"authorizes"| TUIData
 ```
 
-### 4.1 IAM Context (Identity & Access Management)
+### Implementation Status Matrix
+
+| # | Bounded Context | Status | Endpoints | Sprint |
+|---|----------------|--------|-----------|--------|
+| 4.1 | IAM | **IMPLEMENTED** | 13 auth + 4 team + 2 user | S1–S7 |
+| 4.2 | Inventory | **IMPLEMENTED** | 9 endpoints | S2 |
+| 4.3 | Classification | **IMPLEMENTED** | 2 endpoints | S2–S3 |
+| 4.4 | AI Literacy | SCHEMA ONLY | 0 endpoints | Planned S10 |
+| 4.5 | Deployer Compliance | SCHEMA ONLY | 0 endpoints | Planned S8–S9 |
+| 4.6 | Consultation (Eva) | SCHEMA ONLY | 0 endpoints | Planned S8 |
+| 4.7 | Monitoring | SCHEMA ONLY | 0 endpoints | Planned S9 |
+| 4.8 | Billing | **IMPLEMENTED** | 3 endpoints | S3.5–S6 |
+| 4.9 | Registry API | **IMPLEMENTED** | 7 endpoints (3 registry + 3 regulations + 1 data) | S7 |
+| 4.10 | TUI Data Collection | NOT STARTED | 0 endpoints, ScanResult schema not created | Planned S8 |
+| 4.11 | Data Migration | **IMPLEMENTED** | scripts + pg-boss jobs | S7 |
+
+> **Legend:** **IMPLEMENTED** = endpoints + business logic live in production. SCHEMA ONLY = MetaSQL schema exists, no API/application code. NOT STARTED = neither schema nor code exists yet.
+
+### 4.1 IAM Context (Identity & Access Management) — IMPLEMENTED
 - **Identity & Auth:** WorkOS (managed) — AuthKit (hosted login/registration), SSO (SAML/OIDC бесплатно до 1M MAU), MFA, magic links. Supersedes Ory Kratos ([ADR-007](ADR-007-workos-migration.md))
 - **Наша БД:** User (sync от WorkOS через SDK callback), Organization (workosOrgId), Role, Permission, Invitation
 - **Ответственный:** Max (backend WorkOS integration) + Nina (frontend AuthKit UI)
@@ -267,14 +287,14 @@ graph LR
 - **Subscription Enforcement (Sprint 2.5):** SubscriptionLimitChecker (чистый domain service) проверяет maxUsers/maxTools перед созданием invitation и регистрацией инструмента. PlanLimitError (403) при превышении лимита
 - **Enterprise SSO:** WorkOS Organizations + SSO connections (SAML/OIDC). Настройка через Dashboard → Org Settings
 
-### 4.2 Inventory Context (точка входа для deployer)
+### 4.2 Inventory Context (точка входа для deployer) — IMPLEMENTED
 - **Entities:** AITool, AIToolCatalog (200+ pre-populated tools), AIToolDiscovery
 - **Domain Services:** CatalogMatcher (поиск по каталогу), DiscoveryLogger
 - **Application:** registerAITool (wizard 5 шагов для deployer), importTools (CSV import)
 - **Ответственный:** Max (backend) + Nina (wizard UI)
 - **Описание:** Deployer регистрирует AI-инструменты, которые компания ИСПОЛЬЗУЕТ (ChatGPT, HireVue, Copilot и т.д.). Каталог помогает быстро найти и добавить инструмент с pre-fill данных.
 
-### 4.3 Classification Context (ядро продукта)
+### 4.3 Classification Context (ядро продукта) — IMPLEMENTED
 - **Entities:** RiskClassification, AnnexCategory, Requirement (deployer: Art. 4, 26-27, 50)
 - **Domain Services:** RuleEngine (pure rule-based: Art.5 prohibited, Annex III deployer domains)
 - **Application:** classifyAITool (orchestrates RuleEngine + LLM via port + cross-validation)
@@ -282,21 +302,21 @@ graph LR
 - **Output:** deployer-требования (Art. 4 AI Literacy, Art. 26 обязанности, Art. 27 FRIA, Art. 50 прозрачность)
 - **Ответственный:** Max (backend engine) + Elena (AI Act rules) + Nina (wizard UI)
 
-### 4.4 AI Literacy Context (wedge product, Art. 4)
+### 4.4 AI Literacy Context (wedge product, Art. 4) — SCHEMA ONLY
 - **Entities:** TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement
 - **Domain Services:** LiteracyManager, CertificateGenerator
 - **Application:** enrollEmployee, trackCompletion, generateCertificate (PDF via Gotenberg)
 - **Ответственный:** Max (backend) + Nina (learning UI) + Elena (контент курсов)
 - **Описание:** Art. 4 AI Literacy обязателен с 02.02.2025. 70% сотрудников не обучены. 4 role-based курса на немецком: CEO, HR, Developer, General. Standalone продукт за €49/мес.
 
-### 4.5 Deployer Compliance Context
+### 4.5 Deployer Compliance Context — SCHEMA ONLY
 - **Entities:** ComplianceDocument (FRIA, Monitoring Plan, AI Usage Policy, Employee Notification), ChecklistItem, ComplianceScore, DocumentSection, FRIAAssessment, FRIASection
 - **Domain Services:** DocumentGenerator (deployer docs), GapAnalyzer, ScoreCalculator, FRIAWizard
 - **Типы документов:** FRIA (Art. 27), Monitoring Plan, AI Usage Policy, Employee Notification, Incident Report
 - **НЕ генерирует:** Art. 11 Annex IV Technical Documentation, Conformity Assessment (Art. 43) → P3 Future
 - **Ответственный:** Max (backend) + Nina (dashboard + editor UI)
 
-### 4.6 Consultation Context (Ева — deployer focus)
+### 4.6 Consultation Context (Ева — deployer focus) — SCHEMA ONLY
 - **Entities:** Conversation, ChatMessage, QuickAction
 - **Domain Services:** EvaOrchestrator (context injection + tool calling)
 - **AI Framework:** Vercel AI SDK 6 — `streamText` (Fastify) + `useChat` (Next.js), Zod-typed tools с `needsApproval` ([ADR-005](ADR-005-vercel-ai-sdk.md))
@@ -305,19 +325,19 @@ graph LR
 - **Ответственный:** Max (backend) + Nina (chat UI)
 - **Существующий код:** Chat, Message, ChatMember schemas — адаптируем
 
-### 4.7 Monitoring Context (post-MVP)
+### 4.7 Monitoring Context (post-MVP) — SCHEMA ONLY
 - **Entities:** RegulatoryUpdate, ImpactAssessment, Notification
 - **Domain Services:** EURLexScraper, ChangeDetector, NotificationSender
 - **Notification types:** ai_tool_discovered, literacy_overdue, fria_required, risk_threshold_exceeded, regulatory_update, compliance_change
 - **Ответственный:** Max (background jobs)
 
-### 4.8 Billing Context
+### 4.8 Billing Context — IMPLEMENTED
 - **Entities:** Subscription, Plan, Invoice
 - **External:** Stripe API (webhooks → internal events)
 - **Планы:** Free (Quick Check) → €49 (AI Literacy) → €149 (Full Compliance) → €399 (Scale) → Enterprise
 - **Ответственный:** Max (Stripe integration)
 
-### 4.9 Registry API Context (новое — v3.0.0)
+### 4.9 Registry API Context (новое — v3.0.0) — IMPLEMENTED
 - **Entities:** RegistryTool (2,477+ AI tools), Obligation (108 per regulation/risk), ScoringRule, APIKey, APIUsage
 - **Публичные эндпоинты:**
   - `GET /v1/registry/tools` — поиск/фильтрация AI tools (для TUI DataProvider)
@@ -335,7 +355,7 @@ graph LR
 - **Ответственный:** Max (backend API) + Infra (rate limiting, monitoring)
 - **Кросс-зависимость:** Engine (open-source) DataProvider потребляет этот API
 
-### 4.10 TUI Data Collection Context (новое — v3.0.0)
+### 4.10 TUI Data Collection Context (новое — v3.0.0) — NOT STARTED
 - **Назначение:** Приём compliance данных от TUI-инсталляций для агрегации на Dashboard. Работает только при наличии платного плана (авторизация через API Key).
 - **Единственный эндпоинт:**
   - `POST /v1/tui/scans` — idempotent upload результата скана: `{ projectPath, score, findings[], toolsDetected[], regulation, scannedAt }`. TUI вызывает после каждого скана при наличии ключа.
@@ -350,7 +370,7 @@ graph LR
 - **Ответственный:** Max (backend ingest) + Nina (Dashboard v2 UI)
 - **Кросс-зависимость:** TUI Engine (open-source) отправляет данные если пользователь настроил API key в `~/.complior/credentials`
 
-### 4.11 Data Migration Context (v3.1.0 — 2026-02-23)
+### 4.11 Data Migration Context (v3.1.0 — 2026-02-23) — IMPLEMENTED
 
 **Назначение:** Миграция AI Registry (4,983 инструментов) и Regulation DB (108 обязательств) из open-source Engine (`~/complior`) в SaaS PostgreSQL — единственный источник истины.
 
@@ -468,7 +488,7 @@ app/                                 # Business logic (VM-sandboxed, NO require)
 │   │   ├── entities/
 │   │   └── services/
 │   └── events/
-├── schemas/                         # MetaSQL definitions (~39 files)
+├── schemas/                         # MetaSQL definitions (41 active files)
 │   ├── Organization.js, User.js, Role.js, Permission.js, UserRole.js, Invitation.js
 │   ├── AITool.js, AIToolCatalog.js, AIToolDiscovery.js
 │   ├── RiskClassification.js, Requirement.js, ToolRequirement.js, ClassificationLog.js
@@ -480,7 +500,7 @@ app/                                 # Business logic (VM-sandboxed, NO require)
 │   ├── AuditLog.js
 │   ├── RegistryTool.js, Obligation.js, ScoringRule.js          # Registry API (v3.0)
 │   ├── APIKey.js, APIUsage.js                                   # Registry API auth (v3.0)
-│   └── ScanResult.js                                            # TUI Data Collection (v3.0)
+│   └── ScanResult.js                                            # TUI Data Collection (PLANNED, not created)
 └── seeds/                           # Seed data (5+ files)
     ├── catalog.js, courses.js, plans.js, requirements.js, roles.js
 ```

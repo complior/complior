@@ -9,6 +9,32 @@ const { load, loadDir, loadDeepDir } = require('../../server/src/loader.js');
 
 const APP_PATH = path.resolve(__dirname, '../../app');
 
+const createMockFetch = (responses = {}) => {
+  const calls = [];
+  const fn = async (url, options) => {
+    calls.push({ url, options });
+    const handler = responses[url];
+    if (handler) {
+      if (typeof handler === 'function') return handler(url, options);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => (typeof handler === 'string' ? handler : JSON.stringify(handler)),
+        json: async () => (typeof handler === 'string' ? JSON.parse(handler) : handler),
+      };
+    }
+    return { ok: false, status: 404, text: async () => 'Not Found', json: async () => ({}) };
+  };
+  fn.calls = calls;
+  return fn;
+};
+
+const createMockCheerio = () => {
+  // Minimal cheerio mock for testing — real cheerio should be used in integration tests
+  const cheerio = require('cheerio');
+  return cheerio;
+};
+
 const createTestSandbox = (mockDb, extras = {}) => ({
   setTimeout,
   clearTimeout,
@@ -20,6 +46,8 @@ const createTestSandbox = (mockDb, extras = {}) => ({
   schemas,
   zod,
   config: {},
+  fetch: extras.fetch || createMockFetch(),
+  cheerio: extras.cheerio || createMockCheerio(),
   workos: {
     getAuthorizationUrl: () => 'https://authkit.workos.com/test',
     authenticateWithCode: async () => ({
@@ -83,4 +111,5 @@ const buildFullSandbox = async (mockDb, extras = {}) => {
 module.exports = {
   createTestSandbox, loadAppModule, loadAppDir,
   loadAppDeepDir, buildFullSandbox, APP_PATH,
+  createMockFetch, createMockCheerio,
 };

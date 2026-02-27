@@ -1,5 +1,5 @@
 ({
-  search: async ({ q, category, risk, jurisdiction, hasDetectionPatterns, level, sort, page = 1, limit = 20 }) => {
+  search: async ({ q, category, risk, aiActRole, jurisdiction, hasDetectionPatterns, level, sort, page = 1, limit = 20 }) => {
     const conditions = ['"active" = true'];
     const values = [];
     let idx = 1;
@@ -40,6 +40,11 @@
       conditions.push(`("detectionPatterns" IS NULL OR "detectionPatterns" = 'null'::jsonb)`);
     }
 
+    if (aiActRole) {
+      conditions.push(`"aiActRole" = $${idx++}`);
+      values.push(aiActRole);
+    }
+
     if (level) {
       conditions.push(`"level" = $${idx++}`);
       values.push(level);
@@ -71,7 +76,9 @@
     dataValues.push(limit, offset);
 
     let orderClause;
-    if (sort === 'score') {
+    if (sort === 'grade') {
+      orderClause = `ORDER BY ${relevancePrefix} COALESCE(("assessments"->'eu-ai-act'->'publicDocumentation'->>'grade'), 'Z') ASC`;
+    } else if (sort === 'score') {
       orderClause = `ORDER BY ${relevancePrefix} COALESCE(("assessments"->'eu-ai-act'->>'score')::numeric, -1) DESC, COALESCE(("assessments"->'eu-ai-act'->>'transparencyGrade'), 'Z') ASC`;
     } else if (sort === 'risk') {
       orderClause = `ORDER BY ${relevancePrefix} CASE "riskLevel"

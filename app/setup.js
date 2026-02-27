@@ -34,6 +34,7 @@ const TYPE_MAP = {
   boolean: 'boolean',
   datetime: 'timestamp with time zone',
   json: 'jsonb',
+  decimal: 'numeric',
   ip: 'inet',
   riskLevel: 'varchar',
   complianceStatus: 'varchar',
@@ -181,6 +182,7 @@ const TABLE_ORDER = [
   'RegistryTool',
   'Obligation',
   'ScoringRule',
+  'ScoringWeight',
   'ApiKey',
   'ApiUsage',
   // New regulation tables (Phase 1)
@@ -429,6 +431,20 @@ const seedScoringRules = async (client) => {
   console.log(`  Seeded ${rules.length} scoring rules`);
 };
 
+const seedScoringWeights = async (client) => {
+  const weights = require(path.join(SEEDS_DIR, 'scoring-weights.js'));
+  for (const w of weights) {
+    await client.query(
+      `INSERT INTO "ScoringWeight"
+       ("category", "weight", "label", "regulation")
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT ("category") DO NOTHING`,
+      [w.category, w.weight, w.label, 'eu-ai-act'],
+    );
+  }
+  console.log(`  Seeded ${weights.length} scoring weights`);
+};
+
 const seedCatalog = async (client) => {
   const catalog = require(path.join(SEEDS_DIR, 'catalog.js'));
   for (const tool of catalog) {
@@ -492,6 +508,7 @@ const run = async () => {
     await seedRegistryTools(client);
     await seedObligations(client);
     await seedScoringRules(client);
+    await seedScoringWeights(client);
 
     console.log('\nSetup complete!');
     console.log(`  Tables: ${TABLE_ORDER.length}`);

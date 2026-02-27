@@ -39,6 +39,10 @@
     enum: ['unacceptable', 'high', 'gpai_systemic', 'gpai', 'limited', 'minimal'],
     required: false,
   },
+  aiActRole: {
+    enum: ['provider', 'deployer_product', 'hybrid', 'infrastructure', 'ai_feature'],
+    required: false,
+  },
   websiteUrl: { type: 'string', required: false },
   vendorCountry: { type: 'string', length: { min: 2, max: 2 }, required: false },
   dataResidency: { type: 'string', required: false },

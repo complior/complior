@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Registry — Complior.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,800;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --f-display:Fraunces,Georgia,serif;
+  --f-body:'Plus Jakarta Sans',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono',monospace;
+  --bg:#08090b;--bg2:#0f1114;--bg3:#161a1f;
+  --dark:#f0f2f4;--dark2:#cdd1d6;--dark3:#a0a7b0;--dark4:#6b7280;--dark5:#4b5563;
+  --teal:#34d399;--teal2:#0d9488;--teal3:#0f766e;--teal-dim:rgba(52,211,153,.08);
+  --coral:#f87171;--amber:#fbbf24;--purple:#a78bfa;--blue:#60a5fa;
+  --b:rgba(255,255,255,.06);--b2:rgba(255,255,255,.1);
+  --card:rgba(255,255,255,.02);--card2:rgba(255,255,255,.04);
+  --radius:10px;
+}
+html.light{
+  --bg:#faf8f5;--bg2:#f0ece5;--bg3:#e6e1d8;
+  --dark:#1a1a1a;--dark2:#333;--dark3:#555;--dark4:#777;--dark5:#999;
+  --teal:#0d9488;--teal2:#0f766e;--teal3:#115e59;--teal-dim:rgba(13,148,136,.06);
+  --coral:#c0392b;--amber:#d97706;--purple:#6d28d9;--blue:#2563eb;
+  --b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);
+  --card:#fff;--card2:rgba(0,0,0,.02);
+}
+body{background:var(--bg);color:var(--dark);font-family:var(--f-body);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* ═══ HEADER ═══ */
+header{position:sticky;top:0;z-index:100;padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;background:rgba(8,9,11,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--b)}
+html.light header{background:rgba(250,248,245,.9);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.logo{font-family:var(--f-display);font-size:1.125rem;font-weight:700;color:var(--dark);display:flex;align-items:center;gap:.5rem}
+.logo span{color:var(--teal)}
+.hdr-nav{display:flex;align-items:center;gap:1.5rem}
+.hdr-nav a{font-family:var(--f-body);font-size:.8125rem;color:var(--dark4);transition:color .2s}
+.hdr-nav a:hover{color:var(--teal)}
+.hdr-nav a.active{color:var(--teal);font-weight:600}
+.theme-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--b);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dark4);transition:.3s}
+.theme-btn:hover{border-color:var(--b2);color:var(--dark)}
+.theme-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ═══ PAGE ═══ */
+.page{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
+
+/* Hero */
+.reg-hero{margin-bottom:2.5rem}
+.reg-hero h1{font-family:var(--f-display);font-size:clamp(2rem,4vw,3rem);font-weight:800;color:var(--dark);letter-spacing:-.03em;margin-bottom:.375rem}
+.reg-hero h1 em{font-style:italic;color:var(--teal);font-weight:500}
+.reg-hero p{font-size:1rem;color:var(--dark4);max-width:540px}
+
+/* Stats bar */
+.reg-stats{display:flex;gap:2rem;margin-bottom:2rem}
+.reg-stat{display:flex;align-items:baseline;gap:.375rem}
+.reg-stat-n{font-family:var(--f-display);font-size:1.25rem;font-weight:700;color:var(--dark)}
+.reg-stat-l{font-family:var(--f-mono);font-size:.625rem;color:var(--dark5);text-transform:uppercase;letter-spacing:.04em}
+
+/* Search */
+.search-wrap{position:relative;margin-bottom:1.5rem}
+.search-wrap input{width:100%;padding:.75rem 1rem .75rem 2.75rem;background:var(--card);border:1px solid var(--b2);border-radius:var(--radius);font-family:var(--f-body);font-size:.9375rem;color:var(--dark);outline:none;transition:.3s}
+.search-wrap input::placeholder{color:var(--dark5)}
+.search-wrap input:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-dim)}
+.search-icon{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--dark5);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.search-kbd{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);font-family:var(--f-mono);font-size:.5625rem;color:var(--dark5);background:var(--bg2);border:1px solid var(--b);border-radius:4px;padding:.0625rem .3125rem}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:2rem;align-items:center}
+.risk-pill{font-family:var(--f-mono);font-size:.625rem;font-weight:600;padding:.3125rem .625rem;border-radius:100px;border:1px solid var(--b2);background:var(--card);color:var(--dark4);cursor:pointer;transition:.2s;display:flex;align-items:center;gap:.375rem;user-select:none}
+.risk-pill .dot{width:6px;height:6px;border-radius:50%}
+.risk-pill:hover{border-color:var(--dark4)}
+.risk-pill.active{border-color:currentColor;background:currentColor;color:#fff}
+.risk-pill.active .dot{background:#fff}
+.risk-pill[data-risk="prohibited"]{--pill-c:var(--coral)}.risk-pill[data-risk="prohibited"] .dot{background:var(--coral)}.risk-pill[data-risk="prohibited"].active{background:rgba(248,113,113,.12);color:var(--coral);border-color:rgba(248,113,113,.3)}
+.risk-pill[data-risk="high"]{--pill-c:var(--amber)}.risk-pill[data-risk="high"] .dot{background:var(--amber)}.risk-pill[data-risk="high"].active{background:rgba(251,191,36,.1);color:var(--amber);border-color:rgba(251,191,36,.3)}
+.risk-pill[data-risk="gpai"]{--pill-c:var(--purple)}.risk-pill[data-risk="gpai"] .dot{background:var(--purple)}.risk-pill[data-risk="gpai"].active{background:rgba(167,139,250,.1);color:var(--purple);border-color:rgba(167,139,250,.3)}
+.risk-pill[data-risk="limited"]{--pill-c:var(--blue)}.risk-pill[data-risk="limited"] .dot{background:var(--blue)}.risk-pill[data-risk="limited"].active{background:rgba(96,165,250,.1);color:var(--blue);border-color:rgba(96,165,250,.3)}
+.risk-pill[data-risk="minimal"]{--pill-c:var(--teal)}.risk-pill[data-risk="minimal"] .dot{background:var(--teal)}.risk-pill[data-risk="minimal"].active{background:var(--teal-dim);color:var(--teal);border-color:rgba(52,211,153,.3)}
+
+.filter-sep{width:1px;height:20px;background:var(--b2);margin:0 .25rem}
+.filter-select{font-family:var(--f-mono);font-size:.625rem;padding:.3125rem .5rem;border-radius:6px;border:1px solid var(--b2);background:var(--card);color:var(--dark4);cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .375rem center;padding-right:1.25rem}
+
+/* View toggle */
+.view-toggle{margin-left:auto;display:flex;gap:2px;background:var(--bg2);border-radius:6px;padding:2px;border:1px solid var(--b)}
+.view-btn{width:28px;height:28px;border-radius:4px;border:none;background:transparent;color:var(--dark5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s}
+.view-btn.active{background:var(--card);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.view-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Results count */
+.results-count{font-family:var(--f-mono);font-size:.6875rem;color:var(--dark5);margin-bottom:1rem}
+
+/* ═══ FEATURED ═══ */
+.featured{margin-bottom:2.5rem}
+.featured-h{font-family:var(--f-mono);font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark5);margin-bottom:.875rem}
+.featured-row{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem}
+
+.feat-card{background:var(--card);border:1px solid var(--b);border-radius:var(--radius);padding:1.125rem;cursor:pointer;transition:.3s}
+.feat-card:hover{border-color:var(--b2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.feat-card-top{display:flex;align-items:center;gap:.625rem;margin-bottom:.75rem}
+.feat-card-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:.875rem;color:#fff;flex-shrink:0}
+.feat-card-name{font-family:var(--f-display);font-size:.875rem;font-weight:700;color:var(--dark);line-height:1.2}
+.feat-card-provider{font-size:.625rem;color:var(--dark5)}
+.feat-card-risk{display:inline-block;font-family:var(--f-mono);font-size:.4375rem;font-weight:700;padding:.125rem .375rem;border-radius:3px;margin-bottom:.5rem}
+.feat-card-score{display:flex;align-items:center;gap:.5rem}
+.feat-card-score-n{font-family:var(--f-display);font-size:1rem;font-weight:800}
+.feat-card-score-bar{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.feat-card-score-fill{height:100%;border-radius:2px}
+
+/* ═══ TOOLS LIST ═══ */
+.tools-grid{display:flex;flex-direction:column;gap:.5rem}
+
+.tool-row{display:grid;grid-template-columns:2.5rem 1fr auto auto auto;gap:1rem;align-items:center;padding:.875rem 1rem;background:var(--card);border:1px solid var(--b);border-radius:var(--radius);cursor:pointer;transition:.25s}
+.tool-row:hover{border-color:var(--b2);background:var(--card2)}
+.tool-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:.8125rem;color:#fff;flex-shrink:0}
+.tool-info{}
+.tool-name{font-family:var(--f-display);font-size:.875rem;font-weight:700;color:var(--dark)}
+.tool-meta{font-size:.625rem;color:var(--dark5);margin-top:.125rem}
+.tool-meta span{margin-right:.5rem}
+.tool-risk{font-family:var(--f-mono);font-size:.5rem;font-weight:700;padding:.125rem .4375rem;border-radius:3px;white-space:nowrap}
+.tool-score-wrap{display:flex;align-items:center;gap:.5rem;min-width:100px}
+.tool-score-n{font-family:var(--f-display);font-size:.875rem;font-weight:700;min-width:32px;text-align:right}
+.tool-score-bar{width:60px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.tool-score-fill{height:100%;border-radius:2px}
+.tool-articles{font-family:var(--f-mono);font-size:.5rem;color:var(--dark5);text-align:right;min-width:100px}
+
+/* Risk badge colors */
+.risk-prohibited{background:rgba(248,113,113,.1);color:var(--coral);border:1px solid rgba(248,113,113,.15)}
+.risk-high{background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.15)}
+.risk-gpai{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.15)}
+.risk-limited{background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.15)}
+.risk-minimal{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(52,211,153,.15)}
+
+/* Score colors */
+.sc-red{color:var(--coral)}
+.sc-amber{color:var(--amber)}
+.sc-blue{color:var(--blue)}
+.sc-teal{color:var(--teal)}
+
+/* ═══ PAGINATION ═══ */
+.pagination{display:flex;justify-content:center;gap:.25rem;margin-top:2rem}
+.pg-btn{font-family:var(--f-mono);font-size:.6875rem;padding:.375rem .625rem;border-radius:6px;border:1px solid var(--b);background:var(--card);color:var(--dark4);cursor:pointer;transition:.2s}
+.pg-btn:hover{border-color:var(--b2);color:var(--dark)}
+.pg-btn.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+/* ═══ FOOTER ═══ */
+footer{margin-top:4rem;padding:2rem;border-top:1px solid var(--b);text-align:center;font-family:var(--f-mono);font-size:.625rem;color:var(--dark5)}
+
+/* Responsive */
+@media(max-width:768px){
+  .featured-row{grid-template-columns:repeat(2,1fr);overflow-x:auto}
+  .tool-row{grid-template-columns:2.5rem 1fr auto;gap:.75rem}
+  .tool-articles,.tool-score-wrap{display:none}
+  .reg-stats{gap:1rem;flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<header>
+<a href="/" class="logo">complior<span>.ai</span></a>
+<nav class="hdr-nav">
+<a href="/">Home</a>
+<a href="/tools" class="active">AI Registry</a>
+<a href="/docs">Docs</a>
+<a href="https://github.com" target="_blank">GitHub ↗</a>
+<button class="theme-btn" onclick="document.documentElement.classList.toggle('light')">
+<svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+</button>
+</nav>
+</header>
+
+<div class="page">
+
+<!-- Hero -->
+<div class="reg-hero">
+<h1>AI <em>Registry</em></h1>
+<p>Open database of AI tools classified by risk level, compliance score, and applicable regulations.</p>
+</div>
+
+<!-- Stats -->
+<div class="reg-stats">
+<div class="reg-stat"><span class="reg-stat-n">2,147</span><span class="reg-stat-l">Tools</span></div>
+<div class="reg-stat"><span class="reg-stat-n">5</span><span class="reg-stat-l">Risk Levels</span></div>
+<div class="reg-stat"><span class="reg-stat-n">450+</span><span class="reg-stat-l">Articles Mapped</span></div>
+<div class="reg-stat"><span class="reg-stat-n">12</span><span class="reg-stat-l">Jurisdictions</span></div>
+</div>
+
+<!-- Search -->
+<div class="search-wrap">
+<svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+<input type="text" placeholder="Search tools... (e.g. ChatGPT, Midjourney, HireVue)">
+<span class="search-kbd">/</span>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+<div class="risk-pill" data-risk="prohibited" onclick="this.classList.toggle('active')"><span class="dot"></span>Prohibited <span style="opacity:.5">3</span></div>
+<div class="risk-pill" data-risk="high" onclick="this.classList.toggle('active')"><span class="dot"></span>High Risk <span style="opacity:.5">47</span></div>
+<div class="risk-pill" data-risk="gpai" onclick="this.classList.toggle('active')"><span class="dot"></span>GPAI <span style="opacity:.5">89</span></div>
+<div class="risk-pill" data-risk="limited" onclick="this.classList.toggle('active')"><span class="dot"></span>Limited <span style="opacity:.5">234</span></div>
+<div class="risk-pill" data-risk="minimal" onclick="this.classList.toggle('active')"><span class="dot"></span>Minimal <span style="opacity:.5">1,774</span></div>
+<div class="filter-sep"></div>
+<select class="filter-select"><option>All Categories</option><option>Chatbot</option><option>Image Generation</option><option>Code Assistant</option><option>Voice / TTS</option><option>HR / Recruiting</option><option>Surveillance</option></select>
+<select class="filter-select"><option>Sort: Popular</option><option>Sort: Name A-Z</option><option>Sort: Score ↓</option><option>Sort: Score ↑</option><option>Sort: Risk ↓</option></select>
+<div class="view-toggle">
+<button class="view-btn" title="Grid"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+<button class="view-btn active" title="List"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+</div>
+</div>
+
+<!-- Featured -->
+<div class="featured">
+<div class="featured-h">Featured</div>
+<div class="featured-row">
+
+<a href="registry-tool.html" class="feat-card">
+<div class="feat-card-top"><div class="feat-card-logo" style="background:linear-gradient(135deg,#10a37f,#1a7f64)">G</div><div><div class="feat-card-name">ChatGPT</div><div class="feat-card-provider">OpenAI</div></div></div>
+<div class="feat-card-risk risk-gpai">GPAI</div>
+<div class="feat-card-score"><span class="feat-card-score-n sc-amber">41</span><span style="font-size:.5rem;color:var(--dark5)">/100</span><div class="feat-card-score-bar"><div class="feat-card-score-fill" style="width:41%;background:var(--amber)"></div></div></div>
+</a>
+
+<div class="feat-card">
+<div class="feat-card-top"><div class="feat-card-logo" style="background:linear-gradient(135deg,#0078d4,#005a9e)">C</div><div><div class="feat-card-name">Copilot</div><div class="feat-card-provider">Microsoft</div></div></div>
+<div class="feat-card-risk risk-gpai">GPAI</div>
+<div class="feat-card-score"><span class="feat-card-score-n sc-amber">38</span><span style="font-size:.5rem;color:var(--dark5)">/100</span><div class="feat-card-score-bar"><div class="feat-card-score-fill" style="width:38%;background:var(--amber)"></div></div></div>
+</div>
+
+<div class="feat-card">
+<div class="feat-card-top"><div class="feat-card-logo" style="background:linear-gradient(135deg,#5865f2,#404eed)">M</div><div><div class="feat-card-name">Midjourney</div><div class="feat-card-provider">Midjourney</div></div></div>
+<div class="feat-card-risk risk-gpai">GPAI + Art. 50</div>
+<div class="feat-card-score"><span class="feat-card-score-n sc-red">27</span><span style="font-size:.5rem;color:var(--dark5)">/100</span><div class="feat-card-score-bar"><div class="feat-card-score-fill" style="width:27%;background:var(--coral)"></div></div></div>
+</div>
+
+<div class="feat-card">
+<div class="feat-card-top"><div class="feat-card-logo" style="background:linear-gradient(135deg,#d4a574,#b8860b)">C</div><div><div class="feat-card-name">Claude</div><div class="feat-card-provider">Anthropic</div></div></div>
+<div class="feat-card-risk risk-gpai">GPAI</div>
+<div class="feat-card-score"><span class="feat-card-score-n sc-blue">54</span><span style="font-size:.5rem;color:var(--dark5)">/100</span><div class="feat-card-score-bar"><div class="feat-card-score-fill" style="width:54%;background:var(--blue)"></div></div></div>
+</div>
+
+<div class="feat-card">
+<div class="feat-card-top"><div class="feat-card-logo" style="background:linear-gradient(135deg,#4285f4,#1a73e8)">G</div><div><div class="feat-card-name">Gemini</div><div class="feat-card-provider">Google</div></div></div>
+<div class="feat-card-risk risk-gpai">GPAI</div>
+<div class="feat-card-score"><span class="feat-card-score-n sc-red">29</span><span style="font-size:.5rem;color:var(--dark5)">/100</span><div class="feat-card-score-bar"><div class="feat-card-score-fill" style="width:29%;background:var(--coral)"></div></div></div>
+</div>
+
+</div>
+</div>
+
+<!-- Results -->
+<div class="results-count">Showing 2,147 tools</div>
+
+<!-- Tools list -->
+<div class="tools-grid">
+
+<a href="registry-tool.html" class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#10a37f,#1a7f64)">G</div>
+<div class="tool-info"><div class="tool-name">ChatGPT</div><div class="tool-meta"><span>OpenAI</span><span>Chatbot · Text Generation · Code</span></div></div>
+<div class="tool-risk risk-gpai">GPAI</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-amber">41</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:41%;background:var(--amber)"></div></div></div>
+<div class="tool-articles">Art. 4, 50, 52, 53</div>
+</a>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#ff6b35,#d63200)">H</div>
+<div class="tool-info"><div class="tool-name">HireVue</div><div class="tool-meta"><span>HireVue Inc</span><span>HR · Recruiting · Video Analysis</span></div></div>
+<div class="tool-risk risk-high">HIGH RISK</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-red">18</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:18%;background:var(--coral)"></div></div></div>
+<div class="tool-articles">Art. 6, 9, 14, 26, 27</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#1a1a2e,#16213e)">C</div>
+<div class="tool-info"><div class="tool-name">Clearview AI</div><div class="tool-meta"><span>Clearview AI</span><span>Biometrics · Surveillance</span></div></div>
+<div class="tool-risk risk-prohibited">PROHIBITED</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-red">—</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:0%"></div></div></div>
+<div class="tool-articles">Art. 5(1)(d)</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#d4a574,#b8860b)">C</div>
+<div class="tool-info"><div class="tool-name">Claude</div><div class="tool-meta"><span>Anthropic</span><span>Chatbot · Text Generation · Code</span></div></div>
+<div class="tool-risk risk-gpai">GPAI</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-blue">54</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:54%;background:var(--blue)"></div></div></div>
+<div class="tool-articles">Art. 4, 50, 52, 53</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#5865f2,#404eed)">M</div>
+<div class="tool-info"><div class="tool-name">Midjourney</div><div class="tool-meta"><span>Midjourney</span><span>Image Generation</span></div></div>
+<div class="tool-risk risk-gpai">GPAI + Art. 50</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-red">27</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:27%;background:var(--coral)"></div></div></div>
+<div class="tool-articles">Art. 4, 50, 52, 53</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#f97316,#ea580c)">L</div>
+<div class="tool-info"><div class="tool-name">Llama 3</div><div class="tool-meta"><span>Meta</span><span>Foundation Model · Open Weight</span></div></div>
+<div class="tool-risk risk-gpai">GPAI</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-blue">72</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:72%;background:var(--teal)"></div></div></div>
+<div class="tool-articles">Art. 50, 52, 53</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#ff4154,#e91e63)">M</div>
+<div class="tool-info"><div class="tool-name">Mistral Large</div><div class="tool-meta"><span>Mistral AI</span><span>Foundation Model · Chatbot</span></div></div>
+<div class="tool-risk risk-gpai">GPAI</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-blue">68</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:68%;background:var(--blue)"></div></div></div>
+<div class="tool-articles">Art. 50, 52, 53</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#4285f4,#1a73e8)">G</div>
+<div class="tool-info"><div class="tool-name">Gemini</div><div class="tool-meta"><span>Google</span><span>Chatbot · Multimodal</span></div></div>
+<div class="tool-risk risk-gpai">GPAI</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-red">29</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:29%;background:var(--coral)"></div></div></div>
+<div class="tool-articles">Art. 4, 50, 52, 53</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#00d4aa,#00b894)">E</div>
+<div class="tool-info"><div class="tool-name">ElevenLabs</div><div class="tool-meta"><span>ElevenLabs</span><span>Voice · TTS · Voice Cloning</span></div></div>
+<div class="tool-risk risk-limited">LIMITED RISK</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-red">15</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:15%;background:var(--coral)"></div></div></div>
+<div class="tool-articles">Art. 50.4, 52</div>
+</div>
+
+<div class="tool-row">
+<div class="tool-logo" style="background:linear-gradient(135deg,#2d3436,#636e72)">S</div>
+<div class="tool-info"><div class="tool-name">Stability AI</div><div class="tool-meta"><span>Stability AI</span><span>Image Generation · Open Source</span></div></div>
+<div class="tool-risk risk-gpai">GPAI</div>
+<div class="tool-score-wrap"><span class="tool-score-n sc-amber">33</span><div class="tool-score-bar"><div class="tool-score-fill" style="width:33%;background:var(--amber)"></div></div></div>
+<div class="tool-articles">Art. 50, 52, 53</div>
+</div>
+
+</div>
+
+<!-- Pagination -->
+<div class="pagination">
+<button class="pg-btn active">1</button>
+<button class="pg-btn">2</button>
+<button class="pg-btn">3</button>
+<button class="pg-btn">4</button>
+<button class="pg-btn">...</button>
+<button class="pg-btn">43</button>
+</div>
+
+</div>
+
+<footer>© 2026 Complior.ai · Open source · MIT License</footer>
+
+</body>
+</html>

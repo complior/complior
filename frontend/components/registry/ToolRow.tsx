@@ -4,9 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import type { RegistryTool } from '@/lib/registry';
-import { getProviderName, getScoreColor, getToolScore, getToolAssessment, getTransparencyGrade, getTransparencyColor } from '@/lib/registry';
+import { getProviderName, getToolGrade, getToolAssessment, getAiActRoleLabel } from '@/lib/registry';
 import { ToolLogo } from './ToolLogo';
 import { RiskBadge } from './RiskBadge';
+import { DocGradeBadge } from './DocGradeBadge';
 
 interface ToolRowProps {
   tool: RegistryTool;
@@ -14,15 +15,13 @@ interface ToolRowProps {
 
 export function ToolRow({ tool }: ToolRowProps) {
   const locale = useLocale();
-  const score = getToolScore(tool);
-  const color = getScoreColor(score);
   const provider = getProviderName(tool.provider);
-  const tg = getTransparencyGrade(tool);
-  const tgColor = getTransparencyColor(tg);
+  const grade = getToolGrade(tool);
+  const roleLabel = getAiActRoleLabel(tool.aiActRole);
 
-  // Extract applicable obligation IDs from assessment
+  // Extract obligation count from assessment
   const assessment = getToolAssessment(tool);
-  const articles = assessment?.applicable_obligation_ids?.slice(0, 3).join(', ') || '';
+  const oblCount = assessment?.applicable_obligation_ids?.length ?? 0;
 
   return (
     <Link
@@ -63,32 +62,24 @@ export function ToolRow({ tool }: ToolRowProps) {
         </div>
       </div>
       {tool.riskLevel && <RiskBadge risk={tool.riskLevel} />}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', minWidth: 100 }} className="tool-score-col">
-        <span style={{ fontFamily: 'var(--f-display)', fontSize: '.875rem', fontWeight: 700, minWidth: 32, textAlign: 'right', color }}>
-          {score !== null ? score : '\u2014'}
-        </span>
-        <div style={{ width: 60, height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: score !== null ? `${score}%` : '0%', background: color, borderRadius: 2 }} />
-        </div>
-      </div>
-      {tg && (
+      {tool.aiActRole && (
         <span style={{
           fontFamily: 'var(--f-mono)',
-          fontSize: '.5rem',
-          fontWeight: 700,
+          fontSize: '.4375rem',
+          fontWeight: 600,
           padding: '.125rem .375rem',
           borderRadius: 4,
           background: 'var(--card2)',
           border: '1px solid var(--b)',
-          color: tgColor,
-          minWidth: 24,
-          textAlign: 'center',
+          color: 'var(--dark4)',
+          whiteSpace: 'nowrap',
         }}>
-          {tg}
+          {roleLabel}
         </span>
       )}
-      <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.5rem', color: 'var(--dark5)', textAlign: 'right', minWidth: 100 }} className="tool-articles-col">
-        {articles}
+      <DocGradeBadge grade={grade} size="sm" />
+      <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.5rem', color: 'var(--dark5)', textAlign: 'right', minWidth: 60 }} className="tool-articles-col">
+        {oblCount > 0 ? `${oblCount} obl.` : ''}
       </div>
     </Link>
   );

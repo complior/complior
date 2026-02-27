@@ -112,8 +112,8 @@
 | **Greptile** | Marcus + Leo уже покрывают code review | Existing agent workflow |
 | **DeepSeek** | Hardcoded encryption keys, Chinese data law | Gemini 3 Pro (Leo, Ava) |
 | **Prisma** | MetaSQL уже есть, даёт VM sandbox + type generation | MetaSQL (existing) |
-| **NextAuth/Clerk** | US data residency | Ory Kratos (self-hosted EU) |
+| **NextAuth/Clerk** | US data residency | WorkOS (managed, SSO free, ADR-007) |
 
 ---
 
-**Последнее обновление:** 2026-02-21 (v3.0.0)
+**Последнее обновление:** 2026-02-24 (v3.0.1)

@@ -322,7 +322,118 @@ classify(tool) → { riskLevel, confidence, matchedRules[], articleReferences[],
 
 ---
 
-## 11. Методология скоринга соответствия v3.1 — Гибридная наблюдаемая оценка (исправление достоверности)
+## 11. Registry Metrics v4 — Three Transparent Metrics
+
+> **v4 replaces** the single Compliance Score 0-100 with three separate, transparent metrics.
+> The old score is preserved as `legacyScore` (deprecated, hidden from UI).
+
+### Philosophy
+
+**"Show what's observable. Don't fake a number."**
+
+v3/v3.1 used a single "Compliance Score 0-100" based on an 11-step obligation-weighted pipeline. Problems:
+1. **Score is misleading** — suggests certification/compliance level, but it's only based on publicly observable signals
+2. **Complex internals** — tier bonuses, coverage ceilings, unknown=25 hacks to make numbers look "right"
+3. **Registry ≠ Passport confusion** — Registry (public directory, same for all) was conflated with Passport (per-org compliance tracking)
+
+### Three Metrics
+
+| Metric | Range | What it measures |
+|--------|-------|------------------|
+| **Risk Level** | enum | EU AI Act risk classification (existing, unchanged) |
+| **Public Documentation Grade** | A+ to F | Role-specific 9-item checklist based on passive scan evidence |
+| **Deployer Obligation Preview** | list | Applicable obligations for this risk level (existing, repositioned) |
+
+### New Field: aiActRole
+
+| Value | Description | Checklist used |
+|-------|-------------|----------------|
+| `provider` | AI model/system creator (OpenAI, Anthropic, etc.) | Provider checklist |
+| `deployer_product` | Product built on AI (HeyGen, Grammarly, etc.) | Deployer checklist |
+| `hybrid` | Both provider and deployer | Provider checklist |
+| `infrastructure` | AI platform/cloud (AWS, NVIDIA, etc.) | Provider checklist |
+| `ai_feature` | Product with AI as minor feature | Deployer checklist |
+| `null` | Unclassified | Provider checklist (default) |
+
+### Public Documentation Grade — Provider Checklist (9 items)
+
+| # | ID | Label | Evidence Signal | Description |
+|---|----|-------|-----------------|-------------|
+| 1 | `ai_disclosure` | AI System Disclosure | `disclosure.visible` | Publicly declares the product is an AI system |
+| 2 | `model_card` | Model Card Published | `model_card.has_model_card` | Technical model documentation available |
+| 3 | `model_limitations` | Limitations & Risks | `model_card.has_limitations AND model_card.has_bias_info` | Documents known limitations and bias risks |
+| 4 | `training_data_info` | Training Data Description | `model_card.has_training_data` | Describes training data sources or methodology |
+| 5 | `privacy_ai` | Privacy Policy Addresses AI | `privacy_policy.mentions_ai` | Privacy policy explicitly covers AI processing |
+| 6 | `eu_ai_act_page` | EU AI Act Compliance Page | `trust.has_eu_ai_act_page` | Dedicated EU AI Act compliance documentation |
+| 7 | `responsible_ai` | Responsible AI Program | `trust.has_responsible_ai_page` | Published responsible AI principles or program |
+| 8 | `transparency_report` | Transparency Report | `web_search.has_transparency_report` | Regular transparency reporting |
+| 9 | `content_marking` | Output Marking | `content_marking.c2pa OR content_marking.watermark` | AI-generated content marking (C2PA/watermark) |
+
+### Public Documentation Grade — Deployer Product Checklist (9 items)
+
+| # | ID | Label | Evidence Signal | Description |
+|---|----|-------|-----------------|-------------|
+| 1 | `ai_disclosure` | AI Usage Disclosure | `disclosure.visible` | Discloses AI usage to end users |
+| 2 | `privacy_ai` | Privacy Policy Addresses AI | `privacy_policy.mentions_ai` | Privacy policy covers AI data processing |
+| 3 | `privacy_eu` | EU Data Compliance | `privacy_policy.mentions_eu` | Privacy addresses EU-specific requirements |
+| 4 | `eu_ai_act_page` | EU AI Act Compliance Page | `trust.has_eu_ai_act_page` | Dedicated EU AI Act compliance docs |
+| 5 | `responsible_ai` | Responsible AI Program | `trust.has_responsible_ai_page` | Published responsible AI principles |
+| 6 | `terms_ai` | Terms Address AI Use | `privacy_policy.training_opt_out` | Terms/policies address AI-specific rights |
+| 7 | `bias_audit` | Public Bias Audit | `web_search.has_public_bias_audit` | Published bias or fairness audit |
+| 8 | `transparency_report` | Transparency Report | `web_search.has_transparency_report` | Regular transparency reporting |
+| 9 | `certifications` | Certifications | `trust.certifications.length > 0` | Holds relevant certifications (ISO 42001, etc.) |
+
+### Grade Mapping
+
+| Items Found | Grade |
+|-------------|-------|
+| 9 | A+ |
+| 8 | A |
+| 7 | A- |
+| 6 | B+ |
+| 5 | B |
+| 4 | B- |
+| 3 | C |
+| 2 | D |
+| 1 | D- |
+| 0 | F |
+
+**No tier bonuses. No coverage ceiling. No unknown=25. Pure checklist.**
+
+### Legacy Score (deprecated)
+
+The v3.1 Compliance Score (0-100) is preserved as `assessments['eu-ai-act'].legacyScore` for backward compatibility. It is:
+- Hidden from UI
+- Not used for sorting/filtering
+- Will be removed in a future version
+
+### Data Structure
+
+```javascript
+assessments['eu-ai-act'] = {
+  // v4 fields
+  publicDocumentation: { grade, score, total, percent, items, checklist, gradedAt },
+  aiActRole: 'provider',
+  legacyScore: 68,           // was: score (deprecated)
+
+  // Existing (unchanged)
+  risk_level: 'gpai',
+  risk_reasoning: '...',
+  applicable_obligation_ids: [...],
+  deployer_obligations: [...],
+  provider_obligations: [...],
+  scoring: { ... },          // full v3.1 scoring breakdown
+  coverage: 14,
+  transparencyGrade: 'B',
+  assessed_at: '...',
+}
+```
+
+---
+
+## 11-LEGACY. Методология скоринга соответствия v3.1 — Гибридная наблюдаемая оценка (исправление достоверности)
+
+> **DEPRECATED:** This section documents the v3.1 Scoring Engine which produced the single Compliance Score 0-100. As of v4, this score is stored as `legacyScore` and hidden from UI. The scoring pipeline still runs for backward compatibility but is superseded by the Public Documentation Grade.
 
 ### Философия
 

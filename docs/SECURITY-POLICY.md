@@ -1,11 +1,13 @@
 # SECURITY-POLICY.md — AI Act Compliance Platform
 
-**Version:** 3.0.0
-**Дата:** 2026-02-21
+**Version:** 3.1.0
+**Дата:** 2026-02-24
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Phase 0 — Утверждён
-**Зависимости:** ARCHITECTURE.md v3.0.0
+**Зависимости:** ARCHITECTURE.md v3.2.0
 
+> **v3.1.0 (2026-02-24):** Audit — corrected OWASP statuses (A06: npm audit not in CI, A08: signed commits not configured, A09: Sentry not yet deployed). Added "Known Security Gaps" section. Standardized severity levels to P0–P3 (aligned with RUNBOOK.md). Confirmed GDPR deleteAccount + exportData = IMPLEMENTED.
+>
 > **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product. Auth: Ory → WorkOS. Добавлены: Registry API security, TUI ↔ SaaS communication security, telemetry data privacy.
 >
 > **v0.1.0 (2026-02-04):** Placeholder.
@@ -46,10 +48,10 @@
 | A03 | Injection (SQL, XSS, Command) | Parameterized queries (pg pool), React auto-escaping, Zod validation, CSP headers | ✅ Реализовано |
 | A04 | Insecure Design | DDD с Bounded Contexts, VM Sandbox isolation, threat modeling в architecture docs | ✅ Design-level |
 | A05 | Security Misconfiguration | Docker non-root, security headers (Caddy), env-only secrets, no default credentials | ✅ Реализовано (Sprint 4) |
-| A06 | Vulnerable Components | `npm audit` в CI/CD, Dependabot (planned), minimal dependencies | ⚠️ Частично (CI audit) |
+| A06 | Vulnerable Components | `npm audit` local only (CI/CD not configured yet), Dependabot (planned), minimal dependencies | ⚠️ Частично (npm audit local, not in CI) |
 | A07 | Auth Failures | WorkOS (managed auth, MFA, brute-force protection, Radar bot detection) | ✅ WorkOS handles |
-| A08 | Software & Data Integrity | Docker image pinning, Caddy binary verification, signed commits (planned) | ⚠️ Частично |
-| A09 | Security Logging | AuditLog на все data access (7 лет retention), Sentry (PII filtered) | ✅ Реализовано (Sprint 1) |
+| A08 | Software & Data Integrity | Docker image pinning, Caddy binary verification. Signed commits NOT configured yet | ⚠️ Частично (signed commits outstanding) |
+| A09 | Security Logging | AuditLog на все data access (7 лет retention). Sentry NOT deployed yet (planned) | ⚠️ Частично (AuditLog ✅, Sentry not deployed) |
 | A10 | SSRF | Нет user-controlled URL fetching в backend. EUR-Lex scraper → whitelist domains only | ✅ N/A |
 
 ---
@@ -125,15 +127,15 @@
 
 | Уровень | Описание | Время реакции |
 |---------|----------|---------------|
-| **P1 Critical** | Data breach, auth bypass, data loss | 1 час |
-| **P2 High** | Service down, significant vulnerability | 4 часа |
-| **P3 Medium** | Degraded performance, minor vulnerability | 24 часа |
-| **P4 Low** | Cosmetic issue, non-sensitive info exposure | 1 неделя |
+| **P0 Critical** | Data breach, auth bypass, data loss, service down | Immediate |
+| **P1 High** | Key feature broken, significant vulnerability | < 1 hour |
+| **P2 Medium** | Degraded performance, minor vulnerability | < 4 hours |
+| **P3 Low** | Cosmetic issue, non-sensitive info exposure | Next sprint |
 
 ### Процедура
 
 1. **Detect:** Monitoring alerts (Better Uptime), Sentry errors, user reports
-2. **Triage:** Определить уровень (P1-P4), назначить ответственного
+2. **Triage:** Определить уровень (P0-P3), назначить ответственного
 3. **Contain:** Изолировать затронутый компонент (revoke keys, block IP, disable feature)
 4. **Fix:** Разработать и deploy fix
 5. **Notify:** Уведомить затронутых пользователей (GDPR Art. 33: 72 часа для DPA при data breach)
@@ -141,7 +143,18 @@
 
 ---
 
-## 8. Known CVEs
+## 8. Known Security Gaps
+
+| # | Gap | Risk | Mitigation Plan | Target Sprint |
+|---|-----|------|-----------------|---------------|
+| 1 | Sentry not deployed | No real-time error alerting in production | Deploy Sentry with PII filtering | S8 |
+| 2 | `npm audit` not in CI/CD | Vulnerable dependencies may ship to production | Add `npm audit --audit-level=high` to GitHub Actions | S8 |
+| 3 | Signed commits not enforced | No verification of commit authorship | Enable GPG signing + branch protection rule | S8 |
+| 4 | CSP headers not verified | Potential XSS vector via permissive CSP | Audit and tighten Caddy CSP configuration | S8 |
+
+---
+
+## 9. Known CVEs
 
 Обновляется при обнаружении уязвимостей в dependencies. `npm audit` запускается в CI/CD на каждый PR.
 

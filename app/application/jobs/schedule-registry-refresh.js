@@ -3,22 +3,36 @@
  *
  * Sets up recurring job to enrich classified AI tools weekly.
  * Runs every Monday at 03:00 UTC.
+ *
+ * Composition root — instantiates scanner/tester/media modules
+ * and passes them to refresh-service.
  */
 
 ({
   /**
    * Initialize the registry refresh job
-   * @param {Object} context - Sandbox context { pgboss, domain, console, db }
+   * @param {Object} context - Sandbox context { pgboss, domain, console, db, config }
    */
   async init({ pgboss, domain, console, config, db }) {
     const jobName = 'registry-refresh';
 
     // Cron: Every Monday at 03:00 UTC
-    // Format: minute hour day month weekday
-    // 0 3 * * 1 = at 03:00 on Monday
     const cronSchedule = '0 3 * * 1';
 
     try {
+      // Instantiate enrichment modules from domain factories
+      const passiveScanner = domain.registry['passive-scanner']({
+        fetch, cheerio, config, console,
+      });
+
+      const llmTester = domain.registry['llm-tester']({
+        fetch, config, console,
+      });
+
+      const mediaTester = domain.registry['media-tester']({
+        fetch, config, console,
+      });
+
       // Register the job worker
       await pgboss.work(jobName, async (job) => {
         console.log(`🔄 Registry refresh job started (ID: ${job.id})`);
@@ -28,6 +42,11 @@
             db,
             console,
             config,
+            passiveScanner,
+            llmTester,
+            mediaTester,
+            evidenceAnalyzer: domain.registry['evidence-analyzer']({ db }),
+            scorer: domain.registry['registry-scorer']({ db }),
           });
 
           console.log(`✅ Registry refresh job completed:`, result);

@@ -1,7 +1,7 @@
 # PRODUCT-BACKLOG.md — AI Act Compliance Platform (Deployer-First)
 
-**Версия:** 4.0.0
-**Дата:** 2026-02-21
+**Версия:** 4.1.0
+**Дата:** 2026-02-24
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** ✅ Утверждено PO (2026-02-21)
 **Зависимости:** PRODUCT-VISION.md v3.0.0, ARCHITECTURE.md v3.0.0
@@ -9,6 +9,14 @@
 ---
 
 ## Changelog
+
+### v4.1.0 (2026-02-24) — Sprint 7 Completion + AI Registry Public Pages
+- **NEW Feature 37:** AI Registry Public Pages (SEO) — public `/tools` index + `/tools/[slug]` detail pages with ISR, 5-tab detail view, search/filter/sort, EN+DE i18n. 27 files (3 backend + 24 frontend). Part of F26 data layer.
+- **F25 WorkOS Migration:** ✅ Completed (US-071 through US-073, US-076 headless auth)
+- **F26 Registry API:** ✅ Completed (US-074, US-075, US-076 data migration, US-077 quality fixes, US-078 API extensions, US-079 public pages)
+- **F27 TUI Data Collection:** Moved to Sprint 8 (ScanResult schema not yet created)
+- **F06 Eva:** Moved to Sprint 8 (schema only, no code)
+- **Sprint 7 totals:** 39 SP, 9 US completed
 
 ### v4.0.0 (2026-02-21) — TUI+SaaS Dual-Product Model
 - **Auth:** Ory Kratos → WorkOS (ADR-007). Feature 02 обновлён.
@@ -1227,6 +1235,67 @@ Cloud-based AI tool discovery: IdP integration, API traffic analysis, bot discov
 
 ---
 
+## Feature 37: AI Registry Public Pages — SEO (NEW — Sprint 7)
+
+**Приоритет:** P1 (Should Have) | **Размер:** M | **Спринт:** 7
+
+### Бизнес-ценность
+As a potential customer searching for AI compliance information, I want to browse a public registry of AI tools with risk levels, obligations, and detection patterns, so that I discover Complior through organic search and see the value before signing up.
+
+**SEO Funnel:** Google → `/tools` index page (2,477 tools) → `/tools/[slug]` detail page → CTA "Start compliance" → registration. Прогнозируемый SEO трафик: 10K+ страниц, long-tail keywords ("is ChatGPT high risk AI Act", "Copilot EU AI Act obligations").
+
+### Описание
+
+**Index Page `/tools`:**
+- Server-rendered (ISR, 1 hour revalidation) с SEO metadata
+- Stats bar: total tools, verified count, risk distribution
+- Featured row: 5 top-scored tools
+- Search bar с `/` keyboard shortcut
+- Risk level pill filters с counts (toggleable)
+- Sort: name, score, risk level
+- Level filter: verified / scanned / classified
+- URL-synced pagination (page numbers с ellipsis)
+- List view: tool row с logo, name, provider, risk badge, level badge, score bar
+
+**Detail Page `/tools/[slug]`:**
+- Server-rendered (ISR, daily revalidation), generateStaticParams for top 100
+- Hero: tool info + risk card + compliance score sidebar
+- 5-tab switcher: Overview, Obligations, Detection, Documents, History
+- Overview: description + article cards + compliance breakdown bars
+- Obligations: deployer vs provider obligation checklists
+- Detection: code/SaaS detection patterns (dark code panels)
+- Similar Tools: 4 related tool cards
+- Bottom CTA banner с CLI command `npx complior scan`
+
+**Backend Extensions:**
+- `GET /v1/registry/tools/by-slug/:slug` — public endpoint для detail pages
+- `findBySlug` в searchTools.js
+- Level filter (`?level=verified`) и sort param (`?sort=name|score|risk`)
+
+**i18n:**
+- EN: `registry.*` section (~45 keys)
+- DE: full German translation
+
+### Shared Components (reusable)
+- `ToolLogo` — deterministic gradient logo from name hash
+- `ScoreBar` — score progress bar с color thresholds
+- `LevelBadge` — verified/scanned/classified pill
+- `RiskBadge` — risk level badge (prohibited/high/gpai/limited/minimal)
+- `Pagination` — page number buttons with ellipsis
+
+### MVP Scope
+- Index page с search/filter/sort/pagination
+- Detail page с 5 tabs
+- ISR для performance + SEO
+- Static generation for top 100 tools
+- EN + DE translations
+- 0 new dependencies
+
+### Зависимости
+Feature 26 (Registry API — data layer)
+
+---
+
 ## Сводка по приоритетам
 
 ### P0 — Must Have (Deployer MVP + TUI+SaaS Core)
@@ -1240,9 +1309,9 @@ Cloud-based AI tool discovery: IdP integration, API traffic analysis, bot discov
 | 04b | Classification History + Reclassification | S | 3 | ✅ |
 | 04c | Deployer Requirements Mapping | M | 3 | ✅ |
 | 05 | Deployer Dashboard | L | 3 + 5 | ✅ |
-| 06 | Eva — Conversational Onboarding | L | 7 | 📋 |
-| **25** | **WorkOS Migration** | **M** | **7** | **📋** |
-| **26** | **Registry API** | **M** | **7** | **📋** |
+| 06 | Eva — Conversational Onboarding | L | 8 | 📋 |
+| **25** | **WorkOS Migration** | **M** | **7** | **✅** |
+| **26** | **Registry API** | **M** | **7** | **✅** |
 
 **MVP-ready: Sprint 6 (frontend + admin)**. TUI+SaaS core: Sprint 7.
 
@@ -1257,8 +1326,9 @@ Cloud-based AI tool discovery: IdP integration, API traffic analysis, bot discov
 | 09 | Billing (Stripe) | M | 3.5 + 6 | ✅ |
 | 10 | Eva tool calling | S | 8 | 📋 |
 | 11 | Onboarding + Notifications | M | 8 | 📋 |
-| **27** | **TUI Data Collection** | **S** | **7** | **📋** |
+| **27** | **TUI Data Collection** | **S** | **8** | **📋** |
 | **28** | **Dashboard v2 (Cross-System Map)** | **L** | **8** | **📋** |
+| **37** | **AI Registry Public Pages (SEO)** | **M** | **7** | **✅** |
 
 **Product-ready: Sprint 8**
 
@@ -1306,8 +1376,7 @@ Sprint 4     ████ Production Deployment: Docker, Caddy, Kratos, GDPR, CI
 Sprint 5     ████ Frontend Rebuild: Landing, Auth, Pricing, Tools                  ✅
 Sprint 6     ████ F24: Admin Panel + F09: Stripe Test + Production Deploy          ✅
              ── MVP FRONTEND READY ──
-Sprint 7     ████ F25: WorkOS Migration + F26: Registry API + F27: TUI Data       📋
-                  + F06: Eva Conversational Onboarding
+Sprint 7     ████ F25: WorkOS Migration + F26: Registry API + F37: Public Pages   ✅
              ── TUI+SaaS CORE READY ──
 Sprint 8     ████ F28: Dashboard v2 + F29: SaaS Discovery                        📋
                   + F07: Deployer Docs + F08: Gap + F19: FRIA
@@ -1343,18 +1412,20 @@ Future       ████ F35: Marketplace + F36: White-Label + F15-F17: Agent f
 | **Better Uptime** (мониторинг) | EU (Литва), free tier |
 | **Plausible** (аналитика) | EU (Эстония), €9/мес, без cookies |
 | **Mistral EU-only** | Sovereign AI: данные клиентов только в EU |
+| **ISR (Next.js)** для Public Pages | SEO + performance: SSR с revalidation (hourly index, daily detail) вместо full SSR |
 
 ---
 
-✅ **APPROVED:** TUI+SaaS Dual-Product Backlog v4.0.0 утверждён PO (2026-02-21).
+✅ **APPROVED:** TUI+SaaS Dual-Product Backlog v4.1.0 утверждён PO (2026-02-24).
 
-💡 **Следующий шаг:** Sprint 7 реализация (F25: WorkOS Migration + F26: Registry API + F06: Eva) — см. `SPRINT-BACKLOG-007.md`
+💡 **Следующий шаг:** Sprint 8 планирование (F28: Dashboard v2 + F27: TUI Data Collection + F06: Eva) — см. `SPRINT-BACKLOG-008.md`
 
 ### Кросс-проектные зависимости (Engine ↔ SaaS)
 
 | SaaS Feature | Engine Feature | Тип |
 |-------------|---------------|-----|
-| F26: Registry API | C.040-C.046: AI Registry DataProvider | ЖЁСТКАЯ (shared types) |
+| F26: Registry API | C.040-C.046: AI Registry DataProvider | ЖЁСТКАЯ (shared types) ✅ |
+| F37: Public Pages | — (SaaS only, no Engine dependency) | Нет |
 | F27: TUI Data Collection | C.F02: codebase scan → ScanResult upload | СРЕДНЯЯ (Dashboard может начать с mock) |
 | F28: Dashboard v2 | C.F13-F22: Agent Governance | МЯГКАЯ (mock data до готовности Engine) |
 | F29: SaaS Discovery | C.F01-F12: Local Discovery | МЯГКАЯ (разные источники) |

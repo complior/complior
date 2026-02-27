@@ -2,7 +2,7 @@
   access: 'public',
   httpMethod: 'GET',
   path: '/v1/regulations/scoring',
-  method: async ({ query, db }) => {
+  method: async ({ query }) => {
     const jurisdictionId = query.jurisdictionId || 'eu-ai-act';
 
     const result = await db.query(

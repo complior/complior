@@ -642,8 +642,8 @@ Desktop (1280px):
 - **Loading:** Skeleton пока проверяется токен
 - **Valid token (не залогинен):**
   - Показывает org name, role, inviter email
-  - [Create Account & Join] → Ory registration (с return URL `/invite/accept?token=...`)
-  - [Sign In & Join] → Ory login (с return URL)
+  - [Create Account & Join] → WorkOS AuthKit registration (с return URL `/invite/accept?token=...`)
+  - [Sign In & Join] → WorkOS AuthKit login (с return URL)
 - **Valid token (залогинен, email совпадает):**
   - Показывает org name, role
   - Если user в другой org: "You will leave your current organization ({currentOrg})" warning
@@ -796,7 +796,7 @@ designs/
 
 | Endpoint | Method | Назначение | Sprint |
 |----------|--------|------------|--------|
-| `/api/auth/webhook` | POST | Ory identity sync | 1 |
+| `/api/auth/callback` | GET/POST | WorkOS AuthKit callback | 1 |
 | `/api/auth/me` | GET | Текущий user + org | 1 |
 | `/api/organizations/:id` | PATCH | Обновление профиля org | 1 |
 | `/api/auth/audit` | GET | Audit log (пагинация) | 1 |

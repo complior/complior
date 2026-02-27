@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatGPT — AI Compliance Guide | Complior.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,800;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --f-display:Fraunces,Georgia,serif;
+  --f-body:'Plus Jakarta Sans',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono',monospace;
+  --bg:#08090b;--bg2:#0f1114;--bg3:#161a1f;
+  --dark:#f0f2f4;--dark2:#cdd1d6;--dark3:#a0a7b0;--dark4:#6b7280;--dark5:#4b5563;
+  --teal:#34d399;--teal2:#0d9488;--teal3:#0f766e;--teal-dim:rgba(52,211,153,.08);
+  --coral:#f87171;--amber:#fbbf24;--purple:#a78bfa;--blue:#60a5fa;
+  --b:rgba(255,255,255,.06);--b2:rgba(255,255,255,.1);
+  --card:rgba(255,255,255,.02);--card2:rgba(255,255,255,.04);
+  --radius:10px;
+}
+html.light{
+  --bg:#faf8f5;--bg2:#f0ece5;--bg3:#e6e1d8;
+  --dark:#1a1a1a;--dark2:#333;--dark3:#555;--dark4:#777;--dark5:#999;
+  --teal:#0d9488;--teal2:#0f766e;--teal3:#115e59;--teal-dim:rgba(13,148,136,.06);
+  --coral:#c0392b;--amber:#d97706;--purple:#6d28d9;--blue:#2563eb;
+  --b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);
+  --card:#fff;--card2:rgba(0,0,0,.02);
+}
+body{background:var(--bg);color:var(--dark);font-family:var(--f-body);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* Header */
+header{position:sticky;top:0;z-index:100;padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;background:rgba(8,9,11,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--b)}
+html.light header{background:rgba(250,248,245,.9);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.logo{font-family:var(--f-display);font-size:1.125rem;font-weight:700;color:var(--dark);display:flex;align-items:center;gap:.5rem}
+.logo span{color:var(--teal)}
+.hdr-nav{display:flex;align-items:center;gap:1.5rem}
+.hdr-nav a{font-family:var(--f-body);font-size:.8125rem;color:var(--dark4);transition:color .2s}
+.hdr-nav a:hover{color:var(--teal)}
+.hdr-nav a.active{color:var(--teal);font-weight:600}
+.theme-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--b);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dark4);transition:.3s}
+.theme-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.page{max-width:1100px;margin:0 auto;padding:2rem}
+
+/* Breadcrumbs */
+.breadcrumb{font-family:var(--f-mono);font-size:.625rem;color:var(--dark5);margin-bottom:1.5rem;display:flex;align-items:center;gap:.375rem}
+.breadcrumb a{color:var(--dark4);transition:color .2s}
+.breadcrumb a:hover{color:var(--teal)}
+.breadcrumb .sep{color:var(--dark5);opacity:.4}
+
+/* ═══ TOOL HERO ═══ */
+.tool-hero{display:grid;grid-template-columns:1fr 280px;gap:2rem;margin-bottom:2rem;padding:2rem;background:var(--card);border:1px solid var(--b);border-radius:14px}
+
+.tool-hero-left{display:flex;gap:1.25rem}
+.tool-hero-logo{width:64px;height:64px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:1.5rem;color:#fff;flex-shrink:0;background:linear-gradient(135deg,#10a37f,#1a7f64)}
+.tool-hero-info{}
+.tool-hero-name{font-family:var(--f-display);font-size:1.75rem;font-weight:800;color:var(--dark);line-height:1.2;letter-spacing:-.02em}
+.tool-hero-sub{font-size:.8125rem;color:var(--dark4);margin:.25rem 0 .625rem}
+.tool-hero-cats{display:flex;gap:.375rem;flex-wrap:wrap;margin-bottom:.75rem}
+.tool-cat{font-family:var(--f-mono);font-size:.5rem;font-weight:600;padding:.125rem .4375rem;border-radius:4px;background:var(--card2);border:1px solid var(--b);color:var(--dark4)}
+.tool-hero-links{display:flex;gap:.75rem;margin-top:.5rem}
+.tool-hero-links a{font-size:.75rem;color:var(--teal);font-weight:600;transition:.2s;display:flex;align-items:center;gap:.25rem}
+.tool-hero-links a:hover{color:var(--teal2)}
+
+/* Score sidebar */
+.tool-hero-right{display:flex;flex-direction:column;gap:1rem;padding-left:2rem;border-left:1px solid var(--b)}
+
+.risk-card{text-align:center;padding:1rem;border-radius:var(--radius);background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.12)}
+.risk-card-label{font-family:var(--f-mono);font-size:.4375rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--purple);margin-bottom:.25rem}
+.risk-card-value{font-family:var(--f-display);font-size:1.125rem;font-weight:800;color:var(--purple)}
+.risk-card-desc{font-size:.5625rem;color:var(--dark4);margin-top:.125rem}
+
+.score-card{text-align:center}
+.score-card-label{font-family:var(--f-mono);font-size:.4375rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dark5);margin-bottom:.5rem}
+.score-card-num{font-family:var(--f-display);font-size:2.5rem;font-weight:800;color:var(--amber);line-height:1}
+.score-card-max{font-size:1rem;color:var(--dark5);font-weight:400}
+.score-card-bar{height:6px;background:var(--bg3);border-radius:3px;margin:.625rem 0 .375rem;overflow:hidden}
+.score-card-bar-fill{height:100%;border-radius:3px;background:var(--amber)}
+.score-card-verbal{font-family:var(--f-mono);font-size:.5rem;color:var(--amber)}
+.score-card-date{font-family:var(--f-mono);font-size:.4375rem;color:var(--dark5);margin-top:.75rem}
+
+/* ═══ TABS ═══ */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--b);margin-bottom:2rem;position:sticky;top:49px;z-index:50;background:var(--bg);padding-top:.5rem}
+html.light .tabs{background:var(--bg)}
+.tab{font-family:var(--f-body);font-size:.8125rem;font-weight:600;color:var(--dark4);padding:.625rem 1rem;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;user-select:none}
+.tab:hover{color:var(--dark2)}
+.tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+
+/* ═══ TAB CONTENT ═══ */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* Section headers */
+.sec-h{font-family:var(--f-mono);font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark5);margin-bottom:1rem}
+.sec-block{margin-bottom:2.5rem}
+
+/* Description */
+.tool-desc{font-size:.9375rem;color:var(--dark3);line-height:1.8;max-width:700px;margin-bottom:2rem}
+
+/* ═══ ARTICLE CARDS ═══ */
+.art-card{border:1px solid var(--b);border-radius:var(--radius);margin-bottom:.625rem;overflow:hidden;transition:.2s}
+.art-card:hover{border-color:var(--b2)}
+.art-card-header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem;cursor:pointer}
+.art-card-art{font-family:var(--f-mono);font-size:.6875rem;font-weight:700;color:var(--dark);min-width:48px}
+.art-card-title{font-family:var(--f-display);font-size:.875rem;font-weight:700;color:var(--dark);flex:1}
+.art-card-badges{display:flex;gap:.375rem}
+.art-badge{font-family:var(--f-mono);font-size:.4375rem;font-weight:700;padding:.0625rem .375rem;border-radius:3px;white-space:nowrap}
+.badge-required{background:var(--teal-dim);color:var(--teal)}
+.badge-passed{background:rgba(248,113,113,.08);color:var(--coral);animation:pulse-badge 2s ease infinite}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.6}}
+.badge-provider{background:rgba(167,139,250,.08);color:var(--purple)}
+.badge-upcoming{background:rgba(96,165,250,.08);color:var(--blue)}
+.art-card-body{padding:0 1.25rem 1rem;font-size:.8125rem;color:var(--dark4);line-height:1.7;border-top:1px solid var(--b);padding-top:.75rem}
+
+/* ═══ COMPLIANCE BREAKDOWN ═══ */
+.breakdown{display:flex;flex-direction:column;gap:.625rem}
+.bd-row{display:flex;align-items:center;gap:.75rem}
+.bd-label{font-size:.75rem;color:var(--dark3);width:180px;flex-shrink:0}
+.bd-bar{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.bd-bar-fill{height:100%;border-radius:3px}
+.bd-val{font-family:var(--f-mono);font-size:.6875rem;font-weight:700;width:40px;text-align:right}
+
+/* ═══ OBLIGATIONS TAB ═══ */
+.obl-section{margin-bottom:2rem}
+.obl-title{font-family:var(--f-display);font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:.25rem}
+.obl-sub{font-size:.8125rem;color:var(--dark4);margin-bottom:1rem}
+.obl-item{display:flex;align-items:flex-start;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--b)}
+.obl-item:last-child{border:0}
+.obl-check{width:18px;height:18px;border-radius:4px;border:2px solid var(--b2);flex-shrink:0;margin-top:.125rem;display:flex;align-items:center;justify-content:center}
+.obl-check.provider{opacity:.4}
+.obl-text{flex:1;font-size:.8125rem;color:var(--dark3);line-height:1.6}
+.obl-text strong{color:var(--dark);font-weight:600}
+.obl-link{font-family:var(--f-mono);font-size:.625rem;color:var(--teal);font-weight:600;white-space:nowrap;margin-top:.125rem}
+
+/* ═══ DETECTION TAB ═══ */
+.detect-panel{background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem;overflow-x:auto}
+html.light .detect-panel{background:#1a1e24}
+.detect-h{font-family:var(--f-mono);font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.35);margin-bottom:.75rem}
+.detect-row{display:flex;gap:.75rem;margin-bottom:.375rem;font-family:var(--f-mono);font-size:.6875rem;line-height:1.7}
+.detect-key{color:var(--teal);min-width:120px;flex-shrink:0}
+.detect-val{color:rgba(255,255,255,.65)}
+
+/* ═══ DOCUMENTS TAB ═══ */
+.doc-card{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border:1px solid var(--b);border-radius:var(--radius);margin-bottom:.5rem;transition:.2s}
+.doc-card:hover{border-color:var(--b2);background:var(--card)}
+.doc-card-left{display:flex;align-items:center;gap:.75rem}
+.doc-card-icon{font-size:1.25rem}
+.doc-card-name{font-family:var(--f-display);font-size:.875rem;font-weight:700;color:var(--dark)}
+.doc-card-desc{font-size:.625rem;color:var(--dark5)}
+.doc-card-btn{font-family:var(--f-mono);font-size:.625rem;font-weight:700;color:var(--teal);background:var(--teal-dim);border:1px solid rgba(52,211,153,.15);border-radius:6px;padding:.375rem .75rem;cursor:pointer;transition:.2s}
+.doc-card-btn:hover{background:rgba(52,211,153,.12)}
+
+/* ═══ SIMILAR TOOLS ═══ */
+.similar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:2rem}
+.sim-card{background:var(--card);border:1px solid var(--b);border-radius:var(--radius);padding:1rem;transition:.2s;cursor:pointer}
+.sim-card:hover{border-color:var(--b2);transform:translateY(-2px)}
+.sim-top{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+.sim-logo{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:.6875rem;color:#fff}
+.sim-name{font-family:var(--f-display);font-size:.8125rem;font-weight:700;color:var(--dark)}
+.sim-provider{font-size:.5625rem;color:var(--dark5)}
+.sim-risk{font-family:var(--f-mono);font-size:.4375rem;font-weight:700;padding:.0625rem .3125rem;border-radius:3px;display:inline-block;margin:.375rem 0}
+.sim-score{font-family:var(--f-display);font-size:1rem;font-weight:800}
+
+/* CTA */
+.cta-banner{background:var(--card2);border:1px solid var(--b2);border-radius:14px;padding:2rem;text-align:center;margin-bottom:2rem}
+.cta-banner h3{font-family:var(--f-display);font-size:1.25rem;font-weight:700;color:var(--dark);margin-bottom:.5rem}
+.cta-banner p{font-size:.8125rem;color:var(--dark4);margin-bottom:1rem}
+.cta-cmds{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+.cta-cmd{font-family:var(--f-mono);font-size:.75rem;background:#0d1117;color:var(--teal);padding:.5rem 1rem;border-radius:6px;border:1px solid rgba(255,255,255,.08)}
+html.light .cta-cmd{background:#1a1e24}
+.cta-gh{font-family:var(--f-body);font-size:.75rem;font-weight:700;color:var(--dark);background:var(--card);border:1px solid var(--b2);border-radius:6px;padding:.5rem 1rem;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:.375rem}
+.cta-gh:hover{border-color:var(--dark4)}
+
+footer{margin-top:4rem;padding:2rem;border-top:1px solid var(--b);text-align:center;font-family:var(--f-mono);font-size:.625rem;color:var(--dark5)}
+
+@media(max-width:768px){
+  .tool-hero{grid-template-columns:1fr}
+  .tool-hero-right{padding-left:0;border-left:0;border-top:1px solid var(--b);padding-top:1rem;flex-direction:row;gap:1rem}
+  .similar{grid-template-columns:repeat(2,1fr)}
+  .tabs{overflow-x:auto;gap:0}
+}
+</style>
+</head>
+<body>
+
+<header>
+<a href="/" class="logo">complior<span>.ai</span></a>
+<nav class="hdr-nav">
+<a href="/">Home</a>
+<a href="registry-index.html" class="active">AI Registry</a>
+<a href="/docs">Docs</a>
+<button class="theme-btn" onclick="document.documentElement.classList.toggle('light')">
+<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+</button>
+</nav>
+</header>
+
+<div class="page">
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+<a href="registry-index.html">AI Registry</a><span class="sep">›</span>
+<a href="#">Chatbot</a><span class="sep">›</span>
+<span style="color:var(--dark)">ChatGPT</span>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<div class="tool-hero">
+<div class="tool-hero-left">
+<div class="tool-hero-logo">G</div>
+<div class="tool-hero-info">
+<h1 class="tool-hero-name">ChatGPT</h1>
+<p class="tool-hero-sub">OpenAI · chatgpt.com · ~300M monthly users</p>
+<div class="tool-hero-cats">
+<span class="tool-cat">Chatbot</span>
+<span class="tool-cat">Text Generation</span>
+<span class="tool-cat">Code Assistant</span>
+<span class="tool-cat">Image Generation</span>
+<span class="tool-cat">Voice</span>
+</div>
+<p style="font-size:.75rem;color:var(--dark4)">Current model: GPT-5.2 (default since Feb 13, 2026)</p>
+<div class="tool-hero-links">
+<a href="https://chatgpt.com" target="_blank">Visit website ↗</a>
+<a href="https://platform.openai.com/docs" target="_blank">API Docs ↗</a>
+</div>
+</div>
+</div>
+<div class="tool-hero-right">
+<div class="risk-card">
+<div class="risk-card-label">Risk Classification</div>
+<div class="risk-card-value">GPAI</div>
+<div class="risk-card-desc">General-Purpose AI System</div>
+</div>
+<div class="score-card">
+<div class="score-card-label">Compliance Score</div>
+<div class="score-card-num">41 <span class="score-card-max">/ 100</span></div>
+<div class="score-card-bar"><div class="score-card-bar-fill" style="width:41%"></div></div>
+<div class="score-card-verbal">Needs improvement</div>
+<div class="score-card-date">Last scanned: Feb 14, 2026</div>
+</div>
+</div>
+</div>
+
+<!-- ═══ TABS ═══ -->
+<div class="tabs" id="tabs">
+<div class="tab active" onclick="showTab(0)">Overview</div>
+<div class="tab" onclick="showTab(1)">Obligations</div>
+<div class="tab" onclick="showTab(2)">Detection</div>
+<div class="tab" onclick="showTab(3)">Documents</div>
+<div class="tab" onclick="showTab(4)">History</div>
+</div>
+
+<!-- TAB 0: Overview -->
+<div class="tab-content active" id="tc0">
+
+<div class="sec-block">
+<div class="sec-h">Why this tool is classified as GPAI</div>
+<p class="tool-desc">ChatGPT is powered by GPT-5.2, a general-purpose AI model as defined in Article 3(63) of the EU AI Act. It performs a wide range of tasks including text generation, code writing, image creation, voice interaction, and analysis. Under the Act, both the provider (OpenAI) and deployers (companies using ChatGPT) have specific obligations. Since GPT-5.2 serves over 300M monthly users, OpenAI is also subject to systemic risk provisions under Article 51.</p>
+</div>
+
+<div class="sec-block">
+<div class="sec-h">Applicable Articles</div>
+
+<div class="art-card">
+<div class="art-card-header"><span class="art-card-art">Art. 4</span><span class="art-card-title">AI Literacy</span><div class="art-card-badges"><span class="art-badge badge-required">REQUIRED</span><span class="art-badge badge-passed">DEADLINE PASSED</span></div></div>
+<div class="art-card-body">Every person operating ChatGPT in your organization must have sufficient AI literacy. Training must be role-appropriate and documented. This obligation is on the deployer — your company, not OpenAI.</div>
+</div>
+
+<div class="art-card">
+<div class="art-card-header"><span class="art-card-art">Art. 50</span><span class="art-card-title">Transparency Obligations</span><div class="art-card-badges"><span class="art-badge badge-required">REQUIRED</span><span class="art-badge badge-passed">DEADLINE PASSED</span></div></div>
+<div class="art-card-body">Users must be informed they are interacting with AI. Any AI-generated content must be disclosed. If ChatGPT is used in customer-facing products, explicit AI disclosure is mandatory.</div>
+</div>
+
+<div class="art-card">
+<div class="art-card-header"><span class="art-card-art">Art. 52</span><span class="art-card-title">Content Marking</span><div class="art-card-badges"><span class="art-badge badge-required">REQUIRED</span><span class="art-badge badge-upcoming">AUG 2026</span></div></div>
+<div class="art-card-body">AI-generated text, images, and audio must carry machine-readable metadata. C2PA or equivalent watermarking is required. OpenAI has partial C2PA support for images via DALL-E, but text and voice outputs lack metadata.</div>
+</div>
+
+<div class="art-card">
+<div class="art-card-header"><span class="art-card-art">Art. 53</span><span class="art-card-title">GPAI Provider Obligations</span><div class="art-card-badges"><span class="art-badge badge-provider">PROVIDER: OpenAI</span></div></div>
+<div class="art-card-body">Technical documentation, training data summary, copyright compliance. These are OpenAI's responsibilities as the model provider, not yours as a deployer.</div>
+</div>
+
+<div class="art-card">
+<div class="art-card-header"><span class="art-card-art">Art. 12</span><span class="art-card-title">Record-Keeping</span><div class="art-card-badges"><span class="art-badge badge-required">RECOMMENDED</span></div></div>
+<div class="art-card-body">Keep logs of AI interactions for at least 6 months. Required if ChatGPT is used for high-risk decisions such as hiring, credit scoring, or legal assessments (Art. 26).</div>
+</div>
+</div>
+
+<div class="sec-block">
+<div class="sec-h">Compliance Breakdown</div>
+<div class="breakdown">
+<div class="bd-row"><span class="bd-label">AI Literacy (Art. 4)</span><div class="bd-bar"><div class="bd-bar-fill" style="width:0%;background:var(--coral)"></div></div><span class="bd-val" style="color:var(--coral)">0%</span></div>
+<div class="bd-row"><span class="bd-label">Transparency (Art. 50)</span><div class="bd-bar"><div class="bd-bar-fill" style="width:80%;background:var(--teal)"></div></div><span class="bd-val" style="color:var(--teal)">80%</span></div>
+<div class="bd-row"><span class="bd-label">Content Marking (Art. 52)</span><div class="bd-bar"><div class="bd-bar-fill" style="width:20%;background:var(--coral)"></div></div><span class="bd-val" style="color:var(--coral)">20%</span></div>
+<div class="bd-row"><span class="bd-label">Record-Keeping (Art. 12)</span><div class="bd-bar"><div class="bd-bar-fill" style="width:40%;background:var(--amber)"></div></div><span class="bd-val" style="color:var(--amber)">40%</span></div>
+<div class="bd-row"><span class="bd-label">Documentation (Art. 53)</span><div class="bd-bar"><div class="bd-bar-fill" style="width:60%;background:var(--blue)"></div></div><span class="bd-val" style="color:var(--blue)">60%</span></div>
+</div>
+</div>
+
+</div>
+
+<!-- TAB 1: Obligations -->
+<div class="tab-content" id="tc1">
+
+<div class="obl-section">
+<div class="obl-title">Your obligations as a ChatGPT deployer</div>
+<div class="obl-sub">ChatGPT is classified as GPAI with systemic risk. As a deployer, these are your specific legal obligations — distinct from tools classified as High Risk or Limited Risk.</div>
+
+<div class="obl-item"><div class="obl-check"></div><div class="obl-text"><strong>Train all ChatGPT users on AI literacy</strong> (Art. 4) — LLM-specific: hallucinations, data leakage risks, prompt injection. Role-appropriate.<br><a href="#" class="obl-link">Generate training plan for ChatGPT →</a></div></div>
+<div class="obl-item"><div class="obl-check"></div><div class="obl-text"><strong>Add AI disclosure wherever ChatGPT output is shown</strong> (Art. 50) — "This content was generated by AI" notice. Required for chatbots, emails, summaries, support responses.<br><a href="#" class="obl-link">Generate transparency notice →</a></div></div>
+<div class="obl-item"><div class="obl-check"></div><div class="obl-text"><strong>Mark AI-generated content with machine-readable metadata</strong> (Art. 52) — C2PA or equivalent. Applies to text, images (DALL-E), and voice outputs. OpenAI has partial C2PA for images only.<br><a href="#" class="obl-link">See content marking guide →</a></div></div>
+<div class="obl-item"><div class="obl-check"></div><div class="obl-text"><strong>Log all ChatGPT API interactions</strong> (Art. 12) — Retain prompts, responses, and metadata for ≥6 months. Mandatory if used for any decision-making.<br><a href="#" class="obl-link">See logging implementation →</a></div></div>
+<div class="obl-item"><div class="obl-check"></div><div class="obl-text"><strong>Conduct FRIA if ChatGPT feeds into high-risk decisions</strong> (Art. 27) — Hiring, credit, legal, medical. If ChatGPT is in the chain, FRIA may be triggered even for GPAI tools.<br><a href="#" class="obl-link">Check if FRIA applies →</a></div></div>
+<div class="obl-item"><div class="obl-check"></div><div class="obl-text"><strong>Register ChatGPT in your internal AI systems inventory</strong> — Name, provider, risk level, purpose, responsible person, applicable articles. Auditable format.<br><a href="#" class="obl-link">Generate registration card →</a></div></div>
+</div>
+
+<div class="obl-section">
+<div class="obl-title" style="opacity:.6">OpenAI's obligations as provider</div>
+<div class="obl-sub" style="opacity:.6">These are OpenAI's responsibility, not yours.</div>
+
+<div class="obl-item" style="opacity:.5"><div class="obl-check provider"></div><div class="obl-text">Provide technical documentation (Art. 53)</div></div>
+<div class="obl-item" style="opacity:.5"><div class="obl-check provider"></div><div class="obl-text">Copyright policy for training data (Art. 53(1)(d))</div></div>
+<div class="obl-item" style="opacity:.5"><div class="obl-check provider"></div><div class="obl-text">Publish training data summary (Art. 53(1)(d))</div></div>
+<div class="obl-item" style="opacity:.5"><div class="obl-check provider"></div><div class="obl-text">Systemic risk evaluation — >10M EU users (Art. 51)</div></div>
+</div>
+</div>
+
+<!-- TAB 2: Detection -->
+<div class="tab-content" id="tc2">
+
+<div class="sec-block">
+<div class="sec-h">How Complior detects ChatGPT in your stack</div>
+
+<div class="detect-panel">
+<div class="detect-h">Code Detection</div>
+<div class="detect-row"><span class="detect-key">npm packages</span><span class="detect-val">openai, @azure/openai, openai-edge</span></div>
+<div class="detect-row"><span class="detect-key">imports</span><span class="detect-val">import OpenAI from 'openai'</span></div>
+<div class="detect-row"><span class="detect-key">env vars</span><span class="detect-val">OPENAI_API_KEY, AZURE_OPENAI_KEY, OPENAI_ORG_ID</span></div>
+<div class="detect-row"><span class="detect-key">API endpoints</span><span class="detect-val">api.openai.com/v1/chat/completions</span></div>
+<div class="detect-row"><span class="detect-key">SDK wrappers</span><span class="detect-val">Vercel AI SDK → openai(), LangChain → ChatOpenAI</span></div>
+<div class="detect-row"><span class="detect-key">models</span><span class="detect-val">gpt-5.2, gpt-5.2-turbo, gpt-5.3-codex, gpt-4o</span></div>
+</div>
+
+<div class="detect-panel">
+<div class="detect-h">SaaS Detection</div>
+<div class="detect-row"><span class="detect-key">domains</span><span class="detect-val">chatgpt.com, chat.openai.com, platform.openai.com</span></div>
+<div class="detect-row"><span class="detect-key">browser</span><span class="detect-val">ChatGPT extension, OpenAI Codex agent</span></div>
+<div class="detect-row"><span class="detect-key">SSO / OAuth</span><span class="detect-val">OpenAI workspace login, Azure AD integration</span></div>
+</div>
+</div>
+</div>
+
+<!-- TAB 3: Documents -->
+<div class="tab-content" id="tc3">
+
+<div class="sec-block">
+<div class="sec-h">Generate Compliance Documents for ChatGPT</div>
+<p style="font-size:.8125rem;color:var(--dark4);margin-bottom:1.25rem;max-width:600px">These are not generic templates. Each document is pre-filled with ChatGPT-specific data — risk classification, applicable articles, provider details, and recommended mitigations.</p>
+
+<div class="doc-card">
+<div class="doc-card-left"><span class="doc-card-icon">📋</span><div><div class="doc-card-name">AI Literacy Training Plan</div><div class="doc-card-desc">LLM-specific: hallucinations, data leakage, prompt injection. Pre-built for ChatGPT users.</div></div></div>
+<button class="doc-card-btn">Generate →</button>
+</div>
+
+<div class="doc-card">
+<div class="doc-card-left"><span class="doc-card-icon">📄</span><div><div class="doc-card-name">Transparency Notice (Art. 50)</div><div class="doc-card-desc">Ready-to-deploy disclosure text: "This service uses ChatGPT by OpenAI. Responses are AI-generated..."</div></div></div>
+<button class="doc-card-btn">Generate →</button>
+</div>
+
+<div class="doc-card">
+<div class="doc-card-left"><span class="doc-card-icon">🗂️</span><div><div class="doc-card-name">AI System Registration Card</div><div class="doc-card-desc">Internal registry entry: ChatGPT, OpenAI, GPAI, Art. 4/50/52/53. Audit-ready format.</div></div></div>
+<button class="doc-card-btn">Generate →</button>
+</div>
+
+<div class="doc-card">
+<div class="doc-card-left"><span class="doc-card-icon">⚖️</span><div><div class="doc-card-name">FRIA — Fundamental Rights Impact Assessment</div><div class="doc-card-desc">Pre-scoped for ChatGPT. Only needed if ChatGPT feeds into hiring, credit, legal, or medical decisions.</div></div></div>
+<button class="doc-card-btn">Generate →</button>
+</div>
+</div>
+
+<div style="font-family:var(--f-mono);font-size:.75rem;color:var(--dark5);background:#0d1117;padding:.75rem 1rem;border-radius:6px;border:1px solid rgba(255,255,255,.08)">
+<span style="color:var(--teal)">$</span> npx ai-comply generate --tool chatgpt
+</div>
+</div>
+
+<!-- TAB 4: History -->
+<div class="tab-content" id="tc4">
+<div class="sec-block">
+<div class="sec-h">Compliance History</div>
+<div style="display:flex;flex-direction:column;gap:.75rem">
+
+<div style="display:flex;gap:1rem;align-items:flex-start;padding:.75rem 0;border-bottom:1px solid var(--b)">
+<div style="font-family:var(--f-mono);font-size:.625rem;color:var(--dark5);min-width:80px">Feb 14, 2026</div>
+<div><div style="font-size:.8125rem;color:var(--dark)">Score updated: 41/100</div><div style="font-size:.6875rem;color:var(--dark4)">Default model changed to GPT-5.2. Partial C2PA support in DALL-E images detected.</div></div>
+</div>
+
+<div style="display:flex;gap:1rem;align-items:flex-start;padding:.75rem 0;border-bottom:1px solid var(--b)">
+<div style="font-family:var(--f-mono);font-size:.625rem;color:var(--dark5);min-width:80px">Jan 22, 2026</div>
+<div><div style="font-size:.8125rem;color:var(--dark)">Score updated: 38/100</div><div style="font-size:.6875rem;color:var(--dark4)">OpenAI published updated system card for GPT-5.2. Documentation score increased.</div></div>
+</div>
+
+<div style="display:flex;gap:1rem;align-items:flex-start;padding:.75rem 0;border-bottom:1px solid var(--b)">
+<div style="font-family:var(--f-mono);font-size:.625rem;color:var(--dark5);min-width:80px">Aug 2, 2025</div>
+<div><div style="font-size:.8125rem;color:var(--dark);color:var(--coral)">Art. 50 deadline passed</div><div style="font-size:.6875rem;color:var(--dark4)">Transparency obligations now enforceable. ChatGPT lacks full Art. 50 compliance.</div></div>
+</div>
+
+<div style="display:flex;gap:1rem;align-items:flex-start;padding:.75rem 0">
+<div style="font-family:var(--f-mono);font-size:.625rem;color:var(--dark5);min-width:80px">Feb 2, 2025</div>
+<div><div style="font-size:.8125rem;color:var(--dark);color:var(--coral)">Art. 4 deadline passed</div><div style="font-size:.6875rem;color:var(--dark4)">AI Literacy obligation now enforceable. Initial scan: 35/100.</div></div>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- ═══ SIMILAR TOOLS ═══ -->
+<div class="sec-block" style="margin-top:2rem">
+<div class="sec-h">Similar Tools</div>
+<div class="similar">
+
+<div class="sim-card">
+<div class="sim-top"><div class="sim-logo" style="background:linear-gradient(135deg,#d4a574,#b8860b)">C</div><div><div class="sim-name">Claude</div><div class="sim-provider">Anthropic</div></div></div>
+<div class="sim-risk" style="background:rgba(167,139,250,.08);color:var(--purple)">GPAI</div>
+<div class="sim-score" style="color:var(--blue)">54<span style="font-size:.625rem;color:var(--dark5)">/100</span></div>
+</div>
+
+<div class="sim-card">
+<div class="sim-top"><div class="sim-logo" style="background:linear-gradient(135deg,#4285f4,#1a73e8)">G</div><div><div class="sim-name">Gemini</div><div class="sim-provider">Google</div></div></div>
+<div class="sim-risk" style="background:rgba(167,139,250,.08);color:var(--purple)">GPAI</div>
+<div class="sim-score" style="color:var(--coral)">29<span style="font-size:.625rem;color:var(--dark5)">/100</span></div>
+</div>
+
+<div class="sim-card">
+<div class="sim-top"><div class="sim-logo" style="background:linear-gradient(135deg,#ff4154,#e91e63)">M</div><div><div class="sim-name">Mistral Large</div><div class="sim-provider">Mistral AI</div></div></div>
+<div class="sim-risk" style="background:rgba(167,139,250,.08);color:var(--purple)">GPAI</div>
+<div class="sim-score" style="color:var(--blue)">68<span style="font-size:.625rem;color:var(--dark5)">/100</span></div>
+</div>
+
+<div class="sim-card">
+<div class="sim-top"><div class="sim-logo" style="background:linear-gradient(135deg,#f97316,#ea580c)">L</div><div><div class="sim-name">Llama 3</div><div class="sim-provider">Meta</div></div></div>
+<div class="sim-risk" style="background:rgba(167,139,250,.08);color:var(--purple)">GPAI</div>
+<div class="sim-score" style="color:var(--teal)">72<span style="font-size:.625rem;color:var(--dark5)">/100</span></div>
+</div>
+
+</div>
+</div>
+
+<!-- CTA -->
+<div class="cta-banner">
+<h3>Scan your project for ChatGPT compliance</h3>
+<p>One command. Instant scorecard. Actionable fixes.</p>
+<div class="cta-cmds">
+<div class="cta-cmd"><span style="color:var(--teal)">$</span> npx ai-comply scan</div>
+<button class="cta-gh">★ Star on GitHub</button>
+</div>
+</div>
+
+</div>
+
+<footer>© 2026 Complior.ai · Open source · MIT License</footer>
+
+<script>
+function showTab(idx){
+  document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('active',i===idx)});
+  document.querySelectorAll('.tab-content').forEach(function(c,i){c.classList.toggle('active',i===idx)});
+}
+</script>
+</body>
+</html>

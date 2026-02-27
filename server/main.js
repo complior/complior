@@ -18,6 +18,7 @@ const { init: initWs } = require('./src/ws.js');
 const validateEnv = require('../app/config/validate.js');
 const dbConfig = require('../app/config/database.js');
 const { initDatabase } = require('../app/setup.js');
+const cheerio = require('cheerio');
 const createWorkOSClient = require('./infrastructure/auth/workos-client.js');
 const errors = require('./lib/errors.js');
 const schemas = require('./lib/schemas.js');
@@ -131,11 +132,14 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     log: require('../app/config/log.js'),
     stripe: require('../app/config/stripe.js'),
     registry: require('../app/config/registry.js'),
+    enrichment: require('../app/config/enrichment.js'),
+    llmModels: require('../app/config/llm-models.js'),
   };
 
   const appSandbox = await loadApplication(APPLICATION_PATH, {
     console: logger, db, config, errors, schemas, zod,
     workos, brevo, gotenberg, s3, stripe, pgboss,
+    fetch: globalThis.fetch, cheerio,
   });
 
   initRawBodyForWebhooks(server);

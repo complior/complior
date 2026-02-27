@@ -181,8 +181,11 @@ const RegistryToolSearchSchema = z.object({
   q: z.string().optional(),
   category: z.string().optional(),
   risk: z.string().optional(),
+  aiActRole: z.enum(['provider', 'deployer_product', 'hybrid', 'infrastructure', 'ai_feature']).optional(),
   jurisdiction: z.string().optional(),
   hasDetectionPatterns: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+  level: z.enum(['classified', 'scanned', 'verified']).optional(),
+  sort: z.enum(['name', 'score', 'risk', 'grade']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

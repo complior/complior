@@ -207,37 +207,82 @@ describe('US-108: Detection Enrichment Job Registration', () => {
     });
 
     it('produces valid pattern structure for marketing category', async () => {
-      const { domain } = await buildFullSandbox(createEnrichmentMockDb());
+      // Test via public API: marketing tool should get patterns with env_vars
+      const updates = [];
+      const mockDb = {
+        query: async (sql, params) => {
+          if (sql.includes('SELECT') && sql.includes('detectionPatterns')) {
+            return {
+              rows: [{ registryToolId: '1', slug: 'test-marketing', name: 'Test', category: 'marketing', capabilities: null, level: 'scanned' }],
+            };
+          }
+          if (sql.includes('UPDATE')) {
+            updates.push({ patterns: JSON.parse(params[0]), slug: params[1] });
+            return { rows: [], rowCount: 1 };
+          }
+          return { rows: [] };
+        },
+      };
 
-      // Access the private method directly to validate pattern structure
-      const tool = { category: 'marketing', slug: 'test-marketing' };
-      const patterns = domain.registry['refresh-service']._buildPatternsFromCategory(tool);
+      const { domain } = await buildFullSandbox(mockDb);
+      await domain.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
 
-      assert.ok(patterns !== null, 'Should return patterns for marketing category');
+      assert.strictEqual(updates.length, 1, 'Should update 1 marketing tool');
+      const patterns = updates[0].patterns;
       assert.ok(Array.isArray(patterns.npm), 'npm must be array');
       assert.ok(Array.isArray(patterns.pip), 'pip must be array');
       assert.ok(Array.isArray(patterns.env_vars), 'env_vars must be array');
       assert.ok(patterns.env_vars.length > 0, 'marketing should have env_vars');
     });
 
-    it('returns null for unknown category', async () => {
-      const { domain } = await buildFullSandbox(createEnrichmentMockDb());
+    it('skips tools with unknown category via enrichDetectionPatterns', async () => {
+      // Test via public API: unknown category should be skipped (not updated)
+      const updates = [];
+      const mockDb = {
+        query: async (sql, params) => {
+          if (sql.includes('SELECT') && sql.includes('detectionPatterns')) {
+            return {
+              rows: [{ registryToolId: '1', slug: 'unknown-tool', name: 'Unknown', category: 'completely_unknown_category', capabilities: null, level: 'scanned' }],
+            };
+          }
+          if (sql.includes('UPDATE')) {
+            updates.push({ slug: params[1] });
+            return { rows: [], rowCount: 1 };
+          }
+          return { rows: [] };
+        },
+      };
 
-      const patterns = domain.registry['refresh-service']._buildPatternsFromCategory({
-        category: 'completely_unknown_category',
-      });
+      const { domain } = await buildFullSandbox(mockDb);
+      const result = await domain.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
 
-      assert.strictEqual(patterns, null);
+      assert.strictEqual(updates.length, 0, 'Should not update unknown category');
+      assert.strictEqual(result.skipped, 1, 'Should skip 1 tool');
     });
 
-    it('returns null for null category', async () => {
-      const { domain } = await buildFullSandbox(createEnrichmentMockDb());
+    it('skips tools with null category via enrichDetectionPatterns', async () => {
+      // Test via public API: null category should be skipped
+      const updates = [];
+      const mockDb = {
+        query: async (sql, params) => {
+          if (sql.includes('SELECT') && sql.includes('detectionPatterns')) {
+            return {
+              rows: [{ registryToolId: '1', slug: 'null-cat', name: 'NullCat', category: null, capabilities: null, level: 'scanned' }],
+            };
+          }
+          if (sql.includes('UPDATE')) {
+            updates.push({ slug: params[1] });
+            return { rows: [], rowCount: 1 };
+          }
+          return { rows: [] };
+        },
+      };
 
-      const patterns = domain.registry['refresh-service']._buildPatternsFromCategory({
-        category: null,
-      });
+      const { domain } = await buildFullSandbox(mockDb);
+      const result = await domain.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
 
-      assert.strictEqual(patterns, null);
+      assert.strictEqual(updates.length, 0, 'Should not update null category');
+      assert.strictEqual(result.skipped, 1, 'Should skip 1 tool');
     });
   });
 

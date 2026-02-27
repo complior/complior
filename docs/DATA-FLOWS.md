@@ -1,11 +1,13 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 3.0.0
-**Дата:** 2026-02-21
+**Версия:** 3.1.0
+**Дата:** 2026-02-24
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
-**Зависимости:** ARCHITECTURE.md v3.0.0, DATABASE.md v3.0.0
+**Зависимости:** ARCHITECTURE.md v3.2.0, DATABASE.md v3.0.0
 
+> **v3.1.0 (2026-02-24):** Audit — added Flow Implementation Status table and inline status markers (IMPLEMENTED / PARTIAL / PLANNED / NOT STARTED) to every flow heading. No content changes to flow diagrams.
+>
 > **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model. Auth: Ory → WorkOS (all auth flows updated). 8 новых flows: WorkOS Auth, Registry API, TUI Scan Upload, TUI Agent Inventory, TUI Data Sync, TUI License Check, TUI Bundle Download, Cross-System Aggregation.
 >
 > **v2.4.0 (2026-02-15):** Sprint 6 — NEW Flow 22: Platform Admin Data Access (Admin → requirePlatformAdmin guard → cross-org SQL JOINs → paginated results). Admin endpoints bypass tenant filter for global visibility.
@@ -20,7 +22,43 @@
 
 ---
 
-## 1. User Registration & Onboarding (Deployer) — Plan-Aware (Sprint 3.5)
+### Flow Implementation Status
+
+| # | Flow | Status | Sprint |
+|---|------|--------|--------|
+| 1 | User Registration & Onboarding | **IMPLEMENTED** | S1–S3.5 |
+| 2 | AI Tool Registration | **IMPLEMENTED** | S2 |
+| 3 | Classification Engine | **IMPLEMENTED** | S2–S3 |
+| 4 | Eva Consultant Chat | PLANNED | S8 |
+| 5 | Deployer Document Generation | PLANNED | S8–S9 |
+| 6 | Deployer Dashboard | PARTIAL (summary only) | S3 |
+| 7 | Gap Analysis | PLANNED | S8 |
+| 8 | Authentication Flow (WorkOS) | **IMPLEMENTED** | S7 |
+| 9 | Regulatory Monitor | PLANNED | S9 |
+| 10 | Billing & Subscription (Stripe) | **IMPLEMENTED** | S3.5–S6 |
+| 11 | AI Literacy Enrollment | PLANNED | S10 |
+| 12 | AI Tool Discovery | PARTIAL (wizard only, no CSV import) | S2 |
+| 13 | FRIA Assessment | PLANNED | S8 |
+| 14 | KI-Compliance Siegel | PLANNED | P2 |
+| 15 | Employee Invite Flow | **IMPLEMENTED** | S2.5 |
+| 16 | Accept Invitation | **IMPLEMENTED** | S2.5 |
+| 17 | Messaging Strategy (pg-boss) | **IMPLEMENTED** | S7 |
+| 19 | Lead Gen — Public Tools | **IMPLEMENTED** | S2 |
+| 20 | Eva Guard Pipeline | PLANNED | S8 |
+| 21 | Stripe Checkout Flow | **IMPLEMENTED** | S3.5 |
+| 22 | Platform Admin Data Access | **IMPLEMENTED** | S6 |
+| 23 | WorkOS AuthKit Login | **IMPLEMENTED** | S7 |
+| 24 | Registry API — Tool Search | **IMPLEMENTED** | S7 |
+| 25 | TUI → SaaS Scan Upload | NOT STARTED | S8 |
+| 26 | SaaS → TUI Data Sync | NOT STARTED | S8 |
+| 26b | TUI Bundle Download | **IMPLEMENTED** | S7 |
+| 27 | Cross-System Map | PLANNED | S8 |
+
+> **Legend:** **IMPLEMENTED** = code in production. PARTIAL = partially working. PLANNED = designed, no code. NOT STARTED = no code, no schema.
+
+---
+
+## 1. User Registration & Onboarding (Deployer) — Plan-Aware (Sprint 3.5) — IMPLEMENTED
 
 > **v2.3.0 (Sprint 3.5):** Registration is now plan-aware. URL params `?plan=` and `?period=` determine the flow. Free plan → dashboard. Paid plans → Stripe Checkout → success page → dashboard.
 
@@ -100,7 +138,7 @@ sequenceDiagram
 
 ---
 
-## 2. AI Tool Registration (5-step Deployer Wizard)
+## 2. AI Tool Registration (5-step Deployer Wizard) — IMPLEMENTED
 
 ```mermaid
 sequenceDiagram
@@ -149,7 +187,7 @@ sequenceDiagram
 
 ---
 
-## 3. Classification Engine (deployer context, гибридный 4-шаговый)
+## 3. Classification Engine (deployer context, гибридный 4-шаговый) — IMPLEMENTED
 
 ```mermaid
 sequenceDiagram
@@ -217,7 +255,7 @@ sequenceDiagram
 
 ---
 
-## 4. Eva Consultant Chat (via Vercel AI SDK 6 + Eva Guard)
+## 4. Eva Consultant Chat (via Vercel AI SDK 6 + Eva Guard) — PLANNED (S8)
 
 > **Framework:** Vercel AI SDK 6 — `streamText` (Fastify backend) + `useChat` (Next.js frontend) — SSE streaming, Zod-typed tools, `needsApproval` ([ADR-005](ADR-005-vercel-ai-sdk.md))
 >
@@ -298,7 +336,7 @@ sequenceDiagram
 
 ---
 
-## 5. Deployer Document Generation (FRIA, Monitoring Plan, AI Usage Policy)
+## 5. Deployer Document Generation (FRIA, Monitoring Plan, AI Usage Policy) — PLANNED (S8–S9)
 
 ```mermaid
 sequenceDiagram
@@ -375,7 +413,7 @@ sequenceDiagram
 
 ---
 
-## 6. Deployer Dashboard Data Flow
+## 6. Deployer Dashboard Data Flow — PARTIAL (summary endpoint only)
 
 ```mermaid
 sequenceDiagram
@@ -417,7 +455,7 @@ sequenceDiagram
 
 ---
 
-## 7. Gap Analysis (Deployer Requirements)
+## 7. Gap Analysis (Deployer Requirements) — PLANNED (S8)
 
 ```mermaid
 sequenceDiagram
@@ -452,7 +490,7 @@ sequenceDiagram
 
 ---
 
-## 8. Authentication Flow (WorkOS AuthKit)
+## 8. Authentication Flow (WorkOS AuthKit) — IMPLEMENTED
 
 ```mermaid
 sequenceDiagram
@@ -496,7 +534,7 @@ sequenceDiagram
 
 ---
 
-## 9. Regulatory Monitor (post-MVP)
+## 9. Regulatory Monitor (post-MVP) — PLANNED (S9)
 
 ```mermaid
 sequenceDiagram
@@ -540,7 +578,7 @@ sequenceDiagram
 
 ---
 
-## 10. Billing & Subscription (Stripe)
+## 10. Billing & Subscription (Stripe) — IMPLEMENTED
 
 ```mermaid
 sequenceDiagram
@@ -588,7 +626,7 @@ sequenceDiagram
 
 ---
 
-## 11. AI Literacy Enrollment & Completion (NEW — Art. 4)
+## 11. AI Literacy Enrollment & Completion (NEW — Art. 4) — PLANNED (S10)
 
 ```mermaid
 sequenceDiagram
@@ -649,7 +687,7 @@ sequenceDiagram
 
 ---
 
-## 12. AI Tool Discovery (Manual + CSV Import)
+## 12. AI Tool Discovery (Manual + CSV Import) — PARTIAL (wizard only, no CSV)
 
 ```mermaid
 sequenceDiagram
@@ -689,7 +727,7 @@ sequenceDiagram
 
 ---
 
-## 13. FRIA Assessment (Art. 27 — Guided Wizard)
+## 13. FRIA Assessment (Art. 27 — Guided Wizard) — PLANNED (S8)
 
 ```mermaid
 sequenceDiagram
@@ -741,7 +779,7 @@ sequenceDiagram
 
 ---
 
-## 14. KI-Compliance Siegel Verification (P2)
+## 14. KI-Compliance Siegel Verification (P2) — PLANNED
 
 ```mermaid
 sequenceDiagram
@@ -767,7 +805,7 @@ sequenceDiagram
 
 ---
 
-## 15. Employee Invite Flow (Sprint 2.5)
+## 15. Employee Invite Flow (Sprint 2.5) — IMPLEMENTED
 
 ```mermaid
 sequenceDiagram
@@ -850,7 +888,7 @@ sequenceDiagram
 
 ---
 
-## 16. Accept Invitation — Existing User (Sprint 2.5)
+## 16. Accept Invitation — Existing User (Sprint 2.5) — IMPLEMENTED
 
 ```mermaid
 sequenceDiagram
@@ -889,7 +927,7 @@ sequenceDiagram
 
 ---
 
-## 17. Messaging Strategy: MQ vs PubSub
+## 17. Messaging Strategy: MQ vs PubSub — IMPLEMENTED (pg-boss)
 
 ### Два паттерна передачи сообщений
 
@@ -933,7 +971,7 @@ sequenceDiagram
 
 ---
 
-## 19. Lead Gen — Public Tools (No Auth)
+## 19. Lead Gen — Public Tools (No Auth) — IMPLEMENTED
 
 > **Feature 23:** Quick Check, Penalty Calculator, Free Classification — public endpoints, email-gated, rate-limited.
 
@@ -990,7 +1028,7 @@ sequenceDiagram
 
 ---
 
-## 20. Eva Guard Pipeline (Detailed)
+## 20. Eva Guard Pipeline (Detailed) — PLANNED (S8)
 
 > **Feature 06:** 3-level Eva protection — system prompt + pre-filter + output monitoring. Cost-efficient topic boundary enforcement.
 
@@ -1066,7 +1104,7 @@ User Message
 
 ---
 
-## 21. Stripe Checkout Flow (Sprint 3.5)
+## 21. Stripe Checkout Flow (Sprint 3.5) — IMPLEMENTED
 
 > **Feature 09 (partial):** Stripe Checkout Session creation, hosted payment page, webhook confirmation, success page polling. Full billing management remains Sprint 5-6.
 
@@ -1133,7 +1171,7 @@ sequenceDiagram
 
 ---
 
-## 22. Platform Admin Data Access (Sprint 6)
+## 22. Platform Admin Data Access (Sprint 6) — IMPLEMENTED
 
 > **NEW (v2.4.0):** Cross-org read-only admin API for SaaS platform owner.
 
@@ -1180,7 +1218,7 @@ sequenceDiagram
 
 ---
 
-## 23. WorkOS AuthKit Login (v3.0.0)
+## 23. WorkOS AuthKit Login (v3.0.0) — IMPLEMENTED
 
 > **NEW (v3.0.0):** Единый flow аутентификации через WorkOS AuthKit. Поддерживает email+password, magic link, SSO (SAML/OIDC). Заменяет Flow 8 (Ory Magic Link) как основной auth flow.
 
@@ -1249,7 +1287,7 @@ sequenceDiagram
 
 ---
 
-## 24. Registry API — Tool Search (v3.0.0)
+## 24. Registry API — Tool Search (v3.0.0) — IMPLEMENTED
 
 > **NEW (v3.0.0):** TUI DataProvider запрашивает данные о AI-инструментах через Registry API. Поддержка ETag для кэширования и минимизации трафика.
 
@@ -1300,7 +1338,7 @@ sequenceDiagram
 
 ---
 
-## 25. TUI → SaaS Scan Upload (v3.0.0)
+## 25. TUI → SaaS Scan Upload (v3.0.0) — NOT STARTED (S8)
 
 > **NEW (v3.0.0):** TUI загружает результаты compliance-скана в SaaS при наличии API key (платный план). Данные агрегируются в Cross-System Map. Без heartbeat, без TUINode — только compliance данные.
 
@@ -1339,7 +1377,7 @@ sequenceDiagram
 
 ---
 
-## 26. SaaS → TUI Data Sync (v3.0.0)
+## 26. SaaS → TUI Data Sync (v3.0.0) — NOT STARTED (S8)
 
 > **NEW (v3.0.0):** TUI периодически синхронизирует данные об обязательствах (obligations) с SaaS. ETag + 304 минимизирует трафик при отсутствии изменений.
 
@@ -1382,7 +1420,7 @@ sequenceDiagram
 
 ---
 
-## 26. TUI Bundle Download (v3.0.0)
+## 26b. TUI Bundle Download (v3.0.0) — IMPLEMENTED
 
 > **NEW (v3.0.0):** TUI загружает data bundle (правила, шаблоны, каталог) при установке и обновлении. Поддержка ETag + checksum верификация.
 
@@ -1434,7 +1472,7 @@ sequenceDiagram
 
 ---
 
-## 27. Cross-System Map — Org-Wide GitHub/GitLab Scan (v3.0.0 — planned Sprint 8)
+## 27. Cross-System Map — Org-Wide GitHub/GitLab Scan (v3.0.0) — PLANNED (S8)
 
 > **Planned (Sprint 8):** Dashboard агрегирует compliance данные по всем репозиториям организации через GitHub/GitLab API. SaaS сканирует репозитории напрямую (не через TUI). Cross-System Map = org-wide overview без agent deployment.
 

@@ -15,8 +15,7 @@
         COUNT(*) FILTER (
           WHERE "detectionPatterns" IS NOT NULL
             AND "detectionPatterns" != 'null'::jsonb
-        )::int                                                                AS "withDetectionPatterns",
-        MAX("updatedAt")                                                      AS "lastUpdated"
+        )::int                                                                AS "withDetectionPatterns"
       FROM "RegistryTool"
       WHERE "active" = true
     `);
@@ -49,7 +48,6 @@
       },
       withDetectionPatterns: row.withDetectionPatterns,
       topCategories: categoryResult.rows,
-      lastUpdated: row.lastUpdated,
     };
   },
 })

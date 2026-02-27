@@ -2,10 +2,10 @@
 
 import React from 'react';
 import type { RegistryTool } from '@/lib/registry';
-import { getProviderName, getScoreColor, getScoreLabel, getRiskStyles, getRiskLabel, getTransparencyColor } from '@/lib/registry';
+import { getProviderName, getRiskStyles, getRiskLabel, getGradeColor, getAiActRoleLabel, getPublicDocumentation } from '@/lib/registry';
 import type { ToolValidation } from './toolValidation';
 import { ToolLogo } from './ToolLogo';
-import { ScoreBarLarge } from './ScoreBar';
+import { DocGradeBadge } from './DocGradeBadge';
 
 interface ToolHeroProps {
   tool: RegistryTool;
@@ -15,16 +15,15 @@ interface ToolHeroProps {
 export function ToolHero({ tool, validation }: ToolHeroProps) {
   const provider = getProviderName(tool.provider);
   const providerWebsite = typeof tool.provider === 'object' ? tool.provider?.website : null;
-  const score = validation.score;
-  const coverage = validation.coverage;
-  const transparencyGrade = validation.transparencyGrade;
-  const scoreColor = getScoreColor(score);
-  const scoreVerbal = getScoreLabel(score);
   const riskStyles = getRiskStyles(tool.riskLevel || 'minimal');
   const riskLabel = getRiskLabel(tool.riskLevel || '');
   const categories = tool.category ? tool.category.split(',').map((c) => c.trim()) : [];
   const lastScanned = tool.assessments?.['eu-ai-act']?.assessed_at || null;
-  const tgColor = getTransparencyColor(transparencyGrade);
+
+  const publicDoc = getPublicDocumentation(tool);
+  const grade = publicDoc?.grade ?? null;
+  const gradeColor = getGradeColor(grade);
+  const roleLabel = getAiActRoleLabel(tool.aiActRole);
 
   const riskDescriptions: Record<string, string> = {
     prohibited: 'Prohibited AI Practice',
@@ -107,9 +106,9 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
         </div>
       </div>
 
-      {/* Right column */}
+      {/* Right column — 3 metric cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '2rem', borderLeft: '1px solid var(--b)' }}>
-        {/* Risk card */}
+        {/* Risk Classification card */}
         <div style={{
           textAlign: 'center',
           padding: '1rem',
@@ -141,7 +140,7 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
           </div>
         </div>
 
-        {/* Compliance Score */}
+        {/* Public Documentation Grade card */}
         <div style={{ textAlign: 'center' }}>
           <div style={{
             fontFamily: 'var(--f-mono)',
@@ -152,83 +151,53 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
             color: 'var(--dark5)',
             marginBottom: '.5rem',
           }}>
-            Compliance Score
+            Public Documentation
           </div>
-          {score !== null ? (
+          {publicDoc ? (
             <>
-              <div style={{ fontFamily: 'var(--f-display)', fontSize: '2.5rem', fontWeight: 800, color: scoreColor, lineHeight: 1 }}>
-                {score} <span style={{ fontSize: '1rem', color: 'var(--dark5)', fontWeight: 400 }}>/100</span>
-              </div>
-              <ScoreBarLarge score={score} />
-              <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.5rem', color: scoreColor }}>
-                {scoreVerbal}
+              <DocGradeBadge grade={grade} size="lg" />
+              <div style={{
+                fontFamily: 'var(--f-mono)',
+                fontSize: '.5rem',
+                color: gradeColor,
+                marginTop: '.375rem',
+              }}>
+                {publicDoc.score}/{publicDoc.total} items documented
               </div>
             </>
           ) : (
             <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.625rem', color: 'var(--dark5)', padding: '.5rem 0' }}>
-              Insufficient data &mdash; no score available
+              Not yet graded
             </div>
           )}
         </div>
 
-        {/* Coverage + Transparency row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
-          {/* Coverage */}
+        {/* AI Act Role badge */}
+        <div style={{
+          textAlign: 'center',
+          padding: '.625rem',
+          borderRadius: 'var(--radius)',
+          background: 'var(--card2)',
+          border: '1px solid var(--b)',
+        }}>
           <div style={{
-            textAlign: 'center',
-            padding: '.625rem',
-            borderRadius: 'var(--radius)',
-            background: 'var(--card2)',
-            border: '1px solid var(--b)',
+            fontFamily: 'var(--f-mono)',
+            fontSize: '.375rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '.06em',
+            color: 'var(--dark5)',
+            marginBottom: '.25rem',
           }}>
-            <div style={{
-              fontFamily: 'var(--f-mono)',
-              fontSize: '.375rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '.06em',
-              color: 'var(--dark5)',
-              marginBottom: '.25rem',
-            }}>
-              Coverage
-            </div>
-            <div style={{
-              fontFamily: 'var(--f-display)',
-              fontSize: '1.25rem',
-              fontWeight: 800,
-              color: coverage !== null && coverage > 0 ? 'var(--dark)' : 'var(--dark5)',
-            }}>
-              {coverage !== null ? `${coverage}%` : 'N/A'}
-            </div>
+            AI Act Role
           </div>
-
-          {/* Transparency Grade */}
           <div style={{
-            textAlign: 'center',
-            padding: '.625rem',
-            borderRadius: 'var(--radius)',
-            background: 'var(--card2)',
-            border: '1px solid var(--b)',
+            fontFamily: 'var(--f-display)',
+            fontSize: '.875rem',
+            fontWeight: 700,
+            color: 'var(--dark)',
           }}>
-            <div style={{
-              fontFamily: 'var(--f-mono)',
-              fontSize: '.375rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '.06em',
-              color: 'var(--dark5)',
-              marginBottom: '.25rem',
-            }}>
-              Transparency
-            </div>
-            <div style={{
-              fontFamily: 'var(--f-display)',
-              fontSize: '1.25rem',
-              fontWeight: 800,
-              color: tgColor,
-            }}>
-              {transparencyGrade || 'N/A'}
-            </div>
+            {roleLabel}
           </div>
         </div>
 

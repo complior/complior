@@ -53,6 +53,7 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
   const marketingLinks = [
     { href: `/${locale}#caps`, label: t('features') },
     { href: `/${locale}#free-tools`, label: t('freeTools') },
+    { href: `/${locale}/registry`, label: t('registry') },
     { href: `/${locale}#pricing`, label: t('pricing') },
     { href: `/${locale}#faq`, label: t('faq') },
   ];
