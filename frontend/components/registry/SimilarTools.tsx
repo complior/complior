@@ -4,9 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import type { RegistryTool } from '@/lib/registry';
-import { getProviderName, getRiskStyles, getRiskLabel, getToolGrade } from '@/lib/registry';
+import { getProviderName, getRiskStyles, getRiskLabel, getToolGrade, getGradeColor, getPublicDocumentation, getDeployerObligationCount } from '@/lib/registry';
 import { ToolLogo } from './ToolLogo';
-import { DocGradeBadge } from './DocGradeBadge';
 
 interface SimilarToolsProps {
   tools: RegistryTool[];
@@ -19,7 +18,7 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
 
   return (
     <div style={{ marginBottom: '2rem', marginTop: '2rem' }}>
-      <div style={{
+      <h2 style={{
         fontFamily: 'var(--f-mono)',
         fontSize: '.5625rem',
         fontWeight: 700,
@@ -29,7 +28,7 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
         marginBottom: '1rem',
       }}>
         Similar Tools
-      </div>
+      </h2>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
@@ -37,9 +36,15 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
       }}>
         {tools.slice(0, 4).map((tool) => {
           const grade = getToolGrade(tool);
+          const gradeColor = getGradeColor(grade);
+          const publicDoc = getPublicDocumentation(tool);
+          const found = publicDoc?.score ?? 0;
+          const total = publicDoc?.total ?? 9;
           const riskS = getRiskStyles(tool.riskLevel || 'minimal');
           const riskLabel = getRiskLabel(tool.riskLevel || '');
           const provider = getProviderName(tool.provider);
+          const oblCount = getDeployerObligationCount(tool);
+          const roleLabel = tool.aiActRole === 'provider' ? 'Provider' : tool.aiActRole === 'hybrid' ? 'Hybrid' : 'AI Product';
 
           return (
             <Link
@@ -73,12 +78,12 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
                   <div style={{ fontFamily: 'var(--f-display)', fontSize: '.8125rem', fontWeight: 700, color: 'var(--dark)' }}>
                     {tool.name}
                   </div>
-                  <div style={{ fontSize: '.5625rem', color: 'var(--dark5)' }}>
-                    {provider}
+                  <div style={{ fontSize: '.5rem', color: 'var(--dark5)' }}>
+                    {provider} &middot; {roleLabel}
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginTop: '.375rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', margin: '.375rem 0' }}>
                 <span style={{
                   fontFamily: 'var(--f-mono)',
                   fontSize: '.4375rem',
@@ -91,7 +96,17 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
                 }}>
                   {riskLabel}
                 </span>
-                <DocGradeBadge grade={grade} size="sm" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.375rem', marginLeft: '.375rem' }}>
+                  <span style={{ fontFamily: 'var(--f-display)', fontWeight: 800, fontSize: '.75rem', color: gradeColor }}>
+                    {grade || '—'}
+                  </span>
+                  <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.5rem', color: 'var(--dark5)' }}>
+                    {found}/{total}
+                  </span>
+                </div>
+              </div>
+              <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.5rem', color: 'var(--dark5)' }}>
+                {oblCount > 0 ? `${oblCount} obligations` : ''}
               </div>
             </Link>
           );
@@ -99,9 +114,14 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
       </div>
 
       <style jsx>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           div[style*="grid-template-columns: repeat(4"] {
             grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 640px) {
+          div[style*="grid-template-columns: repeat(4"] {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>

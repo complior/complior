@@ -10,6 +10,24 @@ import { FeaturedRow } from './FeaturedRow';
 import { ToolRow } from './ToolRow';
 import { Pagination } from './Pagination';
 
+const ROLE_OPTIONS = ['provider', 'deployer_product', 'hybrid', 'infrastructure', 'ai_feature'] as const;
+const ROLE_LABELS: Record<string, string> = {
+  provider: 'Provider',
+  deployer_product: 'AI Product',
+  hybrid: 'Hybrid',
+  infrastructure: 'Infrastructure',
+  ai_feature: 'AI Feature',
+};
+
+const SORT_OPTIONS = [
+  { value: '', label: 'Sort: Popular' },
+  { value: 'name', label: 'Sort: Name A-Z' },
+  { value: 'doc-grade-desc', label: 'Sort: Doc Grade ↓' },
+  { value: 'doc-grade-asc', label: 'Sort: Doc Grade ↑' },
+  { value: 'risk-desc', label: 'Sort: Risk ↓' },
+  { value: 'obligations-desc', label: 'Sort: Obligations ↓' },
+];
+
 interface ToolGridProps {
   initialData: RegistrySearchResult;
   featured: RegistryTool[];
@@ -25,6 +43,8 @@ export function ToolGrid({ initialData, featured, stats }: ToolGridProps) {
   const [riskFilters, setRiskFilters] = useState<string[]>(
     searchParams.get('risk')?.split(',').filter(Boolean) || [],
   );
+  const [roleFilter, setRoleFilter] = useState(searchParams.get('role') || '');
+  const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || '');
   const [sort, setSort] = useState(searchParams.get('sort') || '');
   const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
   const [data, setData] = useState<RegistrySearchResult>(initialData);
@@ -32,18 +52,20 @@ export function ToolGrid({ initialData, featured, stats }: ToolGridProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const isFirstRender = useRef(true);
 
-  const hasFilters = query || riskFilters.length > 0 || sort;
+  const hasFilters = query || riskFilters.length > 0 || roleFilter || categoryFilter || sort;
 
   // Build risk counts from stats
   const riskCounts: Record<string, number> = {};
   if (stats?.byRiskLevel) {
-    // Merge unacceptable into prohibited for display
     riskCounts.prohibited = (stats.byRiskLevel.unacceptable || 0);
     riskCounts.high = stats.byRiskLevel.high || 0;
     riskCounts.gpai = (stats.byRiskLevel.gpai || 0) + (stats.byRiskLevel.gpai_systemic || 0);
     riskCounts.limited = stats.byRiskLevel.limited || 0;
     riskCounts.minimal = stats.byRiskLevel.minimal || 0;
   }
+
+  // Build category list from stats
+  const categories = stats?.topCategories?.map((c) => c.category).filter(Boolean) || [];
 
   // Map UI pill keys to actual DB riskLevel values
   const mapRiskToDb = (risks: string[]): string | undefined => {
@@ -57,12 +79,14 @@ export function ToolGrid({ initialData, featured, stats }: ToolGridProps) {
     return dbValues.join(',');
   };
 
-  const fetchData = useCallback(async (q: string, risks: string[], s: string, p: number) => {
+  const fetchData = useCallback(async (q: string, risks: string[], role: string, category: string, s: string, p: number) => {
     setLoading(true);
     try {
       const result = await searchTools({
         q: q || undefined,
         risk: mapRiskToDb(risks),
+        aiActRole: role || undefined,
+        category: category || undefined,
         sort: s || undefined,
         page: p,
         limit: 20,
@@ -85,11 +109,13 @@ export function ToolGrid({ initialData, featured, stats }: ToolGridProps) {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     if (riskFilters.length > 0) params.set('risk', riskFilters.join(','));
+    if (roleFilter) params.set('role', roleFilter);
+    if (categoryFilter) params.set('category', categoryFilter);
     if (sort) params.set('sort', sort);
     if (page > 1) params.set('page', String(page));
     const qs = params.toString();
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
-  }, [query, riskFilters, sort, page, pathname, router]);
+  }, [query, riskFilters, roleFilter, categoryFilter, sort, page, pathname, router]);
 
   // Debounced fetch
   useEffect(() => {
@@ -97,13 +123,13 @@ export function ToolGrid({ initialData, featured, stats }: ToolGridProps) {
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      fetchData(query, riskFilters, sort, page);
+      fetchData(query, riskFilters, roleFilter, categoryFilter, sort, page);
     }, 300);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, riskFilters, sort, page, fetchData]);
+  }, [query, riskFilters, roleFilter, categoryFilter, sort, page, fetchData]);
 
   const handleRiskToggle = (risk: string) => {
     setRiskFilters((prev) =>
@@ -112,15 +138,91 @@ export function ToolGrid({ initialData, featured, stats }: ToolGridProps) {
     setPage(1);
   };
 
+  const handleRoleToggle = (role: string) => {
+    setRoleFilter((prev) => prev === role ? '' : role);
+    setPage(1);
+  };
+
   const handlePageChange = (p: number) => {
     setPage(p);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const filterSelectStyle: React.CSSProperties = {
+    fontFamily: 'var(--f-mono)',
+    fontSize: '.625rem',
+    padding: '.3125rem .5rem',
+    borderRadius: 6,
+    border: '1px solid var(--b2)',
+    background: 'var(--card)',
+    color: 'var(--dark4)',
+    cursor: 'pointer',
+    outline: 'none',
+    paddingRight: '1.25rem',
+  };
+
+  const rolePillStyle = (active: boolean): React.CSSProperties => ({
+    fontFamily: 'var(--f-mono)',
+    fontSize: '.625rem',
+    fontWeight: 500,
+    padding: '.25rem .5rem',
+    borderRadius: 100,
+    border: `1px solid ${active ? 'var(--dark4)' : 'var(--b2)'}`,
+    background: active ? 'var(--card2)' : 'transparent',
+    color: active ? 'var(--dark2)' : 'var(--dark5)',
+    cursor: 'pointer',
+    transition: '.2s',
+    userSelect: 'none',
+  });
+
   return (
     <>
       <RegistrySearch value={query} onChange={(v) => { setQuery(v); setPage(1); }} />
-      <RiskPillFilter active={riskFilters} onToggle={handleRiskToggle} counts={riskCounts} />
+
+      {/* Filters container */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1.75rem' }}>
+        {/* Row 1: Risk pills */}
+        <RiskPillFilter active={riskFilters} onToggle={handleRiskToggle} counts={riskCounts} />
+
+        {/* Row 2: Role pills + category + sort */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem', alignItems: 'center' }}>
+          {ROLE_OPTIONS.map((role) => (
+            <button
+              key={role}
+              onClick={() => handleRoleToggle(role)}
+              style={rolePillStyle(roleFilter === role)}
+            >
+              {ROLE_LABELS[role]}
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width: 1, height: 20, background: 'var(--b2)', margin: '0 .125rem' }} />
+
+          {/* Category select */}
+          <select
+            value={categoryFilter}
+            onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
+            style={filterSelectStyle}
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
+          {/* Sort select */}
+          <select
+            value={sort}
+            onChange={(e) => { setSort(e.target.value); setPage(1); }}
+            style={filterSelectStyle}
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {!hasFilters && <FeaturedRow tools={featured} />}
 
@@ -160,12 +262,25 @@ export function ToolGrid({ initialData, featured, stats }: ToolGridProps) {
         onPageChange={handlePageChange}
       />
 
-      {/* Responsive: hide score + articles columns on mobile */}
+      {/* Responsive: hide obligation + community columns on mobile */}
       <style jsx global>{`
+        @media (max-width: 1024px) {
+          .tool-obl-col { display: none !important; }
+          a[style*="grid-template-columns: 2.5rem"] {
+            grid-template-columns: 2.5rem 1fr auto auto !important;
+            gap: .75rem !important;
+          }
+        }
         @media (max-width: 768px) {
-          .tool-score-col, .tool-articles-col { display: none !important; }
+          .tool-obl-col, .tool-articles-col { display: none !important; }
           a[style*="grid-template-columns: 2.5rem"] {
             grid-template-columns: 2.5rem 1fr auto !important;
+          }
+        }
+        @media (max-width: 640px) {
+          a[style*="grid-template-columns: 2.5rem"] {
+            grid-template-columns: 2rem 1fr auto !important;
+            gap: .5rem !important;
           }
         }
       `}</style>

@@ -285,3 +285,37 @@ export function getRiskLabel(risk: string): string {
   };
   return labels[risk] || risk?.toUpperCase() || 'UNKNOWN';
 }
+
+// Helper: get deployer obligation count
+export function getDeployerObligationCount(tool: RegistryTool): number {
+  const assessment = tool.assessments?.['eu-ai-act'];
+  if (!assessment) return 0;
+  return assessment.deployer_obligations?.length ?? assessment.applicable_obligation_ids?.length ?? 0;
+}
+
+// Helper: get applicable article numbers from obligations
+export function getApplicableArticles(tool: RegistryTool): string[] {
+  const assessment = tool.assessments?.['eu-ai-act'];
+  if (!assessment?.deployer_obligations) return [];
+  const articles = new Set<string>();
+  for (const obl of assessment.deployer_obligations) {
+    if (obl.article) articles.add(obl.article);
+  }
+  return Array.from(articles);
+}
+
+// Helper: check if a deadline string has passed
+export function isDeadlinePassed(deadline: string | undefined): boolean {
+  if (!deadline) return false;
+  const now = new Date();
+  const parsed = new Date(deadline);
+  return !isNaN(parsed.getTime()) && parsed < now;
+}
+
+// Helper: format assessed_at date for display
+export function formatAssessedDate(dateStr: string | undefined): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}

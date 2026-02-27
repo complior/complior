@@ -2,9 +2,10 @@ import React from 'react';
 
 interface CTABannerProps {
   toolName: string;
+  slug?: string;
 }
 
-export function CTABanner({ toolName }: CTABannerProps) {
+export function CTABanner({ toolName, slug }: CTABannerProps) {
   return (
     <div style={{
       background: 'var(--card2)',
@@ -21,14 +22,14 @@ export function CTABanner({ toolName }: CTABannerProps) {
         color: 'var(--dark)',
         marginBottom: '.5rem',
       }}>
-        Scan your project for {toolName} compliance
+        Track {toolName} compliance in your organization
       </h3>
       <p style={{
         fontSize: '.8125rem',
         color: 'var(--dark4)',
         marginBottom: '1rem',
       }}>
-        One command. Instant scorecard. Actionable fixes.
+        One command to scan. Full dashboard to track.
       </p>
       <div style={{
         display: 'flex',
@@ -45,24 +46,21 @@ export function CTABanner({ toolName }: CTABannerProps) {
           borderRadius: 6,
           border: '1px solid rgba(255,255,255,.08)',
         }}>
-          <span style={{ color: 'var(--teal)' }}>$</span> npx ai-comply scan
+          <span style={{ color: 'var(--teal)' }}>$</span> complior scan
         </div>
         <button style={{
           fontFamily: 'var(--f-body)',
           fontSize: '.75rem',
           fontWeight: 700,
-          color: 'var(--dark)',
-          background: 'var(--card)',
-          border: '1px solid var(--b2)',
+          color: '#fff',
+          background: 'var(--teal)',
+          border: 'none',
           borderRadius: 6,
           padding: '.5rem 1rem',
           cursor: 'pointer',
           transition: '.2s',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '.375rem',
         }}>
-          &#x2605; Star on GitHub
+          Start tracking →
         </button>
       </div>
     </div>
