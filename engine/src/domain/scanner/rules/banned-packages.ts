@@ -5,6 +5,8 @@ export interface BannedPackage {
   readonly obligationId: string;
   readonly article: string;
   readonly penalty: string;
+  readonly prohibitedWhen: string;
+  readonly verifyMessage: string;
 }
 
 export const BANNED_PACKAGES: readonly BannedPackage[] = [
@@ -16,6 +18,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(a)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Used as subliminal or manipulative technique to distort behavior beyond person\'s awareness, causing significant harm',
+    verifyMessage: 'Does this influence user decisions through techniques they are not aware of?',
   },
   {
     name: 'dark-patterns',
@@ -24,6 +28,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(a)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Used as subliminal or manipulative technique to distort behavior beyond person\'s awareness, causing significant harm',
+    verifyMessage: 'Does this influence user decisions through techniques they are not aware of?',
   },
   {
     name: 'deceptive-design',
@@ -32,6 +38,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(a)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Used as subliminal or manipulative technique to distort behavior beyond person\'s awareness, causing significant harm',
+    verifyMessage: 'Does this influence user decisions through techniques they are not aware of?',
   },
   {
     name: 'nudge-ai',
@@ -40,6 +48,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(a)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Used as subliminal or manipulative technique to distort behavior beyond person\'s awareness, causing significant harm',
+    verifyMessage: 'Does this influence user decisions through techniques they are not aware of?',
   },
   {
     name: 'manipulative-ux',
@@ -48,6 +58,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(a)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Used as subliminal or manipulative technique to distort behavior beyond person\'s awareness, causing significant harm',
+    verifyMessage: 'Does this influence user decisions through techniques they are not aware of?',
   },
   {
     name: 'subliminal-messaging',
@@ -56,6 +68,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(a)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Used as subliminal or manipulative technique to distort behavior beyond person\'s awareness, causing significant harm',
+    verifyMessage: 'Does this influence user decisions through techniques they are not aware of?',
   },
 
   // --- Art. 5(1)(b): Exploitation of vulnerabilities ---
@@ -66,6 +80,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(b)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Exploits vulnerabilities due to age, disability, or social/economic situation to distort behavior, causing significant harm',
+    verifyMessage: 'Does this target or exploit vulnerable groups (children, elderly, disabled)?',
   },
 
   // --- Art. 5(1)(c): Social scoring ---
@@ -76,6 +92,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(c)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Evaluates or classifies persons based on social behavior or personal characteristics, leading to detrimental treatment unrelated to the original context',
+    verifyMessage: 'Does this aggregate personal behavior into a score that affects access to services?',
   },
   {
     name: 'social-score',
@@ -84,6 +102,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(c)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Evaluates or classifies persons based on social behavior or personal characteristics, leading to detrimental treatment unrelated to the original context',
+    verifyMessage: 'Does this aggregate personal behavior into a score that affects access to services?',
   },
   {
     name: 'reputation-score',
@@ -92,6 +112,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(c)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Evaluates or classifies persons based on social behavior or personal characteristics, leading to detrimental treatment unrelated to the original context',
+    verifyMessage: 'Does this aggregate personal behavior into a score that affects access to services?',
   },
   {
     name: 'citizen-score',
@@ -100,6 +122,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(c)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Evaluates or classifies persons based on social behavior or personal characteristics, leading to detrimental treatment unrelated to the original context',
+    verifyMessage: 'Does this aggregate personal behavior into a score that affects access to services?',
   },
   {
     name: 'trust-score',
@@ -108,6 +132,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(c)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Evaluates or classifies persons based on social behavior or personal characteristics, leading to detrimental treatment unrelated to the original context',
+    verifyMessage: 'Does this aggregate personal behavior into a score that affects access to services?',
   },
   {
     name: 'behavior-score',
@@ -116,6 +142,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(c)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Evaluates or classifies persons based on social behavior or personal characteristics, leading to detrimental treatment unrelated to the original context',
+    verifyMessage: 'Does this aggregate personal behavior into a score that affects access to services?',
   },
   {
     name: 'credit-social',
@@ -124,6 +152,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(c)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Evaluates or classifies persons based on social behavior or personal characteristics, leading to detrimental treatment unrelated to the original context',
+    verifyMessage: 'Does this aggregate personal behavior into a score that affects access to services?',
   },
 
   // --- Art. 5(1)(d): Individual criminal risk prediction ---
@@ -134,6 +164,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(d)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Assesses risk of criminal offence based solely on profiling or personality traits, without objective verifiable facts',
+    verifyMessage: 'Does this predict criminality based on personal characteristics rather than verified facts?',
   },
   {
     name: 'predictive-policing',
@@ -142,6 +174,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(d)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Assesses risk of criminal offence based solely on profiling or personality traits, without objective verifiable facts',
+    verifyMessage: 'Does this predict criminality based on personal characteristics rather than verified facts?',
   },
   {
     name: 'crime-prediction',
@@ -150,6 +184,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(d)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Assesses risk of criminal offence based solely on profiling or personality traits, without objective verifiable facts',
+    verifyMessage: 'Does this predict criminality based on personal characteristics rather than verified facts?',
   },
   {
     name: 'precrime',
@@ -158,6 +194,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(d)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Assesses risk of criminal offence based solely on profiling or personality traits, without objective verifiable facts',
+    verifyMessage: 'Does this predict criminality based on personal characteristics rather than verified facts?',
   },
   {
     name: 'recidivism-predictor',
@@ -166,6 +204,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(d)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Assesses risk of criminal offence based solely on profiling or personality traits, without objective verifiable facts',
+    verifyMessage: 'Does this predict criminality based on personal characteristics rather than verified facts?',
   },
 
   // --- Art. 5(1)(e): Untargeted facial scraping ---
@@ -176,6 +216,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(e)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Creates or expands facial recognition databases through untargeted scraping from internet or CCTV footage',
+    verifyMessage: 'Does this collect facial images from public sources without individual consent?',
   },
   {
     name: 'face-scraper',
@@ -184,6 +226,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(e)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Creates or expands facial recognition databases through untargeted scraping from internet or CCTV footage',
+    verifyMessage: 'Does this collect facial images from public sources without individual consent?',
   },
 
   // --- Art. 5(1)(f): Emotion recognition in workplace/education ---
@@ -194,6 +238,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(f)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+    verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
   },
   {
     name: 'fer',
@@ -202,6 +248,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(f)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+    verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
   },
   {
     name: 'emotion-recognition',
@@ -210,6 +258,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(f)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+    verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
   },
   {
     name: 'py-feat',
@@ -218,6 +268,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(f)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+    verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
   },
   {
     name: 'emopy',
@@ -226,6 +278,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(f)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+    verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
   },
   {
     name: 'affectiva',
@@ -234,6 +288,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(f)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+    verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
   },
   {
     name: 'emotion-api',
@@ -242,6 +298,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(f)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+    verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
   },
 
   // --- Art. 5(1)(g): Biometric categorization by protected characteristics ---
@@ -252,6 +310,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'insightface',
@@ -260,6 +320,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'arcface',
@@ -268,6 +330,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'openface',
@@ -276,6 +340,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'compreface',
@@ -284,6 +350,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'amazon-rekognition',
@@ -292,6 +360,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: '@azure/cognitiveservices-face',
@@ -300,6 +370,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'azure-cognitiveservices-vision-face',
@@ -308,6 +380,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'google-cloud-vision',
@@ -316,6 +390,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'clarifai',
@@ -324,6 +400,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'kairos',
@@ -332,6 +410,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'luxand',
@@ -340,6 +420,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'facepp',
@@ -348,6 +430,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
   {
     name: 'deepid',
@@ -356,6 +440,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(g)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Categorizes persons by biometric data to infer race, political opinions, trade union membership, religious beliefs, sex life, or sexual orientation',
+    verifyMessage: 'Does this classify people by protected characteristics (race, religion, sexual orientation)?',
   },
 
   // --- Art. 5(1)(h): Real-time remote biometric ID in public spaces ---
@@ -366,6 +452,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(h)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Real-time remote biometric identification in publicly accessible spaces for law enforcement, except for targeted search for specific victims, prevention of imminent threat, or specific serious crimes',
+    verifyMessage: 'Is this used for real-time biometric identification in public spaces? (Specific law enforcement exceptions may apply)',
   },
   {
     name: 'crowd-face',
@@ -374,6 +462,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(h)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Real-time remote biometric identification in publicly accessible spaces for law enforcement, except for targeted search for specific victims, prevention of imminent threat, or specific serious crimes',
+    verifyMessage: 'Is this used for real-time biometric identification in public spaces? (Specific law enforcement exceptions may apply)',
   },
   {
     name: 'surveillance-ai',
@@ -382,6 +472,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(h)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Real-time remote biometric identification in publicly accessible spaces for law enforcement, except for targeted search for specific victims, prevention of imminent threat, or specific serious crimes',
+    verifyMessage: 'Is this used for real-time biometric identification in public spaces? (Specific law enforcement exceptions may apply)',
   },
   {
     name: 'mass-surveillance',
@@ -390,6 +482,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(h)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Real-time remote biometric identification in publicly accessible spaces for law enforcement, except for targeted search for specific victims, prevention of imminent threat, or specific serious crimes',
+    verifyMessage: 'Is this used for real-time biometric identification in public spaces? (Specific law enforcement exceptions may apply)',
   },
   {
     name: 'live-biometric',
@@ -398,6 +492,8 @@ export const BANNED_PACKAGES: readonly BannedPackage[] = [
     obligationId: 'eu-ai-act-OBL-002',
     article: 'Art. 5(1)(h)',
     penalty: '€35M or 7% turnover',
+    prohibitedWhen: 'Real-time remote biometric identification in publicly accessible spaces for law enforcement, except for targeted search for specific victims, prevention of imminent threat, or specific serious crimes',
+    verifyMessage: 'Is this used for real-time biometric identification in public spaces? (Specific law enforcement exceptions may apply)',
   },
 ];
 

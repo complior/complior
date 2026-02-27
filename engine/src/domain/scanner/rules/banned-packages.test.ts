@@ -43,6 +43,29 @@ describe('BANNED_PACKAGES', () => {
     const unique = new Set(names);
     expect(unique.size).toBe(names.length);
   });
+
+  it('has non-empty prohibitedWhen for every package', () => {
+    for (const bp of BANNED_PACKAGES) {
+      expect(bp.prohibitedWhen.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('has verifyMessage containing a question for every package', () => {
+    for (const bp of BANNED_PACKAGES) {
+      expect(bp.verifyMessage).toMatch(/\?/);
+    }
+  });
+
+  it('has consistent prohibitedWhen within each article group', () => {
+    const byArticle = new Map<string, Set<string>>();
+    for (const bp of BANNED_PACKAGES) {
+      if (!byArticle.has(bp.article)) byArticle.set(bp.article, new Set());
+      byArticle.get(bp.article)!.add(bp.prohibitedWhen);
+    }
+    for (const [article, texts] of byArticle) {
+      expect(texts.size, `${article} should have one prohibitedWhen text`).toBe(1);
+    }
+  });
 });
 
 describe('isBannedPackage', () => {
