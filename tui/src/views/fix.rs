@@ -23,6 +23,7 @@ pub struct FixableItem {
     pub finding_index: usize,
     pub check_id: String,
     pub obligation_id: Option<String>,
+    pub article_reference: Option<String>,
     pub message: String,
     pub selected: bool,
     pub predicted_impact: i32,
@@ -82,6 +83,7 @@ impl FixViewState {
                 finding_index: i,
                 check_id: f.check_id.clone(),
                 obligation_id: f.obligation_id.clone(),
+                article_reference: f.article_reference.clone(),
                 message: f.message.clone(),
                 selected: false,
                 predicted_impact: predict_impact(f.severity),
@@ -214,8 +216,12 @@ fn render_checklist(frame: &mut Frame, area: Rect, app: &App) {
         .as_ref()
         .map_or(0.0, |s| s.score.total_score);
 
+    #[allow(clippy::cast_precision_loss)]
+    let predicted_score = current_score + fix.total_predicted_impact() as f64;
     let block = Block::default()
-        .title(format!(" Fix — Fixable ({total}) "))
+        .title(format!(
+            " Fix — {total} fixable | Current: {current_score:.0} → Predicted: {predicted_score:.0} "
+        ))
         .title_style(theme::title_style())
         .borders(Borders::ALL)
         .border_style(Style::default().fg(t.border));
@@ -229,6 +235,7 @@ fn render_checklist(frame: &mut Frame, area: Rect, app: &App) {
         let is_selected = i == fix.selected_index;
         let prefix = if is_selected { "> " } else { "  " };
         let obl = item.obligation_id.as_deref().unwrap_or("");
+        let art = item.article_reference.as_deref().unwrap_or("");
 
         let status_span = match item.status {
             FixItemStatus::Pending => Span::raw(""),
@@ -247,6 +254,7 @@ fn render_checklist(frame: &mut Frame, area: Rect, app: &App) {
             Span::styled(prefix, Style::default().fg(t.accent)),
             Span::styled(format!("{checkbox} "), Style::default().fg(t.fg)),
             Span::styled(format!("{obl} "), Style::default().fg(t.accent)),
+            Span::styled(format!("{art} "), Style::default().fg(t.muted)),
             Span::styled(item.message.clone(), Style::default().fg(t.fg)),
             Span::styled(
                 format!(" +{}", item.predicted_impact),
