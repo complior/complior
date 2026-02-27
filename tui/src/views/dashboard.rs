@@ -290,88 +290,19 @@ fn render_chat_full_view(frame: &mut Frame, body_area: Rect, app: &App) {
     }
 }
 
-/// Dashboard content area — multi-panel layout with chat, files, terminal.
-fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App) {
-    let v_split = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(area);
-
-    render_top_panels(frame, v_split[0], app);
-    render_bottom_widgets(frame, v_split[1], app);
-}
-
-/// Top panels: chat + files/code/terminal.
-fn render_top_panels(frame: &mut Frame, area: Rect, app: &App) {
-    let show_files = app.files_panel_visible;
-    let show_term = app.terminal_visible;
-
-    let chunks = match (show_files, show_term) {
-        (true, true) => Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Percentage(40),
-                Constraint::Percentage(35),
-                Constraint::Percentage(25),
-            ])
-            .split(area),
-        (true, false) => Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
-            .split(area),
-        (false, true) => Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
-            .split(area),
-        (false, false) => Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(100)])
-            .split(area),
-    };
-
-    render_chat(frame, chunks[0], app, app.active_panel == Panel::Chat);
-
-    if show_files && chunks.len() > 1 {
-        if app.code_content.is_some() {
-            super::code_viewer::render_code_viewer(
-                frame,
-                chunks[1],
-                app,
-                app.active_panel == Panel::CodeViewer,
-            );
-        } else {
-            render_file_browser(
-                frame,
-                chunks[1],
-                app,
-                app.active_panel == Panel::FileBrowser,
-            );
-        }
-    }
-
-    if show_term {
-        let term_idx = if show_files { 2 } else { 1 };
-        if term_idx < chunks.len() {
-            render_terminal(
-                frame,
-                chunks[term_idx],
-                app,
-                app.active_panel == Panel::Terminal,
-            );
-        }
-    }
-}
-
-/// Bottom dashboard widgets: 2x2 grid.
+/// Dashboard content area — two-column layout.
 ///
 /// ```text
-/// ┌───────────────────┬────────────────────┐
-/// │  Score Gauge      │  Deadline Countdown │
-/// ├───────────────────┼────────────────────┤
-/// │  Activity Log     │  Score Sparkline   │
-/// └───────────────────┴────────────────────┘
+/// ┌── Status Log ──────────────────┬── Info ──────────────────┐
+/// │ [20:01] S Scan: 67/100         │ Score: 67/100            │
+/// │ [20:02] S 500 files, 45 checks │ 32✓ 13✗ 500 files       │
+/// │ [20:03] W File changed → rescan│ EU AI Act Deadlines ──── │
+/// │                                │ Quick Actions ────────── │
+/// ├── Score History ───────────────┤ AI Systems ──────────── │
+/// │ ▁▂▃▅▆▆▇ (17→67 in 14d)       │                          │
+/// └────────────────────────────────┴──────────────────────────┘
 /// ```
-fn render_bottom_widgets(frame: &mut Frame, area: Rect, app: &App) {
+fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App) {
     use crate::components::zoom::ZoomedWidget;
 
     // T702: If a widget is zoomed, render it full-screen
@@ -386,29 +317,145 @@ fn render_bottom_widgets(frame: &mut Frame, area: Rect, app: &App) {
         return;
     }
 
-    let v_split = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+    // Two-column: Left 60% | Right 40%
+    let h_split = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
         .split(area);
 
-    // Top row: Score Gauge | Deadline Countdown
-    let top_row = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(v_split[0]);
+    // Left column: Status Log (top 70%) + Score History sparkline (bottom 30%)
+    let left_col = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .split(h_split[0]);
 
-    render_score_gauge(frame, top_row[0], app);
-    render_deadline_countdown(frame, top_row[1]);
+    render_chat(frame, left_col[0], app, app.active_panel == Panel::Chat);
+    render_score_history_line(frame, left_col[1], app);
 
-    // Bottom row: Activity Log | Score Sparkline
-    let bottom_row = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(v_split[1]);
-
-    render_activity_log(frame, bottom_row[0], app);
-    render_score_history_line(frame, bottom_row[1], app);
+    // Right column: Info panel (stacked sections)
+    render_info_panel(frame, h_split[1], app);
 }
+
+/// Right-side info panel with project info, deadlines, quick actions, and systems stub.
+fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+
+    // Split into 4 sections: Score/Info | Deadlines | Quick Actions | AI Systems
+    let sections = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(6),   // Score + summary
+            Constraint::Length(7),   // Deadlines
+            Constraint::Length(7),   // Quick actions
+            Constraint::Min(3),     // AI Systems stub
+        ])
+        .split(area);
+
+    // ── Section 1: Project Info + Score ─────────────────────────────────
+    {
+        let block = Block::default()
+            .title(" Info ")
+            .title_style(theme::title_style())
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(t.border));
+        let inner = block.inner(sections[0]);
+        frame.render_widget(block, sections[0]);
+
+        let (score, passed, failed, files) = if let Some(scan) = &app.last_scan {
+            (
+                scan.score.total_score,
+                scan.score.passed_checks,
+                scan.score.failed_checks,
+                scan.files_scanned,
+            )
+        } else {
+            let mock_score = app.data_provider.score();
+            let findings = app.data_provider.findings();
+            (mock_score, 0u32, findings.len() as u32, 0u32)
+        };
+        let (color, zone_label) = score_zone_info(score, &t);
+        let mock_suffix = if app.last_scan.is_none() { " (demo)" } else { "" };
+
+        let lines = vec![
+            Line::from(vec![
+                Span::styled(
+                    format!(" Score: {score:.0}/100 "),
+                    Style::default().fg(color).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(zone_label, Style::default().fg(color)),
+                Span::styled(mock_suffix, Style::default().fg(t.muted)),
+            ]),
+            Line::from(vec![
+                Span::styled(format!(" {passed}"), Style::default().fg(t.zone_green)),
+                Span::styled("✓ ", Style::default().fg(t.zone_green)),
+                Span::styled(format!("{failed}"), Style::default().fg(t.zone_red)),
+                Span::styled("✗ ", Style::default().fg(t.zone_red)),
+                Span::styled(format!("{files} files"), Style::default().fg(t.muted)),
+            ]),
+        ];
+        frame.render_widget(Paragraph::new(lines), inner);
+    }
+
+    // ── Section 2: Deadlines ────────────────────────────────────────────
+    render_deadline_countdown(frame, sections[1]);
+
+    // ── Section 3: Quick Actions ────────────────────────────────────────
+    {
+        let block = Block::default()
+            .title(" Quick Actions ")
+            .title_style(theme::title_style())
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(t.border));
+        let inner = block.inner(sections[2]);
+        frame.render_widget(block, sections[2]);
+
+        let fix_count = if let Some(scan) = &app.last_scan {
+            scan.findings.iter().filter(|f| f.fix.is_some()).count()
+        } else {
+            app.data_provider.findings().iter().filter(|f| f.fix.is_some()).count()
+        };
+
+        let lines = vec![
+            Line::from(vec![
+                Span::styled(" [F] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+                Span::styled(format!("Fix {fix_count} items"), Style::default().fg(t.fg)),
+            ]),
+            Line::from(vec![
+                Span::styled(" [S] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+                Span::styled("Rescan project", Style::default().fg(t.fg)),
+            ]),
+            Line::from(vec![
+                Span::styled(" [P] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+                Span::styled("No passports yet", Style::default().fg(t.muted)),
+            ]),
+        ];
+        frame.render_widget(Paragraph::new(lines), inner);
+    }
+
+    // ── Section 4: AI Systems (stub) ────────────────────────────────────
+    {
+        let block = Block::default()
+            .title(" AI Systems ")
+            .title_style(theme::title_style())
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(t.border));
+        let inner = block.inner(sections[3]);
+        frame.render_widget(block, sections[3]);
+
+        let lines = vec![
+            Line::from(Span::styled(
+                " Run `complior agent:init`",
+                Style::default().fg(t.muted),
+            )),
+            Line::from(Span::styled(
+                " to register AI systems",
+                Style::default().fg(t.muted),
+            )),
+        ];
+        frame.render_widget(Paragraph::new(lines), inner);
+    }
+}
+
 
 /// Score gauge widget — colored by threshold, with zone label + animation support.
 fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {
@@ -1630,7 +1677,7 @@ mod tests {
     }
 
     #[test]
-    fn e2e_t501_dashboard_shows_all_four_widget_titles() {
+    fn e2e_t501_dashboard_shows_panel_titles() {
         crate::theme::init_theme("dark");
         let mut app = App::new(crate::config::TuiConfig::default());
         app.sidebar_visible = false;
@@ -1640,10 +1687,11 @@ mod tests {
 
         let buf = render_to_string(&app, 120, 40);
 
-        assert!(buf.contains("Compliance Score"), "Missing: Compliance Score widget title");
-        assert!(buf.contains("EU AI Act Deadlines"), "Missing: Deadlines widget title");
-        assert!(buf.contains("Activity Log"), "Missing: Activity Log widget title");
-        assert!(buf.contains("Score History"), "Missing: Score History widget title");
+        assert!(buf.contains("Status Log"), "Missing: Status Log panel title");
+        assert!(buf.contains("EU AI Act Deadlines"), "Missing: Deadlines panel title");
+        assert!(buf.contains("Info"), "Missing: Info panel title");
+        assert!(buf.contains("Quick Actions"), "Missing: Quick Actions panel title");
+        assert!(buf.contains("Score History"), "Missing: Score History panel title");
     }
 
     #[test]
@@ -1666,24 +1714,19 @@ mod tests {
     }
 
     #[test]
-    fn e2e_t501_activity_log_shows_entries_with_icons() {
+    fn e2e_t501_dashboard_info_panel_shows_score() {
         crate::theme::init_theme("dark");
         let mut app = App::new(crate::config::TuiConfig::default());
         app.sidebar_visible = false;
         app.last_scan = Some(make_scan_result(80.0, crate::types::Zone::Green));
 
-        app.push_activity(crate::types::ActivityKind::Scan, "80/100");
-        app.push_activity(crate::types::ActivityKind::Daemon, "Engine ready");
-        app.push_activity(crate::types::ActivityKind::Watch, "src/main.rs");
-
         let buf = render_to_string(&app, 120, 40);
 
-        // Activity log should show icons S, D, W
-        assert!(buf.contains(" S "), "Activity log should show Scan icon 'S'");
-        assert!(buf.contains(" D "), "Activity log should show Daemon icon 'D'");
-        assert!(buf.contains(" W "), "Activity log should show Watch icon 'W'");
-        assert!(buf.contains("80/100"), "Activity log should show scan detail");
-        assert!(buf.contains("Engine ready"), "Activity log should show daemon detail");
+        assert!(buf.contains("Score:"), "Info panel should show score");
+        assert!(buf.contains("80/100"), "Info panel should show score value");
+        assert!(buf.contains("Quick Actions"), "Dashboard should show Quick Actions");
+        assert!(buf.contains("[F]"), "Quick Actions should show Fix shortcut");
+        assert!(buf.contains("[S]"), "Quick Actions should show Scan shortcut");
     }
 
     #[test]
@@ -1705,15 +1748,15 @@ mod tests {
     }
 
     #[test]
-    fn e2e_t501_empty_activity_log_shows_placeholder() {
+    fn e2e_t501_dashboard_ai_systems_stub() {
         crate::theme::init_theme("dark");
         let mut app = App::new(crate::config::TuiConfig::default());
         app.sidebar_visible = false;
         app.last_scan = Some(make_scan_result(70.0, crate::types::Zone::Yellow));
-        // No activity entries pushed
 
         let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("No activity yet"), "Empty activity log should show placeholder");
+        assert!(buf.contains("AI Systems"), "Dashboard should show AI Systems stub");
+        assert!(buf.contains("agent:init"), "AI Systems should mention agent:init command");
     }
 
     #[test]
