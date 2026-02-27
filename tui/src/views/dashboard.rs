@@ -1306,6 +1306,42 @@ mod tests {
     }
 
     #[test]
+    fn test_view_state_from_letter() {
+        assert_eq!(ViewState::from_letter('D'), Some(ViewState::Dashboard));
+        assert_eq!(ViewState::from_letter('S'), Some(ViewState::Scan));
+        assert_eq!(ViewState::from_letter('F'), Some(ViewState::Fix));
+        assert_eq!(ViewState::from_letter('P'), Some(ViewState::Passport));
+        assert_eq!(ViewState::from_letter('O'), Some(ViewState::Obligations));
+        assert_eq!(ViewState::from_letter('T'), Some(ViewState::Timeline));
+        assert_eq!(ViewState::from_letter('R'), Some(ViewState::Report));
+        assert_eq!(ViewState::from_letter('L'), Some(ViewState::Log));
+        assert_eq!(ViewState::from_letter('X'), None);
+        assert_eq!(ViewState::from_letter('d'), None); // lowercase not mapped
+    }
+
+    #[test]
+    fn test_stub_pages_render_without_panic() {
+        crate::theme::init_theme("dark");
+        let app = App::new(crate::config::TuiConfig::default());
+        let backend = ratatui::backend::TestBackend::new(80, 24);
+        let mut terminal = ratatui::Terminal::new(backend).expect("terminal");
+
+        // Passport stub page
+        terminal
+            .draw(|frame| {
+                super::super::passport::render_passport_view(frame, frame.area(), &app)
+            })
+            .expect("passport render");
+
+        // Obligations stub page
+        terminal
+            .draw(|frame| {
+                super::super::obligations::render_obligations_view(frame, frame.area(), &app)
+            })
+            .expect("obligations render");
+    }
+
+    #[test]
     fn test_mode_cycling() {
         use crate::types::Mode;
         assert_eq!(Mode::Scan.next(), Mode::Fix);
