@@ -157,7 +157,7 @@ impl DataProvider for MockDataProvider {
             },
             ActivityEntry {
                 timestamp: "10:00".into(),
-                kind: ActivityKind::Chat,
+                kind: ActivityKind::Daemon,
                 detail: "Explained Art. 13 obligation".into(),
             },
             ActivityEntry {

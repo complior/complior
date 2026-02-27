@@ -1,5 +1,3 @@
-mod acp;
-mod agents;
 mod animation;
 mod app;
 mod cli;
@@ -14,9 +12,7 @@ mod headless;
 mod input;
 mod layout;
 mod obligations;
-mod orchestrator;
 mod providers;
-mod pty;
 mod session;
 mod theme;
 mod theme_picker;
@@ -334,8 +330,8 @@ async fn run_event_loop(
                             execute_command(app, cmd, &watch_tx, &mut watch_handle).await;
                         }
                     }
-                    Some(Ok(Event::Resize(w, h))) => {
-                        execute_command(app, AppCommand::ResizeAgents(w, h), &watch_tx, &mut watch_handle).await;
+                    Some(Ok(Event::Resize(_w, _h))) => {
+                        // Resize handled naturally by ratatui on next render
                     }
                     _ => {
                         // Other events — terminal re-renders on next loop
@@ -353,17 +349,6 @@ async fn run_event_loop(
             _ = tick_interval.tick() => {
                 if let Some(cmd) = app.tick() {
                     execute_command(app, cmd, &watch_tx, &mut watch_handle).await;
-                }
-
-                // Poll ACP sessions for new events and surface gate notifications
-                let acp_notifications = app.pty_manager.poll_acp_events().await;
-                for (msg, is_rejection) in acp_notifications {
-                    let kind = if is_rejection {
-                        components::toast::ToastKind::Error
-                    } else {
-                        components::toast::ToastKind::Success
-                    };
-                    app.toasts.push(kind, msg);
                 }
 
                 tick_count += 1;
@@ -931,43 +916,17 @@ async fn execute_command(
                 .and_then(|w| w.project_type.clone())
                 .unwrap_or_else(|| "existing".to_string());
 
-            // 3. Auto-launch agents with auto_start: true
-            {
-                let auto_start_agents: Vec<_> = app.agent_registry
-                    .iter()
-                    .filter(|c| c.auto_start)
-                    .cloned()
-                    .collect();
-                let pty_size = if let Ok((w, h)) = crossterm::terminal::size() {
-                    portable_pty::PtySize { rows: h, cols: w, pixel_width: 0, pixel_height: 0 }
-                } else {
-                    portable_pty::PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }
-                };
-                for cfg in auto_start_agents {
-                    let id = cfg.id.clone();
-                    if let Err(e) = app.pty_manager.launch(cfg, pty_size).await {
-                        tracing::warn!("Failed to auto-launch agent {id}: {e}");
-                    }
-                }
-            }
-
-            // 4. Close wizard
+            // 3. Close wizard
             app.onboarding = None;
             app.overlay = types::Overlay::None;
             app.config.onboarding_completed = true;
 
-            // 5a. Show agent launch hint
-            if let Some(first) = app.agent_registry.first() {
-                app.toasts.push(
-                    components::toast::ToastKind::Info,
-                    format!(
-                        "Setup complete! Launch an agent with :agent {}  ·  press 7 to open Agents view",
-                        first.id
-                    ),
-                );
-            }
+            app.toasts.push(
+                components::toast::ToastKind::Info,
+                "Setup complete! Use /scan to check compliance.",
+            );
 
-            // 5b. Post-completion action based on project_type
+            // 4. Post-completion action based on project_type
             match project_type.as_str() {
                 "existing" => {
                     app.messages.push(types::ChatMessage::new(
@@ -1005,74 +964,6 @@ async fn execute_command(
         }
         AppCommand::SaveOnboardingPartial(last_step) => {
             config::save_onboarding_partial(last_step).await;
-        }
-        AppCommand::LaunchAgent(id) => {
-            // Look up the agent config in the registry
-            if let Some(config) = app.agent_registry.iter().find(|c| c.id == id).cloned() {
-                let size = if let Ok((w, h)) = crossterm::terminal::size() {
-                    portable_pty::PtySize {
-                        rows: h,
-                        cols: w,
-                        pixel_width: 0,
-                        pixel_height: 0,
-                    }
-                } else {
-                    portable_pty::PtySize {
-                        rows: 24,
-                        cols: 80,
-                        pixel_width: 0,
-                        pixel_height: 0,
-                    }
-                };
-                match app.pty_manager.launch(config.clone(), size).await {
-                    Ok(session_id) => {
-                        app.messages.push(types::ChatMessage::new(
-                            types::MessageRole::System,
-                            format!("Agent '{}' launched (session #{session_id}).", config.display_name),
-                        ));
-                        app.focused_agent = Some(session_id);
-                        app.view_state = types::ViewState::AgentGrid;
-                        app.pty_passthrough = true;
-                        app.last_pty_esc = None;
-                        app.toasts.push(
-                            crate::components::toast::ToastKind::Info,
-                            "PTY passthrough — typing goes to agent  ·  Esc Esc to exit",
-                        );
-                    }
-                    Err(e) => {
-                        app.messages.push(types::ChatMessage::new(
-                            types::MessageRole::System,
-                            format!("Failed to launch agent '{}': {e}", config.display_name),
-                        ));
-                    }
-                }
-            } else {
-                app.messages.push(types::ChatMessage::new(
-                    types::MessageRole::System,
-                    format!("Unknown agent id: {id}. Check agents.toml."),
-                ));
-            }
-        }
-        AppCommand::KillAgentSession(session_id) => {
-            app.pty_manager.kill(session_id);
-            app.messages.push(types::ChatMessage::new(
-                types::MessageRole::System,
-                format!("Agent session #{session_id} killed."),
-            ));
-        }
-        AppCommand::SendToAgentSession(session_id, text) => {
-            if let Some(handle) = app.pty_manager.get_mut(session_id) {
-                handle.send_input(&text);
-            }
-        }
-        AppCommand::ResizeAgents(w, h) => {
-            let size = portable_pty::PtySize {
-                rows: h,
-                cols: w,
-                pixel_width: 0,
-                pixel_height: 0,
-            };
-            app.pty_manager.resize_all(size);
         }
     }
 }

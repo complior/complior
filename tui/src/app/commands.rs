@@ -158,7 +158,7 @@ impl App {
                         "  /reconnect     — Reconnect to engine\n",
                         "  /theme <name>  — Switch theme (dark/light/high-contrast)\n",
                         "  /watch         — Toggle file watch mode\n",
-                        "  /view <1-6>    — Switch to view (Dashboard/Scan/Fix/Chat/Timeline/Report)\n",
+                        "  /view <1-8>    — Switch to view (Dashboard/Scan/Fix/Passport/Obligations/Timeline/Report/Log)\n",
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
@@ -169,7 +169,7 @@ impl App {
                         "Shortcuts:\n",
                         "  @file          — Reference file in message\n",
                         "  !cmd           — Run shell command directly\n",
-                        "  1-6            — Switch view (Normal mode)\n",
+                        "  1-8            — Switch view (Normal mode)\n",
                         "  Tab            — Toggle mode (Scan/Fix/Watch)\n",
                         "  Alt+1..5       — Jump to panel\n",
                         "  Ctrl+P         — Command palette\n",
@@ -201,7 +201,7 @@ impl App {
                 }
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
-                    "Usage: /view <1-6> (Dashboard/Scan/Fix/Chat/Timeline/Report)"
+                    "Usage: /view <1-8> (Dashboard/Scan/Fix/Passport/Obligations/Timeline/Report/Log)"
                         .to_string(),
                 ));
                 None
@@ -346,41 +346,7 @@ impl App {
     pub(crate) fn handle_colon_command(&mut self, input: &str) -> Option<AppCommand> {
         let parts: Vec<&str> = input.splitn(2, ' ').collect();
         match parts.first().copied() {
-            Some("agent") => {
-            let id = parts.get(1).unwrap_or(&"").trim().to_string();
-            if id.is_empty() {
-                // List available agents
-                let names: Vec<String> = self
-                    .agent_registry
-                    .iter()
-                    .map(|c| format!("{} ({})", c.id, c.display_name))
-                    .collect();
-                if names.is_empty() {
-                    self.toasts.push(
-                        crate::components::toast::ToastKind::Warning,
-                        "No agents registered. Add entries to ~/.config/complior/agents.toml",
-                    );
-                } else {
-                    self.toasts.push(
-                        crate::components::toast::ToastKind::Info,
-                        format!("Agents: {}", names.join(", ")),
-                    );
-                }
-                None
-            } else {
-                // Launch the named agent
-                if self.agent_registry.iter().any(|c| c.id == id) {
-                    Some(AppCommand::LaunchAgent(id))
-                } else {
-                    self.toasts.push(
-                        crate::components::toast::ToastKind::Warning,
-                        format!("Unknown agent '{id}'. Use :agent to list registered agents."),
-                    );
-                    None
-                }
-            }
-        }
-        Some("scan") | Some("s") => {
+            Some("scan") | Some("s") => {
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
                     "Scanning project...".to_string(),
@@ -505,7 +471,7 @@ impl App {
                 }
                 self.toasts.push(
                     crate::components::toast::ToastKind::Warning,
-                    "Usage: :view <1-6>",
+                    "Usage: :view <1-8>",
                 );
                 None
             }

@@ -7,7 +7,6 @@ use std::time::Instant;
 
 use ratatui::layout::Rect;
 
-use crate::agents::registry::AgentConfig;
 use crate::animation::AnimationState;
 use crate::components::spinner::Spinner;
 use crate::components::suggestions::IdleSuggestionState;
@@ -20,7 +19,6 @@ use crate::engine_client::EngineClient;
 use crate::input::Action;
 use crate::layout::Breakpoint;
 use crate::providers::ProviderConfig;
-use crate::pty::PtyManager;
 use crate::types::{
     ActivityEntry, ActivityKind, ChatMessage, ClickTarget, DiffContent,
     EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult,
@@ -166,21 +164,8 @@ pub struct App {
     // T09: What-If scenario state
     pub whatif: crate::components::whatif::WhatIfState,
 
-    // S00: PTY manager — guest agent sessions
-    pub pty_manager: PtyManager,
-    /// Session id of the currently focused agent panel (if any).
-    pub focused_agent: Option<usize>,
-    /// When true, all keystrokes are forwarded raw to the focused PTY.
-    /// Exit with Esc Esc (double-escape within 500ms), Ctrl+], or F12.
-    pub pty_passthrough: bool,
-    /// Timestamp of last Esc press in passthrough mode (for double-Esc exit).
-    pub last_pty_esc: Option<std::time::Instant>,
-
     // S00: DataProvider — compliance data abstraction (mock until engine connects)
     pub data_provider: Arc<dyn DataProvider>,
-
-    // S00: Agent registry loaded from agents.toml
-    pub agent_registry: Vec<AgentConfig>,
 
     // UI
     pub spinner: Spinner,
@@ -317,12 +302,7 @@ impl App {
             idle_suggestions: IdleSuggestionState::new(),
             animation: AnimationState::new(animations_enabled),
             whatif: crate::components::whatif::WhatIfState::new(),
-            pty_manager: PtyManager::new(),
-            focused_agent: None,
-            pty_passthrough: false,
-            last_pty_esc: None,
             data_provider,
-            agent_registry: crate::agents::load_registry(),
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
@@ -342,38 +322,6 @@ impl App {
         self.spinner.advance();
         self.toasts.gc();
 
-        // Poll PTY exits so agent state transitions to Dead
-        self.pty_manager.poll_exits();
-
-        // Auto-exit PTY passthrough if the focused agent has died
-        if self.pty_passthrough {
-            let agent_dead = self
-                .focused_agent
-                .and_then(|id| self.pty_manager.get(id))
-                .map(|h| h.state() == crate::pty::session::AgentState::Dead)
-                .unwrap_or(true);
-            if agent_dead {
-                self.pty_passthrough = false;
-                self.last_pty_esc = None;
-                self.focused_agent = None;
-                self.toasts.push(
-                    crate::components::toast::ToastKind::Warning,
-                    "Agent exited — passthrough closed",
-                );
-            }
-        }
-
-        // Remove dead agent sessions from the grid
-        let dead_ids: Vec<usize> = self.pty_manager.sessions().iter()
-            .filter(|h| h.state() == crate::pty::session::AgentState::Dead)
-            .map(|h| h.id())
-            .collect();
-        for id in dead_ids {
-            if self.focused_agent == Some(id) {
-                self.focused_agent = None;
-            }
-            self.pty_manager.remove_dead(id);
-        }
         // Idle suggestion: check if idle > 10s and no blockers
         if self.idle_suggestions.current.is_none()
             && self.idle_suggestions.is_idle(10)
@@ -1058,77 +1006,6 @@ impl App {
                 }
                 None
             }
-            Action::FocusAgent(idx) => {
-                // Resolve session id from positional index in the sessions slice
-                let session_id = self
-                    .pty_manager
-                    .sessions()
-                    .get(idx)
-                    .map(|s| s.id());
-                self.focused_agent = session_id;
-                // Also switch to the agent grid view so the agent is visible
-                if session_id.is_some() {
-                    self.view_state = ViewState::AgentGrid;
-                }
-                None
-            }
-            Action::KillAgent(id) => {
-                self.pty_manager.kill(id);
-                if self.focused_agent == Some(id) {
-                    self.focused_agent = None;
-                    if self.pty_passthrough {
-                        self.pty_passthrough = false;
-                        self.last_pty_esc = None;
-                    }
-                }
-                None
-            }
-            Action::SendToAgent(id, text) => {
-                if let Some(session) = self.pty_manager.get_mut(id) {
-                    let _ = session.send_input(&text);
-                }
-                None
-            }
-            Action::EnterPtyPassthrough => {
-                // Auto-focus the first available agent if none is focused
-                if self.focused_agent.is_none() {
-                    self.focused_agent = self.pty_manager.sessions().first().map(|s| s.id());
-                }
-                self.pty_passthrough = true;
-                self.last_pty_esc = None;
-                self.toasts.push(
-                    crate::components::toast::ToastKind::Info,
-                    "PTY passthrough — typing goes to agent  ·  Esc Esc to exit",
-                );
-                None
-            }
-            Action::ExitPtyPassthrough => {
-                self.pty_passthrough = false;
-                self.last_pty_esc = None;
-                self.toasts.push(
-                    crate::components::toast::ToastKind::Info,
-                    "Exited PTY passthrough — back to Complior",
-                );
-                None
-            }
-            Action::PtyEscPressed => {
-                // Record timestamp for double-Esc detection, and forward Esc to agent
-                self.last_pty_esc = Some(std::time::Instant::now());
-                if let Some(id) = self.focused_agent {
-                    if let Some(handle) = self.pty_manager.get_mut(id) {
-                        handle.send_raw(&[0x1b]); // forward Esc to agent
-                    }
-                }
-                None
-            }
-            Action::ForwardToPty(bytes) => {
-                if let Some(id) = self.focused_agent {
-                    if let Some(handle) = self.pty_manager.get_mut(id) {
-                        handle.send_raw(&bytes);
-                    }
-                }
-                None
-            }
             Action::None => None,
         }
     }
@@ -1525,7 +1402,7 @@ impl App {
                         self.overlay = Overlay::None;
                     }
                     Overlay::None | Overlay::ThemePicker | Overlay::Onboarding
-                    | Overlay::UndoHistory | Overlay::OrchestratorMenu => {}
+                    | Overlay::UndoHistory => {}
 
                 }
                 None
@@ -1625,7 +1502,7 @@ impl App {
     }
 
     pub fn open_file(&mut self, path: &str, content: String) {
-        self.push_activity(ActivityKind::FileOpen, path.to_string());
+        self.push_activity(ActivityKind::Scan, path.to_string());
         self.code_content = Some(content);
         self.open_file_path = Some(path.to_string());
         self.code_scroll = 0;
@@ -1706,14 +1583,6 @@ pub enum AppCommand {
     CompleteOnboarding,
     /// Save partial onboarding progress for resume.
     SaveOnboardingPartial(usize),
-    /// S00: Launch a guest agent by registry id.
-    LaunchAgent(String),
-    /// S00: Kill a guest agent session.
-    KillAgentSession(usize),
-    /// S00: Send text to a guest agent session.
-    SendToAgentSession(usize, String),
-    /// S00: Resize all agent PTY sessions to new terminal dimensions.
-    ResizeAgents(u16, u16),
 }
 
 #[cfg(test)]
@@ -1850,7 +1719,7 @@ mod tests {
 
         let cmd = app.handle_command("view 4");
         assert!(cmd.is_none());
-        assert_eq!(app.view_state, ViewState::Chat);
+        assert_eq!(app.view_state, ViewState::Passport);
 
         let cmd = app.handle_command("view 2");
         assert!(cmd.is_none());

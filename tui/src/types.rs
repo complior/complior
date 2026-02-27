@@ -241,9 +241,9 @@ pub struct ActivityEntry {
 pub enum ActivityKind {
     Scan,
     Fix,
-    Chat,
+    Passport,
+    Daemon,
     Watch,
-    FileOpen,
 }
 
 impl ActivityKind {
@@ -251,9 +251,9 @@ impl ActivityKind {
         match self {
             Self::Scan => 'S',
             Self::Fix => 'F',
-            Self::Chat => 'C',
+            Self::Passport => 'P',
+            Self::Daemon => 'D',
             Self::Watch => 'W',
-            Self::FileOpen => 'O',
         }
     }
 }
@@ -261,16 +261,14 @@ impl ActivityKind {
 /// Top-level view (screen).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewState {
-    Dashboard,
-    Scan,
-    Fix,
-    Chat,
-    Timeline,
-    Report,
-    /// Multi-agent PTY grid view.
-    AgentGrid,
-    /// Deterministic orchestrator menu view.
-    Orchestrator,
+    Dashboard,    // D, index 0
+    Scan,         // S, index 1
+    Fix,          // F, index 2
+    Passport,     // P, index 3 (stub)
+    Obligations,  // O, index 4 (stub)
+    Timeline,     // T, index 5
+    Report,       // R, index 6
+    Log,          // L, index 7
 }
 
 impl ViewState {
@@ -280,11 +278,11 @@ impl ViewState {
             1 => Some(Self::Dashboard),
             2 => Some(Self::Scan),
             3 => Some(Self::Fix),
-            4 => Some(Self::Chat),
-            5 => Some(Self::Timeline),
-            6 => Some(Self::Report),
-            7 => Some(Self::AgentGrid),
-            8 => Some(Self::Orchestrator),
+            4 => Some(Self::Passport),
+            5 => Some(Self::Obligations),
+            6 => Some(Self::Timeline),
+            7 => Some(Self::Report),
+            8 => Some(Self::Log),
             _ => None,
         }
     }
@@ -294,14 +292,14 @@ impl ViewState {
     /// Lowercase letters are reserved for view-specific actions.
     pub fn from_letter(c: char) -> Option<Self> {
         match c {
-            'A' => Some(Self::AgentGrid),
-            'O' => Some(Self::Orchestrator),
             'D' => Some(Self::Dashboard),
             'S' => Some(Self::Scan),
             'F' => Some(Self::Fix),
-            'C' => Some(Self::Chat),
-            'L' => Some(Self::Timeline),
+            'P' => Some(Self::Passport),
+            'O' => Some(Self::Obligations),
+            'T' => Some(Self::Timeline),
             'R' => Some(Self::Report),
+            'L' => Some(Self::Log),
             _ => None,
         }
     }
@@ -312,11 +310,11 @@ impl ViewState {
             Self::Dashboard => 0,
             Self::Scan => 1,
             Self::Fix => 2,
-            Self::Chat => 3,
-            Self::Timeline => 4,
-            Self::Report => 5,
-            Self::AgentGrid => 6,
-            Self::Orchestrator => 7,
+            Self::Passport => 3,
+            Self::Obligations => 4,
+            Self::Timeline => 5,
+            Self::Report => 6,
+            Self::Log => 7,
         }
     }
 
@@ -326,11 +324,11 @@ impl ViewState {
             Self::Dashboard => "Dashboard",
             Self::Scan => "Scan",
             Self::Fix => "Fix",
-            Self::Chat => "Log",
+            Self::Passport => "Passport",
+            Self::Obligations => "Oblig",
             Self::Timeline => "Timeline",
             Self::Report => "Report",
-            Self::AgentGrid => "Agents",
-            Self::Orchestrator => "Orch",
+            Self::Log => "Log",
         }
     }
 
@@ -340,23 +338,23 @@ impl ViewState {
             Self::Dashboard => "D",
             Self::Scan => "S",
             Self::Fix => "F",
-            Self::Chat => "C",
-            Self::Timeline => "L",
+            Self::Passport => "P",
+            Self::Obligations => "O",
+            Self::Timeline => "T",
             Self::Report => "R",
-            Self::AgentGrid => "A",
-            Self::Orchestrator => "O",
+            Self::Log => "L",
         }
     }
 
     pub const ALL: [ViewState; 8] = [
-        Self::AgentGrid,
-        Self::Orchestrator,
         Self::Dashboard,
         Self::Scan,
         Self::Fix,
-        Self::Chat,
+        Self::Passport,
+        Self::Obligations,
         Self::Timeline,
         Self::Report,
+        Self::Log,
     ];
 }
 
@@ -399,8 +397,6 @@ pub enum Overlay {
     ConfirmDialog,
     DismissModal,
     UndoHistory,
-    /// Orchestrator command menu (send/handoff/kill/restart/broadcast).
-    OrchestratorMenu,
 }
 
 /// Click target for mouse hit-testing (T806).
