@@ -4,9 +4,9 @@ expression: buf
 ---
 (o)(o)                                                                                                                  
  \__/  complior v1.0                                                                                                    
-▸   No agents running  ·  :agent claude-code to start  ·  7 for Agents view                         ┌ Info ────────────┐
-┌ Status Log ──────────────────────────────────────────────────────────────────────────────────────┐│ tui/             │
-│[HH:MM] ! Welcome to Complior. Use /scan to start, /help for commands.                            ││ No scan yet      │
+┌ Status Log ──────────────────────────────────────────────────────────────────────────────────────┐┌ Info ────────────┐
+│[HH:MM] ! Welcome to Complior. Use /scan to start, /help for commands.                            ││ tui/             │
+│                                                                                                  ││ No scan yet      │
 │                                                                                                  ││                  │
 │                                                                                                  ││                  │
 │                                                                                                  ││                  │
@@ -14,10 +14,10 @@ expression: buf
 │                                                                                                  ││ Ctx: 3%  Zen: off│
 │                                                                                                  ││                  │
 │                                                                                                  ││ Deadlines ───────│
-│                                                                                                  ││ ⚠ 156d EU AI Act │
-│                                                                                                  ││                  │
-└──────────────────────────────────────────────────────────────────────────────────────────────────┘│ Actions ─────────│
-┌ Files ───────────────────────────────────────────────────────────────────────────────────────────┐│ /scan  rescan pro│
+│                                                                                                  ││ ⚠ 155d EU AI Act │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘│                  │
+┌ Files ───────────────────────────────────────────────────────────────────────────────────────────┐│ Actions ─────────│
+│                                                                                                  ││ /scan  rescan pro│
 │                                                                                                  ││ /help  all comman│
 │                                                                                                  ││ Ctrl+P command pa│
 │                                                                                                  ││                  │
@@ -27,9 +27,9 @@ expression: buf
 │                                                                                                  ││                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘│                  │
 ┌ Compliance Score ──────────────────────────────┐┌ EU AI Act Deadlines ───────────────────────────┐│                  │
-│███████████████████████                         ││ 389d overdue  Art. 5 — Prohibited AI practices ││                  │
-│███████████████████████                         ││ 208d overdue  Art. 50 — Transparency obligation││                  │
-│██████47/100 — RED — Non-Compliant (demo)       ││ 157d left     Art. 6 — High-risk AI classificat││                  │
+│███████████████████████                         ││ 390d overdue  Art. 5 — Prohibited AI practices ││                  │
+│███████████████████████                         ││ 209d overdue  Art. 50 — Transparency obligation││                  │
+│██████47/100 — RED — Non-Compliant (demo)       ││ 156d left     Art. 6 — High-risk AI classificat││                  │
 │███████████████████████                         ││                                                ││                  │
 │███████████████████████                         ││                                                ││                  │
 └────────────────────────────────────────────────┘└────────────────────────────────────────────────┘│                  │
@@ -40,5 +40,5 @@ expression: buf
 │                                                ││                                                ││                  │
 │                                                ││                                                ││                  │
 └────────────────────────────────────────────────┘└────────────────────────────────────────────────┘└──────────────────┘
-[47] [1 Dashboard]  [ctx:3%] [wrapper] ○                                                                                
- NORMAL  A:agents D:dash S:scan F:fix R:report C:log L:time O:orch :agent:add ?:help
+[47] [1 Dashboard] [ctx:3%] ○                                                                                           
+ NORMAL  D:dash S:scan F:fix P:passport O:oblig T:time R:report L:log ?:help

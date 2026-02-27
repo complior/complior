@@ -113,47 +113,11 @@ pub enum Action {
     ViewEnter,
     /// View-specific Escape key press.
     ViewEscape,
-    /// Focus a specific agent session by 0-based index.
-    FocusAgent(usize),
-    /// Send text input to a specific agent session.
-    SendToAgent(usize, String),
-    /// Kill a specific agent session.
-    KillAgent(usize),
-    /// Enter PTY passthrough mode — all keystrokes forwarded to focused PTY.
-    EnterPtyPassthrough,
-    /// Exit PTY passthrough mode (triggered by Esc Esc, Ctrl+], or F12).
-    ExitPtyPassthrough,
-    /// Esc pressed in passthrough — may be first of double-Esc or forwarded to agent.
-    PtyEscPressed,
-    /// Forward raw bytes to the focused PTY (passthrough mode).
-    ForwardToPty(Vec<u8>),
     /// No action (unhandled key).
     None,
 }
 
 pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
-    // PTY passthrough: forward all keystrokes directly to the focused PTY.
-    // Exit: Esc Esc (double-escape within 500ms), Ctrl+], Ctrl+\, or F12.
-    if app.pty_passthrough {
-        // Hard exit keys (always work regardless of state)
-        let is_hard_exit = (key.modifiers.contains(KeyModifiers::CONTROL)
-            && matches!(key.code, KeyCode::Char(']') | KeyCode::Char('\\')))
-            || key.code == KeyCode::F(12);
-        if is_hard_exit {
-            return Action::ExitPtyPassthrough;
-        }
-        // Double-Esc: first Esc records timestamp, second Esc within 500ms exits
-        if key.code == KeyCode::Esc {
-            if let Some(last) = app.last_pty_esc {
-                if last.elapsed() < std::time::Duration::from_millis(500) {
-                    return Action::ExitPtyPassthrough;
-                }
-            }
-            return Action::PtyEscPressed;
-        }
-        return key_to_pty_bytes(key);
-    }
-
     // Global shortcuts (always active)
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         match key.code {
@@ -245,55 +209,6 @@ fn scroll_line_count(app: &App) -> i32 {
     }
 }
 
-/// Convert a crossterm key event into raw PTY bytes for passthrough mode.
-///
-/// This mirrors standard terminal escape sequences so interactive programs
-/// (Claude Code, vim, etc.) receive the expected byte sequences.
-fn key_to_pty_bytes(key: KeyEvent) -> Action {
-    let bytes: Vec<u8> = match key.code {
-        KeyCode::Char(c) => {
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                // Ctrl+letter → ASCII control code (Ctrl+A = 0x01 … Ctrl+Z = 0x1A)
-                let b = c as u8;
-                if b.is_ascii_lowercase() || b.is_ascii_uppercase() {
-                    vec![b & 0x1f]
-                } else {
-                    c.to_string().into_bytes()
-                }
-            } else {
-                c.to_string().into_bytes()
-            }
-        }
-        KeyCode::Enter     => vec![b'\r'],
-        KeyCode::Backspace => vec![b'\x7f'],
-        KeyCode::Tab       => vec![b'\t'],
-        KeyCode::Esc       => vec![b'\x1b'],
-        KeyCode::Up        => b"\x1b[A".to_vec(),
-        KeyCode::Down      => b"\x1b[B".to_vec(),
-        KeyCode::Right     => b"\x1b[C".to_vec(),
-        KeyCode::Left      => b"\x1b[D".to_vec(),
-        KeyCode::Home      => b"\x1b[H".to_vec(),
-        KeyCode::End       => b"\x1b[F".to_vec(),
-        KeyCode::PageUp    => b"\x1b[5~".to_vec(),
-        KeyCode::PageDown  => b"\x1b[6~".to_vec(),
-        KeyCode::Delete    => b"\x1b[3~".to_vec(),
-        KeyCode::F(1)      => b"\x1bOP".to_vec(),
-        KeyCode::F(2)      => b"\x1bOQ".to_vec(),
-        KeyCode::F(3)      => b"\x1bOR".to_vec(),
-        KeyCode::F(4)      => b"\x1bOS".to_vec(),
-        KeyCode::F(5)      => b"\x1b[15~".to_vec(),
-        KeyCode::F(6)      => b"\x1b[17~".to_vec(),
-        KeyCode::F(7)      => b"\x1b[18~".to_vec(),
-        KeyCode::F(8)      => b"\x1b[19~".to_vec(),
-        _ => vec![],
-    };
-    if bytes.is_empty() {
-        Action::None
-    } else {
-        Action::ForwardToPty(bytes)
-    }
-}
-
 #[cfg(test)]
 pub fn scroll_line_count_for_test(app: &App) -> i32 {
     scroll_line_count(app)
@@ -301,7 +216,7 @@ pub fn scroll_line_count_for_test(app: &App) -> i32 {
 
 fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
     // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
-    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette | Overlay::OrchestratorMenu);
+    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette);
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
@@ -332,16 +247,6 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
     match key.code {
         KeyCode::Char('q') => Action::Quit,
         KeyCode::Tab => Action::ToggleMode,
-        // Number keys 1-6 focus agent slots; 7+ switch to legacy views
-        KeyCode::Char('1') => Action::FocusAgent(0),
-        KeyCode::Char('2') => Action::FocusAgent(1),
-        KeyCode::Char('3') => Action::FocusAgent(2),
-        KeyCode::Char('4') => Action::FocusAgent(3),
-        KeyCode::Char('5') => Action::FocusAgent(4),
-        KeyCode::Char('6') => Action::FocusAgent(5),
-        // 'i' in AgentGrid with any running agent → enter PTY passthrough mode
-        KeyCode::Char('i') if app.view_state == ViewState::AgentGrid
-            && !app.pty_manager.sessions().is_empty() => Action::EnterPtyPassthrough,
         KeyCode::Char('i') => Action::EnterInsertMode,
         // '/' opens code search when in CodeViewer, command mode otherwise
         KeyCode::Char('/') if app.active_panel == Panel::CodeViewer => Action::CodeSearch,
@@ -356,22 +261,12 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('G') => Action::ScrollToBottom,
         KeyCode::Char('v') | KeyCode::Char('V') => Action::EnterVisualMode,
         KeyCode::Char(':') => Action::EnterColonMode,
-        // Kill focused agent in AgentGrid view
-        KeyCode::Char('K') if app.view_state == ViewState::AgentGrid => {
-            if let Some(id) = app.focused_agent {
-                Action::KillAgent(id)
-            } else {
-                Action::None
-            }
-        }
         KeyCode::Char('U') => Action::ShowUndoHistory,
         KeyCode::Char('w') => Action::WatchToggle,
-        KeyCode::Char('T') => Action::ShowThemePicker,
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         // Uppercase letter-key view switching (avoids conflict with lowercase ViewKey chars)
-        KeyCode::Char(c @ ('A' | 'C' | 'D' | 'F' | 'L' | 'O' | 'R' | 'S'))
-            if c != 'M' && c != 'T' && c != 'U' && c != 'G' && c != 'N' && c != 'V' =>
+        KeyCode::Char(c @ ('D' | 'F' | 'L' | 'O' | 'P' | 'R' | 'S' | 'T')) =>
         {
             if let Some(view) = ViewState::from_letter(c) {
                 Action::SwitchView(view)
@@ -390,7 +285,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific Esc
-        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::AgentGrid | ViewState::Orchestrator) => {
+        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations) => {
             Action::ViewEscape
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,

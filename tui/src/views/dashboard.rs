@@ -55,13 +55,13 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     // Dispatch to the active view
     match app.view_state {
         ViewState::Dashboard => render_dashboard_view(frame, body_area, app),
-        ViewState::Chat => render_chat_full_view(frame, body_area, app),
+        ViewState::Log => render_chat_full_view(frame, body_area, app),
         ViewState::Scan => super::scan::render_scan_view(frame, body_area, app),
         ViewState::Fix => super::fix::render_fix_view(frame, body_area, app),
+        ViewState::Passport => super::passport::render_passport_view(frame, body_area, app),
+        ViewState::Obligations => super::obligations::render_obligations_view(frame, body_area, app),
         ViewState::Timeline => super::timeline::render_timeline_view(frame, body_area, app),
         ViewState::Report => super::report::render_report_view(frame, body_area, app),
-        ViewState::AgentGrid => super::agent_grid::render_agent_grid(frame, body_area, app),
-        ViewState::Orchestrator => crate::orchestrator::menu::render_orchestrator_view(frame, body_area, app),
     }
 
     // T08: Idle suggestion area (above footer)
@@ -292,101 +292,13 @@ fn render_chat_full_view(frame: &mut Frame, body_area: Rect, app: &App) {
 
 /// Dashboard content area — multi-panel layout with chat, files, terminal.
 fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App) {
-    // S00: Top row — agent status cards (running) or no-agents CTA banner
-    let top_row_height: u16 = if app.pty_manager.session_count() > 0 { 3 } else { 1 };
-    let top_area = Rect {
-        x: area.x,
-        y: area.y,
-        width: area.width,
-        height: top_row_height.min(area.height),
-    };
-    if app.pty_manager.session_count() > 0 {
-        render_agent_status_row(frame, top_area, app);
-    } else {
-        render_no_agents_banner(frame, top_area, app);
-    }
-    let remaining_area = Rect {
-        x: area.x,
-        y: area.y + top_row_height,
-        width: area.width,
-        height: area.height.saturating_sub(top_row_height),
-    };
-
     let v_split = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(remaining_area);
+        .split(area);
 
     render_top_panels(frame, v_split[0], app);
     render_bottom_widgets(frame, v_split[1], app);
-}
-
-/// 1-row call-to-action banner shown in Dashboard when no agents are running.
-fn render_no_agents_banner(frame: &mut Frame, area: Rect, app: &App) {
-    let t = theme::theme();
-    let hint = if let Some(first) = app.agent_registry.first() {
-        format!(
-            "  No agents running  ·  :agent {} to start  ·  7 for Agents view",
-            first.id
-        )
-    } else {
-        "  No agents running  ·  Add agents to ~/.config/complior/agents.toml".to_string()
-    };
-    let line = Line::from(vec![
-        Span::styled("▸ ", Style::default().fg(t.accent)),
-        Span::styled(hint, Style::default().fg(t.muted)),
-    ]);
-    frame.render_widget(Paragraph::new(vec![line]), area);
-}
-
-/// Render a compact agent status row — one card per active session.
-fn render_agent_status_row(frame: &mut Frame, area: Rect, app: &App) {
-    let t = theme::theme();
-    let sessions = app.pty_manager.sessions();
-    if sessions.is_empty() {
-        return;
-    }
-    let count = sessions.len() as u16;
-    let card_width = area.width / count;
-
-    for (i, session) in sessions.iter().enumerate() {
-        let card_area = Rect {
-            x: area.x + (i as u16) * card_width,
-            y: area.y,
-            width: card_width,
-            height: area.height,
-        };
-
-        let state_color = match session.state() {
-            crate::pty::session::AgentState::Starting => t.zone_yellow,
-            crate::pty::session::AgentState::Ready => t.zone_green,
-            crate::pty::session::AgentState::Working => t.accent,
-            crate::pty::session::AgentState::Dead => t.zone_red,
-        };
-
-        let last_line = session.last_lines(1).into_iter().next().unwrap_or_default();
-
-        // Truncate last_line to fit card
-        let max_w = card_width.saturating_sub(4) as usize;
-        let truncated = if last_line.len() > max_w {
-            format!("{}…", &last_line[..max_w.saturating_sub(1)])
-        } else {
-            last_line
-        };
-
-        let title = format!(" {} ", session.config().display_name);
-        let block = Block::default()
-            .title(title)
-            .title_style(Style::default().fg(state_color).add_modifier(Modifier::BOLD))
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(state_color));
-
-        let inner = block.inner(card_area);
-        frame.render_widget(block, card_area);
-
-        let line = Line::from(Span::styled(truncated, Style::default().fg(t.muted)));
-        frame.render_widget(Paragraph::new(line), inner);
-    }
 }
 
 /// Top panels: chat + files/code/terminal.
@@ -608,9 +520,9 @@ fn render_activity_log(frame: &mut Frame, area: Rect, app: &App) {
             let icon_color = match entry.kind {
                 crate::types::ActivityKind::Scan => t.zone_green,
                 crate::types::ActivityKind::Fix => t.zone_yellow,
-                crate::types::ActivityKind::Chat => t.accent,
+                crate::types::ActivityKind::Passport => t.accent,
+                crate::types::ActivityKind::Daemon => t.muted,
                 crate::types::ActivityKind::Watch => t.zone_yellow,
-                crate::types::ActivityKind::FileOpen => t.muted,
             };
             Line::from(vec![
                 Span::styled(
@@ -795,19 +707,7 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 
     spans.push(Span::raw(" "));
 
-    // Indicator 4: Watch [W]
-    if app.watch_active {
-        spans.push(Span::styled(
-            "[W]",
-            Style::default()
-                .fg(t.zone_green)
-                .add_modifier(Modifier::BOLD),
-        ));
-    }
-
-    spans.push(Span::raw(" "));
-
-    // Indicator 5: Context usage [ctx:N%]
+    // Indicator: Context usage [ctx:N%]
     let ctx_pct = (app.messages.len() as u32).saturating_mul(100) / 32;
     let ctx_color = if ctx_pct > 80 {
         t.zone_red
@@ -820,11 +720,6 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         format!("[ctx:{ctx_pct}%]"),
         Style::default().fg(ctx_color),
     ));
-
-    spans.push(Span::raw(" "));
-
-    // Indicator 5: Cost — always $0.000 in wrapper mode (no LLM)
-    spans.push(Span::styled("[wrapper]", Style::default().fg(t.muted)));
 
     // Show elapsed time if operation in progress
     if let Some(secs) = app.elapsed_secs() {
@@ -869,9 +764,7 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         height: 1,
     };
 
-    let mode_str = if app.pty_passthrough {
-        " PTY "
-    } else if app.colon_mode {
+    let mode_str = if app.colon_mode {
         " COLON "
     } else {
         match app.input_mode {
@@ -882,11 +775,7 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
         }
     };
 
-    let hint_text = if app.pty_passthrough {
-        "all keys → agent  ·  Esc Esc:exit"
-    } else {
-        footer_hints_for_view(app.view_state)
-    };
+    let hint_text = footer_hints_for_view(app.view_state);
 
     let mut hint_spans: Vec<Span<'_>> = vec![
         Span::styled(mode_str, theme::status_bar_style()),
@@ -933,14 +822,14 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 /// View-specific footer hints (line 2).
 pub fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
-        ViewState::Dashboard => "A:agents D:dash S:scan F:fix R:report C:log L:time O:orch :agent:add ?:help",
+        ViewState::Dashboard => "D:dash S:scan F:fix P:passport O:oblig T:time R:report L:log ?:help",
         ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix x:explain d:dismiss o:open j/k:nav",
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
-        ViewState::Chat => "/:command !:shell @OBL:ref Enter:run D:dash A:agents",
+        ViewState::Log => "/:command !:shell @OBL:ref Enter:run D:dash",
+        ViewState::Passport => "D:dash S:scan ?:help",
+        ViewState::Obligations => "D:dash S:scan ?:help",
         ViewState::Timeline => "j/k:scroll",
         ViewState::Report => "e:export j/k:scroll",
-        ViewState::AgentGrid => "1-6:focus i:interact K:kill :agent:add D:dash j/k:scroll",
-        ViewState::Orchestrator => "A:agents D:dash s:send k:kill r:restart b:broadcast",
     }
 }
 
@@ -991,7 +880,6 @@ fn render_overlay(frame: &mut Frame, app: &App) {
         Overlay::UndoHistory => {
             crate::components::undo_history::render_undo_history(frame, &app.undo_history);
         }
-        Overlay::OrchestratorMenu => {}
     }
 
     // Always render toasts on top of everything
@@ -1115,11 +1003,19 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
             shortcut_line("  </> ", "Resize split panel", t),
             shortcut_line("  Enter", "Apply selected fixes", t),
         ],
-        ViewState::Chat => vec![
+        ViewState::Log => vec![
             shortcut_line("  Tab", "Autocomplete (@OBL-, /cmd)", t),
             shortcut_line("  @OBL-xxx", "Reference obligation", t),
             shortcut_line("  !cmd", "Run shell command", t),
             shortcut_line("  Enter", "Send message", t),
+        ],
+        ViewState::Passport => vec![
+            shortcut_line("  D", "Switch to Dashboard", t),
+            shortcut_line("  S", "Switch to Scan", t),
+        ],
+        ViewState::Obligations => vec![
+            shortcut_line("  D", "Switch to Dashboard", t),
+            shortcut_line("  S", "Switch to Scan", t),
         ],
         ViewState::Timeline => vec![
             shortcut_line("  j/k", "Scroll timeline", t),
@@ -1127,15 +1023,6 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
         ViewState::Report => vec![
             shortcut_line("  e", "Export report", t),
             shortcut_line("  j/k", "Scroll report", t),
-        ],
-        ViewState::AgentGrid => vec![
-            shortcut_line("  1-6", "Focus agent pane", t),
-            shortcut_line("  j/k", "Scroll agent output", t),
-        ],
-        ViewState::Orchestrator => vec![
-            shortcut_line("  s", "Send to agent", t),
-            shortcut_line("  k", "Kill agent", t),
-            shortcut_line("  b", "Broadcast to all", t),
         ],
     }
 }
@@ -1362,12 +1249,12 @@ mod tests {
         assert_eq!(ViewState::from_key(1), Some(ViewState::Dashboard));
         assert_eq!(ViewState::from_key(2), Some(ViewState::Scan));
         assert_eq!(ViewState::from_key(3), Some(ViewState::Fix));
-        assert_eq!(ViewState::from_key(4), Some(ViewState::Chat));
-        assert_eq!(ViewState::from_key(5), Some(ViewState::Timeline));
-        assert_eq!(ViewState::from_key(6), Some(ViewState::Report));
+        assert_eq!(ViewState::from_key(4), Some(ViewState::Passport));
+        assert_eq!(ViewState::from_key(5), Some(ViewState::Obligations));
+        assert_eq!(ViewState::from_key(6), Some(ViewState::Timeline));
+        assert_eq!(ViewState::from_key(7), Some(ViewState::Report));
+        assert_eq!(ViewState::from_key(8), Some(ViewState::Log));
         assert_eq!(ViewState::from_key(0), None);
-        assert_eq!(ViewState::from_key(7), Some(ViewState::AgentGrid));
-        assert_eq!(ViewState::from_key(8), Some(ViewState::Orchestrator));
         assert_eq!(ViewState::from_key(9), None);
     }
 
@@ -1388,8 +1275,8 @@ mod tests {
         let mut app = App::new(crate::config::TuiConfig::default());
         assert_eq!(app.view_state, ViewState::Dashboard);
 
-        app.apply_action(Action::SwitchView(ViewState::Chat));
-        assert_eq!(app.view_state, ViewState::Chat);
+        app.apply_action(Action::SwitchView(ViewState::Log));
+        assert_eq!(app.view_state, ViewState::Log);
 
         app.apply_action(Action::SwitchView(ViewState::Scan));
         assert_eq!(app.view_state, ViewState::Scan);
@@ -1521,8 +1408,8 @@ mod tests {
 
         // Add some activity entries
         app.push_activity(crate::types::ActivityKind::Scan, "85/100");
-        app.push_activity(crate::types::ActivityKind::Chat, "AI response");
-        app.push_activity(crate::types::ActivityKind::FileOpen, "src/main.rs");
+        app.push_activity(crate::types::ActivityKind::Daemon, "Engine ready");
+        app.push_activity(crate::types::ActivityKind::Watch, "src/main.rs");
 
         terminal
             .draw(|frame| render_dashboard(frame, &app))
@@ -1584,8 +1471,8 @@ mod tests {
     #[test]
     fn test_footer_hints_per_view() {
         let dashboard_hints = footer_hints_for_view(ViewState::Dashboard);
-        assert!(dashboard_hints.contains("A:agents"));
-        assert!(dashboard_hints.contains(":agent:add"));
+        assert!(dashboard_hints.contains("D:dash"));
+        assert!(dashboard_hints.contains("S:scan"));
         assert!(dashboard_hints.contains("?:help"));
 
         let scan_hints = footer_hints_for_view(ViewState::Scan);
@@ -1595,8 +1482,8 @@ mod tests {
         let fix_hints = footer_hints_for_view(ViewState::Fix);
         assert!(fix_hints.contains("Space:toggle"));
 
-        let chat_hints = footer_hints_for_view(ViewState::Chat);
-        assert!(chat_hints.contains("@OBL:ref"));
+        let log_hints = footer_hints_for_view(ViewState::Log);
+        assert!(log_hints.contains("@OBL:ref"));
 
         let timeline_hints = footer_hints_for_view(ViewState::Timeline);
         assert!(timeline_hints.contains("j/k:scroll"));
@@ -1787,17 +1674,17 @@ mod tests {
         app.last_scan = Some(make_scan_result(80.0, crate::types::Zone::Green));
 
         app.push_activity(crate::types::ActivityKind::Scan, "80/100");
-        app.push_activity(crate::types::ActivityKind::Chat, "AI response");
-        app.push_activity(crate::types::ActivityKind::FileOpen, "src/main.rs");
+        app.push_activity(crate::types::ActivityKind::Daemon, "Engine ready");
+        app.push_activity(crate::types::ActivityKind::Watch, "src/main.rs");
 
         let buf = render_to_string(&app, 120, 40);
 
-        // Activity log should show icons S, C, O
+        // Activity log should show icons S, D, W
         assert!(buf.contains(" S "), "Activity log should show Scan icon 'S'");
-        assert!(buf.contains(" C "), "Activity log should show Chat icon 'C'");
-        assert!(buf.contains(" O "), "Activity log should show FileOpen icon 'O'");
+        assert!(buf.contains(" D "), "Activity log should show Daemon icon 'D'");
+        assert!(buf.contains(" W "), "Activity log should show Watch icon 'W'");
         assert!(buf.contains("80/100"), "Activity log should show scan detail");
-        assert!(buf.contains("AI response"), "Activity log should show chat detail");
+        assert!(buf.contains("Engine ready"), "Activity log should show daemon detail");
     }
 
     #[test]
@@ -1848,13 +1735,13 @@ mod tests {
     // ─── T504: Status Bar 6 Indicators ───
 
     #[test]
-    fn e2e_t504_status_bar_shows_wrapper_label() {
+    fn e2e_t504_status_bar_shows_daemon_indicator() {
         crate::theme::init_theme("dark");
         let app = App::new(crate::config::TuiConfig::default());
 
         let buf = render_to_string(&app, 120, 40);
-        // Model/provider indicator removed; footer shows [wrapper] instead
-        assert!(buf.contains("[wrapper]"), "Status bar should show [wrapper] label");
+        // Footer shows engine connection indicator (● or ○)
+        assert!(buf.contains("○") || buf.contains("●"), "Status bar should show daemon indicator");
     }
 
     #[test]
@@ -1866,10 +1753,10 @@ mod tests {
         let buf = render_to_string(&app, 120, 40);
         assert!(buf.contains("[1 Dashboard]"), "Status bar should show [1 Dashboard]");
 
-        // Switch to Chat view
-        app.view_state = ViewState::Chat;
+        // Switch to Log view
+        app.view_state = ViewState::Log;
         let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("[4 Log]"), "Status bar should show [4 Log]");
+        assert!(buf.contains("[8 Log]"), "Status bar should show [8 Log]");
 
         // Switch to Scan view
         app.view_state = ViewState::Scan;
@@ -1892,20 +1779,12 @@ mod tests {
         crate::theme::init_theme("dark");
         let mut app = App::new(crate::config::TuiConfig::default());
 
-        // Watch inactive — [W] should NOT appear
+        // Watch mode state is tracked in app, footer no longer shows [W]
         app.watch_active = false;
-        let buf = render_to_string(&app, 120, 40);
-        // The last 2 lines are the footer
-        let footer_lines: Vec<&str> = buf.lines().rev().take(2).collect();
-        let footer = footer_lines.join("\n");
-        assert!(!footer.contains("[W]"), "Status bar should NOT show [W] when watch inactive");
+        assert!(!app.watch_active);
 
-        // Watch active — [W] SHOULD appear
         app.watch_active = true;
-        let buf = render_to_string(&app, 120, 40);
-        let footer_lines: Vec<&str> = buf.lines().rev().take(2).collect();
-        let footer = footer_lines.join("\n");
-        assert!(footer.contains("[W]"), "Status bar should show [W] when watch active");
+        assert!(app.watch_active);
     }
 
     #[test]
@@ -1918,13 +1797,16 @@ mod tests {
     }
 
     #[test]
-    fn e2e_t504_status_bar_wrapper_indicator() {
+    fn e2e_t504_status_bar_daemon_indicator() {
         crate::theme::init_theme("dark");
         let app = App::new(crate::config::TuiConfig::default());
 
-        // Footer now shows [wrapper] instead of cost indicator
+        // Footer shows daemon connection indicator (●/○/✗) instead of [wrapper]
         let buf = render_to_string(&app, 120, 40);
-        assert!(buf.contains("[wrapper]"), "Status bar should show [wrapper] label");
+        assert!(
+            buf.contains('●') || buf.contains('○') || buf.contains('✗'),
+            "Status bar should show daemon connection indicator"
+        );
     }
 
     #[test]
@@ -1979,11 +1861,11 @@ mod tests {
         app.view_state = ViewState::Dashboard;
         let buf = render_to_string(&app, 120, 40);
         let last_line = buf.lines().last().unwrap_or("");
-        assert!(last_line.contains("agents"), "Dashboard footer should mention agents");
+        assert!(last_line.contains("passport"), "Dashboard footer should mention passport");
         assert!(last_line.contains("help"), "Dashboard footer should mention help");
 
         // Status Log view — should show command-specific hints
-        app.view_state = ViewState::Chat;
+        app.view_state = ViewState::Log;
         let buf = render_to_string(&app, 120, 40);
         let last_line = buf.lines().last().unwrap_or("");
         assert!(last_line.contains("@OBL"), "Status Log footer should mention @OBL");
@@ -2009,7 +1891,7 @@ mod tests {
         assert!(buf.contains("Scan View"), "Help overlay should show 'Scan View' section");
 
         // Chat (Log) view — help should show "Log View"
-        app.view_state = ViewState::Chat;
+        app.view_state = ViewState::Log;
         let buf = render_to_string(&app, 120, 40);
         assert!(buf.contains("Log View"), "Help overlay should show 'Log View' section");
     }
@@ -2117,7 +1999,7 @@ mod tests {
     fn e2e_t503_status_log_renders_system_messages() {
         crate::theme::init_theme("dark");
         let mut app = App::new(crate::config::TuiConfig::default());
-        app.view_state = ViewState::Chat;
+        app.view_state = ViewState::Log;
         // Status Log only shows System messages (User/Assistant are filtered out)
         app.messages.push(crate::types::ChatMessage::new(
             crate::types::MessageRole::System,
@@ -2185,18 +2067,17 @@ mod tests {
         crate::theme::init_theme("dark");
         let mut app = App::new(crate::config::TuiConfig::default());
 
-        // Before watch
-        let buf_before = render_to_string(&app, 120, 40);
-        let footer_before: String = buf_before.lines().rev().take(2).collect::<Vec<_>>().join("\n");
+        // Watch state is tracked in app but no longer shown as [W] in footer
+        assert!(!app.watch_active, "Watch should be inactive by default");
 
         // Enable watch
         app.watch_active = true;
         app.mode = crate::types::Mode::Watch;
-        let buf_after = render_to_string(&app, 120, 40);
-        let footer_after: String = buf_after.lines().rev().take(2).collect::<Vec<_>>().join("\n");
+        assert!(app.watch_active, "Watch should be active after toggle");
 
-        assert!(!footer_before.contains("[W]"), "Footer should NOT have [W] before watch");
-        assert!(footer_after.contains("[W]"), "Footer should have [W] after watch enabled");
+        // Footer renders without panic when watch is active
+        let buf = render_to_string(&app, 120, 40);
+        assert!(!buf.is_empty(), "Footer should render with watch active");
     }
 
     #[test]

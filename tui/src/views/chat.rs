@@ -23,7 +23,7 @@ pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
     render_status_log(frame, inner, app);
 }
 
-/// Full-screen status log view (`ViewState::Chat` / key `C`).
+/// Full-screen status log view (`ViewState::Log` / key `L`).
 pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
     let block = Block::default()
         .title(" Status Log ")
