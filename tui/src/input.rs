@@ -290,7 +290,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific char keys — Scan/Fix/Report/Dashboard views
-        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'n' | 'x' | 'o' | '<' | '>'))
+        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'n' | 'p' | 'x' | 'o' | '<' | '>'))
             if matches!(
                 app.view_state,
                 ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard
