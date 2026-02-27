@@ -1,6 +1,6 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
-import { BIAS_TESTING_PACKAGES, isBannedPackage, isAiSdkPackage } from '../rules/banned-packages.js';
+import { BIAS_TESTING_PACKAGES, isBannedPackage, isAiSdkPackage, type BannedPackage } from '../rules/banned-packages.js';
 import {
   parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod,
   type ParsedDependency,
@@ -26,6 +26,7 @@ export interface L3CheckResult {
   readonly ecosystem?: string;
   readonly file?: string;
   readonly penalty?: string;
+  readonly bannedPackage?: BannedPackage;
 }
 
 // --- Config Checks ---
@@ -144,12 +145,13 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
       results.push({
         type: 'banned-package',
         status: 'PROHIBITED',
-        message: `PROHIBITED: "${dep.name}" (${banned.reason}) — ${banned.article}. Penalty: ${banned.penalty}`,
+        message: `Art. 5 REVIEW: "${dep.name}" detected — ${banned.reason}. Prohibited under ${banned.article} when: ${banned.prohibitedWhen}. Verify: ${banned.verifyMessage}`,
         obligationId: banned.obligationId,
         article: banned.article,
         packageName: dep.name,
         ecosystem: dep.ecosystem,
         penalty: banned.penalty,
+        bannedPackage: banned,
       });
     }
   }
@@ -220,6 +222,10 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
 export const layer3ToCheckResults = (l3Results: readonly L3CheckResult[]): readonly CheckResult[] => {
   return l3Results.map((r): CheckResult => {
     if (r.status === 'PROHIBITED') {
+      const bp = r.bannedPackage;
+      const fix = bp
+        ? `Verify your use case for "${r.packageName}". ${bp.article} prohibits: ${bp.prohibitedWhen}. Document your use case to confirm compliance, or remove if prohibited use is confirmed.`
+        : `Remove prohibited package "${r.packageName}" to comply with ${r.article}`;
       return {
         type: 'fail',
         checkId: `l3-banned-${r.packageName ?? 'unknown'}`,
@@ -227,7 +233,7 @@ export const layer3ToCheckResults = (l3Results: readonly L3CheckResult[]): reado
         severity: 'critical',
         obligationId: r.obligationId,
         articleReference: r.article,
-        fix: `Remove prohibited package "${r.packageName}" to comply with ${r.article}`,
+        fix,
       };
     }
 

@@ -48,6 +48,10 @@ flask>=2.0.0
     expect(banned[0].status).toBe('PROHIBITED');
     expect(banned[0].packageName).toBe('deepface');
     expect(banned[0].article).toBe('Art. 5(1)(f)');
+    expect(banned[0].message).toContain('Art. 5 REVIEW:');
+    expect(banned[0].message).toContain('Verify:');
+    expect(banned[0].bannedPackage).toBeDefined();
+    expect(banned[0].bannedPackage?.prohibitedWhen).toContain('workplace or educational');
 
     expect(sdks.some((r) => r.message.includes('Anthropic'))).toBe(true);
   });
@@ -114,22 +118,36 @@ require (
 });
 
 describe('layer3ToCheckResults', () => {
-  it('converts PROHIBITED finding to critical fail', () => {
+  it('converts PROHIBITED finding to critical fail with contextual fix', () => {
     const results = layer3ToCheckResults([{
       type: 'banned-package',
       status: 'PROHIBITED',
-      message: 'PROHIBITED: "deepface" (Emotion recognition) — Art. 5(1)(f)',
+      message: 'Art. 5 REVIEW: "deepface" detected — Emotion recognition. Prohibited under Art. 5(1)(f) when: Infers emotions in workplace or educational settings, except for medical or safety purposes. Verify: Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
       obligationId: 'eu-ai-act-OBL-002',
       article: 'Art. 5(1)(f)',
       packageName: 'deepface',
       ecosystem: 'pip',
-      penalty: '€35M',
+      penalty: '€35M or 7% turnover',
+      bannedPackage: {
+        name: 'deepface',
+        ecosystem: 'pip',
+        reason: 'Emotion recognition',
+        obligationId: 'eu-ai-act-OBL-002',
+        article: 'Art. 5(1)(f)',
+        penalty: '€35M or 7% turnover',
+        prohibitedWhen: 'Infers emotions in workplace or educational settings, except for medical or safety purposes',
+        verifyMessage: 'Is this used to detect emotions of employees or students? (Medical/safety use is exempt)',
+      },
     }]);
 
     expect(results).toHaveLength(1);
     expect(results[0].type).toBe('fail');
     if (results[0].type === 'fail') {
       expect(results[0].severity).toBe('critical');
+      expect(results[0].message).toContain('Art. 5 REVIEW:');
+      expect(results[0].message).toContain('Verify:');
+      expect(results[0].fix).toContain('Verify your use case');
+      expect(results[0].fix).toContain('Document your use case to confirm compliance');
     }
   });
 
