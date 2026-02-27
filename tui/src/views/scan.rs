@@ -514,7 +514,7 @@ fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Severity sort order: Critical first, Info last.
-fn severity_order(severity: Severity) -> u8 {
+const fn severity_order(severity: Severity) -> u8 {
     match severity {
         Severity::Critical => 0,
         Severity::High => 1,
