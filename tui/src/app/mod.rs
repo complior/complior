@@ -13,6 +13,8 @@ use crate::components::spinner::Spinner;
 use crate::components::suggestions::IdleSuggestionState;
 use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
+use crate::connection::EngineConnection;
+use crate::connection::direct::DirectConnection;
 use crate::data::{DataProvider, EngineDataProvider, MockDataProvider};
 use crate::engine_client::EngineClient;
 use crate::input::Action;
@@ -42,6 +44,7 @@ pub struct App {
     // Engine
     pub engine_status: EngineConnectionStatus,
     pub engine_client: EngineClient,
+    pub connection: Box<dyn EngineConnection>,
 
     // Status Log (system messages)
     pub messages: Vec<ChatMessage>,
@@ -236,6 +239,8 @@ impl App {
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
         let (data_provider, api_connection_status) = create_data_provider(&config);
+        let connection: Box<dyn EngineConnection> =
+            Box::new(DirectConnection::new(EngineClient::new(&config)));
 
         // Show a toast only when an api_key was configured but the API was unreachable.
         // No toast when there is no key (normal offline-first usage).
@@ -250,6 +255,7 @@ impl App {
             view_state: ViewState::Dashboard,
             mode: Mode::Scan,
             engine_status: api_connection_status,
+            connection,
             engine_client,
             messages: vec![ChatMessage::new(
                 MessageRole::System,
