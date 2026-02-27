@@ -927,7 +927,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
             .add_modifier(Modifier::BOLD),
     )));
     lines.push(shortcut_line("  Ctrl+C", "Quit", &t));
-    lines.push(shortcut_line("  1-6", "Switch view", &t));
+    lines.push(shortcut_line("  D/S/F/P/O/T/R/L", "Switch view", &t));
     lines.push(shortcut_line("  Tab", "Toggle mode (Scan/Fix/Watch)", &t));
     lines.push(shortcut_line("  w", "Toggle watch mode", &t));
     lines.push(shortcut_line("  Alt+1..5", "Jump to panel", &t));
@@ -961,7 +961,6 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
     lines.push(shortcut_line("  !cmd", "Run shell command", &t));
     lines.push(shortcut_line("  V", "Visual select", &t));
     lines.push(shortcut_line("  Ctrl+K", "Send selection to AI", &t));
-    lines.push(shortcut_line("  M", "Switch model", &t));
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(
         " j/k to scroll, Esc to close",
@@ -979,7 +978,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
 fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<Line<'a>> {
     match view {
         ViewState::Dashboard => vec![
-            shortcut_line("  1-6", "Switch view", t),
+            shortcut_line("  D/S/F/P/O/T/R/L", "Switch view", t),
             shortcut_line("  Tab", "Toggle mode", t),
             shortcut_line("  e", "Zoom/expand widget", t),
             shortcut_line("  w", "Toggle watch", t),
