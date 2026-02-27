@@ -870,7 +870,7 @@ fn render_view_footer(frame: &mut Frame, app: &App) {
 pub fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
         ViewState::Dashboard => "D:dash S:scan F:fix P:passport O:oblig T:time R:report L:log ?:help",
-        ViewState::Scan => "a:All c:Crit h:High m:Med l:Low Enter:detail f:fix x:explain d:dismiss o:open j/k:nav",
+        ViewState::Scan => "a:All c:Crit h:High m:Med l:Low p:passed Enter:detail f:fix x:explain d:dismiss o:open j/k:nav",
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
         ViewState::Log => "/:command !:shell @OBL:ref Enter:run D:dash",
         ViewState::Passport => "D:dash S:scan ?:help",
@@ -1034,6 +1034,7 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
         ViewState::Scan => vec![
             shortcut_line("  a", "Show all findings", t),
             shortcut_line("  c/h/m/l", "Filter by severity", t),
+            shortcut_line("  p", "Toggle show passed", t),
             shortcut_line("  Enter", "Open/close detail", t),
             shortcut_line("  f", "Fix selected finding", t),
             shortcut_line("  x", "Explain finding", t),

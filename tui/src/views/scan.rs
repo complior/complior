@@ -78,6 +78,7 @@ pub struct ScanViewState {
     pub selected_finding: Option<usize>,
     pub detail_open: bool,
     pub scanning: bool,
+    pub show_passed: bool,
 }
 
 impl Default for ScanViewState {
@@ -94,6 +95,7 @@ impl Default for ScanViewState {
             selected_finding: None,
             detail_open: false,
             scanning: false,
+            show_passed: false,
         }
     }
 }
@@ -446,11 +448,14 @@ fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
         return;
     };
 
-    let filtered: Vec<_> = scan
+    let mut filtered: Vec<_> = scan
         .findings
         .iter()
         .filter(|f| app.scan_view.findings_filter.matches(f.severity))
         .collect();
+
+    // Sort by severity: Critical → High → Medium → Low → Info
+    filtered.sort_by_key(|f| severity_order(f.severity));
 
     if filtered.is_empty() {
         frame.render_widget(
@@ -506,6 +511,29 @@ fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
     let paragraph =
         Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
     frame.render_widget(paragraph, inner);
+}
+
+/// Severity sort order: Critical first, Info last.
+fn severity_order(severity: Severity) -> u8 {
+    match severity {
+        Severity::Critical => 0,
+        Severity::High => 1,
+        Severity::Medium => 2,
+        Severity::Low => 3,
+        Severity::Info => 4,
+    }
+}
+
+/// Penalty info for EU AI Act articles.
+fn penalty_for_article(article: &str) -> &'static str {
+    match article {
+        "Art. 5" => "Up to €35M / 7% turnover",
+        "Art. 6" | "Art. 9" | "Art. 10" | "Art. 12" | "Art. 13" | "Art. 14" | "Art. 15" | "Art. 49" => {
+            "Up to €15M / 3% turnover"
+        }
+        "Art. 50" | "Art. 53" | "Art. 72" | "Art. 73" => "Up to €7.5M / 1.5% turnover",
+        _ => "See EU AI Act penalty schedule",
+    }
 }
 
 fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
@@ -565,8 +593,18 @@ fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
             Span::styled("  Type: ", Style::default().fg(t.muted)),
             Span::styled(finding.r#type.clone(), Style::default().fg(t.fg)),
         ]),
-        Line::raw(""),
     ];
+
+    // Penalty info based on article reference
+    if let Some(ref art) = finding.article_reference {
+        let penalty = penalty_for_article(art);
+        lines.push(Line::from(vec![
+            Span::styled("  Penalty: ", Style::default().fg(t.muted)),
+            Span::styled(penalty, Style::default().fg(t.zone_red)),
+        ]));
+    }
+
+    lines.push(Line::raw(""));
 
     if let Some(fix) = &finding.fix {
         lines.push(Line::from(Span::styled(

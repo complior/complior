@@ -58,6 +58,9 @@ impl App {
                         );
                         self.overlay = Overlay::DismissModal;
                     }
+                } else if c == 'p' {
+                    // Toggle show/hide passed checks
+                    self.scan_view.show_passed = !self.scan_view.show_passed;
                 }
             }
             ViewState::Fix => match c {
