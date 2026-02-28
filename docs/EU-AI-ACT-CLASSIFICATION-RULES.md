@@ -355,50 +355,78 @@ v3/v3.1 used a single "Compliance Score 0-100" based on an 11-step obligation-we
 | `ai_feature` | Product with AI as minor feature | Deployer checklist |
 | `null` | Unclassified | Provider checklist (default) |
 
-### Public Documentation Grade — Provider Checklist (9 items)
+### Public Documentation Grade — Provider Checklist (9 items, v4.1 weighted)
+
+Each item has a **tier**: `required` (legally mandated) or `best_practice` (voluntary).
+
+#### Required Items (6) — 90% of grade weight
+
+| # | ID | Label | Evidence Signal | Legal Basis |
+|---|----|-------|-----------------|-------------|
+| 1 | `ai_disclosure` | AI System Disclosure | `disclosure.visible` | Art. 50 §1 |
+| 2 | `model_card` | Model Card Published | `model_card.has_model_card` | Art. 53 §1(b) |
+| 3 | `model_limitations` | Limitations & Risks | `model_card.has_limitations AND model_card.has_bias_info` | Art. 53 §1(b)(ii), Annex XI §2 |
+| 4 | `training_data_info` | Training Data Description | `model_card.has_training_data` | Art. 53 §1(d) |
+| 5 | `privacy_ai` | Privacy Policy Addresses AI | `privacy_policy.mentions_ai` | GDPR Art. 13-14 |
+| 6 | `content_marking` | Output Marking | `content_marking.c2pa OR content_marking.watermark` | Art. 50 §2 |
+
+#### Best Practice Items (3) — 10% bonus
 
 | # | ID | Label | Evidence Signal | Description |
 |---|----|-------|-----------------|-------------|
-| 1 | `ai_disclosure` | AI System Disclosure | `disclosure.visible` | Publicly declares the product is an AI system |
-| 2 | `model_card` | Model Card Published | `model_card.has_model_card` | Technical model documentation available |
-| 3 | `model_limitations` | Limitations & Risks | `model_card.has_limitations AND model_card.has_bias_info` | Documents known limitations and bias risks |
-| 4 | `training_data_info` | Training Data Description | `model_card.has_training_data` | Describes training data sources or methodology |
-| 5 | `privacy_ai` | Privacy Policy Addresses AI | `privacy_policy.mentions_ai` | Privacy policy explicitly covers AI processing |
-| 6 | `eu_ai_act_page` | EU AI Act Compliance Page | `trust.has_eu_ai_act_page` | Dedicated EU AI Act compliance documentation |
-| 7 | `responsible_ai` | Responsible AI Program | `trust.has_responsible_ai_page` | Published responsible AI principles or program |
-| 8 | `transparency_report` | Transparency Report | `web_search.has_transparency_report` | Regular transparency reporting |
-| 9 | `content_marking` | Output Marking | `content_marking.c2pa OR content_marking.watermark` | AI-generated content marking (C2PA/watermark) |
+| 7 | `eu_ai_act_page` | EU AI Act Compliance Page | `trust.has_eu_ai_act_page` | Dedicated EU AI Act compliance documentation |
+| 8 | `responsible_ai` | Responsible AI Program | `trust.has_responsible_ai_page` | Published responsible AI principles or program |
+| 9 | `transparency_report` | Transparency Report | `web_search.has_transparency_report` | Regular transparency reporting |
 
-### Public Documentation Grade — Deployer Product Checklist (9 items)
+### Public Documentation Grade — Deployer Product Checklist (9 items, v4.1 weighted)
+
+#### Required Items (4) — 90% of grade weight
+
+| # | ID | Label | Evidence Signal | Legal Basis |
+|---|----|-------|-----------------|-------------|
+| 1 | `ai_disclosure` | AI Usage Disclosure | `disclosure.visible` | Art. 50 §4-5 |
+| 2 | `privacy_ai` | Privacy Policy Addresses AI | `privacy_policy.mentions_ai` | GDPR Art. 13-14 |
+| 3 | `privacy_eu` | EU Data Compliance | `privacy_policy.mentions_eu` | GDPR Art. 13-14 |
+| 4 | `terms_ai` | Terms Address AI Use | `privacy_policy.training_opt_out` | Art. 50, GDPR Art. 22 |
+
+#### Best Practice Items (5) — 10% bonus
 
 | # | ID | Label | Evidence Signal | Description |
 |---|----|-------|-----------------|-------------|
-| 1 | `ai_disclosure` | AI Usage Disclosure | `disclosure.visible` | Discloses AI usage to end users |
-| 2 | `privacy_ai` | Privacy Policy Addresses AI | `privacy_policy.mentions_ai` | Privacy policy covers AI data processing |
-| 3 | `privacy_eu` | EU Data Compliance | `privacy_policy.mentions_eu` | Privacy addresses EU-specific requirements |
-| 4 | `eu_ai_act_page` | EU AI Act Compliance Page | `trust.has_eu_ai_act_page` | Dedicated EU AI Act compliance docs |
-| 5 | `responsible_ai` | Responsible AI Program | `trust.has_responsible_ai_page` | Published responsible AI principles |
-| 6 | `terms_ai` | Terms Address AI Use | `privacy_policy.training_opt_out` | Terms/policies address AI-specific rights |
+| 5 | `eu_ai_act_page` | EU AI Act Compliance Page | `trust.has_eu_ai_act_page` | Dedicated EU AI Act compliance docs |
+| 6 | `responsible_ai` | Responsible AI Program | `trust.has_responsible_ai_page` | Published responsible AI principles |
 | 7 | `bias_audit` | Public Bias Audit | `web_search.has_public_bias_audit` | Published bias or fairness audit |
 | 8 | `transparency_report` | Transparency Report | `web_search.has_transparency_report` | Regular transparency reporting |
 | 9 | `certifications` | Certifications | `trust.certifications.length > 0` | Holds relevant certifications (ISO 42001, etc.) |
 
-### Grade Mapping
+### Grade Formula (v4.1 — weighted)
 
-| Items Found | Grade |
-|-------------|-------|
-| 9 | A+ |
-| 8 | A |
-| 7 | A- |
-| 6 | B+ |
-| 5 | B |
-| 4 | B- |
-| 3 | C |
-| 2 | D |
-| 1 | D- |
-| 0 | F |
+```
+weightedPercent = (requiredFound / requiredTotal) × 90 + (bpFound / bpTotal) × 10
+```
 
-**No tier bonuses. No coverage ceiling. No unknown=25. Pure checklist.**
+| Weighted % | Grade |
+|------------|-------|
+| ≥ 95 | A+ |
+| ≥ 85 | A |
+| ≥ 78 | A- |
+| ≥ 72 | B+ |
+| ≥ 60 | B |
+| ≥ 50 | B- |
+| ≥ 40 | C |
+| ≥ 25 | D |
+| ≥ 15 | D- |
+| < 15 | F |
+
+**Key property:** Best practice items alone cannot produce a good grade. You need 5+ legally required items for grade A, even with all best practices checked.
+
+Examples (provider checklist):
+- 6/6 req + 0/3 bp = 90% → **A**
+- 5/6 req + 3/3 bp = 85% → **A**
+- 0/6 req + 3/3 bp = 10% → **F**
+- 3/6 req + 3/3 bp = 55% → **B-**
+
+Output fields: `grade`, `score`, `total`, `percent`, `weightedPercent`, `requiredFound`, `requiredTotal`, `bpFound`, `bpTotal`, `items[].tier`, `items[].legalBasis`.
 
 ### Legacy Score (deprecated)
 

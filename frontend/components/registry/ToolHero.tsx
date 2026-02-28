@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { RegistryTool } from '@/lib/registry';
-import { getProviderName, getRiskLabel, getGradeColor, getPublicDocumentation, getToolAssessment, getDeployerObligationCount } from '@/lib/registry';
+import { getProviderName, getRiskLabel, getGradeColor, getPublicDocumentation, getToolAssessment, getDeployerObligationCount, computeWeightedGrade } from '@/lib/registry';
 import { getTotalEffortHours } from '@/lib/registry-seo';
 import type { ToolValidation } from './toolValidation';
 import { ToolLogo } from './ToolLogo';
@@ -50,7 +50,8 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
   const categories = tool.category ? tool.category.split(',').map((c) => c.trim()) : [];
 
   const publicDoc = getPublicDocumentation(tool);
-  const grade = publicDoc?.grade ?? null;
+  const weighted = publicDoc ? computeWeightedGrade(publicDoc) : null;
+  const grade = weighted?.grade ?? publicDoc?.grade ?? null;
   const gradeColor = getGradeColor(grade);
   const found = publicDoc?.score ?? 0;
   const total = publicDoc?.total ?? 9;
@@ -76,7 +77,7 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
       marginBottom: '2rem',
     }}>
       {/* Hero top: logo + info */}
-      <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '1.25rem' }}>
+      <div className="hero-top" style={{ display: 'flex', gap: '1.25rem', marginBottom: '1.25rem' }}>
         <ToolLogo name={tool.name} size="lg" />
         <div>
           <h1 style={{
@@ -136,7 +137,7 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
       </div>
 
       {/* ── 3-column metrics ── */}
-      <div style={{
+      <div className="hero-metrics" style={{
         display: 'grid',
         gridTemplateColumns: '180px 1fr 1fr',
         gap: 0,
@@ -171,12 +172,17 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
               {grade || '—'}
             </span>
             <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.75rem', color: 'var(--dark4)' }}>
-              {found} / {total} documents found
+              {weighted ? `${weighted.weightedPercent}%` : `${found} / ${total}`}
             </span>
           </div>
+          {weighted && (
+            <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.4375rem', color: 'var(--dark5)', marginBottom: '.375rem' }}>
+              {weighted.requiredFound}/{weighted.requiredTotal} required + {weighted.bpFound}/{weighted.bpTotal} bonus
+            </div>
+          )}
           {/* Progress bar */}
           <div style={{ height: 6, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden', marginBottom: '.75rem' }}>
-            <div style={{ height: '100%', borderRadius: 3, width: total > 0 ? `${(found / total) * 100}%` : '0%', background: gradeColor }} />
+            <div style={{ height: '100%', borderRadius: 3, width: weighted ? `${weighted.weightedPercent}%` : (total > 0 ? `${(found / total) * 100}%` : '0%'), background: gradeColor }} />
           </div>
           {/* 9-item checklist */}
           {publicDoc?.items && (
@@ -186,7 +192,10 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
                   <span style={{ color: item.found ? 'var(--teal)' : 'var(--coral)' }}>
                     {item.found ? '\u2705' : '\u274C'}
                   </span>
-                  {item.label}
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {item.tier === 'required' && (
+                    <span style={{ fontSize: '.375rem', color: 'var(--teal)', opacity: .7 }}>REQ</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -249,32 +258,16 @@ export function ToolHero({ tool, validation }: ToolHeroProps) {
       </div>
 
       {/* Responsive styles */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 1024px) {
-          div[style*="grid-template-columns: 180px 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-          div[style*="padding: 0 1.5rem 0 0"] {
-            padding: 1rem 0 !important;
-            border-right: 0 !important;
-            border-bottom: 1px solid var(--b) !important;
-          }
-          div[style*="padding: 0 1.5rem"][style*="border-right"] {
-            padding: 1rem 0 !important;
-            border-right: 0 !important;
-            border-bottom: 1px solid var(--b) !important;
-          }
-          div[style*="padding: 0 0 0 1.5rem"] {
-            padding: 1rem 0 0 !important;
-          }
+          .hero-metrics { grid-template-columns: 1fr !important; }
+          .hero-metrics > div { padding: 1rem 0 !important; border-right: 0 !important; border-bottom: 1px solid var(--b) !important; }
+          .hero-metrics > div:last-child { border-bottom: 0 !important; }
         }
         @media (max-width: 640px) {
-          div[style*="display: flex"][style*="gap: 1.25rem"] {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-          }
+          .hero-top { flex-direction: column !important; align-items: flex-start !important; }
         }
-      `}</style>
+      ` }} />
     </div>
   );
 }

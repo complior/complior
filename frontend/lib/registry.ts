@@ -13,12 +13,26 @@ export interface Obligation {
   evidence_summary?: string | null;
 }
 
+export interface PublicDocumentationItem {
+  id: string;
+  label: string;
+  found: boolean;
+  signal: string;
+  tier?: 'required' | 'best_practice';
+  legalBasis?: string | null;
+}
+
 export interface PublicDocumentation {
   grade: string;
   score: number;
   total: number;
   percent: number;
-  items: Array<{ id: string; label: string; found: boolean; signal: string }>;
+  weightedPercent?: number;
+  requiredFound?: number;
+  requiredTotal?: number;
+  bpFound?: number;
+  bpTotal?: number;
+  items: PublicDocumentationItem[];
   checklist: string;
   gradedAt: string;
 }
@@ -284,6 +298,66 @@ export function getRiskLabel(risk: string): string {
     minimal: 'MINIMAL',
   };
   return labels[risk] || risk?.toUpperCase() || 'UNKNOWN';
+}
+
+// ── Provider checklist tier classification (must match backend doc-checklists.js) ──
+const PROVIDER_REQUIRED_IDS = new Set(['ai_disclosure', 'model_card', 'model_limitations', 'training_data_info', 'privacy_ai', 'content_marking']);
+const DEPLOYER_REQUIRED_IDS = new Set(['ai_disclosure', 'privacy_ai', 'privacy_eu', 'terms_ai']);
+
+const WEIGHTED_GRADE_THRESHOLDS: Array<{ min: number; grade: string }> = [
+  { min: 95, grade: 'A+' }, { min: 85, grade: 'A' }, { min: 78, grade: 'A-' },
+  { min: 72, grade: 'B+' }, { min: 60, grade: 'B' }, { min: 50, grade: 'B-' },
+  { min: 40, grade: 'C' }, { min: 25, grade: 'D' }, { min: 15, grade: 'D-' },
+  { min: 0, grade: 'F' },
+];
+
+// Helper: compute weighted grade from publicDocumentation items
+// Required items = 90% weight, best practice = 10% bonus
+export function computeWeightedGrade(doc: PublicDocumentation): {
+  grade: string;
+  weightedPercent: number;
+  requiredFound: number;
+  requiredTotal: number;
+  bpFound: number;
+  bpTotal: number;
+} {
+  // If backend already provides weighted data, use it
+  if (doc.weightedPercent !== undefined && doc.requiredTotal !== undefined) {
+    return {
+      grade: doc.grade,
+      weightedPercent: doc.weightedPercent,
+      requiredFound: doc.requiredFound ?? 0,
+      requiredTotal: doc.requiredTotal ?? 0,
+      bpFound: doc.bpFound ?? 0,
+      bpTotal: doc.bpTotal ?? 0,
+    };
+  }
+
+  // Fallback: compute from items using tier field or known IDs
+  const requiredIds = doc.checklist === 'deployer_product' ? DEPLOYER_REQUIRED_IDS : PROVIDER_REQUIRED_IDS;
+  let requiredFound = 0, requiredTotal = 0, bpFound = 0, bpTotal = 0;
+
+  for (const item of doc.items) {
+    const isRequired = item.tier === 'required' || requiredIds.has(item.id);
+    if (isRequired) {
+      requiredTotal++;
+      if (item.found) requiredFound++;
+    } else {
+      bpTotal++;
+      if (item.found) bpFound++;
+    }
+  }
+
+  const reqPortion = requiredTotal > 0 ? (requiredFound / requiredTotal) * 90 : 0;
+  const bpPortion = bpTotal > 0 ? (bpFound / bpTotal) * 10 : 0;
+  const weightedPercent = Math.round(reqPortion + bpPortion);
+
+  let grade = 'F';
+  for (const t of WEIGHTED_GRADE_THRESHOLDS) {
+    if (weightedPercent >= t.min) { grade = t.grade; break; }
+  }
+
+  return { grade, weightedPercent, requiredFound, requiredTotal, bpFound, bpTotal };
 }
 
 // Helper: get deployer obligation count

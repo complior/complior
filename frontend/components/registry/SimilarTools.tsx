@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import type { RegistryTool } from '@/lib/registry';
-import { getProviderName, getRiskStyles, getRiskLabel, getToolGrade, getGradeColor, getPublicDocumentation, getDeployerObligationCount } from '@/lib/registry';
+import { getProviderName, getRiskStyles, getRiskLabel, getGradeColor, getPublicDocumentation, getDeployerObligationCount, computeWeightedGrade } from '@/lib/registry';
 import { ToolLogo } from './ToolLogo';
 
 interface SimilarToolsProps {
@@ -29,17 +29,17 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
       }}>
         Similar Tools
       </h2>
-      <div style={{
+      <div className="similar-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '.75rem',
       }}>
         {tools.slice(0, 4).map((tool) => {
-          const grade = getToolGrade(tool);
-          const gradeColor = getGradeColor(grade);
           const publicDoc = getPublicDocumentation(tool);
-          const found = publicDoc?.score ?? 0;
-          const total = publicDoc?.total ?? 9;
+          const weighted = publicDoc ? computeWeightedGrade(publicDoc) : null;
+          const grade = weighted?.grade ?? null;
+          const gradeColor = getGradeColor(grade);
+          const wp = weighted?.weightedPercent ?? 0;
           const riskS = getRiskStyles(tool.riskLevel || 'minimal');
           const riskLabel = getRiskLabel(tool.riskLevel || '');
           const provider = getProviderName(tool.provider);
@@ -101,7 +101,7 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
                     {grade || '—'}
                   </span>
                   <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.5rem', color: 'var(--dark5)' }}>
-                    {found}/{total}
+                    {wp}%
                   </span>
                 </div>
               </div>
@@ -113,18 +113,10 @@ export function SimilarTools({ tools }: SimilarToolsProps) {
         })}
       </div>
 
-      <style jsx>{`
-        @media (max-width: 1024px) {
-          div[style*="grid-template-columns: repeat(4"] {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
-        @media (max-width: 640px) {
-          div[style*="grid-template-columns: repeat(4"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 1024px) { .similar-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (max-width: 640px) { .similar-grid { grid-template-columns: 1fr !important; } }
+      ` }} />
     </div>
   );
 }

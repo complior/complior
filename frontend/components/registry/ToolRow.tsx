@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import type { RegistryTool } from '@/lib/registry';
-import { getProviderName, getToolGrade, getGradeColor, getPublicDocumentation, getToolAssessment, getDeployerObligationCount } from '@/lib/registry';
+import { getProviderName, getGradeColor, getPublicDocumentation, getDeployerObligationCount, computeWeightedGrade } from '@/lib/registry';
 import { ToolLogo } from './ToolLogo';
 import { RiskBadge } from './RiskBadge';
 
@@ -15,11 +15,11 @@ interface ToolRowProps {
 export function ToolRow({ tool }: ToolRowProps) {
   const locale = useLocale();
   const provider = getProviderName(tool.provider);
-  const grade = getToolGrade(tool);
-  const gradeColor = getGradeColor(grade);
   const publicDoc = getPublicDocumentation(tool);
-  const found = publicDoc?.score ?? 0;
-  const total = publicDoc?.total ?? 9;
+  const weighted = publicDoc ? computeWeightedGrade(publicDoc) : null;
+  const grade = weighted?.grade ?? null;
+  const gradeColor = getGradeColor(grade);
+  const wp = weighted?.weightedPercent ?? 0;
   const oblCount = getDeployerObligationCount(tool);
   const isHighObl = oblCount >= 10;
 
@@ -89,10 +89,10 @@ export function ToolRow({ tool }: ToolRowProps) {
           {grade || '—'}
         </span>
         <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.5rem', color: 'var(--dark5)' }}>
-          {found}/{total}
+          {wp}%
         </span>
         <div style={{ width: 48, height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: 2, width: total > 0 ? `${(found / total) * 100}%` : '0%', background: gradeColor }} />
+          <div style={{ height: '100%', borderRadius: 2, width: `${wp}%`, background: gradeColor }} />
         </div>
       </div>
       {/* Obligation count */}

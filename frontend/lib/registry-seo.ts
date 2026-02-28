@@ -8,6 +8,7 @@ import {
   getToolAssessment,
   getApplicableArticles,
   isDeadlinePassed,
+  computeWeightedGrade,
 } from './registry';
 
 // ── Effort hours by obligation category ──
@@ -143,7 +144,8 @@ export function generateToolFAQs(tool: RegistryTool): FAQItem[] {
   const riskLabel = getRiskLabel(tool.riskLevel || '');
   const oblCount = getDeployerObligationCount(tool);
   const publicDoc = getPublicDocumentation(tool);
-  const grade = publicDoc?.grade || 'N/A';
+  const weighted = publicDoc ? computeWeightedGrade(publicDoc) : null;
+  const grade = weighted?.grade || publicDoc?.grade || 'N/A';
   const found = publicDoc?.score ?? 0;
   const total = publicDoc?.total ?? 9;
   const provider = getProviderName(tool.provider);
@@ -228,9 +230,9 @@ export function generateSoftwareAppJsonLd(tool: RegistryTool): object {
   const provider = getProviderName(tool.provider);
   const providerUrl = typeof tool.provider === 'object' ? tool.provider?.website : undefined;
   const publicDoc = getPublicDocumentation(tool);
-  const grade = publicDoc?.grade || '';
-  const found = publicDoc?.score ?? 0;
-  const total = publicDoc?.total ?? 9;
+  const weighted = publicDoc ? computeWeightedGrade(publicDoc) : null;
+  const grade = weighted?.grade || publicDoc?.grade || '';
+  const wp = weighted?.weightedPercent ?? 0;
   const riskLabel = getRiskLabel(tool.riskLevel || '');
   const oblCount = getDeployerObligationCount(tool);
   const category = tool.category?.split(',')[0]?.trim() || 'AI Tool';
@@ -247,7 +249,7 @@ export function generateSoftwareAppJsonLd(tool: RegistryTool): object {
       name: provider,
       ...(providerUrl ? { url: providerUrl } : {}),
     },
-    description: `${riskLabel} AI system under EU AI Act. Documentation Grade ${grade} (${found}/${total}). ${oblCount} deployer obligations.`,
+    description: `${riskLabel} AI system under EU AI Act. Documentation Grade ${grade} (${wp}%). ${oblCount} deployer obligations.`,
   };
 }
 
@@ -302,11 +304,11 @@ export function generateToolMetaDescription(tool: RegistryTool): string {
   const riskLabel = getRiskLabel(tool.riskLevel || '');
   const oblCount = getDeployerObligationCount(tool);
   const publicDoc = getPublicDocumentation(tool);
-  const grade = publicDoc?.grade || '';
-  const found = publicDoc?.score ?? 0;
-  const total = publicDoc?.total ?? 9;
+  const weighted = publicDoc ? computeWeightedGrade(publicDoc) : null;
+  const grade = weighted?.grade || publicDoc?.grade || '';
+  const wp = weighted?.weightedPercent ?? 0;
   const hours = getTotalEffortHours(tool);
   const articles = getApplicableArticles(tool).slice(0, 4).join(', ');
 
-  return `Is ${tool.name} compliant with the EU AI Act? ${riskLabel} classification, Documentation Grade ${grade} (${found}/${total}), ${oblCount} deployer obligations (~${hours} hours).${articles ? ` ${articles} breakdown.` : ''} Free compliance checklist.`;
+  return `Is ${tool.name} compliant with the EU AI Act? ${riskLabel} classification, Documentation Grade ${grade} (${wp}%), ${oblCount} deployer obligations (~${hours} hours).${articles ? ` ${articles} breakdown.` : ''} Free compliance checklist.`;
 }
