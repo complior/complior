@@ -1,7 +1,7 @@
-# SPRINT-BACKLOG-008.md — Dashboard v2 + Cross-System Map + Discovery
+# SPRINT-BACKLOG-008.md — Compliance Ready
 
-**Версия:** 1.0.0
-**Дата:** 2026-02-22
+**Версия:** 2.0.0
+**Дата:** 2026-02-28
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Planned
 **Зависимости:** Sprint 7 (WorkOS + Registry API) merged to develop
@@ -10,536 +10,819 @@
 
 ## Sprint Goal
 
-Запустить Dashboard v2 с Cross-System Map — ключевой экран конверсии Free TUI → Paid Dashboard. Org-wide compliance view: TUI scan данные (F27) + GitHub/GitLab репозитории + ручная регистрация AI tools. Agent Governance UI. Score Trends. Первые SaaS Discovery коннекторы (IdP). Provider-Lite Wizard для AI стартапов.
+Пользователь может **сгенерировать FRIA, Audit Package и основные compliance документы**. Это то, что позволяет **ПРОДАВАТЬ Growth подписку (€149/мес)**. Dashboard v2 с Cross-System Map и Role-based views. Gap Analysis по 12 AESIA категориям. Compliance Timeline. CLI ↔ SaaS sync (Device Flow auth + Passport/Scan upload).
 
-**Capacity:** ~30 SP | **Duration:** 3 недели
-**Developers:** Max (Backend — Dashboard API + Discovery), Nina (Frontend — Dashboard v2 + Agent Governance UI), Leo (Infra — GitHub/GitLab OAuth, score trends)
-**Baseline:** ~242 tests (Sprint 7) → **New: ~18 tests (total: ~260)**
+**Capacity:** ~42 SP | **Duration:** 4 недели
+**Developers:** Max (Backend — FRIA + Audit Package + Documents + CLI Sync + Vendor Verification), Nina (Frontend — Dashboard v2 + Gap Analysis UI + Timeline + Procurement API), Leo (Infra — CLI Auth + TUI Data Push)
+**Baseline:** ~343 tests (Sprint 7) → **New: ~34 tests (total: ~377)**
 
-> **Prerequisite:** Sprint 7 merged to develop. WorkOS auth работает. Registry API live (F26). TUI Data Collection endpoint live (F27). API Key management работает.
+> **Prerequisite:** Sprint 7 merged to develop. WorkOS auth. Registry API live. Scoring Engine v4.1.
 
 ---
 
 ## Граф зависимостей
 
 ```
-F27 (TUI Data Collection, S007) ──► US-081 (Cross-System Map backend)
-                                           │
-F25 (WorkOS, S007) ──► US-082 (GitHub/GitLab OAuth scan)
-                                           │
-US-081 + US-082 ──► US-083 (Dashboard v2 frontend)
-                           │
-                   US-084 (Agent Governance UI)
-                   US-085 (Score Trends + Analytics)
+US-081 (FRIA Generator backend) ──► US-083 (Audit Package — needs FRIA)
+US-082 (Document Generators) ──────► US-083 (Audit Package — needs docs)
+                                            │
+US-084 (Dashboard v2 frontend) ◄────────────┘ (Audit Package кнопка в Dashboard)
 
-US-086 (SaaS Discovery — IdP) — параллельно, зависит от F25 (WorkOS)
+US-085 (Gap Analysis) — параллельно, зависит от F26 (Registry data)
 
-US-087 (Provider-Lite Wizard) — независим от dashboard (F01, F02 только)
+US-086 (Timeline) — параллельно, зависит от F05 (Dashboard baseline)
+
+US-087 (CLI Auth Device Flow) ──► US-088 (CLI Sync — Passport + Scan)
+                                 US-089 (TUI Daemon Push)
+
+US-090 (Vendor Verification + Procurement API) — параллельно, зависит от F26 (Registry API)
 ```
 
 ---
 
 ## User Stories
 
-### US-081: Cross-System Map — Backend API (8 SP)
+### US-081: Генератор FRIA — Fundamental Rights Impact Assessment (8 SP)
 
-- **Feature:** F28 | **Developer:** Max
-
-#### Описание
-
-Как CTO, я хочу видеть org-wide compliance map — все AI tools нашей организации из всех источников: TUI сканы, GitHub/GitLab репо, ручная регистрация — с compliance score для каждого и топологией связей.
-
-#### Источники данных Cross-System Map
-
-```
-SaaS Cross-System Map агрегирует из трёх источников:
-
-1. TUI scan uploads (POST /v1/tui/scans)
-   → ScanResult таблица → projectPath, score, findings, toolsDetected
-
-2. GitHub/GitLab org scan (новый коннектор в US-082)
-   → обнаружение AI patterns в репозиториях организации
-
-3. Manual registration (существующий Feature 03)
-   → AITool таблица из онбординга deployer'а
-```
-
-#### API эндпоинты
-
-```javascript
-// GET /api/dashboard/cross-system-map
-// Возвращает:
-{
-  totalSystems: 12,
-  overallScore: 68,
-  sources: {
-    tui_scans: {
-      count: 5,
-      latestScans: [...],    // из ScanResult таблицы
-      avgScore: 72
-    },
-    github_gitlab: {
-      count: 4,
-      repos: [...],          // из GitHub/GitLab scan
-      avgScore: 61
-    },
-    manual: {
-      count: 3,
-      tools: [...],          // из AITool таблица
-      avgScore: 75
-    }
-  },
-  riskDistribution: { high: 2, limited: 8, minimal: 2 },
-  criticalViolations: [...],
-  lastUpdated: "2026-02-22T18:03:00Z"
-}
-
-// GET /api/dashboard/cross-system-map/topology
-// Граф связей: tool → dependencies → risks
-
-// GET /api/dashboard/tui-scans
-// Список последних TUI scan uploads с деталями
-// (ScanResult таблица, organizationId filter)
-
-// GET /api/dashboard/registry-api-usage
-// API Key usage stats для Registry API (Screen 27)
-```
-
-#### SSE push при новом TUI scan upload
-
-```javascript
-// При POST /v1/tui/scans → eventBus.emit('scan:uploaded', {...})
-// → SSE push к подключённым Dashboard клиентам:
-// GET /api/events/stream → SSE connection
-// event: scan_uploaded { projectPath, score, toolsDetected }
-// Dashboard обновляет Cross-System Map в реальном времени
-```
-
-#### Реализация
-
-**Новые файлы:**
-- `app/api/dashboard/cross-system-map.js` — GET handler + data aggregation
-- `app/api/dashboard/tui-scans.js` — list scan results per org
-- `app/api/dashboard/registry-usage.js` — API key usage stats
-- `app/api/events/stream.js` — SSE connection для real-time push
-- `app/application/dashboard/buildCrossSystemMap.js` — aggregation logic
-
-**Модифицированные файлы:**
-- `app/api/v1/tui/scans.js` — добавить SSE push после successful upload
-- `server/routes/dashboard.js` — mount new endpoints
-
-#### Критерии приёмки
-
-- [ ] `GET /api/dashboard/cross-system-map` → JSON с тремя источниками данных
-- [ ] TUI scan uploads отображаются в cross-system map (из ScanResult таблицы)
-- [ ] SSE push: при новом TUI scan → Dashboard обновляется без reload
-- [ ] Фильтр по organizationId: org видит только свои данные
-- [ ] `GET /api/dashboard/registry-api-usage` → usage stats по API Key
-- [ ] Тест на multi-tenant изоляцию (org A не видит данные org B)
-
-- **Tests:** 4 (cross_system_map_aggregation.test, sse_push_on_scan.test, tenant_isolation.test, registry_usage_stats.test)
-
----
-
-### US-082: GitHub/GitLab Org Scan (5 SP)
-
-- **Feature:** F28 | **Developer:** Max
+- **Feature:** F19 🔴 | **Developer:** Max
 
 #### Описание
 
-Как CTO с платным планом, я хочу подключить GitHub/GitLab организацию — и Complior автоматически просканирует все репозитории на AI tools — чтобы Cross-System Map показывала реальный AI footprint без ручного ввода.
+Как deployer high-risk AI системы, я хочу сгенерировать FRIA (Fundamental Rights Impact Assessment) по Art. 27 — обязательный документ для каждой high-risk AI системы — чтобы выполнить требование закона до дедлайна Aug 2, 2026.
 
-#### Архитектура GitHub/GitLab Scan
+> **Art. 27:** Deployers of high-risk AI systems shall carry out a fundamental rights impact assessment BEFORE putting the system into use.
+
+#### FRIA Wizard (6 секций)
+
+```
+Секция 1: AI System Identification
+  — Название системы, вендор, версия, дата начала использования
+  — Предзаполнение из Passport (80%)
+
+Секция 2: Intended Purpose & Context
+  — Цель использования, домен (HR, finance, healthcare, law enforcement)
+  — Категории затронутых лиц (employees, applicants, customers, public)
+  — Масштаб: кол-во людей, география, частота решений
+
+Секция 3: Fundamental Rights Assessment
+  — Checklist: 8 прав (dignity, non-discrimination, privacy, data protection,
+    freedom of expression, equality, right to remedy, fair trial)
+  — Per право: risk level (none/low/medium/high) + mitigation measures
+  — LLM draft: Mistral Medium 3 предзаполняет на основе домена
+
+Секция 4: Human Oversight Measures
+  — Как обеспечен human-in-the-loop
+  — Кто контролирует, как часто, override mechanism
+  — Предзаполнение из Passport.autonomyLevel
+
+Секция 5: Risk Mitigation & Monitoring
+  — Технические меры: accuracy, robustness, cybersecurity
+  — Организационные меры: training, escalation procedures
+  — Мониторинг: частота, метрики, пороги
+
+Секция 6: Review & Approval
+  — Рецензент (DPO / Legal / назначенный)
+  — Статус: Draft → Review → Approved
+  — При Approve → PDF генерация (Gotenberg) + хранение (S3)
+```
+
+#### GDPR DPIA Overlap
 
 ```javascript
-// Flow:
-// 1. Пользователь нажимает "Connect GitHub" → OAuth flow (WorkOS)
-// 2. После OAuth → GitHub API: list all repos in org
-// 3. pg-boss job: scan repos (batch, не блокирующий)
-// 4. Для каждого репо: fetch package.json, requirements.txt,
-//    Dockerfile, .env.example → match против AI Registry patterns
-// 5. Результат → сохранить в CrossSystemSource таблицу
-// 6. SSE push → Dashboard обновляется
+// Если организация уже имеет DPIA (Data Protection Impact Assessment):
+// → 60% предзаполнение FRIA из DPIA данных
+// Общие поля: intended purpose, data categories, technical measures,
+// consultation process, monitoring frequency
+// POST /api/fria/prefill-from-dpia — { dpiaId } → partial FRIA draft
+```
 
-// Rate limiting: GitHub 5000 req/hr → оценить repos постепенно
+#### API Endpoints
+
+```javascript
+// POST /api/fria/draft                  — создать draft из Passport данных
+// GET  /api/fria/:id                    — получить FRIA
+// PUT  /api/fria/:id/section/:sectionId — обновить секцию
+// POST /api/fria/:id/generate-section   — LLM генерация одной секции
+// POST /api/fria/:id/submit-review      — отправить на ревью
+// POST /api/fria/:id/approve            — утвердить → PDF
+// GET  /api/fria/:id/pdf                — скачать PDF
+
+// LLM-assisted:
+// Для каждой секции: "Generate Draft" кнопка
+// Mistral Medium 3 генерирует черновик из контекста
+// Пользователь редактирует в Tiptap editor
+// pg-boss queue: doc-generation (rate-limited, не блокирует UI)
 ```
 
 #### Новые таблицы
 
 ```javascript
-// schemas/CrossSystemSource.js (MetaSQL):
+// schemas/FRIAAssessment.js (MetaSQL):
 ({
   Details: {},
   organization: { type: 'Organization', delete: 'cascade' },
-  sourceType: { type: 'string' },  // 'github' | 'gitlab' | 'manual'
-  externalId: { type: 'string' },  // repo full_name или tool ID
-  name: { type: 'string' },
-  url: { type: 'string', nullable: true },
-  aiToolsDetected: { type: 'json' },  // [{name, provider, riskLevel}]
-  lastScannedAt: 'datetime',
-  scanStatus: { type: 'string', default: "'pending'" }, // pending | done | error
+  aiTool: { type: 'AITool', delete: 'cascade' },
+  title: { type: 'string' },
+  status: { type: 'string', default: "'draft'" }, // draft|review|approved|archived
+  sections: { type: 'json' },         // [{id, title, content, generatedAt?, editedAt?}]
+  reviewerId: { type: 'integer', nullable: true },
+  approvedAt: { type: 'datetime', nullable: true },
+  pdfUrl: { type: 'string', nullable: true },
+  version: { type: 'integer', default: 1 },
 });
 ```
 
 #### Реализация
 
-**Новые файлы:**
-- `app/api/integrations/github-connect.js` — OAuth initiate + callback
-- `app/api/integrations/gitlab-connect.js` — GitLab OAuth flow
-- `app/application/discovery/scanGitHubOrg.js` — repo scan job
-- `app/application/discovery/detectAIPatterns.js` — pattern matching (AI Registry)
-- `schemas/CrossSystemSource.js` — новая таблица
-- `app/jobs/github-scan.js` — pg-boss job definition
+**Новые файлы (backend/):**
+- `schemas/FRIAAssessment.js` — MetaSQL таблица
+- `app/api/fria/draft.js` — create draft from Passport
+- `app/api/fria/sections.js` — update/generate section
+- `app/api/fria/review.js` — submit/approve workflow
+- `app/api/fria/pdf.js` — PDF generation trigger
+- `app/application/fria/createFRIADraft.js` — prefill from Passport
+- `app/application/fria/generateFRIASection.js` — LLM generation (Mistral Medium 3)
+- `app/application/fria/approveFRIA.js` — approve → Gotenberg PDF → S3
+- `app/domain/fria/FRIATemplate.js` — 6 section templates (pure domain)
+- `app/jobs/fria-generation.js` — pg-boss job for LLM generation
 
-**Модифицированные файлы:**
-- `server/routes/integrations.js` — mount OAuth routes
-- `app/config/oauth.js` — GitHub + GitLab OAuth credentials
+**Новые файлы (frontend/):**
+- `app/(dashboard)/fria/page.tsx` — FRIA list per org
+- `app/(dashboard)/fria/[id]/page.tsx` — FRIA wizard/editor
+- `components/fria/FRIASectionEditor.tsx` — per-section Tiptap editor
+- `components/fria/FRIAReviewPanel.tsx` — review/approve UI
+- `components/fria/RightsChecklist.tsx` — 8 fundamental rights grid
 
 #### Критерии приёмки
 
-- [ ] "Connect GitHub" → OAuth → GitHub репозитории организации просканированы
-- [ ] GitLab OAuth работает аналогично GitHub
-- [ ] AI tools обнаружены в репо (npm deps + pip deps + env vars)
-- [ ] pg-boss job: сканирование в background, не блокирует UI
-- [ ] Cross-System Map: GitHub/GitLab источник отображается
-- [ ] Повторный скан (по расписанию раз в 24ч): обновляет CrossSystemSource
-- [ ] Rate limiting: не превышает GitHub API limits
+- [ ] Draft создаётся из Passport данных (80% предзаполнение для high-risk tools)
+- [ ] 6 секций с Tiptap editor для каждой
+- [ ] "Generate Draft" per секция → Mistral Medium 3 через pg-boss
+- [ ] LLM generation через queue (не блокирует UI)
+- [ ] Workflow: Draft → Review (DPO/Legal review) → Approved
+- [ ] PDF генерация через Gotenberg при Approve
+- [ ] PDF сохраняется в Hetzner Object Storage (S3)
+- [ ] 8 fundamental rights checklist с risk levels
+- [ ] DPIA prefill: если есть DPIA → 60% предзаполнение
+- [ ] Version tracking: каждый Approve создаёт новую версию
+- [ ] Plan enforcement: Growth+ required (Starter: 1 FRIA/мес)
+- [ ] Multi-tenancy: org isolation
 
-- **Tests:** 3 (github_oauth_flow.test, ai_pattern_detection_in_repos.test, cross_system_source_persistence.test)
+- **Tests:** 5 (fria_draft_prefill.test, fria_section_generation.test, fria_approval_workflow.test, fria_pdf_generation.test, fria_version_tracking.test)
 
 ---
 
-### US-083: Dashboard v2 Frontend — Cross-System Map UI (7 SP)
+### US-082: Генераторы Compliance-документов (7 SP)
 
-- **Feature:** F28 | **Developer:** Nina
+- **Feature:** F07 🔴 | **Developer:** Max (backend) + Nina (frontend)
 
 #### Описание
 
-Как пользователь платного плана, я хочу видеть Dashboard v2 с Cross-System Map — интерактивную визуализацию всех AI систем организации — чтобы получить org-wide compliance overview за один взгляд.
+Как deployer, я хочу генерировать ключевые compliance-документы: AI Usage Policy, QMS Template, Risk Management Plan, Monitoring Plan, Worker Notification — чтобы покрыть основные обязательства EU AI Act.
 
-#### Экраны (по DESIGN-BRIEF)
+#### 5 Генераторов
 
-**Screen 24: Cross-System Map**
+| Документ | Статья | Входные данные | Выход | ~Стр. |
+|----------|--------|---------------|-------|-------|
+| **AI Usage Policy** | Art. 26 | Org name, AI tools, usage rules | Policy PDF | 5-10 |
+| **QMS Template** | Art. 17, AESIA #4 | Org structure, processes, tools | QMS PDF | 20-40 |
+| **Risk Management Plan** | Art. 9, AESIA #5 | Per AI tool: risks from Scanner | Risk Plan PDF | 10-20 |
+| **Monitoring Plan** | Art. 72, AESIA #13 | Monitoring targets, frequency | Monitoring Plan PDF | 5-10 |
+| **Worker Notification** | Art. 26(7) | AI tools used by employees | Letter template PDF | 1-2 |
+
+#### Section-by-Section Workflow
+
+```
+Для каждого документа:
+1. "Generate" → pg-boss job → Mistral Medium 3 генерирует черновик
+2. Секции загружаются по мере готовности (polling / SSE)
+3. Пользователь редактирует каждую секцию в Tiptap editor
+4. "Approve Section" → lock section
+5. Когда все секции approved → "Generate PDF" → Gotenberg → S3
+6. Документ привязан к AITool + Organization
+```
+
+#### API Endpoints
+
+```javascript
+// POST /api/documents/generate          — { type, aiToolId?, params }
+// GET  /api/documents                   — список документов per org
+// GET  /api/documents/:id               — документ + секции
+// PUT  /api/documents/:id/section/:sid  — обновить секцию (Tiptap content)
+// POST /api/documents/:id/approve       — approve → PDF
+// GET  /api/documents/:id/pdf           — download PDF
+```
+
+#### Реализация
+
+**Новые файлы (backend/):**
+- `schemas/ComplianceDocument.js` — MetaSQL (type, status, sections JSON, pdfUrl)
+- `app/api/documents/generate.js` — trigger generation
+- `app/api/documents/sections.js` — CRUD per section
+- `app/api/documents/approve.js` — approve + PDF
+- `app/application/documents/generateDocumentDraft.js` — LLM prompt per doc type
+- `app/application/documents/approveDocument.js` — Gotenberg PDF
+- `app/domain/documents/DocumentTemplates.js` — section templates per doc type (pure)
+- `app/jobs/document-generation.js` — pg-boss job
+
+**Новые файлы (frontend/):**
+- `app/(dashboard)/documents/page.tsx` — document list
+- `app/(dashboard)/documents/[id]/page.tsx` — document editor
+- `components/documents/DocumentSectionEditor.tsx` — Tiptap per section
+- `components/documents/GenerateButton.tsx` — trigger + progress
+
+#### Критерии приёмки
+
+- [ ] 5 типов документов генерируются
+- [ ] Section-by-section: Generate → Edit → Approve flow
+- [ ] LLM генерация через pg-boss (не блокирует UI)
+- [ ] Tiptap editor для каждой секции
+- [ ] PDF generation (Gotenberg) при final approve
+- [ ] PDF → S3 хранение + download
+- [ ] Предзаполнение из Passport + Scanner данных
+- [ ] Plan enforcement: Growth+ required
+- [ ] Worker Notification: генерация per AI tool
+
+- **Tests:** 4 (document_generation_5types.test, section_edit_approve.test, document_pdf.test, document_prefill.test)
+
+---
+
+### US-083: Audit Package — ZIP со всеми документами (6 SP)
+
+- **Feature:** F42 🔴 | **Developer:** Max
+
+#### Описание
+
+Как deployer готовящийся к аудиту, я хочу нажать одну кнопку и получить ZIP-архив со ВСЕМИ compliance документами моей организации — чтобы предоставить регулятору полный пакет в нужном формате.
+
+> **Ключевой платный feature** — ради него покупают Growth (€149/мес).
+
+#### Содержимое ZIP
+
+```
+audit-package-{orgSlug}-{date}/
+├── 00-executive-summary.pdf       — Org compliance overview
+├── 01-ai-registry.pdf             — Реестр AI систем (все Passports)
+├── 02-risk-classification.pdf     — Per-tool classification results
+├── 03-fria/                       — FRIA per high-risk tool
+│   ├── fria-hireview.pdf
+│   └── fria-credit-scoring.pdf
+├── 04-ai-usage-policy.pdf
+├── 05-obligation-matrix.pdf       — Матрица обязательств (articles × tools)
+├── 06-evidence-chain.pdf          — Evidence: scanner findings, manual entries
+├── 07-incident-log.pdf            — Incident records (if any)
+├── 08-training-records.pdf        — AI Literacy completion (if applicable)
+├── 09-monitoring-plan.pdf         — Per-tool monitoring setup
+├── metadata.json                  — Package metadata (generated at, version, tools, score)
+└── verification.pdf               — QR-код → online verification page
+```
+
+#### API
+
+```javascript
+// POST /api/audit-package/generate   — trigger async ZIP generation
+// GET  /api/audit-package/status/:id — progress (generating|ready|error)
+// GET  /api/audit-package/download/:id — download ZIP
+// GET  /api/audit-package/history    — previous packages
+
+// Process:
+// 1. POST trigger → pg-boss job
+// 2. Job: collect all docs (PDFs from S3 + generate missing summaries)
+// 3. Generate executive summary (LLM)
+// 4. Generate obligation matrix (structured query)
+// 5. Create verification PDF with QR code
+// 6. ZIP all → S3 → notify user (SSE + email)
+// 7. Expiry: package available for 30 days
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/audit-package/generate.js` — trigger
+- `app/api/audit-package/status.js` — progress
+- `app/api/audit-package/download.js` — download
+- `app/application/audit/generateAuditPackage.js` — orchestration
+- `app/application/audit/generateExecutiveSummary.js` — LLM
+- `app/application/audit/generateObligationMatrix.js` — structured query
+- `app/application/audit/buildVerificationPage.js` — QR + page
+- `app/jobs/audit-package.js` — pg-boss job
+- `app/(dashboard)/audit-package/page.tsx` — UI: generate + history + download
+
+#### Критерии приёмки
+
+- [ ] One-click ZIP generation
+- [ ] ZIP содержит 10+ файлов (PDFs + metadata.json)
+- [ ] Executive Summary: LLM-генерация org-wide overview
+- [ ] Obligation Matrix: articles × tools (structured)
+- [ ] QR code verification: ссылка на публичную страницу
+- [ ] Async: pg-boss job + SSE progress updates
+- [ ] S3 storage + 30-day expiry
+- [ ] Email notification when ready (Brevo)
+- [ ] Plan enforcement: Growth+ only
+- [ ] Includes all existing FRIA + documents
+
+- **Tests:** 4 (audit_package_generation.test, audit_zip_contents.test, audit_package_progress.test, verification_qr.test)
+
+---
+
+### US-084: Dashboard v2 — Cross-System Map + Role Views + Score Trends (7 SP)
+
+- **Feature:** F28 🔴 | **Developer:** Nina (frontend) + Max (backend)
+
+#### Описание
+
+Как CTO, я хочу видеть org-wide compliance dashboard: (1) карта связей между AI системами, (2) график score по времени, (3) role-based views — CTO / DPO / Developer видят разное.
+
+> **Базовый дашборд уже 75% (Sprint 3-5).** Доработка.
+
+#### Cross-System Map
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ Cross-System Compliance Map                          Last sync: 2m ago   │
 │                                                                           │
 │ ┌─ Summary ──────────────────────────────────────────────────────────┐  │
-│ │ Total AI Systems: 12  │  Org Score: 68/100  │  High-Risk: 2       │  │
+│ │ AI Systems: 12  │  Org Score: 68/100  │  High-Risk: 2  │  €4.2M   │  │
 │ └────────────────────────────────────────────────────────────────────┘  │
 │                                                                           │
-│ Sources:                                                                  │
-│ [TUI Scans: 5 projects ▼]  [GitHub: 4 repos ▼]  [Manual: 3 tools ▼]   │
-│                                                                           │
-│ AI Systems:                                                               │
 │ ┌──────────────────┬──────────────┬────────┬──────────┬─────────────┐  │
 │ │ System           │ Source       │  Risk  │  Score   │ Status      │  │
 │ ├──────────────────┼──────────────┼────────┼──────────┼─────────────┤  │
-│ │ OpenAI GPT-4o   │ TUI: my-app  │ limited│  72 ████ │ ⚠ 2 issues  │  │
+│ │ ChatGPT          │ Manual       │ GPAI   │  72 ████ │ ⚠ 2 issues  │  │
 │ │ HR Screening AI │ Manual       │ HIGH   │  34 ██   │ ✗ 4 issues  │  │
-│ │ LangChain agent │ GitHub: api  │ limited│  61 ███  │ ⚠ 3 issues  │  │
+│ │ Copilot         │ CLI scan     │ limited│  81 ████ │ ✓ OK        │  │
 │ └──────────────────┴──────────────┴────────┴──────────┴─────────────┘  │
 │                                                                           │
-│ [Connect GitHub] [Connect GitLab] [+ Add Manual]    [Export Report]     │
+│ Dependencies: "A передаёт данные в B"                                    │
+│ ChatGPT ──(data)──► HR Screening AI ──(output)──► Decision System       │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Screen 27: Registry API Settings**
-```
-API Key Management:
-- Active keys list + created/last_used
-- Usage this month: 1,234 / 10,000 requests
-- Rate limit status
-- [Generate New Key] [Revoke]
-```
-
-#### Role-based views
+#### Role-based Views
 
 | Роль | Что видит |
 |------|-----------|
-| CTO | High-level score + risk distribution + cost |
-| DPO | Violations list + deadline countdown |
-| Developer | Per-project findings + fix suggestions |
-| Auditor | Full audit trail + export |
+| CTO | Score trend + risk distribution + penalty exposure + quick actions |
+| DPO | Violations list + deadline countdown + FRIA status + regulatory updates |
+| Developer | Per-tool compliance breakdown + CLI sync status + fix suggestions |
 
-#### Реализация
-
-**Новые файлы (frontend/):**
-- `app/(dashboard)/cross-system-map/page.tsx` — Screen 24
-- `app/(dashboard)/cross-system-map/CrossSystemMap.tsx` — main component
-- `app/(dashboard)/cross-system-map/SourcePanel.tsx` — collapsible source panels
-- `app/(dashboard)/registry-api/page.tsx` — Screen 27 (API Key management)
-- `components/dashboard/AISystemsTable.tsx` — sortable/filterable table
-- `components/dashboard/RiskBadge.tsx` — risk level badge
-- `components/dashboard/ScoreBar.tsx` — compact score visualization
-- `hooks/useCrossSystemMap.ts` — data fetching + SSE subscription
-
-**Модифицированные файлы:**
-- `app/(dashboard)/layout.tsx` — добавить Cross-System Map в navigation
-- `components/layout/DashboardNav.tsx` — новые nav items
-
-#### Критерии приёмки
-
-- [ ] Cross-System Map: таблица со всеми AI systems из всех источников
-- [ ] Source панели: TUI / GitHub / Manual с collapse/expand
-- [ ] Score bar для каждого system
-- [ ] Risk level badge (HIGH красный, limited жёлтый, minimal зелёный)
-- [ ] Role-based view: CTO/DPO/Developer/Auditor переключение
-- [ ] SSE real-time update: при новом TUI scan → строка появляется без reload
-- [ ] "Connect GitHub" кнопка → OAuth flow
-- [ ] "Export Report" → PDF с org-wide compliance summary
-- [ ] Responsive: работает на 1024px (tablet)
-
-- **Tests:** 2 (cross_system_map_renders.test, sse_update_integration.test)
-
----
-
-### US-084: Agent Governance UI (Screen 25) (4 SP)
-
-- **Feature:** F28, F30 (partial) | **Developer:** Nina
-
-#### Описание
-
-Как CTO, я хочу видеть в Dashboard таблицу всех AI coding agents организации — с compliance score, permissions matrix и audit trail — полученных из Engine (open-source) через TUI scan uploads.
-
-#### Screen 25: Agent Governance Dashboard
-
-```
-Agent Governance
-───────────────────────────────────────────────────────────────
-Source: TUI scan data (synced from Complior Engine)
-
-┌─────────────────┬──────────┬────────┬───────────┬──────────┐
-│ Agent           │ Type     │  Risk  │ Compliance│ Actions  │
-├─────────────────┼──────────┼────────┼───────────┼──────────┤
-│ hr-screening    │ decision │ HIGH   │  34/100 ✗ │ Details  │
-│ customer-bot    │ chatbot  │limited │  82/100 ✓ │ Details  │
-│ code-assistant  │ dev-tool │limited │  90/100 ✓ │ Details  │
-└─────────────────┴──────────┴────────┴───────────┴──────────┘
-
-Agent Detail (click):
-  → Compliance breakdown (disclosure/logging/oversight/scope)
-  → agent-compliance.yaml viewer
-  → Audit trail (last 50 events from TUI)
-  → Remediation Plan button → links to Complior TUI
-```
-
-**Важно:** Dashboard показывает данные из TUI (read-only view). Все изменения агентов — в Complior TUI (`complior agents`). Dashboard не управляет агентами напрямую.
-
-#### Реализация
-
-**Новые файлы (frontend/):**
-- `app/(dashboard)/agents/page.tsx` — Screen 25
-- `app/(dashboard)/agents/[agentName]/page.tsx` — Agent detail
-- `components/agents/AgentTable.tsx`
-- `components/agents/AgentComplianceBreakdown.tsx`
-- `components/agents/AgentAuditTrail.tsx`
-- `app/api/dashboard/agents.js` — GET handler (из TUI scan toolsDetected + agentData)
-
-#### Критерии приёмки
-
-- [ ] Agent table: список AI agents из TUI scan data
-- [ ] Per-agent: compliance score, risk level, type
-- [ ] Agent detail: score breakdown + agent-compliance.yaml viewer
-- [ ] Audit trail: последние события (если загружены из TUI)
-- [ ] "Open in Complior" link для управления агентом
-- [ ] HIGH-RISK agents выделены (красная строка)
-
-- **Tests:** 1 (agent_governance_table.test)
-
----
-
-### US-085: Score Trends + Analytics (Screen 29) (3 SP)
-
-- **Feature:** F28 | **Developer:** Leo
-
-#### Описание
-
-Как CTO, я хочу видеть график изменения compliance score организации за последние 90 дней — чтобы понимать тренд и подготовить отчёт для совета директоров.
-
-#### Score Trends
+#### Score Trends (90-day graph)
 
 ```javascript
 // GET /api/dashboard/score-trends?period=90d&groupBy=week
-// Возвращает:
 {
-  period: "90d",
   dataPoints: [
     { date: "2026-01-01", avgScore: 47, totalSystems: 8 },
     { date: "2026-01-08", avgScore: 59, totalSystems: 9 },
-    // ...
   ],
   trend: { direction: "improving", delta: +21, percentChange: 44.7 },
   projectedCompliance: { date: "2026-04-15", projectedScore: 82 }
 }
-
-// Данные из:
-// - AITool compliance history (существующие таблицы)
-// - ScanResult history (TUI uploads)
-// Aggregated по organizationId
 ```
 
-#### Frontend (Screen 29)
-
-- Line chart (Recharts): score trend 90d
-- Per-source breakdown: TUI vs GitHub vs Manual
-- Projection line: "At current rate, reaching 85 by April 15"
-- Export: CSV + PDF для отчётности
-
-#### Реализация
-
-**Новые файлы:**
-- `app/api/dashboard/score-trends.js` — GET handler с period param
-- `app/(dashboard)/score-trends/page.tsx` — Screen 29
-- `components/charts/ScoreTrendChart.tsx` — Recharts line chart
-- `app/application/dashboard/buildScoreTrends.js` — aggregation query
-
-#### Критерии приёмки
-
-- [ ] Score trend chart за 90 дней
-- [ ] Период: 7d / 30d / 90d switcher
-- [ ] Per-source breakdown в chart
-- [ ] Projection: estimated date to reach 85+ score
-- [ ] CSV export работает
-
-- **Tests:** 2 (score_trends_api.test, trend_projection_calculation.test)
-
----
-
-### US-086: SaaS Discovery — IdP Connector (2 SP)
-
-- **Feature:** F29 (partial) | **Developer:** Max
-
-#### Описание
-
-Как CTO, я хочу подключить наш корпоративный IdP (через WorkOS) и получить список AI SaaS tools, которые сотрудники авторизовали через SSO — автоматически.
-
-#### IdP-based Discovery
+#### API Endpoints
 
 ```javascript
-// WorkOS Organizations → Connected Apps → фильтр AI tools
-// WorkOS API: listConnections() → список OAuth apps
-// Матч против AI Registry patterns (openai.com, anthropic.com, etc.)
-// Результат → CrossSystemSource (sourceType: 'idp')
-
-// Endpoint:
-// POST /api/integrations/idp-scan
-// → запускает pg-boss job: fetch WorkOS connected apps → match AI patterns
-// → callback: update CrossSystemSource → SSE push
+// GET /api/dashboard/cross-system-map — all AI tools + sources + dependencies
+// GET /api/dashboard/score-trends     — score history (7d/30d/90d)
+// GET /api/dashboard/role-view/:role  — role-specific data (cto/dpo/developer)
+// GET /api/dashboard/penalty-exposure — aggregate penalty risk per org
 ```
-
-#### Критерии приёмки
-
-- [ ] "Scan via IdP" кнопка → запускает job
-- [ ] AI tools из SSO-авторизованных apps появляются в Cross-System Map
-- [ ] Только tools matching AI Registry patterns (не все OAuth apps)
-- [ ] Human-in-the-loop: авто-discovery только предлагает, не добавляет автоматически
-
-- **Tests:** 1 (idp_discovery_pattern_match.test)
-
----
-
-### US-087: Provider-Lite Wizard (3 SP)
-
-- **Feature:** F21, F22 | **Developer:** Nina
-
-#### Описание
-
-Как AI стартап (< 50 сотрудников), я хочу пройти Provider-Lite Wizard и получить персонализированный compliance checklist + EU Market Readiness Score.
-
-#### Provider-Lite Wizard (5 шагов)
-
-```
-Step 1: "Are you building an AI product for end users?" → Yes/No
-Step 2: "What does your AI do?" (domain picker)
-Step 3: "Who are your end users? Where are they?"
-Step 4: "Do you have EU clients?" → extraterritorial scope (Art.2)
-Step 5: "Your risk level as provider" → obligations summary (Art.6/9/11/16)
-```
-
-#### Output
-
-- **EU Market Readiness Score:** 0-100% с breakdown по категориям
-- **Compliance Checklist:** персонализированный список → PDF via Gotenberg
-- **Provider Starter Kit:** simplified Art.11 templates (не full Annex IV)
 
 #### Реализация
 
-**Новые файлы:**
-- `app/(dashboard)/provider-lite/page.tsx` — 5-step wizard
-- `app/api/provider-lite/assessment.js` — POST handler
-- `app/application/providerLite/calculateReadinessScore.js`
-- `app/application/providerLite/generateChecklist.js`
+**Новые файлы (backend/):**
+- `app/api/dashboard/cross-system-map.js` — aggregation
+- `app/api/dashboard/score-trends.js` — score history
+- `app/api/dashboard/role-view.js` — per-role data
+- `app/application/dashboard/buildCrossSystemMap.js`
+- `app/application/dashboard/buildScoreTrends.js`
 
-#### Критерии приёмки
-
-- [ ] 5-step wizard работает
-- [ ] EU Market Readiness Score: 0-100% с breakdown
-- [ ] Checklist PDF генерируется через Gotenberg
-- [ ] Art.2 extraterritorial check: если EU clients → EU AI Act applies
-- [ ] Доступно всем планам (Free included)
-
-- **Tests:** 2 (readiness_score_calculation.test, checklist_pdf_generation.test)
-
----
-
----
-
-### US-088: Colorado SB 205 — Вторая юрисдикция в Regulation DB (3 SP)
-
-- **Feature:** F26 (Registry API расширение) | **Developer:** Max
-- **Источник:** `~/complior/docs/PROJECT-AGENT-HANDOFF.md` Задача 1
-
-#### Описание
-
-Как deployer, работающий в штате Colorado, я хочу видеть compliance obligations по Colorado SB 205 — чтобы покрыть US-рынок параллельно с EU AI Act.
-
-#### Данные
-
-5 обязательств Colorado SB 205:
-
-| Check ID | Статья | Severity | Строже EU AI Act? |
-|----------|--------|----------|-------------------|
-| `co_ai_notice` | §6-1-1703(1) | high | Аналогично Art.50.1 |
-| `co_opt_out` | §6-1-1703(2) | high | **Строже** — явный opt-out |
-| `co_human_review` | §6-1-1703(3) | medium | Аналогично Art.14 |
-| `co_data_management` | §6-1-1703(4) | medium | Аналогично Art.10 |
-| `co_annual_report` | §6-1-1703(5) | low | **Новое** — нет в EU AI Act |
-
-#### Реализация
-
-**Новые файлы:**
-- `app/seeds/seed-colorado-sb205.js` — seed script (8 записей: 1 RegulationMeta + 5 Obligations + 1 CrossMapping + 1 TimelineEvent)
-- `scripts/run-colorado-migration.js` — runner script
+**Новые файлы (frontend/):**
+- `app/(dashboard)/compliance-map/page.tsx` — Cross-System Map
+- `components/dashboard/CrossSystemMap.tsx`
+- `components/dashboard/DependencyGraph.tsx` — tool→tool links
+- `components/dashboard/ScoreTrendChart.tsx` — Recharts line chart
+- `components/dashboard/RoleViewSwitcher.tsx` — CTO/DPO/Dev toggle
 
 **Модифицированные файлы:**
-- `app/api/regulations/obligations.js` — поддержка `jurisdictionId=colorado-sb205` параметра
-- `app/api/regulations/meta.js` — возвращает список всех юрисдикций (array) без параметра
-
-#### CrossMapping (EU AI Act → Colorado)
-
-```json
-[
-  { "sourceObligationId": "art50-transparency", "targetObligationId": "co_ai_notice", "relationship": "equivalent" },
-  { "sourceObligationId": "art14-human-oversight", "targetObligationId": "co_human_review", "relationship": "equivalent" },
-  { "sourceObligationId": null, "targetObligationId": "co_opt_out", "relationship": "stricter" },
-  { "sourceObligationId": null, "targetObligationId": "co_annual_report", "relationship": "stricter" }
-]
-```
+- `app/(dashboard)/page.tsx` — integrate new widgets
+- `components/dashboard/ComplianceSummary.tsx` — add trend indicator
 
 #### Критерии приёмки
 
-- [ ] `RegulationMeta` содержит запись `jurisdiction_id: "colorado-sb205"`, `jurisdiction: "US-CO"`, `status: "in-force"`, `effective_date: "2026-02-01"`
-- [ ] 5 Obligations вставлены с `appliesToRole: "deployer"` для всех
-- [ ] `GET /v1/regulations/meta` без параметра → массив из 2 юрисдикций (eu-ai-act + colorado-sb205)
-- [ ] `GET /v1/regulations/obligations?jurisdictionId=colorado-sb205` → 5 records
-- [ ] `GET /v1/regulations/meta?jurisdictionId=colorado-sb205` → данные Colorado
-- [ ] CrossMapping: 4 маппинга EU → CO в `CrossMapping` таблице
-- [ ] `npm run migrate:colorado` работает без ошибок
+- [ ] Cross-System Map: все AI tools организации с dependencies
+- [ ] Score trend chart: 7d / 30d / 90d switcher
+- [ ] Projection line: "At current rate, reaching 85 by April 15"
+- [ ] Role-based views: CTO / DPO / Developer toggle
+- [ ] Penalty Exposure: €XX.XM aggregate
+- [ ] Responsive: works on 1024px+
 
-**npm script:** добавить `"migrate:colorado": "node scripts/run-colorado-migration.js"` в package.json
+- **Tests:** 3 (cross_system_map_aggregation.test, score_trends_calculation.test, role_view_data.test)
 
-- **Tests:** 2 (colorado_jurisdiction_query.test, cross_jurisdiction_mapping.test)
+---
+
+### US-085: Gap Analysis — 12 AESIA категорий (5 SP)
+
+- **Feature:** F08 🟠 | **Developer:** Max (backend) + Nina (frontend)
+
+#### Описание
+
+Как compliance officer, я хочу видеть per-AI-система Gap Analysis по 12 категориям AESIA — чтобы точно знать, что ещё нужно сделать и сколько это займёт.
+
+#### 12 AESIA категорий
+
+| # | Категория | AESIA Checklist | Что оценивается |
+|---|-----------|-----------------|-----------------|
+| 1 | QMS | #4 | Quality Management System |
+| 2 | Risk Management | #5 | Risk assessment + mitigation |
+| 3 | Human Oversight | #6 | HITL mechanisms |
+| 4 | Data Governance | #7 | Training data quality |
+| 5 | Transparency | #8 | Disclosures, documentation |
+| 6 | Accuracy | #9 | Performance metrics |
+| 7 | Robustness | #10 | Stress testing, edge cases |
+| 8 | Cybersecurity | #11 | Security measures |
+| 9 | Logging | #12 | Audit trail, monitoring |
+| 10 | Technical Documentation | #3 | Art. 11 documentation |
+| 11 | Post-Market Monitoring | #13 | Ongoing monitoring plan |
+| 12 | Incident Management | #14 | Art. 73 incident process |
+
+#### Per-category assessment
+
+```javascript
+// GET /api/gap-analysis/:aiToolId
+{
+  toolName: "HR Screening AI",
+  overallScore: 42,
+  categories: [
+    {
+      id: "qms", name: "Quality Management System",
+      status: "red",           // green|yellow|red
+      completeness: 20,        // percentage
+      estimatedEffort: "24h",
+      recommendations: [
+        "Define AI approval process",
+        "Assign quality manager role",
+        "Document change management procedure"
+      ],
+      relatedArticles: ["Art. 17"],
+      priority: 9.2            // urgency × impact score
+    },
+    // ... 11 more categories
+  ],
+  actionPlan: {
+    criticalPath: ["FRIA (2 days)", "QMS (3 days)", "Risk Plan (2 days)"],
+    totalEffort: "120h",
+    suggestedDeadline: "2026-06-01"
+  }
+}
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/gap-analysis/tool.js` — per-tool analysis
+- `app/application/gap-analysis/analyzeGaps.js` — 12-category engine
+- `app/domain/gap-analysis/AESIACategories.js` — category definitions + criteria (pure)
+- `app/(dashboard)/gap-analysis/[toolId]/page.tsx` — UI
+- `components/gap-analysis/CategoryCard.tsx` — per-category green/yellow/red card
+- `components/gap-analysis/ActionPlan.tsx` — prioritized todo list
+
+#### Критерии приёмки
+
+- [ ] 12 AESIA categories evaluated per tool
+- [ ] Status: green (≥80%) / yellow (40-80%) / red (<40%)
+- [ ] Estimated effort per category
+- [ ] Recommendations: 2-5 actionable items per category
+- [ ] Priority scoring: urgency × impact
+- [ ] Action Plan: critical path + total effort + suggested deadline
+- [ ] Plan enforcement: Growth+ required
+
+- **Tests:** 3 (gap_analysis_12_categories.test, priority_scoring.test, action_plan_generation.test)
+
+---
+
+### US-086: Compliance Timeline (3 SP)
+
+- **Feature:** F48 🟠 | **Developer:** Nina
+
+#### Описание
+
+Как DPO, я хочу видеть визуальную шкалу: "До дедлайна 157 дней. 7 AI систем. 23 открытых обязательства. Критический путь: FRIA для 2 систем" — чтобы понимать общую картину.
+
+> **UI timeline уже есть (Sprint 3), нужно подключить к реальным данным.**
+
+#### Timeline Data
+
+```javascript
+// GET /api/timeline
+{
+  mainDeadline: "2026-08-02",
+  daysRemaining: 155,
+  totalSystems: 7,
+  openObligations: 23,
+  criticalPath: [
+    { task: "FRIA for HR Screening AI", deadline: "2026-05-01", status: "not_started" },
+    { task: "FRIA for Credit Scoring", deadline: "2026-05-01", status: "draft" },
+    { task: "Art. 4 AI Literacy (all staff)", deadline: "2025-02-02", status: "overdue" },
+  ],
+  milestones: [
+    { date: "2025-02-02", label: "Art. 4 AI Literacy", status: "overdue", article: "Art. 4" },
+    { date: "2025-08-02", label: "Art. 50 Transparency", status: "overdue", article: "Art. 50" },
+    { date: "2026-08-02", label: "Full High-Risk Compliance", status: "upcoming", article: "Art. 6-27" },
+    { date: "2026-08-02", label: "Art. 52 Content Marking", status: "upcoming", article: "Art. 52" },
+  ],
+  progress: {
+    completed: 12,
+    inProgress: 8,
+    notStarted: 15,
+    overdue: 3
+  }
+}
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/dashboard/timeline.js` — aggregation endpoint
+- `app/application/dashboard/buildTimeline.js` — milestone + critical path calculation
+
+**Модифицированные файлы:**
+- `components/dashboard/Timeline.tsx` — connect to real data (was mock)
+- `app/(dashboard)/page.tsx` — timeline widget integration
+
+#### Критерии приёмки
+
+- [ ] Timeline показывает реальные дедлайны из EU AI Act
+- [ ] Days remaining countdown
+- [ ] Critical path: топ задачи с ближайшими deadline
+- [ ] Overdue items highlighted (red)
+- [ ] Progress bar: completed / in-progress / not-started / overdue
+- [ ] Milestone markers на визуальной шкале
+
+- **Tests:** 2 (timeline_aggregation.test, critical_path_calculation.test)
+
+---
+
+### US-087: CLI Auth — OAuth 2.0 Device Flow (3 SP)
+
+- **Feature:** F61 🟠 | **Developer:** Leo
+
+#### Описание
+
+Как разработчик, я хочу авторизовать CLI (`npx complior`) в SaaS Dashboard — чтобы данные локального сканирования синхронизировались с облаком.
+
+#### OAuth 2.0 Device Flow
+
+```
+CLI:
+1. POST /api/auth/device → { device_code, user_code: "ABCD-1234", verification_uri }
+2. Показать: "Open https://app.complior.io/device and enter code: ABCD-1234"
+3. Poll: POST /api/auth/token { device_code } → pending | { access_token, refresh_token }
+
+Browser:
+1. User opens /device → enters code ABCD-1234
+2. WorkOS session required (already logged in or login flow)
+3. Confirm: "Allow Complior CLI to access your account?"
+4. Approve → device_code marked as authorized
+
+Token:
+- access_token: JWT, 1h expiry
+- refresh_token: opaque, 30d expiry, single-use rotation
+- Scope: sync:write (upload passport/scan), sync:read (download data)
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/auth/device.js` — POST: generate device_code + user_code
+- `app/api/auth/token.js` — POST: exchange device_code → tokens
+- `app/api/auth/device-confirm.js` — POST: user confirms in browser
+- `app/(auth)/device/page.tsx` — browser UI for code entry
+- `app/application/auth/deviceFlow.js` — device flow logic
+- `schemas/DeviceCode.js` — MetaSQL (code, userId, expiresAt, status)
+
+#### Критерии приёмки
+
+- [ ] `POST /api/auth/device` → device_code + user_code (6 chars)
+- [ ] Device code expires in 15 minutes
+- [ ] Browser: `/device` page for code entry
+- [ ] WorkOS session required for confirmation
+- [ ] `POST /api/auth/token` → access_token (JWT, 1h) + refresh_token (30d)
+- [ ] Token refresh: single-use rotation
+- [ ] Rate limiting: max 1 device code per minute per user
+
+- **Tests:** 3 (device_flow_complete.test, device_code_expiry.test, token_refresh_rotation.test)
+
+---
+
+### US-088: CLI Sync — Passport + Scan Upload (4 SP)
+
+- **Feature:** F62 🟠 | **Developer:** Max
+
+#### Описание
+
+Как разработчик, я хочу синхронизировать данные из CLI (Passport + Scan results) в SaaS Dashboard — чтобы Dashboard показывал реальное состояние моих проектов.
+
+#### Sync Endpoints
+
+```javascript
+// POST /api/sync/passport — upload AI tool passport from CLI
+// Auth: Bearer token from Device Flow (US-087)
+// Body: {
+//   toolSlug: 'openai-gpt4o',
+//   passport: { ... },   // полный passport JSON
+//   source: 'cli',
+//   version: '1.2.0'
+// }
+// Merge strategy:
+//   - Technical fields (от CLI): ПРИОРИТЕТ (detection, versions, imports)
+//   - Organizational fields (от SaaS): ПРИОРИТЕТ (owner, department, notes)
+//   - Conflict resolution: latest timestamp wins for same field
+
+// POST /api/sync/scan — upload scan results
+// Body: {
+//   projectPath: '/Users/dev/my-app',
+//   score: 72,
+//   findings: [...],          // violations found
+//   toolsDetected: [...],     // AI tools detected
+//   scannedAt: '2026-02-28T10:00:00Z'
+// }
+// NOTE: Source code is NEVER transmitted — only metadata
+
+// GET /api/sync/status — sync status per org
+// { lastSyncAt, toolsSynced, scansSynced, conflicts: [] }
+```
+
+#### Merge Strategy
+
+```javascript
+// ТЕХНИЧЕСКОЕ (CLI приоритет):
+// detectionPatterns, versions, imports, dependencies, env_vars,
+// scanScore, findings, lastScannedAt
+
+// ОРГАНИЗАЦИОННОЕ (SaaS приоритет):
+// owner, department, notes, customTags, friaId, documents,
+// complianceStatus, manualOverrides
+
+// TIMESTAMP-BASED (latest wins):
+// riskLevel, category (if manually overridden in SaaS → SaaS wins)
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/sync/passport.js` — passport upload + merge
+- `app/api/sync/scan.js` — scan results upload
+- `app/api/sync/status.js` — sync status
+- `app/application/sync/mergePassport.js` — merge strategy
+- `app/application/sync/processScanUpload.js` — scan processing
+- `schemas/SyncHistory.js` — MetaSQL (source, type, status, conflicts)
+
+#### Критерии приёмки
+
+- [ ] `POST /api/sync/passport` → merge CLI passport with SaaS data
+- [ ] Technical fields: CLI takes priority
+- [ ] Organizational fields: SaaS takes priority
+- [ ] `POST /api/sync/scan` → ScanResult created with organizationId
+- [ ] Source code never transmitted (metadata only)
+- [ ] Conflict logging: conflicts stored for manual review
+- [ ] Auth: Bearer token from Device Flow required
+- [ ] `GET /api/sync/status` → last sync info
+- [ ] Cross-System Map updated automatically after sync
+
+- **Tests:** 4 (passport_merge_strategy.test, scan_upload_processing.test, sync_conflict_resolution.test, sync_auth_required.test)
+
+---
+
+### US-089: TUI Daemon Push (2 SP)
+
+- **Feature:** F27 🟠 | **Developer:** Leo
+
+#### Описание
+
+Как разработчик, я хочу чтобы CLI daemon автоматически push'ил Passport + scan results в SaaS — без ручного запуска sync.
+
+> Подмножество US-088 (F62) через daemon (background process), не user-initiated.
+
+#### Daemon Push
+
+```javascript
+// CLI daemon (в Complior Engine) запускается как background process:
+// complior daemon start → watches file changes → auto-sync
+//
+// При изменении:
+//   1. Re-scan project
+//   2. POST /api/sync/passport (if passport changed)
+//   3. POST /api/sync/scan (if new findings)
+//   4. Dashboard обновляется через SSE push
+//
+// SaaS side (этот US):
+// - SSE endpoint для Dashboard real-time updates
+// - After successful sync → emit event → connected Dashboard clients update
+
+// GET /api/events/stream — SSE connection for Dashboard
+// Events: { type: 'sync:completed', data: { toolSlug, score, findingsCount } }
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/events/stream.js` — SSE connection endpoint
+- `server/src/event-bus.js` — in-process EventEmitter for SSE
+
+**Модифицированные файлы:**
+- `app/api/sync/passport.js` — emit SSE event after successful sync
+- `app/api/sync/scan.js` — emit SSE event after successful scan upload
+
+#### Критерии приёмки
+
+- [ ] SSE endpoint: `GET /api/events/stream` → `text/event-stream`
+- [ ] After sync → SSE event pushed to connected Dashboard clients
+- [ ] Dashboard updates without page reload
+- [ ] Reconnect logic: client auto-reconnects on SSE drop
+- [ ] Auth required for SSE connection
+
+- **Tests:** 2 (sse_event_push.test, sync_triggers_sse.test)
+
+---
+
+### US-090: Public AI Risk Registry — Vendor Verification + Procurement API (4 SP)
+
+- **Feature:** F38 🔴 | **Developer:** Max + Nina
+
+#### Описание
+
+Как вендор AI-инструмента, я хочу подать заявку на верификацию в Public AI Risk Registry, чтобы получить badge "Verified" и повысить доверие к моему продукту. Как procurement-менеджер, я хочу API для проверки AI-инструментов перед закупкой.
+
+#### Vendor Verification
+
+```javascript
+// POST /api/registry/vendor-claim — submit claim for a tool
+// Payload: { toolSlug, vendorEmail, domain, evidence: { website, linkedin, registrationDoc } }
+//
+// Verification flow:
+// 1. Vendor submits claim → status: 'pending'
+// 2. Auto-check: email domain matches tool.provider_url? → bump confidence
+// 3. Manual review (admin) → approve/reject
+// 4. Approved → tool.vendorVerified = true, badge on public page
+//
+// GET  /api/registry/vendor-claims — admin list
+// PATCH /api/registry/vendor-claims/:id — admin approve/reject
+// Schemas: VendorClaim { vendorClaimId, toolId, email, domain, status, evidence, reviewedBy }
+```
+
+#### Procurement API
+
+```javascript
+// GET /v1/registry/procurement/:slug — public API, API key auth
+// Returns: {
+//   tool, riskLevel, documentationGrade, obligationCount,
+//   vendorVerified, lastAssessedAt,
+//   complianceReadiness: 'ready' | 'partial' | 'not_assessed'
+// }
+//
+// Batch: POST /v1/registry/procurement/batch — { slugs: ['chatgpt', 'copilot', ...] }
+// Rate limit: 100 req/min per API key
+// Use case: procurement teams checking AI tools before purchase
+```
+
+#### Passport Auto-Fill
+
+```javascript
+// When user adds AI tool from Registry → auto-fill Passport technical fields:
+// name, provider, website, riskLevel, obligations, documentationGrade
+// Registry data → Passport (read-only fields, source: 'registry_autofill')
+// User still fills: use case, department, data categories, autonomy level
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/registry/vendor-claim.js` — submit + admin CRUD
+- `app/application/registry/submitVendorClaim.js` — use case
+- `app/application/registry/reviewVendorClaim.js` — admin approve/reject
+- `app/schemas/VendorClaim.js` — MetaSQL schema
+- `app/api/v1/registry/procurement.js` — public procurement API
+- `frontend/components/registry/VendorClaimForm.tsx` — public claim form
+- `frontend/app/[locale]/(marketing)/registry/[id]/claim/page.tsx` — claim page
+
+**Модифицированные файлы:**
+- `app/api/v1/registry/tools.js` — add vendorVerified flag to responses
+- `frontend/components/registry/ToolHero.tsx` — show "Verified" badge
+- `app/application/inventory/addAITool.js` — auto-fill from Registry data
+
+#### Критерии приёмки
+
+- [ ] Vendor can submit verification claim with evidence
+- [ ] Auto domain-match: email domain vs provider URL
+- [ ] Admin can approve/reject claims
+- [ ] Verified badge visible on public Registry page
+- [ ] Procurement API: single + batch lookup
+- [ ] API key auth + rate limiting on procurement endpoints
+- [ ] Registry data auto-fills Passport on tool add
+
+- **Tests:** 4 (vendor_claim_submit.test, vendor_claim_review.test, procurement_api.test, passport_autofill.test)
 
 ---
 
@@ -547,33 +830,39 @@ Step 5: "Your risk level as provider" → obligations summary (Art.6/9/11/16)
 
 | US | Feature | Developer | SP | Tests |
 |----|---------|-----------|-----|-------|
-| US-081 | F28: Cross-System Map API | Max | 8 | 4 |
-| US-082 | F28: GitHub/GitLab Scan | Max | 5 | 3 |
-| US-083 | F28: Dashboard v2 Frontend | Nina | 7 | 2 |
-| US-084 | F28/30: Agent Governance UI | Nina | 4 | 1 |
-| US-085 | F28: Score Trends | Leo | 3 | 2 |
-| US-086 | F29: IdP Discovery (partial) | Max | 2 | 1 |
-| US-087 | F21/22: Provider-Lite Wizard | Nina | 3 | 2 |
-| US-088 | F26: Colorado SB 205 — Jurisdiction #2 | Max | 3 | 2 |
-| **Итого** | | | **35** | **17** |
+| US-081 | F19: FRIA Generator | Max | 8 | 5 |
+| US-082 | F07: Document Generators (5 types) | Max + Nina | 7 | 4 |
+| US-083 | F42: Audit Package (ZIP) | Max | 6 | 4 |
+| US-084 | F28: Dashboard v2 (Map + Trends + Roles) | Nina + Max | 7 | 3 |
+| US-085 | F08: Gap Analysis (12 AESIA) | Max + Nina | 5 | 3 |
+| US-086 | F48: Compliance Timeline | Nina | 3 | 2 |
+| US-087 | F61: CLI Auth Device Flow | Leo | 3 | 3 |
+| US-088 | F62: CLI Sync (Passport + Scan) | Max | 4 | 4 |
+| US-089 | F27: TUI Daemon Push (SSE) | Leo | 2 | 2 |
+| US-090 | F38: Vendor Verification + Procurement API | Max + Nina | 4 | 4 |
+| **Итого** | | | **49** | **34** |
 
-> Дополнительно 3 integration tests. Total ≈ 18 новых тестов.
+> Capacity stretched (+11 над baseline 38 SP). Если нужен trade-off: US-089 (TUI Daemon Push, 2 SP), US-086 (Timeline, 3 SP) и US-090 (Vendor Verification, 4 SP) могут начаться параллельно или частично перейти в S9.
 
 ---
 
 ## Definition of Done
 
-- [ ] **Colorado SB 205:** 5 obligations + RegulationMeta + CrossMappings в PostgreSQL
-- [ ] **Cross-System Map:** 3 источника (TUI + GitHub + Manual) в одном view
-- [ ] **GitHub/GitLab OAuth:** подключение + автосканирование репо
-- [ ] **Dashboard v2:** Screen 24 (Cross-System Map) + Screen 25 (Agents) + Screen 27 (Registry API) + Screen 29 (Score Trends)
-- [ ] **SSE real-time:** TUI scan upload → Dashboard обновляется мгновенно
-- [ ] **Role views:** CTO/DPO/Developer/Auditor переключение
-- [ ] **Provider-Lite Wizard:** checklist PDF + readiness score
-- [ ] **DB migrations:** CrossSystemSource таблица создана
-- [ ] `npm test` — ~260 total, все green
+- [ ] **FRIA Generator:** 6 sections, LLM-assisted, review/approve workflow, PDF generation
+- [ ] **Document Generators:** 5 types, section-by-section, Tiptap editor, PDF via Gotenberg
+- [ ] **Audit Package:** One-click ZIP, 10+ files, QR verification, async generation
+- [ ] **Dashboard v2:** Cross-System Map, Score Trends (90d), Role views (CTO/DPO/Dev)
+- [ ] **Gap Analysis:** 12 AESIA categories, priority scoring, action plan
+- [ ] **Timeline:** Real data, deadline countdown, critical path
+- [ ] **CLI Auth:** OAuth 2.0 Device Flow, JWT tokens, refresh rotation
+- [ ] **CLI Sync:** Passport + Scan upload, merge strategy, conflict resolution
+- [ ] **SSE:** Real-time Dashboard updates on sync
+- [ ] **Vendor Verification:** Claim submission, admin review, Verified badge
+- [ ] **Procurement API:** Single + batch lookup, API key auth, rate limiting
+- [ ] **DB migrations:** FRIAAssessment, ComplianceDocument, DeviceCode, SyncHistory, VendorClaim
+- [ ] `npm test` — ~377 total, все green
 - [ ] `npm run typecheck` — 0 errors
-- [ ] Deploy to staging: ручная проверка Cross-System Map с реальными TUI данными
+- [ ] Deploy to staging: FRIA + Audit Package E2E проверка
 
 ---
 
@@ -581,8 +870,8 @@ Step 5: "Your risk level as provider" → obligations summary (Art.6/9/11/16)
 
 | Риск | Вероятность | Импакт | Митигация |
 |------|------------|--------|-----------|
-| GitHub OAuth scope permissions | Средняя | Средний | Read-only: `read:org` + `read:repo` scope, объяснить пользователям |
-| CrossSystemSource: большие организации (1000+ repos) | Средняя | Средний | Pagination, background jobs, cap at 100 repos/scan initially |
-| SSE connection drops в production | Средняя | Средний | Reconnect logic в frontend, heartbeat ping |
-| Score Trends: большие date ranges медленные | Средняя | Низкий | Index on scannedAt + organizationId, cache aggregates |
-| Gotenberg доступность в staging | Низкая | Средний | Проверить docker-compose staging config |
+| LLM generation quality (FRIA/Docs) | Средняя | Средний | Prompt engineering, domain expert review, user editable drafts |
+| Gotenberg PDF stability (concurrent) | Средняя | Средний | Queue serialization, max 3 concurrent PDF jobs, health check |
+| CLI Sync: merge conflicts at scale | Средняя | Средний | Conflict logging, manual review UI, "latest wins" fallback |
+| Audit Package ZIP generation time (large org) | Средняя | Низкий | Async job, progress tracking, 30-min timeout |
+| Device Flow: user doesn't complete browser auth | Низкая | Низкий | Clear instructions in CLI, 15-min expiry, retry prompt |

@@ -1,7 +1,11 @@
 # Sprint Backlog EVA — Eva: Conversational AI Onboarding
 
+> **⚠️ SUPERSEDED:** Этот Sprint Backlog поглощён Sprint 9 (v2.0.0, 2026-02-28).
+> Eva реализуется в рамках S9 как US-091..US-094 (Mistral Client + Guard + Pipeline + Streaming + UI + Tool Calling).
+> Этот файл сохранён как исторический reference для деталей архитектуры (3-level Guard, streaming route, quota enforcement).
+
 **Sprint Goal:** Дать deployer'ам AI-ассистента Eva для обнаружения/регистрации AI-инструментов через диалог и ответов на вопросы по EU AI Act — финальная P0-фича для MVP.
-**Статус:** Draft (ожидает утверждения PO)
+**Статус:** ~~Draft~~ → **SUPERSEDED by SPRINT-BACKLOG-009.md v2.0.0**
 
 **Capacity:** ~34 SP | **Duration:** 2 weeks
 **Developers:** Max (Backend+Infra+QA, US-045..050), Nina (Frontend+UX, US-051)

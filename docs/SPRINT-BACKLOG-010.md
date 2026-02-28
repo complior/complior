@@ -1,993 +1,944 @@
-# SPRINT-BACKLOG-010.md — AI Literacy + Multi-language + Monitoring Phase 2 + Enterprise Scale + Growth
+# SPRINT-BACKLOG-010.md — Полная платформа
 
-**Версия:** 1.0.0
-**Дата:** 2026-02-22
+**Версия:** 2.0.0
+**Дата:** 2026-02-28
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Planned
-**Зависимости:** Sprint 9 (Governance + Remediation + Monitoring v1) merged to develop
+**Зависимости:** Sprint 9 (Реестр + Документы + Регулятор) merged to develop
 
 ---
 
 ## Sprint Goal
 
-Завершить Full Scope платформы перед Aug 2, 2026 дедлайном EU AI Act. AI Literacy Module (F18) как wedge product. Multi-language DE + FR (F14). Monitoring Cloud Phase 2 — scheduled reports, SLA tracking, incident response (F32). Enterprise Completion — org-wide scan, API v1.0, white-label reports (F33). Growth & Marketing — SEO 27.5K pages, State of AI Report (F34). Milestone: **FULL SCOPE**.
+**Финальный спринт перед Aug 2, 2026 дедлайном EU AI Act.** Incident Management (Art. 73), Conformity Assessment (Annex VI), AESIA Export, Due Diligence Report, Real-time Monitoring, Enterprise Features (custom rules, API v1.0, audit log), AI Literacy Module (wedge product), Multi-language (DE/FR). Milestone: **FULL SCOPE**.
 
-**Capacity:** ~35 SP | **Duration:** 3.5 недели
-**Developers:** Max (Backend — AI Literacy API + Enterprise API v1.0), Nina (Frontend — AI Literacy UI + Multi-language + Growth pages), Leo (Infra — Monitoring Phase 2 + Scheduled Reports + SEO)
-**Baseline:** ~280 tests (Sprint 9) → **New: ~22 tests (total: ~302)**
+**Capacity:** ~42 SP | **Duration:** 4 недели
+**Developers:** Max (Backend — Incident Mgmt + Conformity Assessment + Enterprise API + NHI + Predictions), Nina (Frontend — AI Literacy + Multi-language + AESIA Export UI + Benchmarking), Leo (Infra — Monitoring v2 + DD Report + MCP Analytics)
+**Baseline:** ~408 tests (Sprint 9) → **New: ~35 tests (total: ~443)**
 
-> **Prerequisite:** Sprint 9 merged to develop. Monitoring Dashboard (Screen 26) live. Enterprise roles работают. Regulatory Monitor active. KI-Compliance Siegel deployed.
+> **Prerequisite:** Sprint 9 merged to develop. AI Systems Registry live. Wizard 5-step complete. Doc Generators operational. Badge deployed. Vendor Request works.
 
 ---
 
 ## Граф зависимостей
 
 ```
-F28 (Dashboard, S008) ──► US-101 (AI Literacy — зависит от IAM + notifications)
-F02 (IAM — users/employees) ──┘
+US-111 (Incident Management) — параллельно, зависит от F39 (AI Systems Registry)
 
-US-101 (AI Literacy) ──► US-102 (Multi-language DE/FR — добавить к AI Literacy контенту)
+US-112 (Conformity Assessment) — зависит от US-081 (FRIA) + US-082 (Doc Generators)
 
-F32 (Monitoring v1, S009) ──► US-103 (Monitoring Phase 2: reports + SLA + incidents)
+US-113 (AESIA Export) — зависит от US-085 (Gap Analysis) + US-082 (Doc Generators)
 
-F33 (Enterprise v1, S009) ──► US-104 (Enterprise Completion: org-wide scan + API v1.0)
+US-114 (DD Report) — зависит от US-083 (Audit Package) + US-084 (Dashboard v2)
 
-US-101 + US-104 ──► US-105 (Growth & Marketing: SEO + AI Literacy report)
+US-115 (Monitoring v2) — зависит от US-086 (Timeline) + US-104 (Notifications)
+
+US-116 (Enterprise Features) — зависит от US-084 (Dashboard v2)
+
+US-117 (AI Literacy) — параллельно, зависит от F02 (IAM)
+
+US-117 ──► US-118 (Multi-language DE/FR — includes AI Literacy content)
+
+US-119 (MCP Proxy Analytics) — зависит от F62 (CLI Sync)
+US-120 (NHI Dashboard) — параллельно
+US-121 (Predictive Analysis) — зависит от US-115 (Monitoring v2 data)
+US-122 (Benchmarking) — параллельно, min 5 orgs per sector
 ```
 
 ---
 
 ## User Stories
 
-### US-101: AI Literacy Module — Wedge Product (8 SP)
+### US-111: Incident Management — Art. 73 (5 SP)
 
-- **Feature:** F18 | **Developer:** Max (backend) + Nina (frontend)
+- **Feature:** F55 🟠 | **Developer:** Max
 
 #### Описание
 
-Как HR Director, я хочу обеспечить соответствие Art. 4 AI Act — ВСЕ сотрудники должны пройти AI Literacy обучение (обязательно с Feb 2, 2025). Хочу импортировать список сотрудников, назначить курсы по роли, отслеживать прогресс и получить сертификаты.
+Как compliance officer, я хочу полный incident management lifecycle: от обнаружения нарушения AI системы до отчёта регулятору — с соблюдением Art. 73 (2 дня при смерти/серьёзном ущербе, 15 дней иначе).
 
-> **Wedge Product:** AI Literacy standalone за €49/мес. Art. 4 уже обязателен (Feb 2025). Отдельный CTA: `/ai-literacy` доступен даже без full compliance subscription.
+#### Incident Lifecycle
 
-#### 4 Курса (собственный контент)
+```
+Detection → Classification → Escalation → Investigation →
+  → Corrective Actions → Regulator Report → Resolution → Closure
 
-| Курс | Для кого | Модулей | Длительность | Язык |
-|------|----------|---------|-------------|------|
-| **Executive** | CEO, CTO, руководство | 3 | ~20 мин | EN (+ DE/FR в US-102) |
-| **HR Manager** | HR, рекрутеры | 4 | ~30 мин | EN |
-| **Developer** | Разработчики, IT | 5 | ~40 мин | EN |
-| **General** | Все сотрудники | 3 | ~15 мин | EN |
+Timeline requirements (Art. 73):
+— Серьёзный инцидент (смерть, здоровье): 2 рабочих дня → MSA
+— Другой инцидент: 15 рабочих дней → MSA
+— Follow-up report: после расследования
+```
 
-#### Модуль структура
+#### API Endpoints
 
 ```javascript
-// Новая таблица: LiteracyCourse
+// POST /api/incidents                    — create incident (auto or manual)
+// GET  /api/incidents                    — list (filterable: status, severity, tool)
+// GET  /api/incidents/:id               — full details + timeline
+// PATCH /api/incidents/:id/status       — update status
+// POST /api/incidents/:id/escalate      — escalate to MSA
+// POST /api/incidents/:id/report        — generate MSA report
+// POST /api/incidents/:id/corrective    — add corrective action
+// GET  /api/incidents/stats             — aggregate stats for dashboard
+
+// Auto-detection triggers (from Monitoring):
+// - Score drop > 30 points in 24h → auto-create incident (severity: high)
+// - User complaint count spike → auto-create (severity: medium)
+// - Scanner finds new critical violation → auto-create (severity: medium)
+```
+
+#### Новые таблицы
+
+```javascript
+// schemas/ComplianceIncident.js:
 ({
   Details: {},
-  slug: { type: 'string', unique: true },   // 'executive', 'hr-manager', 'developer', 'general'
+  organization: { type: 'Organization', delete: 'cascade' },
+  aiTool: { type: 'AITool', nullable: true, delete: 'set null' },
   title: { type: 'string' },
-  targetRole: { type: 'string' },
-  modules: { type: 'json' },                 // [{id, title, content, quiz: [{q, options, answer}]}]
-  durationMinutes: { type: 'integer' },
-  isActive: { type: 'boolean', default: true },
-});
-
-// Новая таблица: Employee
-({
-  Details: {},
-  organization: { type: 'Organization', delete: 'cascade' },
-  name: { type: 'string' },
-  email: { type: 'string' },
-  department: { type: 'string', nullable: true },
-  role: { type: 'string', nullable: true },   // для курс-assignment
-  importedAt: 'datetime',
-  invitedAt: { type: 'datetime', nullable: true },
-});
-
-// Новая таблица: CourseEnrollment
-({
-  Details: {},
-  employee: { type: 'Employee', delete: 'cascade' },
-  course: { type: 'LiteracyCourse', delete: 'cascade' },
-  organization: { type: 'Organization', delete: 'cascade' },
-  status: { type: 'string', default: "'not_started'" }, // not_started|in_progress|completed|overdue
-  progress: { type: 'integer', default: 0 },             // 0-100
-  score: { type: 'integer', nullable: true },            // quiz score 0-100
-  completedAt: { type: 'datetime', nullable: true },
-  certificateUrl: { type: 'string', nullable: true },    // Hetzner Object Storage
+  description: { type: 'text' },
+  severity: { type: 'string' },       // critical|high|medium|low
+  category: { type: 'string' },       // accuracy|bias|security|privacy|transparency|other
+  articleRef: { type: 'string', nullable: true },
+  status: { type: 'string', default: "'open'" },
+  // open|investigating|corrective_action|reported|resolved|closed
+  assignedTo: { type: 'integer', nullable: true },
+  detectedAt: 'datetime',
+  reportDeadline: { type: 'datetime', nullable: true }, // 2 or 15 business days
+  reportedToMSA: { type: 'boolean', default: false },
+  reportedAt: { type: 'datetime', nullable: true },
+  resolvedAt: { type: 'datetime', nullable: true },
+  timeline: { type: 'json', default: "'[]'" },  // [{timestamp, action, author, note}]
+  correctiveActions: { type: 'json', default: "'[]'" },
 });
 ```
 
-#### Employee Import + Invitations
+#### MSA Report Generation
 
 ```javascript
-// POST /api/literacy/employees/import
-// Accepts: CSV (name, email, department, role)
-// Creates: Employee records + CourseEnrollment per assigned course
-// pg-boss job: send invitation emails (batch, rate-limited)
-
-// CSV format:
-// name,email,department,role
-// Anna Schmidt,anna@acme.de,HR,hr-manager
-// Klaus Meyer,klaus@acme.de,Engineering,developer
-
-// POST /api/literacy/courses/assign
-// { employeeIds: [...], courseSlug: 'general', deadline: '2026-08-01' }
-// → bulk enrollment + email invitation (Brevo)
-```
-
-#### Compliance Certificates (PDF)
-
-```javascript
-// POST /api/literacy/certificates/generate/:enrollmentId
-// → Mistral не используется (template-based, deterministic)
-// → Gotenberg → PDF → Hetzner Object Storage
-
-// Employee certificate: "Anna Schmidt completed Executive AI Literacy Course"
-// Org certificate: "Acme GmbH — 100% of employees completed Art. 4 training"
-
-// GET /api/literacy/certificates/org — organization-level certificate
-// (доступен только при 100% completion rate)
-```
-
-#### Dashboard Widget
-
-```javascript
-// GET /api/literacy/stats
-// {
-//   totalEmployees: 45,
-//   completedCount: 32,
-//   completionRate: 71.1,
-//   overdueCount: 5,
-//   byDepartment: { HR: 100, Engineering: 60, Marketing: 50 },
-//   avgScore: 87.3
-// }
-```
-
-#### Frontend Screens
-
-```
-AI Literacy Dashboard:
-┌─────────────────────────────────────────────────────────────────────────┐
-│ AI Literacy Compliance (Art. 4)                     Due: Aug 2, 2026    │
-│                                                                           │
-│ 🎓 71% Complete  ████████████████░░░░░░  32/45 employees                │
-│                                                                           │
-│ ⚠ 5 employees overdue → Send reminder                                   │
-│                                                                           │
-│ By Department:                                                            │
-│   HR:          ████████████████████ 100% (4/4)  ✓                        │
-│   Engineering: ████████████░░░░░░░░  60% (15/25) ⚠                      │
-│   Marketing:   ██████████░░░░░░░░░░  50% (8/16)  ⚠                      │
-│                                                                           │
-│ [Import Employees]  [Assign Courses]  [Send Reminder]  [Download Cert]  │
-└─────────────────────────────────────────────────────────────────────────┘
+// POST /api/incidents/:id/report → generates PDF:
+// — Incident summary (date, system, description)
+// — Classification (Art. 73 severity + category)
+// — Immediate measures taken
+// — Root cause analysis (if completed)
+// — Corrective actions planned/completed
+// — Timeline of events
+// → Gotenberg PDF → S3 → attached to Passport.msaSubmissions
 ```
 
 #### Реализация
 
 **Новые файлы (backend/):**
-- `schemas/LiteracyCourse.js`
-- `schemas/Employee.js`
-- `schemas/CourseEnrollment.js`
-- `app/api/literacy/employees.js` — import + list
-- `app/api/literacy/courses.js` — assign + list
-- `app/api/literacy/enrollments.js` — progress + completion
-- `app/api/literacy/certificates.js` — generate + download
-- `app/api/literacy/stats.js` — dashboard widget
-- `app/application/literacy/importEmployeesCSV.js`
-- `app/application/literacy/generateCertificate.js` — Gotenberg
-- `app/jobs/literacy-invitations.js` — pg-boss batch email
-- `data/courses/` — course content JSON (4 курса × modules + quizzes)
+- `schemas/ComplianceIncident.js`
+- `app/api/incidents/crud.js` — create, list, get, update status
+- `app/api/incidents/escalate.js` — escalation + deadline calculation
+- `app/api/incidents/report.js` — MSA report PDF
+- `app/api/incidents/stats.js` — aggregate for dashboard
+- `app/application/incidents/createIncident.js`
+- `app/application/incidents/calculateReportDeadline.js` — 2 or 15 business days
+- `app/application/incidents/generateMSAReport.js` — LLM + Gotenberg
+- `app/domain/incidents/IncidentClassifier.js` — severity + deadline rules (pure)
+- `app/jobs/incident-deadline-checker.js` — pg-boss: alert on approaching deadlines
 
 **Новые файлы (frontend/):**
-- `app/(dashboard)/ai-literacy/page.tsx` — AI Literacy Dashboard
-- `app/(dashboard)/ai-literacy/employees/page.tsx` — Employee list + import
-- `app/(dashboard)/ai-literacy/courses/page.tsx` — Course management
-- `app/(dashboard)/ai-literacy/[enrollmentId]/course.tsx` — Course player (quiz)
-- `components/literacy/ProgressBar.tsx`
-- `components/literacy/CourseCard.tsx`
-- `components/literacy/CertificateDownload.tsx`
-- `hooks/useLiteracyStats.ts`
-
-**Модифицированные файлы:**
-- `app/(dashboard)/layout.tsx` — добавить AI Literacy в nav
-- `components/dashboard/ComplianceWidget.tsx` — добавить AI Literacy widget
+- `app/(dashboard)/incidents/page.tsx` — incident list
+- `app/(dashboard)/incidents/[id]/page.tsx` — incident detail + timeline
+- `app/(dashboard)/incidents/create/page.tsx` — manual create form
+- `components/incidents/IncidentTimeline.tsx` — visual timeline
+- `components/incidents/SeverityBadge.tsx` — severity indicator
+- `components/incidents/DeadlineCountdown.tsx` — days until MSA report due
 
 #### Критерии приёмки
 
-- [ ] CSV import: 100+ сотрудников за раз
-- [ ] 4 курса + quizzes (5-10 вопросов per модуль)
-- [ ] Course assignment: по роли (автоматический) + ручной
-- [ ] Invitation email (Brevo) с персональной ссылкой на курс
-- [ ] Course player: модули → quiz → completion
-- [ ] Employee certificate PDF (Gotenberg)
-- [ ] Org-level certificate: доступен при 100% completion
-- [ ] Dashboard widget: completion rate + overdue count
-- [ ] Per-department breakdown
-- [ ] Deadline tracking: overdue статус после deadline
-- [ ] Plan enforcement: AI Literacy доступен Starter+
+- [ ] Full lifecycle: open → investigating → corrective_action → reported → resolved → closed
+- [ ] Art. 73 deadlines: 2 business days (серьёзный), 15 business days (иной)
+- [ ] Report deadline auto-calculated based on severity
+- [ ] MSA Report PDF generation (Gotenberg)
+- [ ] Timeline: every status change logged with author + timestamp
+- [ ] Corrective actions: add, track, close
+- [ ] Auto-detection: score drop, complaint spike, critical violation
+- [ ] Dashboard widget: open incidents count + deadline countdown
+- [ ] pg-boss: daily check for approaching deadlines → notification
+- [ ] Linked to AI tool in registry
+- [ ] Plan enforcement: Growth+ required
 
-- **Tests:** 5 (employee_csv_import.test, course_completion_flow.test, employee_certificate_pdf.test, org_certificate_criteria.test, literacy_stats_aggregation.test)
+- **Tests:** 5 (incident_lifecycle.test, deadline_calculation.test, msa_report_pdf.test, auto_detection_triggers.test, incident_stats.test)
 
 ---
 
-### US-102: Multi-language — DE + FR (6 SP)
+### US-112: Conformity Assessment Wizard — Annex VI (4 SP)
 
-- **Feature:** F14 | **Developer:** Nina
+- **Feature:** F60 🟠 | **Developer:** Max
 
 #### Описание
 
-Как немецкий или французский пользователь, я хочу использовать платформу на своём языке — интерфейс, AI Literacy курсы, Eva responses, и compliance documents — чтобы onboarding был как можно проще.
+Как deployer high-risk AI, я хочу пройти самооценку по Annex VI (internal control) — предзаполненную из Passport + Scanner + FRIA — и получить Conformity Assessment Report + Declaration of Conformity.
 
-#### i18n Architecture
+> Для high-risk AI перед размещением на рынке (Art. 43).
+
+#### Wizard
+
+```
+Step 1: System identification (from Passport)
+Step 2: QMS compliance check (from QMS document)
+Step 3: Risk Management compliance (from Risk Plan)
+Step 4: Technical Documentation check (from Passport + docs)
+Step 5: Data Governance verification
+Step 6: Human Oversight verification (from Passport.autonomyLevel)
+Step 7: Accuracy, Robustness, Cybersecurity (from Scanner)
+Step 8: Review → Generate Report
+
+Pre-fill: 60-90% from existing Passport + Scanner + FRIA data
+Output: Conformity Assessment Report PDF + Declaration of Conformity PDF
+```
+
+#### API
 
 ```javascript
-// next-intl: уже установлен (EN - default)
-// Добавляем: DE + FR локали
-
-// Структура:
-// messages/
-//   en.json  — 1,200 ключей (base, существует)
-//   de.json  — перевод всего EN
-//   fr.json  — перевод всего EN
-
-// Locale detection:
-// 1. User profile (Organization.locale)
-// 2. Accept-Language header
-// 3. URL prefix: /de/dashboard, /fr/dashboard (опционально)
-```
-
-#### AI Literacy Courses DE + FR
-
-```javascript
-// data/courses/executive.de.json — немецкая версия
-// data/courses/executive.fr.json — французская версия
-// (4 курса × 2 языка = 8 дополнительных файлов)
-
-// Course player: загружает контент по locale пользователя
-// Quiz questions: переведены + validated by Elena (AI Act expert)
-```
-
-#### Eva Multi-language
-
-```javascript
-// Eva отвечает на языке пользователя:
-// Prompt prefix: "You are Eva, an AI Act compliance assistant.
-//                Respond in {locale} ({localeName})."
-// Locale из Organization.locale (устанавливается при регистрации)
-// Mistral Large 3 отлично владеет DE + FR
-
-// POST /api/settings/locale — обновить locale организации
-// { locale: 'de' | 'fr' | 'en' }
-```
-
-#### Compliance Documents Locale
-
-```javascript
-// FRIA, AI Usage Policy, Monitoring Plan — генерируются в locale пользователя
-// Prompt: "Generate the following section in {locale}: ..."
-// PDF: Gotenberg → encoding правильный для DE/FR (UTF-8 already)
-```
-
-#### Locale Settings UI
-
-```
-Organization Settings → Language:
-  [English ▼] | [Deutsch] | [Français]
-
-Profile Settings → Language (overrides org):
-  [Personal language preference]
+// POST /api/conformity/start/:aiToolId     — start assessment (pre-fill from data)
+// GET  /api/conformity/:id                 — assessment status + sections
+// PUT  /api/conformity/:id/section/:sid    — update section
+// POST /api/conformity/:id/complete        — generate reports
+// GET  /api/conformity/:id/report          — download report PDF
+// GET  /api/conformity/:id/declaration     — download declaration PDF
 ```
 
 #### Реализация
 
 **Новые файлы:**
-- `messages/de.json` — ~1,200 ключей немецкий перевод
-- `messages/fr.json` — ~1,200 ключей французский перевод
-- `data/courses/*.de.json` — 4 курса на немецком
-- `data/courses/*.fr.json` — 4 курса на французском
-- `app/api/settings/locale.js` — locale update endpoint
-
-**Модифицированные файлы:**
-- `middleware.ts` — locale detection + routing
-- `app/i18n.ts` — добавить de + fr к supported locales
-- `app/(dashboard)/settings/page.tsx` — language switcher UI
-- `app/application/eva/chatService.js` — locale-aware prompt
-- `app/application/documents/generateDocument.js` — locale-aware generation
+- `schemas/ConformityAssessment.js` — MetaSQL
+- `app/api/conformity/assessment.js` — wizard endpoints
+- `app/application/conformity/prefillFromPassport.js` — pre-fill logic
+- `app/application/conformity/generateReport.js` — Gotenberg PDF
+- `app/domain/conformity/AnnexVICriteria.js` — 8 Annex VI criteria (pure)
+- `app/(dashboard)/conformity/[toolId]/page.tsx` — wizard UI
+- `components/conformity/CriterionCard.tsx` — per-criterion status
 
 #### Критерии приёмки
 
-- [ ] Весь UI доступен на DE + FR (все ~1,200 ключей переведены)
-- [ ] Locale переключатель в Settings: EN/DE/FR
-- [ ] Eva отвечает на DE/FR если locale установлен
-- [ ] AI Literacy курсы на DE + FR (все 4 курса)
-- [ ] Compliance documents генерируются на locale пользователя
-- [ ] Locale persists per Organization (не сбрасывается при обновлении)
-- [ ] EN остаётся default если locale не выбран
+- [ ] 8-step wizard matching Annex VI sections
+- [ ] Pre-fill 60-90% from Passport + Scanner + FRIA
+- [ ] Conformity Assessment Report PDF
+- [ ] Declaration of Conformity PDF
+- [ ] Results stored in Passport.conformityAssessment
+- [ ] Only for high-risk AI tools
+- [ ] Plan enforcement: Growth+ required
 
-- **Tests:** 2 (locale_switching.test, eva_locale_response.test)
+- **Tests:** 3 (conformity_prefill.test, annex_vi_criteria.test, conformity_report_pdf.test)
 
 ---
 
-### US-103: Monitoring Cloud Phase 2 — Scheduled Reports + SLA + Incidents (5 SP)
+### US-113: AESIA Export — 12 Excel Files (3 SP)
 
-- **Feature:** F32 (завершение) | **Developer:** Leo
+- **Feature:** F54 🟡 | **Developer:** Nina
 
 #### Описание
 
-Как DPO, я хочу получать регулярные compliance digest отчёты по email, видеть SLA гарантии нашего тарифа, и управлять incident response workflow — от обнаружения нарушения до подтверждения исправления.
+Как deployer в Испании (или любой EU стране), я хочу экспортировать 12 Excel-файлов в формате испанского регулятора AESIA — чтобы использовать их как baseline для compliance.
+
+#### 12 AESIA Checklists
+
+| # | Checklist | AESIA # |
+|---|-----------|---------|
+| 1 | Organization profile | #1 |
+| 2 | AI System inventory | #2 |
+| 3 | Technical documentation | #3 |
+| 4 | Quality Management System | #4 |
+| 5 | Risk Management | #5 |
+| 6 | Human Oversight | #6 |
+| 7 | Data Governance | #7 |
+| 8 | Transparency | #8 |
+| 9 | Accuracy | #9 |
+| 10 | Robustness | #10 |
+| 11 | Cybersecurity | #11 |
+| 12 | Logging | #12 |
+
+```javascript
+// POST /api/export/aesia — trigger Excel generation
+// GET  /api/export/aesia/download/:id — download ZIP with 12 xlsx files
+// Each Excel: pre-filled from org data, per AESIA template structure
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/export/aesia.js` — trigger + download
+- `app/application/export/generateAESIAExcel.js` — Excel generation (xlsx library)
+- `app/domain/export/AESIATemplates.js` — 12 template structures (pure)
+- `app/(dashboard)/export/aesia/page.tsx` — UI: trigger + download
+
+**Новые deps:** `xlsx` (SheetJS) для Excel generation
+
+#### Критерии приёмки
+
+- [ ] 12 Excel files matching AESIA template structure
+- [ ] Pre-filled from org data (AI tools, passport, gap analysis)
+- [ ] ZIP download with all 12 files
+- [ ] Usable in any EU country as compliance baseline
+- [ ] Plan enforcement: Growth+ required
+
+- **Tests:** 2 (aesia_excel_generation.test, aesia_12_templates.test)
+
+---
+
+### US-114: Due Diligence Report (3 SP)
+
+- **Feature:** F52 🟡 | **Developer:** Leo
+
+#### Описание
+
+Как CTO, я хочу PDF отчёт для совета директоров / инвестора / страховой — на бизнес-языке, без технических деталей — с агрегированной compliance картиной организации.
+
+> Отличается от Audit Package (для регулятора): DD Report — для C-level/board, бизнес-фокус.
+
+#### Report Contents
+
+```
+Due Diligence AI Compliance Report — {OrgName}
+═══════════════════════════════════════════════
+
+1. Executive Summary
+   — Overall AI compliance posture: [Good/Fair/Needs Attention]
+   — Regulatory deadline: Aug 2, 2026 (X days remaining)
+   — Financial exposure: €XX.XM (potential penalties)
+
+2. AI Portfolio Overview
+   — Total AI systems: X
+   — Risk distribution: X high, X limited, X minimal
+   — Compliance score: X/100 (trend: ↑/↓/→)
+
+3. Key Risks
+   — Top 3 compliance gaps
+   — Recommended actions (business language)
+   — Estimated effort to close gaps
+
+4. Compliance Timeline
+   — Milestones completed
+   — Upcoming deadlines
+   — Critical path items
+
+5. Certification Readiness
+   — ISO 42001: X% ready
+   — AIUC-1: X% ready
+
+6. Recommendation
+   — Board-level recommendation
+   — Budget estimate for full compliance
+```
+
+#### API
+
+```javascript
+// POST /api/reports/due-diligence — generate (async, LLM for executive summary)
+// GET  /api/reports/due-diligence/download/:id — PDF
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `app/api/reports/due-diligence.js` — trigger + download
+- `app/application/reports/generateDDReport.js` — data aggregation + LLM summary
+- `app/(dashboard)/reports/due-diligence/page.tsx` — UI
+
+#### Критерии приёмки
+
+- [ ] PDF report: 5-10 pages, business language
+- [ ] Executive summary: LLM-generated (Mistral Medium 3)
+- [ ] Financial exposure calculation (penalties)
+- [ ] Compliance score trend
+- [ ] Certification readiness included
+- [ ] Plan enforcement: Growth+ required
+
+- **Tests:** 2 (dd_report_generation.test, dd_report_contents.test)
+
+---
+
+### US-115: Monitoring v2 — Scheduled Reports + Drift + SLA (5 SP)
+
+- **Feature:** F32 🟠 | **Developer:** Leo
+
+#### Описание
+
+Как DPO, я хочу: (1) scheduled compliance digest по email, (2) drift detection alerts, (3) SLA tracking per plan, (4) score heatmap.
 
 #### Scheduled Reports
 
 ```javascript
-// Новая таблица: ScheduledReport
-({
-  Details: {},
-  organization: { type: 'Organization', delete: 'cascade' },
-  frequency: { type: 'string' },  // 'weekly' | 'monthly'
-  recipients: { type: 'json' },   // [{ email, name }]
-  format: { type: 'string', default: "'pdf'" },  // 'pdf' | 'csv' | 'both'
-  lastSentAt: { type: 'datetime', nullable: true },
-  nextSendAt: 'datetime',
-  isActive: { type: 'boolean', default: true },
-});
+// POST /api/monitoring/reports/schedule
+// { frequency: 'weekly'|'monthly', recipients: [...], format: 'pdf'|'csv' }
 
-// pg-boss job: check_scheduled_reports — runs daily 08:00 UTC
-// При nextSendAt <= now():
-//   1. Генерация compliance digest (Mistral Small summary + табличные данные)
-//   2. PDF через Gotenberg (если format=pdf)
-//   3. Email через Brevo с attachment
-//   4. Обновить lastSentAt + nextSendAt
-
-// POST /api/monitoring/reports/schedule — создать расписание
-// GET  /api/monitoring/reports/schedule — список расписаний
-// POST /api/monitoring/reports/send-now  — immediate send (test)
+// pg-boss job: check_scheduled_reports — daily 08:00 UTC
+// Weekly digest:
+// — Org-wide score change (+/- delta)
+// — Top 3 improvements + top 3 deteriorations
+// — Active alerts (drift, anomalies)
+// — Upcoming deadlines (30 days)
+// → PDF (Gotenberg) + email (Brevo)
 ```
 
-#### Compliance Digest Content
+#### Drift Detection
 
 ```javascript
-// Weekly digest включает:
-// - Org-wide score change за неделю (+ или -)
-// - Top 3 improvements
-// - Top 3 deteriorations (с приоритетом)
-// - Active alerts (drift, anomalies)
-// - Upcoming deadlines (30 дней)
-// - Regulatory updates (за неделю)
+// pg-boss job: drift_detection — daily
+// Alert if: score drop > 15 points in 7 days
+// Alert if: unusual activity spike (> 10x normal)
+// Alert if: regulatory update affects org's tools
+
+// GET /api/monitoring/alerts — active alerts
+// POST /api/monitoring/alerts/configure — threshold + channels
+```
+
+#### Score Heatmap
+
+```
+Score Heatmap (org-wide, 30d)
+┌──────────────────────────────────────────────────────────────────┐
+│ System          Feb01 Feb08 Feb15 Feb22                           │
+│ hr-screening    ████  ████  ████  ████  (RED 34)                  │
+│ customer-bot    ████  ████  ████  ████  (GREEN 82)                │
+│ LangChain API   ████  ████  ████  ████  (AMBER 61)               │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 #### SLA Tracking
 
 ```javascript
 // SLA per plan:
-const planSLA = {
-  starter:    { targetScore: null, responseTime: null },  // no SLA
-  growth:     { targetScore: 75, responseTime: '48h' },   // soft SLA
-  scale:      { targetScore: 85, responseTime: '24h' },   // SLA
-  enterprise: { targetScore: 95, responseTime: '4h', dedicated: true }, // SLA + dedicated
-};
+// Starter: no SLA
+// Growth: target score visibility, 48h response
+// Enterprise: 95% target, 4h response, dedicated support
 
-// GET /api/monitoring/sla — текущий SLA status для org
-// {
-//   plan: 'scale', targetScore: 85, currentScore: 87, slamet: true,
-//   scoreGuarantee: 'Complior guarantees score visibility, not compliance outcome'
-// }
-```
-
-#### Incident Response Workflow
-
-```javascript
-// Новая таблица: ComplianceIncident
-({
-  Details: {},
-  organization: { type: 'Organization', delete: 'cascade' },
-  title: { type: 'string' },
-  severity: { type: 'string' },    // 'critical' | 'high' | 'medium'
-  articleRef: { type: 'string' },  // 'Art.26', 'Art.50'
-  affectedTool: { type: 'string', nullable: true },
-  status: { type: 'string', default: "'open'" }, // open|investigating|fixing|resolved|closed
-  assignedTo: { type: 'User', nullable: true },
-  detectedAt: 'datetime',
-  resolvedAt: { type: 'datetime', nullable: true },
-  timeline: { type: 'json' },       // [{timestamp, action, author, note}]
-});
-
-// POST /api/monitoring/incidents — создать инцидент (auto или manual)
-// GET  /api/monitoring/incidents — список (open/resolved)
-// PATCH /api/monitoring/incidents/:id/status — update status + timeline
-// POST /api/monitoring/incidents/:id/assign — назначить ответственного
-```
-
-#### Vendor Monitoring
-
-```javascript
-// GET /api/monitoring/vendors — vendor compliance status
-// Проверяет: AI vendor's own compliance declarations
-// Sources: vendor public compliance pages + CrossSystemSource scan data
-// Alert если: vendor compliance status изменился (new disclosure issue, etc.)
+// GET /api/monitoring/sla — current SLA status
 ```
 
 #### Реализация
 
 **Новые файлы:**
-- `schemas/ScheduledReport.js`
-- `schemas/ComplianceIncident.js`
-- `app/api/monitoring/reports.js` — schedule CRUD + send-now
+- `schemas/ScheduledReport.js` — MetaSQL
+- `app/api/monitoring/reports.js` — schedule CRUD
+- `app/api/monitoring/alerts.js` — GET + configure
+- `app/api/monitoring/heatmap.js` — score matrix
 - `app/api/monitoring/sla.js` — SLA status
-- `app/api/monitoring/incidents.js` — incident workflow
-- `app/api/monitoring/vendors.js` — vendor monitoring
-- `app/jobs/scheduled-reports.js` — pg-boss daily job
-- `app/application/monitoring/generateComplianceDigest.js`
-- `app/(dashboard)/monitoring/incidents/page.tsx` — incident list
-- `app/(dashboard)/monitoring/reports/page.tsx` — report scheduling UI
-
-**Модифицированные файлы:**
-- `app/(dashboard)/monitoring/page.tsx` — добавить SLA widget + incidents preview
-- `app/jobs/drift-detection.js` — auto-create incident on critical drift
+- `app/application/monitoring/generateComplianceDigest.js` — weekly/monthly content
+- `app/application/monitoring/detectDrift.js` — drift logic
+- `app/application/monitoring/detectAnomalies.js` — anomaly detection
+- `app/jobs/scheduled-reports.js` — pg-boss daily
+- `app/jobs/drift-detection.js` — pg-boss daily
+- `app/(dashboard)/monitoring/page.tsx` — monitoring dashboard
+- `components/monitoring/AlertPanel.tsx`
+- `components/monitoring/ScoreHeatmap.tsx`
+- `components/monitoring/RegulationFeed.tsx`
 
 #### Критерии приёмки
 
-- [ ] Scheduled Reports: weekly + monthly email с PDF attachment
-- [ ] pg-boss job: отправка в 08:00 UTC, не пропускает
-- [ ] Compliance Digest: score delta + top improvements/deteriorations + alerts
-- [ ] SLA page: plan SLA + current score + SLA met/not met
-- [ ] Incident creation: auto (из drift alert) + manual
-- [ ] Incident lifecycle: open → investigating → fixing → resolved
-- [ ] Incident timeline: каждое действие залоговано с автором + timestamp
-- [ ] Vendor monitoring: флаг если vendor compliance status изменился
+- [ ] Scheduled reports: weekly/monthly email with PDF attachment
+- [ ] pg-boss job: sends at 08:00 UTC
+- [ ] Drift alert: score drop > 15 points → alert created
+- [ ] Anomaly: spike > 10x → flag
+- [ ] Score heatmap: matrix for 30 days
+- [ ] Alert configuration: threshold + notification channels
+- [ ] SLA page: plan SLA + current status
 
-- **Tests:** 4 (scheduled_report_delivery.test, sla_calculation.test, incident_lifecycle.test, vendor_monitoring.test)
+- **Tests:** 4 (scheduled_report.test, drift_detection.test, anomaly_detection.test, heatmap_aggregation.test)
 
 ---
 
-### US-104: Enterprise Completion — Org-Wide Scan + API v1.0 + White-Label (5 SP)
+### US-116: Enterprise Features — Custom Rules + API v1.0 + Audit Log (5 SP)
 
-- **Feature:** F33 (завершение) | **Developer:** Max
+- **Feature:** F33 🟡 | **Developer:** Max
 
 #### Описание
 
-Как CTO enterprise компании, я хочу запустить org-wide scan сразу по всем источникам — и предоставить регуляторам stable, versioned API v1.0 для автоматического аудита. Брендировать отчёты нашим логотипом.
-
-#### Org-Wide Scan
-
-```javascript
-// POST /api/enterprise/scan/org-wide
-// Запускает параллельно:
-//   1. CrossSystemSource refresh (GitHub/GitLab rescan)
-//   2. IdP rescan (WorkOS connected apps)
-//   3. ScanResult latest (TUI data fresh)
-//   4. Shadow AI check (diff inventory vs discovered)
-// pg-boss jobs с progress tracking
-// SSE push: progress updates + final result
-
-// GET /api/enterprise/scan/org-wide/status/:jobId — progress
-// {
-//   status: 'running',
-//   progress: { github: 'done', idp: 'running', shadow: 'pending' },
-//   completedAt: null
-// }
-```
-
-#### White-Label Reports
-
-```javascript
-// POST /api/enterprise/branding
-// {
-//   logoUrl: 'https://...',     // uploaded to Hetzner Object Storage
-//   primaryColor: '#1A2B3C',
-//   reportFooter: 'Acme GmbH Compliance Report',
-//   hidePoweredBy: true          // enterprise only
-// }
-
-// Применяется к:
-// - PDF compliance reports (Gotenberg template)
-// - FRIA documents
-// - AI Literacy certificates
-// - Compliance digest emails
-```
-
-#### API v1.0 — Stable, Documented
-
-```javascript
-// Versioned API: /api/v1/ prefix (stable, breaking changes → v2)
-// Swagger/OpenAPI 3.0 documentation: GET /api/v1/docs
-// Machine-readable для SIEM / regulator tools
-
-// Key stable endpoints:
-// GET  /api/v1/compliance/summary     — org compliance score + breakdown
-// GET  /api/v1/compliance/tools       — all AI tools + risk levels
-// GET  /api/v1/compliance/violations  — open violations + articles
-// GET  /api/v1/compliance/audit-trail — audit events (paginated)
-// GET  /api/v1/agents                 — agent governance data
-// GET  /api/v1/literacy/stats         — AI Literacy completion
-
-// Auth: API Key (существующая инфраструктура из F26 Registry API)
-// Rate limits: 1000 req/hr (enterprise), 100 req/hr (scale)
-// Response format: stable JSON Schema (semver 1.0.0)
-```
+Как enterprise CTO, я хочу: (1) custom compliance rules (YAML), (2) stable API v1.0 для SIEM, (3) полный audit log для регулятора, (4) custom roles.
 
 #### Custom Compliance Rules
 
 ```javascript
-// Новая таблица: CustomComplianceRule
+// POST /api/enterprise/rules
+// {
+//   name: "Auto-require FRIA for HR tools",
+//   condition: { field: "category", op: "contains", value: "hr" },
+//   action: "require_fria",
+//   isActive: true
+// }
+// Actions: require_fria | block_deployment | warn | notify_cto | escalate
+```
+
+#### API v1.0 — Stable
+
+```javascript
+// Versioned: /api/v1/ prefix (stable, breaking changes → v2)
+// Key endpoints:
+// GET /api/v1/compliance/summary    — org score + breakdown
+// GET /api/v1/compliance/tools      — all AI tools + risk
+// GET /api/v1/compliance/violations — open violations
+// GET /api/v1/compliance/audit-trail — audit events (paginated)
+
+// Auth: API Key (existing from F26)
+// Rate: Enterprise 1000/hr, Growth 100/hr
+// OpenAPI 3.0 spec: GET /api/v1/openapi.json
+```
+
+#### Audit Log Export
+
+```javascript
+// GET /api/enterprise/audit-trail?format=csv&from=2026-01-01&to=2026-08-01
+// → CSV | JSON for regulators/SIEM
+// Columns: timestamp, userId, action, resource, details, ipAddress
+```
+
+#### Custom Roles
+
+```javascript
+// POST /api/enterprise/roles — create custom role
+// { name: "compliance-auditor", permissions: { "tools:read": true, "fria:approve": true } }
+// Built-in roles (owner/admin/member/viewer) cannot be deleted
+```
+
+#### Реализация
+
+**Новые файлы:**
+- `schemas/CustomComplianceRule.js` — MetaSQL
+- `schemas/CustomRole.js` — MetaSQL
+- `app/api/enterprise/rules.js` — CRUD
+- `app/api/enterprise/roles.js` — CRUD + assign
+- `app/api/enterprise/audit-trail.js` — export CSV/JSON
+- `app/api/v1/compliance.js` — stable endpoints
+- `app/api/v1/openapi.js` — OpenAPI spec
+- `app/(dashboard)/enterprise/rules/page.tsx` — custom rules UI
+- `app/(dashboard)/enterprise/roles/page.tsx` — custom roles UI
+- `app/(dashboard)/enterprise/audit/page.tsx` — audit trail viewer
+
+**Модифицированные файлы:**
+- `app/application/auth/checkPermissions.js` — support custom roles
+- `server/routes/api-v1.js` — mount stable v1 routes
+
+#### Критерии приёмки
+
+- [ ] Custom rules: CRUD + condition/action engine
+- [ ] API v1.0: stable endpoints + OpenAPI docs
+- [ ] API rate limiting per plan
+- [ ] Audit trail: CSV + JSON export for regulators
+- [ ] Custom roles: create + assign + permission check
+- [ ] Built-in roles protected from deletion
+- [ ] Enterprise routes: plan enforcement (Enterprise only for rules/roles, Growth for API)
+
+- **Tests:** 4 (custom_rules_engine.test, api_v1_endpoints.test, audit_trail_export.test, custom_roles_permissions.test)
+
+---
+
+### US-117: AI Literacy Module — Art. 4 Wedge Product (8 SP)
+
+- **Feature:** F18 🟡 | **Developer:** Max (backend) + Nina (frontend)
+
+#### Описание
+
+Как HR Director, я хочу обеспечить Art. 4 AI Act — все сотрудники прошли AI Literacy обучение. Import CSV, назначить курсы по роли, quiz, PDF сертификаты.
+
+> **Wedge Product:** AI Literacy standalone. Art. 4 уже обязателен (Feb 2025). Отдельный CTA.
+
+#### 4 Курса
+
+| Курс | Для кого | Модулей | Длит. |
+|------|----------|---------|-------|
+| Executive | CEO, CTO, руководство | 3 | ~20 мин |
+| HR Manager | HR, рекрутеры | 4 | ~30 мин |
+| Developer | Разработчики, IT | 5 | ~40 мин |
+| General | Все сотрудники | 3 | ~15 мин |
+
+#### Employee Import + Enrollment
+
+```javascript
+// POST /api/literacy/employees/import
+// CSV: name, email, department, role
+// → Employee records + CourseEnrollment per assigned course
+// → pg-boss job: send invitation emails (Brevo, batch)
+
+// POST /api/literacy/courses/assign
+// { employeeIds: [...], courseSlug: 'general', deadline: '2026-08-01' }
+```
+
+#### Course Player
+
+```
+Module 1: "What is AI?" → content → quiz (5 questions) → score
+Module 2: "EU AI Act Basics" → content → quiz → score
+Module 3: "Your Role in AI Compliance" → content → quiz → score
+
+Completion: avg quiz score ≥ 70% → certificate generated
+```
+
+#### Certificates
+
+```javascript
+// PDF via Gotenberg:
+// Employee: "Anna Schmidt completed Executive AI Literacy Course (Score: 92%)"
+// Org: "Acme GmbH — 100% of employees completed Art. 4 training"
+// (Org cert only at 100% completion)
+```
+
+#### Dashboard Widget
+
+```
+AI Literacy Compliance (Art. 4)                     Due: Feb 2, 2025 (OVERDUE)
+
+🎓 71% Complete  ████████████████░░░░░░  32/45 employees
+
+⚠ 5 employees overdue → Send reminder
+
+By Department:
+  HR:          ████████████████████ 100% (4/4)  ✓
+  Engineering: ████████████░░░░░░░░  60% (15/25) ⚠
+  Marketing:   ██████████░░░░░░░░░░  50% (8/16)  ⚠
+
+[Import Employees]  [Assign Courses]  [Send Reminder]  [Download Cert]
+```
+
+#### Новые таблицы
+
+```javascript
+// schemas/LiteracyCourse.js
+({
+  Details: {},
+  slug: { type: 'string', unique: true },
+  title: { type: 'string' },
+  targetRole: { type: 'string' },
+  modules: { type: 'json' },       // [{id, title, content, quiz: [{q, options, answer}]}]
+  durationMinutes: { type: 'integer' },
+  isActive: { type: 'boolean', default: true },
+});
+
+// schemas/Employee.js
 ({
   Details: {},
   organization: { type: 'Organization', delete: 'cascade' },
   name: { type: 'string' },
-  description: { type: 'string', nullable: true },
-  condition: { type: 'json' },      // { field: 'riskLevel', op: 'eq', value: 'high' }
-  action: { type: 'string' },       // 'require_fria' | 'block' | 'warn' | 'notify'
-  isActive: { type: 'boolean', default: true },
-  createdBy: { type: 'User' },
+  email: { type: 'string' },
+  department: { type: 'string', nullable: true },
+  role: { type: 'string', nullable: true },
+  importedAt: 'datetime',
+  invitedAt: { type: 'datetime', nullable: true },
 });
 
-// POST /api/enterprise/rules — создать custom rule
-// GET  /api/enterprise/rules — список rules для org
-// PATCH /api/enterprise/rules/:id/toggle — enable/disable
-
-// Пример: "Если AI tool в домене HR → автоматически требовать FRIA"
-// Пример: "Если score < 70 → уведомить CTO"
+// schemas/CourseEnrollment.js
+({
+  Details: {},
+  employee: { type: 'Employee', delete: 'cascade' },
+  course: { type: 'LiteracyCourse', delete: 'cascade' },
+  organization: { type: 'Organization', delete: 'cascade' },
+  status: { type: 'string', default: "'not_started'" },
+  progress: { type: 'integer', default: 0 },
+  score: { type: 'integer', nullable: true },
+  completedAt: { type: 'datetime', nullable: true },
+  certificateUrl: { type: 'string', nullable: true },
+});
 ```
 
 #### Реализация
-
-**Новые файлы:**
-- `schemas/CustomComplianceRule.js`
-- `app/api/enterprise/scan/org-wide.js` — org-wide scan trigger
-- `app/api/enterprise/branding.js` — white-label config
-- `app/api/enterprise/rules.js` — custom rules CRUD
-- `app/api/v1/compliance.js` — stable v1 endpoints
-- `app/api/v1/docs.js` — OpenAPI spec generation
-- `app/jobs/org-wide-scan.js` — pg-boss orchestration
-- `app/(dashboard)/enterprise/branding/page.tsx` — Branding UI
-- `app/(dashboard)/enterprise/rules/page.tsx` — Custom Rules UI
-- `app/(dashboard)/enterprise/api-v1/page.tsx` — API docs link + key management
-
-**Модифицированные файлы:**
-- `app/application/documents/generateDocument.js` — поддержка white-label брендинга
-- `server/routes/api-v1.js` — mount stable v1 routes
-- `app/application/monitoring/detectDrift.js` — применять custom rules
-
-#### Критерии приёмки
-
-- [ ] Org-Wide Scan: запускает все 4 источника параллельно + SSE progress
-- [ ] Org-Wide Scan: завершается за < 5 минут (batch jobs)
-- [ ] White-Label: PDF + certificates с кастомным логотипом/цветами
-- [ ] `hidePoweredBy: true`: убрать "Powered by Complior" из PDF (enterprise only)
-- [ ] API v1.0: стабильные endpoints + OpenAPI docs
-- [ ] API v1.0: rate limiting per plan
-- [ ] Custom Rules: CRUD + активация/деактивация
-- [ ] Custom Rule execution: применяется при scan results обработке
-
-- **Tests:** 3 (org_wide_scan_orchestration.test, white_label_pdf_branding.test, custom_rules_execution.test)
-
----
-
-### US-105: Growth & Marketing — SEO + State of AI Report (5 SP)
-
-- **Feature:** F34 | **Developer:** Nina (frontend) + Leo (data)
-
-#### Описание
-
-Как Marketing Manager Complior, я хочу запустить SEO-оптимизированные страницы для 27.5K AI tools, и опубликовать ежегодный "State of AI Compliance Report" — чтобы органически привлекать enterprise покупателей и генерировать PR.
-
-#### SEO Pages Architecture
-
-```javascript
-// 27,500 pages = 2,477 AI tools × ~11 jurisdictions (DE, FR, AT, CH, US, UK, ...)
-// Next.js generateStaticParams → ISR (revalidate: 86400 = daily)
-
-// URL structure:
-// /tools/[slug]                  — tool overview page
-// /tools/[slug]/[jurisdiction]   — tool × jurisdiction compliance guide
-
-// Страница /tools/openai-gpt4o:
-//   - Что это: описание tool
-//   - Risk classification (EU AI Act, Colorado SB 205, UK AI Act)
-//   - Deployer obligations (Art.26, 27, 50)
-//   - "Check your compliance →" CTA → registration
-//   - Related tools
-
-// Data source: RegistryTool table (2,477 tools) × JurisdictionObligation table
-// Generation: Next.js build-time + ISR
-```
-
-#### SEO Technical
-
-```javascript
-// app/sitemap.ts → dynamic sitemap generation (27.5K URLs)
-// app/robots.ts → crawl permissions
-// Per-page metadata: OpenGraph + Twitter card + JSON-LD schema
-// Core Web Vitals: LCP < 2.5s, CLS < 0.1 (static pages)
-
-// JSON-LD для tool pages:
-{
-  "@type": "SoftwareApplication",
-  "name": "OpenAI GPT-4o",
-  "applicationCategory": "AI Assistant",
-  "about": {
-    "@type": "AIActCompliance",
-    "riskLevel": "limited",
-    "applicableArticles": ["Art.50"]
-  }
-}
-```
-
-#### State of AI Compliance Report
-
-```javascript
-// Ежегодный отчёт (lead gen) — анонимизированная агрегированная статистика:
-// - % организаций compliant по risk level
-// - Топ AI tools по использованию в EU
-// - Avg compliance score по индустриям
-// - Compliance trend 2025 → 2026
-// - Top violations (без org-specific данных)
-
-// Генерация: SQL агрегация → Mistral Medium 3 → markdown → PDF (Gotenberg)
-// Landing: /report → email gate → download PDF → Brevo lead
-
-// GET /api/growth/report/generate — (admin-only) регенерировать отчёт
-// GET /api/growth/report/download?token=... — публичный download (после email)
-// POST /api/growth/report/request — email gate → Brevo lead → download link
-```
-
-#### Compliance Leaderboard
-
-```javascript
-// /leaderboard — публичная страница
-// Анонимизированный рейтинг организаций (только те, кто дал consent):
-// #1. [Anonym] Manufacturing • Score: 94/100 • 45 employees trained
-// #2. [Anonym] FinTech • Score: 91/100 • 200 employees trained
-
-// Organization opt-in: Settings → "Show org on compliance leaderboard"
-// Viral: "We're #12 on the EU AI Compliance Leaderboard! → link"
-
-// GET /api/growth/leaderboard?limit=50 — публичный
-// PATCH /api/settings/leaderboard-opt-in — { enabled: true }
-```
-
-#### Knowledge Base / Blog
-
-```javascript
-// /blog — статические MDX страницы (Next.js)
-// /blog/[slug] — ISR articles
-
-// Стартовый контент (10 статей):
-// - "EU AI Act Guide for Deployers"
-// - "Art. 4 AI Literacy: Everything SMBs Need to Know"
-// - "FRIA Step-by-Step"
-// - "High-Risk AI: Complete Checklist"
-// - "ChatGPT in the Workplace: EU AI Act Compliance Guide"
-// (+ 5 дополнительных)
-
-// CTA на каждой странице: "Check your AI tools →" → /check (Quick Check)
-```
-
-#### Реализация
-
-**Новые файлы (frontend/):**
-- `app/tools/[slug]/page.tsx` — tool overview (ISR)
-- `app/tools/[slug]/[jurisdiction]/page.tsx` — tool × jurisdiction (ISR)
-- `app/sitemap.ts` — dynamic sitemap (27.5K URLs)
-- `app/robots.ts`
-- `app/leaderboard/page.tsx`
-- `app/report/page.tsx` — email gate
-- `app/blog/[slug]/page.tsx` — blog articles (MDX)
-- `content/blog/` — 10 стартовых MDX статей
 
 **Новые файлы (backend/):**
-- `app/api/growth/report.js` — generate + download
-- `app/api/growth/leaderboard.js` — public leaderboard
-- `app/application/growth/generateStateReport.js` — SQL aggr + LLM
+- `schemas/LiteracyCourse.js`, `schemas/Employee.js`, `schemas/CourseEnrollment.js`
+- `app/api/literacy/employees.js` — import + list
+- `app/api/literacy/courses.js` — assign + list
+- `app/api/literacy/enrollments.js` — progress + completion
+- `app/api/literacy/certificates.js` — generate + download
+- `app/api/literacy/stats.js` — dashboard widget data
+- `app/application/literacy/importEmployeesCSV.js`
+- `app/application/literacy/generateCertificate.js` — Gotenberg
+- `app/jobs/literacy-invitations.js` — pg-boss batch email
+- `data/courses/executive.json`, `hr-manager.json`, `developer.json`, `general.json`
 
-**Модифицированные файлы:**
-- `app/api/settings/index.js` — leaderboard opt-in setting
-- `app/(dashboard)/settings/page.tsx` — leaderboard toggle
+**Новые файлы (frontend/):**
+- `app/(dashboard)/ai-literacy/page.tsx` — dashboard
+- `app/(dashboard)/ai-literacy/employees/page.tsx` — employee list + import
+- `app/(dashboard)/ai-literacy/courses/page.tsx` — course management
+- `app/(dashboard)/ai-literacy/[enrollmentId]/course.tsx` — course player
+- `components/literacy/ProgressBar.tsx`
+- `components/literacy/CourseCard.tsx`
+- `components/literacy/QuizPlayer.tsx`
+- `components/literacy/CertificateDownload.tsx`
 
 #### Критерии приёмки
 
-- [ ] `/tools/[slug]` — статическая страница для каждого из 2,477 tools (ISR)
-- [ ] `/tools/[slug]/[jurisdiction]` — страница tool × jurisdiction (11 jurisdictions)
-- [ ] sitemap.xml: 27.5K URLs, доступен для Googlebot
-- [ ] JSON-LD schema: валидный (Google Rich Results Test)
-- [ ] Core Web Vitals: LCP < 2.5s для tool pages
-- [ ] State of AI Report: email gate → PDF download (Gotenberg)
-- [ ] Report: анонимизированные данные (no org-specific)
-- [ ] Leaderboard: только opt-in organizations, без PII
-- [ ] Blog: 10 статей, `/blog/[slug]` работает + CTA
-- [ ] Viral loop: KI-Compliance Siegel badge → landing
+- [ ] CSV import: 100+ employees at once
+- [ ] 4 courses with quizzes (5-10 questions per module)
+- [ ] Course assignment: by role (auto) + manual
+- [ ] Invitation email via Brevo with personal link
+- [ ] Course player: modules → quiz → completion
+- [ ] Certificate PDF (Gotenberg) for employee + org-level
+- [ ] Dashboard widget: completion rate + overdue count
+- [ ] Per-department breakdown
+- [ ] Deadline tracking: overdue status
+- [ ] Plan enforcement: Starter+ (was Starter, now included in Growth pricing)
 
-- **Tests:** 2 (tool_page_generation.test, state_report_anonymization.test)
+- **Tests:** 5 (employee_csv_import.test, course_completion.test, certificate_pdf.test, org_certificate_100pct.test, literacy_stats.test)
 
 ---
 
-### US-106: Org-Wide API v1.0 Documentation Site (2 SP)
+### US-118: Multi-language — DE + FR (5 SP)
 
-- **Feature:** F33 (documentation) | **Developer:** Max
+- **Feature:** F14 🟠 | **Developer:** Nina
 
 #### Описание
 
-Как enterprise разработчик, я хочу полную, интерактивную документацию для Complior API v1.0 — чтобы интегрировать данные compliance в наши внутренние дашборды и SIEM системы.
+Как немецкий или французский пользователь, я хочу использовать платформу на своём языке — UI, AI Literacy курсы, compliance documents.
 
-#### API Docs Site
-
-```
-/developer — Developer portal
-  /developer/api-v1 — API v1.0 reference (Swagger UI)
-  /developer/api-v1/auth — Authentication guide (API Keys)
-  /developer/api-v1/examples — Code examples (curl, Python, JS)
-  /developer/webhooks — Webhook events reference
-```
-
-#### Swagger/OpenAPI 3.0
+#### i18n Architecture
 
 ```javascript
-// GET /api/v1/openapi.json — machine-readable spec
-// GET /developer/api-v1 → Swagger UI (или Redoc)
+// next-intl: уже установлен (EN - default)
+// Добавляем: DE + FR
+// messages/en.json — ~1,200 keys (base)
+// messages/de.json — full translation
+// messages/fr.json — full translation
 
-// Endpoints documented:
-// /api/v1/compliance/summary
-// /api/v1/compliance/tools
-// /api/v1/compliance/violations
-// /api/v1/compliance/audit-trail
-// /api/v1/agents
-// /api/v1/literacy/stats
-
-// Auth header examples:
-// Authorization: Bearer {apiKey}
+// Locale detection:
+// 1. User profile (Organization.locale)
+// 2. Accept-Language header
+// 3. EN default
 ```
 
-#### Webhook Events Reference
+#### Multi-language Scope
 
-```javascript
-// Webhooks: org может настроить URL для real-time events
-// POST /api/enterprise/webhooks — configure webhook URL
-// Events:
-// scan.uploaded     — новый TUI scan
-// score.changed     — org score изменился
-// alert.created     — новый monitoring alert
-// incident.created  — новый compliance incident
-// report.sent       — scheduled report отправлен
-
-// Payload format: { event, orgId, timestamp, data: {...} }
-// Security: HMAC-SHA256 signature в header X-Complior-Signature
-```
+| Component | Languages | Notes |
+|-----------|-----------|-------|
+| Dashboard UI | EN/DE/FR | ~1,200 i18n keys |
+| AI Literacy courses | EN/DE/FR | 4 courses × 3 languages |
+| Notifications | EN/DE/FR | Email + in-app locale-aware |
+| Compliance documents | EN/DE/FR | LLM generates in user locale |
+| PDF certificates | EN/DE/FR | Template-based |
 
 #### Реализация
 
 **Новые файлы:**
-- `app/developer/page.tsx` — developer portal home
-- `app/developer/api-v1/page.tsx` — Swagger UI
-- `app/developer/webhooks/page.tsx` — webhook docs
-- `app/api/enterprise/webhooks.js` — webhook config CRUD
-- `app/application/webhooks/dispatchWebhook.js` — HMAC-signed dispatch
+- `messages/de.json` — ~1,200 keys German
+- `messages/fr.json` — ~1,200 keys French
+- `data/courses/executive.de.json`, `hr-manager.de.json`, `developer.de.json`, `general.de.json`
+- `data/courses/executive.fr.json`, `hr-manager.fr.json`, `developer.fr.json`, `general.fr.json`
+- `app/api/settings/locale.js` — locale update endpoint
 
 **Модифицированные файлы:**
-- `app/api/v1/compliance.js` — добавить OpenAPI annotations
-- `server/routes/enterprise.js` — mount webhook routes
+- `middleware.ts` — locale detection + routing
+- `app/i18n.ts` — add de + fr to supported locales
+- `app/(dashboard)/settings/page.tsx` — language switcher
+- `app/application/documents/generateDocumentDraft.js` — locale-aware generation
 
 #### Критерии приёмки
 
-- [ ] `/developer/api-v1` — Swagger UI доступен
-- [ ] OpenAPI spec: валидный JSON, все v1 endpoints документированы
-- [ ] Webhook config: сохранить URL + secret
-- [ ] Webhook delivery: HMAC-SHA256 signature верифицируется
-- [ ] Code examples: curl + Python + JavaScript working examples
+- [ ] Full UI available in DE + FR (~1,200 keys translated)
+- [ ] Language switcher in Settings: EN/DE/FR
+- [ ] AI Literacy courses available in DE + FR
+- [ ] Compliance documents generated in user locale
+- [ ] PDF certificates in correct locale
+- [ ] EN remains default if locale not set
+- [ ] Locale persists per Organization
 
-- **Tests:** 2 (webhook_hmac_signature.test, api_v1_openapi_valid.test)
+- **Tests:** 2 (locale_switching.test, locale_document_generation.test)
 
 ---
 
----
+### US-119: MCP Proxy Analytics (3 SP)
 
-### US-107: UK + Japan + Canada + Brazil + EU AI Act Omnibus (5 SP)
-
-- **Feature:** F26 (Registry API расширение) | **Developer:** Max
-- **Источник:** `~/complior/docs/PROJECT-AGENT-HANDOFF.md` Задача 4
+- **Feature:** F41 🟡 | **Developer:** Leo
 
 #### Описание
 
-Как compliance officer в международной организации, я хочу видеть compliance obligations по UK AI Governance, Japan AI Governance, Canada AIDA и Brazil AI Act — чтобы покрыть все 9 ключевых юрисдикций в одной платформе.
-
-**После US-107:** итого 9 юрисдикций = EU + CO + TX + CA(US) + KR + UK + JP + CA(Canada) + BR
-
-#### Четыре юрисдикции + Omnibus
-
-**UK AI Governance Framework** (`uk-ai-regulation`, UK) — 5 checks:
-- `uk_safety`, `uk_transparency`, `uk_contestability` (**нет в EU**), `uk_accountability`, `uk_fairness`
-
-**Japan AI Governance Act** (`japan-ai-governance`, JP) — 5 checks:
-- `jp_transparency`, `jp_ai_safety`, `jp_data_localization` (**строже EU**), `jp_healthcare_controls`, `jp_human_centric`
-
-**Canada AIDA Bill C-27** (`canada-aida`, CA) — 5 checks:
-- `ca_impact_assessment`, `ca_mitigation_measures`, `ca_explainability`, `ca_incident_reporting` (72h), `ca_bias_mitigation`
-
-**Brazil AI Act 2025** (`brazil-ai-act`, BR) — 5 checks:
-- `br_disclosure`, `br_risk_classification`, `br_high_risk_domains`, `br_lgpd_integration`, `br_dpa_reporting`
-
-**EU AI Act Omnibus** (`eu-ai-act-omnibus`, EU, conditional) — 1 check:
-- `omnibus_high_risk_extended` — условная активация при принятии Digital Omnibus Act
-- Флаг `conditional: true` в RegulationMeta + `activation: "Digital Omnibus Act passed"`
+Как CTO, я хочу видеть аналитику по AI запросам через MCP Proxy (CLI runtime): прошедшие/заблокированные, объёмы, паттерны — чтобы понимать, как AI используется в организации.
 
 #### Реализация
-
-**Новые файлы:**
-- `app/seeds/seed-international-jurisdictions.js` — UK + JP + CA + BR seed
-- `app/seeds/seed-eu-omnibus.js` — EU AI Act Omnibus (conditional)
-- `scripts/run-international-migration.js`
-
-**Модифицированные файлы:**
-- `app/schemas/RegulationMeta.js` — добавить поле `conditional: { type: 'boolean', default: false }` и `activationCondition: { type: 'text', required: false }`
-- `app/api/regulations/meta.js` — возвращать `conditional` поле; по умолчанию `conditional` записи не включаются в список (query param `includeConditional=true` для явного включения)
-
-#### CrossMappings (ключевые)
-- `uk_contestability` → нет в EU (relationship: `stricter`)
-- `jp_data_localization` → нет в EU (relationship: `stricter`)
-- `ca_incident_reporting` → похоже Art.73 EU (relationship: `equivalent`)
-- `br_lgpd_integration` → GDPR + EU AI Act совместная применимость
-
-#### Критерии приёмки
-
-- [ ] 9 юрисдикций в `RegulationMeta` (5 существующих + 4 новых + 1 conditional EU Omnibus)
-- [ ] 20 новых Obligations (5 × 4 jurisdictions) вставлены
-- [ ] `GET /v1/regulations/meta` → 9 записей (8 обычных + Omnibus при `includeConditional=true`)
-- [ ] `conditional: true` для Omnibus — не включается в стандартный список
-- [ ] CrossMappings для уникальных требований (`uk_contestability`, `jp_data_localization`)
-- [ ] `RegulationMeta.conditional` + `activationCondition` поля работают
-
-- **Tests:** 2 (international_jurisdictions_query.test, conditional_jurisdiction_filter.test)
-
----
-
-### US-108: AI Registry Expansion — Категории + Detection Patterns (5 SP) ✅ COMPLETED 2026-02-23
-
-- **Feature:** F26 (Registry API) | **Developer:** Max + Leo
-- **Источник:** `~/complior/docs/PROJECT-AGENT-HANDOFF.md` Задача 5
-
-#### Описание
-
-Как пользователь `complior` (TUI), я хочу, чтобы детектор находил AI tools через detection patterns — npm пакеты, pip зависимости, env vars, import statements, API call patterns — чтобы сканирование было точным и полным.
-
-> **Текущий статус:** 4,983 инструментов в БД. Нужно: верифицировать данные и заполнить `detectionPatterns` для ≥ 860 ключевых инструментов.
-
-#### Категории для расширения/верификации
-
-| Категория | Целевое кол-во | Описание |
-|-----------|---------------|----------|
-| `enterprise_llm` | 50 | Azure OpenAI, AWS Bedrock, GCP Vertex, IBM WatsonX |
-| `specialized_models` | 100 | медицина, право, финансы |
-| `embedding_models` | 80 | Cohere, Voyage, Jina, etc. |
-| `autonomous_agents` | 60 | мелкие agent frameworks |
-| `ml_platforms` | 100 | MLflow, Kubeflow, SageMaker, Vertex AI |
-| `data_annotation` | 50 | Scale AI, Labelbox, Roboflow |
-| `ai_testing` | 30 | Arize, WhyLabs, Evidently |
-| `ai_governance` | 40 | конкуренты (informational) |
-| `country_specific` | 200 | Baidu, Alibaba, Samsung AI, Naver, etc. |
-| `research_models` | 150 | Llama, Mistral variants, academic models |
-
-#### Detection Pattern структура (в `RegistryTool.detectionPatterns`)
-
-```json
-{
-  "npm": ["openai", "@anthropic-ai/sdk"],
-  "pip": ["openai", "anthropic"],
-  "imports": ["from openai", "import openai", "require('openai')"],
-  "env_vars": ["OPENAI_API_KEY", "OPENAI_ORG_ID"],
-  "api_calls": ["openai.chat.completions.create", "client.chat.completions.create"],
-  "domains": ["api.openai.com", "openai.com"]
-}
-```
-
-#### Refresh Pipeline задача
 
 ```javascript
-// pg-boss job: enrich-detection-patterns (новый)
-// Запускается еженедельно в среду 03:00 UTC
-// Для инструментов с level='verified' у которых detectionPatterns пустой:
-//   1. Passive scan website + npm registry + PyPI + GitHub
-//   2. Mistral Small: extract patterns из README + docs
-//   3. UPDATE RegistryTool SET detectionPatterns = $1 WHERE slug = $2
+// MCP Proxy в CLI собирает telemetry: request_count, blocked_count, model, latency, tokens
+// CLI Sync (F62) отправляет агрегированные данные в SaaS: POST /api/sync/mcp-telemetry
+//
+// Dashboard widget:
+// - Total AI requests (24h / 7d / 30d)
+// - Blocked requests (by policy)
+// - Top models used (pie chart)
+// - Average latency
+// - Token usage by tool
+//
+// GET /api/analytics/mcp — aggregated data for dashboard
+// GET /api/analytics/mcp/tools/:toolId — per-tool breakdown
+
+// Schema: MCPTelemetry { telemetryId, organizationId, toolId, period, requestCount,
+//   blockedCount, tokenCount, models[], avgLatency, createdAt }
 ```
 
-#### Реализация
-
 **Новые файлы:**
-- `app/seeds/seed-detection-patterns.js` — seed для топ-100 инструментов (OpenAI, Anthropic, Mistral, LangChain, Hugging Face, Cohere, Azure AI и др.)
-- `scripts/run-detection-patterns-seed.js`
-- `app/application/jobs/schedule-detection-enrichment.js` — pg-boss weekly job
+- `app/api/analytics/mcp.js` — aggregation endpoints
+- `app/api/sync/mcp-telemetry.js` — receive telemetry from CLI
+- `app/schemas/MCPTelemetry.js` — MetaSQL schema
+- `frontend/components/analytics/MCPAnalyticsWidget.tsx` — dashboard widget
+- `frontend/app/(dashboard)/analytics/mcp/page.tsx` — full analytics page
 
 **Модифицированные файлы:**
-- `app/domain/registry/refresh-service.js` — добавить `enrichDetectionPatterns()` метод
-- `app/api/registry/tools.js` — добавить фильтр `hasDetectionPatterns=true`
-
-**npm script:** добавить `"seed:detection-patterns": "node scripts/run-detection-patterns-seed.js"` в package.json
+- `frontend/app/(dashboard)/page.tsx` — add MCP Analytics widget to dashboard
 
 #### Критерии приёмки
 
-- [x] Топ-74 инструментов имеют заполненный `detectionPatterns` (npm + pip + imports + env_vars) — все крупные категории покрыты
-- [x] `GET /v1/registry/tools?hasDetectionPatterns=true` → фильтрация работает
-- [x] pg-boss job `enrich-detection-patterns` зарегистрирован (среда 03:00 UTC)
-- [x] `RegistryTool.detectionPatterns` JSON schema задокументирована (в US-108 + inline в seed)
-- [x] 10+ категорий верифицированы: chatbot, coding, marketing, recruitment, image_generation, enterprise_llm, embedding, agents, ml_platform, annotation
+- [ ] CLI sync sends aggregated MCP telemetry data
+- [ ] Dashboard widget: request/blocked counts, top models, token usage
+- [ ] Per-tool breakdown view
+- [ ] Time range filter (24h / 7d / 30d)
+- [ ] Multi-tenancy: only org's own telemetry
 
-- **Tests:** 2 ✅ (detection-patterns-query.test.js — 13 tests, enrichment-job-registration.test.js — 14 tests)
+- **Tests:** 2 (mcp_telemetry_sync.test, mcp_analytics_aggregation.test)
 
 ---
 
-### US-109: Public Regulation API — Revenue Stream (4 SP)
+### US-120: NHI Dashboard — Non-Human Identities (3 SP)
 
-- **Feature:** F26 (Registry API Public) | **Developer:** Max
-- **Источник:** `~/complior/docs/PROJECT-AGENT-HANDOFF.md` Задача 6
+- **Feature:** F43 🟡 | **Developer:** Max
 
 #### Описание
 
-Как enterprise разработчик или legaltech провайдер, я хочу доступ к публичному REST API с данными Regulation DB — чтобы интегрировать compliance данные в свои продукты, платя за доступ на Scale+ плане.
-
-> **Это revenue stream:** публичный API за деньги. Использует существующую APIKey инфраструктуру (из F26, Sprint 7). Rate limiting по плану.
-
-#### Endpoints
-
-```
-GET /api/v1/regulations                             → список всех юрисдикций (9 итого)
-GET /api/v1/regulations/eu-ai-act                  → full EU AI Act data
-GET /api/v1/regulations/eu-ai-act/articles/50      → конкретная статья (из articleReference)
-GET /api/v1/regulations/eu-ai-act/checks           → все obligations/checks с правилами
-GET /api/v1/tools                                   → AI tool registry (с pagination, filters)
-GET /api/v1/tools/openai-gpt4                      → конкретный инструмент + detectionPatterns
-GET /api/v1/diff?from=eu-ai-act&to=uk-ai-regulation → diff двух юрисдикций (cross-mapping)
-POST /api/v1/score                                  → calculate compliance score (batch)
-```
-
-#### Rate Limits по плану
-
-| Plan | Requests/day | Access |
-|------|-------------|--------|
-| Free | 100 | только /regulations (read-only) |
-| Growth | 1,000 | + /tools |
-| Scale | 10,000 | + /diff + /score |
-| Enterprise | unlimited | + SLA + webhook + dedicated |
-
-#### Auth
-
-Использует существующую `APIKey` таблицу + middleware из F26 (Sprint 7). Новый `scope: "regulation_api"` для ключей, выданных через Public API.
-
-#### OpenAPI / Swagger
-
-```javascript
-// GET /api/v1/openapi-regulation.json — spec только для Regulation API
-// Отдельный от Enterprise API v1.0 (US-104/US-106) — разные аудитории
-```
+Как security officer, я хочу видеть все Non-Human Identities (API ключи, service accounts, automated agents) в организации — кто, когда, сколько, какие разрешения.
 
 #### Реализация
 
+```javascript
+// NHI = API keys, service accounts, CI/CD tokens, automated agents
+// Data sources:
+// - WorkOS API: service accounts, API tokens
+// - CLI scan results: detected AI API keys in codebase
+// - Manual registry: user-added NHIs
+//
+// GET  /api/nhi — list all NHIs for org
+// POST /api/nhi — register NHI manually
+// GET  /api/nhi/:id — NHI details (permissions, usage, last active)
+//
+// Dashboard:
+// - Total NHI count + active/inactive
+// - NHIs by type (API key, service account, agent)
+// - Last activity per NHI
+// - Permissions summary (what can each NHI access?)
+// - Alerts: inactive NHIs (>90d), overprivileged NHIs
+
+// Schema: NonHumanIdentity { nhiId, organizationId, name, type, permissions[],
+//   lastActiveAt, createdBy, status, metadata }
+```
+
 **Новые файлы:**
-- `app/api/v1/regulations-public.js` — все public regulation endpoints
-- `app/api/v1/tools-public.js` — public tools endpoints
-- `app/api/v1/diff-public.js` — jurisdiction diff endpoint
-- `app/api/v1/score-public.js` — score calculator
-- `app/application/regulations/calculateComplianceScore.js` — batch score logic
-- `app/application/regulations/buildJurisdictionDiff.js` — diff из CrossMapping
+- `app/api/nhi/index.js` — CRUD endpoints
+- `app/schemas/NonHumanIdentity.js` — MetaSQL schema
+- `app/application/security/listNHIs.js` — use case
+- `frontend/app/(dashboard)/security/nhi/page.tsx` — NHI dashboard
+- `frontend/components/security/NHITable.tsx` — NHI list with filters
 
 **Модифицированные файлы:**
-- `server/routes/api-v1.js` — mount public regulation routes
-- `app/application/iam/resolveSession.js` — поддержка `scope: "regulation_api"` для API keys
-- `app/(dashboard)/settings/apiKeys.js` — UI для генерации Regulation API ключей
+- `frontend/app/(dashboard)/page.tsx` — add NHI summary widget
 
 #### Критерии приёмки
 
-- [ ] `GET /api/v1/regulations` → 9 юрисдикций (без conditional по умолчанию)
-- [ ] `GET /api/v1/regulations/eu-ai-act` → полный объект с 108 obligations
-- [ ] `GET /api/v1/regulations/eu-ai-act/articles/50` → obligations с `articleReference` содержащим "Art. 50"
-- [ ] `GET /api/v1/tools?limit=20&category=chatbot` → пагинированный список
-- [ ] `GET /api/v1/tools/chatgpt` → полный объект с detectionPatterns
-- [ ] `GET /api/v1/diff?from=eu-ai-act&to=uk-ai-regulation` → `{ unique_to_source, unique_to_target, equivalent, stricter }` из CrossMapping
-- [ ] `POST /api/v1/score` → `{ obligations: [...], score: number, breakdown: {...} }`
-- [ ] Rate limiting: Free = 100 req/day, реджект 429 при превышении
-- [ ] `GET /api/v1/openapi-regulation.json` → валидный OpenAPI 3.0 spec
-- [ ] Billing: Scale+ required для `/diff` и `/score`
+- [ ] CRUD for Non-Human Identities
+- [ ] Auto-detection from CLI scan results (AI API keys)
+- [ ] Dashboard: NHI count, types, activity, permissions
+- [ ] Alert: inactive NHIs (>90d), overprivileged
+- [ ] Multi-tenancy: only org's own NHIs
 
-- **Tests:** 3 (public_regulation_api_endpoints.test, jurisdiction_diff_calculation.test, regulation_api_rate_limiting.test)
+- **Tests:** 2 (nhi_crud.test, nhi_alerts.test)
+
+---
+
+### US-121: Predictive Analysis (3 SP)
+
+- **Feature:** F44 🟡 | **Developer:** Max
+
+#### Описание
+
+Как compliance officer, я хочу видеть предсказания: "Через 30 дней система X нарушит порог accuracy", "Score падает — вот почему" — чтобы превентивно реагировать.
+
+#### Реализация
+
+```javascript
+// Predictive model: linear regression on historical compliance scores
+// Data: ComplianceScore history (from F48 Timeline + Monitoring data)
+//
+// app/domain/analytics/services/PredictiveEngine.js — pure domain:
+// predictScoreTrend(history[]) → { trend: 'rising'|'falling'|'stable', predictedScore30d, confidence }
+// predictThresholdBreach(history[], threshold) → { willBreach, daysUntilBreach, metric }
+// explainScoreDrop(currentScore, previousScore, changes[]) → string[]
+//
+// GET /api/analytics/predictions/:toolId — predictions for tool
+// GET /api/analytics/predictions/org — org-wide predictions
+
+// Dashboard widget: "Attention needed" — tools with predicted score drop
+// Notification: when predicted breach < 30 days
+```
+
+**Новые файлы:**
+- `app/domain/analytics/services/PredictiveEngine.js` — trend + breach prediction
+- `app/api/analytics/predictions.js` — API endpoints
+- `app/application/analytics/generatePredictions.js` — use case (pg-boss daily cron)
+- `frontend/components/analytics/PredictionWidget.tsx` — dashboard widget
+- `frontend/components/analytics/ScoreTrendChart.tsx` — trend visualization
+
+**Модифицированные файлы:**
+- `frontend/app/(dashboard)/page.tsx` — add Prediction widget
+- `server/main.js` — register daily prediction cron job
+
+#### Критерии приёмки
+
+- [ ] Score trend prediction (30-day horizon)
+- [ ] Threshold breach prediction with days-until-breach
+- [ ] Score drop explanation (root cause analysis)
+- [ ] Dashboard widget: tools needing attention
+- [ ] Notification on predicted breach < 30d
+- [ ] Minimum 30 days of data required for predictions
+
+- **Tests:** 2 (score_trend_prediction.test, breach_detection.test)
+
+---
+
+### US-122: Benchmarking (2 SP)
+
+- **Feature:** F45 🟢 | **Developer:** Nina
+
+#### Описание
+
+Как CTO, я хочу сравнить compliance score своей организации с анонимными данными по отрасли: "Ваш score 72% — выше среднего в fintech (64%)" — чтобы понимать позицию.
+
+#### Реализация
+
+```javascript
+// Anonymous aggregation: per sector (fintech, healthtech, edtech, etc.)
+// Data source: all orgs with sector set + opt-in (default: opted in)
+//
+// pg-boss weekly cron: aggregate anonymous stats per sector
+// { sector, avgScore, medianScore, p25, p75, toolCount, orgCount }
+//
+// GET /api/analytics/benchmark — org's position vs sector
+// Response: { orgScore, sectorAvg, sectorMedian, percentile, sectorOrgCount }
+//
+// Privacy: no org-identifiable data, minimum 5 orgs per sector to show stats
+// Opt-out: Organization.benchmarkOptIn (boolean, default true)
+
+// Dashboard widget: "Your compliance: 72% — top 30% in fintech"
+// Visual: gauge chart with sector distribution
+```
+
+**Новые файлы:**
+- `app/api/analytics/benchmark.js` — benchmark endpoint
+- `app/application/analytics/aggregateBenchmarks.js` — weekly cron job
+- `app/schemas/SectorBenchmark.js` — MetaSQL schema
+- `frontend/components/analytics/BenchmarkWidget.tsx` — gauge chart widget
+
+**Модифицированные файлы:**
+- `app/schemas/Organization.js` — add benchmarkOptIn field
+- `frontend/app/(dashboard)/page.tsx` — add Benchmark widget
+- `server/main.js` — register weekly benchmark cron job
+
+#### Критерии приёмки
+
+- [ ] Anonymous sector benchmarks (minimum 5 orgs per sector)
+- [ ] Percentile calculation: "top X% in your sector"
+- [ ] Opt-out: Organization can disable benchmarking
+- [ ] Dashboard widget: score vs sector average
+- [ ] Weekly aggregation via pg-boss cron
+- [ ] Privacy: no org-identifiable data exposed
+
+- **Tests:** 2 (benchmark_aggregation.test, benchmark_privacy.test)
 
 ---
 
@@ -995,67 +946,56 @@ POST /api/v1/score                                  → calculate compliance sco
 
 | US | Feature | Developer | SP | Tests |
 |----|---------|-----------|-----|-------|
-| US-101 | F18: AI Literacy Module | Max + Nina | 8 | 5 |
-| US-102 | F14: Multi-language DE + FR | Nina | 6 | 2 |
-| US-103 | F32: Monitoring Phase 2 — Reports + SLA + Incidents | Leo | 5 | 4 |
-| US-104 | F33: Enterprise — Org Scan + API v1.0 + White-Label | Max | 5 | 3 |
-| US-105 | F34: Growth — SEO + State of AI Report + Blog | Nina + Leo | 5 | 2 |
-| US-106 | F33: API v1.0 Docs + Webhooks | Max | 2 | 2 |
-| US-107 | F26: UK + JP + CA + BR + EU Omnibus Jurisdictions | Max | 5 | 2 |
-| US-108 | F26: AI Registry Expansion + Detection Patterns | Max + Leo | 5 | 27 ✅ |
-| US-109 | F26: Public Regulation API (Revenue Stream) | Max | 4 | 3 |
-| **Итого** | | | **45** | **25** |
+| US-111 | F55: Incident Management (Art. 73) | Max | 5 | 5 |
+| US-112 | F60: Conformity Assessment (Annex VI) | Max | 4 | 3 |
+| US-113 | F54: AESIA Export (12 Excel) | Nina | 3 | 2 |
+| US-114 | F52: Due Diligence Report | Leo | 3 | 2 |
+| US-115 | F32: Monitoring v2 (Reports + Drift + SLA) | Leo | 5 | 4 |
+| US-116 | F33: Enterprise (Rules + API v1.0 + Audit + Roles) | Max | 5 | 4 |
+| US-117 | F18: AI Literacy Module | Max + Nina | 8 | 5 |
+| US-118 | F14: Multi-language DE + FR | Nina | 5 | 2 |
+| US-119 | F41: MCP Proxy Analytics | Leo | 3 | 2 |
+| US-120 | F43: NHI Dashboard | Max | 3 | 2 |
+| US-121 | F44: Predictive Analysis | Max | 3 | 2 |
+| US-122 | F45: Benchmarking | Nina | 2 | 2 |
+| **Итого** | | | **49** | **35** |
 
-> Дополнительно ~4 integration tests (AI Literacy end-to-end, org-wide scan, SEO build). Total ≈ 22 новых тестов.
+> Capacity: 49 SP (+7 над baseline 42 SP). US-119..122 (11 SP) — "Could Have" (🟡/🟢), можно перенести на S11+ при нехватке времени перед Aug 2, 2026.
 
 ---
 
 ## Definition of Done
 
-- [ ] **9 юрисдикций:** UK + JP + CA + BR + EU Omnibus в PostgreSQL (20 новых Obligations + 5 RegulationMeta)
-- [x] **AI Registry:** топ-74 инструментов с заполненным `detectionPatterns` (74/74 seeded ✅), enrich job `enrich-detection-patterns` зарегистрирован (среда 03:00 UTC ✅)
-- [ ] **Public Regulation API:** 8 endpoints live + OpenAPI spec + rate limiting по плану
-- [ ] **AI Literacy Module:** 4 курса + quizzes + PDF certificates + employee import + dashboard widget
-- [ ] **Multi-language:** DE + FR UI + курсы + Eva + compliance documents
-- [ ] **Monitoring Phase 2:** Scheduled reports email + SLA tracking + Incident workflow + Vendor monitoring
-- [ ] **Enterprise Completion:** Org-Wide Scan + White-Label PDF + Custom Compliance Rules + API v1.0
-- [ ] **Growth:** 27.5K SEO tool pages (ISR) + sitemap + State of AI Report + Leaderboard + Blog
-- [ ] **API v1.0 Docs:** Swagger UI live + Webhook reference + HMAC dispatch
-- [ ] **DB migrations:** LiteracyCourse, Employee, CourseEnrollment, ScheduledReport, ComplianceIncident, CustomComplianceRule созданы
-- [ ] `npm test` — ~302 total, все green
+- [ ] **Incident Management:** Full Art. 73 lifecycle, MSA report PDF, deadline tracking
+- [ ] **Conformity Assessment:** Annex VI wizard, 60-90% pre-fill, report + declaration PDFs
+- [ ] **AESIA Export:** 12 Excel files, pre-filled, ZIP download
+- [ ] **DD Report:** Business-language PDF for board/investors
+- [ ] **Monitoring v2:** Scheduled reports, drift detection, heatmap, SLA tracking
+- [ ] **Enterprise:** Custom rules, API v1.0 (OpenAPI), audit trail CSV/JSON, custom roles
+- [ ] **AI Literacy:** 4 courses, CSV import, quizzes, PDF certificates, dashboard widget
+- [ ] **Multi-language:** DE + FR UI + courses + documents
+- [ ] **MCP Analytics:** Telemetry ingestion, dashboard widget, per-tool breakdown
+- [ ] **NHI Dashboard:** CRUD, auto-detection, activity alerts
+- [ ] **Predictive Analysis:** Score trend, breach prediction, dashboard widget
+- [ ] **Benchmarking:** Anonymous sector comparison, opt-out, weekly aggregation
+- [ ] **DB migrations:** ComplianceIncident, ConformityAssessment, ScheduledReport, CustomComplianceRule, CustomRole, LiteracyCourse, Employee, CourseEnrollment, MCPTelemetry, NonHumanIdentity, SectorBenchmark
+- [ ] `npm test` — ~443 total, все green
 - [ ] `npm run typecheck` — 0 errors
-- [ ] Lighthouse score: tool pages LCP < 2.5s, CLS < 0.1
-- [ ] Google Search Console: sitemap submitted
-- [ ] Deploy to production: **FULL SCOPE milestone** ✅
+- [ ] Deploy to production: **FULL SCOPE milestone** before Aug 2, 2026
 
 ---
 
-## Product Milestone: FULL SCOPE ✅
+## Product Milestone: FULL SCOPE
 
 ```
-Sprint 0     ██ Infrastructure                                              ✅
-Sprint 1     ████ IAM + AI Tool Inventory (start)                          ✅
-Sprint 2     ████ Rules + Classification + Inventory (end)                 ✅
-Sprint 2.5   ████ Invite Flow + Team + Enforcement                         ✅
-Sprint 3     ████ Dashboard API + History + Requirements                   ✅
-Sprint 3.5   ████ Stripe Checkout + Quick Check + Penalty Calculator       ✅
-Sprint 4     ████ Production Deploy: Docker + Caddy + Kratos               ✅
-Sprint 5     ████ Frontend Rebuild: Landing + Auth + Pricing + Tools       ✅
-Sprint 6     ████ Admin Panel + Stripe Test + Production Deploy            ✅
-             ── MVP FRONTEND READY ──
-Sprint 7     ████ WorkOS + Registry API + TUI Data + Eva                   ✅
-             + AI Regulation DB Migration (4,983 tools, 108 obligations)
-             + Detection Patterns (US-108: 74 tools seeded)
-             ── TUI+SaaS CORE READY ──
-Sprint 8     ████ Dashboard v2 + Cross-System Map + Discovery + Provider   ✅
-             ── PRODUCT READY ──
-Sprint 9     ████ Governance Cloud + Remediation + Monitoring v1           ✅
-             + Enterprise Foundation + Regulatory Monitor + KI-Siegel
-Sprint 10    ████ AI Literacy + Multi-language + Monitoring v2             ✅
-             + Enterprise Completion + Growth & Marketing
-             ── FULL SCOPE ── ← WE ARE HERE
-Future       ████ F35: Marketplace + F36: White-Label + Agent Features
+Sprint 0-7   ████████████████████ Infrastructure → WorkOS → Registry API    ✅
+Sprint 8     ████ COMPLIANCE READY (FRIA, Audit Package, Docs, Gap, CLI)    ✅
+Sprint 9     ████ РЕЕСТР + ДОКУМЕНТЫ + РЕГУЛЯТОР (Registry, Badge, Remediation) ✅
+Sprint 10    ████ ПОЛНАЯ ПЛАТФОРМА (Incidents, Literacy, Monitoring, i18n)   ✅
+             ── FULL SCOPE ──
 ```
+
+**Aug 2, 2026:** EU AI Act high-risk requirements in force. Complior platform fully operational.
 
 ---
 
@@ -1063,10 +1003,10 @@ Future       ████ F35: Marketplace + F36: White-Label + Agent Features
 
 | Риск | Вероятность | Импакт | Митигация |
 |------|------------|--------|-----------|
-| DE/FR перевод качество (1,200 ключей) | Средняя | Средний | Professional translator review для key user flows, i18n QA checklist |
-| AI Literacy курс контент валидация | Средняя | Высокий | Elena expert review перед публикацией, user feedback loop |
-| SEO: 27.5K страниц → build time | Высокая | Средний | ISR (не SSG), generateStaticParams только для top-100 tools, остальное on-demand |
-| State of AI Report: anonymization leak risk | Средняя | Высокий | k-anonymity (min 5 orgs per bucket), legal review, no org-specific data |
-| API v1.0 backward compatibility | Средняя | Высокий | Strict semver, deprecation policy, `/api/v1/` locked — breaking changes → v2 |
-| Aug 2, 2026 EU deadline — customer pressure | Высокая | Средний | Prioritize AI Literacy (уже обязателен) + FRIA + basic compliance — всё в Sprint 8-10 |
-| Webhook security (HMAC bypass) | Низкая | Высокий | Test HMAC signing, rotate secrets UI, rate limit webhook config changes |
+| Aug 2 deadline pressure | Высокая | Средний | S10 has buffer (38/42 SP), prioritize Art. 73 + Literacy first |
+| DE/FR translation quality (1,200 keys) | Средняя | Средний | Professional review for key flows, community feedback |
+| AI Literacy course content validation | Средняя | Высокий | Elena (AI Act expert) review before publish |
+| Excel generation library compatibility | Низкая | Низкий | SheetJS well-tested, fallback to CSV |
+| Custom rules: unexpected interactions | Средняя | Средний | Rule validation, conflict detection, admin-only |
+| API v1.0 backward compatibility | Средняя | Высокий | Strict semver, deprecation policy, no breaking changes in v1 |
+| Incident auto-detection false positives | Средняя | Средний | Conservative thresholds, human review step |
