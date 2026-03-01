@@ -13,27 +13,66 @@ impl App {
                 {
                     self.scan_view.findings_filter = filter;
                     self.scan_view.selected_finding = Some(0);
-                } else if c == 'f' && self.scan_view.detail_open {
-                    // Go to Fix View with current finding
-                    self.scan_view.detail_open = false;
-                    self.view_state = ViewState::Fix;
-                    if let Some(scan) = &self.last_scan {
-                        self.fix_view = FixViewState::from_scan(&scan.findings);
-                    }
-                } else if c == 'x' {
-                    // Quick action: Explain selected finding
+                    self.scan_view.preview_scroll = 0;
+                } else if c == 'f' {
+                    // Apply fix: go to Fix view with finding pre-selected
                     if let Some(idx) = self.scan_view.selected_finding {
                         if let Some(scan) = &self.last_scan {
-                            if let Some(finding) = scan.findings.get(idx) {
-                                let msg =
-                                    format!("Explain this finding: {}", finding.message);
+                            if let Some(finding) = crate::views::scan::resolve_selected_finding(
+                                &scan.findings,
+                                self.scan_view.findings_filter,
+                                idx,
+                            ) {
+                                if finding.fix.is_some() {
+                                    let target_check_id = finding.check_id.clone();
+                                    // Navigate to fix view in single-fix mode
+                                    self.scan_view.detail_open = false;
+                                    self.view_state = ViewState::Fix;
+                                    self.fix_view = FixViewState::from_scan(&scan.findings);
+                                    self.fix_view.focus_check_id = Some(target_check_id.clone());
+
+                                    // Pre-select this finding in fix list
+                                    if let Some(fix_idx) = self.fix_view.fixable_findings.iter()
+                                        .position(|f| f.check_id == target_check_id)
+                                    {
+                                        self.fix_view.selected_index = fix_idx;
+                                        self.fix_view.fixable_findings[fix_idx].selected = true;
+                                    }
+                                } else {
+                                    self.toasts.push(
+                                        crate::components::toast::ToastKind::Info,
+                                        "No auto-fix available for this finding",
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } else if c == 'n' && self.scan_view.detail_open {
+                    // Next finding (within detail view)
+                    let count = self.filtered_findings_count();
+                    self.scan_view.navigate_down(count);
+                    self.scan_view.preview_scroll = 0;
+                } else if c == 'N' && self.scan_view.detail_open {
+                    // Previous finding (within detail view)
+                    self.scan_view.navigate_up();
+                    self.scan_view.preview_scroll = 0;
+                } else if c == 'x' {
+                    // Quick action: Explain selected finding (static explanation)
+                    if let Some(idx) = self.scan_view.selected_finding {
+                        if let Some(scan) = &self.last_scan {
+                            if let Some(finding) = crate::views::scan::resolve_selected_finding(
+                                &scan.findings,
+                                self.scan_view.findings_filter,
+                                idx,
+                            ) {
+                                let explanation = crate::views::scan::explain_finding(finding);
                                 self.messages.push(ChatMessage::new(
-                                    MessageRole::User,
-                                    msg.clone(),
+                                    MessageRole::System,
+                                    explanation,
                                 ));
                                 self.toasts.push(
                                     crate::components::toast::ToastKind::Info,
-                                    "Explaining finding...",
+                                    "Explanation added to Status Log (L)",
                                 );
                             }
                         }
@@ -42,7 +81,11 @@ impl App {
                     // Quick action: Open related file
                     if let Some(idx) = self.scan_view.selected_finding {
                         if let Some(scan) = &self.last_scan {
-                            if let Some(finding) = scan.findings.get(idx) {
+                            if let Some(finding) = crate::views::scan::resolve_selected_finding(
+                                &scan.findings,
+                                self.scan_view.findings_filter,
+                                idx,
+                            ) {
                                 self.toasts.push(
                                     crate::components::toast::ToastKind::Info,
                                     format!("Finding: {}", finding.check_id),
@@ -61,6 +104,14 @@ impl App {
                 } else if c == 'p' {
                     // Toggle show/hide passed checks
                     self.scan_view.show_passed = !self.scan_view.show_passed;
+                } else if c == '<' {
+                    // Resize scan split — shrink left panel
+                    self.scan_view.scan_split_pct =
+                        self.scan_view.scan_split_pct.saturating_sub(5).max(25);
+                } else if c == '>' {
+                    // Resize scan split — grow left panel
+                    self.scan_view.scan_split_pct =
+                        (self.scan_view.scan_split_pct + 5).min(75);
                 }
             }
             ViewState::Fix => match c {
@@ -99,52 +150,31 @@ impl App {
         match self.view_state {
             ViewState::Scan => {
                 if self.scan_view.detail_open {
-                    // Close detail
+                    // Close detail → back to preview
                     self.scan_view.detail_open = false;
+                    self.scan_view.preview_scroll = 0;
                 } else if self.last_scan.is_some() {
-                    // Open finding detail
+                    // Open finding detail in right panel
                     self.scan_view.detail_open = true;
+                    self.scan_view.preview_scroll = 0;
                 }
             }
             ViewState::Fix => {
                 if self.fix_view.results.is_some() {
                     // Dismiss results
                     self.fix_view.results = None;
-                } else if self.fix_view.selected_count() > 0 {
-                    // Apply selected fixes + auto-validate (T904)
-                    let selected = self.fix_view.selected_count() as u32;
-                    let old_score = self
-                        .last_scan
-                        .as_ref()
-                        .map(|s| s.score.total_score)
-                        .unwrap_or(0.0);
-                    let impact = self.fix_view.total_predicted_impact() as f64;
-
-                    // Mark items as applied
-                    for item in &mut self.fix_view.fixable_findings {
-                        if item.selected {
-                            item.status = crate::views::fix::FixItemStatus::Applied;
+                } else if self.fix_view.is_single_fix() {
+                    // Single-fix mode: auto-select focused item and apply
+                    if let Some(cid) = self.fix_view.focus_check_id.clone() {
+                        if let Some(item) = self.fix_view.fixable_findings.iter_mut().find(|f| f.check_id == cid) {
+                            item.selected = true;
                         }
                     }
-
-                    self.fix_view.results =
-                        Some(crate::views::fix::FixResults {
-                            applied: selected,
-                            failed: 0,
-                            old_score,
-                            new_score: (old_score + impact).min(100.0),
-                        });
-
-                    // Store pre-fix score for T904 auto-validate delta
-                    self.pre_fix_score = Some(old_score);
-
-                    self.toasts.push(
-                        crate::components::toast::ToastKind::Success,
-                        format!("Applied {selected} fixes. Re-scanning..."),
-                    );
-
-                    // T904: Auto-trigger re-scan to validate fixes
-                    return Some(AppCommand::AutoScan);
+                    self.fix_view.applying = true;
+                    return Some(AppCommand::ApplyFixes);
+                } else if self.fix_view.selected_count() > 0 {
+                    self.fix_view.applying = true;
+                    return Some(AppCommand::ApplyFixes);
                 }
             }
             _ => {}
@@ -163,11 +193,15 @@ impl App {
             ViewState::Scan => {
                 if self.scan_view.detail_open {
                     self.scan_view.detail_open = false;
+                    self.scan_view.preview_scroll = 0;
                 }
             }
             ViewState::Fix => {
                 if self.fix_view.results.is_some() {
                     self.fix_view.results = None;
+                } else if self.fix_view.is_single_fix() {
+                    self.fix_view.focus_check_id = None;
+                    self.view_state = ViewState::Scan;
                 }
             }
             _ => {}

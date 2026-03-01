@@ -1,0 +1,34 @@
+---
+source: tui/src/views/fix.rs
+expression: buf
+---
+┌ Fix — OBL-015 ───────────────────────┐┌ Code Fix — src/api/chat.ts ──────────────────────────────┐
+│  Score: 32 → 37  (+5)  |  1/1        ││ ── Source ── src/api/chat.ts:42 ─────────────────────    │
+│ ──────────────────────────────────── ││  (no code preview available)                             │
+│  [A] l4-unwrapped-llm                ││                                                          │
+│  Unwrapped LLM API call detected     ││ ── Recommendation ────────────────────────────────────   │
+│  Art. 50(1)                          ││  Wrap LLM calls with complior.wrap() or add AI disclosure│
+│  File: src/api/chat.ts               ││                                                          │
+│                                      ││                                                          │
+│  Impact: +5 points                   ││                                                          │
+│                                      ││                                                          │
+│ ──────────────────────────────────── ││                                                          │
+│  Esc:back j/k:next/prev d:diff       ││                                                          │
+│Enter:apply                           ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘

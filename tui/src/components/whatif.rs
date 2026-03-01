@@ -70,46 +70,6 @@ pub fn format_whatif_message(result: &WhatIfResult) -> String {
     out
 }
 
-/// Build an offline/mock what-if result when engine is unavailable.
-pub fn mock_whatif(scenario: &str, current_score: f64) -> WhatIfResult {
-    // Simple heuristic: "expand" scenarios add obligations, "add" scenarios reduce score
-    let (projected, obligations, effort) = if scenario.contains("expand") || scenario.contains("UK")
-    {
-        (
-            (current_score - 14.0).max(0.0),
-            vec![
-                "Registration with AI regulatory body".into(),
-                "Transparency report required".into(),
-                "Cross-border compliance assessment".into(),
-            ],
-            Some(5),
-        )
-    } else if scenario.contains("add") || scenario.contains("tool") {
-        (
-            (current_score - 7.0).max(0.0),
-            vec![
-                "Content marking required (C2PA)".into(),
-                "AI-generated content disclosure".into(),
-            ],
-            Some(2),
-        )
-    } else {
-        (
-            (current_score - 5.0).max(0.0),
-            vec!["Additional compliance review needed".into()],
-            Some(1),
-        )
-    };
-
-    WhatIfResult {
-        scenario: scenario.to_string(),
-        current_score,
-        projected_score: projected,
-        new_obligations: obligations,
-        effort_days: effort,
-    }
-}
-
 #[allow(dead_code)] // TODO(T10): wire into dashboard overlay dispatch
 pub fn render_whatif_overlay(frame: &mut Frame, area: Rect, result: &WhatIfResult) {
     let t = theme::theme();
@@ -193,14 +153,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn t905_whatif_command_parse() {
-        let result = mock_whatif("expand to UK", 72.0);
-        assert_eq!(result.scenario, "expand to UK");
-        assert!(result.projected_score < 72.0);
-        assert!(!result.new_obligations.is_empty());
-    }
-
-    #[test]
     fn t905_whatif_result_delta() {
         let result = WhatIfResult {
             scenario: "test".into(),
@@ -214,7 +166,16 @@ mod tests {
 
     #[test]
     fn t905_whatif_format_message() {
-        let result = mock_whatif("add ElevenLabs", 72.0);
+        let result = WhatIfResult {
+            scenario: "add ElevenLabs".into(),
+            current_score: 72.0,
+            projected_score: 65.0,
+            new_obligations: vec![
+                "Content marking required (C2PA)".into(),
+                "AI-generated content disclosure".into(),
+            ],
+            effort_days: Some(2),
+        };
         let msg = format_whatif_message(&result);
         assert!(msg.contains("What-If Analysis: add ElevenLabs"));
         assert!(msg.contains("Current score:"));
@@ -223,9 +184,14 @@ mod tests {
     }
 
     #[test]
-    fn t905_whatif_offline_fallback() {
-        let result = mock_whatif("some unknown scenario", 80.0);
-        assert!(result.projected_score < 80.0);
-        assert!(!result.new_obligations.is_empty());
+    fn t905_whatif_positive_delta() {
+        let result = WhatIfResult {
+            scenario: "add disclosure".into(),
+            current_score: 60.0,
+            projected_score: 75.0,
+            new_obligations: vec![],
+            effort_days: None,
+        };
+        assert_eq!(result.score_delta(), 15.0);
     }
 }

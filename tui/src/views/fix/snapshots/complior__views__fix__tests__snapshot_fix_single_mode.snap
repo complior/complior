@@ -1,0 +1,34 @@
+---
+source: tui/src/views/fix.rs
+expression: buf
+---
+┌ Fix — OBL-015 ───────────────────────┐┌ Code Fix — src/chat/anthropic.ts ────────────────────────┐
+│  Score: 32 → 40  (+8)  |  1/3        ││ ── Current Code ── :8 ─────────────────────────────────  │
+│ ──────────────────────────────────── ││   1   import Anthropic from 'anthropic';                 │
+│  [A] l4-bare-anthropic               ││   2                                                      │
+│  Bare Anthropic API call             ││   3   const anthropic = new Anthropic({                  │
+│  Art. 50(1)                          ││   4     apiKey: process.env.ANTHROPIC_API_KEY,           │
+│  File: src/chat/anthropic.ts         ││   5   });                                                │
+│                                      ││   6                                                      │
+│  Impact: +8 points                   ││   7   export async function chat(msg: string) {          │
+│                                      ││   8 X   const resp = await anthropic.messages.create({   │
+│ ──────────────────────────────────── ││ ── Suggested Fix ─────────────────────────────────────   │
+│  Esc:back j/k:next/prev d:diff       ││   3 - const anthropic = new Anthropic({                  │
+│Enter:apply                           ││   4 -   apiKey: process.env.ANTHROPIC_API_KEY,           │
+│                                      ││   5 - });                                                │
+│                                      ││   3 + const anthropic = complior(new Anthropic({         │
+│                                      ││   4 +   apiKey: process.env.ANTHROPIC_API_KEY,           │
+│                                      ││   5 + }));                                               │
+│                                      ││                                                          │
+│                                      ││ ── Add Import ────────────────────────────────────────   │
+│                                      ││  + import { complior } from '@complior/sdk';             │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘

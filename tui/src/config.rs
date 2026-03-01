@@ -65,8 +65,8 @@ pub struct TuiConfig {
     /// Not persisted to TOML — always read from credentials file.
     #[serde(skip)]
     pub api_key: Option<String>,
-    /// When `true` (or env `OFFLINE_MODE=1`), skip PROJECT API entirely
-    /// and use `MockDataProvider` as the only data source.
+    /// When `true` (or env `OFFLINE_MODE=1`), skip PROJECT API entirely.
+    /// TUI shows empty state until a local scan is run.
     #[serde(default)]
     pub offline_mode: bool,
 

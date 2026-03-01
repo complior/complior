@@ -34,6 +34,8 @@ export type CheckResult = Readonly<
       readonly obligationId?: string;
       readonly articleReference?: string;
       readonly fix?: string;
+      readonly file?: string;
+      readonly line?: number;
     }
   | { readonly type: 'skip'; readonly checkId: string; readonly reason: string }
 >;
@@ -50,6 +52,26 @@ export interface Evidence {
   readonly line?: number;
 }
 
+export interface CodeContextLine {
+  readonly num: number;
+  readonly content: string;
+}
+
+export interface CodeContext {
+  readonly lines: readonly CodeContextLine[];
+  readonly startLine: number;
+  readonly highlightLine?: number;
+}
+
+export interface FixDiff {
+  readonly before: readonly string[];
+  readonly after: readonly string[];
+  readonly startLine: number;
+  readonly filePath: string;
+  /** Import line to add at top of file (e.g. "import { complior } from '@complior/sdk'"). */
+  readonly importLine?: string;
+}
+
 export interface Finding {
   readonly checkId: string;
   readonly type: CheckResultType;
@@ -64,6 +86,8 @@ export interface Finding {
   readonly confidence?: number;
   readonly confidenceLevel?: string;
   readonly evidence?: readonly Evidence[];
+  readonly codeContext?: CodeContext;
+  readonly fixDiff?: FixDiff;
 }
 
 // --- Score ---

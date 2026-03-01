@@ -1,6 +1,6 @@
 use ratatui::style::{Color, Modifier, Style};
 
-use crate::types::{Severity, Zone};
+use crate::types::{FindingType, Severity, Zone};
 
 /// All colors used in TUI — switchable via Theme Picker or `/theme` command.
 #[derive(Debug, Clone)]
@@ -465,6 +465,15 @@ pub fn severity_color(severity: Severity) -> Color {
         Severity::Medium => t.severity_medium,
         Severity::Low => t.severity_low,
         Severity::Info => t.severity_info,
+    }
+}
+
+pub fn finding_type_color(ft: FindingType) -> Color {
+    let t = theme();
+    match ft {
+        FindingType::A => t.accent,       // blue — code fix
+        FindingType::B => t.zone_green,   // green — missing file
+        FindingType::C => t.zone_yellow,  // yellow — config change
     }
 }
 

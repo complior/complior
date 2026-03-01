@@ -1,0 +1,34 @@
+---
+source: tui/src/views/fix.rs
+expression: buf
+---
+┌ Fix — 3 fixable items ───────────────┐┌ Diff Preview — 1 staged (+8 pts) ────────────────────────┐
+│  Score: 32 → 40  (+8)  |  1/3        ││  1 files modified  0 files created  |  +8 predicted      │
+│selected                              ││  ──────────────────────────────────────────────────────  │
+│ ──────────────────────────────────── ││  [A] src/chat/anthropic.ts  +8                           │
+│ STAGED (1) ───────────────────────   ││   1   import Anthropic from 'anthropic';                 │
+│> [A] [x] OBL-015    +8               ││   2                                                      │
+│          Bare Anthropic API call —   ││   3   const anthropic = new Anthropic({                  │
+│src/chat/anthropic.ts                 ││   4     apiKey: process.env.ANTHROPIC_API_KEY,           │
+│          Art. 50(1)                  ││   5   });                                                │
+│ ──────────────────────────────────── ││   6                                                      │
+│ NOT STAGED (2) ───────────────────   ││   7   export async function chat(msg: string) {          │
+│  [B] [ ] OBL-006    +5               ││   8 X   const resp = await anthropic.messages.create({   │
+│          Missing FRIA document       ││ -- Suggested Fix ──────────                              │
+│          Art. 27(1)  New file —      ││   3 - const anthropic = new Anthropic({                  │
+│review before creating                ││   4 -   apiKey: process.env.ANTHROPIC_API_KEY,           │
+│  [C] [ ] OBL-012    +3               ││   5 - });                                                │
+│          Missing compliance metadata ││   3 + const anthropic = complior(new Anthropic({         │
+│— package.json                        ││   4 +   apiKey: process.env.ANTHROPIC_API_KEY,           │
+│          Art. 53(1)  Press Space to  ││   5 + }));                                               │
+│stage                                 ││                                                          │
+│                                      ││                                                          │
+│ ──────────────────────────────────── ││                                                          │
+│  Space:toggle a:all n:none d:diff    ││                                                          │
+│Enter:apply                           ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘

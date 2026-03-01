@@ -1,0 +1,34 @@
+---
+source: tui/src/views/scan/tests.rs
+expression: buf
+---
+ Layers: [X]L1 [X]L2 [X]L3 [X]L4 [-]L5   (4/5 complete, 1 skipped)                                  
+ Scan complete: 32/100 (0.5s, 24 files)                                                             
+ Findings (4)  [All] c:Critical  h:High  m:Medium  l:Low   p:passed  f:fix  x:explain  </>:resize   
+─────────────────────────────────────────────┌ [A] Code Fix — OBL-015 ─────────────────────────────┐
+  1 critical  2 high  1 medium               │ src/chat/anthropic.ts:8                             │
+                                             │ ─────────────────────────────────────────────────   │
+ CRITICAL (1) ─────────────────────────────  │   6   import Anthropic from 'anthropic';            │
+> [A] CRIT OBL-015    Bare Anthropic API call│   7                                                 │
+              Art. 50(1)  Impact: +8  [fixabl│   8 X const c = new Anthropic();                    │
+                                             │   9   const resp = await c.messages.create({        │
+ HIGH (2) ─────────────────────────────────  │  10     model: 'claude-3',                          │
+  [B] HIGH OBL-006    Missing FRIA document  │                                                     │
+              Art. 27(1)  Impact: +5  [fixabl│ -- Suggested Fix ────────────                       │
+  [B] HIGH OBL-009    Missing post-market mon│   8 - const c = new Anthropic();                    │
+              Art. 72(1)                     │   8 + const c = complior(new Anthropic());          │
+                                             │                                                     │
+ MEDIUM (1) ───────────────────────────────  │  Impact: +8 points                                  │
+  [C]  MED OBL-012    Missing compliance meta│  ─────────────────────────────────────────────────  │
+              Art. 53(1)  Impact: +3  [fixabl│  [Enter] Detail  [f] Fix  [x] Explain  [d] Dismiss  │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             │                                                     │
+                                             └─────────────────────────────────────────────────────┘

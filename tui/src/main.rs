@@ -762,19 +762,14 @@ async fn execute_command(
                     ));
                 }
                 Err(_) => {
-                    // Offline fallback: use mock data
-                    let whatif_result =
-                        components::whatif::mock_whatif(&scenario, current_score);
-                    let msg = components::whatif::format_whatif_message(&whatif_result);
-                    app.whatif.result = Some(whatif_result);
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::Assistant,
-                        msg,
-                    ));
                     app.toasts.push(
-                        components::toast::ToastKind::Info,
-                        "What-if analysis (offline estimate)",
+                        components::toast::ToastKind::Warning,
+                        "What-if requires engine connection",
                     );
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        "What-if analysis unavailable — engine not connected.".to_string(),
+                    ));
                 }
             }
             app.whatif.pending = false;
@@ -852,6 +847,122 @@ async fn execute_command(
                         "Dry-run estimate (offline)",
                     );
                 }
+            }
+        }
+        AppCommand::ApplyFixes => {
+            use views::fix::{apply_fix_to_file, FixItemStatus};
+
+            let old_score = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
+            app.pre_fix_score = Some(old_score);
+
+            let selected_indices: Vec<usize> = app
+                .fix_view
+                .fixable_findings
+                .iter()
+                .enumerate()
+                .filter(|(_, item)| item.selected)
+                .map(|(i, _)| i)
+                .collect();
+
+            let mut applied: u32 = 0;
+            let mut failed: u32 = 0;
+            let mut details: Vec<String> = Vec::new();
+
+            for idx in &selected_indices {
+                let finding_index = app.fix_view.fixable_findings[*idx].finding_index;
+                let finding = app
+                    .last_scan
+                    .as_ref()
+                    .and_then(|s| s.findings.get(finding_index))
+                    .cloned();
+
+                if let Some(f) = finding {
+                    let result = apply_fix_to_file(&app.project_path, &f);
+                    if result.success {
+                        app.fix_view.fixable_findings[*idx].status = FixItemStatus::Applied;
+                        applied += 1;
+                    } else {
+                        app.fix_view.fixable_findings[*idx].status = FixItemStatus::Failed;
+                        failed += 1;
+                    }
+                    details.push(result.detail);
+                } else {
+                    app.fix_view.fixable_findings[*idx].status = FixItemStatus::Failed;
+                    failed += 1;
+                    details.push("Finding not found in scan".to_string());
+                }
+            }
+
+            app.fix_view.applying = false;
+
+            // Log details
+            for d in &details {
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    d.clone(),
+                ));
+            }
+
+            // Show results (predicted score — will be updated by AutoScan)
+            let impact = app.fix_view.total_predicted_impact() as f64;
+            app.fix_view.results = Some(views::fix::FixResults {
+                applied,
+                failed,
+                old_score,
+                new_score: (old_score + impact).min(100.0),
+            });
+
+            if applied > 0 {
+                app.toasts.push(
+                    components::toast::ToastKind::Success,
+                    format!("{applied} fix(es) applied to disk. Re-scanning..."),
+                );
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                app.activity_log.push(types::ActivityEntry {
+                    timestamp: format!("{:02}:{:02}", (now % 86400) / 3600, (now % 3600) / 60),
+                    kind: types::ActivityKind::Fix,
+                    detail: format!("{applied} applied, {failed} failed"),
+                });
+                // Auto-rescan to validate actual score (inline to avoid recursion)
+                let path = app.project_path.to_string_lossy().to_string();
+                let fix_old_score = app.pre_fix_score.take();
+                match app.engine_client.scan(&path).await {
+                    Ok(result) => {
+                        let new_score = result.score.total_score;
+                        app.set_scan_result(result);
+                        // Update fix results with real score
+                        if let Some(ref mut r) = app.fix_view.results {
+                            r.new_score = new_score;
+                        }
+                        if let Some(old) = fix_old_score {
+                            let diff = new_score - old;
+                            let msg = format!("Fix verified: Score {old:.0} → {new_score:.0} ({diff:+.0})");
+                            app.toasts.push(
+                                if diff > 0.0 { components::toast::ToastKind::Success }
+                                else { components::toast::ToastKind::Warning },
+                                &msg,
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        app.toasts.push(
+                            components::toast::ToastKind::Warning,
+                            "Re-scan failed after fix. Run /scan manually.",
+                        );
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            format!("Re-scan failed: {e}"),
+                        ));
+                    }
+                }
+            } else {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    format!("No fixes applied. {failed} failed."),
+                );
             }
         }
         AppCommand::SaveTheme(name) => {
@@ -955,7 +1066,7 @@ async fn execute_command(
                 "demo" => {
                     app.messages.push(types::ChatMessage::new(
                         types::MessageRole::System,
-                        "Demo mode active. Run `complior init` in your project to start for real."
+                        "Run `complior init` in your project, then /scan to check compliance."
                             .to_string(),
                     ));
                 }

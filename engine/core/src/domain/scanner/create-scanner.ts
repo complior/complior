@@ -18,6 +18,7 @@ import {
   summarizeConfidence,
 } from './confidence.js';
 import type { CheckWithConfidence } from './confidence.js';
+import { buildFixDiff, buildCodeContext } from './fix-diff-builder.js';
 
 const DEFAULT_SEVERITY: Severity = 'info';
 
@@ -46,6 +47,8 @@ const toFinding = (result: CheckResult, confidence?: CheckWithConfidence): Findi
       obligationId: result.obligationId,
       articleReference: result.articleReference,
       fix: result.fix,
+      file: result.file,
+      line: result.line,
       ...base,
     };
   }
@@ -57,6 +60,30 @@ const toFinding = (result: CheckResult, confidence?: CheckWithConfidence): Findi
     message: result.reason,
     severity: DEFAULT_SEVERITY,
   };
+};
+
+/** Enrich findings with codeContext and fixDiff using file contents from scan. */
+const enrichFindings = (
+  findings: readonly Finding[],
+  fileMap: ReadonlyMap<string, string>,
+): readonly Finding[] => {
+  let enriched = 0;
+  return findings.map((f) => {
+    if (enriched >= 20) return f; // Limit enrichment to top-20
+    if (f.file === undefined || f.type !== 'fail') return f;
+
+    const content = fileMap.get(f.file);
+    if (content === undefined) return f;
+
+    enriched++;
+    const codeContext = f.line !== undefined ? buildCodeContext(content, f.line) : undefined;
+    const fixDiff = f.line !== undefined
+      ? buildFixDiff(content, f.line, f.file, f.checkId)
+      : undefined;
+
+    if (codeContext === undefined && fixDiff === undefined) return f;
+    return { ...f, codeContext, fixDiff };
+  });
 };
 
 const createFallbackScore = (findings: readonly Finding[]) => {
@@ -181,18 +208,25 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       }
     }
 
+    // Enrich findings with code context from files already in memory
+    const fileMap = new Map<string, string>();
+    for (const f of ctx.files) {
+      fileMap.set(f.relativePath, f.content);
+    }
+    const enrichedFindings = enrichFindings(findings, fileMap);
+
     const duration = Date.now() - startTime;
 
     const score = scoringData !== undefined
       ? calculateScore(allResults, scoringData)
-      : createFallbackScore(findings);
+      : createFallbackScore(enrichedFindings);
 
     // Attach confidence summary to score
     const confidenceSummary = summarizeConfidence(allConfidence);
 
     return {
       score: { ...score, confidenceSummary },
-      findings,
+      findings: enrichedFindings,
       projectPath: ctx.projectPath,
       scannedAt: new Date().toISOString(),
       duration,
