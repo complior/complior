@@ -173,7 +173,7 @@ export interface ProjectProfile {
   readonly detectedModels: readonly string[];
 }
 
-// --- Project Memory ---
+// --- Scan History ---
 
 export interface ScanRecord {
   readonly score: number;
@@ -181,24 +181,6 @@ export interface ScanRecord {
   readonly findingsCount: number;
   readonly criticalCount: number;
   readonly timestamp: string;
-}
-
-export interface FixRecord {
-  readonly checkId: string;
-  readonly file: string;
-  readonly timestamp: string;
-  readonly scoreBefore: number;
-  readonly scoreAfter: number;
-}
-
-export interface ProjectMemory {
-  readonly version: string;
-  readonly projectPath: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-  readonly scanHistory: readonly ScanRecord[];
-  readonly fixHistory: readonly FixRecord[];
-  readonly profile?: ProjectProfile;
 }
 
 // --- Config ---
