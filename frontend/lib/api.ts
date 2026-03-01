@@ -272,6 +272,90 @@ export interface AdminSubscription {
   currentPeriodEnd: string | null;
 }
 
+// --- Dashboard ---
+
+export interface DashboardSummary {
+  tools: {
+    total: number;
+    classified: number;
+    unclassified: number;
+  };
+  riskDistribution: {
+    prohibited: number;
+    high: number;
+    gpai: number;
+    limited: number;
+    minimal: number;
+  };
+  complianceScore: {
+    overall: number;
+    toolCount: number;
+  };
+  aiLiteracy: {
+    totalEmployees: number;
+    trained: number;
+    completionRate: number;
+    message: string;
+  };
+  requiresAttention: {
+    toolId: number;
+    toolName: string;
+    severity: 'critical' | 'high' | 'medium';
+    reason: string;
+  }[];
+  timeline: {
+    date: string;
+    title: string;
+    description: string;
+    daysUntil: number;
+  }[];
+  recentActivity: {
+    auditLogId: number;
+    userId: number;
+    action: string;
+    entity: string;
+    entityId: number | null;
+    details: string | null;
+    email: string;
+    fullName: string;
+    createdAt: string;
+  }[];
+  planLimits: {
+    users: { allowed: boolean; current: number; limit: number };
+    tools: { allowed: boolean; current: number; limit: number };
+  };
+}
+
+// --- Team ---
+
+export interface TeamMember {
+  id: number;
+  email: string;
+  fullName: string;
+  role: string;
+  active: boolean;
+  lastLoginAt: string | null;
+}
+
+export interface TeamInvitation {
+  invitationId: number;
+  email: string;
+  role: string;
+  status: string;
+  invitedBy: string;
+  expiresAt: string;
+}
+
+export interface TeamListResponse {
+  members: TeamMember[];
+  invitations: TeamInvitation[];
+  limits: {
+    current: number;
+    pending: number;
+    max: number;
+  };
+}
+
 export const api = {
   auth: {
     me: () => apiFetch<UserProfile>('/api/auth/me'),
@@ -315,6 +399,22 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+  },
+  dashboard: {
+    summary: () => apiFetch<DashboardSummary>('/api/dashboard/summary'),
+  },
+  team: {
+    list: () => apiFetch<TeamListResponse>('/api/team/members'),
+    invite: (data: { email: string; role: string }) =>
+      apiFetch<TeamInvitation>('/api/team/invite', { method: 'POST', body: JSON.stringify(data) }),
+    updateRole: (userId: number, role: string) =>
+      apiFetch(`/api/team/members/${userId}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+    remove: (userId: number) =>
+      apiFetch<{ success: boolean }>(`/api/team/members/${userId}`, { method: 'DELETE' }),
+    revokeInvitation: (invitationId: number) =>
+      apiFetch<{ success: boolean }>(`/api/team/invitations/${invitationId}`, { method: 'DELETE' }),
+    resendInvitation: (invitationId: number) =>
+      apiFetch<{ success: boolean }>(`/api/team/invitations/${invitationId}/resend`, { method: 'POST' }),
   },
   admin: {
     overview: () => apiFetch<AdminOverview>('/api/admin/overview'),
