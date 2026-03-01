@@ -590,7 +590,7 @@ db.exec(`INSERT INTO sessions VALUES ('${id}', '${date}')`);
 Каждый rule pack (домен комплаенса) следует единому формату:
 
 ```typescript
-// engine/src/core/scanner/packs/{pack-name}/index.ts
+// engine/core/src/core/scanner/packs/{pack-name}/index.ts
 export const packManifest = {
   name: 'complior:eu-ai-act',
   version: '1.0.0',
@@ -600,7 +600,7 @@ export const packManifest = {
 } satisfies RulePackManifest;
 
 // Каждая проверка = отдельный файл
-// engine/src/core/scanner/packs/{pack-name}/{check-name}.ts
+// engine/core/src/core/scanner/packs/{pack-name}/{check-name}.ts
 export const disclosure: CheckDefinition = {
   id: 'ai-disclosure',
   title: 'AI Disclosure (Art. 50.1)',
@@ -691,7 +691,7 @@ describe('Scanner', () => {
 
 - Mock ONLY external boundaries: LLM API, file system, network
 - Никогда не мокай scanner checks (они детерминистичны — тестируй на fixtures)
-- Fixtures: `engine/src/core/scanner/packs/{pack}/fixtures/` — pass/ и fail/ директории
+- Fixtures: `engine/core/src/core/scanner/packs/{pack}/fixtures/` — pass/ и fail/ директории
 
 ---
 
@@ -783,7 +783,7 @@ describe('Scanner', () => {
 ## 11. Организация файлов
 
 ```
-engine/src/
+engine/core/src/
 ├── server.ts            # Hono HTTP + SSE
 ├── routes/              # Обработчики эндпоинтов
 │   ├── scan.ts

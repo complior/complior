@@ -88,7 +88,7 @@
 }
 ```
 
-Все rule packs хранятся в `engine/src/core/scanner/packs/`. Загрузка через `rule-pack-loader.ts` на основе `.compliorrc.json` extends.
+Все rule packs хранятся в `engine/core/src/core/scanner/packs/`. Загрузка через `rule-pack-loader.ts` на основе `.compliorrc.json` extends.
 
 ---
 

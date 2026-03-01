@@ -2,7 +2,7 @@
   "name": "complior",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["engine", "packages/sdk", "packages/npm"],
+  "workspaces": ["engine/core", "engine/sdk", "engine/npm"],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

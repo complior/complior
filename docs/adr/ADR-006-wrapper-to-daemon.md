@@ -82,6 +82,6 @@ v8 (Daemon):
 | `tui/src/agents/` | Agent subprocess registry |
 | `tui/src/orchestrator/` | Multi-agent orchestrator |
 | `tui/src/acp/` | Agent Compliance Protocol (PTY-based) |
-| `engine/src/llm/` (chat) | LLM chat removed |
-| `engine/src/memory/` | Session memory removed |
+| `engine/core/src/llm/` (chat) | LLM chat removed |
+| `engine/core/src/memory/` | Session memory removed |
 | Input routing (Ctrl+Shift+*) | Нет PTY → нет input splitting |

@@ -135,7 +135,7 @@ Sync (bidirectional):
 ### Regulation Data
 | Компонент | CLI | SaaS | Формат |
 |-----------|-----|------|--------|
-| EU AI Act obligations (108) | Local JSON (`engine/src/data/`) | PostgreSQL (regulation_items table) | Shared schema |
+| EU AI Act obligations (108) | Local JSON (`engine/core/src/data/`) | PostgreSQL (regulation_items table) | Shared schema |
 | Scoring rules | Local JSON | DB-backed | Shared formula |
 | AI Registry | API call (5,011+ tools) | PostgreSQL (ai_tools table) | REST API |
 

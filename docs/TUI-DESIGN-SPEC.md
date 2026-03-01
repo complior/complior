@@ -208,7 +208,7 @@ NORMAL  D:dash S:scan F:fix P:passport O:oblig T:time R:report L:log
 │  Penalty: €15M / 3% turnover                                           │
 │  Deadline: 2 Aug 2026 (157 days)                                        │
 │                                                                         │
-│  File: engine/data/templates/declaration-conformity.md                  │
+│  File: engine/core/data/templates/declaration-conformity.md                  │
 │  Issue: Document is empty or has no headings (0/3 required sections)    │
 │  Fix: complior fix --id OBL-019 (generates template with 3 sections)   │
 │                                                                         │
@@ -245,7 +245,7 @@ NORMAL  a:All c:Crit h:High m:Med l:Low Enter:detail f:fix x:explain j/k
 │  [x] OBL-015 Art.50(1): bare API ×5     │ ## 4. Escalation Procedures  │
 │        disclosure injection +3 ea.       │ ## 5. Review Frequency       │
 │  [ ] OBL-019 Art. 47: conformity        │                              │
-│        empty document +5                 │ File: engine/data/templates/ │
+│        empty document +5                 │ File: engine/core/data/templates/ │
 │  [x] OBL-021 Art. 73: incident-report   │   monitoring-policy.md       │
 │        empty document +5 APPLIED         │                              │
 │                                          │                              │
