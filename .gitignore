@@ -1,5 +1,7 @@
 # Temporary work files
 tmp/
+test-projects/
+COMPLIANCE-REPORT-*.md
 
 # Claude Code local settings (personal, not shared)
 .claude/
