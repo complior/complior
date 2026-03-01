@@ -1,5 +1,6 @@
-import type { TaskType } from './model-router.js';
 import { calculateCost } from './pricing.js';
+
+export type TaskType = 'qa' | 'scan_fix' | 'code_gen' | 'report' | 'whatif' | 'deep_analysis';
 
 export interface CostEntry {
   readonly taskType: TaskType;

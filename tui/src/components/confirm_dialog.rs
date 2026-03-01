@@ -13,28 +13,6 @@ pub struct ConfirmDialog {
     pub message: String,
     pub file_count: usize,
     pub score_impact: Option<f64>,
-    pub on_confirm: ConfirmAction,
-}
-
-/// What action to perform on confirmation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConfirmAction {
-    BatchApply,
-    UndoMultiple,
-    OverwriteDocs,
-    ResetScan,
-}
-
-impl ConfirmDialog {
-    pub fn batch_apply(count: usize, impact: f64) -> Self {
-        Self {
-            title: "Confirm Batch Apply".to_string(),
-            message: format!("Apply {count} fixes?"),
-            file_count: count,
-            score_impact: Some(impact),
-            on_confirm: ConfirmAction::BatchApply,
-        }
-    }
 }
 
 /// Render confirmation dialog as a centered modal.
@@ -107,8 +85,12 @@ mod tests {
 
     #[test]
     fn test_confirm_dialog_creation() {
-        let dialog = ConfirmDialog::batch_apply(5, 12.0);
-        assert_eq!(dialog.on_confirm, ConfirmAction::BatchApply);
+        let dialog = ConfirmDialog {
+            title: "Confirm Batch Apply".to_string(),
+            message: "Apply 5 fixes?".to_string(),
+            file_count: 5,
+            score_impact: Some(12.0),
+        };
         assert_eq!(dialog.file_count, 5);
         assert!(dialog.score_impact.is_some());
         assert!(dialog.message.contains('5'));

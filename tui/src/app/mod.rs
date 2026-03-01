@@ -11,14 +11,11 @@ use crate::components::spinner::Spinner;
 use crate::components::suggestions::IdleSuggestionState;
 use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
-use crate::connection::EngineConnection;
-use crate::connection::direct::DirectConnection;
 use crate::engine_client::EngineClient;
 use crate::input::Action;
 use crate::layout::Breakpoint;
-use crate::providers::ProviderConfig;
 use crate::types::{
-    ActivityEntry, ActivityKind, ChatMessage, ClickTarget, DiffContent,
+    ActivityEntry, ActivityKind, ChatMessage, ClickTarget,
     EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult,
     Selection, ViewState,
 };
@@ -41,7 +38,6 @@ pub struct App {
     // Engine
     pub engine_status: EngineConnectionStatus,
     pub engine_client: EngineClient,
-    pub connection: Box<dyn EngineConnection>,
 
     // Status Log (system messages)
     pub messages: Vec<ChatMessage>,
@@ -75,9 +71,6 @@ pub struct App {
     pub terminal_scroll: usize,
     pub terminal_auto_scroll: bool,
 
-    // Diff
-    pub diff_content: Option<DiffContent>,
-
     // Panels visibility
     pub sidebar_visible: bool,
     pub files_panel_visible: bool,
@@ -86,9 +79,6 @@ pub struct App {
     pub overlay: Overlay,
     pub overlay_filter: String,
     pub palette_index: usize,
-
-    // Provider config (stub — model selection removed in wrapper mode)
-    pub provider_config: ProviderConfig,
 
     // View-specific state
     pub scan_view: ScanViewState,
@@ -185,10 +175,7 @@ impl App {
             .map(PathBuf::from)
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
-        let connection: Box<dyn EngineConnection> =
-            Box::new(DirectConnection::new(EngineClient::new(&config)));
-
-        let mut app = Self {
+        let app = Self {
             running: true,
             active_panel: Panel::Chat,
             input_mode: InputMode::Normal,
@@ -196,7 +183,6 @@ impl App {
             view_state: ViewState::Dashboard,
             mode: Mode::Scan,
             engine_status: EngineConnectionStatus::Disconnected,
-            connection,
             engine_client,
             messages: vec![ChatMessage::new(
                 MessageRole::System,
@@ -221,13 +207,11 @@ impl App {
             terminal_visible: false,
             terminal_scroll: 0,
             terminal_auto_scroll: true,
-            diff_content: None,
             sidebar_visible,
             files_panel_visible: true,
             overlay: Overlay::None,
             overlay_filter: String::new(),
             palette_index: 0,
-            provider_config: crate::providers::load_provider_config(),
             scan_view: ScanViewState::default(),
             fix_view: FixViewState::default(),
             timeline_view: TimelineViewState::default(),
@@ -775,7 +759,6 @@ impl App {
                 None
             }
             Action::AcceptDiff => {
-                self.diff_content = None;
                 self.active_panel = Panel::Chat;
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
@@ -784,7 +767,6 @@ impl App {
                 None
             }
             Action::RejectDiff => {
-                self.diff_content = None;
                 self.active_panel = Panel::Chat;
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
@@ -934,9 +916,6 @@ impl App {
                                 self.fix_view = FixViewState::from_scan(&scan.findings);
                             }
                         }
-                    }
-                    ClickTarget::PanelFocus(panel) => {
-                        self.active_panel = panel;
                     }
                     ClickTarget::FindingRow(idx) => {
                         self.scan_view.selected_finding = Some(idx);
@@ -1162,52 +1141,6 @@ impl App {
             }
             _ => None,
         }
-    }
-
-    /// Helper: advance onboarding wizard to next step and handle side effects.
-    fn advance_onboarding(&mut self) -> Option<AppCommand> {
-        let completed = self
-            .onboarding
-            .as_mut()
-            .map(|wiz| wiz.next_step())
-            .unwrap_or(false);
-
-        // Post-advance side effects
-        if let Some(wiz) = &mut self.onboarding {
-            if let Some(prev_step) = wiz
-                .active_steps
-                .iter()
-                .position(|&i| i == wiz.current_step)
-                .and_then(|pos| {
-                    if pos > 0 {
-                        Some(wiz.active_steps[pos - 1])
-                    } else {
-                        None
-                    }
-                })
-            {
-                if wiz.steps.get(prev_step).map(|s| s.id) == Some("project_type") {
-                    let pt = wiz.selected_config_value("project_type");
-                    wiz.project_type = Some(pt);
-                    wiz.recalculate_active_steps();
-                }
-            }
-        }
-
-        if completed {
-            if let Some(wiz) = &self.onboarding {
-                if let Some(summary) = &wiz.result_summary {
-                    self.messages.push(ChatMessage::new(
-                        MessageRole::System,
-                        format!("Setup complete: {summary}"),
-                    ));
-                }
-            }
-            self.onboarding = None;
-            self.overlay = Overlay::None;
-            return Some(AppCommand::CompleteOnboarding);
-        }
-        None
     }
 
     fn handle_overlay_action(&mut self, action: Action) -> Option<AppCommand> {

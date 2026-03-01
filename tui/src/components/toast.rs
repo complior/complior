@@ -84,9 +84,6 @@ impl ToastStack {
         &self.toasts[start..]
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.toasts.is_empty()
-    }
 }
 
 /// Render toast stack as overlay in upper-right corner.

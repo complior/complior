@@ -23,8 +23,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                 StepOption::new("Gruvbox"),
             ],
             selected: vec![0],
-            text_value: String::new(),
-            skippable: false,
         },
         // Step 2: Navigation
         OnboardingStep {
@@ -39,8 +37,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                     .with_hint("j/k to move, Enter to confirm. h/l for tabs, / to search."),
             ],
             selected: vec![0],
-            text_value: String::new(),
-            skippable: false,
         },
         // Step 3: Project Type
         OnboardingStep {
@@ -57,8 +53,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                     .with_hint("Quick demo with sample data."),
             ],
             selected: vec![0],
-            text_value: String::new(),
-            skippable: false,
         },
         // Step 5: Workspace Trust
         OnboardingStep {
@@ -71,8 +65,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                 StepOption::new("No, exit"),
             ],
             selected: vec![0],
-            text_value: String::new(),
-            skippable: true,
         },
         // Step 6: Jurisdiction
         OnboardingStep {
@@ -89,8 +81,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                 StepOption::new("Not sure").with_hint("Default: EU AI Act"),
             ],
             selected: vec![0],
-            text_value: String::new(),
-            skippable: false,
         },
         // Step 7: Role
         OnboardingStep {
@@ -109,8 +99,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                     .with_hint("We'll detect from your codebase."),
             ],
             selected: vec![0],
-            text_value: String::new(),
-            skippable: false,
         },
         // Step 8: Industry
         OnboardingStep {
@@ -131,8 +119,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                 StepOption::new("Other / Not sure"),
             ],
             selected: vec![0],
-            text_value: String::new(),
-            skippable: false,
         },
         // Step 9: Scan Scope
         OnboardingStep {
@@ -153,8 +139,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                     .with_hint("Check if compliance docs exist"),
             ],
             selected: vec![0, 1, 2], // first 3 on by default
-            text_value: String::new(),
-            skippable: true,
         },
         // Step 10: Summary
         OnboardingStep {
@@ -164,8 +148,6 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
             kind: StepKind::Summary,
             options: vec![],
             selected: vec![],
-            text_value: String::new(),
-            skippable: false,
         },
     ]
 }

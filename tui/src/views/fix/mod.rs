@@ -13,7 +13,7 @@ use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
-use crate::types::{Finding, Severity};
+use crate::types::Finding;
 
 // Re-export public API (same paths as before the split).
 pub use apply::apply_fix_to_file;
@@ -22,7 +22,6 @@ pub use apply::apply_fix_to_file;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixItemStatus {
     Pending,
-    Applying,
     Applied,
     Failed,
 }
@@ -73,17 +72,6 @@ impl Default for FixViewState {
             results: None,
             focus_check_id: None,
         }
-    }
-}
-
-/// Predict score impact based on severity heuristic.
-pub fn predict_impact(severity: Severity) -> i32 {
-    match severity {
-        Severity::Critical => 8,
-        Severity::High => 5,
-        Severity::Medium => 3,
-        Severity::Low => 1,
-        Severity::Info => 0,
     }
 }
 

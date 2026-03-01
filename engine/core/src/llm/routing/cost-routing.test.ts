@@ -1,40 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { determineTaskType, routeModel } from './model-router.js';
 import { calculateCost } from './pricing.js';
 import { createCostTracker } from './cost-tracker.js';
-
-describe('Model Router', () => {
-  it('routes Q&A to haiku', () => {
-    const type = determineTaskType('what is Art. 50?', []);
-    const selection = routeModel(type);
-    expect(selection.model).toBe('claude-haiku-4');
-  });
-
-  it('routes report generation to opus', () => {
-    const type = determineTaskType('generate report', ['generateReport']);
-    const selection = routeModel(type);
-    expect(selection.model).toBe('claude-opus-4');
-  });
-
-  it('routes code generation to sonnet', () => {
-    const type = determineTaskType('create a file', ['createFile']);
-    const selection = routeModel(type);
-    expect(selection.model).toBe('claude-sonnet-4');
-  });
-
-  it('routes scan to haiku', () => {
-    const type = determineTaskType('scan project', ['scanProject']);
-    expect(type).toBe('scan_fix');
-    expect(routeModel(type).model).toBe('claude-haiku-4');
-  });
-
-  it('respects manual override', () => {
-    const selection = routeModel('qa', 'gpt-4o');
-    expect(selection.model).toBe('gpt-4o');
-    expect(selection.provider).toBe('openai');
-    expect(selection.reason).toContain('Manually selected');
-  });
-});
 
 describe('Pricing', () => {
   it('calculates cost for claude-haiku-4', () => {

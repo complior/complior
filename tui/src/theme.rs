@@ -33,10 +33,6 @@ pub struct ThemeColors {
     pub tool_result_ok: Color,
     pub tool_result_err: Color,
     pub thinking_fg: Color,
-    pub header_bg: Color,
-    pub header_fg: Color,
-    pub scrollbar: Color,
-    pub sparkline: Color,
 }
 
 impl ThemeColors {
@@ -78,10 +74,6 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(158, 206, 106),
             tool_result_err: Color::Rgb(247, 118, 142),
             thinking_fg: Color::Rgb(90, 90, 110),
-            header_bg: Color::Rgb(36, 37, 52),
-            header_fg: Color::Rgb(192, 202, 245),
-            scrollbar: Color::Rgb(60, 60, 80),
-            sparkline: Color::Rgb(122, 162, 247),
         }
     }
 
@@ -115,10 +107,6 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(0, 140, 0),
             tool_result_err: Color::Rgb(200, 0, 0),
             thinking_fg: Color::Rgb(160, 160, 170),
-            header_bg: Color::Rgb(230, 230, 240),
-            header_fg: Color::Rgb(56, 58, 66),
-            scrollbar: Color::Rgb(200, 200, 210),
-            sparkline: Color::Rgb(64, 120, 242),
         }
     }
 
@@ -152,10 +140,6 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(133, 153, 0),
             tool_result_err: Color::Rgb(220, 50, 47),
             thinking_fg: Color::Rgb(88, 110, 117),
-            header_bg: Color::Rgb(7, 54, 66),
-            header_fg: Color::Rgb(147, 161, 161),
-            scrollbar: Color::Rgb(88, 110, 117),
-            sparkline: Color::Rgb(42, 161, 152),
         }
     }
 
@@ -189,10 +173,6 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(133, 153, 0),
             tool_result_err: Color::Rgb(220, 50, 47),
             thinking_fg: Color::Rgb(147, 161, 161),
-            header_bg: Color::Rgb(238, 232, 213),
-            header_fg: Color::Rgb(101, 123, 131),
-            scrollbar: Color::Rgb(147, 161, 161),
-            sparkline: Color::Rgb(42, 161, 152),
         }
     }
 
@@ -226,10 +206,6 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(80, 250, 123),
             tool_result_err: Color::Rgb(255, 85, 85),
             thinking_fg: Color::Rgb(98, 114, 164),
-            header_bg: Color::Rgb(33, 34, 44),
-            header_fg: Color::Rgb(248, 248, 242),
-            scrollbar: Color::Rgb(98, 114, 164),
-            sparkline: Color::Rgb(189, 147, 249),
         }
     }
 
@@ -263,10 +239,6 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(163, 190, 140),
             tool_result_err: Color::Rgb(191, 97, 106),
             thinking_fg: Color::Rgb(76, 86, 106),
-            header_bg: Color::Rgb(59, 66, 82),
-            header_fg: Color::Rgb(229, 233, 240),
-            scrollbar: Color::Rgb(76, 86, 106),
-            sparkline: Color::Rgb(136, 192, 208),
         }
     }
 
@@ -300,10 +272,6 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(166, 226, 46),
             tool_result_err: Color::Rgb(249, 38, 114),
             thinking_fg: Color::Rgb(117, 113, 94),
-            header_bg: Color::Rgb(30, 31, 26),
-            header_fg: Color::Rgb(248, 248, 242),
-            scrollbar: Color::Rgb(117, 113, 94),
-            sparkline: Color::Rgb(174, 129, 255),
         }
     }
 
@@ -337,16 +305,11 @@ impl ThemeColors {
             tool_result_ok: Color::Rgb(184, 187, 38),
             tool_result_err: Color::Rgb(251, 73, 52),
             thinking_fg: Color::Rgb(146, 131, 116),
-            header_bg: Color::Rgb(50, 48, 47),
-            header_fg: Color::Rgb(235, 219, 178),
-            scrollbar: Color::Rgb(146, 131, 116),
-            sparkline: Color::Rgb(254, 128, 25),
         }
     }
 
-    /// Backward-compatible aliases for existing presets.
+    /// Backward-compatible alias for existing preset.
     pub fn dark() -> Self { Self::complior_dark() }
-    pub fn light() -> Self { Self::complior_light() }
     pub fn high_contrast() -> Self {
         let mut t = Self::complior_dark();
         t.name = "High Contrast";

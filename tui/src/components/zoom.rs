@@ -5,19 +5,6 @@ pub enum ZoomedWidget {
     DeadlineCountdown,
     ActivityLog,
     ScoreSparkline,
-    FindingsList,
-}
-
-impl ZoomedWidget {
-    pub fn title(self) -> &'static str {
-        match self {
-            Self::ScoreGauge => "Score Gauge (Expanded)",
-            Self::DeadlineCountdown => "Deadlines (Expanded)",
-            Self::ActivityLog => "Activity Log (Expanded)",
-            Self::ScoreSparkline => "Score History (Expanded)",
-            Self::FindingsList => "Findings (Expanded)",
-        }
-    }
 }
 
 /// State for widget zoom/expand feature.

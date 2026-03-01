@@ -1,8 +1,8 @@
-mod generators;
+pub(crate) mod generators;
 mod tests;
 
 pub use generators::export_report;
-pub(crate) use generators::{generate_report_markdown, zone_label, GENERATORS};
+pub(crate) use generators::{zone_label, GENERATORS};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};

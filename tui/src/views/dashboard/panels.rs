@@ -414,8 +414,6 @@ pub(super) fn render_activity_log(frame: &mut Frame, area: Rect, app: &App) {
             let icon_color = match entry.kind {
                 crate::types::ActivityKind::Scan => t.zone_green,
                 crate::types::ActivityKind::Fix => t.zone_yellow,
-                crate::types::ActivityKind::Passport => t.accent,
-                crate::types::ActivityKind::Daemon => t.muted,
                 crate::types::ActivityKind::Watch => t.zone_yellow,
             };
             Line::from(vec![

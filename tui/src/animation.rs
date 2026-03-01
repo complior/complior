@@ -2,9 +2,7 @@ use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub enum AnimKind {
-    ProgressBar { from: f64, to: f64 },
     Counter { from: u32, to: u32 },
-    Flash,
     Splash,    // Fade-in for startup owl (0.0 → 1.0 opacity)
     Checkmark, // Green checkmark flash (3 blinks over 600ms)
 }
@@ -44,13 +42,12 @@ impl Animation {
     pub fn current_value_f64(&self) -> f64 {
         let p = self.progress();
         match &self.kind {
-            AnimKind::ProgressBar { from, to } => (to - from).mul_add(p, *from),
             AnimKind::Counter { from, to } => {
                 let f = f64::from(*from);
                 let t = f64::from(*to);
                 (t - f).mul_add(p, f)
             }
-            AnimKind::Flash | AnimKind::Splash => p,
+            AnimKind::Splash => p,
             AnimKind::Checkmark => {
                 // 3 blinks: on at 0-33%, off at 33-66%, on at 66-100%
                 let phase = (p * 3.0) % 2.0;
@@ -115,33 +112,12 @@ impl AnimationState {
             })
     }
 
-    /// Get the latest progress bar value, or None.
-    pub fn progress_value(&self) -> Option<f64> {
-        self.active
-            .iter()
-            .rev()
-            .find_map(|a| match &a.kind {
-                AnimKind::ProgressBar { .. } => Some(a.current_value_f64()),
-                _ => None,
-            })
-    }
-
     /// Splash fade-in opacity (0.0-1.0), or None if no splash active.
     pub fn splash_opacity(&self) -> Option<f64> {
         self.active
             .iter()
             .find_map(|a| match &a.kind {
                 AnimKind::Splash => Some(a.progress()),
-                _ => None,
-            })
-    }
-
-    /// Checkmark visibility (true/false blink), or None if no checkmark active.
-    pub fn checkmark_visible(&self) -> Option<bool> {
-        self.active
-            .iter()
-            .find_map(|a| match &a.kind {
-                AnimKind::Checkmark => Some(a.current_value_f64() > 0.5),
                 _ => None,
             })
     }
@@ -189,7 +165,7 @@ mod tests {
     fn anim_gc() {
         let mut state = AnimationState::new(true);
         state.push(Animation::new(
-            AnimKind::Flash,
+            AnimKind::Checkmark,
             1, // 1ms
         ));
         assert!(!state.active.is_empty());
@@ -231,20 +207,4 @@ mod tests {
         assert!(state.splash_opacity().is_none(), "Splash should be GC'd after completion");
     }
 
-    #[test]
-    fn checkmark_blink_pattern() {
-        let mut state = AnimationState::new(true);
-        state.start_checkmark();
-        // Checkmark should be active
-        assert!(state.checkmark_visible().is_some());
-    }
-
-    #[test]
-    fn checkmark_completes() {
-        let mut state = AnimationState::new(true);
-        state.start_checkmark();
-        std::thread::sleep(std::time::Duration::from_millis(700)); // > 600ms
-        state.step();
-        assert!(state.checkmark_visible().is_none(), "Checkmark should be GC'd after completion");
-    }
 }

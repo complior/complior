@@ -42,43 +42,16 @@ impl DismissReason {
     }
 }
 
-/// Quick action dispatched from Scan view.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum QuickAction {
-    /// Fix: send finding to Fix view
-    Fix,
-    /// Explain: send "Explain OBL-xxx" to Chat
-    Explain,
-    /// Dismiss: open dismiss modal with reason selection
-    Dismiss,
-    /// Open: open file in $EDITOR
-    Open,
-}
-
-impl QuickAction {
-    pub fn from_key(c: char) -> Option<Self> {
-        match c {
-            'f' => Some(Self::Fix),
-            'x' => Some(Self::Explain),
-            'd' => Some(Self::Dismiss),
-            'o' => Some(Self::Open),
-            _ => None,
-        }
-    }
-}
-
 /// State for the dismiss modal (shown when 'd' pressed on finding).
 #[derive(Debug, Clone)]
 pub struct DismissModal {
-    pub finding_index: usize,
     pub cursor: usize,
     pub reasons: Vec<DismissReason>,
 }
 
 impl DismissModal {
-    pub fn new(finding_index: usize) -> Self {
+    pub fn new(_finding_index: usize) -> Self {
         Self {
-            finding_index,
             cursor: 0,
             reasons: DismissReason::all().to_vec(),
         }
@@ -102,15 +75,6 @@ impl DismissModal {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_quick_action_from_key() {
-        assert_eq!(QuickAction::from_key('f'), Some(QuickAction::Fix));
-        assert_eq!(QuickAction::from_key('x'), Some(QuickAction::Explain));
-        assert_eq!(QuickAction::from_key('d'), Some(QuickAction::Dismiss));
-        assert_eq!(QuickAction::from_key('o'), Some(QuickAction::Open));
-        assert_eq!(QuickAction::from_key('z'), None);
-    }
 
     #[test]
     fn test_dismiss_modal_navigation() {

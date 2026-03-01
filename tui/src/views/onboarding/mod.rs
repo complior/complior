@@ -62,8 +62,6 @@ pub struct OnboardingStep {
     pub kind: StepKind,
     pub options: Vec<StepOption>,
     pub selected: Vec<usize>,
-    pub text_value: String,
-    pub skippable: bool,
 }
 
 /// Full onboarding wizard state.
@@ -79,8 +77,6 @@ pub struct OnboardingWizard {
     pub project_type: Option<String>,
     /// Indices of visible steps (recalculated on project_type change).
     pub active_steps: Vec<usize>,
-    /// For Step 1 live theme preview.
-    pub theme_preview_idx: usize,
 }
 
 impl OnboardingWizard {
@@ -95,7 +91,6 @@ impl OnboardingWizard {
             result_summary: None,
             project_type: None,
             active_steps,
-            theme_preview_idx: 0,
         }
     }
 
@@ -122,17 +117,6 @@ impl OnboardingWizard {
             .position(|&i| i == self.current_step)
             .map(|p| p + 1)
             .unwrap_or(1)
-    }
-
-    pub fn progress_pct(&self) -> f64 {
-        if self.completed {
-            return 1.0;
-        }
-        let total = self.total_visible_steps();
-        if total == 0 {
-            return 0.0;
-        }
-        (self.visible_position() as f64 - 1.0) / total as f64
     }
 
     pub fn current(&self) -> Option<&OnboardingStep> {
@@ -249,17 +233,6 @@ impl OnboardingWizard {
             })
             .map(|(i, _)| i)
             .collect();
-    }
-
-    /// Extract the selected value for a step by id.
-    pub fn step_value(&self, id: &str) -> Option<String> {
-        let step = self.steps.iter().find(|s| s.id == id)?;
-        let values: Vec<String> = step
-            .selected
-            .iter()
-            .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
-            .collect();
-        if values.is_empty() { None } else { Some(values.join(", ")) }
     }
 
     /// Collect all answers for serialization.

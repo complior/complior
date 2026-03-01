@@ -4,7 +4,6 @@ mod cli;
 mod components;
 mod config;
 mod connection;
-mod data;
 mod engine_client;
 mod engine_process;
 mod error;

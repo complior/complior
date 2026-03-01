@@ -1,9 +1,3 @@
-use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use ratatui::Frame;
-
 use crate::theme;
 
 /// Thresholds for context usage coloring.
@@ -29,30 +23,6 @@ pub fn context_color(pct: u8) -> ratatui::style::Color {
     } else {
         t.zone_red
     }
-}
-
-/// Render context meter as a single line: `Ctx: [========--] 78%`
-pub fn render_context_meter(frame: &mut Frame, area: Rect, pct: u8) {
-    let t = theme::theme();
-    let color = context_color(pct);
-
-    let bar_width = 10usize;
-    let filled = (pct as usize * bar_width) / 100;
-    let empty = bar_width.saturating_sub(filled);
-
-    let bar = format!(
-        "[{}{}]",
-        "=".repeat(filled),
-        "-".repeat(empty),
-    );
-
-    let line = Line::from(vec![
-        Span::styled(" Ctx: ", Style::default().fg(t.muted)),
-        Span::styled(bar, Style::default().fg(color).add_modifier(Modifier::BOLD)),
-        Span::styled(format!(" {pct}%"), Style::default().fg(color)),
-    ]);
-
-    frame.render_widget(Paragraph::new(line), area);
 }
 
 #[cfg(test)]

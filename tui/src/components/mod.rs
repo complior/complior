@@ -1,7 +1,6 @@
 pub mod command_palette;
 pub mod confirm_dialog;
 pub mod file_picker;
-pub mod markdown;
 pub mod quick_actions;
 pub mod spinner;
 pub mod suggestions;

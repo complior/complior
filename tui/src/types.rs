@@ -99,12 +99,6 @@ pub struct Finding {
     #[serde(default)]
     pub line: Option<u32>,
     #[serde(default)]
-    pub confidence: Option<f64>,
-    #[serde(default)]
-    pub confidence_level: Option<String>,
-    #[serde(default)]
-    pub priority: Option<u32>,
-    #[serde(default)]
     pub code_context: Option<CodeContext>,
     #[serde(default)]
     pub fix_diff: Option<FixDiff>,
@@ -321,26 +315,6 @@ pub struct Selection {
     pub end_line: usize,
 }
 
-#[derive(Debug, Clone)]
-pub struct DiffLine {
-    pub kind: DiffLineKind,
-    pub content: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DiffLineKind {
-    Context,
-    Added,
-    Removed,
-    Header,
-}
-
-#[derive(Debug, Clone)]
-pub struct DiffContent {
-    pub file_path: String,
-    pub lines: Vec<DiffLine>,
-}
-
 /// Rich content blocks within a chat message (agent events).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ChatBlock {
@@ -363,8 +337,6 @@ pub struct ActivityEntry {
 pub enum ActivityKind {
     Scan,
     Fix,
-    Passport,
-    Daemon,
     Watch,
 }
 
@@ -373,8 +345,6 @@ impl ActivityKind {
         match self {
             Self::Scan => 'S',
             Self::Fix => 'F',
-            Self::Passport => 'P',
-            Self::Daemon => 'D',
             Self::Watch => 'W',
         }
     }
@@ -454,20 +424,6 @@ impl ViewState {
         }
     }
 
-    /// Letter key shown in the tab bar for this view.
-    pub fn tab_key(self) -> &'static str {
-        match self {
-            Self::Dashboard => "D",
-            Self::Scan => "S",
-            Self::Fix => "F",
-            Self::Passport => "P",
-            Self::Obligations => "O",
-            Self::Timeline => "T",
-            Self::Report => "R",
-            Self::Log => "L",
-        }
-    }
-
     pub const ALL: [ViewState; 8] = [
         Self::Dashboard,
         Self::Scan,
@@ -497,13 +453,6 @@ impl Mode {
         }
     }
 
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Scan => "SCAN",
-            Self::Fix => "FIX",
-            Self::Watch => "WATCH",
-        }
-    }
 }
 
 /// Overlay state for popups (command palette, file picker, help, getting started).
@@ -525,7 +474,6 @@ pub enum Overlay {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClickTarget {
     ViewTab(ViewState),
-    PanelFocus(Panel),
     FindingRow(usize),
     FixCheckbox(usize),
     SidebarToggle,

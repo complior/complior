@@ -4,7 +4,6 @@ use crate::types::{Finding, FindingType};
 
 /// Result of applying a single fix.
 pub struct ApplyResult {
-    pub check_id: String,
     pub success: bool,
     pub detail: String,
 }
@@ -24,7 +23,6 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
         let abs = project_path.join(&rel);
         if abs.exists() {
             return ApplyResult {
-                check_id,
                 success: false,
                 detail: format!("{rel} already exists"),
             };
@@ -33,7 +31,6 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
         if let Some(parent) = abs.parent() {
             if let Err(e) = std::fs::create_dir_all(parent) {
                 return ApplyResult {
-                    check_id,
                     success: false,
                     detail: format!("mkdir failed: {e}"),
                 };
@@ -42,12 +39,10 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
         let content = finding.fix.as_deref().unwrap_or("");
         match std::fs::write(&abs, content) {
             Ok(()) => ApplyResult {
-                check_id,
                 success: true,
                 detail: format!("Created {rel}"),
             },
             Err(e) => ApplyResult {
-                check_id,
                 success: false,
                 detail: format!("write failed: {e}"),
             },
@@ -59,7 +54,6 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
             Ok(c) => c,
             Err(e) => {
                 return ApplyResult {
-                    check_id,
                     success: false,
                     detail: format!("read failed: {e}"),
                 };
@@ -73,7 +67,6 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
         // Validate that before-lines match the file content
         if end > lines.len() {
             return ApplyResult {
-                check_id,
                 success: false,
                 detail: "Line range out of bounds".to_string(),
             };
@@ -82,7 +75,6 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
         let expected: Vec<&str> = diff.before.iter().map(|s| s.trim()).collect();
         if file_slice != expected {
             return ApplyResult {
-                check_id,
                 success: false,
                 detail: "File content changed since scan — re-scan first".to_string(),
             };
@@ -116,19 +108,16 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
 
         match std::fs::write(&abs, final_output) {
             Ok(()) => ApplyResult {
-                check_id,
                 success: true,
                 detail: format!("Modified {}", diff.file_path),
             },
             Err(e) => ApplyResult {
-                check_id,
                 success: false,
                 detail: format!("write failed: {e}"),
             },
         }
     } else {
         ApplyResult {
-            check_id,
             success: false,
             detail: "No structured fix available — manual action required".to_string(),
         }

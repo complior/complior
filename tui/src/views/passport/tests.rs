@@ -18,13 +18,6 @@ fn test_passport_completeness() {
 }
 
 #[test]
-fn test_next_empty_field() {
-    let state = PassportViewState::default();
-    // All empty, so next empty from index 0 should be index 1
-    assert_eq!(state.next_empty_field(), Some(1));
-}
-
-#[test]
 fn test_wrap_text() {
     let result = wrap_text("short text", 40);
     assert_eq!(result, vec!["short text"]);
