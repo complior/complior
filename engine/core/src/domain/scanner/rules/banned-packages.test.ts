@@ -176,14 +176,44 @@ describe('matchProhibitedPattern', () => {
 });
 
 describe('AI_SDK_PACKAGES', () => {
-  it('contains 26 AI SDK entries', () => {
-    expect(AI_SDK_PACKAGES.size).toBe(26);
+  it('contains 51 AI SDK entries', () => {
+    expect(AI_SDK_PACKAGES.size).toBe(51);
   });
 
   it('isAiSdkPackage finds known SDKs', () => {
     expect(isAiSdkPackage('openai')).toBe('OpenAI');
     expect(isAiSdkPackage('@anthropic-ai/sdk')).toBe('Anthropic');
     expect(isAiSdkPackage('transformers')).toBe('Hugging Face Transformers');
+  });
+
+  it('isAiSdkPackage finds new SDK entries', () => {
+    // npm
+    expect(isAiSdkPackage('@openclaw/sdk')).toBe('OpenClaw');
+    expect(isAiSdkPackage('groq-sdk')).toBe('Groq');
+    expect(isAiSdkPackage('ollama')).toBe('Ollama');
+    expect(isAiSdkPackage('@aws-sdk/client-bedrock-runtime')).toBe('Amazon Bedrock');
+    expect(isAiSdkPackage('@azure/openai')).toBe('Azure OpenAI');
+    expect(isAiSdkPackage('@ai-sdk/google')).toBe('Vercel AI SDK (Google)');
+    expect(isAiSdkPackage('@ai-sdk/mistral')).toBe('Vercel AI SDK (Mistral)');
+    expect(isAiSdkPackage('@ai-sdk/amazon-bedrock')).toBe('Vercel AI SDK (Bedrock)');
+    expect(isAiSdkPackage('@langchain/core')).toBe('LangChain Core');
+    expect(isAiSdkPackage('@langchain/openai')).toBe('LangChain (OpenAI)');
+    expect(isAiSdkPackage('@langchain/anthropic')).toBe('LangChain (Anthropic)');
+    expect(isAiSdkPackage('@langchain/community')).toBe('LangChain (Community)');
+    // pip
+    expect(isAiSdkPackage('crewai')).toBe('CrewAI');
+    expect(isAiSdkPackage('pyautogen')).toBe('AutoGen');
+    expect(isAiSdkPackage('groq')).toBe('Groq');
+    expect(isAiSdkPackage('together')).toBe('Together AI');
+    expect(isAiSdkPackage('fireworks-ai')).toBe('Fireworks AI');
+    expect(isAiSdkPackage('litellm')).toBe('LiteLLM');
+    expect(isAiSdkPackage('semantic-kernel')).toBe('Semantic Kernel');
+    expect(isAiSdkPackage('haystack-ai')).toBe('Haystack');
+    expect(isAiSdkPackage('instructor')).toBe('Instructor');
+    expect(isAiSdkPackage('dspy-ai')).toBe('DSPy');
+    expect(isAiSdkPackage('phidata')).toBe('Phidata');
+    expect(isAiSdkPackage('boto3')).toBe('AWS SDK (Bedrock)');
+    expect(isAiSdkPackage('deepseek-sdk')).toBe('DeepSeek');
   });
 
   it('isAiSdkPackage returns undefined for non-SDK', () => {

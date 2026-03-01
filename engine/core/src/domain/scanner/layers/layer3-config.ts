@@ -31,7 +31,7 @@ export interface L3CheckResult {
 
 // --- Config Checks ---
 
-const checkDockerComposeLogRetention = (content: string): L3CheckResult | null => {
+const checkDockerComposeLogRetention = (content: string, filePath: string): L3CheckResult | null => {
   const hasLogging = /logging:/i.test(content);
   if (!hasLogging) {
     return {
@@ -40,6 +40,7 @@ const checkDockerComposeLogRetention = (content: string): L3CheckResult | null =
       message: 'docker-compose.yml: No logging configuration found. Art. 12 requires log retention >= 180 days.',
       obligationId: 'eu-ai-act-OBL-006',
       article: 'Art. 12',
+      file: filePath,
     };
   }
 
@@ -51,6 +52,7 @@ const checkDockerComposeLogRetention = (content: string): L3CheckResult | null =
       message: 'docker-compose.yml: Log retention configuration found.',
       obligationId: 'eu-ai-act-OBL-006',
       article: 'Art. 12',
+      file: filePath,
     };
   }
 
@@ -60,10 +62,11 @@ const checkDockerComposeLogRetention = (content: string): L3CheckResult | null =
     message: 'docker-compose.yml: Logging configured but no retention policy found. Ensure >= 180 days retention (Art. 12).',
     obligationId: 'eu-ai-act-OBL-006',
     article: 'Art. 12',
+    file: filePath,
   };
 };
 
-const checkEnvFile = (content: string): readonly L3CheckResult[] => {
+const checkEnvFile = (content: string, filePath: string): readonly L3CheckResult[] => {
   const results: L3CheckResult[] = [];
 
   const hasAiApiKey = /(?:OPENAI|ANTHROPIC|GOOGLE_AI|COHERE|MISTRAL|HUGGINGFACE)_API_KEY/i.test(content);
@@ -72,6 +75,7 @@ const checkEnvFile = (content: string): readonly L3CheckResult[] => {
       type: 'env-config',
       status: 'OK',
       message: '.env: AI API key variable detected (provider integration confirmed).',
+      file: filePath,
     });
   }
 
@@ -83,6 +87,7 @@ const checkEnvFile = (content: string): readonly L3CheckResult[] => {
       message: '.env: No LOG_LEVEL variable found. Structured logging recommended (Art. 12).',
       obligationId: 'eu-ai-act-OBL-006',
       article: 'Art. 12',
+      file: filePath,
     });
   }
 
@@ -94,26 +99,29 @@ const checkEnvFile = (content: string): readonly L3CheckResult[] => {
       message: '.env: No error monitoring/observability variable found. Monitoring recommended (Art. 26).',
       obligationId: 'eu-ai-act-OBL-011',
       article: 'Art. 26',
+      file: filePath,
     });
   }
 
   return results;
 };
 
-const checkCiConfig = (content: string, file: string): L3CheckResult | null => {
+const checkCiConfig = (content: string, filePath: string): L3CheckResult | null => {
   const hasComplianceStep = /complior|compliance|audit|security[-_]scan|ai[-_]act/i.test(content);
   if (hasComplianceStep) {
     return {
       type: 'ci-compliance',
       status: 'OK',
-      message: `${file}: Compliance step detected in CI/CD pipeline.`,
+      message: `${filePath}: Compliance step detected in CI/CD pipeline.`,
+      file: filePath,
     };
   }
 
   return {
     type: 'ci-compliance',
     status: 'WARNING',
-    message: `${file}: No compliance step detected in CI/CD pipeline. Consider adding a compliance scan.`,
+    message: `${filePath}: No compliance step detected in CI/CD pipeline. Consider adding a compliance scan.`,
+    file: filePath,
   };
 };
 
@@ -190,7 +198,7 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
   for (const file of ctx.files) {
     const filename = file.relativePath.split('/').pop() ?? '';
     if (filename === 'docker-compose.yml' || filename === 'docker-compose.yaml') {
-      const result = checkDockerComposeLogRetention(file.content);
+      const result = checkDockerComposeLogRetention(file.content, file.relativePath);
       if (result !== null) results.push(result);
     }
   }
@@ -199,7 +207,7 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
   for (const file of ctx.files) {
     const filename = file.relativePath.split('/').pop() ?? '';
     if (filename === '.env' || filename === '.env.example' || filename === '.env.local') {
-      results.push(...checkEnvFile(file.content));
+      results.push(...checkEnvFile(file.content, file.relativePath));
     }
   }
 
@@ -209,8 +217,8 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
       file.relativePath.includes('.github/workflows/') &&
       (file.extension === '.yml' || file.extension === '.yaml')
     ) {
-      const result = checkCiConfig(file.content, file.relativePath);
-      if (result !== null) results.push(result);
+      const ciResult = checkCiConfig(file.content, file.relativePath);
+      if (ciResult !== null) results.push(ciResult);
     }
   }
 
@@ -234,6 +242,7 @@ export const layer3ToCheckResults = (l3Results: readonly L3CheckResult[]): reado
         obligationId: r.obligationId,
         articleReference: r.article,
         fix,
+        file: r.file,
       };
     }
 
@@ -245,6 +254,7 @@ export const layer3ToCheckResults = (l3Results: readonly L3CheckResult[]): reado
         severity: r.status === 'FAIL' ? 'high' : 'low',
         obligationId: r.obligationId,
         articleReference: r.article,
+        file: r.file,
       };
     }
 

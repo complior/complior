@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { ValidationError } from '../../types/errors.js';
-import { analyzeScenario, type ScenarioType } from '../../domain/whatif/scenario-engine.js';
+import { analyzeScenario } from '../../domain/whatif/scenario-engine.js';
 import { generateAllConfigs } from '../../domain/whatif/config-fixer.js';
 import type { OnboardingProfile } from '../../onboarding/profile.js';
 import type { ScoreBreakdown } from '../../types/common.types.js';
@@ -40,7 +40,7 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
     }
 
     const result = analyzeScenario({
-      type: parsed.data.type as ScenarioType,
+      type: parsed.data.type,
       params: parsed.data.params,
       currentProfile: profile,
       currentScore: score,

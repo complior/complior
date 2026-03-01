@@ -1,0 +1,34 @@
+---
+source: tui/src/views/fix.rs
+expression: buf
+---
+┌ Fix — 3 fixable items ───────────────┐┌ Diff Preview — 3 staged (+16 pts) ───────────────────────┐
+│  Score: 32 → 48  (+16)  |  3/3       ││  2 files modified  1 files created  |  +16 predicted     │
+│selected                              ││  ──────────────────────────────────────────────────────  │
+│ ──────────────────────────────────── ││  [A] src/chat/anthropic.ts  +8                           │
+│ STAGED (3) ───────────────────────   ││   1   import Anthropic from 'anthropic';                 │
+│> [A] [x] OBL-015    +8               ││   2                                                      │
+│          Bare Anthropic API call —   ││   3   const anthropic = new Anthropic({                  │
+│src/chat/anthropic.ts                 ││   4     apiKey: process.env.ANTHROPIC_API_KEY,           │
+│          Art. 50(1)                  ││   5   });                                                │
+│  [B] [x] OBL-006    +5               ││   6                                                      │
+│          Missing FRIA document       ││   7   export async function chat(msg: string) {          │
+│          Art. 27(1)                  ││   8 X   const resp = await anthropic.messages.create({   │
+│  [C] [x] OBL-012    +3               ││ -- Suggested Fix ──────────                              │
+│          Missing compliance metadata ││   3 - const anthropic = new Anthropic({                  │
+│— package.json                        ││   4 -   apiKey: process.env.ANTHROPIC_API_KEY,           │
+│          Art. 53(1)                  ││   5 - });                                                │
+│                                      ││   3 + const anthropic = complior(new Anthropic({         │
+│ ──────────────────────────────────── ││   4 +   apiKey: process.env.ANTHROPIC_API_KEY,           │
+│  Space:toggle a:all n:none d:diff    ││   5 + }));                                               │
+│Enter:apply                           ││                                                          │
+│                                      ││  [B] (new file)  +5                                      │
+│                                      ││  # Fundamental Rights Impact Assessment                  │
+│                                      ││                                                          │
+│                                      ││  [C] package.json  +3                                    │
+│                                      ││  +  "compliance": { "framework": "eu-ai-act" }           │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+│                                      ││                                                          │
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘

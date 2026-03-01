@@ -19,6 +19,17 @@ impl DismissReason {
         }
     }
 
+    /// Human-readable description of what this dismiss reason means.
+    pub fn description(&self) -> &str {
+        match self {
+            Self::FalsePositive => "The scanner flagged this incorrectly — the requirement is already satisfied.",
+            Self::AcceptedRisk => "You acknowledge this issue but accept the risk (document the justification).",
+            Self::WillFixLater => "You plan to address this before the compliance deadline.",
+            Self::NotApplicable => "This requirement doesn't apply to your AI system type/risk level.",
+            Self::Other(_) => "Provide a custom reason for dismissing this finding.",
+        }
+    }
+
     /// The 5 standard dismiss reasons (for modal selection).
     pub fn all() -> [Self; 5] {
         [

@@ -1,17 +1,15 @@
 //! `EngineDataProvider` — HTTP client for the PROJECT API (`api.complior.ai`).
 //!
 //! Fetches AI Registry statistics and high-risk tool findings.  Caches results
-//! for `CACHE_TTL` (30 s) and serves from cache on every DataProvider call so
-//! the TUI render loop is never blocked.  A background thread refreshes the
-//! cache automatically.  On any error the last cached values (or defaults) are
+//! for `CACHE_TTL` (30 s).  A background thread refreshes the cache
+//! automatically.  On any error the last cached values (or defaults) are
 //! returned — the provider never panics.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use crate::data::provider::DataProvider;
-use crate::types::{ActivityEntry, Finding, Severity, Zone};
+use crate::types::{Finding, Severity, Zone};
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -84,12 +82,11 @@ impl EngineCache {
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-/// HTTP-backed `DataProvider` that pulls registry data from the PROJECT API.
+/// HTTP client that pulls registry data from the PROJECT API.
 ///
 /// * `connect()` must be called once at startup (blocking, ≤ `timeout`).
 /// * After a successful connect a background thread refreshes the cache every
 ///   `CACHE_TTL` seconds.
-/// * All `DataProvider` methods are non-blocking (always read from cache).
 pub struct EngineDataProvider {
     base_url: String,
     api_key: String,
@@ -246,12 +243,6 @@ impl EngineDataProvider {
         });
     }
 
-    fn read_cache(&self) -> EngineCache {
-        self.cache
-            .read()
-            .map(|g| g.clone())
-            .unwrap_or_default()
-    }
 }
 
 // ── Scoring helpers ───────────────────────────────────────────────────────────
@@ -296,42 +287,18 @@ fn tools_to_findings(tools: &[RegistryTool]) -> Vec<Finding> {
                 obligation_id: None,
                 article_reference: None,
                 fix: None,
+                file: None,
+                line: None,
+                confidence: None,
+                confidence_level: None,
+                priority: None,
+                code_context: None,
+                fix_diff: None,
             }
         })
         .collect()
 }
 
-// ── DataProvider impl ─────────────────────────────────────────────────────────
-
-impl DataProvider for EngineDataProvider {
-    /// Always returns `DEFAULT_SCORE`.
-    ///
-    /// The project compliance score is determined by scanning the *local* codebase
-    /// (Engine `POST /scan`) and stored in `App.last_scan`, which the dashboard already
-    /// prioritises over this value.  The PROJECT API only provides AI Registry data
-    /// (global tool statistics), not per-project compliance scores.
-    fn score(&self) -> f64 {
-        DEFAULT_SCORE
-    }
-
-    /// Always returns `Zone::Red` (unknown until a real scan runs).
-    fn zone(&self) -> Zone {
-        Zone::Red
-    }
-
-    fn findings(&self) -> Vec<Finding> {
-        let c = self.read_cache();
-        if c.is_fresh() { c.findings } else { Vec::new() }
-    }
-
-    fn timeline(&self) -> Vec<ActivityEntry> {
-        Vec::new()
-    }
-
-    fn activity_log(&self) -> Vec<ActivityEntry> {
-        Vec::new()
-    }
-}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -380,8 +347,6 @@ mod tests {
             Duration::from_millis(300),
         );
         assert!(provider.connect().is_err(), "Timeout must make connect() return Err");
-        // score() should return DEFAULT while cache is empty / stale
-        assert_eq!(provider.score(), DEFAULT_SCORE);
     }
 
     // ── B6-3: successful response is parsed correctly ─────────────────────────
@@ -411,14 +376,9 @@ mod tests {
         );
         assert!(provider.connect().is_ok(), "Valid mock server must connect OK");
 
-        // US-S0212: EngineDataProvider.score() always returns DEFAULT_SCORE.
-        // The project compliance score comes from App.last_scan (Engine POST /scan),
-        // not from global AI Registry statistics.
-        let score = provider.score();
-        assert_eq!(
-            score, DEFAULT_SCORE,
-            "EngineDataProvider.score() must always return DEFAULT_SCORE (not registry %)"
-        );
+        // After connect, cache should be populated with computed score
+        let cache = provider.cache.read().unwrap();
+        assert!(cache.is_fresh(), "Cache should be fresh after connect");
     }
 
     // ── B6-4: findings are served from cache while fresh ─────────────────────
@@ -437,6 +397,13 @@ mod tests {
             obligation_id: None,
             article_reference: None,
             fix: None,
+            file: None,
+            line: None,
+            confidence: None,
+            confidence_level: None,
+            priority: None,
+            code_context: None,
+            fix_diff: None,
         };
         {
             let mut guard = provider.cache.write().unwrap();
@@ -448,10 +415,10 @@ mod tests {
             };
         }
 
-        // US-S0212: score() always returns DEFAULT_SCORE regardless of cache
-        assert_eq!(provider.score(), DEFAULT_SCORE, "score() must always return DEFAULT_SCORE");
-        // findings() comes from the cache when fresh
-        assert_eq!(provider.findings().len(), 1, "Fresh cache findings must be served");
+        // Cache should contain the injected findings
+        let cache = provider.cache.read().unwrap();
+        assert!(cache.is_fresh(), "Cache should be fresh");
+        assert_eq!(cache.findings.len(), 1, "Fresh cache should contain injected findings");
     }
 
     // ── B6-5: expired cache returns empty findings ────────────────────────────
@@ -472,17 +439,9 @@ mod tests {
             };
         }
 
-        // score() always returns DEFAULT_SCORE regardless of cache freshness
-        assert_eq!(
-            provider.score(),
-            DEFAULT_SCORE,
-            "score() must return DEFAULT_SCORE (US-S0212)"
-        );
-        // findings are empty when cache is expired
-        assert!(
-            provider.findings().is_empty(),
-            "Expired cache must return empty findings"
-        );
+        // Cache should be expired
+        let cache = provider.cache.read().unwrap();
+        assert!(!cache.is_fresh(), "Cache should be expired after TTL");
     }
 
     // ── score helper ──────────────────────────────────────────────────────────

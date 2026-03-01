@@ -1,0 +1,34 @@
+---
+source: tui/src/views/scan/tests.rs
+expression: buf
+---
+ Layers: [X]L1 [X]L2 [X]L3 [X]L4 [-]L5   (4/5 complete, 1 skipped)                                  
+ Scan complete: 32/100 (0.5s, 24 files)                                                             
+ Findings (4)  [All] c:Critical  h:High  m:Medium  l:Low   p:passed  f:fix  x:explain  </>:resize   
+─────────────────────────────────────────────┌ [A] Detail — OBL-015 (1/4) ─────────────────────────┐
+  1 critical  2 high  1 medium               │  Bare Anthropic API call without compliance wrapper │
+                                             │  Art. 50(1)  src/chat/anthropic.ts:8                │
+ CRITICAL (1) ─────────────────────────────  │  Current Code                 Legal Context         │
+> [A] CRIT OBL-015    Bare Anthropic API call│  ─────────────────────────    ────────────────────  │
+              Art. 50(1)  Impact: +8  [fixabl│   6   import Anthropic from   Obligation: OBL-015   │
+                                             │'anthropic';                   Article:    Art. 50(1)│
+ HIGH (2) ─────────────────────────────────  │   7                           Severity:   CRITICAL  │
+  [B] HIGH OBL-006    Missing FRIA document  │   8 X const c = new           Deadline:   Feb 2,    │
+              Art. 27(1)  Impact: +5  [fixabl│Anthropic();                 2025 (already in effect)│
+  [B] HIGH OBL-009    Missing post-market mon│   9   const resp = await      Penalty:    See EU AI │
+              Art. 72(1)                     │c.messages.create({          Act penalty schedule    │
+                                             │  10     model: 'claude-3',                          │
+ MEDIUM (1) ───────────────────────────────  │                               Impact:     +8 points │
+  [C]  MED OBL-012    Missing compliance meta│  Suggested Fix                Score:      32 -> 40  │
+              Art. 53(1)  Impact: +3  [fixabl│  ─────────────────────────                          │
+                                             │   8 - const c = new           Why This Matters      │
+                                             │Anthropic();                   ────────────────────  │
+                                             │   8 + const c = complior(new  Bare API Call —       │
+                                             │Anthropic());                  direct LLM API        │
+                                             │                               usage detected        │
+                                             │                               without compliance    │
+                                             │                               wrapper               │
+                                             │                               (@complior/sdk).      │
+                                             │                                                     │
+                                             │ [f] Fix (+8)  [d] Dismiss  [x] Explain  [n] Next  [E│
+                                             └─────────────────────────────────────────────────────┘

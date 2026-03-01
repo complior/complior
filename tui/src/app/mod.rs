@@ -2,7 +2,6 @@ mod commands;
 mod view_keys;
 
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Instant;
 
 use ratatui::layout::Rect;
@@ -14,7 +13,6 @@ use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
 use crate::connection::EngineConnection;
 use crate::connection::direct::DirectConnection;
-use crate::data::{DataProvider, EngineDataProvider, MockDataProvider};
 use crate::engine_client::EngineClient;
 use crate::input::Action;
 use crate::layout::Breakpoint;
@@ -26,6 +24,7 @@ use crate::types::{
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
+use crate::views::passport::PassportViewState;
 use crate::views::report::ReportViewState;
 use crate::views::scan::ScanViewState;
 use crate::views::timeline::TimelineViewState;
@@ -96,6 +95,7 @@ pub struct App {
     pub fix_view: FixViewState,
     pub timeline_view: TimelineViewState,
     pub report_view: ReportViewState,
+    pub passport_view: PassportViewState,
 
     // Activity log (Dashboard widget)
     pub activity_log: Vec<ActivityEntry>,
@@ -164,9 +164,6 @@ pub struct App {
     // T09: What-If scenario state
     pub whatif: crate::components::whatif::WhatIfState,
 
-    // S00: DataProvider — compliance data abstraction (mock until engine connects)
-    pub data_provider: Arc<dyn DataProvider>,
-
     // UI
     pub spinner: Spinner,
     pub project_path: PathBuf,
@@ -176,41 +173,6 @@ pub struct App {
 const MAX_HISTORY: usize = 50;
 const MAX_TERMINAL_LINES: usize = 1000;
 const MAX_ACTIVITY_LOG: usize = 10;
-
-/// Select the `DataProvider` based on config.
-///
-/// Order of preference:
-/// 1. `OFFLINE_MODE=1` → `MockDataProvider` immediately.
-/// 2. `api_key` present → try `EngineDataProvider` (PROJECT API).
-/// 3. Fallback → `MockDataProvider` (returns `Disconnected` status).
-///
-/// The returned `EngineConnectionStatus` is used as the initial value of
-/// `App::engine_status` so the footer indicator is correct from the first frame.
-pub fn create_data_provider(
-    config: &TuiConfig,
-) -> (Arc<dyn DataProvider>, EngineConnectionStatus) {
-    if config.offline_mode {
-        return (
-            Arc::new(MockDataProvider::new()),
-            EngineConnectionStatus::Disconnected,
-        );
-    }
-
-    if let Some(ref key) = config.api_key {
-        if !key.is_empty() {
-            let provider = EngineDataProvider::new(&config.project_api_url, key);
-            if provider.connect().is_ok() {
-                return (Arc::new(provider), EngineConnectionStatus::Connected);
-            }
-        }
-    }
-
-    // No key or API unreachable — fall back to mock
-    (
-        Arc::new(MockDataProvider::new()),
-        EngineConnectionStatus::Disconnected,
-    )
-}
 
 impl App {
     pub fn new(config: TuiConfig) -> Self {
@@ -223,14 +185,8 @@ impl App {
             .map(PathBuf::from)
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
-        let (data_provider, api_connection_status) = create_data_provider(&config);
         let connection: Box<dyn EngineConnection> =
             Box::new(DirectConnection::new(EngineClient::new(&config)));
-
-        // Show a toast only when an api_key was configured but the API was unreachable.
-        // No toast when there is no key (normal offline-first usage).
-        let offline_hint = matches!(api_connection_status, EngineConnectionStatus::Disconnected)
-            && config.api_key.is_some();
 
         let mut app = Self {
             running: true,
@@ -239,7 +195,7 @@ impl App {
             config,
             view_state: ViewState::Dashboard,
             mode: Mode::Scan,
-            engine_status: api_connection_status,
+            engine_status: EngineConnectionStatus::Disconnected,
             connection,
             engine_client,
             messages: vec![ChatMessage::new(
@@ -276,6 +232,7 @@ impl App {
             fix_view: FixViewState::default(),
             timeline_view: TimelineViewState::default(),
             report_view: ReportViewState::default(),
+            passport_view: PassportViewState::default(),
             activity_log: Vec::new(),
             watch_active: false,
             watch_last_score: None,
@@ -302,18 +259,10 @@ impl App {
             idle_suggestions: IdleSuggestionState::new(),
             animation: AnimationState::new(animations_enabled),
             whatif: crate::components::whatif::WhatIfState::new(),
-            data_provider,
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
         };
-
-        if offline_hint {
-            app.toasts.push(
-                crate::components::toast::ToastKind::Info,
-                "ENGINE OFFLINE — showing mock data",
-            );
-        }
 
         app
     }
@@ -598,7 +547,13 @@ impl App {
                         self.scan_view.navigate_up();
                         let _ = count; // used for bounds checking inside navigate_up
                     }
-                    ViewState::Fix => self.fix_view.navigate_up(),
+                    ViewState::Fix => {
+                        if self.fix_view.is_single_fix() {
+                            self.cycle_single_fix(-1);
+                        } else {
+                            self.fix_view.navigate_up();
+                        }
+                    }
                     ViewState::Timeline => {
                         self.timeline_view.scroll_offset =
                             self.timeline_view.scroll_offset.saturating_sub(1);
@@ -635,7 +590,13 @@ impl App {
                         let count = self.filtered_findings_count();
                         self.scan_view.navigate_down(count);
                     }
-                    ViewState::Fix => self.fix_view.navigate_down(),
+                    ViewState::Fix => {
+                        if self.fix_view.is_single_fix() {
+                            self.cycle_single_fix(1);
+                        } else {
+                            self.fix_view.navigate_down();
+                        }
+                    }
                     ViewState::Timeline => {
                         self.timeline_view.scroll_offset += 1;
                     }
@@ -1535,6 +1496,37 @@ impl App {
         self.last_scan = data.last_scan;
     }
 
+    /// Cycle focus_check_id to prev/next fixable finding in single-fix mode.
+    fn cycle_single_fix(&mut self, direction: i32) {
+        let len = self.fix_view.fixable_findings.len();
+        if len == 0 {
+            return;
+        }
+
+        let current_idx = self.fix_view.focus_check_id.as_ref().and_then(|cid| {
+            self.fix_view.fixable_findings.iter().position(|f| &f.check_id == cid)
+        }).unwrap_or(0);
+
+        // Deselect old item
+        if let Some(item) = self.fix_view.fixable_findings.get_mut(current_idx) {
+            item.selected = false;
+        }
+
+        // Compute new index with wrapping
+        let new_idx = if direction > 0 {
+            (current_idx + 1) % len
+        } else {
+            current_idx.checked_sub(1).unwrap_or(len - 1)
+        };
+
+        // Update focus and auto-stage
+        self.fix_view.selected_index = new_idx;
+        self.fix_view.focus_check_id = Some(
+            self.fix_view.fixable_findings[new_idx].check_id.clone(),
+        );
+        self.fix_view.fixable_findings[new_idx].selected = true;
+    }
+
     /// Count findings matching the current scan view filter.
     fn filtered_findings_count(&self) -> usize {
         self.last_scan
@@ -1577,6 +1569,8 @@ pub enum AppCommand {
     MarkFirstRunDone,
     /// Async: list saved sessions.
     ListSessions,
+    /// Apply selected fixes to files on disk, then auto-rescan.
+    ApplyFixes,
     /// Async: export compliance report to markdown file.
     ExportReport,
     /// Complete onboarding: save config + credentials, trigger post-completion action.

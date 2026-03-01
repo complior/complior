@@ -141,6 +141,8 @@ export const layer4ToCheckResults = (l4Results: readonly L4CheckResult[]): reado
         obligationId: r.obligationId,
         articleReference: r.article,
         fix: r.recommendation,
+        file: r.file,
+        line: r.line,
       };
     }
 
@@ -164,6 +166,8 @@ export const layer4ToCheckResults = (l4Results: readonly L4CheckResult[]): reado
         obligationId: r.obligationId,
         articleReference: r.article,
         fix: r.recommendation,
+        file: r.file,
+        line: r.line,
       };
     }
 

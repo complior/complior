@@ -21,6 +21,66 @@ pub enum Zone {
     Green,
 }
 
+/// Finding type classification for code-first UX.
+///
+/// - **A (Code Fix):** Code-level findings — bare API calls, security patterns, SDK issues.
+/// - **B (Missing File):** Missing documentation or config files.
+/// - **C (Config Change):** Configuration, dependency, or cross-layer issues.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FindingType {
+    A, // Code fix
+    B, // Missing file / document
+    C, // Config change
+}
+
+impl FindingType {
+    /// Short badge text for list display.
+    pub fn badge(self) -> &'static str {
+        match self {
+            Self::A => "[A]",
+            Self::B => "[B]",
+            Self::C => "[C]",
+        }
+    }
+
+    /// Human-readable label.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::A => "Code Fix",
+            Self::B => "Missing File",
+            Self::C => "Config Change",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeContextLine {
+    pub num: u32,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeContext {
+    pub lines: Vec<CodeContextLine>,
+    pub start_line: u32,
+    #[serde(default)]
+    pub highlight_line: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FixDiff {
+    pub before: Vec<String>,
+    pub after: Vec<String>,
+    pub start_line: u32,
+    pub file_path: String,
+    /// Import line to add at top of file (e.g. "import { complior } from '@complior/sdk'").
+    #[serde(default)]
+    pub import_line: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Finding {
@@ -34,6 +94,61 @@ pub struct Finding {
     pub article_reference: Option<String>,
     #[serde(default)]
     pub fix: Option<String>,
+    #[serde(default)]
+    pub file: Option<String>,
+    #[serde(default)]
+    pub line: Option<u32>,
+    #[serde(default)]
+    pub confidence: Option<f64>,
+    #[serde(default)]
+    pub confidence_level: Option<String>,
+    #[serde(default)]
+    pub priority: Option<u32>,
+    #[serde(default)]
+    pub code_context: Option<CodeContext>,
+    #[serde(default)]
+    pub fix_diff: Option<FixDiff>,
+}
+
+impl Finding {
+    /// Classify finding into A/B/C type based on check_id prefix.
+    ///
+    /// - l4-/l5-/cross- → Type A (code-level)
+    /// - l1-/l2-/missing → Type B (missing file/document)
+    /// - l3- → Type C (config/dependency)
+    pub fn finding_type(&self) -> FindingType {
+        if self.check_id.starts_with("l4-")
+            || self.check_id.starts_with("l5-")
+            || self.check_id.starts_with("cross-")
+        {
+            FindingType::A
+        } else if self.check_id.starts_with("l3-") {
+            FindingType::C
+        } else {
+            // l1-, l2-, missing-*, EU-AIA-* (mock) → Type B
+            FindingType::B
+        }
+    }
+
+    /// Predicted score impact if this finding is fixed.
+    pub fn predicted_impact(&self) -> i32 {
+        match self.severity {
+            Severity::Critical => 8,
+            Severity::High => 5,
+            Severity::Medium => 3,
+            Severity::Low => 1,
+            Severity::Info => 0,
+        }
+    }
+
+    /// Short file:line label for display.
+    pub fn file_line_label(&self) -> Option<String> {
+        match (&self.file, self.line) {
+            (Some(f), Some(l)) => Some(format!("{f}:{l}")),
+            (Some(f), None) => Some(f.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -103,11 +218,18 @@ impl Serialize for CategoryScore {
 impl Serialize for Finding {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("Finding", 4)?;
+        let mut state = s.serialize_struct("Finding", 11)?;
         state.serialize_field("checkId", &self.check_id)?;
         state.serialize_field("type", &self.r#type)?;
         state.serialize_field("message", &self.message)?;
         state.serialize_field("severity", &format!("{:?}", self.severity).to_lowercase())?;
+        state.serialize_field("obligationId", &self.obligation_id)?;
+        state.serialize_field("articleReference", &self.article_reference)?;
+        state.serialize_field("fix", &self.fix)?;
+        state.serialize_field("file", &self.file)?;
+        state.serialize_field("line", &self.line)?;
+        state.serialize_field("codeContext", &self.code_context)?;
+        state.serialize_field("fixDiff", &self.fix_diff)?;
         state.end()
     }
 }
