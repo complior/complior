@@ -49,17 +49,6 @@ impl PassportViewState {
         pct
     }
 
-    /// Find the next empty field index after current.
-    pub fn next_empty_field(&self) -> Option<usize> {
-        let len = self.fields.len();
-        for offset in 1..=len {
-            let idx = (self.selected_index + offset) % len;
-            if self.fields[idx].value.is_empty() {
-                return Some(idx);
-            }
-        }
-        None
-    }
 }
 
 /// Render the Passport view — guided editing with field list + detail panel.

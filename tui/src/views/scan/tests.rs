@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::views::scan::*;
+    use crate::views::scan::explain::explain_check;
     use crate::views::scan::render::owl_position;
 
     #[test]
@@ -152,9 +153,6 @@ mod tests {
                 fix: Some("- const c = new Anthropic();\n+ const c = complior(new Anthropic());".to_string()),
                 file: Some("src/chat/anthropic.ts".to_string()),
                 line: Some(8),
-                confidence: Some(95.0),
-                confidence_level: None,
-                priority: None,
                 code_context: Some(CodeContext {
                     lines: vec![
                         CodeContextLine { num: 6, content: "import Anthropic from 'anthropic';".to_string() },
@@ -185,9 +183,6 @@ mod tests {
                 fix: Some("# Fundamental Rights Impact Assessment\n\n## 1. Purpose\n...".to_string()),
                 file: None,
                 line: None,
-                confidence: None,
-                confidence_level: None,
-                priority: None,
                 code_context: None,
                 fix_diff: None,
             },
@@ -202,9 +197,6 @@ mod tests {
                 fix: Some("+ \"compliance\": {\n+   \"framework\": \"eu-ai-act\"\n+ }".to_string()),
                 file: Some("package.json".to_string()),
                 line: None,
-                confidence: None,
-                confidence_level: None,
-                priority: None,
                 code_context: None,
                 fix_diff: None,
             },
@@ -219,9 +211,6 @@ mod tests {
                 fix: None,
                 file: None,
                 line: None,
-                confidence: None,
-                confidence_level: None,
-                priority: None,
                 code_context: None,
                 fix_diff: None,
             },

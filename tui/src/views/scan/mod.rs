@@ -10,7 +10,7 @@ mod tests;
 pub(crate) use shared::{render_code_block, render_fix_diff, render_fix_text};
 
 // Re-export public items for external use.
-pub use explain::{explain_check, explain_finding};
+pub use explain::explain_finding;
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::Frame;
@@ -58,16 +58,6 @@ impl FindingsFilter {
             'm' => Some(Self::Medium),
             'l' => Some(Self::Low),
             _ => None,
-        }
-    }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::All => "All",
-            Self::Critical => "Critical",
-            Self::High => "High",
-            Self::Medium => "Medium",
-            Self::Low => "Low",
         }
     }
 

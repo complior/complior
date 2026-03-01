@@ -12,7 +12,6 @@ use crate::theme;
 pub struct Milestone {
     pub date: (u16, u8, u8),
     pub title: &'static str,
-    pub description: &'static str,
     pub articles: &'static str,
 }
 
@@ -20,37 +19,31 @@ pub const MILESTONES: &[Milestone] = &[
     Milestone {
         date: (2024, 8, 1),
         title: "AI Act enters into force",
-        description: "Regulation (EU) 2024/1689 officially enters into force.",
         articles: "All",
     },
     Milestone {
         date: (2025, 2, 2),
         title: "Prohibited AI practices ban",
-        description: "Ban on unacceptable-risk AI: social scoring, real-time biometric ID, manipulation.",
         articles: "Art. 5",
     },
     Milestone {
         date: (2025, 8, 2),
         title: "GPAI provider obligations + Governance",
-        description: "General-purpose AI model providers must comply. AI Office established.",
         articles: "Art. 51-53, Art. 64-68",
     },
     Milestone {
         date: (2026, 8, 2),
         title: "High-risk AI system obligations",
-        description: "Full compliance for high-risk AI: risk management, data governance, transparency, human oversight.",
         articles: "Art. 6-49",
     },
     Milestone {
         date: (2027, 8, 2),
         title: "Existing high-risk AI systems",
-        description: "AI systems placed on market before Aug 2025 must comply if significantly modified.",
         articles: "Art. 111",
     },
     Milestone {
         date: (2030, 8, 2),
         title: "Full enforcement for all AI systems",
-        description: "All AI systems in scope must be fully compliant. No transitional periods remain.",
         articles: "Art. 113",
     },
 ];

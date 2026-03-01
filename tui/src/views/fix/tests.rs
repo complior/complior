@@ -13,9 +13,6 @@ fn make_findings() -> Vec<Finding> {
             fix: Some("Add AI disclosure component".to_string()),
             file: None,
             line: None,
-            confidence: None,
-            confidence_level: None,
-            priority: None,
             code_context: None,
             fix_diff: None,
         },
@@ -29,9 +26,6 @@ fn make_findings() -> Vec<Finding> {
             fix: None,
             file: None,
             line: None,
-            confidence: None,
-            confidence_level: None,
-            priority: None,
             code_context: None,
             fix_diff: None,
         },
@@ -45,9 +39,6 @@ fn make_findings() -> Vec<Finding> {
             fix: Some("Add risk assessment document".to_string()),
             file: None,
             line: None,
-            confidence: None,
-            confidence_level: None,
-            priority: None,
             code_context: None,
             fix_diff: None,
         },
@@ -108,15 +99,6 @@ fn test_fix_select_all() {
     assert!(state.fixable_findings.iter().all(|f| f.selected));
     state.deselect_all();
     assert!(state.fixable_findings.iter().all(|f| !f.selected));
-}
-
-#[test]
-fn test_fix_predicted_impact() {
-    assert_eq!(predict_impact(Severity::Critical), 8);
-    assert_eq!(predict_impact(Severity::High), 5);
-    assert_eq!(predict_impact(Severity::Medium), 3);
-    assert_eq!(predict_impact(Severity::Low), 1);
-    assert_eq!(predict_impact(Severity::Info), 0);
 }
 
 #[test]
@@ -186,9 +168,6 @@ fn make_enriched_findings() -> Vec<Finding> {
             fix: Some("- const c = new Anthropic();\n+ const c = complior(new Anthropic());".to_string()),
             file: Some("src/chat/anthropic.ts".to_string()),
             line: Some(8),
-            confidence: Some(95.0),
-            confidence_level: None,
-            priority: None,
             code_context: Some(CodeContext {
                 lines: vec![
                     CodeContextLine { num: 1, content: "import Anthropic from 'anthropic';".to_string() },
@@ -229,9 +208,6 @@ fn make_enriched_findings() -> Vec<Finding> {
             fix: Some("# Fundamental Rights Impact Assessment".to_string()),
             file: None,
             line: None,
-            confidence: None,
-            confidence_level: None,
-            priority: None,
             code_context: None,
             fix_diff: None,
         },
@@ -245,9 +221,6 @@ fn make_enriched_findings() -> Vec<Finding> {
             fix: Some("+ \"compliance\": { \"framework\": \"eu-ai-act\" }".to_string()),
             file: Some("package.json".to_string()),
             line: None,
-            confidence: None,
-            confidence_level: None,
-            priority: None,
             code_context: None,
             fix_diff: None,
         },
@@ -371,9 +344,6 @@ fn snapshot_fix_single_mode_type_a_recommendation() {
         fix: Some("Wrap LLM calls with complior.wrap() or add AI disclosure".to_string()),
         file: Some("src/api/chat.ts".to_string()),
         line: Some(42),
-        confidence: None,
-        confidence_level: None,
-        priority: None,
         code_context: None,
         fix_diff: None,
     }];
@@ -422,9 +392,6 @@ fn test_apply_fix_diff_writes_file() {
         fix: None,
         file: Some("test.ts".to_string()),
         line: Some(3),
-        confidence: None,
-        confidence_level: None,
-        priority: None,
         code_context: None,
         fix_diff: Some(FixDiff {
             before: vec!["const c = new Anthropic();".to_string()],
@@ -465,9 +432,6 @@ fn test_apply_type_b_creates_file() {
         fix: Some("# Fundamental Rights Impact Assessment\n\n## Purpose\n...".to_string()),
         file: None,
         line: None,
-        confidence: None,
-        confidence_level: None,
-        priority: None,
         code_context: None,
         fix_diff: None,
     };
@@ -503,9 +467,6 @@ fn test_apply_rejects_stale_diff() {
         fix: None,
         file: Some("file.ts".to_string()),
         line: Some(1),
-        confidence: None,
-        confidence_level: None,
-        priority: None,
         code_context: None,
         fix_diff: Some(FixDiff {
             before: vec!["const c = new Anthropic();".to_string()],

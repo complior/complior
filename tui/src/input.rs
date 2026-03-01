@@ -12,6 +12,7 @@ pub enum Action {
     /// Quit the application (Ctrl+C).
     Quit,
     /// Cycle to the next panel (Tab in Insert mode).
+    #[allow(dead_code)] // Handled in app but not yet bound to a key
     NextPanel,
     /// Toggle the terminal panel (Ctrl+T).
     ToggleTerminal,
@@ -82,6 +83,7 @@ pub enum Action {
     /// Focus a specific panel (Alt+1..5).
     FocusPanel(Panel),
     /// Jump to a specific line number.
+    #[allow(dead_code)] // Handled in app but not yet bound to a key
     GotoLine,
     /// Switch to a numbered view (1-6 in Normal mode).
     SwitchView(ViewState),
@@ -92,6 +94,7 @@ pub enum Action {
     /// Toggle file watcher mode.
     WatchToggle,
     /// Open the theme picker overlay.
+    #[allow(dead_code)] // Handled in app but not yet bound to a key
     ShowThemePicker,
     /// Start inline code search (/ in Normal mode on code viewer).
     CodeSearch,

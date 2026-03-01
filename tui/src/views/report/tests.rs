@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::views::report::*;
+    use crate::views::report::generators::generate_report_markdown;
     use crate::types::{ScoreBreakdown, Zone};
 
     fn make_scan() -> crate::types::ScanResult {
@@ -25,9 +26,6 @@ mod tests {
                 fix: Some("Add disclosure".to_string()),
                 file: None,
                 line: None,
-                confidence: None,
-                confidence_level: None,
-                priority: None,
                 code_context: None,
                 fix_diff: None,
             }],

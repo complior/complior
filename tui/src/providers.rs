@@ -3,11 +3,13 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)] // Used by provider_setup (wired, not yet called from main flow)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderEntry {
     pub api_key: String,
 }
 
+#[allow(dead_code)] // Used by provider_setup (wired, not yet called from main flow)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ProviderConfig {
@@ -26,12 +28,14 @@ impl Default for ProviderConfig {
     }
 }
 
+#[allow(dead_code)] // Used by provider_setup (wired, not yet called from main flow)
 pub struct ModelInfo {
     pub id: &'static str,
     pub display_name: &'static str,
     pub provider: &'static str,
 }
 
+#[allow(dead_code)] // Used by provider_setup (wired, not yet called from main flow)
 pub fn available_models() -> Vec<ModelInfo> {
     vec![
         ModelInfo {
@@ -102,6 +106,7 @@ pub fn available_models() -> Vec<ModelInfo> {
     ]
 }
 
+#[allow(dead_code)] // Used by provider_setup (wired, not yet called from main flow)
 pub fn models_for_provider(provider: &str) -> Vec<&'static ModelInfo> {
     // Leak the Vec so we can return references with 'static lifetime.
     // This is called infrequently and the catalog is small, so the leak is fine.
@@ -109,6 +114,7 @@ pub fn models_for_provider(provider: &str) -> Vec<&'static ModelInfo> {
     models.iter().filter(|m| m.provider == provider).collect()
 }
 
+#[allow(dead_code)] // Used by provider_setup (wired, not yet called from main flow)
 pub fn provider_config_path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from(".config"))
@@ -116,6 +122,7 @@ pub fn provider_config_path() -> PathBuf {
         .join("providers.toml")
 }
 
+#[allow(dead_code)] // Used by provider_setup (wired, not yet called from main flow)
 pub fn load_provider_config() -> ProviderConfig {
     let path = provider_config_path();
     match std::fs::read_to_string(&path) {
@@ -124,42 +131,6 @@ pub fn load_provider_config() -> ProviderConfig {
     }
 }
 
-pub async fn save_provider_config(config: &ProviderConfig) -> color_eyre::Result<()> {
-    let path = provider_config_path();
-    if let Some(parent) = path.parent() {
-        tokio::fs::create_dir_all(parent).await?;
-    }
-    let content = toml::to_string_pretty(config)?;
-    tokio::fs::write(&path, &content).await?;
-
-    // Set file permissions to 0600 (owner read/write only) for API key security
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o600);
-        tokio::fs::set_permissions(&path, perms).await?;
-    }
-
-    Ok(())
-}
-
-pub fn is_configured(config: &ProviderConfig) -> bool {
-    !config.providers.is_empty()
-}
-
-pub fn display_model_name(model_id: &str) -> &str {
-    for model in available_models() {
-        if model.id == model_id {
-            return model.display_name;
-        }
-    }
-    // Return truncated id if not found in catalog
-    if model_id.len() > 24 {
-        &model_id[..24]
-    } else {
-        model_id
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -174,20 +145,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_configured() {
-        let mut config = ProviderConfig::default();
-        assert!(!is_configured(&config));
-
-        config.providers.insert(
-            "anthropic".to_string(),
-            ProviderEntry {
-                api_key: "sk-test".to_string(),
-            },
-        );
-        assert!(is_configured(&config));
-    }
-
-    #[test]
     fn test_available_models_count() {
         let models = available_models();
         assert_eq!(models.len(), 13);
@@ -199,13 +156,6 @@ mod tests {
         assert_eq!(anthropic.len(), 3);
         let openrouter = models_for_provider("openrouter");
         assert_eq!(openrouter.len(), 6);
-    }
-
-    #[test]
-    fn test_display_model_name() {
-        assert_eq!(display_model_name("gpt-4o"), "GPT-4o");
-        assert_eq!(display_model_name("claude-opus-4-6"), "Claude Opus 4.6");
-        assert_eq!(display_model_name("unknown-model"), "unknown-model");
     }
 
     #[test]

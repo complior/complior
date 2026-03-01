@@ -62,11 +62,6 @@ pub async fn list_sessions() -> Vec<String> {
     names
 }
 
-pub async fn first_run_done() -> bool {
-    let marker = sessions_dir().join(".first_run_done");
-    tokio::fs::try_exists(&marker).await.unwrap_or(false)
-}
-
 pub async fn mark_first_run_done() {
     let dir = sessions_dir();
     let _ = tokio::fs::create_dir_all(&dir).await;

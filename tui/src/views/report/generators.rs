@@ -5,22 +5,21 @@ use crate::types::ScanResult;
 pub struct ReportGenerator {
     pub key: char,
     pub name: &'static str,
-    pub article: &'static str,
     pub description: &'static str,
     pub duration: &'static str,
 }
 
 /// All 9 report generators per spec Section 7.2.
 pub const GENERATORS: &[ReportGenerator] = &[
-    ReportGenerator { key: '1', name: "Audit Package", article: "All", description: "ZIP with all compliance docs", duration: "~60 sec" },
-    ReportGenerator { key: '2', name: "FRIA Draft", article: "Art. 27", description: "Impact assessment (per-system)", duration: "~30 sec" },
-    ReportGenerator { key: '3', name: "Risk Management Plan", article: "Art. 9", description: "Risk register (per-system)", duration: "~20 sec" },
-    ReportGenerator { key: '4', name: "QMS Template", article: "Art. 17", description: "Quality management system", duration: "~15 sec" },
-    ReportGenerator { key: '5', name: "Monitoring Plan", article: "Art. 72", description: "Post-market monitoring", duration: "~10 sec" },
-    ReportGenerator { key: '6', name: "Worker Notification", article: "Art. 26(7)", description: "Employee notice", duration: "~10 sec" },
-    ReportGenerator { key: '7', name: "Incident Report", article: "Art. 73", description: "Incident template", duration: "~10 sec" },
-    ReportGenerator { key: '8', name: "EU DB Pre-fill", article: "Art. 49", description: "Database registration fields", duration: "~5 sec" },
-    ReportGenerator { key: '9', name: "AESIA Excel Export", article: "AESIA", description: "12 Spanish regulator checklists", duration: "~30 sec" },
+    ReportGenerator { key: '1', name: "Audit Package", description: "ZIP with all compliance docs", duration: "~60 sec" },
+    ReportGenerator { key: '2', name: "FRIA Draft", description: "Impact assessment (per-system)", duration: "~30 sec" },
+    ReportGenerator { key: '3', name: "Risk Management Plan", description: "Risk register (per-system)", duration: "~20 sec" },
+    ReportGenerator { key: '4', name: "QMS Template", description: "Quality management system", duration: "~15 sec" },
+    ReportGenerator { key: '5', name: "Monitoring Plan", description: "Post-market monitoring", duration: "~10 sec" },
+    ReportGenerator { key: '6', name: "Worker Notification", description: "Employee notice", duration: "~10 sec" },
+    ReportGenerator { key: '7', name: "Incident Report", description: "Incident template", duration: "~10 sec" },
+    ReportGenerator { key: '8', name: "EU DB Pre-fill", description: "Database registration fields", duration: "~5 sec" },
+    ReportGenerator { key: '9', name: "AESIA Excel Export", description: "12 Spanish regulator checklists", duration: "~30 sec" },
 ];
 
 /// Map zone to human-readable label.

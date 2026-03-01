@@ -323,7 +323,6 @@ pub(super) fn render_fix_item<'a>(
     let (checkbox, cb_color) = match (&item.status, item.selected) {
         (FixItemStatus::Applied, _) => ("[✓]", t.zone_green),
         (FixItemStatus::Failed, _) => ("[✗]", t.zone_red),
-        (FixItemStatus::Applying, _) => ("[~]", t.zone_yellow),
         (_, true) => ("[x]", t.zone_green),
         (_, false) => ("[ ]", t.muted),
     };
@@ -333,13 +332,11 @@ pub(super) fn render_fix_item<'a>(
     // Status indicator
     let status_text = match item.status {
         FixItemStatus::Pending => "",
-        FixItemStatus::Applying => " APPLYING...",
         FixItemStatus::Applied => " DONE",
         FixItemStatus::Failed => " FAILED",
     };
     let status_color = match item.status {
         FixItemStatus::Pending => t.fg,
-        FixItemStatus::Applying => t.zone_yellow,
         FixItemStatus::Applied => t.zone_green,
         FixItemStatus::Failed => t.zone_red,
     };

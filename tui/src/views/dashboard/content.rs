@@ -34,7 +34,6 @@ pub(super) fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App)
             }
             ZoomedWidget::ActivityLog => render_activity_log(frame, area, app),
             ZoomedWidget::ScoreSparkline => render_score_history_line(frame, area, app),
-            ZoomedWidget::FindingsList => render_activity_log(frame, area, app),
         }
         return;
     }

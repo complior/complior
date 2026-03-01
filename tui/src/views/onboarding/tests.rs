@@ -86,12 +86,6 @@ mod tests {
     }
 
     #[test]
-    fn test_progress_pct() {
-        let wiz = OnboardingWizard::new();
-        assert!((wiz.progress_pct() - 0.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
     fn test_conditional_skip_demo() {
         let mut wiz = OnboardingWizard::new();
         wiz.project_type = Some("demo".to_string());

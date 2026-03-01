@@ -87,9 +87,6 @@ fn test_mode_cycling() {
     assert_eq!(Mode::Scan.next(), Mode::Fix);
     assert_eq!(Mode::Fix.next(), Mode::Watch);
     assert_eq!(Mode::Watch.next(), Mode::Scan);
-    assert_eq!(Mode::Scan.label(), "SCAN");
-    assert_eq!(Mode::Fix.label(), "FIX");
-    assert_eq!(Mode::Watch.label(), "WATCH");
 }
 
 #[test]
@@ -189,9 +186,6 @@ fn test_dashboard_with_scan_data() {
             fix: None,
             file: None,
             line: None,
-            confidence: None,
-            confidence_level: None,
-            priority: None,
             code_context: None,
             fix_diff: None,
         }],
@@ -238,7 +232,7 @@ fn test_dashboard_2x2_grid_no_panic() {
 
     // Add some activity entries
     app.push_activity(crate::types::ActivityKind::Scan, "85/100");
-    app.push_activity(crate::types::ActivityKind::Daemon, "Engine ready");
+    app.push_activity(crate::types::ActivityKind::Scan, "Engine ready");
     app.push_activity(crate::types::ActivityKind::Watch, "src/main.rs");
 
     terminal
@@ -420,9 +414,6 @@ fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::types::ScanR
             fix: Some("Add disclosure notice".to_string()),
             file: None,
             line: None,
-            confidence: None,
-            confidence_level: None,
-            priority: None,
             code_context: None,
             fix_diff: None,
         }],
@@ -1017,10 +1008,10 @@ fn e2e_large_terminal_no_panic() {
 fn e2e_t704_toast_appears_after_scan() {
     crate::theme::init_theme("dark");
     let mut app = App::new(crate::config::TuiConfig::default());
-    assert!(app.toasts.is_empty());
+    assert!(app.toasts.toasts.is_empty());
 
     app.set_scan_result(make_scan_result(85.0, crate::types::Zone::Green));
-    assert!(!app.toasts.is_empty(), "Toast should appear after scan");
+    assert!(!app.toasts.toasts.is_empty(), "Toast should appear after scan");
     let toast = &app.toasts.toasts[0];
     assert!(toast.message.contains("85"), "Toast should contain score");
 }
@@ -1045,7 +1036,6 @@ fn e2e_t704_confirm_dialog_y_closes() {
         message: "Apply all?".to_string(),
         file_count: 3,
         score_impact: Some(5.0),
-        on_confirm: crate::components::confirm_dialog::ConfirmAction::BatchApply,
     });
     app.overlay = Overlay::ConfirmDialog;
 
@@ -1063,7 +1053,6 @@ fn e2e_t704_confirm_dialog_n_cancels() {
         message: "Apply?".to_string(),
         file_count: 1,
         score_impact: None,
-        on_confirm: crate::components::confirm_dialog::ConfirmAction::BatchApply,
     });
     app.overlay = Overlay::ConfirmDialog;
 

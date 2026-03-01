@@ -35,10 +35,6 @@ impl WhatIfState {
         }
     }
 
-    pub fn clear(&mut self) {
-        self.result = None;
-        self.pending = false;
-    }
 }
 
 /// Render what-if result as a chat message block.
