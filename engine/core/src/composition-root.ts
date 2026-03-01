@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CoreMessage } from 'ai';
-import type { ScanResult, ProjectMemory } from './types/common.types.js';
+import type { ScanResult } from './types/common.types.js';
 import type { AgentMode } from './llm/tools/types.js';
 import type { RegulationData } from './data/regulation-loader.js';
 import { loadRegulationData } from './infra/regulation-loader.js';
@@ -36,7 +36,6 @@ export interface ApplicationState {
   readonly version: string;
   /** Mutable fields — modified via event handlers and service callbacks */
   lastScanResult: ScanResult | null;
-  projectMemory: ProjectMemory | null;
   conversationHistory: CoreMessage[];
   currentMode: AgentMode;
 }
@@ -63,7 +62,6 @@ export const loadApplication = async (): Promise<Application> => {
     startedAt: Date.now(),
     version: ENGINE_VERSION,
     lastScanResult: null,
-    projectMemory: null,
     conversationHistory: [],
     currentMode: 'build',
   };
@@ -217,7 +215,6 @@ export const loadApplication = async (): Promise<Application> => {
     externalScanService,
     statusService,
     llm,
-    getProjectMemory: () => state.projectMemory,
     getMode: () => state.currentMode,
     setMode: (mode) => { state.currentMode = mode; },
     toolExecutorDeps: {

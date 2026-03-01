@@ -13,14 +13,13 @@ import type { ReportService } from '../services/report-service.js';
 import type { ExternalScanService } from '../services/external-scan-service.js';
 import type { StatusService } from '../services/status-service.js';
 import type { LlmPort } from '../ports/llm.port.js';
-import type { ProjectMemory, ScoreBreakdown } from '../types/common.types.js';
+import type { ScoreBreakdown } from '../types/common.types.js';
 import type { ToolExecutorDeps } from '../llm/tool-executors.js';
 import type { AgentMode } from '../llm/tools/types.js';
 import type { OnboardingWizard } from '../onboarding/wizard.js';
 import type { OnboardingProfile } from '../onboarding/profile.js';
 import { createScanRoute } from './routes/scan.route.js';
 import { createStatusRoute } from './routes/status.route.js';
-import { createMemoryRoute } from './routes/memory.route.js';
 import { createChatRoute } from './routes/chat.route.js';
 import { createFileRoute } from './routes/file.route.js';
 import { createFixRoute } from './routes/fix.route.js';
@@ -47,7 +46,6 @@ export interface RouterDeps {
   readonly externalScanService: ExternalScanService;
   readonly statusService: StatusService;
   readonly llm: LlmPort;
-  readonly getProjectMemory: () => ProjectMemory | null;
   readonly toolExecutorDeps: ToolExecutorDeps;
   readonly getMode: () => AgentMode;
   readonly setMode: (mode: AgentMode) => void;
@@ -102,7 +100,6 @@ export const createRouter = (deps: RouterDeps) => {
   // Mount routes
   app.route('/', createStatusRoute(deps.statusService));
   app.route('/', createScanRoute(deps.scanService));
-  app.route('/', createMemoryRoute({ getProjectMemory: deps.getProjectMemory }));
   app.route('/', createChatRoute({ chatService: deps.chatService, llm: deps.llm, toolExecutorDeps: deps.toolExecutorDeps, getMode: deps.getMode, setMode: deps.setMode }));
   app.route('/', createFileRoute(deps.fileService));
   app.route('/', createFixRoute({ fixService: deps.fixService, undoService: deps.undoService }));
