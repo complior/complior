@@ -7,8 +7,8 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 ## Project Structure
 
 - **Rust TUI**: `tui/` — Ratatui binary, connects to daemon via HTTP/SSE, 8 pages, themes
-- **TypeScript Engine**: `engine/` — Clean Architecture: ports, domain, services, infra, http, data, llm, mcp
-- **Packages**: `packages/sdk/` (@complior/sdk), `packages/npm/` (npm wrapper). Shared types codegen planned, not yet implemented
+- **TypeScript Engine**: `engine/core/` — Clean Architecture: ports, domain, services, infra, http, data, llm, mcp
+- **TS Packages**: `engine/sdk/` (@complior/sdk), `engine/npm/` (npm wrapper). Shared types codegen planned, not yet implemented
 - **Public docs**: `docs/` — architecture, backlog, sprint specs, contributing standards
 - **Internal docs**: `.dev/` (gitignored) — legacy v1 docs, agent definitions, ADRs
 
@@ -20,7 +20,7 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 4. **Daemon principle** — Complior does NOT write code. It monitors file changes and provides compliance feedback. Auto-fixes are delegated to any coding agent via MCP.
 5. **Agent Passport** — central entity (identity card of an AI system). 36 fields, 3 creation modes, ed25519 signed.
 6. **7-step pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
-7. **DataProvider port** — Engine retains regulation JSON locally (`engine/src/data/`). AI Registry data from PROJECT API (5,011+ tools online). TUI: EngineDataProvider (online) ↔ MockDataProvider (12 demo, offline fallback)
+7. **DataProvider port** — Engine retains regulation JSON locally (`engine/core/src/data/`). AI Registry data from PROJECT API (5,011+ tools online). TUI: EngineDataProvider (online) ↔ MockDataProvider (12 demo, offline fallback)
 
 ## Coding Standards
 

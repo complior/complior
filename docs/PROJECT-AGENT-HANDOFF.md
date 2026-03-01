@@ -39,7 +39,7 @@ GET /v1/regulations/obligations?regulation=eu-ai-act
 | `co_data_management` | Документирование training data | Аналогично Art.10 |
 | `co_annual_report` | Годовой отчёт о high-risk AI uses | **Новое** — нет в EU AI Act |
 
-### Структура данных (было в engine/src/data/regulation-db/colorado-sb205.json)
+### Структура данных (было в engine/core/src/data/regulation-db/colorado-sb205.json)
 
 ```json
 {
@@ -305,11 +305,11 @@ POST /api/v1/score                              → calculate score (batch)
 
 | Компонент | Файл в ~/complior | Описание |
 |-----------|-------------------|----------|
-| Scoring logic | `engine/src/domain/regulation/jurisdiction.ts` | Алгоритм "strictest wins" |
-| Score combiner | `engine/src/domain/regulation/strictest-wins.ts` | Формула комбинирования |
-| Jurisdiction diff display | `engine/src/domain/regulation/jurisdiction-diff.ts` | Отображение дифа |
-| Regulation feed consumer | `engine/src/domain/monitoring/regulation-feed.ts` | Читает feed из PROJECT API |
-| Regulation diff display | `engine/src/domain/monitoring/regulation-diff.ts` | Показывает changelog |
+| Scoring logic | `engine/core/src/domain/regulation/jurisdiction.ts` | Алгоритм "strictest wins" |
+| Score combiner | `engine/core/src/domain/regulation/strictest-wins.ts` | Формула комбинирования |
+| Jurisdiction diff display | `engine/core/src/domain/regulation/jurisdiction-diff.ts` | Отображение дифа |
+| Regulation feed consumer | `engine/core/src/domain/monitoring/regulation-feed.ts` | Читает feed из PROJECT API |
+| Regulation diff display | `engine/core/src/domain/monitoring/regulation-diff.ts` | Показывает changelog |
 | EngineDataProvider | `tui/src/data/engine_provider.rs` | HTTP клиент к PROJECT API ✅ |
 
 ---

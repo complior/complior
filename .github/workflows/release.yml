@@ -171,19 +171,19 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Publish @complior/engine
-        working-directory: engine
+        working-directory: engine/core
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @complior/sdk
-        working-directory: packages/sdk
+        working-directory: engine/sdk
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish ai-comply
-        working-directory: packages/npm
+        working-directory: engine/npm
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

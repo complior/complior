@@ -8,20 +8,20 @@ tmp/
 .complior/
 
 # AI Registry — generated/scraped data (too large for git, rebuilt by scripts)
-engine/data/registry/all_tools.json
-engine/data/registry/directory.json
-engine/data/registry/scraped-tools.json
-engine/data/registry/scanned/
-engine/data/registry/media-tests/
-engine/data/registry/human-tests/
-engine/data/registry/detection/
-engine/data/registry/assessments/
-engine/data/registry/openrouter/
-engine/data/registry/web-search/
-engine/data/registry/github/
-engine/data/registry/media/
-engine/data/registry/BATCH-SCAN-RESULTS.md
-engine/data/registry/TZ-COMPLIANCE-REPORT.md
+engine/core/data/registry/all_tools.json
+engine/core/data/registry/directory.json
+engine/core/data/registry/scraped-tools.json
+engine/core/data/registry/scanned/
+engine/core/data/registry/media-tests/
+engine/core/data/registry/human-tests/
+engine/core/data/registry/detection/
+engine/core/data/registry/assessments/
+engine/core/data/registry/openrouter/
+engine/core/data/registry/web-search/
+engine/core/data/registry/github/
+engine/core/data/registry/media/
+engine/core/data/registry/BATCH-SCAN-RESULTS.md
+engine/core/data/registry/TZ-COMPLIANCE-REPORT.md
 
 # Rust
 target/

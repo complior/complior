@@ -114,7 +114,7 @@ $ complior scan --ci
 ## 4. Engine — внутренняя архитектура (Clean Architecture)
 
 ```
-TS ENGINE — CLEAN ARCHITECTURE (engine/src/):
+TS ENGINE — CLEAN ARCHITECTURE (engine/core/src/):
 ──────────────────────────────────────────────────────────
 LAYER / MODULE              ОПИСАНИЕ
 ──────────────────────────────────────────────────────────
@@ -453,22 +453,21 @@ complior/
 │       ├── widgets/               # Low-level ratatui widgets
 │       └── bin/                   # Binary entry points
 │
-├── engine/                       # TypeScript Engine (Clean Architecture)
-│   └── src/
-│       ├── ports/                 # Contracts (6 ports)
-│       ├── domain/                # Pure business logic (scanner, classifier, fixer, gate, ...)
-│       ├── services/              # Application orchestration
-│       ├── infra/                 # Infrastructure adapters
-│       ├── http/                  # Thin route handlers (Hono)
-│       ├── data/                  # Regulation schemas (local JSON)
-│       ├── mcp/                   # MCP Server (stdio, 8 tools)
-│       ├── cli/                   # CLI headless mode
-│       ├── output/                # Output formatting
-│       ├── composition-root.ts    # Single DI wiring point
-│       ├── server.ts              # Hono HTTP server + SSE
-│       └── index.ts               # Entry (re-exports loadApplication)
-│
-├── packages/                     # Packages
+├── engine/                       # TypeScript packages
+│   ├── core/                     # @complior/engine (Clean Architecture)
+│   │   └── src/
+│   │       ├── ports/             # Contracts (6 ports)
+│   │       ├── domain/            # Pure business logic (scanner, classifier, fixer, gate, ...)
+│   │       ├── services/          # Application orchestration
+│   │       ├── infra/             # Infrastructure adapters
+│   │       ├── http/              # Thin route handlers (Hono)
+│   │       ├── data/              # Regulation schemas (local JSON)
+│   │       ├── mcp/               # MCP Server (stdio, 8 tools)
+│   │       ├── cli/               # CLI headless mode
+│   │       ├── output/            # Output formatting
+│   │       ├── composition-root.ts # Single DI wiring point
+│   │       ├── server.ts          # Hono HTTP server + SSE
+│   │       └── index.ts           # Entry (re-exports loadApplication)
 │   ├── sdk/                      # @complior/sdk — runtime compliance middleware
 │   └── npm/                      # npm wrapper package (npx complior)
 │

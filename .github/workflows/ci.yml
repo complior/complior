@@ -28,6 +28,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: cd engine && bun install --frozen-lockfile
-      - run: cd engine && bun run typecheck
-      - run: cd engine && bun run test
+      - run: cd engine/core && bun install --frozen-lockfile
+      - run: cd engine/core && bun run typecheck
+      - run: cd engine/core && bun run test
