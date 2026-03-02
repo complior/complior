@@ -9,6 +9,15 @@ COMPLIANCE-REPORT-*.md
 # Complior project data
 .complior/
 
+# Local-only directories (not tracked in git)
+docs/
+demos/
+.dev/
+scripts/
+tests/
+landing/
+distribute/
+
 # AI Registry — generated/scraped data (too large for git, rebuilt by scripts)
 engine/core/data/registry/all_tools.json
 engine/core/data/registry/directory.json
