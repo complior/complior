@@ -142,6 +142,30 @@ describe('HTTP Contract — TS side', () => {
     expect(validZones).toContain(raw.score.zone);
   });
 
+  it('Finding new optional fields have correct types when present', () => {
+    const raw = loadSample() as ScanResult;
+    const finding = raw.findings[0]! as Record<string, unknown>;
+
+    expect(typeof finding.priority).toBe('number');
+    expect(typeof finding.confidence).toBe('number');
+    expect(typeof finding.confidenceLevel).toBe('string');
+    expect(Array.isArray(finding.evidence)).toBe(true);
+  });
+
+  it('ScoreBreakdown has confidenceSummary', () => {
+    const raw = loadSample() as ScanResult;
+    const score = raw.score as Record<string, unknown>;
+    expect(score.confidenceSummary).toBeDefined();
+    expect(typeof score.confidenceSummary).toBe('object');
+  });
+
+  it('ScanResult has new optional fields', () => {
+    const raw = loadSample() as Record<string, unknown>;
+    expect(typeof raw.deepAnalysis).toBe('boolean');
+    expect(typeof raw.l5Cost).toBe('number');
+    expect(raw.regulationVersion).toBeDefined();
+  });
+
   it('sample round-trips through JSON serialization', () => {
     const original = loadSample();
     const roundTripped = JSON.parse(JSON.stringify(original));

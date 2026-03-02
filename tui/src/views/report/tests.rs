@@ -15,10 +15,11 @@ mod tests {
                 passed_checks: 14,
                 failed_checks: 6,
                 skipped_checks: 0,
+                confidence_summary: None,
             },
             findings: vec![crate::types::Finding {
                 check_id: "OBL-001".to_string(),
-                r#type: "compliance".to_string(),
+                r#type: crate::types::CheckResultType::Fail,
                 message: "Missing AI disclosure".to_string(),
                 severity: crate::types::Severity::Critical,
                 obligation_id: Some("OBL-001".to_string()),
@@ -28,11 +29,18 @@ mod tests {
                 line: None,
                 code_context: None,
                 fix_diff: None,
+                priority: None,
+                confidence: None,
+                confidence_level: None,
+                evidence: None,
             }],
             project_path: "/test/project".to_string(),
             scanned_at: "2026-02-18".to_string(),
             duration: 1500,
             files_scanned: 42,
+            deep_analysis: None,
+            l5_cost: None,
+            regulation_version: None,
         }
     }
 

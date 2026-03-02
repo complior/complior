@@ -280,7 +280,13 @@ mod tests {
         crate::theme::init_theme("dark");
         let app = App::new(crate::config::TuiConfig::default());
         let buf = render_sidebar_to_string(&app, 30, 20);
-        insta::assert_snapshot!(buf);
+        insta::with_settings!({
+            filters => vec![
+                (r"⚠ \d+d", "⚠ [Nd]"),
+            ]
+        }, {
+            insta::assert_snapshot!(buf);
+        });
     }
 
     #[test]

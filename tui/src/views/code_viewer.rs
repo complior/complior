@@ -61,7 +61,7 @@ pub fn render_code_viewer(frame: &mut Frame, area: Rect, app: &App, focused: boo
         // Check for compliance violation on this line
         let violation = app.last_scan.as_ref().and_then(|scan| {
             scan.findings.iter().find(|f| {
-                f.r#type == "fail" && f.message.contains(&format!("line {line_num}"))
+                f.r#type == crate::types::CheckResultType::Fail && f.message.contains(&format!("line {line_num}"))
             })
         });
 

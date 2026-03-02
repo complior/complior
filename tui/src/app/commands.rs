@@ -158,7 +158,7 @@ impl App {
                         "  /reconnect     — Reconnect to engine\n",
                         "  /theme <name>  — Switch theme (dark/light/high-contrast)\n",
                         "  /watch         — Toggle file watch mode\n",
-                        "  /view <1-8>    — Switch to view (Dashboard/Scan/Fix/Passport/Obligations/Timeline/Report/Log)\n",
+                        "  /view <1-7>    — Switch to view (Dashboard/Scan/Fix/Passport/Timeline/Report/Log)\n",
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
@@ -201,7 +201,7 @@ impl App {
                 }
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
-                    "Usage: /view <1-8> (Dashboard/Scan/Fix/Passport/Obligations/Timeline/Report/Log)"
+                    "Usage: /view <1-7> (Dashboard/Scan/Fix/Passport/Timeline/Report/Log)"
                         .to_string(),
                 ));
                 None

@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { EventBusPort } from '../ports/events.port.js';
-import type { BrowserPort } from '../ports/browser.port.js';
+import type { BrowserPort } from '../infra/headless-browser.js';
 import type { ExternalScanConfig, ExternalScanResult } from '../domain/scanner/external/types.js';
 import { runL1Checks, buildExternalScanResult } from '../domain/scanner/external/external-scanner.js';
 

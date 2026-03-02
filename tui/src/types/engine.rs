@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 // --- Engine API response types (mirror TS Engine JSON) ---
 
@@ -19,6 +18,15 @@ pub enum Zone {
     Red,
     Yellow,
     Green,
+}
+
+/// Check result type from engine: pass, fail, or skip.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CheckResultType {
+    Pass,
+    Fail,
+    Skip,
 }
 
 /// Finding type classification for code-first UX.
@@ -85,7 +93,7 @@ pub struct FixDiff {
 #[serde(rename_all = "camelCase")]
 pub struct Finding {
     pub check_id: String,
-    pub r#type: String,
+    pub r#type: CheckResultType,
     pub message: String,
     pub severity: Severity,
     #[serde(default)]
@@ -102,6 +110,14 @@ pub struct Finding {
     pub code_context: Option<CodeContext>,
     #[serde(default)]
     pub fix_diff: Option<FixDiff>,
+    #[serde(default)]
+    pub priority: Option<i32>,
+    #[serde(default)]
+    pub confidence: Option<f64>,
+    #[serde(default)]
+    pub confidence_level: Option<String>,
+    #[serde(default)]
+    pub evidence: Option<Vec<serde_json::Value>>,
 }
 
 impl Finding {
@@ -166,6 +182,8 @@ pub struct ScoreBreakdown {
     pub passed_checks: u32,
     pub failed_checks: u32,
     pub skipped_checks: u32,
+    #[serde(default)]
+    pub confidence_summary: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -177,13 +195,19 @@ pub struct ScanResult {
     pub scanned_at: String,
     pub duration: u64,
     pub files_scanned: u32,
+    #[serde(default)]
+    pub deep_analysis: Option<bool>,
+    #[serde(default)]
+    pub l5_cost: Option<f64>,
+    #[serde(default)]
+    pub regulation_version: Option<serde_json::Value>,
 }
 
 // Re-derive Serialize for nested types used in session save
 impl Serialize for ScoreBreakdown {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("ScoreBreakdown", 8)?;
+        let mut state = s.serialize_struct("ScoreBreakdown", 9)?;
         state.serialize_field("totalScore", &self.total_score)?;
         state.serialize_field("zone", &format!("{:?}", self.zone).to_lowercase())?;
         state.serialize_field("categoryScores", &self.category_scores)?;
@@ -192,6 +216,7 @@ impl Serialize for ScoreBreakdown {
         state.serialize_field("passedChecks", &self.passed_checks)?;
         state.serialize_field("failedChecks", &self.failed_checks)?;
         state.serialize_field("skippedChecks", &self.skipped_checks)?;
+        state.serialize_field("confidenceSummary", &self.confidence_summary)?;
         state.end()
     }
 }
@@ -212,7 +237,7 @@ impl Serialize for CategoryScore {
 impl Serialize for Finding {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("Finding", 11)?;
+        let mut state = s.serialize_struct("Finding", 15)?;
         state.serialize_field("checkId", &self.check_id)?;
         state.serialize_field("type", &self.r#type)?;
         state.serialize_field("message", &self.message)?;
@@ -224,6 +249,10 @@ impl Serialize for Finding {
         state.serialize_field("line", &self.line)?;
         state.serialize_field("codeContext", &self.code_context)?;
         state.serialize_field("fixDiff", &self.fix_diff)?;
+        state.serialize_field("priority", &self.priority)?;
+        state.serialize_field("confidence", &self.confidence)?;
+        state.serialize_field("confidenceLevel", &self.confidence_level)?;
+        state.serialize_field("evidence", &self.evidence)?;
         state.end()
     }
 }
@@ -233,248 +262,10 @@ pub struct EngineStatus {
     pub ready: bool,
     #[serde(default)]
     pub version: Option<String>,
-}
-
-// --- TUI-internal types ---
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatMessage {
-    pub role: MessageRole,
-    pub content: String,
-    pub blocks: Vec<ChatBlock>,
-    pub timestamp: String,
-}
-
-impl ChatMessage {
-    pub fn new(role: MessageRole, content: String) -> Self {
-        Self {
-            role,
-            content,
-            blocks: Vec::new(),
-            timestamp: chrono_now(),
-        }
-    }
-}
-
-fn chrono_now() -> String {
-    // Simple HH:MM format from system time
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let hours = (now % 86400) / 3600;
-    let mins = (now % 3600) / 60;
-    format!("{hours:02}:{mins:02}")
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MessageRole {
-    User,
-    Assistant,
-    System,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Panel {
-    Chat,
-    Score,
-    FileBrowser,
-    CodeViewer,
-    Terminal,
-    DiffPreview,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InputMode {
-    Normal,
-    Insert,
-    Command,
-    Visual,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EngineConnectionStatus {
-    Connecting,
-    Connected,
-    Disconnected,
-    Error,
-}
-
-#[derive(Debug, Clone)]
-pub struct FileEntry {
-    pub path: PathBuf,
-    pub name: String,
-    pub is_dir: bool,
-    pub depth: usize,
-    pub expanded: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct Selection {
-    pub start_line: usize,
-    pub end_line: usize,
-}
-
-/// Rich content blocks within a chat message (agent events).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ChatBlock {
-    Text(String),
-    Thinking(String),
-    ToolCall { tool_name: String, args: String },
-    ToolResult { tool_name: String, result: String, is_error: bool },
-}
-
-/// Activity log entry for the Dashboard widget.
-#[derive(Debug, Clone)]
-pub struct ActivityEntry {
-    pub timestamp: String,
-    pub kind: ActivityKind,
-    pub detail: String,
-}
-
-/// Kind of activity logged to the Dashboard.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ActivityKind {
-    Scan,
-    Fix,
-    Watch,
-}
-
-impl ActivityKind {
-    pub fn icon(self) -> char {
-        match self {
-            Self::Scan => 'S',
-            Self::Fix => 'F',
-            Self::Watch => 'W',
-        }
-    }
-}
-
-/// Top-level view (screen).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ViewState {
-    Dashboard,    // D, index 0
-    Scan,         // S, index 1
-    Fix,          // F, index 2
-    Passport,     // P, index 3 (stub)
-    Obligations,  // O, index 4 (stub)
-    Timeline,     // T, index 5
-    Report,       // R, index 6
-    Log,          // L, index 7
-}
-
-impl ViewState {
-    /// Map key digit to view (1-based) — used by `/view N` command.
-    pub fn from_key(digit: u8) -> Option<Self> {
-        match digit {
-            1 => Some(Self::Dashboard),
-            2 => Some(Self::Scan),
-            3 => Some(Self::Fix),
-            4 => Some(Self::Passport),
-            5 => Some(Self::Obligations),
-            6 => Some(Self::Timeline),
-            7 => Some(Self::Report),
-            8 => Some(Self::Log),
-            _ => None,
-        }
-    }
-
-    /// Map an uppercase letter to a view for letter-key navigation.
-    ///
-    /// Lowercase letters are reserved for view-specific actions.
-    pub fn from_letter(c: char) -> Option<Self> {
-        match c {
-            'D' => Some(Self::Dashboard),
-            'S' => Some(Self::Scan),
-            'F' => Some(Self::Fix),
-            'P' => Some(Self::Passport),
-            'O' => Some(Self::Obligations),
-            'T' => Some(Self::Timeline),
-            'R' => Some(Self::Report),
-            'L' => Some(Self::Log),
-            _ => None,
-        }
-    }
-
-    /// 0-based index for tab highlighting.
-    pub fn index(self) -> usize {
-        match self {
-            Self::Dashboard => 0,
-            Self::Scan => 1,
-            Self::Fix => 2,
-            Self::Passport => 3,
-            Self::Obligations => 4,
-            Self::Timeline => 5,
-            Self::Report => 6,
-            Self::Log => 7,
-        }
-    }
-
-    /// Short display name for footer tabs.
-    pub fn short_name(self) -> &'static str {
-        match self {
-            Self::Dashboard => "Dashboard",
-            Self::Scan => "Scan",
-            Self::Fix => "Fix",
-            Self::Passport => "Passport",
-            Self::Obligations => "Oblig",
-            Self::Timeline => "Timeline",
-            Self::Report => "Report",
-            Self::Log => "Log",
-        }
-    }
-
-    pub const ALL: [ViewState; 8] = [
-        Self::Dashboard,
-        Self::Scan,
-        Self::Fix,
-        Self::Passport,
-        Self::Obligations,
-        Self::Timeline,
-        Self::Report,
-        Self::Log,
-    ];
-}
-
-/// Operating mode — cycles with Tab in Normal mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    Scan,
-    Fix,
-    Watch,
-}
-
-impl Mode {
-    pub fn next(self) -> Self {
-        match self {
-            Self::Scan => Self::Fix,
-            Self::Fix => Self::Watch,
-            Self::Watch => Self::Scan,
-        }
-    }
-
-}
-
-/// Overlay state for popups (command palette, file picker, help, getting started).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Overlay {
-    None,
-    CommandPalette,
-    FilePicker,
-    Help,
-    GettingStarted,
-    ThemePicker,
-    Onboarding,
-    ConfirmDialog,
-    DismissModal,
-    UndoHistory,
-}
-
-/// Click target for mouse hit-testing (T806).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClickTarget {
-    ViewTab(ViewState),
-    FindingRow(usize),
-    FixCheckbox(usize),
-    SidebarToggle,
+    #[serde(default)]
+    pub mode: Option<String>,
+    #[serde(default)]
+    pub uptime: Option<u64>,
+    #[serde(default)]
+    pub last_scan: Option<serde_json::Value>,
 }

@@ -12,6 +12,9 @@ fn snapshot_dashboard_default() {
     insta::with_settings!({
         filters => vec![
             (r"\[\d{2}:\d{2}\]", "[HH:MM]"),
+            (r"\d+d overdue", "[Nd overdue]"),
+            (r"\d+d left", "[Nd left]"),
+            (r"⚠ \d+d", "⚠ [Nd]"),
         ]
     }, {
         insta::assert_snapshot!(buf);
@@ -43,13 +46,6 @@ fn test_stub_pages_render_without_panic() {
             super::super::passport::render_passport_view(frame, frame.area(), &app)
         })
         .expect("passport render");
-
-    // Obligations stub page
-    terminal
-        .draw(|frame| {
-            super::super::obligations::render_obligations_view(frame, frame.area(), &app)
-        })
-        .expect("obligations render");
 }
 
 #[test]
@@ -82,10 +78,11 @@ fn test_dashboard_with_scan_data() {
             passed_checks: 7,
             failed_checks: 3,
             skipped_checks: 0,
+            confidence_summary: None,
         },
         findings: vec![crate::types::Finding {
             check_id: "test-1".to_string(),
-            r#type: "compliance".to_string(),
+            r#type: crate::types::CheckResultType::Fail,
             message: "Missing privacy notice".to_string(),
             severity: crate::types::Severity::High,
             obligation_id: None,
@@ -95,11 +92,18 @@ fn test_dashboard_with_scan_data() {
             line: None,
             code_context: None,
             fix_diff: None,
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
         }],
         project_path: ".".to_string(),
         scanned_at: "2025-01-01".to_string(),
         duration: 1000,
         files_scanned: 5,
+        deep_analysis: None,
+        l5_cost: None,
+        regulation_version: None,
     });
     app.score_history = vec![60.0, 65.0, 75.0];
 
@@ -128,12 +132,16 @@ fn test_dashboard_2x2_grid_no_panic() {
             passed_checks: 17,
             failed_checks: 3,
             skipped_checks: 0,
+            confidence_summary: None,
         },
         findings: vec![],
         project_path: ".".to_string(),
         scanned_at: "2026-01-01".to_string(),
         duration: 500,
         files_scanned: 10,
+        deep_analysis: None,
+        l5_cost: None,
+        regulation_version: None,
     });
     app.score_history = vec![50.0, 60.0, 70.0, 80.0, 85.0];
 

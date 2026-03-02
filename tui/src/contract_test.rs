@@ -109,9 +109,47 @@ mod contract_tests {
         let finding: &Finding = &result.findings[0];
 
         assert_eq!(finding.check_id, "l4-bare-api-call");
-        assert_eq!(finding.r#type, "fail");
+        assert_eq!(finding.r#type, crate::types::CheckResultType::Fail);
         assert_eq!(finding.severity, Severity::High);
         assert!(!finding.message.is_empty());
+    }
+
+    #[test]
+    fn contract_finding_new_optional_fields() {
+        let json = sample_json();
+        let result: ScanResult = serde_json::from_str(&json).unwrap();
+        let f0: &Finding = &result.findings[0];
+
+        assert_eq!(f0.priority, Some(1));
+        assert!((f0.confidence.unwrap() - 0.95).abs() < f64::EPSILON);
+        assert_eq!(f0.confidence_level.as_deref(), Some("high"));
+        assert!(f0.evidence.is_some());
+        assert_eq!(f0.evidence.as_ref().unwrap().len(), 1);
+
+        // Second finding: missing new fields (should default to None)
+        let f1: &Finding = &result.findings[1];
+        assert!(f1.priority.is_none());
+        assert!(f1.confidence.is_none());
+        assert!(f1.confidence_level.is_none());
+        assert!(f1.evidence.is_none());
+    }
+
+    #[test]
+    fn contract_score_confidence_summary() {
+        let json = sample_json();
+        let result: ScanResult = serde_json::from_str(&json).unwrap();
+        assert!(result.score.confidence_summary.is_some());
+        let cs = result.score.confidence_summary.as_ref().unwrap();
+        assert_eq!(cs["average"], 0.82);
+    }
+
+    #[test]
+    fn contract_scan_result_new_fields() {
+        let json = sample_json();
+        let result: ScanResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(result.deep_analysis, Some(false));
+        assert!((result.l5_cost.unwrap() - 0.0).abs() < f64::EPSILON);
+        assert!(result.regulation_version.is_some());
     }
 
     #[test]

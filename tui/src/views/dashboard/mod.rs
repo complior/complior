@@ -104,7 +104,6 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
         ViewState::Scan => super::scan::render_scan_view(frame, body_area, app),
         ViewState::Fix => super::fix::render_fix_view(frame, body_area, app),
         ViewState::Passport => super::passport::render_passport_view(frame, body_area, app),
-        ViewState::Obligations => super::obligations::render_obligations_view(frame, body_area, app),
         ViewState::Timeline => super::timeline::render_timeline_view(frame, body_area, app),
         ViewState::Report => super::report::render_report_view(frame, body_area, app),
     }
@@ -231,7 +230,6 @@ fn render_nav_tab_bar(frame: &mut Frame, area: Rect, current: ViewState) {
         ('S', "Scan", ViewState::Scan),
         ('F', "Fix", ViewState::Fix),
         ('P', "Passport", ViewState::Passport),
-        ('O', "Oblig", ViewState::Obligations),
         ('T', "Time", ViewState::Timeline),
         ('R', "Report", ViewState::Report),
         ('L', "Log", ViewState::Log),
