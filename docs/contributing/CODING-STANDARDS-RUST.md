@@ -76,7 +76,7 @@ for p in panels {
 | Модули | `snake_case` | `engine_client`, `score_panel` |
 | Traits | `PascalCase` (прилагательное) | `Renderable`, `Scannable` |
 | Lifetime | `'a`, `'b` (короткие) или `'input`, `'config` (семантические) | `'a`, `'cfg` |
-| Crate | `kebab-case` | `complior-tui` |
+| Crate | `kebab-case` | `complior-cli` |
 | Feature flags | `kebab-case` | `syntax-highlighting`, `dev-tools` |
 | Макросы | `snake_case!` | `ensure!`, `bail!` |
 
@@ -1734,7 +1734,7 @@ async fn test_engine_connection_timeout() { ... }
 ## 21. Организация файлов
 
 ```
-tui/src/
+cli/src/
 ├── main.rs              # Точка входа, color_eyre::install(), event loop
 ├── app.rs               # AppState + handle_action() + tick()
 ├── cli.rs               # Clap CLI: 7 subcommands (scan, fix, report, doctor, version, init, update)

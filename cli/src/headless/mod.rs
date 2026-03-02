@@ -6,6 +6,7 @@
 //! runners, shell scripts, and human operators.
 
 mod commands;
+pub mod daemon;
 mod fix;
 pub(crate) mod format;
 mod scan;

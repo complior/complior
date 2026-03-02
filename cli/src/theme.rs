@@ -37,7 +37,7 @@ pub struct ThemeColors {
 
 // --- Theme data loading (compile-time embedded JSON) ---
 
-/// Raw JSON theme data embedded at compile time from `tui/data/themes.json`.
+/// Raw JSON theme data embedded at compile time from `cli/data/themes.json`.
 const THEMES_JSON: &str = include_str!("../data/themes.json");
 
 /// Parsed theme entry from JSON.

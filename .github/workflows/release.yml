@@ -57,11 +57,11 @@ jobs:
 
       - name: Build (cross)
         if: matrix.cross
-        run: cross build --release --target ${{ matrix.target }} -p complior-tui
+        run: cross build --release --target ${{ matrix.target }} -p complior-cli
 
       - name: Build (native)
         if: "!matrix.cross"
-        run: cargo build --release --target ${{ matrix.target }} -p complior-tui
+        run: cargo build --release --target ${{ matrix.target }} -p complior-cli
 
       - name: Rename binary (Unix)
         if: runner.os != 'Windows'
@@ -197,5 +197,5 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Publish complior-tui
-        run: cargo publish -p complior-tui --token ${{ secrets.CARGO_TOKEN }}
+      - name: Publish complior-cli
+        run: cargo publish -p complior-cli --token ${{ secrets.CARGO_TOKEN }}

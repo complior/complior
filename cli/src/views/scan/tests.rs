@@ -247,7 +247,7 @@ mod tests {
                 confidence_summary: None,
             },
             findings: make_scan_findings(),
-            project_path: "tui/".to_string(),
+            project_path: "cli/".to_string(),
             scanned_at: "2026-02-28T12:00:00Z".to_string(),
             duration: 450,
             files_scanned: 24,

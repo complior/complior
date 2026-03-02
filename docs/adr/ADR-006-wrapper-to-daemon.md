@@ -78,10 +78,10 @@ v8 (Daemon):
 
 | Модуль | Причина |
 |--------|---------|
-| `tui/src/pty/` | PTY management больше не нужен |
-| `tui/src/agents/` | Agent subprocess registry |
-| `tui/src/orchestrator/` | Multi-agent orchestrator |
-| `tui/src/acp/` | Agent Compliance Protocol (PTY-based) |
+| `cli/src/pty/` | PTY management больше не нужен |
+| `cli/src/agents/` | Agent subprocess registry |
+| `cli/src/orchestrator/` | Multi-agent orchestrator |
+| `cli/src/acp/` | Agent Compliance Protocol (PTY-based) |
 | `engine/core/src/llm/` (chat) | LLM chat removed |
 | `engine/core/src/memory/` | Session memory removed |
 | Input routing (Ctrl+Shift+*) | Нет PTY → нет input splitting |

@@ -102,6 +102,34 @@ pub enum Command {
 
     /// Check for and install updates
     Update,
+
+    /// Daemon management (background compliance monitoring)
+    Daemon {
+        #[command(subcommand)]
+        action: Option<DaemonAction>,
+
+        /// Enable file watcher (shortcut for `daemon start --watch`)
+        #[arg(long)]
+        watch: bool,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum DaemonAction {
+    /// Start daemon (default)
+    Start {
+        /// Enable file watcher for automatic rescans
+        #[arg(long)]
+        watch: bool,
+
+        /// Port to bind (default: auto-detect free port)
+        #[arg(long)]
+        port: Option<u16>,
+    },
+    /// Show daemon status
+    Status,
+    /// Stop running daemon
+    Stop,
 }
 
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
@@ -111,7 +139,14 @@ pub fn is_headless(cli: &Cli) -> bool {
             *ci || *json || *sarif || *no_tui
         }
         Some(Command::Fix { dry_run, json, .. }) => *dry_run || *json,
-        Some(Command::Version | Command::Doctor | Command::Report { .. } | Command::Init { .. } | Command::Update) => true,
+        Some(
+            Command::Version
+            | Command::Doctor
+            | Command::Report { .. }
+            | Command::Init { .. }
+            | Command::Update
+            | Command::Daemon { .. },
+        ) => true,
         None => false,
     }
 }
@@ -196,6 +231,61 @@ mod tests {
             }
             _ => panic!("Expected Fix command"),
         }
+    }
+
+    #[test]
+    fn cli_parse_daemon_bare() {
+        let cli = Cli::parse_from(["complior", "daemon"]);
+        match &cli.command {
+            Some(Command::Daemon { action, watch }) => {
+                assert!(action.is_none());
+                assert!(!watch);
+            }
+            _ => panic!("Expected Daemon command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_daemon_start_watch_port() {
+        let cli = Cli::parse_from(["complior", "daemon", "start", "--watch", "--port", "4000"]);
+        match cli.command {
+            Some(Command::Daemon { action: Some(DaemonAction::Start { watch, port }), .. }) => {
+                assert!(watch);
+                assert_eq!(port, Some(4000));
+            }
+            _ => panic!("Expected Daemon Start"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_daemon_top_level_watch() {
+        let cli = Cli::parse_from(["complior", "daemon", "--watch"]);
+        match cli.command {
+            Some(Command::Daemon { action, watch }) => {
+                assert!(action.is_none());
+                assert!(watch);
+            }
+            _ => panic!("Expected Daemon with --watch"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_daemon_status() {
+        let cli = Cli::parse_from(["complior", "daemon", "status"]);
+        assert!(matches!(
+            cli.command,
+            Some(Command::Daemon { action: Some(DaemonAction::Status), .. })
+        ));
+    }
+
+    #[test]
+    fn cli_parse_daemon_stop() {
+        let cli = Cli::parse_from(["complior", "daemon", "stop"]);
+        assert!(matches!(
+            cli.command,
+            Some(Command::Daemon { action: Some(DaemonAction::Stop), .. })
+        ));
     }
 
     #[test]

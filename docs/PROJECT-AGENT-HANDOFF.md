@@ -310,7 +310,7 @@ POST /api/v1/score                              → calculate score (batch)
 | Jurisdiction diff display | `engine/core/src/domain/regulation/jurisdiction-diff.ts` | Отображение дифа |
 | Regulation feed consumer | `engine/core/src/domain/monitoring/regulation-feed.ts` | Читает feed из PROJECT API |
 | Regulation diff display | `engine/core/src/domain/monitoring/regulation-diff.ts` | Показывает changelog |
-| EngineDataProvider | `tui/src/data/engine_provider.rs` | HTTP клиент к PROJECT API ✅ |
+| EngineDataProvider | `cli/src/data/engine_provider.rs` | HTTP клиент к PROJECT API ✅ |
 
 ---
 

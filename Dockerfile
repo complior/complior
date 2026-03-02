@@ -8,8 +8,8 @@ FROM rust:1.82-alpine AS rust-builder
 RUN apk add --no-cache musl-dev
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
-COPY tui/ tui/
-RUN cargo build --release -p complior-tui && strip target/release/complior
+COPY cli/ cli/
+RUN cargo build --release -p complior-cli && strip target/release/complior
 
 # Stage 2: Install Engine + SDK
 FROM node:22-alpine AS engine-builder

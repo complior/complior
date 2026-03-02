@@ -177,7 +177,7 @@ complior badge
 
 ```
 complior/
-├── tui/           # Rust TUI — dashboard UI, connects to daemon via HTTP/SSE
+├── cli/           # Rust CLI + TUI — dashboard UI, daemon management, connects via HTTP/SSE
 ├── engine/
 │   ├── core/      # @complior/engine — TS daemon (Clean Architecture)
 │   ├── sdk/       # @complior/sdk — runtime compliance middleware

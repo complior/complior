@@ -4,6 +4,7 @@ mod contract_test;
 mod cli;
 mod components;
 mod config;
+mod daemon;
 mod engine_client;
 mod engine_process;
 mod error;
@@ -48,7 +49,7 @@ use views::dashboard::render_dashboard;
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     tracing_subscriber::fmt()
-        .with_env_filter("complior_tui=info")
+        .with_env_filter("complior_cli=info")
         .with_writer(io::stderr)
         .init();
 
@@ -111,6 +112,11 @@ async fn main() -> color_eyre::Result<()> {
                 headless::run_update().await;
                 return Ok(());
             }
+            Some(cli::Command::Daemon { action, watch }) => {
+                let project_path = std::env::current_dir().unwrap_or_default();
+                headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
+                return Ok(());
+            }
             None => unreachable!(),
         }
     }
@@ -119,7 +125,7 @@ async fn main() -> color_eyre::Result<()> {
     theme::init_theme(&config.theme);
 
     // Engine manager: auto-launch or external
-    // Workspace root is parent of tui/ (CARGO_MANIFEST_DIR at compile time)
+    // Workspace root is parent of cli/ (CARGO_MANIFEST_DIR at compile time)
     let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap_or_else(|| std::path::Path::new("."));
@@ -134,17 +140,27 @@ async fn main() -> color_eyre::Result<()> {
             .unwrap_or(3099);
         EngineManager::external(port)
     } else {
-        let mut mgr = EngineManager::new(workspace_root);
-        match mgr.start() {
-            Ok(port) => {
-                tracing::info!("Engine auto-launched on port {port}");
+        // Check for existing daemon before auto-launching
+        let project_path = std::env::current_dir().unwrap_or_default();
+        if let Some(info) = daemon::find_running_daemon(&project_path) {
+            // Reuse existing daemon (External mode — won't be killed on TUI exit)
+            tracing::info!("Found daemon on port {} (PID {})", info.port, info.pid);
+            EngineManager::external(info.port)
+        } else {
+            // Auto-launch with PID file so other instances can discover it
+            let mut mgr = EngineManager::new(workspace_root);
+            let pid_path = daemon::pid_file_path(&project_path);
+            match mgr.start_with_pid(&pid_path, config.watch_on_start) {
+                Ok(port) => {
+                    tracing::info!("Engine auto-launched on port {port}");
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to auto-launch engine: {e}");
+                    // Fall through — will use default port from config
+                }
             }
-            Err(e) => {
-                tracing::warn!("Failed to auto-launch engine: {e}");
-                // Fall through — will use default port from config
-            }
+            mgr
         }
-        mgr
     };
 
     // Create app with engine URL (either auto-launched or override)
