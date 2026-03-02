@@ -13,7 +13,7 @@
    * Initialize and register the enrichment job
    * @param {Object} ctx - { pgboss, domain, console, db, config }
    */
-  async init({ pgboss, domain, console, db, config }) {
+  async init({ pgboss, domain, application, console, db, config }) {
     const jobName = 'enrich-detection-patterns';
 
     // Every Wednesday at 03:00 UTC (0 3 * * 3)
@@ -24,7 +24,7 @@
         console.log(`🔍 Detection enrichment job started (ID: ${job.id})`);
 
         try {
-          const result = await domain.registry['refresh-service'].enrichDetectionPatterns({
+          const result = await application.registry['refresh-service'].enrichDetectionPatterns({
             db,
             console,
             config,

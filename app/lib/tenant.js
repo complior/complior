@@ -1,4 +1,15 @@
 (() => {
+  const VALID_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+  const VALID_DIRS = new Set(['ASC', 'DESC']);
+
+  const assertValidColumn = (col) => {
+    if (!col || !VALID_IDENTIFIER.test(col)) {
+      throw new errors.ValidationError(
+        `Invalid column name: ${String(col).slice(0, 50)}`,
+      );
+    }
+  };
+
   const TENANT_TABLES = new Set([
     'AITool', 'AuditLog', 'Subscription', 'Conversation', 'Notification',
     'AIToolDiscovery', 'ComplianceDocument', 'FRIAAssessment',
@@ -41,6 +52,7 @@
         let idx = 2;
 
         for (const [col, val] of Object.entries(where)) {
+          assertValidColumn(col);
           if (val === null) {
             conditions.push(`"${col}" IS NULL`);
           } else {
@@ -51,7 +63,11 @@
 
         let sql = `SELECT * FROM "${table}" WHERE ${conditions.join(' AND ')}`;
         if (orderBy) {
-          sql += ` ORDER BY "${orderBy.column}" ${orderBy.dir || 'ASC'}`;
+          assertValidColumn(orderBy.column);
+          const dir = VALID_DIRS.has(String(orderBy.dir).toUpperCase())
+            ? String(orderBy.dir).toUpperCase()
+            : 'ASC';
+          sql += ` ORDER BY "${orderBy.column}" ${dir}`;
         }
         if (limit) { sql += ` LIMIT $${idx++}`; values.push(limit); }
         if (offset) { sql += ` OFFSET $${idx++}`; values.push(offset); }
@@ -76,6 +92,7 @@
         let idx = 2;
 
         for (const [col, val] of Object.entries(where)) {
+          assertValidColumn(col);
           if (val === null) {
             conditions.push(`"${col}" IS NULL`);
           } else {
@@ -99,6 +116,7 @@
         }
         const record = { ...data, organizationId };
         const cols = Object.keys(record);
+        cols.forEach((c) => assertValidColumn(c));
         const vals = Object.values(record);
         const placeholders = cols.map((_, i) => `$${i + 1}`);
 
@@ -120,6 +138,7 @@
 
         const pk = getPkColumn(table);
         const cols = Object.keys(data);
+        cols.forEach((c) => assertValidColumn(c));
         const vals = Object.values(data);
         const sets = cols.map((c, i) => `"${c}" = $${i + 1}`);
         vals.push(id, organizationId);

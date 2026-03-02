@@ -144,6 +144,7 @@ export interface ToolRequirement {
   category: string;
   guidance: string | null;
   estimatedEffortHours: number | null;
+  translations: Record<string, { name?: string; description?: string; guidance?: string }> | null;
 }
 
 export interface AIToolDetail extends AITool {
@@ -371,8 +372,10 @@ export const api = {
   tools: {
     list: (params: Record<string, string>) =>
       apiFetch<PaginatedResponse<AITool>>('/api/tools', { params }),
-    getById: (id: number) =>
-      apiFetch<AIToolDetail>(`/api/tools/${id}`),
+    getById: async (id: number): Promise<AIToolDetail> => {
+      const res = await apiFetch<{ tool: AITool; classification: RiskClassification | null; requirements: ToolRequirement[] }>(`/api/tools/${id}`);
+      return { ...res.tool, classification: res.classification, requirements: res.requirements };
+    },
     create: (data: Record<string, unknown>) =>
       apiFetch<AITool>('/api/tools', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: number, data: Record<string, unknown>) =>
@@ -380,7 +383,7 @@ export const api = {
     delete: (id: number) =>
       apiFetch<{ success: boolean }>(`/api/tools/${id}`, { method: 'DELETE' }),
     classify: (id: number) =>
-      apiFetch<ClassifyResult>(`/api/tools/${id}/classify`, { method: 'POST' }),
+      apiFetch<ClassifyResult>(`/api/tools/${id}/classify`, { method: 'POST', body: '{}' }),
   },
   billing: {
     createCheckout: (planName: string, period: string) =>

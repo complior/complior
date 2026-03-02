@@ -10,7 +10,8 @@
     const result = await db.query(
       `SELECT tr.*, r."code", r."name", r."description",
               r."articleReference", r."riskLevel" AS "reqRiskLevel",
-              r."category", r."estimatedEffortHours", r."guidance"
+              r."category", r."estimatedEffortHours", r."guidance",
+              r."translations"
        FROM "ToolRequirement" tr
        JOIN "Requirement" r ON r."requirementId" = tr."requirementId"
        WHERE tr."aiToolId" = $1

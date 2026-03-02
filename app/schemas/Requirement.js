@@ -16,4 +16,5 @@
   sortOrder: { type: 'number', default: 0 },
   estimatedEffortHours: { type: 'number', required: false },
   guidance: { type: 'string', required: false },
+  translations: { type: 'json', required: false },
 });

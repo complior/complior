@@ -72,6 +72,7 @@ describe('US-108: Detection Enrichment Job Registration', () => {
       await application.jobs['schedule-detection-enrichment'].init({
         pgboss,
         domain,
+        application,
         console,
         db: createEnrichmentMockDb(),
         config: {},
@@ -90,6 +91,7 @@ describe('US-108: Detection Enrichment Job Registration', () => {
       await application.jobs['schedule-detection-enrichment'].init({
         pgboss,
         domain,
+        application,
         console,
         db: createEnrichmentMockDb(),
         config: {},
@@ -107,6 +109,7 @@ describe('US-108: Detection Enrichment Job Registration', () => {
       await application.jobs['schedule-detection-enrichment'].init({
         pgboss,
         domain,
+        application,
         console,
         db: createEnrichmentMockDb(),
         config: {},
@@ -123,6 +126,7 @@ describe('US-108: Detection Enrichment Job Registration', () => {
       const result = await application.jobs['schedule-detection-enrichment'].init({
         pgboss,
         domain,
+        application,
         console,
         db: createEnrichmentMockDb(),
         config: {},
@@ -162,7 +166,7 @@ describe('US-108: Detection Enrichment Job Registration', () => {
     });
   });
 
-  describe('enrichDetectionPatterns domain method', () => {
+  describe('enrichDetectionPatterns application method', () => {
     it('processes tools with known categories', async () => {
       const mockDb = createEnrichmentMockDb();
       const updates = [];
@@ -178,9 +182,9 @@ describe('US-108: Detection Enrichment Job Registration', () => {
         },
       };
 
-      const { domain } = await buildFullSandbox(trackingDb);
+      const { application } = await buildFullSandbox(trackingDb);
 
-      const result = await domain.registry['refresh-service'].enrichDetectionPatterns({
+      const result = await application.registry['refresh-service'].enrichDetectionPatterns({
         db: trackingDb,
         console,
         config: {},
@@ -194,9 +198,9 @@ describe('US-108: Detection Enrichment Job Registration', () => {
 
     it('skips tools with null or unrecognized category', async () => {
       const mockDb = createEnrichmentMockDb();
-      const { domain } = await buildFullSandbox(mockDb);
+      const { application } = await buildFullSandbox(mockDb);
 
-      const result = await domain.registry['refresh-service'].enrichDetectionPatterns({
+      const result = await application.registry['refresh-service'].enrichDetectionPatterns({
         db: mockDb,
         console,
         config: {},
@@ -224,8 +228,8 @@ describe('US-108: Detection Enrichment Job Registration', () => {
         },
       };
 
-      const { domain } = await buildFullSandbox(mockDb);
-      await domain.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
+      const { application } = await buildFullSandbox(mockDb);
+      await application.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
 
       assert.strictEqual(updates.length, 1, 'Should update 1 marketing tool');
       const patterns = updates[0].patterns;
@@ -253,8 +257,8 @@ describe('US-108: Detection Enrichment Job Registration', () => {
         },
       };
 
-      const { domain } = await buildFullSandbox(mockDb);
-      const result = await domain.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
+      const { application } = await buildFullSandbox(mockDb);
+      const result = await application.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
 
       assert.strictEqual(updates.length, 0, 'Should not update unknown category');
       assert.strictEqual(result.skipped, 1, 'Should skip 1 tool');
@@ -278,8 +282,8 @@ describe('US-108: Detection Enrichment Job Registration', () => {
         },
       };
 
-      const { domain } = await buildFullSandbox(mockDb);
-      const result = await domain.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
+      const { application } = await buildFullSandbox(mockDb);
+      const result = await application.registry['refresh-service'].enrichDetectionPatterns({ db: mockDb, console, config: {} });
 
       assert.strictEqual(updates.length, 0, 'Should not update null category');
       assert.strictEqual(result.skipped, 1, 'Should skip 1 tool');

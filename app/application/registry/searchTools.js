@@ -25,7 +25,7 @@
       } else if (riskValues.length > 1) {
         const placeholders = riskValues.map(() => `$${idx++}`).join(',');
         conditions.push(`"riskLevel" IN (${placeholders})`);
-        riskValues.forEach(v => values.push(v));
+        values.push(...riskValues);
       }
     }
 

@@ -163,48 +163,7 @@
     return STATUS_SCORES.unknown; // Unknown = included in denominator at 25/100
   };
 
-  return ({ db }) => {
-    let weightsCache = null;
-    let obligationMapCache = null;
-
-    const loadWeights = async () => {
-      if (weightsCache) return weightsCache;
-      const result = await db.query(
-        `SELECT category, weight FROM "ScoringWeight"
-         WHERE regulation = 'eu-ai-act'`,
-      );
-      const rows = result.rows || result;
-      const map = {};
-      for (const row of rows) {
-        map[row.category] = parseFloat(row.weight);
-      }
-      weightsCache = map;
-      return map;
-    };
-
-    const loadObligationMap = async () => {
-      if (obligationMapCache) return obligationMapCache;
-      const result = await db.query(
-        `SELECT "obligationIdUnique", category, severity,
-                "parentObligation", deadline, "penaltyForNonCompliance",
-                "appliesToRiskLevel"
-         FROM "Obligation"`,
-      );
-      const rows = result.rows || result;
-      const map = {};
-      for (const row of rows) {
-        map[row.obligationIdUnique] = {
-          category: row.category,
-          severity: row.severity,
-          parentObligation: row.parentObligation || null,
-          deadline: row.deadline || null,
-          penaltyForNonCompliance: row.penaltyForNonCompliance || null,
-          appliesToRiskLevel: row.appliesToRiskLevel || null,
-        };
-      }
-      obligationMapCache = map;
-      return map;
-    };
+  return ({ weights, obligationMap }) => {
 
     // ── Step 2: Merge obligations with conservative dedup ────────────
 
@@ -345,9 +304,7 @@
     // ── Core calculate ──────────────────────────────────────────────
 
     return {
-      async calculate(tool, enrichedObligations, providerCorrelation) {
-        const weights = await loadWeights();
-        const obligationMap = await loadObligationMap();
+      calculate(tool, enrichedObligations, providerCorrelation) {
 
         const assessment = tool.assessments && tool.assessments['eu-ai-act'];
         if (!assessment) {

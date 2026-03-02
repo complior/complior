@@ -212,6 +212,8 @@ const MIGRATIONS = [
    END $$`,
   `ALTER TABLE "Organization"
    ADD COLUMN IF NOT EXISTS "workosOrgId" varchar UNIQUE`,
+  `ALTER TABLE "Requirement"
+   ADD COLUMN IF NOT EXISTS "translations" jsonb DEFAULT '{}'`,
 ];
 
 const INDEXES = [
@@ -278,12 +280,17 @@ const seedRequirements = async (client) => {
       `INSERT INTO "Requirement"
        ("code", "name", "description",
        "articleReference", "riskLevel", "category",
-       "sortOrder", "estimatedEffortHours", "guidance")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT ("code") DO NOTHING`,
+       "sortOrder", "estimatedEffortHours", "guidance", "translations")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT ("code") DO UPDATE SET
+         "name" = EXCLUDED."name",
+         "description" = EXCLUDED."description",
+         "guidance" = EXCLUDED."guidance",
+         "translations" = EXCLUDED."translations"`,
       [req.code, req.name, req.description, req.articleReference,
         req.riskLevel, req.category, req.sortOrder,
-        req.estimatedEffortHours || null, req.guidance || null],
+        req.estimatedEffortHours || null, req.guidance || null,
+        JSON.stringify(req.translations || {})],
     );
   }
   console.log(`  Seeded ${requirements.length} requirements`);
