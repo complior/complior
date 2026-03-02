@@ -17,7 +17,7 @@ const load = async (filePath, sandbox) => {
     ...OPTIONS,
     lineOffset: -2,
   });
-  const context = vm.createContext(sandbox);
+  const context = vm.createContext(Object.freeze({ ...sandbox }));
   return script.runInContext(context, OPTIONS);
 };
 

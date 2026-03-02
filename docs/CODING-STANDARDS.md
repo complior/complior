@@ -1102,6 +1102,7 @@ const moduleContext = Object.freeze({
 - **НЕ мутируй** context объекты — они frozen
 - **НЕ используй** `eval()`, `Function()`, или другие динамические конструкции
 - **Timeout:** каждый script имеет timeout (default: 5000ms)
+- **НЕ МЕНЯЙ ядро `load()`** в `server/src/loader.js` — паттерн `Object.freeze({ ...sandbox })` унаследован из reference implementation (см. ARCHITECTURE.md §8 «Heritage Files»). Допускается только добавление новых функций (`loadDeepDir`, `loadApplication`) рядом с унаследованными
 
 ---
 

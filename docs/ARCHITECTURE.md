@@ -748,6 +748,33 @@ sequenceDiagram
 
 ## 8. Migration from Existing Code
 
+### Heritage Files — что унаследовано из reference (НЕ МЕНЯТЬ ЯДРО)
+
+Исходный reference: `existing-code/NodeJS-Fastify/` (сервер) + `existing-code/NodeJS-Application/` (приложение).
+
+Правило: **core-паттерны этих файлов неприкосновенны**. Мы можем ТОЛЬКО добавлять новые функции/экспорты рядом — но не менять поведение унаследованного кода.
+
+| Reference файл | Наш файл | Что унаследовано (НЕ МЕНЯТЬ) | Что мы добавили (МОЖНО ПРАВИТЬ) |
+|----------------|----------|------------------------------|--------------------------------|
+| `NodeJS-Fastify/src/loader.js` | `server/src/loader.js` | `load()` — vm.Script + `Object.freeze({...sandbox})`, `loadDir()` | `loadDeepDir()`, `loadApplication()` (4-layer loading: lib → domain → application → api) |
+| `NodeJS-Fastify/src/logger.js` | `server/src/logger.js` | `class Logger` pattern (допустим class — из reference) | Убрали `dir()`, `access()`, `StreamForLogger` (не нужны с pino) |
+| `NodeJS-Fastify/src/http.js` | `server/src/http.js` | Принцип routing: sandbox API → fastify routes | `initHealth`, `initRateLimit`, `initSecurityHeaders`, `initRequestId`, `initErrorHandler`, `initSessionHook`, `initApiKeyHook`, `initRawBodyForWebhooks`, `registerSandboxRoutes` (walkApiTree + REST methods) |
+| `NodeJS-Fastify/src/ws.js` | `server/src/ws.js` | WebSocket message routing pattern | Заглушка — routing не реализован (TODO) |
+| `NodeJS-Fastify/main.js` | `server/main.js` | `loadApplication()` → server.listen() pattern | Всё инфра: WorkOS, Brevo, Gotenberg, S3, Stripe, pg-boss, graceful shutdown |
+| `NodeJS-Fastify/lib/db.js` | `app/lib/tenant.js` | Идея CRUD builder (`crud(pool)(table)`) | Полная замена на multi-tenant query builder с organizationId |
+| `NodeJS-Application/setup.js` | `app/setup.js` | MetaSQL schema → DDL generator pattern | Миграции, seedRequirements, seedCatalog, расширенные типы |
+| `NodeJS-Application/schemas/*.js` | `app/schemas/*.js` | MetaSQL format: `{ Entity: {}, field: { type, ... } }` | 41 схема вместо 16, новые kinds/fields |
+| `NodeJS-Application/api/**/*.js` | `app/api/**/*.js` | Sandbox expression `({ access, method })` | Расширено: `{ access, httpMethod, path, method }` для REST |
+| `NodeJS-Application/domain/**/*.js` | `app/domain/**/*.js` | VM-sandboxed domain modules | Reference допускает `domain.pg.query()` в domain — мы добавили более строгое правило: domain = pure, no DB |
+| `NodeJS-Application/config/*.js` | `app/config/*.js` | Pattern: `module.exports = { ... process.env ... }` | 11 config files вместо 5 |
+
+**Ключевые инварианты reference (нарушение = баг):**
+1. `load()` создаёт `Object.freeze({ ...sandbox })` — каждый модуль получает frozen copy
+2. `vm.Script` с `timeout: 5000` и `displayErrors: false`
+3. Sandbox модули — IIFE expressions без `require()`/`import`
+4. Layered loading: lib → domain → application → api (каждый слой видит предыдущие)
+5. MetaSQL schema kind определяет PK: Registry → `"id"`, Entity/Details/Relation → `"{camelCase}Id"`
+
 ### Что переиспользуем (as-is или с минимальным рефакторингом)
 
 | Существующий код | Новое использование |
