@@ -1,0 +1,44 @@
+---
+source: tui/src/views/dashboard/tests_rendering.rs
+expression: buf
+---
+(o)(o)                                                                                                                  
+ \__/  complior v1.0                                                                                                    
+  D:Dash  S:Scan  F:Fix  P:Passport  O:Oblig  T:Time  R:Report  L:Log                                                   
+┌ Compliance Score ────────────────────────────────────────────────────────────────────────────────┐┌ Info ────────────┐
+│                                     No scan yet — run /scan                                      ││ tui/             │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘│ No scan yet      │
+┌ Status Log ──────────────────────────────────────────────┐┌ Info ────────────────────────────────┐│                  │
+│[HH:MM] ! Welcome to Complior. Use /scan to start, /help  ││ --/100                               ││                  │
+│for commands.                                             ││ Run /scan to check compliance        ││                  │
+│                                                          ││                                      ││──────────────────│
+│                                                          ││                                      ││ Ctx: 3%  Zen: off│
+│                                                          │└──────────────────────────────────────┘│                  │
+│                                                          │┌ By Category ─────────────────────────┐│ Deadlines ───────│
+│                                                          ││ Run /scan to see categories          ││ ⚠ 153d EU AI Act │
+│                                                          ││                                      ││                  │
+│                                                          ││                                      ││ Actions ─────────│
+│                                                          ││                                      ││ /scan  rescan pro│
+│                                                          ││                                      ││ /help  all comman│
+│                                                          ││                                      ││ Ctrl+P command pa│
+│                                                          │└──────────────────────────────────────┘│                  │
+│                                                          │┌ EU AI Act Deadlines ─────────────────┐│                  │
+│                                                          ││ 392d overdue  Art. 5 — Prohibited AI ││                  │
+│                                                          ││ 211d overdue  Art. 50 — Transparency ││                  │
+│                                                          ││ 154d left     Art. 6 — High-risk AI c││                  │
+│                                                          ││                                      ││                  │
+│                                                          ││                                      ││                  │
+│                                                          │└──────────────────────────────────────┘│                  │
+└──────────────────────────────────────────────────────────┘┌ Quick Fix ───────────────────────────┐│                  │
+┌ Score History ───────────────────────────────────────────┐│ Run /scan to find fixable items      ││                  │
+│ No history yet — run /scan                               ││ [S] Rescan project                   ││                  │
+│                                                          ││                                      ││                  │
+│                                                          ││                                      ││                  │
+│                                                          ││                                      ││                  │
+│                                                          │└──────────────────────────────────────┘│                  │
+│                                                          │┌ Sync ────────────────────────────────┐│                  │
+│                                                          ││ ○ Not connected                      ││                  │
+│                                                          ││ Run `complior login`                 ││                  │
+└──────────────────────────────────────────────────────────┘└──────────────────────────────────────┘└──────────────────┘
+[--] [1 Dashboard] [ctx:3%] ○                                                                                           
+ NORMAL  e:zoom w:watch Ctrl+S:scan Ctrl+P:palette ?:help

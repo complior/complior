@@ -1,4 +1,4 @@
-import type { CheckResult, ScanResult } from '../types/common.types.js';
+import type { CheckResult } from '../types/common.types.js';
 
 export interface FileInfo {
   readonly path: string;
@@ -13,12 +13,3 @@ export interface ScanContext {
 }
 
 export type CheckFunction = (ctx: ScanContext) => readonly CheckResult[];
-
-export interface ScannerPort {
-  readonly scan: (ctx: ScanContext) => ScanResult;
-  readonly scanDeep?: (ctx: ScanContext, fileContents: ReadonlyMap<string, string>) => Promise<ScanResult>;
-}
-
-export interface FileCollectorPort {
-  readonly collectFiles: (projectPath: string) => Promise<ScanContext>;
-}

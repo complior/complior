@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { createFile, editFile, readFile, listFiles } from '../coding/file-ops.js';
-import { search } from '../coding/search.js';
-import { runCommand } from '../coding/shell.js';
-import { gitOperation } from '../coding/git.js';
+import { createFile, editFile, readFile, listFiles } from '../infra/file-ops-adapter.js';
+import { search } from '../infra/search-adapter.js';
+import { runCommand } from '../infra/shell-adapter.js';
+import { gitOperation } from '../infra/git-adapter.js';
 import { collectFiles } from '../domain/scanner/file-collector.js';
 import { createScanner } from '../domain/scanner/create-scanner.js';
 import type { ScanResult } from '../types/common.types.js';

@@ -1,5 +1,5 @@
-import { createFile, editFile, readFile, listFiles } from '../coding/file-ops.js';
-import { search } from '../coding/search.js';
+import { createFile, editFile, readFile, listFiles } from '../infra/file-ops-adapter.js';
+import { search } from '../infra/search-adapter.js';
 import type { EventBusPort } from '../ports/events.port.js';
 
 export interface FileServiceDeps {

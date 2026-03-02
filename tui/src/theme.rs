@@ -35,6 +35,39 @@ pub struct ThemeColors {
     pub thinking_fg: Color,
 }
 
+// --- Theme data loading (compile-time embedded JSON) ---
+
+/// Raw JSON theme data embedded at compile time from `tui/data/themes.json`.
+const THEMES_JSON: &str = include_str!("../data/themes.json");
+
+/// Parsed theme entry from JSON.
+#[derive(serde::Deserialize)]
+struct ThemeEntry {
+    name: String,
+    aliases: Vec<String>,
+    syntect: String,
+    bg: [u8; 3], fg: [u8; 3],
+    border: [u8; 3], border_focused: [u8; 3],
+    accent: [u8; 3], muted: [u8; 3],
+    zone_green: [u8; 3], zone_yellow: [u8; 3], zone_red: [u8; 3],
+    severity_critical: [u8; 3], severity_high: [u8; 3],
+    severity_medium: [u8; 3], severity_low: [u8; 3], severity_info: [u8; 3],
+    diff_added: [u8; 3], diff_removed: [u8; 3], diff_header: [u8; 3],
+    user_msg: [u8; 3], assistant_msg: [u8; 3], system_msg: [u8; 3],
+    selection_bg: [u8; 3], status_bar_bg: [u8; 3], status_bar_fg: [u8; 3],
+    tool_call_border: [u8; 3], tool_result_ok: [u8; 3], tool_result_err: [u8; 3],
+    thinking_fg: [u8; 3],
+}
+
+fn rgb(c: [u8; 3]) -> Color {
+    Color::Rgb(c[0], c[1], c[2])
+}
+
+/// All theme entries parsed from embedded JSON. Lazily initialized.
+fn load_theme_entries() -> Vec<ThemeEntry> {
+    serde_json::from_str(THEMES_JSON).expect("themes.json should be valid")
+}
+
 impl ThemeColors {
     /// 8 palette colors for the preview bar in Theme Picker.
     pub fn palette_colors(&self) -> [Color; 8] {
@@ -44,274 +77,31 @@ impl ThemeColors {
         ]
     }
 
-    pub fn complior_dark() -> Self {
+    fn from_entry(entry: &ThemeEntry) -> Self {
         Self {
-            name: "Complior Dark",
-            bg: Color::Rgb(26, 27, 38),
-            fg: Color::Rgb(192, 202, 245),
-            border: Color::Rgb(60, 60, 80),
-            border_focused: Color::Rgb(122, 162, 247),
-            accent: Color::Rgb(122, 162, 247),
-            muted: Color::Rgb(90, 90, 110),
-            zone_green: Color::Rgb(158, 206, 106),
-            zone_yellow: Color::Rgb(224, 175, 104),
-            zone_red: Color::Rgb(247, 118, 142),
-            severity_critical: Color::Rgb(247, 118, 142),
-            severity_high: Color::Rgb(255, 158, 100),
-            severity_medium: Color::Rgb(224, 175, 104),
-            severity_low: Color::Rgb(122, 162, 247),
-            severity_info: Color::Rgb(90, 90, 110),
-            diff_added: Color::Rgb(158, 206, 106),
-            diff_removed: Color::Rgb(247, 118, 142),
-            diff_header: Color::Rgb(122, 162, 247),
-            user_msg: Color::Rgb(122, 162, 247),
-            assistant_msg: Color::Rgb(158, 206, 106),
-            system_msg: Color::Rgb(224, 175, 104),
-            selection_bg: Color::Rgb(55, 55, 85),
-            status_bar_bg: Color::Rgb(36, 37, 52),
-            status_bar_fg: Color::Rgb(192, 202, 245),
-            tool_call_border: Color::Rgb(122, 162, 247),
-            tool_result_ok: Color::Rgb(158, 206, 106),
-            tool_result_err: Color::Rgb(247, 118, 142),
-            thinking_fg: Color::Rgb(90, 90, 110),
+            // Leak the name string to get a &'static str — themes are loaded once
+            name: Box::leak(entry.name.clone().into_boxed_str()),
+            bg: rgb(entry.bg), fg: rgb(entry.fg),
+            border: rgb(entry.border), border_focused: rgb(entry.border_focused),
+            accent: rgb(entry.accent), muted: rgb(entry.muted),
+            zone_green: rgb(entry.zone_green), zone_yellow: rgb(entry.zone_yellow), zone_red: rgb(entry.zone_red),
+            severity_critical: rgb(entry.severity_critical), severity_high: rgb(entry.severity_high),
+            severity_medium: rgb(entry.severity_medium), severity_low: rgb(entry.severity_low), severity_info: rgb(entry.severity_info),
+            diff_added: rgb(entry.diff_added), diff_removed: rgb(entry.diff_removed), diff_header: rgb(entry.diff_header),
+            user_msg: rgb(entry.user_msg), assistant_msg: rgb(entry.assistant_msg), system_msg: rgb(entry.system_msg),
+            selection_bg: rgb(entry.selection_bg), status_bar_bg: rgb(entry.status_bar_bg), status_bar_fg: rgb(entry.status_bar_fg),
+            tool_call_border: rgb(entry.tool_call_border), tool_result_ok: rgb(entry.tool_result_ok), tool_result_err: rgb(entry.tool_result_err),
+            thinking_fg: rgb(entry.thinking_fg),
         }
     }
 
-    pub fn complior_light() -> Self {
-        Self {
-            name: "Complior Light",
-            bg: Color::Rgb(250, 250, 250),
-            fg: Color::Rgb(56, 58, 66),
-            border: Color::Rgb(200, 200, 210),
-            border_focused: Color::Rgb(64, 120, 242),
-            accent: Color::Rgb(64, 120, 242),
-            muted: Color::Rgb(160, 160, 170),
-            zone_green: Color::Rgb(0, 140, 0),
-            zone_yellow: Color::Rgb(180, 140, 0),
-            zone_red: Color::Rgb(200, 0, 0),
-            severity_critical: Color::Rgb(200, 0, 0),
-            severity_high: Color::Rgb(220, 80, 0),
-            severity_medium: Color::Rgb(180, 140, 0),
-            severity_low: Color::Rgb(64, 120, 242),
-            severity_info: Color::Rgb(160, 160, 170),
-            diff_added: Color::Rgb(0, 140, 0),
-            diff_removed: Color::Rgb(200, 0, 0),
-            diff_header: Color::Rgb(64, 120, 242),
-            user_msg: Color::Rgb(64, 120, 242),
-            assistant_msg: Color::Rgb(0, 140, 0),
-            system_msg: Color::Rgb(180, 140, 0),
-            selection_bg: Color::Rgb(200, 220, 255),
-            status_bar_bg: Color::Rgb(230, 230, 240),
-            status_bar_fg: Color::Rgb(56, 58, 66),
-            tool_call_border: Color::Rgb(64, 120, 242),
-            tool_result_ok: Color::Rgb(0, 140, 0),
-            tool_result_err: Color::Rgb(200, 0, 0),
-            thinking_fg: Color::Rgb(160, 160, 170),
-        }
+    /// Backward-compatible alias for default dark theme.
+    pub fn dark() -> Self {
+        Self::from_name("dark")
     }
 
-    pub fn solarized_dark() -> Self {
-        Self {
-            name: "Solarized Dark",
-            bg: Color::Rgb(0, 43, 54),
-            fg: Color::Rgb(131, 148, 150),
-            border: Color::Rgb(88, 110, 117),
-            border_focused: Color::Rgb(38, 139, 210),
-            accent: Color::Rgb(38, 139, 210),
-            muted: Color::Rgb(88, 110, 117),
-            zone_green: Color::Rgb(133, 153, 0),
-            zone_yellow: Color::Rgb(181, 137, 0),
-            zone_red: Color::Rgb(220, 50, 47),
-            severity_critical: Color::Rgb(220, 50, 47),
-            severity_high: Color::Rgb(203, 75, 22),
-            severity_medium: Color::Rgb(181, 137, 0),
-            severity_low: Color::Rgb(38, 139, 210),
-            severity_info: Color::Rgb(88, 110, 117),
-            diff_added: Color::Rgb(133, 153, 0),
-            diff_removed: Color::Rgb(220, 50, 47),
-            diff_header: Color::Rgb(38, 139, 210),
-            user_msg: Color::Rgb(38, 139, 210),
-            assistant_msg: Color::Rgb(133, 153, 0),
-            system_msg: Color::Rgb(181, 137, 0),
-            selection_bg: Color::Rgb(7, 54, 66),
-            status_bar_bg: Color::Rgb(7, 54, 66),
-            status_bar_fg: Color::Rgb(147, 161, 161),
-            tool_call_border: Color::Rgb(38, 139, 210),
-            tool_result_ok: Color::Rgb(133, 153, 0),
-            tool_result_err: Color::Rgb(220, 50, 47),
-            thinking_fg: Color::Rgb(88, 110, 117),
-        }
-    }
-
-    pub fn solarized_light() -> Self {
-        Self {
-            name: "Solarized Light",
-            bg: Color::Rgb(253, 246, 227),
-            fg: Color::Rgb(101, 123, 131),
-            border: Color::Rgb(147, 161, 161),
-            border_focused: Color::Rgb(38, 139, 210),
-            accent: Color::Rgb(38, 139, 210),
-            muted: Color::Rgb(147, 161, 161),
-            zone_green: Color::Rgb(133, 153, 0),
-            zone_yellow: Color::Rgb(181, 137, 0),
-            zone_red: Color::Rgb(220, 50, 47),
-            severity_critical: Color::Rgb(220, 50, 47),
-            severity_high: Color::Rgb(203, 75, 22),
-            severity_medium: Color::Rgb(181, 137, 0),
-            severity_low: Color::Rgb(38, 139, 210),
-            severity_info: Color::Rgb(147, 161, 161),
-            diff_added: Color::Rgb(133, 153, 0),
-            diff_removed: Color::Rgb(220, 50, 47),
-            diff_header: Color::Rgb(38, 139, 210),
-            user_msg: Color::Rgb(38, 139, 210),
-            assistant_msg: Color::Rgb(133, 153, 0),
-            system_msg: Color::Rgb(181, 137, 0),
-            selection_bg: Color::Rgb(238, 232, 213),
-            status_bar_bg: Color::Rgb(238, 232, 213),
-            status_bar_fg: Color::Rgb(101, 123, 131),
-            tool_call_border: Color::Rgb(38, 139, 210),
-            tool_result_ok: Color::Rgb(133, 153, 0),
-            tool_result_err: Color::Rgb(220, 50, 47),
-            thinking_fg: Color::Rgb(147, 161, 161),
-        }
-    }
-
-    pub fn dracula() -> Self {
-        Self {
-            name: "Dracula",
-            bg: Color::Rgb(40, 42, 54),
-            fg: Color::Rgb(248, 248, 242),
-            border: Color::Rgb(68, 71, 90),
-            border_focused: Color::Rgb(189, 147, 249),
-            accent: Color::Rgb(189, 147, 249),
-            muted: Color::Rgb(98, 114, 164),
-            zone_green: Color::Rgb(80, 250, 123),
-            zone_yellow: Color::Rgb(241, 250, 140),
-            zone_red: Color::Rgb(255, 85, 85),
-            severity_critical: Color::Rgb(255, 85, 85),
-            severity_high: Color::Rgb(255, 121, 198),
-            severity_medium: Color::Rgb(241, 250, 140),
-            severity_low: Color::Rgb(139, 233, 253),
-            severity_info: Color::Rgb(98, 114, 164),
-            diff_added: Color::Rgb(80, 250, 123),
-            diff_removed: Color::Rgb(255, 85, 85),
-            diff_header: Color::Rgb(189, 147, 249),
-            user_msg: Color::Rgb(139, 233, 253),
-            assistant_msg: Color::Rgb(80, 250, 123),
-            system_msg: Color::Rgb(241, 250, 140),
-            selection_bg: Color::Rgb(68, 71, 90),
-            status_bar_bg: Color::Rgb(33, 34, 44),
-            status_bar_fg: Color::Rgb(248, 248, 242),
-            tool_call_border: Color::Rgb(189, 147, 249),
-            tool_result_ok: Color::Rgb(80, 250, 123),
-            tool_result_err: Color::Rgb(255, 85, 85),
-            thinking_fg: Color::Rgb(98, 114, 164),
-        }
-    }
-
-    pub fn nord() -> Self {
-        Self {
-            name: "Nord",
-            bg: Color::Rgb(46, 52, 64),
-            fg: Color::Rgb(216, 222, 233),
-            border: Color::Rgb(67, 76, 94),
-            border_focused: Color::Rgb(136, 192, 208),
-            accent: Color::Rgb(136, 192, 208),
-            muted: Color::Rgb(76, 86, 106),
-            zone_green: Color::Rgb(163, 190, 140),
-            zone_yellow: Color::Rgb(235, 203, 139),
-            zone_red: Color::Rgb(191, 97, 106),
-            severity_critical: Color::Rgb(191, 97, 106),
-            severity_high: Color::Rgb(208, 135, 112),
-            severity_medium: Color::Rgb(235, 203, 139),
-            severity_low: Color::Rgb(129, 161, 193),
-            severity_info: Color::Rgb(76, 86, 106),
-            diff_added: Color::Rgb(163, 190, 140),
-            diff_removed: Color::Rgb(191, 97, 106),
-            diff_header: Color::Rgb(136, 192, 208),
-            user_msg: Color::Rgb(136, 192, 208),
-            assistant_msg: Color::Rgb(163, 190, 140),
-            system_msg: Color::Rgb(235, 203, 139),
-            selection_bg: Color::Rgb(59, 66, 82),
-            status_bar_bg: Color::Rgb(59, 66, 82),
-            status_bar_fg: Color::Rgb(216, 222, 233),
-            tool_call_border: Color::Rgb(136, 192, 208),
-            tool_result_ok: Color::Rgb(163, 190, 140),
-            tool_result_err: Color::Rgb(191, 97, 106),
-            thinking_fg: Color::Rgb(76, 86, 106),
-        }
-    }
-
-    pub fn monokai() -> Self {
-        Self {
-            name: "Monokai",
-            bg: Color::Rgb(39, 40, 34),
-            fg: Color::Rgb(248, 248, 242),
-            border: Color::Rgb(70, 71, 65),
-            border_focused: Color::Rgb(249, 38, 114),
-            accent: Color::Rgb(249, 38, 114),
-            muted: Color::Rgb(117, 113, 94),
-            zone_green: Color::Rgb(166, 226, 46),
-            zone_yellow: Color::Rgb(230, 219, 116),
-            zone_red: Color::Rgb(249, 38, 114),
-            severity_critical: Color::Rgb(249, 38, 114),
-            severity_high: Color::Rgb(253, 151, 31),
-            severity_medium: Color::Rgb(230, 219, 116),
-            severity_low: Color::Rgb(102, 217, 239),
-            severity_info: Color::Rgb(117, 113, 94),
-            diff_added: Color::Rgb(166, 226, 46),
-            diff_removed: Color::Rgb(249, 38, 114),
-            diff_header: Color::Rgb(102, 217, 239),
-            user_msg: Color::Rgb(102, 217, 239),
-            assistant_msg: Color::Rgb(166, 226, 46),
-            system_msg: Color::Rgb(230, 219, 116),
-            selection_bg: Color::Rgb(60, 60, 50),
-            status_bar_bg: Color::Rgb(30, 31, 26),
-            status_bar_fg: Color::Rgb(248, 248, 242),
-            tool_call_border: Color::Rgb(174, 129, 255),
-            tool_result_ok: Color::Rgb(166, 226, 46),
-            tool_result_err: Color::Rgb(249, 38, 114),
-            thinking_fg: Color::Rgb(117, 113, 94),
-        }
-    }
-
-    pub fn gruvbox() -> Self {
-        Self {
-            name: "Gruvbox",
-            bg: Color::Rgb(40, 40, 40),
-            fg: Color::Rgb(235, 219, 178),
-            border: Color::Rgb(80, 73, 69),
-            border_focused: Color::Rgb(254, 128, 25),
-            accent: Color::Rgb(254, 128, 25),
-            muted: Color::Rgb(146, 131, 116),
-            zone_green: Color::Rgb(184, 187, 38),
-            zone_yellow: Color::Rgb(250, 189, 47),
-            zone_red: Color::Rgb(251, 73, 52),
-            severity_critical: Color::Rgb(251, 73, 52),
-            severity_high: Color::Rgb(254, 128, 25),
-            severity_medium: Color::Rgb(250, 189, 47),
-            severity_low: Color::Rgb(131, 165, 152),
-            severity_info: Color::Rgb(146, 131, 116),
-            diff_added: Color::Rgb(184, 187, 38),
-            diff_removed: Color::Rgb(251, 73, 52),
-            diff_header: Color::Rgb(131, 165, 152),
-            user_msg: Color::Rgb(131, 165, 152),
-            assistant_msg: Color::Rgb(184, 187, 38),
-            system_msg: Color::Rgb(250, 189, 47),
-            selection_bg: Color::Rgb(60, 56, 54),
-            status_bar_bg: Color::Rgb(50, 48, 47),
-            status_bar_fg: Color::Rgb(235, 219, 178),
-            tool_call_border: Color::Rgb(211, 134, 155),
-            tool_result_ok: Color::Rgb(184, 187, 38),
-            tool_result_err: Color::Rgb(251, 73, 52),
-            thinking_fg: Color::Rgb(146, 131, 116),
-        }
-    }
-
-    /// Backward-compatible alias for existing preset.
-    pub fn dark() -> Self { Self::complior_dark() }
     pub fn high_contrast() -> Self {
-        let mut t = Self::complior_dark();
+        let mut t = Self::from_name("dark");
         t.name = "High Contrast";
         t.border = Color::White;
         t.border_focused = Color::LightCyan;
@@ -342,48 +132,53 @@ impl ThemeColors {
     }
 
     pub fn from_name(name: &str) -> Self {
-        match name {
-            "Complior Dark" | "dark" | "complior-dark" => Self::complior_dark(),
-            "Complior Light" | "light" | "complior-light" => Self::complior_light(),
-            "Solarized Dark" | "solarized-dark" => Self::solarized_dark(),
-            "Solarized Light" | "solarized-light" => Self::solarized_light(),
-            "Dracula" | "dracula" => Self::dracula(),
-            "Nord" | "nord" => Self::nord(),
-            "Monokai" | "monokai" => Self::monokai(),
-            "Gruvbox" | "gruvbox" => Self::gruvbox(),
-            "High Contrast" | "high-contrast" | "high_contrast" => Self::high_contrast(),
-            _ => Self::complior_dark(),
+        let lower = name.to_lowercase();
+
+        // Check High Contrast first (not in JSON)
+        if lower == "high contrast" || lower == "high-contrast" || lower == "high_contrast" {
+            return Self::high_contrast();
         }
+
+        let entries = load_theme_entries();
+        for entry in &entries {
+            if entry.name.to_lowercase() == lower {
+                return Self::from_entry(entry);
+            }
+            for alias in &entry.aliases {
+                if alias.to_lowercase() == lower {
+                    return Self::from_entry(entry);
+                }
+            }
+        }
+
+        // Default: first theme
+        Self::from_entry(&entries[0])
     }
 }
 
 /// All 8 built-in themes in display order.
 pub fn list_themes() -> Vec<ThemeColors> {
-    vec![
-        ThemeColors::complior_dark(),
-        ThemeColors::complior_light(),
-        ThemeColors::solarized_dark(),
-        ThemeColors::solarized_light(),
-        ThemeColors::dracula(),
-        ThemeColors::nord(),
-        ThemeColors::monokai(),
-        ThemeColors::gruvbox(),
-    ]
+    load_theme_entries()
+        .iter()
+        .map(ThemeColors::from_entry)
+        .collect()
 }
 
 /// Syntect theme name for each TUI theme (for code highlighting).
 pub fn syntect_theme_for(name: &str) -> &'static str {
-    match name {
-        "Complior Dark" | "dark" => "base16-ocean.dark",
-        "Complior Light" | "light" => "base16-ocean.light",
-        "Solarized Dark" | "solarized-dark" => "Solarized (dark)",
-        "Solarized Light" | "solarized-light" => "Solarized (light)",
-        "Dracula" | "dracula" => "base16-ocean.dark",
-        "Nord" | "nord" => "base16-ocean.dark",
-        "Monokai" | "monokai" => "base16-mocha.dark",
-        "Gruvbox" | "gruvbox" => "base16-ocean.dark",
-        _ => "base16-ocean.dark",
+    let lower = name.to_lowercase();
+    let entries = load_theme_entries();
+    for entry in &entries {
+        if entry.name.to_lowercase() == lower {
+            return Box::leak(entry.syntect.clone().into_boxed_str());
+        }
+        for alias in &entry.aliases {
+            if alias.to_lowercase() == lower {
+                return Box::leak(entry.syntect.clone().into_boxed_str());
+            }
+        }
     }
+    "base16-ocean.dark"
 }
 
 /// Global theme accessor — initialized once, switchable at runtime.
