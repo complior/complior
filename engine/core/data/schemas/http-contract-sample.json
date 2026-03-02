@@ -19,6 +19,7 @@
       }
     ],
     "criticalCapApplied": false,
+    "confidenceSummary": { "average": 0.82, "low_confidence_count": 2 },
     "totalChecks": 20,
     "passedChecks": 14,
     "failedChecks": 4,
@@ -52,7 +53,11 @@
         "startLine": 41,
         "filePath": "src/ai/chat.ts",
         "importLine": "import { complior } from '@complior/sdk';"
-      }
+      },
+      "priority": 1,
+      "confidence": 0.95,
+      "confidenceLevel": "high",
+      "evidence": [{ "source": "ast", "pattern": "new OpenAI()" }]
     },
     {
       "checkId": "l1-missing-fria",
@@ -74,5 +79,8 @@
   "projectPath": "/home/user/my-ai-project",
   "scannedAt": "2026-03-01T14:30:00Z",
   "duration": 1250,
-  "filesScanned": 47
+  "filesScanned": 47,
+  "deepAnalysis": false,
+  "l5Cost": 0.0,
+  "regulationVersion": { "version": "1.0.0", "framework": "eu-ai-act" }
 }

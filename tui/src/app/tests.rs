@@ -274,11 +274,11 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         app.view_state = ViewState::Dashboard;
         app.rebuild_click_areas(120, 40);
-        // Should have 8 view tabs in footer (6 original + AgentGrid + Orchestrator)
+        // Should have 7 view tabs in footer
         let tab_count = app.click_areas.iter()
             .filter(|(_, t)| matches!(t, crate::types::ClickTarget::ViewTab(_)))
             .count();
-        assert_eq!(tab_count, 8);
+        assert_eq!(tab_count, 7);
     }
 
     #[test]

@@ -269,7 +269,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         // Uppercase letter-key view switching (avoids conflict with lowercase ViewKey chars)
-        KeyCode::Char(c @ ('D' | 'F' | 'L' | 'O' | 'P' | 'R' | 'S' | 'T')) =>
+        KeyCode::Char(c @ ('D' | 'F' | 'L' | 'P' | 'R' | 'S' | 'T')) =>
         {
             if let Some(view) = ViewState::from_letter(c) {
                 Action::SwitchView(view)
@@ -288,7 +288,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific Esc
-        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations) => {
+        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport) => {
             Action::ViewEscape
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,

@@ -145,7 +145,7 @@ mod tests {
             // Type A: Code fix with code_context + fix_diff
             Finding {
                 check_id: "l4-bare-anthropic".to_string(),
-                r#type: "compliance".to_string(),
+                r#type: crate::types::CheckResultType::Fail,
                 message: "Bare Anthropic API call without compliance wrapper".to_string(),
                 severity: Severity::Critical,
                 obligation_id: Some("OBL-015".to_string()),
@@ -171,11 +171,15 @@ mod tests {
                     file_path: "src/chat/anthropic.ts".to_string(),
                     import_line: None,
                 }),
+                priority: None,
+                confidence: None,
+                confidence_level: None,
+                evidence: None,
             },
             // Type B: Missing file (no code_context)
             Finding {
                 check_id: "l2-fria".to_string(),
-                r#type: "compliance".to_string(),
+                r#type: crate::types::CheckResultType::Fail,
                 message: "Missing FRIA document".to_string(),
                 severity: Severity::High,
                 obligation_id: Some("OBL-006".to_string()),
@@ -185,11 +189,15 @@ mod tests {
                 line: None,
                 code_context: None,
                 fix_diff: None,
+                priority: None,
+                confidence: None,
+                confidence_level: None,
+                evidence: None,
             },
             // Type C: Config change
             Finding {
                 check_id: "l3-compliance-metadata".to_string(),
-                r#type: "compliance".to_string(),
+                r#type: crate::types::CheckResultType::Fail,
                 message: "Missing compliance metadata in package.json".to_string(),
                 severity: Severity::Medium,
                 obligation_id: Some("OBL-012".to_string()),
@@ -199,11 +207,15 @@ mod tests {
                 line: None,
                 code_context: None,
                 fix_diff: None,
+                priority: None,
+                confidence: None,
+                confidence_level: None,
+                evidence: None,
             },
             // Type B: Missing file, no fix
             Finding {
                 check_id: "l2-monitoring-policy".to_string(),
-                r#type: "compliance".to_string(),
+                r#type: crate::types::CheckResultType::Fail,
                 message: "Missing post-market monitoring policy".to_string(),
                 severity: Severity::High,
                 obligation_id: Some("OBL-009".to_string()),
@@ -213,6 +225,10 @@ mod tests {
                 line: None,
                 code_context: None,
                 fix_diff: None,
+                priority: None,
+                confidence: None,
+                confidence_level: None,
+                evidence: None,
             },
         ]
     }
@@ -228,12 +244,16 @@ mod tests {
                 passed_checks: 8,
                 failed_checks: 12,
                 skipped_checks: 0,
+                confidence_summary: None,
             },
             findings: make_scan_findings(),
             project_path: "tui/".to_string(),
             scanned_at: "2026-02-28T12:00:00Z".to_string(),
             duration: 450,
             files_scanned: 24,
+            deep_analysis: None,
+            l5_cost: None,
+            regulation_version: None,
         }
     }
 

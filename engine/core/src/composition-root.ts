@@ -22,7 +22,7 @@ import { createBadgeService } from './services/badge-service.js';
 import { createShareService } from './services/share-service.js';
 import { createReportService } from './services/report-service.js';
 import { createExternalScanService } from './services/external-scan-service.js';
-import { createHeadlessBrowser } from './infra/headless-browser.js';
+import type { ExternalScanService } from './services/external-scan-service.js';
 import { createStatusService } from './services/status-service.js';
 import { createRouter } from './http/create-router.js';
 import { createFileWatcher } from './infra/file-watcher.js';
@@ -183,12 +183,18 @@ export const loadApplication = async (): Promise<Application> => {
     getVersion: () => state.version,
   });
 
-  const browser = createHeadlessBrowser();
-  const externalScanService = createExternalScanService({
-    browser,
-    events,
-    getProjectPath: () => state.projectPath,
-  });
+  let _externalScan: ExternalScanService | null = null;
+  const getExternalScanService = async (): Promise<ExternalScanService> => {
+    if (!_externalScan) {
+      const { createHeadlessBrowser } = await import('./infra/headless-browser.js');
+      _externalScan = createExternalScanService({
+        browser: createHeadlessBrowser(),
+        events,
+        getProjectPath: () => state.projectPath,
+      });
+    }
+    return _externalScan;
+  };
 
   const statusService = createStatusService({
     getVersion: () => state.version,
@@ -212,7 +218,7 @@ export const loadApplication = async (): Promise<Application> => {
     badgeService,
     shareService,
     reportService,
-    externalScanService,
+    getExternalScanService,
     statusService,
     llm,
     getMode: () => state.currentMode,
@@ -240,7 +246,9 @@ export const loadApplication = async (): Promise<Application> => {
 
   const shutdown = (): void => {
     fileWatcher.stop().catch(() => {});
-    externalScanService.close().catch(() => {});
+    if (_externalScan) {
+      _externalScan.close().catch(() => {});
+    }
     log.info('Application shutdown');
   };
 

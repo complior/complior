@@ -9,7 +9,7 @@ const ExternalScanSchema = z.object({
   timeout: z.number().int().min(5000).max(300000).optional(),
 });
 
-export const createExternalScanRoute = (externalScanService: ExternalScanService) => {
+export const createExternalScanRoute = (getExternalScanService: () => Promise<ExternalScanService>) => {
   const app = new Hono();
 
   app.post('/scan-url', async (c) => {
@@ -21,6 +21,7 @@ export const createExternalScanRoute = (externalScanService: ExternalScanService
       throw new ValidationError(`Invalid request: ${parsed.error.message}`);
     }
 
+    const externalScanService = await getExternalScanService();
     const result = await externalScanService.scan(parsed.data);
     return c.json(result);
   });

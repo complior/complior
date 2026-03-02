@@ -4,7 +4,7 @@ expression: buf
 ---
 (o)(o)                                                                                                                  
  \__/  complior v1.0                                                                                                    
-  D:Dash  S:Scan  F:Fix  P:Passport  O:Oblig  T:Time  R:Report  L:Log                                                   
+  D:Dash  S:Scan  F:Fix  P:Passport  T:Time  R:Report  L:Log                                                            
 ┌ Compliance Score ────────────────────────────────────────────────────────────────────────────────┐┌ Info ────────────┐
 │                                     No scan yet — run /scan                                      ││ tui/             │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘│ No scan yet      │
@@ -15,7 +15,7 @@ expression: buf
 │                                                          ││                                      ││ Ctx: 3%  Zen: off│
 │                                                          │└──────────────────────────────────────┘│                  │
 │                                                          │┌ By Category ─────────────────────────┐│ Deadlines ───────│
-│                                                          ││ Run /scan to see categories          ││ ⚠ 153d EU AI Act │
+│                                                          ││ Run /scan to see categories          ││ ⚠ [Nd] EU AI Act │
 │                                                          ││                                      ││                  │
 │                                                          ││                                      ││ Actions ─────────│
 │                                                          ││                                      ││ /scan  rescan pro│
@@ -23,9 +23,9 @@ expression: buf
 │                                                          ││                                      ││ Ctrl+P command pa│
 │                                                          │└──────────────────────────────────────┘│                  │
 │                                                          │┌ EU AI Act Deadlines ─────────────────┐│                  │
-│                                                          ││ 392d overdue  Art. 5 — Prohibited AI ││                  │
-│                                                          ││ 211d overdue  Art. 50 — Transparency ││                  │
-│                                                          ││ 154d left     Art. 6 — High-risk AI c││                  │
+│                                                          ││ [Nd overdue]  Art. 5 — Prohibited AI ││                  │
+│                                                          ││ [Nd overdue]  Art. 50 — Transparency ││                  │
+│                                                          ││ [Nd left]     Art. 6 — High-risk AI c││                  │
 │                                                          ││                                      ││                  │
 │                                                          ││                                      ││                  │
 │                                                          │└──────────────────────────────────────┘│                  │

@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { ConfigError } from '../types/errors.js';
 import {
   ObligationsFileSchema,
   TechnicalRequirementsFileSchema,
@@ -19,6 +16,7 @@ import {
   type LocalizationFile,
   type TimelineFile,
 } from './schemas.js';
+import { REGULATION_RAW } from './regulation-data.js';
 
 export interface RegulationData {
   readonly obligations: ObligationsFile;
@@ -31,20 +29,6 @@ export interface RegulationData {
   readonly timeline: TimelineFile;
 }
 
-const DATA_DIR = join(import.meta.dirname, '../../data/regulations/eu-ai-act');
-
-const loadJsonFile = async (filename: string): Promise<unknown> => {
-  const filePath = join(DATA_DIR, filename);
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    const parsed: unknown = JSON.parse(content);
-    return parsed;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new ConfigError(`Failed to load ${filename}: ${message}`);
-  }
-};
-
 let cachedData: RegulationData | null = null;
 
 export const loadRegulationData = async (): Promise<RegulationData> => {
@@ -52,35 +36,15 @@ export const loadRegulationData = async (): Promise<RegulationData> => {
     return cachedData;
   }
 
-  const [
-    obligationsRaw,
-    technicalRequirementsRaw,
-    scoringRaw,
-    regulationMetaRaw,
-    applicabilityTreeRaw,
-    crossMappingRaw,
-    localizationRaw,
-    timelineRaw,
-  ] = await Promise.all([
-    loadJsonFile('obligations.json'),
-    loadJsonFile('technical-requirements.json'),
-    loadJsonFile('scoring.json'),
-    loadJsonFile('regulation-meta.json'),
-    loadJsonFile('applicability-tree.json'),
-    loadJsonFile('cross-mapping.json'),
-    loadJsonFile('localization.json'),
-    loadJsonFile('timeline.json'),
-  ]);
-
   const data: RegulationData = {
-    obligations: ObligationsFileSchema.parse(obligationsRaw),
-    technicalRequirements: TechnicalRequirementsFileSchema.parse(technicalRequirementsRaw),
-    scoring: ScoringFileSchema.parse(scoringRaw),
-    regulationMeta: RegulationMetaFileSchema.parse(regulationMetaRaw),
-    applicabilityTree: ApplicabilityTreeFileSchema.parse(applicabilityTreeRaw),
-    crossMapping: CrossMappingFileSchema.parse(crossMappingRaw),
-    localization: LocalizationFileSchema.parse(localizationRaw),
-    timeline: TimelineFileSchema.parse(timelineRaw),
+    obligations: ObligationsFileSchema.parse(REGULATION_RAW.obligations),
+    technicalRequirements: TechnicalRequirementsFileSchema.parse(REGULATION_RAW.technicalRequirements),
+    scoring: ScoringFileSchema.parse(REGULATION_RAW.scoring),
+    regulationMeta: RegulationMetaFileSchema.parse(REGULATION_RAW.regulationMeta),
+    applicabilityTree: ApplicabilityTreeFileSchema.parse(REGULATION_RAW.applicabilityTree),
+    crossMapping: CrossMappingFileSchema.parse(REGULATION_RAW.crossMapping),
+    localization: LocalizationFileSchema.parse(REGULATION_RAW.localization),
+    timeline: TimelineFileSchema.parse(REGULATION_RAW.timeline),
   };
 
   cachedData = data;

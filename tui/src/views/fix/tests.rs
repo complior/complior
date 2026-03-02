@@ -5,7 +5,7 @@ fn make_findings() -> Vec<Finding> {
     vec![
         Finding {
             check_id: "OBL-001".to_string(),
-            r#type: "compliance".to_string(),
+            r#type: crate::types::CheckResultType::Fail,
             message: "Missing AI disclosure".to_string(),
             severity: Severity::Critical,
             obligation_id: Some("OBL-001".to_string()),
@@ -15,10 +15,14 @@ fn make_findings() -> Vec<Finding> {
             line: None,
             code_context: None,
             fix_diff: None,
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
         },
         Finding {
             check_id: "OBL-002".to_string(),
-            r#type: "compliance".to_string(),
+            r#type: crate::types::CheckResultType::Fail,
             message: "No transparency info".to_string(),
             severity: Severity::High,
             obligation_id: Some("OBL-002".to_string()),
@@ -28,10 +32,14 @@ fn make_findings() -> Vec<Finding> {
             line: None,
             code_context: None,
             fix_diff: None,
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
         },
         Finding {
             check_id: "OBL-003".to_string(),
-            r#type: "compliance".to_string(),
+            r#type: crate::types::CheckResultType::Fail,
             message: "Missing risk assessment".to_string(),
             severity: Severity::Medium,
             obligation_id: Some("OBL-003".to_string()),
@@ -41,6 +49,10 @@ fn make_findings() -> Vec<Finding> {
             line: None,
             code_context: None,
             fix_diff: None,
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
         },
     ]
 }
@@ -160,7 +172,7 @@ fn make_enriched_findings() -> Vec<Finding> {
     vec![
         Finding {
             check_id: "l4-bare-anthropic".to_string(),
-            r#type: "compliance".to_string(),
+            r#type: crate::types::CheckResultType::Fail,
             message: "Bare Anthropic API call".to_string(),
             severity: Severity::Critical,
             obligation_id: Some("OBL-015".to_string()),
@@ -197,10 +209,14 @@ fn make_enriched_findings() -> Vec<Finding> {
                 file_path: "src/chat/anthropic.ts".to_string(),
                 import_line: Some("import { complior } from '@complior/sdk';".to_string()),
             }),
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
         },
         Finding {
             check_id: "l2-fria".to_string(),
-            r#type: "compliance".to_string(),
+            r#type: crate::types::CheckResultType::Fail,
             message: "Missing FRIA document".to_string(),
             severity: Severity::High,
             obligation_id: Some("OBL-006".to_string()),
@@ -210,10 +226,14 @@ fn make_enriched_findings() -> Vec<Finding> {
             line: None,
             code_context: None,
             fix_diff: None,
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
         },
         Finding {
             check_id: "l3-compliance-metadata".to_string(),
-            r#type: "compliance".to_string(),
+            r#type: crate::types::CheckResultType::Fail,
             message: "Missing compliance metadata".to_string(),
             severity: Severity::Medium,
             obligation_id: Some("OBL-012".to_string()),
@@ -223,6 +243,10 @@ fn make_enriched_findings() -> Vec<Finding> {
             line: None,
             code_context: None,
             fix_diff: None,
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
         },
     ]
 }
@@ -238,12 +262,16 @@ fn make_scan_result(findings: &[Finding]) -> crate::types::ScanResult {
             passed_checks: 8,
             failed_checks: 12,
             skipped_checks: 0,
+            confidence_summary: None,
         },
         findings: findings.to_vec(),
         project_path: "tui/".to_string(),
         scanned_at: "2026-02-28T12:00:00Z".to_string(),
         duration: 450,
         files_scanned: 24,
+        deep_analysis: None,
+        l5_cost: None,
+        regulation_version: None,
     }
 }
 
@@ -336,7 +364,7 @@ fn snapshot_fix_single_mode_type_a_recommendation() {
     // Type A finding with no code_context / fix_diff — only recommendation text
     let findings = vec![Finding {
         check_id: "l4-unwrapped-llm".to_string(),
-        r#type: "compliance".to_string(),
+        r#type: crate::types::CheckResultType::Fail,
         message: "Unwrapped LLM API call detected".to_string(),
         severity: Severity::High,
         obligation_id: Some("OBL-015".to_string()),
@@ -346,6 +374,10 @@ fn snapshot_fix_single_mode_type_a_recommendation() {
         line: Some(42),
         code_context: None,
         fix_diff: None,
+        priority: None,
+        confidence: None,
+        confidence_level: None,
+        evidence: None,
     }];
     app.last_scan = Some(make_scan_result(&findings));
     app.fix_view = FixViewState::from_scan(&findings);
@@ -384,7 +416,7 @@ fn test_apply_fix_diff_writes_file() {
 
     let finding = Finding {
         check_id: "l4-bare".to_string(),
-        r#type: "fail".to_string(),
+        r#type: crate::types::CheckResultType::Fail,
         message: "Bare API".to_string(),
         severity: Severity::High,
         obligation_id: None,
@@ -400,6 +432,10 @@ fn test_apply_fix_diff_writes_file() {
             file_path: "test.ts".to_string(),
             import_line: Some("import { complior } from '@complior/sdk';".to_string()),
         }),
+        priority: None,
+        confidence: None,
+        confidence_level: None,
+        evidence: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -424,7 +460,7 @@ fn test_apply_type_b_creates_file() {
 
     let finding = Finding {
         check_id: "l2-fria".to_string(),
-        r#type: "fail".to_string(),
+        r#type: crate::types::CheckResultType::Fail,
         message: "Missing FRIA".to_string(),
         severity: Severity::High,
         obligation_id: None,
@@ -434,6 +470,10 @@ fn test_apply_type_b_creates_file() {
         line: None,
         code_context: None,
         fix_diff: None,
+        priority: None,
+        confidence: None,
+        confidence_level: None,
+        evidence: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -459,7 +499,7 @@ fn test_apply_rejects_stale_diff() {
 
     let finding = Finding {
         check_id: "l4-bare".to_string(),
-        r#type: "fail".to_string(),
+        r#type: crate::types::CheckResultType::Fail,
         message: "Bare".to_string(),
         severity: Severity::High,
         obligation_id: None,
@@ -475,6 +515,10 @@ fn test_apply_rejects_stale_diff() {
             file_path: "file.ts".to_string(),
             import_line: None,
         }),
+        priority: None,
+        confidence: None,
+        confidence_level: None,
+        evidence: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);

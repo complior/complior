@@ -49,7 +49,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
             .add_modifier(Modifier::BOLD),
     )));
     lines.push(shortcut_line("  Ctrl+C", "Quit", &t));
-    lines.push(shortcut_line("  D/S/F/P/O/T/R/L", "Switch view", &t));
+    lines.push(shortcut_line("  D/S/F/P/T/R/L", "Switch view", &t));
     lines.push(shortcut_line("  Tab", "Toggle mode (Scan/Fix/Watch)", &t));
     lines.push(shortcut_line("  w", "Toggle watch mode", &t));
     lines.push(shortcut_line("  Alt+1..5", "Jump to panel", &t));
@@ -100,7 +100,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
 fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<Line<'a>> {
     match view {
         ViewState::Dashboard => vec![
-            shortcut_line("  D/S/F/P/O/T/R/L", "Switch view", t),
+            shortcut_line("  D/S/F/P/T/R/L", "Switch view", t),
             shortcut_line("  Tab", "Toggle mode", t),
             shortcut_line("  e", "Zoom/expand widget", t),
             shortcut_line("  w", "Toggle watch", t),
@@ -139,10 +139,6 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
             shortcut_line("  v", "Validate passport", t),
             shortcut_line("  x", "Export passport", t),
             shortcut_line("  j/k", "Navigate fields", t),
-            shortcut_line("  D", "Switch to Dashboard", t),
-            shortcut_line("  S", "Switch to Scan", t),
-        ],
-        ViewState::Obligations => vec![
             shortcut_line("  D", "Switch to Dashboard", t),
             shortcut_line("  S", "Switch to Scan", t),
         ],
@@ -192,7 +188,7 @@ pub(super) fn render_getting_started_overlay(frame: &mut Frame) {
         ]),
         Line::from(vec![
             Span::styled("  3. ", Style::default().fg(t.accent)),
-            Span::raw("Use 1-6 to switch views"),
+            Span::raw("Use 1-7 to switch views"),
         ]),
         Line::from(vec![
             Span::styled("  4. ", Style::default().fg(t.accent)),

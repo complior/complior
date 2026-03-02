@@ -43,7 +43,7 @@ export interface RouterDeps {
   readonly badgeService: BadgeService;
   readonly shareService: ShareService;
   readonly reportService: ReportService;
-  readonly externalScanService: ExternalScanService;
+  readonly getExternalScanService: () => Promise<ExternalScanService>;
   readonly statusService: StatusService;
   readonly llm: LlmPort;
   readonly toolExecutorDeps: ToolExecutorDeps;
@@ -106,7 +106,7 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createBadgeRoute(deps.badgeService));
   app.route('/', createShareRoute(deps.shareService));
   app.route('/', createReportRoute(deps.reportService));
-  app.route('/', createExternalScanRoute(deps.externalScanService));
+  app.route('/', createExternalScanRoute(deps.getExternalScanService));
   app.route('/', createShellRoute());
   app.route('/', createGitRoute());
   app.route('/', createProviderRoute(deps.llm));
