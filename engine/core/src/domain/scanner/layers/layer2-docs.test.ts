@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { runLayer2, validateDocument, clearValidatorCache, loadValidators, measureSectionDepth } from './layer2-docs.js';
+import { runLayer2, validateDocument, loadValidators, measureSectionDepth } from './layer2-docs.js';
 import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
 import type { DocumentValidator } from './layer2-docs.js';
 
@@ -13,10 +13,6 @@ const createFile = (relativePath: string, content: string): FileInfo => ({
 const createCtx = (files: readonly FileInfo[]): ScanContext => ({
   files,
   projectPath: '/test/project',
-});
-
-beforeEach(() => {
-  clearValidatorCache();
 });
 
 describe('loadValidators', () => {

@@ -1,11 +1,3 @@
-use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
-
-use crate::theme;
-
 #[derive(Debug, Clone)]
 pub struct WhatIfResult {
     pub scenario: String,
@@ -64,84 +56,6 @@ pub fn format_whatif_message(result: &WhatIfResult) -> String {
     }
 
     out
-}
-
-#[allow(dead_code)] // TODO(T10): wire into dashboard overlay dispatch
-pub fn render_whatif_overlay(frame: &mut Frame, area: Rect, result: &WhatIfResult) {
-    let t = theme::theme();
-
-    let block = Block::default()
-        .title(" What-If Analysis ")
-        .title_style(theme::title_style())
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(t.accent));
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    let delta = result.score_delta();
-    let delta_color = if delta >= 0.0 {
-        t.zone_green
-    } else {
-        t.zone_red
-    };
-
-    let mut lines = vec![
-        Line::raw(""),
-        Line::from(Span::styled(
-            format!("  Scenario: {}", result.scenario),
-            Style::default()
-                .fg(t.fg)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::raw(""),
-        Line::from(vec![
-            Span::styled("  Current score:   ", Style::default().fg(t.muted)),
-            Span::styled(
-                format!("{:.0}/100", result.current_score),
-                Style::default().fg(t.fg),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("  Projected score: ", Style::default().fg(t.muted)),
-            Span::styled(
-                format!("{:.0}/100 ({delta:+.0})", result.projected_score),
-                Style::default().fg(delta_color).add_modifier(Modifier::BOLD),
-            ),
-        ]),
-    ];
-
-    if !result.new_obligations.is_empty() {
-        lines.push(Line::raw(""));
-        lines.push(Line::from(Span::styled(
-            format!("  New obligations: +{}", result.new_obligations.len()),
-            Style::default().fg(t.fg),
-        )));
-        for obl in &result.new_obligations {
-            lines.push(Line::from(vec![
-                Span::styled("    - ", Style::default().fg(t.accent)),
-                Span::styled(obl.clone(), Style::default().fg(t.fg)),
-            ]));
-        }
-    }
-
-    if let Some(days) = result.effort_days {
-        lines.push(Line::raw(""));
-        lines.push(Line::from(vec![
-            Span::styled("  Effort: ", Style::default().fg(t.muted)),
-            Span::styled(
-                format!("~{days} days"),
-                Style::default().fg(t.zone_yellow),
-            ),
-        ]));
-    }
-
-    lines.push(Line::raw(""));
-    lines.push(Line::from(Span::styled(
-        "  [Esc] Dismiss",
-        Style::default().fg(t.muted),
-    )));
-
-    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }
 
 #[cfg(test)]

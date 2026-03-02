@@ -1,11 +1,7 @@
-import type { PageData } from '../domain/scanner/external/types.js';
+import type { PageData, BrowserPort } from '../ports/browser.port.js';
 import { ENGINE_VERSION } from '../version.js';
 
-export interface BrowserPort {
-  readonly crawl: (url: string, timeout?: number) => Promise<PageData>;
-  readonly screenshot: (url: string, outputPath: string) => Promise<string>;
-  readonly close: () => Promise<void>;
-}
+export type { BrowserPort } from '../ports/browser.port.js';
 
 interface PlaywrightBrowser {
   newContext(options?: Record<string, unknown>): Promise<PlaywrightContext>;

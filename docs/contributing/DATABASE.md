@@ -2,15 +2,14 @@
 
 ## Обзор
 
-Двухуровневая архитектура хранения: встроенные БД в TUI для офлайн-работы + серверный PostgreSQL для Cloud (аккаунты, биллинг, дашборд).
+Двухуровневая архитектура хранения: встроенные БД (regulation JSON + AI tool catalog) в TUI для офлайн-работы + серверный PostgreSQL для Cloud (аккаунты, биллинг, дашборд).
 
 ### Встроенные (TUI, офлайн)
 1. **БД регуляций** — структурированный JSON по каждой статье
-2. **Каталог AI-инструментов** — 2,000+ инструментов с паттернами обнаружения
-3. **SQLite** — история сессий, результаты сканирования, память
+2. **Каталог AI-инструментов** — 5,011+ инструментов с паттернами обнаружения
 
 ### Серверная (Cloud)
-4. **PostgreSQL** — пользователи, подписки, usage-логи, биллинг, API-ключи, дашборд
+3. **PostgreSQL** — пользователи, подписки, usage-логи, биллинг, API-ключи, дашборд
 
 ---
 
@@ -134,50 +133,7 @@
 
 ---
 
-## 3. SQLite — сессионная база данных
-
-`better-sqlite3` — атомарные записи, один файл (паттерн Claude Code).
-
-### Таблицы
-
-```sql
-CREATE TABLE sessions (
-  id TEXT PRIMARY KEY,
-  started_at TEXT NOT NULL,
-  ended_at TEXT,
-  model TEXT,
-  total_tokens INTEGER DEFAULT 0,
-  total_cost REAL DEFAULT 0
-);
-
-CREATE TABLE messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id TEXT REFERENCES sessions(id),
-  role TEXT NOT NULL,        -- 'user', 'assistant', 'tool'
-  content TEXT NOT NULL,
-  tokens INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE scan_results (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id TEXT REFERENCES sessions(id),
-  score INTEGER NOT NULL,
-  findings TEXT NOT NULL,    -- JSON-массив
-  scanned_at TEXT NOT NULL
-);
-
-CREATE TABLE memory_snapshots (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  project_path TEXT NOT NULL,
-  snapshot TEXT NOT NULL,     -- JSON
-  created_at TEXT NOT NULL
-);
-```
-
----
-
-## 4. Cloud — PostgreSQL (серверная БД)
+## 3. Cloud — PostgreSQL (серверная БД)
 
 Для Complior Cloud (API-прокси + дашборд) используется PostgreSQL. Не embedded — серверная БД на Hetzner.
 
@@ -266,51 +222,20 @@ CREATE TABLE cloud_api_keys (
 ### Связь Cloud ↔ TUI
 
 ```
-TUI (SQLite, embedded)     ←→     Cloud (PostgreSQL, серверная)
-─────────────────────────         ─────────────────────────────
-sessions (локальные)               cloud_usage (запросы через прокси)
-messages (локальные)               cloud_usage_monthly (агрегаты)
-scan_results (локальные)           cloud_users (подписка, тариф)
-memory_snapshots (локальные)       cloud_invoices (счета)
-                                   cloud_api_keys (ключи)
+TUI (embedded, offline)            ←→     Cloud (PostgreSQL, серверная)
+──────────────────────────────           ─────────────────────────────
+regulation JSON (локальные)               cloud_usage (запросы через прокси)
+scan results (in-memory state)            cloud_usage_monthly (агрегаты)
+.complior/ config (локальные)             cloud_users (подписка, тариф)
+                                          cloud_invoices (счета)
+                                          cloud_api_keys (ключи)
 ```
 
-SQLite остаётся для локального TUI (память, сессии). PostgreSQL — только для Cloud-сервиса (billing, usage, ключи).
+TUI хранит regulation data как embedded JSON, scan results в in-memory state, конфигурацию в `.complior/`. PostgreSQL — только для Cloud-сервиса (billing, usage, ключи).
 
 ---
 
-## 5. Память проекта
-
-`.complior/memory.json` — автообновление после каждого сканирования, фикса и сессии.
-
-```json
-{
-  "project": "my-chatbot",
-  "firstScan": "2026-02-16T10:30:00Z",
-  "profile": {
-    "framework": "nextjs",
-    "aiTools": [{"id": "openai-gpt4o", "sdk": "vercel-ai-sdk"}],
-    "jurisdictions": ["eu-ai-act"],
-    "riskLevel": "limited",
-    "applicableArticles": ["eu-50.1", "eu-50.2", "eu-12", "eu-4"]
-  },
-  "scoreHistory": [
-    {"date": "2026-02-16", "score": 18, "event": "первичное сканирование"},
-    {"date": "2026-02-16", "score": 72, "event": "авто-фикс 3 проблем"}
-  ],
-  "appliedFixes": [
-    {"type": "disclosure", "file": "app/chat/page.tsx", "date": "2026-02-16"}
-  ],
-  "lastSession": {
-    "summary": "Исправлены 3 критических проблемы. Score 72/100.",
-    "pendingActions": ["ai-literacy", "compliance-md"]
-  }
-}
-```
-
----
-
-## 6. Порядок сборки (критический путь)
+## 4. Порядок сборки (критический путь)
 
 ```
 W-8:  БД регуляций         ← Парсинг EU AI Act в JSON

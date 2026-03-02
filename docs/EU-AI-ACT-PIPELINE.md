@@ -2,7 +2,7 @@
 
 **Версия:** 1.0.0
 **Дата:** 2026-02-26
-**Источник:** 108 обязательств (obligations.json v2.0) × Complior CLI v7 + SaaS v5
+**Источник:** 108 обязательств (obligations.json v2.0) × Complior CLI v8
 
 ---
 

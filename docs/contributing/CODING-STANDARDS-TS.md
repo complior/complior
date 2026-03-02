@@ -1,7 +1,7 @@
 # Complior — Стандарты кодирования: TypeScript Engine
 
-**Версия:** 2.0.0
-**Дата:** 2026-02-17
+**Версия:** 3.0.0
+**Дата:** 2026-03-02
 **Автор:** Marcus (CTO) via Claude Code
 **Зависимости:** [CODING-STANDARDS.md](CODING-STANDARDS.md) (общие правила)
 
@@ -475,29 +475,33 @@ events.emit('ScanCompleted', createScanEvent(projectPath, result));
 ### Архитектура слоёв
 
 ```
-core/               → PURE logic: scanner, fixer, classifier. NO I/O, NO side effects
-routes/             → HTTP routing (Hono), validation (Zod), ТОЛЬКО вызывает core/ или coding/
-coding/             → 8 coding tools. Каждый ОБЯЗАН вызвать compliance gate после выполнения
-llm/                → LLM integration: tools, agents, routing. Vercel AI SDK v6
-memory/             → 3-level memory system. Project JSON + Session SQLite
-data/               → Embedded databases (Regulation DB, Tool Directory)
-config/             → Environment-based, cosmiconfig + Zod. NO business logic
+ports/              → Contracts (zero implementation): scanner, llm, events, logger, browser
+domain/             → PURE business logic: scanner (5-layer), fixer, reporter, whatif
+services/           → Application orchestration: scan, fix, undo, badge, share, report, status
+infra/              → Infrastructure adapters: event-bus, llm, logger, file-watcher, headless-browser, git, shell
+http/               → Hono route handlers via factory functions
+data/               → Regulation data loader, Zod schemas
+llm/                → LLM integration: agents, routing, tools. Vercel AI SDK
+mcp/                → MCP Server (stdio, 8 tools)
 ```
 
 #### Layer Import Rules
 
 ```typescript
-// ✅ GOOD — routes import from core
-import { scanProject } from '../core/scanner/index.ts';
+// ✅ GOOD — services import from ports
+import type { ScannerPort } from '../ports/scanner.port.js';
 
-// ✅ GOOD — coding tools import from core (compliance gate)
-import { runComplianceGate } from '../core/scanner/compliance-gate.ts';
+// ✅ GOOD — http imports from services
+import { createScanService } from '../services/scan-service.js';
 
-// ❌ BAD — core imports from routes
-import { app } from '../routes/server.ts'; // VIOLATION!
+// ✅ GOOD — infra imports from ports
+import type { EventBusPort } from '../ports/events.port.js';
 
-// ❌ BAD — core imports from llm (сканер детерминистичен!)
-import { askLLM } from '../llm/client.ts'; // VIOLATION!
+// ❌ BAD — domain imports from infra
+import { eventBus } from '../infra/event-bus.js'; // VIOLATION!
+
+// ❌ BAD — domain imports from services
+import { scanService } from '../services/scan-service.js'; // VIOLATION!
 ```
 
 ### Hono Route Structure
@@ -564,23 +568,6 @@ app.onError((err, c) => {
   logger.error('Unexpected error:', err);
   return c.json({ error: 'INTERNAL', message: 'Internal server error' }, 500);
 });
-```
-
-### Database Access (SQLite)
-
-```typescript
-// ✅ GOOD — better-sqlite3 с parameterized queries
-import Database from 'better-sqlite3';
-
-const db = new Database('.complior/session.db');
-
-const insertSession = db.prepare(
-  'INSERT INTO sessions (id, started_at, model) VALUES (?, ?, ?)'
-);
-insertSession.run(sessionId, new Date().toISOString(), model);
-
-// ❌ BAD — SQL injection
-db.exec(`INSERT INTO sessions VALUES ('${id}', '${date}')`);
 ```
 
 ---
@@ -651,7 +638,6 @@ export const disclosure: CheckDefinition = {
 | Шаблоны фиксов | 90%+ |
 | Инструменты кода | 80%+ |
 | Hono routes | 80%+ |
-| Memory system | 80%+ |
 
 ### Примеры
 
@@ -784,63 +770,41 @@ describe('Scanner', () => {
 
 ```
 engine/core/src/
-├── server.ts            # Hono HTTP + SSE
-├── routes/              # Обработчики эндпоинтов
-│   ├── scan.ts
-│   ├── fix.ts
-│   ├── chat.ts
-│   ├── classify.ts
-│   ├── file.ts
-│   ├── git.ts
-│   ├── run.ts
-│   └── status.ts
-├── core/                # Детерминистичная логика комплаенса
-│   ├── scanner/         # Multi-domain scanner
-│   │   ├── index.ts
-│   │   ├── compliance-gate.ts    # Re-scan после каждого coding tool
-│   │   ├── rule-pack-loader.ts   # Загрузка rule packs из .compliorrc
-│   │   ├── score-calculator.ts   # Multi-domain score
-│   │   └── packs/                # Rule packs по доменам
-│   │       ├── eu-ai-act/        # 7 checks
-│   │       │   ├── index.ts      # Pack manifest
-│   │       │   ├── ai-disclosure.ts
-│   │       │   ├── ai-disclosure.test.ts
-│   │       │   └── fixtures/     # pass/ + fail/ примеры
-│   │       ├── wcag-aa/          # 10 checks (P1)
-│   │       ├── licenses/         # 6 checks (P1)
-│   │       └── privacy-gdpr/     # 8 checks (P2)
-│   ├── fixer/           # Генераторы фиксов
-│   ├── classifier/      # Классификация рисков
-│   ├── detector/        # Детекция фреймворка/SDK
-│   └── reporter/        # Генераторы отчётов
-├── coding/              # 8 инструментов для кода
-│   ├── create-file.ts
-│   ├── edit-file.ts
-│   ├── read-file.ts
-│   ├── search-code.ts
-│   ├── run-command.ts
-│   ├── git-operation.ts
-│   ├── list-files.ts
-│   └── apply-diff.ts
-├── llm/                 # LLM-интеграция
-│   ├── tools/           # 23 определения инструментов (Vercel AI SDK v6)
-│   ├── agents/          # 4 режима агента (build, comply, audit, learn)
-│   └── routing/         # Выбор модели + расчёт стоимости
-├── memory/              # 3-уровневая система памяти
-│   ├── project.ts       # .complior/memory.json
-│   ├── session.ts       # SQLite (better-sqlite3)
-│   └── knowledge.ts     # On-demand tools
-├── mcp/                 # MCP Server (stdio transport)
-├── headless/            # CI/CD-режим (--json, --ci, --sarif)
-├── data/                # Встроенные БД (JSON)
-│   ├── regulations/     # Regulation DB по статьям
-│   └── tools/           # AI Tool Directory (2,000+)
-└── config/              # cosmiconfig + Zod
-    ├── schema.ts        # Zod-схема .compliorrc.json
-    └── defaults.ts      # Значения по умолчанию
+├── composition-root.ts  # Single DI wiring point
+├── server.ts            # Hono HTTP + MCP server bootstrap
+├── index.ts             # Re-export entry
+├── version.ts
+├── ports/               # Contracts only
+│   ├── scanner.port.ts
+│   ├── llm.port.ts
+│   ├── events.port.ts
+│   ├── logger.port.ts
+│   └── browser.port.ts
+├── domain/              # Pure business logic
+│   ├── scanner/         # 5-layer compliance scanner
+│   │   ├── create-scanner.ts
+│   │   ├── layers/      # layer1-files, layer2-docs, layer3-config, layer4-patterns, layer5-llm
+│   │   ├── rules/       # banned-packages, pattern-rules
+│   │   ├── checks/      # 7 check modules
+│   │   └── external/    # External URL scanner
+│   ├── fixer/           # Fix strategies + templates
+│   ├── reporter/        # PDF, audit report, badge, share
+│   └── whatif/          # Scenario engine
+├── services/            # Application orchestration (10 services)
+├── http/
+│   ├── create-router.ts
+│   └── routes/          # 16 Hono route handlers
+├── infra/               # Infrastructure adapters
+├── llm/                 # Agents, routing, tools, SSE
+├── mcp/                 # MCP Server (stdio, 8 tools)
+├── data/                # Regulation loader + Zod schemas
+├── onboarding/          # Wizard, profile, auto-detect
+├── types/               # common.types.ts, errors.ts
+├── output/              # JSON output, GitHub issue format
+└── hooks/               # Git hooks installer
 ```
 
 ---
 
-**Последнее обновление:** 2026-02-17
-**Автор:** Marcus (CTO)
+**Последнее обновление:** 2026-03-02
+**Автор:** Marcus (CTO) via Claude Code
