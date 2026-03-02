@@ -5,7 +5,29 @@ mod panels;
 mod utils;
 
 #[cfg(test)]
-mod tests;
+mod tests_helpers;
+#[cfg(test)]
+mod tests_state;
+#[cfg(test)]
+mod tests_rendering;
+#[cfg(test)]
+mod tests_score;
+#[cfg(test)]
+mod tests_footer;
+#[cfg(test)]
+mod tests_overlay;
+#[cfg(test)]
+mod tests_input;
+#[cfg(test)]
+mod tests_watch;
+#[cfg(test)]
+mod tests_status_bar;
+#[cfg(test)]
+mod tests_e2e_panels;
+#[cfg(test)]
+mod tests_e2e_views;
+#[cfg(test)]
+mod tests_widgets;
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};

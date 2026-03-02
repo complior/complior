@@ -1,0 +1,78 @@
+{
+  "score": {
+    "totalScore": 72.5,
+    "zone": "yellow",
+    "categoryScores": [
+      {
+        "category": "documentation",
+        "weight": 0.25,
+        "score": 80.0,
+        "obligationCount": 5,
+        "passedCount": 4
+      },
+      {
+        "category": "technical",
+        "weight": 0.35,
+        "score": 65.0,
+        "obligationCount": 8,
+        "passedCount": 5
+      }
+    ],
+    "criticalCapApplied": false,
+    "totalChecks": 20,
+    "passedChecks": 14,
+    "failedChecks": 4,
+    "skippedChecks": 2
+  },
+  "findings": [
+    {
+      "checkId": "l4-bare-api-call",
+      "type": "fail",
+      "message": "Bare OpenAI API call without complior SDK wrapper",
+      "severity": "high",
+      "file": "src/ai/chat.ts",
+      "line": 42,
+      "obligationId": "OBL-015",
+      "articleReference": "Art. 14(4)",
+      "fix": "Wrap with complior() SDK proxy",
+      "codeContext": {
+        "lines": [
+          { "num": 40, "content": "async function chat(prompt: string) {" },
+          { "num": 41, "content": "  const client = new OpenAI();" },
+          { "num": 42, "content": "  return client.chat.completions.create({" },
+          { "num": 43, "content": "    model: 'gpt-4'," },
+          { "num": 44, "content": "    messages: [{ role: 'user', content: prompt }]" }
+        ],
+        "startLine": 40,
+        "highlightLine": 42
+      },
+      "fixDiff": {
+        "before": ["  const client = new OpenAI();"],
+        "after": ["  const client = complior(new OpenAI(), { disclose: true });"],
+        "startLine": 41,
+        "filePath": "src/ai/chat.ts",
+        "importLine": "import { complior } from '@complior/sdk';"
+      }
+    },
+    {
+      "checkId": "l1-missing-fria",
+      "type": "fail",
+      "message": "Missing Fundamental Rights Impact Assessment document",
+      "severity": "medium",
+      "obligationId": "OBL-028",
+      "articleReference": "Art. 27"
+    },
+    {
+      "checkId": "l3-no-logging",
+      "type": "fail",
+      "message": "No structured logging configuration found",
+      "severity": "medium",
+      "file": "package.json",
+      "line": 1
+    }
+  ],
+  "projectPath": "/home/user/my-ai-project",
+  "scannedAt": "2026-03-01T14:30:00Z",
+  "duration": 1250,
+  "filesScanned": 47
+}

@@ -1,8 +1,6 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { parse as parseYaml } from 'yaml';
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
+import { DOCUMENT_VALIDATORS } from '../validators.js';
 import {
   parseMarkdownHeadings,
   headingMatches,
@@ -45,34 +43,11 @@ export interface L2CheckResult {
 
 // --- Validator Loading ---
 
-let cachedValidators: readonly DocumentValidator[] | null = null;
-
-const VALIDATORS_DIR = new URL('../validators/', import.meta.url);
-
-export const loadValidators = (): readonly DocumentValidator[] => {
-  if (cachedValidators !== null) return cachedValidators;
-
-  const dirPath = new URL('.', VALIDATORS_DIR).pathname;
-  const files = readdirSync(dirPath).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-  const isDocumentValidator = (v: unknown): v is DocumentValidator =>
-    typeof v === 'object' && v !== null && 'document' in v && 'obligation' in v && 'file_patterns' in v;
-
-  const validators: DocumentValidator[] = [];
-  for (const file of files) {
-    const content = readFileSync(join(dirPath, file), 'utf-8');
-    const parsed: unknown = parseYaml(content);
-    if (isDocumentValidator(parsed)) {
-      validators.push(parsed);
-    }
-  }
-
-  cachedValidators = validators;
-  return validators;
-};
+export const loadValidators = (): readonly DocumentValidator[] => DOCUMENT_VALIDATORS;
 
 export const clearValidatorCache = (): void => {
-  cachedValidators = null;
+  // No-op: validators are now compile-time constants.
+  // Kept for backward compatibility with tests.
 };
 
 // --- L2 Check Logic ---

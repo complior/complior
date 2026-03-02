@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://complior.ai/schemas/http-contract.json",
+  "title": "Complior HTTP Contract",
+  "description": "Shared types between TS engine (producer) and Rust TUI (consumer). Field names are camelCase in JSON. Rust uses #[serde(rename_all = \"camelCase\")] for automatic mapping.",
+  "$defs": {
+    "Severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info"]
+    },
+    "Zone": {
+      "type": "string",
+      "enum": ["red", "yellow", "green"]
+    },
+    "CheckResultType": {
+      "type": "string",
+      "enum": ["pass", "fail", "skip"]
+    },
+    "CodeContextLine": {
+      "type": "object",
+      "required": ["num", "content"],
+      "properties": {
+        "num": { "type": "integer" },
+        "content": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "CodeContext": {
+      "type": "object",
+      "required": ["lines", "startLine"],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CodeContextLine" }
+        },
+        "startLine": { "type": "integer" },
+        "highlightLine": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "FixDiff": {
+      "type": "object",
+      "required": ["before", "after", "startLine", "filePath"],
+      "properties": {
+        "before": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "after": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "startLine": { "type": "integer" },
+        "filePath": { "type": "string" },
+        "importLine": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Finding": {
+      "type": "object",
+      "required": ["checkId", "type", "message", "severity"],
+      "properties": {
+        "checkId": { "type": "string" },
+        "type": { "$ref": "#/$defs/CheckResultType" },
+        "message": { "type": "string" },
+        "severity": { "$ref": "#/$defs/Severity" },
+        "file": { "type": "string" },
+        "line": { "type": "integer" },
+        "obligationId": { "type": "string" },
+        "articleReference": { "type": "string" },
+        "fix": { "type": "string" },
+        "priority": { "type": "integer" },
+        "confidence": { "type": "integer" },
+        "confidenceLevel": { "type": "string" },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "codeContext": { "$ref": "#/$defs/CodeContext" },
+        "fixDiff": { "$ref": "#/$defs/FixDiff" }
+      },
+      "additionalProperties": false
+    },
+    "CategoryScore": {
+      "type": "object",
+      "required": ["category", "weight", "score", "obligationCount", "passedCount"],
+      "properties": {
+        "category": { "type": "string" },
+        "weight": { "type": "number" },
+        "score": { "type": "number" },
+        "obligationCount": { "type": "integer" },
+        "passedCount": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "ScoreBreakdown": {
+      "type": "object",
+      "required": [
+        "totalScore", "zone", "categoryScores",
+        "criticalCapApplied", "totalChecks", "passedChecks",
+        "failedChecks", "skippedChecks"
+      ],
+      "properties": {
+        "totalScore": { "type": "number" },
+        "zone": { "$ref": "#/$defs/Zone" },
+        "categoryScores": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CategoryScore" }
+        },
+        "criticalCapApplied": { "type": "boolean" },
+        "totalChecks": { "type": "integer" },
+        "passedChecks": { "type": "integer" },
+        "failedChecks": { "type": "integer" },
+        "skippedChecks": { "type": "integer" },
+        "confidenceSummary": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "ScanResult": {
+      "type": "object",
+      "required": [
+        "score", "findings", "projectPath",
+        "scannedAt", "duration", "filesScanned"
+      ],
+      "properties": {
+        "score": { "$ref": "#/$defs/ScoreBreakdown" },
+        "findings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Finding" }
+        },
+        "projectPath": { "type": "string" },
+        "scannedAt": { "type": "string" },
+        "duration": { "type": "number" },
+        "filesScanned": { "type": "integer" },
+        "deepAnalysis": { "type": "boolean" },
+        "l5Cost": { "type": "number" },
+        "regulationVersion": { "type": "object" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "$ref": "#/$defs/ScanResult"
+}

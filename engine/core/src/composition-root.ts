@@ -5,7 +5,7 @@ import type { CoreMessage } from 'ai';
 import type { ScanResult } from './types/common.types.js';
 import type { AgentMode } from './llm/tools/types.js';
 import type { RegulationData } from './data/regulation-loader.js';
-import { loadRegulationData } from './infra/regulation-loader.js';
+import { loadRegulationData } from './data/regulation-loader.js';
 import { createEventBus } from './infra/event-bus.js';
 import { createLogger } from './infra/logger.js';
 import { createLlmAdapter } from './infra/llm-adapter.js';
