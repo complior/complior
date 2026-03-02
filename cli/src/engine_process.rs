@@ -1,5 +1,5 @@
 use std::net::TcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 use crate::engine_client::EngineClient;
@@ -58,6 +58,16 @@ impl EngineManager {
 
     /// Find a free port and spawn the engine.
     pub fn start(&mut self) -> Result<u16, String> {
+        self.start_inner(None, false)
+    }
+
+    /// Start the engine with PID file and optional watch mode.
+    /// The TS engine will write the PID file at `pid_path` on startup.
+    pub fn start_with_pid(&mut self, pid_path: &Path, watch: bool) -> Result<u16, String> {
+        self.start_inner(Some(pid_path), watch)
+    }
+
+    fn start_inner(&mut self, pid_path: Option<&Path>, watch: bool) -> Result<u16, String> {
         let entry = self.engine_dir.join("src").join("server.ts");
         if !entry.exists() {
             return Err(format!("Engine not found at {}", entry.display()));
@@ -66,12 +76,21 @@ impl EngineManager {
         let port = find_free_port().map_err(|e| format!("Cannot find free port: {e}"))?;
         self.port = port;
 
-        let child = Command::new("npx")
-            .args(["tsx", "src/server.ts"])
+        let mut cmd = Command::new("npx");
+        cmd.args(["tsx", "src/server.ts"])
             .current_dir(&self.engine_dir)
             .env("PORT", port.to_string())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        if let Some(path) = pid_path {
+            cmd.env("COMPLIOR_PID_FILE", path.to_string_lossy().as_ref());
+        }
+        if watch {
+            cmd.env("COMPLIOR_WATCH", "1");
+        }
+
+        let child = cmd
             .spawn()
             .map_err(|e| format!("Failed to spawn engine: {e}"))?;
 
@@ -192,5 +211,21 @@ mod tests {
         let result = mgr.try_restart();
         assert!(result.is_err());
         assert_eq!(mgr.status, EngineProcessStatus::Failed);
+    }
+
+    #[test]
+    fn test_external_mode_shutdown_is_safe() {
+        let mut mgr = EngineManager::external(3099);
+        mgr.shutdown();
+        // Should remain External, not Stopped
+        assert_eq!(mgr.status, EngineProcessStatus::External);
+    }
+
+    #[test]
+    fn test_start_with_pid_missing_engine_returns_error() {
+        let mut mgr = EngineManager::new(std::path::Path::new("/tmp/nonexistent"));
+        let result = mgr.start_with_pid(std::path::Path::new("/tmp/test.pid"), true);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Engine not found"));
     }
 }

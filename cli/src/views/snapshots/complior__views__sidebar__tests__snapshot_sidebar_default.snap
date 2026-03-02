@@ -1,9 +1,9 @@
 ---
-source: tui/src/views/sidebar.rs
+source: cli/src/views/sidebar.rs
 expression: buf
 ---
 ┌ Info ──────────────────────┐
-│ tui/                       │
+│ cli/                       │
 │ No scan yet                │
 │                            │
 │                            │

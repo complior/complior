@@ -1,10 +1,10 @@
 [package]
-name = "complior-tui"
+name = "complior-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "AI Act Compliance Scanner & Fixer — terminal UI"
+description = "AI Act Compliance Scanner & Fixer — CLI + TUI dashboard"
 homepage = "https://complior.ai"
 keywords = ["compliance", "ai", "eu-ai-act", "scanner", "terminal"]
 categories = ["development-tools", "command-line-utilities"]
@@ -33,6 +33,7 @@ futures-util = "0.3"
 unicode-width = "0.2"
 notify = "6"
 clap = { version = "4", features = ["derive"] }
+libc = "0.2"
 
 [dev-dependencies]
 insta = { version = "1", features = ["filters"] }

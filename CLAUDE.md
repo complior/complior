@@ -6,7 +6,7 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 
 ## Project Structure
 
-- **Rust TUI**: `tui/` — Ratatui binary, connects to daemon via HTTP/SSE, 8 pages, themes
+- **Rust CLI**: `cli/` — Ratatui binary + daemon management, connects to daemon via HTTP/SSE, 8 pages, themes
 - **TypeScript Engine**: `engine/core/` — Clean Architecture: ports, domain, services, infra, http, data, llm, mcp
 - **TS Packages**: `engine/sdk/` (@complior/sdk), `engine/npm/` (npm wrapper). Shared types codegen planned, not yet implemented
 - **Public docs**: `docs/` — architecture, backlog, sprint specs, contributing standards

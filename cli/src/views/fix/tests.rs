@@ -265,7 +265,7 @@ fn make_scan_result(findings: &[Finding]) -> crate::types::ScanResult {
             confidence_summary: None,
         },
         findings: findings.to_vec(),
-        project_path: "tui/".to_string(),
+        project_path: "cli/".to_string(),
         scanned_at: "2026-02-28T12:00:00Z".to_string(),
         duration: 450,
         files_scanned: 24,

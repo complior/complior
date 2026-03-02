@@ -20,7 +20,7 @@ mod contract_tests {
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let workspace_root = std::path::Path::new(manifest_dir)
             .parent()
-            .expect("tui/ should have a parent directory");
+            .expect("cli/ should have a parent directory");
         let path = workspace_root.join("engine/core/data/schemas/http-contract-sample.json");
         std::fs::read_to_string(&path).unwrap_or_else(|e| {
             panic!(
