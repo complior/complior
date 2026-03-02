@@ -1,142 +1,128 @@
 # Complior
 
-**Wrapper-Оркестратор для AI Compliance**
+**Daemon-Orchestrator for AI Compliance**
 
-> tmux для AI compliance. Запускает ЛЮБОГО coding agent внутри себя. Compliance gate поверх каждого изменения файла.
+> Background compliance daemon for AI applications. Compliance gate on every file change.
 
 ---
 
 > [!IMPORTANT]
-> **Status: v6 Architecture Phase (Phase 0)**
+> **Status: v8 Architecture**
 >
-> Complior v6 is a complete rearchitecture. The v1 engine (scanner, fixer, 568 tests) works. We are now building the wrapper-orchestrator (Rust TUI + PTY manager) that runs any coding agent inside itself. Contributions and feedback are welcome.
+> Complior v8 is a daemon-orchestrator: background daemon (file watcher + engine + MCP server + HTTP API) + Rust TUI dashboard + CLI commands. The v1 engine (scanner, fixer, 375+ tests) works. Agents connect independently via MCP. Contributions and feedback are welcome.
 
 ---
 
 ## What is Complior?
 
-Complior wraps your favorite coding agent (Claude Code, Odelix, OpenCode, aider) and adds real-time compliance monitoring. You keep working in your agent — Complior adds the compliance layer.
+Complior is a background compliance daemon that monitors your AI project for EU AI Act compliance. It watches every file change and rescans in ~200ms. Agents (Claude Code, Cursor, VS Code, OpenCode, aider) work independently and connect via MCP.
 
-**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (5.5 months).
+**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (~5 months).
 
-**The solution:** A wrapper that launches any coding agent as subprocess and monitors every file change for compliance.
+**The solution:** A daemon that monitors file changes and provides real-time compliance feedback. Agents work independently — Complior doesn't manage their processes.
 
 ```bash
-$ complior                              # launch with default agent
-$ complior --agent claude-code          # launch with Claude Code
-$ complior --agent opencode             # launch with OpenCode
-$ complior --agent "aider --model opus" # any CLI command as agent
-$ complior --agent bash                 # even just a shell
-$ complior --agents "odelix, claude-code"  # two agents side by side
-$ complior --headless                   # CI/CD (no TUI)
+$ complior                     # daemon + TUI dashboard (default)
+$ complior daemon --watch      # headless daemon (CI/CD, server)
+$ complior scan --ci           # standalone CLI (one-shot scan)
 ```
 
 ### How It Works
 
 ```
-┌── Agent: Claude Code ────────────────┐ ┌── Compliance ──────┐
-│                                       │ │ Score: 72/100      │
-│  (Claude Code works as usual —       │ │ ████████░░ 72%     │
-│   all output rendered 1:1)           │ │                    │
-│                                       │ │ ✓ disclosure       │
-│                                       │ │ ✗ logging    [Fix] │
-│                                       │ │ ✗ docs       [Fix] │
-│                                       │ │ ✓ metadata         │
-│                                       │ │                    │
-│                                       │ │ 163d Art.6 ⚠       │
-│                                       │ │ [Scan] [Report]    │
-└───────────────────────────────────────┘ └────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                       COMPLIOR v8 SYSTEM                        │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  DAEMON (background process)                             │  │
+│  │                                                          │  │
+│  │  File Watcher    TS Engine (Hono)    MCP Server          │  │
+│  │  (chokidar)      Scanner, Fixer     (stdio, 8 tools)    │  │
+│  │  inotify →       Passport, Gate                          │  │
+│  │  rescan →        Reporter, Evidence  HTTP API             │  │
+│  │  SSE notify      5-layer scanner     (localhost:PORT)    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│       ▲ HTTP/SSE          ▲ MCP (stdio)         ▲ HTTP        │
+│       │                   │                     │             │
+│  ┌────┴───────┐   ┌──────┴──────────┐   ┌─────┴──────┐     │
+│  │ TUI        │   │ Coding Agents    │   │ CLI        │     │
+│  │ (Rust,     │   │ (Claude Code,    │   │ (standalone │     │
+│  │  ratatui)  │   │  Cursor, VS Code,│   │  commands)  │     │
+│  │ 7 pages    │   │  OpenCode, aider)│   │             │     │
+│  │ 100+ themes│   │ Work             │   │ scan, fix,  │     │
+│  └────────────┘   │ INDEPENDENTLY    │   │ report, ... │     │
+│                   └──────────────────┘   └────────────┘     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-1. You work in your agent (write code, ask questions, run commands)
-2. Complior watches every file change via inotify/FSEvents
+1. Agents write code independently (Claude Code, Cursor, VS Code, etc.)
+2. Complior daemon watches every file change via inotify/FSEvents
 3. Background rescan in ~200ms → score updates in real time
-4. If score drops → toast notification with exact article + auto-fix option
+4. If score drops → SSE notification with exact article + auto-fix option
 
 No other tool does this.
 
 ## Key Features
 
-- **Wrapper-Orchestrator** — wraps ANY CLI coding agent via PTY subprocess
+- **Daemon Architecture** — background process, agents connect via MCP independently
 - **Real-time Compliance Gate** — every file change → rescan in 200ms → score update
-- **Multi-Agent** — run multiple agents in tabs or splits, monitor compliance of ALL
-- **19 Compliance Checks** — deterministic, AST-based, no LLM involved in decisions
+- **5-Layer Scanner** — file presence → document structure → config/deps → AST patterns → LLM deep analysis
+- **45 Banned Packages** — covers all 8 Art. 5 prohibitions
+- **33 Pattern Rules** — across 8 categories + 5 cross-layer verification rules
 - **6+ Auto-Fixers** — disclosure, marking, logging, docs, metadata, FRIA
-- **Decision Matrix** — 17 violation types, each with specific fix + article reference
-- **Runtime Middleware** — generates `compliorWrap()`, logger, marker for production
-- **Multi-Jurisdiction** — EU AI Act + Colorado SB 205 + 8 more planned
-- **2000+ AI Tools** — detection patterns for OpenAI, Anthropic, LangChain, and more
+- **Agent Passport** — central entity (36 fields, ed25519 signed, 3 creation modes)
+- **7-Step Pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
+- **8 MCP Tools** — compliance tools for Claude Code, Cursor, Windsurf, any MCP client
+- **Runtime Middleware** — `@complior/sdk` — proxy-based compliance wrapping for LLM API calls
+- **5,011+ AI Tools** — detection patterns for OpenAI, Anthropic, LangChain, and more
 - **100+ Themes** — Tokyo Night, Catppuccin, Gruvbox, Nord, and custom TOML themes
-- **MCP Server** — 7+ compliance tools for Claude Code, Cursor, Windsurf
-- **CI/CD** — `complior scan --ci --threshold 80 --sarif`
+- **CI/CD** — `complior scan --ci --threshold 80 --json`
 - **Zero Config** — auto-detects framework, AI SDK, risk level
 - **Offline** — scanner works without any API key or network
 
 ## Architecture
 
-Three processes: thin Rust TUI client, TypeScript compliance engine, and guest agent.
+Two processes: Rust TUI client connects to TypeScript daemon via HTTP/SSE.
 
 ```
 ┌─────────────────────────┐     HTTP / SSE      ┌─────────────────────────┐
-│   RUST TUI (ratatui)    │ ◄────────────────► │   TS ENGINE (Hono)      │
+│   RUST TUI (ratatui)    │ ◄────────────────► │   TS DAEMON (Hono)      │
 │                         │   localhost:port    │                         │
-│  Wrapper host           │                    │  Scanner (AST, 5 layers)│
-│  PTY manager            │  JSON req/resp     │  Fixer (6+ templates)   │
-│  UI rendering           │  for scan/fix/etc  │  Regulation DB (JSON)   │
-│  Agent tabs/splits      │                    │  AI Registry (2K+)      │
-│  100+ themes            │  SSE stream        │  LLM (Vercel AI SDK)    │
-│  ~5MB binary            │  for events        │  Memory (3 levels)      │
-└──────────┬──────────────┘                    │  MCP Server (stdio)     │
-           │ PTY                               │  Reports (MD/PDF/SARIF) │
-           ▼                                   │  Runtime Middleware Gen  │
-┌─────────────────────────┐                    │  File Watcher           │
-│   GUEST AGENT           │                    │  DataProvider port      │
-│   (subprocess)          │                    └─────────────────────────┘
-│   Odelix / Claude Code  │
-│   OpenCode / aider      │
-│   bash / any CLI        │
-└─────────────────────────┘
+│  Dashboard UI           │                    │  Scanner (AST, 5 layers)│
+│  7 navigable pages      │  JSON req/resp     │  Fixer (6+ templates)   │
+│  100+ themes            │  for scan/fix/etc  │  Regulation DB (JSON)   │
+│  Vim + mouse nav        │                    │  AI Registry (5K+)      │
+│  ~5MB binary            │  SSE stream        │  LLM (Vercel AI SDK)    │
+│                         │  for events        │  MCP Server (stdio)     │
+│                         │                    │  File Watcher           │
+│                         │                    │  Reports (MD/PDF/badge) │
+│                         │                    │  Agent Passport engine  │
+└─────────────────────────┘                    └─────────────────────────┘
 ```
 
 **Key principle:** Deterministic core, AI interface. Scanner uses AST-based rules — no LLM involved in compliance decisions. LLM helps you understand and fix issues.
 
-## 4 UI Presets
+## 7 TUI Pages
 
-| Preset | Description |
-|--------|-------------|
-| **Dashboard** (default) | Agent panel + compliance sidebar + score history |
-| **Focus** | Agent fullscreen, compliance in statusbar only |
-| **Multi** | 2+ agents side by side + compliance panel |
-| **Compliance Only** | Dashboard without agent (for DPO/CTO) |
+| Key | Page | Description |
+|-----|------|-------------|
+| **D** | Dashboard | Score gauge, activity log, deadlines, quick actions |
+| **S** | Scan | Findings table, severity filter, file links |
+| **F** | Fix | Fix preview with unified diff, one-click apply |
+| **P** | Passport | Agent Passport viewer (36 fields, ed25519 signed) |
+| **T** | Timeline | Obligation deadlines, EU AI Act milestones |
+| **R** | Report | Compliance report generation (MD, PDF, badge) |
+| **L** | Log | Activity log, engine events, SSE stream |
 
 ## Supported Regulations
 
-| Regulation | Checks | Sprint |
-|-----------|--------|--------|
-| EU AI Act (Transparency) | Art. 50, 12, 4, 11 | S01 — Launch |
-| EU AI Act (GPAI) | Art. 51-56 | S01 — Launch |
-| EU AI Act (High-Risk) | Art. 9, 14, 15, 27 | S04 — Launch |
-| Colorado SB 205 | Disclosure + FRIA | S03 |
-| Texas TRAIGA + California AB 2885 | Disclosure | S06 |
-| South Korea AI Basic Act | Korean AI Act | S06 |
-| UK AI Regulation Bill | UK requirements | S10 |
-| Japan, Canada, Brazil | Additional jurisdictions | S10 |
-| ISO 42001, NIST AI RMF | Framework mapping | S08 |
-
-## Roadmap
-
-| Sprint | Weeks | Focus |
-|--------|-------|-------|
-| **S01** | 1-2 | Regulation DB, AI Registry, Scanner (19 checks), AST engine |
-| **S02** | 3-4 | PTY Wrapper, Auto-Fix (6 fixers), LLM, Memory, Compliance Gate |
-| **S03** | 5-6 | Themes (20+), Multi-Agent, MCP, GitHub Action, Reports |
-| **S04** | 7-8 | FRIA, Tech Docs, Discovery, Polish, **Launch** |
-| **S05** | M 1-2 | Runtime Control (middleware gen), SDK Adapters, Templates |
-| **S06** | M 2-3 | Agent Governance, VS Code Extension, 3 more jurisdictions |
-| **S07** | M 3-4 | Docker scan, Infrastructure Remediation |
-| **S08** | M 4-5 | Monitoring, Drift Detection, Regulation Changes |
-| **S09** | M 5-6 | Agent Sandbox, Kill Switch, Compliance-as-Code |
-| **S10** | M 6+ | 4 more jurisdictions, 2000 tools, Plugin system |
+| Regulation | Status |
+|-----------|--------|
+| EU AI Act (Transparency) — Art. 50, 12, 4, 11 | Implemented |
+| EU AI Act (GPAI) — Art. 51-56 | Implemented |
+| EU AI Act (High-Risk) — Art. 9, 14, 15, 27 | Planned |
+| Colorado SB 205 — Disclosure + FRIA | Planned |
+| ISO 42001, NIST AI RMF | Planned |
 
 ## Business Model: Free TUI → Paid Dashboard
 
@@ -144,33 +130,13 @@ Three processes: thin Rust TUI client, TypeScript compliance engine, and guest a
 |---|---|---|
 | Scan | Local project | All repos in org |
 | Score | 0-100 + auto-fix | Cross-system map |
-| Reports | COMPLIANCE.md, FRIA, badges | Audit PDF (clean), Certificate |
-| Registry | 200 tools (offline) | 2,477+ tools (API) |
+| Reports | COMPLIANCE.md, FRIA, badges | Audit PDF, Certificate |
+| Registry | 200 tools (offline) | 5,011+ tools (API) |
 | Jurisdictions | EU + 1 | All |
-| Agents | Wrapper + MCP | + Agent Registry UI |
+| Agents | MCP (8 tools) | + Agent Registry UI |
 | Monitoring | Drift (session) | Continuous + SLA |
 | CI/CD | Headless mode | Webhook management |
-| **Price** | **€0** | **€49-399/mo** |
-
-## Cloud API Configuration (Optional)
-
-Connect the TUI to the live AI Registry (4,983+ tools with EU AI Act assessments):
-
-1. Sign up at [complior.ai](https://complior.ai) (free tier available)
-2. Generate an API key: Dashboard → Settings → API Keys
-3. Save to `~/.config/complior/credentials`:
-
-```
-# Complior credentials
-COMPLIOR_API_KEY=cpl_live_...
-```
-
-4. Launch the TUI — the status bar shows `●` (online) when connected.
-
-**Offline mode:** Without an API key, the TUI uses mock data (score 47, 12 demo findings).
-Override API URL for local development: `export PROJECT_API_URL=http://localhost:8000`
-
----
+| **Price** | **Free** | **€49-399/mo** |
 
 ## Installation
 
@@ -194,14 +160,14 @@ docker run -it -v $(pwd):/project complior/complior
 ## Quick Start
 
 ```bash
-# Scan current project
+# Launch daemon + TUI dashboard
+complior
+
+# Scan current project (standalone)
 complior scan
 
-# Launch with Claude Code
-complior --agent claude-code
-
 # CI/CD pipeline
-complior scan --ci --threshold 80 --sarif report.sarif
+complior scan --ci --threshold 80 --json
 
 # Generate compliance badge
 complior badge
@@ -211,11 +177,12 @@ complior badge
 
 ```
 complior/
-├── tui/           # Rust TUI — wrapper host, PTY manager
-├── engine/        # TypeScript Engine — scanner, fixer, LLM, databases
-├── shared/        # Shared types (TS ↔ Rust codegen)
-├── docs/          # Phase 0 architecture + sprint specs
-├── data/          # Bundled regulation DB + AI registry
+├── tui/           # Rust TUI — dashboard UI, connects to daemon via HTTP/SSE
+├── engine/
+│   ├── core/      # @complior/engine — TS daemon (Clean Architecture)
+│   ├── sdk/       # @complior/sdk — runtime compliance middleware
+│   └── npm/       # npm wrapper package (npx complior)
+├── docs/          # Architecture, specs, contributing standards
 ├── .github/       # CI/CD workflows
 ├── Cargo.toml     # Rust workspace root
 ├── package.json   # TS workspace root
@@ -224,12 +191,14 @@ complior/
 
 ## Contributing
 
-Complior is in v6 architecture phase. We welcome:
+Complior is in v8 daemon architecture. We welcome:
 
-- **Feedback** on the wrapper-orchestrator design
+- **Feedback** on the daemon-orchestrator design
 - **Regulation expertise** — help us model compliance requirements
 - **AI tool data** — detection patterns for AI SDKs
 - **Issues** for feature requests and ideas
+
+See `docs/contributing/` for coding standards.
 
 ## License
 

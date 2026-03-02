@@ -81,6 +81,3 @@ export const createCodingTools = (projectPath: string, deps: ToolExecutorDeps) =
     }),
   };
 };
-
-// Keep backward-compat static export for non-chat usage (tests, etc.)
-export { createCodingTools as codingTools };

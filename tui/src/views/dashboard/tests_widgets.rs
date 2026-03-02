@@ -128,18 +128,3 @@ fn e2e_t705_sidebar_shows_context_and_zen() {
     assert!(buf.contains("Zen"), "Sidebar should show Zen status");
 }
 
-// --- T701: Complior Zen ---
-
-#[test]
-fn e2e_t701_zen_provider_in_catalog() {
-    let models = crate::providers::available_models();
-    let zen = models.iter().find(|m| m.provider == "complior");
-    assert!(zen.is_some(), "Complior Zen should be in the model catalog");
-    assert_eq!(zen.unwrap().display_name, "Complior Zen (Free)");
-}
-
-#[test]
-fn e2e_t701_zen_is_first_model() {
-    let models = crate::providers::available_models();
-    assert_eq!(models[0].provider, "complior", "Zen should be the first model");
-}

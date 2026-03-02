@@ -45,11 +45,6 @@ export interface L2CheckResult {
 
 export const loadValidators = (): readonly DocumentValidator[] => DOCUMENT_VALIDATORS;
 
-export const clearValidatorCache = (): void => {
-  // No-op: validators are now compile-time constants.
-  // Kept for backward compatibility with tests.
-};
-
 // --- L2 Check Logic ---
 
 const findMatchingFile = (

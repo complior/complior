@@ -120,20 +120,16 @@ LAYER / MODULE              ОПИСАНИЕ
 ──────────────────────────────────────────────────────────
 ports/                      Контракты (zero implementation)
   ├── scanner.port.ts       Интерфейсы сканера
-  ├── storage.port.ts       Файловое хранение
   ├── llm.port.ts           LLM интерфейс
   ├── events.port.ts        Шина событий
   ├── logger.port.ts        Логгирование
-  └── browser.port.ts       Headless browser
+  └── browser.port.ts       PageData + BrowserPort контракт
 
 domain/                     Чистая бизнес-логика
   ├── scanner/              5-layer scanner: checks, layers, rules, score-calculator
-  ├── classifier/           Risk classification engine
   ├── fixer/                Fix templates + strategies
-  ├── gate/                 Compliance gate (scan → score diff → notify)
   ├── whatif/               What-if analysis
-  ├── metadata/             .well-known/ai-compliance.json
-  ├── reporter/             Reports: MD, PDF, SARIF, badge SVG
+  ├── reporter/             Reports: MD, PDF, badge SVG
   └── disclaimer.*          Legal disclaimer engine
 
 services/                   Оркестрация
@@ -148,7 +144,6 @@ services/                   Оркестрация
   └── external-scan-service.ts  External URL scan
 
 infra/                      Адаптеры инфраструктуры
-  ├── fs-adapter.ts         File system operations
   ├── llm-adapter.ts        Vercel AI SDK (multi-model)
   ├── event-bus.ts          In-process event bus
   ├── logger.ts             Structured logging
@@ -156,7 +151,7 @@ infra/                      Адаптеры инфраструктуры
   ├── shell-adapter.ts      Safe shell execution
   ├── git-adapter.ts        Git operations
   ├── regulation-loader.ts  Loads regulation JSON
-  └── headless-browser.ts   PDF rendering
+  └── headless-browser.ts   Playwright browser (lazy-loaded)
 
 http/                       Thin route handlers (Hono)
   ├── create-router.ts      Hono router factory

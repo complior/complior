@@ -31,59 +31,17 @@ const startHttp = async (): Promise<void> => {
 
 const startMcp = async (): Promise<void> => {
   const { state } = await loadApplication();
+  const { createMcpStack } = await import('./mcp/create-mcp-stack.js');
 
-  const { createMcpHandlers } = await import('./mcp/handlers.js');
-  const { createMcpServer } = await import('./mcp/server.js');
-  const { createScanService } = await import('./services/scan-service.js');
-  const { createScanner } = await import('./domain/scanner/create-scanner.js');
-  const { collectFiles } = await import('./domain/scanner/file-collector.js');
-  const { createEventBus } = await import('./infra/event-bus.js');
-  const { createFixer } = await import('./domain/fixer/create-fixer.js');
-  const { createFixService } = await import('./services/fix-service.js');
-  const { readFile } = await import('node:fs/promises');
-  const { resolve } = await import('node:path');
-  const { fileURLToPath } = await import('node:url');
-
-  const events = createEventBus();
-  const scanner = createScanner(state.regulationData.scoring?.scoring);
-  const scanService = createScanService({
-    scanner,
-    collectFiles,
-    events,
+  const { mcpServer } = await createMcpStack({
+    regulationData: state.regulationData,
+    projectPath: state.projectPath,
     getLastScanResult: () => state.lastScanResult,
     setLastScanResult: (r) => { state.lastScanResult = r; },
-  });
-
-  const fixer = createFixer({
-    getFramework: () => 'generic',
-    getProjectPath: () => state.projectPath,
-    getExistingFiles: () => [],
-  });
-
-  const templatesDir = resolve(
-    fileURLToPath(import.meta.url), '..', '..', 'data', 'templates', 'eu-ai-act',
-  );
-
-  const fixService = createFixService({
-    fixer,
-    scanService,
-    events,
-    getProjectPath: () => state.projectPath,
-    getLastScanResult: () => state.lastScanResult,
-    loadTemplate: (f) => readFile(resolve(templatesDir, f), 'utf-8'),
-  });
-
-  const handlers = createMcpHandlers({
-    scanService,
-    fixService,
-    getProjectPath: () => state.projectPath,
-    getLastScanResult: () => state.lastScanResult,
-    getRegulationData: () => state.regulationData,
     version: state.version,
   });
 
-  const mcp = createMcpServer({ handlers, version: state.version });
-  await mcp.start();
+  await mcpServer.start();
 };
 
 const main = isMcpMode ? startMcp : startHttp;

@@ -11,7 +11,7 @@ mod headless;
 mod input;
 mod layout;
 mod obligations;
-mod providers;
+
 mod session;
 mod theme;
 mod theme_picker;
