@@ -515,4 +515,6 @@ pub enum AppCommand {
     CompleteOnboarding,
     /// Save partial onboarding progress for resume.
     SaveOnboardingPartial(usize),
+    /// Load Agent Passports from engine.
+    LoadPassports,
 }

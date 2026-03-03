@@ -1,4 +1,3 @@
-import type { L3CheckResult } from './layers/layer3-config.js';
 import type { ParsedDependency } from './layers/layer3-parsers.js';
 import { isBannedPackage, isAiSdkPackage } from './rules/banned-packages.js';
 import { SCANNER_RULES_VERSION } from './regulation-version.js';

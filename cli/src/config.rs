@@ -111,7 +111,11 @@ impl Default for TuiConfig {
 
 impl TuiConfig {
     pub fn engine_url(&self) -> String {
-        format!("http://{}:{}", self.engine_host, self.engine_port)
+        if let Some(ref url) = self.engine_url_override {
+            url.clone()
+        } else {
+            format!("http://{}:{}", self.engine_host, self.engine_port)
+        }
     }
 }
 

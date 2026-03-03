@@ -21,6 +21,8 @@ pub struct PassportViewState {
     pub fields: Vec<PassportField>,
     pub selected_index: usize,
     pub scroll_offset: usize,
+    /// Loaded passport data from engine (raw JSON values).
+    pub loaded_passports: Vec<serde_json::Value>,
 }
 
 impl Default for PassportViewState {
@@ -29,6 +31,7 @@ impl Default for PassportViewState {
             fields: default_passport_fields(),
             selected_index: 0,
             scroll_offset: 0,
+            loaded_passports: Vec::new(),
         }
     }
 }
@@ -49,6 +52,104 @@ impl PassportViewState {
         pct
     }
 
+    /// Populate fields from loaded passport data (engine response).
+    pub fn load_from_passports(&mut self) {
+        // Use first loaded passport if available
+        let Some(passport) = self.loaded_passports.first() else {
+            return;
+        };
+
+        for field in &mut self.fields {
+            let value = match field.name {
+                "name" => passport.get("name").and_then(|v| v.as_str()).map(String::from),
+                "version" => passport.get("version").and_then(|v| v.as_str()).map(String::from),
+                "description" => passport.get("description").and_then(|v| v.as_str()).map(String::from),
+                "provider" => passport
+                    .get("model")
+                    .and_then(|m| m.get("provider"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "deployer" => passport
+                    .get("owner")
+                    .and_then(|o| o.get("team"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "country" => passport
+                    .get("model")
+                    .and_then(|m| m.get("data_residency"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "riskClass" => passport
+                    .get("compliance")
+                    .and_then(|c| c.get("eu_ai_act"))
+                    .and_then(|e| e.get("risk_class"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "autonomy" => passport
+                    .get("autonomy_level")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "constraints" => passport
+                    .get("constraints")
+                    .and_then(|c| c.get("human_approval_required"))
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }),
+                "assignedPerson" => passport
+                    .get("owner")
+                    .and_then(|o| o.get("responsible_person"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "role" => passport
+                    .get("owner")
+                    .and_then(|o| o.get("contact"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "overrideProcedure" => None, // Manual field
+                "dataAccess" => passport
+                    .get("permissions")
+                    .and_then(|p| p.get("data_access"))
+                    .map(|da| {
+                        let read = da.get("read").and_then(|v| v.as_array())
+                            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                            .unwrap_or_default();
+                        let write = da.get("write").and_then(|v| v.as_array())
+                            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                            .unwrap_or_default();
+                        format!("read: {read}; write: {write}")
+                    }),
+                "permissions" => passport
+                    .get("permissions")
+                    .and_then(|p| p.get("tools"))
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }),
+                "dataRetention" => passport
+                    .get("logging")
+                    .and_then(|l| l.get("retention_days"))
+                    .and_then(|v| v.as_u64())
+                    .map(|d| format!("{d} days")),
+                "workerNotification" => None, // Manual field
+                "aiLiteracy" => None,         // Manual field
+                "impactAssessment" => None,   // Manual field
+                _ => None,
+            };
+
+            if let Some(v) = value {
+                if !v.is_empty() {
+                    field.value = v;
+                }
+            }
+        }
+    }
 }
 
 /// Render the Passport view — guided editing with field list + detail panel.

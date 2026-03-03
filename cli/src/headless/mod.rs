@@ -5,6 +5,7 @@
 //! logging. The output goes directly to stdout/stderr for consumption by CI
 //! runners, shell scripts, and human operators.
 
+pub mod agent;
 mod commands;
 pub mod daemon;
 mod fix;

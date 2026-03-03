@@ -148,6 +148,18 @@ impl EngineClient {
         Ok(result)
     }
 
+    /// Generic GET returning JSON — used for agent passport and other endpoints.
+    pub async fn get_json(&self, endpoint: &str) -> Result<serde_json::Value> {
+        let resp = self
+            .client
+            .get(format!("{}{endpoint}", self.base_url))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+        let result = resp.json::<serde_json::Value>().await?;
+        Ok(result)
+    }
+
     /// Generic POST with JSON body — used for report generation and other endpoints.
     pub async fn post_json(&self, endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
         let resp = self

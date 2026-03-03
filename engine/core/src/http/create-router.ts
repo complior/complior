@@ -12,6 +12,7 @@ import type { ShareService } from '../services/share-service.js';
 import type { ReportService } from '../services/report-service.js';
 import type { ExternalScanService } from '../services/external-scan-service.js';
 import type { StatusService } from '../services/status-service.js';
+import type { PassportService } from '../services/passport-service.js';
 import type { LlmPort } from '../ports/llm.port.js';
 import type { ScoreBreakdown } from '../types/common.types.js';
 import type { ToolExecutorDeps } from '../llm/tool-executors.js';
@@ -33,6 +34,7 @@ import { createProviderRoute } from './routes/provider.route.js';
 import { createDisclaimerRoute } from './routes/disclaimer.route.js';
 import { createOnboardingRoute } from './routes/onboarding.route.js';
 import { createWhatIfRoute } from './routes/whatif.route.js';
+import { createAgentRoute } from './routes/agent.route.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -45,6 +47,7 @@ export interface RouterDeps {
   readonly reportService: ReportService;
   readonly getExternalScanService: () => Promise<ExternalScanService>;
   readonly statusService: StatusService;
+  readonly passportService: PassportService;
   readonly llm: LlmPort;
   readonly toolExecutorDeps: ToolExecutorDeps;
   readonly getMode: () => AgentMode;
@@ -113,6 +116,7 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createDisclaimerRoute({ getVersion: deps.getVersion }));
   app.route('/', createOnboardingRoute(deps.onboardingWizard));
   app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore }));
+  app.route('/', createAgentRoute(deps.passportService));
 
   // Health check
   app.get('/health', (c) => c.json({ ok: true }));

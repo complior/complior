@@ -112,6 +112,46 @@ pub enum Command {
         #[arg(long)]
         watch: bool,
     },
+
+    /// Manage Agent Passport (AI system identity, permissions, compliance)
+    Agent {
+        #[command(subcommand)]
+        action: AgentAction,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum AgentAction {
+    /// Auto-generate Agent Passport from codebase analysis
+    Init {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// List all Agent Passports in this project
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// Show a specific Agent Passport
+    Show {
+        /// Agent name
+        name: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -145,7 +185,8 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Report { .. }
             | Command::Init { .. }
             | Command::Update
-            | Command::Daemon { .. },
+            | Command::Daemon { .. }
+            | Command::Agent { .. },
         ) => true,
         None => false,
     }
@@ -286,6 +327,77 @@ mod tests {
             cli.command,
             Some(Command::Daemon { action: Some(DaemonAction::Stop), .. })
         ));
+    }
+
+    #[test]
+    fn cli_parse_agent_init() {
+        let cli = Cli::parse_from(["complior", "agent", "init"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Init { json, path } }) => {
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Init command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_init_json() {
+        let cli = Cli::parse_from(["complior", "agent", "init", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Init { json, .. } }) => {
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Init command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_init_path() {
+        let cli = Cli::parse_from(["complior", "agent", "init", "/tmp/project"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Init { path, .. } }) => {
+                assert_eq!(path.as_deref(), Some("/tmp/project"));
+            }
+            _ => panic!("Expected Agent Init command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_list() {
+        let cli = Cli::parse_from(["complior", "agent", "list"]);
+        assert!(matches!(
+            &cli.command,
+            Some(Command::Agent { action: AgentAction::List { json: false, path: None } })
+        ));
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_show() {
+        let cli = Cli::parse_from(["complior", "agent", "show", "my-bot"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Show { name, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Show command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_show_json() {
+        let cli = Cli::parse_from(["complior", "agent", "show", "my-bot", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Show { name, json, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Show command"),
+        }
     }
 
     #[test]

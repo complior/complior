@@ -24,6 +24,7 @@ import { createReportService } from './services/report-service.js';
 import { createExternalScanService } from './services/external-scan-service.js';
 import type { ExternalScanService } from './services/external-scan-service.js';
 import { createStatusService } from './services/status-service.js';
+import { createPassportService } from './services/passport-service.js';
 import { createRouter } from './http/create-router.js';
 import { createFileWatcher } from './infra/file-watcher.js';
 import { createOnboardingWizard } from './onboarding/wizard.js';
@@ -81,8 +82,8 @@ export const loadApplication = async (): Promise<Application> => {
         const result = await generateText({ model, prompt });
         return {
           text: result.text,
-          inputTokens: result.usage?.promptTokens ?? 0,
-          outputTokens: result.usage?.completionTokens ?? 0,
+          inputTokens: (result.usage as Record<string, number>)?.promptTokens ?? 0,
+          outputTokens: (result.usage as Record<string, number>)?.completionTokens ?? 0,
         };
       } catch {
         return { text: '{"verdict":"uncertain","confidence":50,"reasoning":"LLM unavailable","evidence":[]}', inputTokens: 0, outputTokens: 0 };
@@ -203,6 +204,14 @@ export const loadApplication = async (): Promise<Application> => {
     getLastScanResult: () => state.lastScanResult,
   });
 
+  const passportService = createPassportService({
+    collectFiles,
+    scanner,
+    events,
+    getProjectPath: () => state.projectPath,
+    getLastScanResult: () => state.lastScanResult,
+  });
+
   // 5b. Create onboarding wizard
   const onboardingWizard = createOnboardingWizard({
     getProjectPath: () => state.projectPath,
@@ -220,6 +229,7 @@ export const loadApplication = async (): Promise<Application> => {
     reportService,
     getExternalScanService,
     statusService,
+    passportService,
     llm,
     getMode: () => state.currentMode,
     setMode: (mode) => { state.currentMode = mode; },

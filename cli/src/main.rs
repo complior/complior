@@ -65,6 +65,14 @@ async fn main() -> color_eyre::Result<()> {
         config.theme = theme_name.clone();
     }
 
+    // Auto-discover daemon port from PID file (if no --engine-url override)
+    if config.engine_url_override.is_none() {
+        let project_path = std::env::current_dir().unwrap_or_default();
+        if let Some(info) = daemon::find_running_daemon(&project_path) {
+            config.engine_url_override = Some(format!("http://127.0.0.1:{}", info.port));
+        }
+    }
+
     // Handle headless commands (non-TUI)
     if cli::is_headless(&parsed_cli) {
         match &parsed_cli.command {
@@ -116,6 +124,10 @@ async fn main() -> color_eyre::Result<()> {
                 let project_path = std::env::current_dir().unwrap_or_default();
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
                 return Ok(());
+            }
+            Some(cli::Command::Agent { action }) => {
+                let code = headless::agent::run_agent_command(action, &config).await;
+                std::process::exit(code);
             }
             None => unreachable!(),
         }

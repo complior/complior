@@ -688,6 +688,28 @@ pub async fn execute_command(
         AppCommand::SaveOnboardingPartial(last_step) => {
             config::save_onboarding_partial(last_step).await;
         }
+        AppCommand::LoadPassports => {
+            let path = app.project_path.to_string_lossy().to_string();
+            let url = format!("/agent/list?path={path}");
+            match app.engine_client.get_json(&url).await {
+                Ok(result) => {
+                    if let Some(arr) = result.as_array() {
+                        app.passport_view.loaded_passports = arr.clone();
+                        app.passport_view.load_from_passports();
+                        let count = arr.len();
+                        if count > 0 {
+                            app.messages.push(types::ChatMessage::new(
+                                types::MessageRole::System,
+                                format!("Loaded {count} passport(s) from engine."),
+                            ));
+                        }
+                    }
+                }
+                Err(_) => {
+                    // Silently fail — passports may not exist yet
+                }
+            }
+        }
     }
 }
 
