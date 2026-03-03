@@ -10,7 +10,11 @@ COMPLIANCE-REPORT-*.md
 .complior/
 
 # Local-only directories (not tracked in git)
-docs/
+docs/*
+!docs/BURNDOWN.md
+!docs/FEATURE-MAP.md
+!docs/FEATURE-AGENT-PASSPORT.md
+!docs/contributing/
 demos/
 .dev/
 scripts/
