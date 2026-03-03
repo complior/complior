@@ -501,6 +501,92 @@
 
 ---
 
+## Sprint 7 (WorkOS Migration + Registry API)
+
+**Total Story Points:** 39
+**Duration:** 2026-02-17 — 2026-02-24 (8 days)
+**Team:** Max (Backend), Nina (Frontend), Leo (Infra)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-02-17 | 39 | 39 | Sprint start |
+| 4 | 2026-02-21 | 18 | 19.5 | WorkOS migration done (US-071..073), Registry core endpoints (US-074..075) |
+| 8 | 2026-02-24 | 0 | 0 | Registry data migration (US-076..078), public pages (US-079), Documentation Grade |
+
+### Velocity
+
+| Metric | Value |
+|--------|-------|
+| Planned SP | 39 |
+| Completed SP | 39 |
+| Velocity | 39 SP / 8 days |
+| Carry-over | 0 |
+
+### Sprint 7 Completion Summary
+
+**WorkOS Migration (US-071..073 — 13 SP)**
+- **US-071** (8 SP): WorkOS backend — AuthKit callback, `syncUserFromWorkOS`, session cookie, headless auth (login/register/verify/reset) — done
+- **US-072** (3 SP): WorkOS frontend — login/register/callback pages, Settings SSO tab — done
+- **US-073** (2 SP): Remove Kratos — Docker service, Caddy proxy, env vars — done
+
+**Registry API (US-074..078 — 18 SP)**
+- **US-074** (5 SP): 7 public API endpoints (`/v1/registry/*`), API Key auth, ETag caching — done
+- **US-075** (2 SP): API Key management (create, list, revoke, HMAC-SHA256) — done
+- **US-076** (7 SP): Data migration — 6 new tables, 4,983 tools + 108 obligations → PostgreSQL — done
+- **US-077** (2 SP): Data quality fixes — OBL-CS → OBL-CSR, riskLevel population, enum extension — done
+- **US-078** (2 SP): findBySlug, level filter, sort param — done
+
+**Public Pages (US-079 — 10 SP)**
+- **US-079** (8 SP): Registry index + detail pages — ISR, 5 tabs, search/filter/sort, 27 files — done
+
+### Reviews
+- **Tests:** 343/343 pass (229 Sprint 6 + 114 new)
+- **Build:** `npm run build` — 0 errors
+
+---
+
+## Sprint 8 (FRIA + Dashboard v2 + Members) — IN PROGRESS
+
+**Total Story Points:** 49 planned, 18 done so far
+**Duration:** 2026-03-01 — ongoing
+**Team:** Max (Backend), Nina (Frontend)
+
+### Burndown Data
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-03-01 | 49 | 49 | Sprint start |
+| 3 | 2026-03-03 | 31 | 37 | US-081 FRIA full-stack done (8 SP), US-084 Dashboard v2 partial (7 SP), Members page (3 SP) |
+
+### Completed So Far
+
+**FRIA Generator (US-081 — 8 SP)**
+- **US-081** (8 SP): Full-stack FRIA — FRIAAssessment schema + organization relation, 6 API endpoints (create, detail, by-tool, update-section, update-status, list), 6 application services, `preFill` domain service, RBAC permissions. Frontend: FRIA wizard page, FRIAProgress + FRIASectionForm components, DocumentsTab integration, 6 sections (General Info, Affected Persons, Specific Risks, Human Oversight, Mitigation Measures, Monitoring Plan), ~140 i18n keys EN/DE — done
+
+**Dashboard v2 (US-084 — 7 SP)**
+- **US-084** (7 SP): 12 dashboard widgets (WelcomeBar, QuickActions, SummaryCards, RiskDonutChart, AttentionAlerts, ComplianceBreakdown, PenaltyExposure, DocumentStatus, TimelineWidget, ToolsTable, TeamRolesWidget, RecentActivityWidget). Live plan limits (direct SQL replaces stub). FRIA surface in 3 locations: AttentionAlerts "FRIA →" link, DocumentStatus live FRIA row, ToolDetailHeader "Complete FRIA" CTA. LockedOverlay on future widgets. EN/DE i18n — done
+
+**Members Page (3 SP)**
+- Members page frontend — MembersTable, MemberStats (4 KPI cards), InviteDialog, TrainingUsers placeholder. Search + role filter. EN/DE i18n — done
+
+### Remaining (31 SP)
+- US-082: Document Generators (7 SP)
+- US-083: Audit Package ZIP (6 SP)
+- US-085: Gap Analysis 12 AESIA (5 SP)
+- US-086: Compliance Timeline (3 SP)
+- US-087: CLI Auth Device Flow (3 SP)
+- US-088: CLI Sync Passport (4 SP)
+- US-089: TUI Daemon Push SSE (2 SP)
+- US-090: Vendor Verification (4 SP)
+
+### File Stats
+- 74 files changed, ~6,400 lines added
+- 42 new files (12 backend FRIA, 30 frontend components/pages)
+
+---
+
 ## Cumulative Velocity
 
 | Sprint | SP Planned | SP Done | Duration | Velocity (SP/day) |
@@ -515,7 +601,11 @@
 | 4 | 30 | 30 | 1 day | 30.0 |
 | 5 | 55 | 50 | 2 days | 25.0 |
 | 6 | 15 | 15 | 2 days | 7.5 |
-| **Total** | **322** | **317** | **19 days** | **16.7 avg** |
+| 7 | 39 | 39 | 8 days | 4.9 |
+| 8* | 49 | 18 | 3 days* | 6.0* |
+| **Total** | **410** | **374** | **30 days** | **12.5 avg** |
+
+*Sprint 8 in progress
 
 ### Test Growth
 
@@ -530,8 +620,12 @@
 | 4 | 221 | 148 | 369 |
 | 5 | 221 | 148 | 369 |
 | 6 | 229 | 148 | 377 |
+| 7 | 343 | 148 | 491 |
+| 8* | 343 | 148 | 491 |
+
+*Sprint 8 — no new tests yet (frontend-heavy work)
 
 ---
 
 **Updated by:** Claude Code (on behalf of Marcus)
-**Last update:** 2026-02-16
+**Last update:** 2026-03-03

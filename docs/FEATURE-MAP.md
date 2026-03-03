@@ -3,9 +3,9 @@
 > Maps every feature from PRODUCT-BACKLOG.md to implementation status.
 > Each feature lists its completed user stories with implementation details.
 
-**Обновлено:** 2026-02-24
-**Текущий статус:** Sprint 7 completed, Sprint 8 next
-**Тесты:** 343 | **Схемы:** 41 | **Endpoints:** 48 | **App-сервисы:** 42
+**Обновлено:** 2026-03-03
+**Текущий статус:** Sprint 8 in progress
+**Тесты:** 343 | **Схемы:** 42 | **Endpoints:** 54 | **App-сервисы:** 48
 
 ---
 
@@ -14,12 +14,12 @@
 | # | Feature | Status | US Done | SP Done | Sprint |
 |---|---------|--------|---------|---------|--------|
 | F01 | Infrastructure & Project Setup | **DONE** | 8 | 47 | S0 |
-| F02 | IAM + Team + Enforcement | **DONE** | 13 | 56 | S1, S2.5, S3.5, S7 |
+| F02 | IAM + Team + Enforcement | **DONE** | 14 | 59 | S1, S2.5, S3.5, S7, S8 |
 | F03 | AI Tool Inventory + Wizard | **DONE** | 7 | 32 | S1–S2 |
 | F04a | Rule Engine (deployer) | **DONE** | 3 | 18 | S2 |
 | F04b | Classification History | **DONE** | 1 | 3 | S3 |
 | F04c | Requirements Mapping | **DONE** | 3 | 9 | S3 |
-| F05 | Deployer Dashboard | **PARTIAL** | 1 | 6 | S3 |
+| F05 | Deployer Dashboard | **PARTIAL** | 2 | 13 | S3, S8 |
 | F06 | Eva — Conversational AI | SCHEMA ONLY | 0 | 0 | S8 |
 | F07 | Deployer Doc Generation | -- | 0 | 0 | S8 |
 | F08 | Gap Analysis | -- | 0 | 0 | S8 |
@@ -30,7 +30,7 @@
 | F13 | Доп. deployer-документы | -- | 0 | 0 | S9 |
 | F14 | Multi-language (DE, FR) | -- | 0 | 0 | S10 |
 | F18 | AI Literacy Module | SCHEMA ONLY | 0 | 0 | S10 |
-| F19 | FRIA Generator | SCHEMA ONLY | 0 | 0 | S8 |
+| F19 | FRIA Generator | **DONE** | 1 | 8 | S8 |
 | F20 | KI-Compliance Siegel | -- | 0 | 0 | S9 |
 | F21 | Provider-Lite Wizard | -- | 0 | 0 | S9 |
 | F22 | Compliance Checklist | -- | 0 | 0 | S9 |
@@ -39,7 +39,7 @@
 | F25 | WorkOS Migration | **DONE** | 3 | 13 | S7 |
 | F26 | Registry API | **DONE** | 5 | 18 | S7 |
 | F27 | TUI Data Collection | -- | 0 | 0 | S8 |
-| F28 | Dashboard v2 (Cross-System Map) | -- | 0 | 0 | S8 |
+| F28 | Dashboard v2 (Cross-System Map) | **PARTIAL** | 1 | 7 | S8 |
 | F29 | SaaS Discovery Connectors | -- | 0 | 0 | S9 |
 | F30 | Agent Governance Cloud | -- | 0 | 0 | S9 |
 | F31 | Remediation Cloud | -- | 0 | 0 | S9 |
@@ -51,7 +51,7 @@
 | F37 | AI Registry Public Pages (SEO) | **DONE** | 2 | 10 | S7 |
 | Infra | Production Deploy + DevOps | **DONE** | 10 | 33 | S4, S6 |
 | Frontend | Frontend Rebuild (S5) | **DONE** | — | — | S5 |
-| **TOTAL** | | | **65** | **275** | |
+| **TOTAL** | | | **69** | **297** | |
 
 ---
 
@@ -163,13 +163,14 @@ Pure domain service for deployer risk classification: Art. 5 prohibited, Annex I
 
 ## F05: Deployer Compliance Dashboard
 
-**Priority:** P0 | **Sprint:** 3 (backend API) | **Status:** PARTIAL | **SP:** 6
+**Priority:** P0 | **Sprint:** 3, 8 | **Status:** PARTIAL | **SP:** 13
 
-Backend API for org-wide summary. Full frontend dashboard planned for S8.
+Backend API for org-wide summary (S3). Frontend dashboard with 12 widgets + FRIA surface (S8). Cross-System Map + Score Trends pending.
 
 | US | Title | SP | Dev | Description |
 |----|-------|-----|-----|-------------|
-| US-029 | Dashboard Summary API | 6 | Max | `GET /api/dashboard/summary` — org-wide: tool count by risk level, overall compliance score, AI Literacy progress (stub), "requires attention" list (prohibited tools, missing FRIAs, overdue requirements). Compliance timeline dates |
+| US-029 | Dashboard Summary API | 6 | Max | S3: `GET /api/dashboard/summary` — org-wide: tool count by risk level, overall compliance score, AI Literacy progress (stub), "requires attention" list (prohibited tools, missing FRIAs, overdue requirements). Compliance timeline dates |
+| US-084 | Dashboard v2 Frontend + FRIA Surface | 7 | Nina | S8: 12 dashboard widgets (WelcomeBar, QuickActions, SummaryCards, RiskDonutChart, AttentionAlerts, ComplianceBreakdown, PenaltyExposure, DocumentStatus, TimelineWidget, ToolsTable, TeamRolesWidget, RecentActivityWidget). Live plan limits query replaces stub. FRIA surface in 3 locations: AttentionAlerts "FRIA →" link for high/critical tools, DocumentStatus live FRIA row (fetches `api.fria.getByTool`), ToolDetailHeader "Complete FRIA" teal CTA for high/prohibited risk tools. LockedOverlay on future widgets. EN/DE i18n |
 
 ---
 
@@ -185,6 +186,30 @@ Stripe Checkout, webhook handling, pricing page, plan-aware registration, test m
 | US-039 | Stripe Webhook Handler | 3 | Max | S3.5: `POST /api/webhooks/stripe` — handles `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.deleted`. Idempotent (event ID dedup). Updates Subscription record |
 | US-042 | Pricing Page | 3 | Nina | S3.5: `/pricing` — 5-plan comparison table. Monthly/Annual toggle (20% discount). Feature matrix. CTA → `/register?plan=starter&period=monthly`. EN/DE translations |
 | US-063 | Stripe Test Mode Setup | 3 | Max | S6: Stripe API keys in production env. Webhook endpoint verified. Test transactions working. Price IDs configured for all 4 paid plans |
+
+---
+
+## F19: FRIA Generator
+
+**Priority:** P0 | **Sprint:** 8 | **Status:** DONE | **SP:** 8
+
+Fundamental Rights Impact Assessment (Art. 27 EU AI Act) — full-stack CRUD with 6-section wizard.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-081 | FRIA Full-Stack | 8 | Max+Nina | **Backend:** FRIAAssessment schema with `organization` relation + `status` enum (draft/in_progress/review/completed). 6 API endpoints: `POST /api/fria` (create), `GET /api/fria/:id` (detail), `GET /api/fria/by-tool/:toolId` (by tool), `PUT /api/fria/:id/sections/:sectionType` (update section), `PUT /api/fria/:id/status` (update status), `GET /api/fria` (list). 6 application services + `preFill` domain service. RBAC permissions (member: create+read, admin: +update+delete). **Frontend:** FRIA wizard page (`/tools/[id]/fria/[friaId]`) with FRIAProgress + FRIASectionForm components. DocumentsTab on tool detail integrates FRIA start/continue. 6 sections: General Info, Affected Persons, Specific Risks, Human Oversight, Mitigation Measures, Monitoring Plan. ~140 i18n keys EN/DE |
+
+---
+
+## F02-ext: Members Page
+
+**Priority:** P1 | **Sprint:** 8 | **Status:** DONE | **SP:** 3
+
+Frontend Members page — team management UI that connects to existing S2.5 backend APIs.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-084b | Members Page Frontend | 3 | Nina | `/members` page with MembersTable, MemberStats (4 KPI cards), InviteDialog (modal with role selection), TrainingUsers placeholder. Connects to `GET /api/team/list`, `POST /api/team/invite`. Search + role filter. EN/DE i18n |
 
 ---
 
@@ -299,8 +324,9 @@ Full frontend rewrite: landing page (15 секций), auth pages (login/registe
 | **S5** | — | — | Frontend rebuild: landing, auth, pricing, quick check, penalty calc (Nina solo) |
 | **S6** | 15 | 4 | Admin Panel (6 endpoints + UI), Stripe test mode, frontend deploy |
 | **S7** | 39 | 9 | WorkOS migration (Ory→WorkOS), Registry API (4,983 tools), data migration (6 tables), public pages (27 files), headless auth, pg-boss jobs |
-| **Total** | **296+** | **65** | |
+| **S8** | 18* | 4 | FRIA full-stack (6 API endpoints, wizard, 6 sections), Dashboard v2 (12 widgets, live plan limits), Members page (table, invite, stats), FRIA surface (3 locations). *Sprint in progress — 18 of 49 SP done |
+| **Total** | **314+** | **69** | |
 
 ---
 
-**Источник данных:** PRODUCT-BACKLOG.md v4.1.0, SPRINT-BACKLOG-000 through 007
+**Источник данных:** PRODUCT-BACKLOG.md v4.1.0, SPRINT-BACKLOG-000 through 008
