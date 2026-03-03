@@ -152,6 +152,47 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Analyze project autonomy level (L1-L5) without generating a passport
+    Autonomy {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// Validate an existing Agent Passport (schema + signature + completeness)
+    Validate {
+        /// Agent name (validates all if omitted)
+        name: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// CI mode: exit 1 if validation fails
+        #[arg(long)]
+        ci: bool,
+
+        /// Strict mode: warnings also cause failure
+        #[arg(long)]
+        strict: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// Show passport completeness score and obligation gaps
+    Completeness {
+        /// Agent name
+        name: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -397,6 +438,106 @@ mod tests {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Show command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_autonomy() {
+        let cli = Cli::parse_from(["complior", "agent", "autonomy"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Autonomy { json, path } }) => {
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Autonomy command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_autonomy_json() {
+        let cli = Cli::parse_from(["complior", "agent", "autonomy", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Autonomy { json, .. } }) => {
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Autonomy command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_autonomy_path() {
+        let cli = Cli::parse_from(["complior", "agent", "autonomy", "/tmp/proj"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Autonomy { path, .. } }) => {
+                assert_eq!(path.as_deref(), Some("/tmp/proj"));
+            }
+            _ => panic!("Expected Agent Autonomy command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_validate() {
+        let cli = Cli::parse_from(["complior", "agent", "validate"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Validate { name, json, ci, strict, path } }) => {
+                assert!(name.is_none());
+                assert!(!json);
+                assert!(!ci);
+                assert!(!strict);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Validate command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_validate_name() {
+        let cli = Cli::parse_from(["complior", "agent", "validate", "my-bot"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Validate { name, .. } }) => {
+                assert_eq!(name.as_deref(), Some("my-bot"));
+            }
+            _ => panic!("Expected Agent Validate command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_validate_ci_strict() {
+        let cli = Cli::parse_from(["complior", "agent", "validate", "--ci", "--strict"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Validate { ci, strict, .. } }) => {
+                assert!(*ci);
+                assert!(*strict);
+            }
+            _ => panic!("Expected Agent Validate command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_completeness() {
+        let cli = Cli::parse_from(["complior", "agent", "completeness", "my-bot"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Completeness { name, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Completeness command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_completeness_json() {
+        let cli = Cli::parse_from(["complior", "agent", "completeness", "my-bot", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Completeness { name, json, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Completeness command"),
         }
     }
 

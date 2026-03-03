@@ -54,5 +54,52 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(manifest);
   });
 
+  // C.S02: Standalone autonomy analysis
+  app.get('/agent/autonomy', async (c) => {
+    const path = c.req.query('path');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+
+    const result = await passportService.analyzeProjectAutonomy(path);
+    return c.json(result);
+  });
+
+  // C.S07: Passport validation (schema + signature + completeness)
+  app.get('/agent/validate', async (c) => {
+    const path = c.req.query('path');
+    const name = c.req.query('name');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+    if (!name) {
+      throw new ValidationError('Missing "name" query parameter');
+    }
+
+    const result = await passportService.validatePassportByName(name, path);
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${name}`);
+    }
+    return c.json(result);
+  });
+
+  // C.S09: Passport completeness score
+  app.get('/agent/completeness', async (c) => {
+    const path = c.req.query('path');
+    const name = c.req.query('name');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+    if (!name) {
+      throw new ValidationError('Missing "name" query parameter');
+    }
+
+    const result = await passportService.getPassportCompleteness(name, path);
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${name}`);
+    }
+    return c.json(result);
+  });
+
   return app;
 };

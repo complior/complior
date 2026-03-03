@@ -11,9 +11,12 @@ import { runLayer3 } from '../domain/scanner/layers/layer3-config.js';
 import { runLayer4 } from '../domain/scanner/layers/layer4-patterns.js';
 import { discoverAgents } from '../domain/passport/agent-discovery.js';
 import { analyzeAutonomy } from '../domain/passport/autonomy-analyzer.js';
+import type { AutonomyAnalysis } from '../domain/passport/autonomy-analyzer.js';
 import { scanPermissions } from '../domain/passport/permission-scanner.js';
 import { buildManifest } from '../domain/passport/manifest-builder.js';
 import { loadOrCreateKeyPair, signManifest, verifyManifest } from '../domain/passport/crypto-signer.js';
+import { validatePassport, computeCompleteness } from '../domain/passport/passport-validator.js';
+import type { ValidationResult, CompletenessResult } from '../domain/passport/passport-validator.js';
 
 // --- Types ---
 
@@ -174,7 +177,46 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return verifyManifest(manifest);
   };
 
-  return Object.freeze({ initPassport, listPassports, showPassport, verifyPassport });
+  // C.S02: Standalone autonomy analysis (without full passport generation)
+  const analyzeProjectAutonomy = async (
+    projectPath?: string,
+  ): Promise<AutonomyAnalysis> => {
+    const path = projectPath ?? getProjectPath();
+    const ctx = await collectFiles(path);
+    const l3Results = runLayer3(ctx);
+    const l4Results = runLayer4(ctx, l3Results);
+    return analyzeAutonomy(l4Results);
+  };
+
+  // C.S07: Full validation of existing passport
+  const validatePassportByName = async (
+    name: string,
+    projectPath?: string,
+  ): Promise<ValidationResult | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+    return validatePassport(manifest);
+  };
+
+  // C.S09: Completeness score for existing passport
+  const getPassportCompleteness = async (
+    name: string,
+    projectPath?: string,
+  ): Promise<CompletenessResult | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+    return computeCompleteness(manifest);
+  };
+
+  return Object.freeze({
+    initPassport,
+    listPassports,
+    showPassport,
+    verifyPassport,
+    analyzeProjectAutonomy,
+    validatePassportByName,
+    getPassportCompleteness,
+  });
 };
 
 export type PassportService = ReturnType<typeof createPassportService>;

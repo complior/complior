@@ -105,4 +105,54 @@ const res = await client.chat.completions.create({
 
     expect(result).toBeNull();
   });
+
+  it('analyzeProjectAutonomy returns autonomy analysis', async () => {
+    const deps = createMockDeps([
+      createFile(
+        'package.json',
+        JSON.stringify({
+          name: 'ai-app',
+          dependencies: { openai: '4.20.0' },
+        }),
+        '.json',
+      ),
+      createFile(
+        'src/agent.ts',
+        `import OpenAI from 'openai';
+const client = new OpenAI();
+const res = await client.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }],
+});`,
+      ),
+    ]);
+
+    const service = createPassportService(deps);
+    const result = await service.analyzeProjectAutonomy('/tmp/test');
+
+    expect(result).toBeDefined();
+    expect(result.level).toMatch(/^L[1-5]$/);
+    expect(result.agentType).toMatch(/^(autonomous|assistive|hybrid)$/);
+    expect(result.evidence).toBeDefined();
+    expect(typeof result.evidence.human_approval_gates).toBe('number');
+    expect(typeof result.evidence.unsupervised_actions).toBe('number');
+  });
+
+  it('validatePassportByName returns null for nonexistent', async () => {
+    const deps = createMockDeps();
+
+    const service = createPassportService(deps);
+    const result = await service.validatePassportByName('nonexistent', '/tmp/test');
+
+    expect(result).toBeNull();
+  });
+
+  it('getPassportCompleteness returns null for nonexistent', async () => {
+    const deps = createMockDeps();
+
+    const service = createPassportService(deps);
+    const result = await service.getPassportCompleteness('nonexistent', '/tmp/test');
+
+    expect(result).toBeNull();
+  });
 });
