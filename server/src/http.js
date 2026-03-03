@@ -183,6 +183,21 @@ const initSessionHook = (server, workosClient) => {
           user: result.user,
           organizationId: result.organizationId,
         };
+      } else {
+        // Access token expired — try refresh
+        const refreshResult = await workosClient.refreshSession(sessionData);
+        if (refreshResult.authenticated) {
+          // Re-verify with the fresh sealed session
+          const verified = await workosClient.verifySessionCookie(refreshResult.sealedSession);
+          if (verified.authenticated) {
+            request.session = {
+              user: verified.user,
+              organizationId: verified.organizationId,
+            };
+            // Store new sealed session to set updated cookie in reply
+            request._refreshedSession = refreshResult.sealedSession;
+          }
+        }
       }
     } catch {
       // Session invalid — leave null, handlers decide if auth required
@@ -303,6 +318,17 @@ const registerSandboxRoutes = (server, api) => {
         session: request.session,
       });
       const statusCode = result?._statusCode || 200;
+
+      // Set refreshed session cookie if access token was renewed
+      if (request._refreshedSession) {
+        reply.setCookie('wos-session', request._refreshedSession, {
+          path: '/',
+          httpOnly: true,
+          secure: (process.env.WORKOS_REDIRECT_URI || '').startsWith('https'),
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 400,
+        });
+      }
 
       // Set cookie if returned by handler
       if (result?._cookie) {

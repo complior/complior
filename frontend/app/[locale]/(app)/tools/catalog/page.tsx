@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import { Plus } from 'lucide-react';
 import { CatalogSearch } from '@/components/tools/CatalogSearch';
 import { CatalogCard } from '@/components/tools/CatalogCard';
 import { CatalogDetailDialog } from '@/components/tools/CatalogDetailDialog';
@@ -8,6 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { api, type CatalogTool, type PaginatedResponse } from '@/lib/api';
 
 export default function CatalogPage() {
+  const locale = useLocale();
+  const t = useTranslations('wizard');
   const [result, setResult] = useState<PaginatedResponse<CatalogTool> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,11 +56,19 @@ export default function CatalogPage() {
 
   return (
     <div className="mx-auto max-w-ctr px-8 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--dark)]">AI Tool Catalog</h1>
-        <p className="mt-1 text-[var(--dark5)]">
-          {result ? `${result.pagination.total} AI Tools` : 'Browse AI Tools'} — EU AI Act Risk Assessment
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--dark)]">AI Tool Catalog</h1>
+          <p className="mt-1 text-[var(--dark5)]">
+            {result ? `${result.pagination.total} AI Tools` : 'Browse AI Tools'} — EU AI Act Risk Assessment
+          </p>
+        </div>
+        <Link href={`/${locale}/tools/new`}>
+          <Button className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            {t('title')}
+          </Button>
+        </Link>
       </div>
 
       <div className="mb-6">

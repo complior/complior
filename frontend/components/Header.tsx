@@ -62,6 +62,7 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
     { href: `/${locale}/dashboard`, label: t('dashboard') },
     { href: `/${locale}/tools/inventory`, label: t('inventory') },
     { href: `/${locale}/tools/catalog`, label: t('catalog') },
+    { href: `/${locale}/members`, label: t('members') },
     { href: `/${locale}/settings`, label: t('settings') },
   ];
 
@@ -256,8 +257,8 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
 
         {/* Nav — .nv */}
         <ul style={nvStyle} className="hdr-nv">
-          {links.map((link) => (
-            <li key={link.href}>
+          {links.map((link, i) => (
+            <li key={`${link.href}-${i}`}>
               <Link
                 href={link.href}
                 style={nvLinkStyle}

@@ -1,44 +1,26 @@
 'use client';
 
-import { Button } from '@/components/ui/Button';
+import { useTranslations } from 'next-intl';
+import { ChevronLeft, Shield } from 'lucide-react';
 
-const DOMAIN_LABELS: Record<string, string> = {
-  biometrics: 'Biometrie',
-  critical_infrastructure: 'Kritische Infrastruktur',
-  education: 'Bildung',
-  employment: 'Beschäftigung',
-  essential_services: 'Grundlegende Dienste',
-  law_enforcement: 'Strafverfolgung',
-  migration: 'Migration',
-  justice: 'Justiz',
-  customer_service: 'Kundenservice',
-  marketing: 'Marketing',
-  coding: 'Softwareentwicklung',
-  analytics: 'Analytik',
-  other: 'Sonstiges',
+const DOMAIN_I18N_MAP: Record<string, string> = {
+  biometrics: 'Biometrics', critical_infrastructure: 'CriticalInfra', education: 'Education',
+  employment: 'Employment', essential_services: 'EssentialServices', law_enforcement: 'LawEnforcement',
+  migration: 'Migration', justice: 'Justice', customer_service: 'CustomerService',
+  marketing: 'Marketing', coding: 'Coding', analytics: 'Analytics', other: 'Other',
 };
 
-const DATA_TYPE_LABELS: Record<string, string> = {
-  personal: 'Personenbezogen',
-  sensitive: 'Besonders sensibel',
-  biometric: 'Biometrisch',
-  health: 'Gesundheit',
-  financial: 'Finanziell',
+const DATA_TYPE_I18N_MAP: Record<string, string> = {
+  personal: 'Personal', sensitive: 'Sensitive', biometric: 'Biometric', health: 'Health', financial: 'Financial',
 };
 
-const PERSON_LABELS: Record<string, string> = {
-  employees: 'Mitarbeiter',
-  customers: 'Kunden',
-  applicants: 'Bewerber',
-  patients: 'Patienten',
-  students: 'Schüler/Studenten',
-  public: 'Allgemeine Öffentlichkeit',
+const PERSON_I18N_MAP: Record<string, string> = {
+  employees: 'Employees', customers: 'Customers', applicants: 'Applicants',
+  patients: 'Patients', students: 'Students', public: 'Public',
 };
 
-const AUTONOMY_LABELS: Record<string, string> = {
-  advisory: 'Beratend',
-  semi_autonomous: 'Teilautonom',
-  autonomous: 'Autonom',
+const AUTONOMY_I18N_MAP: Record<string, string> = {
+  advisory: 'Advisory', semi_autonomous: 'SemiAutonomous', autonomous: 'Autonomous',
 };
 
 interface WizardData {
@@ -65,62 +47,116 @@ interface Step5ReviewProps {
 }
 
 export function Step5Review({ data, onBack, onClassify, classifying }: Step5ReviewProps) {
+  const t = useTranslations('wizard');
+
+  const domainLabel = DOMAIN_I18N_MAP[data.domain]
+    ? t(`domain${DOMAIN_I18N_MAP[data.domain]}`) : data.domain;
+
+  const autonomyLabel = AUTONOMY_I18N_MAP[data.autonomyLevel]
+    ? t(`autonomy${AUTONOMY_I18N_MAP[data.autonomyLevel]}`) : data.autonomyLevel;
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Schritt 5: Zusammenfassung</h2>
-      <p className="text-sm text-slate-500">Prüfen Sie alle Angaben vor der Klassifizierung.</p>
+    <div>
+      <div className="mb-1 font-display text-lg font-bold text-[var(--dark)]">{t('step5Title')}</div>
+      <div className="text-[0.8125rem] text-[var(--dark5)] mb-6">{t('step5Subtitle')}</div>
 
-      <div className="space-y-4">
-        <Section title="Tool-Informationen">
-          <Row label="Name" value={data.name} />
-          <Row label="Anbieter" value={data.vendorName} />
-          {data.vendorCountry && <Row label="Land" value={data.vendorCountry} />}
-          {data.vendorUrl && <Row label="Website" value={data.vendorUrl} />}
-          {data.description && <Row label="Beschreibung" value={data.description} />}
-        </Section>
+      {/* AI Tool */}
+      <SumGroup label={t('sectionToolInfo')}>
+        <SumVal>
+          <strong>{data.name}</strong> by {data.vendorName}
+        </SumVal>
+      </SumGroup>
 
-        <Section title="Verwendungszweck">
-          <Row label="Zweck" value={data.purpose} />
-          <Row label="Bereich" value={DOMAIN_LABELS[data.domain] || data.domain} />
-        </Section>
+      {/* Purpose */}
+      {data.purpose && (
+        <SumGroup label={t('reviewPurpose')}>
+          <SumVal>{data.purpose}</SumVal>
+        </SumGroup>
+      )}
 
-        <Section title="Daten & Betroffene">
-          <Row label="Datentypen" value={data.dataTypes.map((d) => DATA_TYPE_LABELS[d] || d).join(', ')} />
-          <Row label="Betroffene" value={data.affectedPersons.map((p) => PERSON_LABELS[p] || p).join(', ')} />
-          <Row label="Vulnerable Gruppen" value={data.vulnerableGroups ? 'Ja' : 'Nein'} />
-        </Section>
+      {/* Domain */}
+      {data.domain && (
+        <SumGroup label={t('reviewDomain')}>
+          <SumVal>{domainLabel}</SumVal>
+        </SumGroup>
+      )}
 
-        <Section title="Autonomie & Aufsicht">
-          <Row label="Autonomiestufe" value={AUTONOMY_LABELS[data.autonomyLevel] || data.autonomyLevel} />
-          <Row label="Menschliche Aufsicht" value={data.humanOversight ? 'Ja' : 'Nein'} />
-          <Row label="Betrifft nat. Personen" value={data.affectsNaturalPersons ? 'Ja' : 'Nein'} />
-        </Section>
-      </div>
+      {/* Data Types */}
+      {data.dataTypes.length > 0 && (
+        <SumGroup label={t('reviewDataTypes')}>
+          <div className="flex flex-wrap gap-1 p-2 bg-[var(--bg2)] rounded-md border border-[var(--b)]">
+            {data.dataTypes.map((d) => (
+              <span key={d} className="font-mono text-[0.5rem] px-1.5 py-0.5 rounded bg-[var(--bg3)] text-[var(--dark3)]">
+                {DATA_TYPE_I18N_MAP[d] ? t(`data${DATA_TYPE_I18N_MAP[d]}`) : d}
+              </span>
+            ))}
+          </div>
+        </SumGroup>
+      )}
 
-      <div className="flex justify-between pt-4">
-        <Button variant="secondary" onClick={onBack}>Zurück</Button>
-        <Button onClick={onClassify} disabled={classifying}>
-          {classifying ? 'Klassifizierung...' : 'Jetzt klassifizieren'}
-        </Button>
+      {/* Affected Persons */}
+      {data.affectedPersons.length > 0 && (
+        <SumGroup label={t('reviewAffectedPersons')}>
+          <div className="flex flex-wrap gap-1 p-2 bg-[var(--bg2)] rounded-md border border-[var(--b)]">
+            {data.affectedPersons.map((p) => (
+              <span key={p} className="font-mono text-[0.5rem] px-1.5 py-0.5 rounded bg-[var(--bg3)] text-[var(--dark3)]">
+                {PERSON_I18N_MAP[p] ? t(`person${PERSON_I18N_MAP[p]}`) : p}
+              </span>
+            ))}
+          </div>
+        </SumGroup>
+      )}
+
+      {/* Autonomy */}
+      {data.autonomyLevel && (
+        <SumGroup label={t('reviewAutonomyLevel')}>
+          <SumVal>{autonomyLabel}</SumVal>
+        </SumGroup>
+      )}
+
+      {/* Booleans */}
+      <SumGroup label={t('reviewHumanOversight')}>
+        <SumVal>{data.humanOversight ? t('yes') : t('no')}</SumVal>
+      </SumGroup>
+
+      <SumGroup label={t('reviewVulnerableGroups')}>
+        <SumVal>{data.vulnerableGroups ? t('yes') : t('no')}</SumVal>
+      </SumGroup>
+
+      {/* Button row */}
+      <div className="flex justify-between items-center mt-8 pt-5 border-t border-[var(--b)]">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 font-body font-bold text-[0.8125rem] text-[var(--dark4)] bg-transparent border-none cursor-pointer hover:text-[var(--dark2)] transition-colors"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" /> {t('back')}
+        </button>
+        <button
+          onClick={onClassify}
+          disabled={classifying}
+          className="inline-flex items-center gap-2 px-7 py-3 rounded-lg font-body font-bold text-[0.875rem] bg-[var(--teal)] text-white shadow-[0_2px_8px_var(--teal-glow)] hover:bg-[var(--teal2)] hover:-translate-y-px transition-all cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed dark:text-[var(--bg)]"
+        >
+          <Shield className="w-3.5 h-3.5" />
+          {classifying ? t('classifying') : t('classifyNow')}
+        </button>
       </div>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function SumGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-4">
-      <h3 className="mb-2 text-sm font-semibold text-slate-700">{title}</h3>
-      <dl className="space-y-1">{children}</dl>
+    <div className="mb-4">
+      <div className="font-mono text-[0.4375rem] font-bold uppercase tracking-[0.08em] text-[var(--dark5)] mb-1.5">{label}</div>
+      {children}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function SumVal({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex text-sm">
-      <dt className="w-40 shrink-0 text-slate-500">{label}</dt>
-      <dd className="text-slate-900">{value || '—'}</dd>
+    <div className="text-[0.875rem] text-[var(--dark)] font-medium px-3 py-2 bg-[var(--bg2)] rounded-md border border-[var(--b)]">
+      {children}
     </div>
   );
 }

@@ -50,6 +50,7 @@ const permissions = [
   { role: 'member', resource: 'ComplianceDocument', action: 'read' },
   { role: 'member', resource: 'FRIAAssessment', action: 'create' },
   { role: 'member', resource: 'FRIAAssessment', action: 'read' },
+  { role: 'member', resource: 'FRIAAssessment', action: 'update' },
   { role: 'member', resource: 'TrainingCourse', action: 'read' },
   { role: 'member', resource: 'LiteracyCompletion', action: 'read' },
   { role: 'member', resource: 'Notification', action: 'read' },

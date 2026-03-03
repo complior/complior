@@ -1,24 +1,28 @@
 'use client';
 
-import { Label } from '@/components/ui/Label';
-import { Button } from '@/components/ui/Button';
+import { useTranslations } from 'next-intl';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const DATA_TYPES = [
-  { value: 'personal', label: 'Personenbezogen', desc: 'Name, E-Mail, Adresse' },
-  { value: 'sensitive', label: 'Besonders sensibel', desc: 'Ethnie, Religion, Gewerkschaft' },
-  { value: 'biometric', label: 'Biometrisch', desc: 'Gesicht, Fingerabdruck, Stimme' },
-  { value: 'health', label: 'Gesundheit', desc: 'Medizinische Daten, Behinderung' },
-  { value: 'financial', label: 'Finanziell', desc: 'Kreditdaten, Kontostand, Einkommen' },
-];
+const DATA_TYPE_KEYS = ['personal', 'sensitive', 'biometric', 'health', 'financial'] as const;
 
-const AFFECTED_PERSONS = [
-  { value: 'employees', label: 'Mitarbeiter' },
-  { value: 'customers', label: 'Kunden' },
-  { value: 'applicants', label: 'Bewerber' },
-  { value: 'patients', label: 'Patienten' },
-  { value: 'students', label: 'Schüler/Studenten' },
-  { value: 'public', label: 'Allgemeine Öffentlichkeit' },
-];
+const DATA_TYPE_I18N_MAP: Record<string, string> = {
+  personal: 'Personal',
+  sensitive: 'Sensitive',
+  biometric: 'Biometric',
+  health: 'Health',
+  financial: 'Financial',
+};
+
+const PERSON_KEYS = ['employees', 'customers', 'applicants', 'patients', 'students', 'public'] as const;
+
+const PERSON_I18N_MAP: Record<string, string> = {
+  employees: 'Employees',
+  customers: 'Customers',
+  applicants: 'Applicants',
+  patients: 'Patients',
+  students: 'Students',
+  public: 'Public',
+};
 
 interface Step3Data {
   dataTypes: string[];
@@ -35,6 +39,8 @@ interface Step3DataProps {
 }
 
 export function Step3Data({ data, onChange, onNext, onBack, errors }: Step3DataProps) {
+  const t = useTranslations('wizard');
+
   const toggleItem = (field: 'dataTypes' | 'affectedPersons', value: string) => {
     const current = data[field] as string[];
     const next = current.includes(value)
@@ -44,83 +50,118 @@ export function Step3Data({ data, onChange, onNext, onBack, errors }: Step3DataP
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Schritt 3: Daten & Betroffene</h2>
-      <p className="text-sm text-slate-500">Welche Daten verarbeitet das Tool und wer ist betroffen?</p>
+    <div>
+      <div className="mb-1 font-display text-lg font-bold text-[var(--dark)]">{t('step3Title')}</div>
+      <div className="text-[0.8125rem] text-[var(--dark5)] mb-6">{t('step3Subtitle')}</div>
 
-      <div className="space-y-4">
-        <div>
-          <Label>Datentypen *</Label>
-          {errors.dataTypes && <p className="mt-1 text-xs text-red-600">{errors.dataTypes[0]}</p>}
-          <div className="mt-2 space-y-2">
-            {DATA_TYPES.map((dt) => (
-              <label
-                key={dt.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors ${
-                  data.dataTypes.includes(dt.value)
-                    ? 'border-primary-600 bg-primary-50'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
+      {/* Data Types */}
+      <div className="mb-5">
+        <label className="flex items-center gap-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-[var(--dark4)] mb-1.5">
+          {t('fieldDataTypes')} <span className="text-[var(--coral)] text-[0.625rem]">*</span>
+        </label>
+        {errors.dataTypes && <p className="mb-2 text-xs text-[var(--coral)]">{errors.dataTypes[0]}</p>}
+        <div className="flex flex-col gap-1.5">
+          {DATA_TYPE_KEYS.map((key) => {
+            const i18nKey = DATA_TYPE_I18N_MAP[key];
+            const selected = data.dataTypes.includes(key);
+            return (
+              <div
+                key={key}
+                onClick={() => toggleItem('dataTypes', key)}
+                className={`
+                  flex items-start gap-2.5 px-3 py-2 border-[1.5px] rounded-lg cursor-pointer transition-all
+                  ${selected
+                    ? 'border-[var(--teal)] bg-[var(--teal-dim)]'
+                    : 'border-[var(--b2)] hover:border-[var(--teal)] hover:bg-[var(--teal-dim)]'
+                  }
+                `}
               >
-                <input
-                  type="checkbox"
-                  checked={data.dataTypes.includes(dt.value)}
-                  onChange={() => toggleItem('dataTypes', dt.value)}
-                  className="mt-0.5 rounded border-slate-300"
-                />
-                <div>
-                  <p className="font-medium">{dt.label}</p>
-                  <p className="text-xs text-slate-500">{dt.desc}</p>
+                {/* Custom checkbox */}
+                <div className={`
+                  w-4 h-4 rounded flex-shrink-0 mt-0.5 border-2 flex items-center justify-center text-[0.5rem]
+                  ${selected ? 'border-[var(--teal)] bg-[var(--teal)]' : 'border-[var(--b3)]'}
+                `}>
+                  {selected && <span className="text-white dark:text-[var(--bg)] font-bold leading-none">{'\u2713'}</span>}
                 </div>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <Label>Betroffene Personen *</Label>
-          {errors.affectedPersons && <p className="mt-1 text-xs text-red-600">{errors.affectedPersons[0]}</p>}
-          <div className="mt-2 flex flex-wrap gap-2">
-            {AFFECTED_PERSONS.map((ap) => (
-              <label
-                key={ap.value}
-                className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  data.affectedPersons.includes(ap.value)
-                    ? 'border-primary-600 bg-primary-50 text-primary-700'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={data.affectedPersons.includes(ap.value)}
-                  onChange={() => toggleItem('affectedPersons', ap.value)}
-                  className="sr-only"
-                />
-                {ap.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="flex items-start gap-3 rounded-md border border-slate-200 p-3 text-sm cursor-pointer hover:border-slate-300">
-            <input
-              type="checkbox"
-              checked={data.vulnerableGroups}
-              onChange={(e) => onChange({ ...data, vulnerableGroups: e.target.checked })}
-              className="mt-0.5 rounded border-slate-300"
-            />
-            <div>
-              <p className="font-medium">Vulnerable Gruppen betroffen</p>
-              <p className="text-xs text-slate-500">Kinder, ältere Menschen, Menschen mit Behinderung oder in wirtschaftlich schwieriger Lage</p>
-            </div>
-          </label>
+                <div className="text-[0.8125rem] font-semibold text-[var(--dark2)]">{t(`data${i18nKey}`)}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="flex justify-between pt-4">
-        <Button variant="secondary" onClick={onBack}>Zurück</Button>
-        <Button onClick={onNext}>Weiter</Button>
+      {/* Affected Persons */}
+      <div className="mb-5">
+        <label className="flex items-center gap-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-[var(--dark4)] mb-1.5">
+          {t('fieldAffectedPersons')} <span className="text-[var(--coral)] text-[0.625rem]">*</span>
+        </label>
+        {errors.affectedPersons && <p className="mb-2 text-xs text-[var(--coral)]">{errors.affectedPersons[0]}</p>}
+        <div className="flex flex-col gap-1.5">
+          {PERSON_KEYS.map((key) => {
+            const i18nKey = PERSON_I18N_MAP[key];
+            const selected = data.affectedPersons.includes(key);
+            return (
+              <div
+                key={key}
+                onClick={() => toggleItem('affectedPersons', key)}
+                className={`
+                  flex items-start gap-2.5 px-3 py-2 border-[1.5px] rounded-lg cursor-pointer transition-all
+                  ${selected
+                    ? 'border-[var(--teal)] bg-[var(--teal-dim)]'
+                    : 'border-[var(--b2)] hover:border-[var(--teal)] hover:bg-[var(--teal-dim)]'
+                  }
+                `}
+              >
+                {/* Custom checkbox */}
+                <div className={`
+                  w-4 h-4 rounded flex-shrink-0 mt-0.5 border-2 flex items-center justify-center text-[0.5rem]
+                  ${selected ? 'border-[var(--teal)] bg-[var(--teal)]' : 'border-[var(--b3)]'}
+                `}>
+                  {selected && <span className="text-white dark:text-[var(--bg)] font-bold leading-none">{'\u2713'}</span>}
+                </div>
+                <div className="text-[0.8125rem] font-semibold text-[var(--dark2)]">{t(`person${i18nKey}`)}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Vulnerable Groups Toggle */}
+      <div className="mb-4">
+        <label className="flex items-center gap-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-[var(--dark4)] mb-1.5">
+          {t('vulnerableGroups')}
+        </label>
+        <div
+          onClick={() => onChange({ ...data, vulnerableGroups: !data.vulnerableGroups })}
+          className={`
+            flex items-center justify-between px-3 py-2.5 border-[1.5px] rounded-lg cursor-pointer transition-all
+            ${data.vulnerableGroups
+              ? 'border-[var(--teal)] bg-[var(--teal-dim)]'
+              : 'border-[var(--b2)] hover:border-[var(--b3)]'
+            }
+          `}
+        >
+          <span className="text-[0.8125rem] font-semibold text-[var(--dark2)]">{t('vulnerableGroupsDesc')}</span>
+          <div className={`w-9 h-5 rounded-[10px] relative transition-colors flex-shrink-0 ${data.vulnerableGroups ? 'bg-[var(--teal)]' : 'bg-[var(--bg3)]'}`}>
+            <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 shadow-sm transition-all ${data.vulnerableGroups ? 'left-[18px]' : 'left-0.5'}`} />
+          </div>
+        </div>
+      </div>
+
+      {/* Button row */}
+      <div className="flex justify-between items-center mt-8 pt-5 border-t border-[var(--b)]">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 font-body font-bold text-[0.8125rem] text-[var(--dark4)] bg-transparent border-none cursor-pointer hover:text-[var(--dark2)] transition-colors"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" /> {t('back')}
+        </button>
+        <button
+          onClick={onNext}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-body font-bold text-[0.8125rem] bg-[var(--teal)] text-white shadow-[0_2px_8px_var(--teal-glow)] hover:bg-[var(--teal2)] hover:-translate-y-px transition-all cursor-pointer border-none dark:text-[var(--bg)]"
+        >
+          {t('next')} <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );

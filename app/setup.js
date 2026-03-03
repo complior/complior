@@ -214,6 +214,9 @@ const MIGRATIONS = [
    ADD COLUMN IF NOT EXISTS "workosOrgId" varchar UNIQUE`,
   `ALTER TABLE "Requirement"
    ADD COLUMN IF NOT EXISTS "translations" jsonb DEFAULT '{}'`,
+  // Sprint 8: FRIA multi-tenancy fix
+  `ALTER TABLE "FRIAAssessment"
+   ADD COLUMN IF NOT EXISTS "organizationId" bigint REFERENCES "Organization"("id") ON DELETE CASCADE`,
 ];
 
 const INDEXES = [
@@ -257,6 +260,10 @@ const INDEXES = [
     'idx_apikey_hash ON "ApiKey"("keyHash")',
   'CREATE INDEX IF NOT EXISTS ' +
     'idx_apikey_org ON "ApiKey"("organizationId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_fria_org ON "FRIAAssessment"("organizationId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_fria_tool ON "FRIAAssessment"("aiToolId")',
 ];
 
 const loadSchemas = async () => {

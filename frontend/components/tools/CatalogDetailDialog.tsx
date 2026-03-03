@@ -1,6 +1,8 @@
 'use client';
 
-import { ExternalLink } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+import { ExternalLink, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { RiskBadge } from './RiskBadge';
@@ -14,7 +16,25 @@ interface CatalogDetailDialogProps {
 }
 
 export function CatalogDetailDialog({ tool, open, onOpenChange }: CatalogDetailDialogProps) {
+  const t = useTranslations('toolDetail');
+  const tw = useTranslations('wizard');
+  const router = useRouter();
+  const locale = useLocale();
+
   if (!tool) return null;
+
+  const handleRegister = () => {
+    const params = new URLSearchParams({
+      catalogId: String(tool.id),
+      name: tool.name,
+      vendor: tool.vendor,
+    });
+    if (tool.vendorCountry) params.set('country', tool.vendorCountry);
+    if (tool.websiteUrl) params.set('website', tool.websiteUrl);
+    if (tool.description) params.set('description', tool.description);
+    onOpenChange(false);
+    router.push(`/${locale}/tools/new?${params.toString()}`);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -32,25 +52,25 @@ export function CatalogDetailDialog({ tool, open, onOpenChange }: CatalogDetailD
         <div className="space-y-4 pt-2">
           {tool.description && (
             <div>
-              <h4 className="mb-1 text-sm font-medium text-slate-900">Beschreibung</h4>
+              <h4 className="mb-1 text-sm font-medium text-slate-900">{tw('fieldDescription')}</h4>
               <p className="text-sm text-slate-600">{tool.description}</p>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <h4 className="mb-1 text-sm font-medium text-slate-900">Kategorie</h4>
+              <h4 className="mb-1 text-sm font-medium text-slate-900">{tw('fieldDomain')}</h4>
               <p className="text-sm text-slate-600">{CATEGORY_LABELS[tool.category] || tool.category}</p>
             </div>
             {tool.vendorCountry && (
               <div>
-                <h4 className="mb-1 text-sm font-medium text-slate-900">Herkunftsland</h4>
+                <h4 className="mb-1 text-sm font-medium text-slate-900">{tw('fieldCountry')}</h4>
                 <p className="text-sm text-slate-600">{tool.vendorCountry}</p>
               </div>
             )}
             {tool.dataResidency && (
               <div>
-                <h4 className="mb-1 text-sm font-medium text-slate-900">Datenspeicherort</h4>
+                <h4 className="mb-1 text-sm font-medium text-slate-900">{t('complianceStatus')}</h4>
                 <p className="text-sm text-slate-600">{tool.dataResidency}</p>
               </div>
             )}
@@ -58,7 +78,7 @@ export function CatalogDetailDialog({ tool, open, onOpenChange }: CatalogDetailD
 
           {tool.domains && tool.domains.length > 0 && (
             <div>
-              <h4 className="mb-1 text-sm font-medium text-slate-900">Einsatzbereiche (Annex III)</h4>
+              <h4 className="mb-1 text-sm font-medium text-slate-900">{tw('fieldDomain')} (Annex III)</h4>
               <div className="flex flex-wrap gap-1.5">
                 {tool.domains.map((domain) => (
                   <span
@@ -72,20 +92,20 @@ export function CatalogDetailDialog({ tool, open, onOpenChange }: CatalogDetailD
             </div>
           )}
 
-          {tool.websiteUrl && (
-            <div className="pt-2">
-              <a
-                href={tool.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+          <div className="flex items-center gap-2 pt-2">
+            <Button onClick={handleRegister} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              {tw('title')}
+            </Button>
+            {tool.websiteUrl && (
+              <a href={tool.websiteUrl} target="_blank" rel="noopener noreferrer">
                 <Button variant="secondary" size="sm" className="gap-1.5">
                   <ExternalLink className="h-3.5 w-3.5" />
-                  Website besuchen
+                  Website
                 </Button>
               </a>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

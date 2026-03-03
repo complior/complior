@@ -869,7 +869,11 @@
     "risk": "Risk",
     "status": "Status",
     "score": "Score",
-    "noClassifiedTools": "No classified tools yet"
+    "noClassifiedTools": "No classified tools yet",
+    "viewFria": "FRIA →",
+    "friaNotStarted": "Not started",
+    "friaInProgress": "In progress ({completed}/{total})",
+    "friaCompleted": "Completed"
   },
   "settings": {
     "title": "Settings",
@@ -1037,7 +1041,8 @@
     "breadcrumbDashboard": "Dashboard",
     "breadcrumbTools": "AI Tools",
     "documentsPlaceholder": "FRIA templates, compliance policies, and generated documentation will appear here.",
-    "auditTrailPlaceholder": "Complete log of changes, reclassifications, and compliance updates."
+    "auditTrailPlaceholder": "Complete log of changes, reclassifications, and compliance updates.",
+    "completeFria": "Complete FRIA"
   },
   "members": {
     "title": "Team Members",
@@ -1211,6 +1216,151 @@
     "existingTools": "Your Tools",
     "existingToolsEmpty": "No tools registered yet",
     "addAnotherTool": "Add Another Tool"
+  },
+  "fria": {
+    "title": "Fundamental Rights Impact Assessment",
+    "subtitle": "Art. 27 EU AI Act",
+    "startButton": "Start FRIA",
+    "continueButton": "Continue Assessment",
+    "notRequired": "FRIA is not required for minimal/limited risk tools",
+    "progress": "{completed} of {total} sections completed",
+    "sections": {
+      "general_info": "General Information",
+      "affected_persons": "Affected Persons",
+      "specific_risks": "Specific Risks",
+      "human_oversight": "Human Oversight",
+      "mitigation_measures": "Mitigation Measures",
+      "monitoring_plan": "Monitoring Plan"
+    },
+    "status": {
+      "draft": "Draft",
+      "in_progress": "In Progress",
+      "review": "Under Review",
+      "completed": "Completed"
+    },
+    "submitReview": "Submit for Review",
+    "markComplete": "Mark section as complete",
+    "save": "Save",
+    "saved": "Saved",
+    "saving": "Saving...",
+    "onboarding": {
+      "whatIsFria": "A Fundamental Rights Impact Assessment (FRIA) evaluates how your high-risk AI system may affect people's fundamental rights — including privacy, non-discrimination, and human dignity. It is a mandatory document under the EU AI Act for deployers of high-risk AI.",
+      "whyRequired": "Article 27 of the EU AI Act requires deployers of high-risk AI systems to conduct a fundamental rights impact assessment before putting the system into use.",
+      "whatHappens": "Completing this assessment generates a structured, audit-ready FRIA report (PDF). It also contributes to your overall compliance score and documents your due diligence.",
+      "legalBasisLabel": "Legal basis:",
+      "urgencyHigh": "Required before deployment of this high-risk AI system",
+      "estimatedTime": "Estimated 30–45 minutes"
+    },
+    "wizard": {
+      "backToTool": "Back to Tool",
+      "overallProgress": "{completed} of {total} sections — {percent}%",
+      "estimatedRemaining": "~{minutes} min remaining",
+      "saveAndContinue": "Save & Continue",
+      "saveDraft": "Save Draft",
+      "nextSection": "Next Section",
+      "previousSection": "Previous Section"
+    },
+    "sectionMeta": {
+      "general_info": {
+        "intro": "This section captures the basic context of your AI tool deployment. It identifies the tool, its purpose, and the domain in which it operates. Art. 27 requires this context to frame the entire assessment.",
+        "guidance": "Most fields are pre-filled from your tool registration. Focus on writing a clear, specific purpose statement that explains exactly how your organization uses this tool — this is the foundation of the entire FRIA.",
+        "time": "~3 min",
+        "description": "Tool context and deployment purpose"
+      },
+      "affected_persons": {
+        "intro": "Identify all groups of people whose fundamental rights may be affected by this AI system. Art. 27 requires you to consider both direct users and those indirectly impacted by AI-driven decisions.",
+        "guidance": "Think broadly — consider not just direct users but anyone whose rights, opportunities, or access to services may be affected. If vulnerable groups (children, elderly, disabled) are affected, the assessment requirements are stricter.",
+        "time": "~5 min",
+        "description": "Who is impacted by this AI system"
+      },
+      "specific_risks": {
+        "intro": "Document the specific risks this AI system poses to fundamental rights. Consider risks related to the EU Charter of Fundamental Rights — particularly privacy (Art. 7-8), non-discrimination (Art. 21), and human dignity (Art. 1).",
+        "guidance": "For each risk, consider: Which fundamental right is threatened? How severe is the potential impact? How likely is it to occur? Reference specific EU Charter articles where possible (e.g., Art. 21 non-discrimination, Art. 8 data protection).",
+        "time": "~10 min",
+        "description": "Risks to fundamental rights"
+      },
+      "human_oversight": {
+        "intro": "Describe the human oversight measures in place for this AI system. Art. 14 of the EU AI Act requires that high-risk AI systems are designed to allow effective human oversight during their use.",
+        "guidance": "Choose the oversight model that best matches your actual practice. Pre-decision oversight offers the strongest protection but may not be practical for all use cases. Document who is responsible and how they can intervene.",
+        "time": "~5 min",
+        "description": "How humans supervise AI decisions"
+      },
+      "mitigation_measures": {
+        "intro": "For each risk identified in the previous section, describe the concrete measures you will take to mitigate it. Art. 27 requires deployers to document proportionate safeguards.",
+        "guidance": "Each mitigation measure should directly address a specific risk. Include who is responsible, what the measure entails, and when it will be implemented. Be specific — 'we will monitor' is too vague; 'monthly bias audit by DPO using tool X' is better.",
+        "time": "~10 min",
+        "description": "Safeguards for each identified risk"
+      },
+      "monitoring_plan": {
+        "intro": "Define how you will continuously monitor the AI system's impact on fundamental rights after deployment. Art. 26(5) requires deployers to monitor system operation and report incidents.",
+        "guidance": "Choose a review frequency proportionate to the risk level. Define measurable metrics (e.g., false positive rates, demographic parity). Assign a responsible team and describe how findings feed back into the mitigation measures.",
+        "time": "~5 min",
+        "description": "Ongoing oversight and review plan"
+      }
+    },
+    "fields": {
+      "general_info": {
+        "toolName": { "label": "Tool Name", "description": "The registered name of the AI tool", "placeholder": "" },
+        "vendor": { "label": "Vendor", "description": "The company or provider of this AI tool", "placeholder": "" },
+        "purpose": { "label": "Purpose of Deployment", "description": "Explain specifically how your organization uses this AI tool and what decisions it informs", "placeholder": "e.g. We use this tool to screen job applicants for initial shortlisting based on CV keywords and experience matching..." },
+        "domain": { "label": "Domain", "description": "The high-risk domain in which this tool operates", "placeholder": "" },
+        "deploymentDate": { "label": "Planned Deployment Date", "description": "When the AI system is expected to go live or when it was first deployed", "placeholder": "e.g. 2026-06-01" },
+        "riskLevel": { "label": "Risk Level", "description": "Classification result from the risk assessment", "placeholder": "" }
+      },
+      "affected_persons": {
+        "categories": {
+          "label": "Affected Person Categories",
+          "description": "Select all groups of people whose fundamental rights may be affected by AI decisions",
+          "employees": "Employees",
+          "employeesDesc": "Staff members who directly use or are subject to the AI tool",
+          "customers": "Customers",
+          "customersDesc": "External users or clients affected by AI-driven decisions",
+          "applicants": "Applicants",
+          "applicantsDesc": "Job candidates evaluated by the AI system",
+          "patients": "Patients",
+          "patientsDesc": "Healthcare recipients subject to AI-assisted decisions",
+          "students": "Students",
+          "studentsDesc": "Learners assessed or profiled by the AI system",
+          "public": "General Public",
+          "publicDesc": "General public interacting with the AI system"
+        },
+        "vulnerableGroups": { "label": "Vulnerable Groups", "description": "Whether this AI system affects children, elderly, people with disabilities, or economically vulnerable persons" },
+        "estimatedCount": { "label": "Estimated Number of Affected Persons", "description": "Approximate number of people affected by this AI system", "placeholder": "e.g. ~500 employees, ~10,000 customers" },
+        "description": { "label": "Description of Impact", "description": "Describe how these groups are affected by the AI system's outputs or decisions", "placeholder": "e.g. Applicants are ranked by the AI system, which determines whether they proceed to the interview stage..." }
+      },
+      "specific_risks": {
+        "category": { "label": "Risk Category", "description": "The fundamental right at risk", "placeholder": "e.g. Privacy, Non-discrimination, Human dignity, Freedom of expression..." },
+        "riskDescription": { "label": "Risk Description", "description": "Describe the specific risk to this fundamental right", "placeholder": "e.g. The AI scoring model may produce biased outcomes for candidates from certain ethnic backgrounds..." },
+        "severity": { "label": "Severity", "description": "How severe would the impact be if this risk materializes" },
+        "likelihood": { "label": "Likelihood", "description": "How likely is this risk to occur" },
+        "addRisk": "+ Add Fundamental Rights Risk"
+      },
+      "human_oversight": {
+        "hasOversight": { "label": "Human Oversight", "description": "Confirm that human oversight measures are in place for this AI system" },
+        "oversightType": {
+          "label": "Oversight Model",
+          "description": "Select the type of human oversight applied to this AI system",
+          "pre_decision": { "label": "Pre-decision", "description": "Human approves every AI output before any action is taken" },
+          "concurrent": { "label": "Concurrent", "description": "Human monitors AI in real-time and can intervene immediately" },
+          "post_hoc": { "label": "Post-hoc", "description": "Human reviews AI decisions after the fact, with ability to reverse" }
+        },
+        "responsibleRole": { "label": "Responsible Role", "description": "The person or role accountable for human oversight", "placeholder": "e.g. Data Protection Officer, HR Manager, Compliance Lead..." },
+        "escalationProcess": { "label": "Escalation Process", "description": "How issues are escalated when the AI system produces problematic outputs", "placeholder": "e.g. If the AI flags a candidate incorrectly, the HR Manager reviews the case within 24 hours and can override the decision..." }
+      },
+      "mitigation_measures": {
+        "risk": { "label": "Related Risk", "description": "Which fundamental rights risk does this measure address", "placeholder": "e.g. Non-discrimination risk in candidate scoring..." },
+        "measure": { "label": "Mitigation Measure", "description": "Describe the specific action taken to reduce this risk", "placeholder": "e.g. Quarterly bias audit of scoring outcomes by demographic group, conducted by external auditor..." },
+        "responsible": { "label": "Responsible Person", "description": "Who is accountable for implementing this measure", "placeholder": "e.g. Data Protection Officer" },
+        "deadline": { "label": "Implementation Deadline", "description": "When this measure must be in place" },
+        "addMeasure": "+ Add Mitigation Measure"
+      },
+      "monitoring_plan": {
+        "frequency": { "label": "Review Frequency", "description": "How often the AI system's fundamental rights impact is reviewed" },
+        "metrics": { "label": "Key Metrics", "description": "Measurable indicators used to track the AI system's impact on fundamental rights", "placeholder": "e.g. False positive rate, demographic parity index, complaint count, override frequency..." },
+        "responsibleTeam": { "label": "Responsible Team", "description": "The team or role responsible for ongoing monitoring", "placeholder": "e.g. Compliance Team, Data Protection Office..." },
+        "reviewProcess": { "label": "Review Process", "description": "How monitoring findings are reviewed and acted upon", "placeholder": "e.g. Monthly review meeting between DPO and HR Manager, with findings documented and escalated to management if thresholds are exceeded..." }
+      }
+    }
   },
   "locked": {
     "comingSoon": "Coming Soon",

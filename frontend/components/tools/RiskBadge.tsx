@@ -1,11 +1,14 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/Badge';
 
-const RISK_CONFIG: Record<string, { label: string; variant: 'prohibited' | 'high' | 'gpai' | 'limited' | 'minimal' | 'secondary' }> = {
-  prohibited: { label: 'Verboten', variant: 'prohibited' },
-  high: { label: 'Hochrisiko', variant: 'high' },
-  gpai: { label: 'GPAI', variant: 'gpai' },
-  limited: { label: 'Begrenztes Risiko', variant: 'limited' },
-  minimal: { label: 'Minimales Risiko', variant: 'minimal' },
+const RISK_VARIANTS: Record<string, 'prohibited' | 'high' | 'gpai' | 'limited' | 'minimal'> = {
+  prohibited: 'prohibited',
+  high: 'high',
+  gpai: 'gpai',
+  limited: 'limited',
+  minimal: 'minimal',
 };
 
 interface RiskBadgeProps {
@@ -14,14 +17,16 @@ interface RiskBadgeProps {
 }
 
 export function RiskBadge({ riskLevel, className }: RiskBadgeProps) {
+  const t = useTranslations('dashboard');
+
   if (!riskLevel) {
-    return <Badge variant="secondary" className={className}>Nicht klassifiziert</Badge>;
+    return <Badge variant="secondary" className={className}>{t('noClassifiedTools').length > 20 ? '—' : t('noClassifiedTools')}</Badge>;
   }
 
-  const config = RISK_CONFIG[riskLevel];
-  if (!config) {
+  const variant = RISK_VARIANTS[riskLevel];
+  if (!variant) {
     return <Badge variant="secondary" className={className}>{riskLevel}</Badge>;
   }
 
-  return <Badge variant={config.variant} className={className}>{config.label}</Badge>;
+  return <Badge variant={variant} className={className}>{t(riskLevel as 'prohibited' | 'high' | 'gpai' | 'limited' | 'minimal')}</Badge>;
 }

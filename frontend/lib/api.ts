@@ -273,6 +273,44 @@ export interface AdminSubscription {
   currentPeriodEnd: string | null;
 }
 
+// --- FRIA ---
+
+export interface FRIASection {
+  fRIASectionId: number;
+  sectionType: string;
+  content: Record<string, unknown>;
+  aiDraft: Record<string, unknown> | null;
+  completed: boolean;
+  sortOrder: number;
+}
+
+export interface FRIAAssessment {
+  fRIAAssessmentId: number;
+  aiToolId: number;
+  createdById: number;
+  status: 'draft' | 'in_progress' | 'review' | 'completed';
+  completedAt: string | null;
+  approvedById: number | null;
+}
+
+export interface FRIADetail {
+  assessment: FRIAAssessment;
+  sections: FRIASection[];
+  tool: { name: string; riskLevel: string };
+}
+
+export interface FRIAByToolResponse {
+  assessment: FRIAAssessment | null;
+  sections: FRIASection[];
+}
+
+export interface FRIACreateResponse {
+  assessment: FRIAAssessment;
+  sections: FRIASection[];
+  fRIAAssessmentId: number;
+  existing?: boolean;
+}
+
 // --- Dashboard ---
 
 export interface DashboardSummary {
@@ -418,6 +456,18 @@ export const api = {
       apiFetch<{ success: boolean }>(`/api/team/invitations/${invitationId}`, { method: 'DELETE' }),
     resendInvitation: (invitationId: number) =>
       apiFetch<{ success: boolean }>(`/api/team/invitations/${invitationId}/resend`, { method: 'POST' }),
+  },
+  fria: {
+    create: (toolId: number) =>
+      apiFetch<FRIACreateResponse>('/api/fria', { method: 'POST', body: JSON.stringify({ toolId }) }),
+    getById: (id: number) =>
+      apiFetch<FRIADetail>(`/api/fria/${id}`),
+    getByTool: (toolId: number) =>
+      apiFetch<FRIAByToolResponse>(`/api/fria/by-tool/${toolId}`),
+    updateSection: (id: number, sectionType: string, data: { content: Record<string, unknown>; completed?: boolean }) =>
+      apiFetch<FRIASection>(`/api/fria/${id}/sections/${sectionType}`, { method: 'PUT', body: JSON.stringify(data) }),
+    updateStatus: (id: number, status: string) =>
+      apiFetch<{ status: string }>(`/api/fria/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   },
   admin: {
     overview: () => apiFetch<AdminOverview>('/api/admin/overview'),

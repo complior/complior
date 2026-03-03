@@ -1,49 +1,41 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 
-const RISK_LEVELS = [
-  { value: '', label: 'Alle Risikostufen' },
-  { value: 'prohibited', label: 'Verboten' },
-  { value: 'high', label: 'Hochrisiko' },
-  { value: 'gpai', label: 'GPAI' },
-  { value: 'limited', label: 'Begrenztes Risiko' },
-  { value: 'minimal', label: 'Minimales Risiko' },
-];
+const RISK_KEYS = ['prohibited', 'high', 'gpai', 'limited', 'minimal'] as const;
+const RISK_I18N: Record<string, string> = {
+  prohibited: 'filterProhibited',
+  high: 'filterHighRisk',
+  gpai: 'filterGPAI',
+  limited: 'filterLimited',
+  minimal: 'filterMinimal',
+};
 
-const COMPLIANCE_STATUSES = [
-  { value: '', label: 'Alle Status' },
-  { value: 'not_started', label: 'Nicht gestartet' },
-  { value: 'in_progress', label: 'In Bearbeitung' },
-  { value: 'review', label: 'Prüfung' },
-  { value: 'compliant', label: 'Konform' },
-  { value: 'non_compliant', label: 'Nicht konform' },
-];
+const STATUS_KEYS = ['not_started', 'in_progress', 'review', 'compliant', 'non_compliant'] as const;
+const STATUS_I18N: Record<string, string> = {
+  not_started: 'statusNotStarted',
+  in_progress: 'statusInProgress',
+  review: 'statusReview',
+  compliant: 'statusCompliant',
+  non_compliant: 'statusNonCompliant',
+};
 
-const DOMAINS = [
-  { value: '', label: 'Alle Bereiche' },
-  { value: 'biometrics', label: 'Biometrie' },
-  { value: 'critical_infrastructure', label: 'Kritische Infrastruktur' },
-  { value: 'education', label: 'Bildung' },
-  { value: 'employment', label: 'Beschäftigung' },
-  { value: 'essential_services', label: 'Grundlegende Dienste' },
-  { value: 'law_enforcement', label: 'Strafverfolgung' },
-  { value: 'migration', label: 'Migration' },
-  { value: 'justice', label: 'Justiz' },
-  { value: 'customer_service', label: 'Kundenservice' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'coding', label: 'Softwareentwicklung' },
-  { value: 'analytics', label: 'Analytik' },
-  { value: 'other', label: 'Sonstiges' },
-];
+const DOMAIN_KEYS = [
+  'biometrics', 'critical_infrastructure', 'education', 'employment',
+  'essential_services', 'law_enforcement', 'migration', 'justice',
+  'customer_service', 'marketing', 'coding', 'analytics', 'other',
+] as const;
 
 interface InventoryFiltersProps {
   onFilter: (params: { q: string; riskLevel: string; domain: string; status: string }) => void;
 }
 
 export function InventoryFilters({ onFilter }: InventoryFiltersProps) {
+  const t = useTranslations('toolDetail');
+  const tw = useTranslations('wizard');
   const [q, setQ] = useState('');
   const [riskLevel, setRiskLevel] = useState('');
   const [domain, setDomain] = useState('');
@@ -67,18 +59,35 @@ export function InventoryFilters({ onFilter }: InventoryFiltersProps) {
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="AI Tool suchen..."
+          placeholder={t('searchPlaceholder')}
           className="pl-9"
         />
       </div>
       <select value={riskLevel} onChange={(e) => setRiskLevel(e.target.value)} className={selectClass}>
-        {RISK_LEVELS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+        <option value="">{t('filterAllRisk')}</option>
+        {RISK_KEYS.map((key) => (
+          <option key={key} value={key}>{t(RISK_I18N[key] as 'filterProhibited')}</option>
+        ))}
       </select>
       <select value={domain} onChange={(e) => setDomain(e.target.value)} className={selectClass}>
-        {DOMAINS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+        <option value="">{t('filterAllDomains')}</option>
+        {DOMAIN_KEYS.map((key) => {
+          const i18nMap: Record<string, string> = {
+            biometrics: 'Biometrics', critical_infrastructure: 'CriticalInfra', education: 'Education',
+            employment: 'Employment', essential_services: 'EssentialServices', law_enforcement: 'LawEnforcement',
+            migration: 'Migration', justice: 'Justice', customer_service: 'CustomerService',
+            marketing: 'Marketing', coding: 'Coding', analytics: 'Analytics', other: 'Other',
+          };
+          return (
+            <option key={key} value={key}>{tw(`domain${i18nMap[key]}`)}</option>
+          );
+        })}
       </select>
       <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
-        {COMPLIANCE_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        <option value="">{t('filterAllStatus')}</option>
+        {STATUS_KEYS.map((key) => (
+          <option key={key} value={key}>{t(STATUS_I18N[key] as 'statusNotStarted')}</option>
+        ))}
       </select>
     </div>
   );

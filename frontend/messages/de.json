@@ -869,7 +869,11 @@
     "risk": "Risiko",
     "status": "Status",
     "score": "Score",
-    "noClassifiedTools": "Noch keine klassifizierten Tools"
+    "noClassifiedTools": "Noch keine klassifizierten Tools",
+    "viewFria": "FRIA →",
+    "friaNotStarted": "Nicht gestartet",
+    "friaInProgress": "In Bearbeitung ({completed}/{total})",
+    "friaCompleted": "Abgeschlossen"
   },
   "settings": {
     "title": "Einstellungen",
@@ -1037,7 +1041,8 @@
     "breadcrumbDashboard": "Dashboard",
     "breadcrumbTools": "KI-Tools",
     "documentsPlaceholder": "FRIA-Vorlagen, Compliance-Richtlinien und generierte Dokumentation werden hier angezeigt.",
-    "auditTrailPlaceholder": "Vollständiges Protokoll aller Änderungen, Neuklassifizierungen und Compliance-Updates."
+    "auditTrailPlaceholder": "Vollständiges Protokoll aller Änderungen, Neuklassifizierungen und Compliance-Updates.",
+    "completeFria": "FRIA abschliessen"
   },
   "members": {
     "title": "Teammitglieder",
@@ -1211,6 +1216,151 @@
     "existingTools": "Ihre Tools",
     "existingToolsEmpty": "Noch keine Tools registriert",
     "addAnotherTool": "Weiteres Tool hinzufügen"
+  },
+  "fria": {
+    "title": "Grundrechte-Folgenabschätzung",
+    "subtitle": "Art. 27 EU AI Act",
+    "startButton": "FRIA starten",
+    "continueButton": "Bewertung fortsetzen",
+    "notRequired": "FRIA ist für Tools mit minimalem/begrenztem Risiko nicht erforderlich",
+    "progress": "{completed} von {total} Abschnitten abgeschlossen",
+    "sections": {
+      "general_info": "Allgemeine Informationen",
+      "affected_persons": "Betroffene Personen",
+      "specific_risks": "Spezifische Risiken",
+      "human_oversight": "Menschliche Aufsicht",
+      "mitigation_measures": "Minderungsmaßnahmen",
+      "monitoring_plan": "Überwachungsplan"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "in_progress": "In Bearbeitung",
+      "review": "In Prüfung",
+      "completed": "Abgeschlossen"
+    },
+    "submitReview": "Zur Prüfung einreichen",
+    "markComplete": "Abschnitt als abgeschlossen markieren",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "saving": "Speichern...",
+    "onboarding": {
+      "whatIsFria": "Eine Grundrechte-Folgenabschätzung (FRIA) bewertet, wie Ihr Hochrisiko-KI-System die Grundrechte von Personen beeinflussen kann — einschließlich Privatsphäre, Nichtdiskriminierung und Menschenwürde. Sie ist ein Pflichtdokument unter dem EU AI Act für Betreiber von Hochrisiko-KI.",
+      "whyRequired": "Artikel 27 des EU AI Act verpflichtet Betreiber von Hochrisiko-KI-Systemen, vor der Inbetriebnahme eine Grundrechte-Folgenabschätzung durchzuführen.",
+      "whatHappens": "Die Fertigstellung dieser Bewertung erstellt einen strukturierten, prüfungssicheren FRIA-Bericht (PDF). Er trägt zu Ihrem Gesamt-Compliance-Score bei und dokumentiert Ihre Sorgfaltspflicht.",
+      "legalBasisLabel": "Rechtsgrundlage:",
+      "urgencyHigh": "Erforderlich vor dem Einsatz dieses Hochrisiko-KI-Systems",
+      "estimatedTime": "Geschätzt 30–45 Minuten"
+    },
+    "wizard": {
+      "backToTool": "Zurück zum Tool",
+      "overallProgress": "{completed} von {total} Abschnitten — {percent}%",
+      "estimatedRemaining": "~{minutes} Min. verbleibend",
+      "saveAndContinue": "Speichern & Weiter",
+      "saveDraft": "Entwurf speichern",
+      "nextSection": "Nächster Abschnitt",
+      "previousSection": "Vorheriger Abschnitt"
+    },
+    "sectionMeta": {
+      "general_info": {
+        "intro": "Dieser Abschnitt erfasst den grundlegenden Kontext Ihres KI-Tool-Einsatzes. Er identifiziert das Tool, seinen Zweck und den Bereich, in dem es eingesetzt wird. Art. 27 erfordert diesen Kontext als Rahmen für die gesamte Bewertung.",
+        "guidance": "Die meisten Felder sind aus Ihrer Tool-Registrierung vorausgefüllt. Konzentrieren Sie sich auf eine klare, spezifische Zweckbeschreibung, die genau erklärt, wie Ihre Organisation dieses Tool einsetzt — dies ist die Grundlage der gesamten FRIA.",
+        "time": "~3 Min.",
+        "description": "Tool-Kontext und Einsatzzweck"
+      },
+      "affected_persons": {
+        "intro": "Identifizieren Sie alle Personengruppen, deren Grundrechte durch dieses KI-System betroffen sein können. Art. 27 verlangt, dass Sie sowohl direkte Nutzer als auch indirekt Betroffene von KI-gestützten Entscheidungen berücksichtigen.",
+        "guidance": "Denken Sie umfassend — berücksichtigen Sie nicht nur direkte Nutzer, sondern alle, deren Rechte, Chancen oder Zugang zu Diensten betroffen sein können. Wenn vulnerable Gruppen (Kinder, Ältere, Behinderte) betroffen sind, gelten strengere Bewertungsanforderungen.",
+        "time": "~5 Min.",
+        "description": "Wer ist von diesem KI-System betroffen"
+      },
+      "specific_risks": {
+        "intro": "Dokumentieren Sie die spezifischen Risiken dieses KI-Systems für Grundrechte. Berücksichtigen Sie Risiken im Zusammenhang mit der EU-Grundrechtecharta — insbesondere Privatsphäre (Art. 7-8), Nichtdiskriminierung (Art. 21) und Menschenwürde (Art. 1).",
+        "guidance": "Für jedes Risiko: Welches Grundrecht ist bedroht? Wie schwer ist die potenzielle Auswirkung? Wie wahrscheinlich ist das Eintreten? Verweisen Sie wenn möglich auf spezifische EU-Charta-Artikel (z.B. Art. 21 Nichtdiskriminierung, Art. 8 Datenschutz).",
+        "time": "~10 Min.",
+        "description": "Risiken für Grundrechte"
+      },
+      "human_oversight": {
+        "intro": "Beschreiben Sie die Maßnahmen zur menschlichen Aufsicht für dieses KI-System. Art. 14 des EU AI Act verlangt, dass Hochrisiko-KI-Systeme eine wirksame menschliche Aufsicht während ihrer Nutzung ermöglichen.",
+        "guidance": "Wählen Sie das Aufsichtsmodell, das Ihrer tatsächlichen Praxis am besten entspricht. Vorab-Aufsicht bietet den stärksten Schutz, ist aber nicht für alle Anwendungsfälle praktikabel. Dokumentieren Sie, wer verantwortlich ist und wie eingegriffen werden kann.",
+        "time": "~5 Min.",
+        "description": "Wie Menschen KI-Entscheidungen überwachen"
+      },
+      "mitigation_measures": {
+        "intro": "Beschreiben Sie für jedes im vorherigen Abschnitt identifizierte Risiko die konkreten Maßnahmen zur Minderung. Art. 27 verlangt von Betreibern, verhältnismäßige Schutzmaßnahmen zu dokumentieren.",
+        "guidance": "Jede Minderungsmaßnahme sollte ein spezifisches Risiko direkt adressieren. Geben Sie an, wer verantwortlich ist, was die Maßnahme beinhaltet und wann sie umgesetzt wird. Seien Sie konkret — 'wir werden überwachen' ist zu vage; 'monatliches Bias-Audit durch den DSB mit Tool X' ist besser.",
+        "time": "~10 Min.",
+        "description": "Schutzmaßnahmen für jedes identifizierte Risiko"
+      },
+      "monitoring_plan": {
+        "intro": "Definieren Sie, wie Sie die Auswirkungen des KI-Systems auf Grundrechte nach dem Einsatz kontinuierlich überwachen. Art. 26(5) verpflichtet Betreiber, den Systembetrieb zu überwachen und Vorfälle zu melden.",
+        "guidance": "Wählen Sie eine Überprüfungshäufigkeit, die dem Risikoniveau angemessen ist. Definieren Sie messbare Kennzahlen (z.B. Falsch-Positiv-Rate, demografische Parität). Benennen Sie ein verantwortliches Team und beschreiben Sie, wie Erkenntnisse in die Minderungsmaßnahmen einfließen.",
+        "time": "~5 Min.",
+        "description": "Laufende Überwachung und Überprüfungsplan"
+      }
+    },
+    "fields": {
+      "general_info": {
+        "toolName": { "label": "Tool-Name", "description": "Der registrierte Name des KI-Tools", "placeholder": "" },
+        "vendor": { "label": "Anbieter", "description": "Das Unternehmen oder der Anbieter dieses KI-Tools", "placeholder": "" },
+        "purpose": { "label": "Einsatzzweck", "description": "Erklären Sie konkret, wie Ihre Organisation dieses KI-Tool einsetzt und welche Entscheidungen es beeinflusst", "placeholder": "z.B. Wir setzen dieses Tool ein, um Bewerbungen anhand von Lebenslauf-Schlüsselwörtern und Erfahrungsabgleich vorzuselektieren..." },
+        "domain": { "label": "Anwendungsbereich", "description": "Der Hochrisiko-Bereich, in dem dieses Tool eingesetzt wird", "placeholder": "" },
+        "deploymentDate": { "label": "Geplantes Einsatzdatum", "description": "Wann das KI-System in Betrieb gehen soll oder wann es erstmals eingesetzt wurde", "placeholder": "z.B. 2026-06-01" },
+        "riskLevel": { "label": "Risikostufe", "description": "Klassifizierungsergebnis der Risikobewertung", "placeholder": "" }
+      },
+      "affected_persons": {
+        "categories": {
+          "label": "Betroffene Personenkategorien",
+          "description": "Wählen Sie alle Personengruppen, deren Grundrechte durch KI-Entscheidungen betroffen sein können",
+          "employees": "Mitarbeiter",
+          "employeesDesc": "Beschäftigte, die das KI-Tool direkt nutzen oder davon betroffen sind",
+          "customers": "Kunden",
+          "customersDesc": "Externe Nutzer oder Kunden, die von KI-gestützten Entscheidungen betroffen sind",
+          "applicants": "Bewerber",
+          "applicantsDesc": "Stellenkandidaten, die vom KI-System bewertet werden",
+          "patients": "Patienten",
+          "patientsDesc": "Patienten, die KI-gestützten Entscheidungen unterliegen",
+          "students": "Schüler/Studenten",
+          "studentsDesc": "Lernende, die vom KI-System bewertet oder profiliert werden",
+          "public": "Allgemeine Öffentlichkeit",
+          "publicDesc": "Allgemeinheit, die mit dem KI-System interagiert"
+        },
+        "vulnerableGroups": { "label": "Vulnerable Gruppen", "description": "Ob dieses KI-System Kinder, Ältere, Menschen mit Behinderung oder wirtschaftlich vulnerable Personen betrifft" },
+        "estimatedCount": { "label": "Geschätzte Anzahl Betroffener", "description": "Ungefähre Anzahl der von diesem KI-System betroffenen Personen", "placeholder": "z.B. ~500 Mitarbeiter, ~10.000 Kunden" },
+        "description": { "label": "Beschreibung der Auswirkungen", "description": "Beschreiben Sie, wie diese Gruppen von den Ergebnissen oder Entscheidungen des KI-Systems betroffen sind", "placeholder": "z.B. Bewerber werden vom KI-System eingestuft, was bestimmt, ob sie zur Interviewphase gelangen..." }
+      },
+      "specific_risks": {
+        "category": { "label": "Risikokategorie", "description": "Das bedrohte Grundrecht", "placeholder": "z.B. Privatsphäre, Nichtdiskriminierung, Menschenwürde, Meinungsfreiheit..." },
+        "riskDescription": { "label": "Risikobeschreibung", "description": "Beschreiben Sie das spezifische Risiko für dieses Grundrecht", "placeholder": "z.B. Das KI-Bewertungsmodell kann voreingenommene Ergebnisse für Kandidaten bestimmter ethnischer Herkunft liefern..." },
+        "severity": { "label": "Schweregrad", "description": "Wie schwerwiegend wäre die Auswirkung bei Eintreten dieses Risikos" },
+        "likelihood": { "label": "Wahrscheinlichkeit", "description": "Wie wahrscheinlich ist das Eintreten dieses Risikos" },
+        "addRisk": "+ Grundrechtsrisiko hinzufügen"
+      },
+      "human_oversight": {
+        "hasOversight": { "label": "Menschliche Aufsicht", "description": "Bestätigen Sie, dass Maßnahmen zur menschlichen Aufsicht für dieses KI-System vorhanden sind" },
+        "oversightType": {
+          "label": "Aufsichtsmodell",
+          "description": "Wählen Sie die Art der menschlichen Aufsicht für dieses KI-System",
+          "pre_decision": { "label": "Vorab-Entscheidung", "description": "Ein Mensch genehmigt jede KI-Ausgabe, bevor eine Aktion erfolgt" },
+          "concurrent": { "label": "Gleichzeitig", "description": "Ein Mensch überwacht die KI in Echtzeit und kann sofort eingreifen" },
+          "post_hoc": { "label": "Nachträglich", "description": "Ein Mensch prüft KI-Entscheidungen im Nachhinein und kann sie rückgängig machen" }
+        },
+        "responsibleRole": { "label": "Verantwortliche Rolle", "description": "Die Person oder Rolle, die für die menschliche Aufsicht verantwortlich ist", "placeholder": "z.B. Datenschutzbeauftragte/r, HR-Manager/in, Compliance-Leitung..." },
+        "escalationProcess": { "label": "Eskalationsprozess", "description": "Wie Probleme eskaliert werden, wenn das KI-System problematische Ergebnisse liefert", "placeholder": "z.B. Bei fehlerhafter Kandidatenkennzeichnung prüft der HR-Manager den Fall innerhalb von 24 Stunden und kann die Entscheidung überstimmen..." }
+      },
+      "mitigation_measures": {
+        "risk": { "label": "Zugehöriges Risiko", "description": "Welches Grundrechtsrisiko adressiert diese Maßnahme", "placeholder": "z.B. Diskriminierungsrisiko bei der Kandidatenbewertung..." },
+        "measure": { "label": "Minderungsmaßnahme", "description": "Beschreiben Sie die konkrete Maßnahme zur Risikominderung", "placeholder": "z.B. Vierteljährliches Bias-Audit der Bewertungsergebnisse nach demografischen Gruppen, durchgeführt von externem Prüfer..." },
+        "responsible": { "label": "Verantwortliche Person", "description": "Wer ist für die Umsetzung dieser Maßnahme verantwortlich", "placeholder": "z.B. Datenschutzbeauftragte/r" },
+        "deadline": { "label": "Umsetzungsfrist", "description": "Bis wann diese Maßnahme umgesetzt sein muss" },
+        "addMeasure": "+ Minderungsmaßnahme hinzufügen"
+      },
+      "monitoring_plan": {
+        "frequency": { "label": "Überprüfungshäufigkeit", "description": "Wie oft die Grundrechtsauswirkungen des KI-Systems überprüft werden" },
+        "metrics": { "label": "Schlüsselkennzahlen", "description": "Messbare Indikatoren zur Verfolgung der Grundrechtsauswirkungen des KI-Systems", "placeholder": "z.B. Falsch-Positiv-Rate, demografischer Paritätsindex, Beschwerdeanzahl, Überstimmungshäufigkeit..." },
+        "responsibleTeam": { "label": "Verantwortliches Team", "description": "Das Team oder die Rolle, die für die laufende Überwachung verantwortlich ist", "placeholder": "z.B. Compliance-Team, Datenschutzstelle..." },
+        "reviewProcess": { "label": "Überprüfungsprozess", "description": "Wie Monitoring-Ergebnisse überprüft und umgesetzt werden", "placeholder": "z.B. Monatliches Review-Meeting zwischen DSB und HR-Manager, mit dokumentierten Ergebnissen und Eskalation an die Geschäftsführung bei Schwellenwertüberschreitung..." }
+      }
+    }
   },
   "locked": {
     "comingSoon": "Demnächst verfügbar",

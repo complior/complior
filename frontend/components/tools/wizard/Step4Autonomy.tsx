@@ -1,25 +1,15 @@
 'use client';
 
-import { Label } from '@/components/ui/Label';
-import { Button } from '@/components/ui/Button';
+import { useTranslations } from 'next-intl';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const AUTONOMY_LEVELS = [
-  {
-    value: 'advisory',
-    label: 'Beratend',
-    desc: 'AI gibt Empfehlungen, Menschen treffen die endgültige Entscheidung',
-  },
-  {
-    value: 'semi_autonomous',
-    label: 'Teilautonom',
-    desc: 'AI trifft Entscheidungen mit menschlicher Überprüfung/Genehmigung',
-  },
-  {
-    value: 'autonomous',
-    label: 'Autonom',
-    desc: 'AI trifft und führt Entscheidungen ohne menschliche Freigabe aus',
-  },
-];
+const AUTONOMY_KEYS = ['advisory', 'semi_autonomous', 'autonomous'] as const;
+
+const AUTONOMY_I18N_MAP: Record<string, string> = {
+  advisory: 'Advisory',
+  semi_autonomous: 'SemiAutonomous',
+  autonomous: 'Autonomous',
+};
 
 interface Step4Data {
   autonomyLevel: string;
@@ -36,76 +26,114 @@ interface Step4AutonomyProps {
 }
 
 export function Step4Autonomy({ data, onChange, onNext, onBack, errors }: Step4AutonomyProps) {
+  const t = useTranslations('wizard');
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Schritt 4: Autonomie & Aufsicht</h2>
-      <p className="text-sm text-slate-500">Wie autonom arbeitet das AI Tool und welche Aufsicht besteht?</p>
+    <div>
+      <div className="mb-1 font-display text-lg font-bold text-[var(--dark)]">{t('step4Title')}</div>
+      <div className="text-[0.8125rem] text-[var(--dark5)] mb-6">{t('step4Subtitle')}</div>
 
-      <div className="space-y-4">
-        <div>
-          <Label>Autonomiestufe *</Label>
-          {errors.autonomyLevel && <p className="mt-1 text-xs text-red-600">{errors.autonomyLevel[0]}</p>}
-          <div className="mt-2 space-y-2">
-            {AUTONOMY_LEVELS.map((al) => (
-              <label
-                key={al.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors ${
-                  data.autonomyLevel === al.value
-                    ? 'border-primary-600 bg-primary-50'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
+      {/* Autonomy Level */}
+      <div className="mb-5">
+        <label className="flex items-center gap-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-[var(--dark4)] mb-1.5">
+          {t('fieldAutonomyLevel')} <span className="text-[var(--coral)] text-[0.625rem]">*</span>
+        </label>
+        {errors.autonomyLevel && <p className="mb-2 text-xs text-[var(--coral)]">{errors.autonomyLevel[0]}</p>}
+        <div className="flex flex-col gap-1.5">
+          {AUTONOMY_KEYS.map((key) => {
+            const i18nKey = AUTONOMY_I18N_MAP[key];
+            const selected = data.autonomyLevel === key;
+            return (
+              <div
+                key={key}
+                onClick={() => onChange({ ...data, autonomyLevel: key })}
+                className={`
+                  flex items-start gap-2.5 px-3 py-2 border-[1.5px] rounded-lg cursor-pointer transition-all
+                  ${selected
+                    ? 'border-[var(--teal)] bg-[var(--teal-dim)]'
+                    : 'border-[var(--b2)] hover:border-[var(--teal)] hover:bg-[var(--teal-dim)]'
+                  }
+                `}
               >
-                <input
-                  type="radio"
-                  name="autonomyLevel"
-                  value={al.value}
-                  checked={data.autonomyLevel === al.value}
-                  onChange={(e) => onChange({ ...data, autonomyLevel: e.target.value })}
-                  className="mt-0.5"
-                />
-                <div>
-                  <p className="font-medium">{al.label}</p>
-                  <p className="text-xs text-slate-500">{al.desc}</p>
+                {/* Custom radio dot */}
+                <div className={`
+                  w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center
+                  ${selected ? 'border-[var(--teal)] bg-[var(--teal)]' : 'border-[var(--b3)]'}
+                `}>
+                  {selected && <div className="w-[5px] h-[5px] rounded-full bg-white dark:bg-[var(--bg)]" />}
                 </div>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="flex items-start gap-3 rounded-md border border-slate-200 p-3 text-sm cursor-pointer hover:border-slate-300">
-            <input
-              type="checkbox"
-              checked={data.humanOversight}
-              onChange={(e) => onChange({ ...data, humanOversight: e.target.checked })}
-              className="mt-0.5 rounded border-slate-300"
-            />
-            <div>
-              <p className="font-medium">Menschliche Aufsicht vorhanden</p>
-              <p className="text-xs text-slate-500">Es gibt benannte Personen, die die AI-Ergebnisse prüfen und bei Bedarf eingreifen können</p>
-            </div>
-          </label>
-        </div>
-
-        <div>
-          <label className="flex items-start gap-3 rounded-md border border-slate-200 p-3 text-sm cursor-pointer hover:border-slate-300">
-            <input
-              type="checkbox"
-              checked={data.affectsNaturalPersons}
-              onChange={(e) => onChange({ ...data, affectsNaturalPersons: e.target.checked })}
-              className="mt-0.5 rounded border-slate-300"
-            />
-            <div>
-              <p className="font-medium">Betrifft natürliche Personen</p>
-              <p className="text-xs text-slate-500">Die Ergebnisse des AI Tools haben direkte Auswirkungen auf einzelne Personen</p>
-            </div>
-          </label>
+                <div>
+                  <div className="text-[0.8125rem] font-semibold text-[var(--dark2)]">{t(`autonomy${i18nKey}`)}</div>
+                  <div className="text-[0.6875rem] text-[var(--dark5)] mt-0.5">{t(`autonomy${i18nKey}Desc`)}</div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="flex justify-between pt-4">
-        <Button variant="secondary" onClick={onBack}>Zurück</Button>
-        <Button onClick={onNext}>Weiter</Button>
+      {/* Human Oversight Toggle */}
+      <div className="mb-3">
+        <div
+          onClick={() => onChange({ ...data, humanOversight: !data.humanOversight })}
+          className={`
+            flex items-center justify-between px-3 py-2.5 border-[1.5px] rounded-lg cursor-pointer transition-all
+            ${data.humanOversight
+              ? 'border-[var(--teal)] bg-[var(--teal-dim)]'
+              : 'border-[var(--b2)] hover:border-[var(--b3)]'
+            }
+          `}
+        >
+          <span className="text-[0.8125rem] font-semibold text-[var(--dark2)] flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-[var(--dark5)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            {t('humanOversight')}
+          </span>
+          <div className={`w-9 h-5 rounded-[10px] relative transition-colors flex-shrink-0 ${data.humanOversight ? 'bg-[var(--teal)]' : 'bg-[var(--bg3)]'}`}>
+            <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 shadow-sm transition-all ${data.humanOversight ? 'left-[18px]' : 'left-0.5'}`} />
+          </div>
+        </div>
+      </div>
+
+      {/* Affects Natural Persons Toggle */}
+      <div className="mb-4">
+        <div
+          onClick={() => onChange({ ...data, affectsNaturalPersons: !data.affectsNaturalPersons })}
+          className={`
+            flex items-center justify-between px-3 py-2.5 border-[1.5px] rounded-lg cursor-pointer transition-all
+            ${data.affectsNaturalPersons
+              ? 'border-[var(--teal)] bg-[var(--teal-dim)]'
+              : 'border-[var(--b2)] hover:border-[var(--b3)]'
+            }
+          `}
+        >
+          <span className="text-[0.8125rem] font-semibold text-[var(--dark2)] flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-[var(--dark5)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            {t('affectsNaturalPersons')}
+          </span>
+          <div className={`w-9 h-5 rounded-[10px] relative transition-colors flex-shrink-0 ${data.affectsNaturalPersons ? 'bg-[var(--teal)]' : 'bg-[var(--bg3)]'}`}>
+            <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 shadow-sm transition-all ${data.affectsNaturalPersons ? 'left-[18px]' : 'left-0.5'}`} />
+          </div>
+        </div>
+      </div>
+
+      {/* Button row */}
+      <div className="flex justify-between items-center mt-8 pt-5 border-t border-[var(--b)]">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 font-body font-bold text-[0.8125rem] text-[var(--dark4)] bg-transparent border-none cursor-pointer hover:text-[var(--dark2)] transition-colors"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" /> {t('back')}
+        </button>
+        <button
+          onClick={onNext}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-body font-bold text-[0.8125rem] bg-[var(--teal)] text-white shadow-[0_2px_8px_var(--teal-glow)] hover:bg-[var(--teal2)] hover:-translate-y-px transition-all cursor-pointer border-none dark:text-[var(--bg)]"
+        >
+          {t('next')} <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );

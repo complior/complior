@@ -250,6 +250,36 @@ const VerifyEmailSchema = z.object({
   pendingAuthenticationToken: z.string().min(1),
 });
 
+// === FRIA Schemas ===
+
+const VALID_FRIA_STATUSES = ['draft', 'in_progress', 'review', 'completed'];
+const VALID_SECTION_TYPES = [
+  'general_info', 'affected_persons', 'specific_risks',
+  'human_oversight', 'mitigation_measures', 'monitoring_plan',
+];
+
+const FRIACreateSchema = z.object({
+  toolId: z.coerce.number().int().positive(),
+});
+
+const FRIAIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+const FRIASectionUpdateSchema = z.object({
+  content: z.record(z.string(), z.any()),
+  completed: z.boolean().optional(),
+});
+
+const FRIAStatusUpdateSchema = z.object({
+  status: z.enum(VALID_FRIA_STATUSES),
+});
+
+const FRIAListSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 // === GDPR Schemas ===
 
 const AccountDeleteSchema = z.object({
@@ -304,4 +334,11 @@ module.exports = {
   VerifyEmailSchema,
   VALID_PAID_PLANS,
   VALID_BILLING_PERIODS,
+  VALID_FRIA_STATUSES,
+  VALID_SECTION_TYPES,
+  FRIACreateSchema,
+  FRIAIdSchema,
+  FRIASectionUpdateSchema,
+  FRIAStatusUpdateSchema,
+  FRIAListSchema,
 };

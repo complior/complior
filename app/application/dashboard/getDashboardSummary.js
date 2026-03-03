@@ -98,7 +98,29 @@
     );
 
     // --- Plan Limits ---
-    const planLimits = await application.billing.getOrgLimits.getLimits(organizationId);
+    const planResult = await db.query(
+      `SELECT p."maxUsers", p."maxTools"
+       FROM "Subscription" s
+       JOIN "Plan" p ON p."planId" = s."planId"
+       WHERE s."organizationId" = $1 AND s."status" IN ('active', 'trialing')
+       LIMIT 1`,
+      [organizationId],
+    );
+    const currentUsers = await tq.count('User', { active: true });
+    const currentTools = totalTools;
+    const plan = planResult.rows[0] || { maxUsers: 1, maxTools: 1 };
+    const planLimits = {
+      users: {
+        allowed: currentUsers < plan.maxUsers,
+        current: currentUsers,
+        limit: plan.maxUsers,
+      },
+      tools: {
+        allowed: currentTools < plan.maxTools,
+        current: currentTools,
+        limit: plan.maxTools,
+      },
+    };
 
     return {
       tools: {
