@@ -6,6 +6,7 @@ import type { PassportService } from '../../services/passport-service.js';
 const InitRequestSchema = z.object({
   path: z.string().min(1),
   overrides: z.record(z.unknown()).optional(),
+  force: z.boolean().optional(),
 });
 
 export const createAgentRoute = (passportService: PassportService) => {
@@ -23,6 +24,7 @@ export const createAgentRoute = (passportService: PassportService) => {
     const result = await passportService.initPassport(
       parsed.data.path,
       parsed.data.overrides,
+      parsed.data.force,
     );
     return c.json(result);
   });
@@ -99,6 +101,54 @@ export const createAgentRoute = (passportService: PassportService) => {
       throw new ValidationError(`Passport not found: ${name}`);
     }
     return c.json(result);
+  });
+
+  // C.D01: Generate FRIA from passport
+  app.post('/agent/fria', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = z.object({
+      path: z.string().min(1),
+      name: z.string().min(1),
+      organization: z.string().optional(),
+      assessor: z.string().optional(),
+    }).safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.generateFriaReport(
+      parsed.data.name,
+      parsed.data.path,
+      {
+        organization: parsed.data.organization,
+        assessor: parsed.data.assessor,
+      },
+    );
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+    }
+    return c.json(result);
+  });
+
+  // C.R20: Evidence chain summary
+  app.get('/agent/evidence', async (c) => {
+    const path = c.req.query('path');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+    return c.json(await passportService.getEvidenceChainSummary(path));
+  });
+
+  // C.R20: Evidence chain verification
+  app.get('/agent/evidence/verify', async (c) => {
+    const path = c.req.query('path');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+    return c.json(await passportService.verifyEvidenceChain(path));
   });
 
   return app;

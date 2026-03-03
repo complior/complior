@@ -3,8 +3,12 @@ import { createPipeline } from './pipeline.js';
 import { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 
 export type { MiddlewareConfig, MiddlewareContext, MiddlewareResult, PreHook, PostHook, DomainHooks, Domain, Jurisdiction, Role } from './types.js';
-export { ProhibitedPracticeError, MiddlewareError, DomainViolationError } from './errors.js';
+export { ProhibitedPracticeError, MiddlewareError, DomainViolationError, PermissionDeniedError, BudgetExceededError, RateLimitError, CircuitBreakerError } from './errors.js';
 export { getDomainHooks, mergeDomainHooks } from './domains/index.js';
+export { compliorAgent } from './agent.js';
+export type { AgentConfig, AgentPassport } from './agent.js';
+export type { ActionLogEntry } from './post/action-log.js';
+export type { CircuitBreakerConfig } from './post/circuit-breaker.js';
 
 const resolveDomainHooks = (config: MiddlewareConfig): DomainHooks | undefined => {
   if (!config.domain) return undefined;

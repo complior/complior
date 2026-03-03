@@ -5,7 +5,10 @@ export type EvidenceSource =
   | 'dependency'
   | 'pattern-match'
   | 'llm-analysis'
-  | 'cross-layer';
+  | 'cross-layer'
+  | 'fix'
+  | 'passport'
+  | 'fria';
 
 export interface Evidence {
   readonly findingId: string;

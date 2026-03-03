@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ScanResult } from '../types/common.types.js';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
@@ -7,6 +8,7 @@ import { generateSbom, type CycloneDxBom } from '../domain/scanner/sbom.js';
 import {
   parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod,
 } from '../domain/scanner/layers/layer3-parsers.js';
+import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 
 export interface ScanServiceDeps {
   readonly scanner: Scanner;
@@ -14,6 +16,7 @@ export interface ScanServiceDeps {
   readonly events: EventBusPort;
   readonly getLastScanResult: () => ScanResult | null;
   readonly setLastScanResult: (result: ScanResult) => void;
+  readonly evidenceStore?: EvidenceStore;
 }
 
 export const createScanService = (deps: ScanServiceDeps) => {
@@ -28,6 +31,15 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
+
+    // C.R20: Persist evidence to chain
+    if (deps.evidenceStore) {
+      const allEvidence = result.findings.flatMap(f => f.evidence ?? []);
+      if (allEvidence.length > 0) {
+        const scanId = randomUUID();
+        await deps.evidenceStore.append(allEvidence, scanId);
+      }
+    }
 
     // Drift detection: compare with previous scan
     if (previousResult !== null) {

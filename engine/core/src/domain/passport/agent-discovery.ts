@@ -6,12 +6,16 @@ import { AI_SDK_PACKAGES } from '../scanner/rules/banned-packages-sdk.js';
 // --- Framework detection patterns ---
 
 const FRAMEWORK_PATTERNS: ReadonlyMap<string, RegExp> = new Map([
-  ['LangChain', /AgentExecutor|createReactAgent|createOpenAIFunctionsAgent/g],
-  ['CrewAI', /Crew\(|@crew/g],
-  ['Anthropic', /messages\.create|anthropic/g],
-  ['OpenAI', /chat\.completions\.create|openai/g],
+  ['LangChain', /AgentExecutor|createReactAgent|createOpenAIFunctionsAgent|@langchain/g],
+  ['CrewAI', /Crew\(|@crew|from crewai/g],
+  ['AutoGen', /AssistantAgent|UserProxyAgent|GroupChat|from pyautogen/g],
+  ['Anthropic', /messages\.create.*anthropic|@anthropic-ai\/sdk|from anthropic/g],
+  ['OpenAI', /chat\.completions\.create|new OpenAI\(/g],
   ['Vercel AI', /generateText\(|streamText\(/g],
   ['LlamaIndex', /VectorStoreIndex|ServiceContext/g],
+  ['Groq', /new Groq\(|groq-sdk/g],
+  ['Ollama', /new Ollama\(|from ollama|ollama\.chat/g],
+  ['Bedrock', /BedrockRuntimeClient|InvokeModelCommand|client-bedrock/g],
 ]);
 
 // --- Model name detection ---
@@ -41,24 +45,31 @@ const isSourceFile = (relativePath: string, extension: string): boolean => {
   return !parts.some((part) => IGNORED_DIRS.has(part));
 };
 
-// --- Framework detection ---
+// --- Per-file framework detection ---
 
-const detectFrameworks = (
-  sourceFiles: readonly { readonly content: string }[],
-): Map<string, number> => {
-  const counts = new Map<string, number>();
+interface FileFrameworkMatch {
+  readonly relativePath: string;
+  readonly content: string;
+  readonly extension: string;
+  readonly framework: string;
+}
+
+const detectFileFrameworks = (
+  sourceFiles: readonly { readonly relativePath: string; readonly content: string; readonly extension: string }[],
+): readonly FileFrameworkMatch[] => {
+  const matches: FileFrameworkMatch[] = [];
 
   for (const file of sourceFiles) {
     for (const [framework, pattern] of FRAMEWORK_PATTERNS) {
       pattern.lastIndex = 0;
-      const matches = file.content.match(pattern);
-      if (matches !== null) {
-        counts.set(framework, (counts.get(framework) ?? 0) + matches.length);
+      if (pattern.test(file.content)) {
+        matches.push({ ...file, framework });
+        break; // one framework per file (first match wins)
       }
     }
   }
 
-  return counts;
+  return matches;
 };
 
 // --- Model detection ---
@@ -160,69 +171,66 @@ export const discoverAgents = (
     isSourceFile(f.relativePath, f.extension),
   );
 
-  // 3. Detect framework patterns in source
-  const frameworkCounts = detectFrameworks(sourceFiles);
+  // 3. Detect per-file framework matches
+  const fileMatches = detectFileFrameworks(sourceFiles);
 
-  // 4. Detect model names
-  const detectedModels = detectModels(sourceFiles);
-
-  // 5. Determine primary framework (most matches wins)
-  let primaryFramework = 'unknown';
-  let maxMatches = 0;
-  for (const [framework, count] of frameworkCounts) {
-    if (count > maxMatches) {
-      maxMatches = count;
-      primaryFramework = framework;
-    }
+  // 4. Group files by framework
+  const byFramework = new Map<string, FileFrameworkMatch[]>();
+  for (const match of fileMatches) {
+    const group = byFramework.get(match.framework) ?? [];
+    group.push(match);
+    byFramework.set(match.framework, group);
   }
 
-  // If no framework found from patterns, try SDK name
-  if (primaryFramework === 'unknown' && detectedSdks.length > 0) {
-    const sdkLabel = AI_SDK_PACKAGES.get(detectedSdks[0]);
-    if (sdkLabel !== undefined) {
-      primaryFramework = sdkLabel;
-    }
-  }
-
-  // 6. Determine language
-  const language = detectLanguage(sourceFiles);
-
-  // 7. Build agent name
-  const name = inferAgentName(ctx);
-
-  // 8. Find entry file (first source file with framework match, or first source file)
-  let entryFile = sourceFiles[0]?.relativePath ?? '';
-  for (const file of sourceFiles) {
-    for (const [, pattern] of FRAMEWORK_PATTERNS) {
-      pattern.lastIndex = 0;
-      if (pattern.test(file.content)) {
-        entryFile = file.relativePath;
-        break;
-      }
-    }
-    if (entryFile !== (sourceFiles[0]?.relativePath ?? '')) break;
-  }
-
-  // 9. Calculate confidence
-  const sdkCount = detectedSdks.length;
-  const frameworkFound = primaryFramework !== 'unknown';
-  const modelFound = detectedModels.length > 0;
-  const confidence =
-    0.5 +
-    (sdkCount > 0 ? 0.2 : 0) +
-    (frameworkFound ? 0.2 : 0) +
-    (modelFound ? 0.1 : 0);
-
-  // 10. Return one DiscoveredAgent per project (multi-agent detection later)
-  return [
-    {
+  // 5. If no frameworks detected from code patterns, fall back to single agent from SDK deps
+  if (byFramework.size === 0) {
+    const sdkLabel = AI_SDK_PACKAGES.get(detectedSdks[0]) ?? 'unknown';
+    const name = inferAgentName(ctx);
+    const language = detectLanguage(sourceFiles);
+    return [{
       name,
-      entryFile,
-      framework: primaryFramework,
+      entryFile: sourceFiles[0]?.relativePath ?? '',
+      framework: sdkLabel,
       language,
       detectedSdks,
-      detectedModels,
+      detectedModels: detectModels(sourceFiles),
+      confidence: 0.5 + (detectedSdks.length > 0 ? 0.2 : 0),
+    }];
+  }
+
+  // 6. Build one DiscoveredAgent per framework
+  const projectName = inferAgentName(ctx);
+  const agents: DiscoveredAgent[] = [];
+
+  for (const [framework, files] of byFramework) {
+    const entryFile = files[0].relativePath;
+    const language = detectLanguage(files);
+    const models = detectModels(files);
+
+    // Name: project-framework (lowercase, kebab-case)
+    const frameworkSlug = framework.toLowerCase().replace(/\s+/g, '-');
+    const name = byFramework.size === 1
+      ? projectName
+      : `${projectName}-${frameworkSlug}`;
+
+    // Confidence: base 0.5 + SDK present + framework matched + model found
+    const hasModel = models.length > 0;
+    const confidence =
+      0.5 +
+      (detectedSdks.length > 0 ? 0.2 : 0) +
+      0.2 + // framework always found here
+      (hasModel ? 0.1 : 0);
+
+    agents.push({
+      name,
+      entryFile,
+      framework,
+      language,
+      detectedSdks,
+      detectedModels: models,
       confidence,
-    },
-  ];
+    });
+  }
+
+  return agents;
 };

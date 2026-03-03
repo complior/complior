@@ -1,10 +1,25 @@
 use crate::cli::AgentAction;
 use crate::config::TuiConfig;
+use crate::daemon;
 use crate::engine_client::EngineClient;
+
+/// Resolve engine client: walk up from CWD to find daemon PID file, fall back to config default.
+fn resolve_client(config: &TuiConfig) -> EngineClient {
+    let mut dir = std::env::current_dir().unwrap_or_default();
+    loop {
+        if let Some(info) = daemon::find_running_daemon(&dir) {
+            return EngineClient::from_url(&format!("http://127.0.0.1:{}", info.port));
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    EngineClient::new(config)
+}
 
 pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
     match action {
-        AgentAction::Init { json, path } => run_agent_init(*json, path.as_deref(), config).await,
+        AgentAction::Init { json, force, path } => run_agent_init(*json, *force, path.as_deref(), config).await,
         AgentAction::List { json, path } => run_agent_list(*json, path.as_deref(), config).await,
         AgentAction::Show { name, json, path } => {
             run_agent_show(name, *json, path.as_deref(), config).await
@@ -18,10 +33,16 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Completeness { name, json, path } => {
             run_agent_completeness(name, *json, path.as_deref(), config).await
         }
+        AgentAction::Fria { name, json, organization, path } => {
+            run_agent_fria(name, *json, organization.as_deref(), path.as_deref(), config).await
+        }
+        AgentAction::Evidence { json, verify, path } => {
+            run_agent_evidence(*json, *verify, path.as_deref(), config).await
+        }
     }
 }
 
-async fn run_agent_init(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let project_path = path
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
@@ -30,7 +51,7 @@ async fn run_agent_init(json: bool, path: Option<&str>, config: &TuiConfig) -> i
         println!("Discovering AI agents in {}...", project_path.display());
     }
 
-    let client = EngineClient::new(config);
+    let client = resolve_client(config);
 
     // Check engine is running
     match client.status().await {
@@ -44,6 +65,7 @@ async fn run_agent_init(json: bool, path: Option<&str>, config: &TuiConfig) -> i
     // Call engine to init passport
     let body = serde_json::json!({
         "path": project_path.to_string_lossy(),
+        "force": force,
     });
 
     match client.post_json("/agent/init", &body).await {
@@ -56,10 +78,13 @@ async fn run_agent_init(json: bool, path: Option<&str>, config: &TuiConfig) -> i
             // Human-readable output
             let manifests = result.get("manifests").and_then(|v| v.as_array());
             let saved_paths = result.get("savedPaths").and_then(|v| v.as_array());
+            let skipped = result.get("skipped").and_then(|v| v.as_array());
+            let skipped_count = skipped.map(|s| s.len()).unwrap_or(0);
 
-            match manifests {
-                Some(agents) if !agents.is_empty() => {
-                    println!("\nDiscovered {} agent(s):\n", agents.len());
+            // Show created passports
+            if let Some(agents) = manifests {
+                if !agents.is_empty() {
+                    println!("\nCreated {} passport(s):\n", agents.len());
 
                     for (i, agent) in agents.iter().enumerate() {
                         let name = agent
@@ -112,14 +137,33 @@ async fn run_agent_init(json: bool, path: Option<&str>, config: &TuiConfig) -> i
                         }
                         println!();
                     }
+                }
+            }
 
-                    println!("Agent Passport(s) generated successfully.");
-                    println!("Run `complior agent list` to view all passports.");
+            // Show skipped passports
+            if let Some(skip_list) = skipped {
+                if !skip_list.is_empty() {
+                    println!("\nSkipped {} existing passport(s):\n", skip_list.len());
+                    for name in skip_list {
+                        if let Some(n) = name.as_str() {
+                            println!("  {n} (already exists, use --force to overwrite)");
+                        }
+                    }
+                    println!();
                 }
-                _ => {
-                    println!("No AI agents detected in project.");
-                    println!("Ensure your project uses an AI SDK (OpenAI, Anthropic, LangChain, etc.).");
-                }
+            }
+
+            // Summary
+            let created_count = manifests.map(|m| m.len()).unwrap_or(0);
+            if created_count > 0 {
+                println!("Agent Passport(s) generated successfully.");
+                println!("Run `complior agent list` to view all passports.");
+            } else if skipped_count > 0 {
+                println!("All discovered agents already have passports.");
+                println!("Run `complior agent init --force` to regenerate.");
+            } else {
+                println!("No AI agents detected in project.");
+                println!("Ensure your project uses an AI SDK (OpenAI, Anthropic, LangChain, etc.).");
             }
             0
         }
@@ -135,7 +179,7 @@ async fn run_agent_list(json: bool, path: Option<&str>, config: &TuiConfig) -> i
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = EngineClient::new(config);
+    let client = resolve_client(config);
 
     match client.status().await {
         Ok(status) if status.ready => {}
@@ -226,7 +270,7 @@ async fn run_agent_show(
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = EngineClient::new(config);
+    let client = resolve_client(config);
 
     match client.status().await {
         Ok(status) if status.ready => {}
@@ -344,7 +388,7 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
         println!("Analyzing autonomy in {}...", project_path.display());
     }
 
-    let client = EngineClient::new(config);
+    let client = resolve_client(config);
 
     match client.status().await {
         Ok(status) if status.ready => {}
@@ -420,7 +464,7 @@ async fn run_agent_validate(
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = EngineClient::new(config);
+    let client = resolve_client(config);
 
     match client.status().await {
         Ok(status) if status.ready => {}
@@ -586,7 +630,7 @@ async fn run_agent_completeness(
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = EngineClient::new(config);
+    let client = resolve_client(config);
 
     match client.status().await {
         Ok(status) if status.ready => {}
@@ -682,6 +726,184 @@ async fn run_agent_completeness(
         Err(e) => {
             eprintln!("Error: Failed to get completeness: {e}");
             1
+        }
+    }
+}
+
+// --- C.D01: FRIA generation ---
+
+async fn run_agent_fria(
+    name: &str,
+    json: bool,
+    organization: Option<&str>,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let project_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    if !json {
+        println!("Generating FRIA for agent '{name}'...");
+    }
+
+    let client = resolve_client(config);
+
+    match client.status().await {
+        Ok(status) if status.ready => {}
+        _ => {
+            eprintln!("Error: Engine not running. Start with: complior daemon");
+            return 1;
+        }
+    }
+
+    let mut body = serde_json::json!({
+        "path": project_path.to_string_lossy(),
+        "name": name,
+    });
+
+    if let Some(org) = organization {
+        body["organization"] = serde_json::Value::String(org.to_string());
+    }
+
+    match client.post_json("/agent/fria", &body).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let saved_path = result
+                .get("savedPath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let prefilled_count = result
+                .get("prefilledFields")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let empty_vec = vec![];
+            let manual_fields = result
+                .get("manualFields")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&empty_vec);
+
+            println!("\nFRIA generated: {name}");
+            println!("  Saved: {saved_path}");
+            println!("  Pre-filled: {prefilled_count} fields");
+            println!("  Manual review needed ({} fields):", manual_fields.len());
+            for field in manual_fields {
+                if let Some(f) = field.as_str() {
+                    println!("    - {f}");
+                }
+            }
+            println!("\nReview and complete the FRIA document before submission.");
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to generate FRIA: {e}");
+            1
+        }
+    }
+}
+
+// --- C.R20: Evidence chain ---
+
+async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+    let project_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    let client = resolve_client(config);
+
+    match client.status().await {
+        Ok(status) if status.ready => {}
+        _ => {
+            eprintln!("Error: Engine not running. Start with: complior daemon");
+            return 1;
+        }
+    }
+
+    if verify {
+        let url = format!("/agent/evidence/verify?path={}", project_path.to_string_lossy());
+        match client.get_json(&url).await {
+            Ok(result) => {
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                    return 0;
+                }
+
+                let valid = result.get("valid").and_then(|v| v.as_bool()).unwrap_or(false);
+                if valid {
+                    println!("Chain integrity: VALID");
+                } else {
+                    let broken_at = result
+                        .get("brokenAt")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    println!("Chain integrity: BROKEN at entry {broken_at}");
+                    return 1;
+                }
+                0
+            }
+            Err(e) => {
+                eprintln!("Error: Failed to verify evidence chain: {e}");
+                1
+            }
+        }
+    } else {
+        let url = format!("/agent/evidence?path={}", project_path.to_string_lossy());
+        match client.get_json(&url).await {
+            Ok(result) => {
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                    return 0;
+                }
+
+                let total = result
+                    .get("totalEntries")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let scans = result
+                    .get("scanCount")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let findings = result
+                    .get("uniqueFindings")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let valid = result
+                    .get("chainValid")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let first = result
+                    .get("firstEntry")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let last = result
+                    .get("lastEntry")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+
+                println!("\nEvidence Chain Summary\n");
+                println!("  Total entries:    {total}");
+                println!("  Scan count:       {scans}");
+                println!("  Unique findings:  {findings}");
+                println!("  Chain valid:      {}", if valid { "yes" } else { "NO" });
+                println!("  First entry:      {first}");
+                println!("  Last entry:       {last}");
+                0
+            }
+            Err(e) => {
+                eprintln!("Error: Failed to get evidence summary: {e}");
+                1
+            }
         }
     }
 }

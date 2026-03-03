@@ -25,6 +25,9 @@ import { createExternalScanService } from './services/external-scan-service.js';
 import type { ExternalScanService } from './services/external-scan-service.js';
 import { createStatusService } from './services/status-service.js';
 import { createPassportService } from './services/passport-service.js';
+import { createEvidenceStore } from './domain/scanner/evidence-store.js';
+import { loadOrCreateKeyPair as loadEvidenceKeyPair } from './domain/passport/crypto-signer.js';
+import { sign, verify as cryptoVerify } from 'node:crypto';
 import { createRouter } from './http/create-router.js';
 import { createFileWatcher } from './infra/file-watcher.js';
 import { createOnboardingWizard } from './onboarding/wizard.js';
@@ -117,13 +120,33 @@ export const loadApplication = async (): Promise<Application> => {
     },
   });
 
-  // 5. Create services
+  // 5. Create evidence store (C.R20)
+  const evidenceKeyPair = await loadEvidenceKeyPair();
+  const evidenceStorePath = resolve(state.projectPath, '.complior', 'evidence', 'chain.json');
+  const evidenceStore = createEvidenceStore(
+    evidenceStorePath,
+    (hash: string) => {
+      const sig = sign(null, Buffer.from(hash), evidenceKeyPair.privateKey);
+      return Buffer.from(sig).toString('base64');
+    },
+    (hash: string, signature: string) => {
+      try {
+        const sigBytes = Buffer.from(signature, 'base64');
+        return cryptoVerify(null, Buffer.from(hash), evidenceKeyPair.publicKey, sigBytes);
+      } catch {
+        return false;
+      }
+    },
+  );
+
+  // 5a. Create services
   const scanService = createScanService({
     scanner,
     collectFiles,
     events,
     getLastScanResult: () => state.lastScanResult,
     setLastScanResult: (result) => { state.lastScanResult = result; },
+    evidenceStore,
   });
 
   // Template loader for fixer
@@ -150,6 +173,7 @@ export const loadApplication = async (): Promise<Application> => {
     getLastScanResult: () => state.lastScanResult,
     loadTemplate,
     undoService,
+    evidenceStore,
   });
 
   const chatService = createChatService({
@@ -210,6 +234,8 @@ export const loadApplication = async (): Promise<Application> => {
     events,
     getProjectPath: () => state.projectPath,
     getLastScanResult: () => state.lastScanResult,
+    loadTemplate,
+    evidenceStore,
   });
 
   // 5b. Create onboarding wizard

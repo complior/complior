@@ -56,6 +56,8 @@ export interface ComplianceBlock {
   };
   readonly complior_score: number;
   readonly last_scan: string;
+  readonly fria_completed?: boolean;
+  readonly fria_date?: string;
 }
 
 export interface DisclosureBlock {
@@ -200,6 +202,8 @@ const ComplianceBlockSchema = z.object({
   }),
   complior_score: z.number().min(0).max(100),
   last_scan: z.string(),
+  fria_completed: z.boolean().optional(),
+  fria_date: z.string().optional(),
 });
 
 const DisclosureBlockSchema = z.object({

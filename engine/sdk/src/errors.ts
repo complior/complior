@@ -31,3 +31,47 @@ export class DomainViolationError extends MiddlewareError {
     this.obligationId = obligationId;
   }
 }
+
+export class PermissionDeniedError extends MiddlewareError {
+  readonly method: string;
+
+  constructor(message: string, method: string) {
+    super(message, 'PERMISSION_DENIED');
+    this.name = 'PermissionDeniedError';
+    this.method = method;
+  }
+}
+
+export class BudgetExceededError extends MiddlewareError {
+  readonly totalCost: number;
+  readonly limitUsd: number;
+
+  constructor(message: string, totalCost: number, limitUsd: number) {
+    super(message, 'BUDGET_EXCEEDED');
+    this.name = 'BudgetExceededError';
+    this.totalCost = totalCost;
+    this.limitUsd = limitUsd;
+  }
+}
+
+export class RateLimitError extends MiddlewareError {
+  readonly maxPerMinute: number;
+
+  constructor(message: string, maxPerMinute: number) {
+    super(message, 'RATE_LIMIT');
+    this.name = 'RateLimitError';
+    this.maxPerMinute = maxPerMinute;
+  }
+}
+
+export class CircuitBreakerError extends MiddlewareError {
+  readonly circuitState: string;
+  readonly errorThreshold: number;
+
+  constructor(message: string, circuitState: string, errorThreshold: number) {
+    super(message, 'CIRCUIT_BREAKER');
+    this.name = 'CircuitBreakerError';
+    this.circuitState = circuitState;
+    this.errorThreshold = errorThreshold;
+  }
+}

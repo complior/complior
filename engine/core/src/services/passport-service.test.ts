@@ -78,13 +78,42 @@ const res = await client.chat.completions.create({
     ]);
 
     const service = createPassportService(deps);
-    const result = await service.initPassport('/tmp/test');
+    const result = await service.initPassport('/tmp/test', undefined, true);
 
     expect(result.manifests).toHaveLength(1);
     expect(result.manifests[0].name).toBe('ai-bot');
     expect(result.manifests[0].agent_id).toMatch(/^ag_/);
     expect(result.manifests[0].signature).toBeDefined();
     expect(result.manifests[0].signature.algorithm).toBe('ed25519');
+  });
+
+  it('initPassport skips existing passport without --force', async () => {
+    const deps = createMockDeps([
+      createFile(
+        'package.json',
+        JSON.stringify({
+          name: 'ai-bot',
+          dependencies: { openai: '4.20.0' },
+        }),
+        '.json',
+      ),
+      createFile(
+        'src/agent.ts',
+        `import OpenAI from 'openai';
+const client = new OpenAI();`,
+      ),
+    ]);
+
+    const service = createPassportService(deps);
+
+    // First call with force to ensure manifest exists on disk
+    await service.initPassport('/tmp/test', undefined, true);
+
+    // Second call without force — should skip
+    const result = await service.initPassport('/tmp/test');
+
+    expect(result.manifests).toHaveLength(0);
+    expect(result.skipped).toContain('ai-bot');
   });
 
   it('listPassports returns empty for new project', async () => {

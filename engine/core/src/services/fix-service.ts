@@ -1,4 +1,5 @@
 import { resolve, dirname } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { mkdir, copyFile, readFile, writeFile } from 'node:fs/promises';
 import type { Finding, ScanResult } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
@@ -6,6 +7,8 @@ import type { Fixer } from '../domain/fixer/create-fixer.js';
 import type { FixPlan, FixResult, FixValidation } from '../domain/fixer/types.js';
 import type { ScanService } from './scan-service.js';
 import type { UndoService } from './undo-service.js';
+import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
+import { createEvidence } from '../domain/scanner/evidence.js';
 
 export interface FixServiceDeps {
   readonly fixer: Fixer;
@@ -15,6 +18,7 @@ export interface FixServiceDeps {
   readonly getLastScanResult: () => ScanResult | null;
   readonly loadTemplate: (templateFile: string) => Promise<string>;
   readonly undoService?: UndoService;
+  readonly evidenceStore?: EvidenceStore;
 }
 
 export const createFixService = (deps: FixServiceDeps) => {
@@ -82,6 +86,17 @@ export const createFixService = (deps: FixServiceDeps) => {
       const scoreAfter = newResult.score.totalScore;
 
       events.emit('score.updated', { before: scoreBefore, after: scoreAfter });
+
+      // C.R20: Record fix event in evidence chain
+      if (deps.evidenceStore) {
+        const evidence = createEvidence(
+          plan.checkId,
+          'fix',
+          'fix',
+          { file: plan.actions[0]?.path },
+        );
+        await deps.evidenceStore.append([evidence], randomUUID());
+      }
 
       const result: FixResult = {
         plan,

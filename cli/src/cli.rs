@@ -128,6 +128,10 @@ pub enum AgentAction {
         #[arg(long)]
         json: bool,
 
+        /// Overwrite existing passports (default: skip)
+        #[arg(long)]
+        force: bool,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },
@@ -189,6 +193,35 @@ pub enum AgentAction {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// Generate Fundamental Rights Impact Assessment (Art.27)
+    Fria {
+        /// Agent name
+        name: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Organization name (for FRIA header)
+        #[arg(long)]
+        organization: Option<String>,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// Show evidence chain summary or verify integrity
+    Evidence {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Verify chain integrity
+        #[arg(long)]
+        verify: bool,
 
         /// Project path (default: current directory)
         path: Option<String>,
@@ -374,7 +407,7 @@ mod tests {
     fn cli_parse_agent_init() {
         let cli = Cli::parse_from(["complior", "agent", "init"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Init { json, path } }) => {
+            Some(Command::Agent { action: AgentAction::Init { json, path, .. } }) => {
                 assert!(!json);
                 assert!(path.is_none());
             }
@@ -538,6 +571,81 @@ mod tests {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Completeness command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_fria() {
+        let cli = Cli::parse_from(["complior", "agent", "fria", "my-bot"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Fria { name, json, organization, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(!json);
+                assert!(organization.is_none());
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Fria command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_fria_json() {
+        let cli = Cli::parse_from(["complior", "agent", "fria", "my-bot", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Fria { name, json, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Fria command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_fria_organization() {
+        let cli = Cli::parse_from(["complior", "agent", "fria", "my-bot", "--organization", "Acme"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Fria { name, organization, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(organization.as_deref(), Some("Acme"));
+            }
+            _ => panic!("Expected Agent Fria command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_evidence() {
+        let cli = Cli::parse_from(["complior", "agent", "evidence"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Evidence { json, verify, path } }) => {
+                assert!(!json);
+                assert!(!verify);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Evidence command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_evidence_verify() {
+        let cli = Cli::parse_from(["complior", "agent", "evidence", "--verify"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Evidence { verify, .. } }) => {
+                assert!(*verify);
+            }
+            _ => panic!("Expected Agent Evidence command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_evidence_json() {
+        let cli = Cli::parse_from(["complior", "agent", "evidence", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Evidence { json, .. } }) => {
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Evidence command"),
         }
     }
 
