@@ -9,14 +9,14 @@ pub fn run_version() {
     println!("https://complior.eu");
 }
 
-/// Run doctor diagnostics — 7 system health checks.
+/// Run doctor diagnostics — 8 system health checks.
 pub async fn run_doctor(config: &TuiConfig) {
     println!("Complior Doctor — System Health Check");
     println!("=====================================");
     println!();
 
     let mut passed = 0u32;
-    let total = 7u32;
+    let total = 8u32;
 
     // 1. TUI binary
     let version = env!("CARGO_PKG_VERSION");
@@ -104,6 +104,27 @@ pub async fn run_doctor(config: &TuiConfig) {
             passed += 1;
         }
         _ => println!("Not configured                    WARN  (optional)"),
+    }
+
+    // 8. SaaS Auth
+    print!("  SaaS Auth:      ");
+    if let Some(tokens) = crate::config::load_tokens() {
+        if crate::config::is_authenticated() {
+            let email = tokens.user_email.as_deref().unwrap_or("unknown");
+            let org = tokens.org_name.as_deref().unwrap_or("unknown");
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let mins_left = tokens.expires_at.saturating_sub(now) / 60;
+            println!("{email} ({org})            OK");
+            println!("                  Token expires in {mins_left} minutes");
+            passed += 1;
+        } else {
+            println!("Token expired                     WARN  (run `complior login`)");
+        }
+    } else {
+        println!("Not authenticated                 WARN  (run `complior login`)");
     }
 
     println!();

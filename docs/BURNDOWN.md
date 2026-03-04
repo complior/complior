@@ -108,30 +108,116 @@
 
 ---
 
-## S04 — Compliance Core (in progress)
+## S03-us — Sprint S03 User Stories (COMPLETED)
 
-**Duration:** 2026-03-03 — ongoing | **Team:** Claude Code
+**Duration:** 2026-03-03 — 2026-03-04 | **Team:** Claude Code
+**Sprint backlog:** `docs/sprints/SPRINT-BACKLOG-S03.md` (13 US)
 
-| Day | Date | Done | Notes |
-|-----|------|------|-------|
-| 1 | 2026-03-03 | Agent Passport Mode 1 | US-S03-02: Full auto pipeline, 6 domain modules, HTTP routes, CLI, TUI binding |
+| Day | Date | US | Commit | Notes |
+|-----|------|----|--------|-------|
+| 1 | 2026-03-03 | US-S03-02 | `79d3f6d` | Agent Passport Mode 1 (Auto): 6 domain modules, HTTP routes, CLI, TUI binding |
+| 1 | 2026-03-03 | US-S03-03 | `79d3f6d` + `ceca305` | Autonomy Rating L1-L5: analyzer in passport pipeline + CLI `autonomy` subcommand |
+| 1 | 2026-03-03 | US-S03-04 | `ceca305` | Passport Validate: `complior agent validate`, per-category scores, gap list, --verbose |
+| 2 | 2026-03-04 | US-S03-06 | `adad912` | compliorAgent() SDK: proxy wrapper, permission/rate-limit/budget/action-log hooks, 5 providers |
+| 2 | 2026-03-04 | US-S03-07 | `adad912` | Evidence Chain: SHA-256 hash chain, ed25519 signatures, `.complior/evidence/chain.json` |
+| 2 | 2026-03-04 | US-S03-08 | `adad912` + `6466fea` | FRIA Generator: template-based, 80% pre-fill, CLI flags for manual fields (AC#3) |
+| 2 | 2026-03-04 | US-S03-13 | `adad912` | Safe Passport Re-Init: skip existing, --force flag, HTTP `force` param |
+| 3 | 2026-03-04 | US-S03-05 | `6466fea` | Completeness Score: color coding (<50% Red, 50-79 Amber, 80-99 Yellow, 100% Green) |
+| 3 | 2026-03-04 | US-S03-09 | `6466fea` | TUI Passport Page: AgentList + FieldEditor modes, detail panel, actions [o/c/f/x] |
+| 3 | 2026-03-04 | US-S03-10 | `6466fea` | TUI Obligations Page: 108 obligations, 8 filters, critical path, linked features |
+| 3 | 2026-03-04 | US-S03-11 | `6466fea` | Scanner Passport Awareness: passport-presence (L1), passport-completeness (L2), passport-code-mismatch (cross) |
+| 3 | 2026-03-04 | US-S03-12 | `6466fea` | Scanner Quick Fixes: test file exclusion from L4, layer weights recalibrated |
 
-**Velocity:** 1/10 US | **Tests:** 756 → 811 (410 TS + 95 SDK + 306 Rust)
+**Velocity:** 13/13 US (including US-S03-01 from earlier S03 Daemon commit) | **Tests:** 756 → 944 (+188)
 
-**Remaining S04 (from PRODUCT-BACKLOG.md):**
+**Commits per US (cross-reference):**
 
-| Backlog ID | Feature | Status |
-|------------|---------|--------|
-| C.S01 | Agent Passport (3 modes) | Mode 1 DONE, Mode 2-3 pending |
-| C.S02 | Autonomy Rating L1-L5 | Analyzer DONE, CLI command pending |
-| C.S07 | Passport Validate | -- |
-| C.S09 | Passport Completeness Score | -- |
-| C.R12 | compliorAgent() SDK | -- |
-| C.R13 | Budget Controller | -- |
-| C.R14 | Circuit Breaker | -- |
-| C.R20 | Evidence Chain | -- |
-| C.R21 | Compliance Changelog | -- |
-| C.D01 | FRIA Generator (CLI) | -- |
+| US | Backlog ID | Commit(s) | Key Files |
+|----|------------|-----------|-----------|
+| US-S03-01 | — | `b3d4e85` | cli/src/daemon.rs, cli/src/headless/daemon.rs, engine/core/src/server.ts |
+| US-S03-02 | C.S01 | `79d3f6d` | domain/passport/*.ts, passport-service.ts, agent.route.ts, cli/src/headless/agent.rs |
+| US-S03-03 | C.S02 | `79d3f6d`+`ceca305` | domain/passport/autonomy-analyzer.ts, cli.rs (autonomy subcommand) |
+| US-S03-04 | C.S07 | `ceca305` | domain/passport/passport-validator.ts, obligation-field-map.ts, agent.route.ts |
+| US-S03-05 | C.S09 | `6466fea` | cli/src/views/passport/mod.rs (completeness_color, color bars) |
+| US-S03-06 | C.R12 | `adad912` | engine/sdk/src/agent.ts, pre/permission.ts, pre/rate-limit.ts, post/budget.ts, post/action-log.ts |
+| US-S03-07 | C.R20 | `adad912` | domain/scanner/evidence-store.ts, scan-service.ts, composition-root.ts |
+| US-S03-08 | C.D01 | `adad912`+`6466fea` | domain/fria/fria-generator.ts, cli.rs (fria subcommand), headless/agent.rs |
+| US-S03-09 | — | `6466fea` | cli/src/views/passport/mod.rs (AgentList/FieldEditor), app/view_keys.rs, app/executor.rs |
+| US-S03-10 | — | `6466fea` | cli/src/views/obligations/{mod,render,tests}.rs, obligations.route.ts, navigation.rs |
+| US-S03-11 | — | `6466fea` | checks/passport-presence.ts, checks/passport-completeness.ts, cross-layer.ts |
+| US-S03-12 | — | `6466fea` | layer4-patterns.ts, pattern-rules.ts, confidence.ts |
+| US-S03-13 | C.S01 | `adad912` | passport-service.ts (initPassport force param), agent.route.ts |
+
+---
+
+## S03-qf — Quality Fixes (Post-Sprint Polish)
+
+**Duration:** 2026-03-04 | **Team:** Claude Code
+**Context:** Code quality audit after manual E2E testing of all S03 features in tmux
+
+| # | Bug / Gap | File(s) | Fix |
+|---|-----------|---------|-----|
+| 1 | FRIA toast reads `"outputPath"` but engine returns `"savedPath"` | `cli/src/app/executor.rs` | Fixed JSON field name |
+| 2 | Obligations `scroll_offset` never updated → cursor goes off-screen | `cli/src/app/actions.rs` | Added scroll tracking in ScrollUp/ScrollDown for Obligations view |
+| 3 | `passport-completeness` counts empty `{}` / `[]` as filled → inflated % | `engine/core/src/domain/scanner/checks/passport-completeness.ts` | Added `isNonEmpty()` guard rejecting empty objects/arrays |
+| 4 | `obligations.route.ts` had 0 tests | `engine/core/src/http/routes/obligations.route.test.ts` (new) | 5 tests: coverage, no-scan, normalization, linked_checks, field mapping |
+| 5 | URL query params not encoded → broken on paths with spaces/unicode | `cli/src/headless/agent.rs`, `cli/src/app/executor.rs` | Added `url_encode()` helper, applied to 12 URLs total |
+| 6 | `extract_completeness` u64→u8 cast without clamping | `cli/src/views/passport/mod.rs` | Changed return type to `u8` with `.min(100)` clamp |
+
+**Velocity:** 6 fixes + 5 new tests | **Tests:** 944 → 950 (+6)
+
+---
+
+## S3.5 — United Sprint 1: CLI ↔ SaaS Integration Bridge
+
+**Duration:** 2026-03-04 — 2026-03-05 | **Team:** Claude Code (Marcus)
+**Cross-repo:** ~/complior (CLI, Rust + TS Engine) + ~/PROJECT (SaaS, Node.js + Next.js)
+**Sprint backlog:** `~/.claude/plans/steady-leaping-sunbeam.md` (12 US, 28 SP total — 18 SP CLI-side)
+
+**Goal:** *"CLI умеет аутентифицироваться в SaaS, синхронизировать passports/scans/документы, и TUI показывает реальный статус синхронизации."*
+
+| Day | Date | US | Notes |
+|-----|------|----|-------|
+| 1 | 2026-03-04 | US-U01 | `complior login` — Device Flow client (SaasClient, poll_token, open browser) |
+| 1 | 2026-03-04 | US-U02 | Token storage — save/load/clear in `~/.config/complior/credentials`, expiry check |
+| 1 | 2026-03-04 | US-U03 | `complior logout` — clear tokens, auth status in `complior doctor` |
+| 1 | 2026-03-04 | US-U04 | Engine Sync Service — `saas-client.ts` (5 methods), `sync.route.ts` (4 endpoints) |
+| 1 | 2026-03-04 | US-U05 | `complior sync` — passport push (36→18 field mapping, batch, conflict display) |
+| 1 | 2026-03-04 | US-U06 | Scan push — auto-sync after `complior scan` if authenticated, `--no-sync` flag |
+| 2 | 2026-03-05 | US-U10 | Data Bundle client — `bundle-fetcher.ts`, ETag caching, offline fallback |
+| 2 | 2026-03-05 | US-U11 | TUI Sync Panel — real status in `panels.rs` (Connected/email/org/stats/hotkeys S/L) |
+
+**CLI-side code audit (7 violations fixed):**
+- 5 HIGH: Removed `as` type assertions in 4 Engine TS files (saas-client.ts, sync.route.ts, scan.route.ts, bundle-fetcher.ts) — replaced with Zod schema, type annotations, runtime guards
+- 1 HIGH: Added `chmod 0o600` on credentials file after write (`config.rs`)
+- 4 PANIC: UTF-8 byte-slicing crash at 4 locations (panels.rs, render.rs, passport/mod.rs ×2) — created `truncate_str()` helper using `.chars()` API
+
+**New files (CLI-side):**
+
+| File | ~LOC | Description |
+|------|------|-------------|
+| `cli/src/saas_client.rs` | 120 | SaaS HTTP client (Device Flow + sync + data bundle) |
+| `cli/src/headless/login.rs` | 80 | Login/logout command handlers |
+| `cli/src/headless/sync.rs` | 70 | Sync command handler (passport + scan + docs) |
+| `engine/core/src/infra/saas-client.ts` | 113 | Engine→SaaS HTTP adapter (5 methods, typed interfaces) |
+| `engine/core/src/http/routes/sync.route.ts` | 249 | Engine sync routes (passport/scan/documents/status) |
+| `engine/core/src/infra/bundle-fetcher.ts` | 77 | Data bundle fetcher with ETag + cache + offline fallback |
+
+**Modified files (CLI-side):**
+
+| File | Changes |
+|------|---------|
+| `cli/src/cli.rs` | +Login, +Logout, +Sync commands |
+| `cli/src/config.rs` | +StoredTokens, +save/load/clear_tokens, +is_authenticated, +chmod 0o600 |
+| `cli/src/headless/commands.rs` | +dispatch for login/logout/sync |
+| `cli/src/views/mod.rs` | +truncate_str() UTF-8 safe helper |
+| `cli/src/views/dashboard/panels.rs` | SaaS Sync panel (real status replaces stub) |
+| `cli/src/views/obligations/render.rs` | UTF-8 safe truncation |
+| `cli/src/views/passport/mod.rs` | UTF-8 safe truncation (2 locations) |
+| `engine/core/src/http/routes/scan.route.ts` | Auto-sync hook (saasToken in Zod schema) |
+| `engine/core/src/http/create-router.ts` | +sync route registration |
+
+**Velocity:** 8 US + 7 audit fixes | **Tests:** 950 (no new tests — integration-tested via E2E)
 
 ---
 
@@ -142,7 +228,9 @@
 | v1 final (L09) | 315 | 9 | 253 | **568** |
 | S02 scanner | 375 | 9 | 253 | **637** |
 | S03 SRP restructuring | 375 | 95 | 286 | **756** |
-| S04 Agent Passport | 410 | 95 | 306 | **811** |
+| S03-us Agent Passport | 410 | 95 | 306 | **811** |
+| S03-us Sprint complete | 483 | 116 | 345 | **944** |
+| S03-qf Quality fixes | 489 | 116 | 345 | **950** |
 
 ---
 
@@ -156,5 +244,7 @@
 | S02 (Scanner) | 2 days | — | 9 | +80 |
 | S03 (Daemon) | 2 days | — | 4 | +76 |
 | S03-ref (Refactoring) | 2 days | — | — | +44 |
-| S04 (Passport, day 1) | 1 day | — | 1 | +55 |
-| **Total v8** | **~15 days** | — | **23+** | **+243** |
+| S03-us (Sprint S03 US) | 2 days | — | 13 | +188 |
+| S03-qf (Quality fixes) | <1 day | — | — | +6 |
+| S3.5 (United Sprint 1) | 2 days | — | 8+4 audit | +0 |
+| **Total v8** | **~18 days** | — | **47** | **+382** |

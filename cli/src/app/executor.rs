@@ -3,6 +3,22 @@ use tokio::sync::mpsc;
 use super::{App, AppCommand};
 use crate::components;
 use crate::config;
+
+/// Percent-encode a string for use in URL query parameters.
+fn url_encode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                result.push(b as char);
+            }
+            _ => {
+                result.push_str(&format!("%{b:02X}"));
+            }
+        }
+    }
+    result
+}
 use crate::session;
 use crate::types;
 use crate::views;
@@ -705,7 +721,7 @@ pub async fn execute_command(
         }
         AppCommand::LoadPassports => {
             let path = app.project_path.to_string_lossy().to_string();
-            let url = format!("/agent/list?path={path}");
+            let url = format!("/agent/list?path={}", url_encode(&path));
             match app.engine_client.get_json(&url).await {
                 Ok(result) => {
                     if let Some(arr) = result.as_array() {
@@ -727,7 +743,7 @@ pub async fn execute_command(
         }
         AppCommand::LoadPassportCompleteness => {
             if let Some((path, name)) = app.passport_path_name() {
-                let url = format!("/agent/completeness?path={path}&name={name}");
+                let url = format!("/agent/completeness?path={}&name={}", url_encode(&path), url_encode(&name));
                 match app.engine_client.get_json(&url).await {
                     Ok(result) => {
                         app.passport_view.completeness_data = Some(result);
@@ -743,7 +759,7 @@ pub async fn execute_command(
         }
         AppCommand::ValidatePassport => {
             if let Some((path, name)) = app.passport_path_name() {
-                let url = format!("/agent/validate?path={path}&name={name}");
+                let url = format!("/agent/validate?path={}&name={}", url_encode(&path), url_encode(&name));
                 match app.engine_client.get_json(&url).await {
                     Ok(result) => {
                         let valid = result
@@ -798,7 +814,7 @@ pub async fn execute_command(
                 match app.engine_client.post_json("/agent/fria", &body).await {
                     Ok(result) => {
                         let output_path = result
-                            .get("outputPath")
+                            .get("savedPath")
                             .and_then(|v| v.as_str())
                             .unwrap_or("(unknown)");
                         let msg = format!("FRIA report generated: {output_path}");
@@ -825,7 +841,7 @@ pub async fn execute_command(
         }
         AppCommand::ExportPassport => {
             if let Some((path, name)) = app.passport_path_name() {
-                let url = format!("/agent/show?path={path}&name={name}");
+                let url = format!("/agent/show?path={}&name={}", url_encode(&path), url_encode(&name));
                 match app.engine_client.get_json(&url).await {
                     Ok(result) => {
                         let json_str =

@@ -5,6 +5,8 @@ import { ValidationError } from '../../types/errors.js';
 
 const ScanRequestSchema = z.object({
   path: z.string().min(1),
+  saasToken: z.string().min(1).optional(),
+  saasUrl: z.string().url().optional(),
 });
 
 export const createScanRoute = (scanService: ScanService) => {
@@ -20,6 +22,29 @@ export const createScanRoute = (scanService: ScanService) => {
     }
 
     const result = await scanService.scan(parsed.data.path);
+
+    // Auto-sync: if saasToken provided, push scan to SaaS
+    const saasToken = parsed.data.saasToken;
+    if (saasToken) {
+      try {
+        const { createSaasClient } = await import('../../infra/saas-client.js');
+        const client = createSaasClient(parsed.data.saasUrl ?? 'https://app.complior.ai');
+        await client.syncScan(saasToken, {
+          projectPath: parsed.data.path,
+          score: result.score?.totalScore,
+          findings: result.findings?.map((f) => ({
+            severity: f.severity ?? 'info',
+            message: f.message ?? '',
+            tool: f.checkId,
+          })) ?? [],
+          toolsDetected: [{ name: 'scanned-project', category: 'other' }],
+        });
+      } catch (syncErr) {
+        const { createLogger } = await import('../../infra/logger.js');
+        createLogger('scan').warn('Auto-sync to SaaS failed (non-blocking):', syncErr);
+      }
+    }
+
     return c.json(result);
   });
 

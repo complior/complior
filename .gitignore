@@ -15,6 +15,7 @@ docs/*
 !docs/FEATURE-MAP.md
 !docs/FEATURE-AGENT-PASSPORT.md
 !docs/contributing/
+!docs/sprints/
 demos/
 .dev/
 scripts/

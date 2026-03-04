@@ -36,6 +36,7 @@ import { createOnboardingRoute } from './routes/onboarding.route.js';
 import { createWhatIfRoute } from './routes/whatif.route.js';
 import { createAgentRoute } from './routes/agent.route.js';
 import { createObligationsRoute } from './routes/obligations.route.js';
+import { createSyncRoute } from './routes/sync.route.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -59,6 +60,7 @@ export interface RouterDeps {
   readonly getLastScore: () => ScoreBreakdown | null;
   readonly obligations: readonly Record<string, unknown>[];
   readonly getLastScan: () => import('../types/common.types.js').ScanResult | null;
+  readonly getProjectPath: () => string;
 }
 
 export const createRouter = (deps: RouterDeps) => {
@@ -121,6 +123,7 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore }));
   app.route('/', createAgentRoute(deps.passportService));
   app.route('/', createObligationsRoute({ obligations: deps.obligations, getLastScan: deps.getLastScan }));
+  app.route('/', createSyncRoute({ getProjectPath: deps.getProjectPath, getLastScan: deps.getLastScan }));
 
   // Health check
   app.get('/health', (c) => c.json({ ok: true }));

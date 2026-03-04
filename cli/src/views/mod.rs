@@ -12,6 +12,16 @@ pub mod sidebar;
 pub mod terminal;
 pub mod timeline;
 
+/// Truncate a string to at most `max_chars` characters, appending "..." if truncated.
+/// Safe for multi-byte UTF-8 (never splits inside a char boundary).
+pub fn truncate_str(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        return s.to_string();
+    }
+    let truncated: String = s.chars().take(max_chars.saturating_sub(3)).collect();
+    format!("{truncated}...")
+}
+
 /// Word-wrap text into lines that fit within the given width.
 /// Splits on whitespace boundaries. Returns at least one (possibly empty) line.
 pub fn wrap_text_lines(text: &str, width: usize) -> Vec<String> {

@@ -302,11 +302,7 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
 
         // Truncate name
         let name_w = 20usize;
-        let truncated_name = if name.len() > name_w {
-            format!("{}...", &name[..name_w.saturating_sub(3)])
-        } else {
-            name.to_string()
-        };
+        let truncated_name = crate::views::truncate_str(&name, name_w);
 
         // Status icon based on completeness
         let status_icon = match completeness {
@@ -314,7 +310,7 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
             50..=90 => "\u{25cb}",
             _ => "\u{2717}",
         };
-        let status_color = completeness_color(completeness as u8, &t);
+        let status_color = completeness_color(completeness, &t);
 
         let row_style = if is_selected {
             Style::default().fg(t.fg).add_modifier(Modifier::BOLD)
@@ -336,7 +332,7 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
             ),
             Span::styled(
                 format!("  {completeness:>3}%"),
-                Style::default().fg(completeness_color(completeness as u8, &t)),
+                Style::default().fg(completeness_color(completeness, &t)),
             ),
         ]));
     }
@@ -440,10 +436,10 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     );
     lines.push(Line::from(vec![
         Span::styled("  Compl: ", Style::default().fg(t.muted)),
-        Span::styled(compl_bar, Style::default().fg(completeness_color(completeness as u8, &t))),
+        Span::styled(compl_bar, Style::default().fg(completeness_color(completeness, &t))),
         Span::styled(
             format!(" {completeness}%"),
-            Style::default().fg(completeness_color(completeness as u8, &t)).add_modifier(Modifier::BOLD),
+            Style::default().fg(completeness_color(completeness, &t)).add_modifier(Modifier::BOLD),
         ),
     ]));
 
@@ -469,8 +465,8 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     );
 }
 
-/// Extract completeness percentage from passport JSON.
-fn extract_completeness(passport: &serde_json::Value) -> u64 {
+/// Extract completeness percentage from passport JSON (clamped to 0–100).
+fn extract_completeness(passport: &serde_json::Value) -> u8 {
     // Count non-empty top-level fields as a heuristic
     let required_fields = [
         "name", "version", "description", "autonomy_level", "framework", "type",
@@ -492,7 +488,7 @@ fn extract_completeness(passport: &serde_json::Value) -> u64 {
         filled += 1;
     }
     let total = 9u64;
-    (filled * 100) / total
+    ((filled * 100) / total).min(100) as u8
 }
 
 /// Score color: green (80+), yellow (50-79), red (<50).
@@ -605,11 +601,7 @@ fn render_field_list(frame: &mut Frame, area: Rect, app: &App) {
 
         let value_preview = if has_value {
             let w = area.width.saturating_sub(25) as usize;
-            if field.value.len() > w {
-                format!("{}...", &field.value[..w.saturating_sub(3)])
-            } else {
-                field.value.clone()
-            }
+            crate::views::truncate_str(&field.value, w)
         } else {
             "[empty]".to_string()
         };
@@ -789,7 +781,7 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
             Span::styled(
                 format!("{score}% ({filled}/{total} fields)"),
                 Style::default()
-                    .fg(completeness_color(score as u8, &t))
+                    .fg(completeness_color(score.min(100) as u8, &t))
                     .add_modifier(Modifier::BOLD),
             ),
         ]));

@@ -18,6 +18,7 @@ use crate::components::undo_history::UndoHistoryState;
 use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 use crate::layout::Breakpoint;
+use crate::saas_client::SyncStats;
 use crate::types::{
     ActivityEntry, ActivityKind, ChatMessage, ClickTarget,
     EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult,
@@ -30,6 +31,15 @@ use crate::views::passport::PassportViewState;
 use crate::views::report::ReportViewState;
 use crate::views::scan::ScanViewState;
 use crate::views::timeline::TimelineViewState;
+
+#[derive(Debug, Clone, Default)]
+pub struct SyncState {
+    pub authenticated: bool,
+    pub user_email: Option<String>,
+    pub org_name: Option<String>,
+    pub last_sync: Option<String>,
+    pub stats: Option<SyncStats>,
+}
 
 pub struct App {
     // Core state
@@ -164,6 +174,9 @@ pub struct App {
     pub spinner: Spinner,
     pub project_path: PathBuf,
     pub operation_start: Option<Instant>,
+
+    // SaaS sync state
+    pub sync_state: SyncState,
 }
 
 const MAX_HISTORY: usize = 50;
@@ -181,7 +194,7 @@ impl App {
             .map(PathBuf::from)
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
-        let app = Self {
+        let mut app = Self {
             running: true,
             active_panel: Panel::Chat,
             input_mode: InputMode::Normal,
@@ -253,7 +266,15 @@ impl App {
             spinner: Spinner::new(),
             project_path,
             operation_start: None,
+            sync_state: SyncState::default(),
         };
+
+        // Initialize sync state from saved tokens
+        if let Some(tokens) = crate::config::load_tokens() {
+            app.sync_state.authenticated = crate::config::is_authenticated();
+            app.sync_state.user_email = tokens.user_email;
+            app.sync_state.org_name = tokens.org_name;
+        }
 
         app
     }

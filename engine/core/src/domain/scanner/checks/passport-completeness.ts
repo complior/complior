@@ -16,11 +16,21 @@ const ALL_FIELDS = [
 const HIGH_RISK_FIELDS = ALL_FIELDS;
 const LIMITED_RISK_FIELDS = ALL_FIELDS.slice(0, 12);
 
+const isNonEmpty = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === '') return false;
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return Object.keys(value as Record<string, unknown>).length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return true;
+};
+
 const countFields = (manifest: Record<string, unknown>, fields: readonly string[]): number => {
   let filled = 0;
   for (const field of fields) {
-    const value = manifest[field];
-    if (value !== undefined && value !== null && value !== '') {
+    if (isNonEmpty(manifest[field])) {
       filled++;
     }
   }

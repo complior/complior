@@ -144,6 +144,9 @@ impl App {
                         let filtered_len = self.obligations_view.filtered_obligations().len();
                         if filtered_len > 0 && self.obligations_view.selected_index > 0 {
                             self.obligations_view.selected_index -= 1;
+                            if self.obligations_view.selected_index < self.obligations_view.scroll_offset {
+                                self.obligations_view.scroll_offset = self.obligations_view.selected_index;
+                            }
                         }
                     }
                     _ => match self.active_panel {
@@ -209,6 +212,11 @@ impl App {
                             && self.obligations_view.selected_index < filtered_len.saturating_sub(1)
                         {
                             self.obligations_view.selected_index += 1;
+                            // Keep selected item visible (assume ~30 visible lines)
+                            let visible_lines = 30usize;
+                            if self.obligations_view.selected_index >= self.obligations_view.scroll_offset + visible_lines {
+                                self.obligations_view.scroll_offset = self.obligations_view.selected_index.saturating_sub(visible_lines - 1);
+                            }
                         }
                     }
                     _ => match self.active_panel {

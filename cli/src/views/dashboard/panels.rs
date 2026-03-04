@@ -211,11 +211,7 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
             )));
 
             for (i, (msg, impact)) in quick_wins.iter().enumerate() {
-                let short_msg = if msg.len() > w.saturating_sub(12) {
-                    format!("{}...", &msg[..w.saturating_sub(15)])
-                } else {
-                    msg.clone()
-                };
+                let short_msg = crate::views::truncate_str(msg, w.saturating_sub(12));
                 lines.push(Line::from(vec![
                     Span::styled(
                         format!(" {}. ", i + 1),
@@ -247,36 +243,52 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
         frame.render_widget(Paragraph::new(lines), inner);
     }
 
-    // -- Section 5: Sync Status --
+    // -- Section 5: SaaS Sync Status --
     {
         let block = Block::default()
-            .title(" Sync ")
+            .title(" SaaS Sync ")
             .title_style(theme::title_style())
             .borders(Borders::ALL)
             .border_style(Style::default().fg(t.border));
         let inner = block.inner(sections[4]);
         frame.render_widget(block, sections[4]);
 
-        let lines = match app.engine_status {
-            crate::types::EngineConnectionStatus::Connected => vec![
+        let lines = if app.sync_state.authenticated {
+            let email = app.sync_state.user_email.as_deref().unwrap_or("?");
+            let org = app.sync_state.org_name.as_deref().unwrap_or("?");
+            let mut l = vec![
                 Line::from(vec![
                     Span::styled(" \u{25cf} ", Style::default().fg(t.zone_green)),
-                    Span::styled("Connected", Style::default().fg(t.zone_green)),
+                    Span::styled(format!("Connected ({org})"), Style::default().fg(t.zone_green)),
                 ]),
-            ],
-            crate::types::EngineConnectionStatus::Connecting => vec![
-                Line::from(vec![
-                    Span::styled(" \u{25cb} ", Style::default().fg(t.zone_yellow)),
-                    Span::styled("Connecting...", Style::default().fg(t.zone_yellow)),
-                ]),
-            ],
-            crate::types::EngineConnectionStatus::Error => vec![
-                Line::from(vec![
-                    Span::styled(" \u{2717} ", Style::default().fg(t.zone_red)),
-                    Span::styled("Connection error", Style::default().fg(t.zone_red)),
-                ]),
-            ],
-            crate::types::EngineConnectionStatus::Disconnected => vec![
+                Line::from(Span::styled(
+                    format!(" {email}"),
+                    Style::default().fg(t.muted),
+                )),
+            ];
+
+            if let Some(ref stats) = app.sync_state.stats {
+                if let Some(ref last) = app.sync_state.last_sync {
+                    l.push(Line::from(Span::styled(
+                        format!(" Last: {last}"),
+                        Style::default().fg(t.muted),
+                    )));
+                }
+                l.push(Line::from(Span::styled(
+                    format!(" Passports: {} | Scans: {}", stats.passport_syncs, stats.scan_syncs),
+                    Style::default().fg(t.fg),
+                )));
+            }
+
+            l.push(Line::from(vec![
+                Span::styled(" [S] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+                Span::styled("Sync  ", Style::default().fg(t.fg)),
+                Span::styled("[L] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+                Span::styled("Logout", Style::default().fg(t.fg)),
+            ]));
+            l
+        } else {
+            vec![
                 Line::from(vec![
                     Span::styled(" \u{25cb} ", Style::default().fg(t.muted)),
                     Span::styled("Not connected", Style::default().fg(t.muted)),
@@ -289,7 +301,7 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
                     " to sync with SaaS.",
                     Style::default().fg(t.muted),
                 )),
-            ],
+            ]
         };
         frame.render_widget(Paragraph::new(lines), inner);
     }

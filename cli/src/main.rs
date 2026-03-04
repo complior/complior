@@ -7,6 +7,7 @@ mod config;
 mod daemon;
 mod engine_client;
 mod engine_process;
+mod saas_client;
 mod error;
 mod headless;
 mod input;
@@ -127,6 +128,28 @@ async fn main() -> color_eyre::Result<()> {
             }
             Some(cli::Command::Agent { action }) => {
                 let code = headless::agent::run_agent_command(action, &config).await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Login) => {
+                match headless::run_login(&config).await {
+                    Ok(()) => return Ok(()),
+                    Err(e) => {
+                        eprintln!("Login failed: {e}");
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Some(cli::Command::Logout) => {
+                match headless::run_logout(&config).await {
+                    Ok(()) => return Ok(()),
+                    Err(e) => {
+                        eprintln!("Logout failed: {e}");
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Some(cli::Command::Sync { passport, scan, docs, .. }) => {
+                let code = headless::run_sync(*passport, *scan, *docs, &config).await;
                 std::process::exit(code);
             }
             None => unreachable!(),

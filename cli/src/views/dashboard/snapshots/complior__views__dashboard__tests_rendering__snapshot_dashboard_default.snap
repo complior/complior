@@ -36,9 +36,9 @@ expression: buf
 │                                                          ││                                      ││                  │
 │                                                          ││                                      ││                  │
 │                                                          │└──────────────────────────────────────┘│                  │
-│                                                          │┌ Sync ────────────────────────────────┐│                  │
-│                                                          ││ ○ Not connected                      ││                  │
-│                                                          ││ Run `complior login`                 ││                  │
+│                                                          │┌ SaaS Sync ───────────────────────────┐│                  │
+│                                                          ││ ● Connected (Test Organization)      ││                  │
+│                                                          ││ ms@gmail.com                         ││                  │
 └──────────────────────────────────────────────────────────┘└──────────────────────────────────────┘└──────────────────┘
 [--] [1 Dashboard] [ctx:3%] ○                                                                                           
  NORMAL  e:zoom w:watch Ctrl+S:scan Ctrl+P:palette ?:help

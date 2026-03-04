@@ -269,6 +269,7 @@ export const loadApplication = async (): Promise<Application> => {
     getLastScore: () => state.lastScanResult?.score ?? null,
     obligations: regulationData.obligations.obligations as readonly Record<string, unknown>[],
     getLastScan: () => state.lastScanResult,
+    getProjectPath: () => state.projectPath,
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan

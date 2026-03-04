@@ -4,9 +4,10 @@
 > Each feature lists its completed user stories with implementation details.
 > Sprint burndown numbers → see [BURNDOWN.md](./BURNDOWN.md)
 
-**Updated:** 2026-03-03
-**Current status:** Sprint S04 in progress (Agent Passport)
-**Tests:** 811 | **TS Engine:** 410 | **Rust CLI:** 306 | **SDK:** 95
+**Updated:** 2026-03-05
+**Current status:** Sprint S3.5 COMPLETE (United Sprint 1 — CLI↔SaaS Bridge) + Quality Fixes
+**Tests:** 950 | **TS Engine:** 489 | **Rust CLI:** 345 | **SDK:** 116
+**Next:** Sprint S04 — Agent Governance + Certification (14 US)
 
 ---
 
@@ -38,8 +39,21 @@
 | F22 | Scanner Production-Grade (9 enhancements) | **DONE** | 9 | S02 |
 | F23 | Daemon Foundation (tui→cli, PID, lifecycle) | **DONE** | 4 | S03 |
 | F24 | Refactoring (SRP, dead code, contracts) | **DONE** | — | S03-ref |
-| F25 | Agent Passport Mode 1 (Auto) | **DONE** | 1 | S04 |
-| **TOTAL** | | | **~116** | |
+| F25 | Agent Passport Mode 1 (Auto) | **DONE** | 1 | S03-us |
+| F26 | Autonomy CLI + Passport Validate + Completeness | **DONE** | 3 | S03-us |
+| F27 | compliorAgent() SDK + Evidence Chain + FRIA + Re-Init | **DONE** | 4 | S03-us |
+| F28 | TUI Passport Page (AgentList + FieldEditor) | **DONE** | 1 | S03-us |
+| F29 | TUI Obligations Page (108 obligations, filters) | **DONE** | 1 | S03-us |
+| F30 | Scanner Passport Awareness + Quick Fixes | **DONE** | 2 | S03-us |
+| F31 | Passport Completeness Color Coding | **DONE** | 1 | S03-us |
+| F32 | S03 Quality Fixes (6 bugs, 5 tests) | **DONE** | — | S03-qf |
+| F33 | SaaS Authentication (Device Flow) | **DONE** | 3 | S3.5 |
+| F34 | SaaS Sync Service (Engine adapter) | **DONE** | 1 | S3.5 |
+| F35 | Passport + Scan + Doc Push | **DONE** | 3 | S3.5 |
+| F36 | Data Bundle Client (ETag cache) | **DONE** | 1 | S3.5 |
+| F37 | TUI Sync Panel (live status) | **DONE** | 1 | S3.5 |
+| F38 | S3.5 Code Audit Fixes (UTF-8, `as`, permissions) | **DONE** | — | S3.5 |
+| **TOTAL** | | | **~138** | |
 
 ---
 
@@ -384,7 +398,7 @@ Major codebase restructuring: SRP splits, dead code removal, shared type contrac
 
 ## F25: Agent Passport Mode 1 (Auto)
 
-**Sprint:** S04 | **Status:** DONE | **Backlog:** C.S01, C.S02
+**Sprint:** S03-us | **Status:** DONE | **Backlog:** C.S01, C.S02
 
 `complior agent init` — auto-generates `agent-manifest.json` from codebase analysis.
 
@@ -402,4 +416,192 @@ Major codebase restructuring: SRP splits, dead code removal, shared type contrac
 - **Service:** `passport-service.ts` — orchestrator: collectFiles → discover → analyze → build → sign → save
 - **HTTP:** `agent.route.ts` — POST /agent/init, GET /agent/list, GET /agent/show
 - **CLI:** `agent.rs` — human-readable + JSON output for all 3 subcommands
-- **Bug fixes:** `config.engine_url()` now respects `--engine-url` override; auto-discover daemon via PID file
+
+---
+
+## F26: Autonomy CLI + Passport Validate + Completeness
+
+**Sprint:** S03-us | **Status:** DONE | **Backlog:** C.S02, C.S07, C.S09
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S03-03 | Autonomy Rating L1-L5 | Auto-rate from AST: human_gates, unsupervised_actions, logging. `complior agent autonomy` CLI. Analyzer in passport pipeline + standalone command |
+| US-S03-04 | Passport Validate | `complior agent validate` — per-category completeness (Identity/Ownership/Autonomy/Constraints/Compliance), gap list, `--verbose` flag. TS: passport-validator.ts + obligation-field-map.ts |
+| US-S03-05 | Passport Completeness Score | TUI color coding: <50% Red, 50-79% Amber, 80-99% Yellow, 100% Green. `completeness_color()` helper, colored bars in agent list |
+
+---
+
+## F27: compliorAgent() SDK + Evidence Chain + FRIA + Re-Init
+
+**Sprint:** S03-us | **Status:** DONE | **Backlog:** C.R12, C.R13, C.R14, C.R20, C.D01, C.S01
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S03-06 | compliorAgent() SDK | `compliorAgent(client, config)` proxy wrapper. Pre-hooks: permission (tools allow/deny), rate-limit (sliding window). Post-hooks: budget (cost accumulation), action-log (callback), circuit-breaker (anomaly suspend). 5 provider adapters |
+| US-S03-07 | Evidence Chain | SHA-256 hash chain + ed25519 signatures. Events: scan, fix, passport, FRIA. Storage: `.complior/evidence/chain.json`. CLI: `complior agent evidence [--verify]` |
+| US-S03-08 | FRIA Generator | `complior agent fria <name>` — 80% pre-fill from passport. CLI flags `--impact`, `--mitigation`, `--approval` for manual fields. Template: `data/templates/eu-ai-act/fria.md`. Saves to `.complior/fria/` |
+| US-S03-13 | Safe Passport Re-Init | `complior agent init` skips existing passports. `--force` to overwrite. HTTP API `POST /agent/init` accepts `force?: boolean` |
+
+---
+
+## F28: TUI Passport Page (AgentList + FieldEditor)
+
+**Sprint:** S03-us | **Status:** DONE
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S03-09 | TUI Passport Page | Dual-mode: AgentList (table with name/L-level/score/completeness%) + FieldEditor (drill-down). Detail panel toggles FieldDetail ↔ ObligationChecklist. Action keys: [o] Obligations, [c] Validate, [f] FRIA, [x] Export. Enter to drill down, Esc to go back |
+
+**Key components:**
+- `PassportViewMode`: AgentList | FieldEditor
+- `PassportDetailMode`: FieldDetail | ObligationChecklist
+- `render_agent_list_view()`, `render_agent_table()`, `render_agent_detail()`
+- `AppCommand`: LoadPassportCompleteness, ValidatePassport, GeneratePassportFria, ExportPassport
+
+---
+
+## F29: TUI Obligations Page
+
+**Sprint:** S03-us | **Status:** DONE
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S03-10 | TUI Obligations Page | Hotkey `O` (or digit 5). 108 EU AI Act obligations from `obligations.json`. 8 filters: All/RoleProvider/RoleDeployer/RiskHigh/RiskLimited/CoveredOnly/UncoveredOnly/SeverityCritical. Two-column layout: filtered list + detail panel. Critical path highlighting (uncovered + has deadline). Coverage from scan cross-referencing (37-entry checkId→oblId mapping). Linked features section |
+
+**Key components:**
+- `ObligationsViewState`: obligations, filters, scroll, selection
+- `ObligationFilter` with `cycle()` through 8 variants
+- `is_critical_path()` for bold-red highlighting
+- `GET /obligations?path=...` endpoint with coverage mapping
+
+---
+
+## F30: Scanner Passport Awareness + Quick Fixes
+
+**Sprint:** S03-us | **Status:** DONE
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S03-11 | Scanner Passport Awareness | L1: `passport-presence` (agent-manifest.json exists, HIGH severity if AI SDK detected). L2-like: `passport-completeness` (validate required fields per risk_class, output "Passport Completeness: 72%"). Cross-layer rule #6: `passport-code-mismatch` (declared vs actual permissions) |
+| US-S03-12 | Scanner Quick Fixes | Exclude `*.test.ts`, `*.spec.ts`, `__tests__/` from L4 bare-llm checks. Layer weights recalibrated: L3=0.90, L4=0.75, L5=0.70 (deterministic > probabilistic) |
+
+---
+
+## F31: Passport Completeness Color Coding
+
+**Sprint:** S03-us | **Status:** DONE
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S03-05 | Completeness Color Coding | `completeness_color(pct, theme)` → zone_green (100%), zone_yellow (80-99%), severity_medium/amber (50-79%), zone_red (<50%). Applied to agent list table and detail panel bars |
+
+---
+
+## F32: S03 Quality Fixes
+
+**Sprint:** S03-qf (post-sprint polish) | **Status:** DONE
+
+Code quality audit after manual E2E testing. 6 bugs fixed, 5 new tests added.
+
+| # | Issue | File | Fix |
+|---|-------|------|-----|
+| 1 | FRIA toast wrong JSON field | `cli/src/app/executor.rs` | `"outputPath"` → `"savedPath"` |
+| 2 | Obligations scroll broken | `cli/src/app/actions.rs` | Added `scroll_offset` tracking in ScrollUp/ScrollDown |
+| 3 | Empty objects counted as filled | `engine/core/.../passport-completeness.ts` | `isNonEmpty()` rejects `{}` and `[]` |
+| 4 | obligations.route untested | `engine/core/.../obligations.route.test.ts` | 5 new tests |
+| 5 | URLs not percent-encoded | `cli/src/headless/agent.rs`, `cli/src/app/executor.rs` | `url_encode()` on 12 URLs |
+| 6 | u64→u8 cast unclamped | `cli/src/views/passport/mod.rs` | Return `u8` with `.min(100)` clamp |
+
+---
+
+## F33: SaaS Authentication (Device Flow Client)
+
+**Sprint:** S3.5 (United Sprint 1) | **Status:** DONE
+
+OAuth 2.0 Device Authorization Grant for CLI↔SaaS. Browser-based auth, JWT token storage, auto-refresh.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-U01 | `complior login` | Device Flow client in `saas_client.rs`. POST /api/auth/device → display user_code + open browser → poll POST /api/auth/token every 5s → save JWT to credentials file. `open` crate for browser launch |
+| US-U02 | Token Storage + Refresh | `StoredTokens` struct in `config.rs`. Save/load/clear tokens in `~/.config/complior/credentials` (KEY=VALUE format). `is_authenticated()` checks expiry. Session-expired message if token died (no refresh endpoint yet) |
+| US-U03 | `complior logout` + Status | Clear all token keys from credentials. Auth status in `complior doctor` (email, org, expiry) |
+
+**Key files:**
+- `cli/src/saas_client.rs` (NEW, 120 LOC) — `SaasClient` with `request_device_code()`, `poll_token()`, `sync_passport()`, `sync_scan()`, `sync_status()`
+- `cli/src/headless/login.rs` (NEW, 80 LOC) — `run_login()`, `run_logout()` handlers
+- `cli/src/config.rs` — +`StoredTokens`, +`save_tokens()`, +`load_tokens()`, +`clear_tokens()`, +`is_authenticated()`, +`chmod 0o600`
+- `cli/src/cli.rs` — +`Login`, `Logout` commands
+
+---
+
+## F34: SaaS Sync Service (Engine Adapter)
+
+**Sprint:** S3.5 (United Sprint 1) | **Status:** DONE
+
+Engine-side HTTP adapter and routes that bridge CLI→Engine→SaaS for all sync operations.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-U04 | Engine SaaS Sync Service | `saas-client.ts` — typed interfaces (SyncPassportPayload, SyncScanPayload, SyncDocPayload). `createSaasClient(baseUrl)` factory returns frozen object with 5 methods (syncPassport, syncScan, syncDocuments, syncStatus, fetchDataBundle). `sync.route.ts` — 4 Hono routes (POST /sync/passport, POST /sync/scan, POST /sync/documents, GET /sync/status). 36→18 field mapping via `mapPassport()`. Document type mapping (8 CLI→SaaS types). Token forwarded from CLI via request body |
+
+**Key files:**
+- `engine/core/src/infra/saas-client.ts` (NEW, 113 LOC) — 3 typed payload interfaces + SaasClient interface + factory
+- `engine/core/src/http/routes/sync.route.ts` (NEW, 249 LOC) — `createSyncRoute(deps)` with 4 endpoints
+- `engine/core/src/http/create-router.ts` — +sync route registration
+
+---
+
+## F35: Passport + Scan + Document Push
+
+**Sprint:** S3.5 (United Sprint 1) | **Status:** DONE
+
+CLI commands and Engine logic for pushing passports, scan results, and compliance documents to SaaS.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-U05 | `complior sync` + Passport Push | `headless/sync.rs` — `run_sync()` checks auth, connects to Engine, pushes via POST /sync/passport. Engine reads all `.complior/passports/*.json`, maps 36 AgentManifest fields to SaaS payload, shows created/updated/conflicts per passport |
+| US-U06 | Scan Result Push | Auto-sync: `scan.route.ts` extended with `saasToken` in Zod schema — after scan, if token present, push results to SaaS (non-blocking). Explicit: `complior sync --scan`. Engine reads last scan result, maps projectPath/score/findings/toolsDetected |
+| US-U07* | Document Push | Engine reads `docs/compliance/*.md`, maps file names to SaaS document types (8 mappings in DOC_TYPE_MAP), pushes via `syncDocuments()`. `complior sync --docs` or `complior sync` (all) |
+
+*US-U07 application logic (processDocuments.js) is on the SaaS side, but the Engine push client is here.
+
+---
+
+## F36: Data Bundle Client (ETag Cache)
+
+**Sprint:** S3.5 (United Sprint 1) | **Status:** DONE
+
+Engine downloads regulation data (obligations, scoring rules, tools) from SaaS API with ETag caching and offline fallback.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-U10 | Data Bundle Client | `bundle-fetcher.ts` — `createBundleFetcher(saasUrl, cacheDir)` factory. `fetchIfUpdated()`: read ETag from cache → GET /v1/data/bundle with If-None-Match → 304 = no change, 200 = save bundle.json + bundle.etag. `getBundle()`: try online → fallback to cache → fallback to embedded data. Integrated into daemon startup (5s delay) + periodic refresh (5 min interval) |
+
+---
+
+## F37: TUI Sync Panel (Live Status)
+
+**Sprint:** S3.5 (United Sprint 1) | **Status:** DONE
+
+TUI Dashboard shows real SaaS sync status instead of "Run `complior login` to sync" stub.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-U11 | TUI Sync Panel | `panels.rs` — replaced stub (lines 250-296) with real SyncState rendering. If authenticated: green indicator "● Connected (Org Name)", user email, last sync time, passport/scan counts, hotkeys [S] Sync now / [L] Logout. If not authenticated: current stub with login instruction. Background poll every 30s via Engine GET /sync/status |
+
+---
+
+## F38: S3.5 Code Audit Fixes
+
+**Sprint:** S3.5 (post-sprint audit) | **Status:** DONE
+
+Full code audit of Sprint S3.5 deliverables against CODING-STANDARDS. 11 issues fixed.
+
+| # | Severity | Issue | File(s) | Fix |
+|---|----------|-------|---------|-----|
+| 1 | PANIC | UTF-8 byte-slicing on em-dash `—` | `panels.rs:215`, `render.rs:146`, `passport/mod.rs:306,609` | Created `truncate_str()` helper using `.chars().count()` + `.chars().take()` |
+| 2 | HIGH | `as` type assertion (×3) | `saas-client.ts:68,82,108` | Type annotation `const data: Record<...> = await resp.json()` |
+| 3 | HIGH | `as` type assertion (×2) | `scan.route.ts:26,32` | Extended Zod schema with `saasToken`, `saasUrl` fields |
+| 4 | HIGH | `as` type assertion (×3) | `sync.route.ts:54,115,155` | `?? undefined`, `parseManifest()` helper with `'name' in parsed` guard |
+| 5 | HIGH | `as` type assertion (×1) | `bundle-fetcher.ts:37` | Type annotation |
+| 6 | HIGH | Credentials world-readable | `config.rs:296` | Added `#[cfg(unix)] set_permissions(path, 0o600)` after write |

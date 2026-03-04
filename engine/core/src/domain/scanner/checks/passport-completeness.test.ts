@@ -83,6 +83,33 @@ describe('checkPassportCompleteness', () => {
     }
   });
 
+  it('does not count empty objects or arrays as filled', () => {
+    const emptyNested = JSON.stringify({
+      name: 'test-bot',
+      version: '1.0.0',
+      description: 'A test bot',
+      agent_id: 'uuid-123',
+      type: 'assistant',
+      framework: 'openai',
+      autonomy_level: 'L2',
+      model: {},           // empty object — should NOT count
+      owner: {},           // empty object — should NOT count
+      permissions: {},     // empty object — should NOT count
+      constraints: [],     // empty array — should NOT count
+      compliance: { eu_ai_act: { risk_class: 'limited' } },
+    });
+    const ctx = createCtx([
+      createFile('.complior/agents/test-bot-manifest.json', emptyNested),
+    ]);
+
+    const results = checkPassportCompleteness(ctx);
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('fail');
+    // 7 filled (name..autonomy_level, no display_name) out of 12 limited fields
+    // model/owner/permissions/constraints are empty objects/arrays — not counted
+    expect(results[0].message).toContain('7/12');
+  });
+
   it('returns empty for no manifest files', () => {
     const ctx = createCtx([
       createFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),

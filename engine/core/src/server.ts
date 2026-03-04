@@ -61,6 +61,16 @@ const startHttp = async (): Promise<void> => {
     }
   });
 
+  // Background: fetch data bundle from SaaS (5s delay, then every 5min)
+  const saasUrl = process.env['PROJECT_API_URL'] ?? 'https://app.complior.ai';
+  if (process.env['OFFLINE_MODE'] !== '1') {
+    const { createBundleFetcher } = await import('./infra/bundle-fetcher.js');
+    const cacheDir = process.env['COMPLIOR_CACHE_DIR'] ?? '/tmp/complior-cache';
+    const bundleFetcher = createBundleFetcher(saasUrl, cacheDir);
+    setTimeout(() => { bundleFetcher.fetchIfUpdated().catch((err: unknown) => { log.warn('Background bundle fetch failed:', err); }); }, 5_000);
+    setInterval(() => { bundleFetcher.fetchIfUpdated().catch((err: unknown) => { log.warn('Background bundle fetch failed:', err); }); }, 300_000);
+  }
+
   const shutdown = (): void => {
     log.info('Graceful shutdown...');
     removePidFile();

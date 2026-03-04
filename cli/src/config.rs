@@ -232,6 +232,159 @@ fn config_file_path() -> PathBuf {
         .join("tui.toml")
 }
 
+/// Stored token data loaded from credentials file.
+#[derive(Debug, Clone)]
+pub struct StoredTokens {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_at: u64,
+    pub user_email: Option<String>,
+    pub org_name: Option<String>,
+}
+
+fn credentials_path() -> Option<std::path::PathBuf> {
+    dirs::config_dir().map(|d| d.join("complior").join("credentials"))
+}
+
+/// Save JWT tokens to `~/.config/complior/credentials`.
+pub fn save_tokens(
+    access_token: &str,
+    refresh_token: &str,
+    expires_at: u64,
+    user_email: Option<&str>,
+    org_name: Option<&str>,
+) -> Result<(), String> {
+    let path = credentials_path().ok_or("Cannot determine config directory")?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create config dir: {e}"))?;
+    }
+
+    // Read existing content, preserving non-token lines
+    let existing = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut lines: Vec<String> = Vec::new();
+    let token_keys = [
+        "COMPLIOR_ACCESS_TOKEN", "COMPLIOR_REFRESH_TOKEN",
+        "COMPLIOR_TOKEN_EXPIRES_AT", "COMPLIOR_USER_EMAIL", "COMPLIOR_ORG_NAME",
+    ];
+
+    for line in existing.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            lines.push(line.to_string());
+            continue;
+        }
+        if let Some((key, _)) = trimmed.split_once('=') {
+            if !token_keys.contains(&key.trim()) {
+                lines.push(line.to_string());
+            }
+        } else {
+            lines.push(line.to_string());
+        }
+    }
+
+    // Append token lines
+    lines.push(format!("COMPLIOR_ACCESS_TOKEN={access_token}"));
+    lines.push(format!("COMPLIOR_REFRESH_TOKEN={refresh_token}"));
+    lines.push(format!("COMPLIOR_TOKEN_EXPIRES_AT={expires_at}"));
+    if let Some(email) = user_email {
+        lines.push(format!("COMPLIOR_USER_EMAIL={email}"));
+    }
+    if let Some(org) = org_name {
+        lines.push(format!("COMPLIOR_ORG_NAME={org}"));
+    }
+
+    std::fs::write(&path, lines.join("\n") + "\n")
+        .map_err(|e| format!("Cannot write credentials: {e}"))?;
+
+    // Restrict file permissions to owner-only (0o600) on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o600);
+        std::fs::set_permissions(&path, perms)
+            .map_err(|e| format!("Cannot set credentials permissions: {e}"))?;
+    }
+
+    Ok(())
+}
+
+/// Load stored tokens from `~/.config/complior/credentials`.
+pub fn load_tokens() -> Option<StoredTokens> {
+    let path = credentials_path()?;
+    let content = std::fs::read_to_string(path).ok()?;
+
+    let mut access_token = None;
+    let mut refresh_token = None;
+    let mut expires_at = None;
+    let mut user_email = None;
+    let mut org_name = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = trimmed.split_once('=') {
+            let v = value.trim().to_string();
+            match key.trim() {
+                "COMPLIOR_ACCESS_TOKEN" if !v.is_empty() => access_token = Some(v),
+                "COMPLIOR_REFRESH_TOKEN" if !v.is_empty() => refresh_token = Some(v),
+                "COMPLIOR_TOKEN_EXPIRES_AT" => expires_at = v.parse().ok(),
+                "COMPLIOR_USER_EMAIL" if !v.is_empty() => user_email = Some(v),
+                "COMPLIOR_ORG_NAME" if !v.is_empty() => org_name = Some(v),
+                _ => {}
+            }
+        }
+    }
+
+    Some(StoredTokens {
+        access_token: access_token?,
+        refresh_token: refresh_token?,
+        expires_at: expires_at?,
+        user_email,
+        org_name,
+    })
+}
+
+/// Clear all tokens from credentials file.
+pub fn clear_tokens() -> Result<(), String> {
+    let path = credentials_path().ok_or("Cannot determine config directory")?;
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let content = std::fs::read_to_string(&path).unwrap_or_default();
+    let token_keys = [
+        "COMPLIOR_ACCESS_TOKEN", "COMPLIOR_REFRESH_TOKEN",
+        "COMPLIOR_TOKEN_EXPIRES_AT", "COMPLIOR_USER_EMAIL", "COMPLIOR_ORG_NAME",
+    ];
+
+    let lines: Vec<&str> = content.lines().filter(|line| {
+        let trimmed = line.trim();
+        if let Some((key, _)) = trimmed.split_once('=') {
+            !token_keys.contains(&key.trim())
+        } else {
+            true
+        }
+    }).collect();
+
+    std::fs::write(&path, lines.join("\n") + "\n")
+        .map_err(|e| format!("Cannot write credentials: {e}"))
+}
+
+/// Check if user is authenticated (has non-expired access token).
+pub fn is_authenticated() -> bool {
+    if let Some(tokens) = load_tokens() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        tokens.expires_at > now
+    } else {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

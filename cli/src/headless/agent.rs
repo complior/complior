@@ -3,6 +3,22 @@ use crate::config::TuiConfig;
 use crate::daemon;
 use crate::engine_client::EngineClient;
 
+/// Percent-encode a string for use in URL query parameters.
+fn url_encode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                result.push(b as char);
+            }
+            _ => {
+                result.push_str(&format!("%{b:02X}"));
+            }
+        }
+    }
+    result
+}
+
 /// Resolve engine client: walk up from CWD to find daemon PID file, fall back to config default.
 fn resolve_client(config: &TuiConfig) -> EngineClient {
     let mut dir = std::env::current_dir().unwrap_or_default();
@@ -191,7 +207,7 @@ async fn run_agent_list(json: bool, path: Option<&str>, config: &TuiConfig) -> i
         Err(code) => return code,
     };
 
-    let url = format!("/agent/list?path={}", project_path.to_string_lossy());
+    let url = format!("/agent/list?path={}", url_encode(&project_path.to_string_lossy()));
     match client
         .get_json(&url)
         .await
@@ -279,8 +295,8 @@ async fn run_agent_show(
 
     let url = format!(
         "/agent/show?path={}&name={}",
-        project_path.to_string_lossy(),
-        name
+        url_encode(&project_path.to_string_lossy()),
+        url_encode(name)
     );
     match client.get_json(&url).await {
         Ok(result) => {
@@ -390,7 +406,7 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
         Err(code) => return code,
     };
 
-    let url = format!("/agent/autonomy?path={}", project_path.to_string_lossy());
+    let url = format!("/agent/autonomy?path={}", url_encode(&project_path.to_string_lossy()));
     match client.get_json(&url).await {
         Ok(result) => {
             // Check for engine error response
@@ -466,7 +482,7 @@ async fn run_agent_validate(
         vec![n.to_string()]
     } else {
         // List all passports first
-        let list_url = format!("/agent/list?path={}", project_path.to_string_lossy());
+        let list_url = format!("/agent/list?path={}", url_encode(&project_path.to_string_lossy()));
         match client.get_json(&list_url).await {
             Ok(list) => {
                 if let Some(err_msg) = list.get("error").and_then(|v| v.as_str()) {
@@ -506,8 +522,8 @@ async fn run_agent_validate(
     for agent_name in &names {
         let url = format!(
             "/agent/validate?path={}&name={}",
-            project_path.to_string_lossy(),
-            agent_name
+            url_encode(&project_path.to_string_lossy()),
+            url_encode(agent_name)
         );
         match client.get_json(&url).await {
             Ok(result) => {
@@ -624,8 +640,8 @@ async fn run_agent_completeness(
 
     let url = format!(
         "/agent/completeness?path={}&name={}",
-        project_path.to_string_lossy(),
-        name
+        url_encode(&project_path.to_string_lossy()),
+        url_encode(name)
     );
     match client.get_json(&url).await {
         Ok(result) => {
@@ -815,7 +831,7 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
     };
 
     if verify {
-        let url = format!("/agent/evidence/verify?path={}", project_path.to_string_lossy());
+        let url = format!("/agent/evidence/verify?path={}", url_encode(&project_path.to_string_lossy()));
         match client.get_json(&url).await {
             Ok(result) => {
                 if json {
@@ -842,7 +858,7 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
             }
         }
     } else {
-        let url = format!("/agent/evidence?path={}", project_path.to_string_lossy());
+        let url = format!("/agent/evidence?path={}", url_encode(&project_path.to_string_lossy()));
         match client.get_json(&url).await {
             Ok(result) => {
                 if json {

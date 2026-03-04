@@ -279,7 +279,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         }
         KeyCode::Enter => match app.active_panel {
             Panel::FileBrowser => Action::OpenFile,
-            _ if matches!(app.view_state, ViewState::Scan | ViewState::Fix) => Action::ViewEnter,
+            _ if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Passport) => Action::ViewEnter,
             _ => Action::SubmitInput,
         },
         KeyCode::Char(' ') if app.view_state == ViewState::Fix => Action::ViewKey(' '),

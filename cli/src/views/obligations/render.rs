@@ -142,11 +142,7 @@ fn render_obligation_list(
         };
 
         let title_w = area.width.saturating_sub(22) as usize;
-        let truncated_title = if obl.title.len() > title_w {
-            format!("{}...", &obl.title[..title_w.saturating_sub(3)])
-        } else {
-            obl.title.clone()
-        };
+        let truncated_title = crate::views::truncate_str(&obl.title, title_w);
 
         lines.push(Line::from(vec![
             Span::styled(

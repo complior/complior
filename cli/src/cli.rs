@@ -118,6 +118,31 @@ pub enum Command {
         #[command(subcommand)]
         action: AgentAction,
     },
+
+    /// Authenticate with SaaS (app.complior.ai) via browser
+    Login,
+
+    /// Clear SaaS authentication tokens
+    Logout,
+
+    /// Sync data with SaaS (passports, scans, documents)
+    Sync {
+        /// Sync only passports
+        #[arg(long)]
+        passport: bool,
+
+        /// Sync only scan results
+        #[arg(long)]
+        scan: bool,
+
+        /// Sync only documents
+        #[arg(long)]
+        docs: bool,
+
+        /// Skip auto-sync after scan
+        #[arg(long)]
+        no_sync: bool,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -272,7 +297,10 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Init { .. }
             | Command::Update
             | Command::Daemon { .. }
-            | Command::Agent { .. },
+            | Command::Agent { .. }
+            | Command::Login
+            | Command::Logout
+            | Command::Sync { .. },
         ) => true,
         None => false,
     }
