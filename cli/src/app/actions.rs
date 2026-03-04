@@ -127,6 +127,25 @@ impl App {
                         self.report_view.scroll_offset =
                             self.report_view.scroll_offset.saturating_sub(1);
                     }
+                    ViewState::Passport => {
+                        use crate::views::passport::{PassportDetailMode, PassportViewMode};
+                        if self.passport_view.view_mode == PassportViewMode::AgentList {
+                            if self.passport_view.selected_passport > 0 {
+                                self.passport_view.selected_passport -= 1;
+                            }
+                        } else if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
+                            self.passport_view.obligation_scroll =
+                                self.passport_view.obligation_scroll.saturating_sub(1);
+                        } else if self.passport_view.selected_index > 0 {
+                            self.passport_view.selected_index -= 1;
+                        }
+                    }
+                    ViewState::Obligations => {
+                        let filtered_len = self.obligations_view.filtered_obligations().len();
+                        if filtered_len > 0 && self.obligations_view.selected_index > 0 {
+                            self.obligations_view.selected_index -= 1;
+                        }
+                    }
                     _ => match self.active_panel {
                         Panel::CodeViewer => {
                             self.code_scroll = self.code_scroll.saturating_sub(1);
@@ -167,6 +186,30 @@ impl App {
                     }
                     ViewState::Report => {
                         self.report_view.scroll_offset += 1;
+                    }
+                    ViewState::Passport => {
+                        use crate::views::passport::{PassportDetailMode, PassportViewMode};
+                        if self.passport_view.view_mode == PassportViewMode::AgentList {
+                            let max = self.passport_view.loaded_passports.len().saturating_sub(1);
+                            if self.passport_view.selected_passport < max {
+                                self.passport_view.selected_passport += 1;
+                            }
+                        } else if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
+                            self.passport_view.obligation_scroll += 1;
+                        } else {
+                            let max = self.passport_view.fields.len().saturating_sub(1);
+                            if self.passport_view.selected_index < max {
+                                self.passport_view.selected_index += 1;
+                            }
+                        }
+                    }
+                    ViewState::Obligations => {
+                        let filtered_len = self.obligations_view.filtered_obligations().len();
+                        if filtered_len > 0
+                            && self.obligations_view.selected_index < filtered_len.saturating_sub(1)
+                        {
+                            self.obligations_view.selected_index += 1;
+                        }
                     }
                     _ => match self.active_panel {
                         Panel::CodeViewer => {
@@ -399,6 +442,14 @@ impl App {
                     if let Some(scan) = &self.last_scan {
                         self.fix_view = FixViewState::from_scan(&scan.findings);
                     }
+                }
+                // Auto-load obligations when switching to Obligations view
+                if view == ViewState::Obligations && self.obligations_view.obligations.is_empty() {
+                    return Some(AppCommand::LoadObligations);
+                }
+                // Auto-load passports when switching to Passport view
+                if view == ViewState::Passport && self.passport_view.loaded_passports.is_empty() {
+                    return Some(AppCommand::LoadPassports);
                 }
                 None
             }

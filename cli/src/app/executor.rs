@@ -8,6 +8,21 @@ use crate::types;
 use crate::views;
 use crate::watcher;
 
+impl App {
+    /// Extract the project path and name from the first loaded passport.
+    /// Returns `None` if no passport is loaded.
+    fn passport_path_name(&self) -> Option<(String, String)> {
+        let passport = self.passport_view.loaded_passports.get(self.passport_view.selected_passport)?;
+        let name = passport
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let path = self.project_path.to_string_lossy().to_string();
+        Some((path, name))
+    }
+}
+
 #[allow(clippy::too_many_lines)]
 pub async fn execute_command(
     app: &mut App,
@@ -707,6 +722,171 @@ pub async fn execute_command(
                 }
                 Err(_) => {
                     // Silently fail — passports may not exist yet
+                }
+            }
+        }
+        AppCommand::LoadPassportCompleteness => {
+            if let Some((path, name)) = app.passport_path_name() {
+                let url = format!("/agent/completeness?path={path}&name={name}");
+                match app.engine_client.get_json(&url).await {
+                    Ok(result) => {
+                        app.passport_view.completeness_data = Some(result);
+                    }
+                    Err(e) => {
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            format!("Failed to load completeness: {e}"),
+                        ));
+                    }
+                }
+            }
+        }
+        AppCommand::ValidatePassport => {
+            if let Some((path, name)) = app.passport_path_name() {
+                let url = format!("/agent/validate?path={path}&name={name}");
+                match app.engine_client.get_json(&url).await {
+                    Ok(result) => {
+                        let valid = result
+                            .get("valid")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        let msg = if valid {
+                            format!("Passport '{name}' is valid.")
+                        } else {
+                            let errors = result
+                                .get("errors")
+                                .and_then(|v| v.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_str())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                })
+                                .unwrap_or_default();
+                            format!("Passport '{name}' validation failed: {errors}")
+                        };
+                        app.toasts.push(
+                            if valid {
+                                components::toast::ToastKind::Success
+                            } else {
+                                components::toast::ToastKind::Warning
+                            },
+                            &msg,
+                        );
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            msg,
+                        ));
+                    }
+                    Err(e) => {
+                        app.toasts.push(
+                            components::toast::ToastKind::Warning,
+                            format!("Validation failed: {e}"),
+                        );
+                    }
+                }
+            } else {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    "No passport loaded. Run `complior agent init` first.",
+                );
+            }
+        }
+        AppCommand::GeneratePassportFria => {
+            if let Some((path, name)) = app.passport_path_name() {
+                let body = serde_json::json!({ "path": path, "name": name });
+                match app.engine_client.post_json("/agent/fria", &body).await {
+                    Ok(result) => {
+                        let output_path = result
+                            .get("outputPath")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("(unknown)");
+                        let msg = format!("FRIA report generated: {output_path}");
+                        app.toasts
+                            .push(components::toast::ToastKind::Success, &msg);
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            msg,
+                        ));
+                    }
+                    Err(e) => {
+                        app.toasts.push(
+                            components::toast::ToastKind::Warning,
+                            format!("FRIA generation failed: {e}"),
+                        );
+                    }
+                }
+            } else {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    "No passport loaded. Run `complior agent init` first.",
+                );
+            }
+        }
+        AppCommand::ExportPassport => {
+            if let Some((path, name)) = app.passport_path_name() {
+                let url = format!("/agent/show?path={path}&name={name}");
+                match app.engine_client.get_json(&url).await {
+                    Ok(result) => {
+                        let json_str =
+                            serde_json::to_string_pretty(&result).unwrap_or_default();
+                        let export_path = format!("{name}-passport-export.json");
+                        match tokio::fs::write(&export_path, &json_str).await {
+                            Ok(()) => {
+                                let msg = format!("Passport exported: {export_path}");
+                                app.toasts.push(
+                                    components::toast::ToastKind::Success,
+                                    &msg,
+                                );
+                                app.messages.push(types::ChatMessage::new(
+                                    types::MessageRole::System,
+                                    msg,
+                                ));
+                            }
+                            Err(e) => {
+                                app.toasts.push(
+                                    components::toast::ToastKind::Warning,
+                                    format!("Export failed: {e}"),
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        app.toasts.push(
+                            components::toast::ToastKind::Warning,
+                            format!("Export failed: {e}"),
+                        );
+                    }
+                }
+            } else {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    "No passport loaded. Run `complior agent init` first.",
+                );
+            }
+        }
+        AppCommand::LoadObligations => {
+            match app.engine_client.get_json("/obligations").await {
+                Ok(result) => {
+                    if let Some(arr) = result.as_array() {
+                        app.obligations_view.load_from_json(arr);
+                        let count = arr.len();
+                        let covered = app.obligations_view.covered_count();
+                        if count > 0 {
+                            app.messages.push(types::ChatMessage::new(
+                                types::MessageRole::System,
+                                format!(
+                                    "Loaded {count} obligations ({covered} covered)."
+                                ),
+                            ));
+                        }
+                    }
+                }
+                Err(e) => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        format!("Failed to load obligations: {e}"),
+                    ));
                 }
             }
         }

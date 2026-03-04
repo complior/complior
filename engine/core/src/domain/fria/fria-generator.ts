@@ -7,6 +7,9 @@ export interface FriaGeneratorInput {
   readonly template: string;
   readonly organization?: string;
   readonly assessor?: string;
+  readonly impact?: string;
+  readonly mitigation?: string;
+  readonly approval?: string;
 }
 
 export interface FriaResult {
@@ -59,7 +62,7 @@ const deriveOversightDescription = (manifest: AgentManifest): string => {
 // --- Generator ---
 
 export const generateFria = (input: FriaGeneratorInput): FriaResult => {
-  const { manifest, template, organization, assessor } = input;
+  const { manifest, template, organization, assessor, impact, mitigation, approval } = input;
   const prefilledFields: string[] = [];
   const manualFields: string[] = [];
 
@@ -125,10 +128,24 @@ export const generateFria = (input: FriaGeneratorInput): FriaResult => {
 
   // 4. Risk Assessment table — set default risk level from passport
   const riskLevel = deriveRiskLevel(manifest.compliance.eu_ai_act.risk_class);
-  // Replace first occurrence of [H/M/L/N] as a default hint, but leave others for manual review
-  manualFields.push('Fundamental Rights risk descriptions');
+
+  // Impact description — replace placeholder or leave as manual
+  if (impact) {
+    markdown = markdown.replace('[e.g., AI may produce biased outcomes against certain ethnic groups in credit decisions]', impact);
+    prefilledFields.push('Impact description');
+  } else {
+    manualFields.push('Fundamental Rights risk descriptions');
+  }
+
   manualFields.push('Affected groups');
-  manualFields.push('Mitigation measures');
+
+  // Mitigation measures — replace placeholder or leave as manual
+  if (mitigation) {
+    markdown = markdown.replace('[e.g., Regular bias audits, human review of rejections, fairness metrics monitoring]', mitigation);
+    prefilledFields.push('Mitigation measures');
+  } else {
+    manualFields.push('Mitigation measures');
+  }
 
   // Pre-fill first risk row level if we know the risk class
   if (riskLevel !== '[H/M/L/N]') {
@@ -171,10 +188,20 @@ export const generateFria = (input: FriaGeneratorInput): FriaResult => {
   manualFields.push('Conditions for deployment');
   manualFields.push('Next review date');
 
-  // 10. Sign-off — manual
+  // 10. Sign-off
   manualFields.push('Assessor sign-off');
   manualFields.push('DPO sign-off');
-  manualFields.push('Decision-maker sign-off');
+
+  if (approval) {
+    markdown = markdown.replace(
+      'Decision-maker: _________________ Date: _________',
+      `Decision-maker: ${approval} Date: ${new Date().toISOString().split('T')[0]}`,
+    );
+    prefilledFields.push('Decision-maker sign-off');
+  } else {
+    manualFields.push('Decision-maker sign-off');
+  }
+
   manualFields.push('Market surveillance notification');
 
   return Object.freeze({

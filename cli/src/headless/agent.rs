@@ -17,6 +17,19 @@ fn resolve_client(config: &TuiConfig) -> EngineClient {
     EngineClient::new(config)
 }
 
+/// Create an engine client and verify the engine is running.
+/// Returns the client on success, or prints an error and returns the exit code on failure.
+async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
+    let client = resolve_client(config);
+    match client.status().await {
+        Ok(status) if status.ready => Ok(client),
+        _ => {
+            eprintln!("Error: Engine not running. Start with: complior daemon");
+            Err(1)
+        }
+    }
+}
+
 pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
     match action {
         AgentAction::Init { json, force, path } => run_agent_init(*json, *force, path.as_deref(), config).await,
@@ -33,8 +46,8 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Completeness { name, json, path } => {
             run_agent_completeness(name, *json, path.as_deref(), config).await
         }
-        AgentAction::Fria { name, json, organization, path } => {
-            run_agent_fria(name, *json, organization.as_deref(), path.as_deref(), config).await
+        AgentAction::Fria { name, json, organization, impact, mitigation, approval, path } => {
+            run_agent_fria(name, *json, organization.as_deref(), impact.as_deref(), mitigation.as_deref(), approval.as_deref(), path.as_deref(), config).await
         }
         AgentAction::Evidence { json, verify, path } => {
             run_agent_evidence(*json, *verify, path.as_deref(), config).await
@@ -51,16 +64,10 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
         println!("Discovering AI agents in {}...", project_path.display());
     }
 
-    let client = resolve_client(config);
-
-    // Check engine is running
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     // Call engine to init passport
     let body = serde_json::json!({
@@ -179,15 +186,10 @@ async fn run_agent_list(json: bool, path: Option<&str>, config: &TuiConfig) -> i
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = resolve_client(config);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     let url = format!("/agent/list?path={}", project_path.to_string_lossy());
     match client
@@ -270,15 +272,10 @@ async fn run_agent_show(
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = resolve_client(config);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     let url = format!(
         "/agent/show?path={}&name={}",
@@ -388,15 +385,10 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
         println!("Analyzing autonomy in {}...", project_path.display());
     }
 
-    let client = resolve_client(config);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     let url = format!("/agent/autonomy?path={}", project_path.to_string_lossy());
     match client.get_json(&url).await {
@@ -464,15 +456,10 @@ async fn run_agent_validate(
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = resolve_client(config);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     // Determine which passports to validate
     let names: Vec<String> = if let Some(n) = name {
@@ -630,15 +617,10 @@ async fn run_agent_completeness(
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = resolve_client(config);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     let url = format!(
         "/agent/completeness?path={}&name={}",
@@ -736,6 +718,9 @@ async fn run_agent_fria(
     name: &str,
     json: bool,
     organization: Option<&str>,
+    impact: Option<&str>,
+    mitigation: Option<&str>,
+    approval: Option<&str>,
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
@@ -747,15 +732,10 @@ async fn run_agent_fria(
         println!("Generating FRIA for agent '{name}'...");
     }
 
-    let client = resolve_client(config);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     let mut body = serde_json::json!({
         "path": project_path.to_string_lossy(),
@@ -764,6 +744,15 @@ async fn run_agent_fria(
 
     if let Some(org) = organization {
         body["organization"] = serde_json::Value::String(org.to_string());
+    }
+    if let Some(imp) = impact {
+        body["impact"] = serde_json::Value::String(imp.to_string());
+    }
+    if let Some(mit) = mitigation {
+        body["mitigation"] = serde_json::Value::String(mit.to_string());
+    }
+    if let Some(app) = approval {
+        body["approval"] = serde_json::Value::String(app.to_string());
     }
 
     match client.post_json("/agent/fria", &body).await {
@@ -820,15 +809,10 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    let client = resolve_client(config);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            return 1;
-        }
-    }
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     if verify {
         let url = format!("/agent/evidence/verify?path={}", project_path.to_string_lossy());

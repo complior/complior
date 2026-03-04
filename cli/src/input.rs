@@ -269,7 +269,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         // Uppercase letter-key view switching (avoids conflict with lowercase ViewKey chars)
-        KeyCode::Char(c @ ('D' | 'F' | 'L' | 'P' | 'R' | 'S' | 'T')) =>
+        KeyCode::Char(c @ ('D' | 'F' | 'L' | 'O' | 'P' | 'R' | 'S' | 'T')) =>
         {
             if let Some(view) = ViewState::from_letter(c) {
                 Action::SwitchView(view)
@@ -296,7 +296,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'n' | 'p' | 'x' | 'o' | '<' | '>'))
             if matches!(
                 app.view_state,
-                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard
+                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations
             ) =>
         {
             Action::ViewKey(c)

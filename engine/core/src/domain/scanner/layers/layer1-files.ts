@@ -6,6 +6,8 @@ import { checkAiLiteracy } from '../checks/ai-literacy.js';
 import { checkGpaiTransparency } from '../checks/gpai-transparency.js';
 import { checkComplianceMetadata } from '../checks/compliance-metadata.js';
 import { checkDocumentation } from '../checks/documentation.js';
+import { checkPassportPresence } from '../checks/passport-presence.js';
+import { checkPassportCompleteness } from '../checks/passport-completeness.js';
 
 export const L1_CHECKS: readonly CheckFunction[] = [
   checkAiDisclosure,
@@ -15,4 +17,6 @@ export const L1_CHECKS: readonly CheckFunction[] = [
   checkGpaiTransparency,
   checkComplianceMetadata,
   checkDocumentation,
+  checkPassportPresence,
+  checkPassportCompleteness,
 ];

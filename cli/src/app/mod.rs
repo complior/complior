@@ -25,6 +25,7 @@ use crate::types::{
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
+use crate::views::obligations::ObligationsViewState;
 use crate::views::passport::PassportViewState;
 use crate::views::report::ReportViewState;
 use crate::views::scan::ScanViewState;
@@ -90,6 +91,7 @@ pub struct App {
     pub timeline_view: TimelineViewState,
     pub report_view: ReportViewState,
     pub passport_view: PassportViewState,
+    pub obligations_view: ObligationsViewState,
 
     // Activity log (Dashboard widget)
     pub activity_log: Vec<ActivityEntry>,
@@ -221,6 +223,7 @@ impl App {
             timeline_view: TimelineViewState::default(),
             report_view: ReportViewState::default(),
             passport_view: PassportViewState::default(),
+            obligations_view: ObligationsViewState::default(),
             activity_log: Vec::new(),
             watch_active: false,
             watch_last_score: None,
@@ -517,4 +520,14 @@ pub enum AppCommand {
     SaveOnboardingPartial(usize),
     /// Load Agent Passports from engine.
     LoadPassports,
+    /// Load passport completeness data from engine.
+    LoadPassportCompleteness,
+    /// Validate passport (schema + signature + completeness).
+    ValidatePassport,
+    /// Generate FRIA report from passport.
+    GeneratePassportFria,
+    /// Export passport JSON to file.
+    ExportPassport,
+    /// Load obligations from engine.
+    LoadObligations,
 }

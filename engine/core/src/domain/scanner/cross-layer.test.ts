@@ -51,8 +51,8 @@ const makeL4 = (overrides: Partial<L4CheckResult> = {}): L4CheckResult => ({
 });
 
 describe('CROSS_LAYER_RULES', () => {
-  it('has 5 rules defined', () => {
-    expect(CROSS_LAYER_RULES).toHaveLength(5);
+  it('has 6 rules defined', () => {
+    expect(CROSS_LAYER_RULES).toHaveLength(6);
   });
 
   it('all rules have id and description', () => {
@@ -238,6 +238,49 @@ describe('cross-kill-switch-no-test', () => {
 
     const noTest = findings.find((f) => f.ruleId === 'cross-kill-switch-no-test');
     expect(noTest).toBeUndefined();
+  });
+});
+
+describe('cross-passport-code-mismatch', () => {
+  it('fires when passport exists but bare LLM calls without disclosure', () => {
+    const findings = runCrossLayerChecks(
+      [makeL1Pass('passport-presence')],
+      [],
+      [],
+      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
+    );
+
+    const mismatch = findings.find((f) => f.ruleId === 'cross-passport-code-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch?.severity).toBe('high');
+    expect(mismatch?.article).toBe('Art. 26(4)');
+  });
+
+  it('does not fire when passport exists and disclosure present', () => {
+    const findings = runCrossLayerChecks(
+      [makeL1Pass('passport-presence')],
+      [],
+      [],
+      [
+        makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' }),
+        makeL4({ category: 'disclosure', status: 'FOUND' }),
+      ],
+    );
+
+    const mismatch = findings.find((f) => f.ruleId === 'cross-passport-code-mismatch');
+    expect(mismatch).toBeUndefined();
+  });
+
+  it('does not fire when no passport exists', () => {
+    const findings = runCrossLayerChecks(
+      [makeL1Fail('passport-presence')],
+      [],
+      [],
+      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
+    );
+
+    const mismatch = findings.find((f) => f.ruleId === 'cross-passport-code-mismatch');
+    expect(mismatch).toBeUndefined();
   });
 });
 

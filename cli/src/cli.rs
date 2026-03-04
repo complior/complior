@@ -210,6 +210,18 @@ pub enum AgentAction {
         #[arg(long)]
         organization: Option<String>,
 
+        /// Impact description for risk assessment (Section 4)
+        #[arg(long)]
+        impact: Option<String>,
+
+        /// Mitigation measures for risk assessment (Section 4)
+        #[arg(long)]
+        mitigation: Option<String>,
+
+        /// Decision-maker name/title for sign-off (Section 10)
+        #[arg(long)]
+        approval: Option<String>,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },
@@ -578,10 +590,13 @@ mod tests {
     fn cli_parse_agent_fria() {
         let cli = Cli::parse_from(["complior", "agent", "fria", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Fria { name, json, organization, path } }) => {
+            Some(Command::Agent { action: AgentAction::Fria { name, json, organization, impact, mitigation, approval, path } }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(organization.is_none());
+                assert!(impact.is_none());
+                assert!(mitigation.is_none());
+                assert!(approval.is_none());
                 assert!(path.is_none());
             }
             _ => panic!("Expected Agent Fria command"),
@@ -608,6 +623,25 @@ mod tests {
             Some(Command::Agent { action: AgentAction::Fria { name, organization, .. } }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(organization.as_deref(), Some("Acme"));
+            }
+            _ => panic!("Expected Agent Fria command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_fria_manual_fields() {
+        let cli = Cli::parse_from([
+            "complior", "agent", "fria", "my-bot",
+            "--impact", "Credit scoring bias",
+            "--mitigation", "Quarterly audits",
+            "--approval", "Jane Doe, CTO",
+        ]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Fria { name, impact, mitigation, approval, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(impact.as_deref(), Some("Credit scoring bias"));
+                assert_eq!(mitigation.as_deref(), Some("Quarterly audits"));
+                assert_eq!(approval.as_deref(), Some("Jane Doe, CTO"));
             }
             _ => panic!("Expected Agent Fria command"),
         }

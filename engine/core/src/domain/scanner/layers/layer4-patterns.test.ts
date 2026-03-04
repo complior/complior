@@ -274,6 +274,26 @@ export const conformityDeclaration = { system: 'AI', standard: 'EU AI Act' };
     expect(conformity.some((r) => r.status === 'FOUND')).toBe(true);
   });
 
+  it('excludes test and spec files from pattern scanning', () => {
+    const ctx = createCtx([
+      createFile('src/api/chat.test.ts', `
+const response = await openai.chat.completions.create({ model: 'gpt-4' });
+`),
+      createFile('src/api/chat.spec.ts', `
+const response = await openai.chat.completions.create({ model: 'gpt-4' });
+`),
+      createFile('__tests__/api.ts', `
+const response = await openai.chat.completions.create({ model: 'gpt-4' });
+`),
+    ]);
+
+    const results = runLayer4(ctx, withAiSdk);
+
+    // Test/spec files should be excluded — no bare-llm findings from them
+    const bareLlm = results.filter((r) => r.category === 'bare-llm' && r.status === 'FOUND');
+    expect(bareLlm).toHaveLength(0);
+  });
+
 describe('layer4ToCheckResults', () => {
   it('converts negative FOUND to fail warning', () => {
     const checkResults = layer4ToCheckResults([{

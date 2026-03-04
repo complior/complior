@@ -4,10 +4,11 @@ pub enum ViewState {
     Dashboard,    // D, index 0
     Scan,         // S, index 1
     Fix,          // F, index 2
-    Passport,     // P, index 3 (stub)
-    Timeline,     // T, index 4
-    Report,       // R, index 5
-    Log,          // L, index 6
+    Passport,     // P, index 3
+    Obligations,  // O, index 4
+    Timeline,     // T, index 5
+    Report,       // R, index 6
+    Log,          // L, index 7
 }
 
 impl ViewState {
@@ -18,9 +19,10 @@ impl ViewState {
             2 => Some(Self::Scan),
             3 => Some(Self::Fix),
             4 => Some(Self::Passport),
-            5 => Some(Self::Timeline),
-            6 => Some(Self::Report),
-            7 => Some(Self::Log),
+            5 => Some(Self::Obligations),
+            6 => Some(Self::Timeline),
+            7 => Some(Self::Report),
+            8 => Some(Self::Log),
             _ => None,
         }
     }
@@ -34,6 +36,7 @@ impl ViewState {
             'S' => Some(Self::Scan),
             'F' => Some(Self::Fix),
             'P' => Some(Self::Passport),
+            'O' => Some(Self::Obligations),
             'T' => Some(Self::Timeline),
             'R' => Some(Self::Report),
             'L' => Some(Self::Log),
@@ -48,9 +51,10 @@ impl ViewState {
             Self::Scan => 1,
             Self::Fix => 2,
             Self::Passport => 3,
-            Self::Timeline => 4,
-            Self::Report => 5,
-            Self::Log => 6,
+            Self::Obligations => 4,
+            Self::Timeline => 5,
+            Self::Report => 6,
+            Self::Log => 7,
         }
     }
 
@@ -61,17 +65,19 @@ impl ViewState {
             Self::Scan => "Scan",
             Self::Fix => "Fix",
             Self::Passport => "Passport",
+            Self::Obligations => "Oblig",
             Self::Timeline => "Timeline",
             Self::Report => "Report",
             Self::Log => "Log",
         }
     }
 
-    pub const ALL: [ViewState; 7] = [
+    pub const ALL: [ViewState; 8] = [
         Self::Dashboard,
         Self::Scan,
         Self::Fix,
         Self::Passport,
+        Self::Obligations,
         Self::Timeline,
         Self::Report,
         Self::Log,

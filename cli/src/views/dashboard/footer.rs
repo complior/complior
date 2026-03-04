@@ -167,7 +167,8 @@ pub fn footer_hints_for_view(view: ViewState) -> &'static str {
         ViewState::Scan => "a:All c:Crit h:High m:Med l:Low p:passed Enter:detail f:fix x:explain d:dismiss j/k:nav",
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
         ViewState::Log => "/:command !:shell @OBL:ref Enter:run",
-        ViewState::Passport => "e:edit Tab:next-empty v:validate x:export j/k:nav ?:help",
+        ViewState::Passport => "e:edit o:obligations c:validate f:fria x:export j/k:nav",
+        ViewState::Obligations => "f:filter l:load j/k:nav ?:help",
         ViewState::Timeline => "j/k:scroll ?:help",
         ViewState::Report => "1-9:generate e:export j/k:nav Enter:generate ?:help",
     }

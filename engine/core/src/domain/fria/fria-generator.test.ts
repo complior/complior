@@ -178,4 +178,47 @@ describe('generateFria', () => {
     expect(Object.isFrozen(result.prefilledFields)).toBe(true);
     expect(Object.isFrozen(result.manualFields)).toBe(true);
   });
+
+  it('pre-fills impact when provided', () => {
+    const result = generateFria({
+      manifest: createManifest(),
+      template: TEMPLATE + '\n[e.g., AI may produce biased outcomes against certain ethnic groups in credit decisions]',
+      impact: 'Credit scoring bias against minorities',
+    });
+    expect(result.markdown).toContain('Credit scoring bias against minorities');
+    expect(result.prefilledFields).toContain('Impact description');
+    expect(result.manualFields).not.toContain('Fundamental Rights risk descriptions');
+  });
+
+  it('pre-fills mitigation when provided', () => {
+    const result = generateFria({
+      manifest: createManifest(),
+      template: TEMPLATE + '\n[e.g., Regular bias audits, human review of rejections, fairness metrics monitoring]',
+      mitigation: 'Quarterly bias audits and model retraining',
+    });
+    expect(result.markdown).toContain('Quarterly bias audits and model retraining');
+    expect(result.prefilledFields).toContain('Mitigation measures');
+    expect(result.manualFields).not.toContain('Mitigation measures');
+  });
+
+  it('pre-fills approval when provided', () => {
+    const result = generateFria({
+      manifest: createManifest(),
+      template: TEMPLATE + '\nDecision-maker: _________________ Date: _________',
+      approval: 'Jane Doe, CTO',
+    });
+    expect(result.markdown).toContain('Decision-maker: Jane Doe, CTO');
+    expect(result.prefilledFields).toContain('Decision-maker sign-off');
+    expect(result.manualFields).not.toContain('Decision-maker sign-off');
+  });
+
+  it('leaves manual fields when flags not provided', () => {
+    const result = generateFria({
+      manifest: createManifest(),
+      template: TEMPLATE + '\n[e.g., AI may produce biased outcomes against certain ethnic groups in credit decisions]\n[e.g., Regular bias audits, human review of rejections, fairness metrics monitoring]\nDecision-maker: _________________ Date: _________',
+    });
+    expect(result.manualFields).toContain('Fundamental Rights risk descriptions');
+    expect(result.manualFields).toContain('Mitigation measures');
+    expect(result.manualFields).toContain('Decision-maker sign-off');
+  });
 });

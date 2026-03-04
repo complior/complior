@@ -16,9 +16,9 @@ export interface CheckWithConfidence {
 const LAYER_WEIGHTS: Readonly<Record<ScannerLayer, number>> = {
   L1: 1.0,
   L2: 0.95,
-  L3: 0.85,
-  L4: 0.7,
-  L5: 0.9,
+  L3: 0.90,
+  L4: 0.75,
+  L5: 0.70,
 };
 
 // --- Confidence Level Determination ---

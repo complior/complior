@@ -11,6 +11,8 @@ const CHECK_ID_TO_CATEGORY: Readonly<Record<string, string>> = {
   'gpai-transparency': 'documentation',
   'compliance-metadata': 'documentation',
   'documentation': 'documentation',
+  'passport-presence': 'documentation',
+  'passport-completeness': 'documentation',
 };
 
 export const getZone = (score: number): ScoreZone => {

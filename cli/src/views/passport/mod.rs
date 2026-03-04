@@ -11,9 +11,29 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 
+use ratatui::style::Color;
+
 use crate::app::App;
 use crate::theme;
 use fields::default_passport_fields;
+
+/// Detail panel mode in passport view.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PassportDetailMode {
+    /// Show field details (default).
+    FieldDetail,
+    /// Show obligation checklist from completeness data.
+    ObligationChecklist,
+}
+
+/// Top-level passport view mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PassportViewMode {
+    /// Multi-agent list with summary table.
+    AgentList,
+    /// Single-agent field editor (drill-down).
+    FieldEditor,
+}
 
 /// State for the Passport View.
 #[derive(Debug, Clone)]
@@ -23,6 +43,16 @@ pub struct PassportViewState {
     pub scroll_offset: usize,
     /// Loaded passport data from engine (raw JSON values).
     pub loaded_passports: Vec<serde_json::Value>,
+    /// Current detail panel mode.
+    pub detail_mode: PassportDetailMode,
+    /// Completeness data loaded from engine.
+    pub completeness_data: Option<serde_json::Value>,
+    /// Scroll offset for obligation checklist.
+    pub obligation_scroll: usize,
+    /// Top-level view mode: agent list vs field editor.
+    pub view_mode: PassportViewMode,
+    /// Selected row in the agent list.
+    pub selected_passport: usize,
 }
 
 impl Default for PassportViewState {
@@ -32,6 +62,11 @@ impl Default for PassportViewState {
             selected_index: 0,
             scroll_offset: 0,
             loaded_passports: Vec::new(),
+            detail_mode: PassportDetailMode::FieldDetail,
+            completeness_data: None,
+            obligation_scroll: 0,
+            view_mode: PassportViewMode::AgentList,
+            selected_passport: 0,
         }
     }
 }
@@ -52,10 +87,9 @@ impl PassportViewState {
         pct
     }
 
-    /// Populate fields from loaded passport data (engine response).
+    /// Populate fields from the selected passport (by index).
     pub fn load_from_passports(&mut self) {
-        // Use first loaded passport if available
-        let Some(passport) = self.loaded_passports.first() else {
+        let Some(passport) = self.loaded_passports.get(self.selected_passport) else {
             return;
         };
 
@@ -152,8 +186,326 @@ impl PassportViewState {
     }
 }
 
-/// Render the Passport view — guided editing with field list + detail panel.
+/// Color for completeness percentage: green (100), yellow (80-99), amber (50-79), red (<50).
+fn completeness_color(pct: u8, t: &theme::ThemeColors) -> Color {
+    match pct {
+        100 => t.zone_green,
+        80..=99 => t.zone_yellow,
+        50..=79 => t.severity_medium,
+        _ => t.zone_red,
+    }
+}
+
+/// Render the Passport view — agent list or field editor based on view mode.
 pub fn render_passport_view(frame: &mut Frame, area: Rect, app: &App) {
+    match app.passport_view.view_mode {
+        PassportViewMode::AgentList => render_agent_list_view(frame, area, app),
+        PassportViewMode::FieldEditor => render_field_editor_view(frame, area, app),
+    }
+}
+
+/// Render the multi-agent list view with summary table + detail sidebar.
+fn render_agent_list_view(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let pv = &app.passport_view;
+    let count = pv.loaded_passports.len();
+
+    let title = Line::from(vec![
+        Span::styled(
+            format!(" Agent Passport \u{2014} {count} agent(s) "),
+            theme::title_style(),
+        ),
+    ]);
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.border));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    if pv.loaded_passports.is_empty() {
+        frame.render_widget(
+            Paragraph::new(vec![
+                Line::raw(""),
+                Line::from(Span::styled(
+                    " No passports loaded.",
+                    Style::default().fg(t.muted),
+                )),
+                Line::from(Span::styled(
+                    " Run: complior agent init",
+                    Style::default().fg(t.muted),
+                )),
+            ]),
+            inner,
+        );
+        return;
+    }
+
+    if inner.width < 50 || inner.height < 6 {
+        frame.render_widget(
+            Paragraph::new(Line::from(Span::styled(
+                " Resize terminal",
+                Style::default().fg(t.muted),
+            ))),
+            inner,
+        );
+        return;
+    }
+
+    // Two-column: agent table (55%) | detail (45%)
+    let cols = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+        .split(inner);
+
+    render_agent_table(frame, cols[0], app);
+    render_agent_detail(frame, cols[1], app);
+}
+
+/// Render the agent summary table (left panel).
+fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let pv = &app.passport_view;
+    let mut lines: Vec<Line<'_>> = Vec::new();
+
+    // Header
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!("  {:<20} {:>3} {:>5} {:>5}", "Name", "L", "Score", "Compl"),
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+        ),
+    ]));
+    lines.push(Line::from(Span::styled(
+        format!("  {}", "\u{2500}".repeat(area.width.saturating_sub(4) as usize)),
+        Style::default().fg(t.border),
+    )));
+
+    for (i, passport) in pv.loaded_passports.iter().enumerate() {
+        let is_selected = i == pv.selected_passport;
+        let prefix = if is_selected { ">" } else { " " };
+
+        let name = passport
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+        let autonomy = passport
+            .get("autonomy_level")
+            .and_then(|v| v.as_str())
+            .unwrap_or("?");
+        let score = passport
+            .get("compliance")
+            .and_then(|c| c.get("complior_score"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let completeness = extract_completeness(passport);
+
+        // Truncate name
+        let name_w = 20usize;
+        let truncated_name = if name.len() > name_w {
+            format!("{}...", &name[..name_w.saturating_sub(3)])
+        } else {
+            name.to_string()
+        };
+
+        // Status icon based on completeness
+        let status_icon = match completeness {
+            91..=100 => "\u{2713}",
+            50..=90 => "\u{25cb}",
+            _ => "\u{2717}",
+        };
+        let status_color = completeness_color(completeness as u8, &t);
+
+        let row_style = if is_selected {
+            Style::default().fg(t.fg).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(t.fg)
+        };
+
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("{prefix} "),
+                Style::default().fg(if is_selected { t.accent } else { t.fg }),
+            ),
+            Span::styled(format!("{status_icon} "), Style::default().fg(status_color)),
+            Span::styled(format!("{truncated_name:<20}"), row_style),
+            Span::styled(format!(" {autonomy:>2}"), Style::default().fg(t.accent)),
+            Span::styled(
+                format!("  {score:>3}"),
+                Style::default().fg(score_color(score, &t)),
+            ),
+            Span::styled(
+                format!("  {completeness:>3}%"),
+                Style::default().fg(completeness_color(completeness as u8, &t)),
+            ),
+        ]));
+    }
+
+    lines.push(Line::raw(""));
+    lines.push(Line::from(vec![
+        Span::styled("  Enter", Style::default().fg(t.accent)),
+        Span::styled(":detail  ", Style::default().fg(t.fg)),
+        Span::styled("j/k", Style::default().fg(t.accent)),
+        Span::styled(":nav  ", Style::default().fg(t.fg)),
+        Span::styled("o", Style::default().fg(t.accent)),
+        Span::styled(":obligations", Style::default().fg(t.fg)),
+    ]));
+
+    let scroll = pv.scroll_offset;
+    let paragraph =
+        Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(0), 0));
+    frame.render_widget(paragraph, area);
+}
+
+/// Render the detail sidebar for the selected agent.
+fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let pv = &app.passport_view;
+
+    let block = Block::default()
+        .borders(Borders::LEFT)
+        .border_style(Style::default().fg(t.border));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let Some(passport) = pv.loaded_passports.get(pv.selected_passport) else {
+        return;
+    };
+
+    let w = inner.width.saturating_sub(4) as usize;
+    let mut lines: Vec<Line<'_>> = Vec::new();
+
+    let name = passport.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+    let autonomy = passport.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
+    let framework = passport.get("framework").and_then(|v| v.as_str()).unwrap_or("?");
+    let provider = passport.get("model").and_then(|m| m.get("provider")).and_then(|v| v.as_str()).unwrap_or("?");
+    let model_id = passport.get("model").and_then(|m| m.get("model_id")).and_then(|v| v.as_str()).unwrap_or("?");
+    let risk_class = passport.get("compliance").and_then(|c| c.get("eu_ai_act")).and_then(|e| e.get("risk_class")).and_then(|v| v.as_str()).unwrap_or("?");
+    let score = passport.get("compliance").and_then(|c| c.get("complior_score")).and_then(|v| v.as_u64()).unwrap_or(0);
+    let agent_type = passport.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+    let completeness = extract_completeness(passport);
+
+    // Header
+    lines.push(Line::from(Span::styled(
+        format!("  {name}"),
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(Span::styled(
+        format!("  {}", "\u{2500}".repeat(w)),
+        Style::default().fg(t.border),
+    )));
+    lines.push(Line::raw(""));
+
+    let detail_line = |label: &'static str, val: &str, lines: &mut Vec<Line<'_>>| {
+        lines.push(Line::from(vec![
+            Span::styled(format!("  {label}: "), Style::default().fg(t.muted)),
+            Span::styled(val.to_string(), Style::default().fg(t.fg)),
+        ]));
+    };
+
+    detail_line("Autonomy", autonomy, &mut lines);
+    detail_line("Framework", framework, &mut lines);
+    detail_line("Provider", provider, &mut lines);
+    detail_line("Model", model_id, &mut lines);
+    detail_line("Type", agent_type, &mut lines);
+
+    // Risk class with color
+    let risk_color = match risk_class {
+        "high" | "prohibited" => t.zone_red,
+        "limited" => t.zone_yellow,
+        _ => t.zone_green,
+    };
+    lines.push(Line::from(vec![
+        Span::styled("  Risk: ", Style::default().fg(t.muted)),
+        Span::styled(risk_class.to_uppercase(), Style::default().fg(risk_color).add_modifier(Modifier::BOLD)),
+    ]));
+
+    // Score with color
+    lines.push(Line::from(vec![
+        Span::styled("  Score: ", Style::default().fg(t.muted)),
+        Span::styled(
+            format!("{score}"),
+            Style::default().fg(score_color(score, &t)).add_modifier(Modifier::BOLD),
+        ),
+    ]));
+
+    // Completeness bar
+    let bar_w = 10usize;
+    let bar_filled = (completeness as usize * bar_w / 100).min(bar_w);
+    let bar_empty = bar_w.saturating_sub(bar_filled);
+    let compl_bar = format!(
+        "{}{}",
+        "\u{2588}".repeat(bar_filled),
+        "\u{2591}".repeat(bar_empty),
+    );
+    lines.push(Line::from(vec![
+        Span::styled("  Compl: ", Style::default().fg(t.muted)),
+        Span::styled(compl_bar, Style::default().fg(completeness_color(completeness as u8, &t))),
+        Span::styled(
+            format!(" {completeness}%"),
+            Style::default().fg(completeness_color(completeness as u8, &t)).add_modifier(Modifier::BOLD),
+        ),
+    ]));
+
+    lines.push(Line::raw(""));
+
+    // Action hints
+    lines.push(Line::from(Span::styled(
+        format!("  {}", "\u{2500}".repeat(w)),
+        Style::default().fg(t.border),
+    )));
+    lines.push(Line::from(vec![
+        Span::styled("  [c] ", Style::default().fg(t.accent)),
+        Span::styled("Validate  ", Style::default().fg(t.fg)),
+        Span::styled("[f] ", Style::default().fg(t.accent)),
+        Span::styled("FRIA  ", Style::default().fg(t.fg)),
+        Span::styled("[x] ", Style::default().fg(t.accent)),
+        Span::styled("Export", Style::default().fg(t.fg)),
+    ]));
+
+    frame.render_widget(
+        Paragraph::new(lines).wrap(Wrap { trim: false }),
+        inner,
+    );
+}
+
+/// Extract completeness percentage from passport JSON.
+fn extract_completeness(passport: &serde_json::Value) -> u64 {
+    // Count non-empty top-level fields as a heuristic
+    let required_fields = [
+        "name", "version", "description", "autonomy_level", "framework", "type",
+    ];
+    let mut filled = 0u64;
+    for field in &required_fields {
+        if passport.get(*field).and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty()) {
+            filled += 1;
+        }
+    }
+    // Also check nested fields
+    if passport.get("model").and_then(|m| m.get("provider")).and_then(|v| v.as_str()).is_some() {
+        filled += 1;
+    }
+    if passport.get("owner").and_then(|o| o.get("team")).and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty()) {
+        filled += 1;
+    }
+    if passport.get("compliance").and_then(|c| c.get("eu_ai_act")).and_then(|e| e.get("risk_class")).is_some() {
+        filled += 1;
+    }
+    let total = 9u64;
+    (filled * 100) / total
+}
+
+/// Score color: green (80+), yellow (50-79), red (<50).
+fn score_color(score: u64, t: &theme::ThemeColors) -> Color {
+    match score {
+        80.. => t.zone_green,
+        50..=79 => t.zone_yellow,
+        _ => t.zone_red,
+    }
+}
+
+/// Render the field editor view (single-agent drill-down).
+fn render_field_editor_view(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
 
     let pv = &app.passport_view;
@@ -161,7 +513,7 @@ pub fn render_passport_view(frame: &mut Frame, area: Rect, app: &App) {
     let total = pv.fields.len();
     let pct = pv.completeness();
 
-    // Build completeness bar
+    // Build completeness bar with color coding
     let bar_w = 10usize;
     let bar_filled = (pct as usize * bar_w / 100).min(bar_w);
     let bar_empty = bar_w.saturating_sub(bar_filled);
@@ -171,18 +523,22 @@ pub fn render_passport_view(frame: &mut Frame, area: Rect, app: &App) {
         "\u{2591}".repeat(bar_empty),
     );
 
-    let title = format!(" Agent Passport \u{2014} {filled}/{total} fields  {completeness_bar} {pct}% ");
+    let pct_color = completeness_color(pct, &t);
+    let title = Line::from(vec![
+        Span::styled(" Agent Passport \u{2014} ", theme::title_style()),
+        Span::styled(format!("{filled}/{total} fields  "), theme::title_style()),
+        Span::styled(completeness_bar, Style::default().fg(pct_color)),
+        Span::styled(format!(" {pct}% "), Style::default().fg(pct_color).add_modifier(Modifier::BOLD)),
+    ]);
 
     let block = Block::default()
         .title(title)
-        .title_style(theme::title_style())
         .borders(Borders::ALL)
         .border_style(Style::default().fg(t.border));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     if inner.width < 40 || inner.height < 8 {
-        // Too small for two-column layout
         frame.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 " Resize terminal for passport editor",
@@ -200,7 +556,10 @@ pub fn render_passport_view(frame: &mut Frame, area: Rect, app: &App) {
         .split(inner);
 
     render_field_list(frame, cols[0], app);
-    render_field_detail(frame, cols[1], app);
+    match pv.detail_mode {
+        PassportDetailMode::FieldDetail => render_field_detail(frame, cols[1], app),
+        PassportDetailMode::ObligationChecklist => render_obligation_checklist(frame, cols[1], app),
+    }
 }
 
 /// Render the left column — categorized field list.
@@ -378,8 +737,16 @@ fn render_field_detail(frame: &mut Frame, area: Rect, app: &App) {
     lines.push(Line::from(vec![
         Span::styled("  [e] ", Style::default().fg(t.accent)),
         Span::styled("Edit  ", Style::default().fg(t.fg)),
-        Span::styled("[Tab] ", Style::default().fg(t.accent)),
-        Span::styled("Next empty field", Style::default().fg(t.fg)),
+        Span::styled("[o] ", Style::default().fg(t.accent)),
+        Span::styled("Obligations  ", Style::default().fg(t.fg)),
+        Span::styled("[x] ", Style::default().fg(t.accent)),
+        Span::styled("Export", Style::default().fg(t.fg)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("  [c] ", Style::default().fg(t.accent)),
+        Span::styled("Validate  ", Style::default().fg(t.fg)),
+        Span::styled("[f] ", Style::default().fg(t.accent)),
+        Span::styled("FRIA", Style::default().fg(t.fg)),
     ]));
 
     frame.render_widget(
@@ -388,29 +755,114 @@ fn render_field_detail(frame: &mut Frame, area: Rect, app: &App) {
     );
 }
 
-/// Simple text wrapping helper.
-fn wrap_text(text: &str, width: usize) -> Vec<String> {
-    if width == 0 {
-        return vec![text.to_string()];
-    }
-    let mut lines = Vec::new();
-    let mut current = String::new();
-    for word in text.split_whitespace() {
-        if current.is_empty() {
-            current = word.to_string();
-        } else if current.len() + 1 + word.len() <= width {
-            current.push(' ');
-            current.push_str(word);
-        } else {
-            lines.push(current);
-            current = word.to_string();
+/// Render the right column — obligation checklist from completeness data.
+fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let pv = &app.passport_view;
+
+    let block = Block::default()
+        .borders(Borders::LEFT)
+        .border_style(Style::default().fg(t.border));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let w = inner.width.saturating_sub(4) as usize;
+    let mut lines: Vec<Line<'_>> = Vec::new();
+
+    lines.push(Line::from(Span::styled(
+        "  Obligation Checklist",
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(Span::styled(
+        format!("  {}", "\u{2500}".repeat(w)),
+        Style::default().fg(t.border),
+    )));
+    lines.push(Line::raw(""));
+
+    if let Some(data) = &pv.completeness_data {
+        let score = data.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+        let total = data.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
+        let filled = data.get("filled").and_then(|v| v.as_u64()).unwrap_or(0);
+
+        lines.push(Line::from(vec![
+            Span::styled("  Completeness: ", Style::default().fg(t.muted)),
+            Span::styled(
+                format!("{score}% ({filled}/{total} fields)"),
+                Style::default()
+                    .fg(completeness_color(score as u8, &t))
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]));
+        lines.push(Line::raw(""));
+
+        if let Some(obligations) = data.get("obligations").and_then(|v| v.as_array()) {
+            for obl in obligations {
+                let id = obl.get("id").and_then(|v| v.as_str()).unwrap_or("???");
+                let title = obl.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown");
+                let covered = obl.get("covered").and_then(|v| v.as_bool()).unwrap_or(false);
+
+                let (icon, color) = if covered {
+                    ("\u{2713}", t.zone_green)
+                } else {
+                    ("\u{2717}", t.zone_red)
+                };
+
+                lines.push(Line::from(vec![
+                    Span::styled(format!("  {icon} "), Style::default().fg(color)),
+                    Span::styled(format!("{id}: "), Style::default().fg(t.accent)),
+                    Span::styled(title.to_string(), Style::default().fg(t.fg)),
+                ]));
+            }
         }
+
+        if let Some(missing) = data.get("missingFields").and_then(|v| v.as_array()) {
+            if !missing.is_empty() {
+                lines.push(Line::raw(""));
+                lines.push(Line::from(Span::styled(
+                    "  Missing fields:",
+                    Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD),
+                )));
+                for field in missing {
+                    if let Some(name) = field.as_str() {
+                        lines.push(Line::from(Span::styled(
+                            format!("    \u{2022} {name}"),
+                            Style::default().fg(t.zone_red),
+                        )));
+                    }
+                }
+            }
+        }
+    } else {
+        lines.push(Line::from(Span::styled(
+            "  Loading completeness data...",
+            Style::default().fg(t.muted),
+        )));
+        lines.push(Line::from(Span::styled(
+            "  Press [o] to refresh",
+            Style::default().fg(t.muted),
+        )));
     }
-    if !current.is_empty() {
-        lines.push(current);
-    }
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-    lines
+
+    lines.push(Line::raw(""));
+    lines.push(Line::from(Span::styled(
+        format!("  {}", "\u{2500}".repeat(w)),
+        Style::default().fg(t.border),
+    )));
+    lines.push(Line::from(vec![
+        Span::styled("  [o] ", Style::default().fg(t.accent)),
+        Span::styled("Back to fields  ", Style::default().fg(t.fg)),
+        Span::styled("[x] ", Style::default().fg(t.accent)),
+        Span::styled("Export", Style::default().fg(t.fg)),
+    ]));
+
+    let scroll = pv.obligation_scroll;
+    let paragraph = Paragraph::new(lines)
+        .wrap(Wrap { trim: false })
+        .scroll((u16::try_from(scroll).unwrap_or(0), 0));
+    frame.render_widget(paragraph, inner);
+}
+
+/// Simple text wrapping helper — delegates to shared utility.
+fn wrap_text(text: &str, width: usize) -> Vec<String> {
+    super::wrap_text_lines(text, width)
 }

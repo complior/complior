@@ -107,15 +107,15 @@ describe('aggregateConfidence', () => {
     const checks: CheckWithConfidence[] = [
       { layer: 'L1', confidence: 95, level: 'PASS' },    // weight 1.0
       { layer: 'L2', confidence: 75, level: 'LIKELY_PASS' }, // weight 0.95
-      { layer: 'L4', confidence: 80, level: 'LIKELY_FAIL' }, // weight 0.7
+      { layer: 'L4', confidence: 80, level: 'LIKELY_FAIL' }, // weight 0.75
     ];
 
     const result = aggregateConfidence(checks);
 
-    // (95*1.0 + 75*0.95 + 80*0.7) / (1.0+0.95+0.7)
-    // = (95 + 71.25 + 56) / 2.65
-    // = 222.25 / 2.65 ≈ 83.87
-    expect(result).toBeCloseTo(83.87, 1);
+    // (95*1.0 + 75*0.95 + 80*0.75) / (1.0+0.95+0.75)
+    // = (95 + 71.25 + 60) / 2.70
+    // = 226.25 / 2.70 ≈ 83.80
+    expect(result).toBeCloseTo(83.80, 1);
   });
 
   it('returns 0 for empty checks', () => {

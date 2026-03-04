@@ -245,7 +245,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
   const generateFriaReport = async (
     name: string,
     projectPath?: string,
-    options?: { organization?: string; assessor?: string },
+    options?: { organization?: string; assessor?: string; impact?: string; mitigation?: string; approval?: string },
   ): Promise<(FriaResult & { savedPath: string }) | null> => {
     const manifest = await showPassport(name, projectPath);
     if (manifest === null) return null;
@@ -260,6 +260,9 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       template,
       organization: options?.organization,
       assessor: options?.assessor,
+      impact: options?.impact,
+      mitigation: options?.mitigation,
+      approval: options?.approval,
     });
 
     // Save FRIA report to .complior/reports/

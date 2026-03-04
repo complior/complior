@@ -140,6 +140,31 @@ impl App {
                     return Some(AppCommand::ExportReport);
                 }
             }
+            ViewState::Obligations => match c {
+                'f' => {
+                    self.obligations_view.filter = self.obligations_view.filter.cycle();
+                    self.obligations_view.selected_index = 0;
+                    self.obligations_view.scroll_offset = 0;
+                }
+                'l' => return Some(AppCommand::LoadObligations),
+                _ => {}
+            },
+            ViewState::Passport => match c {
+                'o' => {
+                    use crate::views::passport::PassportDetailMode;
+                    self.passport_view.detail_mode = match self.passport_view.detail_mode {
+                        PassportDetailMode::FieldDetail => PassportDetailMode::ObligationChecklist,
+                        PassportDetailMode::ObligationChecklist => PassportDetailMode::FieldDetail,
+                    };
+                    if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
+                        return Some(AppCommand::LoadPassportCompleteness);
+                    }
+                }
+                'c' => return Some(AppCommand::ValidatePassport),
+                'f' => return Some(AppCommand::GeneratePassportFria),
+                'x' => return Some(AppCommand::ExportPassport),
+                _ => {}
+            },
             _ => {}
         }
         None
@@ -177,6 +202,18 @@ impl App {
                     return Some(AppCommand::ApplyFixes);
                 }
             }
+            ViewState::Passport => {
+                use crate::views::passport::PassportViewMode;
+                if self.passport_view.view_mode == PassportViewMode::AgentList
+                    && !self.passport_view.loaded_passports.is_empty()
+                {
+                    // Drill down into field editor for selected passport
+                    self.passport_view.view_mode = PassportViewMode::FieldEditor;
+                    self.passport_view.load_from_passports();
+                    self.passport_view.selected_index = 0;
+                    self.passport_view.scroll_offset = 0;
+                }
+            }
             _ => {}
         }
         None
@@ -202,6 +239,14 @@ impl App {
                 } else if self.fix_view.is_single_fix() {
                     self.fix_view.focus_check_id = None;
                     self.view_state = ViewState::Scan;
+                }
+            }
+            ViewState::Passport => {
+                use crate::views::passport::{PassportDetailMode, PassportViewMode};
+                if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
+                    self.passport_view.detail_mode = PassportDetailMode::FieldDetail;
+                } else if self.passport_view.view_mode == PassportViewMode::FieldEditor {
+                    self.passport_view.view_mode = PassportViewMode::AgentList;
                 }
             }
             _ => {}

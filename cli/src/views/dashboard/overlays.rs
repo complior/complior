@@ -135,12 +135,16 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
         ],
         ViewState::Passport => vec![
             shortcut_line("  e", "Edit selected field", t),
-            shortcut_line("  Tab", "Next empty field", t),
-            shortcut_line("  v", "Validate passport", t),
+            shortcut_line("  o", "Toggle obligations", t),
+            shortcut_line("  c", "Validate passport", t),
+            shortcut_line("  f", "Generate FRIA", t),
             shortcut_line("  x", "Export passport", t),
             shortcut_line("  j/k", "Navigate fields", t),
-            shortcut_line("  D", "Switch to Dashboard", t),
-            shortcut_line("  S", "Switch to Scan", t),
+        ],
+        ViewState::Obligations => vec![
+            shortcut_line("  f", "Cycle filter", t),
+            shortcut_line("  l", "Reload obligations", t),
+            shortcut_line("  j/k", "Navigate obligations", t),
         ],
         ViewState::Timeline => vec![
             shortcut_line("  j/k", "Scroll timeline", t),

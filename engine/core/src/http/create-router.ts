@@ -35,6 +35,7 @@ import { createDisclaimerRoute } from './routes/disclaimer.route.js';
 import { createOnboardingRoute } from './routes/onboarding.route.js';
 import { createWhatIfRoute } from './routes/whatif.route.js';
 import { createAgentRoute } from './routes/agent.route.js';
+import { createObligationsRoute } from './routes/obligations.route.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -56,6 +57,8 @@ export interface RouterDeps {
   readonly getVersion: () => string;
   readonly loadProfile: () => Promise<OnboardingProfile | null>;
   readonly getLastScore: () => ScoreBreakdown | null;
+  readonly obligations: readonly Record<string, unknown>[];
+  readonly getLastScan: () => import('../types/common.types.js').ScanResult | null;
 }
 
 export const createRouter = (deps: RouterDeps) => {
@@ -117,6 +120,7 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createOnboardingRoute(deps.onboardingWizard));
   app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore }));
   app.route('/', createAgentRoute(deps.passportService));
+  app.route('/', createObligationsRoute({ obligations: deps.obligations, getLastScan: deps.getLastScan }));
 
   // Health check
   app.get('/health', (c) => c.json({ ok: true }));

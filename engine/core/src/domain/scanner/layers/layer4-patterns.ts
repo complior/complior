@@ -24,7 +24,13 @@ const isScannableFile = (relativePath: string, extension: string): boolean => {
   if (!SCANNABLE_EXTENSIONS.has(extension)) return false;
 
   const parts = relativePath.split('/');
-  return !parts.some((part) => IGNORED_DIRS.has(part));
+  if (parts.some((part) => IGNORED_DIRS.has(part))) return false;
+
+  // Exclude test/spec files from pattern scanning
+  const filename = parts[parts.length - 1] ?? '';
+  if (/\.(test|spec)\.\w+$/.test(filename)) return false;
+
+  return true;
 };
 
 const getLineNumber = (content: string, index: number): number => {

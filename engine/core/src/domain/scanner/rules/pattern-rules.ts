@@ -314,5 +314,5 @@ export const SCANNABLE_EXTENSIONS: ReadonlySet<string> = new Set([
 
 export const IGNORED_DIRS: ReadonlySet<string> = new Set([
   'node_modules', 'dist', '.git', 'vendor', 'build', '__pycache__',
-  '.next', 'coverage', '.cache', '.output',
+  '.next', 'coverage', '.cache', '.output', '__tests__',
 ]);

@@ -25,7 +25,7 @@ fn e2e_t504_status_bar_shows_view_indicator() {
     // Switch to Log view
     app.view_state = ViewState::Log;
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("[7 Log]"), "Status bar should show [7 Log]");
+    assert!(buf.contains("[8 Log]"), "Status bar should show [8 Log]");
 
     // Switch to Scan view
     app.view_state = ViewState::Scan;

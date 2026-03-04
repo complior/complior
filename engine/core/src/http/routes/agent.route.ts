@@ -113,6 +113,9 @@ export const createAgentRoute = (passportService: PassportService) => {
       name: z.string().min(1),
       organization: z.string().optional(),
       assessor: z.string().optional(),
+      impact: z.string().optional(),
+      mitigation: z.string().optional(),
+      approval: z.string().optional(),
     }).safeParse(body);
 
     if (!parsed.success) {
@@ -125,6 +128,9 @@ export const createAgentRoute = (passportService: PassportService) => {
       {
         organization: parsed.data.organization,
         assessor: parsed.data.assessor,
+        impact: parsed.data.impact,
+        mitigation: parsed.data.mitigation,
+        approval: parsed.data.approval,
       },
     );
     if (result === null) {

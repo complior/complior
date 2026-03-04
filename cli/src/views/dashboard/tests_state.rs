@@ -6,11 +6,12 @@ fn test_view_state_from_key() {
     assert_eq!(ViewState::from_key(2), Some(ViewState::Scan));
     assert_eq!(ViewState::from_key(3), Some(ViewState::Fix));
     assert_eq!(ViewState::from_key(4), Some(ViewState::Passport));
-    assert_eq!(ViewState::from_key(5), Some(ViewState::Timeline));
-    assert_eq!(ViewState::from_key(6), Some(ViewState::Report));
-    assert_eq!(ViewState::from_key(7), Some(ViewState::Log));
+    assert_eq!(ViewState::from_key(5), Some(ViewState::Obligations));
+    assert_eq!(ViewState::from_key(6), Some(ViewState::Timeline));
+    assert_eq!(ViewState::from_key(7), Some(ViewState::Report));
+    assert_eq!(ViewState::from_key(8), Some(ViewState::Log));
     assert_eq!(ViewState::from_key(0), None);
-    assert_eq!(ViewState::from_key(8), None);
+    assert_eq!(ViewState::from_key(9), None);
 }
 
 #[test]
@@ -22,7 +23,7 @@ fn test_view_state_from_letter() {
     assert_eq!(ViewState::from_letter('T'), Some(ViewState::Timeline));
     assert_eq!(ViewState::from_letter('R'), Some(ViewState::Report));
     assert_eq!(ViewState::from_letter('L'), Some(ViewState::Log));
-    assert_eq!(ViewState::from_letter('O'), None);
+    assert_eq!(ViewState::from_letter('O'), Some(ViewState::Obligations));
     assert_eq!(ViewState::from_letter('X'), None);
     assert_eq!(ViewState::from_letter('d'), None); // lowercase not mapped
 }

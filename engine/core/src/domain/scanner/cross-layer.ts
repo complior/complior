@@ -166,12 +166,50 @@ const killSwitchWithoutTest: CrossLayerRule = {
   },
 };
 
+// Rule 6: Passport permissions vs actual code patterns mismatch
+const passportCodeMismatch: CrossLayerRule = {
+  id: 'cross-passport-code-mismatch',
+  description: 'Passport permissions do not match actual code patterns detected by L4',
+  check: (l1Results, _l2, _l3, l4Results) => {
+    const findings: CrossLayerFinding[] = [];
+
+    // Check if passport exists (L1 passport-presence pass)
+    const hasPassport = l1Results.some(
+      (r) => r.type === 'pass' && r.checkId === 'passport-presence',
+    );
+
+    if (!hasPassport) return findings;
+
+    // If passport claims compliance but L4 finds bare LLM calls, flag mismatch
+    const bareLlmCalls = l4Results.filter(
+      (r) => r.category === 'bare-llm' && r.status === 'FOUND',
+    );
+    const hasDisclosure = l4Results.some(
+      (r) => r.category === 'disclosure' && r.status === 'FOUND',
+    );
+
+    if (bareLlmCalls.length > 0 && !hasDisclosure) {
+      findings.push({
+        ruleId: 'cross-passport-code-mismatch',
+        description: `Agent Passport exists but ${bareLlmCalls.length} unwrapped LLM call(s) found without disclosure. Passport should reflect actual code practices.`,
+        severity: 'high',
+        layers: ['L1', 'L4'],
+        obligationId: 'eu-ai-act-OBL-011',
+        article: 'Art. 26(4)',
+      });
+    }
+
+    return findings;
+  },
+};
+
 export const CROSS_LAYER_RULES: readonly CrossLayerRule[] = [
   docCodeMismatch,
   sdkNoDisclosure,
   bannedWithWrapper,
   loggingNoRetention,
   killSwitchWithoutTest,
+  passportCodeMismatch,
 ];
 
 export const runCrossLayerChecks = (
