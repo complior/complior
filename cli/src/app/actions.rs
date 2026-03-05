@@ -511,6 +511,7 @@ impl App {
                 ));
                 self.operation_start = Some(Instant::now());
                 self.scan_view.scanning = true;
+                self.scan_view.scan_error = None;
                 return Some(AppCommand::Scan);
             }
             Action::ViewKey(c) => {

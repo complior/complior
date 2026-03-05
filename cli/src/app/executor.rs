@@ -152,10 +152,13 @@ pub async fn execute_command(
             match app.engine_client.scan(&path).await {
                 Ok(result) => app.set_scan_result(result),
                 Err(e) => {
+                    let msg = format!("Scan failed: {e}");
                     app.messages.push(types::ChatMessage::new(
                         types::MessageRole::System,
-                        format!("Scan failed: {e}"),
+                        msg.clone(),
                     ));
+                    app.scan_view.scanning = false;
+                    app.scan_view.scan_error = Some(msg);
                     app.operation_start = None;
                 }
             }

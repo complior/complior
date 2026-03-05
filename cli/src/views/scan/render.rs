@@ -142,7 +142,7 @@ pub(super) fn owl_position(layers: &[LayerProgress; 5]) -> usize {
         .unwrap_or(0)
 }
 
-pub(super) fn render_no_scan(frame: &mut Frame, area: Rect) {
+pub(super) fn render_no_scan(frame: &mut Frame, area: Rect, scan_error: Option<&str>) {
     let t = theme::theme();
     let block = Block::default()
         .title(" Scan ")
@@ -152,25 +152,39 @@ pub(super) fn render_no_scan(frame: &mut Frame, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let lines = vec![
+    let mut lines = vec![
         Line::raw(""),
-        Line::from(Span::styled(
+    ];
+
+    if let Some(err) = scan_error {
+        lines.push(Line::from(Span::styled(
+            format!("  {err}"),
+            Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD),
+        )));
+        lines.push(Line::raw(""));
+        lines.push(Line::from(vec![
+            Span::styled("  Press ", Style::default().fg(t.muted)),
+            Span::styled("Ctrl+S", Style::default().fg(t.accent)),
+            Span::styled(" to retry.", Style::default().fg(t.muted)),
+        ]));
+    } else {
+        lines.push(Line::from(Span::styled(
             "  No scan results.",
             Style::default().fg(t.fg).add_modifier(Modifier::BOLD),
-        )),
-        Line::raw(""),
-        Line::from(vec![
+        )));
+        lines.push(Line::raw(""));
+        lines.push(Line::from(vec![
             Span::styled("  Press ", Style::default().fg(t.muted)),
             Span::styled("Ctrl+S", Style::default().fg(t.accent)),
             Span::styled(" to scan your project.", Style::default().fg(t.muted)),
-        ]),
-        Line::raw(""),
-        Line::from(vec![
+        ]));
+        lines.push(Line::raw(""));
+        lines.push(Line::from(vec![
             Span::styled("  Or use ", Style::default().fg(t.muted)),
             Span::styled("/scan", Style::default().fg(t.accent)),
             Span::styled(" command in Chat view.", Style::default().fg(t.muted)),
-        ]),
-    ];
+        ]));
+    }
 
     frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }

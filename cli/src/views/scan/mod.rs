@@ -87,6 +87,8 @@ pub struct ScanViewState {
     pub scan_split_pct: u16,
     /// Whether layer progress gauges are collapsed after scan complete.
     pub progress_collapsed: bool,
+    /// Last scan error message (shown on Scan tab instead of chat only).
+    pub scan_error: Option<String>,
 }
 
 impl Default for ScanViewState {
@@ -107,6 +109,7 @@ impl Default for ScanViewState {
             preview_scroll: 0,
             scan_split_pct: 45,
             progress_collapsed: false,
+            scan_error: None,
         }
     }
 }
@@ -150,6 +153,7 @@ impl ScanViewState {
             current: 0, total: 0, status: LayerStatus::Skipped,
         };
         self.scanning = false;
+        self.scan_error = None;
         self.progress_collapsed = true;
     }
 }
@@ -176,7 +180,7 @@ pub fn resolve_selected_finding<'a>(
 /// Render the full Scan View -- master-detail split layout.
 pub fn render_scan_view(frame: &mut Frame, area: Rect, app: &App) {
     if app.last_scan.is_none() && !app.scan_view.scanning {
-        render::render_no_scan(frame, area);
+        render::render_no_scan(frame, area, app.scan_view.scan_error.as_deref());
         return;
     }
 
