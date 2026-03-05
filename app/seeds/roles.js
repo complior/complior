@@ -25,6 +25,10 @@ const permissions = [
   { role: 'owner', resource: 'Conversation', action: 'manage' },
 
   { role: 'owner', resource: 'ApiKey', action: 'manage' },
+  { role: 'owner', resource: 'GapAnalysis', action: 'manage' },
+  { role: 'owner', resource: 'AuditPackage', action: 'manage' },
+  { role: 'owner', resource: 'SyncHistory', action: 'manage' },
+  { role: 'owner', resource: 'DeviceCode', action: 'manage' },
 
   // Admin — manage tools + compliance + team, no billing
   { role: 'admin', resource: 'ApiKey', action: 'manage' },
@@ -40,6 +44,10 @@ const permissions = [
   { role: 'admin', resource: 'AuditLog', action: 'read' },
   { role: 'admin', resource: 'Notification', action: 'manage' },
   { role: 'admin', resource: 'Conversation', action: 'manage' },
+  { role: 'admin', resource: 'GapAnalysis', action: 'manage' },
+  { role: 'admin', resource: 'AuditPackage', action: 'manage' },
+  { role: 'admin', resource: 'SyncHistory', action: 'manage' },
+  { role: 'admin', resource: 'DeviceCode', action: 'manage' },
 
   // Member — create + read, limited update
   { role: 'member', resource: 'AITool', action: 'create' },
@@ -48,6 +56,7 @@ const permissions = [
   { role: 'member', resource: 'RiskClassification', action: 'read' },
   { role: 'member', resource: 'ComplianceDocument', action: 'create' },
   { role: 'member', resource: 'ComplianceDocument', action: 'read' },
+  { role: 'member', resource: 'ComplianceDocument', action: 'update' },
   { role: 'member', resource: 'FRIAAssessment', action: 'create' },
   { role: 'member', resource: 'FRIAAssessment', action: 'read' },
   { role: 'member', resource: 'FRIAAssessment', action: 'update' },
@@ -56,6 +65,11 @@ const permissions = [
   { role: 'member', resource: 'Notification', action: 'read' },
   { role: 'member', resource: 'Conversation', action: 'create' },
   { role: 'member', resource: 'Conversation', action: 'read' },
+  { role: 'member', resource: 'GapAnalysis', action: 'read' },
+  { role: 'member', resource: 'AuditPackage', action: 'read' },
+  { role: 'member', resource: 'SyncHistory', action: 'create' },
+  { role: 'member', resource: 'SyncHistory', action: 'read' },
+  { role: 'member', resource: 'DeviceCode', action: 'create' },
 
   // Platform Admin — cross-org read access
   { role: 'platform_admin', resource: 'PlatformAdmin', action: 'manage' },
@@ -68,6 +82,8 @@ const permissions = [
   { role: 'viewer', resource: 'TrainingCourse', action: 'read' },
   { role: 'viewer', resource: 'LiteracyCompletion', action: 'read' },
   { role: 'viewer', resource: 'Notification', action: 'read' },
+  { role: 'viewer', resource: 'GapAnalysis', action: 'read' },
+  { role: 'viewer', resource: 'AuditPackage', action: 'read' },
 ];
 
 module.exports = { roles, permissions };

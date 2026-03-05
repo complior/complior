@@ -116,6 +116,12 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     pinoLogger.info('✅ pg-boss background job queue started');
   }
 
+  let llm = { generateText: async () => { throw new Error('LLM not configured'); }, provider: null, resolveModel: (a) => a };
+  if (process.env.MISTRAL_API_KEY || process.env.OPENROUTER_API_KEY) {
+    const createLlmClient = require('./infrastructure/llm/llm-client.js');
+    llm = createLlmClient();
+  }
+
   const server = fastify({ logger: loggerConfig });
   const logger = new Logger(server.log);
 
@@ -134,11 +140,12 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     registry: require('../app/config/registry.js'),
     enrichment: require('../app/config/enrichment.js'),
     llmModels: require('../app/config/llm-models.js'),
+    llm: require('../app/config/llm.js'),
   };
 
   const appSandbox = await loadApplication(APPLICATION_PATH, {
     console: logger, db, config, errors, schemas, zod,
-    workos, brevo, gotenberg, s3, stripe, pgboss,
+    workos, brevo, gotenberg, s3, stripe, pgboss, llm,
     fetch: globalThis.fetch, cheerio,
   });
 
@@ -192,6 +199,24 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
         pinoLogger.info('✅ Data export job scheduled (Mondays 04:00 UTC)');
       } catch (error) {
         pinoLogger.error(error, 'Failed to schedule data export job');
+      }
+    }
+
+    if (appSandbox.application?.jobs?.['schedule-audit-package']) {
+      try {
+        await appSandbox.application.jobs['schedule-audit-package'].init(jobCtx);
+        pinoLogger.info('✅ Audit package worker registered');
+      } catch (error) {
+        pinoLogger.error(error, 'Failed to register audit package worker');
+      }
+    }
+
+    if (appSandbox.application?.jobs?.['schedule-doc-generation']) {
+      try {
+        await appSandbox.application.jobs['schedule-doc-generation'].init(jobCtx);
+        pinoLogger.info('✅ Document generation worker registered');
+      } catch (error) {
+        pinoLogger.error(error, 'Failed to register document generation worker');
       }
     }
   }

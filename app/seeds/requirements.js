@@ -11,6 +11,7 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 1,
     estimatedEffortHours: 8,
+    obligationIds: ['eu-ai-act-OBL-001'],
     description: 'Providers and deployers of AI systems shall take measures' +
       ' to ensure, to their best extent, a sufficient level of AI' +
       ' literacy of their staff and other persons dealing with the' +
@@ -40,6 +41,7 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 2,
     estimatedEffortHours: 1,
+    obligationIds: ['eu-ai-act-OBL-001a'],
     description: 'CEOs and board members must have sufficient AI literacy' +
       ' to make strategic decisions regarding AI deployment.',
     guidance: 'Executive course: AI Act overview, risks, liability,' +
@@ -64,6 +66,7 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 3,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-001a'],
     description: 'HR staff must understand AI-specific risks in human' +
       ' resources, especially for high-risk applications' +
       ' (Annex III, Area 4).',
@@ -88,6 +91,7 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 4,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-001a'],
     description: 'Developers must understand the technical requirements' +
       ' of the AI Act, particularly Art. 26 deployer obligations' +
       ' when integrating AI systems.',
@@ -112,6 +116,7 @@ const requirements = [
     category: 'ai_literacy',
     sortOrder: 5,
     estimatedEffortHours: 1,
+    obligationIds: ['eu-ai-act-OBL-001a'],
     description: 'All employees who use AI systems must be able to' +
       ' demonstrate basic AI literacy.',
     guidance: 'General course: AI basics, dos & don\'ts, data protection,' +
@@ -136,6 +141,7 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 10,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-002'],
     description: 'Verify that the deployed AI system does not use prohibited' +
       ' practices: social scoring, real-time biometrics (without' +
       ' exception), manipulative/deceptive techniques, exploitation' +
@@ -164,6 +170,7 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 11,
     estimatedEffortHours: 1,
+    obligationIds: ['eu-ai-act-OBL-002c'],
     description: 'Ensure that no AI system is used for the evaluation or' +
       ' classification of natural persons based on their social' +
       ' behaviour.',
@@ -184,6 +191,7 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 12,
     estimatedEffortHours: 1,
+    obligationIds: ['eu-ai-act-OBL-002e'],
     description: 'Do not deploy real-time remote biometric identification' +
       ' systems in publicly accessible spaces unless a statutory' +
       ' exception applies.',
@@ -207,6 +215,7 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 20,
     estimatedEffortHours: 4,
+    obligationIds: ['eu-ai-act-OBL-011'],
     description: 'Use high-risk AI systems in accordance with the' +
       ' instructions of use. Take technical and organisational' +
       ' measures to ensure use in line with the intended purpose.',
@@ -232,6 +241,7 @@ const requirements = [
     category: 'human_oversight',
     sortOrder: 21,
     estimatedEffortHours: 8,
+    obligationIds: ['eu-ai-act-OBL-008'],
     description: 'Assign natural persons with the necessary competence,' +
       ' training, and authority for human oversight.',
     guidance: 'Designate responsible person(s). Document training.' +
@@ -256,6 +266,7 @@ const requirements = [
     category: 'data_governance',
     sortOrder: 22,
     estimatedEffortHours: 4,
+    obligationIds: ['eu-ai-act-OBL-011b'],
     description: 'Ensure that input data is relevant and sufficiently' +
       ' representative with regard to the intended purpose of' +
       ' the high-risk AI system.',
@@ -280,6 +291,7 @@ const requirements = [
     category: 'monitoring',
     sortOrder: 23,
     estimatedEffortHours: 8,
+    obligationIds: ['eu-ai-act-OBL-009'],
     description: 'Monitor the operation of the high-risk AI system based' +
       ' on the instructions of use. When a risk is identified,' +
       ' inform the provider and the competent authority.',
@@ -304,6 +316,7 @@ const requirements = [
     category: 'record_keeping',
     sortOrder: 24,
     estimatedEffortHours: 4,
+    obligationIds: ['eu-ai-act-OBL-006', 'eu-ai-act-OBL-011d'],
     description: 'Retain the automatically generated logs of the' +
       ' high-risk AI system for at least six months, unless' +
       ' applicable law provides otherwise.',
@@ -328,6 +341,7 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 25,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-012'],
     description: 'Inform worker representatives and affected workers that' +
       ' they will be subject to the use of a high-risk AI system.',
     guidance: 'Inform works council / worker representatives in writing.' +
@@ -376,6 +390,7 @@ const requirements = [
     category: 'registration',
     sortOrder: 27,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-014'],
     description: 'Before putting the high-risk AI system into use,' +
       ' register yourself and the system in the EU database' +
       ' pursuant to Art. 71.',
@@ -400,6 +415,7 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 28,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-025'],
     description: 'Cooperate with the competent national authorities on' +
       ' any action taken by those authorities in connection with' +
       ' the high-risk AI system.',
@@ -424,6 +440,7 @@ const requirements = [
     category: 'monitoring',
     sortOrder: 29,
     estimatedEffortHours: 4,
+    obligationIds: ['eu-ai-act-OBL-031'],
     description: 'In the event of a serious incident, immediately inform' +
       ' the provider and the competent market surveillance' +
       ' authority.',
@@ -448,6 +465,7 @@ const requirements = [
     category: 'deployer_obligations',
     sortOrder: 30,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-011c'],
     description: 'Cease use of the AI system if the deployer has reason to' +
       ' believe that the use presents a risk.',
     guidance: 'Define an emergency process for immediate shutdown.' +
@@ -473,6 +491,7 @@ const requirements = [
     category: 'fria',
     sortOrder: 40,
     estimatedEffortHours: 24,
+    obligationIds: ['eu-ai-act-OBL-013'],
     description: 'Before putting the system into use, carry out an' +
       ' assessment of the impact on fundamental rights.' +
       ' Applies to: public bodies, operators of private services' +
@@ -501,6 +520,7 @@ const requirements = [
     category: 'fria',
     sortOrder: 41,
     estimatedEffortHours: 4,
+    obligationIds: ['eu-ai-act-OBL-013a'],
     description: 'Identify the groups of natural persons and groups of' +
       ' persons likely to be affected by the use of the AI system.',
     translations: {
@@ -520,6 +540,7 @@ const requirements = [
     category: 'fria',
     sortOrder: 42,
     estimatedEffortHours: 8,
+    obligationIds: ['eu-ai-act-OBL-013b'],
     description: 'Assess the specific risks to the fundamental rights of' +
       ' the affected persons, including the risk of discrimination.',
     translations: {
@@ -539,6 +560,7 @@ const requirements = [
     category: 'fria',
     sortOrder: 43,
     estimatedEffortHours: 4,
+    obligationIds: ['eu-ai-act-OBL-013c'],
     description: 'Describe the human oversight measures taken to mitigate' +
       ' the identified risks.',
     translations: {
@@ -557,6 +579,7 @@ const requirements = [
     category: 'fria',
     sortOrder: 44,
     estimatedEffortHours: 8,
+    obligationIds: ['eu-ai-act-OBL-013d'],
     description: 'Take appropriate measures to mitigate the identified' +
       ' risks. Define responsibilities and timelines.',
     translations: {
@@ -599,6 +622,7 @@ const requirements = [
     category: 'transparency',
     sortOrder: 50,
     estimatedEffortHours: 4,
+    obligationIds: ['eu-ai-act-OBL-024'],
     description: 'Inform users that they are interacting with an AI system' +
       ' (chatbots, deepfakes, emotion recognition, biometric' +
       ' categorisation).',
@@ -624,6 +648,7 @@ const requirements = [
     category: 'transparency',
     sortOrder: 51,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-015'],
     description: 'Ensure that natural persons are informed that they are' +
       ' interacting with an AI system, unless this is obvious' +
       ' from the circumstances.',
@@ -645,6 +670,7 @@ const requirements = [
     category: 'transparency',
     sortOrder: 52,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-016', 'eu-ai-act-OBL-018'],
     description: 'Label AI-generated or manipulated image, audio, or video' +
       ' content as such (machine-readable and user-recognisable).',
     translations: {
@@ -664,6 +690,7 @@ const requirements = [
     category: 'transparency',
     sortOrder: 53,
     estimatedEffortHours: 2,
+    obligationIds: ['eu-ai-act-OBL-017'],
     description: 'Inform affected persons about the use of an emotion' +
       ' recognition system or biometric categorisation system.',
     translations: {
@@ -704,6 +731,7 @@ const requirements = [
     category: 'risk_management',
     sortOrder: 60,
     estimatedEffortHours: 8,
+    obligationIds: ['eu-ai-act-OBL-029'],
     description: 'Complement and support the risk management system' +
       ' established by the provider with your own measures.',
     guidance: 'Conduct your own risk assessment. Plan regular reviews.' +

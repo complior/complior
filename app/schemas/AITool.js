@@ -57,6 +57,11 @@
     note: 'Art. 26(7): Were employees/worker representatives informed about AI usage?',
   },
 
+  // Technical Stack (CLI passport + wizard)
+  framework: { type: 'string', length: { max: 100 }, required: false },
+  modelProvider: { type: 'string', length: { max: 100 }, required: false },
+  modelId: { type: 'string', length: { max: 255 }, required: false },
+
   // Step 4: Autonomy & Oversight
   autonomyLevel: {
     enum: ['advisory', 'semi_autonomous', 'autonomous'],
@@ -87,4 +92,7 @@
   // Wizard State
   wizardStep: { type: 'number', default: 1 },
   wizardCompleted: { type: 'boolean', default: false },
+
+  // CLI sync metadata (detectionPatterns, versions, signature, extendedFields)
+  syncMetadata: { type: 'json', required: false },
 });

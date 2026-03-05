@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { LockedOverlay } from '@/components/ui/LockedOverlay';
-import { api, type FRIAByToolResponse } from '@/lib/api';
+import { api, type DocumentListItem, type FRIAByToolResponse } from '@/lib/api';
 
 interface HighRiskTool {
   toolId: number;
@@ -13,12 +12,23 @@ interface HighRiskTool {
 
 interface DocumentStatusProps {
   highRiskTools?: HighRiskTool[];
+  cliScores?: Record<string, { score: number | null; lastSync: string | null }>;
 }
 
-export function DocumentStatus({ highRiskTools = [] }: DocumentStatusProps) {
+const DOC_STATUS_COLORS: Record<string, string> = {
+  draft: 'text-[var(--dark5)]',
+  generating: 'text-[#3498db]',
+  review: 'text-[#f1c40f]',
+  approved: 'text-[var(--teal)]',
+  archived: 'text-[var(--dark5)]',
+};
+
+export function DocumentStatus({ highRiskTools = [], cliScores = {} }: DocumentStatusProps) {
   const t = useTranslations('dashboard');
+  const tDoc = useTranslations('documents');
   const locale = useLocale();
   const [friaData, setFriaData] = useState<FRIAByToolResponse | null>(null);
+  const [docs, setDocs] = useState<DocumentListItem[]>([]);
 
   const firstTool = highRiskTools[0] ?? null;
 
@@ -26,8 +36,14 @@ export function DocumentStatus({ highRiskTools = [] }: DocumentStatusProps) {
     if (!firstTool) return;
     api.fria.getByTool(firstTool.toolId)
       .then(setFriaData)
-      .catch(() => {});
+      .catch((err) => { console.error('Failed to load FRIA data:', err); });
   }, [firstTool]);
+
+  useEffect(() => {
+    api.documents.list({ pageSize: '3' })
+      .then((res) => setDocs(res.data))
+      .catch((err) => { console.error('Failed to load documents:', err); });
+  }, []);
 
   const getFriaStatus = () => {
     if (!firstTool) return { label: t('friaNotStarted'), color: 'text-[var(--dark5)]' };
@@ -45,7 +61,6 @@ export function DocumentStatus({ highRiskTools = [] }: DocumentStatusProps) {
   };
 
   const friaStatus = getFriaStatus();
-  const lockedDocs = ['AI Usage Policy', 'Oversight Procedures', 'EU Registrations'];
 
   return (
     <div className="bg-[var(--card)] border border-[var(--b2)] rounded-xl p-5 transition-all dark:border-[var(--b3)] relative overflow-hidden">
@@ -72,31 +87,65 @@ export function DocumentStatus({ highRiskTools = [] }: DocumentStatusProps) {
               href={`/${locale}/tools/${firstTool.toolId}?tab=documents`}
               className="font-mono text-[0.6875rem] font-bold text-[var(--teal)] hover:underline no-underline"
             >
-              View →
+              {t('viewDoc')} &rarr;
             </Link>
           ) : (
-            <span className="font-mono text-[0.6875rem] font-bold text-[var(--dark5)]">—</span>
+            <span className="font-mono text-[0.6875rem] font-bold text-[var(--dark5)]">&mdash;</span>
           )}
         </div>
 
-        {/* Locked rows */}
-        <div className="relative overflow-hidden rounded-lg">
-          {lockedDocs.map((name) => (
-            <div key={name} className="flex items-center justify-between py-2 px-2.5 border border-[var(--b)] rounded-lg mb-2 last:mb-0">
+        {/* Real document rows */}
+        {docs.length > 0 ? (
+          docs.map((doc) => (
+            <div key={doc.complianceDocumentId} className="flex items-center justify-between py-2 px-2.5 border border-[var(--b)] rounded-lg">
               <div className="flex flex-col gap-0.5">
-                <span className="text-[0.8125rem] font-semibold text-[var(--dark)]">{name}</span>
-                <span className="font-mono text-[0.4375rem] font-semibold text-[var(--dark5)]">—</span>
+                <span className="text-[0.8125rem] font-semibold text-[var(--dark)]">{doc.title}</span>
+                <span className={`font-mono text-[0.6875rem] font-semibold ${DOC_STATUS_COLORS[doc.status] || DOC_STATUS_COLORS.draft}`}>
+                  {tDoc('progress', { completed: String(doc.completedSections), total: String(doc.totalSections) })}
+                </span>
               </div>
-              <span className="font-mono text-[0.4375rem] font-bold text-[var(--teal)]">View →</span>
+              <Link
+                href={`/${locale}/documents/${doc.complianceDocumentId}`}
+                className="font-mono text-[0.6875rem] font-bold text-[var(--teal)] hover:underline no-underline"
+              >
+                {t('viewDoc')} &rarr;
+              </Link>
+            </div>
+          ))
+        ) : (
+          <div className="py-3 px-2.5 text-center">
+            <span className="text-[0.8125rem] text-[var(--dark5)]">{t('noDocumentsYet')}</span>
+          </div>
+        )}
+      </div>
+
+      {/* CLI Scanner Scores */}
+      {Object.keys(cliScores).length > 0 && (
+        <div className="mt-3 pt-3 border-t border-[var(--b)]">
+          <div className="text-[0.75rem] font-semibold text-[var(--dark5)] uppercase tracking-wider mb-2">
+            {t('cliScore')}
+          </div>
+          {Object.entries(cliScores).map(([slug, data]) => (
+            <div key={slug} className="flex items-center justify-between py-1.5 px-2.5">
+              <span className="text-[0.8125rem] text-[var(--dark)]">{slug}</span>
+              <div className="flex items-center gap-2">
+                {data.score !== null && (
+                  <span className={`font-mono text-[0.75rem] font-bold ${
+                    data.score >= 70 ? 'text-[var(--teal)]' : data.score >= 40 ? 'text-[var(--amber)]' : 'text-[var(--red)]'
+                  }`}>
+                    {data.score}/100
+                  </span>
+                )}
+                {data.lastSync && (
+                  <span className="text-[0.6875rem] text-[var(--dark5)]">
+                    {new Date(data.lastSync).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
-          <LockedOverlay
-            title={t('lockedDocStatus')}
-            description={t('lockedDocStatusDesc')}
-            sprint={t('lockedSprint')}
-          />
         </div>
-      </div>
+      )}
     </div>
   );
 }

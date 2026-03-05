@@ -192,6 +192,11 @@ const TABLE_ORDER = [
   'CrossMapping',
   'LocalizationTerm',
   'ApplicabilityNode',
+  // Sprint 8: Gap Analysis, Audit Package, CLI Auth, CLI Sync
+  'GapAnalysis',
+  'AuditPackage',
+  'DeviceCode',
+  'SyncHistory',
 ];
 
 // Migrations — idempotent ALTER TABLEs for existing databases
@@ -217,6 +222,42 @@ const MIGRATIONS = [
   // Sprint 8: FRIA multi-tenancy fix
   `ALTER TABLE "FRIAAssessment"
    ADD COLUMN IF NOT EXISTS "organizationId" bigint REFERENCES "Organization"("id") ON DELETE CASCADE`,
+  // Sprint 9: CLI sync — allow cli_import as classification method
+  `ALTER TABLE "RiskClassification" DROP CONSTRAINT IF EXISTS "RiskClassification_method_check"`,
+  `ALTER TABLE "RiskClassification" ADD CONSTRAINT "RiskClassification_method_check"
+   CHECK ("method" IN ('rule_only', 'rule_plus_llm', 'cross_validated', 'cli_import'))`,
+  // Sprint 9: Backfill ToolRequirements for tools with riskLevel but no requirements
+  `INSERT INTO "ToolRequirement" ("aiToolId", "requirementId", "status", "progress")
+   SELECT t."aIToolId", r."requirementId", 'pending', 0
+   FROM "AITool" t
+   CROSS JOIN "Requirement" r
+   WHERE t."riskLevel" IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM "ToolRequirement" tr WHERE tr."aiToolId" = t."aIToolId"
+     )
+     AND (
+       (t."riskLevel" = 'minimal' AND r."riskLevel" = 'minimal')
+       OR (t."riskLevel" = 'limited' AND r."riskLevel" IN ('minimal', 'limited'))
+       OR (t."riskLevel" = 'gpai' AND r."riskLevel" IN ('minimal', 'limited'))
+       OR (t."riskLevel" = 'high' AND r."riskLevel" IN ('minimal', 'limited', 'high'))
+       OR (t."riskLevel" = 'prohibited' AND r."riskLevel" = 'prohibited')
+     )
+   ON CONFLICT DO NOTHING`,
+  // Sprint 9: CLI ↔ SaaS passport parity — new AITool columns
+  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "framework" varchar(100)`,
+  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelProvider" varchar(100)`,
+  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelId" varchar(255)`,
+  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "syncMetadata" jsonb`,
+  // Sprint 9: Backfill classificationConfidence for CLI-synced tools
+  `UPDATE "AITool" SET "classificationConfidence" = 50
+   WHERE "riskLevel" IS NOT NULL
+     AND "classificationConfidence" IS NULL
+     AND EXISTS (
+       SELECT 1 FROM "RiskClassification" rc
+       WHERE rc."aiToolId" = "AITool"."aIToolId"
+         AND rc."method" = 'cli_import'
+         AND rc."isCurrent" = true
+     )`,
 ];
 
 const INDEXES = [

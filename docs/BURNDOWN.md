@@ -157,16 +157,54 @@
 
 ---
 
-## Sprint 8 (FRIA + Dashboard v2 + Members) — IN PROGRESS
+## Sprint 8 (FRIA + Dashboard v2 + Members + Documents + CLI)
 
-**SP:** 49 planned, 18 done | **Duration:** 2026-03-01 — ongoing | **Team:** Max, Nina
+**SP:** 49 planned → 40 (9 SP moved to S9) | **Duration:** 2026-03-01 — 2026-03-04 (4 days) | **Team:** Max, Nina, Marcus
 
 | Day | Date | SP Remaining | Ideal | Notes |
 |-----|------|-------------|-------|-------|
 | 0 | 2026-03-01 | 49 | 49 | Sprint start |
-| 3 | 2026-03-03 | 31 | 37 | US-081 FRIA (8), US-084 Dashboard v2 (7), Members (3) |
+| 1 | 2026-03-01 | 31 | 39 | US-081 FRIA (8), US-084 Dashboard v2 (7), US-084b Members (3) |
+| 2 | 2026-03-02 | 22 | 29 | Scope adjusted: -9 SP → S9 (US-086/089/090) |
+| 3 | 2026-03-03 | 4 | 19 | US-085 Gap Analysis (5), US-083 Audit Package (6), US-087 CLI Auth (3), US-088 CLI Sync (4) |
+| 3 | 2026-03-03 | 0 | 19 | US-082 Documents (4): plan gate, async LLM, section/document approval |
+| 4 | 2026-03-04 | 0 | 0 | Full audit (4 agents) + E2E testing + 12 P0 security fixes |
 
-**Velocity:** 18/49 SP (in progress) | **Remaining:** US-082 (7), US-083 (6), US-085 (5), US-086 (3), US-087 (3), US-088 (4), US-089 (2), US-090 (4)
+**Moved to Sprint 9:** US-086 Timeline (3 SP), US-089 SSE Push (2 SP), US-090 Vendor Verification (4 SP)
+
+**Day 4 Audit Results (12 P0 fixes):**
+- 5 CRITICAL: Org PK mismatch (2 files), ComplianceDocument missing org field, TOCTOU UPDATEs (4 files), XSS in htmlRenderer
+- 3 HIGH: sectionCode not Zod-validated (4 API files), device endpoint no rate limit, DeviceCode RBAC missing
+- 4 MEDIUM: schemas missing createdAt (2), audit log gaps, API-layer db.query fallback, JWT duplication documented
+
+**Velocity:** 40/40 SP | **Carry-over:** 0
+
+---
+
+## Sprint 8.5 (United Sprint 1 — CLI ↔ SaaS Integration Bridge)
+
+**SP:** 28 (10 SaaS + 18 CLI) | **Duration:** 2026-03-04 — 2026-03-05 (2 days) | **Team:** Marcus (Claude Code)
+**Cross-repo:** ~/PROJECT (SaaS) + ~/complior (CLI)
+
+| Day | Date | SP Remaining | Ideal | Notes |
+|-----|------|-------------|-------|-------|
+| 0 | 2026-03-04 | 28 | 28 | Sprint start — plan approved (12 US across 2 repos) |
+| 1 | 2026-03-04 | 10 | 14 | CLI: US-U01..U06 (login, tokens, logout, sync service, passport push, scan push) |
+| 1 | 2026-03-04 | 4 | 14 | SaaS: US-U07..U09 (document sync, obligation map, field mapping) |
+| 2 | 2026-03-05 | 0 | 0 | US-U10..U12 (data bundle, TUI panel, score display) + full audit (9 fixes) |
+
+**SaaS-side deliverables (10 SP):**
+- US-U07 (4 SP): POST /api/sync/documents endpoint + processDocuments.js
+- US-U08 (3 SP): Obligation cross-mapping (resolveObligations.js — 28 OBL→ART mappings)
+- US-U09 (1 SP): Extended SyncPassportSchema (+8 fields) + enhanced mergePassport.js
+- US-U12 (2 SP): CLI Score display on Dashboard (getDashboardSummary + DocumentStatus + i18n)
+
+**Code audit (9 violations fixed):**
+- 2 CRITICAL: Missing organizationId in ComplianceDocument INSERT, missing NOT NULL cols in AITool INSERT
+- 4 HIGH: z.any() → typed schemas, DRY mergePassport (3x duplication), orphan seed deleted, SQL allowlist
+- 3 MEDIUM: FP-first (this→closure, for→reduce), DISTINCT ON + LIMIT on dashboard query, i18n hardcoded text
+
+**Velocity:** 28/28 SP | **Carry-over:** 0
 
 ---
 
@@ -185,10 +223,9 @@
 | 5 | 55 | 50 | 2 days | 25.0 |
 | 6 | 15 | 15 | 2 days | 7.5 |
 | 7 | 39 | 39 | 8 days | 4.9 |
-| 8* | 49 | 18 | 3 days* | 6.0* |
-| **Total** | **410** | **374** | **30 days** | **12.5** |
-
-*Sprint 8 in progress
+| 8 | 40 | 40 | 4 days | 10.0 |
+| 8.5 | 28 | 28 | 2 days | 14.0 |
+| **Total** | **429** | **424** | **33 days** | **12.8** |
 
 ---
 
@@ -206,11 +243,10 @@
 | 5 | 221 | 148 | 369 |
 | 6 | 229 | 148 | 377 |
 | 7 | 343 | 148 | 491 |
-| 8* | 343 | 148 | 491 |
-
-*No new tests yet — frontend-heavy work
+| 8 | 398 | 148 | 546 |
+| 8.5 | 406 | 148 | 554 |
 
 ---
 
 **Updated by:** Claude Code (on behalf of Marcus)
-**Last update:** 2026-03-03
+**Last update:** 2026-03-05

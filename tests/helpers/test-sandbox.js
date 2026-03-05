@@ -38,6 +38,7 @@ const createMockCheerio = () => {
 const createTestSandbox = (mockDb, extras = {}) => ({
   setTimeout,
   clearTimeout,
+  AbortController,
   Buffer,
   console,
   crypto,
@@ -77,6 +78,17 @@ const createTestSandbox = (mockDb, extras = {}) => ({
   gotenberg: { convertHtmlToPdf: async () => Buffer.alloc(0) },
   s3: { upload: async () => ({}), download: async () => null },
   stripe: { createCheckoutSession: async () => ({}), retrieveSession: async () => null, constructEvent: () => null },
+  pgboss: null,
+  zipBuilder: Object.freeze({ create: () => ({ addBuffer: () => {}, addJson: () => {}, finalize: async () => Buffer.alloc(0) }) }),
+  llm: extras.llm || {
+    generateText: async () => ({
+      text: 'Mock AI generated content for testing purposes.',
+      model: 'mock-model',
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+    }),
+    provider: null,
+    resolveModel: (alias) => alias,
+  },
   ...extras,
 });
 

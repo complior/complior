@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 const RISK_SEGMENTS: { key: string; color: string }[] = [
   { key: 'prohibited', color: 'var(--r-prohibited)' },
   { key: 'high', color: 'var(--r-high)' },
+  { key: 'gpai', color: 'var(--r-gpai)' },
   { key: 'limited', color: 'var(--r-limited)' },
   { key: 'minimal', color: 'var(--r-minimal)' },
 ];
@@ -80,7 +81,7 @@ export function RiskDonutChart({ riskDistribution }: RiskDonutChartProps) {
                 <div key={seg.key} className="flex items-center gap-2 py-1 px-1.5 rounded-[5px] cursor-pointer transition-colors hover:bg-[var(--teal-dim)] mb-0.5">
                   <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: seg.color }} />
                   <span className="text-xs text-[var(--dark2)] font-medium flex-1">
-                    {t(seg.key as 'prohibited' | 'high' | 'limited' | 'minimal')}
+                    {t(seg.key as 'prohibited' | 'high' | 'gpai' | 'limited' | 'minimal')}
                   </span>
                   <span className="font-mono text-xs font-bold" style={{ color: seg.color }}>{count}</span>
                 </div>

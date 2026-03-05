@@ -63,6 +63,9 @@ const ToolStep1Schema = z.object({
   vendorUrl: z.string().url().optional().or(z.literal('')),
   description: z.string().optional(),
   catalogEntryId: z.number().int().positive().optional(),
+  framework: z.string().max(100).optional(),
+  modelProvider: z.string().max(100).optional(),
+  modelId: z.string().max(255).optional(),
 });
 
 const ToolStep2Schema = z.object({
@@ -280,6 +283,126 @@ const FRIAListSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+// === Compliance Document Schemas ===
+
+const VALID_DOCUMENT_STATUSES = ['draft', 'generating', 'review', 'approved', 'archived'];
+
+const VALID_DOCUMENT_TYPES = [
+  'usage_policy', 'qms_template', 'risk_assessment',
+  'monitoring_plan', 'employee_notification',
+];
+
+const DocumentCreateSchema = z.object({
+  toolId: z.coerce.number().int().positive(),
+  documentType: z.enum(VALID_DOCUMENT_TYPES),
+});
+
+const DocumentIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+const DocumentSectionUpdateSchema = z.object({
+  content: z.object({ text: z.string() }),
+});
+
+const DocumentListSchema = z.object({
+  toolId: z.coerce.number().int().positive().optional(),
+  status: z.enum(VALID_DOCUMENT_STATUSES).optional(),
+  documentType: z.enum(VALID_DOCUMENT_TYPES).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+const DocumentSectionParamsSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  sectionCode: z.string().min(1).max(100).regex(/^[a-z][a-z0-9_]*$/, 'Invalid section code format'),
+});
+
+// === Gap Analysis Schemas ===
+
+const GapAnalysisToolIdSchema = z.object({
+  toolId: z.coerce.number().int().positive(),
+});
+
+// === Device Flow (CLI Auth) Schemas ===
+
+const DeviceTokenSchema = z.object({
+  deviceCode: z.string().min(1),
+});
+
+const DeviceConfirmSchema = z.object({
+  userCode: z.string().min(6).max(6),
+});
+
+// === Audit Package Schemas ===
+
+const AuditPackageIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+const AuditPackageHistorySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+// === CLI Sync Schemas ===
+
+const SyncPassportSchema = z.object({
+  name: z.string().min(1).max(255),
+  vendorName: z.string().max(255).optional(),
+  vendorUrl: z.string().url().optional().or(z.literal('')),
+  slug: z.string().max(255).optional(),
+  description: z.string().max(5000).optional(),
+  purpose: z.string().max(2000).optional(),
+  domain: z.string().optional(),
+  riskLevel: z.enum(['prohibited', 'high', 'gpai', 'limited', 'minimal']).optional(),
+  detectionPatterns: z.array(z.string()).optional(),
+  versions: z.record(z.string(), z.string()).optional(),
+  autonomyLevel: z.enum(['L1', 'L2', 'L3', 'L4', 'L5']).optional(),
+  framework: z.string().max(100).optional(),
+  modelProvider: z.string().max(100).optional(),
+  modelId: z.string().max(255).optional(),
+  dataResidency: z.string().max(50).optional(),
+  lifecycleStatus: z.enum(['draft', 'review', 'active', 'suspended', 'retired']).optional(),
+  compliorScore: z.number().min(0).max(100).optional(),
+  manifestVersion: z.string().optional(),
+  signature: z.record(z.string(), z.unknown()).optional(),
+  extendedFields: z.record(z.string(), z.unknown()).optional(),
+});
+
+const SyncScanSchema = z.object({
+  projectPath: z.string().min(1).max(1000),
+  score: z.number().min(0).max(100).optional(),
+  findings: z.array(z.object({
+    severity: z.enum(['critical', 'high', 'medium', 'low', 'info']),
+    message: z.string(),
+    tool: z.string().optional(),
+  })).optional(),
+  toolsDetected: z.array(z.object({
+    name: z.string().min(1),
+    version: z.string().optional(),
+    vendor: z.string().optional(),
+    category: z.string().optional(),
+  })).min(1),
+});
+
+// === CLI Document Sync Schemas ===
+
+const VALID_SYNC_DOCUMENT_TYPES = [
+  'fria', 'monitoring_plan', 'usage_policy', 'employee_notification',
+  'incident_report', 'risk_assessment', 'transparency_notice', 'qms_template',
+];
+
+const SyncDocumentsSchema = z.object({
+  documents: z.array(z.object({
+    type: z.enum(VALID_SYNC_DOCUMENT_TYPES),
+    title: z.string().max(500),
+    content: z.string(),
+    obligationId: z.string().optional(),
+    toolSlug: z.string().optional(),
+  })).min(1).max(20),
+});
+
 // === GDPR Schemas ===
 
 const AccountDeleteSchema = z.object({
@@ -341,4 +464,20 @@ module.exports = {
   FRIASectionUpdateSchema,
   FRIAStatusUpdateSchema,
   FRIAListSchema,
+  VALID_DOCUMENT_STATUSES,
+  VALID_DOCUMENT_TYPES,
+  DocumentCreateSchema,
+  DocumentIdSchema,
+  DocumentSectionUpdateSchema,
+  DocumentSectionParamsSchema,
+  DocumentListSchema,
+  GapAnalysisToolIdSchema,
+  DeviceTokenSchema,
+  DeviceConfirmSchema,
+  AuditPackageIdSchema,
+  AuditPackageHistorySchema,
+  SyncPassportSchema,
+  SyncScanSchema,
+  VALID_SYNC_DOCUMENT_TYPES,
+  SyncDocumentsSchema,
 };

@@ -9,6 +9,9 @@ interface Step1Data {
   vendorCountry: string;
   vendorUrl: string;
   description: string;
+  framework: string;
+  modelProvider: string;
+  modelId: string;
 }
 
 interface Step1ToolProps {
@@ -83,6 +86,43 @@ export function Step1Tool({ data, onChange, onNext, errors }: Step1ToolProps) {
           placeholder={t('placeholderWebsite')}
           className="w-full px-3 py-2.5 border-[1.5px] border-[var(--b2)] rounded-lg font-body text-[0.8125rem] text-[var(--dark)] bg-[var(--bg)] outline-none transition-all focus:border-[var(--teal)] focus:shadow-[0_0_0_3px_var(--teal-dim)] placeholder:text-[var(--dark5)]"
         />
+      </div>
+
+      {/* Technical Stack */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div>
+          <label className="flex items-center gap-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-[var(--dark4)] mb-1.5">
+            {t('fieldFramework')}
+          </label>
+          <input
+            value={data.framework}
+            onChange={(e) => update('framework', e.target.value)}
+            placeholder={t('placeholderFramework')}
+            className="w-full px-3 py-2.5 border-[1.5px] border-[var(--b2)] rounded-lg font-body text-[0.8125rem] text-[var(--dark)] bg-[var(--bg)] outline-none transition-all focus:border-[var(--teal)] focus:shadow-[0_0_0_3px_var(--teal-dim)] placeholder:text-[var(--dark5)]"
+          />
+        </div>
+        <div>
+          <label className="flex items-center gap-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-[var(--dark4)] mb-1.5">
+            {t('fieldModelProvider')}
+          </label>
+          <input
+            value={data.modelProvider}
+            onChange={(e) => update('modelProvider', e.target.value)}
+            placeholder={t('placeholderModelProvider')}
+            className="w-full px-3 py-2.5 border-[1.5px] border-[var(--b2)] rounded-lg font-body text-[0.8125rem] text-[var(--dark)] bg-[var(--bg)] outline-none transition-all focus:border-[var(--teal)] focus:shadow-[0_0_0_3px_var(--teal-dim)] placeholder:text-[var(--dark5)]"
+          />
+        </div>
+        <div>
+          <label className="flex items-center gap-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-[var(--dark4)] mb-1.5">
+            {t('fieldModelId')}
+          </label>
+          <input
+            value={data.modelId}
+            onChange={(e) => update('modelId', e.target.value)}
+            placeholder={t('placeholderModelId')}
+            className="w-full px-3 py-2.5 border-[1.5px] border-[var(--b2)] rounded-lg font-body text-[0.8125rem] text-[var(--dark)] bg-[var(--bg)] outline-none transition-all focus:border-[var(--teal)] focus:shadow-[0_0_0_3px_var(--teal-dim)] placeholder:text-[var(--dark5)]"
+          />
+        </div>
       </div>
 
       {/* Button row */}

@@ -29,8 +29,12 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@ai-sdk/mistral": "^3.0.22",
+    "@ai-sdk/openai-compatible": "^2.0.33",
     "@fastify/cookie": "^11.0.2",
     "@workos-inc/node": "^8.5.0",
+    "ai": "^6.0.110",
+    "archiver": "^7.0.1",
     "cheerio": "^1.2.0",
     "pg-boss": "^12.13.0"
   }

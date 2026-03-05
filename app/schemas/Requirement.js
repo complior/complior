@@ -17,4 +17,5 @@
   estimatedEffortHours: { type: 'number', required: false },
   guidance: { type: 'string', required: false },
   translations: { type: 'json', required: false },
+  obligationIds: { type: 'json', required: false },
 });

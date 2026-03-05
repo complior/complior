@@ -1,832 +1,774 @@
-# SPRINT-BACKLOG-009.md — Реестр + Выходные документы + Регулятор
+# Sprint Backlog 009 — Unified Registry + Compliance Outputs + Regulator Integration
 
-**Версия:** 2.0.0
-**Дата:** 2026-02-28
-**Автор:** Marcus (CTO) via Claude Code
-**Статус:** Planned
-**Зависимости:** Sprint 8 (Compliance Ready) merged to develop
+**Sprint Goal:** Дать deployer'у возможность доказать compliance третьим сторонам: единый реестр AI систем с lifecycle, embeddable compliance badge, vendor document request с юридическими ссылками, EU Database helper, remediation playbooks, регулятор-справочник, мониторинг изменений в законодательстве.
+**Статус:** Planned (post-overlap audit v4.0)
 
----
+**Capacity:** 48 SP (40 новых + 8 carry-over из S8) | **Duration:** 4 недели
+**Developers:** Max (Backend), Nina (Frontend), Leo (Infra)
+**Baseline:** 546 tests (Sprint 8) → **New: ~39 tests (total: ~585)**
 
-## Sprint Goal
+> **Prerequisite:** Sprint 8 merged + audited (12 P0 fixes applied). FRIA generator, Audit Package, CLI Sync + Device Flow auth, Gap Analysis — всё работает.
 
-Единый реестр AI систем (CLI + manual), внешние compliance outputs (Badge, Vendor Requests), интеграция с регулятором (EU Database, Regulator Directory). Расширенные Wizard шаги 3-5. Полный набор документ-генераторов (QMS, Risk Plan, Monitoring Plan). Индикатор источника данных, Remediation playbooks, мониторинг регулирования. Пользователь может **доказать compliance третьим сторонам**.
+> **Overlap audit (v4.0):** Проверка S9 против реализованных S0-S8 выявила ~8 SP дублирующего scope. Четыре US переоценены: US-091 (5→3, расширяем `/api/tools` вместо параллельной системы), US-092 (4→2, wizard steps 3-5 уже существуют в S2), US-094 (5→2, document workflow уже в S8), US-086 (3→2, TimelineWidget уже есть). Четыре схемы (Notification, RegulatoryUpdate, ImpactAssessment, AIToolDiscovery) убраны из scope создания — уже существуют.
 
-**Capacity:** ~42 SP | **Duration:** 4 недели
-**Developers:** Max (Backend — Wizard + Registry + Doc Generators + Remediation), Nina (Frontend — Registry + Badge + Vendor Request + Data Source Indicator), Leo (Infra — Regulator Directory + EU DB Helper + Discovery + Monitoring)
-**Baseline:** ~373 tests (Sprint 8) → **New: ~35 tests (total: ~408)**
-
-> **Prerequisite:** Sprint 8 merged to develop. FRIA generator works. Audit Package works. CLI sync works. Device Flow auth.
+**Контекст разработки:** Вся реализация ДОЛЖНА соответствовать правилам, описанным в `docs/CODING-STANDARDS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md` и `docs/DATA-FLOWS.md`. В частности: DDD/Onion слои (domain → application → api), VM-sandbox (никаких `require()` в `app/`), CQS, factory functions вместо классов, Zod-валидация на всех API, explicit `resolveSession`/`checkPermission` в каждом handler, multi-tenancy через `organizationId`. Тарифные лимиты определены в `app/config/plans.js` (single source of truth).
 
 ---
 
 ## Граф зависимостей
 
 ```
-── Реестр + Wizard ──
-US-091 (AI Systems Registry) ◄── US-092 (Wizard шаги 3-5)
-                              ◄── US-093 (Extended Passport fields)
+US-091 (Registry ext) ──┬──► US-092 (Wizard ext)
+                         ├──► US-093 (Passport) ──┬──► US-097 (EU DB)
+                         │                         └──► US-102 (Data Source)
+                         ├──► US-099 (Cert Dashboard)
+                         └──► US-103 (Remediation)
 
-── Выходные документы ──
-US-094 (QMS + Risk Plan + Monitoring Plan generators) — зависит от F07 (S8)
+US-098 (Regulator Dir) ──► US-097 (EU DB)
+US-100 (Notifications) ──► US-104 (Regulatory Monitoring)
 
-── Внешние выходы ──
-US-095 (Compliance Badge) — параллельно
-US-096 (Vendor Documentation Request) — параллельно
-US-097 (EU Database Helper) — зависит от US-093 (Extended Passport)
-US-098 (Regulator Directory) — параллельно
-US-099 (Certification Dashboard — ISO 42001 readiness) — зависит от US-091
-
-── Дополнительно ──
-US-100 (Онбординг + Уведомления F11) — параллельно
-US-101 (SaaS Discovery F29, partial) — параллельно
-US-102 (Data Source Indicator F63) — параллельно
-US-103 (Remediation Cloud F31) — зависит от US-091 (Gap Analysis data)
-US-104 (Regulatory Monitoring F12) — параллельно
+US-086, US-089, US-090, US-094, US-095, US-096, US-101 — независимые
 ```
 
 ---
 
 ## User Stories
 
-### US-091: Реестр AI систем — Unified View (5 SP)
+### Phase 1: Foundation + Carry-over (10 SP)
 
-- **Feature:** F39 🔴 | **Developer:** Nina (frontend) + Max (backend)
+#### US-091: Расширение Inventory → Unified Registry View (3 SP)
 
-#### Описание
+- **Feature:** F39 | **Developer:** Max (backend) + Nina (frontend)
 
-Как compliance officer, я хочу видеть единый реестр ВСЕХ AI систем организации: из CLI автоскана, из ручного wizard'а, из Discovery — с lifecycle management и kill switch.
+##### Описание
 
-#### Unified Registry
+Как compliance officer, я хочу видеть единый реестр ВСЕХ AI систем организации — добавленных вручную через wizard, найденных CLI-сканером, обнаруженных через IdP Discovery — с управлением жизненным циклом и возможностью приостановить систему одной кнопкой. Мне нужны фильтры по источнику, уровню риска и lifecycle-статусу, чтобы в любой момент понимать полную картину.
 
-```
-AI Systems Registry
-───────────────────────────────────────────────────────────────
-┌──────────────────┬────────┬────────┬───────┬────────┬────────────┐
-│ System           │ Source │  Risk  │  L    │ Score  │ Lifecycle  │
-├──────────────────┼────────┼────────┼───────┼────────┼────────────┤
-│ ChatGPT          │ Manual │ GPAI   │ L2    │  72%   │ Active     │
-│ Copilot          │ CLI    │ Limited│ L1    │  81%   │ Active     │
-│ HR Screening AI │ Manual │ HIGH   │ L4    │  34%   │ Suspended  │
-│ LangChain agent │ CLI    │ Limited│ L3    │  61%   │ Active     │
-└──────────────────┴────────┴────────┴───────┴────────┴────────────┘
+> **Overlap audit:** `/api/tools` уже предоставляет полный CRUD + категоризацию + riskLevel (S1-S2). Создание параллельного `/api/registry/systems` — архитектурная ошибка. Вместо этого расширяем существующий Inventory тремя полями и строим unified view поверх него.
 
-Per system: Passport completeness %, владелец, lifecycle
-Kill switch: "Suspend" → removes from active registry, marks as suspended
-```
+##### Реализация
 
-#### Autonomy Levels
-
-| Level | Name | Human Oversight |
-|-------|------|----------------|
-| L1 | Tool | Human makes all decisions |
-| L2 | Advisor | AI suggests, human decides |
-| L3 | Collaborator | AI acts, human monitors |
-| L4 | Delegator | AI acts autonomously, human can override |
-| L5 | Autonomous | AI acts fully autonomously |
-
-#### API
-
-```javascript
-// GET  /api/registry/systems        — unified list (CLI + manual + discovery)
-// GET  /api/registry/systems/:id    — full details + passport
-// PATCH /api/registry/systems/:id/lifecycle — active|suspended|decommissioned
-// GET  /api/registry/systems/stats  — aggregate: total, by risk, by source
-```
-
-#### Реализация
+**Модифицированные файлы:**
+- `app/schemas/AITool.js` — добавить поля: `lifecycle` (enum: active/suspended/decommissioned), `source` (enum: manual/cli_scan/discovery/registry_autofill), `autonomyLevel` (enum: L1-L5)
+- `app/api/tools/list.js` — добавить query params: `?source=cli&lifecycle=active&autonomyLevel=L3`
+- `app/api/tools/detail.js` — вернуть новые поля в ответе
 
 **Новые файлы:**
-- `app/api/registry/systems.js` — unified list (aggregate AITool + ScanResult + CrossSystemSource)
-- `app/application/registry/buildUnifiedRegistry.js` — merge sources
-- `app/(dashboard)/registry/page.tsx` — AI Systems Registry UI
-- `app/(dashboard)/registry/[id]/page.tsx` — system detail
-- `components/registry/SystemsTable.tsx` — sortable/filterable
-- `components/registry/LifecycleControl.tsx` — active/suspended/decommissioned toggle
+- `app/api/tools/lifecycle.js` — PATCH `/api/tools/:id/lifecycle`
+- `app/api/tools/stats.js` — GET `/api/tools/stats` (aggregate по risk, source, lifecycle)
+- `frontend/app/[locale]/(app)/registry/page.tsx` — unified registry UI поверх `/api/tools`
+- `frontend/components/registry/LifecycleControl.tsx` — toggle active/suspended/decommissioned
 
-#### Критерии приёмки
+##### Критерии приёмки
 
-- [ ] Unified view: CLI + Manual + Discovery merged
+- [ ] Существующий `/api/tools` расширен полями lifecycle, source, autonomyLevel
+- [ ] Unified view объединяет CLI + Manual + Discovery через существующую таблицу AITool
 - [ ] Per-system: name, vendor, risk, autonomy level (L1-L5), score, passport %, lifecycle
-- [ ] Kill switch: Suspend → system marked, excluded from active compliance
-- [ ] Source indicator: "CLI scan, Feb 27" or "Manual entry"
-- [ ] Lifecycle: active → suspended → decommissioned
-- [ ] Filterable: by risk, source, lifecycle, owner
+- [ ] Kill switch: Suspend → система помечена, исключена из active compliance
+- [ ] Source indicator: "CLI scan, Feb 27" или "Manual entry"
+- [ ] Lifecycle transitions: active → suspended → decommissioned
+- [ ] Фильтрация: по risk, source, lifecycle, owner
+- [ ] НЕ создаёт параллельный API — расширяет `/api/tools`
 
-- **Tests:** 3 (unified_registry_merge.test, lifecycle_transitions.test, source_aggregation.test)
+- **Tests:** 3 (lifecycle_transitions.test, source_filter.test, stats_aggregation.test)
+- **Dependencies:** None
+- **Разблокирует:** US-092, US-093, US-099, US-103
 
 ---
 
-### US-092: Wizard шаги 3-5 (4 SP)
+#### US-086: Compliance Timeline — расширение виджета (2 SP) — carry-over
 
-- **Feature:** F46 🔴 | **Developer:** Nina
+- **Feature:** F48 | **Developer:** Nina
 
-#### Описание
+##### Описание
 
-Как deployer, я хочу завершить полный 5-step wizard регистрации AI tool: шаг 3 (use case + данные), шаг 4 (автономность L1-L5 + human oversight), шаг 5 (review + save).
+Как deployer, я хочу видеть визуальную шкалу с реальными дедлайнами EU AI Act — сколько дней осталось до каждого, что на критическом пути, какие обязательства просрочены — чтобы планировать работу по compliance и не пропустить ни один дедлайн.
 
-> Шаги 1-2 уже работают (Sprint 1-2): поиск из Registry + автозаполнение.
+> **Overlap audit:** `TimelineWidget.tsx` и `getDashboardSummary` с базовыми timeline-данными уже существуют (S8). Нужен backend endpoint для расширенных данных + доработка виджета.
 
-#### Шаги
+##### Реализация
 
-```
-Step 3: Use Case & Data
-  — Intended purpose (free text)
-  — Deployment domain: HR, Finance, Healthcare, Legal, Marketing, Engineering, Other
-  — Data categories: personal, sensitive, public, anonymized
-  — End users: employees, customers, public, minors
-  — Geography: EU, specific countries, global
-
-Step 4: Autonomy & Oversight
-  — Autonomy Level: L1-L5 selector с описаниями
-  — Human oversight: who, how often, override mechanism
-  — Art. 14 compliance hints inline ("Art. 14 requires...")
-  — Auto-escalation: if L4/L5 + high-risk domain → warning
-
-Step 5: Review & Save
-  — Summary of all 5 steps
-  — Risk classification result (computed from steps 1-4)
-  — "Save" → создаёт AITool + requirements mapping
-  — "Save & Generate FRIA" → если high-risk → direct link to FRIA wizard
-```
-
-#### Реализация
+**Новые файлы:**
+- `app/api/dashboard/timeline.js` — GET `/api/dashboard/timeline` (дедлайны + days remaining + critical path)
+- `app/application/dashboard/buildTimeline.js` — application use case
 
 **Модифицированные файлы:**
-- `components/wizard/` — steps 3, 4, 5 (currently placeholder)
-- `app/application/tool/createToolFromWizard.js` — save full wizard data
+- `frontend/components/dashboard/TimelineWidget.tsx` — расширить существующий виджет
 
-#### Критерии приёмки
+##### Критерии приёмки
 
-- [ ] Step 3: use case, domain, data categories, end users, geography
-- [ ] Step 4: L1-L5 autonomy selector + human oversight fields
-- [ ] Step 4: inline Art. 14 guidance
-- [ ] Step 5: review summary + risk classification result
-- [ ] "Save & Generate FRIA" shortcut for high-risk tools
-- [ ] Full 5-step wizard works end-to-end
+- [ ] Визуальная шкала с ключевыми датами EU AI Act (Art. 113)
+- [ ] Days remaining для каждого дедлайна
+- [ ] Critical path: какие обязательства блокируют compliance
+- [ ] Overdue items подсвечены красным
+- [ ] Данные из backend, не hardcoded на фронте
 
-- **Tests:** 2 (wizard_full_flow.test, risk_classification_from_wizard.test)
+- **Tests:** 2 (timeline_deadlines.test, overdue_detection.test)
+- **Dependencies:** None (S8 carry-over)
 
 ---
 
-### US-093: Extended Passport Fields (3 SP)
+#### US-089: TUI Daemon Push — SSE real-time (2 SP) — carry-over
 
-- **Feature:** F56 🔴 | **Developer:** Max
+- **Feature:** F27 | **Developer:** Leo
 
-#### Описание
+##### Описание
 
-Как compliance officer, я хочу чтобы Passport AI системы содержал все поля, нужные для Audit Package: regulatory context, incidents, post-market monitoring, conformity assessment records.
+Как deployer, после запуска CLI sync я хочу видеть обновления на Dashboard в реальном времени — без перезагрузки страницы — чтобы сразу убедиться, что данные синхронизировались.
 
-#### Новые блоки
+##### Реализация
 
-```javascript
-// AITool.passport (расширение JSON):
-{
-  // Existing fields...
-
-  // NEW:
-  regulatoryContext: {
-    country: 'DE',
-    sector: 'financial_services',
-    msaName: 'BaFin',           // Market Surveillance Authority
-    euDbNumber: null,            // Filled after EU DB registration (F47)
-    nationalRequirements: []     // Additional country-specific reqs
-  },
-  incidents: [],                 // { date, description, severity, resolution, reportedToMSA }
-  postMarketMonitoring: {
-    frequency: 'monthly',
-    metrics: ['accuracy', 'bias_score', 'user_complaints'],
-    lastReviewDate: null,
-    nextReviewDate: null
-  },
-  conformityAssessment: {
-    type: null,                  // 'self' (Annex VI) | 'third_party' (Annex VII)
-    status: 'not_started',       // not_started|in_progress|completed
-    completedAt: null,
-    certificateUrl: null
-  },
-  complianceRecords: [],         // { type, date, description, documentUrl }
-  msaSubmissions: []             // { msaName, date, type, status, responseDate }
-}
-```
-
-#### Реализация
+**Новые файлы:**
+- `app/api/events/stream.js` — GET `/api/events/stream` (SSE endpoint)
+- `server/src/event-bus.js` — in-process EventEmitter
 
 **Модифицированные файлы:**
-- `schemas/AITool.js` — extend passport JSON schema
-- `app/api/tools/passport.js` — PATCH endpoint for new fields
-- `app/application/tool/updatePassport.js` — validation for new blocks
+- `app/api/sync/passport.js` — emit event после sync
+- `app/api/sync/scan.js` — emit event после scan
 
-#### Критерии приёмки
+##### Критерии приёмки
 
-- [ ] 6 new Passport blocks added to schema
-- [ ] PATCH endpoint: partial update of any block
-- [ ] Validation: regulatoryContext requires country
-- [ ] Backward compatible: existing tools don't break
-- [ ] msaSubmissions tracked with status lifecycle
+- [ ] SSE endpoint `GET /api/events/stream` с reconnect logic
+- [ ] Dashboard обновляется в реальном времени после CLI sync
+- [ ] In-process EventEmitter (без Redis, без отдельного процесса)
+- [ ] Graceful disconnect при закрытии вкладки
 
-- **Tests:** 2 (passport_extended_fields.test, passport_backward_compat.test)
-
----
-
-### US-094: QMS + Risk Plan + Monitoring Plan Generators (5 SP)
-
-- **Feature:** F57, F58, F59 🟠 | **Developer:** Max
-
-#### Описание
-
-Как compliance officer, я хочу сгенерировать три дополнительных compliance документа: Quality Management System, Risk Management Plan, Monitoring Plan.
-
-> Расширение US-082 (F07, Sprint 8). Те же section-by-section workflow, но более сложные документы.
-
-#### QMS Wizard (Art. 17, AESIA #4)
-
-```
-Пошагово:
-1. Organization info: название, размер, AI strategy
-2. AI System inventory: из реестра (US-091)
-3. Responsibilities: AI officer, DPO, quality manager
-4. Processes: approval, change management, vendor management
-5. Training: AI Literacy link, additional trainings
-6. Audit: internal audit plan, frequency
-→ PDF 20-40 стр.
-```
-
-#### Risk Management Plan (Art. 9, AESIA #5)
-
-```
-Per AI система:
-1. Risk identification: из Scanner + Gap Analysis (US-085)
-2. Risk assessment: likelihood × consequence matrix
-3. Mitigation measures: technical + organizational
-4. Residual risk: acceptable threshold
-5. Review schedule: frequency, triggers
-→ PDF + structured data в Passport
-```
-
-#### Monitoring Plan (Art. 72, AESIA #13)
-
-```
-Per AI система:
-1. What to monitor: accuracy, bias, drift, errors, complaints
-2. Frequency: real-time / daily / weekly / monthly
-3. Thresholds: alert when metric crosses boundary
-4. Escalation: who gets notified, response SLA
-5. Feedback: user complaint processing
-→ PDF 5-10 стр.
-```
-
-#### Реализация
-
-**Новые файлы:**
-- `app/domain/documents/QMSTemplate.js` — 6 QMS sections (pure)
-- `app/domain/documents/RiskPlanTemplate.js` — 5 sections (pure)
-- `app/domain/documents/MonitoringPlanTemplate.js` — 5 sections (pure)
-- `app/(dashboard)/documents/qms/page.tsx` — QMS wizard UI
-- `app/(dashboard)/documents/risk-plan/page.tsx` — Risk Plan UI
-- `app/(dashboard)/documents/monitoring-plan/page.tsx` — Monitoring Plan UI
-
-**Модифицированные файлы:**
-- `app/domain/documents/DocumentTemplates.js` — add 3 new types
-- `app/application/documents/generateDocumentDraft.js` — handle new types
-
-#### Критерии приёмки
-
-- [ ] QMS: 6-step wizard, предзаполнение из org data
-- [ ] Risk Plan: per-tool, risks from Scanner + Gap Analysis
-- [ ] Monitoring Plan: per-tool, monitoring targets + thresholds
-- [ ] All three: LLM-assisted draft generation
-- [ ] All three: section-by-section Tiptap edit → approve → PDF
-- [ ] QMS links to AI Literacy module data
-- [ ] Plan enforcement: Growth+ required
-
-- **Tests:** 3 (qms_wizard_generation.test, risk_plan_prefill.test, monitoring_plan_generation.test)
+- **Tests:** 2 (sse_connection.test, event_emission.test)
+- **Dependencies:** CLI Sync (S8)
 
 ---
 
-### US-095: Compliance Badge (3 SP)
+#### US-098: Справочник регуляторов (3 SP)
 
-- **Feature:** F50 🟠 | **Developer:** Nina
+- **Feature:** F53 | **Developer:** Leo
 
-#### Описание
+##### Описание
 
-Как CEO, я хочу разместить на сайте embeddable badge "AI Act Compliant" — чтобы клиенты видели нашу compliance.
+Как deployer, я хочу знать, какой регулятор (Market Surveillance Authority) отвечает за мою страну и сектор — и какие документы они запросят при проверке — чтобы заранее подготовить всё необходимое.
 
-#### Badge Levels
-
-| Level | Score | Criteria | Plan |
-|-------|-------|----------|------|
-| Bronze | 70+ | Classified tools, no critical gaps | Growth+ |
-| Silver | 85+ | + no high-priority gaps | Growth+ |
-| Gold | 95+ | + AI Literacy 100% + FRIA done | Enterprise |
-
-#### Embeddable Widget
-
-```html
-<!-- On customer's website: -->
-<script src="https://app.complior.io/badge.js" data-org="acme-gmbh"></script>
-<!-- Renders: SVG badge + QR code → public compliance verification page -->
-```
-
-```javascript
-// GET /api/badge/:orgSlug — public, no auth
-// → { valid: true, level: 'silver', score: 87, verifiedAt: '...' }
-// Badge click → "Powered by Complior" → viral loop
-
-// /verify/:orgSlug → public compliance summary page
-```
-
-#### Реализация
+##### Реализация
 
 **Новые файлы:**
-- `app/api/badge/[orgSlug].js` — public badge data
-- `app/api/badge/my/stats.js` — badge views/clicks
-- `app/(dashboard)/badge/page.tsx` — Badge management
-- `app/(public)/verify/[orgSlug]/page.tsx` — public verification
-- `public/badge.js` — embeddable script
-- `app/application/badge/evaluateBadgeCriteria.js`
+- `app/seeds/seed-regulators.js` — 30 MSA записей (27 EU + 3 EEA)
+- `app/schemas/Regulator.js` — MetaSQL (country, sector, msaName, contact, requirements)
+- `app/api/regulators/directory.js` — GET `/api/regulators?country=DE&sector=financial`
+- `frontend/app/[locale]/(app)/regulators/page.tsx` — directory UI с селекторами страна/сектор
+- `frontend/components/regulators/RegulatorCard.tsx` — карточка регулятора
 
-#### Критерии приёмки
+##### Критерии приёмки
 
-- [ ] 3 levels: Bronze / Silver / Gold
-- [ ] Embeddable script works on external sites (CORS)
-- [ ] Public verification page without auth
-- [ ] Badge stats: views + clicks tracked
-- [ ] If score drops below criteria → badge shows "Under Review"
-- [ ] Growth+ plan required
-
-- **Tests:** 2 (badge_criteria.test, badge_public_endpoint.test)
-
----
-
-### US-096: Vendor Documentation Request (4 SP)
-
-- **Feature:** F51 🟠 | **Developer:** Nina (frontend) + Max (backend)
-
-#### Описание
-
-Как deployer, я хочу запросить у вендора недостающую документацию по Art. 13, 26 — с юридическими ссылками — и трекать статус ответа.
-
-> **Уникальная фича — нет у конкурентов.**
-
-#### Flow
-
-```
-1. Deployer selects AI tool (e.g., ChatGPT)
-2. System shows: "Missing documentation: Model Card, Training Data Info, AI Disclosure"
-3. "Request from Vendor" button
-4. Email template generated:
-   — Legal references (Art. 13 §1, Art. 26 §3)
-   — Specific missing documents listed
-   — Deployer's company info
-   — Deadline suggestion (30 days)
-5. Send via Brevo or copy-paste
-6. Track: Sent → Waiting → Received → Attached to Passport
-7. Received documents → feed Community Evidence in Registry
-```
-
-#### Реализация
-
-**Новые файлы:**
-- `schemas/VendorRequest.js` — MetaSQL (vendor, tool, status, documents requested)
-- `app/api/vendor-requests/create.js` — create request + generate email
-- `app/api/vendor-requests/list.js` — list per org
-- `app/api/vendor-requests/update.js` — update status + attach docs
-- `app/application/vendor/generateRequestEmail.js` — legal template
-- `app/(dashboard)/vendor-requests/page.tsx` — request list + create
-- `components/vendor/RequestEmailPreview.tsx` — email preview before send
-
-#### Критерии приёмки
-
-- [ ] Missing docs identified from Passport + Registry data
-- [ ] Email template with Art. 13, 26 legal references
-- [ ] Send via Brevo or copy-paste option
-- [ ] Status tracking: sent → waiting → received
-- [ ] Received docs attach to Passport
-- [ ] Community Evidence: received docs improve Registry scoring
-
-- **Tests:** 3 (vendor_request_email.test, request_status_tracking.test, document_attachment.test)
-
----
-
-### US-097: EU Database Helper (3 SP)
-
-- **Feature:** F47 🟠 | **Developer:** Leo
-
-#### Описание
-
-Как deployer high-risk AI, я хочу помощь с регистрацией в EU Database (Art. 49, ~40 полей) — предзаполнение 60-90% из Passport.
-
-#### Flow
-
-```
-1. Select high-risk AI tool from registry
-2. System generates pre-filled EU DB form (~40 fields)
-3. Checklist: "Ready" / "Missing" per field
-4. Export: copy-paste friendly format for EU Database
-5. After registration: EU DB number stored in Passport
-```
-
-#### Реализация
-
-**Новые файлы:**
-- `app/api/eu-database/prefill.js` — generate pre-filled form from Passport
-- `app/api/eu-database/checklist.js` — readiness check
-- `app/(dashboard)/eu-database/[toolId]/page.tsx` — EU DB helper UI
-- `app/domain/eu-database/EUDatabaseFields.js` — 40 field definitions (pure)
-
-#### Критерии приёмки
-
-- [ ] 40 EU DB fields with pre-fill from Passport (60-90%)
-- [ ] Readiness checklist: ready/missing per field
-- [ ] Copy-paste export for EU Database
-- [ ] After registration: EU DB number → Passport.regulatoryContext.euDbNumber
-- [ ] Only for high-risk AI tools
-
-- **Tests:** 2 (eu_db_prefill.test, readiness_checklist.test)
-
----
-
-### US-098: Regulator Directory (3 SP)
-
-- **Feature:** F53 🟠 | **Developer:** Leo
-
-#### Описание
-
-Как deployer, я хочу знать, какой регулятор (MSA — Market Surveillance Authority) отвечает за мою страну и сектор — и какие документы они запросят.
-
-#### Data
-
-```javascript
-// 27 EU + 3 EEA countries
-// Per country: MSA name, contact, website, submission format, national requirements
-// Sectors: financial (BaFin/AMF), telecom (BNetzA), health (BfArM), etc.
-
-// GET /api/regulators?country=DE&sector=financial
-// → { msa: "BaFin", contact: "...", website: "...",
-//     requiredDocuments: ["AI registry entry", "FRIA", "Risk assessment"],
-//     nationalRequirements: ["Additional BaFin guidelines for AI in banking"] }
-```
-
-#### Реализация
-
-**Новые файлы:**
-- `app/seeds/seed-regulators.js` — 30 MSA records (27 EU + 3 EEA)
-- `schemas/Regulator.js` — MetaSQL (country, sector, msaName, contact, requirements)
-- `app/api/regulators/directory.js` — GET with country/sector filter
-- `app/(dashboard)/regulators/page.tsx` — directory UI with country/sector selectors
-- `components/regulators/RegulatorCard.tsx` — per-MSA details
-
-#### Критерии приёмки
-
-- [ ] 30 MSA records (27 EU + 3 EEA)
-- [ ] Filter by country + sector
-- [ ] Per-MSA: contact, website, required documents, national requirements
-- [ ] Auto-link to Passport.regulatoryContext.msaName
+- [ ] 30 MSA записей (27 EU + 3 EEA стран)
+- [ ] Фильтрация по стране и сектору
+- [ ] Per-MSA: контакт, сайт, требуемые документы, национальные требования
+- [ ] Auto-link на `Passport.regulatoryContext.msaName`
 
 - **Tests:** 2 (regulator_directory_query.test, country_sector_filter.test)
+- **Dependencies:** None
+- **Разблокирует:** US-097 (MSA data)
 
 ---
 
-### US-099: Certification Dashboard — ISO 42001 (3 SP)
+### Phase 2: Core Extensions (11 SP)
 
-- **Feature:** F40 🔴 | **Developer:** Nina
+#### US-093: Расширенные поля Passport (3 SP)
 
-#### Описание
+- **Feature:** F56 | **Developer:** Max
 
-Как compliance officer, я хочу видеть готовность к ISO 42001 и AIUC-1 сертификации — per-system: сделано/осталось, управление evidence.
+##### Описание
 
-#### Dashboard
+Как compliance officer, я хочу чтобы Passport AI системы содержал все поля, нужные для Audit Package и взаимодействия с регулятором: regulatory context (страна, сектор, MSA), инциденты, post-market monitoring, conformity assessment, compliance records и история обращений в MSA — чтобы иметь полную compliance-картину в одном месте.
 
-```
-Certification Readiness
-───────────────────────────────────────────────────────
-ISO 42001 (AI Management System):  ███████░░░  68%
-AIUC-1 (AI Use Case):              ██████░░░░  55%
+##### Реализация
 
-Per-System Readiness:
-┌──────────────────┬──────────┬──────────┐
-│ System           │ ISO 42001│ AIUC-1   │
-├──────────────────┼──────────┼──────────┤
-│ ChatGPT          │  82% ✓   │  70% ⚠   │
-│ HR Screening AI │  45% ✗   │  30% ✗   │
-└──────────────────┴──────────┴──────────┘
+**Модифицированные файлы:**
+- `app/schemas/AITool.js` — расширить passport JSON: 6 новых блоков (regulatoryContext, incidents, postMarketMonitoring, conformityAssessment, complianceRecords, msaSubmissions)
+- `app/api/tools/passport.js` — PATCH endpoint для новых полей
+- `app/application/tool/updatePassport.js` — валидация новых блоков
 
-Evidence Management: Upload evidence per criterion
-Referral links: Partner certification bodies
-```
+##### Критерии приёмки
 
-#### Реализация
+- [ ] 6 новых блоков в Passport schema
+- [ ] PATCH endpoint: partial update любого блока
+- [ ] Валидация: regulatoryContext требует country
+- [ ] Backward compatible: существующие инструменты не ломаются
+- [ ] msaSubmissions с lifecycle статусов: submitted → acknowledged → completed
 
-**Новые файлы:**
-- `app/api/certification/readiness.js` — per-tool + org-wide readiness
-- `app/domain/certification/ISO42001Criteria.js` — criteria definitions (pure)
-- `app/(dashboard)/certification/page.tsx` — readiness dashboard
-- `components/certification/ReadinessBar.tsx` — per-standard progress
-
-#### Критерии приёмки
-
-- [ ] ISO 42001 readiness: per-system + org-wide percentage
-- [ ] AIUC-1 readiness: per-system + org-wide percentage
-- [ ] Evidence upload: per criterion
-- [ ] Partner referral links for certification bodies
-
-- **Tests:** 2 (iso42001_readiness.test, evidence_upload.test)
+- **Tests:** 2 (passport_extended_fields.test, passport_backward_compat.test)
+- **Dependencies:** US-091
+- **Разблокирует:** US-097, US-102
 
 ---
 
-### US-100: Онбординг + Уведомления (4 SP)
+#### US-094: Wizard-страницы для документов — QMS, Risk Plan, Monitoring Plan (2 SP)
 
-- **Feature:** F11 🟠 | **Developer:** Nina (frontend) + Leo (backend)
+- **Feature:** F57, F58, F59 | **Developer:** Max (pre-fill) + Nina (UI)
 
-#### Описание
+##### Описание
 
-Как новый пользователь, я хочу onboarding wizard при первом входе. Как existing пользователь, я хочу уведомления: дедлайны, AI Literacy overdue, FRIA не создан.
+Как compliance officer, я хочу удобные wizard-страницы для создания QMS, Risk Management Plan и Monitoring Plan — с автоматическим pre-fill из данных организации, Gap Analysis и Passport — чтобы не начинать документ с чистого листа, а получить 60% заполненный черновик.
 
-#### Onboarding Wizard
+> **Overlap audit:** Весь document workflow УЖЕ работает из S8: ComplianceDocument schema с типами `qms_template`/`risk_assessment`/`monitoring_plan`, templates.js с секциями, `generateDraft.js` → LLM, `approveSection.js`, `exportPdf.js`. Здесь создаём только entry point страницы и pre-fill logic.
 
-```
-Step 1: "What's your role?" → CTO / DPO / Developer / Other
-Step 2: "How many AI tools does your org use?" → 1-5, 5-20, 20+
-Step 3: "What's your biggest compliance concern?" → Deadlines / Classification / Documents
-Step 4: → Personalized dashboard with role-based view + suggested actions
-```
-
-#### Notification System
-
-```javascript
-// Triggers (pg-boss cron jobs):
-// - Deadline approaching: 180d / 90d / 30d / 14d / 7d before Aug 2, 2026
-// - AI Literacy overdue: Art. 4 deadline passed, training not complete
-// - FRIA missing: high-risk tool without FRIA
-// - New tool discovered: CLI sync added new tool
-// - Requirements not started: 0% compliance for critical obligations
-
-// Channels:
-// - In-app bell icon (notification center)
-// - Email via Brevo (instant / daily digest / weekly digest — user preference)
-
-// GET /api/notifications — list per user
-// PATCH /api/notifications/:id/read — mark read
-// PATCH /api/notifications/preferences — email frequency setting
-```
-
-#### Реализация
+##### Реализация
 
 **Новые файлы:**
-- `schemas/Notification.js` — MetaSQL
-- `app/api/notifications/list.js` — GET paginated
-- `app/api/notifications/preferences.js` — email settings
+- `frontend/app/[locale]/(app)/documents/qms/page.tsx` — QMS wizard (~50 строк)
+- `frontend/app/[locale]/(app)/documents/risk-plan/page.tsx` — Risk Plan wizard (~50 строк)
+- `frontend/app/[locale]/(app)/documents/monitoring-plan/page.tsx` — Monitoring Plan wizard (~50 строк)
+- `app/application/documents/prefillFromPassport.js` — pre-fill helper
+
+**Модифицированные файлы:**
+- `frontend/messages/en.json` + `de.json` — i18n для wizard pages
+
+##### Критерии приёмки
+
+- [ ] QMS wizard: org data pre-fill → create document → переход в S8 workflow
+- [ ] Risk Plan wizard: выбор инструмента + pre-fill из Gap Analysis → S8 workflow
+- [ ] Monitoring Plan wizard: выбор инструмента + pre-fill из Passport → S8 workflow
+- [ ] Pre-fill сокращает ручной ввод на ~60%
+- [ ] Growth+ план (enforcement уже в S8 middleware)
+- [ ] НЕ дублирует S8 workflow — только wizard entry points + pre-fill
+
+- **Tests:** 2 (qms_prefill_from_org.test, risk_plan_prefill_from_gap.test)
+- **Dependencies:** F07 (S8)
+
+---
+
+#### US-092: Расширение Wizard шагов 3-5 (2 SP)
+
+- **Feature:** F46 | **Developer:** Nina
+
+##### Описание
+
+Как deployer, я хочу при регистрации AI инструмента указать географию развёртывания (EU / конкретные страны / глобально), увидеть подробные описания уровней автономности L1-L5 со ссылками на Art. 14, получить предупреждение при L4/L5 + high-risk, и одной кнопкой перейти к FRIA для high-risk систем — чтобы wizard провёл меня через все нужные шаги.
+
+> **Overlap audit:** Шаги 3, 4, 5 полностью реализованы в S2 (`Step3Data.tsx` 168 строк, `Step4Autonomy.tsx` 140 строк, `Step5Review.tsx` 163 строки). Здесь только расширяем существующие компоненты.
+
+##### Реализация
+
+**Модифицированные файлы:**
+- `frontend/components/wizard/Step3Data.tsx` — добавить поле geography
+- `frontend/components/wizard/Step4Autonomy.tsx` — L1-L5 подробные описания, Art. 14 inline hints, escalation warning
+- `frontend/components/wizard/Step5Review.tsx` — кнопка "Save & Generate FRIA" для high-risk
+- `frontend/messages/en.json` + `de.json` — i18n для новых полей
+
+##### Критерии приёмки
+
+- [ ] Step 3: поле geography (EU / конкретные страны / глобально)
+- [ ] Step 4: L1-L5 с расширенными описаниями и Art. 14 inline guidance
+- [ ] Step 4: auto-escalation warning при L4/L5 + high-risk домен
+- [ ] Step 5: "Save & Generate FRIA" shortcut для high-risk инструментов
+- [ ] НЕ создаёт новые компоненты — расширяет существующие Step3/4/5
+
+- **Tests:** 2 (wizard_geography_field.test, fria_shortcut.test)
+- **Dependencies:** US-091
+
+---
+
+#### US-100: Онбординг + Система уведомлений (4 SP)
+
+- **Feature:** F11 | **Developer:** Nina (frontend) + Leo (backend)
+
+##### Описание
+
+Как новый пользователь, я хочу при первом входе пройти 4-step onboarding (роль, количество AI инструментов, главная проблема) и получить персонализированный dashboard. Как действующий пользователь, я хочу получать уведомления о приближающихся дедлайнах, просроченном AI Literacy, отсутствующем FRIA, новых обнаруженных инструментах — в bell-иконке и по email (instant / daily / weekly digest).
+
+> **Примечание:** Схема `Notification.js` уже существует (S3). Используем её, не создаём новую.
+
+##### Реализация
+
+**Новые файлы:**
+- `app/api/notifications/list.js` — GET `/api/notifications` (paginated)
+- `app/api/notifications/preferences.js` — PATCH email frequency setting
+- `app/application/notifications/checkDeadlines.js` — логика проверки дедлайнов
 - `app/jobs/notification-checker.js` — pg-boss daily cron
-- `app/application/notifications/checkDeadlines.js`
-- `app/(dashboard)/onboarding/page.tsx` — 4-step wizard
-- `components/notifications/NotificationBell.tsx` — bell icon + dropdown
-- `components/notifications/NotificationCenter.tsx` — full list
+- `frontend/app/[locale]/(app)/onboarding/page.tsx` — 4-step wizard
+- `frontend/components/notifications/NotificationBell.tsx` — bell icon + dropdown
+- `frontend/components/notifications/NotificationCenter.tsx` — полный список
 
-#### Критерии приёмки
+**Модифицированные файлы:**
+- `server/main.js` — регистрация pg-boss cron job
 
-- [ ] Onboarding wizard: 4 steps → personalized dashboard
-- [ ] Notifications: deadline, AI Literacy, FRIA, new tool, requirements
-- [ ] In-app bell with count badge
-- [ ] Email: instant / daily / weekly digest preference
-- [ ] pg-boss cron: daily notification check
+##### Критерии приёмки
+
+- [ ] Onboarding wizard: 4 шага → персонализированный dashboard
+- [ ] Уведомления: deadline, AI Literacy, FRIA, new tool, requirements
+- [ ] In-app bell с badge-счётчиком непрочитанных
+- [ ] Email: instant / daily / weekly digest (user preference)
+- [ ] pg-boss cron: ежедневная проверка дедлайнов
+- [ ] Использует существующую схему `Notification.js` (S3)
 
 - **Tests:** 3 (deadline_notification.test, onboarding_flow.test, notification_preferences.test)
+- **Dependencies:** None
+- **Разблокирует:** US-104 (notification channel)
 
 ---
 
-### US-101: SaaS Discovery — IdP + Shadow AI (2 SP)
+### Phase 3: External Outputs (17 SP)
 
-- **Feature:** F29 🟡 | **Developer:** Leo
+#### US-090: Vendor Verification + Procurement API (4 SP) — carry-over
 
-#### Описание
+- **Feature:** F38 | **Developer:** Max (backend) + Nina (frontend)
 
-Как CTO, я хочу обнаруживать Shadow AI: AI tools, которые сотрудники используют через SSO (IdP), но которые не зарегистрированы в реестре.
+##### Описание
 
-#### IdP Discovery
+Как вендор AI инструмента, я хочу подтвердить данные о своём продукте в Registry (vendor claim) и получить значок "Verified". Как deployer, я хочу использовать Procurement API для получения верифицированных данных о вендоре при закупке.
 
-```javascript
-// WorkOS API: listConnections() → OAuth apps authorized by employees
-// Match against AI Registry domains (openai.com, anthropic.com, etc.)
-// Result: "3 employees use ChatGPT, 5 use Copilot — not in your registry"
-// Human-in-the-loop: suggest adding, don't auto-add
-
-// POST /api/discovery/idp-scan — trigger scan
-// GET  /api/discovery/shadow-ai — tools in IdP but not in AITool registry
-```
-
-#### Реализация
+##### Реализация
 
 **Новые файлы:**
-- `app/api/discovery/idp-scan.js` — trigger WorkOS connected apps scan
-- `app/api/discovery/shadow-ai.js` — diff: IdP apps vs registered tools
-- `app/application/discovery/scanIdPApps.js` — WorkOS API + AI Registry match
-- `app/(dashboard)/discovery/page.tsx` — Shadow AI UI
+- `app/schemas/VendorClaim.js` — MetaSQL (vendor, tool, status, verifiedAt)
+- `app/api/registry/vendor-claim.js` — POST submit + GET status + PATCH admin review
+- `app/api/v1/registry/procurement.js` — GET `/v1/registry/procurement/:slug` (single + batch)
+- `frontend/components/registry/VendorClaimForm.tsx` — форма подачи claim
 
-#### Критерии приёмки
+##### Критерии приёмки
 
-- [ ] IdP scan: AI tools from SSO-authorized apps detected
-- [ ] Shadow AI diff: tools in IdP but not in AITool registry
-- [ ] Human-in-the-loop: suggest, don't auto-add
-- [ ] Only AI-related apps matched (not all OAuth apps)
+- [ ] Vendor claim submission + admin review workflow
+- [ ] "Verified" badge на инструменте после одобрения
+- [ ] Procurement API: single slug + batch запросы
+- [ ] Passport auto-fill из верифицированных Registry данных
 
-- **Tests:** 2 (idp_scan_pattern_match.test, shadow_ai_diff.test)
+- **Tests:** 4 (vendor_claim_submit.test, admin_review.test, procurement_api.test, passport_autofill.test)
+- **Dependencies:** Registry API (S7)
 
 ---
 
-### US-102: Data Source Indicator (2 SP)
+#### US-103: Remediation Cloud — playbooks для устранения gaps (3 SP)
 
-- **Feature:** F63 🟡 | **Developer:** Nina
+- **Feature:** F31 | **Developer:** Max
 
-#### Описание
+##### Описание
 
-Как DPO, я хочу видеть рядом с каждым полем Passport источник данных ("CLI scan, 27 фев" или "введено вручную"), чтобы отличать автоматические (надёжные) данные от ручных.
+Как compliance officer, после Gap Analysis я хочу получить пошаговые remediation playbooks: "У системы X нет human oversight → вот конкретные шаги → нажмите → генерируем документ." Каждый шаг с action-кнопкой, чтобы от анализа проблемы до её решения было минимум кликов.
 
-#### Реализация
-
-```javascript
-// Каждое поле Passport имеет metadata: { source: 'cli_scan' | 'manual' | 'wizard', updatedAt, updatedBy }
-// При CLI Sync (F62) — source: 'cli_scan', updatedAt: scan timestamp
-// При ручном вводе в wizard/edit — source: 'manual', updatedBy: userId
-// При wizard auto-fill из Registry — source: 'registry_autofill'
-
-// Frontend: DataSourceBadge component
-// <DataSourceBadge source="cli_scan" updatedAt="2026-02-27T10:30:00Z" />
-// Renders: "🔧 CLI scan, 27 Feb" (green dot) or "✍️ Manual, 25 Feb" (yellow dot)
-```
+##### Реализация
 
 **Новые файлы:**
-- `frontend/components/shared/DataSourceBadge.tsx` — reusable badge
+- `app/schemas/RemediationPlaybook.js` — MetaSQL (toolId, category, steps, status, progress)
+- `app/domain/compliance/services/RemediationEngine.js` — pure: `generatePlaybook(gapResult) → Playbook[]`
+- `app/application/compliance/generatePlaybooks.js` — application use case
+- `app/api/remediation/playbooks.js` — POST generate + GET by tool + POST complete step
+- `app/seeds/remediation-templates.js` — 12 AESIA playbook templates
+- `frontend/components/compliance/RemediationPanel.tsx` — UI panel
+
+**Модифицированные файлы:**
+- `frontend/app/[locale]/(app)/gap-analysis/[toolId]/page.tsx` — embed RemediationPanel
+
+##### Критерии приёмки
+
+- [ ] Playbooks генерируются из Gap Analysis результатов (12 AESIA категорий)
+- [ ] Каждый шаг имеет тип действия: generate document, manual action, configure
+- [ ] Шаги можно отмечать выполненными с tracking прогресса
+- [ ] "Generate Document" ведёт к Doc Generators (F07)
+- [ ] Сортировка по приоритету: критические gaps первыми
+- [ ] Оценка трудозатрат по каждой категории
+
+- **Tests:** 2 (playbook_generation.test, step_completion.test)
+- **Dependencies:** US-091, Gap Analysis (S8)
+
+---
+
+#### US-095: Compliance Badge — embeddable виджет (3 SP)
+
+- **Feature:** F50 | **Developer:** Nina
+
+##### Описание
+
+Как CEO, я хочу разместить на нашем сайте embeddable badge "AI Act Compliant" с уровнем (Bronze / Silver / Gold) — чтобы клиенты и партнёры видели нашу compliance. По клику на badge открывается публичная страница верификации. Если score падает ниже порога — badge автоматически переходит в "Under Review".
+
+##### Реализация
+
+**Новые файлы:**
+- `app/api/badge/[orgSlug].js` — GET public badge data (no auth)
+- `app/api/badge/my/stats.js` — GET badge views/clicks
+- `app/application/badge/evaluateBadgeCriteria.js` — чистая функция оценки уровня
+- `frontend/app/[locale]/(app)/badge/page.tsx` — управление badge
+- `frontend/app/[locale]/(public)/verify/[orgSlug]/page.tsx` — публичная верификация
+- `public/badge.js` — embeddable script для внешних сайтов
+
+##### Критерии приёмки
+
+- [ ] 3 уровня: Bronze (70+), Silver (85+), Gold (95+ + AI Literacy 100% + FRIA done)
+- [ ] Embeddable script работает на внешних сайтах (CORS)
+- [ ] Публичная страница верификации без авторизации
+- [ ] Статистика: views + clicks tracked
+- [ ] При падении score ниже порога → badge "Under Review"
+- [ ] Growth+ план required
+
+- **Tests:** 2 (badge_criteria.test, badge_public_endpoint.test)
+- **Dependencies:** None
+
+---
+
+#### US-096: Vendor Documentation Request — запрос документов у вендора (4 SP)
+
+- **Feature:** F51 | **Developer:** Nina (frontend) + Max (backend)
+
+##### Описание
+
+Как deployer, я хочу запросить у вендора недостающую документацию по Art. 13 и Art. 26 — с готовым email-шаблоном, юридическими ссылками, списком конкретных недостающих документов — и отслеживать статус: отправлено → ожидание → получено → прикреплено к Passport. Полученные документы обогащают Community Evidence в Registry.
+
+> Уникальная фича — нет у конкурентов.
+
+##### Реализация
+
+**Новые файлы:**
+- `app/schemas/VendorRequest.js` — MetaSQL (vendor, tool, status, documents requested)
+- `app/api/vendor-requests/create.js` — POST создать запрос + сгенерировать email
+- `app/api/vendor-requests/list.js` — GET список по организации
+- `app/api/vendor-requests/update.js` — PATCH обновить статус + прикрепить документы
+- `app/application/vendor/generateRequestEmail.js` — шаблон с Art. 13 §1, Art. 26 §3
+- `frontend/app/[locale]/(app)/vendor-requests/page.tsx` — список + создание
+- `frontend/components/vendor/RequestEmailPreview.tsx` — предпросмотр email
+
+##### Критерии приёмки
+
+- [ ] Недостающие документы определяются из Passport + Registry данных
+- [ ] Email-шаблон с юридическими ссылками (Art. 13, Art. 26)
+- [ ] Отправка через Brevo или copy-paste
+- [ ] Tracking статусов: sent → waiting → received
+- [ ] Полученные документы прикрепляются к Passport
+- [ ] Community Evidence: полученные документы улучшают Registry scoring
+
+- **Tests:** 3 (vendor_request_email.test, request_status_tracking.test, document_attachment.test)
+- **Dependencies:** None
+
+---
+
+#### US-097: EU Database Helper — помощь с регистрацией (3 SP)
+
+- **Feature:** F47 | **Developer:** Leo
+
+##### Описание
+
+Как deployer high-risk AI системы, я хочу получить помощь с регистрацией в EU Database (Art. 49, ~40 полей) — система предзаполняет 60-90% из Passport, показывает checklist готовности по каждому полю, и даёт copy-paste friendly экспорт для вставки в EU Database.
+
+##### Реализация
+
+**Новые файлы:**
+- `app/domain/eu-database/EUDatabaseFields.js` — 40 field definitions (pure)
+- `app/api/eu-database/prefill.js` — GET pre-filled form из Passport
+- `app/api/eu-database/checklist.js` — GET readiness check
+- `frontend/app/[locale]/(app)/eu-database/[toolId]/page.tsx` — EU DB helper UI
+
+##### Критерии приёмки
+
+- [ ] 40 полей EU DB с pre-fill из Passport (60-90%)
+- [ ] Readiness checklist: ready/missing по каждому полю
+- [ ] Copy-paste export для EU Database
+- [ ] После регистрации: EU DB number → `Passport.regulatoryContext.euDbNumber`
+- [ ] Только для high-risk AI инструментов
+
+- **Tests:** 2 (eu_db_prefill.test, readiness_checklist.test)
+- **Dependencies:** US-093, US-098
+
+---
+
+### Phase 4: Polish + Should (10 SP)
+
+#### US-099: Certification Dashboard — готовность к ISO 42001 (3 SP)
+
+- **Feature:** F40 | **Developer:** Nina
+
+##### Описание
+
+Как compliance officer, я хочу видеть готовность организации к сертификации ISO 42001 (AI Management System) и AIUC-1 (AI Use Case) — per-system и org-wide процент, управление evidence по каждому критерию, ссылки на партнёрские сертификационные органы.
+
+##### Реализация
+
+**Новые файлы:**
+- `app/domain/certification/ISO42001Criteria.js` — criteria definitions (pure)
+- `app/api/certification/readiness.js` — GET per-tool + org-wide readiness
+- `frontend/app/[locale]/(app)/certification/page.tsx` — readiness dashboard
+- `frontend/components/certification/ReadinessBar.tsx` — прогресс по стандарту
+
+##### Критерии приёмки
+
+- [ ] ISO 42001 readiness: per-system + org-wide процент
+- [ ] AIUC-1 readiness: per-system + org-wide процент
+- [ ] Evidence upload по каждому критерию
+- [ ] Ссылки на партнёрские сертификационные органы
+
+- **Tests:** 2 (iso42001_readiness.test, evidence_upload.test)
+- **Dependencies:** US-091
+
+---
+
+#### US-102: Data Source Indicator — источник данных в Passport (2 SP)
+
+- **Feature:** F63 | **Developer:** Nina
+
+##### Описание
+
+Как DPO, я хочу видеть рядом с каждым полем Passport источник данных ("CLI scan, 27 фев" или "введено вручную, 25 фев") — чтобы отличать автоматические данные (более надёжные) от ручных и понимать актуальность каждого поля.
+
+##### Реализация
+
+**Новые файлы:**
+- `frontend/components/shared/DataSourceBadge.tsx` — reusable badge компонент
 - `app/domain/inventory/services/FieldMetadata.js` — metadata helpers
 
 **Модифицированные файлы:**
-- `app/schemas/AITool.js` — add `fieldMetadata` JSON column
-- `frontend/components/tools/PassportView.tsx` — render DataSourceBadge per field
+- `app/schemas/AITool.js` — добавить `fieldMetadata` JSON column
+- `frontend/components/tools/PassportView.tsx` — отрисовка DataSourceBadge по каждому полю
 
-#### Критерии приёмки
+##### Критерии приёмки
 
-- [ ] DataSourceBadge renders source type + date for each Passport field
-- [ ] CLI Sync writes source='cli_scan' with scan timestamp
-- [ ] Manual edits write source='manual' with user ID
-- [ ] Visual distinction: green dot (automated) vs yellow dot (manual)
+- [ ] DataSourceBadge рендерит тип источника + дату для каждого поля Passport
+- [ ] CLI Sync записывает source='cli_scan' с timestamp скана
+- [ ] Ручной ввод записывает source='manual' с user ID
+- [ ] Визуальное различие: зелёная точка (automated) vs жёлтая (manual)
 
 - **Tests:** 2 (data_source_badge_render.test, field_metadata_merge.test)
+- **Dependencies:** US-093
 
 ---
 
-### US-103: Remediation Cloud (3 SP)
+#### US-101: SaaS Discovery — Shadow AI через IdP (2 SP)
 
-- **Feature:** F31 🟡 | **Developer:** Max
+- **Feature:** F29 | **Developer:** Leo
 
-#### Описание
+##### Описание
 
-Как compliance officer, после Gap Analysis я хочу получить пошаговые remediation playbooks: "У системы X нет human oversight → вот инструкция → нажмите → генерируем документ."
+Как CTO, я хочу обнаруживать Shadow AI: AI инструменты, которые сотрудники используют через SSO (IdP), но которые не зарегистрированы в реестре — чтобы знать реальную картину использования AI в организации и вовремя зарегистрировать пропущенные инструменты.
 
-#### Реализация
+> **Примечание:** Схема `AIToolDiscovery.js` уже существует (S2). Используем её, не создаём новую.
 
-```javascript
-// Remediation playbook = structured JSON per AESIA category:
-// { category: 'Human Oversight', steps: [...], documents: [...], effort: '~4h', priority }
-//
-// app/domain/compliance/services/RemediationEngine.js — pure domain:
-// generatePlaybook(gapAnalysisResult) → RemediationPlaybook[]
-// Each step: { title, description, action: 'generate_doc' | 'manual' | 'configure', docType? }
-//
-// POST /api/remediation/playbooks — generate from gap analysis
-// GET  /api/remediation/playbooks/:toolId — get saved playbooks
-// POST /api/remediation/playbooks/:id/steps/:stepId/complete — mark step done
-
-// Frontend:
-// RemediationPanel in Gap Analysis page
-// Steps as checklist with action buttons ("Generate Document", "Mark Complete")
-// Progress bar per category
-```
+##### Реализация
 
 **Новые файлы:**
-- `app/domain/compliance/services/RemediationEngine.js` — playbook generator
-- `app/api/remediation/playbooks.js` — CRUD handlers
-- `app/application/compliance/generatePlaybooks.js` — use case
-- `frontend/components/compliance/RemediationPanel.tsx` — UI panel
-- `app/seeds/remediation-templates.js` — 12 AESIA playbook templates
+- `app/api/discovery/idp-scan.js` — POST trigger WorkOS connected apps scan
+- `app/api/discovery/shadow-ai.js` — GET diff: IdP apps vs registered tools
+- `app/application/discovery/scanIdPApps.js` — WorkOS API + AI Registry match
+- `frontend/app/[locale]/(app)/discovery/page.tsx` — Shadow AI UI
 
-**Модифицированные файлы:**
-- `app/schemas/RemediationPlaybook.js` — new schema (MetaSQL)
-- `frontend/app/(dashboard)/tools/[id]/gap-analysis/page.tsx` — embed RemediationPanel
+##### Критерии приёмки
 
-#### Критерии приёмки
+- [ ] IdP scan: AI инструменты из SSO-авторизованных приложений обнаружены
+- [ ] Shadow AI diff: инструменты в IdP, которых нет в AITool registry
+- [ ] Human-in-the-loop: предлагаем добавить, не добавляем автоматически
+- [ ] Фильтрация только AI-related apps (не все OAuth apps)
+- [ ] Использует существующую схему `AIToolDiscovery.js` (S2)
 
-- [ ] Playbooks generated from Gap Analysis results (12 AESIA categories)
-- [ ] Each step has action type: generate document, manual action, or configure
-- [ ] Steps can be marked complete with progress tracking
-- [ ] "Generate Document" action links to Doc Generators (F07)
-- [ ] Priority ordering: critical gaps first
-- [ ] Estimated effort per category
-
-- **Tests:** 2 (playbook_generation.test, step_completion.test)
+- **Tests:** 2 (idp_scan_pattern_match.test, shadow_ai_diff.test)
+- **Dependencies:** None
 
 ---
 
-### US-104: Regulatory Monitoring (3 SP)
+#### US-104: Regulatory Monitoring — мониторинг изменений AI Act (3 SP)
 
-- **Feature:** F12 🟡 | **Developer:** Leo
+- **Feature:** F12 | **Developer:** Leo
 
-#### Описание
+##### Описание
 
-Как compliance officer, я хочу получать уведомления об изменениях в законодательстве EU AI Act, чтобы вовремя обновлять compliance документы.
+Как compliance officer, я хочу получать уведомления об изменениях в законодательстве EU AI Act — чтобы вовремя обновлять compliance документы. Система еженедельно проверяет EUR-Lex, фильтрует deployer-relevant статьи, анализирует impact через LLM и уведомляет, если изменения затрагивают мои AI системы.
 
-#### Реализация
+> **Примечание:** Схемы `RegulatoryUpdate.js` и `ImpactAssessment.js` уже существуют (S3). Используем их, не создаём новые.
 
-```javascript
-// pg-boss cron job: weekly EUR-Lex scraping
-// Filter: deployer-relevant articles (Art. 4, 5, 6, 9, 26, 27, 49, 50, 72, 73)
-// LLM impact analysis (Mistral Small): "How does this change affect deployer X?"
-//
-// app/domain/monitoring/services/RegulatoryScanner.js — pure domain:
-// parseEurLexUpdate(html) → RegulatoryUpdate[]
-// assessImpact(update, tools) → ImpactAssessment[]
-//
-// Schedule: pg-boss cron weekly
-// POST /api/monitoring/regulatory/scan — manual trigger (admin only)
-// GET  /api/monitoring/regulatory/updates — paginated list
-// GET  /api/monitoring/regulatory/updates/:id/impact — per-tool impact
-
-// Notification integration:
-// New update → check per org → notify if relevant
-// "AESIA обновила чеклист #5 — проверьте Risk Plan для HireVue"
-```
+##### Реализация
 
 **Новые файлы:**
-- `app/domain/monitoring/services/RegulatoryScanner.js` — EUR-Lex parser
-- `app/domain/monitoring/services/ImpactAnalyzer.js` — LLM impact assessment
-- `app/application/monitoring/scanRegulatory.js` — use case
-- `app/api/monitoring/regulatory.js` — API handlers
-- `app/schemas/RegulatoryUpdate.js` — MetaSQL schema
-- `app/schemas/ImpactAssessment.js` — MetaSQL schema
-- `frontend/app/(dashboard)/monitoring/regulatory/page.tsx` — UI
+- `app/domain/monitoring/services/RegulatoryScanner.js` — EUR-Lex parser (pure)
+- `app/domain/monitoring/services/ImpactAnalyzer.js` — LLM impact assessment (Mistral Small)
+- `app/application/monitoring/scanRegulatory.js` — application use case
+- `app/api/monitoring/regulatory.js` — POST manual scan + GET updates + GET impact
+- `frontend/app/[locale]/(app)/monitoring/regulatory/page.tsx` — UI
 
 **Модифицированные файлы:**
-- `server/main.js` — register pg-boss cron for regulatory scanning
-- `app/application/notification/sendNotification.js` — add regulatory update type
+- `server/main.js` — регистрация pg-boss weekly cron
+- `app/application/notifications/checkDeadlines.js` — добавить тип "regulatory update"
 
-#### Критерии приёмки
+##### Критерии приёмки
 
-- [ ] Weekly EUR-Lex scraping via pg-boss cron job
-- [ ] Filter: only deployer-relevant AI Act articles
-- [ ] LLM impact analysis per AI tool in organization
-- [ ] Notifications: in-app + email when relevant changes detected
-- [ ] Manual scan trigger for admins
-- [ ] Historical log of all regulatory updates
+- [ ] Weekly EUR-Lex scraping через pg-boss cron job
+- [ ] Фильтр: только deployer-relevant статьи AI Act (Art. 4, 5, 6, 9, 26, 27, 49, 50, 72, 73)
+- [ ] LLM impact analysis per AI tool в организации
+- [ ] Уведомления: in-app + email при обнаружении релевантных изменений
+- [ ] Manual scan trigger для админов
+- [ ] Историческая лента всех regulatory updates
+- [ ] Использует существующие схемы `RegulatoryUpdate.js` + `ImpactAssessment.js` (S3)
 
 - **Tests:** 2 (eurlex_parser.test, impact_analysis.test)
+- **Dependencies:** US-100 (notification channel)
 
 ---
 
 ## Summary
 
-| US | Feature | Developer | SP | Tests |
-|----|---------|-----------|-----|-------|
-| US-091 | F39: AI Systems Registry (unified) | Nina + Max | 5 | 3 |
-| US-092 | F46: Wizard Steps 3-5 | Nina | 4 | 2 |
-| US-093 | F56: Extended Passport Fields | Max | 3 | 2 |
-| US-094 | F57/58/59: QMS + Risk + Monitoring Generators | Max | 5 | 3 |
-| US-095 | F50: Compliance Badge | Nina | 3 | 2 |
-| US-096 | F51: Vendor Documentation Request | Nina + Max | 4 | 3 |
-| US-097 | F47: EU Database Helper | Leo | 3 | 2 |
-| US-098 | F53: Regulator Directory | Leo | 3 | 2 |
-| US-099 | F40: Certification Dashboard | Nina | 3 | 2 |
-| US-100 | F11: Onboarding + Notifications | Nina + Leo | 4 | 3 |
-| US-101 | F29: SaaS Discovery (IdP + Shadow AI) | Leo | 2 | 2 |
-| US-102 | F63: Data Source Indicator | Nina | 2 | 2 |
-| US-103 | F31: Remediation Cloud | Max | 3 | 2 |
-| US-104 | F12: Regulatory Monitoring | Leo | 3 | 2 |
-| **Итого** | | | **47** | **32** |
+| Phase | Stories | SP |
+|-------|---------|-----|
+| Foundation + Carry-over | US-091, US-086, US-089, US-098 | 10 |
+| Core Extensions | US-093, US-094, US-092, US-100 | 11 |
+| External Outputs | US-090, US-103, US-095, US-096, US-097 | 17 |
+| Polish + Should | US-099, US-102, US-101, US-104 | 10 |
+| **Total** | **17 stories** | **48 SP** |
 
-> Capacity: 47 SP (+5 над baseline 42 SP). Prioritization:
-> - **Must (Sprint 9A):** US-091..094 (Registry+Wizard+Passport+Generators, 17 SP) + US-095..099 (Badge+Vendor+EU DB+Regulator+Cert, 16 SP) = 33 SP
-> - **Should (Sprint 9B):** US-100..104 (Onboarding+Discovery+DataSource+Remediation+Monitoring, 14 SP)
-> - **Could (defer to S10):** US-101 (Discovery, 2 SP)
+> **Carry-over из S8:** US-086 (2 SP), US-089 (2 SP), US-090 (4 SP) = 8 SP
+>
+> **Overlap audit savings:** US-091 (5→3), US-092 (4→2), US-094 (5→2), US-086 (3→2) = −8 SP vs original scope
+>
+> **Prioritization:**
+> - **Must (Phase 1-3):** 38 SP
+> - **Should (Phase 4):** 10 SP
+> - **Defer candidate → S10:** US-101 (Discovery, 2 SP), если capacity tight
 
 ---
 
-## Definition of Done
+## New Files (~45)
 
-- [ ] **AI Systems Registry:** Unified view (CLI + Manual + Discovery)
-- [ ] **Wizard:** Full 5-step flow end-to-end
-- [ ] **Extended Passport:** 6 new blocks (regulatory, incidents, monitoring, conformity, records, MSA)
-- [ ] **Doc Generators:** QMS + Risk Plan + Monitoring Plan (section-by-section)
-- [ ] **Compliance Badge:** 3 levels, embeddable widget, viral loop
-- [ ] **Vendor Request:** Email template with legal refs, status tracking
-- [ ] **EU Database Helper:** 40-field pre-fill from Passport
-- [ ] **Regulator Directory:** 30 MSA records, country+sector filter
-- [ ] **Certification Dashboard:** ISO 42001 + AIUC-1 readiness
-- [ ] **Onboarding:** 4-step wizard, notification system
-- [ ] **Data Source Indicator:** CLI/manual label on every field
-- [ ] **Remediation Cloud:** Playbooks linked to Gap Analysis findings
-- [ ] **Regulatory Monitoring:** EUR-Lex scraping, LLM impact analysis, notifications
-- [ ] **DB migrations:** VendorRequest, Regulator, Notification, RegulatoryUpdate
-- [ ] `npm test` — ~408 total, все green
+```
+# Phase 1
+app/api/tools/lifecycle.js
+app/api/tools/stats.js
+frontend/app/[locale]/(app)/registry/page.tsx
+frontend/components/registry/LifecycleControl.tsx
+app/api/dashboard/timeline.js
+app/application/dashboard/buildTimeline.js
+app/api/events/stream.js
+server/src/event-bus.js
+app/seeds/seed-regulators.js
+app/schemas/Regulator.js
+app/api/regulators/directory.js
+frontend/app/[locale]/(app)/regulators/page.tsx
+frontend/components/regulators/RegulatorCard.tsx
+
+# Phase 2
+app/application/documents/prefillFromPassport.js
+frontend/app/[locale]/(app)/documents/qms/page.tsx
+frontend/app/[locale]/(app)/documents/risk-plan/page.tsx
+frontend/app/[locale]/(app)/documents/monitoring-plan/page.tsx
+app/api/notifications/list.js
+app/api/notifications/preferences.js
+app/application/notifications/checkDeadlines.js
+app/jobs/notification-checker.js
+frontend/app/[locale]/(app)/onboarding/page.tsx
+frontend/components/notifications/NotificationBell.tsx
+frontend/components/notifications/NotificationCenter.tsx
+
+# Phase 3
+app/schemas/VendorClaim.js
+app/api/registry/vendor-claim.js
+app/api/v1/registry/procurement.js
+frontend/components/registry/VendorClaimForm.tsx
+app/schemas/RemediationPlaybook.js
+app/domain/compliance/services/RemediationEngine.js
+app/application/compliance/generatePlaybooks.js
+app/api/remediation/playbooks.js
+app/seeds/remediation-templates.js
+frontend/components/compliance/RemediationPanel.tsx
+app/application/badge/evaluateBadgeCriteria.js
+app/api/badge/[orgSlug].js
+app/api/badge/my/stats.js
+frontend/app/[locale]/(app)/badge/page.tsx
+frontend/app/[locale]/(public)/verify/[orgSlug]/page.tsx
+public/badge.js
+app/schemas/VendorRequest.js
+app/api/vendor-requests/create.js
+app/api/vendor-requests/list.js
+app/api/vendor-requests/update.js
+app/application/vendor/generateRequestEmail.js
+frontend/app/[locale]/(app)/vendor-requests/page.tsx
+frontend/components/vendor/RequestEmailPreview.tsx
+app/domain/eu-database/EUDatabaseFields.js
+app/api/eu-database/prefill.js
+app/api/eu-database/checklist.js
+frontend/app/[locale]/(app)/eu-database/[toolId]/page.tsx
+
+# Phase 4
+app/domain/certification/ISO42001Criteria.js
+app/api/certification/readiness.js
+frontend/app/[locale]/(app)/certification/page.tsx
+frontend/components/certification/ReadinessBar.tsx
+frontend/components/shared/DataSourceBadge.tsx
+app/domain/inventory/services/FieldMetadata.js
+app/api/discovery/idp-scan.js
+app/api/discovery/shadow-ai.js
+app/application/discovery/scanIdPApps.js
+frontend/app/[locale]/(app)/discovery/page.tsx
+app/domain/monitoring/services/RegulatoryScanner.js
+app/domain/monitoring/services/ImpactAnalyzer.js
+app/application/monitoring/scanRegulatory.js
+app/api/monitoring/regulatory.js
+frontend/app/[locale]/(app)/monitoring/regulatory/page.tsx
+```
+
+## Modified Files (~15)
+
+```
+app/schemas/AITool.js — lifecycle, source, autonomyLevel, fieldMetadata, passport extensions
+app/api/tools/list.js — source/lifecycle/autonomyLevel filters
+app/api/tools/detail.js — new fields in response
+app/api/tools/passport.js — PATCH new passport blocks
+app/application/tool/updatePassport.js — validation for 6 new blocks
+app/api/sync/passport.js — emit SSE event after sync
+app/api/sync/scan.js — emit SSE event after scan
+frontend/components/dashboard/TimelineWidget.tsx — extended timeline
+frontend/components/wizard/Step3Data.tsx — geography field
+frontend/components/wizard/Step4Autonomy.tsx — L1-L5, Art. 14, escalation
+frontend/components/wizard/Step5Review.tsx — FRIA shortcut
+frontend/components/tools/PassportView.tsx — DataSourceBadge
+frontend/app/[locale]/(app)/gap-analysis/[toolId]/page.tsx — RemediationPanel
+frontend/messages/en.json + de.json — i18n additions
+server/main.js — pg-boss cron jobs
+```
+
+## New Test Files
+
+```
+tests/lifecycle_transitions.test.js          (3 tests)
+tests/source_filter.test.js                  (included above)
+tests/stats_aggregation.test.js              (included above)
+tests/timeline_deadlines.test.js             (2 tests)
+tests/sse_connection.test.js                 (2 tests)
+tests/regulator_directory_query.test.js      (2 tests)
+tests/passport_extended_fields.test.js       (2 tests)
+tests/qms_prefill_from_org.test.js           (2 tests)
+tests/wizard_geography_field.test.js         (2 tests)
+tests/deadline_notification.test.js          (3 tests)
+tests/vendor_claim_submit.test.js            (4 tests)
+tests/playbook_generation.test.js            (2 tests)
+tests/badge_criteria.test.js                 (2 tests)
+tests/vendor_request_email.test.js           (3 tests)
+tests/eu_db_prefill.test.js                  (2 tests)
+tests/iso42001_readiness.test.js             (2 tests)
+tests/data_source_badge_render.test.js       (2 tests)
+tests/idp_scan_pattern_match.test.js         (2 tests)
+tests/eurlex_parser.test.js                  (2 tests)
+Total: ~39 new tests (546 → ~585)
+```
+
+---
+
+## Existing Schemas (NOT to create)
+
+Эти схемы уже существуют в кодовой базе — **не создавать повторно:**
+
+| Схема | Файл | Создана в | Используется в |
+|-------|------|-----------|---------------|
+| Notification | `app/schemas/Notification.js` | S3 | US-100 |
+| AIToolDiscovery | `app/schemas/AIToolDiscovery.js` | S2 | US-101 |
+| RegulatoryUpdate | `app/schemas/RegulatoryUpdate.js` | S3 | US-104 |
+| ImpactAssessment | `app/schemas/ImpactAssessment.js` | S3 | US-104 |
+
+---
+
+## Verification Checklist
+
+- [ ] `npm run lint` — 0 errors
 - [ ] `npm run typecheck` — 0 errors
-- [ ] Deploy to staging: Badge embed test, Vendor Request E2E
+- [ ] `npm test` — ~585 tests, 0 failures
+- [ ] Registry: unified view поверх `/api/tools`, lifecycle transitions работают
+- [ ] Timeline: real deadlines + days remaining + overdue alerts
+- [ ] SSE: Dashboard обновляется в реальном времени после CLI sync
+- [ ] Badge: embeddable script на внешнем сайте, public verification page
+- [ ] Vendor Request: email с Art. 13/26 ссылками, status tracking
+- [ ] EU Database: 40 полей pre-filled из Passport
+- [ ] Remediation: playbooks генерируются из Gap Analysis
+- [ ] Notifications: bell icon + email digest
+- [ ] Multi-tenancy на всех новых endpoints
+- [ ] Zod validation на всех новых API
+- [ ] AuditLog на всех mutations
 
 ---
 
@@ -834,9 +776,10 @@ Step 4: → Personalized dashboard with role-based view + suggested actions
 
 | Риск | Вероятность | Импакт | Митигация |
 |------|------------|--------|-----------|
-| Sprint capacity (47 SP vs 42) | Средняя | Средний | Split into 9A/9B, defer US-101 |
+| Sprint capacity (48 SP, 4 недели) | Средняя | Низкий | 4 phases, Phase 4 = should/defer buffer |
+| Carry-over integration (3 US из S8) | Низкая | Низкий | Все 3 независимые, S8 prerequisites audited |
 | Vendor Request email deliverability | Средняя | Низкий | Brevo SPF/DKIM, copy-paste fallback |
-| EU Database API format changes | Средняя | Средний | Manual field mapping, fallback to copy-paste |
-| Badge CORS issues on external sites | Низкая | Средний | Proper CORS headers, CDN caching |
-| EUR-Lex scraping stability (F12) | Средняя | Низкий | Fallback to manual updates, pg-boss retry logic |
-| Remediation playbook accuracy | Средняя | Средний | Elena (AI Act expert) review, user-editable steps |
+| EU Database format changes | Средняя | Средний | Manual field mapping, copy-paste fallback |
+| Badge CORS на внешних сайтах | Низкая | Средний | Proper CORS headers, CDN caching |
+| EUR-Lex scraping stability | Средняя | Низкий | Fallback to manual, pg-boss retry |
+| Remediation playbook accuracy | Средняя | Средний | Elena review, user-editable steps |

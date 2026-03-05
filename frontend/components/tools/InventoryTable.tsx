@@ -67,7 +67,7 @@ export function InventoryTable({ tools }: InventoryTableProps) {
                   <Link href={`/${locale}/tools/${tool.id}`} className="font-medium text-[var(--teal)] hover:underline">
                     {tool.name}
                   </Link>
-                  {!tool.wizardCompleted && (
+                  {!tool.wizardCompleted && !tool.riskLevel && (
                     <span className="ml-2 text-xs text-[var(--dark5)]">(Draft)</span>
                   )}
                 </td>
@@ -100,7 +100,7 @@ export function InventoryTable({ tools }: InventoryTableProps) {
             <div className="mt-2 flex items-center gap-3 text-xs text-[var(--dark5)]">
               <span>{DOMAIN_KEYS[tool.domain] || tool.domain}</span>
               <span>{STATUS_LABELS[tool.complianceStatus] || tool.complianceStatus}</span>
-              {!tool.wizardCompleted && <span className="text-[var(--dark5)]">Draft</span>}
+              {!tool.wizardCompleted && !tool.riskLevel && <span className="text-[var(--dark5)]">Draft</span>}
             </div>
           </Link>
         ))}

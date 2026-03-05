@@ -26,6 +26,9 @@ interface WizardState {
   vendorCountry: string;
   vendorUrl: string;
   description: string;
+  framework: string;
+  modelProvider: string;
+  modelId: string;
   purpose: string;
   domain: string;
   dataTypes: string[];
@@ -38,7 +41,9 @@ interface WizardState {
 
 const INITIAL_STATE: WizardState = {
   step: 1, toolId: null, classifyResult: null, errors: {}, saving: false, classifying: false,
-  name: '', vendorName: '', vendorCountry: '', vendorUrl: '', description: '', purpose: '', domain: '',
+  name: '', vendorName: '', vendorCountry: '', vendorUrl: '', description: '',
+  framework: '', modelProvider: '', modelId: '',
+  purpose: '', domain: '',
   dataTypes: [], affectedPersons: [], vulnerableGroups: false, autonomyLevel: 'advisory',
   humanOversight: true, affectsNaturalPersons: false,
 };
@@ -94,7 +99,7 @@ export default function NewToolPage() {
       setField({ errors: errs });
       return;
     }
-    saveStep(1, { name: state.name, vendorName: state.vendorName, vendorCountry: state.vendorCountry || undefined, vendorUrl: state.vendorUrl || undefined, description: state.description || undefined });
+    saveStep(1, { name: state.name, vendorName: state.vendorName, vendorCountry: state.vendorCountry || undefined, vendorUrl: state.vendorUrl || undefined, description: state.description || undefined, framework: state.framework || undefined, modelProvider: state.modelProvider || undefined, modelId: state.modelId || undefined });
   };
 
   const handleStep2Next = () => {
@@ -188,7 +193,7 @@ export default function NewToolPage() {
         )}
 
         {/* Steps */}
-        {state.step === 1 && <Step1Tool data={{ name: state.name, vendorName: state.vendorName, vendorCountry: state.vendorCountry, vendorUrl: state.vendorUrl, description: state.description }} onChange={(d) => setField(d)} onNext={handleStep1Next} errors={state.errors} />}
+        {state.step === 1 && <Step1Tool data={{ name: state.name, vendorName: state.vendorName, vendorCountry: state.vendorCountry, vendorUrl: state.vendorUrl, description: state.description, framework: state.framework, modelProvider: state.modelProvider, modelId: state.modelId }} onChange={(d) => setField(d)} onNext={handleStep1Next} errors={state.errors} />}
         {state.step === 2 && <Step2Usage data={{ purpose: state.purpose, domain: state.domain }} onChange={(d) => setField(d)} onNext={handleStep2Next} onBack={goBack} errors={state.errors} />}
         {state.step === 3 && <Step3Data data={{ dataTypes: state.dataTypes, affectedPersons: state.affectedPersons, vulnerableGroups: state.vulnerableGroups }} onChange={(d) => setField(d)} onNext={handleStep3Next} onBack={goBack} errors={state.errors} />}
         {state.step === 4 && <Step4Autonomy data={{ autonomyLevel: state.autonomyLevel, humanOversight: state.humanOversight, affectsNaturalPersons: state.affectsNaturalPersons }} onChange={(d) => setField(d)} onNext={handleStep4Next} onBack={goBack} errors={state.errors} />}

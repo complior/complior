@@ -29,6 +29,9 @@ interface WizardData {
   vendorCountry: string;
   vendorUrl: string;
   description: string;
+  framework: string;
+  modelProvider: string;
+  modelId: string;
   purpose: string;
   domain: string;
   dataTypes: string[];
@@ -66,6 +69,24 @@ export function Step5Review({ data, onBack, onClassify, classifying }: Step5Revi
           <strong>{data.name}</strong> by {data.vendorName}
         </SumVal>
       </SumGroup>
+
+      {/* Technical Stack */}
+      {(data.framework || data.modelProvider || data.modelId) && (
+        <SumGroup label={t('reviewTechStack')}>
+          <div className="flex flex-wrap gap-1.5 p-2 bg-[var(--bg2)] rounded-md border border-[var(--b)]">
+            {data.framework && (
+              <span className="font-mono text-[0.5rem] px-1.5 py-0.5 rounded bg-[var(--bg3)] text-[var(--dark3)]">
+                {data.framework}
+              </span>
+            )}
+            {(data.modelProvider || data.modelId) && (
+              <span className="font-mono text-[0.5rem] px-1.5 py-0.5 rounded bg-[var(--bg3)] text-[var(--dark3)]">
+                {data.modelProvider}{data.modelProvider && data.modelId ? ' / ' : ''}{data.modelId}
+              </span>
+            )}
+          </div>
+        </SumGroup>
+      )}
 
       {/* Purpose */}
       {data.purpose && (

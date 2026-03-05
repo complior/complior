@@ -43,6 +43,7 @@ describe('Config validation', () => {
     process.env.S3_ENDPOINT = 'https://s3.example.com';
     process.env.STRIPE_SECRET_KEY = 'sk_test_123';
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_123';
+    process.env.MISTRAL_API_KEY = 'test_key';
     const validate = require(modulePath);
     const { warnings } = validate();
     assert.strictEqual(warnings.length, 0);

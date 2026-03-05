@@ -40,6 +40,9 @@ const validate = () => {
   if (!process.env.STRIPE_WEBHOOK_SECRET) {
     warnings.push('STRIPE_WEBHOOK_SECRET not set — Stripe webhook verification disabled');
   }
+  if (!process.env.MISTRAL_API_KEY && !process.env.OPENROUTER_API_KEY) {
+    warnings.push('No LLM API key set (MISTRAL_API_KEY or OPENROUTER_API_KEY) — AI draft generation disabled');
+  }
 
   return { missing, warnings };
 };

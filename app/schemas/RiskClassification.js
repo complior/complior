@@ -17,7 +17,7 @@
   llmResult: { type: 'json', required: false },
   crossValidation: { type: 'json', required: false },
   method: {
-    enum: ['rule_only', 'rule_plus_llm', 'cross_validated'],
+    enum: ['rule_only', 'rule_plus_llm', 'cross_validated', 'cli_import'],
   },
 
   articleReferences: {

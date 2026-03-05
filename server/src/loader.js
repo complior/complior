@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const fsp = require('node:fs').promises;
 const vm = require('node:vm');
 const path = require('node:path');
+const createZipBuilder = require('../infrastructure/archive/zip-builder.js');
 
 const OPTIONS = {
   timeout: 5000,
@@ -52,12 +53,13 @@ const loadDeepDir = async (dir, sandbox) => {
 
 const loadApplication = async (appPath, serverContext) => {
   const { console: logger, db, config, errors, schemas, zod,
-    workos, brevo, gotenberg, s3, stripe, fetch, cheerio } = serverContext;
+    workos, brevo, gotenberg, s3, stripe, fetch, cheerio, llm, pgboss } = serverContext;
 
   // Base sandbox — available to all VM layers
   const sandbox = {
     setTimeout,
     clearTimeout,
+    AbortController,
     Buffer,
     console: Object.freeze(logger),
     crypto: Object.freeze(crypto),
@@ -73,6 +75,9 @@ const loadApplication = async (appPath, serverContext) => {
     stripe: Object.freeze(stripe),
     fetch: fetch || globalThis.fetch,
     cheerio: cheerio ? Object.freeze(cheerio) : undefined,
+    llm: llm ? Object.freeze(llm) : undefined,
+    pgboss: pgboss || null,
+    zipBuilder: Object.freeze({ create: createZipBuilder }),
   };
 
   // Layer 1: lib (permissions, audit, tenant)

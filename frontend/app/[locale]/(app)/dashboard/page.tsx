@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
       {/* Row 3: Document Status + Timeline (2-col) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <DocumentStatus highRiskTools={data.requiresAttention.filter(a => a.severity !== 'medium').map(a => ({ toolId: a.toolId, toolName: a.toolName }))} />
+        <DocumentStatus highRiskTools={data.requiresAttention.filter(a => a.severity !== 'medium').map(a => ({ toolId: a.toolId, toolName: a.toolName }))} cliScores={data.cliScores} />
         <TimelineWidget timeline={data.timeline} />
       </div>
 

@@ -29,12 +29,6 @@
       }
     }
 
-    // Enforce maxTools plan limit
-    const limits = await application.billing.getOrgLimits.checkTools(organizationId);
-    if (!limits.allowed) {
-      throw new errors.PlanLimitError('maxTools', limits.current, limits.limit);
-    }
-
     const tq = lib.tenant.createTenantQuery(organizationId);
     const tool = await tq.create('AITool', {
       ...prefill,
@@ -57,6 +51,9 @@
       autonomyLevel: 'advisory',
       humanOversight: true,
       affectsNaturalPersons: false,
+      framework: parsed.framework || null,
+      modelProvider: parsed.modelProvider || null,
+      modelId: parsed.modelId || null,
     });
 
     await lib.audit.createAuditEntry({

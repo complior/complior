@@ -74,6 +74,16 @@ export function ToolDetailHeader({ tool, onDelete, onReclassify, onOpenFria, del
                   {DOMAIN_LABELS[tool.domain] || tool.domain}
                 </span>
               )}
+              {tool.framework && (
+                <span className="font-mono text-[0.4375rem] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-[var(--bg3)] text-[var(--dark4)]">
+                  {tool.framework}
+                </span>
+              )}
+              {tool.modelProvider && (
+                <span className="font-mono text-[0.4375rem] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-[var(--bg3)] text-[var(--dark4)]">
+                  {tool.modelProvider}{tool.modelId ? ` / ${tool.modelId}` : ''}
+                </span>
+              )}
             </div>
           </div>
         </div>

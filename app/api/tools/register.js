@@ -10,6 +10,11 @@
 
     await lib.permissions.checkPermission(user, 'AITool', 'create');
 
+    const limits = await application.billing.getOrgLimits.checkTools(user.organizationId);
+    if (!limits.allowed) {
+      throw new errors.PlanLimitError('maxTools', limits.current, limits.limit);
+    }
+
     const tool = await application.inventory.registerTool.create({
       body: body || {},
       userId: user.id,

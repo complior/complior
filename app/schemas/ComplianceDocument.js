@@ -1,11 +1,12 @@
 ({
   Entity: {},
 
+  organization: { type: 'Organization', delete: 'cascade' },
   aiTool: { type: 'AITool', delete: 'cascade' },
   createdBy: { type: 'User', delete: 'restrict' },
   documentType: {
     enum: ['fria', 'monitoring_plan', 'usage_policy', 'employee_notification',
-      'incident_report', 'risk_assessment', 'transparency_notice'],
+      'incident_report', 'risk_assessment', 'transparency_notice', 'qms_template'],
   },
   title: { type: 'string', length: { max: 500 } },
   version: { type: 'number', default: 1 },

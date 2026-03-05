@@ -3,9 +3,9 @@
 > Maps every feature from PRODUCT-BACKLOG.md to implementation status.
 > Each feature lists its completed user stories with implementation details.
 
-**Обновлено:** 2026-03-03
-**Текущий статус:** Sprint 8 in progress
-**Тесты:** 343 | **Схемы:** 42 | **Endpoints:** 54 | **App-сервисы:** 48
+**Обновлено:** 2026-03-05
+**Текущий статус:** Sprint 8.5 DONE (United Sprint 1 — CLI↔SaaS Bridge + audit 9 fixes)
+**Тесты:** 554 | **Схемы:** 49 | **Endpoints:** 80 | **App-сервисы:** 75
 
 ---
 
@@ -19,13 +19,13 @@
 | F04a | Rule Engine (deployer) | **DONE** | 3 | 18 | S2 |
 | F04b | Classification History | **DONE** | 1 | 3 | S3 |
 | F04c | Requirements Mapping | **DONE** | 3 | 9 | S3 |
-| F05 | Deployer Dashboard | **PARTIAL** | 2 | 13 | S3, S8 |
-| F06 | Eva — Conversational AI | SCHEMA ONLY | 0 | 0 | S8 |
-| F07 | Deployer Doc Generation | -- | 0 | 0 | S8 |
-| F08 | Gap Analysis | -- | 0 | 0 | S8 |
+| F05 | Deployer Dashboard | **DONE** | 3 | 20 | S3, S8 |
+| F06 | Eva — Conversational AI | SCHEMA ONLY | 0 | 0 | S9+ |
+| F07 | Deployer Doc Generation | **DONE** | 1 | 4 | S8 |
+| F08 | Gap Analysis | **DONE** | 1 | 5 | S8 |
 | F09 | Billing (Stripe) | **DONE** | 4 | 14 | S3.5, S6 |
-| F10 | Eva Tool Calling | -- | 0 | 0 | S8 |
-| F11 | Onboarding + Notifications | -- | 0 | 0 | S8 |
+| F10 | Eva Tool Calling | -- | 0 | 0 | S9+ |
+| F11 | Onboarding + Notifications | -- | 0 | 0 | S9+ |
 | F12 | Regulatory Monitor | -- | 0 | 0 | S9 |
 | F13 | Доп. deployer-документы | -- | 0 | 0 | S9 |
 | F14 | Multi-language (DE, FR) | -- | 0 | 0 | S10 |
@@ -38,7 +38,7 @@
 | F24 | Platform Admin Panel | **DONE** | 2 | 10 | S6 |
 | F25 | WorkOS Migration | **DONE** | 3 | 13 | S7 |
 | F26 | Registry API | **DONE** | 5 | 18 | S7 |
-| F27 | TUI Data Collection | -- | 0 | 0 | S8 |
+| F27 | TUI Data Collection | -- | 0 | 0 | S9 |
 | F28 | Dashboard v2 (Cross-System Map) | **PARTIAL** | 1 | 7 | S8 |
 | F29 | SaaS Discovery Connectors | -- | 0 | 0 | S9 |
 | F30 | Agent Governance Cloud | -- | 0 | 0 | S9 |
@@ -49,9 +49,16 @@
 | F35 | Marketplace | -- | 0 | 0 | Future |
 | F36 | White-Label & Self-Hosted | -- | 0 | 0 | Future |
 | F37 | AI Registry Public Pages (SEO) | **DONE** | 2 | 10 | S7 |
+| F42 | Audit Package (ZIP) | **DONE** | 1 | 6 | S8 |
+| F61 | CLI Auth (Device Flow) | **DONE** | 1 | 3 | S8 |
+| F62 | CLI Sync (Passport + Scan) | **DONE** | 1 | 4 | S8 |
+| F63 | Document Sync (CLI→SaaS) | **DONE** | 1 | 4 | S8.5 |
+| F64 | Obligation Cross-Mapping (OBL↔ART) | **DONE** | 1 | 3 | S8.5 |
+| F65 | CLI Score Display (Dual Score) | **DONE** | 1 | 2 | S8.5 |
+| F66 | Extended Passport Field Mapping | **DONE** | 1 | 1 | S8.5 |
 | Infra | Production Deploy + DevOps | **DONE** | 10 | 33 | S4, S6 |
 | Frontend | Frontend Rebuild (S5) | **DONE** | — | — | S5 |
-| **TOTAL** | | | **69** | **297** | |
+| **TOTAL** | | | **84** | **347** | |
 
 ---
 
@@ -163,14 +170,15 @@ Pure domain service for deployer risk classification: Art. 5 prohibited, Annex I
 
 ## F05: Deployer Compliance Dashboard
 
-**Priority:** P0 | **Sprint:** 3, 8 | **Status:** PARTIAL | **SP:** 13
+**Priority:** P0 | **Sprint:** 3, 8 | **Status:** DONE | **SP:** 20
 
-Backend API for org-wide summary (S3). Frontend dashboard with 12 widgets + FRIA surface (S8). Cross-System Map + Score Trends pending.
+Backend API for org-wide summary (S3). Frontend dashboard with 12 widgets + FRIA surface (S8). Members page (S8). Cross-System Map + Score Trends deferred to S9.
 
 | US | Title | SP | Dev | Description |
 |----|-------|-----|-----|-------------|
 | US-029 | Dashboard Summary API | 6 | Max | S3: `GET /api/dashboard/summary` — org-wide: tool count by risk level, overall compliance score, AI Literacy progress (stub), "requires attention" list (prohibited tools, missing FRIAs, overdue requirements). Compliance timeline dates |
 | US-084 | Dashboard v2 Frontend + FRIA Surface | 7 | Nina | S8: 12 dashboard widgets (WelcomeBar, QuickActions, SummaryCards, RiskDonutChart, AttentionAlerts, ComplianceBreakdown, PenaltyExposure, DocumentStatus, TimelineWidget, ToolsTable, TeamRolesWidget, RecentActivityWidget). Live plan limits query replaces stub. FRIA surface in 3 locations: AttentionAlerts "FRIA →" link for high/critical tools, DocumentStatus live FRIA row (fetches `api.fria.getByTool`), ToolDetailHeader "Complete FRIA" teal CTA for high/prohibited risk tools. LockedOverlay on future widgets. EN/DE i18n |
+| US-084b | Members Page Frontend | 3 | Nina | S8: `/members` page with MembersTable, MemberStats (4 KPI cards), InviteDialog (modal with role selection), TrainingUsers placeholder. Connects to `GET /api/team/list`, `POST /api/team/invite`. Search + role filter. EN/DE i18n |
 
 ---
 
@@ -201,15 +209,63 @@ Fundamental Rights Impact Assessment (Art. 27 EU AI Act) — full-stack CRUD wit
 
 ---
 
-## F02-ext: Members Page
+## F07: Deployer Compliance Document Generation
 
-**Priority:** P1 | **Sprint:** 8 | **Status:** DONE | **SP:** 3
+**Priority:** P0 | **Sprint:** 8 | **Status:** DONE | **SP:** 4
 
-Frontend Members page — team management UI that connects to existing S2.5 backend APIs.
+Section-by-section compliance document generation with LLM drafting, manual editing, section/document approval workflow, and PDF export via Gotenberg.
 
 | US | Title | SP | Dev | Description |
 |----|-------|-----|-----|-------------|
-| US-084b | Members Page Frontend | 3 | Nina | `/members` page with MembersTable, MemberStats (4 KPI cards), InviteDialog (modal with role selection), TrainingUsers placeholder. Connects to `GET /api/team/list`, `POST /api/team/invite`. Search + role filter. EN/DE i18n |
+| US-082 | Compliance Documents Full-Stack | 4 | Max+Nina | **Backend:** ComplianceDocument + DocumentSection schemas (Entity + organization relation). 9 API endpoints: `POST /api/documents` (create), `GET /api/documents` (list with filters), `GET /api/documents/:id` (detail + sections), `PUT /api/documents/:id/sections/:sectionCode` (edit section content), `POST .../approve` (approve section), `POST .../revoke` (revoke section approval), `POST .../generate` (queue LLM draft via pg-boss), `POST /api/documents/:id/approve` (approve entire document — requires all sections approved), `POST /api/documents/:id/export-pdf` (Gotenberg HTML→PDF → S3). 8 application services: createDocument, listDocuments, getDocument, updateSection, approveSection (approve+revoke), approveDocument, generateDraft (generate+processGeneration), exportPdf. Domain: htmlRenderer (HTML templates with escapeHtml), documentTemplates (5 types × section definitions), prompts (LLM prompt builder per doc type). Plan gate: Growth+ required. 5 document types: usage_policy, qms_template, risk_assessment, monitoring_plan, employee_notification. **Frontend:** `/documents` page with DocumentsTab (list + status badges + create), document detail page with section-by-section editing. EN/DE i18n (~80 keys). Zod validation: DocumentCreateSchema, DocumentSectionParamsSchema, DocumentSectionUpdateSchema, DocumentListSchema. **Security audit (S8 Day 4):** +organizationId on all UPDATE queries (TOCTOU fix), escapeHtml on htmlRenderer, sectionCode regex validation |
+
+---
+
+## F08: Gap Analysis — 12 AESIA Categories
+
+**Priority:** P0 | **Sprint:** 8 | **Status:** DONE | **SP:** 5
+
+Per-tool gap analysis across 12 AESIA (AI Act Standards) categories with completeness scoring, effort estimation, and prioritized action plan.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-085 | Gap Analysis Full-Stack | 5 | Max+Nina | **Backend:** GapAnalysis schema (Entity + organization + aiTool + overallScore + categories JSON + actionPlan JSON). 1 API endpoint: `GET /api/gap-analysis/:toolId`. Application service: analyzeGaps (fetches tool + requirements, evaluates 12 AESIA categories). Domain: AESIACategories.js — 12 pure-function evaluators mapping requirement codes to AESIA checklist items (#3–#14): technical_documentation, qms, risk_management, human_oversight, data_governance, transparency, accuracy, robustness, cybersecurity, logging, post_market_monitoring, incident_management. Per category: status (green ≥80% / yellow 40–80% / red <40%), completeness %, estimatedEffort, 2–5 recommendations. Action plan: criticalPath sorted by urgency × impact, totalEffort, suggestedDeadline. Plan gate: Growth+ required. RBAC: GapAnalysis resource (owner/admin manage, member/viewer read). **Frontend:** `/gap-analysis/[toolId]` page with CategoryCard (12 cards in responsive grid — status badge, progress bar, effort, recommendations) and ActionPlan component (prioritized todo list with deadlines). EN/DE i18n (~60 keys). Zod: GapAnalysisToolIdSchema |
+
+---
+
+## F42: Audit Package (ZIP)
+
+**Priority:** P0 | **Sprint:** 8 | **Status:** DONE | **SP:** 6
+
+One-click ZIP generation containing all compliance artifacts for regulatory audits. Async generation via pg-boss, LLM-generated executive summary, S3 storage with 30-day expiry.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-083 | Audit Package Full-Stack | 6 | Max+Nina | **Backend:** AuditPackage schema (Entity + organization + status enum [queued/generating/ready/error/expired] + createdAt + fileUrl + fileSize + metadata). 4 API endpoints: `POST /api/audit-package/generate` (trigger → pg-boss job), `GET /api/audit-package/:id/status` (poll status), `GET /api/audit-package/:id/download` (signed S3 URL), `GET /api/audit-package/history` (paginated list). Application: generateAuditPackage.js (generate + processPackage — orchestrates ZIP creation). Infrastructure: zip-builder.js (archiver wrapper: addBuffer, addJson, finalize). Domain: executiveSummaryPrompt.js (LLM prompt builder), obligationMatrix.js (articles × tools HTML table), htmlRenderer.js (3 HTML templates with XSS protection). **ZIP contents:** 01-executive-summary.pdf (LLM-generated), 02-obligation-matrix.pdf (structured), 03-ai-registry.pdf (all tools), documents/*.pdf (existing compliance docs from S3), fria/assessments.json, metadata.json. pg-boss job: `audit-package-generate` queue + worker. Email notification via Brevo when ready. Plan gate: Growth+ required. RBAC: AuditPackage resource. **Frontend:** `/audit-package` page with generate button, status card (queued→generating→ready), download button, history table. EN/DE i18n. **Security audit (S8 Day 4):** Organization PK fix ("id" not "organizationId"), audit log entries added to generate() and processPackage(), createdAt field added to schema |
+
+---
+
+## F61: CLI Auth — OAuth 2.0 Device Flow
+
+**Priority:** P1 | **Sprint:** 8 | **Status:** DONE | **SP:** 3
+
+OAuth 2.0 Device Authorization Grant for CLI (`npx complior`) authentication. JWT access/refresh tokens. Browser-based confirmation with WorkOS session.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-087 | CLI Auth Device Flow | 3 | Max | **Backend:** DeviceCode schema (Entity + deviceCode unique + userCode 6-char + user + organization + status enum [pending/authorized/expired/used] + scope + expiresAt). JWT helper: `app/lib/jwt.js` (HMAC-SHA256 HS256 sign/verify). API auth: `app/lib/apiAuth.js` (Bearer token resolver for sync endpoints). 3 API endpoints: `POST /api/auth/device` (public, rate-limited — max 10 pending codes, generates device_code + user_code), `POST /api/auth/token` (public, polls: authorization_pending / access_token+refresh_token / expired), `POST /api/auth/device-confirm` (authenticated, RBAC-checked, confirms user_code in browser). Application: deviceFlow.js (createDeviceCode, pollToken, confirmDevice). Config: jwtSecret in config/server.js. Zod: DeviceTokenSchema, DeviceConfirmSchema. RBAC: DeviceCode resource (owner/admin manage, member create). **Frontend:** `/device` page — 6-character code input, approve button, success/error/expired states. WorkOS session required. EN/DE i18n |
+
+---
+
+## F62: CLI Sync — Passport + Scan Upload
+
+**Priority:** P1 | **Sprint:** 8 | **Status:** DONE | **SP:** 4
+
+CLI-to-SaaS data synchronization. Passport merge with priority-based conflict resolution. Scan result processing with auto tool detection.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-088 | CLI Sync Full-Stack | 4 | Max | **Backend:** SyncHistory schema (Entity + organization + user + source enum [cli/api] + syncType enum [passport/scan] + status enum [success/conflict/error] + toolSlug + conflicts JSON + metadata + createdAt). 3 API endpoints (all Bearer JWT auth): `POST /api/sync/passport` (upload + merge passport), `POST /api/sync/scan` (upload scan results), `GET /api/sync/status` (sync status per org). Application: mergePassport.js (3-tier merge strategy — technical fields CLI priority, organizational fields SaaS priority, timestamp-based for risk/category), processScanUpload.js (validate scan data, find/create AITool per detected tool, update scan metadata), syncStatus.js (last sync, tool count, conflict count). Zod: SyncPassportSchema (name + vendor + slug + domain + riskLevel + detectionPatterns), SyncScanSchema (projectPath + score + findings[] + toolsDetected[]). RBAC: SyncHistory resource (owner/admin manage, member create+read). Source code never transmitted — metadata only |
 
 ---
 
@@ -283,6 +339,54 @@ Public-facing tool pages for organic search. ISR, 5-tab detail view, search/filt
 
 ---
 
+## F63: Document Sync — CLI-Generated Docs → SaaS
+
+**Priority:** P1 | **Sprint:** 8.5 | **Status:** DONE | **SP:** 4
+
+CLI Fixer generates 8 types of compliance documents. This feature syncs them into the SaaS ComplianceDocument table with version bumping and tool association.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-U07 | Document Sync Full-Stack | 4 | Marcus | **Backend:** `POST /api/sync/documents` endpoint (Bearer JWT auth). Zod schema: `SyncDocumentsSchema` (documents array with type enum, title, content, obligationId, toolSlug). `processDocuments.js` application service: find AITool by slug/name → find existing ComplianceDocument by (aiTool, documentType) → create or update (bump version, status→draft, content in metadata). SyncHistory logging. 8 CLI document types mapped to SaaS types: ai-literacy-policy→usage_policy, art5-screening-report→risk_assessment, technical-documentation→qms_template, monitoring-policy→monitoring_plan, worker-notification→employee_notification, fria→fria, declaration-of-conformity→transparency_notice, incident-report→incident_report. **Engine:** `syncDocuments()` in saas-client.ts, `POST /sync/documents` route reads `docs/compliance/*.md` and maps to SaaS types |
+
+---
+
+## F64: Obligation Cross-Mapping (OBL ↔ ART)
+
+**Priority:** P1 | **Sprint:** 8.5 | **Status:** DONE | **SP:** 3
+
+Explicit mapping between 108 CLI obligations (eu-ai-act-OBL-xxx) and 32 SaaS deployer requirements (ART_xx_KEYWORD).
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-U08 | Obligation Cross-Mapping | 3 | Marcus | **Domain:** `app/domain/sync/resolveObligations.js` — single source of truth. 28 OBL→ART forward mappings (deployer-relevant only, 76 of 108 are provider-only). Reverse map computed automatically via `Object.entries().reduce()`. IIFE closure pattern (no `this`). Two pure functions: `resolveRequirements(obligationId) → requirementCode[]`, `resolveObligations(requirementCode) → obligationId[]`. Used by sync/documents and sync/passport for correct tool↔requirement linking |
+
+---
+
+## F65: CLI Score Display (Dual Score Dashboard)
+
+**Priority:** P1 | **Sprint:** 8.5 | **Status:** DONE | **SP:** 2
+
+Dashboard shows both CLI scanner score (code-level, 0-100) and SaaS deployer score (organizational, 0-100%) side by side for each tool.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-U12 | Scoring Reconciliation Display | 2 | Marcus | **Backend:** `getDashboardSummary.js` extended with `DISTINCT ON (sh."toolSlug")` query on SyncHistory (scan type) → `cliScores` map in response. **Frontend:** `DocumentStatus.tsx` renders CLI Scanner Scores section with color-coded score (green ≥70, amber ≥40, red <40) and last sync date. i18n keys: `cliScore`, `saasScore`, `lastCliSync`, `viewDoc` (EN/DE) |
+
+---
+
+## F66: Extended Passport Field Mapping
+
+**Priority:** P2 | **Sprint:** 8.5 | **Status:** DONE | **SP:** 1
+
+Extended SyncPassportSchema from 10 to 18 accepted fields, preserving all 36 Agent Manifest fields via extendedFields JSON blob.
+
+| US | Title | SP | Dev | Description |
+|----|-------|-----|-----|-------------|
+| US-U09 | Passport Field Mapping Extension | 1 | Marcus | **Zod:** SyncPassportSchema extended with `autonomyLevel` (L1-L5 enum), `framework`, `modelProvider`, `modelId`, `lifecycleStatus` (draft/review/active/suspended/retired), `compliorScore` (0-100), `manifestVersion`, `signature`, `extendedFields`. All typed (no z.any). **Application:** `mergePassport.js` rewritten: single AUTONOMY_MAP/STATUS_MAP definitions, ALLOWED_UPDATE_FIELDS Set for SQL safety, all fields in single INSERT (no redundant UPDATE), slug dash-trimming |
+
+---
+
 ## Infrastructure: Production Deploy + DevOps
 
 **Sprint:** 4, 6 | **Status:** DONE | **SP:** 33
@@ -324,9 +428,12 @@ Full frontend rewrite: landing page (15 секций), auth pages (login/registe
 | **S5** | — | — | Frontend rebuild: landing, auth, pricing, quick check, penalty calc (Nina solo) |
 | **S6** | 15 | 4 | Admin Panel (6 endpoints + UI), Stripe test mode, frontend deploy |
 | **S7** | 39 | 9 | WorkOS migration (Ory→WorkOS), Registry API (4,983 tools), data migration (6 tables), public pages (27 files), headless auth, pg-boss jobs |
-| **S8** | 18* | 4 | FRIA full-stack (6 API endpoints, wizard, 6 sections), Dashboard v2 (12 widgets, live plan limits), Members page (table, invite, stats), FRIA surface (3 locations). *Sprint in progress — 18 of 49 SP done |
-| **Total** | **314+** | **69** | |
+| **S8** | 40 | 8 | FRIA full-stack (6 endpoints, 6-section wizard), Dashboard v2 (12 widgets, FRIA surface), Members page, Compliance Documents (9 endpoints, section workflow, LLM draft, PDF export), Gap Analysis (12 AESIA categories), Audit Package (ZIP + LLM exec summary + pg-boss), CLI Auth (Device Flow + JWT), CLI Sync (passport merge + scan upload). Day 4: full audit (4 agents) + 12 P0 security fixes |
+| **S8.5** | 28 | 12 | **United Sprint 1 — CLI↔SaaS Bridge.** Cross-repo (SaaS + CLI). SaaS-side: Document Sync endpoint (8 doc types), Obligation Cross-Mapping (28 OBL→ART), Extended Passport Schema (+8 fields), CLI Score Display (dual score dashboard). CLI-side: `complior login/logout` (Device Flow), token storage (0o600), SaaS sync service, `complior sync` (passport+scan+docs push), data bundle client (ETag), TUI Sync Panel (live status). Code audit: 9 violations fixed (2 CRITICAL + 4 HIGH + 3 MEDIUM), 3 improvements |
+| **Total** | **347** | **84** | |
 
 ---
 
-**Источник данных:** PRODUCT-BACKLOG.md v4.1.0, SPRINT-BACKLOG-000 through 008
+**Источник данных:** PRODUCT-BACKLOG.md v4.1.0, SPRINT-BACKLOG-000 through 008, United Sprint 1 plan
+**Sprint 8 audited:** 2026-03-04 — 4-agent parallel audit (FP-first, multi-tenancy, MetaSQL, acceptance criteria) + 12 P0 fixes
+**Sprint 8.5 audited:** 2026-03-05 — full code audit vs CODING-STANDARDS.md (9 violations fixed: organizationId, NOT NULL, z.any, DRY, SQL allowlist, FP-first, credentials permissions)

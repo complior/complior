@@ -122,6 +122,21 @@
       },
     };
 
+    // --- CLI Sync Scores (latest per tool slug) ---
+    const syncScores = await db.query(
+      `SELECT DISTINCT ON (sh."toolSlug") sh."toolSlug", sh."metadata", sh."creation"
+       FROM "SyncHistory" sh
+       WHERE sh."organizationId" = $1 AND sh."syncType" = 'scan'
+       ORDER BY sh."toolSlug", sh."creation" DESC
+       LIMIT 50`,
+      [organizationId],
+    );
+    const cliScoreMap = syncScores.rows.reduce((acc, row) => {
+      const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
+      acc[row.toolSlug] = { score: meta?.score ?? null, lastSync: row.creation };
+      return acc;
+    }, {});
+
     return {
       tools: {
         total: totalTools,
@@ -135,6 +150,7 @@
       timeline,
       recentActivity: auditResult.rows,
       planLimits,
+      cliScores: cliScoreMap,
     };
   },
 })

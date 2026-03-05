@@ -91,6 +91,10 @@ export interface AITool {
   affectedPersons: string[];
   vulnerableGroups: boolean;
   dataResidency: string | null;
+  framework: string | null;
+  modelProvider: string | null;
+  modelId: string | null;
+  syncMetadata: Record<string, unknown> | null;
   autonomyLevel: string;
   humanOversight: boolean;
   affectsNaturalPersons: boolean;
@@ -315,6 +319,52 @@ export interface FRIACreateResponse {
   existing?: boolean;
 }
 
+// --- Compliance Documents ---
+
+export interface ComplianceDocument {
+  complianceDocumentId: number;
+  aiToolId: number;
+  createdById: number;
+  documentType: string;
+  title: string;
+  version: number;
+  status: 'draft' | 'generating' | 'review' | 'approved' | 'archived';
+  fileUrl: string | null;
+  approvedById: number | null;
+  approvedAt: string | null;
+}
+
+export interface DocumentSection {
+  documentSectionId: number;
+  documentId: number;
+  sectionCode: string;
+  title: string;
+  content: { text: string };
+  aiDraft: { text: string } | null;
+  status: 'empty' | 'ai_generated' | 'editing' | 'reviewed' | 'approved';
+  sortOrder: number;
+}
+
+export interface DocumentDetail {
+  document: ComplianceDocument;
+  sections: DocumentSection[];
+  tool: { name: string; riskLevel: string };
+}
+
+export interface DocumentCreateResponse {
+  document: ComplianceDocument;
+  sections: DocumentSection[];
+  complianceDocumentId: number;
+  existing?: boolean;
+}
+
+export interface DocumentListItem extends ComplianceDocument {
+  toolName: string;
+  toolRiskLevel: string;
+  completedSections: number;
+  totalSections: number;
+}
+
 // --- Dashboard ---
 
 export interface DashboardSummary {
@@ -367,6 +417,57 @@ export interface DashboardSummary {
     users: { allowed: boolean; current: number; limit: number };
     tools: { allowed: boolean; current: number; limit: number };
   };
+  cliScores?: Record<string, { score: number | null; lastSync: string | null }>;
+}
+
+// --- Gap Analysis ---
+
+export interface GapAnalysisCategoryResult {
+  id: string;
+  name: string;
+  aesiaRef: string;
+  status: 'green' | 'yellow' | 'red';
+  completeness: number;
+  estimatedEffort: number;
+  recommendations: string[];
+  relatedArticles: string[];
+}
+
+export interface GapAnalysisActionPlan {
+  criticalPath: {
+    categoryId: string;
+    categoryName: string;
+    priority: number;
+    estimatedEffort: number;
+    status: 'green' | 'yellow' | 'red';
+  }[];
+  totalEffort: number;
+  suggestedDeadline: string;
+}
+
+export interface GapAnalysisResult {
+  toolName: string;
+  riskLevel: string | null;
+  overallScore: number;
+  categories: GapAnalysisCategoryResult[];
+  actionPlan: GapAnalysisActionPlan;
+}
+
+// --- Audit Package ---
+
+export interface AuditPackage {
+  auditPackageId: number;
+  organizationId: number;
+  createdById: number;
+  status: 'queued' | 'generating' | 'ready' | 'error' | 'expired';
+  fileUrl: string | null;
+  fileSize: number | null;
+  toolCount: number;
+  documentCount: number;
+  metadata: Record<string, unknown> | null;
+  expiresAt: string | null;
+  errorMessage: string | null;
+  createdAt: string;
 }
 
 // --- Team ---
@@ -404,6 +505,11 @@ export const api = {
     me: () => apiFetch<UserProfile>('/api/auth/me'),
     updateOrganization: (id: number, data: Record<string, unknown>) =>
       apiFetch(`/api/organizations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    confirmDevice: (userCode: string) =>
+      apiFetch<{ confirmed: boolean }>('/api/auth/device-confirm', {
+        method: 'POST',
+        body: JSON.stringify({ userCode }),
+      }),
   },
   catalog: {
     search: (params: Record<string, string>) =>
@@ -461,6 +567,30 @@ export const api = {
     resendInvitation: (invitationId: number) =>
       apiFetch<{ success: boolean }>(`/api/team/invitations/${invitationId}/resend`, { method: 'POST' }),
   },
+  documents: {
+    list: (params: Record<string, string>) =>
+      apiFetch<PaginatedResponse<DocumentListItem>>('/api/documents', { params }),
+    create: (toolId: number, documentType: string) =>
+      apiFetch<DocumentCreateResponse>('/api/documents', { method: 'POST', body: JSON.stringify({ toolId, documentType }) }),
+    getById: (id: number) =>
+      apiFetch<DocumentDetail>(`/api/documents/${id}`),
+    listByTool: (toolId: number) =>
+      apiFetch<PaginatedResponse<DocumentListItem>>('/api/documents', { params: { toolId: String(toolId) } }),
+    updateSection: (id: number, sectionCode: string, data: { content: { text: string } }) =>
+      apiFetch<DocumentSection>(`/api/documents/${id}/sections/${sectionCode}`, { method: 'PUT', body: JSON.stringify(data) }),
+    generateDraft: (id: number, sectionCode: string) =>
+      apiFetch<{ documentId: number; sectionCode: string; status: string }>(`/api/documents/${id}/sections/${sectionCode}/generate`, { method: 'POST' }),
+    approveSection: (id: number, sectionCode: string) =>
+      apiFetch<DocumentSection>(`/api/documents/${id}/sections/${sectionCode}/approve`, { method: 'POST' }),
+    revokeSection: (id: number, sectionCode: string) =>
+      apiFetch<DocumentSection>(`/api/documents/${id}/sections/${sectionCode}/revoke`, { method: 'POST' }),
+    approveDocument: (id: number) =>
+      apiFetch<ComplianceDocument>(`/api/documents/${id}/approve`, { method: 'POST' }),
+    exportPdf: (id: number) =>
+      apiFetch<{ fileUrl: string; filename: string }>(`/api/documents/${id}/export-pdf`, { method: 'POST' }),
+    download: (id: number) =>
+      apiFetch<{ fileUrl: string; filename: string }>(`/api/documents/${id}/download`),
+  },
   fria: {
     create: (toolId: number) =>
       apiFetch<FRIACreateResponse>('/api/fria', { method: 'POST', body: JSON.stringify({ toolId }) }),
@@ -472,6 +602,20 @@ export const api = {
       apiFetch<FRIASection>(`/api/fria/${id}/sections/${sectionType}`, { method: 'PUT', body: JSON.stringify(data) }),
     updateStatus: (id: number, status: string) =>
       apiFetch<{ status: string }>(`/api/fria/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  },
+  gapAnalysis: {
+    getByTool: (toolId: number) =>
+      apiFetch<GapAnalysisResult>(`/api/gap-analysis/${toolId}`),
+  },
+  auditPackage: {
+    generate: () =>
+      apiFetch<{ auditPackageId: number; status: string }>('/api/audit-package/generate', { method: 'POST' }),
+    status: (id: number) =>
+      apiFetch<AuditPackage>(`/api/audit-package/${id}/status`),
+    download: (id: number) =>
+      apiFetch<{ downloadUrl: string }>(`/api/audit-package/${id}/download`),
+    history: (params: Record<string, string>) =>
+      apiFetch<PaginatedResponse<AuditPackage>>('/api/audit-package/history', { params }),
   },
   admin: {
     overview: () => apiFetch<AdminOverview>('/api/admin/overview'),

@@ -3,7 +3,7 @@
 **Версия:** 2.0.0
 **Дата:** 2026-02-28
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** Planned
+**Статус:** DONE (audited 2026-03-04)
 **Зависимости:** Sprint 7 (WorkOS + Registry API) merged to develop
 
 ---
@@ -502,9 +502,9 @@ audit-package-{orgSlug}-{date}/
 
 ---
 
-### US-086: Compliance Timeline (3 SP)
+### US-086: Compliance Timeline (3 SP) — ⏩ Перенесено в Sprint 9
 
-- **Feature:** F48 🟠 | **Developer:** Nina
+- **Feature:** F48 🟠 | **Developer:** Nina | **Status:** → S9
 
 #### Описание
 
@@ -695,9 +695,9 @@ Token:
 
 ---
 
-### US-089: TUI Daemon Push (2 SP)
+### US-089: TUI Daemon Push (2 SP) — ⏩ Перенесено в Sprint 9
 
-- **Feature:** F27 🟠 | **Developer:** Leo
+- **Feature:** F27 🟠 | **Developer:** Leo | **Status:** → S9
 
 #### Описание
 
@@ -747,9 +747,9 @@ Token:
 
 ---
 
-### US-090: Public AI Risk Registry — Vendor Verification + Procurement API (4 SP)
+### US-090: Public AI Risk Registry — Vendor Verification + Procurement API (4 SP) — ⏩ Перенесено в Sprint 9
 
-- **Feature:** F38 🔴 | **Developer:** Max + Nina
+- **Feature:** F38 🔴 | **Developer:** Max + Nina | **Status:** → S9
 
 #### Описание
 
@@ -830,17 +830,21 @@ Token:
 
 | US | Feature | Developer | SP | Tests |
 |----|---------|-----------|-----|-------|
-| US-081 | F19: FRIA Generator | Max | 8 | 5 |
-| US-082 | F07: Document Generators (5 types) | Max + Nina | 7 | 4 |
-| US-083 | F42: Audit Package (ZIP) | Max | 6 | 4 |
-| US-084 | F28: Dashboard v2 (Map + Trends + Roles) | Nina + Max | 7 | 3 |
-| US-085 | F08: Gap Analysis (12 AESIA) | Max + Nina | 5 | 3 |
-| US-086 | F48: Compliance Timeline | Nina | 3 | 2 |
-| US-087 | F61: CLI Auth Device Flow | Leo | 3 | 3 |
-| US-088 | F62: CLI Sync (Passport + Scan) | Max | 4 | 4 |
-| US-089 | F27: TUI Daemon Push (SSE) | Leo | 2 | 2 |
-| US-090 | F38: Vendor Verification + Procurement API | Max + Nina | 4 | 4 |
-| **Итого** | | | **49** | **34** |
+| US-081 | F19: FRIA Generator | Max | 8 | 5 | **DONE** |
+| US-082 | F07: Document Generators (5 types) | Max + Nina | 4* | 4 | **DONE** |
+| US-083 | F42: Audit Package (ZIP) | Max | 6 | 4 | **DONE** |
+| US-084 | F28: Dashboard v2 (Map + Trends + Roles) | Nina + Max | 7 | 3 | **DONE** |
+| US-084b | F05: Members Page | Nina | 3 | 0 | **DONE** |
+| US-085 | F08: Gap Analysis (12 AESIA) | Max + Nina | 5 | 3 | **DONE** |
+| US-086 | F48: Compliance Timeline | Nina | 3 | 2 | **→ S9** |
+| US-087 | F61: CLI Auth Device Flow | Leo | 3 | 3 | **DONE** |
+| US-088 | F62: CLI Sync (Passport + Scan) | Max | 4 | 4 | **DONE** |
+| US-089 | F27: TUI Daemon Push (SSE) | Leo | 2 | 2 | **→ S9** |
+| US-090 | F38: Vendor Verification + Procurement API | Max + Nina | 4 | 4 | **→ S9** |
+| **Done** | | | **40** | | **8 US** |
+| **→ S9** | | | **9** | | **3 US** |
+
+*US-082 rescoped: 7 → 4 SP (Tiptap editor deferred, textarea used)
 
 > Capacity stretched (+11 над baseline 38 SP). Если нужен trade-off: US-089 (TUI Daemon Push, 2 SP), US-086 (Timeline, 3 SP) и US-090 (Vendor Verification, 4 SP) могут начаться параллельно или частично перейти в S9.
 
