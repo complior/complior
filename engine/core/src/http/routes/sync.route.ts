@@ -60,7 +60,7 @@ const mapPassport = (manifest: AgentManifest): SyncPassportPayload => ({
   modelProvider: manifest.model?.provider,
   modelId: manifest.model?.model_id,
   lifecycleStatus: manifest.lifecycle?.status ?? undefined,
-  compliorScore: manifest.compliance?.complior_score,
+  compliorScore: manifest.compliance?.complior_score != null ? Math.round(manifest.compliance.complior_score) : undefined,
   manifestVersion: manifest.manifest_version,
   signature: manifest.signature,
   extendedFields: {
@@ -103,11 +103,11 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     const { token, saasUrl } = parsed.data;
     const client = createSaasClient(saasUrl ?? DEFAULT_SAAS_URL);
     const projectPath = deps.getProjectPath();
-    const passportsDir = join(projectPath, '.complior', 'passports');
+    const agentsDir = join(projectPath, '.complior', 'agents');
 
     let files: string[];
     try {
-      files = (await readdir(passportsDir)).filter((f) => f.endsWith('.json'));
+      files = (await readdir(agentsDir)).filter((f) => f.endsWith('-manifest.json'));
     } catch {
       return c.json({ synced: 0, created: 0, updated: 0, conflicts: 0, results: [], message: 'No passports found' });
     }
@@ -119,7 +119,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
     for (const file of files) {
       try {
-        const content = await readFile(join(passportsDir, file), 'utf-8');
+        const content = await readFile(join(agentsDir, file), 'utf-8');
         const manifest = parseManifest(content);
         if (!manifest) { results.push({ name: file, action: 'error', error: 'Invalid manifest' }); continue; }
         const payload = mapPassport(manifest);
@@ -153,14 +153,14 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
     // Read passports for tool detection
     const projectPath = deps.getProjectPath();
-    const passportsDir = join(projectPath, '.complior', 'passports');
+    const agentsDir2 = join(projectPath, '.complior', 'agents');
     const toolsDetected: { name: string; version?: string; vendor?: string; category?: string }[] = [];
 
     try {
-      const files = (await readdir(passportsDir)).filter((f) => f.endsWith('.json'));
+      const files = (await readdir(agentsDir2)).filter((f) => f.endsWith('-manifest.json'));
       for (const file of files) {
         try {
-          const content = await readFile(join(passportsDir, file), 'utf-8');
+          const content = await readFile(join(agentsDir2, file), 'utf-8');
           const manifest = parseManifest(content);
           if (!manifest) continue;
           toolsDetected.push({

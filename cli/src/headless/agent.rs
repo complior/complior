@@ -2,6 +2,7 @@ use crate::cli::AgentAction;
 use crate::config::TuiConfig;
 use crate::daemon;
 use crate::engine_client::EngineClient;
+use crate::engine_process::EngineManager;
 
 /// Percent-encode a string for use in URL query parameters.
 fn url_encode(s: &str) -> String {
@@ -34,16 +35,64 @@ fn resolve_client(config: &TuiConfig) -> EngineClient {
 }
 
 /// Create an engine client and verify the engine is running.
-/// Returns the client on success, or prints an error and returns the exit code on failure.
+/// Retries up to 3 times with backoff. If no daemon found, auto-starts one.
 async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
+    // First try: check for existing daemon
     let client = resolve_client(config);
-    match client.status().await {
-        Ok(status) if status.ready => Ok(client),
-        _ => {
-            eprintln!("Error: Engine not running. Start with: complior daemon");
-            Err(1)
+
+    // Retry health check 3 times (covers transient connection issues / race conditions)
+    for attempt in 0..3 {
+        match client.status().await {
+            Ok(status) if status.ready => return Ok(client),
+            _ => {
+                if attempt < 2 {
+                    tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt as u64 + 1))).await;
+                }
+            }
         }
     }
+
+    // No running daemon found — try to auto-start engine
+    let project_path = std::env::current_dir().unwrap_or_default();
+    let engine_root = find_engine_root(&project_path);
+
+    if let Some(root) = engine_root {
+        eprintln!("Engine not responding. Starting engine...");
+        let pid_path = daemon::pid_file_path(&project_path);
+        let mut mgr = EngineManager::new(&root);
+        match mgr.start_with_pid(&pid_path, false) {
+            Ok(port) => {
+                let new_client = EngineClient::from_url(&format!("http://127.0.0.1:{port}"));
+                if mgr.wait_for_ready(&new_client).await {
+                    // Leak the manager so it doesn't get dropped (and killed) when this
+                    // function returns. The engine stays alive for the duration of the command.
+                    std::mem::forget(mgr);
+                    return Ok(new_client);
+                }
+                eprintln!("Error: Engine started but failed health check.");
+            }
+            Err(e) => {
+                eprintln!("Error: Could not auto-start engine: {e}");
+            }
+        }
+    }
+
+    eprintln!("Error: Engine not running. Start with: complior daemon");
+    Err(1)
+}
+
+/// Walk up from project_path to find the complior repo root (containing engine/).
+fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
+    let mut dir = project_path.to_path_buf();
+    loop {
+        if dir.join("engine").join("core").join("src").join("server.ts").exists() {
+            return Some(dir);
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    None
 }
 
 pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
@@ -56,8 +105,8 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Autonomy { json, path } => {
             run_agent_autonomy(*json, path.as_deref(), config).await
         }
-        AgentAction::Validate { name, json, ci, strict, path } => {
-            run_agent_validate(name.as_deref(), *json, *ci, *strict, path.as_deref(), config).await
+        AgentAction::Validate { name, json, ci, strict, verbose, path } => {
+            run_agent_validate(name.as_deref(), *json, *ci, *strict, *verbose, path.as_deref(), config).await
         }
         AgentAction::Completeness { name, json, path } => {
             run_agent_completeness(name, *json, path.as_deref(), config).await
@@ -421,16 +470,47 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
                 return 0;
             }
 
-            let level = result
+            // Per-agent breakdown
+            if let Some(agents) = result.get("agents").and_then(|v| v.as_array()) {
+                if !agents.is_empty() {
+                    println!("\nAutonomy Analysis ({} agent(s))\n", agents.len());
+                    println!(
+                        "  {:<25} {:<8} {:<12} {:<8} {:<8} {:<8}",
+                        "AGENT", "LEVEL", "TYPE", "GATES", "UNSUP.", "NO-LOG"
+                    );
+                    println!("  {}", "-".repeat(69));
+
+                    for agent in agents {
+                        let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                        let level = agent.get("level").and_then(|v| v.as_str()).unwrap_or("?");
+                        let atype = agent.get("agentType").and_then(|v| v.as_str()).unwrap_or("?");
+                        let evidence = agent.get("evidence");
+                        let gates = evidence.and_then(|e| e.get("human_approval_gates")).and_then(|v| v.as_u64()).unwrap_or(0);
+                        let unsup = evidence.and_then(|e| e.get("unsupervised_actions")).and_then(|v| v.as_u64()).unwrap_or(0);
+                        let nolog = evidence.and_then(|e| e.get("no_logging_actions")).and_then(|v| v.as_u64()).unwrap_or(0);
+
+                        println!(
+                            "  {:<25} {:<8} {:<12} {:<8} {:<8} {:<8}",
+                            name, level, atype, gates, unsup, nolog
+                        );
+                    }
+                    println!();
+                    return 0;
+                }
+            }
+
+            // Fallback: project-level summary (no passports)
+            let summary = result.get("summary").unwrap_or(&result);
+            let level = summary
                 .get("level")
                 .and_then(|v| v.as_str())
                 .unwrap_or("?");
-            let agent_type = result
+            let agent_type = summary
                 .get("agentType")
                 .and_then(|v| v.as_str())
                 .unwrap_or("?");
 
-            let evidence = result.get("evidence");
+            let evidence = summary.get("evidence");
             let human_gates = evidence
                 .and_then(|e| e.get("human_approval_gates"))
                 .and_then(|v| v.as_u64())
@@ -444,11 +524,12 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0);
 
-            println!("\nAutonomy Analysis\n");
+            println!("\nAutonomy Analysis (project-level)\n");
             println!("  Level:               {level} ({agent_type})");
             println!("  Human approval gates: {human_gates}");
             println!("  Unsupervised actions: {unsupervised}");
             println!("  Logging gaps:         {no_logging}");
+            println!("\n  Tip: Run `complior agent init` to see per-agent breakdown.");
             0
         }
         Err(e) => {
@@ -465,6 +546,7 @@ async fn run_agent_validate(
     json: bool,
     ci: bool,
     strict: bool,
+    verbose: bool,
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
@@ -601,6 +683,30 @@ async fn run_agent_validate(
                 for w in warnings {
                     if let Some(msg) = w.as_str() {
                         println!("    WARN: {msg}");
+                    }
+                }
+            }
+
+            // Per-field breakdown when --verbose
+            if verbose {
+                if let Some(completeness) = result.get("completeness") {
+                    if let Some(fields) = completeness.get("fields").and_then(|v| v.as_array()) {
+                        println!("    Fields:");
+                        for field in fields {
+                            let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
+                            let filled = field.get("filled").and_then(|v| v.as_bool()).unwrap_or(false);
+                            let icon = if filled { "+" } else { "-" };
+                            println!("      [{icon}] {fname}");
+                        }
+                    } else if let Some(missing) = completeness.get("missingFields").and_then(|v| v.as_array()) {
+                        if !missing.is_empty() {
+                            println!("    Missing fields:");
+                            for field in missing {
+                                let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
+                                let obligation = field.get("obligation").and_then(|v| v.as_str()).unwrap_or("");
+                                println!("      [-] {fname} ({obligation})");
+                            }
+                        }
                     }
                 }
             }

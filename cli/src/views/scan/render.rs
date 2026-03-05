@@ -33,7 +33,7 @@ pub(super) fn render_progress_summary(frame: &mut Frame, area: Rect, app: &App) 
         };
         spans.push(Span::styled(icon, Style::default().fg(color)));
         spans.push(Span::styled(
-            format!("{} ", layer.short),
+            format!("{}:{} ", layer.short, layer.name),
             Style::default().fg(t.muted),
         ));
     }

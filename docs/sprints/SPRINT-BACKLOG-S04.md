@@ -213,6 +213,23 @@
 
 ---
 
+### US-S04-15: TUI Obligations Page — Per-Agent + Categories + Actions
+**Приоритет:** HIGH
+
+Как разработчик, я хочу видеть obligations привязанные к конкретному паспорту, сгруппированные по категориям, с действиями, чтобы понимать что нужно сделать для каждой AI-системы.
+
+**Acceptance Criteria:**
+- [ ] Per-agent filtering: выбор паспорта → только его obligations (по risk_class + role)
+- [ ] Category breakdown с progress bars (Technical, Organizational, Transparency, Assessment, Documentation, Reporting, Monitoring, Registration, Training)
+- [ ] Summary bar: "38/108 done (35%)" с общим progress bar
+- [ ] Penalty display в detail panel (€15M / 3% и т.д.)
+- [ ] Action links: `[g]` Generate FRIA, `[w]` Worker Notification — прямо из obligation
+- [ ] "Affected systems" в detail panel — какие паспорта затронуты
+
+**Дизайн-референс:** `docs/TUI-DESIGN-SPEC.md` секция 2.6 (PAGE 5: Obligations)
+
+---
+
 ## Метрики спринта
 
 | Метрика | Цель |
@@ -226,4 +243,93 @@
 | TUI Timeline page | ✅ |
 | Scanner: context-aware banned packages | ✅ |
 | Scanner: severity-weighted scoring | ✅ |
+| Obligations page: per-agent + categories | ✅ |
 | Tests passing | cargo test + vitest |
+
+---
+
+## Bugs (из ручного тестирования S03)
+
+### BUG-01: `complior agent autonomy` не показывает имя агента
+**Источник:** Ручное тестирование S03 (US-S03-03)
+**Приоритет:** MEDIUM
+
+Команда выводит агрегированный autonomy анализ без указания, к какому агенту он относится. В проекте с 7 агентами непонятно чей результат.
+
+**Ожидание:** Показывать per-agent breakdown (все 7), либо принимать аргумент `complior agent autonomy <name>`.
+**Файлы:** `cli/src/headless/agent.rs` (run_agent_autonomy), `engine/core/src/http/routes/agent.route.ts`
+
+### BUG-02: `complior agent validate --verbose` не распознаёт флаг
+**Источник:** Ручное тестирование S03 (US-S03-04, AC#5)
+**Приоритет:** LOW
+
+`--verbose` не зарегистрирован в clap для `agent validate`. Ошибка: `unexpected argument '--verbose' found`.
+
+**Ожидание:** Per-field breakdown (какие поля заполнены, какие пустые) при `--verbose`.
+**Файлы:** `cli/src/cli.rs` (AgentAction::Validate — добавить `verbose: bool`), `cli/src/headless/agent.rs` (run_agent_validate — передать флаг в engine)
+
+### BUG-03: `complior agent evidence` — connection error при headless запуске
+**Источник:** Ручное тестирование S03 (US-S03-07)
+**Приоритет:** HIGH
+
+Engine auto-launch на случайном порту завершается ошибкой соединения. Вероятно race condition (CLI обращается до готовности engine) или evidenceStore не инициализируется для проекта без существующего `chain.json`.
+
+**Ожидание:** Summary с количеством evidence entries (passport events от init).
+**Файлы:** `cli/src/headless/agent.rs` (run_agent_evidence), engine startup/health check timing
+
+### BUG-04: Headless команды спорадически получают "Engine not running" при работающем daemon
+**Источник:** Ручное тестирование S03 (US-S03-08)
+**Приоритет:** HIGH
+
+`complior agent fria` выдал "Engine not running" при работающем daemon. Другие команды (init, list, validate) в той же сессии работали. После перезапуска daemon — fria заработал. Вероятно связано с BUG-03 — engine auto-launch race condition или потеря соединения без reconnect.
+
+**Ожидание:** Headless команды должны надёжно подключаться к running daemon, retry при transient errors.
+**Файлы:** `cli/src/headless/agent.rs`, `cli/src/engine_client.rs` (health check / retry logic)
+
+### BUG-05: Evidence chain раздувается до сотен МБ → crash scan
+**Источник:** Ручное тестирование S03 (US-S03-07)
+**Приоритет:** CRITICAL
+
+`chain.json` вырос до 513 МБ → `JSON.stringify` падает с `RangeError: Invalid string length` → scan перестаёт работать. Причина: каждый scan кладёт ВСЕ findings как evidence entries, нет лимита на размер chain. При 47 findings × N сканов файл растёт экспоненциально.
+
+**Исправления:**
+1. Evidence append: записывать summary (score, count, checkIds), а не все findings целиком
+2. Max entries limit (e.g. 10,000) с rotation/archiving старых
+3. Append-only write (JSONL) вместо полной перезаписи JSON
+4. Graceful fallback: если chain corrupted/oversized → reset с warning
+
+**Файлы:** `engine/core/src/domain/scanner/evidence-store.ts` (saveChain, append), `engine/core/src/services/scan-service.ts` (что кладётся в evidence)
+
+### BUG-08: `complior login` пытается открыть браузер на headless сервере
+**Источник:** Ручное тестирование S3.5 (US-U01)
+**Приоритет:** HIGH
+
+`open` crate бессмысленна на удалённом сервере без GUI. Нужна модель как у Claude Code: показать полную кликабельную URL в терминале, пользователь открывает на своём компе, поллинг в фоне.
+
+**Ожидание:**
+```
+To login, visit this URL in your browser:
+  https://app.complior.ai/device?code=A8FBA0
+Waiting for confirmation... (Ctrl+C to cancel)
+```
+
+**Файлы:** `cli/src/headless/login.rs` (run_login — убрать `open::that()`, показать URL), `cli/src/saas_client.rs` (device flow URL construction)
+
+### BUG-07: Scan layers L1-L5 не имеют расшифровки в TUI
+**Источник:** Ручное тестирование S03
+**Приоритет:** LOW
+
+Пользователь видит `[X]L1 [X]L2 [X]L3 [X]L4 [-]L5` без объяснения. Нужна расшифровка: `L1:Files L2:Docs L3:Deps L4:Code L5:AI` в header и/или legend по `?`.
+
+**Файлы:** `cli/src/views/scan/mod.rs` (render scan header)
+
+### BUG-06: TUI Passport page загружается >60 секунд / "No passports loaded" при наличии паспортов
+**Источник:** Ручное тестирование S03 (US-S03-09)
+**Приоритет:** HIGH
+
+Passport page пуста, хотя `complior agent list` (headless) корректно показывает 7 агентов. Команда `LoadPassports` (при переходе на вкладку) либо не триггерится, либо engine не отвечает TUI-клиенту. Вероятно связано с BUG-03/BUG-04 — TUI engine connection нестабильна.
+
+**Обновление:** Паспорта загрузились, но с задержкой >60 секунд. Не connection bug, а performance — engine вероятно запускает scan при каждом `/agent/list` запросе для `complior_score`. Нужен кэш или ленивая загрузка score.
+
+**Ожидание:** Загрузка <2 секунд. Таблица с 7 агентами, completeness bars, j/k навигация, Enter→drill-down.
+**Файлы:** `cli/src/app/actions.rs` (LoadPassports trigger), `cli/src/app/executor.rs` (LoadPassports handler), `engine/core/src/services/passport-service.ts` (listPassports — убрать sync scan или кэшировать)

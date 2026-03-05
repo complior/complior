@@ -1,8 +1,8 @@
 ---
-source: tui/src/views/scan/tests.rs
+source: cli/src/views/scan/tests.rs
 expression: buf
 ---
- Layers: [X]L1 [X]L2 [X]L3 [X]L4 [-]L5   (4/5 complete, 1 skipped)                                  
+ Layers: [X]L1:Files [X]L2:Docs [X]L3:Config [X]L4:Patterns [-]L5:LLM   (4/5 complete, 1 skipped)   
  Scan complete: 32/100 (0.5s, 24 files)                                                             
  Findings (4)  [All] c:Critical  h:High  m:Medium  l:Low   p:passed  f:fix  x:explain  </>:resize   
 ─────────────────────────────────────────────┌ [A] Detail — OBL-015 (1/4) ─────────────────────────┐

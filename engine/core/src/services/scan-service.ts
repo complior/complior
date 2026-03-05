@@ -9,6 +9,7 @@ import {
   parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod,
 } from '../domain/scanner/layers/layer3-parsers.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
+import { createEvidence } from '../domain/scanner/evidence.js';
 
 export interface ScanServiceDeps {
   readonly scanner: Scanner;
@@ -32,13 +33,24 @@ export const createScanService = (deps: ScanServiceDeps) => {
     setLastScanResult(result);
     events.emit('scan.completed', { result });
 
-    // C.R20: Persist evidence to chain
+    // C.R20: Persist scan summary evidence to chain (not individual findings)
     if (deps.evidenceStore) {
-      const allEvidence = result.findings.flatMap(f => f.evidence ?? []);
-      if (allEvidence.length > 0) {
-        const scanId = randomUUID();
-        await deps.evidenceStore.append(allEvidence, scanId);
-      }
+      const scanId = randomUUID();
+      const uniqueCheckIds = [...new Set(result.findings.map(f => f.checkId))];
+      const summaryEvidence = createEvidence(
+        `scan-${scanId}`,
+        'scan-summary',
+        'pattern-match',
+        {
+          snippet: JSON.stringify({
+            score: result.score.totalScore,
+            zone: result.score.zone,
+            findings: result.findings.length,
+            checks: uniqueCheckIds.length,
+          }),
+        },
+      );
+      await deps.evidenceStore.append([summaryEvidence], scanId);
     }
 
     // Drift detection: compare with previous scan

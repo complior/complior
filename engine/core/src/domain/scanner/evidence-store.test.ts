@@ -1,17 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createEvidenceStore } from './evidence-store.js';
 import type { Evidence } from './evidence.js';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 
 vi.mock('node:fs/promises', () => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
   mkdir: vi.fn(),
+  stat: vi.fn(),
 }));
 
 const mockReadFile = vi.mocked(readFile);
 const mockWriteFile = vi.mocked(writeFile);
 const mockMkdir = vi.mocked(mkdir);
+const mockStat = vi.mocked(stat);
 
 const signHash = (hash: string): string => `sig:${hash.slice(0, 8)}`;
 const verifyHash = (hash: string, signature: string): boolean => signature === `sig:${hash.slice(0, 8)}`;
@@ -31,6 +33,8 @@ describe('createEvidenceStore', () => {
     vi.clearAllMocks();
     mockMkdir.mockResolvedValue(undefined);
     mockWriteFile.mockResolvedValue(undefined);
+    // Default: file doesn't exist (stat throws)
+    mockStat.mockRejectedValue(new Error('ENOENT'));
   });
 
   it('starts with empty chain when no file exists', async () => {
@@ -105,6 +109,7 @@ describe('createEvidenceStore', () => {
       }],
       lastHash: 'abc123',
     };
+    mockStat.mockResolvedValue({ size: 500 } as any);
     mockReadFile.mockResolvedValue(JSON.stringify(existing));
 
     const store = createEvidenceStore(storePath, signHash, verifyHash);
@@ -145,6 +150,7 @@ describe('createEvidenceStore', () => {
     tamperedEntries[0] = { ...tamperedEntries[0]!, hash: 'tampered' };
 
     // Create a new store that loads the tampered data
+    mockStat.mockResolvedValue({ size: 500 } as any);
     mockReadFile.mockResolvedValue(JSON.stringify({
       ...chain,
       entries: tamperedEntries,

@@ -207,6 +207,10 @@ pub enum AgentAction {
         #[arg(long)]
         strict: bool,
 
+        /// Show per-field breakdown (filled/empty)
+        #[arg(long)]
+        verbose: bool,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },
@@ -553,11 +557,12 @@ mod tests {
     fn cli_parse_agent_validate() {
         let cli = Cli::parse_from(["complior", "agent", "validate"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Validate { name, json, ci, strict, path } }) => {
+            Some(Command::Agent { action: AgentAction::Validate { name, json, ci, strict, verbose, path } }) => {
                 assert!(name.is_none());
                 assert!(!json);
                 assert!(!ci);
                 assert!(!strict);
+                assert!(!verbose);
                 assert!(path.is_none());
             }
             _ => panic!("Expected Agent Validate command"),
@@ -583,6 +588,17 @@ mod tests {
             Some(Command::Agent { action: AgentAction::Validate { ci, strict, .. } }) => {
                 assert!(*ci);
                 assert!(*strict);
+            }
+            _ => panic!("Expected Agent Validate command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_validate_verbose() {
+        let cli = Cli::parse_from(["complior", "agent", "validate", "--verbose"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Validate { verbose, .. } }) => {
+                assert!(*verbose);
             }
             _ => panic!("Expected Agent Validate command"),
         }

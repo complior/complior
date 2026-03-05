@@ -56,15 +56,35 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(manifest);
   });
 
-  // C.S02: Standalone autonomy analysis
+  // C.S02: Standalone autonomy analysis (per-agent breakdown)
   app.get('/agent/autonomy', async (c) => {
     const path = c.req.query('path');
     if (!path) {
       throw new ValidationError('Missing "path" query parameter');
     }
 
+    // Return per-agent breakdown from existing passports
+    const manifests = await passportService.listPassports(path);
+    if (manifests.length > 0) {
+      const agents = manifests.map(m => ({
+        name: m.name,
+        level: m.autonomy_level,
+        agentType: m.type,
+        evidence: m.autonomy_evidence ?? {
+          human_approval_gates: 0,
+          unsupervised_actions: 0,
+          no_logging_actions: 0,
+          auto_rated: true,
+        },
+      }));
+      // Also include project-level summary
+      const projectAnalysis = await passportService.analyzeProjectAutonomy(path);
+      return c.json({ agents, summary: projectAnalysis });
+    }
+
+    // No passports — return project-level analysis only
     const result = await passportService.analyzeProjectAutonomy(path);
-    return c.json(result);
+    return c.json({ agents: [], summary: result });
   });
 
   // C.S07: Passport validation (schema + signature + completeness)

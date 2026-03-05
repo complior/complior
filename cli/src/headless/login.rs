@@ -7,14 +7,13 @@ pub async fn run_login(config: &TuiConfig) -> Result<(), String> {
     // 1. Request device code
     let code = client.request_device_code().await?;
 
-    println!("\n\u{1f517} Opening browser for authentication...");
-    println!("   Visit: {}", code.verification_uri);
-    println!("   Enter code: {}\n", code.user_code);
+    // Reconstruct verification URL using configured base URL (handles tunnels/proxies)
+    let display_url = rewrite_verification_url(&code.verification_uri, &config.project_api_url);
 
-    // Best-effort browser open
-    let _ = open::that(&code.verification_uri);
-
-    print!("\u{231b} Waiting for browser confirmation... (press Ctrl+C to cancel)");
+    println!("\nTo login, visit this URL in your browser:\n");
+    println!("  {}", display_url);
+    println!("\n  Code: {}\n", code.user_code);
+    print!("Waiting for confirmation... (Ctrl+C to cancel)");
 
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(code.expires_in);
     let interval = std::time::Duration::from_secs(code.interval.max(5));
@@ -60,6 +59,22 @@ pub async fn run_login(config: &TuiConfig) -> Result<(), String> {
             }
         }
     }
+}
+
+/// Replace the host in `verification_uri` (from server) with the configured `base_url`.
+/// This handles dev tunnels (Cloudflare, ngrok) where the server returns localhost
+/// but the user needs the public URL.
+fn rewrite_verification_url(verification_uri: &str, base_url: &str) -> String {
+    // Extract the path from the server-provided URI (e.g. "/device" from "http://localhost:3001/device")
+    if let Some(pos) = verification_uri.find("://") {
+        let after_scheme = &verification_uri[pos + 3..];
+        if let Some(slash) = after_scheme.find('/') {
+            let path = &after_scheme[slash..]; // e.g. "/device"
+            return format!("{}{}", base_url.trim_end_matches('/'), path);
+        }
+    }
+    // Fallback: use base_url + "/device" if parsing fails
+    format!("{}/device", base_url.trim_end_matches('/'))
 }
 
 pub async fn run_logout(_config: &TuiConfig) -> Result<(), String> {

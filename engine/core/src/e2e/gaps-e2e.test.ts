@@ -105,7 +105,7 @@ describe('Gap Closures E2E', () => {
   // Gap 3: FRIA output path + Gap 4: Passport update after FRIA
   // ─────────────────────────────────────────────────────────
   describe('Gap 3+4: FRIA generation, output path, passport update', () => {
-    const AGENT_NAME = 'acme-ai-support';
+    const AGENT_NAME = 'acme-ai-support-openai';
 
     it('generates FRIA and saves to .complior/reports/fria-{name}.md', async () => {
       // Ensure passport exists

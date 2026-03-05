@@ -65,7 +65,12 @@ pub async fn run_sync(
                     for r in results {
                         let name = r.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                         let action = r.get("action").and_then(|v| v.as_str()).unwrap_or("?");
-                        println!("    \u{2714} {name} \u{2192} {action}");
+                        if action == "error" {
+                            let err_msg = r.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                            println!("    \u{2717} {name} \u{2192} {err_msg}");
+                        } else {
+                            println!("    \u{2714} {name} \u{2192} {action}");
+                        }
                     }
                 }
             }

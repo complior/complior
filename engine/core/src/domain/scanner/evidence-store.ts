@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { Evidence } from './evidence.js';
@@ -50,6 +50,14 @@ const EMPTY_CHAIN = (projectPath: string): EvidenceChain => ({
   lastHash: '',
 });
 
+// --- Constants ---
+
+/** Maximum entries before oldest are rotated out */
+const MAX_ENTRIES = 1000;
+
+/** Maximum file size in bytes before chain is reset (50 MB) */
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
 // --- Factory ---
 
 export const createEvidenceStore = (
@@ -63,13 +71,29 @@ export const createEvidenceStore = (
   const loadChain = async (): Promise<EvidenceChain> => {
     if (cachedChain) return cachedChain;
 
+    const projectPath = dirname(dirname(dirname(storePath)));
+
     try {
+      // Check file size before reading to avoid loading oversized chains
+      const fileStat = await stat(storePath);
+      if (fileStat.size > MAX_FILE_SIZE) {
+        // Chain is oversized — reset with warning
+        cachedChain = EMPTY_CHAIN(projectPath);
+        return cachedChain;
+      }
+
       const raw = await readFile(storePath, 'utf-8');
-      cachedChain = JSON.parse(raw) as EvidenceChain;
+      const parsed = JSON.parse(raw) as EvidenceChain;
+
+      // Validate basic structure
+      if (!parsed || !Array.isArray(parsed.entries)) {
+        cachedChain = EMPTY_CHAIN(projectPath);
+        return cachedChain;
+      }
+
+      cachedChain = parsed;
       return cachedChain;
     } catch {
-      // Extract project path from store path: .complior/evidence/chain.json → project root
-      const projectPath = dirname(dirname(dirname(storePath)));
       cachedChain = EMPTY_CHAIN(projectPath);
       return cachedChain;
     }
@@ -102,9 +126,14 @@ export const createEvidenceStore = (
       lastHash = hash;
     }
 
+    // Rotate: keep only the newest MAX_ENTRIES entries
+    const trimmedEntries = newEntries.length > MAX_ENTRIES
+      ? newEntries.slice(newEntries.length - MAX_ENTRIES)
+      : newEntries;
+
     const updated: EvidenceChain = {
       ...chain,
-      entries: Object.freeze(newEntries),
+      entries: Object.freeze(trimmedEntries),
       lastHash,
     };
 
