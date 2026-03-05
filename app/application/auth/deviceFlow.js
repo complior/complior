@@ -88,7 +88,7 @@
         refreshToken,
         expiresIn: 3600,
         tokenType: 'Bearer',
-        email: user.email || null,
+        userEmail: user.email || null,
         orgName: user.orgName || null,
       };
     }
