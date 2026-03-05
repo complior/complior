@@ -251,7 +251,7 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
     <header style={headerStyle}>
       <nav style={navStyle}>
         {/* Logo — .logo */}
-        <Link href={`/${locale}`} style={logoStyle}>
+        <Link href={mode === 'app' ? `/${locale}/dashboard` : mode === 'admin' ? `/${locale}/admin/dashboard` : `/${locale}`} style={logoStyle}>
           Complior<span style={logoDotStyle}>.ai</span>
         </Link>
 

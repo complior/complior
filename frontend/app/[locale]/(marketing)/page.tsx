@@ -1,6 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { getSession } from '@/lib/auth';
 import { Hero } from '@/components/landing/Hero';
 import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
@@ -18,6 +22,28 @@ const FAQ = dynamic(() => import('@/components/landing/FAQ').then(m => ({ defaul
 const CTASection = dynamic(() => import('@/components/landing/CTASection').then(m => ({ default: m.CTASection })));
 
 export default function LandingPage() {
+  const router = useRouter();
+  const locale = useLocale();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    getSession().then((session) => {
+      if (session) {
+        router.replace(`/${locale}/dashboard`);
+      } else {
+        setReady(true);
+      }
+    });
+  }, [router, locale]);
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--b2)] border-t-[var(--teal)]" />
+      </div>
+    );
+  }
+
   return (
     <>
       <Hero />
