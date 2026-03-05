@@ -24,14 +24,9 @@
     const tool = await tq.findOne('AITool', parsed.id);
     if (!tool) throw new errors.NotFoundError('AITool', parsed.id);
 
-    // Hard-delete if draft (not yet classified), soft-delete otherwise
-    if (!tool.wizardCompleted && !tool.riskLevel) {
-      await tq.remove('AITool', parsed.id);
-    } else {
-      await tq.update('AITool', parsed.id, {
-        complianceStatus: 'non_compliant',
-      });
-    }
+    // Hard-delete: user explicitly requested deletion
+    // Related records (RiskClassification, etc.) cascade via FK
+    await tq.remove('AITool', parsed.id);
 
     await lib.audit.createAuditEntry({
       userId: user.id,
