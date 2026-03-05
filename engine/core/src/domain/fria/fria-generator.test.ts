@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateFria } from './fria-generator.js';
+import { generateFria, generateFriaStructured } from './fria-generator.js';
 import type { AgentManifest } from '../../types/passport.types.js';
 
 const TEMPLATE = `# Template 3: Fundamental Rights Impact Assessment (FRIA)
@@ -220,5 +220,93 @@ describe('generateFria', () => {
     expect(result.manualFields).toContain('Fundamental Rights risk descriptions');
     expect(result.manualFields).toContain('Mitigation measures');
     expect(result.manualFields).toContain('Decision-maker sign-off');
+  });
+
+  it('includes structured payload in result', () => {
+    const result = generateFria({ manifest: createManifest(), template: TEMPLATE });
+    expect(result.structured).toBeDefined();
+    expect(result.structured.toolSlug).toBe('agent-test-001');
+    expect(result.structured.sections.general_info.toolName).toBe('Test Agent');
+  });
+});
+
+describe('generateFriaStructured', () => {
+  it('maps general_info from manifest', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '' });
+    expect(s.toolSlug).toBe('agent-test-001');
+    expect(s.sections.general_info.toolName).toBe('Test Agent');
+    expect(s.sections.general_info.vendor).toBe('Acme Corp');
+    expect(s.sections.general_info.purpose).toBe('An AI agent for testing compliance');
+    expect(s.sections.general_info.riskLevel).toBe('high');
+    expect(s.sections.general_info.version).toBe('1.0.0');
+    expect(s.sections.general_info.provider).toBe('OpenAI');
+  });
+
+  it('uses organization option over manifest.owner.team', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '', organization: 'Custom Org' });
+    expect(s.sections.general_info.organisation).toBe('Custom Org');
+  });
+
+  it('falls back to owner.team for organisation', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '' });
+    expect(s.sections.general_info.organisation).toBe('Acme Corp');
+  });
+
+  it('fills assessorName when assessor provided', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '', assessor: 'Jane Doe' });
+    expect(s.sections.general_info.assessorName).toBe('Jane Doe');
+  });
+
+  it('generates 8 Charter rights in specific_risks', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '' });
+    expect(s.sections.specific_risks.risks).toHaveLength(8);
+    expect(s.sections.specific_risks.risks[0]!.right).toBe('Non-discrimination');
+    expect(s.sections.specific_risks.risks[0]!.article).toBe('Art. 21');
+  });
+
+  it('pre-fills first risk severity from high-risk passport', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '' });
+    expect(s.sections.specific_risks.risks[0]!.severity).toBe('H');
+    expect(s.sections.specific_risks.risks[1]!.severity).toBe('');
+  });
+
+  it('sets severity L for minimal risk', () => {
+    const manifest = createManifest({
+      compliance: { ...createManifest().compliance, eu_ai_act: { ...createManifest().compliance.eu_ai_act, risk_class: 'minimal' } },
+    } as Partial<AgentManifest>);
+    const s = generateFriaStructured({ manifest, template: '' });
+    expect(s.sections.specific_risks.risks[0]!.severity).toBe('L');
+  });
+
+  it('derives human_oversight from autonomy level L2', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '' });
+    expect(s.sections.human_oversight.hasHumanOversight).toBe(true);
+    expect(s.sections.human_oversight.oversightType).toBe('pre_decision');
+    expect(s.sections.human_oversight.mechanism).toContain('3 human approval gate(s)');
+  });
+
+  it('derives human_oversight from autonomy level L4', () => {
+    const manifest = createManifest({ autonomy_level: 'L4' } as Partial<AgentManifest>);
+    const s = generateFriaStructured({ manifest, template: '' });
+    expect(s.sections.human_oversight.hasHumanOversight).toBe(false);
+    expect(s.sections.human_oversight.oversightType).toBe('post_hoc');
+  });
+
+  it('leaves manual fields as empty strings/arrays', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '' });
+    expect(s.sections.general_info.deploymentContext).toBe('');
+    expect(s.sections.general_info.geographicScope).toBe('');
+    expect(s.sections.affected_persons.categories).toEqual([]);
+    expect(s.sections.affected_persons.description).toBe('');
+    expect(s.sections.mitigation_measures.measures).toEqual([]);
+    expect(s.sections.monitoring_plan.metrics).toEqual([]);
+    expect(s.sections.monitoring_plan.frequency).toBe('');
+  });
+
+  it('generates valid assessmentId and date', () => {
+    const s = generateFriaStructured({ manifest: createManifest(), template: '' });
+    const year = new Date().getFullYear();
+    expect(s.assessmentId).toMatch(new RegExp(`^FRIA-${year}-\\d{3}$`));
+    expect(s.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

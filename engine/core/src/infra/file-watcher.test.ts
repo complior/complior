@@ -11,24 +11,19 @@ import { describe, it, expect } from 'vitest';
 /** Reproduces the extension filter from file-watcher.ts */
 const WATCHED_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs|json|yaml|yml|md)$/i;
 
-/** Reproduces the ignored-directory filter from file-watcher.ts */
-const IGNORED_PATTERNS = [
-  '**/node_modules/**',
-  '**/.git/**',
-  '**/dist/**',
-  '**/build/**',
-  '**/coverage/**',
-];
+/** Reproduces the ignored-directory set from file-watcher.ts */
+const IGNORED_DIRS = new Set([
+  'node_modules', '.git', 'dist', 'build', 'target', 'coverage',
+  '.next', '.nuxt', 'out', '.complior', '.cache',
+]);
 
 function isWatched(filePath: string): boolean {
   return WATCHED_EXTENSIONS.test(filePath);
 }
 
 function isIgnoredDir(filePath: string): boolean {
-  return IGNORED_PATTERNS.some((pattern) => {
-    const segment = pattern.replace(/\*\*\//g, '').replace('/**', '');
-    return filePath.includes(`/${segment}/`) || filePath.startsWith(`${segment}/`);
-  });
+  const segments = filePath.split('/');
+  return segments.some((s) => IGNORED_DIRS.has(s));
 }
 
 // US-S0202: named tests
@@ -54,6 +49,11 @@ describe('FileWatcher — ignored directories', () => {
     expect(isIgnoredDir('src/node_modules/foo/bar.ts')).toBe(true);
     expect(isIgnoredDir('.git/config')).toBe(true);
     expect(isIgnoredDir('dist/index.js')).toBe(true);
+    // .complior internal files should be ignored
+    expect(isIgnoredDir('.complior/evidence/chain.json')).toBe(true);
+    expect(isIgnoredDir('.complior/reports/fria-agent.json')).toBe(true);
+    expect(isIgnoredDir('.complior/agents/my-agent-manifest.json')).toBe(true);
+    expect(isIgnoredDir('/home/user/project/.complior/evidence/chain.json')).toBe(true);
     // Regular source files should NOT be ignored
     expect(isIgnoredDir('src/app.ts')).toBe(false);
     expect(isIgnoredDir('docs/compliance/fria.md')).toBe(false);

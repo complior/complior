@@ -15,20 +15,17 @@ const log = createLogger('file-watcher');
 /** File extensions that can affect compliance score. */
 const WATCHED_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs|json|yaml|yml|md)$/i;
 
-/** Directories to always ignore. */
-const IGNORED_PATTERNS = [
-  '**/node_modules/**',
-  '**/.git/**',
-  '**/dist/**',
-  '**/build/**',
-  '**/target/**',
-  '**/coverage/**',
-  '**/.next/**',
-  '**/.nuxt/**',
-  '**/out/**',
-  '**/.complior/**',
-  '**/.cache/**',
-];
+/** Directories to always ignore (chokidar v4: function filter, not globs). */
+const IGNORED_DIRS = new Set([
+  'node_modules', '.git', 'dist', 'build', 'target', 'coverage',
+  '.next', '.nuxt', 'out', '.complior', '.cache',
+]);
+
+/** Check if a file path should be ignored (any segment matches IGNORED_DIRS). */
+const isIgnored = (filePath: string): boolean => {
+  const segments = filePath.split('/');
+  return segments.some((s) => IGNORED_DIRS.has(s));
+};
 
 /** Debounce interval matching the 200ms Compliance Gate requirement. */
 const DEBOUNCE_MS = 200;
@@ -74,7 +71,7 @@ export const createFileWatcher = (
     }
 
     watcher = chokidar.watch(projectPath, {
-      ignored: IGNORED_PATTERNS,
+      ignored: isIgnored,
       persistent: true,
       ignoreInitial: true,       // don't fire on startup
       awaitWriteFinish: {
@@ -85,10 +82,10 @@ export const createFileWatcher = (
 
     watcher
       .on('add', (filePath: string) => {
-        if (WATCHED_EXTENSIONS.test(filePath)) scheduleEmit(filePath);
+        if (WATCHED_EXTENSIONS.test(filePath) && !isIgnored(filePath)) scheduleEmit(filePath);
       })
       .on('change', (filePath: string) => {
-        if (WATCHED_EXTENSIONS.test(filePath)) scheduleEmit(filePath);
+        if (WATCHED_EXTENSIONS.test(filePath) && !isIgnored(filePath)) scheduleEmit(filePath);
       })
       .on('error', (err: unknown) => {
         log.error('File watcher error:', err);

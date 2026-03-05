@@ -17,6 +17,7 @@ export interface SyncPassportPayload {
   readonly framework?: string;
   readonly modelProvider?: string;
   readonly modelId?: string;
+  readonly dataResidency?: string;
   readonly lifecycleStatus?: string;
   readonly compliorScore?: number;
   readonly manifestVersion?: string;
@@ -43,6 +44,7 @@ export interface SaasClient {
   readonly syncPassport: (token: string, payload: SyncPassportPayload) => Promise<Record<string, unknown>>;
   readonly syncScan: (token: string, payload: SyncScanPayload) => Promise<Record<string, unknown>>;
   readonly syncDocuments: (token: string, documents: readonly SyncDocPayload[]) => Promise<Record<string, unknown>>;
+  readonly syncFria: (token: string, payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
   readonly syncStatus: (token: string) => Promise<Record<string, unknown>>;
   readonly fetchDataBundle: (etag?: string) => Promise<{ data: Record<string, unknown> | null; etag?: string }>;
 }
@@ -88,6 +90,7 @@ export const createSaasClient = (baseUrl: string): SaasClient => {
     syncPassport: (token: string, payload: SyncPassportPayload) => postJson('/api/sync/passport', token, payload),
     syncScan: (token: string, payload: SyncScanPayload) => postJson('/api/sync/scan', token, payload),
     syncDocuments: (token: string, documents: readonly SyncDocPayload[]) => postJson('/api/sync/documents', token, { documents }),
+    syncFria: (token: string, payload: Record<string, unknown>) => postJson('/api/sync/fria', token, payload),
     syncStatus: (token: string) => getJson('/api/sync/status', token),
     fetchDataBundle: async (etag?: string) => {
       log.debug('Fetching data bundle');

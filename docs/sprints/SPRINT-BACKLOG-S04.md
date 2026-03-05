@@ -230,6 +230,23 @@
 
 ---
 
+### US-S04-16: FRIA Structured JSON + SaaS Sync
+**Приоритет:** HIGH
+**Backlog:** C.D01, Sync
+
+Как разработчик, я хочу чтобы `complior agent fria` генерировал structured JSON рядом с markdown и `complior sync` отправлял его в SaaS, чтобы FRIA данные были доступны в дашборде.
+
+**Acceptance Criteria:**
+- [ ] `complior agent fria <name>` генерирует `.md` и `.json` в `.complior/reports/`
+- [ ] JSON содержит 6 секций (general_info, affected_persons, specific_risks, human_oversight, mitigation_measures, monitoring_plan) с pre-filled полями из manifest
+- [ ] `complior sync` отправляет FRIA JSON на SaaS endpoint `POST /api/sync/fria`
+- [ ] Пустые (manual) поля = пустые строки / пустые массивы
+- [ ] Document sync ищет в `.complior/reports/` (не `docs/compliance/`)
+- [ ] Markdown генерация не сломана — backward compatible
+- [ ] Существующие тесты проходят
+
+---
+
 ## Метрики спринта
 
 | Метрика | Цель |
@@ -244,6 +261,7 @@
 | Scanner: context-aware banned packages | ✅ |
 | Scanner: severity-weighted scoring | ✅ |
 | Obligations page: per-agent + categories | ✅ |
+| FRIA structured JSON + SaaS sync | ✅ |
 | Tests passing | cargo test + vitest |
 
 ---

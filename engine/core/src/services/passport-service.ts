@@ -265,13 +265,14 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       approval: options?.approval,
     });
 
-    // Save FRIA report to .complior/reports/
+    // Save FRIA report to .complior/reports/ (markdown + structured JSON)
     const path = projectPath ?? getProjectPath();
     const reportsDir = join(path, '.complior', 'reports');
     await mkdir(reportsDir, { recursive: true });
-    const fileName = `fria-${name}.md`;
-    const savedPath = join(reportsDir, fileName);
+    const savedPath = join(reportsDir, `fria-${name}.md`);
     await writeFile(savedPath, result.markdown);
+    const jsonPath = join(reportsDir, `fria-${name}.json`);
+    await writeFile(jsonPath, JSON.stringify(result.structured, null, 2));
 
     // C.R20: Record FRIA generation in evidence chain
     if (deps.evidenceStore) {

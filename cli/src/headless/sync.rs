@@ -81,6 +81,43 @@ pub async fn run_sync(
         }
     }
 
+    // Sync FRIA assessments (after passports, before scans — FRIA needs AITool)
+    if sync_all || docs {
+        print!("  FRIA: ");
+        match engine.post_json("/sync/fria", &serde_json::json!({
+            "token": tokens.access_token,
+            "saasUrl": config.project_api_url,
+        })).await {
+            Ok(result) => {
+                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
+                let created = result.get("created").and_then(|v| v.as_i64()).unwrap_or(0);
+                let updated = result.get("updated").and_then(|v| v.as_i64()).unwrap_or(0);
+
+                if synced > 0 {
+                    println!("\u{2705} {synced} synced ({created} created, {updated} updated)");
+                    if let Some(results) = result.get("results").and_then(|v| v.as_array()) {
+                        for r in results {
+                            let name = r.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                            let action = r.get("action").and_then(|v| v.as_str()).unwrap_or("?");
+                            if action == "error" {
+                                let err_msg = r.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                                println!("    \u{2717} {name} \u{2192} {err_msg}");
+                            } else {
+                                println!("    \u{2714} {name} \u{2192} {action}");
+                            }
+                        }
+                    }
+                } else {
+                    println!("\u{2139}\u{fe0f}  No FRIA reports to sync");
+                }
+            }
+            Err(e) => {
+                println!("\u{274c} Failed: {e}");
+                errors += 1;
+            }
+        }
+    }
+
     // Sync scans
     if sync_all || scan {
         print!("  Scans: ");

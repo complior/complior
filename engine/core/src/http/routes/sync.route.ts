@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { createSaasClient, type SyncPassportPayload, type SyncDocPayload } from '../../infra/saas-client.js';
 import type { AgentManifest } from '../../types/passport.types.js';
+import { mapDomain } from '../../domain/passport/domain-mapper.js';
 import { createLogger } from '../../infra/logger.js';
 import { ValidationError } from '../../types/errors.js';
 
@@ -34,15 +35,6 @@ const mapRiskLevel = (riskClass?: string): string | undefined => {
   return map[riskClass] ?? undefined;
 };
 
-// Map AgentManifest domain to SaaS domain
-const mapDomain = (manifest: AgentManifest): string => {
-  const type = manifest.type;
-  if (type === 'autonomous') return 'analytics';
-  const tools = manifest.permissions?.tools ?? [];
-  if (tools.some((t) => t.includes('code') || t.includes('file'))) return 'coding';
-  return 'other';
-};
-
 // Map manifest to SaaS passport payload
 const mapPassport = (manifest: AgentManifest): SyncPassportPayload => ({
   name: manifest.name,
@@ -59,6 +51,7 @@ const mapPassport = (manifest: AgentManifest): SyncPassportPayload => ({
   framework: manifest.framework,
   modelProvider: manifest.model?.provider,
   modelId: manifest.model?.model_id,
+  dataResidency: manifest.model?.data_residency ?? undefined,
   lifecycleStatus: manifest.lifecycle?.status ?? undefined,
   compliorScore: manifest.compliance?.complior_score != null ? Math.round(manifest.compliance.complior_score) : undefined,
   manifestVersion: manifest.manifest_version,
@@ -192,6 +185,46 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     return c.json(result);
   });
 
+  // POST /sync/fria — push structured FRIA assessments to SaaS
+  app.post('/sync/fria', async (c) => {
+    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
+    const parsed = SyncRequestSchema.safeParse(body);
+    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+
+    const { token, saasUrl } = parsed.data;
+    const client = createSaasClient(saasUrl ?? DEFAULT_SAAS_URL);
+    const projectPath = deps.getProjectPath();
+    const reportsDir = join(projectPath, '.complior', 'reports');
+
+    let friaFiles: string[];
+    try {
+      friaFiles = (await readdir(reportsDir)).filter((f) => f.startsWith('fria-') && f.endsWith('.json'));
+    } catch {
+      return c.json({ synced: 0, created: 0, updated: 0, results: [], message: 'No FRIA reports found' });
+    }
+
+    const results: Record<string, unknown>[] = [];
+    let created = 0;
+    let updated = 0;
+
+    for (const file of friaFiles) {
+      try {
+        const content = await readFile(join(reportsDir, file), 'utf-8');
+        const payload: Record<string, unknown> = JSON.parse(content);
+        const result = await client.syncFria(token, payload);
+        const name = (payload['toolSlug'] as string) ?? file;
+        results.push({ name, ...result });
+        if (result.action === 'created') created++;
+        if (result.action === 'updated') updated++;
+      } catch (err) {
+        log.error(`Failed to sync FRIA ${file}:`, err);
+        results.push({ name: file, action: 'error', error: String(err) });
+      }
+    }
+
+    return c.json({ synced: friaFiles.length, created, updated, results });
+  });
+
   // POST /sync/documents — push compliance docs to SaaS
   app.post('/sync/documents', async (c) => {
     const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
@@ -201,26 +234,27 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     const { token, saasUrl } = parsed.data;
     const client = createSaasClient(saasUrl ?? DEFAULT_SAAS_URL);
     const projectPath = deps.getProjectPath();
-    const docsDir = join(projectPath, 'docs', 'compliance');
+    const reportsDir = join(projectPath, '.complior', 'reports');
 
     let files: string[];
     try {
-      files = (await readdir(docsDir)).filter((f) => f.endsWith('.md'));
+      files = (await readdir(reportsDir)).filter((f) => f.endsWith('.md'));
     } catch {
       return c.json({ synced: 0, created: 0, updated: 0, results: [], message: 'No compliance docs found' });
     }
 
     const documents: SyncDocPayload[] = [];
     for (const file of files) {
-      const baseName = file.replace('.md', '');
-      const docType = DOC_TYPE_MAP[baseName];
+      // Strip fria- prefix and .md extension for type mapping
+      const baseName = file.replace(/^fria-/, '').replace(/-manifest/, '').replace('.md', '');
+      const docType = file.startsWith('fria-') ? 'fria' : DOC_TYPE_MAP[baseName];
       if (!docType) continue;
 
       try {
-        const content = await readFile(join(docsDir, file), 'utf-8');
+        const content = await readFile(join(reportsDir, file), 'utf-8');
         documents.push({
           type: docType,
-          title: baseName.replace(/-/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()),
+          title: file.replace('.md', '').replace(/-/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()),
           content,
         });
       } catch {

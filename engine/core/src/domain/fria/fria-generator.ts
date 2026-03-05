@@ -1,4 +1,5 @@
 import type { AgentManifest } from '../../types/passport.types.js';
+import { mapDomain } from '../passport/domain-mapper.js';
 
 // --- Types ---
 
@@ -14,8 +15,83 @@ export interface FriaGeneratorInput {
 
 export interface FriaResult {
   readonly markdown: string;
+  readonly structured: FriaStructuredPayload;
   readonly prefilledFields: readonly string[];
   readonly manualFields: readonly string[];
+}
+
+/** Structured FRIA payload — matches SaaS FRIASection schema */
+export interface FriaStructuredPayload {
+  readonly toolSlug: string;
+  readonly assessmentId: string;
+  readonly date: string;
+  readonly sections: {
+    readonly general_info: {
+      readonly toolName: string;
+      readonly vendor: string;
+      readonly purpose: string;
+      readonly domain: string;
+      readonly riskLevel: string;
+      readonly version: string;
+      readonly provider: string;
+      readonly deploymentContext: string;
+      readonly assessorName: string;
+      readonly assessorTitle: string;
+      readonly geographicScope: string;
+      readonly organisation: string;
+      readonly organisationType: string;
+    };
+    readonly affected_persons: {
+      readonly categories: readonly string[];
+      readonly vulnerableGroups: boolean;
+      readonly estimatedCount: string;
+      readonly description: string;
+    };
+    readonly specific_risks: {
+      readonly risks: ReadonlyArray<{
+        readonly right: string;
+        readonly article: string;
+        readonly severity: string;
+        readonly likelihood: string;
+        readonly description: string;
+        readonly affectedGroups: string;
+        readonly mitigation: string;
+      }>;
+    };
+    readonly human_oversight: {
+      readonly hasHumanOversight: boolean;
+      readonly oversightType: string;
+      readonly mechanism: string;
+      readonly responsibleRole: string;
+      readonly escalationProcess: string;
+      readonly reviewFrequency: string;
+    };
+    readonly mitigation_measures: {
+      readonly measures: ReadonlyArray<{
+        readonly risk: string;
+        readonly measure: string;
+        readonly responsible: string;
+        readonly deadline: string;
+      }>;
+      readonly incidentResponse: string;
+      readonly communicationPlan: string;
+      readonly suspensionCriteria: string;
+      readonly remediationProcess: string;
+      readonly internalComplaint: string;
+      readonly externalComplaint: string;
+    };
+    readonly monitoring_plan: {
+      readonly frequency: string;
+      readonly metrics: readonly string[];
+      readonly responsibleTeam: string;
+      readonly reviewProcess: string;
+      readonly nextReviewDate: string;
+      readonly dpiaReference: string;
+      readonly legalBasis: string;
+      readonly overallRiskDecision: string;
+      readonly conditionsForDeployment: string;
+    };
+  };
 }
 
 // --- Helpers ---
@@ -59,7 +135,104 @@ const deriveOversightDescription = (manifest: AgentManifest): string => {
   return parts.join(' ');
 };
 
-// --- Generator ---
+// --- Charter Rights for FRIA ---
+
+const CHARTER_RIGHTS = [
+  { right: 'Non-discrimination', article: 'Art. 21' },
+  { right: 'Privacy and data protection', article: 'Arts. 7-8' },
+  { right: 'Freedom of expression', article: 'Art. 11' },
+  { right: 'Human dignity', article: 'Art. 1' },
+  { right: 'Right to effective remedy', article: 'Art. 47' },
+  { right: 'Rights of the child', article: 'Art. 24' },
+  { right: 'Workers\' rights', article: 'Art. 31' },
+  { right: 'Right to good administration', article: 'Art. 41' },
+] as const;
+
+const mapOversightType = (level: string): string => {
+  if (level === 'L1' || level === 'L2') return 'pre_decision';
+  if (level === 'L3') return 'concurrent';
+  return 'post_hoc';
+};
+
+/** Generate structured FRIA JSON from manifest data */
+export const generateFriaStructured = (input: FriaGeneratorInput): FriaStructuredPayload => {
+  const { manifest, organization, assessor } = input;
+  const today = new Date().toISOString().split('T')[0]!;
+  const riskClass = manifest.compliance?.eu_ai_act?.risk_class ?? '';
+  const firstSeverity = deriveRiskLevel(riskClass);
+
+  return {
+    toolSlug: manifest.agent_id,
+    assessmentId: generateFriaId(),
+    date: today,
+    sections: {
+      general_info: {
+        toolName: manifest.display_name,
+        vendor: manifest.owner?.team ?? '',
+        purpose: manifest.description,
+        domain: mapDomain(manifest),
+        riskLevel: riskClass,
+        version: manifest.version,
+        provider: manifest.model?.provider ?? '',
+        deploymentContext: '',
+        assessorName: assessor ?? '',
+        assessorTitle: '',
+        geographicScope: '',
+        organisation: organization ?? manifest.owner?.team ?? '',
+        organisationType: '',
+      },
+      affected_persons: {
+        categories: [],
+        vulnerableGroups: false,
+        estimatedCount: '',
+        description: '',
+      },
+      specific_risks: {
+        risks: CHARTER_RIGHTS.map((cr, i) => ({
+          right: cr.right,
+          article: cr.article,
+          severity: i === 0 && firstSeverity !== '[H/M/L/N]' ? firstSeverity : '',
+          likelihood: '',
+          description: '',
+          affectedGroups: '',
+          mitigation: '',
+        })),
+      },
+      human_oversight: {
+        hasHumanOversight: ['L1', 'L2', 'L3'].includes(manifest.autonomy_level),
+        oversightType: mapOversightType(manifest.autonomy_level),
+        mechanism: manifest.autonomy_evidence?.human_approval_gates > 0
+          ? `${manifest.autonomy_evidence.human_approval_gates} human approval gate(s) detected`
+          : '',
+        responsibleRole: '',
+        escalationProcess: '',
+        reviewFrequency: '',
+      },
+      mitigation_measures: {
+        measures: [],
+        incidentResponse: '',
+        communicationPlan: '',
+        suspensionCriteria: '',
+        remediationProcess: '',
+        internalComplaint: '',
+        externalComplaint: '',
+      },
+      monitoring_plan: {
+        frequency: '',
+        metrics: [],
+        responsibleTeam: '',
+        reviewProcess: '',
+        nextReviewDate: '',
+        dpiaReference: '',
+        legalBasis: '',
+        overallRiskDecision: '',
+        conditionsForDeployment: '',
+      },
+    },
+  };
+};
+
+// --- Markdown Generator ---
 
 export const generateFria = (input: FriaGeneratorInput): FriaResult => {
   const { manifest, template, organization, assessor, impact, mitigation, approval } = input;
@@ -204,8 +377,11 @@ export const generateFria = (input: FriaGeneratorInput): FriaResult => {
 
   manualFields.push('Market surveillance notification');
 
+  const structured = generateFriaStructured(input);
+
   return Object.freeze({
     markdown,
+    structured,
     prefilledFields: Object.freeze([...prefilledFields]),
     manualFields: Object.freeze([...manualFields]),
   });
