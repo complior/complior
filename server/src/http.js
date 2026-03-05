@@ -296,7 +296,7 @@ const initRawBodyForWebhooks = (server) => {
         req.rawBody = body;
       }
       try {
-        done(null, JSON.parse(body));
+        done(null, body ? JSON.parse(body) : undefined);
       } catch (err) {
         done(err);
       }

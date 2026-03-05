@@ -9,6 +9,7 @@ import { ClassificationTab } from '@/components/tools/ClassificationTab';
 import { DocumentsTab } from '@/components/tools/DocumentsTab';
 import { AuditTrailTab } from '@/components/tools/AuditTrailTab';
 import { AlternativesSection } from '@/components/tools/AlternativesSection';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/Dialog';
 import { api, type AIToolDetail } from '@/lib/api';
 
 type Tab = 'requirements' | 'classification' | 'documents' | 'audit';
@@ -23,6 +24,7 @@ export default function ToolDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('requirements');
   const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [reclassifying, setReclassifying] = useState(false);
 
   const fetchTool = useCallback(async () => {
@@ -43,7 +45,7 @@ export default function ToolDetailPage() {
   }, [id, fetchTool]);
 
   const handleDelete = async () => {
-    if (!tool || !confirm('Are you sure you want to delete this tool?')) return;
+    if (!tool) return;
     setDeleting(true);
     try {
       await api.tools.delete(tool.id);
@@ -51,6 +53,7 @@ export default function ToolDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
       setDeleting(false);
+      setDeleteOpen(false);
     }
   };
 
@@ -108,7 +111,7 @@ export default function ToolDetailPage() {
     <div className="max-w-[800px] mx-auto px-6 pt-20 pb-12">
       <ToolDetailHeader
         tool={tool}
-        onDelete={handleDelete}
+        onDelete={() => setDeleteOpen(true)}
         onReclassify={handleReclassify}
         onOpenFria={tool.riskLevel === 'high' || tool.riskLevel === 'prohibited' ? () => setActiveTab('documents') : undefined}
         deleting={deleting}
@@ -169,6 +172,38 @@ export default function ToolDetailPage() {
           currentToolName={tool.name}
         />
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="bg-[var(--card)] border-[var(--b2)]">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--dark)]">{t('deleteConfirmTitle')}</DialogTitle>
+            <DialogDescription className="text-[var(--dark5)]">
+              {t('deleteConfirmDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-1 rounded-lg bg-[var(--bg2)] px-3 py-2">
+            <p className="text-sm font-medium text-[var(--dark3)]">{tool.name}</p>
+            {tool.vendorName && <p className="text-xs text-[var(--dark5)]">{tool.vendorName}</p>}
+          </div>
+          <DialogFooter className="mt-4 gap-2">
+            <button
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-[var(--dark4)] hover:bg-[var(--bg2)] transition-colors"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-[var(--coral)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {deleting ? t('deleting') : t('deleteConfirmButton')}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

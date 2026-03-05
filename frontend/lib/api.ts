@@ -19,12 +19,15 @@ async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
     if (qs) url += `?${qs}`;
   }
 
+  const hasBody = fetchOptions.body !== undefined;
+  const headers: Record<string, string> = {
+    ...fetchOptions.headers as Record<string, string>,
+  };
+  if (hasBody) headers['Content-Type'] = 'application/json';
+
   const res = await fetch(url, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...fetchOptions.headers as Record<string, string>,
-    },
+    headers,
     ...fetchOptions,
   }).catch(() => new Response(JSON.stringify({ error: { message: 'Service unavailable' } }), { status: 503 }));
 
@@ -34,7 +37,8 @@ async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
     throw new Error(body.error?.message || `API error: ${res.status}`);
   }
 
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : ({} as T);
 }
 
 export interface UserProfile {
