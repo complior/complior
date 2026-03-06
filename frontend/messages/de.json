@@ -52,7 +52,8 @@
     "adminSubscriptions": "Abonnements",
     "members": "Mitglieder",
     "settings": "Einstellungen",
-    "registry": "KI-Register"
+    "registry": "KI-Register",
+    "auditPackage": "Audit-Paket"
   },
   "footer": {
     "brand": "Automatisierte EU AI Act Compliance. Entwickelt in Europa, für die Welt.",

@@ -1,11 +1,17 @@
 # DATABASE.md — AI Act Compliance Platform
 
-**Версия:** 3.0.0
-**Дата:** 2026-02-21
+**Версия:** 4.0.0
+**Дата:** 2026-03-05
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
 **Зависимости:** ARCHITECTURE.md v3.0.0
 
+> **v4.0.0 (2026-03-05):** Sprint 8 — CLI-SaaS Bridge + Compliance Ready.
+> - **3 NEW tables:** SyncHistory, GapAnalysis, AuditPackage
+> - **Modified:** AITool (+framework, +modelProvider, +modelId, +syncMetadata), ComplianceDocument (+organization FK, +approvedBy, +approvedAt, +fileUrl, +metadata), RiskClassification (+articleReferences, +crossValidation, +version, +isCurrent, +classifiedBy, +cli_import method), Requirement (+estimatedEffortHours, +guidance, +translations, +obligationIds)
+> - **BC rename:** "TUI Data Collection" → "CLI Sync & Data Collection" (ScanResult + SyncHistory)
+> - **Table count:** ~36 → ~39
+>
 > **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model.
 > - **Auth:** Ory → WorkOS: User.oryId → User.workosUserId. Organization += workosOrgId.
 > - **6 новых таблиц (2 новых BC):**
@@ -132,8 +138,15 @@ erDiagram
     Organization ||--o{ APIKey : "owns keys"
     APIKey ||--o{ APIUsage : "tracked by"
 
-    %% TUI Data Collection Context (NEW v3.0)
+    %% CLI Sync & Data Collection Context (renamed from TUI Data Collection, v4.0)
     Organization ||--o{ ScanResult : "receives scans"
+    Organization ||--o{ SyncHistory : "tracks syncs"
+
+    %% Gap Analysis (under Deployer Compliance, v4.0)
+    AITool ||--o{ GapAnalysis : "analyzed via"
+
+    %% Audit Package (under Deployer Compliance, v4.0)
+    Organization ||--o{ AuditPackage : "generates"
 
     %% === Entity definitions ===
 
@@ -263,9 +276,13 @@ erDiagram
         string vendorName
         string vendorCountry
         boolean employeesInformed "Art 26(7)"
+        string framework "max 100, optional (v4.0)"
+        string modelProvider "max 100, optional (v4.0)"
+        string modelId "max 255, optional (v4.0)"
         string riskLevel
         string complianceStatus
         integer complianceScore
+        jsonb syncMetadata "CLI detection patterns etc (v4.0)"
         datetime createdAt
     }
 
@@ -297,7 +314,12 @@ erDiagram
         text reasoning
         jsonb ruleResult
         jsonb llmResult
-        string method
+        jsonb crossValidation "optional (v4.0)"
+        string method "rule_only rule_plus_llm cross_validated cli_import"
+        jsonb articleReferences "array of refs (v4.0)"
+        integer version "default 1 (v4.0)"
+        boolean isCurrent "default true INDEX (v4.0)"
+        bigint classifiedById FK "User (v4.0)"
         datetime createdAt
     }
 
@@ -310,6 +332,10 @@ erDiagram
         string riskLevel
         string category
         integer sortOrder
+        number estimatedEffortHours "optional (v4.0)"
+        string guidance "optional (v4.0)"
+        json translations "optional (v4.0)"
+        json obligationIds "optional (v4.0)"
     }
 
     ToolRequirement {
@@ -365,13 +391,17 @@ erDiagram
 
     ComplianceDocument {
         bigint documentId PK
+        bigint organizationId FK "tenant FK (v4.0)"
         bigint aiToolId FK
         bigint createdById FK
         string documentType
         string title
         integer version
         string status
-        datetime approvedAt
+        bigint approvedById FK "optional (v4.0)"
+        datetime approvedAt "optional (v4.0)"
+        string fileUrl "S3 URL optional (v4.0)"
+        jsonb metadata "optional (v4.0)"
     }
 
     DocumentSection {
@@ -482,6 +512,44 @@ erDiagram
         inet ip
         datetime createdAt
     }
+
+    SyncHistory {
+        bigint syncHistoryId PK
+        bigint organizationId FK
+        bigint userId FK
+        string source "cli | api"
+        string syncType "passport | scan | document | fria"
+        string status "success | conflict | error"
+        string toolSlug
+        jsonb conflicts "optional"
+        jsonb metadata "optional"
+    }
+
+    GapAnalysis {
+        bigint gapAnalysisId PK
+        bigint organizationId FK
+        bigint aiToolId FK
+        bigint createdById FK
+        number overallScore
+        jsonb categories
+        jsonb actionPlan
+        integer version "default 1"
+    }
+
+    AuditPackage {
+        bigint auditPackageId PK
+        bigint organizationId FK
+        bigint createdById FK
+        string status "queued | generating | ready | error | expired"
+        string fileUrl "optional"
+        number fileSize "optional"
+        integer toolCount "default 0"
+        integer documentCount "default 0"
+        jsonb metadata "optional"
+        datetime expiresAt "optional"
+        string errorMessage "optional"
+        datetime createdAt
+    }
 ```
 
 ---
@@ -494,14 +562,14 @@ erDiagram
 | **Inventory** | AITool, AIToolCatalog, AIToolDiscovery | 3 |
 | **Classification** | RiskClassification, Requirement, ToolRequirement, ClassificationLog | 4 |
 | **AI Literacy** | TrainingCourse, TrainingModule, LiteracyCompletion, LiteracyRequirement | 4 |
-| **Deployer Compliance** | ComplianceDocument, DocumentSection, ChecklistItem, FRIAAssessment, FRIASection | 5 |
+| **Deployer Compliance** | ComplianceDocument, DocumentSection, ChecklistItem, FRIAAssessment, FRIASection, GapAnalysis, AuditPackage | **7** |
 | **Consultation** | Conversation, ChatMessage | 2 |
 | **Monitoring** | RegulatoryUpdate, ImpactAssessment, Notification | 3 |
 | **Billing** | Subscription, Plan | 2 |
 | **Registry API** _(v3.0)_ | RegistryTool, Obligation, ScoringRule, APIKey, APIUsage | 5 |
-| **TUI Data Collection** _(v3.0)_ | ScanResult | 1 |
+| **CLI Sync & Data Collection** _(v4.0)_ | ScanResult, SyncHistory | **2** |
 | **Cross-cutting** | AuditLog | 1 |
-| **Total** | | **~36** |
+| **Total** | | **~39** |
 
 ---
 
@@ -730,6 +798,11 @@ erDiagram
     note: 'Art. 26(7): Были ли сотрудники/представители уведомлены об использовании AI?',
   },
 
+  // Technical Stack (CLI passport + wizard, v4.0)
+  framework: { type: 'string', length: { max: 100 }, required: false },
+  modelProvider: { type: 'string', length: { max: 100 }, required: false },
+  modelId: { type: 'string', length: { max: 255 }, required: false },
+
   // Step 4: Автономность и надзор (Autonomy & Oversight)
   autonomyLevel: {
     enum: ['advisory', 'semi_autonomous', 'autonomous'],
@@ -768,6 +841,9 @@ erDiagram
   // Wizard State
   wizardStep: { type: 'number', default: 1, note: 'Current wizard step (1-5)' },
   wizardCompleted: { type: 'boolean', default: false },
+
+  // CLI sync metadata (v4.0 — detectionPatterns, versions, signature, extendedFields)
+  syncMetadata: { type: 'json', required: false },
 });
 ```
 
@@ -788,6 +864,9 @@ erDiagram
 | affectedPersons | jsonb | Array |
 | vulnerableGroups | boolean | DEFAULT false |
 | dataResidency | varchar | nullable |
+| framework | varchar(100) | nullable (v4.0) |
+| modelProvider | varchar(100) | nullable (v4.0) |
+| modelId | varchar(255) | nullable (v4.0) |
 | autonomyLevel | varchar | ENUM, NOT NULL |
 | humanOversight | boolean | DEFAULT true |
 | affectsNaturalPersons | boolean | NOT NULL |
@@ -801,6 +880,7 @@ erDiagram
 | approvedById | bigint | FK, nullable |
 | approvedAt | timestamptz | nullable |
 | wizardCompleted | boolean | DEFAULT false |
+| syncMetadata | jsonb | nullable (v4.0) |
 
 **Indexes:**
 - `idx_aitool_organization` ON (organizationId) — tenant queries
@@ -871,7 +951,7 @@ erDiagram
 #### RiskClassification (Entity) — результат классификации (deployer context)
 
 ```javascript
-// schemas/RiskClassification.js
+// schemas/RiskClassification.js (v4.0: +articleReferences, +crossValidation, +version, +isCurrent, +classifiedBy, +cli_import method)
 ({
   Entity: {},
   aiTool: { type: 'AITool', delete: 'cascade' },
@@ -887,14 +967,14 @@ erDiagram
   llmResult: { type: 'json', required: false, note: '{ riskLevel, article, reasoning }' },
   crossValidation: { type: 'json', required: false, note: 'Escalation result if needed' },
   method: {
-    enum: ['rule_only', 'rule_plus_llm', 'cross_validated'],
-    note: 'Which steps of hybrid engine were used',
+    enum: ['rule_only', 'rule_plus_llm', 'cross_validated', 'cli_import'],
+    note: 'Which steps of hybrid engine were used. cli_import = imported from CLI passport',
   },
 
   // Article references
   articleReferences: { type: 'json', note: 'Array of { article, text, relevance }' },
 
-  // Versioning
+  // Versioning (v4.0)
   version: { type: 'number', default: 1 },
   isCurrent: { type: 'boolean', default: true, index: true },
   classifiedBy: { type: 'User', delete: 'restrict', note: 'Who initiated classification' },
@@ -906,7 +986,7 @@ erDiagram
 #### Requirement (Entity) — справочник требований AI Act
 
 ```javascript
-// schemas/Requirement.js
+// schemas/Requirement.js (v4.0: +estimatedEffortHours, +guidance, +translations, +obligationIds)
 ({
   Entity: {},
   code: { type: 'string', unique: true, note: 'e.g., ART_9_RMS, ART_11_TD' },
@@ -926,6 +1006,8 @@ erDiagram
   sortOrder: { type: 'number', default: 0 },
   estimatedEffortHours: { type: 'number', required: false },
   guidance: { type: 'string', required: false, note: 'Implementation guidance text' },
+  translations: { type: 'json', required: false, note: 'i18n translations' },
+  obligationIds: { type: 'json', required: false, note: 'Linked obligation IDs from Registry' },
 });
 ```
 
@@ -980,15 +1062,16 @@ erDiagram
 #### ComplianceDocument (Entity) — deployer documents
 
 ```javascript
-// schemas/ComplianceDocument.js
+// schemas/ComplianceDocument.js (v4.0: +organization FK, +approvedBy, +approvedAt, +fileUrl, +metadata, +qms_template enum)
 ({
   Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
   aiTool: { type: 'AITool', delete: 'cascade' },
   createdBy: { type: 'User', delete: 'restrict' },
   documentType: {
     enum: ['fria', 'monitoring_plan', 'usage_policy', 'employee_notification',
-           'incident_report', 'risk_assessment', 'transparency_notice'],
-    note: 'Deployer docs: FRIA (Art.27), Monitoring Plan, AI Usage Policy, Employee Notification',
+           'incident_report', 'risk_assessment', 'transparency_notice', 'qms_template'],
+    note: 'Deployer docs: FRIA (Art.27), Monitoring Plan, AI Usage Policy, Employee Notification, QMS Template',
   },
   title: { type: 'string', length: { max: 500 } },
   version: { type: 'number', default: 1 },
@@ -998,8 +1081,8 @@ erDiagram
   },
   approvedBy: { type: 'User', required: false, delete: 'restrict' },
   approvedAt: { type: 'datetime', required: false },
-  fileUrl: { type: 'string', required: false, note: 'S3 URL for exported PDF/DOCX' },
-  metadata: { type: 'json', required: false, note: '{ exportFormat, pageCount, etc. }' },
+  fileUrl: { type: 'string', required: false, note: 'S3 URL for exported PDF' },
+  metadata: { type: 'json', required: false },
 });
 ```
 
@@ -1496,9 +1579,9 @@ erDiagram
 
 ---
 
-### 4.10 TUI Data Collection Context (NEW — v3.0.0)
+### 4.10 CLI Sync & Data Collection Context (renamed from TUI Data Collection — v4.0.0)
 
-#### ScanResult (Details) — результат скана, загруженный из TUI
+#### ScanResult (Details) — результат скана, загруженный из CLI
 
 ```javascript
 // schemas/ScanResult.js (NEW — v3.0)
@@ -1532,6 +1615,127 @@ erDiagram
 
 ---
 
+#### SyncHistory (Entity) — история CLI↔SaaS синхронизации (NEW — v4.0.0)
+
+```javascript
+// schemas/SyncHistory.js (NEW — v4.0)
+// Tracks every CLI→SaaS sync operation: passport, scan, document, fria.
+// Used for conflict resolution audit trail and sync dashboard.
+({
+  Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  user: { type: 'User', delete: 'restrict' },
+  source: { enum: ['cli', 'api'], default: 'cli' },
+  syncType: { enum: ['passport', 'scan', 'document', 'fria'] },
+  status: { enum: ['success', 'conflict', 'error'] },
+  toolSlug: { type: 'string' },
+  conflicts: { type: 'json', required: false },
+  metadata: { type: 'json', required: false },
+})
+```
+
+| Column | Type | Constraints | Описание |
+|--------|------|------------|----------|
+| syncHistoryId | bigint | PK | Entity PK |
+| organizationId | bigint | FK → Organization.id, CASCADE | Tenant binding |
+| userId | bigint | FK → User.id, RESTRICT | Who performed the sync |
+| source | varchar | NOT NULL, DEFAULT 'cli' | cli or api |
+| syncType | varchar | NOT NULL, CHECK enum | passport, scan, document, fria |
+| status | varchar | NOT NULL, CHECK enum | success, conflict, error |
+| toolSlug | varchar | NOT NULL | Tool slug or project path |
+| conflicts | jsonb | nullable | Conflict details if status='conflict' |
+| metadata | jsonb | nullable | Additional sync metadata |
+
+**Indexes:**
+- `idx_synchistory_org` ON (organizationId) — tenant queries
+- `idx_synchistory_org_type` ON (organizationId, syncType) — filter by sync type
+
+---
+
+### 4.11 Gap Analysis & Audit Package (Deployer Compliance Context — v4.0.0)
+
+#### GapAnalysis (Entity) — AESIA 12-category gap analysis (NEW — v4.0.0)
+
+```javascript
+// schemas/GapAnalysis.js (NEW — v4.0)
+// Deterministic gap analysis per AI tool, 12 AESIA categories.
+// Generated via GET /api/gap-analysis/:toolId — no LLM, pure rule-based.
+({
+  Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  aiTool: { type: 'AITool', delete: 'cascade' },
+  createdBy: { type: 'User', delete: 'restrict' },
+  overallScore: { type: 'number' },
+  categories: { type: 'json' },
+  actionPlan: { type: 'json' },
+  version: { type: 'number', default: 1 },
+});
+```
+
+| Column | Type | Constraints | Описание |
+|--------|------|------------|----------|
+| gapAnalysisId | bigint | PK | Entity PK |
+| organizationId | bigint | FK → Organization.id, CASCADE | Tenant binding |
+| aiToolId | bigint | FK → AITool.aIToolId, CASCADE | Analyzed tool |
+| createdById | bigint | FK → User.id, RESTRICT | Who initiated analysis |
+| overallScore | number | NOT NULL | 0-100 overall compliance score |
+| categories | jsonb | NOT NULL | 12 AESIA categories with scores |
+| actionPlan | jsonb | NOT NULL | Prioritized action items |
+| version | integer | NOT NULL, DEFAULT 1 | Analysis version |
+
+**Indexes:**
+- `idx_gapanalysis_org` ON (organizationId) — tenant queries
+- `idx_gapanalysis_tool` ON (aiToolId) — per-tool analysis
+
+---
+
+#### AuditPackage (Entity) — compliance audit package ZIP (NEW — v4.0.0)
+
+```javascript
+// schemas/AuditPackage.js (NEW — v4.0)
+// Generated ZIP containing all compliance artifacts for an organization:
+// AITools + Documents + FRIAs + executive summary (LLM).
+// Generated via pg-boss background job.
+({
+  Entity: {},
+  organization: { type: 'Organization', delete: 'cascade' },
+  createdBy: { type: 'User', delete: 'restrict' },
+  status: {
+    enum: ['queued', 'generating', 'ready', 'error', 'expired'],
+    default: 'queued',
+  },
+  fileUrl: { type: 'string', required: false },
+  fileSize: { type: 'number', required: false },
+  toolCount: { type: 'number', default: 0 },
+  documentCount: { type: 'number', default: 0 },
+  metadata: { type: 'json', required: false },
+  expiresAt: { type: 'datetime', required: false },
+  errorMessage: { type: 'string', required: false },
+  createdAt: { type: 'datetime', default: 'now()' },
+})
+```
+
+| Column | Type | Constraints | Описание |
+|--------|------|------------|----------|
+| auditPackageId | bigint | PK | Entity PK |
+| organizationId | bigint | FK → Organization.id, CASCADE | Tenant binding |
+| createdById | bigint | FK → User.id, RESTRICT | Who requested the package |
+| status | varchar | NOT NULL, DEFAULT 'queued' | queued → generating → ready / error / expired |
+| fileUrl | varchar | nullable | S3 URL for generated ZIP |
+| fileSize | number | nullable | File size in bytes |
+| toolCount | integer | DEFAULT 0 | Number of tools included |
+| documentCount | integer | DEFAULT 0 | Number of documents included |
+| metadata | jsonb | nullable | Generation metadata (LLM tokens, duration) |
+| expiresAt | timestamptz | nullable | When the package expires (auto-cleanup) |
+| errorMessage | varchar | nullable | Error details if status='error' |
+| createdAt | timestamptz | DEFAULT now() | Creation timestamp |
+
+**Indexes:**
+- `idx_auditpackage_org` ON (organizationId) — tenant queries
+- `idx_auditpackage_status` ON (status) — active package lookup
+
+---
+
 ## 5. Indexes Strategy
 
 ### Performance Indexes
@@ -1560,6 +1764,12 @@ erDiagram
 | ScanResult | idx_scanresult_org | organizationId | Scans per org (Cross-System Map) |
 | ScanResult | idx_scanresult_org_time | organizationId, scannedAt DESC | Timeline queries |
 | ScanResult | ak_scanresult_idemp | idempotencyKey (UNIQUE) | Deduplication |
+| SyncHistory | idx_synchistory_org | organizationId | Tenant sync history |
+| SyncHistory | idx_synchistory_org_type | organizationId, syncType | Filter by sync type |
+| GapAnalysis | idx_gapanalysis_org | organizationId | Tenant gap analyses |
+| GapAnalysis | idx_gapanalysis_tool | aiToolId | Per-tool analysis |
+| AuditPackage | idx_auditpackage_org | organizationId | Tenant audit packages |
+| AuditPackage | idx_auditpackage_status | status | Active package lookup |
 
 ### Full-Text Search (post-MVP)
 
@@ -1599,6 +1809,9 @@ Organization
   ├── APIKey (organizationId)
   │   └── APIUsage (→ apiKeyId → organizationId)
   ├── ScanResult (organizationId)
+  ├── SyncHistory (organizationId)
+  ├── GapAnalysis (organizationId)
+  ├── AuditPackage (organizationId)
   └── AuditLog (organizationId)
 ```
 
@@ -1795,5 +2008,5 @@ const requirements = [
 
 ---
 
-**Последнее обновление:** 2026-02-12 (v2.1.0: Sprint 2.5 — Invitation table, обновлённые plan limits, 30 таблиц)
+**Последнее обновление:** 2026-03-05 (v4.0.0: Sprint 8 — +SyncHistory, +GapAnalysis, +AuditPackage, CLI sync fields, 39 таблиц)
 **Следующий документ:** DATA-FLOWS.md

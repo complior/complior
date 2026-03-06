@@ -5,17 +5,9 @@
   method: async ({ body, headers }) => {
     const auth = lib.apiAuth.resolveApiAuth(headers);
 
-    let parsed;
-    try {
-      parsed = schemas.SyncDocumentsSchema.parse(body);
-    } catch (err) {
-      if (err.flatten) {
-        throw new errors.ValidationError(
-          'Invalid document data', err.flatten().fieldErrors,
-        );
-      }
-      throw err;
-    }
+    const parsed = lib.syncHelpers.validateSync(
+      body, schemas.SyncDocumentsSchema, 'Invalid document data',
+    );
 
     return application.sync.processDocuments.process({
       documents: parsed.documents,

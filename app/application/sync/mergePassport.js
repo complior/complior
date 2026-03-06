@@ -1,5 +1,6 @@
 ({
   merge: async ({ passport, organizationId, userId }) => {
+    const { recordSyncHistory, parseJsonField } = lib.syncHelpers;
     const AUTONOMY_MAP = { L1: 'advisory', L2: 'advisory', L3: 'semi_autonomous', L4: 'autonomous', L5: 'autonomous' };
     const STATUS_MAP = { draft: 'not_started', review: 'review', active: 'compliant', suspended: 'non_compliant', retired: 'non_compliant' };
     const ALLOWED_UPDATE_FIELDS = new Set([
@@ -121,10 +122,8 @@
       if (passport.signature) meta.signature = passport.signature;
       if (passport.extendedFields) meta.extendedFields = passport.extendedFields;
       if (Object.keys(meta).length > 0) {
-        const existing = typeof tool.syncMetadata === 'string'
-          ? JSON.parse(tool.syncMetadata)
-          : (tool.syncMetadata || {});
-        updates.syncMetadata = JSON.stringify({ ...existing, ...meta });
+        const existingMeta = parseJsonField(tool.syncMetadata, {});
+        updates.syncMetadata = JSON.stringify({ ...existingMeta, ...meta });
       }
 
       // complianceStatus — upgrade to in_progress if riskLevel is being set
@@ -148,17 +147,13 @@
         await createCliClassification(tool.aIToolId, passport.riskLevel);
       }
 
-      await db.query(
-        `INSERT INTO "SyncHistory" ("organizationId", "userId", "source", "syncType", "status", "toolSlug", "conflicts", "metadata")
-         VALUES ($1, $2, 'cli', 'passport', $3, $4, $5, $6)`,
-        [
-          organizationId, userId,
-          conflicts.length > 0 ? 'conflict' : 'success',
-          slug,
-          conflicts.length > 0 ? JSON.stringify(conflicts) : null,
-          JSON.stringify({ merged: true, fieldsUpdated: fields.length }),
-        ],
-      );
+      await recordSyncHistory({
+        organizationId, userId, syncType: 'passport',
+        status: conflicts.length > 0 ? 'conflict' : 'success',
+        toolSlug: slug,
+        conflicts: conflicts.length > 0 ? conflicts : null,
+        metadata: { merged: true, fieldsUpdated: fields.length },
+      });
 
       // Determine if requirements need mapping:
       // 1) New classification just created, or
@@ -229,11 +224,11 @@
       await createCliClassification(newToolId, passport.riskLevel);
     }
 
-    await db.query(
-      `INSERT INTO "SyncHistory" ("organizationId", "userId", "source", "syncType", "status", "toolSlug", "metadata")
-       VALUES ($1, $2, 'cli', 'passport', 'success', $3, $4)`,
-      [organizationId, userId, slug, JSON.stringify({ merged: false, created: true })],
-    );
+    await recordSyncHistory({
+      organizationId, userId, syncType: 'passport', status: 'success',
+      toolSlug: slug,
+      metadata: { merged: false, created: true },
+    });
 
     return {
       action: 'created', toolId: newToolId, conflicts: [],

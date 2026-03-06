@@ -5,17 +5,9 @@
   method: async ({ body, headers }) => {
     const auth = lib.apiAuth.resolveApiAuth(headers);
 
-    let parsed;
-    try {
-      parsed = schemas.SyncPassportSchema.parse(body);
-    } catch (err) {
-      if (err.flatten) {
-        throw new errors.ValidationError(
-          'Invalid passport data', err.flatten().fieldErrors,
-        );
-      }
-      throw err;
-    }
+    const parsed = lib.syncHelpers.validateSync(
+      body, schemas.SyncPassportSchema, 'Invalid passport data',
+    );
 
     const result = await application.sync.mergePassport.merge({
       passport: parsed,

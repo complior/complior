@@ -1,11 +1,15 @@
 # DATA-FLOWS.md — AI Act Compliance Platform
 
-**Версия:** 3.1.0
-**Дата:** 2026-02-24
+**Версия:** 4.0.0
+**Дата:** 2026-03-05
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Информационный (PO approval не требуется)
-**Зависимости:** ARCHITECTURE.md v3.2.0, DATABASE.md v3.0.0
+**Зависимости:** ARCHITECTURE.md v3.2.0, DATABASE.md v4.0.0
 
+> **v4.0.0 (2026-03-05):** Sprint 8 — CLI-SaaS Bridge + Compliance Ready.
+> - **Status updates:** Flow 5 (Doc Generation) → IMPLEMENTED, Flow 7 (Gap Analysis) → IMPLEMENTED, Flow 13 (FRIA) → PARTIAL, Flow 25 (Scan Upload) → IMPLEMENTED, Flow 26 (Data Sync) → PARTIAL
+> - **7 NEW flows:** 28–34 (Device Flow Auth, Passport Sync, Document Sync, FRIA Sync, Gap Analysis, Audit Package, Document Management)
+>
 > **v3.1.0 (2026-02-24):** Audit — added Flow Implementation Status table and inline status markers (IMPLEMENTED / PARTIAL / PLANNED / NOT STARTED) to every flow heading. No content changes to flow diagrams.
 >
 > **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model. Auth: Ory → WorkOS (all auth flows updated). 8 новых flows: WorkOS Auth, Registry API, TUI Scan Upload, TUI Agent Inventory, TUI Data Sync, TUI License Check, TUI Bundle Download, Cross-System Aggregation.
@@ -30,15 +34,15 @@
 | 2 | AI Tool Registration | **IMPLEMENTED** | S2 |
 | 3 | Classification Engine | **IMPLEMENTED** | S2–S3 |
 | 4 | Eva Consultant Chat | PLANNED | S8 |
-| 5 | Deployer Document Generation | PLANNED | S8–S9 |
+| 5 | Deployer Document Generation | **IMPLEMENTED** | S8 |
 | 6 | Deployer Dashboard | PARTIAL (summary only) | S3 |
-| 7 | Gap Analysis | PLANNED | S8 |
+| 7 | Gap Analysis | **IMPLEMENTED** | S8 |
 | 8 | Authentication Flow (WorkOS) | **IMPLEMENTED** | S7 |
 | 9 | Regulatory Monitor | PLANNED | S9 |
 | 10 | Billing & Subscription (Stripe) | **IMPLEMENTED** | S3.5–S6 |
 | 11 | AI Literacy Enrollment | PLANNED | S10 |
 | 12 | AI Tool Discovery | PARTIAL (wizard only, no CSV import) | S2 |
-| 13 | FRIA Assessment | PLANNED | S8 |
+| 13 | FRIA Assessment | PARTIAL (sync + wizard UI, generation S9) | S8 |
 | 14 | KI-Compliance Siegel | PLANNED | P2 |
 | 15 | Employee Invite Flow | **IMPLEMENTED** | S2.5 |
 | 16 | Accept Invitation | **IMPLEMENTED** | S2.5 |
@@ -49,10 +53,17 @@
 | 22 | Platform Admin Data Access | **IMPLEMENTED** | S6 |
 | 23 | WorkOS AuthKit Login | **IMPLEMENTED** | S7 |
 | 24 | Registry API — Tool Search | **IMPLEMENTED** | S7 |
-| 25 | TUI → SaaS Scan Upload | NOT STARTED | S8 |
-| 26 | SaaS → TUI Data Sync | NOT STARTED | S8 |
+| 25 | CLI → SaaS Scan Upload | **IMPLEMENTED** | S8 |
+| 26 | CLI → SaaS Data Sync | PARTIAL (CLI→SaaS passport/doc/fria) | S8 |
 | 26b | TUI Bundle Download | **IMPLEMENTED** | S7 |
 | 27 | Cross-System Map | PLANNED | S8 |
+| 28 | CLI Device Flow Authentication | **IMPLEMENTED** | S8 |
+| 29 | CLI Passport Sync | **IMPLEMENTED** | S8 |
+| 30 | CLI Document Sync | **IMPLEMENTED** | S8 |
+| 31 | CLI FRIA Sync | **IMPLEMENTED** | S8 |
+| 32 | Gap Analysis (AESIA 12 Categories) | **IMPLEMENTED** | S8 |
+| 33 | Audit Package Generation | **IMPLEMENTED** | S8 |
+| 34 | Document Management (CRUD + LLM + PDF) | **IMPLEMENTED** | S8 |
 
 > **Legend:** **IMPLEMENTED** = code in production. PARTIAL = partially working. PLANNED = designed, no code. NOT STARTED = no code, no schema.
 
@@ -336,7 +347,7 @@ sequenceDiagram
 
 ---
 
-## 5. Deployer Document Generation (FRIA, Monitoring Plan, AI Usage Policy) — PLANNED (S8–S9)
+## 5. Deployer Document Generation (FRIA, Monitoring Plan, AI Usage Policy) — IMPLEMENTED (S8)
 
 ```mermaid
 sequenceDiagram
@@ -455,7 +466,7 @@ sequenceDiagram
 
 ---
 
-## 7. Gap Analysis (Deployer Requirements) — PLANNED (S8)
+## 7. Gap Analysis (Deployer Requirements) — IMPLEMENTED (S8)
 
 ```mermaid
 sequenceDiagram
@@ -727,7 +738,7 @@ sequenceDiagram
 
 ---
 
-## 13. FRIA Assessment (Art. 27 — Guided Wizard) — PLANNED (S8)
+## 13. FRIA Assessment (Art. 27 — Guided Wizard) — PARTIAL (S8)
 
 ```mermaid
 sequenceDiagram
@@ -1338,85 +1349,40 @@ sequenceDiagram
 
 ---
 
-## 25. TUI → SaaS Scan Upload (v3.0.0) — NOT STARTED (S8)
+## 25. CLI → SaaS Scan Upload (v4.0.0) — IMPLEMENTED (S8)
 
-> **NEW (v3.0.0):** TUI загружает результаты compliance-скана в SaaS при наличии API key (платный план). Данные агрегируются в Cross-System Map. Без heartbeat, без TUINode — только compliance данные.
+> **v4.0.0:** CLI uploads scan results after `complior scan`. Creates/finds AITool records for each detected tool. Auth via Bearer JWT (device flow). SyncHistory записывается.
 
 ```mermaid
 sequenceDiagram
-    participant TUI as TUI Engine
+    participant CLI as CLI Engine
     participant API as Fastify API
-    participant Auth as API Key Validator
     participant DB as PostgreSQL
-    participant SSE as SSE (Dashboard)
 
-    Note over TUI,SSE: TUI завершил скан и загружает результат (если API key настроен)
+    CLI->>API: POST /api/sync/scan (Bearer JWT)
+    Note right of CLI: {projectPath, score, findings[], toolsDetected[]}
+    API->>API: resolveApiAuth(headers) → {organizationId, userId}
+    API->>API: validateSync(body, SyncScanSchema)
 
-    TUI->>API: POST /v1/tui/scans
-    Note right of TUI: Headers: X-API-Key: {apiKey}<br/>Body: {<br/>  idempotencyKey: "hmac(orgId+path+ts)",<br/>  projectPath: "/projects/my-app",<br/>  score: 72,<br/>  findings: [{checkId, severity, article}],<br/>  toolsDetected: [{name: "ChatGPT", riskLevel: "limited"}],<br/>  regulation: "eu_ai_act",<br/>  scannedAt: "2026-02-22T10:00:00Z"<br/>}
-
-    API->>Auth: Validate API key
-    Auth->>DB: SELECT APIKey WHERE keyHash = hash(apiKey) AND active = true
-    DB-->>Auth: {organizationId, plan}
-
-    alt API key invalid or no paid plan
-        API-->>TUI: 401/403 — TUI продолжает работу offline
+    loop For each toolsDetected
+        API->>DB: SELECT "aIToolId" FROM "AITool" WHERE LOWER(name) = LOWER($name)
+        alt Tool exists
+            Note right of DB: action: 'found'
+        else Not found
+            API->>DB: INSERT AITool {name, vendorName, domain, wizardStep: 1}
+            Note right of DB: action: 'created'
+        end
     end
 
-    API->>DB: SELECT ScanResult WHERE idempotencyKey = $key AND organizationId = $orgId
-    alt Duplicate (idempotency hit)
-        API-->>TUI: 200 OK {status: 'already_exists', scanId}
-    else New scan
-        API->>DB: INSERT ScanResult {organizationId, projectPath, score, findings, toolsDetected, regulation, scannedAt, idempotencyKey}
-        DB-->>API: scanId
-        API->>SSE: Push {type: 'scan_uploaded', organizationId, score, toolCount}
-        Note right of SSE: Dashboard Cross-System Map обновляется
-        API-->>TUI: 201 Created {scanId}
-    end
+    API->>DB: INSERT SyncHistory {syncType: 'scan', status: 'success'}
+    API-->>CLI: {processed: N, tools: [{name, toolId, action}]}
 ```
 
 ---
 
-## 26. SaaS → TUI Data Sync (v3.0.0) — NOT STARTED (S8)
+## 26. CLI → SaaS Data Sync (v4.0.0) — PARTIAL (S8)
 
-> **NEW (v3.0.0):** TUI периодически синхронизирует данные об обязательствах (obligations) с SaaS. ETag + 304 минимизирует трафик при отсутствии изменений.
-
-```mermaid
-sequenceDiagram
-    participant TUI as TUI Engine
-    participant API as Fastify API
-    participant Auth as API Key Validator
-    participant DB as PostgreSQL
-
-    Note over TUI,DB: TUI запрашивает актуальные obligations (при старте + каждые 6 часов)
-
-    TUI->>API: GET /v1/regulations/obligations
-    Note right of TUI: Headers:<br/>X-API-Key: {apiKey}<br/>If-None-Match: {cachedETag}
-
-    API->>Auth: Validate API key
-    Auth->>DB: SELECT APIKey WHERE key = hash(apiKey) AND active = true
-    DB-->>Auth: {organizationId, plan, scopes}
-
-    alt API key invalid
-        API-->>TUI: 401 {code: 'INVALID_API_KEY'}
-    end
-
-    API->>DB: SELECT MAX(updatedAt) FROM Regulation WHERE type = 'obligation'
-    API->>API: Calculate ETag from lastUpdated timestamp
-
-    alt ETag matches (данные не изменились)
-        API-->>TUI: 304 Not Modified
-        Note right of TUI: TUI продолжает использовать локальный кэш
-    else Данные обновились или первый запрос
-        API->>DB: SELECT r.*, GROUP_CONCAT(articles) FROM Regulation r WHERE type = 'obligation'
-        Note right of DB: Включает:<br/>- Art. 4 (AI Literacy)<br/>- Art. 26 (Deployer obligations)<br/>- Art. 27 (FRIA)<br/>- Art. 50 (Transparency)<br/>- Annex III categories
-
-        DB-->>API: {obligations[]}
-
-        API-->>TUI: 200 OK {obligations[], ETag: "{newETag}"}
-        Note right of TUI: TUI обновляет локальный кэш:<br/>~/.complior/cache/obligations.json
-    end
-```
+> **v4.0.0:** CLI синхронизирует passport, documents и FRIA assessments с SaaS. Auth: Bearer JWT (device flow). Каждый sync endpoint записывает SyncHistory. Conflict resolution: technical fields → CLI wins, org fields → SaaS wins, riskLevel → SaaS wins if different. See detailed flows 29-31.
 
 ---
 
@@ -1516,6 +1482,275 @@ sequenceDiagram
 
 ---
 
+## 28. CLI Device Flow Authentication (v4.0.0) — IMPLEMENTED (S8)
+
+> **NEW (v4.0.0):** `complior login` initiates OAuth 2.0 Device Authorization Grant. CLI displays a user code, user confirms in browser via WorkOS AuthKit, CLI polls for token.
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI (complior login)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+    participant Browser as User Browser
+    participant WorkOS as WorkOS AuthKit
+
+    CLI->>API: POST /api/auth/device {}
+    API->>DB: INSERT DeviceCode {deviceCode, userCode, status: 'pending', expiresAt: +15min}
+    API-->>CLI: {deviceCode, userCode, verificationUri, expiresIn: 900, interval: 5}
+
+    CLI->>CLI: Display "Visit {verificationUri} and enter code: {userCode}"
+
+    Browser->>API: GET /auth/device → login via WorkOS
+    Browser->>WorkOS: AuthKit authentication
+    WorkOS-->>Browser: Authenticated session
+    Browser->>API: POST /api/auth/device-confirm {userCode} (authenticated)
+    API->>DB: UPDATE DeviceCode SET status='authorized', userId, organizationId
+
+    loop Poll every 5s (max 15 min)
+        CLI->>API: POST /api/auth/token {deviceCode}
+        alt Still pending
+            API-->>CLI: {error: "authorization_pending"}
+        else Authorized
+            API->>DB: UPDATE DeviceCode SET status='used'
+            API-->>CLI: {accessToken (1h), refreshToken (30d)}
+        end
+    end
+
+    CLI->>CLI: Store tokens in ~/.config/complior/credentials
+```
+
+---
+
+## 29. CLI Passport Sync (v4.0.0) — IMPLEMENTED (S8)
+
+> **NEW (v4.0.0):** CLI reads agent manifests from `.complior/agents/`, maps 36 passport fields → 21 SaaS fields, and syncs to SaaS via `POST /api/sync/passport`. Conflict resolution: technical fields → CLI wins, purpose → SaaS wins, riskLevel → SaaS wins if different.
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI Engine
+    participant API as Fastify API
+    participant DB as PostgreSQL
+
+    CLI->>CLI: Read .complior/agents/*-manifest.json
+    CLI->>CLI: Map 36 passport fields → 21 SaaS fields
+    CLI->>API: POST /api/sync/passport (Bearer JWT)
+    Note right of CLI: {name, vendorName, vendorUrl, description,<br/>purpose, domain, riskLevel, autonomyLevel,<br/>framework, modelProvider, modelId, dataResidency,<br/>compliorScore, lifecycleStatus, detectionPatterns,<br/>versions, manifestVersion, signature, extendedFields}
+
+    API->>API: resolveApiAuth → {organizationId, userId}
+    API->>DB: SELECT * FROM AITool WHERE LOWER(name) = LOWER($name)
+
+    alt Tool exists (UPDATE path)
+        Note right of API: Conflict resolution:<br/>Technical fields → CLI wins<br/>Org fields (purpose) → SaaS wins<br/>riskLevel → SaaS wins if different
+        API->>DB: UPDATE AITool SET ... (filtered by ALLOWED_UPDATE_FIELDS)
+        opt CLI provides new riskLevel (tool had none)
+            API->>DB: INSERT RiskClassification {method: 'cli_import', confidence: 50}
+        end
+    else Not found (CREATE path)
+        API->>DB: INSERT AITool {21 fields + syncMetadata JSON}
+        opt riskLevel provided
+            API->>DB: INSERT RiskClassification {method: 'cli_import'}
+        end
+    end
+
+    API->>DB: INSERT SyncHistory {syncType: 'passport'}
+    API-->>CLI: {action, toolId, conflicts[], fieldsUpdated, mapRiskLevel}
+
+    opt mapRiskLevel != null
+        API->>API: mapRequirements(toolId, riskLevel) → link ToolRequirements
+    end
+```
+
+---
+
+## 30. CLI Document Sync (v4.0.0) — IMPLEMENTED (S8)
+
+> **NEW (v4.0.0):** CLI syncs compliance documents (batch, max 20 per request) via `POST /api/sync/documents`. Creates or updates ComplianceDocument records, matched by aiToolId + documentType.
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI Engine
+    participant API as Fastify API
+    participant DB as PostgreSQL
+
+    CLI->>API: POST /api/sync/documents (Bearer JWT)
+    Note right of CLI: {documents: [{type, title, content, toolSlug?}]} (max 20)
+
+    loop For each document
+        API->>DB: SELECT aIToolId FROM AITool WHERE LOWER(name) ~ toolSlug
+        alt Tool found
+            API->>DB: SELECT FROM ComplianceDocument WHERE aiToolId AND documentType
+            alt Existing document
+                API->>DB: UPDATE title, version++, metadata += {source: 'cli', content}
+                Note right of DB: action: 'updated'
+            else New document
+                API->>DB: INSERT ComplianceDocument {status: 'draft', metadata: {source: 'cli'}}
+                Note right of DB: action: 'created'
+            end
+        else Tool not found
+            Note right of DB: action: 'skipped'
+        end
+    end
+
+    API->>DB: INSERT SyncHistory {syncType: 'document'}
+    API-->>CLI: {synced, created, updated, results[]}
+```
+
+---
+
+## 31. CLI FRIA Sync (v4.0.0) — IMPLEMENTED (S8)
+
+> **NEW (v4.0.0):** CLI syncs FRIA assessments via `POST /api/sync/fria`. SaaS-wins merge strategy: if assessment is in_progress/review → skip (conflict logged). If draft → merge (SaaS non-empty preserved, CLI fills empty fields). If no assessment → create.
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI Engine
+    participant API as Fastify API
+    participant DB as PostgreSQL
+
+    CLI->>API: POST /api/sync/fria (Bearer JWT)
+    Note right of CLI: {toolSlug, assessmentId, date,<br/>sections: {general_info, affected_persons,<br/>specific_risks, human_oversight,<br/>mitigation_measures, monitoring_plan}}
+
+    API->>DB: SELECT aIToolId FROM AITool WHERE LOWER(name) ~ toolSlug
+    API->>DB: SELECT FRIAAssessment WHERE aiToolId AND status != 'completed'
+
+    alt Assessment in_progress or review
+        Note right of API: SaaS wins — skip (conflict logged)
+        API->>DB: INSERT SyncHistory {status: 'conflict'}
+        API-->>CLI: {action: 'skipped', reason: 'assessment_in_progress'}
+    else Assessment is draft
+        Note right of API: Merge: SaaS non-empty preserved,<br/>CLI fills empty fields only
+        API->>DB: UPDATE FRIAAssessment {affectedPersons, risks, oversight, mitigation}
+        loop For each of 6 section types
+            API->>DB: UPSERT FRIASection {merged content}
+        end
+        API->>DB: INSERT SyncHistory {syncType: 'fria', status: 'success'}
+        API-->>CLI: {action: 'updated', assessmentId}
+    else No assessment
+        API->>DB: INSERT FRIAAssessment {status: 'draft'}
+        loop 6 sections
+            API->>DB: INSERT FRIASection {content from CLI}
+        end
+        API->>DB: INSERT SyncHistory {syncType: 'fria', status: 'success'}
+        API-->>CLI: {action: 'created', assessmentId}
+    end
+```
+
+---
+
+## 32. Gap Analysis (AESIA 12 Categories) (v4.0.0) — IMPLEMENTED (S8)
+
+> **NEW (v4.0.0):** Deterministic gap analysis per AI tool. Evaluates 12 AESIA categories, calculates overall score, generates prioritized action plan. No LLM — pure rule-based scoring.
+
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant API as Fastify API
+    participant DB as PostgreSQL
+
+    User->>API: GET /api/gap-analysis/:toolId
+    API->>API: Authenticate (WorkOS session)
+
+    API->>DB: SELECT AITool + RiskClassification WHERE aiToolId
+    API->>DB: SELECT ToolRequirement + Requirement WHERE aiToolId
+    API->>DB: SELECT ComplianceDocument WHERE aiToolId
+    API->>DB: SELECT FRIAAssessment WHERE aiToolId
+
+    API->>API: Evaluate 12 AESIA categories
+    Note right of API: Categories: Risk Management, Data Governance,<br/>Transparency, Human Oversight, Accuracy,<br/>Robustness, Cybersecurity, Record-Keeping,<br/>Registration, Post-Market Monitoring,<br/>Fundamental Rights, AI Literacy
+
+    API->>API: Calculate overallScore (weighted average)
+    API->>API: Generate actionPlan (prioritized by impact)
+
+    API->>DB: UPSERT GapAnalysis {overallScore, categories, actionPlan, version++}
+    API-->>User: {overallScore, categories[], actionPlan[], version}
+```
+
+---
+
+## 33. Audit Package Generation (v4.0.0) — IMPLEMENTED (S8)
+
+> **NEW (v4.0.0):** Generates a ZIP audit package containing all compliance artifacts: AI tools, documents, FRIAs, and LLM-generated executive summary. Async via pg-boss → S3.
+
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant API as Fastify API
+    participant Queue as pg-boss
+    participant Worker as pg-boss Worker
+    participant LLM as Mistral Medium API
+    participant S3 as Hetzner Object Storage
+    participant DB as PostgreSQL
+
+    User->>API: POST /api/audit-package/generate
+    API->>DB: INSERT AuditPackage {status: 'queued'}
+    API->>Queue: enqueue('generate-audit-package', {packageId, organizationId})
+    API-->>User: 202 {packageId, status: 'queued'}
+
+    Queue->>Worker: process job
+    Worker->>DB: SELECT AITools + ComplianceDocuments + FRIAs WHERE organizationId
+    Worker->>LLM: Generate executive summary (company AI landscape)
+    LLM-->>Worker: {summary}
+    Worker->>Worker: Build ZIP (tools + docs + FRIAs + summary)
+    Worker->>S3: Upload ZIP
+    S3-->>Worker: {fileUrl}
+    Worker->>DB: UPDATE AuditPackage SET status='ready', fileUrl, fileSize, toolCount, documentCount
+
+    loop Poll status
+        User->>API: GET /api/audit-package/:id
+        API-->>User: {status, fileUrl?, progress}
+    end
+
+    User->>S3: Download ZIP (pre-signed URL)
+```
+
+---
+
+## 34. Document Management (CRUD + LLM + PDF) (v4.0.0) — IMPLEMENTED (S8)
+
+> **NEW (v4.0.0):** Full document lifecycle: create → generate sections (LLM) → edit → approve sections → export PDF (Gotenberg) → approve document. Supports 8 document types including QMS templates.
+
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant API as Fastify API
+    participant LLM as Mistral Medium API
+    participant Gotenberg as Gotenberg (PDF)
+    participant S3 as Hetzner Object Storage
+    participant DB as PostgreSQL
+
+    Note over User,DB: Create document
+    User->>API: POST /api/compliance/documents {aiToolId, documentType, title}
+    API->>DB: INSERT ComplianceDocument {status: 'draft'}
+    API->>DB: INSERT DocumentSections (template sections for type)
+    API-->>User: {documentId, sections[]}
+
+    Note over User,DB: Generate section via LLM
+    User->>API: POST /api/compliance/documents/:id/sections/:code/generate
+    API->>DB: SELECT AITool + RiskClassification context
+    API->>LLM: streamText({model: 'mistral-medium', prompt: section template + context})
+    LLM-->>API: {generatedContent}
+    API->>DB: UPDATE DocumentSection SET content=generated, aiDraft=generated, status='ai_generated'
+    API-->>User: {sectionCode, content, status: 'ai_generated'}
+
+    Note over User,DB: Edit + approve sections
+    User->>API: PATCH /api/compliance/documents/:id/sections/:code {content}
+    API->>DB: UPDATE DocumentSection SET content, status='editing'
+
+    User->>API: POST /api/compliance/documents/:id/sections/:code/approve
+    API->>DB: UPDATE DocumentSection SET status='approved'
+
+    Note over User,DB: Export PDF (all sections approved)
+    User->>API: POST /api/compliance/documents/:id/export
+    API->>Gotenberg: POST /forms/chromium/convert/html (sections → HTML → PDF)
+    Gotenberg-->>API: PDF binary
+    API->>S3: Upload PDF
+    S3-->>API: {fileUrl}
+    API->>DB: UPDATE ComplianceDocument SET fileUrl, status='approved'
+    API-->>User: {fileUrl, status: 'approved'}
+```
+
+---
+
 ## 18. Data Flow Summary
 
 ### Request → Response Latency Targets
@@ -1570,8 +1805,13 @@ Browser → [HTTPS] → Cloudflare → [proxy] → Fastify → [auth]     → Wo
 | ScanUploaded | TUI Data Collection | Dashboard, Monitoring | Cross-System Map update, SSE push |
 | BundleDownloaded | Registry API | Monitoring | Track bundle distribution, version adoption |
 | CrossSystemScoreChanged | Aggregation (pg-boss) | Dashboard | SSE push updated compliance score |
+| PassportSynced | CLI Sync | Inventory, Classification, Dashboard | Tool created/updated, requirements mapped |
+| FRIASynced | CLI Sync | Deployer Compliance, Dashboard | FRIA assessment created/merged |
+| DocumentSynced | CLI Sync | Deployer Compliance | Document created/updated from CLI |
+| AuditPackageReady | Audit Worker | Notification (Brevo email) | ZIP ready for download |
+| GapAnalysisCompleted | Gap Analysis | Dashboard | Compliance scores recalculated |
 
 ---
 
-**Последнее обновление:** 2026-02-22 (v3.0.1: TUI Data Collection — только scan results upload (без heartbeat, без TUINode). SaaS→TUI: Registry API data. Flow 25 = TUI→SaaS scan upload. Flows 26-28 = SaaS→TUI data distribution.)
+**Последнее обновление:** 2026-03-05 (v4.0.0: Sprint 8 — CLI-SaaS Bridge. +7 flows (28-34), 5 status updates, Flow 25 rewritten to match actual implementation.)
 **Следующий документ:** CODING-STANDARDS.md ✅ Утверждён

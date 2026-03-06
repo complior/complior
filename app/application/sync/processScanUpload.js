@@ -1,5 +1,6 @@
 ({
   process: async ({ scanData, organizationId, userId }) => {
+    const { recordSyncHistory } = lib.syncHelpers;
     const results = [];
 
     for (const detected of (scanData.toolsDetected || [])) {
@@ -28,21 +29,16 @@
       });
     }
 
-    // Log sync history
-    await db.query(
-      `INSERT INTO "SyncHistory" ("organizationId", "userId", "source", "syncType", "status", "toolSlug", "metadata")
-       VALUES ($1, $2, 'cli', 'scan', 'success', $3, $4)`,
-      [
-        organizationId, userId,
-        scanData.projectPath || 'unknown',
-        JSON.stringify({
-          projectPath: scanData.projectPath,
-          score: scanData.score,
-          findingsCount: (scanData.findings || []).length,
-          toolsDetected: results.length,
-        }),
-      ],
-    );
+    await recordSyncHistory({
+      organizationId, userId, syncType: 'scan', status: 'success',
+      toolSlug: scanData.projectPath || 'unknown',
+      metadata: {
+        projectPath: scanData.projectPath,
+        score: scanData.score,
+        findingsCount: (scanData.findings || []).length,
+        toolsDetected: results.length,
+      },
+    });
 
     return { processed: results.length, tools: results };
   },

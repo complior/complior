@@ -403,6 +403,81 @@ const SyncDocumentsSchema = z.object({
   })).min(1).max(20),
 });
 
+// === CLI FRIA Sync Schema ===
+
+const SyncFriaSchema = z.object({
+  toolSlug: z.string().min(1).max(255),
+  assessmentId: z.string().max(50),
+  date: z.string().max(30),
+  sections: z.object({
+    general_info: z.object({
+      toolName: z.string().max(255).default(''),
+      vendor: z.string().max(255).default(''),
+      purpose: z.string().max(2000).default(''),
+      domain: z.string().max(100).default(''),
+      riskLevel: z.string().max(50).default(''),
+      version: z.string().max(50).default(''),
+      provider: z.string().max(100).default(''),
+      deploymentContext: z.string().max(2000).default(''),
+      assessorName: z.string().max(255).default(''),
+      assessorTitle: z.string().max(255).default(''),
+      geographicScope: z.string().max(500).default(''),
+      organisation: z.string().max(255).default(''),
+      organisationType: z.string().max(255).default(''),
+    }),
+    affected_persons: z.object({
+      categories: z.array(z.string()).default([]),
+      vulnerableGroups: z.boolean().default(false),
+      estimatedCount: z.string().max(100).default(''),
+      description: z.string().max(2000).default(''),
+    }),
+    specific_risks: z.object({
+      risks: z.array(z.object({
+        right: z.string().max(255),
+        article: z.string().max(50),
+        severity: z.string().max(10).default(''),
+        likelihood: z.string().max(10).default(''),
+        description: z.string().max(2000).default(''),
+        affectedGroups: z.string().max(1000).default(''),
+        mitigation: z.string().max(2000).default(''),
+      })).default([]),
+    }),
+    human_oversight: z.object({
+      hasHumanOversight: z.boolean().default(true),
+      oversightType: z.string().max(50).default(''),
+      mechanism: z.string().max(2000).default(''),
+      responsibleRole: z.string().max(255).default(''),
+      escalationProcess: z.string().max(2000).default(''),
+      reviewFrequency: z.string().max(255).default(''),
+    }),
+    mitigation_measures: z.object({
+      measures: z.array(z.object({
+        risk: z.string().max(500).default(''),
+        measure: z.string().max(1000).default(''),
+        responsible: z.string().max(255).default(''),
+        deadline: z.string().max(50).default(''),
+      })).default([]),
+      incidentResponse: z.string().max(2000).default(''),
+      communicationPlan: z.string().max(2000).default(''),
+      suspensionCriteria: z.string().max(2000).default(''),
+      remediationProcess: z.string().max(2000).default(''),
+      internalComplaint: z.string().max(2000).default(''),
+      externalComplaint: z.string().max(2000).default(''),
+    }),
+    monitoring_plan: z.object({
+      frequency: z.string().max(255).default(''),
+      metrics: z.array(z.string()).default([]),
+      responsibleTeam: z.string().max(255).default(''),
+      reviewProcess: z.string().max(2000).default(''),
+      nextReviewDate: z.string().max(50).default(''),
+      dpiaReference: z.string().max(500).default(''),
+      legalBasis: z.string().max(1000).default(''),
+      overallRiskDecision: z.string().max(2000).default(''),
+      conditionsForDeployment: z.string().max(2000).default(''),
+    }),
+  }),
+});
+
 // === GDPR Schemas ===
 
 const AccountDeleteSchema = z.object({
@@ -480,4 +555,5 @@ module.exports = {
   SyncScanSchema,
   VALID_SYNC_DOCUMENT_TYPES,
   SyncDocumentsSchema,
+  SyncFriaSchema,
 };

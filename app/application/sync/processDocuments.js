@@ -1,25 +1,14 @@
 ({
   process: async ({ documents, organizationId, userId }) => {
+    const { findToolBySlug, recordSyncHistory } = lib.syncHelpers;
     let created = 0;
     let updated = 0;
     const results = [];
 
     for (const doc of documents) {
-      // Find AITool by slug or name (org-scoped)
-      let toolId = null;
-      if (doc.toolSlug) {
-        const slugAsName = doc.toolSlug.replace(/-/g, ' ');
-        const toolResult = await db.query(
-          `SELECT "aIToolId" FROM "AITool"
-           WHERE "organizationId" = $1
-             AND (LOWER("name") = LOWER($2) OR "name" = $2 OR LOWER("name") = LOWER($3))
-           LIMIT 1`,
-          [organizationId, doc.toolSlug, slugAsName],
-        );
-        if (toolResult.rows.length > 0) {
-          toolId = toolResult.rows[0].aIToolId;
-        }
-      }
+      const toolId = doc.toolSlug
+        ? await findToolBySlug(organizationId, doc.toolSlug)
+        : null;
 
       // Find existing document by (aiToolId, documentType)
       let existing = null;
@@ -70,12 +59,11 @@
       }
     }
 
-    // Log sync history
-    await db.query(
-      `INSERT INTO "SyncHistory" ("organizationId", "userId", "source", "syncType", "status", "toolSlug", "metadata")
-       VALUES ($1, $2, 'cli', 'document', 'success', 'batch', $3)`,
-      [organizationId, userId, JSON.stringify({ created, updated, total: documents.length })],
-    );
+    await recordSyncHistory({
+      organizationId, userId, syncType: 'document', status: 'success',
+      toolSlug: 'batch',
+      metadata: { created, updated, total: documents.length },
+    });
 
     return { synced: created + updated, created, updated, results };
   },

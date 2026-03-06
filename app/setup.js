@@ -248,6 +248,10 @@ const MIGRATIONS = [
   `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelProvider" varchar(100)`,
   `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelId" varchar(255)`,
   `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "syncMetadata" jsonb`,
+  // Sprint 9: FRIA sync — extend SyncHistory syncType enum
+  `ALTER TABLE "SyncHistory" DROP CONSTRAINT IF EXISTS "SyncHistory_syncType_check"`,
+  `ALTER TABLE "SyncHistory" ADD CONSTRAINT "SyncHistory_syncType_check"
+   CHECK ("syncType" IN ('passport', 'scan', 'document', 'fria'))`,
   // Sprint 9: Backfill classificationConfidence for CLI-synced tools
   `UPDATE "AITool" SET "classificationConfidence" = 50
    WHERE "riskLevel" IS NOT NULL

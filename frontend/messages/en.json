@@ -52,7 +52,8 @@
     "adminSubscriptions": "Subscriptions",
     "members": "Members",
     "settings": "Settings",
-    "registry": "AI Registry"
+    "registry": "AI Registry",
+    "auditPackage": "Audit Package"
   },
   "footer": {
     "brand": "Automated EU AI Act compliance. Built in Europe, for the world.",

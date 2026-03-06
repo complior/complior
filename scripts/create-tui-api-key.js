@@ -1,11 +1,11 @@
 'use strict';
 
 /**
- * Create a TUI API key with cpl_ prefix format.
+ * Create a CLI API key with cpl_ prefix format.
  *
  * Usage:
  *   DATABASE_URL=postgres://... node scripts/create-tui-api-key.js
- *   DATABASE_URL=postgres://... node scripts/create-tui-api-key.js "My TUI Key"
+ *   DATABASE_URL=postgres://... node scripts/create-tui-api-key.js "My CLI Key"
  *
  * Inserts an API key with `cpl_` prefix into the ApiKey table.
  * The key can be used as: Authorization: Bearer cpl_xxxxx
@@ -24,7 +24,7 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const keyName = process.argv[2] || 'Complior TUI';
+const keyName = process.argv[2] || 'Complior CLI';
 
 (async () => {
   const pool = new Pool({ connectionString: DATABASE_URL });

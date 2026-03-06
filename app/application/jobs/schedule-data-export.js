@@ -2,7 +2,7 @@
  * Schedule Data Export Job
  *
  * Weekly pg-boss job that exports Registry + Regulation DB
- * to JSON files in data/ directory (backup + TUI offline bundle).
+ * to JSON files in data/ directory (backup + CLI offline bundle).
  *
  * Schedule: Every Monday at 04:00 UTC (1 hour after registry-refresh)
  * Job name: export-data

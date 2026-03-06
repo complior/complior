@@ -6,7 +6,7 @@
  * Populates RegistryTool.detectionPatterns for the most widely used AI tools.
  * Each pattern object covers: npm, pip, imports, env_vars, api_calls, domains.
  *
- * Used by TUI `npx complior scan` to detect AI tools in codebases.
+ * Used by CLI `npx complior scan` to detect AI tools in codebases.
  *
  * Run via: npm run seed:detection-patterns
  */

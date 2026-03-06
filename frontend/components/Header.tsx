@@ -62,7 +62,8 @@ export function Header({ mode = 'marketing' }: HeaderProps) {
     { href: `/${locale}/dashboard`, label: t('dashboard') },
     { href: `/${locale}/tools/inventory`, label: t('inventory') },
     { href: `/${locale}/tools/catalog`, label: t('catalog') },
-    { href: `/${locale}/members`, label: t('members') },
+    { href: `/${locale}/documents`, label: t('documents') },
+    { href: `/${locale}/audit-package`, label: t('auditPackage') },
     { href: `/${locale}/settings`, label: t('settings') },
   ];
 
