@@ -321,6 +321,9 @@ async fn run_event_loop(
     let (watch_tx, mut watch_rx) = mpsc::unbounded_channel::<std::path::PathBuf>();
     let mut watch_handle: Option<tokio::task::JoinHandle<()>> = None;
 
+    // Background command results channel (non-blocking async operations)
+    let mut bg_rx = app.take_bg_rx();
+
     // Try to connect to engine (if we haven't already from auto-launch)
     if app.engine_status != types::EngineConnectionStatus::Connected {
         match app.engine_client.status().await {
@@ -388,6 +391,11 @@ async fn run_event_loop(
                         // Other events — terminal re-renders on next loop
                     }
                 }
+            }
+
+            // Background command results (non-blocking async operations)
+            Some(bg_cmd) = bg_rx.recv() => {
+                execute_command(app, bg_cmd, &watch_tx, &mut watch_handle).await;
             }
 
             // File watch events

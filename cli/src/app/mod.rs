@@ -177,6 +177,10 @@ pub struct App {
 
     // SaaS sync state
     pub sync_state: SyncState,
+
+    // Background command channel (for async results → event loop)
+    pub bg_tx: tokio::sync::mpsc::UnboundedSender<AppCommand>,
+    bg_rx: Option<tokio::sync::mpsc::UnboundedReceiver<AppCommand>>,
 }
 
 const MAX_HISTORY: usize = 50;
@@ -186,6 +190,7 @@ const MAX_ACTIVITY_LOG: usize = 10;
 impl App {
     pub fn new(config: TuiConfig) -> Self {
         let engine_client = EngineClient::new(&config);
+        let (bg_tx, bg_rx) = tokio::sync::mpsc::unbounded_channel();
         let sidebar_visible = config.sidebar_visible;
         let animations_enabled = config.animations_enabled;
         let project_path = config
@@ -267,6 +272,8 @@ impl App {
             project_path,
             operation_start: None,
             sync_state: SyncState::default(),
+            bg_tx,
+            bg_rx: Some(bg_rx),
         };
 
         // Initialize sync state from saved tokens
@@ -277,6 +284,11 @@ impl App {
         }
 
         app
+    }
+
+    /// Take the background command receiver (call once from event loop).
+    pub fn take_bg_rx(&mut self) -> tokio::sync::mpsc::UnboundedReceiver<AppCommand> {
+        self.bg_rx.take().expect("bg_rx already taken")
     }
 
     pub fn tick(&mut self) -> Option<AppCommand> {
@@ -539,8 +551,10 @@ pub enum AppCommand {
     CompleteOnboarding,
     /// Save partial onboarding progress for resume.
     SaveOnboardingPartial(usize),
-    /// Load Agent Passports from engine.
+    /// Load Agent Passports from engine (spawns background task).
     LoadPassports,
+    /// Background result: passports loaded from engine.
+    PassportsLoaded(Result<serde_json::Value, String>),
     /// Load passport completeness data from engine.
     LoadPassportCompleteness,
     /// Validate passport (schema + signature + completeness).

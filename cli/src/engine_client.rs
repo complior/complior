@@ -4,6 +4,7 @@ use crate::config::TuiConfig;
 use crate::error::Result;
 use crate::types::{EngineStatus, ScanResult};
 
+#[derive(Clone)]
 pub struct EngineClient {
     client: Client,
     base_url: String,

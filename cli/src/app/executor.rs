@@ -727,10 +727,20 @@ pub async fn execute_command(
             app.passport_view.passport_error = None;
             let path = app.project_path.to_string_lossy().to_string();
             let url = format!("/agent/list?path={}", url_encode(&path));
-            match app.engine_client.get_json(&url).await {
-                Ok(result) => {
-                    app.passport_view.passport_loading = false;
-                    if let Some(arr) = result.as_array() {
+            let client = app.engine_client.clone();
+            let tx = app.bg_tx.clone();
+            tokio::spawn(async move {
+                let result = client.get_json(&url).await;
+                let _ = tx.send(AppCommand::PassportsLoaded(
+                    result.map_err(|e| e.to_string()),
+                ));
+            });
+        }
+        AppCommand::PassportsLoaded(result) => {
+            app.passport_view.passport_loading = false;
+            match result {
+                Ok(value) => {
+                    if let Some(arr) = value.as_array() {
                         app.passport_view.loaded_passports = arr.clone();
                         app.passport_view.load_from_passports();
                         let count = arr.len();
@@ -743,7 +753,6 @@ pub async fn execute_command(
                     }
                 }
                 Err(e) => {
-                    app.passport_view.passport_loading = false;
                     let msg = format!("Failed to load passports: {e}");
                     app.passport_view.passport_error = Some(msg.clone());
                     app.messages.push(types::ChatMessage::new(
