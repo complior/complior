@@ -35,25 +35,39 @@ fn resolve_client(config: &TuiConfig) -> EngineClient {
 }
 
 /// Create an engine client and verify the engine is running.
-/// Retries up to 3 times with backoff. If no daemon found, auto-starts one.
+/// Daemon-aware retry: if a daemon PID is found, retries up to 15×400ms (6s)
+/// to allow cold start. Without a PID, retries only 3×400ms before auto-launching.
 async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
+    let project_path = std::env::current_dir().unwrap_or_default();
+    let daemon_exists = daemon::find_running_daemon(&project_path).is_some();
+
     // First try: check for existing daemon
     let client = resolve_client(config);
 
-    // Retry health check 3 times (covers transient connection issues / race conditions)
-    for attempt in 0..3 {
+    // Daemon PID found → longer retry (engine cold start takes 2-5s)
+    // No daemon PID → short retry before falling through to auto-launch
+    let (max_retries, delay_ms) = if daemon_exists { (15, 400) } else { (3, 400) };
+
+    for attempt in 0..max_retries {
         match client.status().await {
             Ok(status) if status.ready => return Ok(client),
             _ => {
-                if attempt < 2 {
-                    tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt as u64 + 1))).await;
+                if attempt < max_retries - 1 {
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
                 }
             }
         }
     }
 
+    if daemon_exists {
+        // Daemon PID exists but engine is still unresponsive after 6s — do NOT
+        // auto-launch a second engine (prevents PID conflict / competing instances).
+        eprintln!("Error: Daemon process found but engine not responding after {}s.", max_retries as u64 * delay_ms / 1000);
+        eprintln!("Try: complior daemon stop && complior daemon start");
+        return Err(1);
+    }
+
     // No running daemon found — try to auto-start engine
-    let project_path = std::env::current_dir().unwrap_or_default();
     let engine_root = find_engine_root(&project_path);
 
     if let Some(root) = engine_root {

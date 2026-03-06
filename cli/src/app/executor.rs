@@ -723,10 +723,13 @@ pub async fn execute_command(
             config::save_onboarding_partial(last_step).await;
         }
         AppCommand::LoadPassports => {
+            app.passport_view.passport_loading = true;
+            app.passport_view.passport_error = None;
             let path = app.project_path.to_string_lossy().to_string();
             let url = format!("/agent/list?path={}", url_encode(&path));
             match app.engine_client.get_json(&url).await {
                 Ok(result) => {
+                    app.passport_view.passport_loading = false;
                     if let Some(arr) = result.as_array() {
                         app.passport_view.loaded_passports = arr.clone();
                         app.passport_view.load_from_passports();
@@ -739,8 +742,14 @@ pub async fn execute_command(
                         }
                     }
                 }
-                Err(_) => {
-                    // Silently fail — passports may not exist yet
+                Err(e) => {
+                    app.passport_view.passport_loading = false;
+                    let msg = format!("Failed to load passports: {e}");
+                    app.passport_view.passport_error = Some(msg.clone());
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        msg,
+                    ));
                 }
             }
         }

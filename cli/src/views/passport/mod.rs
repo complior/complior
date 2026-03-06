@@ -53,6 +53,10 @@ pub struct PassportViewState {
     pub view_mode: PassportViewMode,
     /// Selected row in the agent list.
     pub selected_passport: usize,
+    /// Whether passport data is currently being loaded from engine.
+    pub passport_loading: bool,
+    /// Error message from last passport load attempt.
+    pub passport_error: Option<String>,
 }
 
 impl Default for PassportViewState {
@@ -67,6 +71,8 @@ impl Default for PassportViewState {
             obligation_scroll: 0,
             view_mode: PassportViewMode::AgentList,
             selected_passport: 0,
+            passport_loading: false,
+            passport_error: None,
         }
     }
 }
@@ -223,6 +229,38 @@ fn render_agent_list_view(frame: &mut Frame, area: Rect, app: &App) {
         .border_style(Style::default().fg(t.border));
     let inner = block.inner(area);
     frame.render_widget(block, area);
+
+    if pv.passport_loading {
+        frame.render_widget(
+            Paragraph::new(vec![
+                Line::raw(""),
+                Line::from(Span::styled(
+                    " Loading passports...",
+                    Style::default().fg(t.accent),
+                )),
+            ]),
+            inner,
+        );
+        return;
+    }
+
+    if let Some(ref err) = pv.passport_error {
+        frame.render_widget(
+            Paragraph::new(vec![
+                Line::raw(""),
+                Line::from(Span::styled(
+                    format!(" Error: {err}"),
+                    Style::default().fg(t.zone_red),
+                )),
+                Line::from(Span::styled(
+                    " Press r to retry",
+                    Style::default().fg(t.muted),
+                )),
+            ]),
+            inner,
+        );
+        return;
+    }
 
     if pv.loaded_passports.is_empty() {
         frame.render_widget(

@@ -160,6 +160,10 @@ impl App {
                         return Some(AppCommand::LoadPassportCompleteness);
                     }
                 }
+                'r' => {
+                    self.passport_view.passport_error = None;
+                    return Some(AppCommand::LoadPassports);
+                }
                 'c' => return Some(AppCommand::ValidatePassport),
                 'f' => return Some(AppCommand::GeneratePassportFria),
                 'x' => return Some(AppCommand::ExportPassport),

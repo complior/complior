@@ -243,3 +243,36 @@ fn test_agent_list_renders_without_panic() {
         .draw(|frame| render_passport_view(frame, frame.area(), &app))
         .expect("render");
 }
+
+#[test]
+fn test_passport_loading_state_defaults() {
+    let state = PassportViewState::default();
+    assert!(!state.passport_loading);
+    assert!(state.passport_error.is_none());
+}
+
+#[test]
+fn test_passport_loading_renders_without_panic() {
+    crate::theme::init_theme("dark");
+    let backend = ratatui::backend::TestBackend::new(100, 30);
+    let mut terminal = ratatui::Terminal::new(backend).expect("terminal");
+    let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+    app.passport_view.passport_loading = true;
+
+    terminal
+        .draw(|frame| render_passport_view(frame, frame.area(), &app))
+        .expect("render");
+}
+
+#[test]
+fn test_passport_error_renders_without_panic() {
+    crate::theme::init_theme("dark");
+    let backend = ratatui::backend::TestBackend::new(100, 30);
+    let mut terminal = ratatui::Terminal::new(backend).expect("terminal");
+    let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+    app.passport_view.passport_error = Some("Connection refused".to_string());
+
+    terminal
+        .draw(|frame| render_passport_view(frame, frame.area(), &app))
+        .expect("render");
+}

@@ -37,8 +37,8 @@ expression: buf
 │                                                          ││                                      ││                  │
 │                                                          │└──────────────────────────────────────┘│                  │
 │                                                          │┌ SaaS Sync ───────────────────────────┐│                  │
-│                                                          ││ ● Connected (Test Company GmbH)      ││                  │
-│                                                          ││ testdashboard2026@mailinator.com     ││                  │
+│                                                          ││ ○ Not connected                      ││                  │
+│                                                          ││ Run `complior login`                 ││                  │
 └──────────────────────────────────────────────────────────┘└──────────────────────────────────────┘└──────────────────┘
 [--] [1 Dashboard] [ctx:3%] ○                                                                                           
  NORMAL  e:zoom w:watch Ctrl+S:scan Ctrl+P:palette ?:help
