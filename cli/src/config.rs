@@ -27,7 +27,11 @@ impl Default for ConfirmationsConfig {
     }
 }
 const DEFAULT_TICK_RATE_MS: u64 = 250;
-const DEFAULT_PROJECT_API_URL: &str = "https://app.complior.ai";
+/// No hardcoded SaaS URL default.  Users set it via:
+///   1. `PROJECT_API_URL` env var, or
+///   2. `complior login` (persists to tui.toml), or
+///   3. Direct edit of `~/.config/complior/tui.toml` → `project_api_url`
+const DEFAULT_PROJECT_API_URL: &str = "";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
@@ -175,6 +179,13 @@ pub async fn save_config(config: &TuiConfig) {
     if let Ok(content) = toml::to_string_pretty(config) {
         let _ = tokio::fs::write(&path, content).await;
     }
+}
+
+/// Persist the SaaS URL after successful login.
+pub async fn save_project_api_url(url: &str) {
+    let mut config = load_config();
+    config.project_api_url = url.to_string();
+    save_config(&config).await;
 }
 
 /// Save just the theme name to config.

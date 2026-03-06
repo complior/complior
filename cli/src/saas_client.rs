@@ -15,7 +15,10 @@ pub struct DeviceCodeResponse {
 
 // SaaS token poll returns either:
 //   {"error":"authorization_pending"} or {"error":"expired_token"}
-//   {"accessToken":"...","refreshToken":"...","expiresIn":3600,"tokenType":"Bearer"}
+//   {"accessToken":"...","refreshToken":"...","expiresIn":3600,"tokenType":"Bearer",
+//    "userEmail":"user@example.com","orgName":"Acme Corp"}
+// Note: userEmail and orgName should be added to the SaaS /api/auth/token response.
+// Fallback: JWT claims (email, orgName) → GET /api/auth/me
 #[derive(Debug)]
 pub enum TokenPollResult {
     Pending,
@@ -37,6 +40,10 @@ struct TokenSuccessResponse {
     refresh_token: String,
     #[serde(rename = "expiresIn")]
     expires_in: u64,
+    #[serde(rename = "userEmail")]
+    user_email: Option<String>,
+    #[serde(rename = "orgName")]
+    org_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -142,13 +149,49 @@ impl SaasClient {
         let success: TokenSuccessResponse = serde_json::from_value(body)
             .map_err(|e| format!("Failed to parse token success: {e}"))?;
 
+        // Try 3 sources for user info: response body → JWT claims → /auth/me
+        let (mut email, mut org) = (success.user_email.clone(), success.org_name.clone());
+        if email.is_none() && org.is_none() {
+            let (je, jo) = extract_jwt_claims(&success.access_token);
+            email = je;
+            org = jo;
+        }
+        if email.is_none() && org.is_none() {
+            let (me, mo) = self.fetch_user_info(&success.access_token).await;
+            email = me;
+            org = mo;
+        }
+
         Ok(TokenPollResult::Success {
             access_token: success.access_token,
             refresh_token: success.refresh_token,
             expires_in: success.expires_in,
-            user_email: None,
-            org_name: None,
+            user_email: email,
+            org_name: org,
         })
+    }
+
+    /// Fetch user profile from SaaS (email, org name).
+    pub async fn fetch_user_info(&self, token: &str) -> (Option<String>, Option<String>) {
+        let url = format!("{}/api/auth/me", self.base_url);
+        let resp = match self.client.get(&url).bearer_auth(token).send().await {
+            Ok(r) if r.status().is_success() => r,
+            _ => return (None, None),
+        };
+        let body: serde_json::Value = match resp.json().await {
+            Ok(v) => v,
+            Err(_) => return (None, None),
+        };
+        let email = body.get("email")
+            .or_else(|| body.get("userEmail"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let org = body.get("orgName")
+            .or_else(|| body.get("organizationName"))
+            .or_else(|| body.get("org_name"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        (email, org)
     }
 
     pub async fn sync_status(&self, token: &str) -> Result<SyncStatusResult, String> {
@@ -165,4 +208,39 @@ impl SaasClient {
         }
         resp.json().await.map_err(|e| format!("Failed to parse sync status: {e}"))
     }
+}
+
+/// Extract email and org from JWT access token payload (base64url-decoded claims).
+/// JWT format: header.payload.signature — payload is base64url-encoded JSON.
+fn extract_jwt_claims(token: &str) -> (Option<String>, Option<String>) {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return (None, None);
+    }
+    let payload = match base64url_decode(parts[1]) {
+        Some(bytes) => bytes,
+        None => return (None, None),
+    };
+    let claims: serde_json::Value = match serde_json::from_slice(&payload) {
+        Ok(v) => v,
+        Err(_) => return (None, None),
+    };
+    let email = claims.get("email")
+        .or_else(|| claims.get("userEmail"))
+        .or_else(|| claims.get("sub"))
+        .and_then(|v| v.as_str())
+        .filter(|s| s.contains('@')) // sub may be a UUID, only use if it looks like email
+        .map(|s| s.to_string());
+    let org = claims.get("orgName")
+        .or_else(|| claims.get("org_name"))
+        .or_else(|| claims.get("organization"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    (email, org)
+}
+
+/// Decode base64url (no padding) to bytes.
+fn base64url_decode(input: &str) -> Option<Vec<u8>> {
+    use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
+    URL_SAFE_NO_PAD.decode(input).ok()
 }

@@ -28,7 +28,9 @@ export const createScanRoute = (scanService: ScanService) => {
     if (saasToken) {
       try {
         const { createSaasClient } = await import('../../infra/saas-client.js');
-        const client = createSaasClient(parsed.data.saasUrl ?? 'https://app.complior.ai');
+        const saasUrl = parsed.data.saasUrl;
+        if (!saasUrl) throw new Error('saasUrl required for auto-sync');
+        const client = createSaasClient(saasUrl);
         await client.syncScan(saasToken, {
           projectPath: parsed.data.path,
           score: result.score?.totalScore,

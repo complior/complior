@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CoreMessage } from 'ai';
@@ -49,6 +49,8 @@ export interface Application {
   readonly state: ApplicationState;
   readonly shutdown: () => void;
   readonly startWatcher: () => void;
+  /** Set last scan result (in-memory + persisted to disk). */
+  readonly setLastScanResult: (result: ScanResult) => void;
 }
 
 export const loadApplication = async (): Promise<Application> => {
@@ -60,14 +62,32 @@ export const loadApplication = async (): Promise<Application> => {
 
   // 2. Create mutable application state
   const projectPath = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
+  const lastScanPath = resolve(projectPath, '.complior', 'last-scan.json');
+
+  // Load persisted scan result from previous session
+  let persistedScan: ScanResult | null = null;
+  try {
+    const raw = await readFile(lastScanPath, 'utf-8');
+    persistedScan = JSON.parse(raw) as ScanResult;
+    log.info('Loaded persisted scan result from disk');
+  } catch { /* no previous scan — expected on first run */ }
+
   const state: ApplicationState = {
     regulationData,
     projectPath,
     startedAt: Date.now(),
     version: ENGINE_VERSION,
-    lastScanResult: null,
+    lastScanResult: persistedScan,
     conversationHistory: [],
     currentMode: 'build',
+  };
+
+  /** Persist scan result to disk (fire-and-forget). */
+  const persistScanResult = (result: ScanResult): void => {
+    const dir = resolve(projectPath, '.complior');
+    mkdir(dir, { recursive: true })
+      .then(() => writeFile(lastScanPath, JSON.stringify(result), 'utf-8'))
+      .catch((err: unknown) => { log.warn('Failed to persist scan result:', err); });
   };
 
   // 3. Create infrastructure
@@ -145,7 +165,7 @@ export const loadApplication = async (): Promise<Application> => {
     collectFiles,
     events,
     getLastScanResult: () => state.lastScanResult,
-    setLastScanResult: (result) => { state.lastScanResult = result; },
+    setLastScanResult: (result) => { state.lastScanResult = result; persistScanResult(result); },
     evidenceStore,
   });
 
@@ -261,7 +281,7 @@ export const loadApplication = async (): Promise<Application> => {
     setMode: (mode) => { state.currentMode = mode; },
     toolExecutorDeps: {
       getScoringData: () => state.regulationData.scoring?.scoring,
-      setLastScanResult: (result) => { state.lastScanResult = result; },
+      setLastScanResult: (result) => { state.lastScanResult = result; persistScanResult(result); },
     },
     onboardingWizard,
     getVersion: () => state.version,
@@ -291,5 +311,10 @@ export const loadApplication = async (): Promise<Application> => {
     log.info('Application shutdown');
   };
 
-  return { app, state, shutdown, startWatcher: fileWatcher.start };
+  const setScanResult = (result: ScanResult): void => {
+    state.lastScanResult = result;
+    persistScanResult(result);
+  };
+
+  return { app, state, shutdown, startWatcher: fileWatcher.start, setLastScanResult: setScanResult };
 };

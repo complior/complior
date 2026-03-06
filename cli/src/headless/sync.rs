@@ -26,6 +26,11 @@ pub async fn run_sync(
         return 1;
     }
 
+    if config.project_api_url.is_empty() {
+        eprintln!("Error: SaaS URL not configured. Set PROJECT_API_URL env var or run `complior login`.");
+        return 1;
+    }
+
     let sync_all = !passport && !scan && !docs;
     let engine = resolve_engine(config);
 

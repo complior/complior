@@ -20,10 +20,8 @@ const parseManifest = (raw: string): AgentManifest | null => {
 
 const SyncRequestSchema = z.object({
   token: z.string().min(1),
-  saasUrl: z.string().url().optional(),
+  saasUrl: z.string().url('saasUrl is required — set PROJECT_API_URL or run `complior login`'),
 });
-
-const DEFAULT_SAAS_URL = 'https://app.complior.ai';
 
 // Map AgentManifest risk_class to SaaS riskLevel
 const mapRiskLevel = (riskClass?: string): string | undefined => {
@@ -94,7 +92,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
 
     const { token, saasUrl } = parsed.data;
-    const client = createSaasClient(saasUrl ?? DEFAULT_SAAS_URL);
+    const client = createSaasClient(saasUrl);
     const projectPath = deps.getProjectPath();
     const agentsDir = join(projectPath, '.complior', 'agents');
 
@@ -137,7 +135,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
 
     const { token, saasUrl } = parsed.data;
-    const client = createSaasClient(saasUrl ?? DEFAULT_SAAS_URL);
+    const client = createSaasClient(saasUrl);
     const lastScan = deps.getLastScan();
 
     if (!lastScan) {
@@ -192,7 +190,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
 
     const { token, saasUrl } = parsed.data;
-    const client = createSaasClient(saasUrl ?? DEFAULT_SAAS_URL);
+    const client = createSaasClient(saasUrl);
     const projectPath = deps.getProjectPath();
     const reportsDir = join(projectPath, '.complior', 'reports');
 
@@ -232,7 +230,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
 
     const { token, saasUrl } = parsed.data;
-    const client = createSaasClient(saasUrl ?? DEFAULT_SAAS_URL);
+    const client = createSaasClient(saasUrl);
     const projectPath = deps.getProjectPath();
     const reportsDir = join(projectPath, '.complior', 'reports');
 
@@ -273,9 +271,9 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
   // GET /sync/status — proxy SaaS sync status
   app.get('/sync/status', async (c) => {
     const token = c.req.header('Authorization')?.replace('Bearer ', '') ?? c.req.query('token') ?? '';
-    const saasUrl = c.req.query('saasUrl') ?? DEFAULT_SAAS_URL;
+    const saasUrl = c.req.query('saasUrl') ?? '';
 
-    if (!token) {
+    if (!token || !saasUrl) {
       return c.json({ authenticated: false, stats: null });
     }
 

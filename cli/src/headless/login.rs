@@ -46,11 +46,15 @@ pub async fn run_login(config: &TuiConfig) -> Result<(), String> {
                     org_name.as_deref(),
                 )?;
 
+                // Persist SaaS URL so subsequent commands (sync, etc.) use it
+                config::save_project_api_url(&config.project_api_url).await;
+
                 println!();
                 let email_display = user_email.as_deref().unwrap_or("unknown");
                 let org_display = org_name.as_deref().unwrap_or("unknown");
                 println!("\u{2705} Authenticated as {email_display} ({org_display})");
                 println!("   Token stored in ~/.config/complior/credentials");
+                println!("   SaaS URL: {}", config.project_api_url);
                 return Ok(());
             }
             TokenPollResult::Expired => {

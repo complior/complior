@@ -119,7 +119,7 @@ pub enum Command {
         action: AgentAction,
     },
 
-    /// Authenticate with SaaS (app.complior.ai) via browser
+    /// Authenticate with SaaS dashboard via browser
     Login,
 
     /// Clear SaaS authentication tokens

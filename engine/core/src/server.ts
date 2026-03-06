@@ -62,8 +62,8 @@ const startHttp = async (): Promise<void> => {
   });
 
   // Background: fetch data bundle from SaaS (5s delay, then every 5min)
-  const saasUrl = process.env['PROJECT_API_URL'] ?? 'https://app.complior.ai';
-  if (process.env['OFFLINE_MODE'] !== '1') {
+  const saasUrl = process.env['PROJECT_API_URL'] ?? '';
+  if (saasUrl && process.env['OFFLINE_MODE'] !== '1') {
     const { createBundleFetcher } = await import('./infra/bundle-fetcher.js');
     const cacheDir = process.env['COMPLIOR_CACHE_DIR'] ?? '/tmp/complior-cache';
     const bundleFetcher = createBundleFetcher(saasUrl, cacheDir);
@@ -85,14 +85,15 @@ const startHttp = async (): Promise<void> => {
 };
 
 const startMcp = async (): Promise<void> => {
-  const { state } = await loadApplication();
+  const application = await loadApplication();
+  const { state, setLastScanResult } = application;
   const { createMcpStack } = await import('./mcp/create-mcp-stack.js');
 
   const { mcpServer } = await createMcpStack({
     regulationData: state.regulationData,
     projectPath: state.projectPath,
     getLastScanResult: () => state.lastScanResult,
-    setLastScanResult: (r) => { state.lastScanResult = r; },
+    setLastScanResult,
     version: state.version,
   });
 
