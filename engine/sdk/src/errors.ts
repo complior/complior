@@ -11,12 +11,25 @@ export class MiddlewareError extends Error {
 export class ProhibitedPracticeError extends MiddlewareError {
   readonly obligationId: string;
   readonly article: string;
+  readonly category: string;
+  readonly matchedPattern: string;
+  readonly penalty: string;
 
-  constructor(message: string, obligationId: string, article: string) {
+  constructor(
+    message: string,
+    obligationId: string,
+    article: string,
+    category: string = 'unknown',
+    matchedPattern: string = '',
+    penalty: string = '€35M or 7% of annual global turnover',
+  ) {
     super(message, 'PROHIBITED_PRACTICE');
     this.name = 'ProhibitedPracticeError';
     this.obligationId = obligationId;
     this.article = article;
+    this.category = category;
+    this.matchedPattern = matchedPattern;
+    this.penalty = penalty;
   }
 }
 

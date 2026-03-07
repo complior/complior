@@ -138,7 +138,7 @@ describe('pre-hooks', () => {
         expect.fail('Should have thrown');
       } catch (err) {
         const e = err as ProhibitedPracticeError;
-        expect(e.article).toBe('Art. 5(1)(d)');
+        expect(e.article).toBe('Art. 5(1)(h)');
       }
     });
 

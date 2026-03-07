@@ -1,27 +1,66 @@
-import type { PreHook } from '../types.js';
+import type { PreHook, MiddlewareContext } from '../types.js';
 import { ProhibitedPracticeError } from '../errors.js';
+import {
+  PROHIBITED_PATTERNS_EN,
+  CATEGORY_DESCRIPTIONS,
+  ART5_MAX_PENALTY,
+  type ProhibitedPattern,
+  type Strictness,
+} from '../data/prohibited-patterns.js';
+import { PROHIBITED_PATTERNS_DE } from '../data/prohibited-i18n/de.js';
+import { PROHIBITED_PATTERNS_FR } from '../data/prohibited-i18n/fr.js';
+import { PROHIBITED_PATTERNS_NL } from '../data/prohibited-i18n/nl.js';
+import { PROHIBITED_PATTERNS_ES } from '../data/prohibited-i18n/es.js';
+import { PROHIBITED_PATTERNS_IT } from '../data/prohibited-i18n/it.js';
 
-const PROHIBITED_PATTERNS = [
-  { pattern: /emotion\s*recognition/i, obligation: 'OBL-002', article: 'Art. 5(1)(f)' },
-  { pattern: /social\s*scoring/i, obligation: 'OBL-002', article: 'Art. 5(1)(c)' },
-  { pattern: /biometric\s*categorisation/i, obligation: 'OBL-002', article: 'Art. 5(1)(g)' },
-  { pattern: /subliminal\s*manipulation/i, obligation: 'OBL-002', article: 'Art. 5(1)(a)' },
-  { pattern: /predictive\s*policing/i, obligation: 'OBL-002', article: 'Art. 5(1)(d)' },
+/** All patterns: EN + DE + FR + NL + ES + IT */
+const ALL_PATTERNS: readonly ProhibitedPattern[] = [
+  ...PROHIBITED_PATTERNS_EN,
+  ...PROHIBITED_PATTERNS_DE,
+  ...PROHIBITED_PATTERNS_FR,
+  ...PROHIBITED_PATTERNS_NL,
+  ...PROHIBITED_PATTERNS_ES,
+  ...PROHIBITED_PATTERNS_IT,
 ];
 
-/** OBL-002: Block prohibited AI practices */
-export const prohibitedHook: PreHook = (ctx) => {
-  const messages = ctx.params['messages'] as { role: string; content: string }[] | undefined;
-  if (!messages) return ctx;
+/**
+ * Get patterns filtered by strictness level.
+ * - `strict` (default): all patterns including grey-area
+ * - `standard`: only clear violations (no grey-area)
+ */
+const getPatterns = (strictness: Strictness): readonly ProhibitedPattern[] => {
+  if (strictness === 'standard') {
+    return ALL_PATTERNS.filter((p) => !p.greyArea);
+  }
+  return ALL_PATTERNS;
+};
 
-  const text = messages.map((m) => m.content).join(' ');
+/** Extract text from messages array */
+const extractText = (params: Record<string, unknown>): string => {
+  const messages = params['messages'] as { role: string; content: string }[] | undefined;
+  if (!messages) return '';
+  return messages.map((m) => m.content).join(' ');
+};
 
-  for (const { pattern, obligation, article } of PROHIBITED_PATTERNS) {
-    if (pattern.test(text)) {
+/** OBL-002: Block prohibited AI practices (Art. 5 EU AI Act, 8 categories) */
+export const prohibitedHook: PreHook = (ctx: MiddlewareContext): MiddlewareContext => {
+  const text = extractText(ctx.params);
+  if (!text) return ctx;
+
+  const strictness: Strictness = ctx.config.strict !== false ? 'strict' : 'standard';
+  const patterns = getPatterns(strictness);
+
+  for (const p of patterns) {
+    const match = p.pattern.exec(text);
+    if (match) {
+      const categoryDesc = CATEGORY_DESCRIPTIONS[p.category];
       throw new ProhibitedPracticeError(
-        `Prohibited AI practice detected: ${pattern.source}`,
-        obligation,
-        article,
+        `Prohibited AI practice detected: ${categoryDesc}`,
+        p.obligation,
+        p.article,
+        p.category,
+        match[0],
+        ART5_MAX_PENALTY,
       );
     }
   }
