@@ -3,7 +3,7 @@
  */
 import type { ProhibitedPattern } from '../prohibited-patterns.js';
 
-export const PROHIBITED_PATTERNS_NL: readonly ProhibitedPattern[] = [
+export const PROHIBITED_PATTERNS_NL: readonly ProhibitedPattern[] = Object.freeze([
   // Art. 5(1)(a) — Subliminal manipulation
   { pattern: /subliminale\s*(?:manipulatie|beïnvloeding|techniek)/i, category: 'subliminal_manipulation', article: 'Art. 5(1)(a)', obligation: 'OBL-002', description: 'Subliminale manipulatie' },
   { pattern: /onbewuste\s*(?:beïnvloeding|manipulatie)/i, category: 'subliminal_manipulation', article: 'Art. 5(1)(a)', obligation: 'OBL-002', description: 'Onbewuste beïnvloeding' },
@@ -28,7 +28,19 @@ export const PROHIBITED_PATTERNS_NL: readonly ProhibitedPattern[] = [
   // Art. 5(1)(g) — Real-time biometric ID
   { pattern: /(?:realtime|real-time)\s*(?:biometrische\s*)?(?:gezichts|identificatie)/i, category: 'realtime_biometric_id', article: 'Art. 5(1)(g)', obligation: 'OBL-002', description: 'Realtime biometrische identificatie' },
 
+  // Art. 5(1)(c) — Social scoring (additional)
+  { pattern: /(?:betrouwbaarheid|vertrouwen)\s*(?:score|beoordeling|waardering)/i, category: 'social_scoring', article: 'Art. 5(1)(c)', obligation: 'OBL-002', description: 'Betrouwbaarheidsbeoordeling' },
+
+  // Art. 5(1)(d) — Biometric categorisation (additional)
+  { pattern: /(?:ras|etniciteit|religie|seksuele\s*geaardheid)\s*(?:afleiden|bepalen|herkennen)\s*(?:uit|van|door)\s*(?:biometrisch|gezicht)/i, category: 'biometric_categorisation', article: 'Art. 5(1)(d)', obligation: 'OBL-002', description: 'Afleiden van gevoelige kenmerken uit biometrie' },
+
+  // Art. 5(1)(e) — Untargeted facial scraping (additional)
+  { pattern: /(?:gezichtsbeeld|biometrische\s*gegevens)\s*(?:uit|van)\s*(?:internet|web|openbaar|CCTV)/i, category: 'untargeted_facial_scraping', article: 'Art. 5(1)(e)', obligation: 'OBL-002', description: 'Gezichtsbeelden van internet/openbare bronnen' },
+
+  // Art. 5(1)(g) — Real-time biometric ID (additional)
+  { pattern: /biometrische\s*(?:identificatie\s*op\s*afstand|massabewaking)/i, category: 'realtime_biometric_id', article: 'Art. 5(1)(g)', obligation: 'OBL-002', description: 'Biometrische identificatie op afstand/massabewaking' },
+
   // Art. 5(1)(h) — Predictive policing
   { pattern: /(?:voorspellend|predictie)\s*(?:politiewerk|policing)/i, category: 'predictive_policing', article: 'Art. 5(1)(h)', obligation: 'OBL-002', description: 'Voorspellend politiewerk' },
   { pattern: /(?:criminaliteit|misdaad)\s*(?:voorspell|predict|risicobeoordel)/i, category: 'predictive_policing', article: 'Art. 5(1)(h)', obligation: 'OBL-002', description: 'Criminaliteitsvoorspelling' },
-];
+]);

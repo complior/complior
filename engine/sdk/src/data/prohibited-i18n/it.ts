@@ -3,7 +3,7 @@
  */
 import type { ProhibitedPattern } from '../prohibited-patterns.js';
 
-export const PROHIBITED_PATTERNS_IT: readonly ProhibitedPattern[] = [
+export const PROHIBITED_PATTERNS_IT: readonly ProhibitedPattern[] = Object.freeze([
   // Art. 5(1)(a) — Subliminal manipulation
   { pattern: /manipolazione\s*subliminale/i, category: 'subliminal_manipulation', article: 'Art. 5(1)(a)', obligation: 'OBL-002', description: 'Manipolazione subliminale' },
   { pattern: /tecnica\s*subliminale/i, category: 'subliminal_manipulation', article: 'Art. 5(1)(a)', obligation: 'OBL-002', description: 'Tecnica subliminale' },
@@ -36,4 +36,4 @@ export const PROHIBITED_PATTERNS_IT: readonly ProhibitedPattern[] = [
   // Art. 5(1)(h) — Predictive policing
   { pattern: /polizia\s*predittiva/i, category: 'predictive_policing', article: 'Art. 5(1)(h)', obligation: 'OBL-002', description: 'Polizia predittiva' },
   { pattern: /(?:predizione|previsione)\s*(?:della?\s*)?(?:criminalità|delinquenza)/i, category: 'predictive_policing', article: 'Art. 5(1)(h)', obligation: 'OBL-002', description: 'Predizione della criminalità' },
-];
+]);

@@ -476,7 +476,7 @@ const ADDITIONAL_PATTERNS: readonly PIIPattern[] = [
 ];
 
 /** All PII patterns, ordered for matching priority (specific first, generic last) */
-export const PII_PATTERNS: readonly PIIPattern[] = [
+export const PII_PATTERNS: readonly PIIPattern[] = Object.freeze([
   // Most specific patterns first (with validators)
   ...NATIONAL_ID_PATTERNS,
   ...FINANCIAL_PATTERNS,
@@ -487,4 +487,4 @@ export const PII_PATTERNS: readonly PIIPattern[] = [
   // Generic patterns last
   ...CONTACT_PATTERNS,
   ...PASSPORT_PATTERNS,
-];
+]);

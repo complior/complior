@@ -86,8 +86,24 @@ describe('compliorAgent', () => {
       ).rejects.toThrow(PermissionDeniedError);
     });
 
-    it('enforces tools allowlist when non-empty', async () => {
+    it('enforces tools allowlist via post-hook tool_call validation', async () => {
       const client = createMockClient();
+      // Mock response with tool_calls not in allowlist
+      client.chat.completions.create.mockResolvedValue({
+        id: 'chatcmpl-test',
+        choices: [{
+          message: {
+            content: null,
+            tool_calls: [{
+              id: 'call_1',
+              type: 'function',
+              function: { name: 'delete_all', arguments: '{}' },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      });
+
       const wrapped = compliorAgent(client, {
         passport: createPassport({
           permissions: { tools: ['search', 'read'], denied: [] },

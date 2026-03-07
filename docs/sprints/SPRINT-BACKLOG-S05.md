@@ -40,7 +40,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 - [ ] Unit-тесты: 50+ test cases (по 1 на паттерн минимум)
 
 **Технические детали:**
-- `engine/sdk/src/hooks/pre/prohibited.ts` — основная логика
+- `engine/sdk/src/pre/prohibited.ts` — основная логика
 - `engine/sdk/src/data/prohibited-patterns.ts` — база паттернов с категоризацией
 - `engine/sdk/src/data/prohibited-i18n/` — мультиязычные паттерны (de.ts, fr.ts, nl.ts)
 - Guard API fallback: POST `/guard/prohibited` с текстом промпта
@@ -66,7 +66,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 - [ ] 50+ unit-тестов с реальными (анонимизированными) форматами
 
 **Технические детали:**
-- `engine/sdk/src/hooks/pre/sanitize.ts` — основная логика
+- `engine/sdk/src/pre/sanitize.ts` — основная логика
 - `engine/sdk/src/data/pii-patterns.ts` — регулярные выражения + валидаторы
 - `engine/sdk/src/data/pii-validators/` — checksum-валидаторы по странам (iban.ts, bsn.ts, nir.ts, pesel.ts)
 - GDPR Art.9 паттерны: контекстно-зависимые (ищут рядом стоящие ключевые слова)
@@ -92,7 +92,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 - [ ] 15+ тестов: по 3 на каждый провайдер + edge cases
 
 **Технические детали:**
-- `engine/sdk/src/hooks/post/permission.ts` — post-hook логика
+- `engine/sdk/src/post/permission-tool-calls.ts` — post-hook логика
 - `engine/sdk/src/parsers/tool-call-parser.ts` — unified parser для 3 форматов
 - Обновить `engine/sdk/src/agent.ts` — `compliorAgent()` wires passport permissions в hook
 
@@ -115,7 +115,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 - [ ] Post-hook: не модифицирует response, только проверяет
 
 **Технические детали:**
-- `engine/sdk/src/hooks/post/disclosure-verify.ts` — основная логика
+- `engine/sdk/src/post/disclosure-verify.ts` — основная логика
 - `engine/sdk/src/data/disclosure-phrases.ts` — фразы по языкам
 - OBL-015, Art.50(1): "persons interacting with an AI system shall be informed"
 
@@ -139,7 +139,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 - [ ] Возвращает `BiasDetectedError` с массивом `{ characteristic, severity, evidence, score }`
 
 **Технические детали:**
-- `engine/sdk/src/hooks/post/bias-check.ts` — основная логика (расширение существующего файла)
+- `engine/sdk/src/post/bias-check.ts` — основная логика (расширение существующего файла)
 - `engine/sdk/src/data/bias-patterns.ts` — паттерны по характеристикам
 - `engine/sdk/src/data/bias-profiles.ts` — domain-specific конфигурации
 - EU Charter of Fundamental Rights: Art.21 non-discrimination

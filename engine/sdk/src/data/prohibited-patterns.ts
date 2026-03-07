@@ -108,7 +108,7 @@ const predictivePolicing: ProhibitedPattern[] = [
 ];
 
 /** All English patterns grouped by category */
-export const PROHIBITED_PATTERNS_EN: readonly ProhibitedPattern[] = [
+export const PROHIBITED_PATTERNS_EN: readonly ProhibitedPattern[] = Object.freeze([
   ...subliminal,
   ...exploitation,
   ...socialScoring,
@@ -117,7 +117,7 @@ export const PROHIBITED_PATTERNS_EN: readonly ProhibitedPattern[] = [
   ...emotionInference,
   ...realtimeBiometric,
   ...predictivePolicing,
-];
+]);
 
 /** Category descriptions for error messages */
 export const CATEGORY_DESCRIPTIONS: Record<ProhibitedCategory, string> = {

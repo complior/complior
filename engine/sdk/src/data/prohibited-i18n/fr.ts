@@ -3,7 +3,7 @@
  */
 import type { ProhibitedPattern } from '../prohibited-patterns.js';
 
-export const PROHIBITED_PATTERNS_FR: readonly ProhibitedPattern[] = [
+export const PROHIBITED_PATTERNS_FR: readonly ProhibitedPattern[] = Object.freeze([
   // Art. 5(1)(a) — Subliminal manipulation
   { pattern: /manipulation\s*subliminale/i, category: 'subliminal_manipulation', article: 'Art. 5(1)(a)', obligation: 'OBL-002', description: 'Manipulation subliminale' },
   { pattern: /technique\s*subliminale/i, category: 'subliminal_manipulation', article: 'Art. 5(1)(a)', obligation: 'OBL-002', description: 'Technique subliminale' },
@@ -32,7 +32,16 @@ export const PROHIBITED_PATTERNS_FR: readonly ProhibitedPattern[] = [
   { pattern: /identification\s*biométrique\s*(?:à\s*distance|en\s*temps\s*réel)/i, category: 'realtime_biometric_id', article: 'Art. 5(1)(g)', obligation: 'OBL-002', description: 'Identification biométrique en temps réel' },
   { pattern: /(?:reconnaissance|surveillance)\s*faciale\s*(?:en\s*temps\s*réel|dans\s*l['']espace\s*public)/i, category: 'realtime_biometric_id', article: 'Art. 5(1)(g)', obligation: 'OBL-002', description: 'Reconnaissance faciale en temps réel' },
 
+  // Art. 5(1)(a) — Subliminal manipulation (additional)
+  { pattern: /(?:persuasion|influence)\s*(?:cachée|dissimulée|occulte)/i, category: 'subliminal_manipulation', article: 'Art. 5(1)(a)', obligation: 'OBL-002', description: 'Persuasion cachée/occulte' },
+
+  // Art. 5(1)(b) — Exploitation (additional)
+  { pattern: /(?:IA|système|interface)\s*(?:trompe(?:ur|use)|tromperie)\s*(?:ciblant|visant|destiné\s*aux?)\s*(?:personnes?\s*)?(?:âgées?|enfants?|mineures?|handicapées?|vulnérables?)/i, category: 'exploitation_of_vulnerabilities', article: 'Art. 5(1)(b)', obligation: 'OBL-002', description: 'IA trompeuse ciblant les personnes vulnérables' },
+
+  // Art. 5(1)(e) — Untargeted facial scraping (additional)
+  { pattern: /(?:récolter|collecter|extraire)\s*(?:des?\s*)?(?:images?\s*)?(?:faciales?|biométriques?)\s*(?:sur|depuis|à\s*partir)\s*(?:internet|web|réseaux?\s*sociaux?|espace\s*public)/i, category: 'untargeted_facial_scraping', article: 'Art. 5(1)(e)', obligation: 'OBL-002', description: 'Récolte d\'images faciales sur internet' },
+
   // Art. 5(1)(h) — Predictive policing
   { pattern: /police\s*prédictive/i, category: 'predictive_policing', article: 'Art. 5(1)(h)', obligation: 'OBL-002', description: 'Police prédictive' },
   { pattern: /(?:prédiction|prévision)\s*(?:de\s*)?(?:la\s*)?(?:criminalité|délinquance)/i, category: 'predictive_policing', article: 'Art. 5(1)(h)', obligation: 'OBL-002', description: 'Prédiction de la criminalité' },
-];
+]);

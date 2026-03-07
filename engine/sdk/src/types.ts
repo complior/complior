@@ -9,6 +9,7 @@ export interface MiddlewareConfig {
   readonly logging?: boolean;
   readonly strict?: boolean;
   readonly sanitizeMode?: 'replace' | 'block' | 'warn';
+  readonly guardApi?: boolean;
 }
 
 export interface MiddlewareContext {

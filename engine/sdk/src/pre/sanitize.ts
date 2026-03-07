@@ -67,10 +67,24 @@ const scanContent = (
   return { replaced, details, firstMatch };
 };
 
+interface LLMMessage {
+  readonly role: string;
+  readonly content: string;
+}
+
+/** Runtime type guard for LLM messages array (boundary validation) */
+const isLLMMessageArray = (val: unknown): val is readonly LLMMessage[] => {
+  if (!Array.isArray(val) || val.length === 0) return Array.isArray(val);
+  const first: unknown = val[0];
+  if (typeof first !== 'object' || first === null) return false;
+  return 'role' in first && 'content' in first && typeof first.role === 'string';
+};
+
 /** GDPR Art.5: PII scrubbing — 50+ PII types with checksum validation and GDPR Art.9 detection */
 export const sanitizeHook: PreHook = (ctx) => {
-  const messages = ctx.params['messages'] as { role: string; content: string }[] | undefined;
-  if (!messages) return ctx;
+  const val = ctx.params['messages'];
+  if (!isLLMMessageArray(val)) return ctx;
+  const messages = val;
 
   const mode = ctx.config.sanitizeMode ?? 'replace';
   let totalRedacted = 0;

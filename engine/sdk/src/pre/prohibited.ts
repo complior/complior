@@ -35,11 +35,24 @@ const getPatterns = (strictness: Strictness): readonly ProhibitedPattern[] => {
   return ALL_PATTERNS;
 };
 
+interface LLMMessage {
+  readonly role: string;
+  readonly content: string;
+}
+
+/** Runtime type guard for LLM messages array (boundary validation) */
+const isLLMMessageArray = (val: unknown): val is readonly LLMMessage[] => {
+  if (!Array.isArray(val) || val.length === 0) return Array.isArray(val);
+  const first: unknown = val[0];
+  if (typeof first !== 'object' || first === null) return false;
+  return 'role' in first && 'content' in first && typeof first.role === 'string';
+};
+
 /** Extract text from messages array */
 const extractText = (params: Record<string, unknown>): string => {
-  const messages = params['messages'] as { role: string; content: string }[] | undefined;
-  if (!messages) return '';
-  return messages.map((m) => m.content).join(' ');
+  const val = params['messages'];
+  if (!isLLMMessageArray(val)) return '';
+  return val.map((m) => m.content).join(' ');
 };
 
 /** OBL-002: Block prohibited AI practices (Art. 5 EU AI Act, 8 categories) */
@@ -63,6 +76,18 @@ export const prohibitedHook: PreHook = (ctx: MiddlewareContext): MiddlewareConte
         ART5_MAX_PENALTY,
       );
     }
+  }
+
+  // Metadata: flag for downstream Guard API async verification (if opt-in)
+  if (ctx.config.guardApi) {
+    return {
+      ...ctx,
+      metadata: {
+        ...ctx.metadata,
+        guardApiRequested: true,
+        guardApiEndpoint: '/guard/prohibited',
+      },
+    };
   }
 
   return ctx;
