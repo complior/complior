@@ -8,6 +8,7 @@ export interface MiddlewareConfig {
   readonly domain?: Domain | readonly Domain[];
   readonly logging?: boolean;
   readonly strict?: boolean;
+  readonly sanitizeMode?: 'replace' | 'block' | 'warn';
 }
 
 export interface MiddlewareContext {

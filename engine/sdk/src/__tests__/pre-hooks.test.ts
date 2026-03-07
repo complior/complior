@@ -168,7 +168,7 @@ describe('pre-hooks', () => {
       });
       const result = sanitizeHook(ctx);
       const messages = result.params['messages'] as { role: string; content: string }[];
-      expect(messages[0]!.content).toContain('[SSN-REDACTED]');
+      expect(messages[0]!.content).toContain('[PII:SSN]');
       expect(messages[0]!.content).not.toContain('123-45-6789');
       expect(result.metadata['piiRedacted']).toBe(1);
     });
@@ -179,7 +179,7 @@ describe('pre-hooks', () => {
       });
       const result = sanitizeHook(ctx);
       const messages = result.params['messages'] as { role: string; content: string }[];
-      expect(messages[0]!.content).toContain('[EMAIL-REDACTED]');
+      expect(messages[0]!.content).toContain('[PII:EMAIL]');
       expect(messages[0]!.content).not.toContain('john@example.com');
     });
 
@@ -189,7 +189,7 @@ describe('pre-hooks', () => {
       });
       const result = sanitizeHook(ctx);
       const messages = result.params['messages'] as { role: string; content: string }[];
-      expect(messages[0]!.content).toContain('[CC-REDACTED]');
+      expect(messages[0]!.content).toContain('[PII:CREDIT_CARD]');
       expect(messages[0]!.content).not.toContain('4111111111111111');
     });
 
@@ -199,7 +199,7 @@ describe('pre-hooks', () => {
       });
       const result = sanitizeHook(ctx);
       const messages = result.params['messages'] as { role: string; content: string }[];
-      expect(messages[0]!.content).toContain('[CC-REDACTED]');
+      expect(messages[0]!.content).toContain('[PII:CREDIT_CARD]');
     });
 
     it('counts multiple redactions across multiple messages', () => {

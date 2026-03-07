@@ -231,7 +231,7 @@ describe('pipeline', () => {
       const params = result['_params'] as Record<string, unknown>;
       const messages = params['messages'] as { role: string; content: string }[];
       const userMsg = messages.find((m) => m.role === 'user');
-      expect(userMsg!.content).toContain('[SSN-REDACTED]');
+      expect(userMsg!.content).toContain('[PII:SSN]');
       expect(userMsg!.content).not.toContain('123-45-6789');
     });
 

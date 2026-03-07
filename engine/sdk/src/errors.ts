@@ -88,3 +88,17 @@ export class CircuitBreakerError extends MiddlewareError {
     this.errorThreshold = errorThreshold;
   }
 }
+
+export class PIIDetectedError extends MiddlewareError {
+  readonly piiType: string;
+  readonly category: string;
+  readonly article: string;
+
+  constructor(message: string, piiType: string, category: string, article: string) {
+    super(message, 'PII_DETECTED');
+    this.name = 'PIIDetectedError';
+    this.piiType = piiType;
+    this.category = category;
+    this.article = article;
+  }
+}
