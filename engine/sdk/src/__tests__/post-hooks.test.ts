@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { disclosureVerifyHook } from '../post/disclosure-verify.js';
-import { contentMarkingHook } from '../post/content-marking.js';
-import { escalationHook } from '../post/escalation.js';
-import { headersHook } from '../post/headers.js';
-import { biasCheckHook } from '../post/bias-check.js';
+import { disclosureVerifyHook } from '../hooks/post/disclosure-verify.js';
+import { contentMarkingHook } from '../hooks/post/content-marking.js';
+import { escalationHook } from '../hooks/post/escalation.js';
+import { headersHook } from '../hooks/post/headers.js';
+import { biasCheckHook } from '../hooks/post/bias-check.js';
 import type { MiddlewareContext } from '../types.js';
 
 const makeCtx = (metadata: Record<string, unknown> = {}): MiddlewareContext => ({

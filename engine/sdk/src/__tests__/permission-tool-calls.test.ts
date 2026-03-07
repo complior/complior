@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createToolCallPermissionHook } from '../post/permission-tool-calls.js';
-import type { DeniedToolCall } from '../post/permission-tool-calls.js';
+import { createToolCallPermissionHook } from '../hooks/post/permission-tool-calls.js';
+import type { DeniedToolCall } from '../hooks/post/permission-tool-calls.js';
 import { PermissionDeniedError } from '../errors.js';
 import type { AgentPassport } from '../agent.js';
 import type { MiddlewareContext } from '../types.js';

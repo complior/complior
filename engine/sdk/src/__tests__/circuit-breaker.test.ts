@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createCircuitBreakerHook } from '../post/circuit-breaker.js';
+import { createCircuitBreakerHook } from '../hooks/post/circuit-breaker.js';
 import { CircuitBreakerError } from '../errors.js';
 import type { MiddlewareContext } from '../types.js';
 

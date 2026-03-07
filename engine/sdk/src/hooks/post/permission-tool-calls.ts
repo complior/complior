@@ -5,11 +5,11 @@
  * Post-hook: runs after LLM response, inspects tool_calls across
  * OpenAI, Anthropic, and Google Gemini response formats.
  */
-import type { PostHook } from '../types.js';
-import type { AgentPassport } from '../agent.js';
-import { PermissionDeniedError } from '../errors.js';
-import { parseToolCalls } from '../parsers/tool-call-parser.js';
-import type { ParsedToolCall } from '../parsers/tool-call-parser.js';
+import type { PostHook } from '../../types.js';
+import type { AgentPassport } from '../../agent.js';
+import { PermissionDeniedError } from '../../errors.js';
+import { parseToolCalls } from '../../parsers/tool-call-parser.js';
+import type { ParsedToolCall } from '../../parsers/tool-call-parser.js';
 
 export type ToolCallAction = 'block' | 'warn' | 'log-only';
 

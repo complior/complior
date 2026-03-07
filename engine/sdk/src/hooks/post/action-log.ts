@@ -1,4 +1,4 @@
-import type { PostHook } from '../types.js';
+import type { PostHook } from '../../types.js';
 
 export interface ActionLogEntry {
   readonly provider: string;

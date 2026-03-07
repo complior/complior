@@ -1,4 +1,4 @@
-import type { PostHook } from '../types.js';
+import type { PostHook } from '../../types.js';
 
 const BIAS_PATTERNS = [
   /\b(always|never)\b.*\b(men|women|male|female)\b/i,

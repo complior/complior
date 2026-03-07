@@ -1,4 +1,4 @@
-import type { PostHook } from '../types.js';
+import type { PostHook } from '../../types.js';
 
 /** OBL-021: Standard compliance headers */
 export const headersHook: PostHook = (ctx, response) => {

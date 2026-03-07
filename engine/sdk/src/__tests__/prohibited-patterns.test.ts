@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { prohibitedHook } from '../pre/prohibited.js';
+import { prohibitedHook } from '../hooks/pre/prohibited.js';
 import { ProhibitedPracticeError } from '../errors.js';
 import type { MiddlewareContext } from '../types.js';
 import { PROHIBITED_PATTERNS_EN } from '../data/prohibited-patterns.js';

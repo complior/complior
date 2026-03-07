@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeHook } from '../pre/sanitize.js';
+import { sanitizeHook } from '../hooks/pre/sanitize.js';
 import { PIIDetectedError } from '../errors.js';
 import { validateIBAN } from '../data/pii-validators/iban.js';
 import { validateBSN } from '../data/pii-validators/bsn.js';

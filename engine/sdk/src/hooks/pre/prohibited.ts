@@ -1,17 +1,17 @@
-import type { PreHook, MiddlewareContext } from '../types.js';
-import { ProhibitedPracticeError } from '../errors.js';
+import type { PreHook, MiddlewareContext } from '../../types.js';
+import { ProhibitedPracticeError } from '../../errors.js';
 import {
   PROHIBITED_PATTERNS_EN,
   CATEGORY_DESCRIPTIONS,
   ART5_MAX_PENALTY,
   type ProhibitedPattern,
   type Strictness,
-} from '../data/prohibited-patterns.js';
-import { PROHIBITED_PATTERNS_DE } from '../data/prohibited-i18n/de.js';
-import { PROHIBITED_PATTERNS_FR } from '../data/prohibited-i18n/fr.js';
-import { PROHIBITED_PATTERNS_NL } from '../data/prohibited-i18n/nl.js';
-import { PROHIBITED_PATTERNS_ES } from '../data/prohibited-i18n/es.js';
-import { PROHIBITED_PATTERNS_IT } from '../data/prohibited-i18n/it.js';
+} from '../../data/prohibited-patterns.js';
+import { PROHIBITED_PATTERNS_DE } from '../../data/prohibited-i18n/de.js';
+import { PROHIBITED_PATTERNS_FR } from '../../data/prohibited-i18n/fr.js';
+import { PROHIBITED_PATTERNS_NL } from '../../data/prohibited-i18n/nl.js';
+import { PROHIBITED_PATTERNS_ES } from '../../data/prohibited-i18n/es.js';
+import { PROHIBITED_PATTERNS_IT } from '../../data/prohibited-i18n/it.js';
 
 /** All patterns: EN + DE + FR + NL + ES + IT */
 const ALL_PATTERNS: readonly ProhibitedPattern[] = [

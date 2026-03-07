@@ -1,13 +1,13 @@
 import type { MiddlewareConfig, MiddlewareContext, MiddlewareResult, PreHook, PostHook, DomainHooks } from './types.js';
-import { disclosureHook } from './pre/disclosure.js';
-import { prohibitedHook } from './pre/prohibited.js';
-import { sanitizeHook } from './pre/sanitize.js';
-import { loggerHook } from './pre/logger.js';
-import { disclosureVerifyHook } from './post/disclosure-verify.js';
-import { contentMarkingHook } from './post/content-marking.js';
-import { escalationHook } from './post/escalation.js';
-import { headersHook } from './post/headers.js';
-import { biasCheckHook } from './post/bias-check.js';
+import { disclosureHook } from './hooks/pre/disclosure.js';
+import { prohibitedHook } from './hooks/pre/prohibited.js';
+import { sanitizeHook } from './hooks/pre/sanitize.js';
+import { loggerHook } from './hooks/pre/logger.js';
+import { disclosureVerifyHook } from './hooks/post/disclosure-verify.js';
+import { contentMarkingHook } from './hooks/post/content-marking.js';
+import { escalationHook } from './hooks/post/escalation.js';
+import { headersHook } from './hooks/post/headers.js';
+import { biasCheckHook } from './hooks/post/bias-check.js';
 
 export interface Pipeline {
   readonly runPre: (ctx: MiddlewareContext) => MiddlewareContext;

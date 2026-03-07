@@ -1,5 +1,5 @@
-import type { PostHook, MiddlewareContext } from '../types.js';
-import { CircuitBreakerError } from '../errors.js';
+import type { PostHook, MiddlewareContext } from '../../types.js';
+import { CircuitBreakerError } from '../../errors.js';
 
 // --- Config ---
 

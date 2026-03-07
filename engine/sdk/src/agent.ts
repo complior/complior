@@ -1,14 +1,14 @@
 import type { MiddlewareConfig, DomainHooks, PreHook, PostHook } from './types.js';
 import { complior } from './index.js';
-import { createPermissionHook } from './pre/permission.js';
-import { createRateLimitHook } from './pre/rate-limit.js';
-import { createBudgetHook } from './post/budget.js';
-import { createActionLogHook } from './post/action-log.js';
-import type { ActionLogEntry } from './post/action-log.js';
-import { createCircuitBreakerHook } from './post/circuit-breaker.js';
-import type { CircuitBreakerConfig } from './post/circuit-breaker.js';
-import { createToolCallPermissionHook } from './post/permission-tool-calls.js';
-import type { ToolCallAction, DeniedToolCall } from './post/permission-tool-calls.js';
+import { createPermissionHook } from './hooks/pre/permission.js';
+import { createRateLimitHook } from './hooks/pre/rate-limit.js';
+import { createBudgetHook } from './hooks/post/budget.js';
+import { createActionLogHook } from './hooks/post/action-log.js';
+import type { ActionLogEntry } from './hooks/post/action-log.js';
+import { createCircuitBreakerHook } from './hooks/post/circuit-breaker.js';
+import type { CircuitBreakerConfig } from './hooks/post/circuit-breaker.js';
+import { createToolCallPermissionHook } from './hooks/post/permission-tool-calls.js';
+import type { ToolCallAction, DeniedToolCall } from './hooks/post/permission-tool-calls.js';
 
 // --- Passport shape (subset of AgentManifest used by SDK) ---
 

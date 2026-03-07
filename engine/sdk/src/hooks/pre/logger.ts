@@ -1,4 +1,4 @@
-import type { PreHook } from '../types.js';
+import type { PreHook } from '../../types.js';
 
 /** OBL-006: Input logging with timestamp */
 export const loggerHook: PreHook = (ctx) => {

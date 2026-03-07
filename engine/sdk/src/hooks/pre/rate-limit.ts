@@ -1,5 +1,5 @@
-import type { PreHook } from '../types.js';
-import { RateLimitError } from '../errors.js';
+import type { PreHook } from '../../types.js';
+import { RateLimitError } from '../../errors.js';
 
 /** C.R12: Sliding window rate limiter based on passport constraints */
 export const createRateLimitHook = (maxPerMinute: number): PreHook => {

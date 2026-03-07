@@ -1,7 +1,7 @@
-import type { PreHook } from '../types.js';
-import { PII_PATTERNS } from '../data/pii-patterns.js';
-import type { PIIPattern } from '../data/pii-patterns.js';
-import { PIIDetectedError } from '../errors.js';
+import type { PreHook } from '../../types.js';
+import { PII_PATTERNS } from '../../data/pii-patterns.js';
+import type { PIIPattern } from '../../data/pii-patterns.js';
+import { PIIDetectedError } from '../../errors.js';
 
 interface PIIDetail {
   readonly id: string;

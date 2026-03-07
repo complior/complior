@@ -7,8 +7,8 @@ export { ProhibitedPracticeError, MiddlewareError, DomainViolationError, Permiss
 export { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 export { compliorAgent } from './agent.js';
 export type { AgentConfig, AgentPassport } from './agent.js';
-export type { ActionLogEntry } from './post/action-log.js';
-export type { CircuitBreakerConfig } from './post/circuit-breaker.js';
+export type { ActionLogEntry } from './hooks/post/action-log.js';
+export type { CircuitBreakerConfig } from './hooks/post/circuit-breaker.js';
 
 const resolveDomainHooks = (config: MiddlewareConfig): DomainHooks | undefined => {
   if (!config.domain) return undefined;

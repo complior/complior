@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { disclosureHook } from '../pre/disclosure.js';
-import { prohibitedHook } from '../pre/prohibited.js';
-import { sanitizeHook } from '../pre/sanitize.js';
-import { loggerHook } from '../pre/logger.js';
+import { disclosureHook } from '../hooks/pre/disclosure.js';
+import { prohibitedHook } from '../hooks/pre/prohibited.js';
+import { sanitizeHook } from '../hooks/pre/sanitize.js';
+import { loggerHook } from '../hooks/pre/logger.js';
 import { ProhibitedPracticeError } from '../errors.js';
 import type { MiddlewareContext } from '../types.js';
 

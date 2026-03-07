@@ -1,4 +1,4 @@
-import type { PostHook } from '../types.js';
+import type { PostHook } from '../../types.js';
 
 const ESCALATION_PATTERNS = [
   /speak\s+to\s+a?\s*human/i,

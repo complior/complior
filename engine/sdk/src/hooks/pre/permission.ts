@@ -1,6 +1,6 @@
-import type { PreHook } from '../types.js';
-import { PermissionDeniedError } from '../errors.js';
-import type { AgentPassport } from '../agent.js';
+import type { PreHook } from '../../types.js';
+import { PermissionDeniedError } from '../../errors.js';
+import type { AgentPassport } from '../../agent.js';
 
 /**
  * C.R12: Check if LLM API method is permitted by passport.
