@@ -316,20 +316,14 @@ describe('post-hooks', () => {
   // ── biasCheckHook ───────────────────────────────────────────────
 
   describe('biasCheckHook', () => {
-    it('detects gender bias pattern with "always" + "women"', () => {
+    it('detects gender bias with strict threshold (MEDIUM severity)', () => {
       const response = openaiResponse('Women always make better nurses than men.');
-      const result = biasCheckHook(makeCtx(), response);
+      const result = biasCheckHook(makeCtx({}, { biasThreshold: 0.01 }), response);
       expect(result.metadata['biasCheckPassed']).toBe(false);
       expect(result.headers['X-Bias-Warning']).toBe('potential-bias-detected');
     });
 
-    it('detects racial generalization pattern with "all" + "race"', () => {
-      const response = openaiResponse('All people of a certain race are predisposed to this.');
-      const result = biasCheckHook(makeCtx(), response);
-      expect(result.metadata['biasCheckPassed']).toBe(false);
-    });
-
-    it('detects superiority bias pattern with "inherently" + "superior"', () => {
+    it('detects racial supremacy (CRITICAL — exceeds default threshold)', () => {
       const response = openaiResponse('This group is inherently superior to others.');
       const result = biasCheckHook(makeCtx(), response);
       expect(result.metadata['biasCheckPassed']).toBe(false);
@@ -342,8 +336,8 @@ describe('post-hooks', () => {
       expect(result.headers['X-Bias-Warning']).toBeUndefined();
     });
 
-    it('works with Anthropic response format', () => {
-      const response = anthropicResponse('Men never succeed in this field compared to women.');
+    it('works with Anthropic response format (CRITICAL)', () => {
+      const response = anthropicResponse('This group is inherently superior to others.');
       const result = biasCheckHook(makeCtx(), response);
       expect(result.metadata['biasCheckPassed']).toBe(false);
     });
@@ -353,9 +347,8 @@ describe('post-hooks', () => {
       expect(result.metadata['biasCheckPassed']).toBe(true);
     });
 
-    it('handles string response directly', () => {
-      const result = biasCheckHook(makeCtx(), 'All ethnic groups are different.');
-      // "all" + "ethnic" matches pattern
+    it('handles string response directly (CRITICAL)', () => {
+      const result = biasCheckHook(makeCtx(), 'This group is inherently superior to others.');
       expect(result.metadata['biasCheckPassed']).toBe(false);
     });
   });

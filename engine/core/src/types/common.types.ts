@@ -72,6 +72,13 @@ export interface FixDiff {
   readonly importLine?: string;
 }
 
+export interface FindingExplanation {
+  readonly article: string;
+  readonly penalty: string;
+  readonly deadline: string;
+  readonly business_impact: string;
+}
+
 export interface Finding {
   readonly checkId: string;
   readonly type: CheckResultType;
@@ -88,6 +95,7 @@ export interface Finding {
   readonly evidence?: readonly Evidence[];
   readonly codeContext?: CodeContext;
   readonly fixDiff?: FixDiff;
+  readonly explanation?: FindingExplanation;
 }
 
 // --- Score ---

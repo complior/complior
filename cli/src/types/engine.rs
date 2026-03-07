@@ -89,6 +89,27 @@ pub struct FixDiff {
     pub import_line: Option<String>,
 }
 
+/// US-S05-07: Finding explanation with article, penalty, deadline, business impact.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct FindingExplanation {
+    pub article: String,
+    pub penalty: String,
+    pub deadline: String,
+    pub business_impact: String,
+}
+
+impl Default for FindingExplanation {
+    fn default() -> Self {
+        Self {
+            article: String::new(),
+            penalty: String::new(),
+            deadline: String::new(),
+            business_impact: String::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Finding {
@@ -118,6 +139,8 @@ pub struct Finding {
     pub confidence_level: Option<String>,
     #[serde(default)]
     pub evidence: Option<Vec<serde_json::Value>>,
+    #[serde(default)]
+    pub explanation: Option<FindingExplanation>,
 }
 
 impl Finding {

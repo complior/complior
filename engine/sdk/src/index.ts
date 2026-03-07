@@ -3,7 +3,8 @@ import { createPipeline } from './pipeline.js';
 import { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 
 export type { MiddlewareConfig, MiddlewareContext, MiddlewareResult, PreHook, PostHook, DomainHooks, Domain, Jurisdiction, Role } from './types.js';
-export { ProhibitedPracticeError, MiddlewareError, DomainViolationError, PermissionDeniedError, BudgetExceededError, RateLimitError, CircuitBreakerError, PIIDetectedError, DisclosureMissingError } from './errors.js';
+export { ProhibitedPracticeError, MiddlewareError, DomainViolationError, PermissionDeniedError, BudgetExceededError, RateLimitError, CircuitBreakerError, PIIDetectedError, DisclosureMissingError, BiasDetectedError } from './errors.js';
+export type { BiasEvidence } from './errors.js';
 export { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 export { compliorAgent } from './agent.js';
 export type { AgentConfig, AgentPassport } from './agent.js';

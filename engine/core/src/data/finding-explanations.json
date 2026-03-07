@@ -1,0 +1,249 @@
+{
+  "$schema": "finding-explanations-schema",
+  "$comment": "US-S05-07: Static mapping check_id → explanation (article, penalty, deadline, business_impact)",
+
+  "passport-presence": {
+    "article": "Art. 26(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Agent Passport is the core identity document for your AI system. Without it, you cannot demonstrate compliance to regulators, and deployers cannot verify the system's risk classification or intended use."
+  },
+  "passport-completeness": {
+    "article": "Art. 26(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "An incomplete passport means gaps in your compliance record. Regulators require full documentation of AI system capabilities, limitations, and risk management measures."
+  },
+  "ai-disclosure": {
+    "article": "Art. 50(1)",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "Users must be informed they are interacting with AI. Failure to disclose AI involvement erodes trust and violates transparency obligations that are already enforceable."
+  },
+  "content-marking": {
+    "article": "Art. 50(2)",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "AI-generated content must be machine-detectable. Without marking (C2PA, watermarks, metadata), downstream systems cannot verify content provenance."
+  },
+  "interaction-logging": {
+    "article": "Art. 12",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Structured logging of AI interactions is required for audit trails, incident investigation, and demonstrating human oversight. Without logs, you cannot prove compliant operation."
+  },
+  "ai-literacy": {
+    "article": "Art. 4",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-02-02",
+    "business_impact": "All personnel working with AI must have sufficient AI literacy. Undocumented training programs expose your organization to liability if operators misuse AI systems."
+  },
+  "gpai-transparency": {
+    "article": "Art. 53",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "General-purpose AI models require model cards documenting capabilities, limitations, and training data. This enables downstream providers to assess risks."
+  },
+  "compliance-metadata": {
+    "article": "Art. 11",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Machine-readable compliance metadata enables automated verification. Without it, integration partners and regulators cannot programmatically assess your compliance status."
+  },
+  "documentation": {
+    "article": "Art. 11",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Technical documentation is a foundational requirement. It must be maintained throughout the AI system lifecycle and made available to competent authorities upon request."
+  },
+
+  "l2-ai-literacy": {
+    "article": "Art. 4",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-02-02",
+    "business_impact": "Your AI literacy document exists but lacks required sections. Incomplete training documentation fails the minimum standard for demonstrating organizational AI competence."
+  },
+  "l2-art5-screening": {
+    "article": "Art. 5",
+    "penalty": "€35M or 7% of annual global turnover",
+    "deadline": "2025-02-02",
+    "business_impact": "Art. 5 prohibited practices screening is the highest-penalty obligation. Your screening document must demonstrate systematic assessment of all 8 prohibited categories."
+  },
+  "l2-tech-documentation": {
+    "article": "Art. 11",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Technical documentation must include system architecture, data sources, training methodology, and performance metrics. Incomplete docs block conformity assessment."
+  },
+  "l2-monitoring-policy": {
+    "article": "Art. 26",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Monitoring policy must define scope, frequency, metrics, and escalation procedures. Without it, you cannot demonstrate ongoing post-market surveillance."
+  },
+  "l2-worker-notification": {
+    "article": "Art. 26(7)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Workers and their representatives must be notified before AI deployment affects them. Missing notification is a direct violation of worker protection obligations."
+  },
+  "l2-fria": {
+    "article": "Art. 27",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Fundamental Rights Impact Assessment is mandatory for high-risk AI in public sector and certain private uses. It must analyze impacts on health, safety, and fundamental rights."
+  },
+  "l2-declaration-conformity": {
+    "article": "Art. 47",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "The EU Declaration of Conformity is a legally binding statement. Without it, your AI system cannot be placed on the EU market or put into service."
+  },
+  "l2-incident-report": {
+    "article": "Art. 73",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Incident reporting is required for serious incidents. A template must exist before incidents occur to ensure timely reporting within the mandatory timeframe."
+  },
+
+  "l3-missing-bias-testing": {
+    "article": "Art. 10",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Bias testing tools are absent from your dependencies. Without them, you cannot demonstrate that your AI system has been tested for discriminatory outcomes across protected characteristics."
+  },
+  "l3-log-retention": {
+    "article": "Art. 12",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Log retention configuration is missing. AI system logs must be retained for a period appropriate to the system's risk level and purpose, typically 6-12 months minimum."
+  },
+  "l3-env-config": {
+    "article": "Art. 12",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Environment configuration lacks compliance-relevant settings. Proper configuration ensures logging, monitoring, and safety features are consistently enabled across deployments."
+  },
+  "l3-ci-compliance": {
+    "article": "Art. 9",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "CI/CD pipeline lacks compliance checks. Automated compliance gates prevent non-compliant code from reaching production, reducing risk of regulatory violations."
+  },
+  "l3-banned-package": {
+    "article": "Art. 15(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "A banned or high-risk dependency was detected. Using packages with known security vulnerabilities or prohibited licenses undermines your system's cybersecurity and legal standing."
+  },
+
+  "l4-bare-llm": {
+    "article": "Art. 50(1)",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "Direct LLM API calls without compliance wrapper bypass all safety hooks: prohibited content detection, PII sanitization, bias checking, and disclosure verification. Every unwrapped call is a potential violation."
+  },
+  "l4-disclosure": {
+    "article": "Art. 50(1)",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "AI disclosure patterns found — this is positive. Ensure disclosure components are visible in all user-facing interfaces where AI is involved."
+  },
+  "l4-human-oversight": {
+    "article": "Art. 14",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Human oversight mechanisms enable operators to monitor, intervene, and override AI decisions. Without them, you cannot meet the human-in-the-loop requirement for high-risk systems."
+  },
+  "l4-kill-switch": {
+    "article": "Art. 14",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "A kill switch or feature flag allows immediate shutdown of AI functionality. This is essential for incident response and required for human oversight of high-risk systems."
+  },
+  "l4-content-marking": {
+    "article": "Art. 50(2)",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "Content marking code patterns detected. Verify that AI-generated content is marked in a machine-readable format (C2PA, IPTC, custom metadata) across all output channels."
+  },
+  "l4-logging": {
+    "article": "Art. 12",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Structured logging patterns are present in your codebase. Ensure logs capture: input/output hashes, model version, latency, token usage, and compliance check results."
+  },
+  "l4-data-governance": {
+    "article": "Art. 10",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Data governance patterns control data quality, lineage, and consent. Without them, you cannot demonstrate that training and input data meet EU AI Act standards."
+  },
+  "l4-record-keeping": {
+    "article": "Art. 12",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Record-keeping enables traceability throughout the AI system lifecycle. Audit trails must capture compliance events, configuration changes, and incident responses."
+  },
+  "l4-accuracy-robustness": {
+    "article": "Art. 15",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Accuracy and robustness validation ensures your AI system performs reliably. Without testing, you cannot demonstrate the system meets performance benchmarks required by Art. 15."
+  },
+  "l4-cybersecurity": {
+    "article": "Art. 15(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Cybersecurity measures (rate limiting, input sanitization, access control) protect against adversarial attacks and data manipulation. Essential for system resilience."
+  },
+  "l4-deployer-monitoring": {
+    "article": "Art. 26(5)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Deployer monitoring patterns track model drift, performance degradation, and anomalies. Required for post-market surveillance and incident detection."
+  },
+  "l4-gpai-transparency": {
+    "article": "Art. 53",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "GPAI transparency code patterns document model capabilities. Ensure model cards, training data documentation, and capability descriptions are complete and accessible."
+  },
+  "l4-conformity-assessment": {
+    "article": "Art. 43",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Conformity assessment patterns support the formal evaluation process. High-risk AI systems must undergo conformity assessment before market placement."
+  },
+  "l4-security-risk": {
+    "article": "Art. 15(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Unsafe code patterns (eval, pickle, command injection) create exploitable vulnerabilities. These undermine your system's cybersecurity posture required by Art. 15(4)."
+  },
+
+  "cross-doc-code-mismatch": {
+    "article": "Art. 11",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Your documentation claims capabilities that are not implemented in code (or vice versa). Regulators will verify documentation against actual system behavior — mismatches indicate governance failures."
+  },
+  "cross-sdk-no-disclosure": {
+    "article": "Art. 50(1)",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "AI SDK is used in your project but no disclosure is shown to users. This is a direct Art. 50(1) violation — users interacting with your AI must be explicitly informed."
+  },
+  "cross-logging-no-retention": {
+    "article": "Art. 12",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Logging exists but without retention policy. Logs without defined retention can be deleted prematurely (losing audit trail) or retained too long (GDPR violation)."
+  },
+  "cross-kill-switch-no-test": {
+    "article": "Art. 14",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Kill switch exists but has no tests. An untested kill switch may fail during an incident, leaving you unable to shut down a malfunctioning AI system when it matters most."
+  }
+}

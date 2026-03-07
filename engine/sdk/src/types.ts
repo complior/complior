@@ -13,6 +13,8 @@ export interface MiddlewareConfig {
   readonly disclosureLanguages?: readonly ('EN' | 'DE' | 'FR' | 'ES')[];
   readonly disclosureMode?: 'warn-only' | 'block';
   readonly customDisclosurePhrases?: readonly RegExp[];
+  readonly biasThreshold?: number;
+  readonly biasAction?: 'warn' | 'block';
 }
 
 export interface MiddlewareContext {

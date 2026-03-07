@@ -19,6 +19,7 @@ import {
 } from './confidence.js';
 import type { CheckWithConfidence } from './confidence.js';
 import { buildFixDiff, buildCodeContext } from './fix-diff-builder.js';
+import { explainFindings } from './finding-explainer.js';
 
 const DEFAULT_SEVERITY: Severity = 'info';
 
@@ -215,18 +216,21 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
     }
     const enrichedFindings = enrichFindings(findings, fileMap);
 
+    // US-S05-07: Attach explanations (article, penalty, deadline, business_impact)
+    const explainedFindings = explainFindings(enrichedFindings);
+
     const duration = Date.now() - startTime;
 
     const score = scoringData !== undefined
       ? calculateScore(allResults, scoringData)
-      : createFallbackScore(enrichedFindings);
+      : createFallbackScore(explainedFindings);
 
     // Attach confidence summary to score
     const confidenceSummary = summarizeConfidence(allConfidence);
 
     return {
       score: { ...score, confidenceSummary },
-      findings: enrichedFindings,
+      findings: explainedFindings,
       projectPath: ctx.projectPath,
       scannedAt: new Date().toISOString(),
       duration,

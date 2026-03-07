@@ -103,6 +103,35 @@ export class PIIDetectedError extends MiddlewareError {
   }
 }
 
+export interface BiasEvidence {
+  readonly characteristic: string;
+  readonly severity: string;
+  readonly evidence: string;
+  readonly score: number;
+}
+
+export class BiasDetectedError extends MiddlewareError {
+  readonly findings: readonly BiasEvidence[];
+  readonly totalScore: number;
+  readonly threshold: number;
+  readonly domain: string;
+
+  constructor(
+    message: string,
+    findings: readonly BiasEvidence[],
+    totalScore: number,
+    threshold: number,
+    domain: string = 'general',
+  ) {
+    super(message, 'BIAS_DETECTED');
+    this.name = 'BiasDetectedError';
+    this.findings = findings;
+    this.totalScore = totalScore;
+    this.threshold = threshold;
+    this.domain = domain;
+  }
+}
+
 export class DisclosureMissingError extends MiddlewareError {
   readonly language: string;
   readonly expectedPatterns: readonly string[];

@@ -269,8 +269,27 @@ fn render_detail_legal_column(
         ),
     ]));
 
-    // Deadline + penalty
-    if let Some(ref art_ref) = finding.article_reference {
+    // Deadline + penalty — prefer engine explanation, fall back to hardcoded
+    if let Some(ref expl) = finding.explanation {
+        if !expl.deadline.is_empty() {
+            lines.push(Line::from(vec![
+                Span::styled("  Deadline:   ", Style::default().fg(t.muted)),
+                Span::styled(
+                    expl.deadline.clone(),
+                    Style::default().fg(t.zone_yellow),
+                ),
+            ]));
+        }
+        if !expl.penalty.is_empty() {
+            lines.push(Line::from(vec![
+                Span::styled("  Penalty:    ", Style::default().fg(t.muted)),
+                Span::styled(
+                    expl.penalty.clone(),
+                    Style::default().fg(t.zone_red),
+                ),
+            ]));
+        }
+    } else if let Some(ref art_ref) = finding.article_reference {
         lines.push(Line::from(vec![
             Span::styled("  Deadline:   ", Style::default().fg(t.muted)),
             Span::styled(
@@ -308,8 +327,14 @@ fn render_detail_legal_column(
         ),
     ]));
 
-    // Why This Matters
+    // Why This Matters — prefer engine explanation's business_impact
     let (desc, _, file_hint) = explain_check(&finding.check_id);
+    let impact_text = finding
+        .explanation
+        .as_ref()
+        .filter(|e| !e.business_impact.is_empty())
+        .map(|e| e.business_impact.as_str())
+        .unwrap_or(desc);
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(
         "  Why This Matters",
@@ -319,7 +344,7 @@ fn render_detail_legal_column(
         format!("  {}", "\u{2500}".repeat(w)),
         Style::default().fg(t.border),
     )));
-    for chunk in wrap_text(desc, w.saturating_sub(2)) {
+    for chunk in wrap_text(impact_text, w.saturating_sub(2)) {
         lines.push(Line::from(Span::styled(
             format!("  {chunk}"),
             Style::default().fg(t.fg),
