@@ -11,6 +11,8 @@ const makeCtx = (): MiddlewareContext => ({
   metadata: {},
 });
 
+const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
 describe('createCircuitBreakerHook', () => {
   describe('closed → open transition', () => {
     it('stays closed on successful responses', () => {
@@ -58,7 +60,7 @@ describe('createCircuitBreakerHook', () => {
   });
 
   describe('cooldown → half-open → closed recovery', () => {
-    it('transitions to half-open after cooldown and recovers on success', () => {
+    it('transitions to half-open after cooldown and recovers on success', async () => {
       const onTrip = vi.fn();
       const hook = createCircuitBreakerHook({
         errorThreshold: 1,
@@ -72,11 +74,7 @@ describe('createCircuitBreakerHook', () => {
       expect(onTrip).toHaveBeenCalledWith('open');
 
       // Wait for cooldown
-      const wait = (ms: number) => {
-        const start = Date.now();
-        while (Date.now() - start < ms) { /* spin */ }
-      };
-      wait(15);
+      await delay(15);
 
       // Probe call succeeds → should recover to closed
       const result = hook(ctx, { data: 'ok' });
@@ -85,7 +83,7 @@ describe('createCircuitBreakerHook', () => {
       expect(result.metadata['circuitBreaker']).toEqual({ state: 'closed', errorCount: 0 });
     });
 
-    it('re-opens if probe call fails', () => {
+    it('re-opens if probe call fails', async () => {
       const onTrip = vi.fn();
       const hook = createCircuitBreakerHook({
         errorThreshold: 1,
@@ -98,11 +96,7 @@ describe('createCircuitBreakerHook', () => {
       expect(() => hook(ctx, null)).toThrow(CircuitBreakerError);
 
       // Wait for cooldown
-      const wait = (ms: number) => {
-        const start = Date.now();
-        while (Date.now() - start < ms) { /* spin */ }
-      };
-      wait(15);
+      await delay(15);
 
       // Probe fails — re-opens
       expect(() => hook(ctx, { error: 'still failing' })).toThrow(CircuitBreakerError);
@@ -112,7 +106,7 @@ describe('createCircuitBreakerHook', () => {
   });
 
   describe('sliding window', () => {
-    it('prunes errors outside the window', () => {
+    it('prunes errors outside the window', async () => {
       const hook = createCircuitBreakerHook({
         errorThreshold: 3,
         windowMs: 10,
@@ -124,11 +118,7 @@ describe('createCircuitBreakerHook', () => {
       hook(ctx, { error: 'fail' });
 
       // Wait for window to expire
-      const wait = (ms: number) => {
-        const start = Date.now();
-        while (Date.now() - start < ms) { /* spin */ }
-      };
-      wait(15);
+      await delay(15);
 
       // This error should not trip (old errors pruned)
       const result = hook(ctx, { error: 'fail' });

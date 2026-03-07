@@ -13,7 +13,11 @@ export const createActionLogHook = (
   onAction: (entry: ActionLogEntry) => void,
 ): PostHook => {
   return (ctx, response) => {
-    const cost = (ctx.metadata['budget'] as { callCost?: number } | undefined)?.callCost ?? 0;
+    const budgetMeta: unknown = ctx.metadata['budget'];
+    const cost = (budgetMeta && typeof budgetMeta === 'object' && 'callCost' in budgetMeta
+      && typeof budgetMeta.callCost === 'number')
+      ? budgetMeta.callCost
+      : 0;
 
     const entry: ActionLogEntry = {
       provider: ctx.provider,

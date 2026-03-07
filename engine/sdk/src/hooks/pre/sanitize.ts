@@ -1,7 +1,8 @@
 import type { PreHook } from '../../types.js';
-import { PII_PATTERNS } from '../../data/pii-patterns.js';
-import type { PIIPattern } from '../../data/pii-patterns.js';
+import { PII_PATTERNS } from '../../data/pii/index.js';
+import type { PIIPattern } from '../../data/pii/index.js';
 import { PIIDetectedError } from '../../errors.js';
+import { isLLMMessageArray } from './extract-message-text.js';
 
 interface PIIDetail {
   readonly id: string;
@@ -48,12 +49,7 @@ const scanContent = (
         firstMatch = { pattern: piiPattern, match: matchStr };
       }
 
-      const existing = details.get(piiPattern.id);
-      if (existing) {
-        details.set(piiPattern.id, { ...existing, count: existing.count + 1 });
-      } else {
-        details.set(piiPattern.id, { id: piiPattern.id, category: piiPattern.category, count: 1 });
-      }
+      mergePIIDetail(details, piiPattern.id, piiPattern.category);
 
       // Replace the match with redaction label
       const label = `[PII:${piiPattern.label}]`;
@@ -67,17 +63,34 @@ const scanContent = (
   return { replaced, details, firstMatch };
 };
 
-interface LLMMessage {
-  readonly role: string;
-  readonly content: string;
-}
+/** Merge a PII detail into accumulator map (increment count or insert) */
+const mergePIIDetail = (target: Map<string, PIIDetail>, id: string, category: string): void => {
+  const existing = target.get(id);
+  if (existing) {
+    target.set(id, { ...existing, count: existing.count + 1 });
+  } else {
+    target.set(id, { id, category, count: 1 });
+  }
+};
 
-/** Runtime type guard for LLM messages array (boundary validation) */
-const isLLMMessageArray = (val: unknown): val is readonly LLMMessage[] => {
-  if (!Array.isArray(val) || val.length === 0) return Array.isArray(val);
-  const first: unknown = val[0];
-  if (typeof first !== 'object' || first === null) return false;
-  return 'role' in first && 'content' in first && typeof first.role === 'string';
+/** Merge scan details into accumulator */
+const accumulateDetails = (
+  allDetails: Map<string, PIIDetail>,
+  categoriesSet: Set<string>,
+  details: Map<string, PIIDetail>,
+): number => {
+  let count = 0;
+  for (const [id, detail] of details) {
+    categoriesSet.add(detail.category);
+    count += detail.count;
+    const existing = allDetails.get(id);
+    if (existing) {
+      allDetails.set(id, { ...existing, count: existing.count + detail.count });
+    } else {
+      allDetails.set(id, detail);
+    }
+  }
+  return count;
 };
 
 /** GDPR Art.5: PII scrubbing — 50+ PII types with checksum validation and GDPR Art.9 detection */
@@ -87,11 +100,8 @@ export const sanitizeHook: PreHook = (ctx) => {
   const messages = val;
 
   const mode = ctx.config.sanitizeMode ?? 'replace';
-  let totalRedacted = 0;
-  const allDetails = new Map<string, PIIDetail>();
-  const categoriesSet = new Set<string>();
 
-  // In block mode, scan first message to find first match before any replacement
+  // Block mode: throw on first PII match
   if (mode === 'block') {
     for (const m of messages) {
       if (typeof m.content !== 'string') continue;
@@ -109,62 +119,37 @@ export const sanitizeHook: PreHook = (ctx) => {
     return ctx;
   }
 
-  // warn mode: scan but don't replace
-  if (mode === 'warn') {
-    for (const m of messages) {
-      if (typeof m.content !== 'string') continue;
-      const { details } = scanContent(m.content, PII_PATTERNS);
-      for (const [id, detail] of details) {
-        categoriesSet.add(detail.category);
-        totalRedacted += detail.count;
-        const existing = allDetails.get(id);
-        if (existing) {
-          allDetails.set(id, { ...existing, count: existing.count + detail.count });
-        } else {
-          allDetails.set(id, detail);
-        }
-      }
-    }
+  // Warn + Replace: scan all messages, accumulate details
+  const allDetails = new Map<string, PIIDetail>();
+  const categoriesSet = new Set<string>();
+  let totalRedacted = 0;
 
-    return {
-      ...ctx,
-      metadata: {
-        ...ctx.metadata,
-        piiRedacted: totalRedacted,
-        piiCategories: [...categoriesSet],
-        piiDetails: [...allDetails.values()],
-      },
-    };
-  }
-
-  // replace mode (default): scan and replace
   const sanitized = messages.map((m) => {
     if (typeof m.content !== 'string') return m;
 
     const { replaced, details } = scanContent(m.content, PII_PATTERNS);
+    totalRedacted += accumulateDetails(allDetails, categoriesSet, details);
 
-    for (const [id, detail] of details) {
-      categoriesSet.add(detail.category);
-      totalRedacted += detail.count;
-      const existing = allDetails.get(id);
-      if (existing) {
-        allDetails.set(id, { ...existing, count: existing.count + detail.count });
-      } else {
-        allDetails.set(id, detail);
-      }
-    }
-
-    return { ...m, content: replaced };
+    // Replace mode: return sanitized content; Warn mode: return original
+    return mode === 'replace' ? { ...m, content: replaced } : m;
   });
 
+  const metadata = {
+    ...ctx.metadata,
+    piiRedacted: totalRedacted,
+    piiCategories: [...categoriesSet],
+    piiDetails: [...allDetails.values()],
+  };
+
+  // Warn mode: don't modify params
+  if (mode === 'warn') {
+    return { ...ctx, metadata };
+  }
+
+  // Replace mode: update messages
   return {
     ...ctx,
     params: { ...ctx.params, messages: sanitized },
-    metadata: {
-      ...ctx.metadata,
-      piiRedacted: totalRedacted,
-      piiCategories: [...categoriesSet],
-      piiDetails: [...allDetails.values()],
-    },
+    metadata,
   };
 };

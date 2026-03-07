@@ -12,6 +12,7 @@ import { PROHIBITED_PATTERNS_FR } from '../../data/prohibited-i18n/fr.js';
 import { PROHIBITED_PATTERNS_NL } from '../../data/prohibited-i18n/nl.js';
 import { PROHIBITED_PATTERNS_ES } from '../../data/prohibited-i18n/es.js';
 import { PROHIBITED_PATTERNS_IT } from '../../data/prohibited-i18n/it.js';
+import { extractMessageText } from './extract-message-text.js';
 
 /** All patterns: EN + DE + FR + NL + ES + IT */
 const ALL_PATTERNS: readonly ProhibitedPattern[] = [
@@ -35,29 +36,9 @@ const getPatterns = (strictness: Strictness): readonly ProhibitedPattern[] => {
   return ALL_PATTERNS;
 };
 
-interface LLMMessage {
-  readonly role: string;
-  readonly content: string;
-}
-
-/** Runtime type guard for LLM messages array (boundary validation) */
-const isLLMMessageArray = (val: unknown): val is readonly LLMMessage[] => {
-  if (!Array.isArray(val) || val.length === 0) return Array.isArray(val);
-  const first: unknown = val[0];
-  if (typeof first !== 'object' || first === null) return false;
-  return 'role' in first && 'content' in first && typeof first.role === 'string';
-};
-
-/** Extract text from messages array */
-const extractText = (params: Record<string, unknown>): string => {
-  const val = params['messages'];
-  if (!isLLMMessageArray(val)) return '';
-  return val.map((m) => m.content).join(' ');
-};
-
 /** OBL-002: Block prohibited AI practices (Art. 5 EU AI Act, 8 categories) */
 export const prohibitedHook: PreHook = (ctx: MiddlewareContext): MiddlewareContext => {
-  const text = extractText(ctx.params);
+  const text = extractMessageText(ctx.params);
   if (!text) return ctx;
 
   const strictness: Strictness = ctx.config.strict !== false ? 'strict' : 'standard';

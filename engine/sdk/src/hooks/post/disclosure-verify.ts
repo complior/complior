@@ -34,8 +34,9 @@ export const disclosureVerifyHook: PostHook = (ctx, response) => {
   const languagesMissing = [...languages].filter((lang) => !hasMatch(lang));
 
   // Check custom phrases
-  const customMatch = (config.customDisclosurePhrases?.length ?? 0) > 0
-    && config.customDisclosurePhrases!.some((p) => p.test(text));
+  const customPhrases = config.customDisclosurePhrases;
+  const customMatch = customPhrases !== undefined && customPhrases.length > 0
+    && customPhrases.some((p) => p.test(text));
 
   const verified = languagesFound.length > 0 || customMatch;
 

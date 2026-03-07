@@ -42,15 +42,12 @@ export const createCircuitBreakerHook = (config: CircuitBreakerConfig = {}): Pos
   };
 
   const pruneOldErrors = (now: number): void => {
-    errors = errors.filter(e => now - e.timestamp < windowMs);
+    errors = errors.filter((e) => now - e.timestamp < windowMs);
   };
 
   const isErrorResponse = (response: unknown): boolean => {
-    if (response == null) return true;
-    if (typeof response === 'object') {
-      const resp = response as Record<string, unknown>;
-      if (resp['error'] !== undefined) return true;
-    }
+    if (response === null || response === undefined) return true;
+    if (typeof response === 'object' && 'error' in response && response.error !== undefined) return true;
     return false;
   };
 

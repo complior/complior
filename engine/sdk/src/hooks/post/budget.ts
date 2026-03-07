@@ -10,17 +10,27 @@ const COST_PER_1K: Record<string, { input: number; output: number }> = {
   unknown: { input: 0.003, output: 0.015 },
 };
 
+/** Extract a numeric value from an object by checking multiple possible keys */
+const getNumericField = (obj: object, ...keys: string[]): number => {
+  for (const key of keys) {
+    if (key in obj) {
+      const val: unknown = (obj as Record<string, unknown>)[key]; // TS limitation: object → Record for variable keys
+      if (typeof val === 'number') return val;
+    }
+  }
+  return 0;
+};
+
 const estimateCost = (provider: string, response: unknown): number => {
   const rates = COST_PER_1K[provider] ?? COST_PER_1K['unknown']!;
-  const resp = response as Record<string, unknown> | null;
-  if (!resp) return 0;
+  if (!response || typeof response !== 'object') return 0;
+  if (!('usage' in response)) return 0;
 
-  // Try to extract usage from response
-  const usage = resp['usage'] as Record<string, number> | undefined;
-  if (!usage) return 0;
+  const usage: unknown = response.usage;
+  if (!usage || typeof usage !== 'object') return 0;
 
-  const inputTokens = usage['prompt_tokens'] ?? usage['promptTokens'] ?? usage['input_tokens'] ?? 0;
-  const outputTokens = usage['completion_tokens'] ?? usage['completionTokens'] ?? usage['output_tokens'] ?? 0;
+  const inputTokens = getNumericField(usage, 'prompt_tokens', 'promptTokens', 'input_tokens');
+  const outputTokens = getNumericField(usage, 'completion_tokens', 'completionTokens', 'output_tokens');
 
   return (inputTokens * rates.input + outputTokens * rates.output) / 1000;
 };

@@ -10,49 +10,47 @@ export interface ParsedToolCall {
   readonly provider: 'openai' | 'anthropic' | 'google' | 'unknown';
 }
 
+const safeParseJSON = (str: string): Record<string, unknown> => {
+  try {
+    const parsed: unknown = JSON.parse(str);
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>; // TS limitation: object → Record for JSON.parse
+    }
+    return { _raw: str };
+  } catch {
+    return { _raw: str };
+  }
+};
+
 // --- OpenAI format ---
 // response.choices[].message.tool_calls[]: { id, type, function: { name, arguments } }
 
-interface OpenAIToolCall {
-  id?: string;
-  type?: string;
-  function?: {
-    name?: string;
-    arguments?: string;
-  };
-}
-
-interface OpenAIChoice {
-  message?: {
-    tool_calls?: OpenAIToolCall[];
-  };
-}
-
 const parseOpenAI = (response: Record<string, unknown>): ParsedToolCall[] => {
-  const choices = response['choices'] as OpenAIChoice[] | undefined;
-  if (!Array.isArray(choices)) return [];
+  const choicesVal = response['choices'];
+  if (!Array.isArray(choicesVal)) return [];
 
   const results: ParsedToolCall[] = [];
-  for (const choice of choices) {
-    const toolCalls = choice?.message?.tool_calls;
-    if (!Array.isArray(toolCalls)) continue;
+  for (const choiceRaw of choicesVal) {
+    const choice: unknown = choiceRaw;
+    if (!choice || typeof choice !== 'object' || !('message' in choice)) continue;
 
-    for (const tc of toolCalls) {
-      if (!tc?.function?.name) continue;
-      let args: Record<string, unknown> = {};
-      if (typeof tc.function.arguments === 'string') {
-        try {
-          args = JSON.parse(tc.function.arguments) as Record<string, unknown>;
-        } catch {
-          args = { _raw: tc.function.arguments };
-        }
-      }
-      results.push({
-        id: tc.id ?? `openai-${results.length}`,
-        name: tc.function.name,
-        arguments: args,
-        provider: 'openai',
-      });
+    const message: unknown = choice.message;
+    if (!message || typeof message !== 'object' || !('tool_calls' in message)) continue;
+    if (!Array.isArray(message.tool_calls)) continue;
+
+    for (const tcRaw of message.tool_calls) {
+      const tc: unknown = tcRaw;
+      if (!tc || typeof tc !== 'object') continue;
+      if (!('function' in tc) || !tc.function || typeof tc.function !== 'object') continue;
+      if (!('name' in tc.function) || typeof tc.function.name !== 'string') continue;
+
+      const fnArgs = 'arguments' in tc.function && typeof tc.function.arguments === 'string'
+        ? tc.function.arguments
+        : undefined;
+      const args = fnArgs ? safeParseJSON(fnArgs) : {};
+      const id = 'id' in tc && typeof tc.id === 'string' ? tc.id : `openai-${results.length}`;
+
+      results.push({ id, name: tc.function.name, arguments: args, provider: 'openai' });
     }
   }
   return results;
@@ -61,26 +59,23 @@ const parseOpenAI = (response: Record<string, unknown>): ParsedToolCall[] => {
 // --- Anthropic format ---
 // response.content[]: { type: 'tool_use', id, name, input }
 
-interface AnthropicContentBlock {
-  type?: string;
-  id?: string;
-  name?: string;
-  input?: Record<string, unknown>;
-}
-
 const parseAnthropic = (response: Record<string, unknown>): ParsedToolCall[] => {
-  const content = response['content'] as AnthropicContentBlock[] | undefined;
-  if (!Array.isArray(content)) return [];
+  const contentVal = response['content'];
+  if (!Array.isArray(contentVal)) return [];
 
   const results: ParsedToolCall[] = [];
-  for (const block of content) {
-    if (block?.type !== 'tool_use' || !block.name) continue;
-    results.push({
-      id: block.id ?? `anthropic-${results.length}`,
-      name: block.name,
-      arguments: block.input ?? {},
-      provider: 'anthropic',
-    });
+  for (const blockRaw of contentVal) {
+    const block: unknown = blockRaw;
+    if (!block || typeof block !== 'object') continue;
+    if (!('type' in block) || block.type !== 'tool_use') continue;
+    if (!('name' in block) || typeof block.name !== 'string') continue;
+
+    const id = 'id' in block && typeof block.id === 'string' ? block.id : `anthropic-${results.length}`;
+    const input = 'input' in block && block.input && typeof block.input === 'object' && !Array.isArray(block.input)
+      ? block.input as Record<string, unknown> // TS limitation: object → Record
+      : {};
+
+    results.push({ id, name: block.name, arguments: input, provider: 'anthropic' });
   }
   return results;
 };
@@ -88,35 +83,35 @@ const parseAnthropic = (response: Record<string, unknown>): ParsedToolCall[] => 
 // --- Google Gemini format ---
 // response.candidates[].content.parts[]: { functionCall: { name, args } }
 
-interface GeminiPart {
-  functionCall?: {
-    name?: string;
-    args?: Record<string, unknown>;
-  };
-}
-
-interface GeminiCandidate {
-  content?: {
-    parts?: GeminiPart[];
-  };
-}
-
 const parseGoogle = (response: Record<string, unknown>): ParsedToolCall[] => {
-  const candidates = response['candidates'] as GeminiCandidate[] | undefined;
-  if (!Array.isArray(candidates)) return [];
+  const candidatesVal = response['candidates'];
+  if (!Array.isArray(candidatesVal)) return [];
 
   const results: ParsedToolCall[] = [];
-  for (const candidate of candidates) {
-    const parts = candidate?.content?.parts;
-    if (!Array.isArray(parts)) continue;
+  for (const candRaw of candidatesVal) {
+    const candidate: unknown = candRaw;
+    if (!candidate || typeof candidate !== 'object' || !('content' in candidate)) continue;
 
-    for (const part of parts) {
-      const fc = part?.functionCall;
-      if (!fc?.name) continue;
+    const content: unknown = candidate.content;
+    if (!content || typeof content !== 'object' || !('parts' in content)) continue;
+    if (!Array.isArray(content.parts)) continue;
+
+    for (const partRaw of content.parts) {
+      const part: unknown = partRaw;
+      if (!part || typeof part !== 'object' || !('functionCall' in part)) continue;
+
+      const fc: unknown = part.functionCall;
+      if (!fc || typeof fc !== 'object') continue;
+      if (!('name' in fc) || typeof fc.name !== 'string') continue;
+
+      const args = 'args' in fc && fc.args && typeof fc.args === 'object' && !Array.isArray(fc.args)
+        ? fc.args as Record<string, unknown> // TS limitation: object → Record
+        : {};
+
       results.push({
         id: `google-${results.length}`,
         name: fc.name,
-        arguments: fc.args ?? {},
+        arguments: args,
         provider: 'google',
       });
     }
@@ -130,7 +125,9 @@ const parseGoogle = (response: Record<string, unknown>): ParsedToolCall[] => {
  */
 export const parseToolCalls = (response: unknown): ParsedToolCall[] => {
   if (!response || typeof response !== 'object') return [];
-  const resp = response as Record<string, unknown>;
+
+  // Use 'in' narrowing to build a Record-like accessor
+  const resp: Record<string, unknown> = Object.fromEntries(Object.entries(response));
 
   // Try each provider format — they don't overlap, so we can try all
   const openai = parseOpenAI(resp);
