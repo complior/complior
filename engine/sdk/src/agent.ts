@@ -7,6 +7,8 @@ import { createActionLogHook } from './post/action-log.js';
 import type { ActionLogEntry } from './post/action-log.js';
 import { createCircuitBreakerHook } from './post/circuit-breaker.js';
 import type { CircuitBreakerConfig } from './post/circuit-breaker.js';
+import { createToolCallPermissionHook } from './post/permission-tool-calls.js';
+import type { ToolCallAction, DeniedToolCall } from './post/permission-tool-calls.js';
 
 // --- Passport shape (subset of AgentManifest used by SDK) ---
 
@@ -29,6 +31,8 @@ export interface AgentConfig extends MiddlewareConfig {
   readonly budgetLimitUsd?: number;
   readonly onBudgetExceeded?: 'warn' | 'block';
   readonly onPermissionDenied?: 'warn' | 'block';
+  readonly toolCallAction?: ToolCallAction;
+  readonly onToolCallDenied?: (denied: DeniedToolCall[]) => void;
   readonly onAction?: (entry: ActionLogEntry) => void;
   readonly circuitBreaker?: CircuitBreakerConfig;
 }
@@ -72,7 +76,14 @@ export const compliorAgent = <T extends object>(
     agentPreHooks.push(createRateLimitHook(maxPerMinute));
   }
 
-  // Circuit breaker (post-hook — runs first, before budget)
+  // Tool-call permission enforcement (post-hook — validates tool_calls in response)
+  agentPostHooks.push(createToolCallPermissionHook({
+    passport: config.passport,
+    action: config.toolCallAction ?? 'block',
+    onDenied: config.onToolCallDenied,
+  }));
+
+  // Circuit breaker (post-hook — runs after tool-call check, before budget)
   if (config.circuitBreaker) {
     agentPostHooks.push(createCircuitBreakerHook(config.circuitBreaker));
   }

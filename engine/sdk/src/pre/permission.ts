@@ -2,7 +2,16 @@ import type { PreHook } from '../types.js';
 import { PermissionDeniedError } from '../errors.js';
 import type { AgentPassport } from '../agent.js';
 
-/** C.R12: Check if method/tool is permitted by passport */
+/**
+ * C.R12: Check if LLM API method is permitted by passport.
+ *
+ * Checks `denied` list and `prohibited_actions` against the API method name
+ * (e.g. "create" for OpenAI chat.completions.create).
+ *
+ * Note: `permissions.tools` is reserved for tool_call validation in the
+ * post-hook (permission-tool-calls.ts, US-S05-03). It controls which tools
+ * the LLM is allowed to invoke, not which API methods can be called.
+ */
 export const createPermissionHook = (passport: AgentPassport): PreHook => (ctx) => {
   const method = ctx.method;
 
@@ -18,14 +27,6 @@ export const createPermissionHook = (passport: AgentPassport): PreHook => (ctx) 
   if (passport.constraints.prohibited_actions.includes(method)) {
     throw new PermissionDeniedError(
       `Method "${method}" is a prohibited action for this agent`,
-      method,
-    );
-  }
-
-  // If tools list is non-empty, treat it as an allowlist
-  if (passport.permissions.tools.length > 0 && !passport.permissions.tools.includes(method)) {
-    throw new PermissionDeniedError(
-      `Method "${method}" is not in agent's allowed tools`,
       method,
     );
   }
