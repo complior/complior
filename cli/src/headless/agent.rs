@@ -131,6 +131,9 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Notify { name, json, company_name, contact_name, contact_email, contact_phone, deployment_date, affected_roles, impact_description, path } => {
             run_agent_notify(name, *json, company_name.as_deref(), contact_name.as_deref(), contact_email.as_deref(), contact_phone.as_deref(), deployment_date.as_deref(), affected_roles.as_deref(), impact_description.as_deref(), path.as_deref(), config).await
         }
+        AgentAction::Export { name, format, json, path } => {
+            run_agent_export(name, format, *json, path.as_deref(), config).await
+        }
         AgentAction::Evidence { json, verify, path } => {
             run_agent_evidence(*json, *verify, path.as_deref(), config).await
         }
@@ -1039,6 +1042,73 @@ async fn run_agent_notify(
         }
         Err(e) => {
             eprintln!("Error: Failed to generate Worker Notification: {e}");
+            1
+        }
+    }
+}
+
+// --- C.S08: Passport export ---
+
+async fn run_agent_export(
+    name: &str,
+    format: &str,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let project_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    if !json {
+        println!("Exporting passport '{name}' as {format}...");
+    }
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let url = format!(
+        "/agent/export?path={}&name={}&format={}",
+        url_encode(&project_path.to_string_lossy()),
+        url_encode(name),
+        url_encode(format)
+    );
+    match client.get_json(&url).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let saved_path = result
+                .get("savedPath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let valid = result
+                .get("valid")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let export_format = result
+                .get("format")
+                .and_then(|v| v.as_str())
+                .unwrap_or(format);
+
+            println!("\nPassport exported: {name}");
+            println!("  Format:   {export_format}");
+            println!("  Valid:    {}", if valid { "yes" } else { "NO" });
+            println!("  Saved to: {saved_path}");
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to export passport: {e}");
             1
         }
     }

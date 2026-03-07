@@ -21,6 +21,8 @@ import { validatePassport, computeCompleteness } from '../domain/passport/passpo
 import type { ValidationResult, CompletenessResult } from '../domain/passport/passport-validator.js';
 import { generateFria } from '../domain/fria/fria-generator.js';
 import type { FriaResult } from '../domain/fria/fria-generator.js';
+import { exportPassport as exportPassportFn } from '../domain/passport/export/index.js';
+import type { ExportFormat, ExportResult } from '../domain/passport/export/index.js';
 import { generateWorkerNotification as generateWorkerNotificationDoc } from '../domain/documents/worker-notification-generator.js';
 import type { WorkerNotificationResult } from '../domain/documents/worker-notification-generator.js';
 import type { EvidenceStore, EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
@@ -377,6 +379,33 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return { ...result, savedPath };
   };
 
+  // C.S08: Export passport to external format (A2A, AIUC-1, NIST)
+  const exportPassportToFormat = async (
+    name: string,
+    format: ExportFormat,
+    projectPath?: string,
+  ): Promise<(ExportResult & { savedPath: string }) | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+
+    const result = exportPassportFn(manifest, format);
+
+    // Save to .complior/exports/
+    const path = projectPath ?? getProjectPath();
+    const exportsDir = join(path, '.complior', 'exports');
+    await mkdir(exportsDir, { recursive: true });
+    const savedPath = join(exportsDir, `${name}-${format}.json`);
+    await writeFile(savedPath, JSON.stringify(result.data, null, 2));
+
+    // Record in evidence chain
+    if (deps.evidenceStore) {
+      const evidence = createEvidence(name, 'export', 'export', { file: savedPath, format });
+      await deps.evidenceStore.append([evidence], randomUUID());
+    }
+
+    return { ...result, savedPath };
+  };
+
   // C.R20: Evidence chain summary
   const getEvidenceChainSummary = async (
     projectPath?: string,
@@ -414,6 +443,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     getPassportCompleteness,
     generateFriaReport,
     generateWorkerNotification,
+    exportPassportToFormat,
     getEvidenceChainSummary,
     verifyEvidenceChain,
   });

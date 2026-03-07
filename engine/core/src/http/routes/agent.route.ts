@@ -199,6 +199,25 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(result);
   });
 
+  // C.S08: Export passport to external format (A2A, AIUC-1, NIST)
+  app.get('/agent/export', async (c) => {
+    const path = c.req.query('path');
+    const name = c.req.query('name');
+    const format = c.req.query('format');
+    if (!path) throw new ValidationError('Missing "path" query parameter');
+    if (!name) throw new ValidationError('Missing "name" query parameter');
+
+    const validFormats = ['a2a', 'aiuc-1', 'nist'] as const;
+    const parsed = validFormats.find(f => f === format);
+    if (!parsed) {
+      throw new ValidationError('Invalid "format" — must be a2a, aiuc-1, or nist');
+    }
+
+    const result = await passportService.exportPassportToFormat(name, parsed, path);
+    if (result === null) throw new ValidationError(`Passport not found: ${name}`);
+    return c.json(result);
+  });
+
   // C.R20: Evidence chain summary
   app.get('/agent/evidence', async (c) => {
     const path = c.req.query('path');

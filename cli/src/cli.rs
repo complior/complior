@@ -294,6 +294,22 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Export passport to external format (A2A, AIUC-1, NIST)
+    Export {
+        /// Agent name
+        name: String,
+
+        /// Export format: a2a, aiuc-1, nist
+        #[arg(long)]
+        format: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
     /// Show evidence chain summary or verify integrity
     Evidence {
         /// Output as JSON
@@ -788,6 +804,47 @@ mod tests {
                 assert_eq!(impact_description.as_deref(), Some("Assists with ticket triage"));
             }
             _ => panic!("Expected Agent Notify command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_export() {
+        let cli = Cli::parse_from(["complior", "agent", "export", "my-bot", "--format", "a2a"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Export { name, format, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(format, "a2a");
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Export command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_export_json() {
+        let cli = Cli::parse_from(["complior", "agent", "export", "my-bot", "--format", "aiuc-1", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Export { name, format, json, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(format, "aiuc-1");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Export command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_export_nist() {
+        let cli = Cli::parse_from(["complior", "agent", "export", "my-bot", "--format", "nist", "/tmp/project"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Export { name, format, path, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(format, "nist");
+                assert_eq!(path.as_deref(), Some("/tmp/project"));
+            }
+            _ => panic!("Expected Agent Export command"),
         }
     }
 
