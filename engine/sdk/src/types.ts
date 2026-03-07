@@ -10,6 +10,9 @@ export interface MiddlewareConfig {
   readonly strict?: boolean;
   readonly sanitizeMode?: 'replace' | 'block' | 'warn';
   readonly guardApi?: boolean;
+  readonly disclosureLanguages?: readonly ('EN' | 'DE' | 'FR' | 'ES')[];
+  readonly disclosureMode?: 'warn-only' | 'block';
+  readonly customDisclosurePhrases?: readonly RegExp[];
 }
 
 export interface MiddlewareContext {

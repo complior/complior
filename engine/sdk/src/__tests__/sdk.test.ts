@@ -75,7 +75,7 @@ describe('@complior/sdk', () => {
       const compliorMeta = result['_complior'] as { metadata: Record<string, unknown>; headers: Record<string, string> };
       expect(compliorMeta).toBeDefined();
       expect(compliorMeta.metadata['c2pa']).toBeDefined();
-      expect(compliorMeta.headers['X-AI-Disclosure']).toBe('true');
+      expect(compliorMeta.headers['X-AI-Disclosure']).toBe('missing');
       expect(compliorMeta.headers['X-AI-Provider']).toBe('openai');
       expect(compliorMeta.headers['X-Content-Marking']).toBe('c2pa');
     });

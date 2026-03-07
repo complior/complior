@@ -74,7 +74,7 @@ describe('pipeline', () => {
       // biasCheckHook
       expect(result.metadata['biasCheckPassed']).toBe(true);
       // headersHook
-      expect(result.headers['X-AI-Disclosure']).toBe('true');
+      expect(result.headers['X-AI-Disclosure']).toBe('missing');
       expect(result.headers['X-AI-Provider']).toBe('openai');
     });
 
@@ -85,7 +85,7 @@ describe('pipeline', () => {
       const result = pipeline.runPost(ctx, response);
 
       // Headers from disclosureVerifyHook, contentMarkingHook, headersHook, etc.
-      expect(result.headers['X-AI-Disclosure']).toBe('true');
+      expect(result.headers['X-AI-Disclosure']).toBe('missing');
       expect(result.headers['X-Content-Marking']).toBeDefined();
       expect(result.headers['X-AI-Provider']).toBe('openai');
     });
@@ -138,7 +138,7 @@ describe('pipeline', () => {
       expect(result.metadata['domainPost']).toBe(true);
       // Base post-hooks should also have run (and accumulated)
       expect(result.metadata['c2pa']).toBeDefined();
-      expect(result.headers['X-AI-Disclosure']).toBe('true');
+      expect(result.headers['X-AI-Disclosure']).toBe('missing');
     });
 
     it('returns a frozen pipeline object', () => {

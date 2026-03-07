@@ -102,3 +102,15 @@ export class PIIDetectedError extends MiddlewareError {
     this.article = article;
   }
 }
+
+export class DisclosureMissingError extends MiddlewareError {
+  readonly language: string;
+  readonly expectedPatterns: readonly string[];
+
+  constructor(message: string, language: string, expectedPatterns: readonly string[]) {
+    super(message, 'DISCLOSURE_MISSING');
+    this.name = 'DisclosureMissingError';
+    this.language = language;
+    this.expectedPatterns = expectedPatterns;
+  }
+}
