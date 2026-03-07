@@ -254,6 +254,46 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Generate Worker Notification (Art.26(7)) for deployment
+    Notify {
+        /// Agent name
+        name: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Company name (for notification header)
+        #[arg(long)]
+        company_name: Option<String>,
+
+        /// Contact person name
+        #[arg(long)]
+        contact_name: Option<String>,
+
+        /// Contact email address
+        #[arg(long)]
+        contact_email: Option<String>,
+
+        /// Contact phone number
+        #[arg(long)]
+        contact_phone: Option<String>,
+
+        /// Planned deployment date
+        #[arg(long)]
+        deployment_date: Option<String>,
+
+        /// Affected roles/departments
+        #[arg(long)]
+        affected_roles: Option<String>,
+
+        /// Description of how the system works and affects workers
+        #[arg(long)]
+        impact_description: Option<String>,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
     /// Show evidence chain summary or verify integrity
     Evidence {
         /// Output as JSON
@@ -688,6 +728,66 @@ mod tests {
                 assert_eq!(approval.as_deref(), Some("Jane Doe, CTO"));
             }
             _ => panic!("Expected Agent Fria command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_notify() {
+        let cli = Cli::parse_from(["complior", "agent", "notify", "my-bot"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Notify { name, json, company_name, contact_name, contact_email, contact_phone, deployment_date, affected_roles, impact_description, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(!json);
+                assert!(company_name.is_none());
+                assert!(contact_name.is_none());
+                assert!(contact_email.is_none());
+                assert!(contact_phone.is_none());
+                assert!(deployment_date.is_none());
+                assert!(affected_roles.is_none());
+                assert!(impact_description.is_none());
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Notify command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_notify_json() {
+        let cli = Cli::parse_from(["complior", "agent", "notify", "my-bot", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Notify { name, json, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Notify command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_notify_all_flags() {
+        let cli = Cli::parse_from([
+            "complior", "agent", "notify", "my-bot",
+            "--company-name", "Acme Corp",
+            "--contact-name", "Jane Doe",
+            "--contact-email", "jane@acme.com",
+            "--contact-phone", "+1-555-0100",
+            "--deployment-date", "2026-04-01",
+            "--affected-roles", "Customer Support",
+            "--impact-description", "Assists with ticket triage",
+        ]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Notify { name, company_name, contact_name, contact_email, contact_phone, deployment_date, affected_roles, impact_description, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(company_name.as_deref(), Some("Acme Corp"));
+                assert_eq!(contact_name.as_deref(), Some("Jane Doe"));
+                assert_eq!(contact_email.as_deref(), Some("jane@acme.com"));
+                assert_eq!(contact_phone.as_deref(), Some("+1-555-0100"));
+                assert_eq!(deployment_date.as_deref(), Some("2026-04-01"));
+                assert_eq!(affected_roles.as_deref(), Some("Customer Support"));
+                assert_eq!(impact_description.as_deref(), Some("Assists with ticket triage"));
+            }
+            _ => panic!("Expected Agent Notify command"),
         }
     }
 

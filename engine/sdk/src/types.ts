@@ -43,3 +43,6 @@ export interface DomainHooks {
   readonly pre: readonly PreHook[];
   readonly post: readonly PostHook[];
 }
+
+/** Key used to attach compliance metadata to LLM responses */
+export const COMPLIOR_METADATA_KEY = '_complior';

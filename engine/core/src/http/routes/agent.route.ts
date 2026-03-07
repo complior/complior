@@ -159,6 +159,46 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(result);
   });
 
+  // C.D02: Generate Worker Notification from passport (Art.26(7))
+  app.post('/agent/notify', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = z.object({
+      path: z.string().min(1),
+      name: z.string().min(1),
+      companyName: z.string().optional(),
+      contactName: z.string().optional(),
+      contactEmail: z.string().optional(),
+      contactPhone: z.string().optional(),
+      deploymentDate: z.string().optional(),
+      affectedRoles: z.string().optional(),
+      impactDescription: z.string().optional(),
+    }).safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.generateWorkerNotification(
+      parsed.data.name,
+      parsed.data.path,
+      {
+        companyName: parsed.data.companyName,
+        contactName: parsed.data.contactName,
+        contactEmail: parsed.data.contactEmail,
+        contactPhone: parsed.data.contactPhone,
+        deploymentDate: parsed.data.deploymentDate,
+        affectedRoles: parsed.data.affectedRoles,
+        impactDescription: parsed.data.impactDescription,
+      },
+    );
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+    }
+    return c.json(result);
+  });
+
   // C.R20: Evidence chain summary
   app.get('/agent/evidence', async (c) => {
     const path = c.req.query('path');

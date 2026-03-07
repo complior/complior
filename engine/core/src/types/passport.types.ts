@@ -58,6 +58,8 @@ export interface ComplianceBlock {
   readonly last_scan: string;
   readonly fria_completed?: boolean;
   readonly fria_date?: string;
+  readonly worker_notification_sent?: boolean;
+  readonly worker_notification_date?: string;
 }
 
 export interface DisclosureBlock {
@@ -204,6 +206,8 @@ const ComplianceBlockSchema = z.object({
   last_scan: z.string(),
   fria_completed: z.boolean().optional(),
   fria_date: z.string().optional(),
+  worker_notification_sent: z.boolean().optional(),
+  worker_notification_date: z.string().optional(),
 });
 
 const DisclosureBlockSchema = z.object({

@@ -1,8 +1,8 @@
 import type { PostHook } from '../../types.js';
 import { BudgetExceededError } from '../../errors.js';
 
-// Rough cost estimates per 1K tokens by provider
-const COST_PER_1K: Record<string, { input: number; output: number }> = {
+/** Default cost estimates per 1K tokens by provider (USD). Override via costRates parameter. */
+const DEFAULT_COST_PER_1K: Record<string, { input: number; output: number }> = {
   openai: { input: 0.003, output: 0.015 },
   anthropic: { input: 0.003, output: 0.015 },
   google: { input: 0.001, output: 0.002 },
@@ -21,8 +21,12 @@ const getNumericField = (obj: object, ...keys: string[]): number => {
   return 0;
 };
 
-const estimateCost = (provider: string, response: unknown): number => {
-  const rates = COST_PER_1K[provider] ?? COST_PER_1K['unknown']!;
+const estimateCost = (
+  provider: string,
+  response: unknown,
+  costRates: Record<string, { input: number; output: number }>,
+): number => {
+  const rates = costRates[provider] ?? costRates['unknown'] ?? DEFAULT_COST_PER_1K['unknown']!;
   if (!response || typeof response !== 'object') return 0;
   if (!('usage' in response)) return 0;
 
@@ -39,11 +43,13 @@ const estimateCost = (provider: string, response: unknown): number => {
 export const createBudgetHook = (
   limitUsd: number,
   onExceeded: 'warn' | 'block' = 'block',
+  costRates?: Record<string, { input: number; output: number }>,
 ): PostHook => {
   let totalCost = 0;
+  const rates = costRates ?? DEFAULT_COST_PER_1K;
 
   return (ctx, response) => {
-    const cost = estimateCost(ctx.provider, response);
+    const cost = estimateCost(ctx.provider, response, rates);
     totalCost += cost;
 
     if (totalCost > limitUsd) {

@@ -128,6 +128,9 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Fria { name, json, organization, impact, mitigation, approval, path } => {
             run_agent_fria(name, *json, organization.as_deref(), impact.as_deref(), mitigation.as_deref(), approval.as_deref(), path.as_deref(), config).await
         }
+        AgentAction::Notify { name, json, company_name, contact_name, contact_email, contact_phone, deployment_date, affected_roles, impact_description, path } => {
+            run_agent_notify(name, *json, company_name.as_deref(), contact_name.as_deref(), contact_email.as_deref(), contact_phone.as_deref(), deployment_date.as_deref(), affected_roles.as_deref(), impact_description.as_deref(), path.as_deref(), config).await
+        }
         AgentAction::Evidence { json, verify, path } => {
             run_agent_evidence(*json, *verify, path.as_deref(), config).await
         }
@@ -933,6 +936,109 @@ async fn run_agent_fria(
         }
         Err(e) => {
             eprintln!("Error: Failed to generate FRIA: {e}");
+            1
+        }
+    }
+}
+
+// --- C.D02: Worker Notification ---
+
+#[allow(clippy::too_many_arguments)]
+async fn run_agent_notify(
+    name: &str,
+    json: bool,
+    company_name: Option<&str>,
+    contact_name: Option<&str>,
+    contact_email: Option<&str>,
+    contact_phone: Option<&str>,
+    deployment_date: Option<&str>,
+    affected_roles: Option<&str>,
+    impact_description: Option<&str>,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let project_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    if !json {
+        println!("Generating Worker Notification for agent '{name}'...");
+    }
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let mut body = serde_json::json!({
+        "path": project_path.to_string_lossy(),
+        "name": name,
+    });
+
+    if let Some(v) = company_name {
+        body["companyName"] = serde_json::Value::String(v.to_string());
+    }
+    if let Some(v) = contact_name {
+        body["contactName"] = serde_json::Value::String(v.to_string());
+    }
+    if let Some(v) = contact_email {
+        body["contactEmail"] = serde_json::Value::String(v.to_string());
+    }
+    if let Some(v) = contact_phone {
+        body["contactPhone"] = serde_json::Value::String(v.to_string());
+    }
+    if let Some(v) = deployment_date {
+        body["deploymentDate"] = serde_json::Value::String(v.to_string());
+    }
+    if let Some(v) = affected_roles {
+        body["affectedRoles"] = serde_json::Value::String(v.to_string());
+    }
+    if let Some(v) = impact_description {
+        body["impactDescription"] = serde_json::Value::String(v.to_string());
+    }
+
+    match client.post_json("/agent/notify", &body).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let saved_path = result
+                .get("savedPath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let prefilled_count = result
+                .get("prefilledFields")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let empty_vec = vec![];
+            let manual_fields = result
+                .get("manualFields")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&empty_vec);
+
+            println!("\nWorker Notification generated: {name}");
+            println!("  Saved: {saved_path}");
+            println!("  Pre-filled: {prefilled_count} fields");
+            println!("  Manual review needed ({} fields):", manual_fields.len());
+            for field in manual_fields {
+                if let Some(f) = field.as_str() {
+                    println!("    - {f}");
+                }
+            }
+            println!("\nReview and distribute the notification to affected workers before deployment.");
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to generate Worker Notification: {e}");
             1
         }
     }

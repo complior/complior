@@ -1,3 +1,5 @@
+import { ART5_MAX_PENALTY } from './data/prohibited-patterns.js';
+
 export class MiddlewareError extends Error {
   readonly code: string;
 
@@ -21,7 +23,7 @@ export class ProhibitedPracticeError extends MiddlewareError {
     article: string,
     category: string = 'unknown',
     matchedPattern: string = '',
-    penalty: string = '€35M or 7% of annual global turnover',
+    penalty: string = ART5_MAX_PENALTY,
   ) {
     super(message, 'PROHIBITED_PRACTICE');
     this.name = 'ProhibitedPracticeError';

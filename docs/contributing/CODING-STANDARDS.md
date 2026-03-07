@@ -278,9 +278,69 @@ develop → main (PO approves)
 - [ ] Ed25519 keys — proper permissions (600)
 - [ ] `cargo audit` + `bun audit` — нет known vulnerabilities
 
+### Data & Configuration Hygiene
+
+- [ ] Нет hardcoded regulatory текста — используются константы из `data/`
+- [ ] Нет hardcoded цен/рейтов/порогов — конфигурируются через параметры или `data/`
+- [ ] Нет mock/test/stub данных в продакшн-коде — только в `.test.ts` и `test-helpers/`
+- [ ] Magic strings вынесены в именованные константы (экспорт из одного места)
+- [ ] Configurable values имеют default с возможностью override
+
 ---
 
-## 9. CI
+## 9. Данные и конфигурация
+
+### Запрещено в продакшн-коде
+
+| ❌ Запрещено | Почему | ✅ Решение |
+|-------------|--------|-----------|
+| Hardcoded regulatory text | Дублирование, рассинхрон | Константа в `data/` (один source of truth) |
+| Hardcoded цены/рейты | Невозможно обновить без деплоя | Параметр функции с default из `data/` |
+| Hardcoded пороги (threshold) | Разные домены = разные пороги | Config параметр с default |
+| Mock/stub/fake data | Утечка тестовых данных в прод | `test-helpers/factories.ts` + `.test.ts` |
+| Magic strings (`'_complior'`) | Невозможно найти и обновить | Именованная константа, экспорт |
+| Inline penalty text | Рассинхрон с regulation data | Import из `data/` модуля |
+
+### Расположение конфигурации
+
+```
+Статические справочные данные (regulations, patterns, templates):
+  → engine/core/src/data/           # Regulation JSON, Zod schemas, templates
+  → engine/sdk/src/data/            # PII patterns, prohibited patterns, cost defaults
+
+Runtime-конфигурация (меняется от вызова к вызову):
+  → MiddlewareConfig / AgentConfig  # Параметры SDK-функций
+  → Опциональные параметры функций  # costRates?, threshold?, mode?
+
+Проектное состояние (генерируется, не коммитится):
+  → .complior/                      # passports, evidence, reports, daemon.pid
+
+Пользовательские настройки (per-machine):
+  → ~/.config/complior/             # keys, credentials, preferences
+```
+
+### Правило конфигурируемости
+
+Каждое значение с бизнес-смыслом должно следовать паттерну:
+
+```typescript
+// ✅ Правильно: default из data/, override через параметр
+export const createBudgetHook = (
+  limitUsd: number,
+  onExceeded: 'warn' | 'block' = 'block',
+  costRates?: Record<string, { input: number; output: number }>,  // configurable
+): PostHook => {
+  const rates = costRates ?? DEFAULT_COST_PER_1K;  // fallback to data/ constant
+  // ...
+};
+
+// ❌ Неправильно: hardcoded inline
+const cost = (inputTokens * 0.003 + outputTokens * 0.015) / 1000;
+```
+
+---
+
+## 10. CI
 
 ```yaml
 # .github/workflows/ci.yml
@@ -302,5 +362,5 @@ jobs:
 
 ---
 
-**Последнее обновление:** 2026-02-27
+**Последнее обновление:** 2026-03-07
 **Автор:** Marcus (CTO) via Claude Code (Opus 4.6)

@@ -1,4 +1,5 @@
 import type { MiddlewareConfig, MiddlewareContext, DomainHooks, Domain } from './types.js';
+import { COMPLIOR_METADATA_KEY } from './types.js';
 import { createPipeline } from './pipeline.js';
 import { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 
@@ -167,7 +168,7 @@ const wrapFunction = (
 
     // Attach metadata to response
     if (result.response && typeof result.response === 'object') {
-      (result.response as Record<string, unknown>)['_complior'] = {
+      (result.response as Record<string, unknown>)[COMPLIOR_METADATA_KEY] = {
         metadata: result.metadata,
         headers: result.headers,
       };

@@ -2,6 +2,8 @@
  * US-S05-06: Shared types for HTTP middleware adapters.
  */
 
+import { COMPLIOR_METADATA_KEY } from '../types.js';
+
 export interface MiddlewareOptions {
   readonly headers?: {
     readonly include?: readonly string[];
@@ -60,7 +62,7 @@ export const extractCompliorHeaders = (
     if (!parsed || typeof parsed !== 'object') return {};
 
     const obj = parsed as Record<string, unknown>;
-    const complior = obj['_complior'] as Record<string, unknown> | undefined;
+    const complior = obj[COMPLIOR_METADATA_KEY] as Record<string, unknown> | undefined;
     if (!complior) return {};
 
     const metadata = (complior['metadata'] ?? {}) as Record<string, unknown>;

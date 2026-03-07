@@ -21,6 +21,8 @@ import { validatePassport, computeCompleteness } from '../domain/passport/passpo
 import type { ValidationResult, CompletenessResult } from '../domain/passport/passport-validator.js';
 import { generateFria } from '../domain/fria/fria-generator.js';
 import type { FriaResult } from '../domain/fria/fria-generator.js';
+import { generateWorkerNotification as generateWorkerNotificationDoc } from '../domain/documents/worker-notification-generator.js';
+import type { WorkerNotificationResult } from '../domain/documents/worker-notification-generator.js';
 import type { EvidenceStore, EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
 
 // --- Types ---
@@ -241,6 +243,63 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return computeCompleteness(manifest);
   };
 
+  // --- Shared document generation helpers ---
+
+  const ensureTemplate = async (file: string): Promise<string> => {
+    if (!deps.loadTemplate) {
+      throw new Error('loadTemplate dependency not provided');
+    }
+    return deps.loadTemplate(file);
+  };
+
+  const saveDocumentReport = async (
+    name: string,
+    filePrefix: string,
+    markdown: string,
+    evidenceType: string,
+    projectPath?: string,
+  ): Promise<string> => {
+    const path = projectPath ?? getProjectPath();
+    const reportsDir = join(path, '.complior', 'reports');
+    await mkdir(reportsDir, { recursive: true });
+    const savedPath = join(reportsDir, `${filePrefix}-${name}.md`);
+    await writeFile(savedPath, markdown);
+
+    if (deps.evidenceStore) {
+      const evidence = createEvidence(name, evidenceType, evidenceType, { file: savedPath });
+      await deps.evidenceStore.append([evidence], randomUUID());
+    }
+
+    return savedPath;
+  };
+
+  const updatePassportCompliance = async (
+    name: string,
+    complianceUpdate: Partial<AgentManifest['compliance']>,
+    projectPath?: string,
+  ): Promise<void> => {
+    const path = projectPath ?? getProjectPath();
+    const manifestPath = join(path, '.complior', 'agents', `${name}-manifest.json`);
+    try {
+      const rawManifest = await readFile(manifestPath, 'utf-8');
+      const currentManifest = JSON.parse(rawManifest) as AgentManifest;
+
+      const updatedManifest: AgentManifest = {
+        ...currentManifest,
+        compliance: { ...currentManifest.compliance, ...complianceUpdate },
+        updated: new Date().toISOString(),
+      };
+
+      const keyPair = await loadOrCreateKeyPair();
+      const newSignature = signManifest(updatedManifest, keyPair.privateKey);
+      const resignedManifest: AgentManifest = { ...updatedManifest, signature: newSignature };
+
+      await writeFile(manifestPath, JSON.stringify(resignedManifest, null, 2));
+    } catch {
+      // Passport file doesn't exist or can't be updated — non-fatal
+    }
+  };
+
   // C.D01: FRIA generation from passport data
   const generateFriaReport = async (
     name: string,
@@ -250,11 +309,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     const manifest = await showPassport(name, projectPath);
     if (manifest === null) return null;
 
-    if (!deps.loadTemplate) {
-      throw new Error('loadTemplate dependency not provided');
-    }
-
-    const template = await deps.loadTemplate('fria.md');
+    const template = await ensureTemplate('fria.md');
     const result = generateFria({
       manifest,
       template,
@@ -265,54 +320,59 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       approval: options?.approval,
     });
 
-    // Save FRIA report to .complior/reports/ (markdown + structured JSON)
+    const savedPath = await saveDocumentReport(name, 'fria', result.markdown, 'fria', projectPath);
+
+    // Save structured JSON alongside markdown
     const path = projectPath ?? getProjectPath();
-    const reportsDir = join(path, '.complior', 'reports');
-    await mkdir(reportsDir, { recursive: true });
-    const savedPath = join(reportsDir, `fria-${name}.md`);
-    await writeFile(savedPath, result.markdown);
-    const jsonPath = join(reportsDir, `fria-${name}.json`);
+    const jsonPath = join(path, '.complior', 'reports', `fria-${name}.json`);
     await writeFile(jsonPath, JSON.stringify(result.structured, null, 2));
 
-    // C.R20: Record FRIA generation in evidence chain
-    if (deps.evidenceStore) {
-      const evidence = createEvidence(
-        name,
-        'fria',
-        'fria',
-        { file: savedPath },
-      );
-      await deps.evidenceStore.append([evidence], randomUUID());
-    }
+    const today = new Date().toISOString().slice(0, 10);
+    await updatePassportCompliance(name, { fria_completed: true, fria_date: today }, projectPath);
 
-    // Gap 4: Update passport with fria_completed and fria_date
-    const manifestPath = join(path, '.complior', 'agents', `${name}-manifest.json`);
-    try {
-      const rawManifest = await readFile(manifestPath, 'utf-8');
-      const currentManifest = JSON.parse(rawManifest) as AgentManifest;
+    return { ...result, savedPath };
+  };
 
-      const updatedManifest: AgentManifest = {
-        ...currentManifest,
-        compliance: {
-          ...currentManifest.compliance,
-          fria_completed: true,
-          fria_date: new Date().toISOString().slice(0, 10),
-        },
-        updated: new Date().toISOString(),
-      };
+  // C.D02: Worker Notification generation from passport data (Art.26(7))
+  const generateWorkerNotification = async (
+    name: string,
+    projectPath?: string,
+    options?: {
+      companyName?: string;
+      contactName?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      deploymentDate?: string;
+      affectedRoles?: string;
+      impactDescription?: string;
+    },
+  ): Promise<(WorkerNotificationResult & { savedPath: string }) | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
 
-      // Re-sign the updated manifest
-      const keyPair = await loadOrCreateKeyPair();
-      const newSignature = signManifest(updatedManifest, keyPair.privateKey);
-      const resignedManifest: AgentManifest = {
-        ...updatedManifest,
-        signature: newSignature,
-      };
+    const template = await ensureTemplate('worker-notification.md');
+    const result = generateWorkerNotificationDoc({
+      manifest,
+      template,
+      companyName: options?.companyName,
+      contactName: options?.contactName,
+      contactEmail: options?.contactEmail,
+      contactPhone: options?.contactPhone,
+      deploymentDate: options?.deploymentDate,
+      affectedRoles: options?.affectedRoles,
+      impactDescription: options?.impactDescription,
+    });
 
-      await writeFile(manifestPath, JSON.stringify(resignedManifest, null, 2));
-    } catch {
-      // Passport file doesn't exist or can't be updated — non-fatal
-    }
+    const savedPath = await saveDocumentReport(
+      name, 'worker-notification', result.markdown, 'worker-notification', projectPath,
+    );
+
+    const today = new Date().toISOString().slice(0, 10);
+    await updatePassportCompliance(
+      name,
+      { worker_notification_sent: true, worker_notification_date: today },
+      projectPath,
+    );
 
     return { ...result, savedPath };
   };
@@ -353,6 +413,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     validatePassportByName,
     getPassportCompleteness,
     generateFriaReport,
+    generateWorkerNotification,
     getEvidenceChainSummary,
     verifyEvidenceChain,
   });

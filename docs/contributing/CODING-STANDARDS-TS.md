@@ -712,7 +712,12 @@ describe('Scanner', () => {
 | **Async** | Swallowed `catch {}` | Скрытые ошибки | Log + rethrow |
 | **Async** | Callback hell | Readability | async/await |
 | **Logging** | `console.log` prod | No structure | pino |
-| **Strings** | Magic strings/numbers | Maintainability | Constants |
+| **Strings** | Magic strings/numbers | Maintainability | Constants в `data/` |
+| **Strings** | Inline regulatory text | Дублирование, drift | Константа из `data/` модуля |
+| **Strings** | Hardcoded prices/rates | Невозможно обновить | Параметр + default из `data/` |
+| **Data** | Mock/stub data в src/ | Утечка в прод | `test-helpers/` + `.test.ts` |
+| **Data** | Hardcoded thresholds | Разные домены | Config param + default |
+| **Data** | Duplicated constants | Рассинхрон | Single export, import everywhere |
 | **Logic** | Business logic в routes | Layer violation | core/ layer |
 | **Logic** | LLM в scanner checks | Детерминизм | AST + rules |
 | **Security** | `eval()`, `Function()` | Code injection | Не делай |
@@ -797,14 +802,32 @@ engine/core/src/
 ├── infra/               # Infrastructure adapters
 ├── llm/                 # Agents, routing, tools, SSE
 ├── mcp/                 # MCP Server (stdio, 8 tools)
-├── data/                # Regulation loader + Zod schemas
+├── data/                # Regulation loader + Zod schemas + static reference data
+│   ├── templates/       # Markdown templates (FRIA, worker-notification)
+│   ├── schemas/         # JSON schemas (http-contract)
+│   └── *.ts             # Constants: patterns, penalties, defaults
 ├── onboarding/          # Wizard, profile, auto-detect
 ├── types/               # common.types.ts, errors.ts
+├── test-helpers/        # Shared test factories (createMockManifest, etc.)
 ├── output/              # JSON output, GitHub issue format
 └── hooks/               # Git hooks installer
 ```
 
+### Расположение данных и конфигурации
+
+| Тип данных | Расположение | Пример |
+|-----------|-------------|--------|
+| Regulatory constants | `engine/core/src/data/` | `prohibited-patterns.ts`, `ART5_MAX_PENALTY` |
+| PII patterns, SDK defaults | `engine/sdk/src/data/` | `pii-patterns.ts`, `DEFAULT_COST_PER_1K` |
+| Document templates | `engine/core/data/templates/` | `fria.md`, `worker-notification.md` |
+| Test factories & mocks | `*/test-helpers/` или `.test.ts` | `createMockManifest()`, `createMockFinding()` |
+| Runtime config | Function parameters | `costRates?`, `biasThreshold?` |
+| Project state | `.complior/` (gitignored) | passports, evidence, reports |
+| User config | `~/.config/complior/` | keys, credentials |
+
+**Правило:** Если значение имеет бизнес-смысл (цена, порог, regulatory text) — оно ДОЛЖНО быть в `data/` как именованная константа и конфигурируемо через параметр функции.
+
 ---
 
-**Последнее обновление:** 2026-03-02
+**Последнее обновление:** 2026-03-07
 **Автор:** Marcus (CTO) via Claude Code
