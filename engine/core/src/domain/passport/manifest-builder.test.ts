@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildManifest, ALL_PASSPORT_FIELDS } from './manifest-builder.js';
-import type { ManifestBuildInput } from './manifest-builder.js';
+import { buildPassport, ALL_PASSPORT_FIELDS } from './manifest-builder.js';
+import type { PassportBuildInput } from './manifest-builder.js';
 import type { ScanResult } from '../../types/common.types.js';
 
 // --- Standard test input ---
 
-const testInput: ManifestBuildInput = {
+const testInput: PassportBuildInput = {
   agent: {
     name: 'test-agent',
     entryFile: 'src/index.ts',
@@ -37,9 +37,9 @@ const testInput: ManifestBuildInput = {
 
 // --- Tests ---
 
-describe('buildManifest', () => {
+describe('buildPassport', () => {
   it('generates valid manifest with all sections', () => {
-    const manifest = buildManifest(testInput);
+    const manifest = buildPassport(testInput);
 
     expect(manifest).toHaveProperty('$schema');
     expect(manifest).toHaveProperty('manifest_version');
@@ -67,28 +67,28 @@ describe('buildManifest', () => {
   });
 
   it('generates agent_id with ag_ prefix', () => {
-    const manifest = buildManifest(testInput);
+    const manifest = buildPassport(testInput);
 
     expect(manifest.agent_id).toMatch(/^ag_/);
   });
 
   it('infers risk class from autonomy level', () => {
     // L1 → minimal
-    const l1 = buildManifest({
+    const l1 = buildPassport({
       ...testInput,
       autonomy: { ...testInput.autonomy, level: 'L1' },
     });
     expect(l1.compliance.eu_ai_act.risk_class).toBe('minimal');
 
     // L3 → limited
-    const l3 = buildManifest({
+    const l3 = buildPassport({
       ...testInput,
       autonomy: { ...testInput.autonomy, level: 'L3' },
     });
     expect(l3.compliance.eu_ai_act.risk_class).toBe('limited');
 
     // L5 → high
-    const l5 = buildManifest({
+    const l5 = buildPassport({
       ...testInput,
       autonomy: { ...testInput.autonomy, level: 'L5' },
     });
@@ -114,19 +114,19 @@ describe('buildManifest', () => {
       filesScanned: 5,
     };
 
-    const manifest = buildManifest({ ...testInput, scanResult });
+    const manifest = buildPassport({ ...testInput, scanResult });
 
     expect(manifest.compliance.complior_score).toBe(72);
   });
 
   it('defaults to zero score without scan result', () => {
-    const manifest = buildManifest({ ...testInput, scanResult: undefined });
+    const manifest = buildPassport({ ...testInput, scanResult: undefined });
 
     expect(manifest.compliance.complior_score).toBe(0);
   });
 
   it('applies overrides', () => {
-    const manifest = buildManifest({
+    const manifest = buildPassport({
       ...testInput,
       overrides: { name: 'custom-name' },
     });
@@ -135,7 +135,7 @@ describe('buildManifest', () => {
   });
 
   it('calculates source confidence', () => {
-    const manifest = buildManifest(testInput);
+    const manifest = buildPassport(testInput);
 
     expect(manifest.source.confidence).toBeGreaterThan(0);
     expect(manifest.source.confidence).toBeLessThanOrEqual(1);
@@ -147,14 +147,14 @@ describe('buildManifest', () => {
   });
 
   it('auto-fills data_boundaries.pii_handling to redact', () => {
-    const manifest = buildManifest(testInput);
+    const manifest = buildPassport(testInput);
 
     expect(manifest.permissions.data_boundaries).toBeDefined();
     expect(manifest.permissions.data_boundaries!.pii_handling).toBe('redact');
   });
 
   it('auto-fills escalation_rules from humanApprovalRequired', () => {
-    const manifest = buildManifest(testInput);
+    const manifest = buildPassport(testInput);
 
     expect(manifest.constraints.escalation_rules).toBeDefined();
     expect(manifest.constraints.escalation_rules).toHaveLength(1);
@@ -164,7 +164,7 @@ describe('buildManifest', () => {
   });
 
   it('sets escalation_rules to undefined when no human approvals', () => {
-    const manifest = buildManifest({
+    const manifest = buildPassport({
       ...testInput,
       permissions: { ...testInput.permissions, humanApprovalRequired: [] },
     });

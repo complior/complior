@@ -8,7 +8,7 @@ export { ProhibitedPracticeError, MiddlewareError, DomainViolationError, Permiss
 export type { BiasEvidence } from './errors.js';
 export { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 export { compliorAgent } from './agent.js';
-export type { AgentConfig, AgentPassport } from './agent.js';
+export type { AgentConfig } from './agent.js';
 export type { ActionLogEntry } from './hooks/post/action-log.js';
 export type { CircuitBreakerConfig } from './hooks/post/circuit-breaker.js';
 

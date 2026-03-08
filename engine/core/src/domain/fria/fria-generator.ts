@@ -1,10 +1,10 @@
-import type { AgentManifest } from '../../types/passport.types.js';
+import type { AgentPassport } from '../../types/passport.types.js';
 import { mapDomain } from '../passport/domain-mapper.js';
 
 // --- Types ---
 
 export interface FriaGeneratorInput {
-  readonly manifest: AgentManifest;
+  readonly manifest: AgentPassport;
   readonly template: string;
   readonly organization?: string;
   readonly assessor?: string;
@@ -112,7 +112,7 @@ const deriveRiskLevel = (riskClass: string): string => {
   }
 };
 
-const deriveOversightDescription = (manifest: AgentManifest): string => {
+const deriveOversightDescription = (manifest: AgentPassport): string => {
   const parts: string[] = [];
   const level = manifest.autonomy_level;
 

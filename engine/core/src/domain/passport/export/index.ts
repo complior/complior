@@ -1,4 +1,4 @@
-import type { AgentManifest } from '../../../types/passport.types.js';
+import type { AgentPassport } from '../../../types/passport.types.js';
 import { mapToA2A, A2ACardSchema } from './a2a-mapper.js';
 import type { A2ACard } from './a2a-mapper.js';
 import { mapToAIUC1, AIUC1ProfileSchema } from './aiuc1-mapper.js';
@@ -14,7 +14,7 @@ export type ExportResult =
   | { readonly format: 'aiuc-1'; readonly data: AIUC1Profile; readonly timestamp: string; readonly valid: boolean }
   | { readonly format: 'nist'; readonly data: NISTProfile; readonly timestamp: string; readonly valid: boolean };
 
-export const exportPassport = (manifest: AgentManifest, format: ExportFormat): ExportResult => {
+export const exportPassport = (manifest: AgentPassport, format: ExportFormat): ExportResult => {
   const timestamp = new Date().toISOString();
 
   switch (format) {

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  AgentManifest,
+  AgentPassport,
   DiscoveredAgent,
   AutonomyLevel,
   AgentType,
@@ -14,7 +14,7 @@ import type { ScanResult } from '../../types/common.types.js';
 
 // --- Input interface ---
 
-export interface ManifestBuildInput {
+export interface PassportBuildInput {
   readonly agent: DiscoveredAgent;
   readonly autonomy: {
     readonly level: AutonomyLevel;
@@ -98,9 +98,9 @@ const toDisplayName = (name: string): string =>
 
 // --- Builder ---
 
-export const buildManifest = (
-  input: ManifestBuildInput,
-): Omit<AgentManifest, 'signature'> => {
+export const buildPassport = (
+  input: PassportBuildInput,
+): Omit<AgentPassport, 'signature'> => {
   const { agent, autonomy, permissions, scanResult, overrides } = input;
 
   const agentId = 'ag_' + randomUUID();
@@ -270,7 +270,7 @@ export const buildManifest = (
   };
 
   // --- Assemble manifest ---
-  const manifest: Omit<AgentManifest, 'signature'> = {
+  const manifest: Omit<AgentPassport, 'signature'> = {
     $schema: 'https://complior.ai/schemas/agent-manifest/v1.json',
     manifest_version: '1.0.0',
     agent_id: agentId,
@@ -304,7 +304,7 @@ export const buildManifest = (
         (result as Record<string, unknown>)[key] = value;
       }
     }
-    return result as Omit<AgentManifest, 'signature'>;
+    return result as Omit<AgentPassport, 'signature'>;
   }
 
   return manifest;

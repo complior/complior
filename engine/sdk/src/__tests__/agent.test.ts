@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { compliorAgent } from '../agent.js';
 import { PermissionDeniedError, BudgetExceededError, RateLimitError, CircuitBreakerError } from '../errors.js';
-import type { AgentPassport, AgentConfig } from '../agent.js';
+import type { AgentConfig } from '../agent.js';
 import type { ActionLogEntry } from '../hooks/post/action-log.js';
 
 // Mock LLM client that looks like OpenAI
@@ -17,7 +17,7 @@ const createMockClient = () => ({
   },
 });
 
-const createPassport = (overrides?: Partial<AgentPassport>): AgentPassport => ({
+const createPassport = (overrides?: Record<string, unknown>): Record<string, unknown> => ({
   permissions: {
     tools: [],
     denied: [],

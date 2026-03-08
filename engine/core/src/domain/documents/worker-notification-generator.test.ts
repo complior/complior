@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateWorkerNotification } from './worker-notification-generator.js';
-import { createMockManifest } from '../../test-helpers/factories.js';
+import { createMockPassport } from '../../test-helpers/factories.js';
 
 const TEMPLATE = `# Template 4: Worker Notification of High-Risk AI Use
 
@@ -53,25 +53,25 @@ Signed: [Management representative name and title]
 
 describe('generateWorkerNotification', () => {
   it('pre-fills system name from manifest', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     expect(result.markdown).toContain('System name: Test Agent');
     expect(result.prefilledFields).toContain('System name');
   });
 
   it('pre-fills provider from manifest', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     expect(result.markdown).toContain('Provider: OpenAI');
     expect(result.prefilledFields).toContain('Provider');
   });
 
   it('pre-fills purpose/description from manifest', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     expect(result.markdown).toContain('Purpose: An AI agent for testing compliance');
     expect(result.prefilledFields).toContain('Purpose');
   });
 
   it('pre-fills company name from owner.team when not provided', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     expect(result.markdown).toContain('Acme Corp, HR Department / Management');
     expect(result.markdown).toContain('Acme Corp intends to deploy');
     expect(result.prefilledFields).toContain('Company Name');
@@ -79,7 +79,7 @@ describe('generateWorkerNotification', () => {
 
   it('uses explicit companyName over manifest.owner.team', () => {
     const result = generateWorkerNotification({
-      manifest: createMockManifest(),
+      manifest: createMockPassport(),
       template: TEMPLATE,
       companyName: 'Custom Inc',
     });
@@ -89,14 +89,14 @@ describe('generateWorkerNotification', () => {
   });
 
   it('pre-fills human oversight from responsible_person', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     expect(result.markdown).toContain('reviewed by Jane Doe before');
     expect(result.prefilledFields).toContain('Human oversight person');
   });
 
   it('fills contact info when provided', () => {
     const result = generateWorkerNotification({
-      manifest: createMockManifest(),
+      manifest: createMockPassport(),
       template: TEMPLATE,
       contactName: 'John Smith',
       contactEmail: 'john@acme.com',
@@ -108,7 +108,7 @@ describe('generateWorkerNotification', () => {
   });
 
   it('leaves manual fields as placeholders', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     expect(result.manualFields).toContain('Worker impact description');
     expect(result.manualFields).toContain('Management signature');
     expect(result.manualFields).toContain('Employee acknowledgment');
@@ -117,7 +117,7 @@ describe('generateWorkerNotification', () => {
 
   it('fills deployment date when provided', () => {
     const result = generateWorkerNotification({
-      manifest: createMockManifest(),
+      manifest: createMockPassport(),
       template: TEMPLATE,
       deploymentDate: '2026-04-01',
     });
@@ -127,7 +127,7 @@ describe('generateWorkerNotification', () => {
   });
 
   it('returns correct prefilledFields/manualFields counts', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     // Auto-filled: Company Name, Date, System name, Provider, Purpose, Human oversight person
     expect(result.prefilledFields.length).toBeGreaterThanOrEqual(6);
     // Manual: Deployment date, Affected roles, System description, Worker impact, Internal contact,
@@ -136,7 +136,7 @@ describe('generateWorkerNotification', () => {
   });
 
   it('returns frozen result', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     expect(Object.isFrozen(result)).toBe(true);
     expect(Object.isFrozen(result.prefilledFields)).toBe(true);
     expect(Object.isFrozen(result.manualFields)).toBe(true);
@@ -144,7 +144,7 @@ describe('generateWorkerNotification', () => {
 
   it('fills affected roles when provided', () => {
     const result = generateWorkerNotification({
-      manifest: createMockManifest(),
+      manifest: createMockPassport(),
       template: TEMPLATE,
       affectedRoles: 'Customer Support, Sales',
     });
@@ -154,7 +154,7 @@ describe('generateWorkerNotification', () => {
   });
 
   it('fills date with current ISO date', () => {
-    const result = generateWorkerNotification({ manifest: createMockManifest(), template: TEMPLATE });
+    const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
     const today = new Date().toISOString().split('T')[0]!;
     expect(result.markdown).toContain(`Date: ${today}`);
     expect(result.prefilledFields).toContain('Date');

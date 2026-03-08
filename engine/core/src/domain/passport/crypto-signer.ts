@@ -9,7 +9,7 @@ import {
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { AgentManifest, SignatureBlock } from '../../types/passport.types.js';
+import type { AgentPassport, SignatureBlock } from '../../types/passport.types.js';
 
 // --- Key constants ---
 
@@ -87,8 +87,8 @@ const extractPublicKeyBase64 = (privateKeyPem: string): string => {
 
 // --- Manifest signing ---
 
-export const signManifest = (
-  manifest: Omit<AgentManifest, 'signature'>,
+export const signPassport = (
+  manifest: Omit<AgentPassport, 'signature'>,
   privateKey: string,
 ): SignatureBlock => {
   const timestamp = new Date().toISOString();
@@ -122,7 +122,7 @@ export const signManifest = (
 
 // --- Manifest verification ---
 
-export const verifyManifest = (manifest: AgentManifest): boolean => {
+export const verifyPassport = (manifest: AgentPassport): boolean => {
   try {
     const { signature } = manifest;
 

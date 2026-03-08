@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AgentManifest } from '../../../types/passport.types.js';
+import type { AgentPassport } from '../../../types/passport.types.js';
 
 // --- Google A2A Agent Card Schema ---
 
@@ -41,14 +41,14 @@ const resolveProviderUrl = (provider: string): string =>
   PROVIDER_URLS[provider.toLowerCase()] ?? '';
 
 // Conditional tag collector (FP — no push mutations)
-const collectTags = (manifest: AgentManifest): readonly string[] => [
+const collectTags = (manifest: AgentPassport): readonly string[] => [
   `risk:${manifest.compliance.eu_ai_act.risk_class}`,
   `autonomy:${manifest.autonomy_level}`,
   `type:${manifest.type}`,
   ...(manifest.model.data_residency !== '' ? [`region:${manifest.model.data_residency}`] : []),
 ];
 
-export const mapToA2A = (manifest: AgentManifest): A2ACard => ({
+export const mapToA2A = (manifest: AgentPassport): A2ACard => ({
   schemaVersion: '1.0.0' as const,
   humanReadableId: manifest.name,
   agentVersion: manifest.version,

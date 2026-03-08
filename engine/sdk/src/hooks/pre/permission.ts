@@ -1,6 +1,5 @@
 import type { PreHook } from '../../types.js';
 import { PermissionDeniedError } from '../../errors.js';
-import type { AgentPassport } from '../../agent.js';
 
 /**
  * C.R12: Check if LLM API method is permitted by passport.
@@ -12,7 +11,10 @@ import type { AgentPassport } from '../../agent.js';
  * post-hook (permission-tool-calls.ts, US-S05-03). It controls which tools
  * the LLM is allowed to invoke, not which API methods can be called.
  */
-export const createPermissionHook = (passport: AgentPassport): PreHook => (ctx) => {
+export const createPermissionHook = (passport: {
+  permissions: { denied: readonly string[] };
+  constraints: { prohibited_actions: readonly string[] };
+}): PreHook => (ctx) => {
   const method = ctx.method;
 
   // Check denied list

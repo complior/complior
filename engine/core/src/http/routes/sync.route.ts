@@ -3,19 +3,19 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { createSaasClient, type SyncPassportPayload, type SyncDocPayload } from '../../infra/saas-client.js';
-import type { AgentManifest } from '../../types/passport.types.js';
+import type { AgentPassport } from '../../types/passport.types.js';
 import { mapDomain } from '../../domain/passport/domain-mapper.js';
 import { createLogger } from '../../infra/logger.js';
 import { ValidationError } from '../../types/errors.js';
 
 const log = createLogger('sync');
 
-const parseManifest = (raw: string): AgentManifest | null => {
+const parseManifest = (raw: string): AgentPassport | null => {
   const parsed: unknown = JSON.parse(raw);
   if (typeof parsed !== 'object' || parsed === null) return null;
   if (!('name' in parsed) || typeof parsed.name !== 'string') return null;
   // Validated: has required `name` field — safe to treat as manifest
-  return parsed as AgentManifest;
+  return parsed as AgentPassport;
 };
 
 const SyncRequestSchema = z.object({
@@ -23,7 +23,7 @@ const SyncRequestSchema = z.object({
   saasUrl: z.string().url('saasUrl is required — set PROJECT_API_URL or run `complior login`'),
 });
 
-// Map AgentManifest risk_class to SaaS riskLevel
+// Map AgentPassport risk_class to SaaS riskLevel
 const mapRiskLevel = (riskClass?: string): string | undefined => {
   if (!riskClass) return undefined;
   const map: Record<string, string> = {
@@ -34,7 +34,7 @@ const mapRiskLevel = (riskClass?: string): string | undefined => {
 };
 
 // Map manifest to SaaS passport payload
-const mapPassport = (manifest: AgentManifest): SyncPassportPayload => ({
+const mapPassport = (manifest: AgentPassport): SyncPassportPayload => ({
   name: manifest.name,
   vendorName: manifest.owner?.team ?? '',
   vendorUrl: manifest.owner?.contact ?? undefined,

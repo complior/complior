@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { validatePassport, computeCompleteness } from './passport-validator.js';
-import { buildManifest } from './manifest-builder.js';
-import type { ManifestBuildInput } from './manifest-builder.js';
-import { generateKeyPair, signManifest } from './crypto-signer.js';
-import type { AgentManifest } from '../../types/passport.types.js';
+import { buildPassport } from './manifest-builder.js';
+import type { PassportBuildInput } from './manifest-builder.js';
+import { generateKeyPair, signPassport } from './crypto-signer.js';
+import type { AgentPassport } from '../../types/passport.types.js';
 
 // --- Helpers ---
 
-const createTestInput = (): ManifestBuildInput => ({
+const createTestInput = (): PassportBuildInput => ({
   agent: {
     name: 'validator-test-agent',
     entryFile: 'src/index.ts',
@@ -37,11 +37,11 @@ const createTestInput = (): ManifestBuildInput => ({
 });
 
 const buildSignedManifest = (
-  input?: ManifestBuildInput,
-): AgentManifest => {
-  const unsigned = buildManifest(input ?? createTestInput());
+  input?: PassportBuildInput,
+): AgentPassport => {
+  const unsigned = buildPassport(input ?? createTestInput());
   const { privateKey } = generateKeyPair();
-  const signature = signManifest(unsigned, privateKey);
+  const signature = signPassport(unsigned, privateKey);
   return { ...unsigned, signature };
 };
 
@@ -60,7 +60,7 @@ describe('validatePassport', () => {
 
   it('detects tampered manifest (invalid signature)', () => {
     const manifest = buildSignedManifest();
-    const tampered: AgentManifest = {
+    const tampered: AgentPassport = {
       ...manifest,
       agent_id: 'ag_tampered',
     };
@@ -78,7 +78,7 @@ describe('validatePassport', () => {
     const broken = { ...manifest } as Record<string, unknown>;
     delete broken.name;
 
-    const result = validatePassport(broken as unknown as AgentManifest);
+    const result = validatePassport(broken as unknown as AgentPassport);
 
     expect(result.schemaValid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);

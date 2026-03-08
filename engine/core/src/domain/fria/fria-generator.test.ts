@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateFria, generateFriaStructured } from './fria-generator.js';
-import type { AgentManifest } from '../../types/passport.types.js';
-import { createMockManifest } from '../../test-helpers/factories.js';
+import type { AgentPassport } from '../../types/passport.types.js';
+import { createMockPassport } from '../../test-helpers/factories.js';
 
 const TEMPLATE = `# Template 3: Fundamental Rights Impact Assessment (FRIA)
 
@@ -38,7 +38,7 @@ const TEMPLATE = `# Template 3: Fundamental Rights Impact Assessment (FRIA)
 - Override mechanism: [Description of how human can intervene/stop the system]
 `;
 
-const createManifest = createMockManifest;
+const createManifest = createMockPassport;
 
 describe('generateFria', () => {
   it('replaces AI System Name from manifest', () => {
@@ -234,7 +234,7 @@ describe('generateFriaStructured', () => {
   it('sets severity L for minimal risk', () => {
     const manifest = createManifest({
       compliance: { ...createManifest().compliance, eu_ai_act: { ...createManifest().compliance.eu_ai_act, risk_class: 'minimal' } },
-    } as Partial<AgentManifest>);
+    } as Partial<AgentPassport>);
     const s = generateFriaStructured({ manifest, template: '' });
     expect(s.sections.specific_risks.risks[0]!.severity).toBe('L');
   });
@@ -247,7 +247,7 @@ describe('generateFriaStructured', () => {
   });
 
   it('derives human_oversight from autonomy level L4', () => {
-    const manifest = createManifest({ autonomy_level: 'L4' } as Partial<AgentManifest>);
+    const manifest = createManifest({ autonomy_level: 'L4' } as Partial<AgentPassport>);
     const s = generateFriaStructured({ manifest, template: '' });
     expect(s.sections.human_oversight.hasHumanOversight).toBe(false);
     expect(s.sections.human_oversight.oversightType).toBe('post_hoc');

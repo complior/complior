@@ -1,4 +1,4 @@
-import type { AgentManifest } from '../../types/passport.types.js';
+import type { AgentPassport } from '../../types/passport.types.js';
 
 // --- Types ---
 
@@ -78,7 +78,7 @@ export const OBLIGATION_FIELD_MAP: readonly ObligationFieldMapping[] = [
 
 // --- Field accessor ---
 
-export const getFieldValue = (manifest: AgentManifest, fieldPath: string): unknown => {
+export const getFieldValue = (manifest: AgentPassport, fieldPath: string): unknown => {
   const parts = fieldPath.split('.');
   let current: unknown = manifest;
   for (const part of parts) {
@@ -100,7 +100,7 @@ export const isNonEmpty = (value: unknown): boolean => {
 export const getRequiredFields = (): readonly ObligationFieldMapping[] =>
   OBLIGATION_FIELD_MAP.filter((m) => m.required);
 
-export const getMissingFields = (manifest: AgentManifest): readonly MissingField[] =>
+export const getMissingFields = (manifest: AgentPassport): readonly MissingField[] =>
   OBLIGATION_FIELD_MAP
     .filter((m) => m.required && !isNonEmpty(getFieldValue(manifest, m.field)))
     .map(({ field, obligation, article, description }) => ({

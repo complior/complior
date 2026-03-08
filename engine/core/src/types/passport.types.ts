@@ -125,9 +125,9 @@ export interface SourceBlock {
   readonly confidence: number;
 }
 
-// --- Main manifest interface ---
+// --- Main passport interface ---
 
-export interface AgentManifest {
+export interface AgentPassport {
   readonly $schema: string;
   readonly manifest_version: string;
   readonly agent_id: string;
@@ -292,7 +292,7 @@ const SourceBlockSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 
-export const AgentManifestSchema = z.object({
+export const AgentPassportSchema = z.object({
   $schema: z.string(),
   manifest_version: z.string(),
   agent_id: z.string(),
@@ -318,6 +318,15 @@ export const AgentManifestSchema = z.object({
   source: SourceBlockSchema,
   signature: SignatureBlockSchema,
 });
+
+export const parsePassport = (json: string): AgentPassport | null => {
+  try {
+    const result = AgentPassportSchema.safeParse(JSON.parse(json));
+    return result.success ? (result.data as AgentPassport) : null;
+  } catch {
+    return null;
+  }
+};
 
 // --- Discovery result ---
 

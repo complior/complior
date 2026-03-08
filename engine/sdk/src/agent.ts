@@ -10,46 +10,22 @@ import type { CircuitBreakerConfig } from './hooks/post/circuit-breaker.js';
 import { createToolCallPermissionHook } from './hooks/post/permission-tool-calls.js';
 import type { ToolCallAction, DeniedToolCall } from './hooks/post/permission-tool-calls.js';
 
-// --- Passport shape (subset of AgentManifest used by SDK) ---
-// Canonical types: engine/core/src/types/passport.types.ts
-// Keep in sync until shared @complior/types package is implemented.
+// --- Internal passport field access ---
+// Engine validates passport on disk; SDK trusts the shape at runtime.
 
-export type PiiHandlingMode = 'block' | 'redact' | 'allow';
-
-export interface DataBoundaries {
-  readonly pii_handling: PiiHandlingMode;
-  readonly geographic_restrictions?: readonly string[];
-  readonly retention_days?: number;
-  readonly prohibited_data_types?: readonly string[];
-}
-
-export type EscalationAction = 'require_approval' | 'notify' | 'block' | 'log';
-
-export interface EscalationRule {
-  readonly condition: string;
-  readonly action: EscalationAction;
-  readonly description: string;
-  readonly timeout_minutes?: number;
-}
-
-export interface AgentPassport {
-  readonly permissions: {
-    readonly tools: readonly string[];
-    readonly denied: readonly string[];
-    readonly data_boundaries?: DataBoundaries;
+const asPermissions = (p: Record<string, unknown>) =>
+  (p.permissions ?? {}) as { tools?: readonly string[]; denied?: readonly string[] };
+const asConstraints = (p: Record<string, unknown>) =>
+  (p.constraints ?? {}) as {
+    rate_limits?: { max_actions_per_minute?: number };
+    budget?: { max_cost_per_session_usd?: number };
+    prohibited_actions?: readonly string[];
   };
-  readonly constraints: {
-    readonly rate_limits: { readonly max_actions_per_minute: number };
-    readonly budget: { readonly max_cost_per_session_usd: number };
-    readonly prohibited_actions: readonly string[];
-    readonly escalation_rules?: readonly EscalationRule[];
-  };
-}
 
 // --- Config ---
 
 export interface AgentConfig extends MiddlewareConfig {
-  readonly passport: AgentPassport;
+  readonly passport: Record<string, unknown>;
   readonly budgetLimitUsd?: number;
   readonly onBudgetExceeded?: 'warn' | 'block';
   readonly onPermissionDenied?: 'warn' | 'block';
@@ -90,17 +66,24 @@ export const compliorAgent = <T extends object>(
   const agentPostHooks: PostHook[] = [];
 
   // Permission enforcement (pre-hook)
-  agentPreHooks.push(createPermissionHook(config.passport));
+  const perms = asPermissions(config.passport);
+  const cons = asConstraints(config.passport);
+  agentPreHooks.push(createPermissionHook({
+    permissions: { denied: perms.denied ?? [] },
+    constraints: { prohibited_actions: cons.prohibited_actions ?? [] },
+  }));
 
   // Rate limiting (pre-hook)
-  const maxPerMinute = config.passport.constraints.rate_limits.max_actions_per_minute;
+  const maxPerMinute = cons.rate_limits?.max_actions_per_minute ?? 0;
   if (maxPerMinute > 0) {
     agentPreHooks.push(createRateLimitHook(maxPerMinute));
   }
 
   // Tool-call permission enforcement (post-hook — validates tool_calls in response)
   agentPostHooks.push(createToolCallPermissionHook({
-    passport: config.passport,
+    passport: {
+      permissions: { tools: perms.tools ?? [], denied: perms.denied ?? [] },
+    },
     action: config.toolCallAction ?? 'block',
     onDenied: config.onToolCallDenied,
   }));
@@ -112,7 +95,7 @@ export const compliorAgent = <T extends object>(
 
   // Budget tracking (post-hook)
   const budgetLimit = config.budgetLimitUsd
-    ?? config.passport.constraints.budget.max_cost_per_session_usd;
+    ?? cons.budget?.max_cost_per_session_usd ?? 0;
   if (budgetLimit > 0) {
     agentPostHooks.push(createBudgetHook(budgetLimit, config.onBudgetExceeded ?? 'block'));
   }

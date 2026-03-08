@@ -5,15 +5,15 @@ import {
   getRequiredFields,
   getMissingFields,
 } from './obligation-field-map.js';
-import type { AgentManifest } from '../../types/passport.types.js';
-import { buildManifest } from './manifest-builder.js';
-import type { ManifestBuildInput } from './manifest-builder.js';
-import { generateKeyPair, signManifest } from './crypto-signer.js';
+import type { AgentPassport } from '../../types/passport.types.js';
+import { buildPassport } from './manifest-builder.js';
+import type { PassportBuildInput } from './manifest-builder.js';
+import { generateKeyPair, signPassport } from './crypto-signer.js';
 
 // --- Helper: create a fully signed manifest ---
 
-const buildTestManifest = (): AgentManifest => {
-  const input: ManifestBuildInput = {
+const buildTestManifest = (): AgentPassport => {
+  const input: PassportBuildInput = {
     agent: {
       name: 'test-agent',
       entryFile: 'src/index.ts',
@@ -42,9 +42,9 @@ const buildTestManifest = (): AgentManifest => {
     },
   };
 
-  const unsigned = buildManifest(input);
+  const unsigned = buildPassport(input);
   const { privateKey } = generateKeyPair();
-  const signature = signManifest(unsigned, privateKey);
+  const signature = signPassport(unsigned, privateKey);
   return { ...unsigned, signature };
 };
 

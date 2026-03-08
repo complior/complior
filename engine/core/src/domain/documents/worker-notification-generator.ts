@@ -1,9 +1,9 @@
-import type { AgentManifest } from '../../types/passport.types.js';
+import type { AgentPassport } from '../../types/passport.types.js';
 
 // --- Types ---
 
 export interface WorkerNotificationInput {
-  readonly manifest: AgentManifest;
+  readonly manifest: AgentPassport;
   readonly template: string;
   readonly companyName?: string;
   readonly contactName?: string;
@@ -22,7 +22,7 @@ export interface WorkerNotificationResult {
 
 // --- Helpers ---
 
-const deriveOversightPerson = (manifest: AgentManifest): string | undefined => {
+const deriveOversightPerson = (manifest: AgentPassport): string | undefined => {
   if (manifest.owner.responsible_person) return manifest.owner.responsible_person;
   if (manifest.autonomy_level === 'L1' || manifest.autonomy_level === 'L2') {
     return 'the designated human supervisor';

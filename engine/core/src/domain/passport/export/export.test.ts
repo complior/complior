@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { createMockManifest } from '../../../test-helpers/factories.js';
+import { createMockPassport } from '../../../test-helpers/factories.js';
 import { mapToA2A, A2ACardSchema } from './a2a-mapper.js';
 import { mapToAIUC1, AIUC1ProfileSchema } from './aiuc1-mapper.js';
 import { mapToNIST, NISTProfileSchema } from './nist-mapper.js';
 import { exportPassport } from './index.js';
-import type { AgentManifest } from '../../../types/passport.types.js';
+import type { AgentPassport } from '../../../types/passport.types.js';
 
 // --- A2A Tests ---
 
 describe('A2A Mapper', () => {
   it('maps complete passport to valid A2A card', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const card = mapToA2A(manifest);
 
     expect(card.schemaVersion).toBe('1.0.0');
@@ -24,7 +24,7 @@ describe('A2A Mapper', () => {
   });
 
   it('maps tools to skills array', () => {
-    const manifest = createMockManifest({
+    const manifest = createMockPassport({
       permissions: {
         tools: ['search', 'read', 'write'],
         data_access: { read: [], write: [], delete: [] },
@@ -44,7 +44,7 @@ describe('A2A Mapper', () => {
   });
 
   it('handles empty optional fields gracefully', () => {
-    const manifest = createMockManifest({
+    const manifest = createMockPassport({
       permissions: {
         tools: [],
         data_access: { read: [], write: [], delete: [] },
@@ -58,7 +58,7 @@ describe('A2A Mapper', () => {
   });
 
   it('output validates against A2ACardSchema', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const card = mapToA2A(manifest);
 
     expect(A2ACardSchema.safeParse(card).success).toBe(true);
@@ -69,7 +69,7 @@ describe('A2A Mapper', () => {
 
 describe('AIUC-1 Mapper', () => {
   it('maps complete passport to 6 domains populated', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const profile = mapToAIUC1(manifest);
 
     expect(profile.framework).toBe('AIUC-1');
@@ -84,7 +84,7 @@ describe('AIUC-1 Mapper', () => {
   });
 
   it('derives domain status from field completeness', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const profile = mapToAIUC1(manifest);
 
     for (const domain of Object.values(profile.domains)) {
@@ -96,7 +96,7 @@ describe('AIUC-1 Mapper', () => {
   });
 
   it('handles incomplete passport with degraded coverage', () => {
-    const manifest = createMockManifest({
+    const manifest = createMockPassport({
       disclosure: { user_facing: false, disclosure_text: '', ai_marking: { responses_marked: false, method: '' } },
       logging: { actions_logged: false, retention_days: 0, includes_decision_rationale: false },
       constraints: {
@@ -116,7 +116,7 @@ describe('AIUC-1 Mapper', () => {
   });
 
   it('output validates against AIUC1ProfileSchema', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const profile = mapToAIUC1(manifest);
 
     expect(AIUC1ProfileSchema.safeParse(profile).success).toBe(true);
@@ -127,7 +127,7 @@ describe('AIUC-1 Mapper', () => {
 
 describe('NIST AI RMF Mapper', () => {
   it('maps complete passport to 4 functions populated', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const profile = mapToNIST(manifest);
 
     expect(profile.framework).toBe('NIST-AI-RMF');
@@ -140,7 +140,7 @@ describe('NIST AI RMF Mapper', () => {
   });
 
   it('derives function status from field presence', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const profile = mapToNIST(manifest);
 
     for (const fn of Object.values(profile.functions)) {
@@ -155,7 +155,7 @@ describe('NIST AI RMF Mapper', () => {
   });
 
   it('handles incomplete passport with not_started status', () => {
-    const manifest = createMockManifest({
+    const manifest = createMockPassport({
       owner: { team: '', contact: '', responsible_person: '' },
       constraints: {
         rate_limits: { max_actions_per_minute: 0 },
@@ -183,7 +183,7 @@ describe('NIST AI RMF Mapper', () => {
   });
 
   it('output validates against NISTProfileSchema', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
     const profile = mapToNIST(manifest);
 
     expect(NISTProfileSchema.safeParse(profile).success).toBe(true);
@@ -194,7 +194,7 @@ describe('NIST AI RMF Mapper', () => {
 
 describe('exportPassport orchestrator', () => {
   it('exports to all three formats with valid flag', () => {
-    const manifest = createMockManifest();
+    const manifest = createMockPassport();
 
     for (const format of ['a2a', 'aiuc-1', 'nist'] as const) {
       const result = exportPassport(manifest, format);

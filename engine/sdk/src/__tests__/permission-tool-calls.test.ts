@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { createToolCallPermissionHook } from '../hooks/post/permission-tool-calls.js';
 import type { DeniedToolCall } from '../hooks/post/permission-tool-calls.js';
 import { PermissionDeniedError } from '../errors.js';
-import type { AgentPassport } from '../agent.js';
 import type { MiddlewareContext } from '../types.js';
 
 const makeCtx = (metadata: Record<string, unknown> = {}): MiddlewareContext => ({
@@ -13,15 +12,10 @@ const makeCtx = (metadata: Record<string, unknown> = {}): MiddlewareContext => (
   metadata,
 });
 
-const createPassport = (overrides?: Partial<AgentPassport>): AgentPassport => ({
+const createPassport = (overrides?: Record<string, unknown>): { permissions: { tools: readonly string[]; denied: readonly string[] } } => ({
   permissions: { tools: [], denied: [] },
-  constraints: {
-    rate_limits: { max_actions_per_minute: 60 },
-    budget: { max_cost_per_session_usd: 10 },
-    prohibited_actions: [],
-  },
-  ...overrides,
-});
+  ...(overrides ?? {}),
+} as { permissions: { tools: readonly string[]; denied: readonly string[] } });
 
 // --- Response factories ---
 

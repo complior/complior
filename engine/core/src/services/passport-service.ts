@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { ScanResult } from '../types/common.types.js';
-import type { AgentManifest } from '../types/passport.types.js';
+import type { AgentPassport } from '../types/passport.types.js';
+import { parsePassport } from '../types/passport.types.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { Scanner } from '../domain/scanner/create-scanner.js';
 import { parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod } from '../domain/scanner/layers/layer3-parsers.js';
@@ -15,8 +16,8 @@ import { discoverAgents } from '../domain/passport/agent-discovery.js';
 import { analyzeAutonomy } from '../domain/passport/autonomy-analyzer.js';
 import type { AutonomyAnalysis } from '../domain/passport/autonomy-analyzer.js';
 import { scanPermissions } from '../domain/passport/permission-scanner.js';
-import { buildManifest } from '../domain/passport/manifest-builder.js';
-import { loadOrCreateKeyPair, signManifest, verifyManifest } from '../domain/passport/crypto-signer.js';
+import { buildPassport } from '../domain/passport/manifest-builder.js';
+import { loadOrCreateKeyPair, signPassport, verifyPassport as verifyPassportCrypto } from '../domain/passport/crypto-signer.js';
 import { validatePassport, computeCompleteness } from '../domain/passport/passport-validator.js';
 import type { ValidationResult, CompletenessResult } from '../domain/passport/passport-validator.js';
 import { generateFria } from '../domain/fria/fria-generator.js';
@@ -40,7 +41,7 @@ export interface PassportServiceDeps {
 }
 
 export interface InitPassportResult {
-  readonly manifests: readonly AgentManifest[];
+  readonly manifests: readonly AgentPassport[];
   readonly savedPaths: readonly string[];
   readonly skipped: readonly string[];
 }
@@ -99,7 +100,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     const scanResult = getLastScanResult();
 
     // 6. Generate manifests for each agent
-    const manifests: AgentManifest[] = [];
+    const manifests: AgentPassport[] = [];
     const savedPaths: string[] = [];
     const skipped: string[] = [];
 
@@ -111,7 +112,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       const permissions = scanPermissions(ctx);
 
       // Build manifest
-      const unsignedManifest = buildManifest({
+      const unsignedManifest = buildPassport({
         agent,
         autonomy,
         permissions,
@@ -121,9 +122,9 @@ export const createPassportService = (deps: PassportServiceDeps) => {
 
       // Sign manifest
       const keyPair = await loadOrCreateKeyPair();
-      const signature = signManifest(unsignedManifest, keyPair.privateKey);
+      const signature = signPassport(unsignedManifest, keyPair.privateKey);
 
-      const signedManifest: AgentManifest = {
+      const signedManifest: AgentPassport = {
         ...unsignedManifest,
         signature,
       };
@@ -170,18 +171,19 @@ export const createPassportService = (deps: PassportServiceDeps) => {
 
   const listPassports = async (
     projectPath?: string,
-  ): Promise<readonly AgentManifest[]> => {
+  ): Promise<readonly AgentPassport[]> => {
     const path = projectPath ?? getProjectPath();
     const agentsDir = join(path, '.complior', 'agents');
 
     try {
       const files = await readdir(agentsDir);
-      const manifests: AgentManifest[] = [];
+      const manifests: AgentPassport[] = [];
 
       for (const file of files) {
         if (!file.endsWith('-manifest.json')) continue;
         const content = await readFile(join(agentsDir, file), 'utf-8');
-        manifests.push(JSON.parse(content) as AgentManifest);
+        const passport = parsePassport(content);
+        if (passport) manifests.push(passport);
       }
 
       return manifests;
@@ -193,13 +195,13 @@ export const createPassportService = (deps: PassportServiceDeps) => {
   const showPassport = async (
     name: string,
     projectPath?: string,
-  ): Promise<AgentManifest | null> => {
+  ): Promise<AgentPassport | null> => {
     const path = projectPath ?? getProjectPath();
     const filePath = join(path, '.complior', 'agents', `${name}-manifest.json`);
 
     try {
       const content = await readFile(filePath, 'utf-8');
-      return JSON.parse(content) as AgentManifest;
+      return parsePassport(content);
     } catch {
       return null;
     }
@@ -211,7 +213,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
   ): Promise<boolean> => {
     const manifest = await showPassport(name, projectPath);
     if (manifest === null) return false;
-    return verifyManifest(manifest);
+    return verifyPassportCrypto(manifest);
   };
 
   // C.S02: Standalone autonomy analysis (without full passport generation)
@@ -277,24 +279,24 @@ export const createPassportService = (deps: PassportServiceDeps) => {
 
   const updatePassportCompliance = async (
     name: string,
-    complianceUpdate: Partial<AgentManifest['compliance']>,
+    complianceUpdate: Partial<AgentPassport['compliance']>,
     projectPath?: string,
   ): Promise<void> => {
     const path = projectPath ?? getProjectPath();
     const manifestPath = join(path, '.complior', 'agents', `${name}-manifest.json`);
     try {
       const rawManifest = await readFile(manifestPath, 'utf-8');
-      const currentManifest = JSON.parse(rawManifest) as AgentManifest;
+      const currentManifest = JSON.parse(rawManifest) as AgentPassport;
 
-      const updatedManifest: AgentManifest = {
+      const updatedManifest: AgentPassport = {
         ...currentManifest,
         compliance: { ...currentManifest.compliance, ...complianceUpdate },
         updated: new Date().toISOString(),
       };
 
       const keyPair = await loadOrCreateKeyPair();
-      const newSignature = signManifest(updatedManifest, keyPair.privateKey);
-      const resignedManifest: AgentManifest = { ...updatedManifest, signature: newSignature };
+      const newSignature = signPassport(updatedManifest, keyPair.privateKey);
+      const resignedManifest: AgentPassport = { ...updatedManifest, signature: newSignature };
 
       await writeFile(manifestPath, JSON.stringify(resignedManifest, null, 2));
     } catch {

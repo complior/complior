@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AgentManifest } from '../../../types/passport.types.js';
+import type { AgentPassport } from '../../../types/passport.types.js';
 
 // --- NIST AI RMF Profile Schema ---
 
@@ -75,7 +75,7 @@ const evidence = (...items: readonly (string | false)[]): string[] =>
 
 // --- Function assessors (pure functions returning category inputs) ---
 
-const governCategories = (m: AgentManifest): readonly CategoryInput[] => [
+const governCategories = (m: AgentPassport): readonly CategoryInput[] => [
   {
     id: 'GV-1',
     name: 'Policies & Procedures',
@@ -104,7 +104,7 @@ const governCategories = (m: AgentManifest): readonly CategoryInput[] => [
   },
 ];
 
-const mapCategories = (m: AgentManifest): readonly CategoryInput[] => [
+const mapCategories = (m: AgentPassport): readonly CategoryInput[] => [
   {
     id: 'MP-1',
     name: 'System Context',
@@ -141,7 +141,7 @@ const mapCategories = (m: AgentManifest): readonly CategoryInput[] => [
   },
 ];
 
-const measureCategories = (m: AgentManifest): readonly CategoryInput[] => [
+const measureCategories = (m: AgentPassport): readonly CategoryInput[] => [
   {
     id: 'MS-1',
     name: 'Compliance Scoring',
@@ -168,7 +168,7 @@ const measureCategories = (m: AgentManifest): readonly CategoryInput[] => [
   },
 ];
 
-const manageCategories = (m: AgentManifest): readonly CategoryInput[] => [
+const manageCategories = (m: AgentPassport): readonly CategoryInput[] => [
   {
     id: 'MG-1',
     name: 'Lifecycle Management',
@@ -199,7 +199,7 @@ const manageCategories = (m: AgentManifest): readonly CategoryInput[] => [
 
 // --- Main export function ---
 
-export const mapToNIST = (manifest: AgentManifest): NISTProfile => {
+export const mapToNIST = (manifest: AgentPassport): NISTProfile => {
   const functions = {
     govern: buildFunction(governCategories(manifest)),
     map: buildFunction(mapCategories(manifest)),

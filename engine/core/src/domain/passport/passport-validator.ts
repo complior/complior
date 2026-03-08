@@ -1,6 +1,6 @@
-import { AgentManifestSchema } from '../../types/passport.types.js';
-import type { AgentManifest } from '../../types/passport.types.js';
-import { verifyManifest } from './crypto-signer.js';
+import { AgentPassportSchema } from '../../types/passport.types.js';
+import type { AgentPassport } from '../../types/passport.types.js';
+import { verifyPassport as verifyPassportCrypto } from './crypto-signer.js';
 import {
   getRequiredFields,
   getFieldValue,
@@ -36,7 +36,7 @@ export interface ValidationResult {
 
 // --- Completeness scoring ---
 
-export const computeCompleteness = (manifest: AgentManifest): CompletenessResult => {
+export const computeCompleteness = (manifest: AgentPassport): CompletenessResult => {
   const required = getRequiredFields();
   const totalRequired = required.length;
 
@@ -57,12 +57,12 @@ export const computeCompleteness = (manifest: AgentManifest): CompletenessResult
 
 // --- Full validation ---
 
-export const validatePassport = (manifest: AgentManifest): ValidationResult => {
+export const validatePassport = (manifest: AgentPassport): ValidationResult => {
   const errors: ValidationError[] = [];
   const warnings: string[] = [];
 
   // 1. Schema validation
-  const parseResult = AgentManifestSchema.safeParse(manifest);
+  const parseResult = AgentPassportSchema.safeParse(manifest);
   const schemaValid = parseResult.success;
   if (!parseResult.success) {
     for (const issue of parseResult.error.issues) {
@@ -77,7 +77,7 @@ export const validatePassport = (manifest: AgentManifest): ValidationResult => {
   // 2. Signature verification
   let signatureValid = false;
   try {
-    signatureValid = verifyManifest(manifest);
+    signatureValid = verifyPassportCrypto(manifest);
   } catch {
     errors.push({
       field: 'signature',

@@ -5,7 +5,7 @@ import type {
   CompliorConfig,
   ProjectProfile,
 } from '../types/common.types.js';
-import type { AgentManifest } from '../types/passport.types.js';
+import type { AgentPassport } from '../types/passport.types.js';
 import type { FileInfo, ScanContext } from '../ports/scanner.port.js';
 
 export const createMockFinding = (overrides?: Partial<Finding>): Finding => ({
@@ -61,7 +61,7 @@ export const createMockProjectProfile = (overrides?: Partial<ProjectProfile>): P
   ...overrides,
 });
 
-export const createMockManifest = (overrides?: Partial<AgentManifest>): AgentManifest => ({
+export const createMockPassport = (overrides?: Partial<AgentPassport>): AgentPassport => ({
   $schema: 'https://complior.dev/schemas/agent-manifest-v1.json',
   manifest_version: '1.0.0',
   agent_id: 'agent-test-001',
@@ -101,7 +101,7 @@ export const createMockManifest = (overrides?: Partial<AgentManifest>): AgentMan
   source: { mode: 'auto', generated_by: 'complior', code_analyzed: true, fields_auto_filled: ['name'], fields_manual: [], confidence: 0.85 },
   signature: { algorithm: 'ed25519', public_key: 'test', signed_at: '2026-01-01T00:00:00Z', hash: 'sha256:test', value: 'test' },
   ...overrides,
-} as AgentManifest);
+} as AgentPassport);
 
 export const createScanFile = (relativePath: string, content: string): FileInfo => ({
   path: `/test/project/${relativePath}`,

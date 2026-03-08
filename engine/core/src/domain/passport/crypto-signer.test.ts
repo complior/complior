@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { generateKeyPair, signManifest, verifyManifest } from './crypto-signer.js';
-import { buildManifest } from './manifest-builder.js';
-import type { ManifestBuildInput } from './manifest-builder.js';
-import type { AgentManifest } from '../../types/passport.types.js';
+import { generateKeyPair, signPassport, verifyPassport } from './crypto-signer.js';
+import { buildPassport } from './manifest-builder.js';
+import type { PassportBuildInput } from './manifest-builder.js';
+import type { AgentPassport } from '../../types/passport.types.js';
 
 // --- Helpers ---
 
-const testInput: ManifestBuildInput = {
+const testInput: PassportBuildInput = {
   agent: {
     name: 'crypto-test-agent',
     entryFile: 'src/index.ts',
@@ -50,39 +50,39 @@ describe('crypto-signer', () => {
 
   it('sign and verify roundtrip', () => {
     const { publicKey: _pub, privateKey } = generateKeyPair();
-    const unsignedManifest = buildManifest(testInput);
+    const unsignedManifest = buildPassport(testInput);
 
-    const signature = signManifest(unsignedManifest, privateKey);
+    const signature = signPassport(unsignedManifest, privateKey);
 
-    const signedManifest: AgentManifest = {
+    const signedManifest: AgentPassport = {
       ...unsignedManifest,
       signature,
     };
 
-    expect(verifyManifest(signedManifest)).toBe(true);
+    expect(verifyPassport(signedManifest)).toBe(true);
   });
 
   it('detects tampered manifest', () => {
     const { publicKey: _pub, privateKey } = generateKeyPair();
-    const unsignedManifest = buildManifest(testInput);
+    const unsignedManifest = buildPassport(testInput);
 
-    const signature = signManifest(unsignedManifest, privateKey);
+    const signature = signPassport(unsignedManifest, privateKey);
 
     // Tamper with the agent_id after signing
-    const tamperedManifest: AgentManifest = {
+    const tamperedManifest: AgentPassport = {
       ...unsignedManifest,
       agent_id: 'ag_tampered-id',
       signature,
     };
 
-    expect(verifyManifest(tamperedManifest)).toBe(false);
+    expect(verifyPassport(tamperedManifest)).toBe(false);
   });
 
   it('signature contains valid algorithm and hash', () => {
     const { publicKey: _pub, privateKey } = generateKeyPair();
-    const unsignedManifest = buildManifest(testInput);
+    const unsignedManifest = buildPassport(testInput);
 
-    const signature = signManifest(unsignedManifest, privateKey);
+    const signature = signPassport(unsignedManifest, privateKey);
 
     expect(signature.algorithm).toBe('ed25519');
     expect(signature.hash).toMatch(/^sha256:[0-9a-f]+$/);
