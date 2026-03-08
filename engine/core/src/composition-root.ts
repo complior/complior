@@ -27,6 +27,7 @@ import type { ExternalScanService } from './services/external-scan-service.js';
 import { createStatusService } from './services/status-service.js';
 import { createPassportService } from './services/passport-service.js';
 import { createEvidenceStore } from './domain/scanner/evidence-store.js';
+import { createAuditStore } from './domain/audit/index.js';
 import { loadOrCreateKeyPair as loadEvidenceKeyPair } from './domain/passport/crypto-signer.js';
 import { sign, verify as cryptoVerify } from 'node:crypto';
 import { createRouter } from './http/create-router.js';
@@ -141,24 +142,28 @@ export const loadApplication = async (): Promise<Application> => {
     },
   });
 
-  // 5. Create evidence store (C.R20)
+  // 5. Create evidence + audit stores (shared key pair)
   const evidenceKeyPair = await loadEvidenceKeyPair();
+  const signHash = (hash: string): string => {
+    const sig = sign(null, Buffer.from(hash), evidenceKeyPair.privateKey);
+    return Buffer.from(sig).toString('base64');
+  };
+  const verifyHash = (hash: string, signature: string): boolean => {
+    try {
+      const sigBytes = Buffer.from(signature, 'base64');
+      return cryptoVerify(null, Buffer.from(hash), evidenceKeyPair.publicKey, sigBytes);
+    } catch {
+      return false;
+    }
+  };
+
   const evidenceStorePath = resolve(state.projectPath, '.complior', 'evidence', 'chain.json');
-  const evidenceStore = createEvidenceStore(
-    evidenceStorePath,
-    (hash: string) => {
-      const sig = sign(null, Buffer.from(hash), evidenceKeyPair.privateKey);
-      return Buffer.from(sig).toString('base64');
-    },
-    (hash: string, signature: string) => {
-      try {
-        const sigBytes = Buffer.from(signature, 'base64');
-        return cryptoVerify(null, Buffer.from(hash), evidenceKeyPair.publicKey, sigBytes);
-      } catch {
-        return false;
-      }
-    },
-  );
+  const evidenceStore = createEvidenceStore(evidenceStorePath, signHash, verifyHash);
+
+  const auditTrailPath = resolve(state.projectPath, '.complior', 'audit', 'trail.jsonl');
+  const auditStore = createAuditStore(auditTrailPath, signHash, (line, err) => {
+    log.warn(`Malformed audit trail line: ${String(err)} — ${line.slice(0, 80)}`);
+  });
 
   // 5a. Create services
   const scanService = createScanService({
@@ -168,6 +173,7 @@ export const loadApplication = async (): Promise<Application> => {
     getLastScanResult: () => state.lastScanResult,
     setLastScanResult: (result) => { state.lastScanResult = result; persistScanResult(result); },
     evidenceStore,
+    auditStore,
   });
 
   // Template loader for fixer
@@ -257,6 +263,7 @@ export const loadApplication = async (): Promise<Application> => {
     getLastScanResult: () => state.lastScanResult,
     loadTemplate,
     evidenceStore,
+    auditStore,
   });
 
   // 5b. Create onboarding wizard

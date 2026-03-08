@@ -47,6 +47,9 @@ export interface SaasClient {
   readonly syncFria: (token: string, payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
   readonly syncStatus: (token: string) => Promise<Record<string, unknown>>;
   readonly fetchDataBundle: (etag?: string) => Promise<{ data: Record<string, unknown> | null; etag?: string }>;
+  readonly syncAudit: (token: string, entries: readonly Record<string, unknown>[]) => Promise<Record<string, unknown>>;
+  readonly syncEvidence: (token: string, summary: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  readonly syncRegistry: (token: string, entries: readonly Record<string, unknown>[]) => Promise<Record<string, unknown>>;
 }
 
 export const createSaasClient = (baseUrl: string): SaasClient => {
@@ -92,6 +95,9 @@ export const createSaasClient = (baseUrl: string): SaasClient => {
     syncDocuments: (token: string, documents: readonly SyncDocPayload[]) => postJson('/api/sync/documents', token, { documents }),
     syncFria: (token: string, payload: Record<string, unknown>) => postJson('/api/sync/fria', token, payload),
     syncStatus: (token: string) => getJson('/api/sync/status', token),
+    syncAudit: (token: string, entries: readonly Record<string, unknown>[]) => postJson('/api/sync/audit', token, { entries }),
+    syncEvidence: (token: string, summary: Record<string, unknown>) => postJson('/api/sync/evidence', token, summary),
+    syncRegistry: (token: string, entries: readonly Record<string, unknown>[]) => postJson('/api/sync/registry', token, { entries }),
     fetchDataBundle: async (etag?: string) => {
       log.debug('Fetching data bundle');
       const headers: Record<string, string> = {};

@@ -29,6 +29,9 @@ import type { AgentRegistryEntry } from '../domain/registry/compute-agent-score.
 import { generateWorkerNotification as generateWorkerNotificationDoc } from '../domain/documents/worker-notification-generator.js';
 import type { WorkerNotificationResult } from '../domain/documents/worker-notification-generator.js';
 import type { EvidenceStore, EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
+import { buildPermissionsMatrix } from '../domain/audit/permissions-matrix.js';
+import type { PermissionsMatrix } from '../domain/audit/permissions-matrix.js';
+import type { AuditStore, AuditFilter, AuditEntry, AuditTrailSummary } from '../domain/audit/audit-trail.js';
 
 // --- Types ---
 
@@ -40,6 +43,7 @@ export interface PassportServiceDeps {
   readonly getLastScanResult: () => ScanResult | null;
   readonly loadTemplate?: (file: string) => Promise<string>;
   readonly evidenceStore?: EvidenceStore;
+  readonly auditStore?: AuditStore;
 }
 
 export interface InitPassportResult {
@@ -152,6 +156,11 @@ export const createPassportService = (deps: PassportServiceDeps) => {
 
       manifests.push(signedManifest);
       savedPaths.push(filePath);
+
+      // US-S05-14: Record passport creation in audit trail
+      if (deps.auditStore) {
+        await deps.auditStore.append('passport.created', { name: agent.name, path: filePath }, agent.name);
+      }
 
       // C.R20: Record passport creation in evidence chain
       if (deps.evidenceStore) {
@@ -336,6 +345,11 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     const today = new Date().toISOString().slice(0, 10);
     await updatePassportCompliance(name, { fria_completed: true, fria_date: today }, projectPath);
 
+    // US-S05-14: Record FRIA generation in audit trail
+    if (deps.auditStore) {
+      await deps.auditStore.append('fria.generated', { name, savedPath }, name);
+    }
+
     return { ...result, savedPath };
   };
 
@@ -380,6 +394,11 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       projectPath,
     );
 
+    // US-S05-14: Record worker notification in audit trail
+    if (deps.auditStore) {
+      await deps.auditStore.append('worker_notification.generated', { name, savedPath }, name);
+    }
+
     return { ...result, savedPath };
   };
 
@@ -405,6 +424,11 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     if (deps.evidenceStore) {
       const evidence = createEvidence(name, 'export', 'export', { file: savedPath, format });
       await deps.evidenceStore.append([evidence], randomUUID());
+    }
+
+    // US-S05-14: Record export in audit trail
+    if (deps.auditStore) {
+      await deps.auditStore.append('passport.exported', { name, format, savedPath }, name);
     }
 
     return { ...result, savedPath };
@@ -454,6 +478,24 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return deps.evidenceStore.verify();
   };
 
+  // US-S05-14: Cross-agent permissions matrix
+  const getPermissionsMatrix = async (projectPath?: string): Promise<PermissionsMatrix> => {
+    const passports = await listPassports(projectPath);
+    return buildPermissionsMatrix(passports);
+  };
+
+  // US-S05-14: Audit trail query
+  const getAuditTrail = async (filter: AuditFilter): Promise<readonly AuditEntry[]> => {
+    if (!deps.auditStore) return [];
+    return deps.auditStore.query(filter);
+  };
+
+  // US-S05-14: Audit trail summary
+  const getAuditSummary = async (): Promise<AuditTrailSummary> => {
+    if (!deps.auditStore) return { totalEntries: 0, eventCounts: {}, agentNames: [], firstEntry: '', lastEntry: '' };
+    return deps.auditStore.getSummary();
+  };
+
   return Object.freeze({
     initPassport,
     listPassports,
@@ -468,6 +510,9 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     getAgentRegistry,
     getEvidenceChainSummary,
     verifyEvidenceChain,
+    getPermissionsMatrix,
+    getAuditTrail,
+    getAuditSummary,
   });
 };
 

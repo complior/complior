@@ -3,6 +3,20 @@ import { z } from 'zod';
 import { ValidationError } from '../../types/errors.js';
 import type { PassportService } from '../../services/passport-service.js';
 
+const AUDIT_EVENT_TYPES = [
+  'passport.created', 'passport.updated', 'passport.exported',
+  'fria.generated', 'scan.completed', 'fix.applied',
+  'evidence.verified', 'worker_notification.generated',
+] as const;
+
+const AuditQuerySchema = z.object({
+  agent: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  type: z.enum(AUDIT_EVENT_TYPES).optional(),
+  limit: z.coerce.number().int().positive().optional(),
+});
+
 const InitRequestSchema = z.object({
   path: z.string().min(1),
   overrides: z.record(z.unknown()).optional(),
@@ -243,6 +257,35 @@ export const createAgentRoute = (passportService: PassportService) => {
       throw new ValidationError('Missing "path" query parameter');
     }
     return c.json(await passportService.getAgentRegistry(path));
+  });
+
+  // US-S05-14: Permissions matrix
+  app.get('/agent/permissions', async (c) => {
+    const path = c.req.query('path');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+    return c.json(await passportService.getPermissionsMatrix(path));
+  });
+
+  // US-S05-14: Audit trail query
+  app.get('/agent/audit', async (c) => {
+    const parsed = AuditQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) throw new ValidationError(`Invalid query: ${parsed.error.message}`);
+
+    const entries = await passportService.getAuditTrail({
+      agentName: parsed.data.agent,
+      since: parsed.data.since,
+      until: parsed.data.until,
+      eventType: parsed.data.type,
+      limit: parsed.data.limit,
+    });
+    return c.json(entries);
+  });
+
+  // US-S05-14: Audit trail summary
+  app.get('/agent/audit/summary', async (c) => {
+    return c.json(await passportService.getAuditSummary());
   });
 
   return app;

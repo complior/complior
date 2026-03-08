@@ -139,6 +139,18 @@ pub enum Command {
         #[arg(long)]
         docs: bool,
 
+        /// Sync only audit trail
+        #[arg(long)]
+        audit: bool,
+
+        /// Sync only evidence chain
+        #[arg(long)]
+        evidence: bool,
+
+        /// Sync only agent registry
+        #[arg(long)]
+        registry: bool,
+
         /// Skip auto-sync after scan
         #[arg(long)]
         no_sync: bool,
@@ -328,6 +340,40 @@ pub enum AgentAction {
         /// Verify chain integrity
         #[arg(long)]
         verify: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// Show cross-agent permissions matrix and conflicts
+    Permissions {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+    /// Show audit trail (compliance event log)
+    Audit {
+        /// Filter by agent name
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// Filter events since date (ISO format)
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Filter by event type
+        #[arg(long = "type")]
+        event_type: Option<String>,
+
+        /// Max entries
+        #[arg(long, default_value = "50")]
+        limit: u32,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
 
         /// Project path (default: current directory)
         path: Option<String>,
@@ -925,6 +971,93 @@ mod tests {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Evidence command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_permissions() {
+        let cli = Cli::parse_from(["complior", "agent", "permissions"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Permissions { json, path } }) => {
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Permissions command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_permissions_json() {
+        let cli = Cli::parse_from(["complior", "agent", "permissions", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Permissions { json, .. } }) => {
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Permissions command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_audit() {
+        let cli = Cli::parse_from(["complior", "agent", "audit"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Audit { agent, since, event_type, limit, json, path } }) => {
+                assert!(agent.is_none());
+                assert!(since.is_none());
+                assert!(event_type.is_none());
+                assert_eq!(*limit, 50);
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Audit command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_audit_with_filters() {
+        let cli = Cli::parse_from([
+            "complior", "agent", "audit",
+            "--agent", "my-bot",
+            "--since", "2026-01-01",
+            "--type", "scan.completed",
+            "--limit", "10",
+        ]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Audit { agent, since, event_type, limit, .. } }) => {
+                assert_eq!(agent.as_deref(), Some("my-bot"));
+                assert_eq!(since.as_deref(), Some("2026-01-01"));
+                assert_eq!(event_type.as_deref(), Some("scan.completed"));
+                assert_eq!(*limit, 10);
+            }
+            _ => panic!("Expected Agent Audit command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_sync_audit() {
+        let cli = Cli::parse_from(["complior", "sync", "--audit"]);
+        match &cli.command {
+            Some(Command::Sync { audit, evidence, registry, .. }) => {
+                assert!(*audit);
+                assert!(!evidence);
+                assert!(!registry);
+            }
+            _ => panic!("Expected Sync command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_sync_all_new_flags() {
+        let cli = Cli::parse_from(["complior", "sync", "--audit", "--evidence", "--registry"]);
+        match &cli.command {
+            Some(Command::Sync { audit, evidence, registry, .. }) => {
+                assert!(*audit);
+                assert!(*evidence);
+                assert!(*registry);
+            }
+            _ => panic!("Expected Sync command"),
         }
     }
 

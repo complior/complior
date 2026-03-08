@@ -10,6 +10,9 @@ pub async fn run_sync(
     passport: bool,
     scan: bool,
     docs: bool,
+    audit: bool,
+    evidence: bool,
+    registry: bool,
     config: &TuiConfig,
 ) -> i32 {
     // Check authentication
@@ -31,7 +34,7 @@ pub async fn run_sync(
         return 1;
     }
 
-    let sync_all = !passport && !scan && !docs;
+    let sync_all = !passport && !scan && !docs && !audit && !evidence && !registry;
     let engine = resolve_engine(config);
 
     // Check engine connection
@@ -153,6 +156,67 @@ pub async fn run_sync(
                 let created = result.get("created").and_then(|v| v.as_i64()).unwrap_or(0);
                 let updated = result.get("updated").and_then(|v| v.as_i64()).unwrap_or(0);
                 println!("\u{2705} {synced} synced ({created} created, {updated} updated)");
+            }
+            Err(e) => {
+                println!("\u{274c} Failed: {e}");
+                errors += 1;
+            }
+        }
+    }
+
+    // Sync audit trail
+    if sync_all || audit {
+        print!("  Audit trail: ");
+        match engine.post_json("/sync/audit", &serde_json::json!({
+            "token": tokens.access_token,
+            "saasUrl": config.project_api_url,
+        })).await {
+            Ok(result) => {
+                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
+                if synced > 0 {
+                    println!("\u{2705} {synced} entries synced");
+                } else {
+                    println!("\u{2139}\u{fe0f}  No audit entries to sync");
+                }
+            }
+            Err(e) => {
+                println!("\u{274c} Failed: {e}");
+                errors += 1;
+            }
+        }
+    }
+
+    // Sync evidence chain
+    if sync_all || evidence {
+        print!("  Evidence chain: ");
+        match engine.post_json("/sync/evidence", &serde_json::json!({
+            "token": tokens.access_token,
+            "saasUrl": config.project_api_url,
+        })).await {
+            Ok(_result) => {
+                println!("\u{2705} synced");
+            }
+            Err(e) => {
+                println!("\u{274c} Failed: {e}");
+                errors += 1;
+            }
+        }
+    }
+
+    // Sync agent registry
+    if sync_all || registry {
+        print!("  Agent registry: ");
+        match engine.post_json("/sync/registry", &serde_json::json!({
+            "token": tokens.access_token,
+            "saasUrl": config.project_api_url,
+        })).await {
+            Ok(result) => {
+                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
+                if synced > 0 {
+                    println!("\u{2705} {synced} entries synced");
+                } else {
+                    println!("\u{2139}\u{fe0f}  No registry entries to sync");
+                }
             }
             Err(e) => {
                 println!("\u{274c} Failed: {e}");

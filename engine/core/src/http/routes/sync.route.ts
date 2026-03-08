@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { createSaasClient, type SyncPassportPayload, type SyncDocPayload } from '../../infra/saas-client.js';
 import type { AgentPassport } from '../../types/passport.types.js';
+import type { ScanResult } from '../../types/common.types.js';
+import type { PassportService } from '../../services/passport-service.js';
+import type { AuditFilter, AuditEntry } from '../../domain/audit/audit-trail.js';
 import { mapDomain } from '../../domain/passport/domain-mapper.js';
 import { createLogger } from '../../infra/logger.js';
 import { ValidationError } from '../../types/errors.js';
@@ -79,7 +82,9 @@ const DOC_TYPE_MAP: Record<string, string> = {
 
 interface SyncRouteDeps {
   readonly getProjectPath: () => string;
-  readonly getLastScan: () => import('../../types/common.types.js').ScanResult | null;
+  readonly getLastScan: () => ScanResult | null;
+  readonly passportService?: PassportService;
+  readonly getAuditEntries?: (filter: AuditFilter) => Promise<readonly AuditEntry[]>;
 }
 
 export const createSyncRoute = (deps: SyncRouteDeps) => {
@@ -265,6 +270,67 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
     }
 
     const result = await client.syncDocuments(token, documents);
+    return c.json(result);
+  });
+
+  // POST /sync/audit — push audit trail entries to SaaS
+  app.post('/sync/audit', async (c) => {
+    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
+    const parsed = SyncRequestSchema.safeParse(body);
+    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+
+    const { token, saasUrl } = parsed.data;
+    const client = createSaasClient(saasUrl);
+
+    const entries = deps.getAuditEntries
+      ? await deps.getAuditEntries({})
+      : [];
+
+    if (entries.length === 0) {
+      return c.json({ synced: 0, message: 'No audit entries to sync' });
+    }
+
+    const serializable = entries.map(e => ({ ...e }));
+    const result = await client.syncAudit(token, serializable);
+    return c.json(result);
+  });
+
+  // POST /sync/evidence — push evidence chain summary to SaaS
+  app.post('/sync/evidence', async (c) => {
+    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
+    const parsed = SyncRequestSchema.safeParse(body);
+    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+
+    const { token, saasUrl } = parsed.data;
+    const client = createSaasClient(saasUrl);
+
+    const summary = deps.passportService
+      ? await deps.passportService.getEvidenceChainSummary()
+      : { totalEntries: 0, scanCount: 0, firstEntry: '', lastEntry: '', chainValid: true, uniqueFindings: 0 };
+
+    const result = await client.syncEvidence(token, { ...summary });
+    return c.json(result);
+  });
+
+  // POST /sync/registry — push agent registry scores to SaaS
+  app.post('/sync/registry', async (c) => {
+    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
+    const parsed = SyncRequestSchema.safeParse(body);
+    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+
+    const { token, saasUrl } = parsed.data;
+    const client = createSaasClient(saasUrl);
+
+    const entries = deps.passportService
+      ? await deps.passportService.getAgentRegistry()
+      : [];
+
+    if (entries.length === 0) {
+      return c.json({ synced: 0, message: 'No registry entries to sync' });
+    }
+
+    const serializable = entries.map(e => ({ ...e }));
+    const result = await client.syncRegistry(token, serializable);
     return c.json(result);
   });
 

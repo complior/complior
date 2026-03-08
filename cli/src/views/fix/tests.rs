@@ -19,6 +19,7 @@ fn make_findings() -> Vec<Finding> {
             confidence: None,
             confidence_level: None,
             evidence: None,
+            explanation: None,
         },
         Finding {
             check_id: "OBL-002".to_string(),
@@ -36,6 +37,7 @@ fn make_findings() -> Vec<Finding> {
             confidence: None,
             confidence_level: None,
             evidence: None,
+            explanation: None,
         },
         Finding {
             check_id: "OBL-003".to_string(),
@@ -53,6 +55,7 @@ fn make_findings() -> Vec<Finding> {
             confidence: None,
             confidence_level: None,
             evidence: None,
+            explanation: None,
         },
     ]
 }
@@ -213,6 +216,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             confidence: None,
             confidence_level: None,
             evidence: None,
+            explanation: None,
         },
         Finding {
             check_id: "l2-fria".to_string(),
@@ -230,6 +234,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             confidence: None,
             confidence_level: None,
             evidence: None,
+            explanation: None,
         },
         Finding {
             check_id: "l3-compliance-metadata".to_string(),
@@ -247,6 +252,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             confidence: None,
             confidence_level: None,
             evidence: None,
+            explanation: None,
         },
     ]
 }
@@ -378,6 +384,7 @@ fn snapshot_fix_single_mode_type_a_recommendation() {
         confidence: None,
         confidence_level: None,
         evidence: None,
+        explanation: None,
     }];
     app.last_scan = Some(make_scan_result(&findings));
     app.fix_view = FixViewState::from_scan(&findings);
@@ -436,6 +443,7 @@ fn test_apply_fix_diff_writes_file() {
         confidence: None,
         confidence_level: None,
         evidence: None,
+        explanation: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -474,6 +482,7 @@ fn test_apply_type_b_creates_file() {
         confidence: None,
         confidence_level: None,
         evidence: None,
+        explanation: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -519,6 +528,7 @@ fn test_apply_rejects_stale_diff() {
         confidence: None,
         confidence_level: None,
         evidence: None,
+        explanation: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);

@@ -140,6 +140,12 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Evidence { json, verify, path } => {
             run_agent_evidence(*json, *verify, path.as_deref(), config).await
         }
+        AgentAction::Permissions { json, path } => {
+            run_agent_permissions(*json, path.as_deref(), config).await
+        }
+        AgentAction::Audit { agent, since, event_type, limit, json, path } => {
+            run_agent_audit(agent.as_deref(), since.as_deref(), event_type.as_deref(), *limit, *json, path.as_deref(), config).await
+        }
     }
 }
 
@@ -1222,6 +1228,184 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
         }
         Err(e) => {
             eprintln!("Error: Failed to get agent registry: {e}");
+            1
+        }
+    }
+}
+
+// --- US-S05-14: Permissions matrix ---
+
+async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+    let project_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let url = format!(
+        "/agent/permissions?path={}",
+        url_encode(&project_path.to_string_lossy())
+    );
+    match client.get_json(&url).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let agents = result.get("agents").and_then(|v| v.as_array());
+            match agents {
+                Some(agent_list) if !agent_list.is_empty() => {
+                    println!("\nPermissions Matrix ({} agent(s))\n", agent_list.len());
+                    println!(
+                        "  {:<20} {:<30} {:<20} {:<20} {:<20}",
+                        "AGENT", "TOOLS", "DATA_READ", "DATA_WRITE", "DENIED"
+                    );
+                    println!("  {}", "-".repeat(110));
+
+                    // We need to rebuild the table from the matrix data
+                    // Since Map doesn't serialize well to JSON, we read agents from the original passports
+                    // The endpoint returns the PermissionsMatrix structure
+                    if let Some(matrix) = result.get("matrix").and_then(|v| v.as_object()) {
+                        for (agent_name, perms) in matrix {
+                            let perms_obj = perms.as_object();
+                            let granted: Vec<&str> = perms_obj
+                                .map(|p| {
+                                    p.iter()
+                                        .filter(|(_, v)| v.as_bool().unwrap_or(false))
+                                        .map(|(k, _)| k.as_str())
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+                            let denied: Vec<&str> = perms_obj
+                                .map(|p| {
+                                    p.iter()
+                                        .filter(|(_, v)| !v.as_bool().unwrap_or(true))
+                                        .map(|(k, _)| k.as_str())
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+
+                            println!(
+                                "  {:<20} {:<30} {:<20} {:<20} {:<20}",
+                                agent_name,
+                                if granted.is_empty() { "-".to_string() } else { granted.join(", ") },
+                                "-",
+                                "-",
+                                if denied.is_empty() { "-".to_string() } else { denied.join(", ") },
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    println!("No agents found.");
+                }
+            }
+
+            // Show conflicts
+            if let Some(conflicts) = result.get("conflicts").and_then(|v| v.as_array()) {
+                if !conflicts.is_empty() {
+                    println!("\nConflicts ({}):\n", conflicts.len());
+                    for conflict in conflicts {
+                        let ctype = conflict.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                        let desc = conflict.get("description").and_then(|v| v.as_str()).unwrap_or("?");
+                        println!("  [{ctype}] {desc}");
+                    }
+                }
+            }
+            println!();
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to get permissions matrix: {e}");
+            1
+        }
+    }
+}
+
+// --- US-S05-14: Audit trail ---
+
+#[allow(clippy::too_many_arguments)]
+async fn run_agent_audit(
+    agent: Option<&str>,
+    since: Option<&str>,
+    event_type: Option<&str>,
+    limit: u32,
+    json: bool,
+    _path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let mut params = vec![format!("limit={limit}")];
+    if let Some(a) = agent {
+        params.push(format!("agent={}", url_encode(a)));
+    }
+    if let Some(s) = since {
+        params.push(format!("since={}", url_encode(s)));
+    }
+    if let Some(t) = event_type {
+        params.push(format!("type={}", url_encode(t)));
+    }
+
+    let url = format!("/agent/audit?{}", params.join("&"));
+    match client.get_json(&url).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let entries = result.as_array();
+            match entries {
+                Some(list) if !list.is_empty() => {
+                    println!("\nAudit Trail ({} entries)\n", list.len());
+                    for entry in list {
+                        let ts = entry.get("timestamp").and_then(|v| v.as_str()).unwrap_or("?");
+                        let event = entry.get("eventType").and_then(|v| v.as_str()).unwrap_or("?");
+                        let name = entry.get("agentName").and_then(|v| v.as_str()).unwrap_or("-");
+                        let payload = entry.get("payload");
+                        let payload_summary = payload
+                            .map(|p| {
+                                serde_json::to_string(p).unwrap_or_default()
+                            })
+                            .unwrap_or_default();
+                        let short_payload = if payload_summary.len() > 60 {
+                            format!("{}...", &payload_summary[..57])
+                        } else {
+                            payload_summary
+                        };
+
+                        println!("  [{ts}] {event} (agent: {name}) — {short_payload}");
+                    }
+                    println!();
+                }
+                _ => {
+                    println!("No audit entries found.");
+                }
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to get audit trail: {e}");
             1
         }
     }

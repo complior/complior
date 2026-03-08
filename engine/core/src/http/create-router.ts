@@ -123,7 +123,12 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore }));
   app.route('/', createAgentRoute(deps.passportService));
   app.route('/', createObligationsRoute({ obligations: deps.obligations, getLastScan: deps.getLastScan }));
-  app.route('/', createSyncRoute({ getProjectPath: deps.getProjectPath, getLastScan: deps.getLastScan }));
+  app.route('/', createSyncRoute({
+    getProjectPath: deps.getProjectPath,
+    getLastScan: deps.getLastScan,
+    passportService: deps.passportService,
+    getAuditEntries: (filter) => deps.passportService.getAuditTrail(filter),
+  }));
 
   // Health check
   app.get('/health', (c) => c.json({ ok: true }));

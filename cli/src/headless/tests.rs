@@ -39,6 +39,7 @@ mod tests {
                     confidence: None,
                     confidence_level: None,
                     evidence: None,
+                    explanation: None,
                 },
                 Finding {
                     check_id: "OBL-022".into(),
@@ -56,6 +57,7 @@ mod tests {
                     confidence: None,
                     confidence_level: None,
                     evidence: None,
+                    explanation: None,
                 },
             ],
             project_path: "/tmp/test-project".into(),

@@ -33,6 +33,7 @@ mod tests {
                 confidence: None,
                 confidence_level: None,
                 evidence: None,
+                explanation: None,
             }],
             project_path: "/test/project".to_string(),
             scanned_at: "2026-02-18".to_string(),

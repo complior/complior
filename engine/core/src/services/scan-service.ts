@@ -10,6 +10,7 @@ import {
 } from '../domain/scanner/layers/layer3-parsers.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
+import type { AuditStore } from '../domain/audit/audit-trail.js';
 
 export interface ScanServiceDeps {
   readonly scanner: Scanner;
@@ -18,6 +19,7 @@ export interface ScanServiceDeps {
   readonly getLastScanResult: () => ScanResult | null;
   readonly setLastScanResult: (result: ScanResult) => void;
   readonly evidenceStore?: EvidenceStore;
+  readonly auditStore?: AuditStore;
 }
 
 export const createScanService = (deps: ScanServiceDeps) => {
@@ -32,6 +34,15 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
+
+    // US-S05-14: Record scan completion in audit trail
+    if (deps.auditStore) {
+      await deps.auditStore.append('scan.completed', {
+        score: result.score.totalScore,
+        zone: result.score.zone,
+        findings: result.findings.length,
+      });
+    }
 
     // C.R20: Persist scan summary evidence to chain (not individual findings)
     if (deps.evidenceStore) {

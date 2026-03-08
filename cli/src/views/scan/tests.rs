@@ -175,6 +175,7 @@ mod tests {
                 confidence: None,
                 confidence_level: None,
                 evidence: None,
+                explanation: None,
             },
             // Type B: Missing file (no code_context)
             Finding {
@@ -193,6 +194,7 @@ mod tests {
                 confidence: None,
                 confidence_level: None,
                 evidence: None,
+                explanation: None,
             },
             // Type C: Config change
             Finding {
@@ -211,6 +213,7 @@ mod tests {
                 confidence: None,
                 confidence_level: None,
                 evidence: None,
+                explanation: None,
             },
             // Type B: Missing file, no fix
             Finding {
@@ -229,6 +232,7 @@ mod tests {
                 confidence: None,
                 confidence_level: None,
                 evidence: None,
+                explanation: None,
             },
         ]
     }

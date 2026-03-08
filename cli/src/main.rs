@@ -148,8 +148,8 @@ async fn main() -> color_eyre::Result<()> {
                     }
                 }
             }
-            Some(cli::Command::Sync { passport, scan, docs, .. }) => {
-                let code = headless::run_sync(*passport, *scan, *docs, &config).await;
+            Some(cli::Command::Sync { passport, scan, docs, audit, evidence, registry, .. }) => {
+                let code = headless::run_sync(*passport, *scan, *docs, *audit, *evidence, *registry, &config).await;
                 std::process::exit(code);
             }
             None => unreachable!(),
