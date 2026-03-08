@@ -141,7 +141,7 @@ $ complior sync
 - [x] По умолчанию (без флагов) = `--all`
 - [x] Проверка авторизации перед sync
 - [x] Engine POST /sync/passport: read `.complior/passports/*.json` → map 36 полей → push
-- [x] `mapPassport()`: AgentManifest → SyncPassportPayload (name, vendorName, description, purpose, domain, riskLevel, slug, autonomyLevel, etc.)
+- [x] `mapPassport()`: AgentPassport → SyncPassportPayload (name, vendorName, description, purpose, domain, riskLevel, slug, autonomyLevel, etc.)
 - [x] `mapDomain()`: manifest type + tools → SaaS domain enum
 - [x] `mapRiskLevel()`: L1-L5 + text → minimal/limited/high/prohibited
 - [x] `parseManifest()`: runtime validation (typeof + 'name' in parsed)
@@ -155,7 +155,7 @@ $ complior sync
 
 **Маппинг 36 → 18 полей:**
 
-| AgentManifest | SaaS SyncPassportPayload |
+| AgentPassport | SaaS SyncPassportPayload |
 |---------------|------------------------|
 | name | name |
 | owner.team | vendorName |
@@ -279,7 +279,7 @@ pub fn truncate_str(s: &str, max_chars: usize) -> String {
 | 1 | `saas-client.ts:68,82,108` | `resp.json() as Promise<...>` — `as` type assertion | `const data: Record<...> = await resp.json()` |
 | 2 | `scan.route.ts:26,32` | `(body as Record<...>)['saasToken']` | Extended Zod schema с `saasToken`, `saasUrl` |
 | 3 | `sync.route.ts:54` | `manifest.lifecycle?.status as string` | `?? undefined` |
-| 4 | `sync.route.ts:115,155` | `JSON.parse(content) as AgentManifest` | `parseManifest()` helper с `'name' in parsed` + null guard |
+| 4 | `sync.route.ts:115,155` | `JSON.parse(content) as AgentPassport` | `parseManifest()` helper с `'name' in parsed` + null guard |
 | 5 | `bundle-fetcher.ts:37` | `JSON.parse(content) as Record<...>` | Type annotation |
 | 6 | `config.rs:296` | Credentials file world-readable (default 644) | `#[cfg(unix)] set_permissions(path, 0o600)` |
 

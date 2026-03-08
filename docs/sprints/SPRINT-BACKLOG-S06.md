@@ -235,53 +235,11 @@ D-41 Eva AI Assistant ────────► D-42 Eva Tool Calling
 
 ---
 
-### US-S06-08: Compliance Cost Estimator
-**Приоритет:** MEDIUM
-**Продукт:** Engine + CLI
-**Backlog ref:** E-102 (C-09, F-V9-19)
-**Компонент:** `[Engine]` `[CLI]`
-
-Как CTO, я хочу видеть оценку стоимости исправления каждого finding и общую стоимость compliance, чтобы обосновать бюджет перед руководством.
-
-**Acceptance Criteria:**
-- [ ] Per-finding оценка трудозатрат: `effort_hours` (low/medium/high -> 1h/4h/8h)
-- [ ] Общий rollup: `total_effort_hours`, `total_cost` (effort * hourly_rate)
-- [ ] Настраиваемый hourly rate: `--hourly-rate 120` (по умолчанию EUR 100/час)
-- [ ] Сравнение: `cost_to_fix` vs `potential_penalty` (из obligation penalties)
-- [ ] `GET /cost-estimate` endpoint возвращает JSON с breakdown
-- [ ] TUI: виджет на Dashboard "Estimated remediation cost: EUR X / Penalty risk: EUR Y"
-
-**Технические детали:**
-- `engine/core/src/domain/cost/cost-estimator.ts` -- чистая функция
-- Маппинг severity -> effort: CRITICAL=16h, HIGH=8h, MEDIUM=4h, LOW=1h
-- Penalty data из `engine/core/src/data/regulations/` (существующие obligation penalties)
-- `engine/core/src/http/routes/cost.route.ts` -- HTTP endpoint
-- CLI: `cli/src/views/dashboard/cost_widget.rs` -- виджет в TUI Dashboard
+### ~~US-S06-08~~ УДАЛЁН — объединён в US-S05-27 (Compliance Cost Estimator)
 
 ---
 
-### US-S06-09: "Why This Matters" per-finding enrichment
-**Приоритет:** MEDIUM
-**Продукт:** Engine
-**Backlog ref:** E-103 (E-13)
-**Компонент:** `[Engine]`
-
-Как разработчик, я хочу для каждого finding видеть: какая статья, какой штраф, какой дедлайн, какое влияние, чтобы понимать приоритеты исправления.
-
-**Acceptance Criteria:**
-- [ ] Каждый Finding обогащается полями: `article`, `penalty_eur`, `deadline`, `impact_description`
-- [ ] `article`: точная ссылка на EU AI Act (e.g. "Art.27(1)")
-- [ ] `penalty_eur`: максимальный штраф за нарушение (e.g. "15,000,000 EUR")
-- [ ] `deadline`: дата enforcement (e.g. "2026-08-02")
-- [ ] `impact_description`: человекочитаемое описание последствий (1-2 предложения)
-- [ ] Данные из существующего маппинга obligations -> articles в `engine/core/src/data/`
-- [ ] `GET /scan` ответ включает enriched findings (backward compatible -- новые поля опциональные)
-
-**Технические детали:**
-- `engine/core/src/domain/scanner/finding-enricher.ts` -- обогащение findings
-- Маппинг: `obligation_id` -> `{ article, penalty, deadline, impact }`
-- Вызывается после scan, перед отдачей результата клиенту
-- Rust: добавить `article`, `penalty_eur`, `deadline`, `impact_description` в `Finding` struct (все `Option<String>`)
+### ~~US-S06-09~~ УДАЛЁН — дублирует US-S05-07 (Finding Explanations, DONE)
 
 ---
 

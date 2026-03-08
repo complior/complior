@@ -277,28 +277,32 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-11: Agent Behavior Contract
+### US-S05-11: Agent Behavior Contract — Passport Extension
 **Приоритет:** HIGH
 **Продукт:** Engine
 **Backlog ref:** E-30, C.S04
 **Компонент:** `[Engine]`
+**Статус:** DONE (реализовано как расширение passport, а не отдельный файл)
 
-Как разработчик, я хочу определить формальный контракт поведения агента (что может, что запрещено, ограничения), чтобы иметь верифицируемую спецификацию для Art.9 risk management.
+Как разработчик, я хочу определить формальный контракт поведения агента (эскалация, PII-границы), чтобы иметь верифицируемую спецификацию для Art.9/Art.14.
 
 **Acceptance Criteria:**
-- [ ] Формат `.complior/agents/{name}-contract.json` с секциями: `allowed_actions[]`, `prohibited_actions[]`, `constraints{}`, `escalation_rules[]`, `data_boundaries{}`
-- [ ] `complior agent contract <name>` — генерация из passport + code analysis
-- [ ] Auto-fill: из passport permissions + discovered tool definitions + rate limits
-- [ ] Валидация контракта Zod-схемой
-- [ ] Связь с passport: `behavior_contract_path` поле
-- [ ] HTTP: `POST /agent/contract`, `GET /agent/contract?name=X`
-- [ ] 8+ тестов
+- [x] Расширение passport: `constraints.escalation_rules[]` (Art.14(4) structured human oversight)
+- [x] Расширение passport: `permissions.data_boundaries{}` (Art.9(2) PII handling, geographic restrictions)
+- [x] Auto-fill при `complior agent init`: `pii_handling: 'redact'` (default), `escalation_rules` из `human_approval_required`
+- [x] Типы: `EscalationRule`, `DataBoundaries`, `PiiHandlingMode`, `EscalationAction` в `passport.types.ts` + Zod
+- [x] Scanner check: `checkBehavioralConstraints()` — L1, risk-class-aware (high=strict, limited/minimal=medium)
+- [x] SDK type sync: `AgentPassport` в `agent.ts` расширен named types
+- [x] Finding explanation: `behavioral-constraints` в `finding-explanations.json`
+- [x] 10+ тестов
 
 **Технические детали:**
-- `engine/core/src/domain/passport/behavior-contract.ts` — генератор
-- `engine/core/src/types/contract.types.ts` — Zod-схема BehaviorContract
-- `engine/core/src/services/passport-service.ts` — методы `generateContract()`, `getContract()`
-- OBL-003: Art.9 risk management system
+- `engine/core/src/types/passport.types.ts` — types + Zod schemas
+- `engine/core/src/domain/passport/manifest-builder.ts` — auto-fill logic
+- `engine/core/src/domain/scanner/checks/behavioral-constraints.ts` — новый L1 check
+- `engine/core/src/domain/passport/manifest-files.ts` — shared helpers (extractRiskClass)
+- `engine/sdk/src/agent.ts` — SDK type extension
+- OBL-003: Art.9 risk management, OBL-014: Art.14(4) human oversight
 
 ---
 
@@ -356,27 +360,27 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-14: Permissions Matrix + Audit Trail
+### US-S05-14: Permissions Matrix + Unified Audit Trail
 **Приоритет:** HIGH
 **Продукт:** Engine
-**Backlog ref:** E-54, E-55, C.F15, C.F16
+**Backlog ref:** E-54, E-55, E-68, C.F15, C.F16
 **Компонент:** `[Engine]` `[CLI]`
 
-Как разработчик, я хочу видеть матрицу разрешений всех агентов и вести аудит-лог всех изменений, чтобы выполнить OBL-006 и OBL-011.
+Как разработчик, я хочу видеть матрицу разрешений всех агентов и вести единый аудит-лог (passport events + compliance events), чтобы выполнить OBL-006 и OBL-011.
 
 **Acceptance Criteria:**
 - [ ] Permissions Matrix: таблица agent × permission (tools, data, actions)
 - [ ] `complior agent permissions` — CLI вывод матрицы
 - [ ] Cross-agent conflicts: alert если 2 агента имеют конфликтующие permissions
-- [ ] Audit Trail: запись каждого passport create/update/export/fria/contract event
-- [ ] Audit storage: `.complior/audit/trail.jsonl` (append-only JSONL)
-- [ ] `complior agent audit [--agent <name>] [--since <date>]` — просмотр trail
+- [ ] Unified Audit Trail: passport events (create/update/export/fria) + compliance events (scan, fix, gate, disclosure, blocked actions)
+- [ ] Audit storage: `.complior/audit/trail.jsonl` (signed append-only JSONL, каждая запись с ed25519 подписью)
+- [ ] `complior agent audit [--agent <name>] [--since <date>] [--type <event_type>]` — просмотр trail
 - [ ] HTTP: `GET /agent/permissions`, `GET /agent/audit`
-- [ ] 10+ тестов
+- [ ] 12+ тестов
 
 **Технические детали:**
 - `engine/core/src/domain/registry/permissions-matrix.ts` — матрица
-- `engine/core/src/domain/registry/audit-trail.ts` — JSONL append-only логгер
+- `engine/core/src/domain/registry/audit-trail.ts` — signed JSONL append-only логгер
 - `engine/core/src/http/routes/agent.route.ts` — новые маршруты
 - `cli/src/cli.rs` — `AgentAction::Permissions`, `AgentAction::Audit`
 - OBL-006: Art.12 logging, OBL-011: Art.26 deployment obligations
@@ -461,28 +465,25 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-18: Runtime Control — Compliance Proxy + Audit Trail + SDK Adapters
+### US-S05-18: Runtime Control — Compliance Proxy + SDK Adapters
 **Приоритет:** HIGH
 **Продукт:** Engine + SDK
-**Backlog ref:** E-68, E-72, E-71
+**Backlog ref:** E-72, E-71
 **Компонент:** `[Engine]` `[SDK]`
 
-Как разработчик, я хочу настроить compliance proxy, вести локальный audit trail и использовать улучшенные SDK адаптеры, чтобы иметь полный runtime compliance стек.
+Как разработчик, я хочу настроить compliance proxy и использовать улучшенные SDK адаптеры, чтобы иметь полный runtime compliance стек.
+
+> **Note:** Audit Trail объединён в US-S05-14 (Unified Audit Trail).
 
 **Acceptance Criteria:**
 - [ ] Compliance Proxy config (OBL-006/011): единый конфиг `.complior/proxy.toml` для всех runtime hooks (какие включены, thresholds, logging level)
 - [ ] Config hot-reload: изменение `.complior/proxy.toml` → обновление runtime без перезапуска
-- [ ] Local Audit Trail (OBL-006): signed append-only лог всех compliance events (scan, fix, gate, disclosure, blocked actions)
-- [ ] Audit Trail format: JSONL, каждая запись с ed25519 подписью
-- [ ] `complior audit show [--since <date>] [--type <event_type>]` — CLI просмотр
 - [ ] SDK Adapters (C.R09): улучшенные адаптеры — auto-detect provider, streaming support, retry logic
-- [ ] 12+ тестов
+- [ ] 8+ тестов
 
 **Технические детали:**
 - `engine/sdk/src/runtime/proxy-config.ts` — загрузка и hot-reload `.complior/proxy.toml`
-- `engine/sdk/src/runtime/audit-trail.ts` — signed JSONL logger
 - `engine/sdk/src/adapters/` — улучшенные адаптеры (расширение существующих)
-- `cli/src/cli.rs` — `AuditAction::Show`
 - OBL-006: Art.12 logging, OBL-011: Art.26 deployment
 
 ---
@@ -698,27 +699,31 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-27: Compliance Cost Estimator — TUI страница
+### US-S05-27: Compliance Cost Estimator — Engine + TUI
 **Приоритет:** MEDIUM
-**Продукт:** CLI
-**Backlog ref:** C-09
-**Компонент:** `[CLI]`
+**Продукт:** Engine + CLI
+**Backlog ref:** C-09, E-102
+**Компонент:** `[Engine]` `[CLI]`
 
-Как разработчик, я хочу видеть оценку стоимости compliance (время + деньги), чтобы обосновать бюджет перед руководством.
+Как CTO/разработчик, я хочу видеть оценку стоимости compliance (время + деньги + ROI), чтобы обосновать бюджет перед руководством.
+
+> **Note:** Объединяет бывший US-S06-08 (Engine + CLI) — единая US для engine расчёта + TUI визуализации.
 
 **Acceptance Criteria:**
-- [ ] TUI: новая секция или overlay в Dashboard
-- [ ] Оценка трудозатрат: per-finding estimated fix time, total hours
-- [ ] Оценка штрафов: current risk exposure (penalty × probability)
+- [ ] Per-finding оценка трудозатрат: severity → effort (CRITICAL: 16h, HIGH: 8h, MEDIUM: 4h, LOW: 1h)
+- [ ] Общий rollup: `total_effort_hours`, `total_cost` (effort × hourly_rate)
+- [ ] Настраиваемый hourly rate: `--hourly-rate 120` (по умолчанию EUR 100/час)
+- [ ] Сравнение: `cost_to_fix` vs `potential_penalty` (из obligation penalties)
 - [ ] ROI калькулятор: стоимость исправления vs штраф
-- [ ] Data: severity → estimated hours mapping (CRITICAL: 16h, HIGH: 8h, MEDIUM: 4h, LOW: 1h)
-- [ ] HTTP: `GET /cost-estimate`
-- [ ] 5+ тестов
+- [ ] `GET /cost-estimate` endpoint возвращает JSON с breakdown
+- [ ] TUI: виджет на Dashboard "Estimated remediation cost: EUR X / Penalty risk: EUR Y"
+- [ ] 8+ тестов
 
 **Технические детали:**
-- `engine/core/src/domain/scanner/cost-estimator.ts` — расчёт
-- `engine/core/src/http/routes/scan.route.ts` — `GET /cost-estimate`
-- `cli/src/views/dashboard/cost.rs` — рендер секции
+- `engine/core/src/domain/cost/cost-estimator.ts` — чистая функция расчёта
+- Penalty data из `engine/core/src/data/regulations/` (существующие obligation penalties)
+- `engine/core/src/http/routes/cost.route.ts` — HTTP endpoint
+- `cli/src/views/dashboard/cost_widget.rs` — виджет в TUI Dashboard
 
 ---
 

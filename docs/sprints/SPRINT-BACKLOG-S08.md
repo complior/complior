@@ -167,24 +167,7 @@
 
 ---
 
-### US-S08-07: L2 конкретика — расширенная документная проверка
-**Приоритет:** LOW
-**Продукт:** Engine
-**Backlog ref:** E-12
-**Компонент:** `[Engine]`
-
-Как разработчик, я хочу чтобы L2 scanner давал конкретные рекомендации по улучшению документов (а не просто "SHALLOW"), чтобы знать что именно добавить.
-
-**Acceptance Criteria:**
-- [ ] Per-section feedback: "Section 'Risk Assessment' lacks specific numeric thresholds — add accuracy target %"
-- [ ] Missing content suggestions: "Add: data retention period, access control matrix, incident response plan"
-- [ ] Completeness meter per document: "Privacy Policy: 6/8 required sections present"
-- [ ] Fix suggestions привязаны к конкретным sections в документе
-- [ ] Результаты в finding.evidence с конкретными line references
-
-**Технические детали:**
-- Расширение `engine/core/src/domain/scanner/checks/layer2-docs.ts`
-- Дополнение US-S07-06 (семантическая валидация) конкретными рекомендациями
+### ~~US-S08-07~~ УДАЛЁН — объединён в US-S07-06 (L2 семантическая валидация + конкретные рекомендации)
 
 ---
 

@@ -142,13 +142,15 @@
 
 ---
 
-### US-S07-06: L2 — семантическая валидация документов
+### US-S07-06: L2 — семантическая валидация + конкретные рекомендации
 **Приоритет:** MEDIUM
 **Продукт:** Engine
-**Backlog ref:** E-100
+**Backlog ref:** E-100, E-12
 **Компонент:** `[Engine]`
 
-Как разработчик, я хочу чтобы L2 scanner проверял не только наличие документов, но и их содержательность, чтобы пустые шаблоны не давали 100% coverage.
+Как разработчик, я хочу чтобы L2 scanner проверял содержательность документов и давал конкретные рекомендации по улучшению, чтобы пустые шаблоны не давали 100% coverage и было понятно что исправить.
+
+> **Note:** Объединяет бывший US-S08-07 (L2 конкретика) — единая US для семантической валидации + конкретных рекомендаций.
 
 **Acceptance Criteria:**
 - [ ] Numeric metrics detection: документ должен содержать конкретные числовые показатели (accuracy %, response time, etc.)
@@ -156,7 +158,11 @@
 - [ ] Required sections checklist: FRIA должен иметь все 6 секций, Privacy Policy — 8 GDPR-required секций
 - [ ] Severity: документ без конкретики → SHALLOW (confidence 65), без required sections → INCOMPLETE (confidence 80)
 - [ ] Improved word count analysis: минимальные thresholds per document type
-- [ ] Результаты в ScoreBreakdown с confidence_summary
+- [ ] Per-section feedback: "Section 'Risk Assessment' lacks specific numeric thresholds — add accuracy target %"
+- [ ] Missing content suggestions: "Add: data retention period, access control matrix, incident response plan"
+- [ ] Completeness meter per document: "Privacy Policy: 6/8 required sections present"
+- [ ] Fix suggestions привязаны к конкретным sections в документе
+- [ ] Результаты в ScoreBreakdown с confidence_summary и finding.evidence с line references
 
 **Технические детали:**
 - `engine/core/src/domain/scanner/checks/layer2-docs.ts` — расширение существующего модуля

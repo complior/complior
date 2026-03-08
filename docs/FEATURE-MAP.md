@@ -407,7 +407,7 @@ Major codebase restructuring: SRP splits, dead code removal, shared type contrac
 | US-S03-02 | Agent Passport Auto-Generation | Full pipeline: discover AI agents (57 SDKs) → rate autonomy L1-L5 → scan permissions → build 36-field manifest → ed25519 sign → save to `.complior/agents/`. TS: 6 domain modules + service + HTTP routes. Rust: `complior agent init\|list\|show` commands + TUI data binding. 35 TS + 8 Rust tests |
 
 **Implementation details:**
-- **Types:** `passport.types.ts` — 36-field `AgentManifest` + Zod, AutonomyLevel L1-L5, AgentType, PassportRiskClass
+- **Types:** `passport.types.ts` — 36-field `AgentPassport` + Zod, AutonomyLevel L1-L5, AgentType, PassportRiskClass
 - **Discovery:** `agent-discovery.ts` — framework detection (LangChain, CrewAI, OpenAI, Anthropic, Vercel AI, LlamaIndex), model detection
 - **Autonomy:** `autonomy-analyzer.ts` — L4 results → L1-L5 rating (human gates, unsupervised actions, logging, kill-switch)
 - **Permissions:** `permission-scanner.ts` — tools, DB access (read/write/delete), MCP configs, human approval patterns
@@ -559,7 +559,7 @@ CLI commands and Engine logic for pushing passports, scan results, and complianc
 
 | US | Title | Description |
 |----|-------|-------------|
-| US-U05 | `complior sync` + Passport Push | `headless/sync.rs` — `run_sync()` checks auth, connects to Engine, pushes via POST /sync/passport. Engine reads all `.complior/passports/*.json`, maps 36 AgentManifest fields to SaaS payload, shows created/updated/conflicts per passport |
+| US-U05 | `complior sync` + Passport Push | `headless/sync.rs` — `run_sync()` checks auth, connects to Engine, pushes via POST /sync/passport. Engine reads all `.complior/passports/*.json`, maps 36 AgentPassport fields to SaaS payload, shows created/updated/conflicts per passport |
 | US-U06 | Scan Result Push | Auto-sync: `scan.route.ts` extended with `saasToken` in Zod schema — after scan, if token present, push results to SaaS (non-blocking). Explicit: `complior sync --scan`. Engine reads last scan result, maps projectPath/score/findings/toolsDetected |
 | US-U07* | Document Push | Engine reads `docs/compliance/*.md`, maps file names to SaaS document types (8 mappings in DOC_TYPE_MAP), pushes via `syncDocuments()`. `complior sync --docs` or `complior sync` (all) |
 
