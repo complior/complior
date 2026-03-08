@@ -310,6 +310,15 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Show unified per-agent compliance registry
+    Registry {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
     /// Show evidence chain summary or verify integrity
     Evidence {
         /// Output as JSON
@@ -845,6 +854,41 @@ mod tests {
                 assert_eq!(path.as_deref(), Some("/tmp/project"));
             }
             _ => panic!("Expected Agent Export command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_registry() {
+        let cli = Cli::parse_from(["complior", "agent", "registry"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Registry { json, path } }) => {
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Registry command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_registry_json() {
+        let cli = Cli::parse_from(["complior", "agent", "registry", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Registry { json, .. } }) => {
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Registry command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_registry_path() {
+        let cli = Cli::parse_from(["complior", "agent", "registry", "/tmp/proj"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Registry { path, .. } }) => {
+                assert_eq!(path.as_deref(), Some("/tmp/proj"));
+            }
+            _ => panic!("Expected Agent Registry command"),
         }
     }
 

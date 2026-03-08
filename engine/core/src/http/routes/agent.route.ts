@@ -236,5 +236,14 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(await passportService.verifyEvidenceChain(path));
   });
 
+  // US-S05-13: Agent Registry — per-agent compliance dashboard
+  app.get('/agent/registry', async (c) => {
+    const path = c.req.query('path');
+    if (!path) {
+      throw new ValidationError('Missing "path" query parameter');
+    }
+    return c.json(await passportService.getAgentRegistry(path));
+  });
+
   return app;
 };

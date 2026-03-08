@@ -134,6 +134,9 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Export { name, format, json, path } => {
             run_agent_export(name, format, *json, path.as_deref(), config).await
         }
+        AgentAction::Registry { json, path } => {
+            run_agent_registry(*json, path.as_deref(), config).await
+        }
         AgentAction::Evidence { json, verify, path } => {
             run_agent_evidence(*json, *verify, path.as_deref(), config).await
         }
@@ -1109,6 +1112,116 @@ async fn run_agent_export(
         }
         Err(e) => {
             eprintln!("Error: Failed to export passport: {e}");
+            1
+        }
+    }
+}
+
+// --- US-S05-13: Agent Registry ---
+
+async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+    let project_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let url = format!(
+        "/agent/registry?path={}",
+        url_encode(&project_path.to_string_lossy())
+    );
+    match client.get_json(&url).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let entries = result.as_array();
+            match entries {
+                Some(agents) if !agents.is_empty() => {
+                    println!("Agent Compliance Registry ({} agent(s))\n", agents.len());
+                    println!(
+                        "  {:<20} {:<10} {:<7} {:<10} {:<7} {:<10} {:<6}",
+                        "NAME", "RISK", "SCORE", "PASSPORT", "FRIA", "EVIDENCE", "GRADE"
+                    );
+                    println!("  {}", "-".repeat(70));
+
+                    for agent in agents {
+                        let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                        let risk = agent.get("riskClass").and_then(|v| v.as_str()).unwrap_or("?");
+                        let score = agent.get("complianceScore").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let passport = agent.get("passportCompleteness").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let fria = agent.get("friaStatus").and_then(|v| v.as_str()).unwrap_or("?");
+                        let ev_valid = agent
+                            .get("evidenceChain")
+                            .and_then(|e| e.get("valid"))
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        let ev_entries = agent
+                            .get("evidenceChain")
+                            .and_then(|e| e.get("entries"))
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+                        let evidence_str = if ev_entries == 0 {
+                            "none".to_string()
+                        } else if ev_valid {
+                            format!("{ev_entries} ok")
+                        } else {
+                            format!("{ev_entries} BROKEN")
+                        };
+                        let grade = agent.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
+                        let passport_str = format!("{passport:.0}%");
+
+                        println!(
+                            "  {:<20} {:<10} {:<7.0} {:<10} {:<7} {:<10} {:<6}",
+                            name, risk, score, passport_str, fria, evidence_str, grade
+                        );
+                    }
+
+                    // Show issues for agents with grade < A
+                    let mut has_issues = false;
+                    for agent in agents {
+                        let grade = agent.get("grade").and_then(|v| v.as_str()).unwrap_or("A");
+                        if grade == "A" {
+                            continue;
+                        }
+                        let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                        if let Some(issues) = agent.get("issues").and_then(|v| v.as_array()) {
+                            if !issues.is_empty() {
+                                if !has_issues {
+                                    println!("\nIssues:\n");
+                                    has_issues = true;
+                                }
+                                println!("  {name} (grade {grade}):");
+                                for issue in issues {
+                                    if let Some(msg) = issue.as_str() {
+                                        println!("    - {msg}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    println!();
+                }
+                _ => {
+                    println!("No Agent Passports found.");
+                    println!("Run `complior agent init` to generate one.");
+                }
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to get agent registry: {e}");
             1
         }
     }

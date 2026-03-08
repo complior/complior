@@ -24,6 +24,8 @@ import { generateFria } from '../domain/fria/fria-generator.js';
 import type { FriaResult } from '../domain/fria/fria-generator.js';
 import { exportPassport as exportPassportFn } from '../domain/passport/export/index.js';
 import type { ExportFormat, ExportResult } from '../domain/passport/export/index.js';
+import { computeAgentScore } from '../domain/registry/compute-agent-score.js';
+import type { AgentRegistryEntry } from '../domain/registry/compute-agent-score.js';
 import { generateWorkerNotification as generateWorkerNotificationDoc } from '../domain/documents/worker-notification-generator.js';
 import type { WorkerNotificationResult } from '../domain/documents/worker-notification-generator.js';
 import type { EvidenceStore, EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
@@ -408,6 +410,23 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return { ...result, savedPath };
   };
 
+  // US-S05-13: Agent Registry — per-agent compliance dashboard
+  const getAgentRegistry = async (projectPath?: string): Promise<readonly AgentRegistryEntry[]> => {
+    const path = projectPath ?? getProjectPath();
+    const passports = await listPassports(path);
+    if (passports.length === 0) return [];
+
+    const scanResult = getLastScanResult();
+    const evidenceSummary = await getEvidenceChainSummary();
+
+    const entries: AgentRegistryEntry[] = [];
+    for (const passport of passports) {
+      const completeness = computeCompleteness(passport);
+      entries.push(computeAgentScore({ passport, completeness, scanResult, evidenceSummary }));
+    }
+    return entries;
+  };
+
   // C.R20: Evidence chain summary
   const getEvidenceChainSummary = async (
     projectPath?: string,
@@ -446,6 +465,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     generateFriaReport,
     generateWorkerNotification,
     exportPassportToFormat,
+    getAgentRegistry,
     getEvidenceChainSummary,
     verifyEvidenceChain,
   });
