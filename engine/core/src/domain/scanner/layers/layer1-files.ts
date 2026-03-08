@@ -10,6 +10,7 @@ import { checkPassportPresence } from '../checks/passport-presence.js';
 import { checkPassportCompleteness } from '../checks/passport-completeness.js';
 import { checkPermissions } from '../checks/permission-scanner.js';
 import { checkBehavioralConstraints } from '../checks/behavioral-constraints.js';
+import { checkIndustryPatterns } from '../checks/industry/index.js';
 
 export const L1_CHECKS: readonly CheckFunction[] = [
   checkAiDisclosure,
@@ -23,4 +24,5 @@ export const L1_CHECKS: readonly CheckFunction[] = [
   checkPassportCompleteness,
   checkPermissions,
   checkBehavioralConstraints,
+  checkIndustryPatterns,
 ];

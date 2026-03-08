@@ -271,5 +271,30 @@
     "penalty": "€15M or 3% of annual global turnover",
     "deadline": "2026-08-02",
     "business_impact": "Undeclared permissions combined with unwrapped LLM calls indicate a compounding governance failure. The AI system operates outside its declared boundaries without compliance safeguards."
+  },
+
+  "industry-hr": {
+    "article": "Art. 6(2), Annex III §6(a)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "HR/recruitment AI is classified as high-risk under Annex III. Systems used for recruitment, CV screening, or employee evaluation require FRIA, conformity assessment, and enhanced human oversight."
+  },
+  "industry-finance": {
+    "article": "Art. 6(2), Annex III §5(b)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Financial AI for credit scoring, insurance, or fraud detection is high-risk under Annex III. Access to essential services like credit and insurance is a fundamental right requiring strict compliance."
+  },
+  "industry-healthcare": {
+    "article": "Art. 6(2), Annex III §5(a)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Healthcare AI for diagnosis, treatment, or patient monitoring is high-risk under Annex III. Medical AI directly impacts health and safety, requiring the highest level of compliance rigor."
+  },
+  "industry-education": {
+    "article": "Art. 6(2), Annex III §6(b)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Education AI for admissions, grading, or student assessment is high-risk under Annex III. AI determining access to education affects fundamental rights and life opportunities."
   }
 }
