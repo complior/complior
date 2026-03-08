@@ -255,6 +255,14 @@ export const loadApplication = async (): Promise<Application> => {
     getLastScanResult: () => state.lastScanResult,
   });
 
+  // Policy template loader
+  const policyTemplatesDir = resolve(
+    fileURLToPath(import.meta.url), '..', '..', 'data', 'templates', 'policies',
+  );
+  const loadPolicyTemplate = async (templateFile: string): Promise<string> => {
+    return readFile(resolve(policyTemplatesDir, templateFile), 'utf-8');
+  };
+
   const passportService = createPassportService({
     collectFiles,
     scanner,
@@ -262,6 +270,7 @@ export const loadApplication = async (): Promise<Application> => {
     getProjectPath: () => state.projectPath,
     getLastScanResult: () => state.lastScanResult,
     loadTemplate,
+    loadPolicyTemplate,
     evidenceStore,
     auditStore,
   });

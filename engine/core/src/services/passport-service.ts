@@ -28,6 +28,10 @@ import { computeAgentScore } from '../domain/registry/compute-agent-score.js';
 import type { AgentRegistryEntry } from '../domain/registry/compute-agent-score.js';
 import { generateWorkerNotification as generateWorkerNotificationDoc } from '../domain/documents/worker-notification-generator.js';
 import type { WorkerNotificationResult } from '../domain/documents/worker-notification-generator.js';
+import { generatePolicy as generatePolicyDoc } from '../domain/documents/policy-generator.js';
+import type { PolicyResult } from '../domain/documents/policy-generator.js';
+import type { IndustryId } from '../data/industry-patterns.js';
+import { INDUSTRY_TEMPLATE_MAP } from '../data/industry-patterns.js';
 import type { EvidenceStore, EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
 import { buildPermissionsMatrix } from '../domain/audit/permissions-matrix.js';
 import type { PermissionsMatrix } from '../domain/audit/permissions-matrix.js';
@@ -42,6 +46,7 @@ export interface PassportServiceDeps {
   readonly getProjectPath: () => string;
   readonly getLastScanResult: () => ScanResult | null;
   readonly loadTemplate?: (file: string) => Promise<string>;
+  readonly loadPolicyTemplate?: (file: string) => Promise<string>;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
 }
@@ -273,15 +278,17 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     markdown: string,
     evidenceType: string,
     projectPath?: string,
+    subDir: string = 'reports',
+    evidenceMeta?: Record<string, unknown>,
   ): Promise<string> => {
     const path = projectPath ?? getProjectPath();
-    const reportsDir = join(path, '.complior', 'reports');
-    await mkdir(reportsDir, { recursive: true });
-    const savedPath = join(reportsDir, `${filePrefix}-${name}.md`);
+    const outDir = join(path, '.complior', subDir);
+    await mkdir(outDir, { recursive: true });
+    const savedPath = join(outDir, `${filePrefix}-${name}.md`);
     await writeFile(savedPath, markdown);
 
     if (deps.evidenceStore) {
-      const evidence = createEvidence(name, evidenceType, evidenceType, { file: savedPath });
+      const evidence = createEvidence(name, evidenceType, evidenceType, { file: savedPath, ...evidenceMeta });
       await deps.evidenceStore.append([evidence], randomUUID());
     }
 
@@ -484,6 +491,46 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return buildPermissionsMatrix(passports);
   };
 
+  // US-S05-15: Industry-specific AI usage policy generation
+  const generatePolicy = async (
+    name: string,
+    industry: IndustryId,
+    projectPath?: string,
+    options?: { organization?: string; approver?: string },
+  ): Promise<(PolicyResult & { savedPath: string }) | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+
+    if (!deps.loadPolicyTemplate) {
+      throw new Error('loadPolicyTemplate dependency not provided');
+    }
+    const templateFile = INDUSTRY_TEMPLATE_MAP[industry];
+    const template = await deps.loadPolicyTemplate(templateFile);
+
+    const result = generatePolicyDoc({
+      manifest,
+      template,
+      industry,
+      organization: options?.organization,
+      approver: options?.approver,
+    });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const savedPath = await saveDocumentReport(
+      timestamp, `${industry}-ai-policy`, result.markdown, 'policy',
+      projectPath, 'policies', { industry },
+    );
+
+    const today = new Date().toISOString().slice(0, 10);
+    await updatePassportCompliance(name, { policy_generated: true, policy_date: today }, projectPath);
+
+    if (deps.auditStore) {
+      await deps.auditStore.append('policy.generated', { name, industry, savedPath }, name);
+    }
+
+    return { ...result, savedPath };
+  };
+
   // US-S05-14: Audit trail query
   const getAuditTrail = async (filter: AuditFilter): Promise<readonly AuditEntry[]> => {
     if (!deps.auditStore) return [];
@@ -510,6 +557,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     getAgentRegistry,
     getEvidenceChainSummary,
     verifyEvidenceChain,
+    generatePolicy,
     getPermissionsMatrix,
     getAuditTrail,
     getAuditSummary,

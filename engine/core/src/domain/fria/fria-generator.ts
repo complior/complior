@@ -1,5 +1,6 @@
 import type { AgentPassport } from '../../types/passport.types.js';
 import { mapDomain } from '../passport/domain-mapper.js';
+import { deriveOversightDescription } from '../documents/passport-helpers.js';
 
 // --- Types ---
 
@@ -110,29 +111,6 @@ const deriveRiskLevel = (riskClass: string): string => {
     case 'minimal': return 'L';
     default: return '[H/M/L/N]';
   }
-};
-
-const deriveOversightDescription = (manifest: AgentPassport): string => {
-  const parts: string[] = [];
-  const level = manifest.autonomy_level;
-
-  if (level === 'L1' || level === 'L2') {
-    parts.push('System operates under direct human supervision.');
-  } else if (level === 'L3') {
-    parts.push('System operates semi-autonomously with human oversight checkpoints.');
-  } else {
-    parts.push('System operates autonomously; enhanced oversight measures required.');
-  }
-
-  if (manifest.constraints.human_approval_required.length > 0) {
-    parts.push(`Human approval required for: ${manifest.constraints.human_approval_required.join(', ')}.`);
-  }
-
-  if (manifest.autonomy_evidence.human_approval_gates > 0) {
-    parts.push(`${manifest.autonomy_evidence.human_approval_gates} human approval gate(s) detected in code.`);
-  }
-
-  return parts.join(' ');
 };
 
 // --- Charter Rights for FRIA ---

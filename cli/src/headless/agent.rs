@@ -143,6 +143,9 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Permissions { json, path } => {
             run_agent_permissions(*json, path.as_deref(), config).await
         }
+        AgentAction::Policy { name, industry, json, organization, approver, path } => {
+            run_agent_policy(name, industry, *json, organization.as_deref(), approver.as_deref(), path.as_deref(), config).await
+        }
         AgentAction::Audit { agent, since, event_type, limit, json, path } => {
             run_agent_audit(agent.as_deref(), since.as_deref(), event_type.as_deref(), *limit, *json, path.as_deref(), config).await
         }
@@ -1327,6 +1330,100 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
         }
         Err(e) => {
             eprintln!("Error: Failed to get permissions matrix: {e}");
+            1
+        }
+    }
+}
+
+// --- US-S05-15: Policy generation ---
+
+async fn run_agent_policy(
+    name: &str,
+    industry: &str,
+    json: bool,
+    organization: Option<&str>,
+    approver: Option<&str>,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let valid_industries = ["hr", "finance", "healthcare", "education", "legal"];
+    if !valid_industries.contains(&industry) {
+        eprintln!(
+            "Error: Invalid industry '{}'. Must be one of: {}",
+            industry,
+            valid_industries.join(", ")
+        );
+        return 1;
+    }
+
+    let project_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    if !json {
+        println!("Generating {industry} AI usage policy for agent '{name}'...");
+    }
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let mut body = serde_json::json!({
+        "path": project_path.to_string_lossy(),
+        "name": name,
+        "industry": industry,
+    });
+
+    if let Some(org) = organization {
+        body["organization"] = serde_json::Value::String(org.to_string());
+    }
+    if let Some(app) = approver {
+        body["approver"] = serde_json::Value::String(app.to_string());
+    }
+
+    match client.post_json("/agent/policy", &body).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let saved_path = result
+                .get("savedPath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let prefilled_count = result
+                .get("prefilledFields")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let empty_vec = vec![];
+            let manual_fields = result
+                .get("manualFields")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&empty_vec);
+
+            println!("\nAI Usage Policy generated: {name} ({industry})");
+            println!("  Saved: {saved_path}");
+            println!("  Pre-filled: {prefilled_count} fields");
+            println!("  Manual review needed ({} fields):", manual_fields.len());
+            for field in manual_fields {
+                if let Some(f) = field.as_str() {
+                    println!("    - {f}");
+                }
+            }
+            println!("\nReview and complete the policy document before adoption.");
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to generate policy: {e}");
             1
         }
     }

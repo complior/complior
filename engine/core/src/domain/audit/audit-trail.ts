@@ -5,7 +5,8 @@ import { randomUUID, createHash } from 'node:crypto';
 export type AuditEventType =
   | 'passport.created' | 'passport.updated' | 'passport.exported'
   | 'fria.generated' | 'scan.completed' | 'fix.applied'
-  | 'evidence.verified' | 'worker_notification.generated';
+  | 'evidence.verified' | 'worker_notification.generated'
+  | 'policy.generated';
 
 export interface AuditEntry {
   readonly id: string;

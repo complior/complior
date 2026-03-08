@@ -7,6 +7,7 @@ const AUDIT_EVENT_TYPES = [
   'passport.created', 'passport.updated', 'passport.exported',
   'fria.generated', 'scan.completed', 'fix.applied',
   'evidence.verified', 'worker_notification.generated',
+  'policy.generated',
 ] as const;
 
 const AuditQuerySchema = z.object({
@@ -286,6 +287,39 @@ export const createAgentRoute = (passportService: PassportService) => {
   // US-S05-14: Audit trail summary
   app.get('/agent/audit/summary', async (c) => {
     return c.json(await passportService.getAuditSummary());
+  });
+
+  // US-S05-15: Generate industry-specific AI usage policy
+  app.post('/agent/policy', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const VALID_INDUSTRIES = ['hr', 'finance', 'healthcare', 'education', 'legal'] as const;
+    const parsed = z.object({
+      path: z.string().min(1),
+      name: z.string().min(1),
+      industry: z.enum(VALID_INDUSTRIES),
+      organization: z.string().optional(),
+      approver: z.string().optional(),
+    }).safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.generatePolicy(
+      parsed.data.name,
+      parsed.data.industry,
+      parsed.data.path,
+      {
+        organization: parsed.data.organization,
+        approver: parsed.data.approver,
+      },
+    );
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+    }
+    return c.json(result);
   });
 
   return app;

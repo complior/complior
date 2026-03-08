@@ -353,6 +353,30 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Generate industry-specific AI usage policy (Art.6, Annex III)
+    Policy {
+        /// Agent name
+        name: String,
+
+        /// Industry: hr, finance, healthcare, education, legal
+        #[arg(long)]
+        industry: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Organization name (for policy header)
+        #[arg(long)]
+        organization: Option<String>,
+
+        /// Approver name/title (for sign-off section)
+        #[arg(long)]
+        approver: Option<String>,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
     /// Show audit trail (compliance event log)
     Audit {
         /// Filter by agent name
@@ -995,6 +1019,46 @@ mod tests {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Permissions command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_policy() {
+        let cli = Cli::parse_from(["complior", "agent", "policy", "my-bot", "--industry", "hr"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Policy { name, industry, json, organization, approver, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(industry, "hr");
+                assert!(!json);
+                assert!(organization.is_none());
+                assert!(approver.is_none());
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Policy command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_policy_all_flags() {
+        let cli = Cli::parse_from([
+            "complior", "agent", "policy", "my-bot",
+            "--industry", "finance",
+            "--json",
+            "--organization", "Acme Corp",
+            "--approver", "Jane Doe, CTO",
+            "/tmp/project",
+        ]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Policy { name, industry, json, organization, approver, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(industry, "finance");
+                assert!(*json);
+                assert_eq!(organization.as_deref(), Some("Acme Corp"));
+                assert_eq!(approver.as_deref(), Some("Jane Doe, CTO"));
+                assert_eq!(path.as_deref(), Some("/tmp/project"));
+            }
+            _ => panic!("Expected Agent Policy command"),
         }
     }
 

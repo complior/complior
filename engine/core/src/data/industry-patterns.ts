@@ -1,5 +1,7 @@
+export type IndustryId = 'hr' | 'finance' | 'healthcare' | 'education' | 'legal';
+
 export interface IndustryPattern {
-  readonly id: string;
+  readonly id: IndustryId;
   readonly label: string;
   readonly annexRef: string;
   readonly articleRef: string;
@@ -75,4 +77,29 @@ export const INDUSTRY_PATTERNS: readonly IndustryPattern[] = [
       /enrollment[_.]decision/i,
     ],
   },
+  {
+    id: 'legal',
+    label: 'Legal / Justice',
+    annexRef: 'Annex III §8(a)',
+    articleRef: 'Art. 6(2)',
+    obligationId: 'eu-ai-act-OBL-008',
+    patterns: [
+      /legal[_.]analysis/i,
+      /case[_.]prediction/i,
+      /contract[_.]review/i,
+      /sentencing[_.]assist/i,
+      /evidence[_.]analysis/i,
+      /judicial[_.]decision/i,
+      /legal[_.]research/i,
+      /dispute[_.]resolution/i,
+    ],
+  },
 ];
+
+export const INDUSTRY_TEMPLATE_MAP: Record<IndustryId, string> = {
+  hr: 'hr-ai-policy.md',
+  finance: 'finance-ai-policy.md',
+  healthcare: 'healthcare-ai-policy.md',
+  education: 'education-ai-policy.md',
+  legal: 'legal-ai-policy.md',
+};
