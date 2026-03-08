@@ -221,3 +221,20 @@ export interface EngineStatus {
   readonly uptime: number;
   readonly lastScan?: ScanRecord;
 }
+
+// --- Evidence Chain (used by evidence-store, read from disk) ---
+
+export interface EvidenceEntry {
+  readonly evidence: Evidence;
+  readonly scanId: string;
+  readonly chainPrev: string | null;
+  readonly hash: string;
+  readonly signature: string;
+}
+
+export interface EvidenceChain {
+  readonly version: '1.0.0';
+  readonly projectPath: string;
+  readonly entries: readonly EvidenceEntry[];
+  readonly lastHash: string;
+}

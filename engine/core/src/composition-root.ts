@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CoreMessage } from 'ai';
 import type { ScanResult } from './types/common.types.js';
+import { parseScanResult } from './types/common.schemas.js';
 import type { AgentMode } from './llm/tools/types.js';
 import type { RegulationData } from './data/regulation-loader.js';
 import { loadRegulationData } from './data/regulation-loader.js';
@@ -68,7 +69,7 @@ export const loadApplication = async (): Promise<Application> => {
   let persistedScan: ScanResult | null = null;
   try {
     const raw = await readFile(lastScanPath, 'utf-8');
-    persistedScan = JSON.parse(raw) as ScanResult;
+    persistedScan = parseScanResult(raw);
     log.info('Loaded persisted scan result from disk');
   } catch { /* no previous scan — expected on first run */ }
 

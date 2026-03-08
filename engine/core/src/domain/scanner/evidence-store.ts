@@ -2,23 +2,8 @@ import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { Evidence } from './evidence.js';
-
-// --- Types ---
-
-export interface EvidenceEntry {
-  readonly evidence: Evidence;
-  readonly scanId: string;
-  readonly chainPrev: string | null;
-  readonly hash: string;
-  readonly signature: string;
-}
-
-export interface EvidenceChain {
-  readonly version: '1.0.0';
-  readonly projectPath: string;
-  readonly entries: readonly EvidenceEntry[];
-  readonly lastHash: string;
-}
+import type { EvidenceEntry, EvidenceChain } from '../../types/common.types.js';
+import { parseEvidenceChain } from '../../types/common.schemas.js';
 
 export interface EvidenceChainSummary {
   readonly totalEntries: number;
@@ -83,10 +68,9 @@ export const createEvidenceStore = (
       }
 
       const raw = await readFile(storePath, 'utf-8');
-      const parsed = JSON.parse(raw) as EvidenceChain;
+      const parsed = parseEvidenceChain(raw);
 
-      // Validate basic structure
-      if (!parsed || !Array.isArray(parsed.entries)) {
+      if (!parsed) {
         cachedChain = EMPTY_CHAIN(projectPath);
         return cachedChain;
       }

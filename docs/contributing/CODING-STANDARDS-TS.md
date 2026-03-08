@@ -122,6 +122,58 @@ const severity = data.severity as Severity;
 
 ---
 
+## 2.1 Validation & Type Safety
+
+### V1 — Граничная валидация (Boundary Validation)
+
+Валидируй данные на I/O границах: чтение с диска, HTTP request bodies, внешние API.
+Используй Zod `.safeParse()` через parse-функции. Запрещено `JSON.parse() as T` для
+данных из внешнего мира.
+
+### V2 — Паттерн parse-функции
+
+```typescript
+export const parseXxx = (json: string): T | null => {
+  try {
+    const result = XxxSchema.safeParse(JSON.parse(json));
+    return result.success ? (result.data as T) : null;
+  } catch { return null; }
+};
+```
+
+Никогда не бросает. Вызывающий обрабатывает `null`. `as T` после `safeParse()` —
+допустимо (данные уже validated).
+
+### V3 — Type-First с Companion Schema
+
+Для широко-импортируемых типов (`common.types.ts`, 66+ файлов): handwritten interfaces +
+companion Zod-схемы в отдельном `*.schemas.ts`. Для domain-specific типов с узким
+использованием: schema-first с `z.infer<>` (как `schemas-core.ts`).
+
+### V4 — Нет interior validation
+
+Domain-функции доверяют своим TypeScript-сигнатурам. Нет runtime checks между
+внутренними вызовами. Валидация — только на входе в систему.
+
+### V5 — Исключение для Scanner
+
+Scanner checks используют `Record<string, unknown>` — они проверяют partial/incomplete
+данные by design. Это единственное место, где `JSON.parse() as Record<string, unknown>`
+допустим.
+
+### V6 — SDK Decoupling
+
+SDK использует `Record<string, unknown>` + internal helpers для passport-полей.
+SDK не импортирует engine types напрямую.
+
+### V7 — Запрет `as` для I/O данных
+
+`as T` type assertions запрещены для результатов `JSON.parse()` из disk/network.
+Используй parse-функции или Zod-схемы. Исключения: V5 (scanner) и `as T` после
+`safeParse()` success (V2).
+
+---
+
 ## 3. Именование
 
 ### Файлы
