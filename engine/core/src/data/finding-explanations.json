@@ -222,6 +222,13 @@
     "business_impact": "Unsafe code patterns (eval, pickle, command injection) create exploitable vulnerabilities. These undermine your system's cybersecurity posture required by Art. 15(4)."
   },
 
+  "behavioral-constraints": {
+    "article": "Art. 9 / Art. 14",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Behavioral constraints define how your AI agent escalates decisions and handles PII. High-risk agents without structured escalation rules lack the human oversight required by Art. 14. Missing data boundaries indicate gaps in the risk management system required by Art. 9."
+  },
+
   "cross-doc-code-mismatch": {
     "article": "Art. 11",
     "penalty": "€15M or 3% of annual global turnover",
@@ -245,5 +252,24 @@
     "penalty": "€15M or 3% of annual global turnover",
     "deadline": "2026-08-02",
     "business_impact": "Kill switch exists but has no tests. An untested kill switch may fail during an incident, leaving you unable to shut down a malfunctioning AI system when it matters most."
+  },
+
+  "undeclared-permission": {
+    "article": "Art. 26(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Tool permissions used in code but not declared in Agent Passport. Undeclared permissions indicate governance gaps — regulators require full transparency about AI agent capabilities."
+  },
+  "unused-declared-permission": {
+    "article": "Art. 26(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Passport declares tool permissions not found in code. Stale declarations reduce trust in passport accuracy and may indicate outdated documentation."
+  },
+  "cross-permission-passport-mismatch": {
+    "article": "Art. 26(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Undeclared permissions combined with unwrapped LLM calls indicate a compounding governance failure. The AI system operates outside its declared boundaries without compliance safeguards."
   }
 }

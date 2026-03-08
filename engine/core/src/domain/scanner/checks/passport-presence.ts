@@ -1,6 +1,7 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
 import { AI_SDK_PACKAGES } from '../rules/banned-packages-sdk.js';
+import { filterPassportManifests } from '../../passport/manifest-files.js';
 
 const CHECK_ID = 'passport-presence';
 const ARTICLE_REF = 'Art. 26(4)';
@@ -24,11 +25,7 @@ const hasAiSdk = (ctx: ScanContext): boolean => {
 };
 
 export const checkPassportPresence = (ctx: ScanContext): readonly CheckResult[] => {
-  // Look for passport manifest files
-  const passportFiles = ctx.files.filter((f) =>
-    f.relativePath.includes('.complior/agents/') &&
-    f.relativePath.endsWith('-manifest.json'),
-  );
+  const passportFiles = filterPassportManifests(ctx.files);
 
   if (passportFiles.length > 0) {
     return [{

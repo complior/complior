@@ -17,6 +17,19 @@ export interface DiscoveredPermissions {
   readonly humanApprovalRequired: readonly string[];
 }
 
+export type ToolFramework = 'langchain' | 'crewai' | 'openai' | 'anthropic' | 'mcp' | 'vercel-ai' | 'generic';
+
+export interface DiscoveredTool {
+  readonly name: string;
+  readonly framework: ToolFramework;
+  readonly file: string;
+  readonly line: number;
+}
+
+export interface DiscoveredPermissionsDetailed extends DiscoveredPermissions {
+  readonly toolsDetailed: readonly DiscoveredTool[];
+}
+
 // --- File filtering ---
 
 const SOURCE_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.py']);
@@ -283,6 +296,44 @@ const detectHumanApproval = (
   return [...approvals];
 };
 
+// --- Line number helper ---
+
+const getLineNumber = (content: string, charIndex: number): number => {
+  let line = 1;
+  for (let i = 0; i < charIndex && i < content.length; i++) {
+    if (content[i] === '\n') line++;
+  }
+  return line;
+};
+
+// --- Framework-specific tool patterns ---
+
+interface FrameworkPattern {
+  readonly framework: ToolFramework;
+  readonly pattern: RegExp;
+}
+
+const FRAMEWORK_TOOL_PATTERNS: readonly FrameworkPattern[] = [
+  // LangChain
+  { framework: 'langchain', pattern: /class\s+(\w+)\s+extends\s+(?:StructuredTool|BaseTool|DynamicTool)/g },
+  { framework: 'langchain', pattern: /new\s+DynamicTool\(\s*\{[^}]*name:\s*['"](\w+)['"]/g },
+  { framework: 'langchain', pattern: /new\s+(?:StructuredTool|Tool)\(\s*\{[^}]*name:\s*['"](\w+)['"]/g },
+  // CrewAI
+  { framework: 'crewai', pattern: /Tool\(\s*name\s*=\s*['"](\w+)['"]/g },
+  { framework: 'crewai', pattern: /class\s+(\w+)\(BaseTool\)/g },
+  // OpenAI
+  { framework: 'openai', pattern: /function:\s*\{\s*name:\s*['"](\w+)['"]/g },
+  { framework: 'openai', pattern: /type:\s*['"]function['"][^}]*name:\s*['"](\w+)['"]/g },
+  // Anthropic
+  { framework: 'anthropic', pattern: /\{\s*name:\s*['"](\w+)['"][^}]*input_schema:/g },
+  // MCP
+  { framework: 'mcp', pattern: /server\.tool\(\s*['"](\w+)['"]/g },
+  { framework: 'mcp', pattern: /registerTool\(\s*['"](\w+)['"]/g },
+  { framework: 'mcp', pattern: /\.addTool\(\s*['"](\w+)['"]/g },
+  // Generic (Python @tool decorator)
+  { framework: 'generic', pattern: /@tool[^)]*\)\s*\n\s*(?:def|async\s+def)\s+(\w+)/g },
+];
+
 // --- Main scan function ---
 
 export const scanPermissions = (ctx: ScanContext): DiscoveredPermissions => {
@@ -312,5 +363,41 @@ export const scanPermissions = (ctx: ScanContext): DiscoveredPermissions => {
     denied,
     mcpServers,
     humanApprovalRequired,
+  };
+};
+
+// --- Detailed scan with framework-specific patterns ---
+
+export const scanPermissionsDetailed = (ctx: ScanContext): DiscoveredPermissionsDetailed => {
+  const base = scanPermissions(ctx);
+
+  const sourceFiles = ctx.files.filter((f) =>
+    isSourceFile(f.relativePath, f.extension),
+  );
+
+  // Detect tools with framework-specific patterns
+  const toolsDetailed: DiscoveredTool[] = [];
+  const toolNames = new Set<string>();
+
+  for (const file of sourceFiles) {
+    for (const { framework, pattern } of FRAMEWORK_TOOL_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(file.content)) !== null) {
+        toolsDetailed.push({
+          name: match[1],
+          framework,
+          file: file.relativePath,
+          line: getLineNumber(file.content, match.index),
+        });
+        toolNames.add(match[1]);
+      }
+    }
+  }
+
+  return {
+    ...base,
+    tools: [...toolNames],
+    toolsDetailed,
   };
 };

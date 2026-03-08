@@ -39,6 +39,32 @@ export interface ManifestBuildInput {
   readonly overrides?: Record<string, unknown>;
 }
 
+// --- Tracked passport fields for confidence calculation ---
+// Add new fields here when extending the passport schema.
+
+export const ALL_PASSPORT_FIELDS: readonly string[] = [
+  // Auto-fillable (conditional on discovery results)
+  'name', 'display_name', 'framework', 'model.provider', 'model.model_id',
+  'autonomy_level', 'type', 'autonomy_evidence',
+  'permissions.tools', 'permissions.data_access', 'permissions.denied',
+  'permissions.data_boundaries',
+  'constraints.human_approval_required', 'constraints.escalation_rules',
+  'compliance.risk_class', 'compliance.complior_score', 'compliance.last_scan',
+  'interop.mcp_servers',
+  // Manual (always need human input)
+  'owner.team', 'owner.contact', 'owner.responsible_person',
+  'disclosure.user_facing', 'disclosure.disclosure_text', 'disclosure.ai_marking',
+  'constraints.rate_limits', 'constraints.budget',
+  'lifecycle.deployed_since', 'lifecycle.next_review',
+  'description',
+  'permissions.data_boundaries.geographic_restrictions',
+  'permissions.data_boundaries.prohibited_data_types',
+  // Default-filled (always present, no user input needed)
+  'model.deployment', 'model.data_residency',
+  'logging.actions_logged', 'logging.retention_days', 'logging.includes_decision_rationale',
+  'lifecycle.review_frequency_days', 'lifecycle.status',
+];
+
 // --- Helpers ---
 
 const inferRiskClass = (level: AutonomyLevel): PassportRiskClass => {
@@ -111,6 +137,9 @@ export const buildManifest = (
       delete: [...permissions.dataAccess.delete],
     },
     denied: [...permissions.denied],
+    data_boundaries: {
+      pii_handling: 'redact',
+    },
   };
 
   // --- Constraints ---
@@ -119,6 +148,14 @@ export const buildManifest = (
     budget: { max_cost_per_session_usd: 5.0 },
     human_approval_required: [...permissions.humanApprovalRequired],
     prohibited_actions: [],
+    escalation_rules: permissions.humanApprovalRequired.length > 0
+      ? permissions.humanApprovalRequired.map((action) => ({
+          condition: `action == "${action}"`,
+          action: 'require_approval' as const,
+          description: `Human approval required for: ${action}`,
+          timeout_minutes: 5,
+        }))
+      : undefined,
   };
 
   // --- Compliance ---
@@ -189,8 +226,11 @@ export const buildManifest = (
   )
     autoFilledFields.push('permissions.data_access');
   if (permissions.denied.length > 0) autoFilledFields.push('permissions.denied');
-  if (permissions.humanApprovalRequired.length > 0)
+  autoFilledFields.push('permissions.data_boundaries');
+  if (permissions.humanApprovalRequired.length > 0) {
     autoFilledFields.push('constraints.human_approval_required');
+    autoFilledFields.push('constraints.escalation_rules');
+  }
 
   // Compliance
   autoFilledFields.push('compliance.risk_class');
@@ -214,10 +254,11 @@ export const buildManifest = (
     'lifecycle.deployed_since',
     'lifecycle.next_review',
     'description',
+    'permissions.data_boundaries.geographic_restrictions',
+    'permissions.data_boundaries.prohibited_data_types',
   );
 
-  const totalFields = 36;
-  const confidence = autoFilledFields.length / totalFields;
+  const confidence = autoFilledFields.length / ALL_PASSPORT_FIELDS.length;
 
   const source: SourceBlock = {
     mode: 'auto',

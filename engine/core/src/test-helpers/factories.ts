@@ -6,6 +6,7 @@ import type {
   ProjectProfile,
 } from '../types/common.types.js';
 import type { AgentManifest } from '../types/passport.types.js';
+import type { FileInfo, ScanContext } from '../ports/scanner.port.js';
 
 export const createMockFinding = (overrides?: Partial<Finding>): Finding => ({
   checkId: 'CHECK-001',
@@ -101,3 +102,15 @@ export const createMockManifest = (overrides?: Partial<AgentManifest>): AgentMan
   signature: { algorithm: 'ed25519', public_key: 'test', signed_at: '2026-01-01T00:00:00Z', hash: 'sha256:test', value: 'test' },
   ...overrides,
 } as AgentManifest);
+
+export const createScanFile = (relativePath: string, content: string): FileInfo => ({
+  path: `/test/project/${relativePath}`,
+  content,
+  extension: `.${relativePath.split('.').pop()}`,
+  relativePath,
+});
+
+export const createScanCtx = (files: readonly FileInfo[]): ScanContext => ({
+  files,
+  projectPath: '/test/project',
+});

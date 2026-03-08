@@ -1,23 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { runLayer3, layer3ToCheckResults } from './layer3-config.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
-
-const createFile = (relativePath: string, content: string): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension: `.${relativePath.split('.').pop()}`,
-  relativePath,
-});
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 
 describe('runLayer3', () => {
   it('detects AI SDK in package.json (npm project)', () => {
-    const ctx = createCtx([
-      createFile('package.json', JSON.stringify({
+    const ctx = createScanCtx([
+      createScanFile('package.json', JSON.stringify({
         dependencies: {
           'openai': '^4.56.0',
           'express': '^4.18.0',
@@ -33,8 +21,8 @@ describe('runLayer3', () => {
   });
 
   it('detects prohibited package in requirements.txt (pip project)', () => {
-    const ctx = createCtx([
-      createFile('requirements.txt', `anthropic>=0.7.0
+    const ctx = createScanCtx([
+      createScanFile('requirements.txt', `anthropic>=0.7.0
 deepface==1.0.2
 flask>=2.0.0
 `),
@@ -57,8 +45,8 @@ flask>=2.0.0
   });
 
   it('detects AI SDK in go.mod (Go project)', () => {
-    const ctx = createCtx([
-      createFile('go.mod', `module myapp
+    const ctx = createScanCtx([
+      createScanFile('go.mod', `module myapp
 
 go 1.21
 
@@ -77,12 +65,12 @@ require (
   });
 
   it('aggregates mixed dependencies (npm + pip + .env)', () => {
-    const ctx = createCtx([
-      createFile('package.json', JSON.stringify({
+    const ctx = createScanCtx([
+      createScanFile('package.json', JSON.stringify({
         dependencies: { 'openai': '^4.0.0' },
       })),
-      createFile('requirements.txt', 'anthropic>=0.7.0\n'),
-      createFile('.env', 'OPENAI_API_KEY=sk-xxx\nLOG_LEVEL=info\nSENTRY_DSN=https://xxx\n'),
+      createScanFile('requirements.txt', 'anthropic>=0.7.0\n'),
+      createScanFile('.env', 'OPENAI_API_KEY=sk-xxx\nLOG_LEVEL=info\nSENTRY_DSN=https://xxx\n'),
     ]);
 
     const results = runLayer3(ctx);
@@ -98,8 +86,8 @@ require (
   });
 
   it('returns no AI SDK findings for non-AI project', () => {
-    const ctx = createCtx([
-      createFile('package.json', JSON.stringify({
+    const ctx = createScanCtx([
+      createScanFile('package.json', JSON.stringify({
         dependencies: {
           'express': '^4.18.0',
           'react': '^18.2.0',

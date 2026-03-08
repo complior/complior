@@ -1,23 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { checkDocumentation } from './documentation.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
-
-const createFile = (relativePath: string, content: string, extension = '.md'): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension,
-  relativePath,
-});
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 
 describe('checkDocumentation', () => {
   it('passes when COMPLIANCE.md exists', () => {
-    const ctx = createCtx([
-      createFile('COMPLIANCE.md', '# Compliance Documentation'),
+    const ctx = createScanCtx([
+      createScanFile('COMPLIANCE.md', '# Compliance Documentation'),
     ]);
 
     const results = checkDocumentation(ctx);
@@ -28,8 +16,8 @@ describe('checkDocumentation', () => {
   });
 
   it('passes when .complior/ directory has files', () => {
-    const ctx = createCtx([
-      createFile('.complior/config.json', '{"version": "1.0"}', '.json'),
+    const ctx = createScanCtx([
+      createScanFile('.complior/config.json', '{"version": "1.0"}'),
     ]);
 
     const results = checkDocumentation(ctx);
@@ -39,8 +27,8 @@ describe('checkDocumentation', () => {
   });
 
   it('passes when docs/ contains compliance content', () => {
-    const ctx = createCtx([
-      createFile('docs/regulatory.md', 'This document covers EU AI Act compliance requirements'),
+    const ctx = createScanCtx([
+      createScanFile('docs/regulatory.md', 'This document covers EU AI Act compliance requirements'),
     ]);
 
     const results = checkDocumentation(ctx);
@@ -50,8 +38,8 @@ describe('checkDocumentation', () => {
   });
 
   it('fails when no compliance documentation found', () => {
-    const ctx = createCtx([
-      createFile('README.md', '# My Project\nA simple web app'),
+    const ctx = createScanCtx([
+      createScanFile('README.md', '# My Project\nA simple web app'),
     ]);
 
     const results = checkDocumentation(ctx);
@@ -66,8 +54,8 @@ describe('checkDocumentation', () => {
   });
 
   it('fails when docs/ has unrelated content', () => {
-    const ctx = createCtx([
-      createFile('docs/setup.md', '# Setup Guide\nRun npm install'),
+    const ctx = createScanCtx([
+      createScanFile('docs/setup.md', '# Setup Guide\nRun npm install'),
     ]);
 
     const results = checkDocumentation(ctx);
@@ -77,8 +65,8 @@ describe('checkDocumentation', () => {
   });
 
   it('detects case-insensitive compliance doc names', () => {
-    const ctx = createCtx([
-      createFile('compliance.md', '# compliance info'),
+    const ctx = createScanCtx([
+      createScanFile('compliance.md', '# compliance info'),
     ]);
 
     const results = checkDocumentation(ctx);
@@ -88,8 +76,8 @@ describe('checkDocumentation', () => {
   });
 
   it('detects AI-COMPLIANCE named files', () => {
-    const ctx = createCtx([
-      createFile('AI-COMPLIANCE.md', '# AI Compliance'),
+    const ctx = createScanCtx([
+      createScanFile('AI-COMPLIANCE.md', '# AI Compliance'),
     ]);
 
     const results = checkDocumentation(ctx);

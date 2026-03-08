@@ -30,6 +30,15 @@ export interface ModelInfo {
   readonly data_residency: string;
 }
 
+export type PiiHandlingMode = 'block' | 'redact' | 'allow';
+
+export interface DataBoundaries {
+  readonly pii_handling: PiiHandlingMode;
+  readonly geographic_restrictions?: readonly string[];
+  readonly retention_days?: number;
+  readonly prohibited_data_types?: readonly string[];
+}
+
 export interface PermissionsBlock {
   readonly tools: readonly string[];
   readonly data_access: {
@@ -38,6 +47,16 @@ export interface PermissionsBlock {
     readonly delete: readonly string[];
   };
   readonly denied: readonly string[];
+  readonly data_boundaries?: DataBoundaries;
+}
+
+export type EscalationAction = 'require_approval' | 'notify' | 'block' | 'log';
+
+export interface EscalationRule {
+  readonly condition: string;
+  readonly action: EscalationAction;
+  readonly description: string;
+  readonly timeout_minutes?: number;
 }
 
 export interface ConstraintsBlock {
@@ -45,6 +64,7 @@ export interface ConstraintsBlock {
   readonly budget: { readonly max_cost_per_session_usd: number };
   readonly human_approval_required: readonly string[];
   readonly prohibited_actions: readonly string[];
+  readonly escalation_rules?: readonly EscalationRule[];
 }
 
 export interface ComplianceBlock {
@@ -178,6 +198,13 @@ const ModelInfoSchema = z.object({
   data_residency: z.string(),
 });
 
+const DataBoundariesSchema = z.object({
+  pii_handling: z.enum(['block', 'redact', 'allow']),
+  geographic_restrictions: z.array(z.string()).optional(),
+  retention_days: z.number().int().min(0).optional(),
+  prohibited_data_types: z.array(z.string()).optional(),
+});
+
 const PermissionsBlockSchema = z.object({
   tools: z.array(z.string()),
   data_access: z.object({
@@ -186,6 +213,14 @@ const PermissionsBlockSchema = z.object({
     delete: z.array(z.string()),
   }),
   denied: z.array(z.string()),
+  data_boundaries: DataBoundariesSchema.optional(),
+});
+
+const EscalationRuleSchema = z.object({
+  condition: z.string(),
+  action: z.enum(['require_approval', 'notify', 'block', 'log']),
+  description: z.string(),
+  timeout_minutes: z.number().int().min(0).optional(),
 });
 
 const ConstraintsBlockSchema = z.object({
@@ -193,6 +228,7 @@ const ConstraintsBlockSchema = z.object({
   budget: z.object({ max_cost_per_session_usd: z.number().min(0) }),
   human_approval_required: z.array(z.string()),
   prohibited_actions: z.array(z.string()),
+  escalation_rules: z.array(EscalationRuleSchema).optional(),
 });
 
 const ComplianceBlockSchema = z.object({

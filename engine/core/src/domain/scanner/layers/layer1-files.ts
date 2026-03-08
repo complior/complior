@@ -8,6 +8,8 @@ import { checkComplianceMetadata } from '../checks/compliance-metadata.js';
 import { checkDocumentation } from '../checks/documentation.js';
 import { checkPassportPresence } from '../checks/passport-presence.js';
 import { checkPassportCompleteness } from '../checks/passport-completeness.js';
+import { checkPermissions } from '../checks/permission-scanner.js';
+import { checkBehavioralConstraints } from '../checks/behavioral-constraints.js';
 
 export const L1_CHECKS: readonly CheckFunction[] = [
   checkAiDisclosure,
@@ -19,4 +21,6 @@ export const L1_CHECKS: readonly CheckFunction[] = [
   checkDocumentation,
   checkPassportPresence,
   checkPassportCompleteness,
+  checkPermissions,
+  checkBehavioralConstraints,
 ];

@@ -1,23 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { checkInteractionLogging } from './interaction-logging.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
-
-const createFile = (relativePath: string, content: string, extension = '.ts'): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension,
-  relativePath,
-});
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 
 describe('checkInteractionLogging', () => {
   it('passes when structured logging with fields found', () => {
-    const ctx = createCtx([
-      createFile('src/logger.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/logger.ts', `
         import pino from 'pino';
         const logger = pino();
         logger.info({ timestamp: Date.now(), session_id: sid, input, output });
@@ -32,8 +20,8 @@ describe('checkInteractionLogging', () => {
   });
 
   it('fails with critical severity when AI API calls exist without logging', () => {
-    const ctx = createCtx([
-      createFile('src/ai.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/ai.ts', `
         import OpenAI from 'openai';
         const client = new OpenAI();
         const result = await client.chat.completions.create({ model: 'gpt-4' });
@@ -52,12 +40,12 @@ describe('checkInteractionLogging', () => {
   });
 
   it('fails with high severity when logging exists but missing fields', () => {
-    const ctx = createCtx([
-      createFile('src/ai.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/ai.ts', `
         import OpenAI from 'openai';
         const client = new OpenAI();
       `),
-      createFile('src/logger.ts', `
+      createScanFile('src/logger.ts', `
         import winston from 'winston';
         const logger = winston.createLogger();
         logger.info('something happened');
@@ -74,8 +62,8 @@ describe('checkInteractionLogging', () => {
   });
 
   it('skips when no AI API calls detected', () => {
-    const ctx = createCtx([
-      createFile('src/app.ts', 'function hello() { return "world"; }'),
+    const ctx = createScanCtx([
+      createScanFile('src/app.ts', 'function hello() { return "world"; }'),
     ]);
 
     const results = checkInteractionLogging(ctx);
@@ -85,8 +73,8 @@ describe('checkInteractionLogging', () => {
   });
 
   it('detects Vercel AI SDK patterns', () => {
-    const ctx = createCtx([
-      createFile('src/chat.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/chat.ts', `
         import { generateText } from 'ai';
         const result = await generateText({ model, prompt });
       `),
@@ -99,8 +87,8 @@ describe('checkInteractionLogging', () => {
   });
 
   it('passes with audit-log and request_id fields', () => {
-    const ctx = createCtx([
-      createFile('src/service.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/service.ts', `
         import { anthropic } from '@anthropic-ai/sdk';
         const auditLog = { request_id: uuid(), timestamp: now() };
       `),

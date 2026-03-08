@@ -11,19 +11,7 @@ import {
 } from './confidence.js';
 import type { CheckWithConfidence } from './confidence.js';
 import { createScanner } from './create-scanner.js';
-import type { ScanContext, FileInfo } from '../../ports/scanner.port.js';
-
-const createFile = (relativePath: string, content: string): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension: `.${relativePath.split('.').pop()}`,
-  relativePath,
-});
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
+import { createScanFile, createScanCtx } from '../../test-helpers/factories.js';
 
 describe('getConfidenceLevel', () => {
   it('returns PASS for high-confidence pass', () => {
@@ -175,12 +163,12 @@ describe('confidenceScoreMultiplier', () => {
 describe('scanner integration — confidence in findings', () => {
   it('attaches confidence to findings in full scan (all PASS)', () => {
     const scanner = createScanner();
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', '# AI Literacy\n## Training Program\n## Training Levels\n## Assessment Methods'),
-      createFile('ART5-SCREENING.md', '# Screening\n## Prohibited Practices\n## Screening Results\n## Mitigations'),
-      createFile('COMPLIANCE.md', '# EU AI Act Compliance\nRisk assessment documentation'),
-      createFile('.complior/config.json', '{"version":"1.0"}'),
-      createFile('.well-known/ai-compliance.json', '{"compliant":true}'),
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', '# AI Literacy\n## Training Program\n## Training Levels\n## Assessment Methods'),
+      createScanFile('ART5-SCREENING.md', '# Screening\n## Prohibited Practices\n## Screening Results\n## Mitigations'),
+      createScanFile('COMPLIANCE.md', '# EU AI Act Compliance\nRisk assessment documentation'),
+      createScanFile('.complior/config.json', '{"version":"1.0"}'),
+      createScanFile('.well-known/ai-compliance.json', '{"compliant":true}'),
     ]);
 
     const result = scanner.scan(ctx);
@@ -200,12 +188,12 @@ describe('scanner integration — confidence in findings', () => {
 
   it('attaches confidence to mixed findings', () => {
     const scanner = createScanner();
-    const ctx = createCtx([
-      createFile('src/chat.tsx', `
+    const ctx = createScanCtx([
+      createScanFile('src/chat.tsx', `
 import OpenAI from 'openai';
 const response = await openai.chat.completions.create({ model: 'gpt-4' });
       `),
-      createFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
+      createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
     ]);
 
     const result = scanner.scan(ctx);
@@ -220,10 +208,10 @@ const response = await openai.chat.completions.create({ model: 'gpt-4' });
 
   it('confidence summary counts all levels correctly', () => {
     const scanner = createScanner();
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', '# Policy\n## Training Program\n## Training Levels\n## Assessment Methods'),
-      createFile('package.json', '{"dependencies":{"openai":"^4.0.0","express":"^4.0.0"}}'),
-      createFile('src/app.ts', `
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', '# Policy\n## Training Program\n## Training Levels\n## Assessment Methods'),
+      createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0","express":"^4.0.0"}}'),
+      createScanFile('src/app.ts', `
 const res = await openai.chat.completions.create({ model: 'gpt-4' });
       `),
     ]);

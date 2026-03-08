@@ -52,6 +52,8 @@ export const OBLIGATION_FIELD_MAP: readonly ObligationFieldMapping[] = [
   { field: 'constraints.rate_limits.max_actions_per_minute', obligation: 'OBL-009', article: 'Art.9(2)', description: 'Rate limits for risk mitigation', required: false },
   { field: 'constraints.human_approval_required', obligation: 'OBL-014', article: 'Art.14(4)', description: 'Actions requiring human approval', required: true },
   { field: 'constraints.prohibited_actions', obligation: 'OBL-005', article: 'Art.5', description: 'Prohibited AI practices', required: true },
+  { field: 'constraints.escalation_rules', obligation: 'OBL-014', article: 'Art.14(4)', description: 'Structured escalation rules for human oversight', required: false },
+  { field: 'permissions.data_boundaries', obligation: 'OBL-009', article: 'Art.9(2)', description: 'Data handling boundaries including PII and geographic restrictions', required: false },
 
   // Compliance (Art.9 — Risk management system)
   { field: 'compliance.eu_ai_act.risk_class', obligation: 'OBL-009', article: 'Art.9(1)', description: 'AI Act risk classification', required: true },
@@ -89,11 +91,9 @@ export const getFieldValue = (manifest: AgentManifest, fieldPath: string): unkno
 // --- Helpers ---
 
 export const isNonEmpty = (value: unknown): boolean => {
-  if (value === null || value === undefined) return false;
-  if (typeof value === 'string') return value.length > 0;
-  if (typeof value === 'number') return true;
-  if (typeof value === 'boolean') return true;
+  if (value === null || value === undefined || value === '') return false;
   if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length > 0;
   return true;
 };
 

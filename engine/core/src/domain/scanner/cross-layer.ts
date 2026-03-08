@@ -203,6 +203,31 @@ const passportCodeMismatch: CrossLayerRule = {
   },
 };
 
+// Rule 7: Undeclared permissions + bare LLM calls — compounding governance failure
+const permissionPassportMismatch: CrossLayerRule = {
+  id: 'cross-permission-passport-mismatch',
+  description: 'Undeclared permissions combined with unwrapped LLM calls — compounding governance failure',
+  check: (l1Results, _l2, _l3, l4Results) => {
+    const undeclaredCount = l1Results.filter(
+      (r) => r.type === 'fail' && r.checkId === 'undeclared-permission',
+    ).length;
+    const hasBareLlm = l4Results.some(
+      (r) => r.category === 'bare-llm' && r.status === 'FOUND',
+    );
+
+    if (undeclaredCount === 0 || !hasBareLlm) return [];
+
+    return [{
+      ruleId: 'cross-permission-passport-mismatch',
+      description: `${undeclaredCount} undeclared permission(s) with unwrapped LLM calls — compounding governance failure per Art. 26(4)`,
+      severity: 'critical',
+      layers: ['L1', 'L4'],
+      obligationId: 'eu-ai-act-OBL-011',
+      article: 'Art. 26(4)',
+    }];
+  },
+};
+
 export const CROSS_LAYER_RULES: readonly CrossLayerRule[] = [
   docCodeMismatch,
   sdkNoDisclosure,
@@ -210,6 +235,7 @@ export const CROSS_LAYER_RULES: readonly CrossLayerRule[] = [
   loggingNoRetention,
   killSwitchWithoutTest,
   passportCodeMismatch,
+  permissionPassportMismatch,
 ];
 
 export const runCrossLayerChecks = (

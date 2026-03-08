@@ -1,5 +1,7 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
+import { filterPassportManifests, extractRiskClass } from '../../passport/manifest-files.js';
+import { isNonEmpty } from '../../passport/obligation-field-map.js';
 
 const CHECK_ID = 'passport-completeness';
 const ARTICLE_REF = 'Art. 26(4)';
@@ -16,17 +18,6 @@ const ALL_FIELDS = [
 const HIGH_RISK_FIELDS = ALL_FIELDS;
 const LIMITED_RISK_FIELDS = ALL_FIELDS.slice(0, 12);
 
-const isNonEmpty = (value: unknown): boolean => {
-  if (value === undefined || value === null || value === '') return false;
-  if (typeof value === 'object' && !Array.isArray(value)) {
-    return Object.keys(value as Record<string, unknown>).length > 0;
-  }
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  return true;
-};
-
 const countFields = (manifest: Record<string, unknown>, fields: readonly string[]): number => {
   let filled = 0;
   for (const field of fields) {
@@ -38,10 +29,7 @@ const countFields = (manifest: Record<string, unknown>, fields: readonly string[
 };
 
 export const checkPassportCompleteness = (ctx: ScanContext): readonly CheckResult[] => {
-  const passportFiles = ctx.files.filter((f) =>
-    f.relativePath.includes('.complior/agents/') &&
-    f.relativePath.endsWith('-manifest.json'),
-  );
+  const passportFiles = filterPassportManifests(ctx.files);
 
   if (passportFiles.length === 0) {
     return [];
@@ -52,9 +40,7 @@ export const checkPassportCompleteness = (ctx: ScanContext): readonly CheckResul
   for (const file of passportFiles) {
     try {
       const manifest = JSON.parse(file.content) as Record<string, unknown>;
-      const riskClass = (manifest.compliance as Record<string, unknown> | undefined)
-        ?.eu_ai_act as Record<string, unknown> | undefined;
-      const risk = (riskClass?.risk_class as string) ?? 'limited';
+      const risk = extractRiskClass(manifest);
 
       const requiredFields = risk === 'high' || risk === 'prohibited'
         ? HIGH_RISK_FIELDS

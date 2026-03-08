@@ -51,8 +51,8 @@ const makeL4 = (overrides: Partial<L4CheckResult> = {}): L4CheckResult => ({
 });
 
 describe('CROSS_LAYER_RULES', () => {
-  it('has 6 rules defined', () => {
-    expect(CROSS_LAYER_RULES).toHaveLength(6);
+  it('has 7 rules defined', () => {
+    expect(CROSS_LAYER_RULES).toHaveLength(7);
   });
 
   it('all rules have id and description', () => {
@@ -280,6 +280,49 @@ describe('cross-passport-code-mismatch', () => {
     );
 
     const mismatch = findings.find((f) => f.ruleId === 'cross-passport-code-mismatch');
+    expect(mismatch).toBeUndefined();
+  });
+});
+
+describe('cross-permission-passport-mismatch', () => {
+  it('fires when undeclared-permission fail + bare-llm FOUND', () => {
+    const findings = runCrossLayerChecks(
+      [
+        makeL1Fail('undeclared-permission'),
+        makeL1Fail('undeclared-permission'),
+      ],
+      [],
+      [],
+      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
+    );
+
+    const mismatch = findings.find((f) => f.ruleId === 'cross-permission-passport-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch?.severity).toBe('critical');
+    expect(mismatch?.description).toContain('2 undeclared');
+  });
+
+  it('does not fire when only undeclared without bare-llm', () => {
+    const findings = runCrossLayerChecks(
+      [makeL1Fail('undeclared-permission')],
+      [],
+      [],
+      [],
+    );
+
+    const mismatch = findings.find((f) => f.ruleId === 'cross-permission-passport-mismatch');
+    expect(mismatch).toBeUndefined();
+  });
+
+  it('does not fire when only bare-llm without undeclared', () => {
+    const findings = runCrossLayerChecks(
+      [],
+      [],
+      [],
+      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
+    );
+
+    const mismatch = findings.find((f) => f.ruleId === 'cross-permission-passport-mismatch');
     expect(mismatch).toBeUndefined();
   });
 });

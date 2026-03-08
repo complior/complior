@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildManifest } from './manifest-builder.js';
+import { buildManifest, ALL_PASSPORT_FIELDS } from './manifest-builder.js';
 import type { ManifestBuildInput } from './manifest-builder.js';
 import type { ScanResult } from '../../types/common.types.js';
 
@@ -137,13 +137,38 @@ describe('buildManifest', () => {
   it('calculates source confidence', () => {
     const manifest = buildManifest(testInput);
 
-    // confidence = auto-filled fields / 36
     expect(manifest.source.confidence).toBeGreaterThan(0);
     expect(manifest.source.confidence).toBeLessThanOrEqual(1);
     expect(manifest.source.fields_auto_filled.length).toBeGreaterThan(0);
     expect(manifest.source.fields_manual.length).toBeGreaterThan(0);
     expect(manifest.source.confidence).toBe(
-      manifest.source.fields_auto_filled.length / 36,
+      manifest.source.fields_auto_filled.length / ALL_PASSPORT_FIELDS.length,
     );
+  });
+
+  it('auto-fills data_boundaries.pii_handling to redact', () => {
+    const manifest = buildManifest(testInput);
+
+    expect(manifest.permissions.data_boundaries).toBeDefined();
+    expect(manifest.permissions.data_boundaries!.pii_handling).toBe('redact');
+  });
+
+  it('auto-fills escalation_rules from humanApprovalRequired', () => {
+    const manifest = buildManifest(testInput);
+
+    expect(manifest.constraints.escalation_rules).toBeDefined();
+    expect(manifest.constraints.escalation_rules).toHaveLength(1);
+    expect(manifest.constraints.escalation_rules![0].condition).toBe('action == "delete_account"');
+    expect(manifest.constraints.escalation_rules![0].action).toBe('require_approval');
+    expect(manifest.constraints.escalation_rules![0].timeout_minutes).toBe(5);
+  });
+
+  it('sets escalation_rules to undefined when no human approvals', () => {
+    const manifest = buildManifest({
+      ...testInput,
+      permissions: { ...testInput.permissions, humanApprovalRequired: [] },
+    });
+
+    expect(manifest.constraints.escalation_rules).toBeUndefined();
   });
 });

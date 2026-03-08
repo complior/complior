@@ -1,24 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { checkPassportPresence } from './passport-presence.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
-
-const createFile = (relativePath: string, content: string): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension: `.${relativePath.split('.').pop()}`,
-  relativePath,
-});
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 
 describe('checkPassportPresence', () => {
   it('passes when passport manifest found', () => {
-    const ctx = createCtx([
-      createFile('.complior/agents/my-bot-manifest.json', '{"name":"my-bot"}'),
-      createFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/my-bot-manifest.json', '{"name":"my-bot"}'),
+      createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
     ]);
 
     const results = checkPassportPresence(ctx);
@@ -28,9 +16,9 @@ describe('checkPassportPresence', () => {
   });
 
   it('fails when AI SDK detected but no passport', () => {
-    const ctx = createCtx([
-      createFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
-      createFile('src/app.ts', 'const x = 1;'),
+    const ctx = createScanCtx([
+      createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
+      createScanFile('src/app.ts', 'const x = 1;'),
     ]);
 
     const results = checkPassportPresence(ctx);
@@ -43,9 +31,9 @@ describe('checkPassportPresence', () => {
   });
 
   it('skips when no AI SDK detected', () => {
-    const ctx = createCtx([
-      createFile('package.json', '{"dependencies":{"express":"^4.0.0"}}'),
-      createFile('src/app.ts', 'const x = 1;'),
+    const ctx = createScanCtx([
+      createScanFile('package.json', '{"dependencies":{"express":"^4.0.0"}}'),
+      createScanFile('src/app.ts', 'const x = 1;'),
     ]);
 
     const results = checkPassportPresence(ctx);
@@ -54,10 +42,10 @@ describe('checkPassportPresence', () => {
   });
 
   it('detects multiple passport manifests', () => {
-    const ctx = createCtx([
-      createFile('.complior/agents/bot-a-manifest.json', '{"name":"bot-a"}'),
-      createFile('.complior/agents/bot-b-manifest.json', '{"name":"bot-b"}'),
-      createFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/bot-a-manifest.json', '{"name":"bot-a"}'),
+      createScanFile('.complior/agents/bot-b-manifest.json', '{"name":"bot-b"}'),
+      createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
     ]);
 
     const results = checkPassportPresence(ctx);

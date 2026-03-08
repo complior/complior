@@ -11,16 +11,38 @@ import { createToolCallPermissionHook } from './hooks/post/permission-tool-calls
 import type { ToolCallAction, DeniedToolCall } from './hooks/post/permission-tool-calls.js';
 
 // --- Passport shape (subset of AgentManifest used by SDK) ---
+// Canonical types: engine/core/src/types/passport.types.ts
+// Keep in sync until shared @complior/types package is implemented.
+
+export type PiiHandlingMode = 'block' | 'redact' | 'allow';
+
+export interface DataBoundaries {
+  readonly pii_handling: PiiHandlingMode;
+  readonly geographic_restrictions?: readonly string[];
+  readonly retention_days?: number;
+  readonly prohibited_data_types?: readonly string[];
+}
+
+export type EscalationAction = 'require_approval' | 'notify' | 'block' | 'log';
+
+export interface EscalationRule {
+  readonly condition: string;
+  readonly action: EscalationAction;
+  readonly description: string;
+  readonly timeout_minutes?: number;
+}
 
 export interface AgentPassport {
   readonly permissions: {
     readonly tools: readonly string[];
     readonly denied: readonly string[];
+    readonly data_boundaries?: DataBoundaries;
   };
   readonly constraints: {
     readonly rate_limits: { readonly max_actions_per_minute: number };
     readonly budget: { readonly max_cost_per_session_usd: number };
     readonly prohibited_actions: readonly string[];
+    readonly escalation_rules?: readonly EscalationRule[];
   };
 }
 

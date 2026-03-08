@@ -1,23 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { checkAiDisclosure } from './ai-disclosure.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
-
-const createFile = (relativePath: string, content: string, extension = '.tsx'): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension,
-  relativePath,
-});
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 
 describe('checkAiDisclosure', () => {
   it('passes when AI disclosure text found in UI code', () => {
-    const ctx = createCtx([
-      createFile('src/components/Chat.tsx', '<p>This is an AI-powered assistant</p>'),
+    const ctx = createScanCtx([
+      createScanFile('src/components/Chat.tsx', '<p>This is an AI-powered assistant</p>'),
     ]);
 
     const results = checkAiDisclosure(ctx);
@@ -28,8 +16,8 @@ describe('checkAiDisclosure', () => {
   });
 
   it('passes when "artificial intelligence" disclosure found', () => {
-    const ctx = createCtx([
-      createFile('src/Bot.tsx', 'Powered by artificial intelligence technology'),
+    const ctx = createScanCtx([
+      createScanFile('src/Bot.tsx', 'Powered by artificial intelligence technology'),
     ]);
 
     const results = checkAiDisclosure(ctx);
@@ -39,8 +27,8 @@ describe('checkAiDisclosure', () => {
   });
 
   it('fails when chat code exists without disclosure', () => {
-    const ctx = createCtx([
-      createFile('src/components/ChatWidget.tsx', 'function ChatWidget() { return <div>chatbot interface</div> }'),
+    const ctx = createScanCtx([
+      createScanFile('src/components/ChatWidget.tsx', 'function ChatWidget() { return <div>chatbot interface</div> }'),
     ]);
 
     const results = checkAiDisclosure(ctx);
@@ -56,8 +44,8 @@ describe('checkAiDisclosure', () => {
   });
 
   it('fails when /api/chat endpoint exists without disclosure', () => {
-    const ctx = createCtx([
-      createFile('src/routes/chat.ts', 'app.post("/api/chat", handler)', '.ts'),
+    const ctx = createScanCtx([
+      createScanFile('src/routes/chat.ts', 'app.post("/api/chat", handler)'),
     ]);
 
     const results = checkAiDisclosure(ctx);
@@ -67,8 +55,8 @@ describe('checkAiDisclosure', () => {
   });
 
   it('skips when no chat or AI interaction code found', () => {
-    const ctx = createCtx([
-      createFile('src/App.tsx', 'function App() { return <div>Hello World</div> }'),
+    const ctx = createScanCtx([
+      createScanFile('src/App.tsx', 'function App() { return <div>Hello World</div> }'),
     ]);
 
     const results = checkAiDisclosure(ctx);
@@ -78,9 +66,9 @@ describe('checkAiDisclosure', () => {
   });
 
   it('passes when disclosure exists alongside chat code', () => {
-    const ctx = createCtx([
-      createFile('src/Chat.tsx', 'function Chat() { return <div>chatbot</div> }'),
-      createFile('src/Disclosure.tsx', '<p>This is an AI-powered system</p>'),
+    const ctx = createScanCtx([
+      createScanFile('src/Chat.tsx', 'function Chat() { return <div>chatbot</div> }'),
+      createScanFile('src/Disclosure.tsx', '<p>This is an AI-powered system</p>'),
     ]);
 
     const results = checkAiDisclosure(ctx);
@@ -90,8 +78,8 @@ describe('checkAiDisclosure', () => {
   });
 
   it('ignores non-UI file extensions', () => {
-    const ctx = createCtx([
-      createFile('data/chat.json', '{"chatbot": true}', '.json'),
+    const ctx = createScanCtx([
+      createScanFile('data/chat.json', '{"chatbot": true}'),
     ]);
 
     const results = checkAiDisclosure(ctx);

@@ -1,19 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { runLayer4, layer4ToCheckResults } from './layer4-patterns.js';
 import type { L3CheckResult } from './layer3-config.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
-
-const createFile = (relativePath: string, content: string, extension?: string): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension: extension ?? `.${relativePath.split('.').pop()}`,
-  relativePath,
-});
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 
 const withAiSdk: readonly L3CheckResult[] = [{
   type: 'ai-sdk-detected',
@@ -27,8 +15,8 @@ const noAiSdk: readonly L3CheckResult[] = [];
 
 describe('runLayer4', () => {
   it('detects bare LLM calls and missing disclosure in Next.js project', () => {
-    const ctx = createCtx([
-      createFile('src/api/chat.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/api/chat.ts', `
 import OpenAI from 'openai';
 const client = new OpenAI();
 const response = await openai.chat.completions.create({
@@ -52,8 +40,8 @@ const response = await openai.chat.completions.create({
   });
 
   it('detects bare LLM calls and logging in Express project', () => {
-    const ctx = createCtx([
-      createFile('src/api.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/api.ts', `
 import Anthropic from '@anthropic-ai/sdk';
 const client = new Anthropic();
 const msg = await anthropic.messages.create({
@@ -61,7 +49,7 @@ const msg = await anthropic.messages.create({
   messages: [],
 });
 `),
-      createFile('src/middleware/logger.ts', `
+      createScanFile('src/middleware/logger.ts', `
 export function logAiCall(req, res, input, output) {
   auditLog({ timestamp: Date.now(), input, output });
 }
@@ -78,13 +66,13 @@ export function logAiCall(req, res, input, output) {
   });
 
   it('returns no findings when no AI dependencies and no bare calls', () => {
-    const ctx = createCtx([
-      createFile('src/app.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/app.ts', `
 function main() {
   console.log('Hello world');
 }
 `),
-      createFile('src/utils.ts', `
+      createScanFile('src/utils.ts', `
 export function add(a: number, b: number) {
   return a + b;
 }
@@ -98,12 +86,12 @@ export function add(a: number, b: number) {
   });
 
   it('scans both .ts and .py files in multi-framework project', () => {
-    const ctx = createCtx([
-      createFile('frontend/src/chat.tsx', `
+    const ctx = createScanCtx([
+      createScanFile('frontend/src/chat.tsx', `
 const response = await openai.chat.completions.create({ model: 'gpt-4' });
 <div className="AIDisclosure">Powered by AI</div>
 `),
-      createFile('backend/api.py', `
+      createScanFile('backend/api.py', `
 import anthropic
 client = anthropic.Anthropic()
 message = anthropic.messages.create(model="claude-3")
@@ -122,10 +110,10 @@ message = anthropic.messages.create(model="claude-3")
   });
 
   it('ignores files in excluded directories', () => {
-    const ctx = createCtx([
-      createFile('node_modules/openai/index.js', `openai.chat.completions.create()`),
-      createFile('dist/api.js', `openai.chat.completions.create()`),
-      createFile('.git/hooks/pre-commit', `openai.chat.completions.create()`),
+    const ctx = createScanCtx([
+      createScanFile('node_modules/openai/index.js', `openai.chat.completions.create()`),
+      createScanFile('dist/api.js', `openai.chat.completions.create()`),
+      createScanFile('.git/hooks/pre-commit', `openai.chat.completions.create()`),
     ]);
 
     const results = runLayer4(ctx, withAiSdk);
@@ -137,8 +125,8 @@ message = anthropic.messages.create(model="claude-3")
 });
 
   it('detects data governance patterns', () => {
-    const ctx = createCtx([
-      createFile('src/data/validator.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/data/validator.ts', `
 export class DataValidator {
   validateData(input: unknown) { return true; }
   checkDataLineage(record: Record<string, unknown>) { return record; }
@@ -152,8 +140,8 @@ export class DataValidator {
   });
 
   it('detects record-keeping patterns', () => {
-    const ctx = createCtx([
-      createFile('src/audit/trail.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/audit/trail.ts', `
 export class AuditTrail {
   persistAudit(entry: unknown) {}
   complianceRecord(data: unknown) {}
@@ -167,8 +155,8 @@ export class AuditTrail {
   });
 
   it('detects accuracy/robustness patterns', () => {
-    const ctx = createCtx([
-      createFile('src/test/model-validation.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/test/model-validation.ts', `
 export function modelValidation(model: unknown) { return true; }
 export function adversarialTest(input: unknown) { return input; }
 `),
@@ -180,8 +168,8 @@ export function adversarialTest(input: unknown) { return input; }
   });
 
   it('detects cybersecurity patterns', () => {
-    const ctx = createCtx([
-      createFile('src/middleware/security.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/middleware/security.ts', `
 export const rateLimiter = new RateLimiter({ max: 100 });
 export function sanitizeInput(text: string) { return text.replace(/[<>]/g, ''); }
 `),
@@ -193,8 +181,8 @@ export function sanitizeInput(text: string) { return text.replace(/[<>]/g, ''); 
   });
 
   it('detects deployer monitoring patterns', () => {
-    const ctx = createCtx([
-      createFile('src/monitoring/drift.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/monitoring/drift.ts', `
 export class ModelMonitor {
   driftDetect(current: number[], baseline: number[]) {}
   reportIncident(details: unknown) {}
@@ -208,8 +196,8 @@ export class ModelMonitor {
   });
 
   it('detects GPAI transparency patterns', () => {
-    const ctx = createCtx([
-      createFile('src/docs/model-card.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/docs/model-card.ts', `
 export const modelCard = { name: 'gpt-4', capabilities: [], limitations: [] };
 `),
     ]);
@@ -220,8 +208,8 @@ export const modelCard = { name: 'gpt-4', capabilities: [], limitations: [] };
   });
 
   it('detects security risk: unsafe eval', () => {
-    const ctx = createCtx([
-      createFile('src/handler.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/handler.ts', `
 function handleRequest(req: any) {
   return eval(req.body.code);
 }
@@ -235,8 +223,8 @@ function handleRequest(req: any) {
   });
 
   it('detects security risk: pickle.load', () => {
-    const ctx = createCtx([
-      createFile('src/loader.py', `
+    const ctx = createScanCtx([
+      createScanFile('src/loader.py', `
 import pickle
 data = pickle.load(open('model.pkl', 'rb'))
 `),
@@ -248,8 +236,8 @@ data = pickle.load(open('model.pkl', 'rb'))
   });
 
   it('reports missing new positive categories when AI SDK detected', () => {
-    const ctx = createCtx([
-      createFile('src/app.ts', 'const x = 1;'),
+    const ctx = createScanCtx([
+      createScanFile('src/app.ts', 'const x = 1;'),
     ]);
 
     const results = runLayer4(ctx, withAiSdk);
@@ -263,8 +251,8 @@ data = pickle.load(open('model.pkl', 'rb'))
   });
 
   it('detects conformity assessment patterns', () => {
-    const ctx = createCtx([
-      createFile('src/compliance/declaration.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/compliance/declaration.ts', `
 export const conformityDeclaration = { system: 'AI', standard: 'EU AI Act' };
 `),
     ]);
@@ -275,14 +263,14 @@ export const conformityDeclaration = { system: 'AI', standard: 'EU AI Act' };
   });
 
   it('excludes test and spec files from pattern scanning', () => {
-    const ctx = createCtx([
-      createFile('src/api/chat.test.ts', `
+    const ctx = createScanCtx([
+      createScanFile('src/api/chat.test.ts', `
 const response = await openai.chat.completions.create({ model: 'gpt-4' });
 `),
-      createFile('src/api/chat.spec.ts', `
+      createScanFile('src/api/chat.spec.ts', `
 const response = await openai.chat.completions.create({ model: 'gpt-4' });
 `),
-      createFile('__tests__/api.ts', `
+      createScanFile('__tests__/api.ts', `
 const response = await openai.chat.completions.create({ model: 'gpt-4' });
 `),
     ]);

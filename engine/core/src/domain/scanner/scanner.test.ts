@@ -1,18 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createScanner } from './create-scanner.js';
-import type { ScanContext, FileInfo } from '../../ports/scanner.port.js';
-
-const createFile = (relativePath: string, content: string, extension?: string): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension: extension ?? `.${relativePath.split('.').pop()}`,
-  relativePath,
-});
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
+import { createScanFile, createScanCtx } from '../../test-helpers/factories.js';
 
 describe('createScanner', () => {
   it('returns a scanner with a scan method', () => {
@@ -24,7 +12,7 @@ describe('createScanner', () => {
 
   it('scans empty project and returns results', () => {
     const scanner = createScanner();
-    const ctx = createCtx([]);
+    const ctx = createScanCtx([]);
 
     const result = scanner.scan(ctx);
 
@@ -38,8 +26,8 @@ describe('createScanner', () => {
 
   it('produces findings for each check', () => {
     const scanner = createScanner();
-    const ctx = createCtx([
-      createFile('src/app.ts', 'function main() {}'),
+    const ctx = createScanCtx([
+      createScanFile('src/app.ts', 'function main() {}'),
     ]);
 
     const result = scanner.scan(ctx);
@@ -50,14 +38,14 @@ describe('createScanner', () => {
 
   it('detects compliance issues in a project with AI code but no compliance docs', () => {
     const scanner = createScanner();
-    const ctx = createCtx([
-      createFile('src/chat.tsx', `
+    const ctx = createScanCtx([
+      createScanFile('src/chat.tsx', `
         import OpenAI from 'openai';
         function ChatBot() {
           return <div>chatbot</div>;
         }
       `),
-      createFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}', '.json'),
+      createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
     ]);
 
     const result = scanner.scan(ctx);
@@ -80,24 +68,24 @@ describe('createScanner', () => {
 
   it('passes checks for a well-documented project', () => {
     const scanner = createScanner();
-    const ctx = createCtx([
-      createFile('src/Chat.tsx', `
+    const ctx = createScanCtx([
+      createScanFile('src/Chat.tsx', `
         <div>
           <p>This is an AI-powered assistant</p>
           <ChatWidget />
         </div>
       `),
-      createFile('src/logger.ts', `
+      createScanFile('src/logger.ts', `
         import pino from 'pino';
         const logger = pino();
         function logInteraction(session_id, input, output) {
           logger.info({ timestamp: Date.now(), session_id, input, output });
         }
       `),
-      createFile('COMPLIANCE.md', '# EU AI Act Compliance\nRisk assessment documentation'),
-      createFile('AI-LITERACY.md', '# AI Literacy Policy'),
-      createFile('.complior/config.json', '{"version":"1.0"}', '.json'),
-      createFile('.well-known/ai-compliance.json', '{"compliant":true}', '.json'),
+      createScanFile('COMPLIANCE.md', '# EU AI Act Compliance\nRisk assessment documentation'),
+      createScanFile('AI-LITERACY.md', '# AI Literacy Policy'),
+      createScanFile('.complior/config.json', '{"version":"1.0"}'),
+      createScanFile('.well-known/ai-compliance.json', '{"compliant":true}'),
     ]);
 
     const result = scanner.scan(ctx);
@@ -108,7 +96,7 @@ describe('createScanner', () => {
 
   it('includes placeholder score breakdown', () => {
     const scanner = createScanner();
-    const ctx = createCtx([]);
+    const ctx = createScanCtx([]);
 
     const result = scanner.scan(ctx);
 
@@ -119,8 +107,8 @@ describe('createScanner', () => {
 
   it('counts pass/fail/skip correctly in score', () => {
     const scanner = createScanner();
-    const ctx = createCtx([
-      createFile('COMPLIANCE.md', '# Compliance Documentation'),
+    const ctx = createScanCtx([
+      createScanFile('COMPLIANCE.md', '# Compliance Documentation'),
     ]);
 
     const result = scanner.scan(ctx);

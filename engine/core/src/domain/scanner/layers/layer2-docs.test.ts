@@ -1,19 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { runLayer2, validateDocument, loadValidators, measureSectionDepth } from './layer2-docs.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 import type { DocumentValidator } from './layer2-docs.js';
-
-const createFile = (relativePath: string, content: string): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension: `.${relativePath.split('.').pop()}`,
-  relativePath,
-});
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
 
 describe('loadValidators', () => {
   it('loads all 8 YAML validators', () => {
@@ -124,15 +112,15 @@ describe('runLayer2', () => {
   };
 
   it('validates all documents found by L1 (full compliance)', () => {
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', makeRichContent('AI Literacy', ['Training Program', 'Training Levels', 'Assessment Methods'])),
-      createFile('ART5-SCREENING.md', makeRichContent('Screening', ['Prohibited Practices', 'Screening Results', 'Mitigations'])),
-      createFile('FRIA.md', makeRichContent('FRIA', ['Risk Assessment', 'Impact Analysis', 'Mitigation Measures'])),
-      createFile('WORKER-NOTIFICATION.md', makeRichContent('Workers', ['Notification Scope', 'Affected Workers', 'Timeline'])),
-      createFile('TECH-DOCUMENTATION.md', makeRichContent('Tech', ['System Description', 'Architecture', 'Data Sources'])),
-      createFile('INCIDENT-REPORT.md', makeRichContent('Incident', ['Incident Description', 'Root Cause', 'Corrective Actions'])),
-      createFile('DECLARATION-OF-CONFORMITY.md', makeRichContent('DoC', ['Conformity Statement', 'Standards Applied', 'Evidence'])),
-      createFile('MONITORING-POLICY.md', makeRichContent('Monitoring', ['Monitoring Scope', 'Frequency', 'Escalation Procedures'])),
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', makeRichContent('AI Literacy', ['Training Program', 'Training Levels', 'Assessment Methods'])),
+      createScanFile('ART5-SCREENING.md', makeRichContent('Screening', ['Prohibited Practices', 'Screening Results', 'Mitigations'])),
+      createScanFile('FRIA.md', makeRichContent('FRIA', ['Risk Assessment', 'Impact Analysis', 'Mitigation Measures'])),
+      createScanFile('WORKER-NOTIFICATION.md', makeRichContent('Workers', ['Notification Scope', 'Affected Workers', 'Timeline'])),
+      createScanFile('TECH-DOCUMENTATION.md', makeRichContent('Tech', ['System Description', 'Architecture', 'Data Sources'])),
+      createScanFile('INCIDENT-REPORT.md', makeRichContent('Incident', ['Incident Description', 'Root Cause', 'Corrective Actions'])),
+      createScanFile('DECLARATION-OF-CONFORMITY.md', makeRichContent('DoC', ['Conformity Statement', 'Standards Applied', 'Evidence'])),
+      createScanFile('MONITORING-POLICY.md', makeRichContent('Monitoring', ['Monitoring Scope', 'Frequency', 'Escalation Procedures'])),
     ]);
 
     const results = runLayer2(ctx);
@@ -142,9 +130,9 @@ describe('runLayer2', () => {
   });
 
   it('skips documents not found by L1', () => {
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', makeRichContent('AI Literacy', ['Training Program', 'Training Levels', 'Assessment Methods'])),
-      createFile('src/app.ts', 'function main() {}'),
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', makeRichContent('AI Literacy', ['Training Program', 'Training Levels', 'Assessment Methods'])),
+      createScanFile('src/app.ts', 'function main() {}'),
     ]);
 
     const results = runLayer2(ctx);
@@ -156,8 +144,8 @@ describe('runLayer2', () => {
   });
 
   it('handles partial documents correctly', () => {
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', `# AI Literacy\n## Training Program\nContent only.`),
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', `# AI Literacy\n## Training Program\nContent only.`),
     ]);
 
     const results = runLayer2(ctx);
@@ -170,8 +158,8 @@ describe('runLayer2', () => {
   });
 
   it('handles empty documents correctly', () => {
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', ''),
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', ''),
     ]);
 
     const results = runLayer2(ctx);
@@ -181,8 +169,8 @@ describe('runLayer2', () => {
   });
 
   it('validates documents in nested directories', () => {
-    const ctx = createCtx([
-      createFile('docs/compliance/AI-LITERACY.md', makeRichContent('AI Literacy', ['Training Program', 'Training Levels', 'Assessment Methods'])),
+    const ctx = createScanCtx([
+      createScanFile('docs/compliance/AI-LITERACY.md', makeRichContent('AI Literacy', ['Training Program', 'Training Levels', 'Assessment Methods'])),
     ]);
 
     const results = runLayer2(ctx);
@@ -192,8 +180,8 @@ describe('runLayer2', () => {
   });
 
   it('detects SHALLOW documents with heading-only content', () => {
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', `# AI Literacy\n## Training Program\nBrief.\n## Training Levels\nTODO.\n## Assessment Methods\nPending.`),
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', `# AI Literacy\n## Training Program\nBrief.\n## Training Levels\nTODO.\n## Assessment Methods\nPending.`),
     ]);
 
     const results = runLayer2(ctx);
@@ -211,8 +199,8 @@ Key findings include a 95% compliance rate across all evaluated criteria.
 - Item 1: Detailed analysis of requirements
 - Item 2: Evidence of compliance measures`;
 
-    const ctx = createCtx([
-      createFile('AI-LITERACY.md', `# AI Literacy\n## Training Program\n${richSection}\n## Training Levels\n${richSection}\n## Assessment Methods\nBrief.`),
+    const ctx = createScanCtx([
+      createScanFile('AI-LITERACY.md', `# AI Literacy\n## Training Program\n${richSection}\n## Training Levels\n${richSection}\n## Assessment Methods\nBrief.`),
     ]);
 
     const results = runLayer2(ctx);

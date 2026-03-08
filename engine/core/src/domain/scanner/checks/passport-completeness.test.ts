@@ -1,18 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { checkPassportCompleteness } from './passport-completeness.js';
-import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
-
-const createFile = (relativePath: string, content: string): FileInfo => ({
-  path: `/test/project/${relativePath}`,
-  content,
-  extension: `.${relativePath.split('.').pop()}`,
-  relativePath,
-});
-
-const createCtx = (files: readonly FileInfo[]): ScanContext => ({
-  files,
-  projectPath: '/test/project',
-});
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 
 const fullManifest = JSON.stringify({
   name: 'test-bot',
@@ -37,8 +25,8 @@ const fullManifest = JSON.stringify({
 
 describe('checkPassportCompleteness', () => {
   it('passes for fully complete passport', () => {
-    const ctx = createCtx([
-      createFile('.complior/agents/test-bot-manifest.json', fullManifest),
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/test-bot-manifest.json', fullManifest),
     ]);
 
     const results = checkPassportCompleteness(ctx);
@@ -54,8 +42,8 @@ describe('checkPassportCompleteness', () => {
       description: 'A test bot',
       compliance: { eu_ai_act: { risk_class: 'limited' } },
     });
-    const ctx = createCtx([
-      createFile('.complior/agents/test-bot-manifest.json', partial),
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/test-bot-manifest.json', partial),
     ]);
 
     const results = checkPassportCompleteness(ctx);
@@ -71,8 +59,8 @@ describe('checkPassportCompleteness', () => {
       name: 'test-bot',
       compliance: { eu_ai_act: { risk_class: 'high' } },
     });
-    const ctx = createCtx([
-      createFile('.complior/agents/test-bot-manifest.json', minimal),
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/test-bot-manifest.json', minimal),
     ]);
 
     const results = checkPassportCompleteness(ctx);
@@ -98,8 +86,8 @@ describe('checkPassportCompleteness', () => {
       constraints: [],     // empty array — should NOT count
       compliance: { eu_ai_act: { risk_class: 'limited' } },
     });
-    const ctx = createCtx([
-      createFile('.complior/agents/test-bot-manifest.json', emptyNested),
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/test-bot-manifest.json', emptyNested),
     ]);
 
     const results = checkPassportCompleteness(ctx);
@@ -111,8 +99,8 @@ describe('checkPassportCompleteness', () => {
   });
 
   it('returns empty for no manifest files', () => {
-    const ctx = createCtx([
-      createFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
+    const ctx = createScanCtx([
+      createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
     ]);
 
     const results = checkPassportCompleteness(ctx);
