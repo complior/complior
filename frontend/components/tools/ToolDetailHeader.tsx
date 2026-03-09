@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { RiskBadge } from './RiskBadge';
+import { LifecycleBadge, SourceBadge } from './RegistryBadges';
 import type { AIToolDetail } from '@/lib/api';
 
 interface ToolDetailHeaderProps {
@@ -10,8 +11,10 @@ interface ToolDetailHeaderProps {
   onDelete: () => void;
   onReclassify?: () => void;
   onOpenFria?: () => void;
+  onLifecycleChange?: (lifecycle: string) => void;
   deleting: boolean;
   reclassifying?: boolean;
+  lifecycleUpdating?: boolean;
 }
 
 const DOMAIN_LABELS: Record<string, string> = {
@@ -29,7 +32,13 @@ const DOMAIN_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
-export function ToolDetailHeader({ tool, onDelete, onReclassify, onOpenFria, deleting, reclassifying }: ToolDetailHeaderProps) {
+const LIFECYCLE_ACTIONS: Record<string, { label: string; targets: string[] }> = {
+  active: { label: 'Suspend', targets: ['suspended'] },
+  suspended: { label: 'Reactivate', targets: ['active', 'decommissioned'] },
+  decommissioned: { label: '', targets: [] },
+};
+
+export function ToolDetailHeader({ tool, onDelete, onReclassify, onOpenFria, onLifecycleChange, deleting, reclassifying, lifecycleUpdating }: ToolDetailHeaderProps) {
   const t = useTranslations('toolDetail');
   const locale = useLocale();
 
@@ -84,6 +93,10 @@ export function ToolDetailHeader({ tool, onDelete, onReclassify, onOpenFria, del
                   {tool.modelProvider}{tool.modelId ? ` / ${tool.modelId}` : ''}
                 </span>
               )}
+              <LifecycleBadge lifecycle={tool.lifecycle || 'active'} />
+              {tool.source && tool.source !== 'manual' && (
+                <SourceBadge source={tool.source} />
+              )}
             </div>
           </div>
         </div>
@@ -112,6 +125,27 @@ export function ToolDetailHeader({ tool, onDelete, onReclassify, onOpenFria, del
               {t('completeFria')}
             </button>
           )}
+          {onLifecycleChange && (() => {
+            const lc = tool.lifecycle || 'active';
+            const actions = LIFECYCLE_ACTIONS[lc];
+            if (!actions || actions.targets.length === 0) return null;
+            return actions.targets.map((target) => (
+              <button
+                key={target}
+                onClick={() => onLifecycleChange(target)}
+                disabled={lifecycleUpdating}
+                className={`px-3.5 py-2 rounded-lg font-body text-xs font-bold border transition-all inline-flex items-center gap-1.5 ${
+                  target === 'decommissioned'
+                    ? 'text-[var(--coral)] border-transparent hover:bg-[rgba(231,76,60,0.06)] hover:border-[rgba(231,76,60,0.15)]'
+                    : target === 'active'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                {lifecycleUpdating ? '...' : target === 'suspended' ? 'Suspend' : target === 'active' ? 'Reactivate' : 'Decommission'}
+              </button>
+            ));
+          })()}
           <button
             onClick={onDelete}
             disabled={deleting}

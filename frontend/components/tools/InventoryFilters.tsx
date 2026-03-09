@@ -23,6 +23,21 @@ const STATUS_I18N: Record<string, string> = {
   non_compliant: 'statusNonCompliant',
 };
 
+const LIFECYCLE_KEYS = ['active', 'suspended', 'decommissioned'] as const;
+const LIFECYCLE_LABELS: Record<string, string> = {
+  active: 'Active',
+  suspended: 'Suspended',
+  decommissioned: 'Decommissioned',
+};
+
+const SOURCE_KEYS = ['manual', 'cli_scan', 'discovery', 'registry_autofill'] as const;
+const SOURCE_LABELS: Record<string, string> = {
+  manual: 'Manual',
+  cli_scan: 'CLI Scan',
+  discovery: 'Discovery',
+  registry_autofill: 'Registry',
+};
+
 const DOMAIN_KEYS = [
   'biometrics', 'critical_infrastructure', 'education', 'employment',
   'essential_services', 'law_enforcement', 'migration', 'justice',
@@ -30,7 +45,7 @@ const DOMAIN_KEYS = [
 ] as const;
 
 interface InventoryFiltersProps {
-  onFilter: (params: { q: string; riskLevel: string; domain: string; status: string }) => void;
+  onFilter: (params: { q: string; riskLevel: string; domain: string; status: string; lifecycle: string; source: string }) => void;
 }
 
 export function InventoryFilters({ onFilter }: InventoryFiltersProps) {
@@ -40,15 +55,17 @@ export function InventoryFilters({ onFilter }: InventoryFiltersProps) {
   const [riskLevel, setRiskLevel] = useState('');
   const [domain, setDomain] = useState('');
   const [status, setStatus] = useState('');
+  const [lifecycle, setLifecycle] = useState('');
+  const [source, setSource] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      onFilter({ q, riskLevel, domain, status });
+      onFilter({ q, riskLevel, domain, status, lifecycle, source });
     }, 300);
     return () => clearTimeout(debounceRef.current);
-  }, [q, riskLevel, domain, status, onFilter]);
+  }, [q, riskLevel, domain, status, lifecycle, source, onFilter]);
 
   const selectClass = 'h-10 rounded-md border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2';
 
@@ -87,6 +104,18 @@ export function InventoryFilters({ onFilter }: InventoryFiltersProps) {
         <option value="">{t('filterAllStatus')}</option>
         {STATUS_KEYS.map((key) => (
           <option key={key} value={key}>{t(STATUS_I18N[key] as 'statusNotStarted')}</option>
+        ))}
+      </select>
+      <select value={lifecycle} onChange={(e) => setLifecycle(e.target.value)} className={selectClass}>
+        <option value="">All Lifecycle</option>
+        {LIFECYCLE_KEYS.map((key) => (
+          <option key={key} value={key}>{LIFECYCLE_LABELS[key]}</option>
+        ))}
+      </select>
+      <select value={source} onChange={(e) => setSource(e.target.value)} className={selectClass}>
+        <option value="">All Sources</option>
+        {SOURCE_KEYS.map((key) => (
+          <option key={key} value={key}>{SOURCE_LABELS[key]}</option>
         ))}
       </select>
     </div>

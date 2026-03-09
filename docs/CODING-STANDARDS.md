@@ -299,6 +299,28 @@ const classifyAndSaveAndNotify = async (answers) => {
 };
 ```
 
+#### Reuse before writing — сначала ищи, потом пиши
+
+Перед написанием нового кода ВСЕГДА ищи существующую реализацию в кодовой базе (`grep`, поиск по именам функций). Дублирование логики приводит к рассинхрону и багам. Если нашёл нужный код в другом модуле — извлеки в общий хелпер и используй из обоих мест. Типичные кандидаты: фильтрация файлов, парсинг конфигов, валидация форматов, предикаты.
+
+```javascript
+// ❌ BAD — копипаст предиката в 3 файлах
+// file-a.ts
+const passports = ctx.files.filter((f) =>
+  f.path.includes('.complior/agents/') && f.path.endsWith('-manifest.json'));
+// file-b.ts — тот же filter заново
+// file-c.ts — и ещё раз
+
+// ✅ GOOD — общий хелпер, один source of truth
+// shared/passport-files.ts
+export const filterPassportManifests = (files) =>
+  files.filter((f) => isPassportManifest(f.path));
+
+// file-a.ts, file-b.ts, file-c.ts
+import { filterPassportManifests } from '../shared/passport-files.js';
+const passports = filterPassportManifests(ctx.files);
+```
+
 ### Переменные и операторы
 
 #### `const` > `let` > ~~`var`~~
@@ -1276,6 +1298,7 @@ PO approves: develop → main
 - [ ] No deoptimizing patterns (for-in, delete, holey arrays)
 - [ ] No implicit coercion, only `===`/`!==`
 - [ ] Functions small (< 50 lines), single responsibility
+- [ ] Нет дублирования логики (reuse existing helpers, предикаты, фильтры)
 - [ ] Consistent return types (no mixed return shapes)
 - [ ] No mutable outer scope in forEach (use map/filter/reduce)
 - [ ] Async: proper error handling, no swallowed errors

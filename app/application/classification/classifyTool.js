@@ -94,11 +94,37 @@
       complianceStatus: 'in_progress',
     });
 
-    // 10. Map requirements
-    const requirements = await application.classification.mapRequirements.map({
-      aiToolId: toolId,
-      riskLevel: ruleResult.riskLevel,
-    });
+    // 10. Map requirements (inlined — cannot cross-reference application layer siblings in VM context)
+    const LEVEL_REQUIREMENTS = {
+      minimal: ['minimal'],
+      limited: ['minimal', 'limited'],
+      gpai: ['minimal', 'limited'],
+      high: ['minimal', 'limited', 'high'],
+      prohibited: ['prohibited'],
+    };
+    const applicableLevels = LEVEL_REQUIREMENTS[ruleResult.riskLevel] || [];
+    const requirements = [];
+    if (applicableLevels.length > 0) {
+      const placeholders = applicableLevels.map((_, i) => `$${i + 1}`).join(', ');
+      const reqResult = await db.query(
+        `SELECT * FROM "Requirement" WHERE "riskLevel" IN (${placeholders}) ORDER BY "sortOrder" ASC`,
+        applicableLevels,
+      );
+      const existingResult = await db.query(
+        'SELECT "requirementId" FROM "ToolRequirement" WHERE "aiToolId" = $1',
+        [toolId],
+      );
+      const existingReqIds = new Set(existingResult.rows.map((r) => r.requirementId));
+      for (const req of reqResult.rows) {
+        if (existingReqIds.has(req.requirementId)) continue;
+        const record = await db.query(
+          `INSERT INTO "ToolRequirement" ("aiToolId", "requirementId", "status", "progress")
+           VALUES ($1, $2, $3, $4) RETURNING *`,
+          [toolId, req.requirementId, 'pending', 0],
+        );
+        requirements.push(record.rows[0]);
+      }
+    }
 
     // 11. Audit log
     await lib.audit.createAuditEntry({

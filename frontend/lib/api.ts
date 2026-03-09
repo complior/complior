@@ -95,7 +95,9 @@ export interface AITool {
   modelProvider: string | null;
   modelId: string | null;
   syncMetadata: Record<string, unknown> | null;
-  autonomyLevel: string;
+  autonomyLevel: string | null;
+  lifecycle: 'active' | 'suspended' | 'decommissioned';
+  source: 'manual' | 'cli_scan' | 'discovery' | 'registry_autofill';
   humanOversight: boolean;
   affectsNaturalPersons: boolean;
   riskLevel: string | null;
@@ -365,6 +367,16 @@ export interface DocumentListItem extends ComplianceDocument {
   totalSections: number;
 }
 
+// --- Tool Stats ---
+
+export interface ToolStats {
+  total: number;
+  byRisk: Record<string, number>;
+  bySource: Record<string, number>;
+  byLifecycle: Record<string, number>;
+  byAutonomy: Record<string, number>;
+}
+
 // --- Dashboard ---
 
 export interface DashboardSummary {
@@ -532,6 +544,12 @@ export const api = {
       apiFetch<{ success: boolean }>(`/api/tools/${id}`, { method: 'DELETE' }),
     classify: (id: number) =>
       apiFetch<ClassifyResult>(`/api/tools/${id}/classify`, { method: 'POST', body: '{}' }),
+    updateLifecycle: (id: number, lifecycle: string) =>
+      apiFetch<{ toolId: number; name: string; previousLifecycle: string; lifecycle: string }>(
+        `/api/tools/${id}/lifecycle`, { method: 'PATCH', body: JSON.stringify({ lifecycle }) },
+      ),
+    stats: () =>
+      apiFetch<ToolStats>('/api/tools/stats'),
   },
   billing: {
     createCheckout: (planName: string, period: string) =>

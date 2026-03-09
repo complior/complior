@@ -44,7 +44,7 @@ const INITIAL_STATE: WizardState = {
   name: '', vendorName: '', vendorCountry: '', vendorUrl: '', description: '',
   framework: '', modelProvider: '', modelId: '',
   purpose: '', domain: '',
-  dataTypes: [], affectedPersons: [], vulnerableGroups: false, autonomyLevel: 'advisory',
+  dataTypes: [], affectedPersons: [], vulnerableGroups: false, autonomyLevel: 'L1',
   humanOversight: true, affectsNaturalPersons: false,
 };
 

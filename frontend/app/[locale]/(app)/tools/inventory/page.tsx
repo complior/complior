@@ -14,7 +14,7 @@ export default function InventoryPage() {
   const [result, setResult] = useState<PaginatedResponse<AITool> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ q: '', riskLevel: '', domain: '', status: '' });
+  const [filters, setFilters] = useState({ q: '', riskLevel: '', domain: '', status: '', lifecycle: '', source: '' });
   const [page, setPage] = useState(1);
 
   const fetchTools = useCallback(async (f: typeof filters, p: number) => {
@@ -23,6 +23,7 @@ export default function InventoryPage() {
     try {
       const data = await api.tools.list({
         q: f.q, riskLevel: f.riskLevel, domain: f.domain, status: f.status,
+        lifecycle: f.lifecycle, source: f.source,
         page: String(p), pageSize: '20',
       });
       setResult(data);

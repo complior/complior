@@ -15,8 +15,8 @@
         toolId = existing.rows[0].aIToolId;
       } else {
         const inserted = await db.query(
-          `INSERT INTO "AITool" ("organizationId", "createdById", "name", "vendorName", "description", "purpose", "domain", "dataTypes", "affectedPersons", "autonomyLevel", "affectsNaturalPersons", "wizardStep", "wizardCompleted")
-           VALUES ($1, $2, $3, $4, '', '', $5, '[]'::jsonb, '[]'::jsonb, 'advisory', false, 1, false) RETURNING "aIToolId"`,
+          `INSERT INTO "AITool" ("organizationId", "createdById", "name", "vendorName", "description", "purpose", "domain", "dataTypes", "affectedPersons", "affectsNaturalPersons", "wizardStep", "wizardCompleted", "source")
+           VALUES ($1, $2, $3, $4, '', '', $5, '[]'::jsonb, '[]'::jsonb, false, 1, false, 'cli_scan') RETURNING "aIToolId"`,
           [organizationId, userId, detected.name, detected.vendor || '', detected.category || 'other'],
         );
         toolId = inserted.rows[0].aIToolId;

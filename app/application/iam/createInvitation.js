@@ -26,9 +26,25 @@
       throw new errors.ConflictError('A pending invitation already exists for this email');
     }
 
-    const limits = await application.billing.getOrgLimits.checkUsers(organizationId);
-    if (!limits.allowed) {
-      throw new errors.PlanLimitError('maxUsers', limits.current, limits.limit);
+    // Inline checkUsers — cannot cross-reference application layer siblings in VM context
+    const planResult = await db.query(
+      `SELECT p."maxUsers"
+       FROM "Subscription" s
+       JOIN "Plan" p ON p."planId" = s."planId"
+       WHERE s."organizationId" = $1 AND s."status" IN ('active', 'trialing')
+       LIMIT 1`,
+      [organizationId],
+    );
+    if (planResult.rows.length > 0) {
+      const { maxUsers } = planResult.rows[0];
+      const currentUsers = await tq.count('User', { active: true });
+      const pendingInvites = await tq.count('Invitation', { status: 'pending' });
+      const limits = domain.iam.services.SubscriptionLimitChecker.checkUserLimit({
+        currentUsers, pendingInvites, maxUsers,
+      });
+      if (!limits.allowed) {
+        throw new errors.PlanLimitError('maxUsers', limits.current, limits.limit);
+      }
     }
 
     const token = crypto.randomUUID();

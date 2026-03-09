@@ -64,7 +64,9 @@
 
   // Step 4: Autonomy & Oversight
   autonomyLevel: {
-    enum: ['advisory', 'semi_autonomous', 'autonomous'],
+    enum: ['L1', 'L2', 'L3', 'L4', 'L5'],
+    required: false,
+    note: 'L1=advisory, L2=conditional, L3=semi_autonomous, L4=autonomous, L5=full_autonomous',
   },
   humanOversight: { type: 'boolean', default: true },
   affectsNaturalPersons: 'boolean',
@@ -92,6 +94,17 @@
   // Wizard State
   wizardStep: { type: 'number', default: 1 },
   wizardCompleted: { type: 'boolean', default: false },
+
+  // Lifecycle & Provenance (US-091)
+  lifecycle: {
+    enum: ['active', 'suspended', 'decommissioned'],
+    default: 'active',
+    index: true,
+  },
+  source: {
+    enum: ['manual', 'cli_scan', 'discovery', 'registry_autofill'],
+    default: 'manual',
+  },
 
   // CLI sync metadata (detectionPatterns, versions, signature, extendedFields)
   syncMetadata: { type: 'json', required: false },

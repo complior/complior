@@ -1,8 +1,8 @@
 ({
   merge: async ({ passport, organizationId, userId }) => {
     const { recordSyncHistory, parseJsonField } = lib.syncHelpers;
-    const AUTONOMY_MAP = { L1: 'advisory', L2: 'advisory', L3: 'semi_autonomous', L4: 'autonomous', L5: 'autonomous' };
     const STATUS_MAP = { draft: 'not_started', review: 'review', active: 'compliant', suspended: 'non_compliant', retired: 'non_compliant' };
+    const VALID_AUTONOMY = new Set(['L1', 'L2', 'L3', 'L4', 'L5']);
     const ALLOWED_UPDATE_FIELDS = new Set([
       'vendorName', 'vendorUrl', 'description', 'purpose', 'domain',
       'autonomyLevel', 'complianceScore', 'complianceStatus', 'riskLevel',
@@ -11,7 +11,7 @@
     ]);
 
     const slug = passport.slug || passport.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const mapAutonomy = (level) => AUTONOMY_MAP[level] || 'advisory';
+    const sanitizeAutonomy = (level) => (VALID_AUTONOMY.has(level) ? level : null);
     const mapStatus = (status) => STATUS_MAP[status] || 'in_progress';
 
     // Compute wizard step based on available CLI data
@@ -104,7 +104,8 @@
       if (newStep > currentStep) updates.wizardStep = newStep;
 
       // Extended fields
-      if (passport.autonomyLevel) updates.autonomyLevel = mapAutonomy(passport.autonomyLevel);
+      const sanitized = sanitizeAutonomy(passport.autonomyLevel);
+      if (sanitized) updates.autonomyLevel = sanitized;
       if (passport.compliorScore !== undefined && passport.compliorScore !== null) updates.complianceScore = passport.compliorScore;
       if (passport.lifecycleStatus) updates.complianceStatus = mapStatus(passport.lifecycleStatus);
 
@@ -174,7 +175,7 @@
     }
 
     // Create new tool — all fields in single INSERT (no redundant UPDATE)
-    const mappedAutonomy = passport.autonomyLevel ? mapAutonomy(passport.autonomyLevel) : 'advisory';
+    const newAutonomy = sanitizeAutonomy(passport.autonomyLevel);
     const hasRisk = !!passport.riskLevel;
     const mappedStatus = passport.lifecycleStatus
       ? mapStatus(passport.lifecycleStatus)
@@ -195,17 +196,17 @@
        "description", "purpose", "domain", "dataTypes", "affectedPersons",
        "autonomyLevel", "complianceScore", "complianceStatus", "riskLevel",
        "classificationConfidence", "affectsNaturalPersons", "wizardStep", "wizardCompleted",
-       "framework", "modelProvider", "modelId", "syncMetadata", "dataResidency")
+       "framework", "modelProvider", "modelId", "syncMetadata", "dataResidency", "source")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, $16, false,
-       $17, $18, $19, $20, $21)
+       $17, $18, $19, $20, $21, 'cli_scan')
        RETURNING "aIToolId"`,
       [
         organizationId, userId, passport.name,
         passport.vendorName || '', passport.vendorUrl || null,
-        passport.description || null, passport.purpose || '',
+        passport.description || '', passport.purpose || '',
         passport.domain || 'other',
         JSON.stringify([]), JSON.stringify([]),
-        mappedAutonomy, passport.compliorScore ?? null, mappedStatus,
+        newAutonomy, passport.compliorScore ?? 0, mappedStatus,
         passport.riskLevel || null,
         hasRisk ? 50 : null,
         wizardStep,

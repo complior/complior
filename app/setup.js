@@ -252,6 +252,23 @@ const MIGRATIONS = [
   `ALTER TABLE "SyncHistory" DROP CONSTRAINT IF EXISTS "SyncHistory_syncType_check"`,
   `ALTER TABLE "SyncHistory" ADD CONSTRAINT "SyncHistory_syncType_check"
    CHECK ("syncType" IN ('passport', 'scan', 'document', 'fria'))`,
+  // Sprint 9 US-091: Unified Registry — lifecycle, source, autonomyLevel L1-L5
+  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "lifecycle" varchar DEFAULT 'active'
+   CHECK ("lifecycle" IN ('active', 'suspended', 'decommissioned'))`,
+  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "source" varchar DEFAULT 'manual'
+   CHECK ("source" IN ('manual', 'cli_scan', 'discovery', 'registry_autofill'))`,
+  `ALTER TABLE "AITool" DROP CONSTRAINT IF EXISTS "AITool_autonomyLevel_check"`,
+  `ALTER TABLE "AITool" ADD CONSTRAINT "AITool_autonomyLevel_check"
+   CHECK ("autonomyLevel" IN ('L1', 'L2', 'L3', 'L4', 'L5',
+     'advisory', 'semi_autonomous', 'autonomous'))`,
+  `UPDATE "AITool" SET "autonomyLevel" = 'L1' WHERE "autonomyLevel" = 'advisory'`,
+  `UPDATE "AITool" SET "autonomyLevel" = 'L3' WHERE "autonomyLevel" = 'semi_autonomous'`,
+  `UPDATE "AITool" SET "autonomyLevel" = 'L4' WHERE "autonomyLevel" = 'autonomous'`,
+  // Sprint 9 US-091: Make autonomyLevel nullable (tools from scan may not have it)
+  `ALTER TABLE "AITool" ALTER COLUMN "autonomyLevel" DROP NOT NULL`,
+  // Sprint 9: Backfill source for CLI-synced tools
+  `UPDATE "AITool" SET "source" = 'cli_scan'
+   WHERE "syncMetadata" IS NOT NULL AND "source" = 'manual'`,
   // Sprint 9: Backfill classificationConfidence for CLI-synced tools
   `UPDATE "AITool" SET "classificationConfidence" = 50
    WHERE "riskLevel" IS NOT NULL
@@ -309,6 +326,10 @@ const INDEXES = [
     'idx_fria_org ON "FRIAAssessment"("organizationId")',
   'CREATE INDEX IF NOT EXISTS ' +
     'idx_fria_tool ON "FRIAAssessment"("aiToolId")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_aitool_lifecycle ON "AITool"("lifecycle")',
+  'CREATE INDEX IF NOT EXISTS ' +
+    'idx_aitool_source ON "AITool"("source")',
 ];
 
 const loadSchemas = async () => {

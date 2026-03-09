@@ -11,18 +11,25 @@ const loadModule = (filePath) => {
   return vm.runInThisContext(src, { filename: filePath });
 };
 
-// Mock DB with scoring v2 fields
-const createMockDb = (weights, obligations) => ({
-  query: async (sql) => {
-    if (sql.includes('ScoringWeight')) {
-      return { rows: weights };
-    }
-    if (sql.includes('Obligation')) {
-      return { rows: obligations };
-    }
-    return { rows: [] };
-  },
-});
+// Build scorer dependencies matching factory signature: { weights, obligationMap }
+const buildScorerDeps = (weightRows, obligationRows) => {
+  const weights = {};
+  for (const row of weightRows) {
+    weights[row.category] = parseFloat(row.weight);
+  }
+  const obligationMap = {};
+  for (const row of obligationRows) {
+    obligationMap[row.obligationIdUnique] = {
+      category: row.category,
+      severity: row.severity,
+      parentObligation: row.parentObligation || null,
+      deadline: row.deadline || null,
+      penaltyForNonCompliance: row.penaltyForNonCompliance || null,
+      appliesToRiskLevel: row.appliesToRiskLevel || null,
+    };
+  }
+  return { weights, obligationMap };
+};
 
 // Standard weights (2 categories for simple math)
 const WEIGHTS = [
@@ -69,8 +76,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 1. All met + evidence ────────────────────────────────────────
 
   it('scores all met + evidence → ~95-100, grade A/A+', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -98,8 +104,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 2. All not_met ───────────────────────────────────────────────
 
   it('scores all not_met → 0, grade F', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -126,8 +131,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 3. Mixed statuses with severity weighting ────────────────────
 
   it('scores mixed statuses with severity-weighted average', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -154,8 +158,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 4. Critical cap ──────────────────────────────────────────────
 
   it('critical not_met → cap at 40, grade D', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -182,8 +185,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 5. Met without evidence ──────────────────────────────────────
 
   it('met without evidence → 75 per obligation', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -210,8 +212,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 6. Low-confidence met ────────────────────────────────────────
 
   it('low-confidence met → 65 (with enough obligations)', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -238,8 +239,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 7. Unknown → null (insufficient data) ──────────────────────
 
   it('all unknown obligations → null score, reason insufficient_data', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -271,8 +271,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 8. No assessment ─────────────────────────────────────────────
 
   it('returns null score for no assessment', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
     const tool = makeTool({ assessments: null });
     const result = await scorer.calculate(tool);
     assert.strictEqual(result.score, null);
@@ -282,8 +281,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 9. Determinism ───────────────────────────────────────────────
 
   it('is deterministic — identical inputs produce identical outputs', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -315,8 +313,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-P', category: 'transparency', severity: 'high', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-C', category: 'transparency', severity: 'medium', parentObligation: 'OBL-P', deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -345,8 +342,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-P', category: 'transparency', severity: 'high', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-C', category: 'transparency', severity: 'medium', parentObligation: 'OBL-P', deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -375,8 +371,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-002', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-003', category: 'risk_management', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -408,8 +403,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-002', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-003', category: 'risk_management', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -438,8 +432,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-002', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-003', category: 'risk_management', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       categories: ['hr', 'recruiting'],
@@ -469,8 +462,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-002', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-003', category: 'risk_management', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -494,8 +486,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 16. GDPR enforcement penalty ─────────────────────────────────
 
   it('GDPR enforcement → -3/incident (max -8)', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       evidence: {
@@ -528,8 +519,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 17. Security incidents penalty ───────────────────────────────
 
   it('security incidents → -2/incident (max -5)', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       evidence: {
@@ -566,8 +556,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-H2', category: 'transparency', severity: 'high', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-M1', category: 'risk_management', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -590,8 +579,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 19. EU AI Act page bonus ─────────────────────────────────────
 
   it('EU AI Act page bonus → +3', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       evidence: {
@@ -619,8 +607,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 20. Model card bonus ─────────────────────────────────────────
 
   it('model card 3+ sections → +3', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       evidence: {
@@ -654,8 +641,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 21. Privacy excellence bonus ─────────────────────────────────
 
   it('privacy excellence → +2', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       evidence: {
@@ -687,8 +673,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 22. Bonuses capped at +10 ───────────────────────────────────
 
   it('evidence bonuses capped at +10, provider tier additive', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       evidence: {
@@ -737,8 +722,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 23. All-unknown → null (v3: insufficient_data) ─────────────
 
   it('all-unknown → null score, no penalty object', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -759,8 +743,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 24. Grade boundaries ─────────────────────────────────────────
 
   it('grade boundaries are correct', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -784,8 +767,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 25. Numerical confidence ─────────────────────────────────────
 
   it('confidence numerical: verified ~0.9, scanned ~0.6, classified ~0.2', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const baseAssessments = {
       'eu-ai-act': {
@@ -817,8 +799,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-002', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-005', category: 'transparency', severity: 'low', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -841,8 +822,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 27. Category completeness bonus ──────────────────────────────
 
   it('category completeness: all met in category → +5%', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -866,8 +846,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 28. Maturity model ───────────────────────────────────────────
 
   it('maturity model: all criteria mapped correctly', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     // Classified tool with no evidence → unaware
     const classified = await scorer.calculate(makeTool({
@@ -907,8 +886,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 29. Confidence interval ──────────────────────────────────────
 
   it('confidence interval: more partially_met → wider interval', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     // Mostly partially_met → wide interval (optimistic=met, pessimistic=not_met)
     const wide = await scorer.calculate(makeTool({
@@ -953,8 +931,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 30. Conservative deduplication ───────────────────────────────
 
   it('conservative dedup: deployer met + provider unknown → unknown wins', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -981,8 +958,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 31. Mixed assessed+unknown → score based only on assessed ──
 
   it('v3.1: mixed assessed+unknown → unknowns scored at 25/100, coverage calculated', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -1011,8 +987,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 32. Coverage calculation ──────────────────────────────────────
 
   it('v3: coverage = assessed/total * 100', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -1038,8 +1013,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 33. Transparency score computation ────────────────────────────
 
   it('v3.1: transparency score from passive_scan signals', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       evidence: {
@@ -1074,8 +1048,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 34. Algorithm = deterministic-v3 ──────────────────────────────
 
   it('v3.1: algorithm label is deterministic-v3.1', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -1098,8 +1071,7 @@ describe('Registry Scorer v3.1', () => {
   // ── 35. Single assessed obligation → valid score ──────────────────
 
   it('v3.1: single assessed obligation + 3 unknowns → valid score (unknowns in denominator)', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -1136,8 +1108,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-005', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-006', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -1166,8 +1137,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-001', category: 'transparency', severity: 'high', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-002', category: 'transparency', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -1188,8 +1158,7 @@ describe('Registry Scorer v3.1', () => {
   });
 
   it('v3.1: tool with exactly 3 obligations → scored', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {
@@ -1221,8 +1190,7 @@ describe('Registry Scorer v3.1', () => {
         parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null,
       });
     }
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     // 3 met out of 10 = 30% coverage → ceiling = 25 + 30×1.5 = 70
     // rawScore = (3×100 + 7×25) / (10×100) × 100 = 47.5%
@@ -1238,8 +1206,7 @@ describe('Registry Scorer v3.1', () => {
         parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null,
       });
     }
-    const db2 = createMockDb(WEIGHTS, obligations20);
-    const scorer2 = scorerFactory({ db: db2 });
+    const scorer2 = scorerFactory(buildScorerDeps(WEIGHTS, obligations20));
 
     // 5 critical met, 15 low unknown → rawScore is high due to critical weighting
     const tool = makeTool({
@@ -1266,8 +1233,7 @@ describe('Registry Scorer v3.1', () => {
   // ── v3.1: Provider tier bonus ─────────────────────────────────────
 
   it('v3.1: Tier 1 provider (Anthropic) → +20 bonus', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       provider: { name: 'Anthropic' },
@@ -1292,8 +1258,7 @@ describe('Registry Scorer v3.1', () => {
   });
 
   it('v3.1: Tier 2 provider (Mistral) → +10 bonus', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       provider: { name: 'Mistral' },
@@ -1317,8 +1282,7 @@ describe('Registry Scorer v3.1', () => {
   });
 
   it('v3.1: unknown provider → 0 tier bonus', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       provider: { name: 'RandomStartup' },
@@ -1344,8 +1308,7 @@ describe('Registry Scorer v3.1', () => {
   // ── v3.1: Provider tier case-insensitive ──────────────────────────
 
   it('v3.1: provider tier is case-insensitive', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       provider: { name: 'openai' },
@@ -1375,8 +1338,7 @@ describe('Registry Scorer v3.1', () => {
       { obligationIdUnique: 'OBL-003', category: 'risk_management', severity: 'medium', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
       { obligationIdUnique: 'OBL-BONUS', category: 'transparency', severity: 'low', parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null },
     ];
-    const db = createMockDb(WEIGHTS, obligations);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     const tool = makeTool({
       assessments: {
@@ -1416,8 +1378,7 @@ describe('Registry Scorer v3.1', () => {
   // ── v3.1: Confidence interval includes unknowns ───────────────────
 
   it('v3.1: confidence interval — unknowns widen interval (0..75 range)', async () => {
-    const db = createMockDb(WEIGHTS, OBLIGATIONS);
-    const scorer = scorerFactory({ db });
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
       assessments: {

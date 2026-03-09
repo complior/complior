@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { RiskBadge } from './RiskBadge';
+import { LifecycleBadge, SourceBadge } from './RegistryBadges';
 import type { AITool } from '@/lib/api';
 
 const DOMAIN_KEYS: Record<string, string> = {
@@ -56,8 +57,9 @@ export function InventoryTable({ tools }: InventoryTableProps) {
               <th className="px-4 py-3 font-medium text-[var(--dark4)]">Vendor</th>
               <th className="px-4 py-3 font-medium text-[var(--dark4)]">Domain</th>
               <th className="px-4 py-3 font-medium text-[var(--dark4)]">Risk</th>
+              <th className="px-4 py-3 font-medium text-[var(--dark4)]">Lifecycle</th>
+              <th className="px-4 py-3 font-medium text-[var(--dark4)]">Source</th>
               <th className="px-4 py-3 font-medium text-[var(--dark4)]">Status</th>
-              <th className="px-4 py-3 font-medium text-[var(--dark4)]">Score</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--b)]">
@@ -74,8 +76,9 @@ export function InventoryTable({ tools }: InventoryTableProps) {
                 <td className="px-4 py-3 text-[var(--dark3)]">{tool.vendorName}</td>
                 <td className="px-4 py-3 text-[var(--dark3)]">{DOMAIN_KEYS[tool.domain] || tool.domain}</td>
                 <td className="px-4 py-3"><RiskBadge riskLevel={tool.riskLevel} /></td>
+                <td className="px-4 py-3"><LifecycleBadge lifecycle={tool.lifecycle} /></td>
+                <td className="px-4 py-3"><SourceBadge source={tool.source} /></td>
                 <td className="px-4 py-3 text-[var(--dark3)]">{STATUS_LABELS[tool.complianceStatus] || tool.complianceStatus}</td>
-                <td className="px-4 py-3 text-[var(--dark3)]">{tool.complianceScore}%</td>
               </tr>
             ))}
           </tbody>
@@ -99,7 +102,8 @@ export function InventoryTable({ tools }: InventoryTableProps) {
             </div>
             <div className="mt-2 flex items-center gap-3 text-xs text-[var(--dark5)]">
               <span>{DOMAIN_KEYS[tool.domain] || tool.domain}</span>
-              <span>{STATUS_LABELS[tool.complianceStatus] || tool.complianceStatus}</span>
+              <LifecycleBadge lifecycle={tool.lifecycle} />
+              <SourceBadge source={tool.source} />
               {!tool.wizardCompleted && !tool.riskLevel && <span className="text-[var(--dark5)]">Draft</span>}
             </div>
           </Link>

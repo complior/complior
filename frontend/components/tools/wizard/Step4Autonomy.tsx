@@ -3,12 +3,14 @@
 import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const AUTONOMY_KEYS = ['advisory', 'semi_autonomous', 'autonomous'] as const;
+const AUTONOMY_KEYS = ['L1', 'L2', 'L3', 'L4', 'L5'] as const;
 
 const AUTONOMY_I18N_MAP: Record<string, string> = {
-  advisory: 'Advisory',
-  semi_autonomous: 'SemiAutonomous',
-  autonomous: 'Autonomous',
+  L1: 'L1',
+  L2: 'L2',
+  L3: 'L3',
+  L4: 'L4',
+  L5: 'L5',
 };
 
 interface Step4Data {

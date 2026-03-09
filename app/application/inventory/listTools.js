@@ -37,6 +37,21 @@
       values.push(parsed.status);
     }
 
+    if (parsed.lifecycle) {
+      conditions.push(`"lifecycle" = $${idx++}`);
+      values.push(parsed.lifecycle);
+    }
+
+    if (parsed.source) {
+      conditions.push(`"source" = $${idx++}`);
+      values.push(parsed.source);
+    }
+
+    if (parsed.autonomyLevel) {
+      conditions.push(`"autonomyLevel" = $${idx++}`);
+      values.push(parsed.autonomyLevel);
+    }
+
     const whereClause = conditions.join(' AND ');
 
     const countResult = await db.query(

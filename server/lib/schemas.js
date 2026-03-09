@@ -50,7 +50,7 @@ const VALID_DATA_TYPES = ['personal', 'sensitive', 'biometric', 'health', 'finan
 
 const VALID_AFFECTED_PERSONS = ['employees', 'customers', 'applicants', 'patients', 'students', 'public'];
 
-const VALID_AUTONOMY_LEVELS = ['advisory', 'semi_autonomous', 'autonomous'];
+const VALID_AUTONOMY_LEVELS = ['L1', 'L2', 'L3', 'L4', 'L5'];
 
 const VALID_RISK_LEVELS = ['prohibited', 'high', 'gpai', 'limited', 'minimal'];
 
@@ -92,13 +92,23 @@ const ToolUpdateSchema = z.object({
   step: z.coerce.number().int().min(1).max(4),
 }).and(z.union([ToolStep1Schema, ToolStep2Schema, ToolStep3Schema, ToolStep4Schema]));
 
+const VALID_LIFECYCLES = ['active', 'suspended', 'decommissioned'];
+const VALID_SOURCES = ['manual', 'cli_scan', 'discovery', 'registry_autofill'];
+
 const ToolListSchema = z.object({
   q: z.string().optional(),
   riskLevel: z.enum(VALID_RISK_LEVELS).optional(),
   domain: z.enum(VALID_DOMAINS).optional(),
   status: z.enum(VALID_COMPLIANCE_STATUSES).optional(),
+  lifecycle: z.enum(VALID_LIFECYCLES).optional(),
+  source: z.enum(VALID_SOURCES).optional(),
+  autonomyLevel: z.enum(VALID_AUTONOMY_LEVELS).optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+const ToolLifecycleSchema = z.object({
+  lifecycle: z.enum(VALID_LIFECYCLES),
 });
 
 const ToolIdSchema = z.object({
@@ -491,6 +501,8 @@ module.exports = {
   VALID_DATA_TYPES,
   VALID_AFFECTED_PERSONS,
   VALID_AUTONOMY_LEVELS,
+  VALID_LIFECYCLES,
+  VALID_SOURCES,
   VALID_RISK_LEVELS,
   VALID_COMPLIANCE_STATUSES,
   VALID_REQUIREMENT_STATUSES,
@@ -508,6 +520,7 @@ module.exports = {
   ToolCreateSchema,
   ToolUpdateSchema,
   ToolListSchema,
+  ToolLifecycleSchema,
   ToolIdSchema,
   InviteCreateSchema,
   InviteTokenSchema,

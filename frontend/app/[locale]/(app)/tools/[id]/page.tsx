@@ -26,6 +26,7 @@ export default function ToolDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reclassifying, setReclassifying] = useState(false);
+  const [lifecycleUpdating, setLifecycleUpdating] = useState(false);
 
   const fetchTool = useCallback(async () => {
     setLoading(true);
@@ -54,6 +55,19 @@ export default function ToolDetailPage() {
       setError(err instanceof Error ? err.message : 'Failed to delete');
       setDeleting(false);
       setDeleteOpen(false);
+    }
+  };
+
+  const handleLifecycleChange = async (lifecycle: string) => {
+    if (!tool) return;
+    setLifecycleUpdating(true);
+    try {
+      await api.tools.updateLifecycle(tool.id, lifecycle);
+      await fetchTool();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update lifecycle');
+    } finally {
+      setLifecycleUpdating(false);
     }
   };
 
@@ -114,8 +128,10 @@ export default function ToolDetailPage() {
         onDelete={() => setDeleteOpen(true)}
         onReclassify={handleReclassify}
         onOpenFria={tool.riskLevel === 'high' || tool.riskLevel === 'prohibited' ? () => setActiveTab('documents') : undefined}
+        onLifecycleChange={handleLifecycleChange}
         deleting={deleting}
         reclassifying={reclassifying}
+        lifecycleUpdating={lifecycleUpdating}
       />
 
       {/* Tabs — design: tabs */}

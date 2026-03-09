@@ -1,8 +1,8 @@
 ({
   Entity: {},
 
-  // Primary key from ~/complior
-  obligationId: { type: 'string', length: { max: 50 }, unique: true },
+  // Business identifier from ~/complior (distinct from auto-PK)
+  obligationIdUnique: { type: 'string', length: { max: 50 }, unique: true },
 
   // Legacy fields (keep for compatibility)
   code: { type: 'string', required: false },
