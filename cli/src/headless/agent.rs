@@ -1,102 +1,10 @@
 use crate::cli::AgentAction;
 use crate::config::TuiConfig;
-use crate::daemon;
-use crate::engine_client::EngineClient;
-use crate::engine_process::EngineManager;
 
-/// Percent-encode a string for use in URL query parameters.
-fn url_encode(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                result.push(b as char);
-            }
-            _ => {
-                result.push_str(&format!("%{b:02X}"));
-            }
-        }
-    }
-    result
-}
-
-/// Resolve engine client: walk up from CWD to find daemon PID file, fall back to config default.
-fn resolve_client(config: &TuiConfig) -> EngineClient {
-    let mut dir = std::env::current_dir().unwrap_or_default();
-    loop {
-        if let Some(info) = daemon::find_running_daemon(&dir) {
-            return EngineClient::from_url(&format!("http://127.0.0.1:{}", info.port));
-        }
-        if !dir.pop() {
-            break;
-        }
-    }
-    EngineClient::new(config)
-}
-
-/// Create an engine client and verify the engine is running.
-/// Daemon-aware retry: if a daemon PID is found, retries up to 15×400ms (6s)
-/// to allow cold start. Without a PID, retries only 3×400ms before auto-launching.
-async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
-    let project_path = std::env::current_dir().unwrap_or_default();
-    let daemon_exists = daemon::find_running_daemon(&project_path).is_some();
-
-    // First try: check for existing daemon
-    let client = resolve_client(config);
-
-    // Daemon PID found → longer retry (engine cold start takes 2-5s)
-    // No daemon PID → short retry before falling through to auto-launch
-    let (max_retries, delay_ms) = if daemon_exists { (15, 400) } else { (3, 400) };
-
-    for attempt in 0..max_retries {
-        match client.status().await {
-            Ok(status) if status.ready => return Ok(client),
-            _ => {
-                if attempt < max_retries - 1 {
-                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-                }
-            }
-        }
-    }
-
-    if daemon_exists {
-        // Daemon PID exists but engine is still unresponsive after 6s — do NOT
-        // auto-launch a second engine (prevents PID conflict / competing instances).
-        eprintln!("Error: Daemon process found but engine not responding after {}s.", max_retries as u64 * delay_ms / 1000);
-        eprintln!("Try: complior daemon stop && complior daemon start");
-        return Err(1);
-    }
-
-    // No running daemon found — try to auto-start engine
-    let engine_root = find_engine_root(&project_path);
-
-    if let Some(root) = engine_root {
-        eprintln!("Engine not responding. Starting engine...");
-        let pid_path = daemon::pid_file_path(&project_path);
-        let mut mgr = EngineManager::new(&root);
-        match mgr.start_with_pid(&pid_path, false) {
-            Ok(port) => {
-                let new_client = EngineClient::from_url(&format!("http://127.0.0.1:{port}"));
-                if mgr.wait_for_ready(&new_client).await {
-                    // Leak the manager so it doesn't get dropped (and killed) when this
-                    // function returns. The engine stays alive for the duration of the command.
-                    std::mem::forget(mgr);
-                    return Ok(new_client);
-                }
-                eprintln!("Error: Engine started but failed health check.");
-            }
-            Err(e) => {
-                eprintln!("Error: Could not auto-start engine: {e}");
-            }
-        }
-    }
-
-    eprintln!("Error: Engine not running. Start with: complior daemon");
-    Err(1)
-}
+use super::common::{ensure_engine, url_encode};
 
 /// Walk up from project_path to find the complior repo root (containing engine/).
-fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
+pub(crate) fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
     let mut dir = project_path.to_path_buf();
     loop {
         if dir.join("engine").join("core").join("src").join("server.ts").exists() {
@@ -148,6 +56,9 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         }
         AgentAction::Audit { agent, since, event_type, limit, json, path } => {
             run_agent_audit(agent.as_deref(), since.as_deref(), event_type.as_deref(), *limit, *json, path.as_deref(), config).await
+        }
+        AgentAction::Onboard { json, step, path } => {
+            run_agent_onboard(*json, *step, path.as_deref(), config).await
         }
     }
 }
@@ -1596,4 +1507,169 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
             }
         }
     }
+}
+
+// --- US-S05-33: Guided onboarding ---
+
+async fn run_agent_onboard(json: bool, step: Option<u32>, _path: Option<&str>, config: &TuiConfig) -> i32 {
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    // If specific step requested, POST that step
+    if let Some(step_num) = step {
+        if !(1..=5).contains(&step_num) {
+            eprintln!("Error: Step must be between 1 and 5");
+            return 1;
+        }
+
+        let url = format!("/onboarding/guided/step/{step_num}");
+        match client.post_json(&url, &serde_json::json!({})).await {
+            Ok(result) => {
+                if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                    let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                    eprintln!("Error: {msg}");
+                    return 1;
+                }
+
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                } else {
+                    print_onboarding_step_result(&result, step_num);
+                }
+                0
+            }
+            Err(e) => { eprintln!("Error: {e}"); 1 }
+        }
+    } else {
+        // Start or show status
+        let start_url = "/onboarding/guided/start";
+        match client.post_json(start_url, &serde_json::json!({})).await {
+            Ok(result) => {
+                if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                    let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                    eprintln!("Error: {msg}");
+                    return 1;
+                }
+
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                } else {
+                    print_onboarding_status(&result);
+                }
+                0
+            }
+            Err(e) => { eprintln!("Error: {e}"); 1 }
+        }
+    }
+}
+
+fn print_onboarding_status(value: &serde_json::Value) {
+    let progress = value.get("progress");
+    let pct = progress.and_then(|p| p.get("percentage")).and_then(|v| v.as_u64()).unwrap_or(0);
+    let completed = progress.and_then(|p| p.get("completedSteps")).and_then(|v| v.as_u64()).unwrap_or(0);
+
+    println!();
+    println!("  Guided Onboarding: {completed}/5 steps ({pct}%)");
+    println!("  -----------------------------------");
+
+    if let Some(state) = value.get("state") {
+        if let Some(steps) = state.get("steps").and_then(|v| v.as_array()) {
+            for step in steps {
+                let num = step.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
+                let label = step.get("label").and_then(|v| v.as_str()).unwrap_or("?");
+                let status = step.get("status").and_then(|v| v.as_str()).unwrap_or("?");
+                let icon = match status {
+                    "completed" => "V",
+                    "in_progress" => ">",
+                    "skipped" => "-",
+                    _ => " ",
+                };
+                println!("  [{icon}] Step {num}: {label} ({status})");
+            }
+        }
+
+        let current = state.get("currentStep").and_then(|v| v.as_u64()).unwrap_or(0);
+        let status = state.get("status").and_then(|v| v.as_str()).unwrap_or("?");
+        if status == "in_progress" && current > 0 {
+            println!();
+            println!("  Next: complior agent onboard --step {current}");
+        } else if status == "completed" {
+            println!();
+            println!("  Onboarding complete! Run `complior cert readiness <agent>` to check certification readiness.");
+        }
+    }
+    println!();
+}
+
+fn print_onboarding_step_result(value: &serde_json::Value, step: u32) {
+    let step_names = ["Detect Project", "First Scan", "Generate Passport", "Top-3 Fixes", "Generate Document"];
+    let name = step_names.get(step as usize - 1).unwrap_or(&"?");
+
+    println!();
+    println!("  Step {step}: {name} — completed");
+
+    if let Some(data) = value.get("data") {
+        match step {
+            1 => {
+                let lang = data.get("language").and_then(|v| v.as_str()).unwrap_or("?");
+                let fw = data.get("framework").and_then(|v| v.as_str()).unwrap_or("?");
+                let ai = data.get("aiLibraries").and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                    .unwrap_or_default();
+                println!("    Language:  {lang}");
+                println!("    Framework: {fw}");
+                if !ai.is_empty() { println!("    AI SDKs:   {ai}"); }
+            }
+            2 => {
+                let score = data.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+                let files = data.get("filesScanned").and_then(|v| v.as_u64()).unwrap_or(0);
+                let findings = data.get("totalFindings").and_then(|v| v.as_u64()).unwrap_or(0);
+                println!("    Score:    {score}%");
+                println!("    Files:    {files}");
+                println!("    Findings: {findings}");
+            }
+            3 => {
+                let count = data.get("agentsFound").and_then(|v| v.as_u64()).unwrap_or(0);
+                println!("    Agents discovered: {count}");
+                if let Some(agents) = data.get("agents").and_then(|v| v.as_array()) {
+                    for agent in agents {
+                        let n = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                        let lvl = agent.get("autonomyLevel").and_then(|v| v.as_str()).unwrap_or("?");
+                        println!("      - {n} ({lvl})");
+                    }
+                }
+            }
+            4 => {
+                if let Some(fixes) = data.get("fixes").and_then(|v| v.as_array()) {
+                    println!("    Suggested fixes: {}", fixes.len());
+                    for fix in fixes {
+                        let msg = fix.get("message").and_then(|v| v.as_str()).unwrap_or("?");
+                        let sev = fix.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
+                        println!("      [{sev}] {msg}");
+                    }
+                }
+            }
+            5 => {
+                let doc_type = data.get("documentType").and_then(|v| v.as_str()).unwrap_or("none");
+                if doc_type == "fria" {
+                    let saved_path = data.get("savedPath").and_then(|v| v.as_str()).unwrap_or("?");
+                    println!("    Generated: FRIA report");
+                    println!("    Saved to:  {saved_path}");
+                } else {
+                    let msg = data.get("message").and_then(|v| v.as_str()).unwrap_or("No document needed");
+                    println!("    {msg}");
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(progress) = value.get("progress") {
+        let pct = progress.get("percentage").and_then(|v| v.as_u64()).unwrap_or(0);
+        let completed = progress.get("completedSteps").and_then(|v| v.as_u64()).unwrap_or(0);
+        println!("    Progress: {completed}/5 ({pct}%)");
+    }
+    println!();
 }

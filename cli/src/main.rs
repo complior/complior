@@ -77,7 +77,19 @@ async fn main() -> color_eyre::Result<()> {
     // Handle headless commands (non-TUI)
     if cli::is_headless(&parsed_cli) {
         match &parsed_cli.command {
-            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, path }) => {
+            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, path }) => {
+                if let Some(base_branch) = diff {
+                    let code = headless::scan::run_scan_diff(
+                        base_branch,
+                        *json,
+                        *fail_on_regression,
+                        *comment,
+                        path.as_deref(),
+                        &config,
+                    )
+                    .await;
+                    std::process::exit(code);
+                }
                 let code = headless::run_headless_scan(
                     *ci,
                     *json,
@@ -128,6 +140,10 @@ async fn main() -> color_eyre::Result<()> {
             }
             Some(cli::Command::Agent { action }) => {
                 let code = headless::agent::run_agent_command(action, &config).await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Cert { action }) => {
+                let code = headless::cert::run_cert_command(action, &config).await;
                 std::process::exit(code);
             }
             Some(cli::Command::Login) => {

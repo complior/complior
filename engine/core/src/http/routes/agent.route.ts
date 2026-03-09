@@ -8,6 +8,7 @@ const AUDIT_EVENT_TYPES = [
   'fria.generated', 'scan.completed', 'fix.applied',
   'evidence.verified', 'worker_notification.generated',
   'policy.generated',
+  'readiness.computed',
 ] as const;
 
 const AuditQuerySchema = z.object({

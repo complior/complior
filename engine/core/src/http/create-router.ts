@@ -1,7 +1,11 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { z } from 'zod';
 import { AppError } from '../types/errors.js';
 import { createLogger } from '../infra/logger.js';
+import { createInitialState } from '../domain/onboarding/guided-onboarding.js';
 import type { ScanService } from '../services/scan-service.js';
 import type { ChatService } from '../services/chat-service.js';
 import type { FileService } from '../services/file-service.js';
@@ -37,6 +41,8 @@ import { createWhatIfRoute } from './routes/whatif.route.js';
 import { createAgentRoute } from './routes/agent.route.js';
 import { createObligationsRoute } from './routes/obligations.route.js';
 import { createSyncRoute } from './routes/sync.route.js';
+import { createCertRoute } from './routes/cert.route.js';
+import { createGuidedOnboardingRoute } from './routes/guided-onboarding.route.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -62,6 +68,23 @@ export interface RouterDeps {
   readonly getLastScan: () => import('../types/common.types.js').ScanResult | null;
   readonly getProjectPath: () => string;
 }
+
+const OnboardingStepSchema = z.object({
+  step: z.number(),
+  name: z.string(),
+  label: z.string(),
+  status: z.enum(['pending', 'in_progress', 'completed', 'skipped']),
+  data: z.record(z.unknown()).optional(),
+  completedAt: z.string().optional(),
+});
+
+const OnboardingStateSchema = z.object({
+  currentStep: z.number(),
+  status: z.enum(['not_started', 'in_progress', 'completed']),
+  steps: z.array(OnboardingStepSchema),
+  startedAt: z.string().optional(),
+  completedAt: z.string().optional(),
+});
 
 export const createRouter = (deps: RouterDeps) => {
   const app = new Hono();
@@ -107,7 +130,7 @@ export const createRouter = (deps: RouterDeps) => {
 
   // Mount routes
   app.route('/', createStatusRoute(deps.statusService));
-  app.route('/', createScanRoute(deps.scanService));
+  app.route('/', createScanRoute({ scanService: deps.scanService, getLastScan: deps.getLastScan }));
   app.route('/', createChatRoute({ chatService: deps.chatService, llm: deps.llm, toolExecutorDeps: deps.toolExecutorDeps, getMode: deps.getMode, setMode: deps.setMode }));
   app.route('/', createFileRoute(deps.fileService));
   app.route('/', createFixRoute({ fixService: deps.fixService, undoService: deps.undoService }));
@@ -122,6 +145,27 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createOnboardingRoute(deps.onboardingWizard));
   app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore }));
   app.route('/', createAgentRoute(deps.passportService));
+  app.route('/', createCertRoute(deps.passportService));
+  app.route('/', createGuidedOnboardingRoute({
+    scanService: deps.scanService,
+    passportService: deps.passportService,
+    getProjectPath: deps.getProjectPath,
+    getLastScan: deps.getLastScan,
+    loadOnboardingState: async (projectPath: string) => {
+      try {
+        const raw = await readFile(join(projectPath, '.complior', 'onboarding-progress.json'), 'utf-8');
+        const parsed = OnboardingStateSchema.safeParse(JSON.parse(raw));
+        return parsed.success ? parsed.data : createInitialState();
+      } catch {
+        return createInitialState();
+      }
+    },
+    saveOnboardingState: async (projectPath: string, state) => {
+      const dir = join(projectPath, '.complior');
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, 'onboarding-progress.json'), JSON.stringify(state, null, 2));
+    },
+  }));
   app.route('/', createObligationsRoute({ obligations: deps.obligations, getLastScan: deps.getLastScan }));
   app.route('/', createSyncRoute({
     getProjectPath: deps.getProjectPath,

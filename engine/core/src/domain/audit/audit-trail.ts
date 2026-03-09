@@ -6,7 +6,8 @@ export type AuditEventType =
   | 'passport.created' | 'passport.updated' | 'passport.exported'
   | 'fria.generated' | 'scan.completed' | 'fix.applied'
   | 'evidence.verified' | 'worker_notification.generated'
-  | 'policy.generated';
+  | 'policy.generated'
+  | 'readiness.computed';
 
 export interface AuditEntry {
   readonly id: string;

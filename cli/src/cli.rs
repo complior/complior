@@ -56,6 +56,18 @@ pub enum Command {
         #[arg(long)]
         fail_on: Option<String>,
 
+        /// Diff mode: compare against base branch (e.g. --diff main)
+        #[arg(long)]
+        diff: Option<String>,
+
+        /// Exit 1 if score regressed or new critical findings
+        #[arg(long)]
+        fail_on_regression: bool,
+
+        /// Post diff as PR comment (requires gh CLI)
+        #[arg(long)]
+        comment: bool,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },
@@ -117,6 +129,12 @@ pub enum Command {
     Agent {
         #[command(subcommand)]
         action: AgentAction,
+    },
+
+    /// AIUC-1 certification readiness assessment
+    Cert {
+        #[command(subcommand)]
+        action: CertAction,
     },
 
     /// Authenticate with SaaS dashboard via browser
@@ -377,6 +395,19 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Start or resume guided 5-step onboarding wizard
+    Onboard {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Run specific step (1-5), or omit to run next pending step
+        #[arg(long)]
+        step: Option<u32>,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
     /// Show audit trail (compliance event log)
     Audit {
         /// Filter by agent name
@@ -394,6 +425,22 @@ pub enum AgentAction {
         /// Max entries
         #[arg(long, default_value = "50")]
         limit: u32,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum CertAction {
+    /// Compute AIUC-1 readiness score for an agent
+    Readiness {
+        /// Agent name
+        name: String,
 
         /// Output as JSON
         #[arg(long)]
@@ -425,8 +472,8 @@ pub enum DaemonAction {
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
 pub fn is_headless(cli: &Cli) -> bool {
     match &cli.command {
-        Some(Command::Scan { ci, json, sarif, no_tui, .. }) => {
-            *ci || *json || *sarif || *no_tui
+        Some(Command::Scan { ci, json, sarif, no_tui, diff, .. }) => {
+            *ci || *json || *sarif || *no_tui || diff.is_some()
         }
         Some(Command::Fix { dry_run, json, .. }) => *dry_run || *json,
         Some(
@@ -437,6 +484,7 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Update
             | Command::Daemon { .. }
             | Command::Agent { .. }
+            | Command::Cert { .. }
             | Command::Login
             | Command::Logout
             | Command::Sync { .. },
@@ -1096,6 +1144,90 @@ mod tests {
                 assert_eq!(*limit, 10);
             }
             _ => panic!("Expected Agent Audit command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_scan_diff() {
+        let cli = Cli::parse_from(["complior", "scan", "--diff", "main"]);
+        match &cli.command {
+            Some(Command::Scan { diff, fail_on_regression, comment, .. }) => {
+                assert_eq!(diff.as_deref(), Some("main"));
+                assert!(!fail_on_regression);
+                assert!(!comment);
+            }
+            _ => panic!("Expected Scan command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_scan_diff_full() {
+        let cli = Cli::parse_from([
+            "complior", "scan", "--diff", "develop",
+            "--fail-on-regression", "--comment", "--json",
+        ]);
+        match &cli.command {
+            Some(Command::Scan { diff, fail_on_regression, comment, json, .. }) => {
+                assert_eq!(diff.as_deref(), Some("develop"));
+                assert!(*fail_on_regression);
+                assert!(*comment);
+                assert!(*json);
+            }
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_onboard() {
+        let cli = Cli::parse_from(["complior", "agent", "onboard"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Onboard { json, step, path } }) => {
+                assert!(!json);
+                assert!(step.is_none());
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Onboard command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_onboard_step() {
+        let cli = Cli::parse_from(["complior", "agent", "onboard", "--step", "3", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Onboard { json, step, .. } }) => {
+                assert!(*json);
+                assert_eq!(*step, Some(3));
+            }
+            _ => panic!("Expected Agent Onboard command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_cert_readiness() {
+        let cli = Cli::parse_from(["complior", "cert", "readiness", "my-bot"]);
+        match &cli.command {
+            Some(Command::Cert { action: CertAction::Readiness { name, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Cert Readiness command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_cert_readiness_json_path() {
+        let cli = Cli::parse_from(["complior", "cert", "readiness", "my-bot", "--json", "/tmp/project"]);
+        match &cli.command {
+            Some(Command::Cert { action: CertAction::Readiness { name, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*json);
+                assert_eq!(path.as_deref(), Some("/tmp/project"));
+            }
+            _ => panic!("Expected Cert Readiness command"),
         }
     }
 

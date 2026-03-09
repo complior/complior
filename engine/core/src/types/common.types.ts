@@ -4,6 +4,12 @@ export type RiskLevel = 'unacceptable' | 'high' | 'limited' | 'minimal' | 'gpai'
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
+const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+
+/** Compare two severity values for sorting (most severe first). */
+export const compareSeverity = (a: Severity, b: Severity): number =>
+  (SEVERITY_ORDER[a] ?? 4) - (SEVERITY_ORDER[b] ?? 4);
+
 export type ComplianceStatus = 'fully_met' | 'partially_met' | 'not_met' | 'not_applicable';
 
 export type ScoreZone = 'red' | 'yellow' | 'green';

@@ -6,12 +6,14 @@
 //! runners, shell scripts, and human operators.
 
 pub mod agent;
+pub mod cert;
 mod commands;
+pub(crate) mod common;
 pub mod daemon;
 mod fix;
 pub(crate) mod format;
 pub mod login;
-mod scan;
+pub mod scan;
 pub mod sync;
 #[cfg(test)]
 mod tests;
