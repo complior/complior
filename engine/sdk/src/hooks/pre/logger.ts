@@ -7,6 +7,7 @@ export const loggerHook: PreHook = (ctx) => {
     metadata: {
       ...ctx.metadata,
       loggedAt: new Date().toISOString(),
+      loggedAtMs: Date.now(),
       provider: ctx.provider,
       method: ctx.method,
     },

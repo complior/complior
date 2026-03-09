@@ -11,6 +11,8 @@ export { compliorAgent } from './agent.js';
 export type { AgentConfig } from './agent.js';
 export type { ActionLogEntry } from './hooks/post/action-log.js';
 export type { CircuitBreakerConfig } from './hooks/post/circuit-breaker.js';
+export { extractResponseMeta, extractModel } from './runtime/index.js';
+export type { ResponseMeta, InteractionLogEntry } from './runtime/index.js';
 
 const resolveDomainHooks = (config: MiddlewareConfig): DomainHooks | undefined => {
   if (!config.domain) return undefined;

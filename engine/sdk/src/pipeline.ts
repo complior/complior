@@ -8,6 +8,8 @@ import { contentMarkingHook } from './hooks/post/content-marking.js';
 import { escalationHook } from './hooks/post/escalation.js';
 import { headersHook } from './hooks/post/headers.js';
 import { biasCheckHook } from './hooks/post/bias-check.js';
+import { createDisclosureInjectorHook } from './runtime/disclosure-injector.js';
+import { createInteractionLoggerHook } from './runtime/interaction-logger.js';
 
 export interface Pipeline {
   readonly runPre: (ctx: MiddlewareContext) => MiddlewareContext;
@@ -21,25 +23,27 @@ const BASE_PRE_HOOKS: readonly PreHook[] = [
   disclosureHook,
 ];
 
-const BASE_POST_HOOKS: readonly PostHook[] = [
-  disclosureVerifyHook,
-  contentMarkingHook,
-  escalationHook,
-  biasCheckHook,
-  headersHook,
-];
-
 export const createPipeline = (
-  _config: MiddlewareConfig,
+  config: MiddlewareConfig,
   domainHooks?: DomainHooks,
 ): Pipeline => {
   const preHooks = domainHooks
     ? [...BASE_PRE_HOOKS, ...domainHooks.pre]
     : [...BASE_PRE_HOOKS];
 
+  const basePost: PostHook[] = [
+    disclosureVerifyHook,
+    ...(config.disclosureInjection ? [createDisclosureInjectorHook(config)] : []),
+    contentMarkingHook,
+    escalationHook,
+    biasCheckHook,
+    ...(config.interactionLogger ? [createInteractionLoggerHook(config)] : []),
+    headersHook,
+  ];
+
   const postHooks = domainHooks
-    ? [...domainHooks.post, ...BASE_POST_HOOKS]
-    : [...BASE_POST_HOOKS];
+    ? [...domainHooks.post, ...basePost]
+    : [...basePost];
 
   const runPre = (ctx: MiddlewareContext): MiddlewareContext => {
     let current = ctx;

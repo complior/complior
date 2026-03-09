@@ -15,6 +15,12 @@ export interface MiddlewareConfig {
   readonly customDisclosurePhrases?: readonly RegExp[];
   readonly biasThreshold?: number;
   readonly biasAction?: 'warn' | 'block';
+  readonly disclosureInjection?: boolean;
+  readonly disclosureText?: string;
+  readonly disclosurePosition?: 'prepend' | 'append' | 'header';
+  readonly disclosureFrequency?: 'every' | 'session-start';
+  readonly interactionLogger?: boolean;
+  readonly interactionLogPath?: string;
 }
 
 export interface MiddlewareContext {
