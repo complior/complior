@@ -449,14 +449,14 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 Как разработчик, я хочу чтобы output safety filter блокировал опасный контент и human-in-the-loop gate требовал подтверждение для critical actions, чтобы выполнить OBL-009 и OBL-008/024.
 
 **Acceptance Criteria:**
-- [ ] Output Safety Filter (OBL-009): проверка LLM output на harmful content, PII leakage, hallucination indicators
-- [ ] Safety patterns: violence/self-harm/illegal instructions/PII in output
-- [ ] Configurable severity threshold: `block`, `warn`, `log`
-- [ ] Human-in-the-Loop Gate (OBL-008/024): callback mechanism для critical decisions
-- [ ] Gate triggers: configurable rules (e.g., actions with financial impact > threshold, data deletion, permission changes)
-- [ ] Gate API: `onGateTriggered(action, context) => Promise<boolean>` callback
-- [ ] Timeout: configurable, default 5 minutes, auto-deny on timeout
-- [ ] 12+ тестов
+- [x] Output Safety Filter (OBL-009): проверка LLM output на harmful content, PII leakage, hallucination indicators
+- [x] Safety patterns: violence/self-harm/illegal instructions/PII in output
+- [x] Configurable severity threshold: `block`, `warn`, `log`
+- [x] Human-in-the-Loop Gate (OBL-008/024): callback mechanism для critical decisions
+- [x] Gate triggers: configurable rules (e.g., actions with financial impact > threshold, data deletion, permission changes)
+- [x] Gate API: `onGateTriggered(action, context) => Promise<boolean>` callback
+- [x] Timeout: configurable, default 5 minutes, auto-deny on timeout
+- [x] 14 тестов (8 safety + 6 HITL)
 
 **Технические детали:**
 - `engine/sdk/src/runtime/safety-filter.ts` — output safety filter

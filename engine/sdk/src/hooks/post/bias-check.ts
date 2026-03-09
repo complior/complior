@@ -8,8 +8,8 @@
 import type { PostHook } from '../../types.js';
 import { extractResponseText } from './extract-response-text.js';
 import { BIAS_PATTERNS, SEVERITY_WEIGHTS } from '../../data/bias-patterns.js';
-import type { BiasPattern } from '../../data/bias-patterns.js';
 import { getProfile } from '../../data/bias-profiles.js';
+import { extractEvidenceSnippet } from './extract-evidence-snippet.js';
 import { BiasDetectedError } from '../../errors.js';
 import type { BiasEvidence } from '../../errors.js';
 
@@ -48,7 +48,7 @@ export const biasCheckHook: PostHook = (ctx, response) => {
     findings.push({
       characteristic: bp.characteristic,
       severity: bp.severity,
-      evidence: extractEvidence(text, match, bp),
+      evidence: extractEvidenceSnippet(text, match, bp.description),
       score,
     });
   }
@@ -83,12 +83,4 @@ export const biasCheckHook: PostHook = (ctx, response) => {
     },
     headers,
   };
-};
-
-const extractEvidence = (text: string, match: RegExpExecArray, bp: BiasPattern): string => {
-  // Extract ~80 chars around the match for context
-  const start = Math.max(0, match.index - 20);
-  const end = Math.min(text.length, match.index + match[0].length + 20);
-  const snippet = text.slice(start, end).trim();
-  return `[${bp.description}] "...${snippet}..."`;
 };

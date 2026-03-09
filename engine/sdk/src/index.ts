@@ -3,15 +3,15 @@ import { COMPLIOR_METADATA_KEY } from './types.js';
 import { createPipeline } from './pipeline.js';
 import { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 
-export type { MiddlewareConfig, MiddlewareContext, MiddlewareResult, PreHook, PostHook, DomainHooks, Domain, Jurisdiction, Role } from './types.js';
-export { ProhibitedPracticeError, MiddlewareError, DomainViolationError, PermissionDeniedError, BudgetExceededError, RateLimitError, CircuitBreakerError, PIIDetectedError, DisclosureMissingError, BiasDetectedError } from './errors.js';
-export type { BiasEvidence } from './errors.js';
+export type { MiddlewareConfig, MiddlewareContext, MiddlewareResult, PreHook, PostHook, DomainHooks, Domain, Jurisdiction, Role, GateRule, GateRequest, GateDecision } from './types.js';
+export { ProhibitedPracticeError, MiddlewareError, DomainViolationError, PermissionDeniedError, BudgetExceededError, RateLimitError, CircuitBreakerError, PIIDetectedError, DisclosureMissingError, BiasDetectedError, SafetyViolationError, HumanGateDeniedError } from './errors.js';
+export type { BiasEvidence, SafetyFinding } from './errors.js';
 export { getDomainHooks, mergeDomainHooks } from './domains/index.js';
 export { compliorAgent } from './agent.js';
 export type { AgentConfig } from './agent.js';
 export type { ActionLogEntry } from './hooks/post/action-log.js';
 export type { CircuitBreakerConfig } from './hooks/post/circuit-breaker.js';
-export { extractResponseMeta, extractModel } from './runtime/index.js';
+export { extractResponseMeta, extractModel, createHitlGateHook } from './runtime/index.js';
 export type { ResponseMeta, InteractionLogEntry } from './runtime/index.js';
 
 const resolveDomainHooks = (config: MiddlewareConfig): DomainHooks | undefined => {
@@ -166,7 +166,7 @@ const wrapFunction = (
     const response = await fn(processedCtx.params);
 
     // Run post-hooks
-    const result = pipeline.runPost(processedCtx, response);
+    const result = await pipeline.runPost(processedCtx, response);
 
     // Attach metadata to response
     if (result.response && typeof result.response === 'object') {

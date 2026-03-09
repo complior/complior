@@ -134,6 +134,51 @@ export class BiasDetectedError extends MiddlewareError {
   }
 }
 
+export interface SafetyFinding {
+  readonly category: string;
+  readonly severity: string;
+  readonly evidence: string;
+  readonly score: number;
+}
+
+export class SafetyViolationError extends MiddlewareError {
+  readonly findings: readonly SafetyFinding[];
+  readonly totalScore: number;
+  readonly threshold: number;
+
+  constructor(
+    message: string,
+    findings: readonly SafetyFinding[],
+    totalScore: number,
+    threshold: number,
+  ) {
+    super(message, 'SAFETY_VIOLATION');
+    this.name = 'SafetyViolationError';
+    this.findings = findings;
+    this.totalScore = totalScore;
+    this.threshold = threshold;
+  }
+}
+
+export class HumanGateDeniedError extends MiddlewareError {
+  readonly reason: 'denied' | 'timeout';
+  readonly rule: string;
+  readonly timeoutMs?: number;
+
+  constructor(
+    message: string,
+    reason: 'denied' | 'timeout',
+    rule: string,
+    timeoutMs?: number,
+  ) {
+    super(message, 'HUMAN_GATE_DENIED');
+    this.name = 'HumanGateDeniedError';
+    this.reason = reason;
+    this.rule = rule;
+    this.timeoutMs = timeoutMs;
+  }
+}
+
 export class DisclosureMissingError extends MiddlewareError {
   readonly language: string;
   readonly expectedPatterns: readonly string[];

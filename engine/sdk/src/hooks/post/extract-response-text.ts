@@ -1,4 +1,4 @@
-/** Extract text from OpenAI/Anthropic response formats using type narrowing (no `as` assertions) */
+/** Extract text from OpenAI/Anthropic/Vercel AI response formats using type narrowing (no `as` assertions) */
 export const extractResponseText = (response: unknown): string => {
   if (typeof response === 'string') return response;
   if (!response || typeof response !== 'object') return '';
@@ -26,6 +26,11 @@ export const extractResponseText = (response: unknown): string => {
         return first.text;
       }
     }
+  }
+
+  // Vercel AI format: { text: string }
+  if ('text' in response && typeof response.text === 'string') {
+    return response.text;
   }
 
   return '';

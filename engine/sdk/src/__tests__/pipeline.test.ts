@@ -58,12 +58,12 @@ describe('pipeline', () => {
       expect(result.metadata['piiRedacted']).toBe(0);
     });
 
-    it('runPost executes all base post-hooks and accumulates metadata', () => {
+    it('runPost executes all base post-hooks and accumulates metadata', async () => {
       const pipeline = createPipeline(defaultConfig);
       const ctx = makeCtx();
 
       const response = { choices: [{ message: { content: 'Safe response' } }] };
-      const result = pipeline.runPost(ctx, response);
+      const result = await pipeline.runPost(ctx, response);
 
       // disclosureVerifyHook
       expect(result.metadata['disclosureVerified']).toBeDefined();
@@ -78,11 +78,11 @@ describe('pipeline', () => {
       expect(result.headers['X-AI-Provider']).toBe('openai');
     });
 
-    it('runPost accumulates headers from all post-hooks', () => {
+    it('runPost accumulates headers from all post-hooks', async () => {
       const pipeline = createPipeline(defaultConfig);
       const ctx = makeCtx();
       const response = { choices: [{ message: { content: 'Hello' } }] };
-      const result = pipeline.runPost(ctx, response);
+      const result = await pipeline.runPost(ctx, response);
 
       // Headers from disclosureVerifyHook, contentMarkingHook, headersHook, etc.
       expect(result.headers['X-AI-Disclosure']).toBe('missing');
@@ -124,7 +124,7 @@ describe('pipeline', () => {
       expect(preResult.metadata['disclosureInjected']).toBe(true);
     });
 
-    it('includes domain post-hooks before base post-hooks', () => {
+    it('includes domain post-hooks before base post-hooks', async () => {
       const domainPostHook: PostHook = (ctx, response) => {
         return { response, metadata: { ...ctx.metadata, domainPost: true }, headers: { 'X-Domain': 'test' } };
       };
@@ -132,7 +132,7 @@ describe('pipeline', () => {
 
       const pipeline = createPipeline(defaultConfig, domainHooks);
       const ctx = makeCtx();
-      const result = pipeline.runPost(ctx, {});
+      const result = await pipeline.runPost(ctx, {});
 
       // Domain post-hook should have run
       expect(result.metadata['domainPost']).toBe(true);

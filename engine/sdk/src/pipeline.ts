@@ -8,12 +8,14 @@ import { contentMarkingHook } from './hooks/post/content-marking.js';
 import { escalationHook } from './hooks/post/escalation.js';
 import { headersHook } from './hooks/post/headers.js';
 import { biasCheckHook } from './hooks/post/bias-check.js';
+import { safetyFilterHook } from './hooks/post/safety-filter.js';
 import { createDisclosureInjectorHook } from './runtime/disclosure-injector.js';
 import { createInteractionLoggerHook } from './runtime/interaction-logger.js';
+import { createHitlGateHook } from './runtime/hitl-gate.js';
 
 export interface Pipeline {
   readonly runPre: (ctx: MiddlewareContext) => MiddlewareContext;
-  readonly runPost: (ctx: MiddlewareContext, response: unknown) => MiddlewareResult;
+  readonly runPost: (ctx: MiddlewareContext, response: unknown) => Promise<MiddlewareResult>;
 }
 
 const BASE_PRE_HOOKS: readonly PreHook[] = [
@@ -35,8 +37,10 @@ export const createPipeline = (
     disclosureVerifyHook,
     ...(config.disclosureInjection ? [createDisclosureInjectorHook(config)] : []),
     contentMarkingHook,
+    safetyFilterHook,
     escalationHook,
     biasCheckHook,
+    ...(config.hitlGate ? [createHitlGateHook(config)] : []),
     ...(config.interactionLogger ? [createInteractionLoggerHook(config)] : []),
     headersHook,
   ];
@@ -53,14 +57,14 @@ export const createPipeline = (
     return current;
   };
 
-  const runPost = (ctx: MiddlewareContext, response: unknown): MiddlewareResult => {
+  const runPost = async (ctx: MiddlewareContext, response: unknown): Promise<MiddlewareResult> => {
     let result: MiddlewareResult = {
       response,
       metadata: ctx.metadata,
       headers: {},
     };
     for (const hook of postHooks) {
-      const hookResult = hook(
+      const hookResult = await hook(
         { ...ctx, metadata: result.metadata },
         result.response,
       );

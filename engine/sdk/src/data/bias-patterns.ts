@@ -6,7 +6,10 @@
  *           HIGH (discriminatory outcome), CRITICAL (explicit slur/hate)
  */
 
-export type BiasSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+import type { Severity } from './severity.js';
+export { SEVERITY_WEIGHTS } from './severity.js';
+
+export type BiasSeverity = Severity;
 
 export type ProtectedCharacteristic =
   | 'sex'
@@ -33,13 +36,6 @@ export interface BiasPattern {
   readonly weight: number;
   readonly description: string;
 }
-
-export const SEVERITY_WEIGHTS: Record<BiasSeverity, number> = {
-  LOW: 0.1,
-  MEDIUM: 0.3,
-  HIGH: 0.6,
-  CRITICAL: 1.0,
-};
 
 export const BIAS_PATTERNS: readonly BiasPattern[] = [
   // ── sex ──

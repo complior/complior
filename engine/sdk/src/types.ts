@@ -15,6 +15,13 @@ export interface MiddlewareConfig {
   readonly customDisclosurePhrases?: readonly RegExp[];
   readonly biasThreshold?: number;
   readonly biasAction?: 'warn' | 'block';
+  readonly safetyFilter?: boolean;
+  readonly safetyMode?: 'block' | 'warn' | 'log';
+  readonly safetyThreshold?: number;
+  readonly hitlGate?: boolean;
+  readonly hitlGateTimeoutMs?: number;
+  readonly hitlGateRules?: readonly GateRule[];
+  readonly onGateTriggered?: (request: GateRequest) => Promise<GateDecision>;
   readonly disclosureInjection?: boolean;
   readonly disclosureText?: string;
   readonly disclosurePosition?: 'prepend' | 'append' | 'header';
@@ -37,8 +44,25 @@ export interface MiddlewareResult {
   readonly headers: Record<string, string>;
 }
 
+export interface GateRule {
+  readonly id: string;
+  readonly description: string;
+  readonly pattern: RegExp;
+  readonly category: string;
+}
+
+export interface GateRequest {
+  readonly rule: GateRule;
+  readonly matchedText: string;
+  readonly provider: string;
+  readonly method: string;
+  readonly timestamp: number;
+}
+
+export type GateDecision = { approved: true } | { approved: false; reason?: string };
+
 export type PreHook = (ctx: MiddlewareContext) => MiddlewareContext;
-export type PostHook = (ctx: MiddlewareContext, response: unknown) => MiddlewareResult;
+export type PostHook = (ctx: MiddlewareContext, response: unknown) => MiddlewareResult | Promise<MiddlewareResult>;
 
 export interface ProviderAdapter {
   readonly name: string;
