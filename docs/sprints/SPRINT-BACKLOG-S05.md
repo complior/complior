@@ -257,17 +257,18 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 **Продукт:** Engine
 **Backlog ref:** E-29, C.S03
 **Компонент:** `[Engine]`
+**Статус:** DONE
 
 Как разработчик, я хочу чтобы scanner обнаруживал фактические permissions агента из кода и сравнивал с декларированными в passport, чтобы находить undeclared permissions.
 
 **Acceptance Criteria:**
-- [ ] AST-based discovery: tool definitions, API calls, data access, file operations
-- [ ] Парсинг: LangChain tools, CrewAI tools, OpenAI function definitions, MCP tool registrations
-- [ ] Сравнение discovered vs declared в passport `permissions.tools[]`
-- [ ] Alert: `undeclared-permission` finding (severity HIGH) с указанием tool name и file:line
-- [ ] Report: permission diff (declared but unused, used but undeclared)
-- [ ] Integration: cross-layer rule #7 `permission-passport-mismatch`
-- [ ] 10+ тестов: discovery для каждого framework + comparison
+- [x] AST-based discovery: tool definitions, API calls, data access, file operations
+- [x] Парсинг: LangChain tools, CrewAI tools, OpenAI function definitions, MCP tool registrations
+- [x] Сравнение discovered vs declared в passport `permissions.tools[]`
+- [x] Alert: `undeclared-permission` finding (severity HIGH) с указанием tool name и file:line
+- [x] Report: permission diff (declared but unused, used but undeclared)
+- [x] Integration: cross-layer rule #7 `permission-passport-mismatch`
+- [x] 10+ тестов: discovery для каждого framework + comparison
 
 **Технические детали:**
 - `engine/core/src/domain/scanner/checks/permission-scanner.ts` — discovery логика

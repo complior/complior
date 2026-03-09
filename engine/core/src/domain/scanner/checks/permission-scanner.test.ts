@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 import { checkPermissions } from './permission-scanner.js';
+import { scanPermissionsDetailed } from '../../passport/permission-scanner.js';
 
 const createPassportManifest = (tools: readonly string[] = []): string =>
   JSON.stringify({
@@ -215,5 +216,64 @@ server.tool('tool_c', {}, async () => {});`,
     // 'SearchTool' normalizes to 'search', matching declared 'search'
     expect(results).toHaveLength(1);
     expect(results[0].type).toBe('pass');
+  });
+
+  it('detects undeclared Vercel AI tool', () => {
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/test-manifest.json', createPassportManifest([])),
+      createScanFile(
+        'src/tools.ts',
+        `import { tool } from 'ai';
+const myTool = tool('my_tool', { execute: async () => {} });`,
+      ),
+    ]);
+
+    const results = checkPermissions(ctx);
+
+    const undeclared = results.filter((r) => r.type === 'fail' && r.checkId === 'undeclared-permission');
+    expect(undeclared.length).toBeGreaterThanOrEqual(1);
+    expect(undeclared[0].message).toContain('my_tool');
+  });
+
+  it('detects undeclared generic Python @tool decorator', () => {
+    const ctx = createScanCtx([
+      createScanFile('.complior/agents/test-manifest.json', createPassportManifest([])),
+      createScanFile(
+        'src/tools.py',
+        `@tool()
+def search_web(query: str):
+    return results`,
+        '.py',
+      ),
+    ]);
+
+    const results = checkPermissions(ctx);
+
+    const undeclared = results.filter((r) => r.type === 'fail' && r.checkId === 'undeclared-permission');
+    expect(undeclared.length).toBeGreaterThanOrEqual(1);
+    expect(undeclared[0].message).toContain('search_web');
+  });
+
+  it('detects file operations in data access', () => {
+    const ctx = createScanCtx([
+      createScanFile('src/loader.ts', `const data = readFileSync('./config.json');
+writeFile('output.txt', result);`),
+    ]);
+
+    const detailed = scanPermissionsDetailed(ctx);
+
+    expect(detailed.dataAccess.read).toContain('filesystem');
+    expect(detailed.dataAccess.write).toContain('filesystem');
+  });
+
+  it('detects API calls in data access', () => {
+    const ctx = createScanCtx([
+      createScanFile('src/client.ts', `const res = await fetch('https://api.example.com/data');
+const users = await axios.get('/users');`),
+    ]);
+
+    const detailed = scanPermissionsDetailed(ctx);
+
+    expect(detailed.dataAccess.read).toContain('network');
   });
 });

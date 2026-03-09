@@ -85,7 +85,7 @@ const detectTools = (
   return [...tools];
 };
 
-// --- Database access detection ---
+// --- Data access detection (database, file I/O, HTTP) ---
 
 interface DataAccessPatterns {
   readonly read: readonly RegExp[];
@@ -93,33 +93,100 @@ interface DataAccessPatterns {
   readonly delete: readonly RegExp[];
 }
 
-const DB_PATTERNS: DataAccessPatterns = {
-  read: [
-    /\.find\(/g,
-    /\.findOne\(/g,
-    /\.findMany\(/g,
-    /SELECT\s/g,
-    /\.get\(/g,
-    /\.query\(/g,
-  ],
+const DB_PATTERNS: readonly RegExp[] = [
+  /\.find\(/g, /\.findOne\(/g, /\.findMany\(/g, /SELECT\s/g, /\.get\(/g, /\.query\(/g,
+];
+
+const FILE_READ_PATTERNS: readonly RegExp[] = [
+  /readFile\(/g, /readFileSync\(/g, /createReadStream\(/g,
+];
+
+const FILE_WRITE_PATTERNS: readonly RegExp[] = [
+  /writeFile\(/g, /writeFileSync\(/g, /appendFile\(/g, /createWriteStream\(/g,
+];
+
+const FILE_DELETE_PATTERNS: readonly RegExp[] = [
+  /unlink\(/g, /unlinkSync\(/g, /rmSync\(/g,
+];
+
+const HTTP_READ_PATTERNS: readonly RegExp[] = [
+  /fetch\(/g, /axios\.get\(/g, /http\.get\(/g, /http\.request\(/g,
+];
+
+const HTTP_WRITE_PATTERNS: readonly RegExp[] = [
+  /axios\.post\(/g, /axios\.put\(/g, /axios\.patch\(/g,
+];
+
+const HTTP_DELETE_PATTERNS: readonly RegExp[] = [
+  /axios\.delete\(/g,
+];
+
+const DATA_ACCESS_PATTERNS: DataAccessPatterns = {
+  read: [...DB_PATTERNS, ...FILE_READ_PATTERNS, ...HTTP_READ_PATTERNS],
   write: [
-    /\.create\(/g,
-    /\.update\(/g,
-    /\.upsert\(/g,
-    /INSERT\s/g,
-    /UPDATE\s/g,
-    /\.put\(/g,
-    /\.set\(/g,
+    /\.create\(/g, /\.update\(/g, /\.upsert\(/g, /INSERT\s/g, /UPDATE\s/g, /\.put\(/g, /\.set\(/g,
+    ...FILE_WRITE_PATTERNS, ...HTTP_WRITE_PATTERNS,
   ],
   delete: [
-    /\.delete\(/g,
-    /\.remove\(/g,
-    /DELETE\s/g,
-    /\.destroy\(/g,
+    /\.delete\(/g, /\.remove\(/g, /DELETE\s/g, /\.destroy\(/g,
+    ...FILE_DELETE_PATTERNS, ...HTTP_DELETE_PATTERNS,
   ],
 };
 
 const ENTITY_PATTERN = /(?:prisma|db|model|collection)\.(\w+)\./g;
+
+const ALL_FILE_PATTERNS: readonly RegExp[] = [
+  ...FILE_READ_PATTERNS, ...FILE_WRITE_PATTERNS, ...FILE_DELETE_PATTERNS,
+];
+
+const ALL_HTTP_PATTERNS: readonly RegExp[] = [
+  ...HTTP_READ_PATTERNS, ...HTTP_WRITE_PATTERNS, ...HTTP_DELETE_PATTERNS,
+];
+
+const matchPatterns = (
+  content: string,
+  patterns: readonly RegExp[],
+): boolean => {
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    if (pattern.test(content)) return true;
+  }
+  return false;
+};
+
+const inferAccessLabel = (content: string): string => {
+  if (matchPatterns(content, ALL_FILE_PATTERNS)) return 'filesystem';
+  if (matchPatterns(content, ALL_HTTP_PATTERNS)) return 'network';
+  return 'database';
+};
+
+const collectEntities = (content: string): ReadonlySet<string> => {
+  const entities = new Set<string>();
+  ENTITY_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = ENTITY_PATTERN.exec(content)) !== null) {
+    entities.add(match[1]);
+  }
+  return entities;
+};
+
+const addMatchedAccess = (
+  content: string,
+  patterns: readonly RegExp[],
+  entities: ReadonlySet<string>,
+  target: Set<string>,
+): void => {
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    if (pattern.test(content)) {
+      if (entities.size > 0) {
+        for (const entity of entities) target.add(entity);
+      } else {
+        target.add(inferAccessLabel(content));
+      }
+    }
+  }
+};
 
 const detectDataAccess = (
   sourceFiles: readonly { readonly content: string }[],
@@ -129,49 +196,10 @@ const detectDataAccess = (
   const del = new Set<string>();
 
   for (const file of sourceFiles) {
-    // Extract entity/table names
-    const entities = new Set<string>();
-    ENTITY_PATTERN.lastIndex = 0;
-    let entityMatch: RegExpExecArray | null;
-    while ((entityMatch = ENTITY_PATTERN.exec(file.content)) !== null) {
-      entities.add(entityMatch[1]);
-    }
-
-    // Check read patterns
-    for (const pattern of DB_PATTERNS.read) {
-      pattern.lastIndex = 0;
-      if (pattern.test(file.content)) {
-        if (entities.size > 0) {
-          for (const entity of entities) read.add(entity);
-        } else {
-          read.add('database');
-        }
-      }
-    }
-
-    // Check write patterns
-    for (const pattern of DB_PATTERNS.write) {
-      pattern.lastIndex = 0;
-      if (pattern.test(file.content)) {
-        if (entities.size > 0) {
-          for (const entity of entities) write.add(entity);
-        } else {
-          write.add('database');
-        }
-      }
-    }
-
-    // Check delete patterns
-    for (const pattern of DB_PATTERNS.delete) {
-      pattern.lastIndex = 0;
-      if (pattern.test(file.content)) {
-        if (entities.size > 0) {
-          for (const entity of entities) del.add(entity);
-        } else {
-          del.add('database');
-        }
-      }
-    }
+    const entities = collectEntities(file.content);
+    addMatchedAccess(file.content, DATA_ACCESS_PATTERNS.read, entities, read);
+    addMatchedAccess(file.content, DATA_ACCESS_PATTERNS.write, entities, write);
+    addMatchedAccess(file.content, DATA_ACCESS_PATTERNS.delete, entities, del);
   }
 
   return {
@@ -330,39 +358,28 @@ const FRAMEWORK_TOOL_PATTERNS: readonly FrameworkPattern[] = [
   { framework: 'mcp', pattern: /server\.tool\(\s*['"](\w+)['"]/g },
   { framework: 'mcp', pattern: /registerTool\(\s*['"](\w+)['"]/g },
   { framework: 'mcp', pattern: /\.addTool\(\s*['"](\w+)['"]/g },
+  // Vercel AI
+  { framework: 'vercel-ai', pattern: /(?<!\.)tool\(\s*['"](\w+)['"]/g },
   // Generic (Python @tool decorator)
   { framework: 'generic', pattern: /@tool[^)]*\)\s*\n\s*(?:def|async\s+def)\s+(\w+)/g },
 ];
 
+// --- Helpers ---
+
+const getSourceFiles = (ctx: ScanContext) =>
+  ctx.files.filter((f) => isSourceFile(f.relativePath, f.extension));
+
 // --- Main scan function ---
 
 export const scanPermissions = (ctx: ScanContext): DiscoveredPermissions => {
-  // Get source files
-  const sourceFiles = ctx.files.filter((f) =>
-    isSourceFile(f.relativePath, f.extension),
-  );
-
-  // 1. Detect tools
-  const tools = detectTools(sourceFiles);
-
-  // 2. Detect data access
-  const dataAccess = detectDataAccess(sourceFiles);
-
-  // 3. Detect MCP servers (scan all files, not just source)
-  const mcpServers = detectMcpServers(ctx.files);
-
-  // 4. Detect human approval requirements
-  const humanApprovalRequired = detectHumanApproval(sourceFiles);
-
-  // 5. Denied is empty by default (can't auto-detect denied actions)
-  const denied: readonly string[] = [];
+  const sourceFiles = getSourceFiles(ctx);
 
   return {
-    tools,
-    dataAccess,
-    denied,
-    mcpServers,
-    humanApprovalRequired,
+    tools: detectTools(sourceFiles),
+    dataAccess: detectDataAccess(sourceFiles),
+    denied: [],
+    mcpServers: detectMcpServers(ctx.files),
+    humanApprovalRequired: detectHumanApproval(sourceFiles),
   };
 };
 
@@ -370,12 +387,8 @@ export const scanPermissions = (ctx: ScanContext): DiscoveredPermissions => {
 
 export const scanPermissionsDetailed = (ctx: ScanContext): DiscoveredPermissionsDetailed => {
   const base = scanPermissions(ctx);
+  const sourceFiles = getSourceFiles(ctx);
 
-  const sourceFiles = ctx.files.filter((f) =>
-    isSourceFile(f.relativePath, f.extension),
-  );
-
-  // Detect tools with framework-specific patterns
   const toolsDetailed: DiscoveredTool[] = [];
   const toolNames = new Set<string>();
 
