@@ -4,10 +4,10 @@
 > Each feature lists its completed user stories with implementation details.
 > Sprint burndown numbers → see [BURNDOWN.md](./BURNDOWN.md)
 
-**Updated:** 2026-03-05
-**Current status:** Sprint S3.5 COMPLETE (United Sprint 1 — CLI↔SaaS Bridge) + Quality Fixes
-**Tests:** 950 | **TS Engine:** 489 | **Rust CLI:** 345 | **SDK:** 116
-**Next:** Sprint S04 — Agent Governance + Certification (14 US)
+**Updated:** 2026-03-09
+**Current status:** Sprint S05 Phase 1-3 COMPLETE (17/34 US) — SDK Production + Engine Core + Launch Priorities
+**Tests:** 1430 | **TS Engine:** 685 | **Rust CLI:** 372 | **SDK:** 373
+**Next:** Sprint S05 Phase 4-5 — Runtime Control + Certification + SaaS Features (17 US remaining)
 
 ---
 
@@ -53,7 +53,15 @@
 | F36 | Data Bundle Client (ETag cache) | **DONE** | 1 | S3.5 |
 | F37 | TUI Sync Panel (live status) | **DONE** | 1 | S3.5 |
 | F38 | S3.5 Code Audit Fixes (UTF-8, `as`, permissions) | **DONE** | — | S3.5 |
-| **TOTAL** | | | **~138** | |
+| F39 | S04 Fixes (FRIA JSON, evidence, sync, login) | **DONE** | 1 | S04 |
+| F40 | SDK Production (Prohibited, Sanitize, Permission, Disclosure, Bias, Middleware) | **DONE** | 6 | S05-P1 |
+| F41 | Engine Core (Finding Explanations, Worker Notification, Passport Export, Behavior Contract) | **DONE** | 4 | S05-P2 |
+| F42 | Industry Patterns + Agent Registry + Permissions Matrix + Policy Templates | **DONE** | 4 | S05-P2 |
+| F43 | AIUC-1 Cert Readiness Score | **DONE** | 1 | S05-P3 |
+| F44 | Guided Onboarding Wizard (5-step) | **DONE** | 1 | S05-P3 |
+| F45 | Compliance Diff in PR | **DONE** | 1 | S05-P3 |
+| F46 | S05 Quality Fixes (score.totalScore, SRP, DRY, Zod, scoped names) | **DONE** | — | S05-QF |
+| **TOTAL** | | | **~156** | |
 
 ---
 
@@ -605,3 +613,189 @@ Full code audit of Sprint S3.5 deliverables against CODING-STANDARDS. 11 issues 
 | 4 | HIGH | `as` type assertion (×3) | `sync.route.ts:54,115,155` | `?? undefined`, `parseManifest()` helper with `'name' in parsed` guard |
 | 5 | HIGH | `as` type assertion (×1) | `bundle-fetcher.ts:37` | Type annotation |
 | 6 | HIGH | Credentials world-readable | `config.rs:296` | Added `#[cfg(unix)] set_permissions(path, 0o600)` after write |
+
+---
+
+## F39: S04 Fixes (FRIA JSON + Sync + Evidence)
+
+**Sprint:** S04 | **Status:** DONE
+
+Bugfixes and enhancements from S04 sprint (FRIA, Evidence Chain, SaaS sync).
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S04-16 | FRIA structured JSON + sync | Structured JSON payload for FRIA, file watcher loop fix |
+| — | S04 bug fixes | Evidence bloat fix, engine reliability, login UX, sync paths |
+
+---
+
+## F40: SDK Production (6 Hooks)
+
+**Sprint:** S05 Phase 1 | **Status:** DONE | **Backlog:** S-09..S-36
+
+6 production-ready SDK hooks covering EU AI Act Articles 5, 9, 26, 50 and EU Charter Art.21.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-01 | Prohibited Hook | 138 patterns across 8 Art.5 categories (subliminal manipulation, exploitation, social scoring, predictive policing, facial scraping, emotion inference, biometric categorization, real-time biometric ID). 6 languages (EN/DE/FR/NL/ES/IT). Configurable strictness (strict/standard). `ProhibitedContentError` with category + article reference |
+| US-S05-02 | Sanitize Hook | 50+ PII types with checksum validation: IBAN (mod-97), BSN (11-check), NIR (mod-97 key), PESEL (weighted), Codice Fiscale. 6 PII categories (identity_national, identity_passport, financial, contact, medical, gdpr_art9). 3 modes: replace/block/warn. Context-dependent GDPR Art.9 matching |
+| US-S05-03 | Permission Hook | Post-hook parsing `tool_calls` from 3 providers: OpenAI (`choices[].message.tool_calls[]`), Anthropic (`content[].type === 'tool_use'`), Google (`candidates[].content.parts[].functionCall`). Allowlist/denylist enforcement. Passport integration via `permissions.tools` |
+| US-S05-04 | Disclosure Verify Hook | Multilingual disclosure phrase verification: EN/DE/FR/ES. Regex-based response checking. Configurable: warn-only vs block. Custom phrases via config. `DisclosureMissingError` |
+| US-S05-05 | Bias Detection Hook | 15 protected characteristics (EU Charter Art.21). Weighted scoring: LOW/MEDIUM/HIGH/CRITICAL severity. 5 domain profiles: general/hr/finance/healthcare/education. Configurable threshold (0.3 default). `BiasDetectedError` with evidence array |
+| US-S05-06 | HTTP Middleware | `compliorMiddleware()` factory for Express/Fastify/Hono/Next.js. Auto-inject headers: `X-AI-Disclosure`, `X-AI-Provider`, `X-AI-Model`, `X-Compliance-Score`. Headers configurable via whitelist/blacklist |
+
+**Key files:**
+- `engine/sdk/src/hooks/pre/prohibited.ts`, `sanitize.ts`
+- `engine/sdk/src/hooks/post/permission-tool-calls.ts`, `disclosure-verify.ts`, `bias-check.ts`
+- `engine/sdk/src/middleware/` — express.ts, fastify.ts, hono.ts, nextjs.ts
+- `engine/sdk/src/data/` — prohibited-patterns.ts, pii-patterns.ts, bias-patterns.ts, disclosure-phrases.ts
+- `engine/sdk/src/data/pii-validators/` — iban.ts, bsn.ts, nir.ts, pesel.ts, codice-fiscale.ts
+- **Tests:** SDK 116→373 (+257 tests)
+
+---
+
+## F41: Engine Core — Documents + Passport Extensions
+
+**Sprint:** S05 Phase 2 | **Status:** DONE | **Backlog:** E-13, E-18, E-33, E-30
+
+Finding Explanations, Worker Notification, Passport Export Hub, Behavioral Constraints.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-07 | Finding Explanations | Static mapping `check_id → explanation` in JSON. Each has: article, penalty, deadline, business_impact. 19+ check_ids covered. `FindingExplanation` type in Rust. HTTP: included in `/scan` response |
+| US-S05-08 | Worker Notification | `complior agent notify <name>`. Art.26(7) template pre-filled from passport: system name, purpose, data, capabilities, oversight. Saves to `.complior/reports/worker-notification-{name}.md`. Updates passport: `worker_notification_sent: true` |
+| US-S05-09 | Passport Export Hub | 3 export formats: A2A (Google Agent Card), AIUC-1 compliance profile, NIST AI RMF Playbook. `complior agent export <name> --format a2a\|aiuc-1\|nist`. Zod-validated output. 36→target field mapping per format |
+| US-S05-11 | Behavioral Constraints | Passport extension: `constraints.escalation_rules[]`, `permissions.data_boundaries{}`. Types: EscalationRule, DataBoundaries, PiiHandlingMode. Auto-fill on `agent init`. Scanner check: `checkBehavioralConstraints()` (L1, risk-class-aware). Shared helpers: `extractRiskClass()` in manifest-files.ts |
+
+**Key files:**
+- `engine/core/src/data/finding-explanations.json` — static check_id → explanation mapping
+- `engine/core/src/domain/documents/worker-notification-generator.ts`
+- `engine/core/data/templates/eu-ai-act/worker-notification.md`
+- `engine/core/src/domain/passport/export/` — a2a-mapper.ts, aiuc1-mapper.ts, nist-mapper.ts
+- `engine/core/src/domain/scanner/checks/behavioral-constraints.ts`
+- `engine/core/src/domain/passport/manifest-files.ts` — shared helpers
+
+---
+
+## F42: Industry Patterns + Agent Registry + Permissions + Policy
+
+**Sprint:** S05 Phase 2 | **Status:** DONE | **Backlog:** E-10, E-52..55, E-59
+
+Agent Governance framework: industry scanning, registry, permissions matrix, audit trail, policy templates.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-12 | Industry-Specific Scanner Patterns | 4 domains: HR (5+ patterns: recruitment, CV screening, monitoring), Finance (5+: credit scoring, fraud, AML), Healthcare (5+: diagnosis, medical device, patient monitoring), Education (4+: admissions, grading, student monitoring). Shared source-filter architecture. Auto-update passport `industry_context` |
+| US-S05-13 | Agent Registry + Per-Agent Score | `complior agent registry`. Per-agent: compliance score (0-100, weighted: passport 30% + scanner 40% + evidence 15% + docs 15%), autonomy level, last scan, completeness %, risk class. Filter/sort: `--sort score\|risk`, `--filter high-risk`. HTTP: `GET /agent/registry` |
+| US-S05-14 | Permissions Matrix + Unified Audit Trail | Permissions matrix: agent × permission (tools, data, actions). Cross-agent conflict detection. Unified audit trail: `.complior/audit/trail.jsonl` (ed25519 signed, append-only). Events: passport + compliance + scan. `complior agent permissions`, `complior agent audit`. HTTP: `GET /agent/permissions`, `GET /agent/audit` |
+| US-S05-15 | Policy Templates | 5 industry AI usage policy templates: HR, Finance, Healthcare, Education, Legal. Pure generator: `generatePolicy(input)` → `PolicyResult { markdown, prefilledFields, manualFields }`. Pre-fill from passport. `complior agent policy <name> --industry hr\|finance\|healthcare\|education\|legal`. HTTP: `POST /policy/generate`. Saves to `.complior/policies/` |
+
+**Key files:**
+- `engine/core/src/data/industry-patterns.ts` — patterns + IndustryId + INDUSTRY_TEMPLATE_MAP
+- `engine/core/src/domain/registry/` — registry-calculator.ts, permissions-matrix.ts, audit-trail.ts
+- `engine/core/src/domain/documents/policy-generator.ts` — pure policy generator
+- `engine/core/data/templates/policies/` — 5 industry markdown templates
+- `cli/src/headless/agent.rs` — registry, permissions, audit, policy CLI handlers
+
+---
+
+## F43: AIUC-1 Certification Readiness Score
+
+**Sprint:** S05 Phase 3 | **Status:** DONE | **Backlog:** E-76, C.T01
+
+`complior cert readiness <name>` — readiness score for AIUC-1 certification.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-19 | AIUC-1 Readiness Score | 6 requirement categories: documentation, testing, risk_management, monitoring, transparency, human_oversight. Per-requirement: status (met/partial/unmet), evidence from scan + passport + documents. Gap analysis: actionable list of what's missing. Overall readiness %: weighted by category criticality. Readiness levels: certified/near_ready/in_progress/not_started. HTTP: `GET /cert/readiness?name=X&path=Y`. CLI: `complior cert readiness <name> [--json]` |
+
+**Key files:**
+- `engine/core/src/domain/certification/aiuc1-readiness.ts` — pure score calculation
+- `engine/core/src/data/certification/aiuc1-requirements.json` — requirement mapping
+- `engine/core/src/http/routes/cert.route.ts` (NEW) — `GET /cert/readiness` with Zod validation
+- `cli/src/cli.rs` — `CertAction::Readiness`
+- `cli/src/headless/cert.rs` (NEW) — `run_cert_readiness()` with human-readable + JSON output
+
+---
+
+## F44: Guided Onboarding Wizard (5-Step)
+
+**Sprint:** S05 Phase 3 | **Status:** DONE | **Backlog:** E-104
+
+5-step guided onboarding: Detect → Scan → Passport → Fix → Document. 15 minutes to first compliance report.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-33 | Guided Onboarding Wizard | Pure domain state machine: `GuidedOnboardingState` with 5 steps. Functions: `createInitialState()`, `startOnboarding()`, `completeStep()`, `skipStep()`, `canRunStep()`, `getProgress()`. Shared `advanceStep()` (DRY). HTTP: `POST /onboarding/state`, `POST /onboarding/start`, `POST /onboarding/step/:n`. State persistence: `.complior/onboarding-progress.json` with Zod validation on load. Route orchestrates existing services (scan, passport, fix, fria). Can interrupt and resume |
+
+**Key files:**
+- `engine/core/src/domain/onboarding/guided-onboarding.ts` — pure state machine
+- `engine/core/src/domain/onboarding/guided-onboarding.test.ts` — 7+ tests
+- `engine/core/src/http/routes/guided-onboarding.route.ts` — route with `executeStep()` orchestrator
+- `engine/core/src/http/create-router.ts` — state load/save with Zod validation, static imports
+
+---
+
+## F45: Compliance Diff in PR
+
+**Sprint:** S05 Phase 3 | **Status:** DONE | **Backlog:** C-16, C-27
+
+Compliance delta for pull requests: score before/after, new/resolved findings, PR gate support.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-34 | Compliance Diff in PR | `computeComplianceDiff(before, after, changedFiles?)` — pure function producing `ComplianceDiffResult { scoreBefore, scoreAfter, scoreDelta, newFindings, resolvedFindings, markdown }`. Changed-files filter: only shows findings from modified files. Markdown summary: formatted table for PR comments. HTTP: `POST /scan/diff` with Zod-validated `ScanDiffRequestSchema`. Uses `compareSeverity()` shared helper for severity sorting |
+
+**Key files:**
+- `engine/core/src/domain/scanner/compliance-diff.ts` — pure diff calculator
+- `engine/core/src/domain/scanner/compliance-diff.test.ts` — tests
+- `engine/core/src/http/routes/scan.route.ts` — `POST /scan/diff` with `ScanDiffRequestSchema`
+- `engine/core/src/types/common.types.ts` — `compareSeverity()` helper
+
+---
+
+## F46: S05 Quality Fixes (2 rounds E2E + Code Audit)
+
+**Sprint:** S05-QF (post-Phase 3 quality) | **Status:** DONE
+
+Two full rounds of E2E testing + code audits. 21/21 E2E tests pass.
+
+| # | Severity | Issue | File(s) | Fix |
+|---|----------|-------|---------|-----|
+| 1 | CRITICAL | `score.overall` doesn't exist (ScoreBreakdown has `totalScore`) | compliance-diff.ts, aiuc1-readiness.ts, +2 tests | `score.overall` → `score.totalScore` |
+| 2 | CRITICAL | Onboarding Step 3 HTTP 500 — scoped npm names create subdirs | passport-service.ts | `mkdir(dirname(filePath), { recursive: true })` |
+| 3 | CRITICAL | Onboarding route ignores `path` from request body | guided-onboarding.route.ts | `resolveProjectPath()` with Zod `RequestSchema` |
+| 4 | HIGH | DRY violation: url_encode/resolve_client/ensure_engine duplicated | cert.rs, agent.rs → common.rs (NEW) | Extracted shared module `headless/common.rs` |
+| 5 | HIGH | SRP violation: guided-onboarding.route.ts 130 LOC orchestration | guided-onboarding.route.ts | Extracted `executeStep()`, moved I/O to deps |
+| 6 | HIGH | Unvalidated JSON.parse in loadOnboardingState | create-router.ts | `OnboardingStateSchema` Zod + `safeParse()` fallback |
+| 7 | HIGH | `in` operator on potentially null `manifest.compliance` | passport-service.ts | `compliance && 'policy_generated' in compliance` |
+| 8 | IMPORTANT | `DiffFinding.severity: string` → `Severity` type | compliance-diff.ts | Proper type import |
+| 9 | IMPORTANT | `await import()` for standard Node modules | create-router.ts | Static imports |
+| 10 | IMPORTANT | Inline Zod schemas in routes | scan.route.ts, cert.route.ts | Named constants: `ScanDiffRequestSchema`, `ReadinessQuerySchema` |
+| 11 | MINOR | `skipStep` sets wrong status (`completed` vs `skipped`) | guided-onboarding.ts | Shared `advanceStep()` with parameterized status |
+
+---
+
+## Sprint S05 — Remaining (NOT YET IMPLEMENTED)
+
+The following US from S05 are planned but not yet started (Phase 4+5):
+
+| Phase | US | Title | Priority |
+|-------|-----|-------|----------|
+| 4 | US-S05-10 | Agent Permission Scanner (AST-based) | HIGH |
+| 4 | US-S05-16 | Runtime Control: Disclosure + Content Marking + Logger | HIGH |
+| 4 | US-S05-17 | Runtime Control: Safety Filter + HITL Gate | HIGH |
+| 4 | US-S05-18 | Runtime Control: Compliance Proxy + SDK Adapters | HIGH |
+| 4 | US-S05-20 | Adversarial Test Runner | CRITICAL |
+| 5 | US-S05-21 | Supply Chain Audit + Model Compliance Cards | MEDIUM |
+| 5 | US-S05-22 | Compliance Debt Score | MEDIUM |
+| 5 | US-S05-23 | Dependency Deep Scan | MEDIUM |
+| 5 | US-S05-24 | Agent Test Suite Gen + Manifest Diff | MEDIUM |
+| 5 | US-S05-25 | Compliance Simulation | MEDIUM |
+| 5 | US-S05-26 | Multi-Agent Awareness | HIGH |
+| 5 | US-S05-27 | Compliance Cost Estimator | MEDIUM |
+| 5 | US-S05-28 | SaaS — Unified Registry | CRITICAL |
+| 5 | US-S05-29 | SaaS — Wizard Steps 3-5 | CRITICAL |
+| 5 | US-S05-30 | SaaS — Extended Passport Fields | CRITICAL |
+| 5 | US-S05-31 | SaaS — Cert Readiness Dashboard | CRITICAL |
+| 5 | US-S05-32 | SaaS — Compliance Badge | HIGH |

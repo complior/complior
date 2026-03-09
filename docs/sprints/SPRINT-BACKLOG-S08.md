@@ -11,13 +11,13 @@
 Восьмой спринт. Фокус на UX polish, platform integration, guided onboarding и завершение SaaS Enterprise функциональности. Спринт делает Complior готовым для production onboarding: новый пользователь за 15 минут проходит от первого запуска до первого FRIA. MCP Guard tools обеспечивают runtime безопасность агентов. SaaS получает мультиязычность, Enterprise features и AI Literacy модуль.
 
 Спринт разбит на 5 направлений:
-- **Engine** — post-apply validation, env vars discovery, per-finding evidence, guided onboarding, advanced drift detection, regulation tracking
+- **Engine** — post-apply validation, env vars discovery, per-finding evidence, advanced drift detection, regulation tracking
 - **SDK** — content marking visible watermark
-- **CLI** — compliance diff в PR, guided onboarding TUI wizard
+- **CLI** — guided onboarding TUI wizard (зависит от US-S05-33 Engine onboarding)
 - **MCP** — Guard tools, builder workflow
 - **SaaS** — мультиязычность, Enterprise, AI Literacy, AESIA экспорт, onboarding, мониторинг, analytics, NHI
 
-**Цель:** Onboarding за 15 минут, PR compliance gate, MCP Guard для runtime безопасности, SaaS Enterprise complete.
+**Цель:** TUI Onboarding wizard, MCP Guard для runtime безопасности, SaaS Enterprise complete. (Engine onboarding и PR compliance diff перенесены в S05)
 
 ---
 
@@ -93,29 +93,7 @@
 
 ---
 
-### US-S08-04: Guided Onboarding Wizard (Engine)
-**Приоритет:** MEDIUM
-**Продукт:** Engine
-**Backlog ref:** E-104
-**Компонент:** `[Engine]`
-
-Как новый пользователь Complior, я хочу чтобы при первом запуске меня провели через 5-step onboarding, чтобы за 15 минут получить первый compliance report.
-
-**Acceptance Criteria:**
-- [ ] Step 1: Detect project — auto-detect language, framework, AI SDKs, package manager
-- [ ] Step 2: First scan — запуск полного скана, показ score и top-5 findings
-- [ ] Step 3: Generate passport — `agent init` для обнаруженных AI-систем
-- [ ] Step 4: Fix top-3 — предложить и применить 3 самых impactful fix-а
-- [ ] Step 5: Generate document — FRIA (если high-risk) или compliance report
-- [ ] HTTP endpoint: `POST /onboarding/start`, `GET /onboarding/status`, `POST /onboarding/step/:n`
-- [ ] Onboarding state persistence: `.complior/onboarding-progress.json`
-- [ ] Можно прервать и продолжить позже
-
-**Технические детали:**
-- `engine/core/src/domain/onboarding/onboarding-wizard.ts` — state machine
-- `engine/core/src/http/routes/onboarding.route.ts` — HTTP endpoints
-- `engine/core/src/services/onboarding-service.ts` — orchestration
-- Использует существующие services: scan, passport, fix, fria
+### ~~US-S08-04~~ ПЕРЕНЕСЁН → US-S05-33 (Sprint S05, Phase 3: Launch Priorities)
 
 ---
 
@@ -216,28 +194,7 @@
 
 ---
 
-### US-S08-10: Compliance Diff в PR
-**Приоритет:** MEDIUM
-**Продукт:** CLI
-**Backlog ref:** C-16, C-27
-**Компонент:** `[CLI]`
-
-Как разработчик, я хочу запустить `complior scan --diff=main` и получить compliance delta (новые/resolved findings), чтобы использовать как PR gate.
-
-**Acceptance Criteria:**
-- [ ] `complior scan --diff=main` — сканирует только изменённые файлы (git diff)
-- [ ] Output: score delta (+3/-2), new findings, resolved findings
-- [ ] `--fail-on-regression` — exit code 1 если score ухудшился или new CRITICAL findings
-- [ ] GitHub Actions compatible: `--json` output для machine parsing
-- [ ] PR comment format: markdown table с delta, новые findings, recommendations
-- [ ] `--comment` — автоматически добавляет comment в GitHub PR (requires `gh` CLI)
-- [ ] Сканирует только diff файлы, не весь проект (быстрый для больших PR)
-
-**Технические детали:**
-- `cli/src/headless/scan.rs` — расширение scan command с `--diff` flag
-- `engine/core/src/services/scan-service.ts` — diff-based file list
-- Git integration: `git diff --name-only main...HEAD`
-- PR comment: `gh pr comment` с markdown table
+### ~~US-S08-10~~ ПЕРЕНЕСЁН → US-S05-34 (Sprint S05, Phase 3: Launch Priorities)
 
 ---
 
@@ -261,7 +218,7 @@
 **Технические детали:**
 - `cli/src/views/onboarding/mod.rs` — overlay view
 - `cli/src/app/overlays.rs` — добавить OnboardingOverlay state
-- Использует engine onboarding endpoints из US-S08-04
+- Использует engine onboarding endpoints из US-S05-33 (бывший US-S08-04, перенесён в S05)
 - Render поверх текущего view как modal
 
 ---
@@ -522,10 +479,10 @@
 | Post-apply validation: auto-rollback работает | Fix → rescan → rollback если хуже |
 | Env vars discovery: 3+ sources | .env.example + docker-compose + CI/CD |
 | Evidence per-finding: compact format | Не более 100 entries per scan |
-| Guided onboarding: < 15 минут | 5 steps to first report |
+| ~~Guided onboarding~~ | ~~ПЕРЕНЕСЁН → US-S05-33~~ |
 | Advanced drift: 4 типа drift | config + dependency + score + semantic |
 | Content marking: 3 режима | prefix + suffix + watermark |
-| Compliance diff: PR gate работает | `--diff=main --fail-on-regression` |
+| ~~Compliance diff~~ | ~~ПЕРЕНЕСЁН → US-S05-34~~ |
 | MCP Guard: 3 tools | guard_check + guard_pii + guard_bias |
 | MCP Builder: 3 tools | pre_generate + post_generate + suggest_imports |
 | SaaS мультиязычность: 4 языка | EN + DE + FR + ES |
@@ -535,4 +492,4 @@
 | SaaS Onboarding: 4-step wizard | Email + Slack notifications |
 | SaaS NHI Dashboard | NHI inventory + lifecycle |
 | Тесты | cargo test + vitest passing |
-| User Stories | 22 planned |
+| User Stories | 20 planned (2 перенесены в S05) |

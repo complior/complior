@@ -855,6 +855,57 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
+### US-S05-33: Guided Onboarding Wizard (Engine)
+**Приоритет:** HIGH
+**Продукт:** Engine
+**Backlog ref:** E-104 (перенесён из US-S08-04)
+**Компонент:** `[Engine]`
+
+Как новый пользователь Complior, я хочу чтобы при первом запуске меня провели через 5-step onboarding, чтобы за 15 минут получить первый compliance report.
+
+**Acceptance Criteria:**
+- [ ] Step 1: Detect project — auto-detect language, framework, AI SDKs, package manager
+- [ ] Step 2: First scan — запуск полного скана, показ score и top-5 findings
+- [ ] Step 3: Generate passport — `agent init` для обнаруженных AI-систем
+- [ ] Step 4: Fix top-3 — предложить и применить 3 самых impactful fix-а
+- [ ] Step 5: Generate document — FRIA (если high-risk) или compliance report
+- [ ] HTTP endpoint: `POST /onboarding/start`, `GET /onboarding/status`, `POST /onboarding/step/:n`
+- [ ] Onboarding state persistence: `.complior/onboarding-progress.json`
+- [ ] Можно прервать и продолжить позже
+
+**Технические детали:**
+- `engine/core/src/domain/onboarding/onboarding-wizard.ts` — state machine
+- `engine/core/src/http/routes/onboarding.route.ts` — HTTP endpoints
+- `engine/core/src/services/onboarding-service.ts` — orchestration
+- Использует существующие services: scan, passport, fix, fria
+
+---
+
+### US-S05-34: Compliance Diff в PR
+**Приоритет:** HIGH
+**Продукт:** CLI
+**Backlog ref:** C-16, C-27 (перенесён из US-S08-10)
+**Компонент:** `[CLI]`
+
+Как разработчик, я хочу запустить `complior scan --diff=main` и получить compliance delta (новые/resolved findings), чтобы использовать как PR gate.
+
+**Acceptance Criteria:**
+- [ ] `complior scan --diff=main` — сканирует только изменённые файлы (git diff)
+- [ ] Output: score delta (+3/-2), new findings, resolved findings
+- [ ] `--fail-on-regression` — exit code 1 если score ухудшился или new CRITICAL findings
+- [ ] GitHub Actions compatible: `--json` output для machine parsing
+- [ ] PR comment format: markdown table с delta, новые findings, recommendations
+- [ ] `--comment` — автоматически добавляет comment в GitHub PR (requires `gh` CLI)
+- [ ] Сканирует только diff файлы, не весь проект (быстрый для больших PR)
+
+**Технические детали:**
+- `cli/src/headless/scan.rs` — расширение scan command с `--diff` flag
+- `engine/core/src/services/scan-service.ts` — diff-based file list
+- Git integration: `git diff --name-only main...HEAD`
+- PR comment: `gh pr comment` с markdown table
+
+---
+
 ---
 
 ## Метрики спринта
@@ -878,6 +929,8 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 | Certification: AIUC-1 readiness | score + gap analysis |
 | Certification: Adversarial tests | 3 категории (injection/bias/safety) |
 | CLI: Multi-agent awareness | per-agent scan + SSE |
+| **Onboarding Wizard: 5 steps** | **15 мин до первого отчёта (из S08-04)** |
+| **Compliance Diff: PR gate** | **--diff=main --fail-on-regression (из S08-10)** |
 | SaaS: Unified Registry | CLI + SaaS passports |
 | SaaS: Wizard шаги 3-5 | полный onboarding flow |
 | SaaS: Cert Readiness Dashboard | ISO 42001 + AIUC-1 |
@@ -891,21 +944,21 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 ## Зависимости между US
 
 ```
-US-S05-01 (Prohibited) ──┐
-US-S05-02 (Sanitize)  ───┤
-US-S05-03 (Permission) ──┼──> US-S05-16..18 (Runtime Control) ──> US-S05-18 (Proxy config)
-US-S05-04 (Disclosure) ──┤
-US-S05-05 (Bias)       ──┘
+Phase 1+2 (DONE):
+US-S05-01..06 (SDK) ──────> US-S05-16..18 (Runtime Control)
+US-S05-07..15 (Engine Core) ──> DONE
 
-US-S05-10 (Permission Scanner) ──> US-S05-14 (Permissions Matrix)
-US-S05-11 (Behavior Contract) ──> US-S05-24 (Test Suite Gen)
-US-S05-12 (Industry Patterns) ──> US-S05-15 (Policy Templates)
-US-S05-13 (Agent Registry) ──> US-S05-26 (Multi-agent)
-
+Phase 3 (Launch — NO BLOCKERS, все зависимости выполнены):
 US-S05-19 (AIUC-1 Readiness) ──> US-S05-31 (SaaS Cert Dashboard)
-US-S05-09 (Passport Export) ──> US-S05-31 (SaaS Cert Dashboard)
-US-S05-13 (Agent Registry) ──> US-S05-28 (SaaS Registry)
+US-S05-33 (Onboarding Wizard) ──> US-S08-11 (TUI Onboarding, S08)
+US-S05-34 (Compliance Diff)   ──> (нет downstream зависимостей)
 
+Phase 4+5 (Post-Launch):
+US-S05-10 (Permission Scanner) ──> US-S05-14 (Permissions Matrix) [DONE]
+US-S05-11 (Behavior Contract) ──> US-S05-24 (Test Suite Gen)
+US-S05-13 (Agent Registry) ──> US-S05-26 (Multi-agent)
+US-S05-13 (Agent Registry) ──> US-S05-28 (SaaS Registry)
+US-S05-09 (Passport Export) ──> US-S05-31 (SaaS Cert Dashboard)
 US-S05-28 (SaaS Registry) ──> US-S05-29 (Wizard)
 US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 ```
@@ -914,13 +967,21 @@ US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 
 ## Фазы выполнения
 
-| Фаза | US | Фокус | Длительность |
-|------|----|----|-------------|
-| 1: SDK Production | US-01..06 | SDK хуки production-ready | 4-5 дней |
-| 2: Engine Core | US-07..15 | Finding explanations, documents, registry, permissions | 4-5 дней |
-| 3: Runtime + Cert | US-16..20 | Runtime Control, AIUC-1, Adversarial | 3-4 дня |
-| 4: Остальное + SaaS | US-21..32 | Supply chain, debt, simulation, SaaS features | 4-5 дней |
+| Фаза | US | Фокус | Статус |
+|------|----|----|--------|
+| 1: SDK Production | US-01..06 | SDK хуки production-ready | **DONE** |
+| 2: Engine Core | US-07..15 | Finding explanations, documents, registry, permissions | **DONE** |
+| 3: Launch Priorities | US-19, US-33, US-34 | AIUC-1 readiness, Onboarding, CI/CD Diff | **DONE** |
+| 4: Runtime + Cert | US-10, 16..18, 20 | Runtime Control, Permission Scanner, Adversarial | **NEXT** |
+| 5: Остальное + SaaS | US-21..32 | Supply chain, debt, simulation, SaaS features | Planned |
 
 ---
 
-**Обновлено:** 2026-03-07 v1.0.0 — unified sprint CLI + SaaS, 32 user stories, SDK production + Agent Governance + SaaS Registry + Certification
+**Обновлено:** 2026-03-09 v1.2.0 — 34 user stories (US-01..32 + US-33 Onboarding из S08, US-34 Compliance Diff из S08). Phase 1+2+3 DONE (17 US). Phase 4: Runtime + Cert (US-10, US-16..18, US-20). Phase 5: Остальное + SaaS (US-21..32)
+
+### Sprint S05 Done Summary
+- **Phase 1 (SDK, 6 US):** Prohibited 138 patterns, Sanitize 50+ PII, Permission 3 providers, Disclosure 4 langs, Bias 15 chars, HTTP Middleware 4 frameworks. SDK tests: 116→373.
+- **Phase 2 (Engine, 8 US):** Finding Explanations, Worker Notification, Passport Export (A2A/AIUC-1/NIST), Behavioral Constraints, Industry Patterns (4 domains), Agent Registry, Permissions Matrix + Audit Trail, Policy Templates (5 industries). TS tests: 489→589, Rust: 345→361.
+- **Phase 3 (Launch, 3 US):** AIUC-1 Readiness Score, Guided Onboarding Wizard (5-step state machine), Compliance Diff in PR. TS tests: 589→685, Rust: 361→372.
+- **Quality (QF):** 2 rounds E2E + code audit. 11 fixes: score.totalScore bug, scoped npm names crash, onboarding path, DRY/SRP/Zod, skipStep status.
+- **Totals:** 17/34 US done, tests 950→1430 (+480), 21/21 E2E pass
