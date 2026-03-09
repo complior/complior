@@ -28,6 +28,15 @@ export interface MiddlewareConfig {
   readonly disclosureFrequency?: 'every' | 'session-start';
   readonly interactionLogger?: boolean;
   readonly interactionLogPath?: string;
+  readonly configPath?: string | false;
+  readonly retry?: RetryConfig;
+}
+
+export interface RetryConfig {
+  readonly enabled?: boolean;
+  readonly maxRetries?: number;
+  readonly baseDelayMs?: number;
+  readonly maxDelayMs?: number;
 }
 
 export interface MiddlewareContext {

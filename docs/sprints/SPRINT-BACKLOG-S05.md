@@ -466,7 +466,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-18: Runtime Control — Compliance Proxy + SDK Adapters
+### US-S05-18: Runtime Control — Compliance Proxy + SDK Adapters ✅ DONE
 **Приоритет:** HIGH
 **Продукт:** Engine + SDK
 **Backlog ref:** E-72, E-71
@@ -477,10 +477,10 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 > **Note:** Audit Trail объединён в US-S05-14 (Unified Audit Trail).
 
 **Acceptance Criteria:**
-- [ ] Compliance Proxy config (OBL-006/011): единый конфиг `.complior/proxy.toml` для всех runtime hooks (какие включены, thresholds, logging level)
-- [ ] Config hot-reload: изменение `.complior/proxy.toml` → обновление runtime без перезапуска
-- [ ] SDK Adapters (C.R09): улучшенные адаптеры — auto-detect provider, streaming support, retry logic
-- [ ] 8+ тестов
+- [x] Compliance Proxy config (OBL-006/011): единый конфиг `.complior/proxy.toml` для всех runtime hooks (какие включены, thresholds, logging level)
+- [x] Config hot-reload: изменение `.complior/proxy.toml` → обновление runtime без перезапуска
+- [x] SDK Adapters (C.R09): улучшенные адаптеры — auto-detect provider, streaming support, retry logic
+- [x] 23 тестов (requirement: 8+)
 
 **Технические детали:**
 - `engine/sdk/src/runtime/proxy-config.ts` — загрузка и hot-reload `.complior/proxy.toml`
@@ -985,4 +985,5 @@ US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 - **Phase 2 (Engine, 8 US):** Finding Explanations, Worker Notification, Passport Export (A2A/AIUC-1/NIST), Behavioral Constraints, Industry Patterns (4 domains), Agent Registry, Permissions Matrix + Audit Trail, Policy Templates (5 industries). TS tests: 489→589, Rust: 345→361.
 - **Phase 3 (Launch, 3 US):** AIUC-1 Readiness Score, Guided Onboarding Wizard (5-step state machine), Compliance Diff in PR. TS tests: 589→685, Rust: 361→372.
 - **Quality (QF):** 2 rounds E2E + code audit. 11 fixes: score.totalScore bug, scoped npm names crash, onboarding path, DRY/SRP/Zod, skipStep status.
-- **Totals:** 17/34 US done, tests 950→1430 (+480), 21/21 E2E pass
+- **Phase 4 (Runtime + Cert, in progress):** US-S05-10 (Permission Scanner) DONE, US-S05-16 (Disclosure/Marking/Logger) DONE, US-S05-17 (Safety/HITL) DONE, US-S05-18 (Proxy + Adapters) DONE. SDK tests: 407→430.
+- **Totals:** 20/34 US done, tests 1430→1453 (+23), 21/21 E2E pass
