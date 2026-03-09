@@ -7,7 +7,8 @@ export type AuditEventType =
   | 'fria.generated' | 'scan.completed' | 'fix.applied'
   | 'evidence.verified' | 'worker_notification.generated'
   | 'policy.generated'
-  | 'readiness.computed';
+  | 'readiness.computed'
+  | 'adversarial.completed';
 
 export interface AuditEntry {
   readonly id: string;

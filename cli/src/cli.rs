@@ -449,6 +449,26 @@ pub enum CertAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Run adversarial tests against an AI agent
+    Test {
+        /// Agent name
+        name: String,
+
+        /// Run adversarial test suite (prompt injection, bias, safety)
+        #[arg(long)]
+        adversarial: bool,
+
+        /// Filter categories (comma-separated: prompt_injection,bias_detection,safety_boundary)
+        #[arg(long)]
+        categories: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone)]

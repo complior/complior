@@ -174,5 +174,18 @@ impl EngineClient {
         Ok(result)
     }
 
+    /// POST with long timeout (300s) — for adversarial test endpoint (18+ LLM calls).
+    pub async fn post_json_long(&self, endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
+        let resp = self
+            .client
+            .post(format!("{}{endpoint}", self.base_url))
+            .json(body)
+            .timeout(std::time::Duration::from_secs(300))
+            .send()
+            .await?;
+        let result = resp.json::<serde_json::Value>().await?;
+        Ok(result)
+    }
+
 }
 

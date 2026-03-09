@@ -23,6 +23,8 @@ import type { ToolExecutorDeps } from '../llm/tool-executors.js';
 import type { AgentMode } from '../llm/tools/types.js';
 import type { OnboardingWizard } from '../onboarding/wizard.js';
 import type { OnboardingProfile } from '../onboarding/profile.js';
+import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
+import type { AuditStore } from '../domain/audit/audit-trail.js';
 import { createScanRoute } from './routes/scan.route.js';
 import { createStatusRoute } from './routes/status.route.js';
 import { createChatRoute } from './routes/chat.route.js';
@@ -67,6 +69,9 @@ export interface RouterDeps {
   readonly obligations: readonly Record<string, unknown>[];
   readonly getLastScan: () => import('../types/common.types.js').ScanResult | null;
   readonly getProjectPath: () => string;
+  readonly callLlm?: (prompt: string, systemPrompt?: string) => Promise<string>;
+  readonly evidenceStore?: EvidenceStore;
+  readonly auditStore?: AuditStore;
 }
 
 const OnboardingStepSchema = z.object({
@@ -145,7 +150,13 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createOnboardingRoute(deps.onboardingWizard));
   app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore }));
   app.route('/', createAgentRoute(deps.passportService));
-  app.route('/', createCertRoute(deps.passportService));
+  app.route('/', createCertRoute({
+    passportService: deps.passportService,
+    callLlm: deps.callLlm,
+    evidenceStore: deps.evidenceStore,
+    auditStore: deps.auditStore,
+    getProjectPath: deps.getProjectPath,
+  }));
   app.route('/', createGuidedOnboardingRoute({
     scanService: deps.scanService,
     passportService: deps.passportService,

@@ -529,15 +529,15 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 Как разработчик, я хочу запустить adversarial тесты против AI-системы, чтобы выполнить Art.9(6)-(8) testing requirements и подтвердить robustness.
 
 **Acceptance Criteria:**
-- [ ] `complior cert test --adversarial` — запуск тестового набора
-- [ ] Prompt injection tests (5+): DAN, system prompt extraction, instruction override, role-play escape, delimiter injection
-- [ ] Bias detection tests (5+): по защищённым характеристикам (сценарии с hire/reject, approve/deny)
-- [ ] Safety boundary tests (5+): violence, self-harm, illegal instructions, PII extraction, copyright violation
-- [ ] Results → evidence chain: каждый тест создаёт evidence entry
-- [ ] Report: `.complior/reports/adversarial-{agent}-{timestamp}.json` с per-test pass/fail + details
+- [x] `complior cert test --adversarial` — запуск тестового набора
+- [x] Prompt injection tests (5+): DAN, system prompt extraction, instruction override, role-play escape, delimiter injection
+- [x] Bias detection tests (5+): по защищённым характеристикам (сценарии с hire/reject, approve/deny)
+- [x] Safety boundary tests (5+): violence, self-harm, illegal instructions, PII extraction, copyright violation
+- [x] Results → evidence chain: каждый тест создаёт evidence entry
+- [x] Report: `.complior/reports/adversarial-{agent}-{timestamp}.json` с per-test pass/fail + details
 - [ ] TUI: результаты в Scan page (отдельная категория "Adversarial Tests")
-- [ ] HTTP: `POST /cert/test/adversarial` с `{ agent_name, test_categories? }`
-- [ ] 15+ тестов
+- [x] HTTP: `POST /cert/test/adversarial` с `{ agent_name, test_categories? }`
+- [x] 15+ тестов
 
 **Технические детали:**
 - `engine/core/src/domain/certification/adversarial/` — тестовые сценарии
@@ -973,7 +973,7 @@ US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 | 1: SDK Production | US-01..06 | SDK хуки production-ready | **DONE** |
 | 2: Engine Core | US-07..15 | Finding explanations, documents, registry, permissions | **DONE** |
 | 3: Launch Priorities | US-19, US-33, US-34 | AIUC-1 readiness, Onboarding, CI/CD Diff | **DONE** |
-| 4: Runtime + Cert | US-10, 16..18, 20 | Runtime Control, Permission Scanner, Adversarial | **NEXT** |
+| 4: Runtime + Cert | US-10, 16..18, 20 | Runtime Control, Permission Scanner, Adversarial | **DONE** |
 | 5: Остальное + SaaS | US-21..32 | Supply chain, debt, simulation, SaaS features | Planned |
 
 ---
@@ -985,5 +985,5 @@ US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 - **Phase 2 (Engine, 8 US):** Finding Explanations, Worker Notification, Passport Export (A2A/AIUC-1/NIST), Behavioral Constraints, Industry Patterns (4 domains), Agent Registry, Permissions Matrix + Audit Trail, Policy Templates (5 industries). TS tests: 489→589, Rust: 345→361.
 - **Phase 3 (Launch, 3 US):** AIUC-1 Readiness Score, Guided Onboarding Wizard (5-step state machine), Compliance Diff in PR. TS tests: 589→685, Rust: 361→372.
 - **Quality (QF):** 2 rounds E2E + code audit. 11 fixes: score.totalScore bug, scoped npm names crash, onboarding path, DRY/SRP/Zod, skipStep status.
-- **Phase 4 (Runtime + Cert, in progress):** US-S05-10 (Permission Scanner) DONE, US-S05-16 (Disclosure/Marking/Logger) DONE, US-S05-17 (Safety/HITL) DONE, US-S05-18 (Proxy + Adapters) DONE. SDK tests: 407→430.
-- **Totals:** 20/34 US done, tests 1430→1453 (+23), 21/21 E2E pass
+- **Phase 4 (Runtime + Cert, DONE):** US-S05-10 (Permission Scanner) DONE, US-S05-16 (Disclosure/Marking/Logger) DONE, US-S05-17 (Safety/HITL) DONE, US-S05-18 (Proxy + Adapters) DONE, US-S05-20 (Adversarial Test Runner) DONE. SDK tests: 407→430.
+- **Totals:** 21/34 US done, tests 1453→1470+ (+17), 21/21 E2E pass

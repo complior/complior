@@ -280,6 +280,19 @@ export const loadApplication = async (): Promise<Application> => {
     getProjectPath: () => state.projectPath,
   });
 
+  // 5c. Create callLlm closure for adversarial testing (same pattern as L5)
+  const callLlm = async (prompt: string, systemPrompt?: string): Promise<string> => {
+    try {
+      const { generateText } = await import('ai');
+      const routing = llm.routeModel('classify');
+      const model = await llm.getModel(routing.provider, routing.modelId);
+      const result = await generateText({ model, prompt, system: systemPrompt });
+      return result.text;
+    } catch {
+      return '[ERROR] LLM unavailable';
+    }
+  };
+
   // 6. Create router
   const app = createRouter({
     scanService,
@@ -307,6 +320,9 @@ export const loadApplication = async (): Promise<Application> => {
     obligations: regulationData.obligations.obligations as readonly Record<string, unknown>[],
     getLastScan: () => state.lastScanResult,
     getProjectPath: () => state.projectPath,
+    callLlm,
+    evidenceStore,
+    auditStore,
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan

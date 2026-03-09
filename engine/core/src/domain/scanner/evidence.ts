@@ -8,7 +8,8 @@ export type EvidenceSource =
   | 'cross-layer'
   | 'fix'
   | 'passport'
-  | 'fria';
+  | 'fria'
+  | 'adversarial-test';
 
 export interface Evidence {
   readonly findingId: string;
