@@ -36,29 +36,7 @@ pub(super) fn deadline_for_article(art: &str) -> String {
 
 /// Simple word-wrap for plain text into lines of max `width` chars.
 pub(super) fn wrap_text(text: &str, width: usize) -> Vec<String> {
-    if width == 0 || text.is_empty() {
-        return vec![text.to_string()];
-    }
-    let mut lines = Vec::new();
-    let mut current = String::new();
-    for word in text.split_whitespace() {
-        if current.is_empty() {
-            current = word.to_string();
-        } else if current.len() + 1 + word.len() <= width {
-            current.push(' ');
-            current.push_str(word);
-        } else {
-            lines.push(current);
-            current = word.to_string();
-        }
-    }
-    if !current.is_empty() {
-        lines.push(current);
-    }
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-    lines
+    crate::views::wrap_text_lines(text, width)
 }
 
 /// Human-readable explanation of a check ID.

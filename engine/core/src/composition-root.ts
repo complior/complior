@@ -329,7 +329,7 @@ export const loadApplication = async (): Promise<Application> => {
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events
   const agentScores = new Map<string, number>();
 
-  events.on('file.changed', ({ path: changedPath }) => {
+  const fileChangedHandler = ({ path: changedPath }: { path: string }) => {
     scanService.scan(state.projectPath).then(
       async (result) => {
         events.emit('scan.completed', { result });
@@ -346,12 +346,14 @@ export const loadApplication = async (): Promise<Application> => {
       },
       (err: unknown) => log.error('Background re-scan failed:', err),
     );
-  });
+  };
+  events.on('file.changed', fileChangedHandler);
 
   // 8. File watcher (US-S0202): start on demand via startWatcher()
   const fileWatcher = createFileWatcher(state.projectPath, events);
 
   const shutdown = (): void => {
+    events.off('file.changed', fileChangedHandler);
     fileWatcher.stop().catch(() => {});
     if (_externalScan) {
       _externalScan.close().catch(() => {});
