@@ -11,6 +11,7 @@ import type {
   SourceBlock,
 } from '../../types/passport.types.js';
 import type { ScanResult } from '../../types/common.types.js';
+import { findRegistryCard } from '../../data/registry-cards.js';
 
 // --- Input interface ---
 
@@ -51,6 +52,7 @@ export const ALL_PASSPORT_FIELDS: readonly string[] = [
   'constraints.human_approval_required', 'constraints.escalation_rules',
   'compliance.risk_class', 'compliance.complior_score', 'compliance.last_scan',
   'interop.mcp_servers',
+  'upstream_registry',
   // Manual (always need human input)
   'owner.team', 'owner.contact', 'owner.responsible_person',
   'disclosure.user_facing', 'disclosure.disclosure_text', 'disclosure.ai_marking',
@@ -203,6 +205,11 @@ export const buildPassport = (
     })),
   };
 
+  // --- Upstream registry cards ---
+  const upstreamRegistry = agent.detectedModels
+    .map((id) => findRegistryCard(id))
+    .filter((c): c is NonNullable<typeof c> => c !== undefined);
+
   // --- Source tracking ---
   const autoFilledFields: string[] = [];
   const manualFields: string[] = [];
@@ -240,6 +247,9 @@ export const buildPassport = (
 
   // Interop
   if (permissions.mcpServers.length > 0) autoFilledFields.push('interop.mcp_servers');
+
+  // Upstream registry
+  if (upstreamRegistry.length > 0) autoFilledFields.push('upstream_registry');
 
   // Manual fields (always need human input)
   manualFields.push(
@@ -293,6 +303,7 @@ export const buildPassport = (
     logging,
     lifecycle,
     interop,
+    ...(upstreamRegistry.length > 0 ? { upstream_registry: upstreamRegistry } : {}),
     source,
   };
 

@@ -373,6 +373,20 @@ Deployer по закону ОБЯЗАН документировать ВСЕ AI
     "spiffe_id": null                           // SPIFFE identity if used
   },
 
+  // === UPSTREAM REGISTRY (optional — auto-filled from detected models in Mode 1) ===
+  // Array of RegistryToolCard — карточки обнаруженных upstream AI-моделей/систем из реестра.
+  // Тип: readonly RegistryToolCard[] | undefined
+  // Структурно совместим с SaaS RegistryTool.
+  "upstream_registry": [
+    {
+      "slug": "gpt-4o",
+      "name": "GPT-4o",
+      "provider": { "name": "OpenAI", "website": "https://openai.com/policies" },
+      "riskLevel": "gpai_systemic",
+      "assessments": { "eu-ai-act": { "training_cutoff": "2024-10", "license": "proprietary" } }
+    }
+  ],
+
   // === SIGNATURE ===
   "signature": {
     "algorithm": "ed25519",

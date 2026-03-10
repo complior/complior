@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RegistryToolCard } from '../data/registry-cards.js';
 
 // --- Enums ---
 
@@ -169,6 +170,9 @@ export interface AgentPassport {
   // Interop
   readonly interop: InteropBlock;
 
+  // Upstream registry cards (auto-filled from detected models)
+  readonly upstream_registry?: readonly RegistryToolCard[];
+
   // Source tracking
   readonly source: SourceBlock;
 
@@ -315,6 +319,7 @@ export const AgentPassportSchema = z.object({
   logging: LoggingBlockSchema,
   lifecycle: LifecycleBlockSchema,
   interop: InteropBlockSchema,
+  upstream_registry: z.array(z.record(z.unknown())).optional(),
   source: SourceBlockSchema,
   signature: SignatureBlockSchema,
 });

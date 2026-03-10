@@ -551,7 +551,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-21: Supply Chain Audit + Model Compliance Cards
+### US-S05-21: Supply Chain Audit + Model Compliance Cards ✅ DONE
 **Приоритет:** MEDIUM
 **Продукт:** Engine
 **Backlog ref:** E-43, E-44, C.E06, C.E07
@@ -560,14 +560,14 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 Как разработчик, я хочу аудировать supply chain AI-зависимостей и получить compliance cards для используемых моделей, чтобы выполнить OBL-026 traceability.
 
 **Acceptance Criteria:**
-- [ ] Dependency chain analysis: AI SDK → model → provider → training data (где доступно)
-- [ ] Risk propagation: banned package в зависимости = flag, vulnerability в AI SDK = propagated risk
-- [ ] `complior supply-chain` — CLI command для аудита
-- [ ] Model Compliance Cards: per-model transparency info (provider, training cutoff, GPAI compliance status, known limitations)
-- [ ] Предзаполненные cards для top-10 моделей: GPT-4/4o, Claude 3/3.5, Gemini 1.5, Mistral, Llama 3
-- [ ] Output: `.complior/reports/supply-chain-{timestamp}.json`
-- [ ] HTTP: `GET /supply-chain`
-- [ ] 8+ тестов
+- [x] Dependency chain analysis: AI SDK → model → provider → training data (где доступно)
+- [x] Risk propagation: banned package в зависимости = flag, vulnerability в AI SDK = propagated risk
+- [x] `complior supply-chain` — CLI command для аудита
+- [x] Model Compliance Cards: per-model transparency info (provider, training cutoff, GPAI compliance status, known limitations)
+- [x] Предзаполненные cards для top-10 моделей: GPT-4/4o, Claude 3/3.5, Gemini 1.5, Mistral, Llama 3
+- [x] Output: `.complior/reports/supply-chain-{timestamp}.json`
+- [x] HTTP: `POST /supply-chain`, `GET /supply-chain/models`
+- [x] 18 тестов (8+ requirement met)
 
 **Технические детали:**
 - `engine/core/src/domain/supply-chain/` — новая директория
@@ -909,6 +909,35 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
+### US-S05-35: Рефакторинг ModelComplianceCard → RegistryToolCard (SaaS совместимость) ✅ DONE
+**Приоритет:** MEDIUM
+**Продукт:** Engine + CLI
+**Backlog ref:** SaaS alignment
+**Компонент:** `[Engine]` `[CLI]`
+
+Как разработчик, я хочу привести CLI-тип карточки модели к структуре SaaS RegistryTool, чтобы обеспечить структурную совместимость и добавить upstream_registry в AgentPassport.
+
+**Acceptance Criteria:**
+- [x] `RegistryToolCard` тип совместим с SaaS `RegistryTool` (поля: slug, name, provider, riskLevel, assessments, detectionPatterns, capabilities, jurisdictions, vendorCountry, dataResidency)
+- [x] 10 карточек переструктурированы в новый формат
+- [x] Хелперы: `findRegistryCard(slug)`, `findRegistryCardsByProvider()`, `isGpaiSystemic()`, `getProviderName()`
+- [x] `upstream_registry` optional поле в AgentPassport — auto-filled из detectedModels
+- [x] Supply chain report: `registryCards` вместо `modelCards`
+- [x] Rust CLI обновлён для новой JSON-структуры
+- [x] `model-cards.ts` удалён, все импорты переключены на `registry-cards.ts`
+- [x] Все тесты зелёные
+
+**Технические детали:**
+- `engine/core/src/data/registry-cards.ts` — новый файл (замена model-cards.ts)
+- `engine/core/src/domain/supply-chain/` — types, dependency-analyzer, index обновлены
+- `engine/core/src/types/passport.types.ts` — +upstream_registry
+- `engine/core/src/domain/passport/manifest-builder.ts` — заполнение upstream_registry
+- `cli/src/headless/supply_chain.rs` — адаптация JSON field access
+
+---
+
+---
+
 ## Метрики спринта
 
 | Метрика | Цель |
@@ -978,7 +1007,7 @@ US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 
 ---
 
-**Обновлено:** 2026-03-09 v1.2.0 — 34 user stories (US-01..32 + US-33 Onboarding из S08, US-34 Compliance Diff из S08). Phase 1+2+3 DONE (17 US). Phase 4: Runtime + Cert (US-10, US-16..18, US-20). Phase 5: Остальное + SaaS (US-21..32)
+**Обновлено:** 2026-03-10 v1.3.0 — 35 user stories (US-01..32 + US-33 Onboarding, US-34 Compliance Diff, US-35 RegistryToolCard refactor). Phase 1+2+3 DONE (17 US). Phase 4: Runtime + Cert DONE (US-10, US-16..18, US-20). Phase 5: Остальное + SaaS (US-21..32, US-35 DONE)
 
 ### Sprint S05 Done Summary
 - **Phase 1 (SDK, 6 US):** Prohibited 138 patterns, Sanitize 50+ PII, Permission 3 providers, Disclosure 4 langs, Bias 15 chars, HTTP Middleware 4 frameworks. SDK tests: 116→373.
