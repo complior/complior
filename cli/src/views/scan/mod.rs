@@ -158,6 +158,24 @@ impl ScanViewState {
     }
 }
 
+/// Sort filtered findings to match the display order used by `render_findings_list`.
+/// When passports are loaded (non-empty file→agent map), sorts by agent name then severity.
+/// Otherwise sorts by severity only.
+pub(super) fn sort_findings_for_display<'a>(
+    filtered: &mut [&'a crate::types::Finding],
+    file_agent_map: &[(String, String)],
+) {
+    if file_agent_map.is_empty() {
+        filtered.sort_by_key(|f| severity_order(f.severity));
+    } else {
+        filtered.sort_by(|a, b| {
+            let agent_a = render::resolve_agent_name(a.file.as_deref(), file_agent_map);
+            let agent_b = render::resolve_agent_name(b.file.as_deref(), file_agent_map);
+            agent_a.cmp(agent_b).then_with(|| severity_order(a.severity).cmp(&severity_order(b.severity)))
+        });
+    }
+}
+
 /// Resolve the selected finding index from the sorted/filtered display list
 /// back to the actual `Finding` in the original scan results.
 ///
@@ -168,12 +186,14 @@ pub fn resolve_selected_finding<'a>(
     findings: &'a [crate::types::Finding],
     filter: FindingsFilter,
     selected_index: usize,
+    passports: &[serde_json::Value],
 ) -> Option<&'a crate::types::Finding> {
     let mut filtered: Vec<&crate::types::Finding> = findings
         .iter()
         .filter(|f| filter.matches(f.severity))
         .collect();
-    filtered.sort_by_key(|f| severity_order(f.severity));
+    let file_agent_map = render::build_file_agent_map(passports);
+    sort_findings_for_display(&mut filtered, &file_agent_map);
     filtered.get(selected_index).copied()
 }
 

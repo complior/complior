@@ -179,6 +179,13 @@ export const createPassportService = (deps: PassportServiceDeps) => {
         );
         await deps.evidenceStore.append([evidence], randomUUID());
       }
+
+      // US-S05-26: Emit agent-scoped events
+      if (scanResult) {
+        events.emit('agent.scan.completed', { agentName: agent.name, result: scanResult });
+        const score = scanResult.score?.totalScore ?? 0;
+        events.emit('agent.score.updated', { agentName: agent.name, before: 0, after: score });
+      }
     }
 
     // Emit event
@@ -576,6 +583,37 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return deps.auditStore.getSummary();
   };
 
+  // US-S05-26: Find agents whose source_files match a given file path
+  const findAgentsForFile = async (changedPath: string): Promise<readonly { name: string; sourceFiles: readonly string[] }[]> => {
+    const { relative } = await import('node:path');
+    const projectPath = deps.getProjectPath();
+    const agentsDir = join(projectPath, '.complior', 'agents');
+    const relChanged = relative(projectPath, changedPath);
+    const matched: { name: string; sourceFiles: readonly string[] }[] = [];
+
+    let files: string[];
+    try {
+      files = await readdir(agentsDir);
+    } catch {
+      return [];
+    }
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+      try {
+        const raw = await readFile(join(agentsDir, file), 'utf-8');
+        const passport = parsePassport(raw);
+        if (!passport) continue;
+        const sourceFiles = passport.source_files ?? [];
+        if (sourceFiles.some((sf) => relChanged === sf || relChanged.startsWith(sf + '/'))) {
+          matched.push({ name: passport.name, sourceFiles });
+        }
+      } catch { /* skip malformed passport */ }
+    }
+
+    return matched;
+  };
+
   return Object.freeze({
     initPassport,
     listPassports,
@@ -595,6 +633,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     getReadiness,
     getAuditTrail,
     getAuditSummary,
+    findAgentsForFile,
   });
 };
 

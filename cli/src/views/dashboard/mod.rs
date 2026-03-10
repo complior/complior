@@ -28,6 +28,8 @@ mod tests_e2e_panels;
 mod tests_e2e_views;
 #[cfg(test)]
 mod tests_widgets;
+#[cfg(test)]
+mod tests_agents;
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};

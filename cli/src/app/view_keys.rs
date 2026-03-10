@@ -22,6 +22,7 @@ impl App {
                                 &scan.findings,
                                 self.scan_view.findings_filter,
                                 idx,
+                                &self.passport_view.loaded_passports,
                             ) {
                                 if finding.fix.is_some() {
                                     let target_check_id = finding.check_id.clone();
@@ -64,6 +65,7 @@ impl App {
                                 &scan.findings,
                                 self.scan_view.findings_filter,
                                 idx,
+                                &self.passport_view.loaded_passports,
                             ) {
                                 let explanation = crate::views::scan::explain_finding(finding);
                                 self.messages.push(ChatMessage::new(
@@ -85,6 +87,7 @@ impl App {
                                 &scan.findings,
                                 self.scan_view.findings_filter,
                                 idx,
+                                &self.passport_view.loaded_passports,
                             ) {
                                 self.toasts.push(
                                     crate::components::toast::ToastKind::Info,

@@ -455,8 +455,11 @@ impl App {
                 if view == ViewState::Obligations && self.obligations_view.obligations.is_empty() {
                     return Some(AppCommand::LoadObligations);
                 }
-                // Auto-load passports when switching to Passport view
-                if view == ViewState::Passport && self.passport_view.loaded_passports.is_empty() && !self.passport_view.passport_loading {
+                // Auto-load passports when switching to Passport or Dashboard view
+                if matches!(view, ViewState::Passport | ViewState::Dashboard)
+                    && self.passport_view.loaded_passports.is_empty()
+                    && !self.passport_view.passport_loading
+                {
                     return Some(AppCommand::LoadPassports);
                 }
                 None

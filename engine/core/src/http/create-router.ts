@@ -25,6 +25,7 @@ import type { OnboardingWizard } from '../onboarding/wizard.js';
 import type { OnboardingProfile } from '../onboarding/profile.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
+import type { EventBusPort } from '../ports/events.port.js';
 import { createScanRoute } from './routes/scan.route.js';
 import { createStatusRoute } from './routes/status.route.js';
 import { createChatRoute } from './routes/chat.route.js';
@@ -45,6 +46,8 @@ import { createObligationsRoute } from './routes/obligations.route.js';
 import { createSyncRoute } from './routes/sync.route.js';
 import { createCertRoute } from './routes/cert.route.js';
 import { createGuidedOnboardingRoute } from './routes/guided-onboarding.route.js';
+import { createSupplyChainRoute } from './routes/supply-chain.route.js';
+import { createEventsRoute } from './routes/events.route.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -72,6 +75,7 @@ export interface RouterDeps {
   readonly callLlm?: (prompt: string, systemPrompt?: string) => Promise<string>;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
+  readonly events?: EventBusPort;
 }
 
 const OnboardingStepSchema = z.object({
@@ -178,12 +182,21 @@ export const createRouter = (deps: RouterDeps) => {
     },
   }));
   app.route('/', createObligationsRoute({ obligations: deps.obligations, getLastScan: deps.getLastScan }));
+  app.route('/', createSupplyChainRoute({
+    evidenceStore: deps.evidenceStore,
+    auditStore: deps.auditStore,
+  }));
   app.route('/', createSyncRoute({
     getProjectPath: deps.getProjectPath,
     getLastScan: deps.getLastScan,
     passportService: deps.passportService,
     getAuditEntries: (filter) => deps.passportService.getAuditTrail(filter),
   }));
+
+  // US-S05-26: SSE events endpoint
+  if (deps.events) {
+    app.route('/', createEventsRoute({ events: deps.events }));
+  }
 
   // Health check
   app.get('/health', (c) => c.json({ ok: true }));

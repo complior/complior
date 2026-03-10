@@ -12,6 +12,17 @@ pub mod sidebar;
 pub mod terminal;
 pub mod timeline;
 
+/// Map a compliance score (0-100) to a zone color: red (<50), yellow (50-79), green (80+).
+pub fn score_zone_color(score: f64, t: &crate::theme::ThemeColors) -> ratatui::style::Color {
+    if score < 50.0 {
+        t.zone_red
+    } else if score < 80.0 {
+        t.zone_yellow
+    } else {
+        t.zone_green
+    }
+}
+
 /// Truncate a string to at most `max_chars` characters, appending "..." if truncated.
 /// Safe for multi-byte UTF-8 (never splits inside a char boundary).
 pub fn truncate_str(s: &str, max_chars: usize) -> String {

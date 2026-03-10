@@ -14,6 +14,8 @@ export interface EventMap {
   readonly 'share.created': { readonly id: string; readonly score: number };
   readonly 'external-scan.completed': { readonly url: string; readonly score: number };
   readonly 'report.generated': { readonly path: string; readonly format: 'pdf' | 'markdown' };
+  readonly 'agent.scan.completed': { readonly agentName: string; readonly result: ScanResult };
+  readonly 'agent.score.updated': { readonly agentName: string; readonly before: number; readonly after: number };
 }
 
 export type EventHandler<T> = (payload: T) => void;

@@ -8,7 +8,8 @@ export type AuditEventType =
   | 'evidence.verified' | 'worker_notification.generated'
   | 'policy.generated'
   | 'readiness.computed'
-  | 'adversarial.completed';
+  | 'adversarial.completed'
+  | 'supply-chain.audited';
 
 export interface AuditEntry {
   readonly id: string;

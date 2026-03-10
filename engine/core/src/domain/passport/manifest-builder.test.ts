@@ -14,6 +14,7 @@ const testInput: PassportBuildInput = {
     detectedSdks: ['openai'],
     detectedModels: ['gpt-4'],
     confidence: 0.9,
+    sourceFiles: ['src/index.ts'],
   },
   autonomy: {
     level: 'L3',
@@ -170,5 +171,20 @@ describe('buildPassport', () => {
     });
 
     expect(manifest.constraints.escalation_rules).toBeUndefined();
+  });
+
+  it('persists source_files from discovered agent', () => {
+    const manifest = buildPassport(testInput);
+
+    expect(manifest.source_files).toEqual(['src/index.ts']);
+  });
+
+  it('persists multiple source_files', () => {
+    const manifest = buildPassport({
+      ...testInput,
+      agent: { ...testInput.agent, sourceFiles: ['src/index.ts', 'src/handler.ts', 'lib/utils.ts'] },
+    });
+
+    expect(manifest.source_files).toEqual(['src/index.ts', 'src/handler.ts', 'lib/utils.ts']);
   });
 });

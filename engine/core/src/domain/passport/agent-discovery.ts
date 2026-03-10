@@ -195,6 +195,7 @@ export const discoverAgents = (
       detectedSdks,
       detectedModels: detectModels(sourceFiles),
       confidence: 0.5 + (detectedSdks.length > 0 ? 0.2 : 0),
+      sourceFiles: sourceFiles[0] ? [sourceFiles[0].relativePath] : [],
     }];
   }
 
@@ -229,6 +230,7 @@ export const discoverAgents = (
       detectedSdks,
       detectedModels: models,
       confidence,
+      sourceFiles: files.map(f => f.relativePath),
     });
   }
 

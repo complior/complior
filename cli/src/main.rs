@@ -146,6 +146,16 @@ async fn main() -> color_eyre::Result<()> {
                 let code = headless::cert::run_cert_command(action, &config).await;
                 std::process::exit(code);
             }
+            Some(cli::Command::SupplyChain { json, models, path }) => {
+                let code = headless::supply_chain::run_supply_chain(
+                    *json,
+                    *models,
+                    path.as_deref(),
+                    &config,
+                )
+                .await;
+                std::process::exit(code);
+            }
             Some(cli::Command::Login) => {
                 match headless::run_login(&config).await {
                     Ok(()) => return Ok(()),

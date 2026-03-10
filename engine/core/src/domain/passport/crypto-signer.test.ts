@@ -15,6 +15,7 @@ const testInput: PassportBuildInput = {
     detectedSdks: ['openai'],
     detectedModels: ['gpt-4'],
     confidence: 0.9,
+    sourceFiles: ['src/index.ts'],
   },
   autonomy: {
     level: 'L3',

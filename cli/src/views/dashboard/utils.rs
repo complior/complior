@@ -45,13 +45,15 @@ pub fn deadline_label(days_diff: i64, t: &theme::ThemeColors) -> (String, ratatu
 
 /// Score -> (color, zone label).
 pub fn score_zone_info(score: f64, t: &theme::ThemeColors) -> (ratatui::style::Color, &'static str) {
-    if score < 50.0 {
-        (t.zone_red, "RED \u{2014} Non-Compliant")
+    let color = crate::views::score_zone_color(score, t);
+    let label = if score < 50.0 {
+        "RED \u{2014} Non-Compliant"
     } else if score < 80.0 {
-        (t.zone_yellow, "YELLOW \u{2014} Partial")
+        "YELLOW \u{2014} Partial"
     } else {
-        (t.zone_green, "GREEN \u{2014} Compliant")
-    }
+        "GREEN \u{2014} Compliant"
+    };
+    (color, label)
 }
 
 /// Derive category breakdown from findings when engine doesn't provide category_scores.

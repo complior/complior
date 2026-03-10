@@ -39,18 +39,32 @@ pub(super) fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App)
     }
 
     // Top row: Compliance Score gauge bar (3 lines, full width)
-    let top_split = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(8)])
-        .split(area);
+    // If agents loaded, add 3-line agent strip between score gauge and content
+    let has_agents = !app.passport_view.loaded_passports.is_empty();
+    let top_split = if has_agents {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Length(3), Constraint::Min(8)])
+            .split(area)
+    } else {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(8)])
+            .split(area)
+    };
 
     render_score_gauge(frame, top_split[0], app);
 
+    if has_agents {
+        render_agent_strip(frame, top_split[1], app);
+    }
+
     // Two-column: Left 60% | Right 40%
+    let content_area = if has_agents { top_split[2] } else { top_split[1] };
     let h_split = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(top_split[1]);
+        .split(content_area);
 
     // Left column: Status Log (top 70%) + Score History sparkline (bottom 30%)
     let left_col = Layout::default()
@@ -63,6 +77,51 @@ pub(super) fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App)
 
     // Right column: Info panel (stacked sections)
     render_info_panel(frame, h_split[1], app);
+}
+
+/// Agent strip widget — shows all discovered agents with their autonomy level and score.
+fn render_agent_strip(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+    let count = app.passport_view.loaded_passports.len();
+
+    let block = Block::default()
+        .title(format!(" Agents ({count}) "))
+        .title_style(theme::title_style())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.border));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let mut spans: Vec<Span> = Vec::new();
+    for (i, passport) in app.passport_view.loaded_passports.iter().enumerate() {
+        let name = passport.get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+        let autonomy = passport.get("autonomy_level")
+            .and_then(|v| v.as_str())
+            .unwrap_or("?");
+        let score = passport.get("compliance")
+            .and_then(|c| c.get("complior_score"))
+            .and_then(|s| s.as_f64())
+            .unwrap_or(0.0);
+
+        let score_color = crate::views::score_zone_color(score, &t);
+
+        if i > 0 {
+            spans.push(Span::styled("  \u{2022}  ", Style::default().fg(t.muted)));
+        }
+        spans.push(Span::styled(
+            format!("{name} {autonomy} "),
+            Style::default().fg(t.fg),
+        ));
+        spans.push(Span::styled(
+            format!("{score:.0}"),
+            Style::default().fg(score_color),
+        ));
+    }
+
+    frame.render_widget(Paragraph::new(Line::from(spans)), inner);
 }
 
 /// Score history text sparkline.
@@ -102,13 +161,7 @@ pub(super) fn render_score_history_line(frame: &mut Frame, area: Rect, app: &App
         .collect();
 
     let last_score = app.score_history.last().copied().unwrap_or(0.0);
-    let color = if last_score < 50.0 {
-        t.zone_red
-    } else if last_score < 80.0 {
-        t.zone_yellow
-    } else {
-        t.zone_green
-    };
+    let color = crate::views::score_zone_color(last_score, &t);
 
     let lines = vec![
         Line::from(Span::styled(

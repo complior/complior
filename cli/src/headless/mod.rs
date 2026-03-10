@@ -14,6 +14,7 @@ mod fix;
 pub(crate) mod format;
 pub mod login;
 pub mod scan;
+pub mod supply_chain;
 pub mod sync;
 #[cfg(test)]
 mod tests;

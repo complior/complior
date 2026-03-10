@@ -329,6 +329,35 @@ pub(super) fn render_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }
 
+/// Build a map of source_file → agent_name from loaded passports.
+/// Called once before rendering to avoid O(n²) lookups.
+pub(super) fn build_file_agent_map(passports: &[serde_json::Value]) -> Vec<(String, String)> {
+    let mut entries = Vec::new();
+    for p in passports {
+        let name = p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if let Some(sf) = p.get("source_files").and_then(|v| v.as_array()) {
+            for s in sf {
+                if let Some(src) = s.as_str() {
+                    entries.push((src.to_string(), name.clone()));
+                }
+            }
+        }
+    }
+    entries
+}
+
+/// Determine agent name for a finding using pre-built file→agent map.
+pub(super) fn resolve_agent_name<'a>(file: Option<&str>, file_agent_map: &'a [(String, String)]) -> &'a str {
+    if let Some(f) = file {
+        for (src, name) in file_agent_map {
+            if f == src || f.starts_with(&format!("{src}/")) {
+                return name;
+            }
+        }
+    }
+    "Project"
+}
+
 pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
     let block = Block::default()
@@ -347,8 +376,11 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
         .filter(|f| app.scan_view.findings_filter.matches(f.severity))
         .collect();
 
-    // Sort by severity: Critical -> High -> Medium -> Low -> Info
-    filtered.sort_by_key(|f| severity_order(f.severity));
+    // Pre-compute file→agent map once (empty if no passports)
+    let file_agent_map = build_file_agent_map(&app.passport_view.loaded_passports);
+    let has_passports = !file_agent_map.is_empty();
+
+    super::sort_findings_for_display(&mut filtered, &file_agent_map);
 
     if filtered.is_empty() {
         frame.render_widget(
@@ -361,7 +393,7 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
         return;
     }
 
-    // Count by severity for group headers
+    // Global severity counts for summary line
     let crit_count = filtered.iter().filter(|f| matches!(f.severity, Severity::Critical)).count();
     let high_count = filtered.iter().filter(|f| matches!(f.severity, Severity::High)).count();
     let med_count = filtered.iter().filter(|f| matches!(f.severity, Severity::Medium)).count();
@@ -399,25 +431,78 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
     }
     lines.push(Line::from(summary_spans));
 
-    // Build findings list with severity group headers
+    // Pre-compute per-agent counts: total + per-severity (O(n))
+    let mut agent_counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    let mut agent_sev_counts: std::collections::HashMap<(&str, u8), usize> = std::collections::HashMap::new();
+    if has_passports {
+        for f in &filtered {
+            let agent = resolve_agent_name(f.file.as_deref(), &file_agent_map);
+            *agent_counts.entry(agent).or_insert(0) += 1;
+            *agent_sev_counts.entry((agent, severity_order(f.severity))).or_insert(0) += 1;
+        }
+    }
+
+    // Build findings list with group headers
     let selected = app.scan_view.selected_finding.unwrap_or(0);
     let mut current_severity: Option<u8> = None;
+    let mut current_agent: Option<String> = None;
     let w = inner.width as usize;
 
     for (i, f) in filtered.iter().enumerate() {
         let sev_ord = severity_order(f.severity);
 
-        // Insert group header when severity changes
+        // Agent group header (only when passports loaded)
+        if has_passports {
+            let agent = resolve_agent_name(f.file.as_deref(), &file_agent_map);
+            if current_agent.as_deref() != Some(agent) {
+                let agent_count = agent_counts.get(agent).copied().unwrap_or(0);
+                current_agent = Some(agent.to_string());
+                current_severity = None; // reset severity tracking for new agent group
+                lines.push(Line::raw(""));
+                let header_text = format!(" {agent} ({agent_count} findings) ");
+                let dash_len = w.saturating_sub(header_text.len() + 4);
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        "\u{2500}\u{2500} ",
+                        Style::default().fg(t.accent),
+                    ),
+                    Span::styled(
+                        header_text,
+                        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        "\u{2500}".repeat(dash_len),
+                        Style::default().fg(t.accent),
+                    ),
+                ]));
+            }
+        }
+
+        // Insert severity group header when severity changes
         if current_severity != Some(sev_ord) {
             current_severity = Some(sev_ord);
-            let (group_label, group_count, sev_color) = match f.severity {
-                Severity::Critical => ("CRITICAL", crit_count, theme::severity_color(Severity::Critical)),
-                Severity::High => ("HIGH", high_count, theme::severity_color(Severity::High)),
-                Severity::Medium => ("MEDIUM", med_count, theme::severity_color(Severity::Medium)),
-                Severity::Low => ("LOW", low_count, theme::severity_color(Severity::Low)),
-                Severity::Info => ("INFO", low_count, theme::severity_color(Severity::Info)),
+            let (group_label, sev_color) = match f.severity {
+                Severity::Critical => ("CRITICAL", theme::severity_color(Severity::Critical)),
+                Severity::High => ("HIGH", theme::severity_color(Severity::High)),
+                Severity::Medium => ("MEDIUM", theme::severity_color(Severity::Medium)),
+                Severity::Low => ("LOW", theme::severity_color(Severity::Low)),
+                Severity::Info => ("INFO", theme::severity_color(Severity::Info)),
             };
-            lines.push(Line::raw(""));
+            // Use per-agent severity count when grouped, global count otherwise
+            let group_count = if has_passports {
+                let agent = current_agent.as_deref().unwrap_or("Project");
+                agent_sev_counts.get(&(agent, sev_ord)).copied().unwrap_or(0)
+            } else {
+                match f.severity {
+                    Severity::Critical => crit_count,
+                    Severity::High => high_count,
+                    Severity::Medium => med_count,
+                    Severity::Low | Severity::Info => low_count,
+                }
+            };
+            if !has_passports {
+                lines.push(Line::raw(""));
+            }
             let header_text = format!(" {group_label} ({group_count}) ");
             let dash_len = w.saturating_sub(header_text.len() + 2);
             lines.push(Line::from(vec![

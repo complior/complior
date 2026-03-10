@@ -9,7 +9,8 @@ export type EvidenceSource =
   | 'fix'
   | 'passport'
   | 'fria'
-  | 'adversarial-test';
+  | 'adversarial-test'
+  | 'supply-chain';
 
 export interface Evidence {
   readonly findingId: string;

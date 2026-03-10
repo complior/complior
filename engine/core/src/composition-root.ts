@@ -323,12 +323,27 @@ export const loadApplication = async (): Promise<Application> => {
     callLlm,
     evidenceStore,
     auditStore,
+    events,
   });
 
-  // 7. Wire Compliance Gate: file.changed → background re-scan
-  events.on('file.changed', () => {
+  // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events
+  const agentScores = new Map<string, number>();
+
+  events.on('file.changed', ({ path: changedPath }) => {
     scanService.scan(state.projectPath).then(
-      (result) => events.emit('scan.completed', { result }),
+      async (result) => {
+        events.emit('scan.completed', { result });
+
+        // Delegate file→agent matching to passport service (Clean Architecture)
+        const matched = await passportService.findAgentsForFile(changedPath);
+        for (const { name } of matched) {
+          const beforeScore = agentScores.get(name) ?? 0;
+          const afterScore = result.score.totalScore;
+          agentScores.set(name, afterScore);
+          events.emit('agent.scan.completed', { agentName: name, result });
+          events.emit('agent.score.updated', { agentName: name, before: beforeScore, after: afterScore });
+        }
+      },
       (err: unknown) => log.error('Background re-scan failed:', err),
     );
   });

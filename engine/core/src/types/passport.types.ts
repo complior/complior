@@ -173,6 +173,9 @@ export interface AgentPassport {
   // Upstream registry cards (auto-filled from detected models)
   readonly upstream_registry?: readonly RegistryToolCard[];
 
+  // Source files (file paths belonging to this agent)
+  readonly source_files?: readonly string[];
+
   // Source tracking
   readonly source: SourceBlock;
 
@@ -320,6 +323,7 @@ export const AgentPassportSchema = z.object({
   lifecycle: LifecycleBlockSchema,
   interop: InteropBlockSchema,
   upstream_registry: z.array(z.record(z.unknown())).optional(),
+  source_files: z.array(z.string()).optional(),
   source: SourceBlockSchema,
   signature: SignatureBlockSchema,
 });
@@ -343,4 +347,5 @@ export interface DiscoveredAgent {
   readonly detectedSdks: readonly string[];
   readonly detectedModels: readonly string[];
   readonly confidence: number;
+  readonly sourceFiles: readonly string[];
 }

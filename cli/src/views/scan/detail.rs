@@ -9,8 +9,9 @@ use crate::theme;
 use crate::types::Severity;
 
 use super::explain::{
-    deadline_for_article, explain_check, penalty_for_article, severity_order, wrap_text,
+    deadline_for_article, explain_check, penalty_for_article, wrap_text,
 };
+use super::render::build_file_agent_map;
 use super::shared::{render_code_block, render_fix_diff, render_fix_text};
 
 /// Render finding detail -- two-column layout: code (left) + legal context (right).
@@ -26,7 +27,8 @@ pub(super) fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
         .iter()
         .filter(|f| app.scan_view.findings_filter.matches(f.severity))
         .collect();
-    filtered.sort_by_key(|f| severity_order(f.severity));
+    let file_agent_map = build_file_agent_map(&app.passport_view.loaded_passports);
+    super::sort_findings_for_display(&mut filtered, &file_agent_map);
 
     let idx = app.scan_view.selected_finding.unwrap_or(0);
     let Some(finding) = filtered.get(idx) else {

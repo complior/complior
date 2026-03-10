@@ -334,8 +334,8 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
         let score = passport
             .get("compliance")
             .and_then(|c| c.get("complior_score"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
         let completeness = extract_completeness(passport);
 
         // Truncate name
@@ -365,8 +365,8 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
             Span::styled(format!("{truncated_name:<20}"), row_style),
             Span::styled(format!(" {autonomy:>2}"), Style::default().fg(t.accent)),
             Span::styled(
-                format!("  {score:>3}"),
-                Style::default().fg(score_color(score, &t)),
+                format!("  {score:>3.0}"),
+                Style::default().fg(crate::views::score_zone_color(score, &t)),
             ),
             Span::styled(
                 format!("  {completeness:>3}%"),
@@ -415,7 +415,7 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     let provider = passport.get("model").and_then(|m| m.get("provider")).and_then(|v| v.as_str()).unwrap_or("?");
     let model_id = passport.get("model").and_then(|m| m.get("model_id")).and_then(|v| v.as_str()).unwrap_or("?");
     let risk_class = passport.get("compliance").and_then(|c| c.get("eu_ai_act")).and_then(|e| e.get("risk_class")).and_then(|v| v.as_str()).unwrap_or("?");
-    let score = passport.get("compliance").and_then(|c| c.get("complior_score")).and_then(|v| v.as_u64()).unwrap_or(0);
+    let score = passport.get("compliance").and_then(|c| c.get("complior_score")).and_then(|v| v.as_f64()).unwrap_or(0.0);
     let agent_type = passport.get("type").and_then(|v| v.as_str()).unwrap_or("?");
     let completeness = extract_completeness(passport);
 
@@ -458,8 +458,8 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     lines.push(Line::from(vec![
         Span::styled("  Score: ", Style::default().fg(t.muted)),
         Span::styled(
-            format!("{score}"),
-            Style::default().fg(score_color(score, &t)).add_modifier(Modifier::BOLD),
+            format!("{score:.0}"),
+            Style::default().fg(crate::views::score_zone_color(score, &t)).add_modifier(Modifier::BOLD),
         ),
     ]));
 
@@ -527,15 +527,6 @@ fn extract_completeness(passport: &serde_json::Value) -> u8 {
     }
     let total = 9u64;
     ((filled * 100) / total).min(100) as u8
-}
-
-/// Score color: green (80+), yellow (50-79), red (<50).
-fn score_color(score: u64, t: &theme::ThemeColors) -> Color {
-    match score {
-        80.. => t.zone_green,
-        50..=79 => t.zone_yellow,
-        _ => t.zone_red,
-    }
 }
 
 /// Render the field editor view (single-agent drill-down).

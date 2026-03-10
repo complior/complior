@@ -184,4 +184,68 @@ const res = await client.chat.completions.create({
 
     expect(result).toBeNull();
   });
+
+  it('findAgentsForFile matches agent by source_files', async () => {
+    const deps = createMockDeps([
+      createFile(
+        'package.json',
+        JSON.stringify({
+          name: 'ai-bot',
+          dependencies: { openai: '4.20.0' },
+        }),
+        '.json',
+      ),
+      createFile(
+        'src/agent.ts',
+        `import OpenAI from 'openai';
+const client = new OpenAI();
+const res = await client.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }],
+});`,
+      ),
+    ]);
+
+    const service = createPassportService(deps);
+    // Create passport with source_files
+    await service.initPassport('/tmp/test', undefined, true);
+
+    // Match: file inside agent's source_files
+    const matched = await service.findAgentsForFile('/tmp/test/src/agent.ts');
+    expect(matched.length).toBeGreaterThan(0);
+    expect(matched[0].name).toBe('ai-bot');
+  });
+
+  it('findAgentsForFile returns empty for unrelated file', async () => {
+    const deps = createMockDeps([
+      createFile(
+        'package.json',
+        JSON.stringify({
+          name: 'ai-bot',
+          dependencies: { openai: '4.20.0' },
+        }),
+        '.json',
+      ),
+      createFile(
+        'src/agent.ts',
+        `import OpenAI from 'openai';
+const client = new OpenAI();`,
+      ),
+    ]);
+
+    const service = createPassportService(deps);
+    await service.initPassport('/tmp/test', undefined, true);
+
+    // No match: completely unrelated file
+    const matched = await service.findAgentsForFile('/tmp/test/docs/readme.md');
+    expect(matched).toHaveLength(0);
+  });
+
+  it('findAgentsForFile returns empty when no agents dir', async () => {
+    const deps = createMockDeps();
+
+    const service = createPassportService(deps);
+    const matched = await service.findAgentsForFile('/tmp/nonexistent/src/index.ts');
+    expect(matched).toEqual([]);
+  });
 });

@@ -683,20 +683,23 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 Как разработчик, я хочу чтобы daemon знал о всех AI-агентах в проекте и давал per-agent compliance feedback, чтобы управлять несколькими AI-системами из одного TUI.
 
 **Acceptance Criteria:**
-- [ ] Daemon при старте обнаруживает все passports в `.complior/agents/`
-- [ ] Per-agent scan: file watcher триггерит rescan для конкретного агента (по file → agent mapping)
-- [ ] SSE events: `agent.scan.complete`, `agent.score.updated` с agent name
-- [ ] TUI Dashboard: сводка по всем агентам (name, score, last scan)
-- [ ] TUI Passport page: переключение между агентами (j/k), per-agent detail
-- [ ] Scan results в TUI группированы по agent
-- [ ] 8+ тестов (Rust + TS)
+- [x] Daemon при старте обнаруживает все passports в `.complior/agents/`
+- [x] Per-agent scan: file watcher триггерит rescan для конкретного агента (по file → agent mapping)
+- [x] SSE events: `agent.scan.completed`, `agent.score.updated` с agent name
+- [x] TUI Dashboard: сводка по всем агентам (name, score, last scan) — Agent Strip widget
+- [x] TUI Passport page: переключение между агентами (j/k), per-agent detail
+- [x] Scan results в TUI группированы по agent
+- [x] 15 тестов (9 Rust + 6 TS)
+
+**Статус:** 100% DONE
 
 **Технические детали:**
-- `engine/core/src/services/registry-service.ts` — multi-agent awareness
-- `engine/core/src/server.ts` — SSE per-agent events
-- `cli/src/app/mod.rs` — multi-agent state
-- `cli/src/views/dashboard/mod.rs` — agent summary section
-- `cli/src/views/passport/mod.rs` — per-agent navigation
+- `engine/core/src/ports/events.port.ts` — agent.scan.completed, agent.score.updated events
+- `engine/core/src/http/routes/events.route.ts` — SSE endpoint (`GET /events`)
+- `engine/core/src/services/passport-service.ts` — emits agent-scoped events on passport creation
+- `cli/src/views/dashboard/content.rs` — Agent Strip widget (render_agent_strip)
+- `cli/src/app/actions.rs` — auto-load passports on Dashboard switch
+- `cli/src/views/passport/mod.rs` — per-agent j/k navigation (AgentList mode)
 
 ---
 

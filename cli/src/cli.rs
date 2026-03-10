@@ -137,6 +137,20 @@ pub enum Command {
         action: CertAction,
     },
 
+    /// Audit AI supply chain dependencies and model compliance cards
+    SupplyChain {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Show model compliance cards only
+        #[arg(long)]
+        models: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+
     /// Authenticate with SaaS dashboard via browser
     Login,
 
@@ -505,6 +519,7 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Daemon { .. }
             | Command::Agent { .. }
             | Command::Cert { .. }
+            | Command::SupplyChain { .. }
             | Command::Login
             | Command::Logout
             | Command::Sync { .. },

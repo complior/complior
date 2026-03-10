@@ -331,4 +331,49 @@ mod tests {
         state.set_complete(10);
         assert!(state.progress_collapsed);
     }
+
+    #[test]
+    fn scan_findings_grouped_by_agent() {
+        crate::theme::init_theme("dark");
+        let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+        app.last_scan = Some(make_scan_result());
+        app.scan_view.set_complete(24);
+        app.scan_view.selected_finding = Some(0);
+
+        // Load passports with source_files to trigger agent grouping
+        app.passport_view.loaded_passports = vec![
+            serde_json::json!({
+                "name": "chat-agent",
+                "autonomy_level": "L3",
+                "compliance": { "complior_score": 75 },
+                "source_files": ["src/chat/anthropic.ts", "src/chat/openai.ts"]
+            }),
+            serde_json::json!({
+                "name": "config-agent",
+                "autonomy_level": "L2",
+                "compliance": { "complior_score": 60 },
+                "source_files": ["package.json"]
+            }),
+        ];
+
+        let buf = render_scan_to_string(&app, 120, 40);
+        assert!(buf.contains("chat-agent"), "Should show chat-agent group header");
+        assert!(buf.contains("config-agent"), "Should show config-agent group header");
+        assert!(buf.contains("Project"), "Findings without agent match should be in Project group");
+    }
+
+    #[test]
+    fn scan_findings_no_grouping_without_passports() {
+        crate::theme::init_theme("dark");
+        let mut app = crate::app::App::new(crate::config::TuiConfig::default());
+        app.last_scan = Some(make_scan_result());
+        app.scan_view.set_complete(24);
+        app.scan_view.selected_finding = Some(0);
+
+        // No passports loaded — severity-only grouping
+        let buf = render_scan_to_string(&app, 120, 40);
+        assert!(buf.contains("CRITICAL"), "Should show severity headers");
+        assert!(buf.contains("HIGH"), "Should show severity headers");
+        assert!(!buf.contains("Project"), "Should not show agent group when no passports");
+    }
 }

@@ -45,7 +45,7 @@ export interface PassportBuildInput {
 
 export const ALL_PASSPORT_FIELDS: readonly string[] = [
   // Auto-fillable (conditional on discovery results)
-  'name', 'display_name', 'framework', 'model.provider', 'model.model_id',
+  'name', 'display_name', 'framework', 'source_files', 'model.provider', 'model.model_id',
   'autonomy_level', 'type', 'autonomy_evidence',
   'permissions.tools', 'permissions.data_access', 'permissions.denied',
   'permissions.data_boundaries',
@@ -218,6 +218,7 @@ export const buildPassport = (
   if (name) autoFilledFields.push('name');
   if (displayName) autoFilledFields.push('display_name');
   if (agent.framework) autoFilledFields.push('framework');
+  if (agent.sourceFiles.length > 0) autoFilledFields.push('source_files');
   if (model.provider !== 'unknown') autoFilledFields.push('model.provider');
   if (model.model_id !== 'unknown') autoFilledFields.push('model.model_id');
 
@@ -304,6 +305,7 @@ export const buildPassport = (
     lifecycle,
     interop,
     ...(upstreamRegistry.length > 0 ? { upstream_registry: upstreamRegistry } : {}),
+    source_files: [...agent.sourceFiles],
     source,
   };
 

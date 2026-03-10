@@ -7,7 +7,8 @@ use ratatui::Frame;
 use crate::app::App;
 use crate::theme;
 
-use super::explain::{explain_check, severity_order, wrap_text};
+use super::explain::{explain_check, wrap_text};
+use super::render::build_file_agent_map;
 use super::shared::{render_code_block, render_fix_diff, render_fix_text};
 
 /// Preview panel -- content based on the selected finding's type.
@@ -23,7 +24,8 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
         .iter()
         .filter(|f| app.scan_view.findings_filter.matches(f.severity))
         .collect();
-    filtered.sort_by_key(|f| severity_order(f.severity));
+    let file_agent_map = build_file_agent_map(&app.passport_view.loaded_passports);
+    super::sort_findings_for_display(&mut filtered, &file_agent_map);
 
     let idx = app.scan_view.selected_finding.unwrap_or(0);
     let Some(finding) = filtered.get(idx).copied() else {
