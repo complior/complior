@@ -1,13 +1,24 @@
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Gauge, Paragraph, Block, Borders, Wrap};
 use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
+use crate::theme::ThemeColors;
 
 use super::{LayerProgress, LayerStatus, ScanViewState};
+
+/// Map a `LayerStatus` to its display icon and theme color.
+fn layer_status_display(status: LayerStatus, t: &ThemeColors) -> (&'static str, Color) {
+    match status {
+        LayerStatus::Complete => ("[X]", t.zone_green),
+        LayerStatus::Running => ("[~]", t.zone_yellow),
+        LayerStatus::Waiting => ("[ ]", t.muted),
+        LayerStatus::Skipped => ("[-]", t.muted),
+    }
+}
 
 /// Collapsed progress summary -- single line after scan complete.
 pub(super) fn render_progress_summary(frame: &mut Frame, area: Rect, app: &App) {
@@ -23,12 +34,7 @@ pub(super) fn render_progress_summary(frame: &mut Frame, area: Rect, app: &App) 
         Span::styled(" Layers: ", Style::default().fg(t.muted)),
     ];
     for layer in &app.scan_view.layer_progress {
-        let (icon, color) = match layer.status {
-            LayerStatus::Complete => ("[X]", t.zone_green),
-            LayerStatus::Running => ("[~]", t.zone_yellow),
-            LayerStatus::Waiting => ("[ ]", t.muted),
-            LayerStatus::Skipped => ("[-]", t.muted),
-        };
+        let (icon, color) = layer_status_display(layer.status, &t);
         spans.push(Span::styled(icon, Style::default().fg(color)));
         spans.push(Span::styled(
             format!("{}:{} ", layer.short, layer.name),
@@ -58,12 +64,7 @@ pub(super) fn render_puzzle_header(frame: &mut Frame, area: Rect, scan_view: &Sc
     // Line 1: Lock icons per layer
     let mut lock_spans: Vec<Span<'_>> = vec![Span::raw(" ")];
     for layer in &scan_view.layer_progress {
-        let (icon, color) = match layer.status {
-            LayerStatus::Complete => ("[X]", t.zone_green),
-            LayerStatus::Running => ("[~]", t.zone_yellow),
-            LayerStatus::Waiting => ("[ ]", t.muted),
-            LayerStatus::Skipped => ("[-]", t.muted),
-        };
+        let (icon, color) = layer_status_display(layer.status, &t);
         lock_spans.push(Span::styled(icon, Style::default().fg(color)));
         lock_spans.push(Span::styled(
             format!(" {} {:<8} ", layer.short, layer.name),

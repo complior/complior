@@ -11,6 +11,7 @@ import {
   startOnboarding,
   completeStep,
   canRunStep,
+  TOTAL_STEPS,
 } from '../domain/onboarding/guided-onboarding.js';
 
 export interface OnboardingServiceDeps {
@@ -67,7 +68,7 @@ const toStatus = (state: GuidedOnboardingState): OnboardingStatus => {
 
   return Object.freeze({
     currentStep: state.currentStep,
-    totalSteps: 5,
+    totalSteps: TOTAL_STEPS,
     stepName: currentLabel,
     completed: state.status === 'completed',
     steps,
@@ -103,12 +104,12 @@ export const createOnboardingService = (deps: OnboardingServiceDeps): Onboarding
     const projectPath = deps.getProjectPath();
     let state = await deps.loadState(projectPath);
 
-    if (stepNumber < 1 || stepNumber > 5) {
+    if (stepNumber < 1 || stepNumber > TOTAL_STEPS) {
       return Object.freeze({
         step: stepNumber,
         name: 'unknown',
         success: false,
-        message: `Invalid step number: ${stepNumber}. Valid range: 1-5`,
+        message: `Invalid step number: ${stepNumber}. Valid range: 1-${TOTAL_STEPS}`,
         data: {},
         nextStep: null,
       });
@@ -132,7 +133,7 @@ export const createOnboardingService = (deps: OnboardingServiceDeps): Onboarding
       state = completeStep(state, stepNumber, stepData);
       await deps.saveState(projectPath, state);
 
-      const nextStep = stepNumber < 5 ? stepNumber + 1 : null;
+      const nextStep = stepNumber < TOTAL_STEPS ? stepNumber + 1 : null;
       return Object.freeze({
         step: stepNumber,
         name: stepLabel,

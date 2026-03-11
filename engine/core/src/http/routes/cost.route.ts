@@ -6,6 +6,7 @@
 
 import { Hono } from 'hono';
 import type { CostService } from '../../services/cost-service.js';
+import { DEFAULT_HOURLY_RATE } from '../../domain/shared/compliance-constants.js';
 
 export interface CostRouteDeps {
   readonly costService: CostService;
@@ -15,7 +16,7 @@ export const createCostRoute = (deps: CostRouteDeps) => {
   const app = new Hono();
 
   app.get('/cost-estimate', async (c) => {
-    const hourlyRate = Number(c.req.query('hourlyRate')) || 150;
+    const hourlyRate = Number(c.req.query('hourlyRate')) || DEFAULT_HOURLY_RATE;
     const agentName = c.req.query('agent') || undefined;
 
     try {

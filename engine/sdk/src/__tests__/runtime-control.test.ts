@@ -212,7 +212,7 @@ describe('interaction-logger', () => {
         loggedAtMs: Date.now(),
         disclosureVerified: true,
         biasCheckPassed: false,
-        piiRedactedCount: 3,
+        piiRedacted: 3,
         escalationDetected: true,
       }),
       openaiResponse('hi'),

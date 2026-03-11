@@ -73,11 +73,6 @@ export type GateDecision = { approved: true } | { approved: false; reason?: stri
 export type PreHook = (ctx: MiddlewareContext) => MiddlewareContext;
 export type PostHook = (ctx: MiddlewareContext, response: unknown) => MiddlewareResult | Promise<MiddlewareResult>;
 
-export interface ProviderAdapter {
-  readonly name: string;
-  readonly getMethodProxy: (target: unknown, method: string) => ((...args: unknown[]) => unknown) | null;
-}
-
 export interface DomainHooks {
   readonly pre: readonly PreHook[];
   readonly post: readonly PostHook[];

@@ -27,6 +27,7 @@ import type { ExternalScanService } from './services/external-scan-service.js';
 import { createStatusService } from './services/status-service.js';
 import { createPassportService } from './services/passport-service.js';
 import { createCostService } from './services/cost-service.js';
+import { createOnboardingService } from './services/onboarding-service.js';
 import { createDebtService } from './services/debt-service.js';
 import { createEvidenceStore } from './domain/scanner/evidence-store.js';
 import { createAuditStore } from './domain/audit/index.js';
@@ -36,6 +37,13 @@ import { createRouter } from './http/create-router.js';
 import { createFileWatcher } from './infra/file-watcher.js';
 import { createOnboardingWizard } from './onboarding/wizard.js';
 import { ENGINE_VERSION } from './version.js';
+import { DEFAULT_INPUT_COST_PER_1K, DEFAULT_OUTPUT_COST_PER_1K } from './domain/shared/compliance-constants.js';
+import { analyzeScenario } from './domain/whatif/scenario-engine.js';
+import { generateAllConfigs } from './domain/whatif/config-fixer.js';
+import { simulateActions } from './domain/whatif/simulate-actions.js';
+import { compareSeverity } from './types/common.types.js';
+import { autoDetect } from './onboarding/auto-detect.js';
+import { createInitialState as createOnboardingInitialState } from './domain/onboarding/guided-onboarding.js';
 
 export interface ApplicationState {
   readonly regulationData: RegulationData;
@@ -123,7 +131,7 @@ export const loadApplication = async (): Promise<Application> => {
       return readFile(path, 'utf-8');
     },
     calculateCost: (_model: string, inputTokens: number, outputTokens: number) =>
-      (inputTokens * 0.003 + outputTokens * 0.015) / 1000,
+      (inputTokens * DEFAULT_INPUT_COST_PER_1K + outputTokens * DEFAULT_OUTPUT_COST_PER_1K) / 1000,
   });
   const scanner = createScanner(regulationData.scoring?.scoring, layer5);
 
@@ -335,6 +343,109 @@ export const loadApplication = async (): Promise<Application> => {
     getProjectPath: () => state.projectPath,
   });
 
+  // 5b.2 Create guided onboarding service (US-S05-33)
+  const onboardingService = createOnboardingService({
+    getProjectPath: () => state.projectPath,
+    loadState: async (pp: string) => {
+      try {
+        const raw = await readFile(resolve(pp, '.complior', 'onboarding-progress.json'), 'utf-8');
+        const data = JSON.parse(raw) as Record<string, unknown>;
+        // Basic shape validation: must have steps array and status
+        if (Array.isArray(data.steps) && typeof data.status === 'string') {
+          return data as unknown as import('./domain/onboarding/guided-onboarding.js').GuidedOnboardingState;
+        }
+        return createOnboardingInitialState();
+      } catch {
+        return createOnboardingInitialState();
+      }
+    },
+    saveState: async (pp: string, s) => {
+      const dir = resolve(pp, '.complior');
+      await mkdir(dir, { recursive: true });
+      await writeFile(resolve(dir, 'onboarding-progress.json'), JSON.stringify(s, null, 2));
+    },
+    executeStep: async (stepNum: number, pp: string) => {
+      switch (stepNum) {
+        case 1: {
+          const detection = await autoDetect(pp);
+          return { ...detection };
+        }
+        case 2: {
+          const scanResult = await scanService.scan(pp);
+          const topFindings = scanResult.findings
+            .filter((f) => f.type === 'fail')
+            .sort((a, b) => compareSeverity(a.severity, b.severity))
+            .slice(0, 5);
+          return {
+            score: scanResult.score.totalScore,
+            filesScanned: scanResult.filesScanned,
+            totalFindings: scanResult.findings.filter((f) => f.type === 'fail').length,
+            topFindings: topFindings.map((f) => ({
+              checkId: f.checkId,
+              message: f.message,
+              severity: f.severity,
+            })),
+          };
+        }
+        case 3: {
+          const result = await passportService.initPassport(pp);
+          return {
+            agentsFound: result.manifests.length,
+            agents: result.manifests.map((m) => ({
+              name: m.name,
+              type: m.type,
+              autonomyLevel: m.autonomy_level,
+            })),
+            savedPaths: result.savedPaths,
+            skipped: result.skipped,
+          };
+        }
+        case 4: {
+          const scanResult = state.lastScanResult;
+          if (!scanResult) {
+            return { fixes: [], message: 'No scan result available. Run step 2 first.' };
+          }
+          const fixSuggestions = scanResult.findings
+            .filter((f) => f.type === 'fail' && f.fixDiff)
+            .sort((a, b) => compareSeverity(a.severity, b.severity))
+            .slice(0, 3)
+            .map((f) => ({
+              checkId: f.checkId,
+              message: f.message,
+              severity: f.severity,
+              file: f.file,
+              fix: f.fix,
+            }));
+          return {
+            fixes: fixSuggestions,
+            totalFixable: scanResult.findings.filter((f) => f.type === 'fail' && f.fixDiff).length,
+          };
+        }
+        case 5: {
+          const passports = await passportService.listPassports(pp);
+          const highRisk = passports.find(
+            (p) => p.compliance.eu_ai_act.risk_class === 'high',
+          );
+          if (highRisk) {
+            const fria = await passportService.generateFriaReport(highRisk.name, pp);
+            return {
+              documentType: 'fria',
+              agentName: highRisk.name,
+              savedPath: fria?.savedPath ?? null,
+            };
+          }
+          return {
+            documentType: 'none',
+            message: 'No high-risk agents found. FRIA not required.',
+            suggestion: 'You can generate a compliance report with: complior report',
+          };
+        }
+        default:
+          return {};
+      }
+    },
+  });
+
   // 5c. Create callLlm closure for adversarial testing (same pattern as L5)
   const callLlm = async (prompt: string, systemPrompt?: string): Promise<string> => {
     try {
@@ -381,6 +492,10 @@ export const loadApplication = async (): Promise<Application> => {
     evidenceStore,
     auditStore,
     events,
+    analyzeScenario,
+    generateAllConfigs,
+    simulateActions,
+    onboardingService,
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events

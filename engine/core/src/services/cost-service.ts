@@ -8,6 +8,7 @@
 import type { ScanResult } from '../types/common.types.js';
 import type { CostEstimateResult } from '../domain/cost/cost-estimator.js';
 import { computeCostEstimate } from '../domain/cost/cost-estimator.js';
+import { DEFAULT_HOURLY_RATE } from '../domain/shared/compliance-constants.js';
 
 export interface CostServiceDeps {
   readonly getLastScanResult: () => ScanResult | null;
@@ -26,7 +27,7 @@ export interface CostService {
 
 export const createCostService = (deps: CostServiceDeps): CostService => {
   const estimate = async (
-    hourlyRate = 150,
+    hourlyRate = DEFAULT_HOURLY_RATE,
     agentName?: string,
   ): Promise<CostEstimateResult> => {
     const scan = deps.getLastScanResult();

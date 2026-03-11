@@ -1,11 +1,7 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { z } from 'zod';
 import { AppError } from '../types/errors.js';
 import { createLogger } from '../infra/logger.js';
-import { createInitialState } from '../domain/onboarding/guided-onboarding.js';
 import type { ScanService } from '../services/scan-service.js';
 import type { ChatService } from '../services/chat-service.js';
 import type { FileService } from '../services/file-service.js';
@@ -28,6 +24,9 @@ import type { OnboardingProfile } from '../onboarding/profile.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import type { EventBusPort } from '../ports/events.port.js';
+import type { WhatIfRequest, WhatIfResult } from '../domain/whatif/scenario-engine.js';
+import type { GeneratedConfig } from '../domain/whatif/config-fixer.js';
+import type { SimulationInput, SimulationResult } from '../domain/whatif/simulate-actions.js';
 import { createScanRoute } from './routes/scan.route.js';
 import { createStatusRoute } from './routes/status.route.js';
 import { createChatRoute } from './routes/chat.route.js';
@@ -82,24 +81,11 @@ export interface RouterDeps {
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
   readonly events?: EventBusPort;
+  readonly analyzeScenario?: (request: WhatIfRequest) => WhatIfResult;
+  readonly generateAllConfigs?: (profile: OnboardingProfile) => readonly GeneratedConfig[];
+  readonly simulateActions?: (input: SimulationInput) => SimulationResult;
+  readonly onboardingService?: import('../services/onboarding-service.js').OnboardingService;
 }
-
-const OnboardingStepSchema = z.object({
-  step: z.number(),
-  name: z.string(),
-  label: z.string(),
-  status: z.enum(['pending', 'in_progress', 'completed', 'skipped']),
-  data: z.record(z.unknown()).optional(),
-  completedAt: z.string().optional(),
-});
-
-const OnboardingStateSchema = z.object({
-  currentStep: z.number(),
-  status: z.enum(['not_started', 'in_progress', 'completed']),
-  steps: z.array(OnboardingStepSchema),
-  startedAt: z.string().optional(),
-  completedAt: z.string().optional(),
-});
 
 export const createRouter = (deps: RouterDeps) => {
   const app = new Hono();
@@ -158,7 +144,14 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createProviderRoute(deps.llm));
   app.route('/', createDisclaimerRoute({ getVersion: deps.getVersion }));
   app.route('/', createOnboardingRoute(deps.onboardingWizard));
-  app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore, getLastScan: deps.getLastScan }));
+  app.route('/', createWhatIfRoute({
+    loadProfile: deps.loadProfile,
+    getLastScore: deps.getLastScore,
+    getLastScan: deps.getLastScan,
+    analyzeScenario: deps.analyzeScenario!,
+    generateAllConfigs: deps.generateAllConfigs!,
+    simulateActions: deps.simulateActions!,
+  }));
   app.route('/', createAgentRoute(deps.passportService));
   app.route('/', createCertRoute({
     passportService: deps.passportService,
@@ -168,24 +161,7 @@ export const createRouter = (deps: RouterDeps) => {
     getProjectPath: deps.getProjectPath,
   }));
   app.route('/', createGuidedOnboardingRoute({
-    scanService: deps.scanService,
-    passportService: deps.passportService,
-    getProjectPath: deps.getProjectPath,
-    getLastScan: deps.getLastScan,
-    loadOnboardingState: async (projectPath: string) => {
-      try {
-        const raw = await readFile(join(projectPath, '.complior', 'onboarding-progress.json'), 'utf-8');
-        const parsed = OnboardingStateSchema.safeParse(JSON.parse(raw));
-        return parsed.success ? parsed.data : createInitialState();
-      } catch {
-        return createInitialState();
-      }
-    },
-    saveOnboardingState: async (projectPath: string, state) => {
-      const dir = join(projectPath, '.complior');
-      await mkdir(dir, { recursive: true });
-      await writeFile(join(dir, 'onboarding-progress.json'), JSON.stringify(state, null, 2));
-    },
+    onboardingService: deps.onboardingService!,
   }));
   app.route('/', createObligationsRoute({ obligations: deps.obligations, getLastScan: deps.getLastScan }));
   app.route('/', createSupplyChainRoute({

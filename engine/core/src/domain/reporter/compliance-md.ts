@@ -1,13 +1,11 @@
+import { compareSeverity } from '../../types/common.types.js';
 import type { ScanResult } from '../../types/common.types.js';
 
 export const generateComplianceMd = (result: ScanResult, version: string): string => {
   const { score, findings, scannedAt } = result;
   const failFindings = findings.filter((f) => f.type === 'fail');
   const topIssues = failFindings
-    .sort((a, b) => {
-      const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 } as const;
-      return sevOrder[a.severity] - sevOrder[b.severity];
-    })
+    .sort((a, b) => compareSeverity(a.severity, b.severity))
     .slice(0, 5);
 
   const findingsTable = failFindings.length > 0

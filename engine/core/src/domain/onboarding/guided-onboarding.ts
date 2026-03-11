@@ -37,6 +37,9 @@ const STEP_DEFINITIONS: readonly { name: GuidedStepName; label: string }[] = [
   { name: 'document', label: 'Generate Compliance Document' },
 ];
 
+/** Total number of onboarding steps (derived from STEP_DEFINITIONS). */
+export const TOTAL_STEPS = STEP_DEFINITIONS.length;
+
 export const createInitialState = (): GuidedOnboardingState => {
   const steps = STEP_DEFINITIONS.map((def, i) => ({
     step: i + 1,
@@ -72,12 +75,12 @@ const advanceStep = (
   stepStatus: GuidedStepStatus,
   data?: Record<string, unknown>,
 ): GuidedOnboardingState => {
-  if (stepNumber < 1 || stepNumber > 5) return state;
+  if (stepNumber < 1 || stepNumber > TOTAL_STEPS) return state;
   if (state.status !== 'in_progress') return state;
 
   const idx = stepNumber - 1;
-  const isLastStep = stepNumber === 5;
-  const nextStep = isLastStep ? 5 : stepNumber + 1;
+  const isLastStep = stepNumber === TOTAL_STEPS;
+  const nextStep = isLastStep ? TOTAL_STEPS : stepNumber + 1;
 
   const newSteps = state.steps.map((s, i) => {
     if (i === idx) {
@@ -110,7 +113,7 @@ export const skipStep = (
 ): GuidedOnboardingState => advanceStep(state, stepNumber, 'skipped');
 
 export const canRunStep = (state: GuidedOnboardingState, stepNumber: number): boolean => {
-  if (stepNumber < 1 || stepNumber > 5) return false;
+  if (stepNumber < 1 || stepNumber > TOTAL_STEPS) return false;
   if (state.status !== 'in_progress') return false;
   return state.currentStep === stepNumber;
 };
@@ -126,7 +129,7 @@ export const getProgress = (state: GuidedOnboardingState): {
 
   return {
     completedSteps,
-    totalSteps: 5,
-    percentage: Math.round((completedSteps / 5) * 100),
+    totalSteps: TOTAL_STEPS,
+    percentage: Math.round((completedSteps / TOTAL_STEPS) * 100),
   };
 };

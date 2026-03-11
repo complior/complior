@@ -1,7 +1,7 @@
 use crate::cli::AgentAction;
 use crate::config::TuiConfig;
 
-use super::common::{ensure_engine, url_encode};
+use super::common::{ensure_engine, print_onboarding_status, print_onboarding_step_result, resolve_project_path_buf, url_encode};
 
 /// Walk up from project_path to find the complior repo root (containing engine/).
 pub(crate) fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
@@ -70,9 +70,7 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
 }
 
 async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     if !json {
         println!("Discovering AI agents in {}...", project_path.display());
@@ -196,9 +194,7 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
 }
 
 async fn run_agent_list(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -282,9 +278,7 @@ async fn run_agent_show(
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -391,9 +385,7 @@ async fn run_agent_show(
 // --- C.S02: Autonomy analysis ---
 
 async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     if !json {
         println!("Analyzing autonomy in {}...", project_path.display());
@@ -504,9 +496,7 @@ async fn run_agent_validate(
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -689,9 +679,7 @@ async fn run_agent_completeness(
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -800,9 +788,7 @@ async fn run_agent_fria(
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     if !json {
         println!("Generating FRIA for agent '{name}'...");
@@ -894,9 +880,7 @@ async fn run_agent_notify(
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     if !json {
         println!("Generating Worker Notification for agent '{name}'...");
@@ -990,9 +974,7 @@ async fn run_agent_export(
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     if !json {
         println!("Exporting passport '{name}' as {format}...");
@@ -1051,9 +1033,7 @@ async fn run_agent_export(
 // --- US-S05-13: Agent Registry ---
 
 async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -1161,9 +1141,7 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
 // --- US-S05-14: Permissions matrix ---
 
 async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -1278,9 +1256,7 @@ async fn run_agent_policy(
         return 1;
     }
 
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     if !json {
         println!("Generating {industry} AI usage policy for agent '{name}'...");
@@ -1433,9 +1409,7 @@ async fn run_agent_audit(
 // --- C.R20: Evidence chain ---
 
 async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
-    let project_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -1673,7 +1647,7 @@ async fn run_agent_onboard(json: bool, step: Option<u32>, path: Option<&str>, co
                 if json {
                     println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
                 } else {
-                    print_onboarding_step_result(&result, step_num);
+                    print_onboarding_step_result(&result, step_num, "complior agent onboard --step");
                 }
                 0
             }
@@ -1693,7 +1667,7 @@ async fn run_agent_onboard(json: bool, step: Option<u32>, path: Option<&str>, co
                 if json {
                     println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
                 } else {
-                    print_onboarding_status(&result);
+                    print_onboarding_status(&result, "complior agent onboard --step");
                 }
                 0
             }
@@ -1702,112 +1676,3 @@ async fn run_agent_onboard(json: bool, step: Option<u32>, path: Option<&str>, co
     }
 }
 
-fn print_onboarding_status(value: &serde_json::Value) {
-    let progress = value.get("progress");
-    let pct = progress.and_then(|p| p.get("percentage")).and_then(|v| v.as_u64()).unwrap_or(0);
-    let completed = progress.and_then(|p| p.get("completedSteps")).and_then(|v| v.as_u64()).unwrap_or(0);
-
-    println!();
-    println!("  Guided Onboarding: {completed}/5 steps ({pct}%)");
-    println!("  -----------------------------------");
-
-    if let Some(state) = value.get("state") {
-        if let Some(steps) = state.get("steps").and_then(|v| v.as_array()) {
-            for step in steps {
-                let num = step.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
-                let label = step.get("label").and_then(|v| v.as_str()).unwrap_or("?");
-                let status = step.get("status").and_then(|v| v.as_str()).unwrap_or("?");
-                let icon = match status {
-                    "completed" => "V",
-                    "in_progress" => ">",
-                    "skipped" => "-",
-                    _ => " ",
-                };
-                println!("  [{icon}] Step {num}: {label} ({status})");
-            }
-        }
-
-        let current = state.get("currentStep").and_then(|v| v.as_u64()).unwrap_or(0);
-        let status = state.get("status").and_then(|v| v.as_str()).unwrap_or("?");
-        if status == "in_progress" && current > 0 {
-            println!();
-            println!("  Next: complior agent onboard --step {current}");
-        } else if status == "completed" {
-            println!();
-            println!("  Onboarding complete! Run `complior cert readiness <agent>` to check certification readiness.");
-        }
-    }
-    println!();
-}
-
-fn print_onboarding_step_result(value: &serde_json::Value, step: u32) {
-    let name = super::common::ONBOARDING_STEP_NAMES
-        .get(step as usize - 1)
-        .unwrap_or(&"?");
-
-    println!();
-    println!("  Step {step}: {name} — completed");
-
-    if let Some(data) = value.get("data") {
-        match step {
-            1 => {
-                let lang = data.get("language").and_then(|v| v.as_str()).unwrap_or("?");
-                let fw = data.get("framework").and_then(|v| v.as_str()).unwrap_or("?");
-                let ai = data.get("aiLibraries").and_then(|v| v.as_array())
-                    .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
-                    .unwrap_or_default();
-                println!("    Language:  {lang}");
-                println!("    Framework: {fw}");
-                if !ai.is_empty() { println!("    AI SDKs:   {ai}"); }
-            }
-            2 => {
-                let score = data.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
-                let files = data.get("filesScanned").and_then(|v| v.as_u64()).unwrap_or(0);
-                let findings = data.get("totalFindings").and_then(|v| v.as_u64()).unwrap_or(0);
-                println!("    Score:    {score}%");
-                println!("    Files:    {files}");
-                println!("    Findings: {findings}");
-            }
-            3 => {
-                let count = data.get("agentsFound").and_then(|v| v.as_u64()).unwrap_or(0);
-                println!("    Agents discovered: {count}");
-                if let Some(agents) = data.get("agents").and_then(|v| v.as_array()) {
-                    for agent in agents {
-                        let n = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                        let lvl = agent.get("autonomyLevel").and_then(|v| v.as_str()).unwrap_or("?");
-                        println!("      - {n} ({lvl})");
-                    }
-                }
-            }
-            4 => {
-                if let Some(fixes) = data.get("fixes").and_then(|v| v.as_array()) {
-                    println!("    Suggested fixes: {}", fixes.len());
-                    for fix in fixes {
-                        let msg = fix.get("message").and_then(|v| v.as_str()).unwrap_or("?");
-                        let sev = fix.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
-                        println!("      [{sev}] {msg}");
-                    }
-                }
-            }
-            5 => {
-                let doc_type = data.get("documentType").and_then(|v| v.as_str()).unwrap_or("none");
-                if doc_type == "fria" {
-                    let saved_path = data.get("savedPath").and_then(|v| v.as_str()).unwrap_or("?");
-                    println!("    Generated: FRIA report");
-                    println!("    Saved to:  {saved_path}");
-                } else {
-                    let msg = data.get("message").and_then(|v| v.as_str()).unwrap_or("No document needed");
-                    println!("    {msg}");
-                }
-            }
-            _ => {}
-        }
-    }
-
-    if let Some(progress) = value.get("progress") {
-        let pct = progress.get("percentage").and_then(|v| v.as_u64()).unwrap_or(0);
-        let completed = progress.get("completedSteps").and_then(|v| v.as_u64()).unwrap_or(0);
-        println!("    Progress: {completed}/5 ({pct}%)");
-    }
-    println!();
-}

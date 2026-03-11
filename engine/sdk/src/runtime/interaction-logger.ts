@@ -61,7 +61,7 @@ export const createInteractionLoggerHook = (config: MiddlewareConfig): PostHook 
       complianceChecks: {
         disclosureVerified: ctx.metadata['disclosureVerified'] === true,
         biasCheckPassed: ctx.metadata['biasCheckPassed'] !== false,
-        piiRedacted: readMetaNumber(ctx.metadata, 'piiRedactedCount'),
+        piiRedacted: readMetaNumber(ctx.metadata, 'piiRedacted'),
         escalationDetected: ctx.metadata['escalationDetected'] === true,
       },
     };

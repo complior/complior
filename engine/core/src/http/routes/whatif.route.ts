@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { ValidationError } from '../../types/errors.js';
-import { analyzeScenario } from '../../domain/whatif/scenario-engine.js';
-import { generateAllConfigs } from '../../domain/whatif/config-fixer.js';
-import { simulateActions } from '../../domain/whatif/simulate-actions.js';
+import type { WhatIfRequest, WhatIfResult } from '../../domain/whatif/scenario-engine.js';
+import type { GeneratedConfig } from '../../domain/whatif/config-fixer.js';
+import type { SimulationInput, SimulationResult } from '../../domain/whatif/simulate-actions.js';
 import type { OnboardingProfile } from '../../onboarding/profile.js';
 import type { ScanResult, ScoreBreakdown } from '../../types/common.types.js';
 
@@ -26,6 +26,9 @@ export interface WhatIfRouteDeps {
   readonly loadProfile: () => Promise<OnboardingProfile | null>;
   readonly getLastScore: () => ScoreBreakdown | null;
   readonly getLastScan?: () => ScanResult | null;
+  readonly analyzeScenario: (request: WhatIfRequest) => WhatIfResult;
+  readonly generateAllConfigs: (profile: OnboardingProfile) => readonly GeneratedConfig[];
+  readonly simulateActions: (input: SimulationInput) => SimulationResult;
 }
 
 export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
@@ -51,7 +54,7 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
       return c.json({ error: 'NO_SCAN', message: 'Run a scan first (/scan)' }, 400);
     }
 
-    const result = analyzeScenario({
+    const result = deps.analyzeScenario({
       type: parsed.data.type,
       params: parsed.data.params,
       currentProfile: profile,
@@ -68,7 +71,7 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
       return c.json({ error: 'NO_PROFILE', message: 'Run onboarding first (/onboarding/complete)' }, 400);
     }
 
-    const configs = generateAllConfigs(profile);
+    const configs = deps.generateAllConfigs(profile);
     return c.json({ configs });
   });
 
@@ -87,13 +90,13 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
       return c.json({ error: 'NO_SCAN', message: 'No scan results available. Run a scan first.' }, 400);
     }
 
-    const result = simulateActions({
+    const result = deps.simulateActions({
       actions: parsed.data.actions,
       currentScore: scanResult.score.totalScore,
       findings: scanResult.findings.map((f) => ({
         checkId: f.checkId,
         severity: f.severity,
-        status: f.type,
+        status: f.type ?? 'fail',
       })),
       passportCompleteness: parsed.data.passportCompleteness ?? 50,
     });
