@@ -57,10 +57,10 @@ describe('createToolCallPermissionHook', () => {
   // ── No tool_calls in response ──────────────────────────────────
 
   describe('no tool_calls', () => {
-    it('passes through response with no tool_calls', () => {
+    it('passes through response with no tool_calls', async () => {
       const hook = createToolCallPermissionHook({ passport: createPassport() });
       const response = { choices: [{ message: { content: 'Hello!' } }] };
-      const result = hook(makeCtx(), response);
+      const result = await hook(makeCtx(), response);
       expect(result.response).toBe(response);
       expect(result.metadata['toolCallsChecked']).toBe(0);
     });
@@ -69,22 +69,22 @@ describe('createToolCallPermissionHook', () => {
   // ── Allowlist enforcement ──────────────────────────────────────
 
   describe('allowlist (passport.permissions.tools)', () => {
-    it('allows tool_calls when allowlist is empty (no restriction)', () => {
+    it('allows tool_calls when allowlist is empty (no restriction)', async () => {
       const hook = createToolCallPermissionHook({
         passport: createPassport({ permissions: { tools: [], denied: [] } }),
       });
       const response = openaiToolCallResponse([{ name: 'any_tool' }]);
-      const result = hook(makeCtx(), response);
+      const result = await hook(makeCtx(), response);
       expect(result.metadata['toolCallsDenied']).toEqual([]);
       expect(result.metadata['toolCallsAllowed']).toEqual(['any_tool']);
     });
 
-    it('allows tool_calls that are in the allowlist', () => {
+    it('allows tool_calls that are in the allowlist', async () => {
       const hook = createToolCallPermissionHook({
         passport: createPassport({ permissions: { tools: ['search', 'read_file'], denied: [] } }),
       });
       const response = openaiToolCallResponse([{ name: 'search' }]);
-      const result = hook(makeCtx(), response);
+      const result = await hook(makeCtx(), response);
       expect(result.metadata['toolCallsDenied']).toEqual([]);
     });
 
@@ -98,24 +98,24 @@ describe('createToolCallPermissionHook', () => {
       expect(() => hook(makeCtx(), response)).toThrow(PermissionDeniedError);
     });
 
-    it('warns but does not block when action=warn', () => {
+    it('warns but does not block when action=warn', async () => {
       const hook = createToolCallPermissionHook({
         passport: createPassport({ permissions: { tools: ['search'], denied: [] } }),
         action: 'warn',
       });
       const response = openaiToolCallResponse([{ name: 'unauthorized_tool' }]);
-      const result = hook(makeCtx(), response);
+      const result = await hook(makeCtx(), response);
       expect(result.metadata['toolCallsDenied']).toEqual(['unauthorized_tool']);
       expect(result.headers['X-Tool-Permission-Warning']).toBe('unauthorized_tool');
     });
 
-    it('logs only when action=log-only', () => {
+    it('logs only when action=log-only', async () => {
       const hook = createToolCallPermissionHook({
         passport: createPassport({ permissions: { tools: ['search'], denied: [] } }),
         action: 'log-only',
       });
       const response = openaiToolCallResponse([{ name: 'some_tool' }]);
-      const result = hook(makeCtx(), response);
+      const result = await hook(makeCtx(), response);
       expect(result.metadata['toolCallsDenied']).toEqual(['some_tool']);
       expect(result.response).toBe(response);
     });
@@ -166,12 +166,12 @@ describe('createToolCallPermissionHook', () => {
       expect(() => hook(makeCtx(), response)).toThrow(PermissionDeniedError);
     });
 
-    it('allows valid tool_calls in Anthropic format', () => {
+    it('allows valid tool_calls in Anthropic format', async () => {
       const hook = createToolCallPermissionHook({
         passport: createPassport({ permissions: { tools: ['get_weather'], denied: [] } }),
       });
       const response = anthropicToolCallResponse([{ name: 'get_weather', input: { city: 'Berlin' } }]);
-      const result = hook(makeCtx(), response);
+      const result = await hook(makeCtx(), response);
       expect(result.metadata['toolCallsDenied']).toEqual([]);
     });
   });
@@ -210,7 +210,7 @@ describe('createToolCallPermissionHook', () => {
   // ── Mixed allowed/denied ───────────────────────────────────────
 
   describe('mixed tool_calls', () => {
-    it('identifies both allowed and denied in same response', () => {
+    it('identifies both allowed and denied in same response', async () => {
       const hook = createToolCallPermissionHook({
         passport: createPassport({ permissions: { tools: ['search', 'read'], denied: [] } }),
         action: 'warn',
@@ -220,7 +220,7 @@ describe('createToolCallPermissionHook', () => {
         { name: 'delete_all' },
         { name: 'read' },
       ]);
-      const result = hook(makeCtx(), response);
+      const result = await hook(makeCtx(), response);
       expect(result.metadata['toolCallsChecked']).toBe(3);
       expect(result.metadata['toolCallsDenied']).toEqual(['delete_all']);
       expect(result.metadata['toolCallsAllowed']).toEqual(['search', 'read']);

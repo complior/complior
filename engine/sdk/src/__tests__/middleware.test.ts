@@ -99,7 +99,7 @@ describe('US-S05-06: Express middleware', () => {
       headers,
       setHeader: vi.fn((k: string, v: string) => { headers[k] = v; }),
       on: vi.fn(),
-      write: vi.fn(() => true),
+      write: vi.fn((_chunk?: unknown) => true),
       end: vi.fn(),
     };
   };

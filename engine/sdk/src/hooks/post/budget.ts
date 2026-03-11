@@ -1,6 +1,6 @@
 import type { PostHook } from '../../types.js';
 import { BudgetExceededError } from '../../errors.js';
-import { extractResponseMeta, getNumericField } from '../../runtime/response-wrapper.js';
+import { extractResponseMeta } from '../../runtime/response-wrapper.js';
 
 /** Default cost estimates per 1K tokens by provider (USD). Override via costRates parameter. */
 const DEFAULT_COST_PER_1K: Record<string, { input: number; output: number }> = {

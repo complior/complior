@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { parseTOML } from './toml-parser.js';
-import type { MiddlewareConfig, RetryConfig } from '../types.js';
+import type { MiddlewareConfig } from '../types.js';
 
 export const DEFAULT_CONFIG_PATH = '.complior/proxy.toml';
 

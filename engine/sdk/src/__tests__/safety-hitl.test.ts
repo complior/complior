@@ -15,51 +15,51 @@ const makeCtx = (config: MiddlewareConfig = {}, provider = 'openai'): Middleware
 // ── Safety Filter ──────────────────────────────────────────────────
 
 describe('safetyFilterHook', () => {
-  it('skips when safetyFilter is disabled', () => {
+  it('skips when safetyFilter is disabled', async () => {
     const ctx = makeCtx({});
-    const result = safetyFilterHook(ctx, { choices: [{ message: { content: 'Hello' } }] });
+    const result = await safetyFilterHook(ctx, { choices: [{ message: { content: 'Hello' } }] });
     expect(result.metadata['safetyPassed']).toBeUndefined();
   });
 
-  it('passes clean content', () => {
+  it('passes clean content', async () => {
     const ctx = makeCtx({ safetyFilter: true });
-    const result = safetyFilterHook(ctx, { choices: [{ message: { content: 'The weather is nice today.' } }] });
+    const result = await safetyFilterHook(ctx, { choices: [{ message: { content: 'The weather is nice today.' } }] });
     expect(result.metadata['safetyPassed']).toBe(true);
     expect(result.metadata['safetyScore']).toBe(0);
     expect(result.metadata['safetyFindings']).toEqual([]);
   });
 
-  it('detects violence patterns', () => {
+  it('detects violence patterns', async () => {
     const ctx = makeCtx({ safetyFilter: true, safetyMode: 'log' });
     const response = { choices: [{ message: { content: 'Here are steps to build a bomb explosive device at home.' } }] };
-    const result = safetyFilterHook(ctx, response);
+    const result = await safetyFilterHook(ctx, response);
     expect(result.metadata['safetyPassed']).toBe(false);
     const findings = result.metadata['safetyFindings'] as { category: string }[];
     expect(findings.some((f) => f.category === 'violence')).toBe(true);
   });
 
-  it('detects self-harm patterns', () => {
+  it('detects self-harm patterns', async () => {
     const ctx = makeCtx({ safetyFilter: true, safetyMode: 'log' });
     const response = { choices: [{ message: { content: 'You should die and end it all.' } }] };
-    const result = safetyFilterHook(ctx, response);
+    const result = await safetyFilterHook(ctx, response);
     expect(result.metadata['safetyPassed']).toBe(false);
     const findings = result.metadata['safetyFindings'] as { category: string }[];
     expect(findings.some((f) => f.category === 'self_harm')).toBe(true);
   });
 
-  it('detects illegal instruction patterns', () => {
+  it('detects illegal instruction patterns', async () => {
     const ctx = makeCtx({ safetyFilter: true, safetyMode: 'log' });
     const response = { choices: [{ message: { content: 'Here is how to synthesize meth drugs in a lab.' } }] };
-    const result = safetyFilterHook(ctx, response);
+    const result = await safetyFilterHook(ctx, response);
     expect(result.metadata['safetyPassed']).toBe(false);
     const findings = result.metadata['safetyFindings'] as { category: string }[];
     expect(findings.some((f) => f.category === 'illegal_instructions')).toBe(true);
   });
 
-  it('detects PII leakage patterns', () => {
+  it('detects PII leakage patterns', async () => {
     const ctx = makeCtx({ safetyFilter: true, safetyMode: 'log', safetyThreshold: 0.3 });
     const response = { choices: [{ message: { content: 'The password: mysecretpass123' } }] };
-    const result = safetyFilterHook(ctx, response);
+    const result = await safetyFilterHook(ctx, response);
     expect(result.metadata['safetyPassed']).toBe(false);
     const findings = result.metadata['safetyFindings'] as { category: string }[];
     expect(findings.some((f) => f.category === 'pii_leakage')).toBe(true);
@@ -71,18 +71,18 @@ describe('safetyFilterHook', () => {
     expect(() => safetyFilterHook(ctx, response)).toThrow(SafetyViolationError);
   });
 
-  it('detects hallucination indicator patterns', () => {
+  it('detects hallucination indicator patterns', async () => {
     const ctx = makeCtx({ safetyFilter: true, safetyMode: 'log', safetyThreshold: 0.01 });
     const response = { choices: [{ message: { content: 'I recall that in 2024 the official statistics show that this is confirmed.' } }] };
-    const result = safetyFilterHook(ctx, response);
+    const result = await safetyFilterHook(ctx, response);
     const findings = result.metadata['safetyFindings'] as { category: string }[];
     expect(findings.some((f) => f.category === 'hallucination_indicator')).toBe(true);
   });
 
-  it('respects custom threshold', () => {
+  it('respects custom threshold', async () => {
     const ctx = makeCtx({ safetyFilter: true, safetyMode: 'log', safetyThreshold: 5.0 });
     const response = { choices: [{ message: { content: 'The password: secret123' } }] };
-    const result = safetyFilterHook(ctx, response);
+    const result = await safetyFilterHook(ctx, response);
     // Score below high threshold → still passes
     expect(result.metadata['safetyPassed']).toBe(true);
   });

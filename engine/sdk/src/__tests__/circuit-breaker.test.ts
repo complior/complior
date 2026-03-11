@@ -15,22 +15,22 @@ const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 describe('createCircuitBreakerHook', () => {
   describe('closed → open transition', () => {
-    it('stays closed on successful responses', () => {
+    it('stays closed on successful responses', async () => {
       const hook = createCircuitBreakerHook({ errorThreshold: 3 });
       const ctx = makeCtx();
 
-      const result = hook(ctx, { data: 'ok' });
+      const result = await hook(ctx, { data: 'ok' });
       expect(result.metadata['circuitBreaker']).toEqual({ state: 'closed', errorCount: 0 });
     });
 
-    it('counts errors and trips after threshold', () => {
+    it('counts errors and trips after threshold', async () => {
       const onTrip = vi.fn();
       const hook = createCircuitBreakerHook({ errorThreshold: 3, onTrip });
       const ctx = makeCtx();
 
       // 2 errors — still closed
-      hook(ctx, { error: 'fail' });
-      const r2 = hook(ctx, { error: 'fail' });
+      await hook(ctx, { error: 'fail' });
+      const r2 = await hook(ctx, { error: 'fail' });
       expect(r2.metadata['circuitBreaker']).toEqual({ state: 'closed', errorCount: 2 });
 
       // 3rd error — trips open
@@ -77,7 +77,7 @@ describe('createCircuitBreakerHook', () => {
       await delay(15);
 
       // Probe call succeeds → should recover to closed
-      const result = hook(ctx, { data: 'ok' });
+      const result = await hook(ctx, { data: 'ok' });
       expect(onTrip).toHaveBeenCalledWith('half-open');
       expect(onTrip).toHaveBeenCalledWith('closed');
       expect(result.metadata['circuitBreaker']).toEqual({ state: 'closed', errorCount: 0 });
@@ -121,7 +121,7 @@ describe('createCircuitBreakerHook', () => {
       await delay(15);
 
       // This error should not trip (old errors pruned)
-      const result = hook(ctx, { error: 'fail' });
+      const result = await hook(ctx, { error: 'fail' });
       expect(result.metadata['circuitBreaker']).toEqual({ state: 'closed', errorCount: 1 });
     });
   });

@@ -188,7 +188,7 @@ describe('Stream Wrapper', () => {
     const postHookCalled = vi.fn();
     const mockPipeline: Pipeline = {
       runPre: (ctx) => ctx,
-      runPost: async (ctx, response) => {
+      runPost: async (_ctx, response) => {
         postHookCalled(response);
         return { response, metadata: {}, headers: {} };
       },
