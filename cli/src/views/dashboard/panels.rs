@@ -445,6 +445,110 @@ pub(super) fn render_activity_log(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
+/// Computed gauge data for a single framework — shared between card and focused renderers.
+struct FrameworkGaugeData {
+    grade_color: ratatui::style::Color,
+    ratio: f64,
+    label: String,
+}
+
+/// Compute gauge display data from a framework score result.
+fn framework_gauge_data(
+    fw: &crate::types::FrameworkScoreResult,
+    t: &crate::theme::ThemeColors,
+) -> FrameworkGaugeData {
+    let grade_color = match fw.grade.as_str() {
+        "A" | "Level 4" => t.zone_green,
+        "B" | "Level 3" => t.zone_yellow,
+        _ => t.zone_red,
+    };
+
+    let deadline_text = fw.deadline.as_deref().map_or_else(String::new, |d| {
+        let now = current_epoch_days();
+        let dl = parse_epoch_days(d);
+        let diff = dl - now;
+        if diff > 0 { format!(" ({diff}d)") } else { " (overdue)".to_string() }
+    });
+
+    let gaps_text = if fw.gaps > 0 {
+        format!(" ({} gaps)", fw.gaps)
+    } else {
+        String::new()
+    };
+
+    FrameworkGaugeData {
+        grade_color,
+        ratio: (fw.score / 100.0).clamp(0.0, 1.0),
+        label: format!("{:.0}/100 {}{gaps_text}{deadline_text}", fw.score, fw.grade),
+    }
+}
+
+/// Multi-framework score cards — one card per selected framework, side by side.
+pub(super) fn render_framework_cards(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
+
+    let frameworks = match &app.framework_scores {
+        Some(fs) => &fs.frameworks,
+        None => return render_score_gauge(frame, area, app),
+    };
+
+    if frameworks.is_empty() {
+        return render_score_gauge(frame, area, app);
+    }
+
+    let count = frameworks.len() as u16;
+    let constraints: Vec<ratatui::layout::Constraint> = (0..count)
+        .map(|_| ratatui::layout::Constraint::Ratio(1, count.into()))
+        .collect();
+
+    let cards = ratatui::layout::Layout::default()
+        .direction(ratatui::layout::Direction::Horizontal)
+        .constraints(constraints)
+        .split(area);
+
+    for (i, fw) in frameworks.iter().enumerate() {
+        let gd = framework_gauge_data(fw, &t);
+
+        let block = Block::default()
+            .title(format!(" {} ", fw.framework_name))
+            .title_style(theme::title_style())
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(t.border));
+        let inner = block.inner(cards[i]);
+        frame.render_widget(block, cards[i]);
+
+        let gauge = ratatui::widgets::Gauge::default()
+            .gauge_style(Style::default().fg(gd.grade_color))
+            .ratio(gd.ratio)
+            .label(gd.label);
+
+        frame.render_widget(gauge, inner);
+    }
+}
+
+/// Focused single-framework gauge — full-width gauge for one framework (press 'f' to cycle).
+pub(super) fn render_focused_framework_gauge(
+    frame: &mut Frame, area: Rect,
+    fw: &crate::types::FrameworkScoreResult,
+) {
+    let t = theme::theme();
+    let gd = framework_gauge_data(fw, &t);
+
+    let gauge = ratatui::widgets::Gauge::default()
+        .block(
+            Block::default()
+                .title(format!(" {} ", fw.framework_name))
+                .title_style(theme::title_style())
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(t.border)),
+        )
+        .gauge_style(Style::default().fg(gd.grade_color))
+        .ratio(gd.ratio)
+        .label(gd.label);
+
+    frame.render_widget(gauge, area);
+}
+
 /// Detail panel for Large breakpoint (rightmost column).
 pub(super) fn render_detail_panel(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();

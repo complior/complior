@@ -29,6 +29,9 @@ import { createPassportService } from './services/passport-service.js';
 import { createCostService } from './services/cost-service.js';
 import { createOnboardingService } from './services/onboarding-service.js';
 import { createDebtService } from './services/debt-service.js';
+import { createFrameworkService } from './services/framework-service.js';
+import { createFrameworkRegistry, createEuAiActFramework, scoreEuAiAct, createAiuc1Framework, scoreAiuc1 } from './domain/frameworks/index.js';
+import { loadProjectConfig, getSelectedFrameworks } from './infra/project-config.js';
 import { createEvidenceStore } from './domain/scanner/evidence-store.js';
 import { createAuditStore } from './domain/audit/index.js';
 import { loadOrCreateKeyPair as loadEvidenceKeyPair } from './domain/passport/crypto-signer.js';
@@ -338,6 +341,36 @@ export const loadApplication = async (): Promise<Application> => {
     },
   });
 
+  // 5a.4. Framework scoring (E-105, E-106, E-107)
+  const projectConfig = await loadProjectConfig(projectPath);
+  const frameworkRegistry = createFrameworkRegistry();
+
+  frameworkRegistry.register(
+    createEuAiActFramework(regulationData.scoring?.scoring),
+    scoreEuAiAct,
+  );
+  frameworkRegistry.register(createAiuc1Framework(), scoreAiuc1);
+
+  const frameworkService = createFrameworkService({
+    registry: frameworkRegistry,
+    getSelectedFrameworks: () => getSelectedFrameworks(projectConfig),
+    foundationDeps: {
+      getLastScanResult: () => state.lastScanResult,
+      getPassport: async () => {
+        const passports = await passportService.listPassports(projectPath);
+        return passports[0] ?? null;
+      },
+      getPassportCompleteness: async () => (await getPassportCompletenessData()).score,
+      getEvidenceSummary: () => evidenceStore.getSummary(),
+      getDocuments: async () => {
+        const { friaCompleted } = await getPassportCompletenessData();
+        const docs = new Set<string>();
+        if (friaCompleted) docs.add('fria');
+        return docs;
+      },
+    },
+  });
+
   // 5b. Create onboarding wizard
   const onboardingWizard = createOnboardingWizard({
     getProjectPath: () => state.projectPath,
@@ -496,6 +529,7 @@ export const loadApplication = async (): Promise<Application> => {
     generateAllConfigs,
     simulateActions,
     onboardingService,
+    frameworkService,
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events

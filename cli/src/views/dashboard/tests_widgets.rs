@@ -88,6 +88,124 @@ fn e2e_t703_fix_view_uses_split_pct() {
     let _buf = render_to_string(&app, 120, 40);
 }
 
+// --- Framework Focus Toggle ---
+
+fn make_multi_framework(count: usize) -> crate::types::MultiFrameworkScoreResult {
+    let frameworks = (0..count)
+        .map(|i| crate::types::FrameworkScoreResult {
+            framework_id: format!("fw-{i}"),
+            framework_name: format!("Framework {i}"),
+            score: 70.0 + i as f64 * 10.0,
+            grade: "B".to_string(),
+            grade_type: "letter".to_string(),
+            gaps: 3 - i.min(3) as u32,
+            total_checks: 20,
+            passed_checks: 14 + i as u32,
+            deadline: None,
+            categories: vec![],
+        })
+        .collect();
+    crate::types::MultiFrameworkScoreResult {
+        frameworks,
+        selected_framework_ids: vec![],
+        computed_at: "2026-03-11T00:00:00Z".to_string(),
+    }
+}
+
+#[test]
+fn e2e_framework_focus_cycle() {
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.view_state = ViewState::Dashboard;
+    app.framework_scores = Some(make_multi_framework(2));
+    assert_eq!(app.focused_framework, None);
+
+    // None → Some(0)
+    app.handle_view_key('f');
+    assert_eq!(app.focused_framework, Some(0));
+
+    // Some(0) → Some(1)
+    app.handle_view_key('f');
+    assert_eq!(app.focused_framework, Some(1));
+
+    // Some(1) → None (wrap around)
+    app.handle_view_key('f');
+    assert_eq!(app.focused_framework, None);
+}
+
+#[test]
+fn e2e_framework_focus_noop_single() {
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.view_state = ViewState::Dashboard;
+    app.framework_scores = Some(make_multi_framework(1));
+    assert_eq!(app.focused_framework, None);
+
+    app.handle_view_key('f');
+    assert_eq!(app.focused_framework, None, "'f' should be no-op with single framework");
+}
+
+#[test]
+fn e2e_framework_focus_esc_resets() {
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.view_state = ViewState::Dashboard;
+    app.framework_scores = Some(make_multi_framework(3));
+
+    app.handle_view_key('f');
+    assert_eq!(app.focused_framework, Some(0));
+
+    app.handle_view_escape();
+    assert_eq!(app.focused_framework, None, "Esc should reset focus to None");
+}
+
+#[test]
+fn e2e_framework_focus_renders() {
+    crate::theme::init_theme("dark");
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.view_state = ViewState::Dashboard;
+    app.framework_scores = Some(make_multi_framework(2));
+    app.focused_framework = Some(0);
+
+    // Should render without panic
+    let _buf = render_to_string(&app, 120, 40);
+}
+
+#[test]
+fn e2e_framework_focus_zero_frameworks_renders() {
+    crate::theme::init_theme("dark");
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.view_state = ViewState::Dashboard;
+    app.framework_scores = Some(crate::types::MultiFrameworkScoreResult {
+        frameworks: vec![],
+        selected_framework_ids: vec![],
+        computed_at: "2026-03-11T00:00:00Z".to_string(),
+    });
+
+    // Zero frameworks → falls back to score gauge without panic
+    let _buf = render_to_string(&app, 120, 40);
+}
+
+#[test]
+fn e2e_framework_focus_stale_index_renders() {
+    crate::theme::init_theme("dark");
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.view_state = ViewState::Dashboard;
+    app.framework_scores = Some(make_multi_framework(2));
+    // Stale index (out of bounds) → falls back to cards without panic
+    app.focused_framework = Some(5);
+
+    let _buf = render_to_string(&app, 120, 40);
+}
+
+#[test]
+fn e2e_framework_focus_noop_no_data() {
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.view_state = ViewState::Dashboard;
+    // No framework_scores at all
+    assert_eq!(app.focused_framework, None);
+
+    app.handle_view_key('f');
+    assert_eq!(app.focused_framework, None, "'f' should be no-op without framework data");
+}
+
 // --- T705: Context Meter + Quick Actions ---
 
 #[test]

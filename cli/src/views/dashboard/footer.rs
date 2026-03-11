@@ -163,7 +163,7 @@ pub(super) fn render_view_footer(frame: &mut Frame, app: &App) {
 /// View-specific footer hints (line 2).
 pub fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
-        ViewState::Dashboard => "e:zoom w:watch Ctrl+S:scan Ctrl+P:palette ?:help",
+        ViewState::Dashboard => "e:zoom f:focus w:watch Ctrl+S:scan Ctrl+P:palette ?:help",
         ViewState::Scan => "a:All c:Crit h:High m:Med l:Low p:passed Enter:detail f:fix x:explain d:dismiss j/k:nav",
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
         ViewState::Log => "/:command !:shell @OBL:ref Enter:run",

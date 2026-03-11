@@ -41,4 +41,4 @@ expression: buf
 │                                                          ││ Run `complior login`                 ││                  │
 └──────────────────────────────────────────────────────────┘└──────────────────────────────────────┘└──────────────────┘
 [--] [1 Dashboard] [ctx:3%] ○                                                                                           
- NORMAL  e:zoom w:watch Ctrl+S:scan Ctrl+P:palette ?:help
+ NORMAL  e:zoom f:focus w:watch Ctrl+S:scan Ctrl+P:palette ?:help

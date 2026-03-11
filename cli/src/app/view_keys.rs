@@ -140,6 +140,20 @@ impl App {
                     // Toggle widget zoom
                     self.zoom.toggle();
                 }
+                'f' => {
+                    // Cycle focused framework: All → 0 → 1 → ... → N-1 → All
+                    // Only active when 2+ frameworks are loaded
+                    if let Some(fs) = &self.framework_scores {
+                        let count = fs.frameworks.len();
+                        if count > 1 {
+                            self.focused_framework = match self.focused_framework {
+                                None => Some(0),
+                                Some(idx) if idx + 1 < count => Some(idx + 1),
+                                Some(_) => None,
+                            };
+                        }
+                    }
+                }
                 _ => {}
             },
             ViewState::Report => match c {
@@ -306,8 +320,11 @@ impl App {
     pub(crate) fn handle_view_escape(&mut self) {
         match self.view_state {
             ViewState::Dashboard => {
+                // Esc priority: zoom > framework focus
                 if self.zoom.is_zoomed() {
                     self.zoom.close();
+                } else if self.focused_framework.is_some() {
+                    self.focused_framework = None;
                 }
             }
             ViewState::Scan => {

@@ -462,6 +462,10 @@ impl App {
                 {
                     return Some(AppCommand::LoadPassports);
                 }
+                // Auto-load framework scores when switching to Dashboard
+                if view == ViewState::Dashboard && self.framework_scores.is_none() {
+                    return Some(AppCommand::LoadFrameworkScores);
+                }
                 None
             }
 

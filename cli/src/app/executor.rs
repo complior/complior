@@ -997,6 +997,36 @@ pub async fn execute_command(
                 }
             }
         }
+        AppCommand::LoadFrameworkScores => {
+            let client = app.engine_client.clone();
+            let tx = app.bg_tx.clone();
+            tokio::spawn(async move {
+                let result = tokio::time::timeout(
+                    std::time::Duration::from_secs(10),
+                    client.framework_scores(),
+                )
+                .await;
+                let mapped = match result {
+                    Ok(inner) => inner.map_err(|e| e.to_string()),
+                    Err(_) => Err("Framework scores load timed out".to_string()),
+                };
+                let _ = tx.send(AppCommand::FrameworkScoresLoaded(mapped));
+            });
+        }
+        AppCommand::FrameworkScoresLoaded(result) => {
+            match result {
+                Ok(scores) => {
+                    app.focused_framework = None;
+                    app.framework_scores = Some(scores);
+                }
+                Err(e) => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        format!("Failed to load framework scores: {e}"),
+                    ));
+                }
+            }
+        }
     }
 }
 

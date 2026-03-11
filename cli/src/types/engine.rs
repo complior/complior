@@ -280,6 +280,44 @@ impl Serialize for Finding {
     }
 }
 
+// --- Multi-Framework Scoring (E-105, E-106, E-107) ---
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameworkCategoryScore {
+    pub category_id: String,
+    pub category_name: String,
+    pub score: f64,
+    pub weight: f64,
+    pub passed_checks: u32,
+    pub total_checks: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameworkScoreResult {
+    pub framework_id: String,
+    pub framework_name: String,
+    pub score: f64,
+    pub grade: String,
+    pub grade_type: String,
+    pub gaps: u32,
+    pub total_checks: u32,
+    pub passed_checks: u32,
+    #[serde(default)]
+    pub deadline: Option<String>,
+    #[serde(default)]
+    pub categories: Vec<FrameworkCategoryScore>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MultiFrameworkScoreResult {
+    pub frameworks: Vec<FrameworkScoreResult>,
+    pub selected_framework_ids: Vec<String>,
+    pub computed_at: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct EngineStatus {
     pub ready: bool,

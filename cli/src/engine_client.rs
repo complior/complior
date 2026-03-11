@@ -2,7 +2,7 @@ use reqwest::Client;
 
 use crate::config::TuiConfig;
 use crate::error::{Result, TuiError};
-use crate::types::{EngineStatus, ScanResult};
+use crate::types::{EngineStatus, MultiFrameworkScoreResult, ScanResult};
 
 /// Check whether an error is a transient connection error worth retrying.
 fn is_connection_error(e: &TuiError) -> bool {
@@ -246,6 +246,18 @@ impl EngineClient {
             }
         })
         .await
+    }
+
+    /// Fetch multi-framework scores from engine (E-105, E-106, E-107).
+    pub async fn framework_scores(&self) -> Result<MultiFrameworkScoreResult> {
+        let resp = self
+            .client
+            .get(format!("{}/frameworks/scores", self.base_url))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+        let result = resp.json::<MultiFrameworkScoreResult>().await?;
+        Ok(result)
     }
 
     /// POST with long timeout (300s) — for adversarial test endpoint (18+ LLM calls).

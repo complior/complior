@@ -21,6 +21,7 @@ import type { ToolExecutorDeps } from '../llm/tool-executors.js';
 import type { AgentMode } from '../llm/tools/types.js';
 import type { OnboardingWizard } from '../onboarding/wizard.js';
 import type { OnboardingProfile } from '../onboarding/profile.js';
+import type { FrameworkService } from '../services/framework-service.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import type { EventBusPort } from '../ports/events.port.js';
@@ -51,6 +52,7 @@ import { createSupplyChainRoute } from './routes/supply-chain.route.js';
 import { createEventsRoute } from './routes/events.route.js';
 import { createCostRoute } from './routes/cost.route.js';
 import { createDebtRoute } from './routes/debt.route.js';
+import { createFrameworksRoute } from './routes/frameworks.route.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -85,6 +87,7 @@ export interface RouterDeps {
   readonly generateAllConfigs?: (profile: OnboardingProfile) => readonly GeneratedConfig[];
   readonly simulateActions?: (input: SimulationInput) => SimulationResult;
   readonly onboardingService?: import('../services/onboarding-service.js').OnboardingService;
+  readonly frameworkService?: FrameworkService;
 }
 
 export const createRouter = (deps: RouterDeps) => {
@@ -183,6 +186,11 @@ export const createRouter = (deps: RouterDeps) => {
   // US-S05-22: Compliance debt score endpoint
   if (deps.debtService) {
     app.route('/', createDebtRoute({ debtService: deps.debtService }));
+  }
+
+  // E-105/E-106/E-107: Multi-framework scoring
+  if (deps.frameworkService) {
+    app.route('/', createFrameworksRoute({ frameworkService: deps.frameworkService }));
   }
 
   // US-S05-26: SSE events endpoint

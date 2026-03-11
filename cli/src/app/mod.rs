@@ -21,8 +21,8 @@ use crate::layout::Breakpoint;
 use crate::saas_client::SyncStats;
 use crate::types::{
     ActivityEntry, ActivityKind, ChatMessage, ClickTarget,
-    EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, Overlay, Panel, ScanResult,
-    Selection, ViewState,
+    EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, MultiFrameworkScoreResult,
+    Overlay, Panel, ScanResult, Selection, ViewState,
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
@@ -175,6 +175,11 @@ pub struct App {
     pub project_path: PathBuf,
     pub operation_start: Option<Instant>,
 
+    // Multi-framework scores (E-105, E-106, E-107)
+    pub framework_scores: Option<MultiFrameworkScoreResult>,
+    /// Focused framework index (None = all cards, Some(idx) = single gauge)
+    pub focused_framework: Option<usize>,
+
     // SaaS sync state
     pub sync_state: SyncState,
 
@@ -267,6 +272,8 @@ impl App {
             colon_mode: false,
             idle_suggestions: IdleSuggestionState::new(),
             animation: AnimationState::new(animations_enabled),
+            framework_scores: None,
+            focused_framework: None,
             whatif: crate::components::whatif::WhatIfState::new(),
             spinner: Spinner::new(),
             project_path,
@@ -573,4 +580,8 @@ pub enum AppCommand {
     LoadAuditTrail,
     /// Background result: audit trail loaded from engine.
     AuditTrailLoaded(Result<Vec<serde_json::Value>, String>),
+    /// Load multi-framework scores from engine (E-105, E-106, E-107).
+    LoadFrameworkScores,
+    /// Background result: framework scores loaded from engine.
+    FrameworkScoresLoaded(Result<MultiFrameworkScoreResult, String>),
 }

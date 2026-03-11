@@ -8,7 +8,7 @@ use crate::app::App;
 use crate::theme;
 use crate::types::Panel;
 
-use super::panels::{render_activity_log, render_info_panel, render_score_gauge};
+use super::panels::{render_activity_log, render_focused_framework_gauge, render_framework_cards, render_info_panel, render_score_gauge};
 
 /// Dashboard content area -- two-column layout.
 ///
@@ -53,7 +53,23 @@ pub(super) fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App)
             .split(area)
     };
 
-    render_score_gauge(frame, top_split[0], app);
+    if let Some(ref fs) = app.framework_scores {
+        if fs.frameworks.len() > 1 {
+            if let Some(idx) = app.focused_framework {
+                if let Some(fw) = fs.frameworks.get(idx) {
+                    render_focused_framework_gauge(frame, top_split[0], fw);
+                } else {
+                    render_framework_cards(frame, top_split[0], app);
+                }
+            } else {
+                render_framework_cards(frame, top_split[0], app);
+            }
+        } else {
+            render_score_gauge(frame, top_split[0], app);
+        }
+    } else {
+        render_score_gauge(frame, top_split[0], app);
+    }
 
     if has_agents {
         render_agent_strip(frame, top_split[1], app);
