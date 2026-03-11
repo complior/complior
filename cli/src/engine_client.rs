@@ -1,8 +1,18 @@
 use reqwest::Client;
 
 use crate::config::TuiConfig;
-use crate::error::Result;
+use crate::error::{Result, TuiError};
 use crate::types::{EngineStatus, ScanResult};
+
+/// Check whether an error is a transient connection error worth retrying.
+fn is_connection_error(e: &TuiError) -> bool {
+    let msg = e.to_string().to_lowercase();
+    msg.contains("connection refused")
+        || msg.contains("connection reset")
+        || msg.contains("broken pipe")
+        || msg.contains("os error")
+        || msg.contains("connect error")
+}
 
 #[derive(Clone)]
 pub struct EngineClient {
@@ -149,29 +159,93 @@ impl EngineClient {
         Ok(result)
     }
 
+    /// Retry an async operation on connection errors with exponential backoff.
+    /// 3 attempts max, 300ms initial backoff doubling each retry (300, 600, 1200ms).
+    async fn with_retry<F, Fut, T>(&self, mut op: F) -> Result<T>
+    where
+        F: FnMut() -> Fut,
+        Fut: std::future::Future<Output = Result<T>>,
+    {
+        let mut delay = std::time::Duration::from_millis(300);
+        let max_attempts = 3u32;
+
+        for attempt in 1..=max_attempts {
+            match op().await {
+                Ok(val) => return Ok(val),
+                Err(e) if attempt < max_attempts && is_connection_error(&e) => {
+                    tokio::time::sleep(delay).await;
+                    delay *= 2;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        unreachable!()
+    }
+
     /// Generic GET returning JSON — used for agent passport and other endpoints.
     pub async fn get_json(&self, endpoint: &str) -> Result<serde_json::Value> {
-        let resp = self
-            .client
-            .get(format!("{}{endpoint}", self.base_url))
-            .timeout(std::time::Duration::from_secs(10))
-            .send()
-            .await?;
-        let result = resp.json::<serde_json::Value>().await?;
-        Ok(result)
+        let url = format!("{}{endpoint}", self.base_url);
+        self.with_retry(|| {
+            let url = url.clone();
+            async move {
+                let resp = self
+                    .client
+                    .get(&url)
+                    .timeout(std::time::Duration::from_secs(10))
+                    .send()
+                    .await?;
+                let status = resp.status();
+                let text = resp.text().await?;
+                if !status.is_success() {
+                    // Try to parse as JSON error, fall back to plain text
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                        return Ok(val);
+                    }
+                    return Err(crate::error::TuiError::Engine(format!(
+                        "HTTP {status}: {text}"
+                    )));
+                }
+                let result: serde_json::Value = serde_json::from_str(&text)?;
+                Ok(result)
+            }
+        })
+        .await
     }
 
     /// Generic POST with JSON body — used for report generation and other endpoints.
-    pub async fn post_json(&self, endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
-        let resp = self
-            .client
-            .post(format!("{}{endpoint}", self.base_url))
-            .json(body)
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await?;
-        let result = resp.json::<serde_json::Value>().await?;
-        Ok(result)
+    pub async fn post_json(
+        &self,
+        endpoint: &str,
+        body: &serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let url = format!("{}{endpoint}", self.base_url);
+        let body = body.clone();
+        self.with_retry(|| {
+            let url = url.clone();
+            let body = body.clone();
+            async move {
+                let resp = self
+                    .client
+                    .post(&url)
+                    .json(&body)
+                    .timeout(std::time::Duration::from_secs(30))
+                    .send()
+                    .await?;
+                let status = resp.status();
+                let text = resp.text().await?;
+                if !status.is_success() {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                        return Ok(val);
+                    }
+                    return Err(crate::error::TuiError::Engine(format!(
+                        "HTTP {status}: {text}"
+                    )));
+                }
+                let result: serde_json::Value = serde_json::from_str(&text)?;
+                Ok(result)
+            }
+        })
+        .await
     }
 
     /// POST with long timeout (300s) — for adversarial test endpoint (18+ LLM calls).
@@ -183,7 +257,17 @@ impl EngineClient {
             .timeout(std::time::Duration::from_secs(300))
             .send()
             .await?;
-        let result = resp.json::<serde_json::Value>().await?;
+        let status = resp.status();
+        let text = resp.text().await?;
+        if !status.is_success() {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                return Ok(val);
+            }
+            return Err(crate::error::TuiError::Engine(format!(
+                "HTTP {status}: {text}"
+            )));
+        }
+        let result: serde_json::Value = serde_json::from_str(&text)?;
         Ok(result)
     }
 

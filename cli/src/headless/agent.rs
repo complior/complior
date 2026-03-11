@@ -54,6 +54,12 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Policy { name, industry, json, organization, approver, path } => {
             run_agent_policy(name, industry, *json, organization.as_deref(), approver.as_deref(), path.as_deref(), config).await
         }
+        AgentAction::TestGen { name, path, json } => {
+            run_agent_test_gen(name, path.as_deref(), *json, config).await
+        }
+        AgentAction::Diff { name, path, json } => {
+            run_agent_diff(name, path.as_deref(), *json, config).await
+        }
         AgentAction::Audit { agent, since, event_type, limit, json, path } => {
             run_agent_audit(agent.as_deref(), since.as_deref(), event_type.as_deref(), *limit, *json, path.as_deref(), config).await
         }
@@ -447,11 +453,11 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
             let level = summary
                 .get("level")
                 .and_then(|v| v.as_str())
-                .unwrap_or("?");
+                .unwrap_or("not assessed");
             let agent_type = summary
                 .get("agentType")
                 .and_then(|v| v.as_str())
-                .unwrap_or("?");
+                .unwrap_or("general-purpose");
 
             let evidence = summary.get("evidence");
             let human_gates = evidence
@@ -468,11 +474,16 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
                 .unwrap_or(0);
 
             println!("\nAutonomy Analysis (project-level)\n");
-            println!("  Level:               {level} ({agent_type})");
-            println!("  Human approval gates: {human_gates}");
-            println!("  Unsupervised actions: {unsupervised}");
-            println!("  Logging gaps:         {no_logging}");
-            println!("\n  Tip: Run `complior agent init` to see per-agent breakdown.");
+            if level == "not assessed" {
+                println!("  No agent configuration detected in this project.");
+                println!("  Run `complior agent init` to discover and register agents.\n");
+            } else {
+                println!("  Level:               {level} ({agent_type})");
+                println!("  Human approval gates: {human_gates}");
+                println!("  Unsupervised actions: {unsupervised}");
+                println!("  Logging gaps:         {no_logging}");
+                println!("\n  Tip: Run `complior agent init` to see per-agent breakdown.");
+            }
             0
         }
         Err(e) => {
@@ -1509,13 +1520,139 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
     }
 }
 
-// --- US-S05-33: Guided onboarding ---
+// --- US-S05-24: Test suite generation ---
 
-async fn run_agent_onboard(json: bool, step: Option<u32>, _path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_agent_test_gen(
+    name: &str,
+    path: Option<&str>,
+    json: bool,
+    config: &TuiConfig,
+) -> i32 {
     let client = match ensure_engine(config).await {
         Ok(c) => c,
         Err(code) => return code,
     };
+
+    let project_path = super::common::resolve_project_path(path);
+    let body = serde_json::json!({
+        "name": name,
+        "path": project_path,
+    });
+
+    match client.post_json("/agent/test-gen", &body).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let filename = result.get("filename").and_then(|v| v.as_str()).unwrap_or("?");
+            let test_count = result.get("testCount").and_then(|v| v.as_u64()).unwrap_or(0);
+
+            println!("\nGenerated compliance test suite for: {name}\n");
+            println!("  Tests:    {test_count}");
+            println!("  File:     {filename}");
+            println!("\nRun: npx vitest run {filename}");
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Test generation failed: {e}");
+            1
+        }
+    }
+}
+
+// --- US-S05-24: Passport diff ---
+
+async fn run_agent_diff(
+    name: &str,
+    path: Option<&str>,
+    json: bool,
+    config: &TuiConfig,
+) -> i32 {
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let project_path = super::common::resolve_project_path(path);
+    let url = format!(
+        "/agent/diff?name={}&path={}",
+        url_encode(name),
+        url_encode(&project_path)
+    );
+
+    match client.get_json(&url).await {
+        Ok(result) => {
+            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let total = result.get("totalChanges").and_then(|v| v.as_u64()).unwrap_or(0);
+            let added = result.get("added").and_then(|v| v.as_u64()).unwrap_or(0);
+            let removed = result.get("removed").and_then(|v| v.as_u64()).unwrap_or(0);
+            let modified = result.get("modified").and_then(|v| v.as_u64()).unwrap_or(0);
+            let breaking = result.get("hasBreakingChanges").and_then(|v| v.as_bool()).unwrap_or(false);
+
+            println!("\nPassport Diff: {name}\n");
+            println!("  Total changes:    {total}");
+            println!("  Added:            {added}");
+            println!("  Removed:          {removed}");
+            println!("  Modified:         {modified}");
+            if breaking {
+                println!("  WARNING: BREAKING CHANGES detected");
+            }
+
+            if let Some(changes) = result.get("changes").and_then(|v| v.as_array()) {
+                if !changes.is_empty() {
+                    println!();
+                    for change in changes {
+                        let path = change.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+                        let change_type = change.get("changeType").and_then(|v| v.as_str()).unwrap_or("?");
+                        let severity = change.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
+                        let icon = match change_type {
+                            "added" => "+",
+                            "removed" => "-",
+                            "modified" => "~",
+                            _ => "?",
+                        };
+                        println!("  {icon} {path} [{severity}]");
+                    }
+                }
+            }
+
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Passport diff failed: {e}");
+            1
+        }
+    }
+}
+
+// --- US-S05-33: Guided onboarding ---
+
+async fn run_agent_onboard(json: bool, step: Option<u32>, path: Option<&str>, config: &TuiConfig) -> i32 {
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let project_path = super::common::resolve_project_path(path);
+    let body = serde_json::json!({ "path": project_path });
 
     // If specific step requested, POST that step
     if let Some(step_num) = step {
@@ -1525,7 +1662,7 @@ async fn run_agent_onboard(json: bool, step: Option<u32>, _path: Option<&str>, c
         }
 
         let url = format!("/onboarding/guided/step/{step_num}");
-        match client.post_json(&url, &serde_json::json!({})).await {
+        match client.post_json(&url, &body).await {
             Ok(result) => {
                 if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
                     let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
@@ -1545,7 +1682,7 @@ async fn run_agent_onboard(json: bool, step: Option<u32>, _path: Option<&str>, c
     } else {
         // Start or show status
         let start_url = "/onboarding/guided/start";
-        match client.post_json(start_url, &serde_json::json!({})).await {
+        match client.post_json(start_url, &body).await {
             Ok(result) => {
                 if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
                     let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
@@ -1604,8 +1741,9 @@ fn print_onboarding_status(value: &serde_json::Value) {
 }
 
 fn print_onboarding_step_result(value: &serde_json::Value, step: u32) {
-    let step_names = ["Detect Project", "First Scan", "Generate Passport", "Top-3 Fixes", "Generate Document"];
-    let name = step_names.get(step as usize - 1).unwrap_or(&"?");
+    let name = super::common::ONBOARDING_STEP_NAMES
+        .get(step as usize - 1)
+        .unwrap_or(&"?");
 
     println!();
     println!("  Step {step}: {name} — completed");

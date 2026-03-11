@@ -183,5 +183,14 @@ export const createGuidedOnboardingRoute = (deps: GuidedOnboardingDeps) => {
     });
   });
 
+  // POST /onboarding/guided/reset — reset onboarding progress
+  app.post('/onboarding/guided/reset', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const projectPath = resolveProjectPath(body, deps.getProjectPath);
+    const freshState = createInitialState();
+    await deps.saveOnboardingState(projectPath, freshState);
+    return c.json({ state: freshState, progress: getProgress(freshState) });
+  });
+
   return app;
 };

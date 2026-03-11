@@ -156,6 +156,35 @@ async fn main() -> color_eyre::Result<()> {
                 .await;
                 std::process::exit(code);
             }
+            Some(cli::Command::Cost { hourly_rate, agent, json }) => {
+                let code = headless::cost::run_cost(
+                    *hourly_rate,
+                    agent.as_deref(),
+                    *json,
+                    &config,
+                )
+                .await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Debt { json, trend }) => {
+                let code = headless::debt::run_debt(*json, *trend, &config).await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Simulate { fix, add_doc, complete_passport, json }) => {
+                let code = headless::simulate::run_simulate(
+                    fix,
+                    add_doc,
+                    complete_passport,
+                    *json,
+                    &config,
+                )
+                .await;
+                std::process::exit(code);
+            }
+            Some(cli::Command::Onboarding { action }) => {
+                let code = headless::onboarding::run_onboarding(action, &config).await;
+                std::process::exit(code);
+            }
             Some(cli::Command::Login) => {
                 match headless::run_login(&config).await {
                     Ok(()) => return Ok(()),

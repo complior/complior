@@ -80,7 +80,7 @@ impl App {
                         }
                     }
                 } else if c == 'o' {
-                    // Quick action: Open related file
+                    // Quick action: Open related file in code viewer
                     if let Some(idx) = self.scan_view.selected_finding {
                         if let Some(scan) = &self.last_scan {
                             if let Some(finding) = crate::views::scan::resolve_selected_finding(
@@ -89,10 +89,14 @@ impl App {
                                 idx,
                                 &self.passport_view.loaded_passports,
                             ) {
-                                self.toasts.push(
-                                    crate::components::toast::ToastKind::Info,
-                                    format!("Finding: {}", finding.check_id),
-                                );
+                                if let Some(ref file_path) = finding.file {
+                                    return Some(AppCommand::OpenFile(file_path.clone()));
+                                } else {
+                                    self.toasts.push(
+                                        crate::components::toast::ToastKind::Info,
+                                        "No file associated with this finding",
+                                    );
+                                }
                             }
                         }
                     }
@@ -138,30 +142,89 @@ impl App {
                 }
                 _ => {}
             },
-            ViewState::Report => {
-                if c == 'e' && self.last_scan.is_some() {
+            ViewState::Report => match c {
+                'e' if self.last_scan.is_some() => {
                     return Some(AppCommand::ExportReport);
                 }
-            }
-            ViewState::Obligations => match c {
-                'f' => {
-                    self.obligations_view.filter = self.obligations_view.filter.cycle();
-                    self.obligations_view.selected_index = 0;
-                    self.obligations_view.scroll_offset = 0;
+                c @ ('1'..='9') => {
+                    let idx = (c as u8 - b'1') as usize;
+                    if idx < crate::views::report::GENERATORS.len() {
+                        self.report_view.selected_generator = idx;
+                    }
                 }
-                'l' => return Some(AppCommand::LoadObligations),
                 _ => {}
-            },
+            }
+            ViewState::Obligations => {
+                use crate::views::obligations::ObligationFilter;
+                match c {
+                    'f' => {
+                        self.obligations_view.filter = self.obligations_view.filter.cycle();
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'a' => {
+                        self.obligations_view.filter = ObligationFilter::All;
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'p' => {
+                        self.obligations_view.filter = ObligationFilter::RoleProvider;
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'd' => {
+                        self.obligations_view.filter = ObligationFilter::RoleDeployer;
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'h' => {
+                        self.obligations_view.filter = ObligationFilter::RiskHigh;
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'm' => {
+                        self.obligations_view.filter = ObligationFilter::RiskLimited;
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'c' => {
+                        self.obligations_view.filter = ObligationFilter::CoveredOnly;
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'x' => {
+                        self.obligations_view.filter = ObligationFilter::UncoveredOnly;
+                        self.obligations_view.selected_index = 0;
+                        self.obligations_view.scroll_offset = 0;
+                    }
+                    'l' => return Some(AppCommand::LoadObligations),
+                    _ => {}
+                }
+            }
             ViewState::Passport => match c {
                 'o' => {
                     use crate::views::passport::PassportDetailMode;
                     self.passport_view.detail_mode = match self.passport_view.detail_mode {
                         PassportDetailMode::FieldDetail => PassportDetailMode::ObligationChecklist,
                         PassportDetailMode::ObligationChecklist => PassportDetailMode::FieldDetail,
+                        // From Registry or AuditTrail, toggle back to FieldDetail
+                        PassportDetailMode::Registry | PassportDetailMode::AuditTrail => {
+                            PassportDetailMode::ObligationChecklist
+                        }
                     };
                     if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
                         return Some(AppCommand::LoadPassportCompleteness);
                     }
+                }
+                'g' => {
+                    use crate::views::passport::PassportDetailMode;
+                    self.passport_view.detail_mode = PassportDetailMode::Registry;
+                    return Some(AppCommand::LoadRegistry);
+                }
+                'a' => {
+                    use crate::views::passport::PassportDetailMode;
+                    self.passport_view.detail_mode = PassportDetailMode::AuditTrail;
+                    return Some(AppCommand::LoadAuditTrail);
                 }
                 'r' => {
                     self.passport_view.passport_error = None;
@@ -221,6 +284,19 @@ impl App {
                     self.passport_view.scroll_offset = 0;
                 }
             }
+            ViewState::Obligations => {
+                // Toggle detail panel open/closed for selected obligation
+                self.obligations_view.detail_open = !self.obligations_view.detail_open;
+            }
+            ViewState::Report => {
+                if self.report_view.viewing_report {
+                    // Close report detail view
+                    self.report_view.viewing_report = false;
+                } else if self.last_scan.is_some() {
+                    // Export selected report
+                    return Some(AppCommand::ExportReport);
+                }
+            }
             _ => {}
         }
         None
@@ -250,10 +326,31 @@ impl App {
             }
             ViewState::Passport => {
                 use crate::views::passport::{PassportDetailMode, PassportViewMode};
-                if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
-                    self.passport_view.detail_mode = PassportDetailMode::FieldDetail;
-                } else if self.passport_view.view_mode == PassportViewMode::FieldEditor {
-                    self.passport_view.view_mode = PassportViewMode::AgentList;
+                match self.passport_view.detail_mode {
+                    PassportDetailMode::ObligationChecklist
+                    | PassportDetailMode::Registry
+                    | PassportDetailMode::AuditTrail => {
+                        self.passport_view.detail_mode = PassportDetailMode::FieldDetail;
+                    }
+                    PassportDetailMode::FieldDetail => {
+                        if self.passport_view.view_mode == PassportViewMode::FieldEditor {
+                            self.passport_view.view_mode = PassportViewMode::AgentList;
+                        }
+                    }
+                }
+            }
+            ViewState::Obligations => {
+                if self.obligations_view.detail_open {
+                    self.obligations_view.detail_open = false;
+                } else if self.obligations_view.filter != crate::views::obligations::ObligationFilter::All {
+                    self.obligations_view.filter = crate::views::obligations::ObligationFilter::All;
+                    self.obligations_view.selected_index = 0;
+                    self.obligations_view.scroll_offset = 0;
+                }
+            }
+            ViewState::Report => {
+                if self.report_view.viewing_report {
+                    self.report_view.viewing_report = false;
                 }
             }
             _ => {}

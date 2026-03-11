@@ -565,4 +565,12 @@ pub enum AppCommand {
     ExportPassport,
     /// Load obligations from engine.
     LoadObligations,
+    /// Load agent registry data from engine (spawns background task).
+    LoadRegistry,
+    /// Background result: registry data loaded from engine.
+    RegistryLoaded(Result<serde_json::Value, String>),
+    /// Load audit trail entries from engine (spawns background task).
+    LoadAuditTrail,
+    /// Background result: audit trail loaded from engine.
+    AuditTrailLoaded(Result<Vec<serde_json::Value>, String>),
 }

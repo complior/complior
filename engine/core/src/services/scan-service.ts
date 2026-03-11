@@ -11,6 +11,7 @@ import {
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
+import { computeComplianceDiff, formatDiffMarkdown, type ComplianceDiff } from '../domain/scanner/compliance-diff.js';
 
 export interface ScanServiceDeps {
   readonly scanner: Scanner;
@@ -20,6 +21,11 @@ export interface ScanServiceDeps {
   readonly setLastScanResult: (result: ScanResult) => void;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
+}
+
+/** US-S05-34: Result of a compliance diff scan. */
+export interface ScanDiffResult extends ComplianceDiff {
+  readonly markdown?: string;
 }
 
 export const createScanService = (deps: ScanServiceDeps) => {
@@ -118,7 +124,28 @@ export const createScanService = (deps: ScanServiceDeps) => {
     return generateSbom(allDeps);
   };
 
-  return Object.freeze({ scan, scanDeep, getSbom });
+  /** US-S05-34: Compliance Diff — run scan and compare against baseline. */
+  const scanDiff = async (
+    projectPath: string,
+    changedFiles?: readonly string[],
+    options?: { readonly markdown?: boolean },
+  ): Promise<ScanDiffResult> => {
+    // 1. Get baseline (previous scan result, if any)
+    const baseline = deps.getLastScanResult();
+
+    // 2. Run fresh scan
+    const current = await scan(projectPath);
+
+    // 3. Compute diff using pure domain function
+    const diff = computeComplianceDiff(baseline, current, changedFiles);
+
+    // 4. Generate markdown if requested
+    const markdown = options?.markdown ? formatDiffMarkdown(diff) : undefined;
+
+    return Object.freeze({ ...diff, markdown });
+  };
+
+  return Object.freeze({ scan, scanDeep, getSbom, scanDiff });
 };
 
 export type ScanService = ReturnType<typeof createScanService>;

@@ -260,7 +260,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
             && app.code_search_query.is_some() => Action::CodeSearchPrev,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
-        KeyCode::Char('g') => Action::ScrollToTop,
+        KeyCode::Char('g') if app.view_state != ViewState::Passport => Action::ScrollToTop,
         KeyCode::Char('G') => Action::ScrollToBottom,
         KeyCode::Char('v') | KeyCode::Char('V') => Action::EnterVisualMode,
         KeyCode::Char(':') => Action::EnterColonMode,
@@ -279,7 +279,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         }
         KeyCode::Enter => match app.active_panel {
             Panel::FileBrowser => Action::OpenFile,
-            _ if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Passport) => Action::ViewEnter,
+            _ if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Passport | ViewState::Obligations | ViewState::Report) => Action::ViewEnter,
             _ => Action::SubmitInput,
         },
         KeyCode::Char(' ') if app.view_state == ViewState::Fix => Action::ViewKey(' '),
@@ -288,17 +288,21 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific Esc
-        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport) => {
+        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Report | ViewState::Timeline | ViewState::Log) => {
             Action::ViewEscape
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,
-        // View-specific char keys — Scan/Fix/Report/Dashboard views
-        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'n' | 'p' | 'x' | 'o' | '<' | '>'))
+        // View-specific char keys — all interactive views
+        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'g' | 'n' | 'p' | 'x' | 'o' | '<' | '>'))
             if matches!(
                 app.view_state,
-                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations
+                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Timeline | ViewState::Log
             ) =>
         {
+            Action::ViewKey(c)
+        }
+        // Number keys for Report view generator selection
+        KeyCode::Char(c @ ('1'..='9')) if app.view_state == ViewState::Report => {
             Action::ViewKey(c)
         }
         _ => Action::None,

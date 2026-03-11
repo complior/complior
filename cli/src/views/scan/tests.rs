@@ -2,7 +2,7 @@
 mod tests {
     use crate::views::scan::*;
     use crate::views::scan::explain::explain_check;
-    use crate::views::scan::render::owl_position;
+    use crate::views::scan::progress::owl_position;
 
     #[test]
     fn test_findings_filter_all() {

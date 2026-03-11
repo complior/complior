@@ -17,6 +17,8 @@ import type { ReportService } from '../services/report-service.js';
 import type { ExternalScanService } from '../services/external-scan-service.js';
 import type { StatusService } from '../services/status-service.js';
 import type { PassportService } from '../services/passport-service.js';
+import type { CostService } from '../services/cost-service.js';
+import type { DebtService } from '../services/debt-service.js';
 import type { LlmPort } from '../ports/llm.port.js';
 import type { ScoreBreakdown } from '../types/common.types.js';
 import type { ToolExecutorDeps } from '../llm/tool-executors.js';
@@ -48,6 +50,8 @@ import { createCertRoute } from './routes/cert.route.js';
 import { createGuidedOnboardingRoute } from './routes/guided-onboarding.route.js';
 import { createSupplyChainRoute } from './routes/supply-chain.route.js';
 import { createEventsRoute } from './routes/events.route.js';
+import { createCostRoute } from './routes/cost.route.js';
+import { createDebtRoute } from './routes/debt.route.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -61,6 +65,8 @@ export interface RouterDeps {
   readonly getExternalScanService: () => Promise<ExternalScanService>;
   readonly statusService: StatusService;
   readonly passportService: PassportService;
+  readonly costService?: CostService;
+  readonly debtService?: DebtService;
   readonly llm: LlmPort;
   readonly toolExecutorDeps: ToolExecutorDeps;
   readonly getMode: () => AgentMode;
@@ -152,7 +158,7 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createProviderRoute(deps.llm));
   app.route('/', createDisclaimerRoute({ getVersion: deps.getVersion }));
   app.route('/', createOnboardingRoute(deps.onboardingWizard));
-  app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore }));
+  app.route('/', createWhatIfRoute({ loadProfile: deps.loadProfile, getLastScore: deps.getLastScore, getLastScan: deps.getLastScan }));
   app.route('/', createAgentRoute(deps.passportService));
   app.route('/', createCertRoute({
     passportService: deps.passportService,
@@ -192,6 +198,16 @@ export const createRouter = (deps: RouterDeps) => {
     passportService: deps.passportService,
     getAuditEntries: (filter) => deps.passportService.getAuditTrail(filter),
   }));
+
+  // US-S05-27: Cost estimation endpoint
+  if (deps.costService) {
+    app.route('/', createCostRoute({ costService: deps.costService }));
+  }
+
+  // US-S05-22: Compliance debt score endpoint
+  if (deps.debtService) {
+    app.route('/', createDebtRoute({ debtService: deps.debtService }));
+  }
 
   // US-S05-26: SSE events endpoint
   if (deps.events) {

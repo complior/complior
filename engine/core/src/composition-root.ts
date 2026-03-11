@@ -26,6 +26,8 @@ import { createExternalScanService } from './services/external-scan-service.js';
 import type { ExternalScanService } from './services/external-scan-service.js';
 import { createStatusService } from './services/status-service.js';
 import { createPassportService } from './services/passport-service.js';
+import { createCostService } from './services/cost-service.js';
+import { createDebtService } from './services/debt-service.js';
 import { createEvidenceStore } from './domain/scanner/evidence-store.js';
 import { createAuditStore } from './domain/audit/index.js';
 import { loadOrCreateKeyPair as loadEvidenceKeyPair } from './domain/passport/crypto-signer.js';
@@ -44,6 +46,8 @@ export interface ApplicationState {
   lastScanResult: ScanResult | null;
   conversationHistory: CoreMessage[];
   currentMode: AgentMode;
+  /** Per-agent last-known scores for delta tracking (agent.score.updated events). */
+  agentScores: Map<string, number>;
 }
 
 export interface Application {
@@ -82,6 +86,7 @@ export const loadApplication = async (): Promise<Application> => {
     lastScanResult: persistedScan,
     conversationHistory: [],
     currentMode: 'build',
+    agentScores: new Map<string, number>(),
   };
 
   /** Persist scan result to disk (fire-and-forget). */
@@ -275,6 +280,56 @@ export const loadApplication = async (): Promise<Application> => {
     auditStore,
   });
 
+  // Shared helper: passport completeness lookup (used by cost + debt services)
+  const getPassportCompletenessData = async (name?: string) => {
+    try {
+      const passports = await passportService.listPassports(projectPath);
+      const passport = name
+        ? passports.find((p) => p.name === name)
+        : passports[0];
+      if (!passport) return { score: 0, friaCompleted: false };
+      const completeness = await passportService.getPassportCompleteness(
+        passport.name,
+        projectPath,
+      );
+      return {
+        score: completeness?.score ?? 0,
+        friaCompleted: passport.compliance?.fria_completed ?? false,
+      };
+    } catch {
+      return { score: 0, friaCompleted: false };
+    }
+  };
+
+  // 5a.2. Create cost service (US-S05-27)
+  const costService = createCostService({
+    getLastScanResult: () => state.lastScanResult,
+    getPassportCompleteness: getPassportCompletenessData,
+    getEvidenceValid: async () => {
+      try {
+        const result = await evidenceStore.verify();
+        return result.valid;
+      } catch {
+        return false;
+      }
+    },
+  });
+
+  // 5a.3. Create debt service (US-S05-22)
+  const debtService = createDebtService({
+    getLastScanResult: () => state.lastScanResult,
+    getPassportCompleteness: async () => (await getPassportCompletenessData()).score,
+    getEvidenceFreshness: async () => {
+      try {
+        const summary = await evidenceStore.getSummary();
+        if (summary.totalEntries === 0 || !summary.lastEntry) return 30;
+        return Math.max(0, (Date.now() - new Date(summary.lastEntry).getTime()) / (1000 * 60 * 60 * 24));
+      } catch {
+        return 30;
+      }
+    },
+  });
+
   // 5b. Create onboarding wizard
   const onboardingWizard = createOnboardingWizard({
     getProjectPath: () => state.projectPath,
@@ -306,6 +361,8 @@ export const loadApplication = async (): Promise<Application> => {
     getExternalScanService,
     statusService,
     passportService,
+    costService,
+    debtService,
     llm,
     getMode: () => state.currentMode,
     setMode: (mode) => { state.currentMode = mode; },
@@ -327,8 +384,6 @@ export const loadApplication = async (): Promise<Application> => {
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events
-  const agentScores = new Map<string, number>();
-
   const fileChangedHandler = ({ path: changedPath }: { path: string }) => {
     scanService.scan(state.projectPath).then(
       async (result) => {
@@ -337,9 +392,9 @@ export const loadApplication = async (): Promise<Application> => {
         // Delegate file→agent matching to passport service (Clean Architecture)
         const matched = await passportService.findAgentsForFile(changedPath);
         for (const { name } of matched) {
-          const beforeScore = agentScores.get(name) ?? 0;
+          const beforeScore = state.agentScores.get(name) ?? 0;
           const afterScore = result.score.totalScore;
-          agentScores.set(name, afterScore);
+          state.agentScores.set(name, afterScore);
           events.emit('agent.scan.completed', { agentName: name, result });
           events.emit('agent.score.updated', { agentName: name, before: beforeScore, after: afterScore });
         }

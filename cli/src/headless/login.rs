@@ -15,7 +15,8 @@ pub async fn run_login(config: &TuiConfig) -> Result<(), String> {
     println!("\n  Code: {}\n", code.user_code);
     print!("Waiting for confirmation... (Ctrl+C to cancel)");
 
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(code.expires_in);
+    let max_wait = code.expires_in.min(900); // Cap at 15 minutes
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(max_wait);
     let interval = std::time::Duration::from_secs(code.interval.max(5));
 
     loop {

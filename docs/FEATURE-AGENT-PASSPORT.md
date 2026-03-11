@@ -202,7 +202,11 @@ Deployer по закону ОБЯЗАН документировать ВСЕ AI
     "fields_manual": [                 // какие поля заполнены вручную
       "owner", "disclosure", "constraints.budget"
     ],
-    "confidence": 0.87                 // 0-1, насколько мы уверены в данных
+    "confidence": 0.87,                // 0-1, насколько мы уверены в данных
+    "source_files": [                  // пути к файлам агента (для file→agent mapping в TUI и compliance gate)
+      "src/agents/order-agent.ts",
+      "src/agents/order-tools.ts"
+    ]
   }
 }
 ```
@@ -372,6 +376,14 @@ Deployer по закону ОБЯЗАН документировать ВСЕ AI
     "oaf_agents_md": null,                      // link to AGENTS.md if exists
     "spiffe_id": null                           // SPIFFE identity if used
   },
+
+  // === SOURCE FILES (optional — auto-filled from code analysis in Mode 1) ===
+  // File paths belonging to this agent, used for file→agent mapping in TUI and compliance gate.
+  "source_files": [
+    "src/agents/order-agent.ts",
+    "src/agents/order-tools.ts",
+    "src/config/order-config.ts"
+  ],
 
   // === UPSTREAM REGISTRY (optional — auto-filled from detected models in Mode 1) ===
   // Array of RegistryToolCard — карточки обнаруженных upstream AI-моделей/систем из реестра.

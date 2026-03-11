@@ -1,4 +1,6 @@
+mod audit;
 mod fields;
+mod registry;
 
 #[cfg(test)]
 mod tests;
@@ -24,6 +26,10 @@ pub enum PassportDetailMode {
     FieldDetail,
     /// Show obligation checklist from completeness data.
     ObligationChecklist,
+    /// Show agent registry table.
+    Registry,
+    /// Show audit trail timeline.
+    AuditTrail,
 }
 
 /// Top-level passport view mode.
@@ -57,6 +63,14 @@ pub struct PassportViewState {
     pub passport_loading: bool,
     /// Error message from last passport load attempt.
     pub passport_error: Option<String>,
+    /// Registry data loaded from engine.
+    pub registry_data: Option<serde_json::Value>,
+    /// Whether registry data is currently being loaded.
+    pub registry_loading: bool,
+    /// Audit trail entries loaded from engine.
+    pub audit_entries: Option<Vec<serde_json::Value>>,
+    /// Whether audit trail data is currently being loaded.
+    pub audit_loading: bool,
 }
 
 impl Default for PassportViewState {
@@ -73,6 +87,10 @@ impl Default for PassportViewState {
             selected_passport: 0,
             passport_loading: false,
             passport_error: None,
+            registry_data: None,
+            registry_loading: false,
+            audit_entries: None,
+            audit_loading: false,
         }
     }
 }
@@ -396,6 +414,17 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
     let pv = &app.passport_view;
 
+    // Delegate to Registry or AuditTrail subview when active
+    match pv.detail_mode {
+        PassportDetailMode::Registry => {
+            return registry::render_registry_panel(frame, area, app);
+        }
+        PassportDetailMode::AuditTrail => {
+            return audit::render_audit_panel(frame, area, app);
+        }
+        _ => {}
+    }
+
     let block = Block::default()
         .borders(Borders::LEFT)
         .border_style(Style::default().fg(t.border));
@@ -483,6 +512,63 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
 
     lines.push(Line::raw(""));
 
+    // --- Compliance Status ---
+    lines.push(Line::from(Span::styled(
+        "  Status",
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(Span::styled(
+        format!("  {}", "\u{2500}".repeat(w)),
+        Style::default().fg(t.border),
+    )));
+
+    // FRIA
+    let fria_done = passport.get("fria_completed")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let (fria_icon, fria_color, fria_label) = if fria_done {
+        ("\u{2713}", t.zone_green, "Complete")
+    } else {
+        ("\u{2717}", t.zone_red, "Not done")
+    };
+    lines.push(Line::from(vec![
+        Span::styled("  FRIA:     ", Style::default().fg(t.muted)),
+        Span::styled(format!("{fria_icon} {fria_label}"), Style::default().fg(fria_color)),
+    ]));
+
+    // Worker Notification
+    let notify_sent = passport.get("worker_notification_sent")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let notify_date = passport.get("worker_notification_date")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let (notify_icon, notify_color, notify_label) = if notify_sent {
+        let date_display = if notify_date.len() >= 10 { &notify_date[..10] } else { notify_date };
+        ("\u{2713}", t.zone_green, format!("Sent {date_display}"))
+    } else {
+        ("\u{2717}", t.zone_red, "Not sent".to_string())
+    };
+    lines.push(Line::from(vec![
+        Span::styled("  Notify:   ", Style::default().fg(t.muted)),
+        Span::styled(format!("{notify_icon} {notify_label}"), Style::default().fg(notify_color)),
+    ]));
+
+    // Evidence Chain
+    let evidence_valid = passport.get("evidence_chain_valid")
+        .and_then(|v| v.as_bool());
+    let (ev_icon, ev_color, ev_label) = match evidence_valid {
+        Some(true) => ("\u{2713}", t.zone_green, "Valid"),
+        Some(false) => ("\u{2717}", t.zone_red, "Broken"),
+        None => ("\u{2014}", t.muted, "No data"),
+    };
+    lines.push(Line::from(vec![
+        Span::styled("  Evidence: ", Style::default().fg(t.muted)),
+        Span::styled(format!("{ev_icon} {ev_label}"), Style::default().fg(ev_color)),
+    ]));
+
+    lines.push(Line::raw(""));
+
     // Action hints
     lines.push(Line::from(Span::styled(
         format!("  {}", "\u{2500}".repeat(w)),
@@ -495,6 +581,14 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("FRIA  ", Style::default().fg(t.fg)),
         Span::styled("[x] ", Style::default().fg(t.accent)),
         Span::styled("Export", Style::default().fg(t.fg)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("  [r] ", Style::default().fg(t.accent)),
+        Span::styled("Readiness ", Style::default().fg(t.fg)),
+        Span::styled("[a] ", Style::default().fg(t.accent)),
+        Span::styled("Audit ", Style::default().fg(t.fg)),
+        Span::styled("[g] ", Style::default().fg(t.accent)),
+        Span::styled("Registry", Style::default().fg(t.fg)),
     ]));
 
     frame.render_widget(
@@ -584,6 +678,8 @@ fn render_field_editor_view(frame: &mut Frame, area: Rect, app: &App) {
     match pv.detail_mode {
         PassportDetailMode::FieldDetail => render_field_detail(frame, cols[1], app),
         PassportDetailMode::ObligationChecklist => render_obligation_checklist(frame, cols[1], app),
+        PassportDetailMode::Registry => registry::render_registry_panel(frame, cols[1], app),
+        PassportDetailMode::AuditTrail => audit::render_audit_panel(frame, cols[1], app),
     }
 }
 

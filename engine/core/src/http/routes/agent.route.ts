@@ -323,5 +323,50 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(result);
   });
 
+  // US-S05-24: Generate compliance test suite from passport constraints
+  app.post('/agent/test-gen', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+    }).safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.generateTestSuite(parsed.data.name, parsed.data.path);
+    return c.json(result);
+  });
+
+  // US-S05-19: AIUC-1 Readiness Score
+  app.get('/agent/readiness', async (c) => {
+    const name = c.req.query('name');
+    const path = c.req.query('path');
+    if (!name) {
+      throw new ValidationError('Missing "name" query parameter');
+    }
+
+    const result = await passportService.getReadiness(name, path || undefined);
+    if (!result) {
+      return c.json({ error: 'not_found', message: `Passport "${name}" not found` }, 404);
+    }
+    return c.json(result);
+  });
+
+  // US-S05-24: Compare passport versions (diff)
+  app.get('/agent/diff', async (c) => {
+    const name = c.req.query('name');
+    const path = c.req.query('path');
+    if (!name) {
+      throw new ValidationError('Missing "name" query parameter');
+    }
+
+    const result = await passportService.diffPassport(name, path || undefined);
+    return c.json(result);
+  });
+
   return app;
 };

@@ -1,6 +1,7 @@
 mod detail;
 pub(crate) mod explain;
 mod preview;
+mod progress;
 mod render;
 mod shared;
 #[cfg(test)]
@@ -200,7 +201,7 @@ pub fn resolve_selected_finding<'a>(
 /// Render the full Scan View -- master-detail split layout.
 pub fn render_scan_view(frame: &mut Frame, area: Rect, app: &App) {
     if app.last_scan.is_none() && !app.scan_view.scanning {
-        render::render_no_scan(frame, area, app.scan_view.scan_error.as_deref());
+        progress::render_no_scan(frame, area, app.scan_view.scan_error.as_deref());
         return;
     }
 
@@ -222,7 +223,7 @@ pub fn render_scan_view(frame: &mut Frame, area: Rect, app: &App) {
         .split(area);
 
     if app.scan_view.progress_collapsed && !app.scan_view.scanning {
-        render::render_progress_summary(frame, top[0], app);
+        progress::render_progress_summary(frame, top[0], app);
     } else {
         // Split progress area into puzzle header (3) + gauges (7)
         let progress_chunks = Layout::default()
@@ -232,11 +233,11 @@ pub fn render_scan_view(frame: &mut Frame, area: Rect, app: &App) {
                 Constraint::Min(5),
             ])
             .split(top[0]);
-        render::render_puzzle_header(frame, progress_chunks[0], &app.scan_view);
-        render::render_layer_progress(frame, progress_chunks[1], app);
+        progress::render_puzzle_header(frame, progress_chunks[0], &app.scan_view);
+        progress::render_layer_progress(frame, progress_chunks[1], app);
     }
 
-    render::render_scan_header(frame, top[1], app);
+    progress::render_scan_header(frame, top[1], app);
     render::render_filter_bar(frame, top[2], app);
 
     // Main content: horizontal split -- findings list (left) + preview panel (right)

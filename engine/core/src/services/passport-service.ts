@@ -38,6 +38,10 @@ import type { ReadinessResult } from '../domain/certification/aiuc1-readiness.js
 import { buildPermissionsMatrix } from '../domain/audit/permissions-matrix.js';
 import type { PermissionsMatrix } from '../domain/audit/permissions-matrix.js';
 import type { AuditStore, AuditFilter, AuditEntry, AuditTrailSummary } from '../domain/audit/audit-trail.js';
+import { generateComplianceTests } from '../domain/passport/test-generator.js';
+import type { GeneratedTestSuite } from '../domain/passport/test-generator.js';
+import { computeManifestDiff } from '../domain/passport/manifest-diff.js';
+import type { ManifestDiffResult } from '../domain/passport/manifest-diff.js';
 
 // --- Types ---
 
@@ -313,7 +317,8 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     const manifestPath = join(path, '.complior', 'agents', `${name}-manifest.json`);
     try {
       const rawManifest = await readFile(manifestPath, 'utf-8');
-      const currentManifest = JSON.parse(rawManifest) as AgentPassport;
+      const currentManifest = parsePassport(rawManifest);
+      if (!currentManifest) return;
 
       const updatedManifest: AgentPassport = {
         ...currentManifest,
@@ -583,6 +588,76 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return deps.auditStore.getSummary();
   };
 
+  // US-S05-24: Generate compliance test suite from passport constraints
+  const generateTestSuite = async (
+    name: string,
+    projectPath?: string,
+  ): Promise<GeneratedTestSuite> => {
+    const pp = projectPath ?? getProjectPath();
+    const passport = await showPassport(name, pp);
+    if (!passport) throw new Error(`Passport not found: ${name}`);
+
+    // Map real passport structure to TestGeneratorInput
+    const suite = generateComplianceTests({
+      name: passport.name,
+      permissions: passport.permissions ? {
+        tools: passport.permissions.tools as readonly string[],
+        denied: passport.permissions.denied as readonly string[],
+      } : undefined,
+      constraints: passport.constraints ? {
+        rate_limits: passport.constraints.rate_limits
+          ? [{ action: 'actions_per_minute', limit: passport.constraints.rate_limits.max_actions_per_minute, window: '1m' }]
+          : undefined,
+        prohibited_actions: passport.constraints.prohibited_actions as readonly string[],
+        escalation_rules: passport.constraints.escalation_rules?.map(r => ({
+          condition: r.condition,
+          escalate_to: r.description,
+        })),
+        budget: passport.constraints.budget
+          ? { max_cost: passport.constraints.budget.max_cost_per_session_usd, currency: 'USD' }
+          : undefined,
+      } : undefined,
+    });
+
+    // Save to .complior/tests/
+    const testDir = join(pp, '.complior', 'tests');
+    await mkdir(testDir, { recursive: true });
+    const testPath = join(testDir, suite.filename);
+    await writeFile(testPath, suite.content);
+
+    // US-S05-14: Record test generation in audit trail
+    if (deps.auditStore) {
+      await deps.auditStore.append('test_suite.generated', { name, path: testPath, testCount: suite.testCount }, name);
+    }
+
+    return Object.freeze({ ...suite, filename: testPath });
+  };
+
+  // US-S05-24: Compare passport versions (diff against history)
+  const diffPassport = async (
+    name: string,
+    projectPath?: string,
+  ): Promise<ManifestDiffResult> => {
+    const pp = projectPath ?? getProjectPath();
+    const current = await showPassport(name, pp);
+    if (!current) throw new Error(`Passport not found: ${name}`);
+
+    // Try to load previous version from history
+    let previous: Record<string, unknown> = {};
+    try {
+      const historyPath = join(pp, '.complior', 'agents', `${name}-history.json`);
+      const raw = await readFile(historyPath, 'utf-8');
+      const history = JSON.parse(raw);
+      if (Array.isArray(history) && history.length > 0) {
+        previous = history[history.length - 1] as Record<string, unknown>;
+      }
+    } catch {
+      // No history — diff against empty
+    }
+
+    return computeManifestDiff(name, previous, current as unknown as Record<string, unknown>);
+  };
+
   // US-S05-26: Find agents whose source_files match a given file path
   const findAgentsForFile = async (changedPath: string): Promise<readonly { name: string; sourceFiles: readonly string[] }[]> => {
     const { relative } = await import('node:path');
@@ -622,6 +697,8 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     getAuditTrail,
     getAuditSummary,
     findAgentsForFile,
+    generateTestSuite,
+    diffPassport,
   });
 };
 

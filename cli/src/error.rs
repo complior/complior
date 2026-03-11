@@ -8,6 +8,9 @@ pub enum TuiError {
 
     #[error("JSON parse error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("Engine error: {0}")]
+    Engine(String),
 }
 
 pub type Result<T> = std::result::Result<T, TuiError>;

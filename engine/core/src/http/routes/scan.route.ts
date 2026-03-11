@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type { ScanService } from '../../services/scan-service.js';
 import type { ScanResult } from '../../types/common.types.js';
 import { ValidationError } from '../../types/errors.js';
-import { computeComplianceDiff, formatDiffMarkdown } from '../../domain/scanner/compliance-diff.js';
 
 const ScanRequestSchema = z.object({
   path: z.string().min(1),
@@ -24,7 +23,7 @@ export interface ScanRouteDeps {
 
 export const createScanRoute = (deps: ScanRouteDeps) => {
   const app = new Hono();
-  const { scanService, getLastScan } = deps;
+  const { scanService } = deps;
 
   app.post('/scan', async (c) => {
     const body = await c.req.json().catch(() => {
@@ -77,7 +76,7 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
     return c.json(result);
   });
 
-  // US-S05-34: Compliance Diff
+  // US-S05-34: Compliance Diff — delegates to scanService.scanDiff()
   app.post('/scan/diff', async (c) => {
     const body = await c.req.json().catch(() => {
       throw new ValidationError('Invalid JSON body');
@@ -88,21 +87,13 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
       throw new ValidationError(`Invalid request: ${parsed.error.message}`);
     }
 
-    // Get baseline (previous scan result)
-    const baseline = getLastScan();
+    const result = await scanService.scanDiff(
+      parsed.data.path,
+      parsed.data.changedFiles,
+      { markdown: parsed.data.markdown },
+    );
 
-    // Run fresh scan
-    const current = await scanService.scan(parsed.data.path);
-
-    // Compute diff
-    const diff = computeComplianceDiff(baseline, current, parsed.data.changedFiles);
-
-    if (parsed.data.markdown) {
-      const md = formatDiffMarkdown(diff);
-      return c.json({ ...diff, markdown: md });
-    }
-
-    return c.json(diff);
+    return c.json(result);
   });
 
   app.get('/sbom', async (c) => {

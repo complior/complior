@@ -38,8 +38,9 @@ pub(crate) fn resolve_client(config: &TuiConfig) -> EngineClient {
 }
 
 /// Create an engine client and verify the engine is running.
-/// Daemon-aware retry: if a daemon PID is found, retries up to 15×400ms (6s)
-/// to allow cold start. Without a PID, retries only 3×400ms before auto-launching.
+/// Daemon-aware retry with exponential backoff: if a daemon PID is found,
+/// retries up to 25 times (~6.4s) to allow cold start.
+/// Without a PID, retries only 5 times (~3.1s) before auto-launching.
 pub(crate) async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
     let project_path = std::env::current_dir().unwrap_or_default();
     let daemon_exists = daemon::find_running_daemon(&project_path).is_some();
@@ -49,25 +50,30 @@ pub(crate) async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i3
 
     // Daemon PID found → longer retry (engine cold start takes 2-5s)
     // No daemon PID → short retry before falling through to auto-launch
-    let (max_retries, delay_ms) = if daemon_exists { (15, 400) } else { (3, 400) };
+    let max_retries: u32 = if daemon_exists { 25 } else { 5 };
+    let initial_delay_ms = 200u64;
 
     for attempt in 0..max_retries {
         match client.status().await {
             Ok(status) if status.ready => return Ok(client),
             _ => {
                 if attempt < max_retries - 1 {
-                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    let delay = initial_delay_ms * 2u64.pow(attempt.min(4));
+                    tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
                 }
             }
         }
     }
 
     if daemon_exists {
-        // Daemon PID exists but engine is still unresponsive after 6s — do NOT
+        // Daemon PID exists but engine is still unresponsive — do NOT
         // auto-launch a second engine (prevents PID conflict / competing instances).
+        let total_wait: u64 = (0..max_retries)
+            .map(|a| initial_delay_ms * 2u64.pow(a.min(4)))
+            .sum();
         eprintln!(
-            "Error: Daemon process found but engine not responding after {}s.",
-            max_retries as u64 * delay_ms / 1000
+            "Error: Daemon process found but engine not responding after ~{}s.",
+            total_wait / 1000
         );
         eprintln!("Try: complior daemon stop && complior daemon start");
         return Err(1);
@@ -100,6 +106,15 @@ pub(crate) async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i3
     eprintln!("Error: Engine not running. Start with: complior daemon");
     Err(1)
 }
+
+/// Canonical onboarding step labels (matches engine STEP_DEFINITIONS).
+pub(crate) const ONBOARDING_STEP_NAMES: [&str; 5] = [
+    "Detect Project",
+    "First Compliance Scan",
+    "Generate Agent Passport",
+    "Top-3 Quick Fixes",
+    "Generate Compliance Document",
+];
 
 /// Resolve project path from an optional CLI flag, falling back to CWD.
 pub(crate) fn resolve_project_path(path: Option<&str>) -> String {

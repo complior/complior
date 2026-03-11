@@ -77,6 +77,8 @@ pub struct ObligationsViewState {
     pub selected_index: usize,
     pub scroll_offset: usize,
     pub filter: ObligationFilter,
+    /// Whether the detail panel is expanded for the selected obligation.
+    pub detail_open: bool,
 }
 
 impl Default for ObligationsViewState {
@@ -86,6 +88,7 @@ impl Default for ObligationsViewState {
             selected_index: 0,
             scroll_offset: 0,
             filter: ObligationFilter::All,
+            detail_open: false,
         }
     }
 }

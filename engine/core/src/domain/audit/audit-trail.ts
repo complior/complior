@@ -1,6 +1,12 @@
-import { appendFile, readFile, mkdir } from 'node:fs/promises';
+import { appendFile, readFile, mkdir, stat, rename } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
+
+/** Maximum JSONL file size in bytes before rotation (50 MB) */
+const MAX_TRAIL_SIZE = 50 * 1024 * 1024;
+
+/** Maximum entries to keep in active trail after rotation */
+const MAX_TRAIL_ENTRIES = 10_000;
 
 export type AuditEventType =
   | 'passport.created' | 'passport.updated' | 'passport.exported'
@@ -79,6 +85,18 @@ export const createAuditStore = (
     const entry: AuditEntry = { ...unsigned, signature };
 
     await mkdir(dirname(trailPath), { recursive: true });
+
+    // Rotate if file exceeds size limit
+    try {
+      const { size } = await stat(trailPath);
+      if (size > MAX_TRAIL_SIZE) {
+        const dateSuffix = new Date().toISOString().replace(/[:.]/g, '-');
+        await rename(trailPath, `${trailPath}.${dateSuffix}.bak`);
+      }
+    } catch {
+      // File doesn't exist yet — no rotation needed
+    }
+
     await appendFile(trailPath, JSON.stringify(entry) + '\n');
 
     return entry;
@@ -87,7 +105,11 @@ export const createAuditStore = (
   const readAll = async (): Promise<AuditEntry[]> => {
     try {
       const content = await readFile(trailPath, 'utf-8');
-      return parseEntries(content, onParseError);
+      const entries = parseEntries(content, onParseError);
+      // Cap to last MAX_TRAIL_ENTRIES to avoid excessive memory usage
+      return entries.length > MAX_TRAIL_ENTRIES
+        ? entries.slice(entries.length - MAX_TRAIL_ENTRIES)
+        : entries;
     } catch {
       // File does not exist yet — expected on first run
       return [];

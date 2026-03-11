@@ -8,12 +8,16 @@
 pub mod agent;
 pub mod cert;
 mod commands;
+pub mod cost;
 pub(crate) mod common;
+pub mod debt;
 pub mod daemon;
 mod fix;
 pub(crate) mod format;
 pub mod login;
+pub mod onboarding;
 pub mod scan;
+pub mod simulate;
 pub mod supply_chain;
 pub mod sync;
 #[cfg(test)]

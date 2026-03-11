@@ -3,22 +3,7 @@ use tokio::sync::mpsc;
 use super::{App, AppCommand};
 use crate::components;
 use crate::config;
-
-/// Percent-encode a string for use in URL query parameters.
-fn url_encode(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                result.push(b as char);
-            }
-            _ => {
-                result.push_str(&format!("%{b:02X}"));
-            }
-        }
-    }
-    result
-}
+use crate::headless::common::url_encode;
 use crate::session;
 use crate::types;
 use crate::views;
@@ -730,10 +715,16 @@ pub async fn execute_command(
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
             tokio::spawn(async move {
-                let result = client.get_json(&url).await;
-                let _ = tx.send(AppCommand::PassportsLoaded(
-                    result.map_err(|e| e.to_string()),
-                ));
+                let result = tokio::time::timeout(
+                    std::time::Duration::from_secs(15),
+                    client.get_json(&url),
+                )
+                .await;
+                let mapped = match result {
+                    Ok(inner) => inner.map_err(|e| e.to_string()),
+                    Err(_) => Err("Loading timed out after 15s".to_string()),
+                };
+                let _ = tx.send(AppCommand::PassportsLoaded(mapped));
             });
         }
         AppCommand::PassportsLoaded(result) => {
@@ -923,6 +914,85 @@ pub async fn execute_command(
                     app.messages.push(types::ChatMessage::new(
                         types::MessageRole::System,
                         format!("Failed to load obligations: {e}"),
+                    ));
+                }
+            }
+        }
+        AppCommand::LoadRegistry => {
+            if app.passport_view.registry_loading {
+                return; // Already loading, skip duplicate request
+            }
+            app.passport_view.registry_loading = true;
+            let path = app.project_path.to_string_lossy().to_string();
+            let url = format!("/agent/registry?path={}", url_encode(&path));
+            let client = app.engine_client.clone();
+            let tx = app.bg_tx.clone();
+            tokio::spawn(async move {
+                let result = tokio::time::timeout(
+                    std::time::Duration::from_secs(15),
+                    client.get_json(&url),
+                )
+                .await;
+                let mapped = match result {
+                    Ok(inner) => inner.map_err(|e| e.to_string()),
+                    Err(_) => Err("Registry load timed out".to_string()),
+                };
+                let _ = tx.send(AppCommand::RegistryLoaded(mapped));
+            });
+        }
+        AppCommand::RegistryLoaded(result) => {
+            app.passport_view.registry_loading = false;
+            match result {
+                Ok(value) => {
+                    app.passport_view.registry_data = Some(value);
+                }
+                Err(e) => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        format!("Failed to load registry: {e}"),
+                    ));
+                }
+            }
+        }
+        AppCommand::LoadAuditTrail => {
+            if app.passport_view.audit_loading {
+                return; // Already loading, skip duplicate request
+            }
+            app.passport_view.audit_loading = true;
+            let path = app.project_path.to_string_lossy().to_string();
+            let url = format!("/agent/audit?path={}&limit=50", url_encode(&path));
+            let client = app.engine_client.clone();
+            let tx = app.bg_tx.clone();
+            tokio::spawn(async move {
+                let result = tokio::time::timeout(
+                    std::time::Duration::from_secs(15),
+                    client.get_json(&url),
+                )
+                .await;
+                let mapped = match result {
+                    Ok(Ok(val)) => {
+                        if let Some(arr) = val.as_array() {
+                            Ok(arr.clone())
+                        } else {
+                            Ok(vec![])
+                        }
+                    }
+                    Ok(Err(e)) => Err(e.to_string()),
+                    Err(_) => Err("Audit trail load timed out".to_string()),
+                };
+                let _ = tx.send(AppCommand::AuditTrailLoaded(mapped));
+            });
+        }
+        AppCommand::AuditTrailLoaded(result) => {
+            app.passport_view.audit_loading = false;
+            match result {
+                Ok(entries) => {
+                    app.passport_view.audit_entries = Some(entries);
+                }
+                Err(e) => {
+                    app.messages.push(types::ChatMessage::new(
+                        types::MessageRole::System,
+                        format!("Failed to load audit trail: {e}"),
                     ));
                 }
             }

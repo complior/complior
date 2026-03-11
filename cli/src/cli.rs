@@ -151,6 +151,51 @@ pub enum Command {
         path: Option<String>,
     },
 
+    /// Compliance cost estimator (remediation, documentation, ROI)
+    Cost {
+        /// Hourly rate in EUR (default: 150)
+        #[arg(long, default_value = "150")]
+        hourly_rate: u32,
+        /// Agent name (optional)
+        #[arg(long)]
+        agent: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Compliance debt score
+    Debt {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+        /// Show trend (compare to previous)
+        #[arg(long)]
+        trend: bool,
+    },
+
+    /// Simulate compliance actions (what-if score projection)
+    Simulate {
+        /// Fix a specific finding (by check ID)
+        #[arg(long)]
+        fix: Vec<String>,
+        /// Add a document type (fria, technical-documentation, etc.)
+        #[arg(long, value_name = "TYPE")]
+        add_doc: Vec<String>,
+        /// Complete a passport field
+        #[arg(long, value_name = "FIELD")]
+        complete_passport: Vec<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Guided onboarding wizard (5-step compliance setup)
+    Onboarding {
+        #[command(subcommand)]
+        action: OnboardingAction,
+    },
+
     /// Authenticate with SaaS dashboard via browser
     Login,
 
@@ -422,6 +467,32 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Generate compliance test suite from passport constraints
+    TestGen {
+        /// Agent name
+        name: String,
+
+        /// Project path (default: current directory)
+        #[arg(long)]
+        path: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Compare passport versions (diff)
+    Diff {
+        /// Agent name
+        name: String,
+
+        /// Project path (default: current directory)
+        #[arg(long)]
+        path: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Show audit trail (compliance event log)
     Audit {
         /// Filter by agent name
@@ -486,6 +557,21 @@ pub enum CertAction {
 }
 
 #[derive(Subcommand, Debug, Clone)]
+pub enum OnboardingAction {
+    /// Start the onboarding wizard (auto-executes step 1)
+    Start,
+    /// Show current onboarding status
+    Status,
+    /// Execute a specific step (1-5)
+    Step {
+        /// Step number (1-5)
+        number: u32,
+    },
+    /// Reset onboarding progress
+    Reset,
+}
+
+#[derive(Subcommand, Debug, Clone)]
 pub enum DaemonAction {
     /// Start daemon (default)
     Start {
@@ -520,6 +606,10 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Agent { .. }
             | Command::Cert { .. }
             | Command::SupplyChain { .. }
+            | Command::Cost { .. }
+            | Command::Debt { .. }
+            | Command::Simulate { .. }
+            | Command::Onboarding { .. }
             | Command::Login
             | Command::Logout
             | Command::Sync { .. },
@@ -1183,6 +1273,82 @@ mod tests {
     }
 
     #[test]
+    fn cli_parse_agent_test_gen() {
+        let cli = Cli::parse_from(["complior", "agent", "test-gen", "my-bot"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::TestGen { name, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent TestGen command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_test_gen_json() {
+        let cli = Cli::parse_from(["complior", "agent", "test-gen", "my-bot", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::TestGen { name, json, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent TestGen command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_test_gen_path() {
+        let cli = Cli::parse_from(["complior", "agent", "test-gen", "my-bot", "--path", "/tmp/proj"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::TestGen { name, path, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(path.as_deref(), Some("/tmp/proj"));
+            }
+            _ => panic!("Expected Agent TestGen command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_diff() {
+        let cli = Cli::parse_from(["complior", "agent", "diff", "my-bot"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Diff { name, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Diff command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_diff_json() {
+        let cli = Cli::parse_from(["complior", "agent", "diff", "my-bot", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Diff { name, json, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Diff command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_diff_path() {
+        let cli = Cli::parse_from(["complior", "agent", "diff", "my-bot", "--path", "/tmp/proj"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Diff { name, path, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(path.as_deref(), Some("/tmp/proj"));
+            }
+            _ => panic!("Expected Agent Diff command"),
+        }
+    }
+
+    #[test]
     fn cli_parse_scan_diff() {
         let cli = Cli::parse_from(["complior", "scan", "--diff", "main"]);
         match &cli.command {
@@ -1289,6 +1455,119 @@ mod tests {
                 assert!(*registry);
             }
             _ => panic!("Expected Sync command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_onboarding_start() {
+        let cli = Cli::parse_from(["complior", "onboarding", "start"]);
+        assert!(matches!(
+            &cli.command,
+            Some(Command::Onboarding { action: OnboardingAction::Start })
+        ));
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_onboarding_status() {
+        let cli = Cli::parse_from(["complior", "onboarding", "status"]);
+        assert!(matches!(
+            &cli.command,
+            Some(Command::Onboarding { action: OnboardingAction::Status })
+        ));
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_onboarding_step() {
+        let cli = Cli::parse_from(["complior", "onboarding", "step", "3"]);
+        match &cli.command {
+            Some(Command::Onboarding { action: OnboardingAction::Step { number } }) => {
+                assert_eq!(*number, 3);
+            }
+            _ => panic!("Expected Onboarding Step command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_onboarding_reset() {
+        let cli = Cli::parse_from(["complior", "onboarding", "reset"]);
+        assert!(matches!(
+            &cli.command,
+            Some(Command::Onboarding { action: OnboardingAction::Reset })
+        ));
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_simulate_fix() {
+        let cli = Cli::parse_from(["complior", "simulate", "--fix", "l1-risk"]);
+        match &cli.command {
+            Some(Command::Simulate { fix, add_doc, complete_passport, json }) => {
+                assert_eq!(fix, &["l1-risk"]);
+                assert!(add_doc.is_empty());
+                assert!(complete_passport.is_empty());
+                assert!(!json);
+            }
+            _ => panic!("Expected Simulate command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_simulate_add_doc() {
+        let cli = Cli::parse_from(["complior", "simulate", "--add-doc", "fria"]);
+        match &cli.command {
+            Some(Command::Simulate { fix, add_doc, .. }) => {
+                assert!(fix.is_empty());
+                assert_eq!(add_doc, &["fria"]);
+            }
+            _ => panic!("Expected Simulate command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_simulate_complete_passport() {
+        let cli = Cli::parse_from(["complior", "simulate", "--complete-passport", "description"]);
+        match &cli.command {
+            Some(Command::Simulate { complete_passport, .. }) => {
+                assert_eq!(complete_passport, &["description"]);
+            }
+            _ => panic!("Expected Simulate command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_simulate_multiple_actions() {
+        let cli = Cli::parse_from([
+            "complior", "simulate",
+            "--fix", "l1-risk",
+            "--fix", "l2-fria",
+            "--add-doc", "fria",
+            "--complete-passport", "description",
+            "--json",
+        ]);
+        match &cli.command {
+            Some(Command::Simulate { fix, add_doc, complete_passport, json }) => {
+                assert_eq!(fix, &["l1-risk", "l2-fria"]);
+                assert_eq!(add_doc, &["fria"]);
+                assert_eq!(complete_passport, &["description"]);
+                assert!(*json);
+            }
+            _ => panic!("Expected Simulate command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_simulate_json() {
+        let cli = Cli::parse_from(["complior", "simulate", "--fix", "l1-risk", "--json"]);
+        match &cli.command {
+            Some(Command::Simulate { json, .. }) => {
+                assert!(*json);
+            }
+            _ => panic!("Expected Simulate command"),
         }
     }
 
