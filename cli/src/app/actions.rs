@@ -467,7 +467,10 @@ impl App {
                     return Some(AppCommand::LoadFrameworkScores);
                 }
                 // Auto-load dashboard metrics when switching to Dashboard
-                if view == ViewState::Dashboard && self.cost_estimate.is_none() {
+                // Reload if any metric is missing (readiness may fail on first load before passports)
+                if view == ViewState::Dashboard
+                    && (self.cost_estimate.is_none() || self.readiness_score.is_none())
+                {
                     return Some(AppCommand::LoadDashboardMetrics);
                 }
                 None

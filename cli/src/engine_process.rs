@@ -73,7 +73,8 @@ impl EngineManager {
             return Err(format!("Engine not found at {}", entry.display()));
         }
 
-        let port = find_free_port().map_err(|e| format!("Cannot find free port: {e}"))?;
+        let port = find_preferred_port(crate::config::DEFAULT_ENGINE_PORT)
+            .map_err(|e| format!("Cannot find free port: {e}"))?;
         self.port = port;
 
         let mut cmd = Command::new("npx");
@@ -171,8 +172,15 @@ impl Drop for EngineManager {
     }
 }
 
-/// Find a free TCP port by binding to port 0.
-fn find_free_port() -> std::io::Result<u16> {
+/// Try to bind to the preferred port first (default 3099), fall back to any free port.
+/// This ensures daemon and TUI auto-launch prefer the well-known port,
+/// so TUI can connect without needing PID file discovery.
+pub fn find_preferred_port(preferred: u16) -> std::io::Result<u16> {
+    // Try the preferred port first
+    if TcpListener::bind(format!("127.0.0.1:{preferred}")).is_ok() {
+        return Ok(preferred);
+    }
+    // Preferred port is taken — find any free port
     let listener = TcpListener::bind("127.0.0.1:0")?;
     let port = listener.local_addr()?.port();
     Ok(port)

@@ -53,12 +53,13 @@ async fn run_daemon_start(watch: bool, port: Option<u16>, project_path: &Path, _
         std::process::exit(1);
     }
 
-    // Find a free port
+    // Find a port: use --port if given, otherwise try default 3099, then any free port
     let target_port = port.unwrap_or_else(|| {
-        find_free_port().unwrap_or_else(|e| {
-            eprintln!("Error: Cannot find free port: {e}");
-            std::process::exit(1);
-        })
+        crate::engine_process::find_preferred_port(crate::config::DEFAULT_ENGINE_PORT)
+            .unwrap_or_else(|e| {
+                eprintln!("Error: Cannot find free port: {e}");
+                std::process::exit(1);
+            })
     });
 
     // Ensure .complior/ exists
@@ -239,9 +240,3 @@ async fn wait_for_engine(client: &EngineClient) -> bool {
     false
 }
 
-/// Find a free TCP port by binding to port 0.
-fn find_free_port() -> std::io::Result<u16> {
-    let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
-    let port = listener.local_addr()?.port();
-    Ok(port)
-}

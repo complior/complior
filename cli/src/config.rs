@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_ENGINE_PORT: u16 = 3099;
+pub const DEFAULT_ENGINE_PORT: u16 = 3099;
 
 /// `[confirmations]` TOML section — controls which destructive operations
 /// require an explicit y/N confirmation dialog before proceeding.
