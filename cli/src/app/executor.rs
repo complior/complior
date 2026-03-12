@@ -1027,6 +1027,52 @@ pub async fn execute_command(
                 }
             }
         }
+        AppCommand::LoadDashboardMetrics => {
+            let client = app.engine_client.clone();
+            let tx = app.bg_tx.clone();
+            let project_path = app.project_path.to_string_lossy().to_string();
+            // Use first loaded passport name, or "default"
+            let agent_name = app
+                .passport_view
+                .loaded_passports
+                .first()
+                .and_then(|p| p.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("default")
+                .to_string();
+            tokio::spawn(async move {
+                let (cost_res, debt_res, readiness_res) = tokio::join!(
+                    client.cost_estimate(),
+                    client.debt_score(),
+                    client.readiness_score(&agent_name, &project_path),
+                );
+                let _ = tx.send(AppCommand::DashboardMetricsLoaded {
+                    cost: cost_res.map_err(|e| e.to_string()),
+                    debt: debt_res.map_err(|e| e.to_string()),
+                    readiness: readiness_res.map_err(|e| e.to_string()),
+                });
+            });
+        }
+        AppCommand::DashboardMetricsLoaded { cost, debt, readiness } => {
+            match cost {
+                Ok(c) => app.cost_estimate = Some(c),
+                Err(e) => {
+                    tracing::debug!("Cost estimate unavailable: {e}");
+                }
+            }
+            match debt {
+                Ok(d) => app.debt_score = Some(d),
+                Err(e) => {
+                    tracing::debug!("Debt score unavailable: {e}");
+                }
+            }
+            match readiness {
+                Ok(r) => app.readiness_score = Some(r),
+                Err(e) => {
+                    tracing::debug!("Readiness score unavailable: {e}");
+                }
+            }
+        }
     }
 }
 

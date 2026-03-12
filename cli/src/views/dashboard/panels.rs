@@ -18,7 +18,7 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
 
     let t = theme::theme();
 
-    // Split into 5 sections: Score/Info | By Category | Deadlines | Quick Fix | Sync
+    // Split into 5 sections: Score/Info | By Category | Deadlines | Quick Fix | Metrics
     let sections = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -26,7 +26,7 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
             Constraint::Length(8),   // By Category breakdown
             Constraint::Length(7),   // Deadlines
             Constraint::Length(7),   // Quick Fix
-            Constraint::Min(3),     // Sync status
+            Constraint::Min(3),     // Metrics (Cost/Debt/Readiness)
         ])
         .split(area);
 
@@ -243,70 +243,134 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
         frame.render_widget(Paragraph::new(lines), inner);
     }
 
-    // -- Section 5: SaaS Sync Status --
-    {
-        let block = Block::default()
-            .title(" SaaS Sync ")
-            .title_style(theme::title_style())
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(t.border));
-        let inner = block.inner(sections[4]);
-        frame.render_widget(block, sections[4]);
+    // -- Section 5: Dashboard Metrics (Cost / Debt / Readiness) --
+    render_metrics_panel(frame, sections[4], app);
+}
 
-        let lines = if app.sync_state.authenticated {
-            let email = app.sync_state.user_email.as_deref().unwrap_or("?");
-            let org = app.sync_state.org_name.as_deref().unwrap_or("?");
-            let mut l = vec![
-                Line::from(vec![
-                    Span::styled(" \u{25cf} ", Style::default().fg(t.zone_green)),
-                    Span::styled(format!("Connected ({org})"), Style::default().fg(t.zone_green)),
-                ]),
-                Line::from(Span::styled(
-                    format!(" {email}"),
-                    Style::default().fg(t.muted),
-                )),
-            ];
+/// Dashboard metrics panel: Cost, Debt, and Readiness at a glance.
+fn render_metrics_panel(frame: &mut Frame, area: Rect, app: &App) {
+    let t = theme::theme();
 
-            if let Some(ref stats) = app.sync_state.stats {
-                if let Some(ref last) = app.sync_state.last_sync {
-                    l.push(Line::from(Span::styled(
-                        format!(" Last: {last}"),
-                        Style::default().fg(t.muted),
-                    )));
-                }
-                l.push(Line::from(Span::styled(
-                    format!(" Passports: {} | Scans: {}", stats.passport_syncs, stats.scan_syncs),
-                    Style::default().fg(t.fg),
-                )));
-            }
+    let block = Block::default()
+        .title(" Metrics ")
+        .title_style(theme::title_style())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(t.border));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
 
-            l.push(Line::from(vec![
-                Span::styled(" [S] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
-                Span::styled("Sync  ", Style::default().fg(t.fg)),
-                Span::styled("[L] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
-                Span::styled("Logout", Style::default().fg(t.fg)),
-            ]));
-            l
+    let has_any = app.cost_estimate.is_some()
+        || app.debt_score.is_some()
+        || app.readiness_score.is_some();
+
+    if !has_any {
+        let placeholder = if app.last_scan.is_some() {
+            " Loading metrics..."
         } else {
-            vec![
-                Line::from(vec![
-                    Span::styled(" \u{25cb} ", Style::default().fg(t.muted)),
-                    Span::styled("Not connected", Style::default().fg(t.muted)),
-                ]),
-                Line::from(Span::styled(
-                    " Run `complior login`",
-                    Style::default().fg(t.muted),
-                )),
-                Line::from(Span::styled(
-                    " to sync with SaaS.",
-                    Style::default().fg(t.muted),
-                )),
-            ]
+            " Run /scan first"
         };
-        frame.render_widget(Paragraph::new(lines), inner);
+        frame.render_widget(
+            Paragraph::new(Line::from(Span::styled(
+                placeholder,
+                Style::default().fg(t.muted),
+            ))),
+            inner,
+        );
+        return;
+    }
+
+    let mut lines: Vec<Line<'_>> = Vec::new();
+
+    // Cost row
+    if let Some(cost) = &app.cost_estimate {
+        lines.push(Line::from(vec![
+            Span::styled(" Cost: ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("\u{20ac}{:.0} remediation", cost.total_cost),
+                Style::default().fg(t.fg),
+            ),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled("       ", Style::default()),
+            Span::styled(
+                format!("\u{20ac}{:.0} penalty risk", cost.potential_fine),
+                Style::default().fg(t.muted),
+            ),
+            Span::styled(
+                format!("  ROI {:.0}x", cost.roi),
+                Style::default().fg(t.zone_green),
+            ),
+        ]));
+    }
+
+    // Debt row
+    if let Some(debt) = &app.debt_score {
+        let debt_color = debt_level_color(debt.total_debt, &t);
+        let level_upper = debt.level.to_uppercase();
+        lines.push(Line::from(vec![
+            Span::styled(" Debt: ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{:.1} pts", debt.total_debt),
+                Style::default().fg(debt_color),
+            ),
+            Span::styled(
+                format!(" \u{25cf} {level_upper}"),
+                Style::default().fg(debt_color).add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
+
+    // Readiness row
+    if let Some(ready) = &app.readiness_score {
+        let ready_color = readiness_level_color(ready.overall_score, &t);
+        let level_display = ready.readiness_level.replace('_', " ");
+        lines.push(Line::from(vec![
+            Span::styled(" Ready: ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{:.0}%", ready.overall_score),
+                Style::default().fg(ready_color).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" \u{25cf} {level_display}"),
+                Style::default().fg(ready_color),
+            ),
+        ]));
+        let gap_count = ready.gaps.len();
+        if gap_count > 0 {
+            lines.push(Line::from(vec![
+                Span::styled("        ", Style::default()),
+                Span::styled(
+                    format!("{gap_count} gaps remaining"),
+                    Style::default().fg(t.muted),
+                ),
+            ]));
+        }
+    }
+
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+/// Color for debt level: green <20, yellow 20-50, red >50.
+pub(super) fn debt_level_color(debt: f64, t: &theme::ThemeColors) -> ratatui::style::Color {
+    if debt < 20.0 {
+        t.zone_green
+    } else if debt <= 50.0 {
+        t.zone_yellow
+    } else {
+        t.zone_red
     }
 }
 
+/// Color for readiness level: green >=90, yellow >=40, red <40.
+pub(super) fn readiness_level_color(score: f64, t: &theme::ThemeColors) -> ratatui::style::Color {
+    if score >= 90.0 {
+        t.zone_green
+    } else if score >= 40.0 {
+        t.zone_yellow
+    } else {
+        t.zone_red
+    }
+}
 
 /// Score gauge widget -- colored by threshold, with zone label + animation support.
 pub(super) fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {

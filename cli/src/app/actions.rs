@@ -466,6 +466,10 @@ impl App {
                 if view == ViewState::Dashboard && self.framework_scores.is_none() {
                     return Some(AppCommand::LoadFrameworkScores);
                 }
+                // Auto-load dashboard metrics when switching to Dashboard
+                if view == ViewState::Dashboard && self.cost_estimate.is_none() {
+                    return Some(AppCommand::LoadDashboardMetrics);
+                }
                 None
             }
 

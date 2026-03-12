@@ -409,9 +409,10 @@ async fn run_event_loop(
         ));
     }
 
-    // Load framework scores on startup if connected
+    // Load framework scores + dashboard metrics on startup if connected
     if app.engine_status == types::EngineConnectionStatus::Connected {
         execute_command(app, AppCommand::LoadFrameworkScores, &watch_tx, &mut watch_handle).await;
+        execute_command(app, AppCommand::LoadDashboardMetrics, &watch_tx, &mut watch_handle).await;
     }
 
     // Tick counter for periodic health checks (~5s at 250ms tick)

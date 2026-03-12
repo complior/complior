@@ -52,7 +52,7 @@ fn e2e_t501_dashboard_shows_panel_titles() {
     assert!(buf.contains("Quick Fix"), "Missing: Quick Fix panel title");
     assert!(buf.contains("Score History"), "Missing: Score History panel title");
     assert!(buf.contains("By Category"), "Missing: By Category panel title");
-    assert!(buf.contains("Sync"), "Missing: Sync panel title");
+    assert!(buf.contains("Metrics"), "Missing: Metrics panel title");
 }
 
 #[test]
@@ -108,18 +108,18 @@ fn e2e_t501_score_sparkline_renders_block_chars() {
 }
 
 #[test]
-fn e2e_t501_dashboard_sync_status() {
+fn e2e_t501_dashboard_metrics_panel() {
     crate::theme::init_theme("dark");
     let mut app = App::new(crate::config::TuiConfig::default());
     app.sidebar_visible = false;
     app.last_scan = Some(make_scan_result(70.0, crate::types::Zone::Yellow));
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Sync"), "Dashboard should show Sync status panel");
-    // If tokens exist on disk, shows "Connected"; otherwise "Not connected"
+    assert!(buf.contains("Metrics"), "Dashboard should show Metrics panel");
+    // Without metrics data loaded, shows placeholder
     assert!(
-        buf.contains("Not connected") || buf.contains("Connected"),
-        "Sync should show connection state"
+        buf.contains("Loading") || buf.contains("Run /scan"),
+        "Metrics should show placeholder when no data loaded"
     );
 }
 

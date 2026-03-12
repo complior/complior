@@ -246,3 +246,127 @@ fn e2e_t705_sidebar_shows_context_and_zen() {
     assert!(buf.contains("Zen"), "Sidebar should show Zen status");
 }
 
+// --- S05: Dashboard Metrics Widgets (Cost, Debt, Readiness) ---
+
+fn make_cost() -> crate::types::CostEstimateResult {
+    crate::types::CostEstimateResult {
+        remediation_cost: 800.0,
+        documentation_cost: 400.0,
+        total_cost: 1200.0,
+        potential_fine: 35_000_000.0,
+        roi: 29.0,
+    }
+}
+
+fn make_debt(total: f64, level: &str) -> crate::types::DebtResult {
+    crate::types::DebtResult {
+        total_debt: total,
+        level: level.to_string(),
+        findings_debt: total * 0.5,
+        documentation_debt: total * 0.3,
+        freshness_debt: total * 0.2,
+    }
+}
+
+fn make_readiness(score: f64, level: &str, gap_count: usize) -> crate::types::ReadinessResult {
+    let gaps: Vec<String> = (0..gap_count)
+        .map(|i| format!("Missing requirement {i}"))
+        .collect();
+    crate::types::ReadinessResult {
+        overall_score: score,
+        readiness_level: level.to_string(),
+        categories: vec![crate::types::ReadinessCategory {
+            category: "documentation".to_string(),
+            label: "Documentation".to_string(),
+            score: score * 0.8,
+            max_weight: 0.3,
+            achieved_weight: 0.3 * score / 100.0,
+        }],
+        gaps,
+        total_requirements: 15,
+        met_requirements: (15.0 * score / 100.0) as u32,
+        unmet_requirements: gap_count as u32,
+    }
+}
+
+#[test]
+fn e2e_dashboard_metrics_renders() {
+    crate::theme::init_theme("dark");
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.sidebar_visible = false;
+    app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
+    app.cost_estimate = Some(make_cost());
+    app.debt_score = Some(make_debt(24.5, "medium"));
+    app.readiness_score = Some(make_readiness(72.0, "near_ready", 3));
+
+    let buf = render_to_string(&app, 120, 50);
+    assert!(buf.contains("Metrics"), "Metrics panel title should render");
+    assert!(buf.contains("Cost:"), "Cost row should render");
+    assert!(buf.contains("1200"), "Cost total should appear");
+    assert!(buf.contains("Debt:"), "Debt row should render");
+    assert!(buf.contains("MEDIUM"), "Debt level should appear uppercase");
+    assert!(buf.contains("Ready:"), "Readiness row should render");
+    assert!(buf.contains("72"), "Readiness score should appear");
+    assert!(buf.contains("3 gaps"), "Gap count should appear");
+}
+
+#[test]
+fn e2e_dashboard_metrics_empty_renders() {
+    crate::theme::init_theme("dark");
+    let mut app = App::new(crate::config::TuiConfig::default());
+    app.sidebar_visible = false;
+    // No metrics loaded, no scan
+    assert!(app.cost_estimate.is_none());
+    assert!(app.debt_score.is_none());
+    assert!(app.readiness_score.is_none());
+
+    let buf = render_to_string(&app, 120, 40);
+    assert!(buf.contains("Metrics"), "Metrics panel title should render even without data");
+    assert!(buf.contains("Run /scan first"), "Should show placeholder when no scan");
+}
+
+#[test]
+fn e2e_debt_level_colors() {
+    let t = {
+        crate::theme::init_theme("dark");
+        crate::theme::theme()
+    };
+    use super::panels::{debt_level_color, readiness_level_color};
+    let _ = readiness_level_color; // silence unused import
+
+    // Low debt → green
+    assert_eq!(debt_level_color(10.0, &t), t.zone_green);
+    // Medium debt → yellow
+    assert_eq!(debt_level_color(35.0, &t), t.zone_yellow);
+    // High debt → red
+    assert_eq!(debt_level_color(60.0, &t), t.zone_red);
+    // Boundary: 20.0 → yellow
+    assert_eq!(debt_level_color(20.0, &t), t.zone_yellow);
+    // Boundary: 50.0 → yellow
+    assert_eq!(debt_level_color(50.0, &t), t.zone_yellow);
+}
+
+#[test]
+fn e2e_readiness_level_colors() {
+    let t = {
+        crate::theme::init_theme("dark");
+        crate::theme::theme()
+    };
+    use super::panels::readiness_level_color;
+
+    // Certified (>=90) → green
+    assert_eq!(readiness_level_color(95.0, &t), t.zone_green);
+    // Near ready (70-89) → yellow
+    assert_eq!(readiness_level_color(75.0, &t), t.zone_yellow);
+    // In progress (40-69) → yellow
+    assert_eq!(readiness_level_color(55.0, &t), t.zone_yellow);
+    // Early (<40) → red
+    assert_eq!(readiness_level_color(30.0, &t), t.zone_red);
+    // Boundary: 90.0 → green
+    assert_eq!(readiness_level_color(90.0, &t), t.zone_green);
+    // Boundary: 40.0 → yellow
+    assert_eq!(readiness_level_color(40.0, &t), t.zone_yellow);
+    // Boundary: 39.9 → red
+    assert_eq!(readiness_level_color(39.9, &t), t.zone_red);
+}
+

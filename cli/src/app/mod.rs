@@ -20,9 +20,9 @@ use crate::engine_client::EngineClient;
 use crate::layout::Breakpoint;
 use crate::saas_client::SyncStats;
 use crate::types::{
-    ActivityEntry, ActivityKind, ChatMessage, ClickTarget,
-    EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode, MultiFrameworkScoreResult,
-    Overlay, Panel, ScanResult, Selection, ViewState,
+    ActivityEntry, ActivityKind, ChatMessage, ClickTarget, CostEstimateResult,
+    DebtResult, EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode,
+    MultiFrameworkScoreResult, Overlay, Panel, ReadinessResult, ScanResult, Selection, ViewState,
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
@@ -180,6 +180,11 @@ pub struct App {
     /// Focused framework index (None = all cards, Some(idx) = single gauge)
     pub focused_framework: Option<usize>,
 
+    // Dashboard metrics (S05: Cost, Debt, Readiness)
+    pub cost_estimate: Option<CostEstimateResult>,
+    pub debt_score: Option<DebtResult>,
+    pub readiness_score: Option<ReadinessResult>,
+
     // SaaS sync state
     pub sync_state: SyncState,
 
@@ -274,6 +279,9 @@ impl App {
             animation: AnimationState::new(animations_enabled),
             framework_scores: None,
             focused_framework: None,
+            cost_estimate: None,
+            debt_score: None,
+            readiness_score: None,
             whatif: crate::components::whatif::WhatIfState::new(),
             spinner: Spinner::new(),
             project_path,
@@ -584,4 +592,12 @@ pub enum AppCommand {
     LoadFrameworkScores,
     /// Background result: framework scores loaded from engine.
     FrameworkScoresLoaded(Result<MultiFrameworkScoreResult, String>),
+    /// Load dashboard metrics (cost, debt, readiness) in parallel.
+    LoadDashboardMetrics,
+    /// Background result: dashboard metrics loaded from engine.
+    DashboardMetricsLoaded {
+        cost: Result<CostEstimateResult, String>,
+        debt: Result<DebtResult, String>,
+        readiness: Result<ReadinessResult, String>,
+    },
 }

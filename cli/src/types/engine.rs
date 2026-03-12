@@ -318,6 +318,62 @@ pub struct MultiFrameworkScoreResult {
     pub computed_at: String,
 }
 
+// --- Dashboard Metrics (S05: Cost, Debt, Readiness) ---
+
+/// GET /cost-estimate response.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CostEstimateResult {
+    pub remediation_cost: f64,
+    pub documentation_cost: f64,
+    pub total_cost: f64,
+    pub potential_fine: f64,
+    pub roi: f64,
+}
+
+/// GET /debt response.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DebtResult {
+    pub total_debt: f64,
+    pub level: String,
+    pub findings_debt: f64,
+    pub documentation_debt: f64,
+    pub freshness_debt: f64,
+}
+
+/// GET /cert/readiness response.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadinessResult {
+    pub overall_score: f64,
+    pub readiness_level: String,
+    #[serde(default)]
+    pub categories: Vec<ReadinessCategory>,
+    #[serde(default)]
+    pub gaps: Vec<String>,
+    #[serde(default)]
+    pub total_requirements: u32,
+    #[serde(default)]
+    pub met_requirements: u32,
+    #[serde(default)]
+    pub unmet_requirements: u32,
+}
+
+/// Readiness category from engine (matches TS `Aiuc1CategoryScore`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadinessCategory {
+    pub category: String,
+    #[serde(default)]
+    pub label: String,
+    pub score: f64,
+    #[serde(default)]
+    pub max_weight: f64,
+    #[serde(default)]
+    pub achieved_weight: f64,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct EngineStatus {
     pub ready: bool,

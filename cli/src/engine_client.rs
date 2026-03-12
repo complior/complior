@@ -2,7 +2,10 @@ use reqwest::Client;
 
 use crate::config::TuiConfig;
 use crate::error::{Result, TuiError};
-use crate::types::{EngineStatus, MultiFrameworkScoreResult, ScanResult};
+use crate::types::{
+    CostEstimateResult, DebtResult, EngineStatus, MultiFrameworkScoreResult, ReadinessResult,
+    ScanResult,
+};
 
 /// Check whether an error is a transient connection error worth retrying.
 fn is_connection_error(e: &TuiError) -> bool {
@@ -257,6 +260,47 @@ impl EngineClient {
             .send()
             .await?;
         let result = resp.json::<MultiFrameworkScoreResult>().await?;
+        Ok(result)
+    }
+
+    /// Fetch cost estimate from engine.
+    pub async fn cost_estimate(&self) -> Result<CostEstimateResult> {
+        let resp = self
+            .client
+            .get(format!("{}/cost-estimate", self.base_url))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+        let result = resp.json::<CostEstimateResult>().await?;
+        Ok(result)
+    }
+
+    /// Fetch compliance debt score from engine.
+    pub async fn debt_score(&self) -> Result<DebtResult> {
+        let resp = self
+            .client
+            .get(format!("{}/debt", self.base_url))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+        let result = resp.json::<DebtResult>().await?;
+        Ok(result)
+    }
+
+    /// Fetch AIUC-1 readiness score from engine.
+    pub async fn readiness_score(&self, name: &str, path: &str) -> Result<ReadinessResult> {
+        let name_enc = crate::headless::common::url_encode(name);
+        let path_enc = crate::headless::common::url_encode(path);
+        let resp = self
+            .client
+            .get(format!(
+                "{}/cert/readiness?name={}&path={}",
+                self.base_url, name_enc, path_enc
+            ))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+        let result = resp.json::<ReadinessResult>().await?;
         Ok(result)
     }
 
