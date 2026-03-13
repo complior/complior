@@ -97,7 +97,7 @@ fn parse_sse_event(event: &str, data: &str) -> Option<AppCommand> {
         "tool_call" => {
             let parsed: serde_json::Value = serde_json::from_str(data).ok()?;
             let name = parsed
-                .get("name")
+                .get("toolName")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown")
                 .to_string();
@@ -113,7 +113,7 @@ fn parse_sse_event(event: &str, data: &str) -> Option<AppCommand> {
         "tool_result" => {
             let parsed: serde_json::Value = serde_json::from_str(data).ok()?;
             let name = parsed
-                .get("name")
+                .get("toolName")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown")
                 .to_string();

@@ -156,7 +156,7 @@ pub fn handle_key_event(key: KeyEvent, app: &App) -> Action {
 
     // If an overlay is active, route input there
     if app.overlay != Overlay::None {
-        return handle_overlay_keys(key, &app.overlay);
+        return handle_overlay_keys(key, app);
     }
 
     match app.input_mode {
@@ -217,9 +217,28 @@ pub fn scroll_line_count_for_test(app: &App) -> i32 {
     scroll_line_count(app)
 }
 
-fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
+fn handle_overlay_keys(key: KeyEvent, app: &App) -> Action {
+    let overlay = &app.overlay;
+
+    // When onboarding is in text-input substep (key entry), treat all chars as text input
+    let onboarding_text_mode = app
+        .onboarding
+        .as_ref()
+        .is_some_and(|wiz| wiz.provider_substep == 1);
+
     // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
-    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette | Overlay::LlmSettings);
+    // Exception: onboarding text-input mode sends j/k as InsertChar
+    let navigable = !onboarding_text_mode
+        && matches!(
+            overlay,
+            Overlay::ThemePicker
+                | Overlay::Onboarding
+                | Overlay::DismissModal
+                | Overlay::ConfirmDialog
+                | Overlay::UndoHistory
+                | Overlay::CommandPalette
+                | Overlay::LlmSettings
+        );
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
@@ -233,6 +252,12 @@ fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
 
 fn handle_insert_mode(key: KeyEvent) -> Action {
     match key.code {
+        // Shift+Enter = newline (requires modifyOtherKeys protocol, works in tmux 3.2+)
+        KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => Action::InsertChar('\n'),
+        // Ctrl+J = newline fallback (works in all terminals)
+        KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::InsertChar('\n')
+        }
         KeyCode::Enter => Action::SubmitInput,
         KeyCode::Char(c) => Action::InsertChar(c),
         KeyCode::Backspace => Action::DeleteChar,

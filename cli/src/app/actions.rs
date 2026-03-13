@@ -272,12 +272,19 @@ impl App {
             }
             Action::EnterInsertMode => {
                 self.input_mode = InputMode::Insert;
+                if self.view_state == ViewState::Chat {
+                    self.chat_auto_scroll = true;
+                }
                 None
             }
             Action::EnterNormalMode => {
                 self.input_mode = InputMode::Normal;
                 self.selection = None;
                 self.colon_mode = false;
+                // Esc during streaming on Chat view → cancel LLM response
+                if self.view_state == ViewState::Chat && self.streaming.active {
+                    return Some(AppCommand::ChatCancel);
+                }
                 None
             }
             Action::EnterVisualMode => {
@@ -314,7 +321,7 @@ impl App {
                 let text = std::mem::take(&mut self.input);
                 self.input_cursor = 0;
 
-                if text.is_empty() {
+                if text.trim().is_empty() {
                     return None;
                 }
 

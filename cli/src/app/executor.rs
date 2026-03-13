@@ -658,9 +658,17 @@ pub async fn execute_command(
                 .and_then(|w| w.project_type.clone())
                 .unwrap_or_else(|| "existing".to_string());
 
-            // 3. Close wizard
+            // 3. Close wizard, reload config with newly saved values
             app.onboarding = None;
             app.overlay = types::Overlay::None;
+            let fresh = config::load_config();
+            app.llm_config = types::LlmSessionConfig {
+                provider: fresh.llm_provider.clone(),
+                model: fresh.llm_model.clone(),
+                api_key: fresh.llm_provider.as_deref()
+                    .and_then(config::load_llm_api_key),
+            };
+            app.config = fresh;
             app.config.onboarding_completed = true;
 
             app.toasts.push(
@@ -1083,6 +1091,7 @@ pub async fn execute_command(
                 partial_text: String::new(),
                 blocks: Vec::new(),
                 active: true,
+                stream_start: Some(std::time::Instant::now()),
             };
             app.chat_auto_scroll = true;
 
@@ -1152,15 +1161,37 @@ pub async fn execute_command(
         AppCommand::ChatStreamError(err) => {
             app.streaming.active = false;
             app.chat_cancel = None;
-            if err.contains("429") || err.contains("rate limit") {
+
+            let err_lower = err.to_lowercase();
+            let user_msg = if err_lower.contains("insufficient credits")
+                || err_lower.contains("402")
+                || err_lower.contains("payment required")
+                || err_lower.contains("billing")
+            {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    "LLM provider: insufficient balance. Top up your account.",
+                );
+                "Insufficient balance on your LLM provider account. Please add credits and try again.".to_string()
+            } else if err_lower.contains("401") || err_lower.contains("unauthorized") || err_lower.contains("invalid.*key") {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    "LLM provider: invalid API key.",
+                );
+                "Invalid API key. Check your LLM provider settings (:llm).".to_string()
+            } else if err_lower.contains("429") || err_lower.contains("rate limit") {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
                     "Rate limited. Wait a moment and try again.",
                 );
-            }
+                "Rate limit exceeded. Wait a moment and try again.".to_string()
+            } else {
+                format!("LLM error: {err}")
+            };
+
             app.messages.push(types::ChatMessage::new(
                 types::MessageRole::System,
-                format!("LLM error: {err}"),
+                user_msg,
             ));
             app.chat_auto_scroll = true;
         }

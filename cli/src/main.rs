@@ -24,7 +24,7 @@ mod views;
 mod watcher;
 mod widgets;
 
-use std::io;
+use std::io::{self, Write as _};
 use std::time::Duration;
 
 use crossterm::event::{
@@ -318,6 +318,10 @@ async fn main() -> color_eyre::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    // Enable xterm modifyOtherKeys mode 2 — makes Shift+Enter distinguishable
+    // Works in tmux 3.2+ (unlike Kitty CSI u protocol)
+    let _ = stdout.write_all(b"\x1b[>4;2m");
+    let _ = stdout.flush();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
@@ -361,6 +365,8 @@ async fn main() -> color_eyre::Result<()> {
 
     // Restore terminal
     disable_raw_mode()?;
+    // Disable modifyOtherKeys
+    let _ = execute!(terminal.backend_mut(), crossterm::style::Print("\x1b[>4;0m"));
     execute!(
         terminal.backend_mut(),
         LeaveAlternateScreen,

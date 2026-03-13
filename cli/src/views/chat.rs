@@ -8,6 +8,9 @@ use crate::app::App;
 use crate::theme;
 use crate::types::MessageRole;
 
+/// Indent for continuation lines (matches "[HH:MM] X " width).
+const INDENT: &str = "         ";
+
 /// Render status log as a panel within the dashboard.
 /// Only System messages are displayed — no chat, no LLM.
 pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
@@ -53,10 +56,10 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
         return;
     }
 
-    // Split: messages area + input bar (3 lines)
+    // Split: messages area + input bar (5 lines = 3 visible + 2 border)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1), Constraint::Length(3)])
+        .constraints([Constraint::Min(1), Constraint::Length(5)])
         .split(inner);
 
     let msg_area = chunks[0];
@@ -66,73 +69,149 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
     let mut lines: Vec<Line<'_>> = Vec::new();
 
     for msg in &app.messages {
-        let (prefix, prefix_style) = match msg.role {
-            MessageRole::System => (
-                "SYS",
-                Style::default().fg(t.system_msg),
-            ),
-            MessageRole::User => (
-                "YOU",
-                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
-            ),
-            MessageRole::Assistant => (
-                "AI ",
-                Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
-            ),
-        };
-
-        let time_span = Span::styled(
-            format!("[{}] ", msg.timestamp),
-            Style::default().fg(t.muted),
-        );
-
-        // First line with prefix
-        let first_content_line = msg.content.lines().next().unwrap_or("");
-        lines.push(Line::from(vec![
-            time_span,
-            Span::styled(format!("{prefix} "), prefix_style),
-            Span::raw(first_content_line.to_string()),
-        ]));
-
-        // Remaining content lines (indented)
-        for content_line in msg.content.lines().skip(1) {
-            lines.push(Line::from(vec![
-                Span::raw("         "),
-                Span::raw(content_line.to_string()),
-            ]));
+        match msg.role {
+            MessageRole::System => {
+                // System: ◦ prefix, muted text
+                let first_content_line = msg.content.lines().next().unwrap_or("");
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        format!("[{}] ", msg.timestamp),
+                        Style::default().fg(t.muted),
+                    ),
+                    Span::styled(
+                        "\u{25E6} ",
+                        Style::default().fg(t.system_msg),
+                    ),
+                    Span::styled(
+                        first_content_line.to_string(),
+                        Style::default().fg(t.muted),
+                    ),
+                ]));
+                for content_line in msg.content.lines().skip(1) {
+                    lines.push(Line::from(vec![
+                        Span::raw(INDENT),
+                        Span::styled(content_line.to_string(), Style::default().fg(t.muted)),
+                    ]));
+                }
+            }
+            MessageRole::User => {
+                // User: YOU prefix, bold, with background tint
+                let first_content_line = msg.content.lines().next().unwrap_or("");
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        format!("[{}] ", msg.timestamp),
+                        Style::default().fg(t.muted).bg(t.user_msg_bg),
+                    ),
+                    Span::styled(
+                        "YOU ",
+                        Style::default()
+                            .fg(t.user_msg)
+                            .bg(t.user_msg_bg)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        first_content_line.to_string(),
+                        Style::default().fg(t.fg).bg(t.user_msg_bg),
+                    ),
+                ]));
+                for content_line in msg.content.lines().skip(1) {
+                    lines.push(Line::from(vec![
+                        Span::styled(
+                            INDENT,
+                            Style::default().bg(t.user_msg_bg),
+                        ),
+                        Span::styled(
+                            content_line.to_string(),
+                            Style::default().fg(t.fg).bg(t.user_msg_bg),
+                        ),
+                    ]));
+                }
+            }
+            MessageRole::Assistant => {
+                // Assistant: ● prefix, green
+                let first_content_line = msg.content.lines().next().unwrap_or("");
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        format!("[{}] ", msg.timestamp),
+                        Style::default().fg(t.muted),
+                    ),
+                    Span::styled(
+                        "\u{25CF} ",
+                        Style::default()
+                            .fg(t.assistant_msg)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        first_content_line.to_string(),
+                        Style::default().fg(t.fg),
+                    ),
+                ]));
+                for content_line in msg.content.lines().skip(1) {
+                    lines.push(Line::from(vec![
+                        Span::raw(INDENT),
+                        Span::styled(content_line.to_string(), Style::default().fg(t.fg)),
+                    ]));
+                }
+            }
         }
 
         // Render blocks (thinking, tool_call, tool_result)
-        for block in &msg.blocks {
-            match block {
+        for blk in &msg.blocks {
+            match blk {
                 ChatBlock::Thinking(text) => {
                     let preview = if text.len() > 80 { &text[..80] } else { text };
+                    let suffix = if text.len() > 80 { "..." } else { "" };
                     lines.push(Line::from(vec![
-                        Span::raw("         "),
+                        Span::raw(INDENT),
                         Span::styled(
-                            format!("[thinking] {preview}..."),
-                            Style::default().fg(t.muted).add_modifier(Modifier::ITALIC),
+                            "\u{25CC} ",
+                            Style::default().fg(t.thinking_fg),
+                        ),
+                        Span::styled(
+                            format!("{preview}{suffix}"),
+                            Style::default()
+                                .fg(t.thinking_fg)
+                                .add_modifier(Modifier::ITALIC),
                         ),
                     ]));
                 }
                 ChatBlock::ToolCall { tool_name, args } => {
                     let args_preview = if args.len() > 60 { &args[..60] } else { args };
                     lines.push(Line::from(vec![
-                        Span::raw("         "),
+                        Span::raw(INDENT),
                         Span::styled(
-                            format!("[tool] {tool_name}({args_preview})"),
-                            Style::default().fg(t.accent),
+                            "\u{2699} ",
+                            Style::default().fg(t.tool_call_border),
+                        ),
+                        Span::styled(
+                            tool_name.as_str(),
+                            Style::default()
+                                .fg(t.tool_call_border)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            format!("({args_preview})"),
+                            Style::default().fg(t.muted),
                         ),
                     ]));
                 }
                 ChatBlock::ToolResult { tool_name, result, is_error } => {
                     let result_preview = if result.len() > 200 { &result[..200] } else { result };
-                    let color = if *is_error { t.zone_red } else { t.muted };
+                    let (icon, color) = if *is_error {
+                        ("\u{2717} ", t.tool_result_err) // ✗
+                    } else {
+                        ("\u{2713} ", t.tool_result_ok) // ✓
+                    };
                     lines.push(Line::from(vec![
-                        Span::raw("         "),
+                        Span::raw(INDENT),
+                        Span::styled(icon, Style::default().fg(color)),
                         Span::styled(
-                            format!("[result] {tool_name}: {result_preview}"),
-                            Style::default().fg(color),
+                            format!("{tool_name}: "),
+                            Style::default().fg(color).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            result_preview.to_string(),
+                            Style::default().fg(t.muted),
                         ),
                     ]));
                 }
@@ -143,29 +222,48 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
 
     // Streaming indicator
     if app.streaming.active {
+        let elapsed = app
+            .streaming
+            .stream_start
+            .map(|s| s.elapsed().as_secs_f64())
+            .unwrap_or(0.0);
+
+        // Spinner animation
+        const SPINNER: &[&str] = &[
+            "\u{280B}", "\u{2819}", "\u{2839}", "\u{2838}",
+            "\u{283C}", "\u{2834}", "\u{2826}", "\u{2827}",
+            "\u{2807}", "\u{280F}",
+        ];
+        let tick = (elapsed * 10.0) as usize % SPINNER.len();
+        let spinner = SPINNER[tick];
+
         if !app.streaming.partial_text.is_empty() {
             let partial = &app.streaming.partial_text;
             lines.push(Line::from(vec![
-                Span::raw("         "),
+                Span::raw(INDENT),
                 Span::styled(
-                    format!("AI  {partial}"),
-                    Style::default().fg(t.zone_green),
+                    "\u{25CF} ",
+                    Style::default().fg(t.assistant_msg).add_modifier(Modifier::BOLD),
                 ),
-            ]));
-            // Show cursor
-            lines.push(Line::from(vec![
-                Span::raw("         "),
-                Span::styled("\u{2588}", Style::default().fg(t.zone_green)),
-            ]));
-        } else {
-            lines.push(Line::from(vec![
-                Span::raw("         "),
                 Span::styled(
-                    "AI  ...",
-                    Style::default().fg(t.zone_green).add_modifier(Modifier::ITALIC),
+                    partial.as_str(),
+                    Style::default().fg(t.fg),
+                ),
+                Span::styled(
+                    "|",
+                    Style::default().fg(t.accent),
                 ),
             ]));
         }
+
+        // Status line
+        lines.push(Line::from(vec![
+            Span::raw(INDENT),
+            Span::styled(
+                format!("{spinner} responding \u{00B7} {elapsed:.1}s"),
+                Style::default().fg(t.thinking_fg),
+            ),
+        ]));
     }
 
     let total_lines = lines.len();
@@ -181,6 +279,23 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
         .scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
     frame.render_widget(paragraph, msg_area);
 
+    // ── "Unread above" indicator ──────────────────────────────────────────
+    if scroll > 0 && !app.chat_auto_scroll && msg_area.height > 0 {
+        let indicator = Paragraph::new(Line::from(vec![
+            Span::styled(
+                " \u{2191} more messages above ",
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
+        ]));
+        let indicator_area = Rect {
+            x: msg_area.x,
+            y: msg_area.y,
+            width: msg_area.width,
+            height: 1,
+        };
+        frame.render_widget(indicator, indicator_area);
+    }
+
     // ── Input area ────────────────────────────────────────────────────────
     let input_block = Block::default()
         .borders(Borders::ALL)
@@ -194,27 +309,46 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(input_block, input_area);
 
     if app.streaming.active {
+        let elapsed = app
+            .streaming
+            .stream_start
+            .map(|s| s.elapsed().as_secs_f64())
+            .unwrap_or(0.0);
         let streaming_hint = Line::from(vec![
-            Span::styled("Streaming... ", Style::default().fg(t.zone_green)),
-            Span::styled("Esc", Style::default().fg(t.accent)),
+            Span::styled(
+                format!("Streaming ({elapsed:.1}s)... "),
+                Style::default().fg(t.assistant_msg),
+            ),
+            Span::styled("Esc", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
             Span::styled(" to cancel", Style::default().fg(t.muted)),
         ]);
         frame.render_widget(Paragraph::new(streaming_hint), input_inner);
     } else {
-        let prompt = Line::from(vec![
-            Span::styled("> ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
-            if app.input.is_empty() && app.input_mode != InputMode::Insert {
-                Span::styled("i to type, :llm for settings", Style::default().fg(t.muted))
+        // Multiline input: split on newlines and render each line
+        let input_lines: Vec<&str> = app.input.split('\n').collect();
+        let mut prompt_lines: Vec<Line<'_>> = Vec::new();
+        for (i, line_text) in input_lines.iter().enumerate() {
+            let prefix = if i == 0 { "> " } else { "  " };
+            let is_last = i == input_lines.len() - 1;
+            let mut spans = vec![
+                Span::styled(prefix, Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            ];
+            if app.input.is_empty() && i == 0 && app.input_mode != InputMode::Insert {
+                spans.push(Span::styled("i to type, Shift+Enter newline, :llm settings", Style::default().fg(t.muted)));
             } else {
-                Span::raw(&*app.input)
-            },
-            if app.input_mode == InputMode::Insert {
-                Span::styled("\u{258c}", Style::default().fg(t.accent))
-            } else {
-                Span::raw("")
-            },
-        ]);
-        frame.render_widget(Paragraph::new(prompt), input_inner);
+                spans.push(Span::raw(line_text.to_string()));
+            }
+            if is_last && app.input_mode == InputMode::Insert {
+                spans.push(Span::styled("\u{258c}", Style::default().fg(t.accent)));
+            }
+            prompt_lines.push(Line::from(spans));
+        }
+        // Auto-scroll input to show last lines if they exceed visible area
+        let visible_input_lines = input_inner.height as usize;
+        let input_scroll = prompt_lines.len().saturating_sub(visible_input_lines);
+        let prompt_paragraph = Paragraph::new(prompt_lines)
+            .scroll((u16::try_from(input_scroll).unwrap_or(0), 0));
+        frame.render_widget(prompt_paragraph, input_inner);
     }
 }
 
