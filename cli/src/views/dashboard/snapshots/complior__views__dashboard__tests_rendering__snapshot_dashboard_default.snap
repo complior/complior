@@ -4,7 +4,7 @@ expression: buf
 ---
 (o)(o)                                                                                                                  
  \__/  complior v1.0                                                                                                    
-  D:Dash  S:Scan  F:Fix  P:Passport  O:Oblig  T:Time  R:Report  L:Log                                                   
+  D:Dash  S:Scan  F:Fix  P:Passport  O:Oblig  T:Time  R:Report  L:Log  C:Chat                                           
 ┌ Compliance Score ────────────────────────────────────────────────────────────────────────────────┐┌ Info ────────────┐
 │                                     No scan yet — run /scan                                      ││ cli/             │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘│ No scan yet      │

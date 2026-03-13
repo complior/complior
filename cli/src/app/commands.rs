@@ -158,7 +158,7 @@ impl App {
                         "  /reconnect     — Reconnect to engine\n",
                         "  /theme <name>  — Switch theme (dark/light/high-contrast)\n",
                         "  /watch         — Toggle file watch mode\n",
-                        "  /view <1-7>    — Switch to view (Dashboard/Scan/Fix/Passport/Timeline/Report/Log)\n",
+                        "  /view <1-9>    — Switch to view (Dashboard/Scan/Fix/Passport/Oblig/Timeline/Report/Log/Chat)\n",
                         "  /save [name]   — Save session\n",
                         "  /load [name]   — Load session\n",
                         "  /sessions      — List saved sessions\n",
@@ -169,7 +169,7 @@ impl App {
                         "Shortcuts:\n",
                         "  @file          — Reference file in message\n",
                         "  !cmd           — Run shell command directly\n",
-                        "  1-8            — Switch view (Normal mode)\n",
+                        "  1-9            — Switch view (Normal mode)\n",
                         "  Tab            — Toggle mode (Scan/Fix/Watch)\n",
                         "  Alt+1..5       — Jump to panel\n",
                         "  Ctrl+P         — Command palette\n",
@@ -201,7 +201,7 @@ impl App {
                 }
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
-                    "Usage: /view <1-7> (Dashboard/Scan/Fix/Passport/Timeline/Report/Log)"
+                    "Usage: /view <1-9> (Dashboard/Scan/Fix/Passport/Oblig/Timeline/Report/Log/Chat)"
                         .to_string(),
                 ));
                 None
@@ -471,7 +471,7 @@ impl App {
                 }
                 self.toasts.push(
                     crate::components::toast::ToastKind::Warning,
-                    "Usage: :view <1-8>",
+                    "Usage: :view <1-9>",
                 );
                 None
             }
@@ -519,6 +519,11 @@ impl App {
                 } else {
                     Some(AppCommand::FixDryRun(selected))
                 }
+            }
+            Some("llm") | Some("settings") => {
+                self.llm_settings = Some(crate::llm_settings::LlmSettingsState::new(&self.llm_config));
+                self.overlay = Overlay::LlmSettings;
+                None
             }
             _ => {
                 self.toasts.push(

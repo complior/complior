@@ -1073,6 +1073,169 @@ pub async fn execute_command(
                 }
             }
         }
+        AppCommand::ChatSend(msg) => {
+            // Push user message
+            app.messages.push(types::ChatMessage::new(
+                types::MessageRole::User,
+                msg.clone(),
+            ));
+            app.streaming = types::StreamingState {
+                partial_text: String::new(),
+                blocks: Vec::new(),
+                active: true,
+            };
+            app.chat_auto_scroll = true;
+
+            // Build request body
+            let mut body = serde_json::json!({ "message": msg });
+            if let Some(ref provider) = app.llm_config.provider {
+                body["provider"] = serde_json::Value::String(provider.clone());
+            }
+            if let Some(ref model) = app.llm_config.model {
+                body["model"] = serde_json::Value::String(model.clone());
+            }
+            if let Some(ref api_key) = app.llm_config.api_key {
+                body["apiKey"] = serde_json::Value::String(api_key.clone());
+            }
+
+            let client = app.engine_client.clone();
+            let tx = app.bg_tx.clone();
+            let cancel = std::sync::Arc::new(tokio::sync::Notify::new());
+            app.chat_cancel = Some(cancel.clone());
+
+            tokio::spawn(async move {
+                match client.post_stream("/chat", &body).await {
+                    Ok(resp) => {
+                        if crate::chat_stream::is_json_response(&resp) {
+                            // Slash command response (JSON, not SSE)
+                            let text = resp.text().await.unwrap_or_default();
+                            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                                let display = format_slash_command_response(&val);
+                                let _ = tx.send(AppCommand::ChatStreamDelta(display));
+                            } else {
+                                let _ = tx.send(AppCommand::ChatStreamDelta(text));
+                            }
+                            let _ = tx.send(AppCommand::ChatStreamDone);
+                        } else {
+                            crate::chat_stream::spawn_stream_reader(resp, tx, cancel);
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.send(AppCommand::ChatStreamError(e.to_string()));
+                    }
+                }
+            });
+        }
+        AppCommand::ChatStreamDelta(text) => {
+            app.streaming.partial_text.push_str(&text);
+            app.chat_auto_scroll = true;
+        }
+        AppCommand::ChatStreamBlock(block) => {
+            app.streaming.blocks.push(block);
+            app.chat_auto_scroll = true;
+        }
+        AppCommand::ChatStreamDone => {
+            if app.streaming.active {
+                let content = if app.streaming.partial_text.is_empty() {
+                    "(no response)".to_string()
+                } else {
+                    std::mem::take(&mut app.streaming.partial_text)
+                };
+                let mut msg = types::ChatMessage::new(types::MessageRole::Assistant, content);
+                msg.blocks = std::mem::take(&mut app.streaming.blocks);
+                app.messages.push(msg);
+                app.streaming.active = false;
+                app.chat_cancel = None;
+                app.chat_auto_scroll = true;
+            }
+        }
+        AppCommand::ChatStreamError(err) => {
+            app.streaming.active = false;
+            app.chat_cancel = None;
+            if err.contains("429") || err.contains("rate limit") {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    "Rate limited. Wait a moment and try again.",
+                );
+            }
+            app.messages.push(types::ChatMessage::new(
+                types::MessageRole::System,
+                format!("LLM error: {err}"),
+            ));
+            app.chat_auto_scroll = true;
+        }
+        AppCommand::ChatCancel => {
+            if let Some(cancel) = app.chat_cancel.take() {
+                cancel.notify_one();
+            }
+            if app.streaming.active {
+                app.streaming.active = false;
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    "Streaming cancelled.".to_string(),
+                ));
+            }
+        }
+        AppCommand::TestLlmConnection => {
+            let mut body = serde_json::json!({ "message": "/cost" });
+            if let Some(ref provider) = app.llm_config.provider {
+                body["provider"] = serde_json::Value::String(provider.clone());
+            }
+            if let Some(ref api_key) = app.llm_config.api_key {
+                body["apiKey"] = serde_json::Value::String(api_key.clone());
+            }
+
+            let client = app.engine_client.clone();
+            let tx = app.bg_tx.clone();
+            tokio::spawn(async move {
+                let result = match client.post_json("/chat", &body).await {
+                    Ok(_) => Ok("Connection successful".to_string()),
+                    Err(e) => Err(e.to_string()),
+                };
+                let _ = tx.send(AppCommand::LlmConnectionTestResult(result));
+            });
+        }
+        AppCommand::LlmConnectionTestResult(result) => {
+            if let Some(ref mut settings) = app.llm_settings {
+                settings.test_status = Some(result);
+            }
+        }
+        AppCommand::SaveLlmSettings => {
+            config::save_llm_config(
+                app.llm_config.provider.as_deref(),
+                app.llm_config.model.as_deref(),
+                app.llm_config.api_key.as_deref(),
+            )
+            .await;
+        }
+    }
+}
+
+/// Format a JSON slash command response for display.
+fn format_slash_command_response(val: &serde_json::Value) -> String {
+    if let Some(cmd) = val.get("command").and_then(|v| v.as_str()) {
+        match cmd {
+            "mode" => {
+                let label = val
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                format!("Mode: {label}")
+            }
+            "cost" => {
+                let cost = val.get("totalCost").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let tokens = val.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                format!("Session cost: ${cost:.4}  ({tokens} tokens)")
+            }
+            "model" => val
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Model updated")
+                .to_string(),
+            _ => serde_json::to_string_pretty(val).unwrap_or_default(),
+        }
+    } else {
+        serde_json::to_string_pretty(val).unwrap_or_default()
     }
 }
 

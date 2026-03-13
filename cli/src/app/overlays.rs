@@ -197,7 +197,123 @@ impl App {
         }
     }
 
+    fn handle_llm_settings_action(&mut self, action: Action) -> Option<AppCommand> {
+        use crate::llm_settings::LlmSettingsField;
+
+        match action {
+            Action::ScrollDown => {
+                if let Some(s) = &mut self.llm_settings {
+                    if !s.editing {
+                        s.focused_field = match s.focused_field {
+                            LlmSettingsField::Provider => LlmSettingsField::ApiKey,
+                            LlmSettingsField::ApiKey => LlmSettingsField::Model,
+                            LlmSettingsField::Model => LlmSettingsField::TestConnection,
+                            LlmSettingsField::TestConnection => LlmSettingsField::TestConnection,
+                        };
+                    }
+                }
+                None
+            }
+            Action::ScrollUp => {
+                if let Some(s) = &mut self.llm_settings {
+                    if !s.editing {
+                        s.focused_field = match s.focused_field {
+                            LlmSettingsField::Provider => LlmSettingsField::Provider,
+                            LlmSettingsField::ApiKey => LlmSettingsField::Provider,
+                            LlmSettingsField::Model => LlmSettingsField::ApiKey,
+                            LlmSettingsField::TestConnection => LlmSettingsField::Model,
+                        };
+                    }
+                }
+                None
+            }
+            Action::InsertChar(' ') if self.llm_settings.as_ref().is_some_and(|s| {
+                !s.editing && s.focused_field == LlmSettingsField::Provider
+            }) => {
+                if let Some(s) = &mut self.llm_settings {
+                    s.selected_provider = (s.selected_provider + 1) % 3;
+                }
+                None
+            }
+            Action::SubmitInput => {
+                if let Some(s) = &mut self.llm_settings {
+                    if s.editing {
+                        // Stop editing
+                        s.editing = false;
+                    } else {
+                        match s.focused_field {
+                            LlmSettingsField::Provider => {
+                                s.selected_provider = (s.selected_provider + 1) % 3;
+                            }
+                            LlmSettingsField::ApiKey => {
+                                s.editing = true;
+                            }
+                            LlmSettingsField::Model => {
+                                s.editing = true;
+                            }
+                            LlmSettingsField::TestConnection => {
+                                return Some(AppCommand::TestLlmConnection);
+                            }
+                        }
+                    }
+                }
+                None
+            }
+            Action::InsertChar(c) => {
+                if let Some(s) = &mut self.llm_settings {
+                    if s.editing {
+                        match s.focused_field {
+                            LlmSettingsField::ApiKey => s.api_key_input.push(c),
+                            LlmSettingsField::Model => s.model_input.push(c),
+                            _ => {}
+                        }
+                    }
+                }
+                None
+            }
+            Action::DeleteChar => {
+                if let Some(s) = &mut self.llm_settings {
+                    if s.editing {
+                        match s.focused_field {
+                            LlmSettingsField::ApiKey => { s.api_key_input.pop(); }
+                            LlmSettingsField::Model => { s.model_input.pop(); }
+                            _ => {}
+                        }
+                    }
+                }
+                None
+            }
+            Action::EnterNormalMode | Action::Quit => {
+                // Save settings and close
+                if let Some(s) = self.llm_settings.take() {
+                    let provider = crate::llm_settings::PROVIDERS[s.selected_provider].name();
+                    self.llm_config.provider = Some(provider.to_string());
+                    if !s.api_key_input.is_empty() {
+                        self.llm_config.api_key = Some(s.api_key_input);
+                    }
+                    if !s.model_input.is_empty() {
+                        self.llm_config.model = Some(s.model_input);
+                    }
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Info,
+                        "LLM settings saved",
+                    );
+                    self.overlay = Overlay::None;
+                    return Some(AppCommand::SaveLlmSettings);
+                }
+                self.overlay = Overlay::None;
+                None
+            }
+            _ => None,
+        }
+    }
+
     pub(super) fn handle_overlay_action(&mut self, action: Action) -> Option<AppCommand> {
+        // --- LLM Settings overlay ---
+        if self.overlay == Overlay::LlmSettings {
+            return self.handle_llm_settings_action(action);
+        }
+
         // --- Theme Picker overlay ---
         if self.overlay == Overlay::ThemePicker {
             return self.handle_theme_picker_action(action);
@@ -350,7 +466,7 @@ impl App {
                         self.overlay = Overlay::None;
                     }
                     Overlay::None | Overlay::ThemePicker | Overlay::Onboarding
-                    | Overlay::UndoHistory => {}
+                    | Overlay::UndoHistory | Overlay::LlmSettings => {}
 
                 }
                 None

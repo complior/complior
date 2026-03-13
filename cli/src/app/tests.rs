@@ -143,10 +143,15 @@ mod tests {
         assert!(cmd.is_none());
         assert_eq!(app.view_state, ViewState::Scan);
 
-        // Invalid view number
+        // view 9 → Chat
         let cmd = app.handle_command("view 9");
         assert!(cmd.is_none());
-        assert_eq!(app.view_state, ViewState::Scan);
+        assert_eq!(app.view_state, ViewState::Chat);
+
+        // Invalid view number
+        let cmd = app.handle_command("view 10");
+        assert!(cmd.is_none());
+        assert_eq!(app.view_state, ViewState::Chat);
     }
 
     #[test]
@@ -274,11 +279,11 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         app.view_state = ViewState::Dashboard;
         app.rebuild_click_areas(120, 40);
-        // Should have 8 view tabs in footer
+        // Should have 9 view tabs in footer
         let tab_count = app.click_areas.iter()
             .filter(|(_, t)| matches!(t, crate::types::ClickTarget::ViewTab(_)))
             .count();
-        assert_eq!(tab_count, 8);
+        assert_eq!(tab_count, 9);
     }
 
     #[test]

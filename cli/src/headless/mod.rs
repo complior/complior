@@ -7,6 +7,7 @@
 
 pub mod agent;
 pub mod cert;
+pub mod chat;
 mod commands;
 pub mod cost;
 pub(crate) mod common;

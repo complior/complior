@@ -27,3 +27,9 @@ export const DEFAULT_OUTPUT_COST_PER_1K = 0.015;
 
 /** Default hourly rate for compliance cost estimation (EUR). */
 export const DEFAULT_HOURLY_RATE = 150;
+
+/** EU AI Act full enforcement date (ISO string). */
+export const EU_AI_ACT_DEADLINE_ISO = '2026-08-02';
+
+/** EU AI Act full enforcement date as Date object. */
+export const EU_AI_ACT_DEADLINE = new Date(`${EU_AI_ACT_DEADLINE_ISO}T00:00:00Z`);

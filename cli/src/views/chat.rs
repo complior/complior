@@ -23,10 +23,25 @@ pub fn render_chat(frame: &mut Frame, area: Rect, app: &App, focused: bool) {
     render_status_log(frame, inner, app);
 }
 
-/// Full-screen status log view (`ViewState::Log` / key `L`).
+/// Full-screen readonly log view (`ViewState::Log` / key `L`).
+///
+/// Shows only System-role messages as a status log, with no input area.
+/// Delegates to `render_chat` (the dashboard panel renderer) with `focused: true`.
+pub fn render_log_view(frame: &mut Frame, area: Rect, app: &App) {
+    render_chat(frame, area, app, true);
+}
+
+/// Full-screen interactive chat view (`ViewState::Chat` / key `C`).
+///
+/// Shows all message roles (System, User, Assistant) with distinct styling,
+/// streaming indicator, and an input area at the bottom.
 pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
+    use crate::types::{ChatBlock, InputMode};
+
+    let t = theme::theme();
+
     let block = Block::default()
-        .title(" Status Log ")
+        .title(" Chat ")
         .title_style(theme::title_style())
         .borders(Borders::ALL)
         .border_style(theme::border_style(true));
@@ -34,7 +49,173 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    render_status_log(frame, inner, app);
+    if inner.height < 4 {
+        return;
+    }
+
+    // Split: messages area + input bar (3 lines)
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(3)])
+        .split(inner);
+
+    let msg_area = chunks[0];
+    let input_area = chunks[1];
+
+    // ── Messages ──────────────────────────────────────────────────────────
+    let mut lines: Vec<Line<'_>> = Vec::new();
+
+    for msg in &app.messages {
+        let (prefix, prefix_style) = match msg.role {
+            MessageRole::System => (
+                "SYS",
+                Style::default().fg(t.system_msg),
+            ),
+            MessageRole::User => (
+                "YOU",
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
+            MessageRole::Assistant => (
+                "AI ",
+                Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
+            ),
+        };
+
+        let time_span = Span::styled(
+            format!("[{}] ", msg.timestamp),
+            Style::default().fg(t.muted),
+        );
+
+        // First line with prefix
+        let first_content_line = msg.content.lines().next().unwrap_or("");
+        lines.push(Line::from(vec![
+            time_span,
+            Span::styled(format!("{prefix} "), prefix_style),
+            Span::raw(first_content_line.to_string()),
+        ]));
+
+        // Remaining content lines (indented)
+        for content_line in msg.content.lines().skip(1) {
+            lines.push(Line::from(vec![
+                Span::raw("         "),
+                Span::raw(content_line.to_string()),
+            ]));
+        }
+
+        // Render blocks (thinking, tool_call, tool_result)
+        for block in &msg.blocks {
+            match block {
+                ChatBlock::Thinking(text) => {
+                    let preview = if text.len() > 80 { &text[..80] } else { text };
+                    lines.push(Line::from(vec![
+                        Span::raw("         "),
+                        Span::styled(
+                            format!("[thinking] {preview}..."),
+                            Style::default().fg(t.muted).add_modifier(Modifier::ITALIC),
+                        ),
+                    ]));
+                }
+                ChatBlock::ToolCall { tool_name, args } => {
+                    let args_preview = if args.len() > 60 { &args[..60] } else { args };
+                    lines.push(Line::from(vec![
+                        Span::raw("         "),
+                        Span::styled(
+                            format!("[tool] {tool_name}({args_preview})"),
+                            Style::default().fg(t.accent),
+                        ),
+                    ]));
+                }
+                ChatBlock::ToolResult { tool_name, result, is_error } => {
+                    let result_preview = if result.len() > 200 { &result[..200] } else { result };
+                    let color = if *is_error { t.zone_red } else { t.muted };
+                    lines.push(Line::from(vec![
+                        Span::raw("         "),
+                        Span::styled(
+                            format!("[result] {tool_name}: {result_preview}"),
+                            Style::default().fg(color),
+                        ),
+                    ]));
+                }
+                ChatBlock::Text(_) => {}
+            }
+        }
+    }
+
+    // Streaming indicator
+    if app.streaming.active {
+        if !app.streaming.partial_text.is_empty() {
+            let partial = &app.streaming.partial_text;
+            lines.push(Line::from(vec![
+                Span::raw("         "),
+                Span::styled(
+                    format!("AI  {partial}"),
+                    Style::default().fg(t.zone_green),
+                ),
+            ]));
+            // Show cursor
+            lines.push(Line::from(vec![
+                Span::raw("         "),
+                Span::styled("\u{2588}", Style::default().fg(t.zone_green)),
+            ]));
+        } else {
+            lines.push(Line::from(vec![
+                Span::raw("         "),
+                Span::styled(
+                    "AI  ...",
+                    Style::default().fg(t.zone_green).add_modifier(Modifier::ITALIC),
+                ),
+            ]));
+        }
+    }
+
+    let total_lines = lines.len();
+    let visible = msg_area.height as usize;
+    let scroll = if app.chat_auto_scroll {
+        total_lines.saturating_sub(visible)
+    } else {
+        app.chat_scroll.min(total_lines.saturating_sub(visible))
+    };
+
+    let paragraph = Paragraph::new(lines)
+        .wrap(Wrap { trim: false })
+        .scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
+    frame.render_widget(paragraph, msg_area);
+
+    // ── Input area ────────────────────────────────────────────────────────
+    let input_block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(if app.input_mode == InputMode::Insert {
+            t.accent
+        } else {
+            t.muted
+        }));
+
+    let input_inner = input_block.inner(input_area);
+    frame.render_widget(input_block, input_area);
+
+    if app.streaming.active {
+        let streaming_hint = Line::from(vec![
+            Span::styled("Streaming... ", Style::default().fg(t.zone_green)),
+            Span::styled("Esc", Style::default().fg(t.accent)),
+            Span::styled(" to cancel", Style::default().fg(t.muted)),
+        ]);
+        frame.render_widget(Paragraph::new(streaming_hint), input_inner);
+    } else {
+        let prompt = Line::from(vec![
+            Span::styled("> ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            if app.input.is_empty() && app.input_mode != InputMode::Insert {
+                Span::styled("i to type, :llm for settings", Style::default().fg(t.muted))
+            } else {
+                Span::raw(&*app.input)
+            },
+            if app.input_mode == InputMode::Insert {
+                Span::styled("\u{258c}", Style::default().fg(t.accent))
+            } else {
+                Span::raw("")
+            },
+        ]);
+        frame.render_widget(Paragraph::new(prompt), input_inner);
+    }
 }
 
 /// Render only System-role messages as the status log.

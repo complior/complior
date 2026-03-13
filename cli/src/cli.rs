@@ -137,6 +137,20 @@ pub enum Command {
         action: CertAction,
     },
 
+    /// Chat with the compliance assistant (LLM-powered)
+    Chat {
+        /// The question or message to send
+        message: String,
+
+        /// Output raw JSON events instead of streamed text
+        #[arg(long)]
+        json: bool,
+
+        /// Model override (e.g. "gpt-4o", "claude-sonnet")
+        #[arg(long)]
+        model: Option<String>,
+    },
+
     /// Audit AI supply chain dependencies and model compliance cards
     SupplyChain {
         /// Output as JSON
@@ -605,6 +619,7 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Daemon { .. }
             | Command::Agent { .. }
             | Command::Cert { .. }
+            | Command::Chat { .. }
             | Command::SupplyChain { .. }
             | Command::Cost { .. }
             | Command::Debt { .. }
@@ -1345,6 +1360,44 @@ mod tests {
                 assert_eq!(path.as_deref(), Some("/tmp/proj"));
             }
             _ => panic!("Expected Agent Diff command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_chat() {
+        let cli = Cli::parse_from(["complior", "chat", "What is Article 5?"]);
+        match &cli.command {
+            Some(Command::Chat { message, json, model }) => {
+                assert_eq!(message, "What is Article 5?");
+                assert!(!json);
+                assert!(model.is_none());
+            }
+            _ => panic!("Expected Chat command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_chat_json() {
+        let cli = Cli::parse_from(["complior", "chat", "test", "--json"]);
+        match &cli.command {
+            Some(Command::Chat { message, json, .. }) => {
+                assert_eq!(message, "test");
+                assert!(*json);
+            }
+            _ => panic!("Expected Chat command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_chat_model() {
+        let cli = Cli::parse_from(["complior", "chat", "test", "--model", "gpt-4o"]);
+        match &cli.command {
+            Some(Command::Chat { message, model, .. }) => {
+                assert_eq!(message, "test");
+                assert_eq!(model.as_deref(), Some("gpt-4o"));
+            }
+            _ => panic!("Expected Chat command"),
         }
     }
 

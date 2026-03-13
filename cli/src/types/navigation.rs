@@ -9,6 +9,7 @@ pub enum ViewState {
     Timeline,     // T, index 5
     Report,       // R, index 6
     Log,          // L, index 7
+    Chat,         // C, index 8
 }
 
 impl ViewState {
@@ -23,6 +24,7 @@ impl ViewState {
             6 => Some(Self::Timeline),
             7 => Some(Self::Report),
             8 => Some(Self::Log),
+            9 => Some(Self::Chat),
             _ => None,
         }
     }
@@ -40,6 +42,7 @@ impl ViewState {
             'T' => Some(Self::Timeline),
             'R' => Some(Self::Report),
             'L' => Some(Self::Log),
+            'C' => Some(Self::Chat),
             _ => None,
         }
     }
@@ -55,6 +58,7 @@ impl ViewState {
             Self::Timeline => 5,
             Self::Report => 6,
             Self::Log => 7,
+            Self::Chat => 8,
         }
     }
 
@@ -69,10 +73,11 @@ impl ViewState {
             Self::Timeline => "Timeline",
             Self::Report => "Report",
             Self::Log => "Log",
+            Self::Chat => "Chat",
         }
     }
 
-    pub const ALL: [ViewState; 8] = [
+    pub const ALL: [ViewState; 9] = [
         Self::Dashboard,
         Self::Scan,
         Self::Fix,
@@ -81,6 +86,7 @@ impl ViewState {
         Self::Timeline,
         Self::Report,
         Self::Log,
+        Self::Chat,
     ];
 }
 

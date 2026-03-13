@@ -45,3 +45,19 @@ pub enum ChatBlock {
     ToolCall { tool_name: String, args: String },
     ToolResult { tool_name: String, result: String, is_error: bool },
 }
+
+/// State of an in-progress SSE stream from the LLM.
+#[derive(Debug, Clone, Default)]
+pub struct StreamingState {
+    pub partial_text: String,
+    pub blocks: Vec<ChatBlock>,
+    pub active: bool,
+}
+
+/// LLM config passed per-request (provider/model/apiKey).
+#[derive(Debug, Clone, Default)]
+pub struct LlmSessionConfig {
+    pub provider: Option<String>,
+    pub model: Option<String>,
+    pub api_key: Option<String>,
+}

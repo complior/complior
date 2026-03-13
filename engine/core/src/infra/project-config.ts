@@ -6,6 +6,12 @@ const ProjectConfigSchema = z.object({
   compliance: z.object({
     frameworks: z.array(z.string()).min(1),
   }).default({ frameworks: ['eu-ai-act'] }),
+  llm: z.object({
+    model: z.string().optional(),
+    provider: z.string().optional(),
+    apiKey: z.string().optional(),
+    maxRequestsPerHour: z.number().int().positive().optional(),
+  }).optional(),
 }).default({});
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;

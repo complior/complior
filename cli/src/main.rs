@@ -1,5 +1,6 @@
 mod animation;
 mod app;
+mod chat_stream;
 mod contract_test;
 mod cli;
 mod components;
@@ -7,6 +8,7 @@ mod config;
 mod daemon;
 mod engine_client;
 mod engine_process;
+mod llm_settings;
 mod saas_client;
 mod error;
 mod headless;
@@ -137,6 +139,16 @@ async fn main() -> color_eyre::Result<()> {
                 let project_path = std::env::current_dir().unwrap_or_default();
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
                 return Ok(());
+            }
+            Some(cli::Command::Chat { message, json, model }) => {
+                let code = headless::chat::run_chat(
+                    message,
+                    *json,
+                    model.as_deref(),
+                    &config,
+                )
+                .await;
+                std::process::exit(code);
             }
             Some(cli::Command::Agent { action }) => {
                 let code = headless::agent::run_agent_command(action, &config).await;

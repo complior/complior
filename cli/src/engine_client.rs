@@ -304,6 +304,36 @@ impl EngineClient {
         Ok(result)
     }
 
+    /// POST returning raw response for SSE stream parsing.
+    pub async fn post_stream(
+        &self,
+        endpoint: &str,
+        body: &serde_json::Value,
+    ) -> Result<reqwest::Response> {
+        let url = format!("{}{endpoint}", self.base_url);
+        let resp = self
+            .client
+            .post(&url)
+            .header("Accept", "text/event-stream")
+            .json(body)
+            .timeout(std::time::Duration::from_secs(120))
+            .send()
+            .await?;
+        if resp.status() == 429 {
+            return Err(crate::error::TuiError::Engine(
+                "Rate limit exceeded — max chat requests per hour reached".to_string(),
+            ));
+        }
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            return Err(crate::error::TuiError::Engine(format!(
+                "HTTP {status}: {text}"
+            )));
+        }
+        Ok(resp)
+    }
+
     /// POST with long timeout (300s) — for adversarial test endpoint (18+ LLM calls).
     pub async fn post_json_long(&self, endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
         let resp = self

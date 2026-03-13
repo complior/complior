@@ -88,6 +88,7 @@ export interface RouterDeps {
   readonly simulateActions?: (input: SimulationInput) => SimulationResult;
   readonly onboardingService?: import('../services/onboarding-service.js').OnboardingService;
   readonly frameworkService?: FrameworkService;
+  readonly maxRequestsPerHour?: number;
 }
 
 export const createRouter = (deps: RouterDeps) => {
@@ -135,7 +136,7 @@ export const createRouter = (deps: RouterDeps) => {
   // Mount routes
   app.route('/', createStatusRoute(deps.statusService));
   app.route('/', createScanRoute({ scanService: deps.scanService, getLastScan: deps.getLastScan }));
-  app.route('/', createChatRoute({ chatService: deps.chatService, llm: deps.llm, toolExecutorDeps: deps.toolExecutorDeps, getMode: deps.getMode, setMode: deps.setMode }));
+  app.route('/', createChatRoute({ chatService: deps.chatService, llm: deps.llm, toolExecutorDeps: deps.toolExecutorDeps, getMode: deps.getMode, setMode: deps.setMode, maxRequestsPerHour: deps.maxRequestsPerHour }));
   app.route('/', createFileRoute(deps.fileService));
   app.route('/', createFixRoute({ fixService: deps.fixService, undoService: deps.undoService }));
   app.route('/', createBadgeRoute(deps.badgeService));

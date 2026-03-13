@@ -31,6 +31,7 @@ pub enum Overlay {
     ConfirmDialog,
     DismissModal,
     UndoHistory,
+    LlmSettings,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

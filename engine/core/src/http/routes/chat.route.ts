@@ -14,6 +14,7 @@ import { createCodingTools } from '../../llm/tool-definitions.js';
 import type { AgentMode } from '../../llm/tools/types.js';
 import { getAgentConfig, getAllModes } from '../../llm/agents/modes.js';
 import { createCostTracker, type CostTracker } from '../../llm/routing/cost-tracker.js';
+import { createRateLimiter } from '../../infra/rate-limiter.js';
 
 const ChatRequestSchema = z.object({
   message: z.string().min(1),
@@ -29,6 +30,7 @@ export interface ChatRouteDeps {
   readonly toolExecutorDeps: ToolExecutorDeps;
   readonly getMode: () => AgentMode;
   readonly setMode: (mode: AgentMode) => void;
+  readonly maxRequestsPerHour?: number;
 }
 
 const AGENT_MODE_SET = new Set<string>(['build', 'comply', 'audit', 'learn']);
@@ -64,6 +66,10 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
   // Session state
   let modelOverride: string | undefined;
   const costTracker: CostTracker = createCostTracker();
+
+  // Rate limiting (sliding window)
+  const DEFAULT_MAX_REQUESTS_PER_HOUR = 50;
+  const rateLimiter = createRateLimiter(deps.maxRequestsPerHour ?? DEFAULT_MAX_REQUESTS_PER_HOUR);
 
   // GET /mode — current mode info
   app.get('/mode', (c) => c.json({ mode: getMode(), config: getAgentConfig(getMode()) }));
@@ -111,6 +117,11 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
       }
     }
 
+    // Rate limiting — sliding window
+    if (!rateLimiter.check()) {
+      return c.json({ error: 'RATE_LIMIT', message: 'Chat rate limit exceeded' }, 429);
+    }
+
     // Apply mode from request or session
     if (parsed.data.mode) setMode(parsed.data.mode);
 
@@ -121,7 +132,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
 
     // Use mode-specific system prompt
     const modeConfig = getAgentConfig(getMode());
-    const systemPrompt = `${modeConfig.systemPrompt}\n\n${chatService.buildSystemPrompt()}`;
+    const systemPrompt = `${modeConfig.systemPrompt}\n\n${await chatService.buildSystemPrompt()}`;
     const tools = createCodingTools(chatService.getProjectPath(), toolExecutorDeps);
 
     // Append user message to conversation history
@@ -199,6 +210,9 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
         if (assistantText) {
           chatService.appendConversationHistory({ role: 'assistant', content: assistantText });
         }
+
+        // Persist chat history to disk
+        chatService.saveHistory().catch(() => {});
 
         const done = sseDone();
         await stream.writeSSE({ event: done.event, data: done.data });

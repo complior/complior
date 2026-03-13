@@ -12,6 +12,7 @@ import type {
   FrameworkCheck,
   FrameworkScoreResult,
 } from '../../types/framework.types.js';
+import { EU_AI_ACT_DEADLINE_ISO } from '../shared/compliance-constants.js';
 
 const GRADE_THRESHOLDS = [
   { minScore: 90, grade: 'A' },
@@ -49,7 +50,7 @@ export const createEuAiActFramework = (
     id: 'eu-ai-act',
     name: 'EU AI Act',
     version: '2024/1689',
-    deadline: '2026-08-02',
+    deadline: EU_AI_ACT_DEADLINE_ISO,
     checks,
     categories,
     gradeMapping: {

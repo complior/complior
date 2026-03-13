@@ -20,9 +20,10 @@ use crate::engine_client::EngineClient;
 use crate::layout::Breakpoint;
 use crate::saas_client::SyncStats;
 use crate::types::{
-    ActivityEntry, ActivityKind, ChatMessage, ClickTarget, CostEstimateResult,
-    DebtResult, EngineConnectionStatus, FileEntry, InputMode, MessageRole, Mode,
-    MultiFrameworkScoreResult, Overlay, Panel, ReadinessResult, ScanResult, Selection, ViewState,
+    ActivityEntry, ActivityKind, ChatBlock, ChatMessage, ClickTarget, CostEstimateResult,
+    DebtResult, EngineConnectionStatus, FileEntry, InputMode, LlmSessionConfig, MessageRole, Mode,
+    MultiFrameworkScoreResult, Overlay, Panel, ReadinessResult, ScanResult, Selection,
+    StreamingState, ViewState,
 };
 use crate::views::file_browser;
 use crate::views::fix::FixViewState;
@@ -188,6 +189,12 @@ pub struct App {
     // SaaS sync state
     pub sync_state: SyncState,
 
+    // LLM chat streaming state
+    pub streaming: StreamingState,
+    pub llm_config: LlmSessionConfig,
+    pub llm_settings: Option<crate::llm_settings::LlmSettingsState>,
+    pub chat_cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
+
     // Background command channel (for async results → event loop)
     pub bg_tx: tokio::sync::mpsc::UnboundedSender<AppCommand>,
     bg_rx: Option<tokio::sync::mpsc::UnboundedReceiver<AppCommand>>,
@@ -203,6 +210,12 @@ impl App {
         let (bg_tx, bg_rx) = tokio::sync::mpsc::unbounded_channel();
         let sidebar_visible = config.sidebar_visible;
         let animations_enabled = config.animations_enabled;
+        let llm_config = LlmSessionConfig {
+            api_key: config.llm_provider.as_deref()
+                .and_then(crate::config::load_llm_api_key),
+            provider: config.llm_provider.clone(),
+            model: config.llm_model.clone(),
+        };
         let project_path = config
             .project_path
             .as_deref()
@@ -287,6 +300,10 @@ impl App {
             project_path,
             operation_start: None,
             sync_state: SyncState::default(),
+            streaming: StreamingState::default(),
+            llm_config,
+            llm_settings: None,
+            chat_cancel: None,
             bg_tx,
             bg_rx: Some(bg_rx),
         };
@@ -600,4 +617,22 @@ pub enum AppCommand {
         debt: Result<DebtResult, String>,
         readiness: Result<ReadinessResult, String>,
     },
+    /// Send user message to LLM via engine chat endpoint.
+    ChatSend(String),
+    /// Streaming text chunk arrived from LLM.
+    ChatStreamDelta(String),
+    /// Structured block (thinking/tool_call/tool_result) from stream.
+    ChatStreamBlock(ChatBlock),
+    /// LLM stream completed.
+    ChatStreamDone,
+    /// Error from LLM stream.
+    ChatStreamError(String),
+    /// User cancelled streaming.
+    ChatCancel,
+    /// Test LLM API key validity.
+    TestLlmConnection,
+    /// Result of LLM connection test.
+    LlmConnectionTestResult(Result<String, String>),
+    /// Persist LLM settings from overlay.
+    SaveLlmSettings,
 }

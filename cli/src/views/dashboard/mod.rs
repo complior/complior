@@ -102,7 +102,8 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     // Dispatch to the active view
     match app.view_state {
         ViewState::Dashboard => render_dashboard_view(frame, body_area, app),
-        ViewState::Log => render_chat_full_view(frame, body_area, app),
+        ViewState::Log => render_with_sidebar(frame, body_area, app, super::chat::render_log_view),
+        ViewState::Chat => render_with_sidebar(frame, body_area, app, super::chat::render_chat_view),
         ViewState::Scan => super::scan::render_scan_view(frame, body_area, app),
         ViewState::Fix => super::fix::render_fix_view(frame, body_area, app),
         ViewState::Passport => super::passport::render_passport_view(frame, body_area, app),
@@ -237,6 +238,7 @@ fn render_nav_tab_bar(frame: &mut Frame, area: Rect, current: ViewState) {
         ('T', "Time", ViewState::Timeline),
         ('R', "Report", ViewState::Report),
         ('L', "Log", ViewState::Log),
+        ('C', "Chat", ViewState::Chat),
     ];
 
     let mut spans: Vec<Span<'_>> = vec![Span::raw(" ")];
@@ -325,18 +327,23 @@ fn render_tiny_dashboard(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(Paragraph::new(lines), area);
 }
 
-/// Chat full-width view -- full chat + optional sidebar.
-fn render_chat_full_view(frame: &mut Frame, body_area: Rect, app: &App) {
+/// Render a full-width view with optional sidebar.
+fn render_with_sidebar(
+    frame: &mut Frame,
+    body_area: Rect,
+    app: &App,
+    render_main: fn(&mut Frame, Rect, &App),
+) {
     if app.sidebar_visible {
         let main_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Min(40), Constraint::Length(28)])
             .split(body_area);
 
-        super::chat::render_chat_view(frame, main_layout[0], app);
+        render_main(frame, main_layout[0], app);
         super::sidebar::render_sidebar(frame, main_layout[1], app);
     } else {
-        super::chat::render_chat_view(frame, body_area, app);
+        render_main(frame, body_area, app);
     }
 }
 
@@ -386,6 +393,11 @@ fn render_overlay(frame: &mut Frame, app: &App) {
         }
         Overlay::UndoHistory => {
             crate::components::undo_history::render_undo_history(frame, &app.undo_history);
+        }
+        Overlay::LlmSettings => {
+            if let Some(state) = &app.llm_settings {
+                crate::llm_settings::render_llm_settings(frame, state);
+            }
         }
     }
 

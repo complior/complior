@@ -19,7 +19,10 @@ fn test_footer_hints_per_view() {
     assert!(fix_hints.contains("Space:toggle"));
 
     let log_hints = footer_hints_for_view(ViewState::Log);
-    assert!(log_hints.contains("@OBL:ref"));
+    assert!(log_hints.contains("j/k:scroll"));
+
+    let chat_hints = footer_hints_for_view(ViewState::Chat);
+    assert!(chat_hints.contains("i:type"));
 
     let timeline_hints = footer_hints_for_view(ViewState::Timeline);
     assert!(timeline_hints.contains("j/k:scroll"));
@@ -63,12 +66,12 @@ fn e2e_t505_footer_hints_change_per_view() {
     assert!(last_line.contains("help"), "Dashboard footer should mention help");
     assert!(last_line.contains("scan"), "Dashboard footer should mention scan");
 
-    // Status Log view -- should show command-specific hints
-    app.view_state = ViewState::Log;
+    // Chat view -- should show chat-specific hints
+    app.view_state = ViewState::Chat;
     let buf = render_to_string(&app, 120, 40);
     let last_line = buf.lines().last().unwrap_or("");
-    assert!(last_line.contains("@OBL"), "Status Log footer should mention @OBL");
-    assert!(last_line.contains("run"), "Status Log footer should mention run");
+    assert!(last_line.contains("type"), "Chat footer should mention type");
+    assert!(last_line.contains("command"), "Chat footer should mention command");
 }
 
 // --- T08: Colon mode footer ---

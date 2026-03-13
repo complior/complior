@@ -1,6 +1,17 @@
 import { z } from 'zod';
 import type { RegistryToolCard } from '../data/registry-cards.js';
 
+// --- Summaries ---
+
+/** Lightweight passport summary used by chat service system prompt. */
+export interface PassportSummary {
+  readonly name: string;
+  readonly type: string;
+  readonly riskClass: string;
+  readonly autonomyLevel: string;
+  readonly completeness: number;
+}
+
 // --- Enums ---
 
 export type AutonomyLevel = 'L1' | 'L2' | 'L3' | 'L4' | 'L5';

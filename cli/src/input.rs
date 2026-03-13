@@ -219,7 +219,7 @@ pub fn scroll_line_count_for_test(app: &App) -> i32 {
 
 fn handle_overlay_keys(key: KeyEvent, overlay: &Overlay) -> Action {
     // Navigable overlays: ThemePicker, Onboarding — support j/k/arrows for scrolling
-    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette);
+    let navigable = matches!(overlay, Overlay::ThemePicker | Overlay::Onboarding | Overlay::DismissModal | Overlay::ConfirmDialog | Overlay::UndoHistory | Overlay::CommandPalette | Overlay::LlmSettings);
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Enter => Action::SubmitInput,
@@ -269,7 +269,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         // Uppercase letter-key view switching (avoids conflict with lowercase ViewKey chars)
-        KeyCode::Char(c @ ('D' | 'F' | 'L' | 'O' | 'P' | 'R' | 'S' | 'T')) =>
+        KeyCode::Char(c @ ('C' | 'D' | 'F' | 'L' | 'O' | 'P' | 'R' | 'S' | 'T')) =>
         {
             if let Some(view) = ViewState::from_letter(c) {
                 Action::SwitchView(view)
@@ -288,7 +288,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific Esc
-        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Report | ViewState::Timeline | ViewState::Log) => {
+        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Report | ViewState::Timeline | ViewState::Log | ViewState::Chat) => {
             Action::ViewEscape
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,
@@ -296,7 +296,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'g' | 'n' | 'p' | 'x' | 'o' | '<' | '>'))
             if matches!(
                 app.view_state,
-                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Timeline | ViewState::Log
+                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Timeline | ViewState::Log | ViewState::Chat
             ) =>
         {
             Action::ViewKey(c)

@@ -340,6 +340,15 @@ impl App {
                 }
 
                 if self.input_mode == InputMode::Command || text.starts_with('/') {
+                    // On Log view, route LLM-specific slash commands to engine chat
+                    if self.view_state == ViewState::Chat && !self.streaming.active {
+                        let cmd_word = text.trim_start_matches('/').split_whitespace().next().unwrap_or("");
+                        if matches!(cmd_word, "cost" | "mode" | "model") {
+                            self.chat_auto_scroll = true;
+                            return Some(AppCommand::ChatSend(text));
+                        }
+                    }
+
                     // Code search: if in CodeViewer and text doesn't start with /
                     if self.active_panel == Panel::CodeViewer && !text.starts_with('/') {
                         // Treat as code search query
@@ -360,7 +369,12 @@ impl App {
                     return self.handle_command(cmd);
                 }
 
-                // Plain text — not a command; Complior is a wrapper, not an LLM chat
+                // When on Chat view, send plain text to LLM
+                if self.view_state == ViewState::Chat && !self.streaming.active {
+                    self.chat_auto_scroll = true;
+                    return Some(AppCommand::ChatSend(text));
+                }
+
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
                     "Unknown input. Use /help or :scan".to_string(),
@@ -535,6 +549,10 @@ impl App {
                 return self.handle_view_enter();
             }
             Action::ViewEscape => {
+                // Cancel streaming on Esc when on Chat view
+                if self.view_state == ViewState::Chat && self.streaming.active {
+                    return Some(AppCommand::ChatCancel);
+                }
                 self.handle_view_escape();
                 return None;
             }

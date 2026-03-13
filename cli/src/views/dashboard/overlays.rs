@@ -128,6 +128,9 @@ fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<
             shortcut_line("  Enter", "Apply selected fixes", t),
         ],
         ViewState::Log => vec![
+            shortcut_line("  j/k", "Scroll log", t),
+        ],
+        ViewState::Chat => vec![
             shortcut_line("  Tab", "Autocomplete (@OBL-, /cmd)", t),
             shortcut_line("  @OBL-xxx", "Reference obligation", t),
             shortcut_line("  !cmd", "Run shell command", t),

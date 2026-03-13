@@ -74,6 +74,14 @@ pub struct TuiConfig {
     #[serde(default)]
     pub offline_mode: bool,
 
+    // ── LLM Settings ──────────────────────────────────────────────────────────
+    /// Preferred LLM provider (anthropic/openai/openrouter). Not sensitive.
+    #[serde(default)]
+    pub llm_provider: Option<String>,
+    /// Preferred LLM model override. Not sensitive.
+    #[serde(default)]
+    pub llm_model: Option<String>,
+
     // ── Confirmation Dialogs (Sprint S02, US-S0210) ───────────────────────────
     /// Controls which destructive operations show a y/N confirmation dialog.
     #[serde(default)]
@@ -105,6 +113,8 @@ impl Default for TuiConfig {
             ],
             onboarding_last_step: None,
             engine_url_override: None,
+            llm_provider: None,
+            llm_model: None,
             project_api_url: DEFAULT_PROJECT_API_URL.to_string(),
             api_key: None,
             offline_mode: false,
@@ -241,6 +251,104 @@ fn config_file_path() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
         .join("complior")
         .join("tui.toml")
+}
+
+/// Save LLM config (provider + model to TOML, API key to credentials file).
+pub async fn save_llm_config(
+    provider: Option<&str>,
+    model: Option<&str>,
+    api_key: Option<&str>,
+) {
+    let mut config = load_config();
+    config.llm_provider = provider.map(String::from);
+    config.llm_model = model.map(String::from);
+    save_config(&config).await;
+
+    // Save API key to credentials file (never in TOML)
+    if let Some(key) = api_key {
+        if !key.is_empty() {
+            let provider_name = provider.unwrap_or("LLM");
+            save_llm_api_key(provider_name, key);
+        }
+    }
+}
+
+/// Save an LLM API key to `~/.config/complior/credentials`.
+fn save_llm_api_key(provider: &str, key: &str) {
+    let env_key = match provider {
+        "anthropic" => "ANTHROPIC_API_KEY",
+        "openai" => "OPENAI_API_KEY",
+        "openrouter" => "OPENROUTER_API_KEY",
+        _ => return,
+    };
+
+    let Some(path) = credentials_path() else {
+        return;
+    };
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    // Read existing, filter out old value for this key
+    let existing = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut lines: Vec<String> = existing
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            if let Some((k, _)) = trimmed.split_once('=') {
+                k.trim() != env_key
+            } else {
+                true
+            }
+        })
+        .map(String::from)
+        .collect();
+
+    lines.push(format!("{env_key}={key}"));
+    let _ = std::fs::write(&path, lines.join("\n") + "\n");
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o600);
+        let _ = std::fs::set_permissions(&path, perms);
+    }
+}
+
+/// Load LLM API key for a provider from `~/.config/complior/credentials`.
+pub fn load_llm_api_key(provider: &str) -> Option<String> {
+    let env_key = match provider {
+        "anthropic" => "ANTHROPIC_API_KEY",
+        "openai" => "OPENAI_API_KEY",
+        "openrouter" => "OPENROUTER_API_KEY",
+        _ => return None,
+    };
+
+    // Check env var first
+    if let Ok(val) = std::env::var(env_key) {
+        if !val.is_empty() {
+            return Some(val);
+        }
+    }
+
+    // Check credentials file
+    let path = credentials_path()?;
+    let content = std::fs::read_to_string(path).ok()?;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = trimmed.split_once('=') {
+            if key.trim() == env_key {
+                let v = value.trim().to_string();
+                if !v.is_empty() {
+                    return Some(v);
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Stored token data loaded from credentials file.

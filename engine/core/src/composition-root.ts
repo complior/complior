@@ -226,7 +226,28 @@ export const loadApplication = async (): Promise<Application> => {
     getVersion: () => state.version,
     getLastScanResult: () => state.lastScanResult,
     getRegulationData: () => state.regulationData,
+    getPassportSummary: async () => {
+      try {
+        const passports = await passportService.listPassports(projectPath);
+        const p = passports[0];
+        if (!p) return null;
+        const completeness = await passportService.getPassportCompleteness(p.name, projectPath);
+        return {
+          name: p.name,
+          type: p.type,
+          riskClass: p.compliance?.eu_ai_act?.risk_class ?? 'unknown',
+          autonomyLevel: p.autonomy_level ?? 'unknown',
+          completeness: completeness?.score ?? 0,
+        };
+      } catch {
+        return null;
+      }
+    },
+    getChatHistoryPath: () => resolve(projectPath, '.complior', 'chat-history.json'),
   });
+
+  // Restore chat history from disk
+  chatService.loadHistory().catch(() => {});
 
   const fileService = createFileService({ events });
 
@@ -530,6 +551,7 @@ export const loadApplication = async (): Promise<Application> => {
     simulateActions,
     onboardingService,
     frameworkService,
+    maxRequestsPerHour: projectConfig.llm?.maxRequestsPerHour,
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events
