@@ -6,6 +6,7 @@ const ARTICLE_REF = 'Art. 50(1)';
 const OBLIGATION_ID = 'eu-ai-act-OBL-015';
 
 const DISCLOSURE_PATTERNS: readonly RegExp[] = [
+  // Direct AI disclosure text
   /\bAI[- ]?powered\b/i,
   /\bartificial intelligence\b/i,
   /\bautomated system\b/i,
@@ -13,6 +14,20 @@ const DISCLOSURE_PATTERNS: readonly RegExp[] = [
   /\bpowered by AI\b/i,
   /\bAI disclosure\b/i,
   /\btransparency notice\b/i,
+  // EU AI Act specific
+  /\bAI system\b/i,
+  /\bautomated decision[- ]?making\b/i,
+  /\bmachine learning\b/i,
+  // Interaction-specific disclosures
+  /\byou are (?:interacting|chatting|speaking) with (?:an? )?AI\b/i,
+  /\bthis (?:is|uses) (?:an? )?(?:AI|artificial intelligence)\b/i,
+  /\bgenerated (?:by|using|with) (?:an? )?AI\b/i,
+  /\bAI[- ]?assisted\b/i,
+  /\bnot a human\b/i,
+  // SDK/framework disclosure mechanisms
+  /\bdisclosure[_-]?text\b/i,
+  /\btransparency[_-]?label\b/i,
+  /\bai[_-]?notice\b/i,
 ];
 
 const CHAT_INDICATORS: readonly RegExp[] = [
@@ -24,6 +39,15 @@ const CHAT_INDICATORS: readonly RegExp[] = [
   /\bchat[- ]?endpoint\b/i,
   /\/api\/chat\b/i,
   /\bmessage.*bot\b/i,
+  // Voice / multimodal
+  /\bvoice[- ]?assistant\b/i,
+  /\bspeech[- ]?to[- ]?text\b/i,
+  /\btext[- ]?to[- ]?speech\b/i,
+  // Decision support
+  /\brecommendation[- ]?engine\b/i,
+  /\bdecision[- ]?support\b/i,
+  /\bautomated[- ]?scoring\b/i,
+  /\bai[- ]?agent\b/i,
 ];
 
 const UI_EXTENSIONS: ReadonlySet<string> = new Set(['.tsx', '.jsx', '.html', '.ts', '.js']);

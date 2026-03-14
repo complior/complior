@@ -1,4 +1,4 @@
-export type IndustryId = 'hr' | 'finance' | 'healthcare' | 'education' | 'legal';
+export type IndustryId = 'hr' | 'finance' | 'healthcare' | 'education' | 'legal' | 'biometrics' | 'critical-infra' | 'migration';
 
 export interface IndustryPattern {
   readonly id: IndustryId;
@@ -64,7 +64,7 @@ export const INDUSTRY_PATTERNS: readonly IndustryPattern[] = [
   {
     id: 'education',
     label: 'Education / Academic',
-    annexRef: 'Annex III §6(b)',
+    annexRef: 'Annex III §3',
     articleRef: 'Art. 6(2)',
     obligationId: 'eu-ai-act-OBL-006',
     patterns: [
@@ -94,6 +94,59 @@ export const INDUSTRY_PATTERNS: readonly IndustryPattern[] = [
       /dispute[_.]resolution/i,
     ],
   },
+  {
+    id: 'biometrics',
+    label: 'Biometrics / Identification',
+    annexRef: 'Annex III §1',
+    articleRef: 'Art. 6(2)',
+    obligationId: 'eu-ai-act-OBL-003',
+    patterns: [
+      /biometric[_.]identification/i,
+      /facial[_.]recognition/i,
+      /face[_.]detect/i,
+      /fingerprint[_.]match/i,
+      /iris[_.]scan/i,
+      /voice[_.]biometric/i,
+      /emotion[_.]recognition/i,
+      /gait[_.]analysis/i,
+      /remote[_.]biometric/i,
+    ],
+  },
+  {
+    id: 'critical-infra',
+    label: 'Critical Infrastructure',
+    annexRef: 'Annex III §2',
+    articleRef: 'Art. 6(2)',
+    obligationId: 'eu-ai-act-OBL-003',
+    patterns: [
+      /scada[_.]control/i,
+      /power[_.]grid/i,
+      /water[_.]treatment/i,
+      /traffic[_.]control/i,
+      /infrastructure[_.]monitor/i,
+      /smart[_.]grid/i,
+      /energy[_.]management/i,
+      /pipeline[_.]control/i,
+      /network[_.]routing.*critical/i,
+    ],
+  },
+  {
+    id: 'migration',
+    label: 'Migration / Border Control',
+    annexRef: 'Annex III §7',
+    articleRef: 'Art. 6(2)',
+    obligationId: 'eu-ai-act-OBL-008',
+    patterns: [
+      /border[_.]control/i,
+      /visa[_.]assessment/i,
+      /asylum[_.]application/i,
+      /immigration[_.]screening/i,
+      /travel[_.]document/i,
+      /migration[_.]risk/i,
+      /entry[_.]exit[_.]system/i,
+      /refugee[_.]screening/i,
+    ],
+  },
 ];
 
 export const INDUSTRY_TEMPLATE_MAP: Record<IndustryId, string> = {
@@ -102,4 +155,7 @@ export const INDUSTRY_TEMPLATE_MAP: Record<IndustryId, string> = {
   healthcare: 'healthcare-ai-policy.md',
   education: 'education-ai-policy.md',
   legal: 'legal-ai-policy.md',
+  biometrics: 'biometrics-ai-policy.md',
+  'critical-infra': 'critical-infra-ai-policy.md',
+  migration: 'migration-ai-policy.md',
 };

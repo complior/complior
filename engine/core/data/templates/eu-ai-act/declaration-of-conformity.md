@@ -1,47 +1,161 @@
-# Template 7: EU Declaration of Conformity
+# EU Declaration of Conformity
 
-**Obligation:** eu-ai-act-OBL-019
-**Article:** Article 47
-**For:** Providers of High-Risk AI
-**Format:** PDF (formal document)
+> **Regulation**: EU AI Act (Regulation (EU) 2024/1689), Article 47 / Annex V
+> **Obligation**: OBL-019 — EU Declaration of Conformity
+> **For**: Providers of High-Risk AI Systems
+> **Deadline**: August 2, 2026
+> **Document ID**: DOC-[YYYY]-[NNN]
 
-## Document Structure:
+<!-- GUIDANCE: Art. 47 requires a SEPARATE declaration for each high-risk AI system.
+     It must be kept up to date and available to national authorities for 10 years
+     after the system is placed on the market. The content shall follow Annex V.
+     Keep a signed copy with the technical documentation (Art. 18). -->
 
-### EU DECLARATION OF CONFORMITY
-<!-- GUIDANCE: Art. 47 requires a separate declaration for each high-risk AI system.
-The declaration must be kept up to date and available to national authorities for
-10 years after the system is placed on the market. Use the exact wording structure
-from Art. 47(1)(a)-(k). If using a notified body (Annex VII route), include their
-certificate number. For Annex VI internal control, state "Not applicable — internal
-conformity assessment per Annex VI." Keep a signed copy with technical documentation.
-Example: "Declaration DoC-2026-001, issued 2026-01-15, covers AI-Screen v3.0,
-Annex VI internal control, no notified body involvement." -->
+*In accordance with Article 47 of Regulation (EU) 2024/1689 (Artificial Intelligence Act)*
 
-*In accordance with Article 47 of Regulation (EU) 2024/1689*
+---
 
-1. AI system name, type, and any additional unambiguous reference allowing identification: [Details]
+## 1. AI System Identification (Annex V §1)
 
-2. Name and address of the provider: [Full details]
-   Name and address of the authorised representative (if applicable): [Details]
+| Field | Value |
+|-------|-------|
+| AI System Name | [AI System Name] |
+| System Type | |
+| Version | [X.Y] |
+| Unique Reference / Serial | |
+| Risk Class | [Risk Class] |
 
-3. This declaration of conformity is issued under the sole responsibility of the provider.
+---
 
-4. Object of the declaration: [AI system description, unique identification]
+## 2. Provider Information (Annex V §2)
 
-5. The object of the declaration described above is in conformity with the relevant Union harmonisation legislation: Regulation (EU) 2024/1689 (Artificial Intelligence Act)
+| Field | Value |
+|-------|-------|
+| Provider Name | [Company Name] |
+| Registered Address | |
+| Contact Person | |
+| Contact Email | |
+| Authorised Representative (if applicable) | |
+| Representative Address (if applicable) | |
 
-6. References to the relevant harmonised standards used, or references to the other common specifications in relation to which conformity is declared: [List]
+---
 
-7. Where applicable, the notified body: [Name, number] performed [description of intervention] and issued the certificate: [Reference number]
+## 3. Sole Responsibility Statement (Annex V §3)
 
-8. Additional information:
-   - Conformity assessment procedure followed: [Annex VI / Annex VII]
-   - Date of first CE marking: [Date]
+This EU declaration of conformity is issued under the sole responsibility of the provider named in section 2.
 
-Signed for and on behalf of: [Provider name]
+---
 
-Place and date of issue: _________________
+## 4. Object of Declaration (Annex V §4)
 
-Name, function: _________________
+<!-- GUIDANCE: Describe the AI system unambiguously so it can be traced.
+     Include software version, model identifiers, deployment environment. -->
 
-Signature: _________________
+| Field | Value |
+|-------|-------|
+| System Description | [Description] |
+| Intended Purpose | |
+| Software Version | [X.Y] |
+| Model Identifier | |
+
+---
+
+## 5. Conformity Statement (Annex V §5)
+
+The AI system described in section 4 is in conformity with:
+
+- [ ] Regulation (EU) 2024/1689 — Artificial Intelligence Act
+- [ ] Regulation (EU) 2016/679 — General Data Protection Regulation (where applicable)
+- [ ] Other applicable Union harmonisation legislation: _________________
+
+---
+
+## 6. Standards Applied (Annex V §6)
+
+<!-- GUIDANCE: List specific harmonised standards or common specifications.
+     If no harmonised standards exist yet, state which standards/specifications
+     you followed and explain why they are appropriate. -->
+
+| Standard / Specification | Title | Relevant Articles Covered |
+|--------------------------|-------|--------------------------|
+| | | |
+
+---
+
+## 7. Notified Body (Annex V §7)
+
+<!-- GUIDANCE: Only applicable if conformity assessment was performed by a notified body
+     (Annex VII route). For internal control (Annex VI), state "Not applicable". -->
+
+| Field | Value |
+|-------|-------|
+| Notified Body Name | Not applicable / [Name] |
+| Notified Body Number | |
+| Certificate Reference | |
+| Intervention Description | |
+| Certificate Date | |
+
+---
+
+## 8. Conformity Assessment Procedure (Annex V §8)
+
+| Field | Value |
+|-------|-------|
+| Assessment Route | Annex VI (internal control) / Annex VII (notified body) |
+| Assessment Date | |
+| Date of First CE Marking | |
+| Technical Documentation Reference | [TDD-YYYY-NNN] |
+| Risk Management Reference | [RMS-YYYY-NNN] |
+| QMS Reference | [QMS-YYYY-NNN] |
+
+---
+
+## 9. Evidence
+
+### 9.1 Documents Reviewed
+
+| Document | Reference | Status |
+|----------|-----------|--------|
+| Technical Documentation (Art. 11) | | Complete / In progress |
+| Risk Management System (Art. 9) | | Complete / In progress |
+| Data Governance (Art. 10) | | Complete / In progress |
+| Quality Management System (Art. 17) | | Complete / In progress |
+| Instructions for Use (Art. 13) | | Complete / In progress |
+
+### 9.2 Tests Conducted
+
+| Test | Date | Result | Report Reference |
+|------|------|--------|-----------------|
+| Accuracy (Art. 15) | | Pass/Fail | |
+| Robustness (Art. 15) | | Pass/Fail | |
+| Cybersecurity (Art. 15) | | Pass/Fail | |
+| Bias/Fairness (Art. 10) | | Pass/Fail | |
+
+---
+
+## 10. Additional Information
+
+| Field | Value |
+|-------|-------|
+| EU Database Registration (Art. 71) | |
+| Post-Market Monitoring Plan Ref | |
+| Validity Period | |
+| Review Schedule | |
+
+---
+
+## Signatory
+
+Signed for and on behalf of: **[Company Name]**
+
+| Field | Value |
+|-------|-------|
+| Place | |
+| Date | [Date] |
+| Name | |
+| Title / Function | |
+| Signature | |
+
+---
+
+*This declaration shall be kept for 10 years after the AI system has been placed on the market or put into service (Art. 18).*

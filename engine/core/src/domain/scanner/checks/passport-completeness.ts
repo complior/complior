@@ -12,7 +12,7 @@ const ALL_FIELDS = [
   'type', 'framework', 'autonomy_level',
   'model', 'owner', 'permissions', 'constraints',
   'compliance', 'signature', 'source',
-  'autonomy_evidence', 'logging', 'lifecycle',
+  'autonomy_evidence', 'logging', 'lifecycle', 'oversight',
 ] as const;
 
 const HIGH_RISK_FIELDS = ALL_FIELDS;

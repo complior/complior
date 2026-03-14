@@ -22,6 +22,7 @@ import {
 import type { CheckWithConfidence } from './confidence.js';
 import { buildFixDiff, buildCodeContext } from './fix-diff-builder.js';
 import { explainFindings } from './finding-explainer.js';
+import { applyAttestations } from './attestations.js';
 
 const DEFAULT_SEVERITY: Severity = 'info';
 
@@ -240,8 +241,11 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
     }
     const enrichedFindings = enrichFindings(findings, fileMap);
 
+    // Apply manual attestations from .complior/attestations.json
+    const attestedFindings = applyAttestations(enrichedFindings, ctx);
+
     // US-S05-07: Attach explanations (article, penalty, deadline, business_impact)
-    const explainedFindings = explainFindings(enrichedFindings);
+    const explainedFindings = explainFindings(attestedFindings);
 
     const duration = Date.now() - startTime;
 

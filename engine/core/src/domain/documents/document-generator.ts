@@ -12,6 +12,12 @@ export const ALL_DOC_TYPES = [
   'monitoring-policy',
   'fria',
   'worker-notification',
+  'risk-management',
+  'data-governance',
+  'qms',
+  'instructions-for-use',
+  'gpai-transparency',
+  'gpai-systemic-risk',
 ] as const;
 
 export type DocType = (typeof ALL_DOC_TYPES)[number];
@@ -47,6 +53,12 @@ const DOC_ID_PREFIX: Record<DocType, string> = {
   'monitoring-policy': 'MON',
   'fria': 'FRIA',
   'worker-notification': 'WRK',
+  'risk-management': 'RMS',
+  'data-governance': 'DGP',
+  'qms': 'QMS',
+  'instructions-for-use': 'IFU',
+  'gpai-transparency': 'GPAI',
+  'gpai-systemic-risk': 'GSR',
 };
 
 const DOC_ID_PATTERN: Record<DocType, string> = {
@@ -58,6 +70,12 @@ const DOC_ID_PATTERN: Record<DocType, string> = {
   'monitoring-policy': 'MON-[YYYY]-[NNN]',
   'fria': 'FRIA-[YYYY]-[NNN]',
   'worker-notification': 'WRK-[YYYY]-[NNN]',
+  'risk-management': 'RMS-[YYYY]-[NNN]',
+  'data-governance': 'DGP-[YYYY]-[NNN]',
+  'qms': 'QMS-[YYYY]-[NNN]',
+  'instructions-for-use': 'IFU-[YYYY]-[NNN]',
+  'gpai-transparency': 'GPAI-[YYYY]-[NNN]',
+  'gpai-systemic-risk': 'GSR-[YYYY]-[NNN]',
 };
 
 export const TEMPLATE_FILE_MAP: Record<DocType, string> = {
@@ -69,6 +87,12 @@ export const TEMPLATE_FILE_MAP: Record<DocType, string> = {
   'monitoring-policy': 'monitoring-policy.md',
   'fria': 'fria.md',
   'worker-notification': 'worker-notification.md',
+  'risk-management': 'risk-management-system.md',
+  'data-governance': 'data-governance.md',
+  'qms': 'qms.md',
+  'instructions-for-use': 'instructions-for-use.md',
+  'gpai-transparency': 'gpai-transparency.md',
+  'gpai-systemic-risk': 'gpai-systemic-risk.md',
 };
 
 // --- Generator ---
@@ -213,6 +237,53 @@ export const generateDocument = (input: DocGeneratorInput): DocResult => {
       manualFields.push('AI system capabilities description');
       manualFields.push('Worker rights and escalation');
       manualFields.push('Notification timeline');
+      break;
+
+    case 'risk-management':
+      manualFields.push('Known risks identification');
+      manualFields.push('Misuse scenarios');
+      manualFields.push('Residual risk assessment');
+      manualFields.push('Test results and methodology');
+      manualFields.push('Mitigation measures');
+      break;
+
+    case 'data-governance':
+      manualFields.push('Data sources and origins');
+      manualFields.push('Collection and preparation methods');
+      manualFields.push('Quality metrics and targets');
+      manualFields.push('Bias analysis');
+      manualFields.push('Representativeness assessment');
+      break;
+
+    case 'qms':
+      manualFields.push('Compliance strategy');
+      manualFields.push('Design control procedures');
+      manualFields.push('Testing procedures');
+      manualFields.push('Roles and responsibilities');
+      manualFields.push('Change management');
+      break;
+
+    case 'instructions-for-use':
+      manualFields.push('Intended purpose details');
+      manualFields.push('Performance metrics and benchmarks');
+      manualFields.push('Known limitations');
+      manualFields.push('Human oversight procedures');
+      manualFields.push('Input data specifications');
+      break;
+
+    case 'gpai-transparency':
+      manualFields.push('Training data sources');
+      manualFields.push('Benchmark results');
+      manualFields.push('Safety evaluations');
+      manualFields.push('Copyright compliance policy');
+      manualFields.push('Energy consumption data');
+      break;
+
+    case 'gpai-systemic-risk':
+      manualFields.push('Adversarial testing results');
+      manualFields.push('Systemic risk assessment');
+      manualFields.push('Incident tracking procedures');
+      manualFields.push('Cybersecurity measures');
       break;
   }
 

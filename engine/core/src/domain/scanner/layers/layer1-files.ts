@@ -19,6 +19,10 @@ import {
   checkDeclarationOfConformityPresence,
   checkMonitoringPolicyPresence,
   checkWorkerNotificationPresence,
+  checkRiskManagementPresence,
+  checkDataGovernancePresence,
+  checkQmsPresence,
+  checkInstructionsForUsePresence,
 } from '../checks/presence-check-factory.js';
 
 export const L1_CHECKS: readonly CheckFunction[] = [
@@ -41,4 +45,8 @@ export const L1_CHECKS: readonly CheckFunction[] = [
   checkDeclarationOfConformityPresence,
   checkMonitoringPolicyPresence,
   checkWorkerNotificationPresence,
+  checkRiskManagementPresence,
+  checkDataGovernancePresence,
+  checkQmsPresence,
+  checkInstructionsForUsePresence,
 ];

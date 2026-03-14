@@ -6,14 +6,38 @@ const ARTICLE_REF = 'Art. 12';
 const OBLIGATION_ID = 'eu-ai-act-OBL-006';
 
 const LOGGING_PATTERNS: readonly RegExp[] = [
+  // JavaScript/TypeScript
   /\bwinston\b/,
   /\bpino\b/,
   /\bbunyan\b/,
   /\blog4js\b/,
+  // Python
+  /\blogging\.getLogger\b/,
+  /\bstructlog\b/,
+  /\bloguru\b/,
+  /\blog_record\b/i,
+  // Go
+  /\bzap\.New/,
+  /\blogrus\.\b/,
+  /\bzerolog\b/,
+  /\bslog\.New/,
+  // Java/Kotlin
+  /\bLoggerFactory\.getLogger\b/,
+  /\blog4j\b/,
+  /\bLogback\b/i,
+  /\bslf4j\b/i,
+  // Rust
+  /\btracing::/,
+  /\blog::info\b/,
+  /\benv_logger\b/,
+  /\bslog\b/,
+  // Cross-language
   /\bstructured[- ]?log/i,
   /\bjsonl\b/i,
   /\baudit[- ]?log/i,
   /\binteraction[- ]?log/i,
+  /\bopentelemetry\b/i,
+  /\botlp\b/i,
 ];
 
 const LOG_FIELD_PATTERNS: readonly RegExp[] = [
@@ -26,15 +50,30 @@ const LOG_FIELD_PATTERNS: readonly RegExp[] = [
 ];
 
 const AI_API_PATTERNS: readonly RegExp[] = [
+  // SDKs (multi-language)
   /\bopenai\b/i,
   /\banthropic\b/i,
+  /\bgoogle[._]generativeai\b/i,
+  /\bvertexai\b/i,
+  /\bmistralai\b/i,
+  /\bcohere\b/i,
+  // JS/TS API calls
   /\bchat\.completions\b/,
   /\bgenerateText\b/,
   /\bstreamText\b/,
-  /\bllm\b/i,
   /\.generate\(/,
   /\.complete\(/,
   /\/api\/chat\b/,
+  // Python API calls
+  /\bclient\.chat\b/,
+  /\bmessages\.create\b/,
+  /\bChatCompletion\b/,
+  /\blangchain\b/i,
+  /\bllama_index\b/i,
+  // Generic
+  /\bllm\b/i,
+  /\bai_model\b/i,
+  /\bmodel_inference\b/i,
 ];
 
 const hasLogging = (content: string): boolean =>

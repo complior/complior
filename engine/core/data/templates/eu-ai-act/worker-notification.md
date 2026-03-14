@@ -1,69 +1,143 @@
-# Template 4: Worker Notification of High-Risk AI Use
+# Worker Notification of High-Risk AI Use
 
-**Obligation:** eu-ai-act-OBL-012
-**Article:** Article 26(7)
-**For:** Deployers (employers)
-**Format:** DOCX / PDF / Email
+> **Regulation**: EU AI Act (Regulation (EU) 2024/1689), Article 26(7)
+> **Obligation**: OBL-012 — Inform Workers and Representatives
+> **For**: Deployers (employers using high-risk AI in the workplace)
+> **Deadline**: August 2, 2026
+> **Document ID**: WRK-[YYYY]-[NNN]
 
-## Document Structure:
+<!-- GUIDANCE: Art. 26(7) requires notification to workers AND their representatives
+     before deployment of high-risk AI in the workplace. Check national transposition
+     for additional requirements (e.g., Germany: Betriebsrat, France: CSE). -->
 
-### 1. Header
-<!-- GUIDANCE: Art. 26(7) requires notification to workers' representatives before
-deployment of high-risk AI in the workplace. Send notification to both individual
-workers AND works council/union representatives where applicable. Check national
-transposition for additional requirements. Example: In Germany, notify both
-individual employees and the Betriebsrat. -->
-- From: [Company Name, HR Department / Management]
-- To: [Workers / Works Council / Union Representative]
-- Date: [Date]
-- Subject: Notification of High-Risk AI System Deployment per EU AI Act Article 26(7)
+---
 
-### 2. Notification Body
-<!-- GUIDANCE: Use plain, non-technical language — the notification must be
-understandable to all affected workers regardless of technical background. Explain
-specifically HOW the system affects their work (not just THAT it does). Reference
-Art. 86 right to explanation. Example: "The system analyzes your weekly activity
-reports to suggest workload distribution — your manager reviews all suggestions
-before any changes are made." -->
+## 1. Document Control
 
-Dear [Workers / Works Council],
+| Field | Value |
+|-------|-------|
+| AI System | [AI System Name] |
+| Provider | [Company Name] |
+| Version | [X.Y] |
+| Created | [Date] |
+| Notification Date | [Date] |
+| Approved By | [Name, Title] |
 
-In accordance with Article 26(7) of the EU Artificial Intelligence Act (Regulation (EU) 2024/1689), we hereby inform you that [Company Name] intends to deploy the following high-risk AI system(s) in the workplace:
+---
 
-**AI System Details:**
-- System name: [Name]
-- Provider: [Provider name]
-- Purpose: [What the system does in plain language]
-- Deployment date: [Planned date]
-- Affected roles/departments: [List]
+## 2. Notification Scope
 
-**How the system works:**
+### 2.1 System Being Deployed
+
+| Field | Value |
+|-------|-------|
+| System name | [AI System Name] |
+| Provider | [Company Name] |
+| Purpose | |
+| Deployment date | |
+| Risk class | [Risk Class] |
+
+### 2.2 How the System Works
+
+<!-- GUIDANCE: Use plain, non-technical language. Explain specifically HOW the system
+     affects work, not just THAT it does. Reference Art. 86 right to explanation. -->
+
 [Plain language description: what data it processes, what decisions/recommendations it makes, how it affects workers]
 
-**How it affects you:**
-[Specific description of impact: e.g., "The system will assist in evaluating performance reviews but all final decisions remain with your manager" or "The system will be used to schedule shifts based on demand forecasting"]
+### 2.3 How It Affects Workers
 
-**Your rights:**
+[Specific description of impact on day-to-day work, e.g., "The system will assist in evaluating performance reviews but all final decisions remain with your manager"]
+
+---
+
+## 3. Affected Workers
+
+| # | Department / Role | Number of Workers | Impact Type | Notification Method |
+|---|------------------|-------------------|-------------|-------------------|
+| 1 | | | Direct / Indirect | Email / In-person / Portal |
+
+---
+
+## 4. Worker Rights
+
+<!-- GUIDANCE: Art. 26(7) + Art. 86 rights must be communicated clearly. -->
+
 - Human oversight: All AI-assisted decisions are reviewed by [named person/role] before implementation
-- You have the right to request an explanation of any AI-influenced decision affecting you (Article 86)
-- You may lodge a complaint with [internal contact] or with the national market surveillance authority
-- Your personal data is processed in accordance with GDPR — see our privacy notice [link/reference]
+- Right to explanation: You may request an explanation of any AI-influenced decision affecting you (Article 86)
+- Complaint channel: Lodge a complaint with [internal contact] or the national market surveillance authority
+- Data protection: Personal data is processed in accordance with GDPR — see privacy notice [link/reference]
+- Contact: [Name, Title, Email, Phone]
 
-**Contact:**
-For questions or concerns about this AI system, please contact: [Name, Title, Email, Phone]
+---
 
-Signed: [Management representative name and title]
+## 5. Timeline
 
-### 3. Acknowledgment
-<!-- GUIDANCE: While Art. 26(7) does not require signed acknowledgment, it provides
-evidence of compliance. Consider digital acknowledgment for remote workers. If a
-worker refuses to sign, document the refusal — the obligation is to inform, not to
-obtain consent. Example: "Acknowledgment sent via HR portal on 2026-03-01,
-reminder sent 2026-03-08, escalated to manager 2026-03-15." -->
-- [ ] I acknowledge receipt of this notification
+| Date | Action | Status |
+|------|--------|--------|
+| | Notification drafted | |
+| | Works council / union consulted | |
+| | Individual notifications sent | |
+| | Acknowledgment deadline | |
+| | System deployment date | |
+
+---
+
+## 6. Delivery Tracking
+
+<!-- GUIDANCE: Track delivery and acknowledgment for compliance evidence.
+     If a worker refuses to sign, document the refusal — the obligation is
+     to inform, not to obtain consent. -->
+
+### 6.1 Individual Notifications
+
+| # | Worker / Group | Method | Sent Date | Delivered? | Acknowledged? | Ack Date |
+|---|---------------|--------|-----------|-----------|--------------|----------|
+| 1 | | Email / Portal / In-person | | Yes/No | Yes/No/Refused | |
+
+### 6.2 Works Council / Union Notification
+
+| Representative Body | Contact Person | Sent Date | Response Date | Outcome |
+|---------------------|---------------|-----------|--------------|---------|
+| | | | | Acknowledged / Consultation requested |
+
+### 6.3 Delivery Summary
+
+| Metric | Count |
+|--------|-------|
+| Total workers to notify | |
+| Notifications sent | |
+| Acknowledgments received | |
+| Refusals documented | |
+| Pending | |
+
+---
+
+## 7. Acknowledgment Form
+
+- [ ] I acknowledge receipt of this notification about AI system deployment
+- [ ] I have been informed of my rights under Art. 86 EU AI Act
 - Employee name: _________________
+- Department: _________________
 - Date: _________________
 - Signature: _________________
 
-## Works Council / Union Version:
-[Same content with additional section for consultation rights under applicable national labour law]
+---
+
+## 8. National Requirements
+
+<!-- GUIDANCE: Check national transposition requirements. Some Member States may require
+     additional consultation periods, specific notification formats, or works council approval. -->
+
+| Member State | Additional Requirement | Addressed? |
+|-------------|----------------------|-----------|
+| | | Yes/No |
+
+---
+
+## Sign-off
+
+| Role | Name | Signature | Date |
+|------|------|-----------|------|
+| HR Manager | | | |
+| Works Council Representative | | | |
+| Compliance Officer | | | |

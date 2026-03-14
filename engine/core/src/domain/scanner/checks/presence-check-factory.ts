@@ -201,6 +201,60 @@ const PRESENCE_CONFIGS: readonly PresenceCheckConfig[] = [
     ],
     fixMessage: 'Create a WORKER-NOTIFICATION.md documenting AI system notification to affected workers (Art. 26(7))',
   },
+  {
+    checkId: 'risk-management',
+    articleRef: 'Art. 9',
+    obligationId: 'eu-ai-act-OBL-003',
+    severity: 'high',
+    docLabel: 'Risk management documentation',
+    contentPatterns: [
+      /\brisk management system\b/i,
+      /\brisk register\b/i,
+      /\brisk assessment\b.*\bai\b/i,
+      /\bknown risks\b.*\bmitigation\b/i,
+    ],
+    fixMessage: 'Create a RISK-MANAGEMENT.md with risk identification, misuse scenarios, and residual risk assessment (Art. 9)',
+  },
+  {
+    checkId: 'data-governance',
+    articleRef: 'Art. 10',
+    obligationId: 'eu-ai-act-OBL-004',
+    severity: 'medium',
+    docLabel: 'Data governance documentation',
+    contentPatterns: [
+      /\bdata governance\b/i,
+      /\bdata quality\b.*\bpolicy\b/i,
+      /\btraining data\b.*\bgovernance\b/i,
+      /\bbias\b.*\banalysis\b/i,
+    ],
+    fixMessage: 'Create a DATA-GOVERNANCE.md documenting data sources, quality metrics, and bias analysis (Art. 10)',
+  },
+  {
+    checkId: 'qms',
+    articleRef: 'Art. 17',
+    obligationId: 'eu-ai-act-OBL-010',
+    severity: 'medium',
+    docLabel: 'Quality management system',
+    contentPatterns: [
+      /\bquality management system\b/i,
+      /\bqms\b/i,
+      /\bquality management\b.*\bai\b/i,
+    ],
+    fixMessage: 'Create a QMS.md covering compliance strategy, design control, testing, and data management (Art. 17)',
+  },
+  {
+    checkId: 'instructions-for-use',
+    articleRef: 'Art. 13',
+    obligationId: 'eu-ai-act-OBL-007',
+    severity: 'medium',
+    docLabel: 'Instructions for use',
+    contentPatterns: [
+      /\binstructions for use\b/i,
+      /\bcapabilities\b.*\blimitations\b/i,
+      /\bintended purpose\b.*\bai\b/i,
+    ],
+    fixMessage: 'Create an INSTRUCTIONS-FOR-USE.md with capabilities, limitations, intended purpose, and human oversight instructions (Art. 13)',
+  },
 ];
 
 // --- Exported check functions (one per document type) ---
@@ -212,6 +266,10 @@ export const checkIncidentReportPresence = createPresenceCheck(PRESENCE_CONFIGS[
 export const checkDeclarationOfConformityPresence = createPresenceCheck(PRESENCE_CONFIGS[4]!);
 export const checkMonitoringPolicyPresence = createPresenceCheck(PRESENCE_CONFIGS[5]!);
 export const checkWorkerNotificationPresence = createPresenceCheck(PRESENCE_CONFIGS[6]!);
+export const checkRiskManagementPresence = createPresenceCheck(PRESENCE_CONFIGS[7]!);
+export const checkDataGovernancePresence = createPresenceCheck(PRESENCE_CONFIGS[8]!);
+export const checkQmsPresence = createPresenceCheck(PRESENCE_CONFIGS[9]!);
+export const checkInstructionsForUsePresence = createPresenceCheck(PRESENCE_CONFIGS[10]!);
 
 /** All presence check configs (useful for data-driven tests). */
 export const ALL_PRESENCE_CONFIGS = PRESENCE_CONFIGS;

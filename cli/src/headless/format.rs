@@ -320,6 +320,8 @@ fn check_label(check_id: &str) -> String {
         "content-marking"          => "Content Marking / Provenance",
         "interaction-logging"      => "Interaction Logging",
         "ai-literacy"              => "AI Literacy Training Policy",
+        "ai-literacy-stale"        => "AI Literacy Training Overdue",
+        "ai-literacy-incomplete"   => "AI Literacy Training Incomplete",
         "gpai-transparency"        => "GPAI Transparency Docs",
         "compliance-metadata"      => "Compliance Metadata",
         "documentation"            => "Compliance Documentation",
@@ -336,6 +338,10 @@ fn check_label(check_id: &str) -> String {
         "declaration-of-conformity"=> "Declaration of Conformity",
         "monitoring-policy"        => "Post-Market Monitoring Policy",
         "worker-notification"      => "Worker AI Notification",
+        "risk-management"          => "Risk Management System",
+        "data-governance"          => "Data Governance Policy",
+        "qms"                      => "Quality Management System",
+        "instructions-for-use"     => "Instructions for Use",
 
         // ── L2: Document structure validation ───────────────
         "l2-fria"                  => "FRIA Structure Validation",
@@ -346,6 +352,10 @@ fn check_label(check_id: &str) -> String {
         "l2-monitoring-policy"     => "Monitoring Policy Structure",
         "l2-worker-notification"   => "Worker Notification Structure",
         "l2-ai-literacy"           => "AI Literacy Doc Structure",
+        "l2-risk-management"       => "Risk Mgmt Doc Structure",
+        "l2-data-governance"       => "Data Governance Doc Structure",
+        "l2-qms"                   => "QMS Doc Structure",
+        "l2-instructions-for-use"  => "Instructions Structure",
 
         // ── L3: Dependencies & configuration ────────────────
         "l3-dep-scan"              => "Dependency Analysis",

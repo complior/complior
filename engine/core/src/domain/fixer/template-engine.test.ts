@@ -46,9 +46,9 @@ describe('getTemplateForObligation', () => {
 });
 
 describe('getAvailableTemplates', () => {
-  it('returns all 8 templates', () => {
+  it('returns all 14 templates', () => {
     const templates = getAvailableTemplates();
-    expect(templates).toHaveLength(8);
+    expect(templates).toHaveLength(14);
   });
 
   it('each template has required fields', () => {

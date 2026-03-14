@@ -18,6 +18,10 @@ const CONTENT_SAMPLES: Record<string, string> = {
   'declaration-of-conformity': 'declaration of conformity',
   'monitoring-policy': 'post-market monitoring policy',
   'worker-notification': 'worker notification about AI systems',
+  'risk-management': 'risk management system for the AI application',
+  'data-governance': 'data governance policy and quality metrics',
+  'qms': 'quality management system for AI compliance',
+  'instructions-for-use': 'instructions for use including capabilities and limitations',
 };
 
 /**

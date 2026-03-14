@@ -4,18 +4,22 @@ import { createScanFile, createScanCtx } from '../../../test-helpers/factories.j
 import type { DocumentValidator } from './layer2-docs.js';
 
 describe('loadValidators', () => {
-  it('loads all 8 YAML validators', () => {
+  it('loads all 12 validators', () => {
     const validators = loadValidators();
-    expect(validators).toHaveLength(8);
+    expect(validators).toHaveLength(12);
 
     const documents = validators.map((v) => v.document).sort();
     expect(documents).toEqual([
       'ai-literacy',
       'art5-screening',
+      'data-governance',
       'declaration-conformity',
       'fria',
       'incident-report',
+      'instructions-for-use',
       'monitoring-policy',
+      'qms',
+      'risk-management',
       'tech-documentation',
       'worker-notification',
     ]);
@@ -116,16 +120,20 @@ describe('runLayer2', () => {
       createScanFile('AI-LITERACY.md', makeRichContent('AI Literacy', ['Training Program', 'Training Levels', 'Assessment Methods'])),
       createScanFile('ART5-SCREENING.md', makeRichContent('Screening', ['Prohibited Practices', 'Screening Results', 'Mitigations'])),
       createScanFile('FRIA.md', makeRichContent('FRIA', ['Risk Assessment', 'Impact Analysis', 'Mitigation Measures'])),
-      createScanFile('WORKER-NOTIFICATION.md', makeRichContent('Workers', ['Notification Scope', 'Affected Workers', 'Timeline'])),
-      createScanFile('TECH-DOCUMENTATION.md', makeRichContent('Tech', ['System Description', 'Architecture', 'Data Sources'])),
-      createScanFile('INCIDENT-REPORT.md', makeRichContent('Incident', ['Incident Description', 'Root Cause', 'Corrective Actions'])),
+      createScanFile('WORKER-NOTIFICATION.md', makeRichContent('Workers', ['Notification Scope', 'Affected Workers', 'Timeline', 'Delivery Tracking'])),
+      createScanFile('TECH-DOCUMENTATION.md', makeRichContent('Tech', ['General Description', 'System Elements', 'Monitoring, Functioning and Control', 'Validation and Testing', 'Accuracy, Robustness and Cybersecurity'])),
+      createScanFile('INCIDENT-REPORT.md', makeRichContent('Incident', ['Incident Description', 'Root Cause', 'Corrective Measures', 'Timeline of Events'])),
       createScanFile('DECLARATION-OF-CONFORMITY.md', makeRichContent('DoC', ['Conformity Statement', 'Standards Applied', 'Evidence'])),
       createScanFile('MONITORING-POLICY.md', makeRichContent('Monitoring', ['Monitoring Scope', 'Frequency', 'Escalation Procedures'])),
+      createScanFile('RISK-MANAGEMENT.md', makeRichContent('Risk', ['Known Risks', 'Misuse Scenarios', 'Residual Risk Assessment'])),
+      createScanFile('DATA-GOVERNANCE.md', makeRichContent('Data', ['Data Sources', 'Collection Methods', 'Quality Metrics'])),
+      createScanFile('QMS.md', makeRichContent('QMS', ['Compliance Strategy', 'Design Control', 'Testing Procedures'])),
+      createScanFile('INSTRUCTIONS-FOR-USE.md', makeRichContent('Instructions', ['Intended Purpose', 'Capabilities', 'Limitations'])),
     ]);
 
     const results = runLayer2(ctx);
 
-    expect(results).toHaveLength(8);
+    expect(results).toHaveLength(12);
     expect(results.every((r) => r.status === 'VALID')).toBe(true);
   });
 

@@ -127,8 +127,18 @@ describe('isBannedPackage', () => {
 });
 
 describe('PROHIBITED_PATTERNS', () => {
-  it('contains 10 regex patterns', () => {
-    expect(PROHIBITED_PATTERNS.length).toBe(10);
+  it('contains patterns covering all 8 Art. 5 sub-articles', () => {
+    expect(PROHIBITED_PATTERNS.length).toBeGreaterThanOrEqual(10);
+    // Verify all 8 sub-articles (a) through (h) are covered
+    const articles = new Set(PROHIBITED_PATTERNS.map(p => p.article));
+    expect(articles.has('Art. 5(1)(a)')).toBe(true);
+    expect(articles.has('Art. 5(1)(b)')).toBe(true);
+    expect(articles.has('Art. 5(1)(c)')).toBe(true);
+    expect(articles.has('Art. 5(1)(d)')).toBe(true);
+    expect(articles.has('Art. 5(1)(e)')).toBe(true);
+    expect(articles.has('Art. 5(1)(f)')).toBe(true);
+    expect(articles.has('Art. 5(1)(g)')).toBe(true);
+    expect(articles.has('Art. 5(1)(h)')).toBe(true);
   });
 
   it('all patterns have article references', () => {
@@ -167,6 +177,16 @@ describe('matchProhibitedPattern', () => {
     const result = matchProhibitedPattern('biometric categorization by race');
     expect(result).toBeDefined();
     expect(result?.article).toBe('Art. 5(1)(g)');
+  });
+
+  it('detects vulnerability exploitation (Art. 5(1)(b))', () => {
+    const result = matchProhibitedPattern('exploit vulnerable elderly users');
+    expect(result).toBeDefined();
+    expect(result?.article).toBe('Art. 5(1)(b)');
+
+    const r2 = matchProhibitedPattern('targeting disabled persons');
+    expect(r2).toBeDefined();
+    expect(r2?.article).toBe('Art. 5(1)(b)');
   });
 
   it('returns undefined for benign text', () => {

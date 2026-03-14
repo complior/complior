@@ -92,6 +92,20 @@ export interface ComplianceBlock {
   readonly fria_date?: string;
   readonly worker_notification_sent?: boolean;
   readonly worker_notification_date?: string;
+  readonly ai_literacy?: {
+    readonly training_completed?: boolean;
+    readonly last_training_date?: string;
+    readonly trained_count?: number;
+    readonly next_training_due?: string;
+  };
+}
+
+export interface OversightBlock {
+  readonly responsible_person: string;
+  readonly role: string;
+  readonly contact: string;
+  readonly override_mechanism: string;
+  readonly escalation_procedure: string;
 }
 
 export interface DisclosureBlock {
@@ -170,6 +184,9 @@ export interface AgentPassport {
 
   // Compliance
   readonly compliance: ComplianceBlock;
+
+  // Human Oversight (Art. 14)
+  readonly oversight?: OversightBlock;
 
   // Disclosure & Logging
   readonly disclosure: DisclosureBlock;
@@ -262,6 +279,20 @@ const ComplianceBlockSchema = z.object({
   fria_date: z.string().optional(),
   worker_notification_sent: z.boolean().optional(),
   worker_notification_date: z.string().optional(),
+  ai_literacy: z.object({
+    training_completed: z.boolean().optional(),
+    last_training_date: z.string().optional(),
+    trained_count: z.number().int().min(0).optional(),
+    next_training_due: z.string().optional(),
+  }).optional(),
+});
+
+const OversightBlockSchema = z.object({
+  responsible_person: z.string(),
+  role: z.string(),
+  contact: z.string(),
+  override_mechanism: z.string(),
+  escalation_procedure: z.string(),
 });
 
 const DisclosureBlockSchema = z.object({
@@ -329,6 +360,7 @@ export const AgentPassportSchema = z.object({
   permissions: PermissionsBlockSchema,
   constraints: ConstraintsBlockSchema,
   compliance: ComplianceBlockSchema,
+  oversight: OversightBlockSchema.optional(),
   disclosure: DisclosureBlockSchema,
   logging: LoggingBlockSchema,
   lifecycle: LifecycleBlockSchema,

@@ -14,6 +14,12 @@ const TEMPLATE_MAP: readonly TemplateMapping[] = [
   { obligationId: 'eu-ai-act-OBL-021', article: 'Art. 73', templateFile: 'incident-report.md', outputFile: 'docs/compliance/incident-report.md', description: 'Serious Incident Report' },
   { obligationId: 'eu-ai-act-OBL-019', article: 'Art. 47', templateFile: 'declaration-of-conformity.md', outputFile: 'docs/compliance/declaration-of-conformity.md', description: 'Declaration of Conformity' },
   { obligationId: 'eu-ai-act-OBL-011', article: 'Art. 26', templateFile: 'monitoring-policy.md', outputFile: 'docs/compliance/monitoring-policy.md', description: 'Post-Market Monitoring Policy' },
+  { obligationId: 'eu-ai-act-OBL-003', article: 'Art. 9', templateFile: 'risk-management-system.md', outputFile: 'docs/compliance/risk-management-system.md', description: 'Risk Management System' },
+  { obligationId: 'eu-ai-act-OBL-004', article: 'Art. 10', templateFile: 'data-governance.md', outputFile: 'docs/compliance/data-governance.md', description: 'Data Governance Policy' },
+  { obligationId: 'eu-ai-act-OBL-010', article: 'Art. 17', templateFile: 'qms.md', outputFile: 'docs/compliance/qms.md', description: 'Quality Management System' },
+  { obligationId: 'eu-ai-act-OBL-007', article: 'Art. 13', templateFile: 'instructions-for-use.md', outputFile: 'docs/compliance/instructions-for-use.md', description: 'Instructions for Use' },
+  { obligationId: 'eu-ai-act-OBL-022', article: 'Art. 53', templateFile: 'gpai-transparency.md', outputFile: 'docs/compliance/gpai-transparency.md', description: 'GPAI Transparency Documentation' },
+  { obligationId: 'eu-ai-act-OBL-023', article: 'Art. 55', templateFile: 'gpai-systemic-risk.md', outputFile: 'docs/compliance/gpai-systemic-risk.md', description: 'GPAI Systemic Risk Assessment' },
 ];
 
 // --- Strategy: Disclosure (Art. 50.1) ---

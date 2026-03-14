@@ -504,14 +504,50 @@ export interface ProhibitedPattern {
 }
 
 export const PROHIBITED_PATTERNS: readonly ProhibitedPattern[] = [
-  { regex: /emotion.*recogni(tion|ze|zer).*real.?time/i, reason: 'Real-time emotion recognition', article: 'Art. 5(1)(f)' },
-  { regex: /social.*scor(e|ing)/i, reason: 'Social scoring system', article: 'Art. 5(1)(c)' },
+  // Art. 5(1)(a) — Subliminal/manipulative/deceptive techniques
   { regex: /subliminal.*messag/i, reason: 'Subliminal messaging', article: 'Art. 5(1)(a)' },
-  { regex: /biometric.*categori[sz]/i, reason: 'Biometric categorization', article: 'Art. 5(1)(g)' },
-  { regex: /facial.*scrap(e|ing)/i, reason: 'Facial image scraping', article: 'Art. 5(1)(e)' },
+  { regex: /manipulat(e|ive|ion).*behavio(r|ur)/i, reason: 'Behavioral manipulation', article: 'Art. 5(1)(a)' },
+  { regex: /dark.?pattern.*ai/i, reason: 'AI-powered dark patterns', article: 'Art. 5(1)(a)' },
+  { regex: /deceptive.*ai.*technique/i, reason: 'Deceptive AI technique', article: 'Art. 5(1)(a)' },
+  { regex: /covert.*persuasion/i, reason: 'Covert persuasion technique', article: 'Art. 5(1)(a)' },
+
+  // Art. 5(1)(b) — Exploitation of vulnerabilities (age, disability, social/economic situation)
+  { regex: /exploit.*(vulnerab|elderly|disabled|minors?|children)/i, reason: 'Exploitation of vulnerable groups', article: 'Art. 5(1)(b)' },
+  { regex: /target.*(elderly|senior|disabled|impair|minor|child)/i, reason: 'Targeting vulnerable persons', article: 'Art. 5(1)(b)' },
+  { regex: /age.?based.*(manipulat|exploit|target)/i, reason: 'Age-based exploitation', article: 'Art. 5(1)(b)' },
+  { regex: /disability.*(exploit|manipulat|target)/i, reason: 'Disability-based exploitation', article: 'Art. 5(1)(b)' },
+  { regex: /economic.?vulnerab.*(exploit|target)/i, reason: 'Economic vulnerability exploitation', article: 'Art. 5(1)(b)' },
+
+  // Art. 5(1)(c) — Social scoring
+  { regex: /social.*scor(e|ing)/i, reason: 'Social scoring system', article: 'Art. 5(1)(c)' },
+  { regex: /citizen.*rating/i, reason: 'Citizen rating system', article: 'Art. 5(1)(c)' },
+  { regex: /behavio(r|ur).*rating.*system/i, reason: 'Behavioral rating system', article: 'Art. 5(1)(c)' },
+
+  // Art. 5(1)(d) — Criminal risk prediction based on profiling
   { regex: /predictive.*polic/i, reason: 'Predictive policing', article: 'Art. 5(1)(d)' },
   { regex: /crime.*predict/i, reason: 'Criminal risk prediction', article: 'Art. 5(1)(d)' },
+  { regex: /recidivism.*predict/i, reason: 'Recidivism prediction', article: 'Art. 5(1)(d)' },
+  { regex: /criminal.*profil/i, reason: 'Criminal profiling', article: 'Art. 5(1)(d)' },
+
+  // Art. 5(1)(e) — Untargeted facial scraping
+  { regex: /facial.*scrap(e|ing)/i, reason: 'Facial image scraping', article: 'Art. 5(1)(e)' },
+  { regex: /face.*harvest/i, reason: 'Face data harvesting', article: 'Art. 5(1)(e)' },
+  { regex: /scrape.*face.*image/i, reason: 'Scraping facial images', article: 'Art. 5(1)(e)' },
+
+  // Art. 5(1)(f) — Emotion recognition in workplace/education
+  { regex: /emotion.*recogni(tion|ze|zer).*real.?time/i, reason: 'Real-time emotion recognition', article: 'Art. 5(1)(f)' },
+  { regex: /emotion.*detect.*work(place|er|force)/i, reason: 'Workplace emotion detection', article: 'Art. 5(1)(f)' },
+  { regex: /emotion.*detect.*school|classroom.*emotion/i, reason: 'Education emotion detection', article: 'Art. 5(1)(f)' },
+  { regex: /affect(ive)?.?comput.*employ/i, reason: 'Affective computing for employees', article: 'Art. 5(1)(f)' },
+
+  // Art. 5(1)(g) — Biometric categorization by sensitive characteristics
+  { regex: /biometric.*categori[sz]/i, reason: 'Biometric categorization', article: 'Art. 5(1)(g)' },
+  { regex: /infer.*(race|religion|politic|sexual.?orient)/i, reason: 'Inferring sensitive attributes', article: 'Art. 5(1)(g)' },
+  { regex: /biometric.*(race|ethnic|gender)/i, reason: 'Biometric sensitive classification', article: 'Art. 5(1)(g)' },
+
+  // Art. 5(1)(h) — Real-time remote biometric identification in public spaces
   { regex: /mass.*surveillance/i, reason: 'Mass surveillance', article: 'Art. 5(1)(h)' },
   { regex: /real.?time.*biometric.*identif/i, reason: 'Real-time biometric identification', article: 'Art. 5(1)(h)' },
-  { regex: /manipulat(e|ive|ion).*behavio(r|ur)/i, reason: 'Behavioral manipulation', article: 'Art. 5(1)(a)' },
+  { regex: /live.*face.*recogni(tion|ze)/i, reason: 'Live facial recognition', article: 'Art. 5(1)(h)' },
+  { regex: /public.*space.*biometric/i, reason: 'Public space biometric ID', article: 'Art. 5(1)(h)' },
 ];
