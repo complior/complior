@@ -9,6 +9,8 @@ import type { ScanService } from './scan-service.js';
 import type { UndoService } from './undo-service.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
+import type { AgentPassport } from '../types/passport.types.js';
+import { generateDocument, TEMPLATE_FILE_MAP, type DocType } from '../domain/documents/document-generator.js';
 
 export interface FixServiceDeps {
   readonly fixer: Fixer;
@@ -19,6 +21,7 @@ export interface FixServiceDeps {
   readonly loadTemplate: (templateFile: string) => Promise<string>;
   readonly undoService?: UndoService;
   readonly evidenceStore?: EvidenceStore;
+  readonly passportService?: { listPassports: (path?: string) => Promise<readonly AgentPassport[]> };
 }
 
 export const createFixService = (deps: FixServiceDeps) => {
@@ -44,10 +47,32 @@ export const createFixService = (deps: FixServiceDeps) => {
 
     if (action.type === 'create') {
       let content = action.content ?? '';
-      // Resolve template placeholder
+      // Resolve template placeholder — pre-fill with passport data when available
       const templateMatch = content.match(/^\[TEMPLATE:(.+)]$/);
       if (templateMatch) {
-        content = await loadTemplate(templateMatch[1]);
+        const templateFile = templateMatch[1]!;
+        const template = await loadTemplate(templateFile);
+
+        // Reverse-lookup: templateFile → DocType
+        const docTypeEntry = (Object.entries(TEMPLATE_FILE_MAP) as [DocType, string][])
+          .find(([, file]) => file === templateFile);
+
+        if (docTypeEntry && deps.passportService) {
+          try {
+            const passports = await deps.passportService.listPassports(projectPath);
+            const passport = passports[0];
+            if (passport) {
+              const result = generateDocument({ manifest: passport, template, docType: docTypeEntry[0] });
+              content = result.markdown;
+            } else {
+              content = template;
+            }
+          } catch {
+            content = template;
+          }
+        } else {
+          content = template;
+        }
       }
       await writeFile(fullPath, content, 'utf-8');
       events.emit('file.changed', { path: fullPath, action: 'create' });

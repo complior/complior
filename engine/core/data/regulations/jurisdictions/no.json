@@ -1,0 +1,15 @@
+{
+  "country_code": "NO",
+  "country_name": "Norway",
+  "msa_name": "Norwegian Communications Authority (Nkom)",
+  "msa_url": "https://www.nkom.no",
+  "msa_contact": "firmapost@nkom.no",
+  "local_requirements": [
+    "Norwegian-language documentation required for consumer-facing AI",
+    "National DPA (Datatilsynet) notification for high-risk AI",
+    "Alignment with Norwegian National Strategy for Artificial Intelligence"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Norwegian",
+  "notes": "EEA member; AI Act applies through EEA Agreement; active AI ethics community"
+}

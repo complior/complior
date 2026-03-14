@@ -1,0 +1,15 @@
+{
+  "country_code": "LU",
+  "country_name": "Luxembourg",
+  "msa_name": "Institut Luxembourgeois de Regulation (ILR)",
+  "msa_url": "https://www.ilr.lu",
+  "msa_contact": "info@ilr.lu",
+  "local_requirements": [
+    "French, German, or Luxembourgish documentation accepted",
+    "National DPA (CNPD) notification for AI processing personal data",
+    "Alignment with Luxembourg Digital Innovation Hub requirements"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "French/German/Luxembourgish",
+  "notes": "ILR regulates digital markets including AI; strong fintech and AI ecosystem"
+}

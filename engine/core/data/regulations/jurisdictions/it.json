@@ -1,0 +1,15 @@
+{
+  "country_code": "IT",
+  "country_name": "Italy",
+  "msa_name": "Agenzia per l'Italia Digitale (AgID)",
+  "msa_url": "https://www.agid.gov.it",
+  "msa_contact": "protocollo@pec.agid.gov.it",
+  "local_requirements": [
+    "Italian-language documentation mandatory for all AI systems in Italian market",
+    "Garante per la protezione dei dati personali notification for high-risk AI",
+    "Sector-specific requirements for public administration AI (Piano Triennale)"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Italian",
+  "notes": "AgID coordinates AI governance for public sector; Garante handles data protection aspects"
+}

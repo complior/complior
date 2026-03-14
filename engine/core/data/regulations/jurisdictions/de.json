@@ -1,0 +1,15 @@
+{
+  "country_code": "DE",
+  "country_name": "Germany",
+  "msa_name": "Bundesnetzagentur (Federal Network Agency)",
+  "msa_url": "https://www.bundesnetzagentur.de",
+  "msa_contact": "info@bnetza.de",
+  "local_requirements": [
+    "German-language documentation mandatory for all AI systems in German market",
+    "National DPA (BfDI) notification required for high-risk AI systems",
+    "Sector-specific requirements for AI in critical infrastructure (BSI alignment)"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "German",
+  "notes": "Bundesnetzagentur designated as primary MSA; federal state DPAs also have oversight roles"
+}

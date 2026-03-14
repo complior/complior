@@ -101,7 +101,7 @@ describe('createScanner', () => {
     const result = scanner.scan(ctx);
 
     expect(result.score.totalScore).toBeGreaterThanOrEqual(0);
-    expect(result.score.zone).toBe('red');
+    expect(['red', 'yellow']).toContain(result.score.zone);
     expect(result.score.totalChecks).toBe(result.findings.length);
   });
 

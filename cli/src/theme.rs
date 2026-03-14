@@ -33,6 +33,7 @@ pub struct ThemeColors {
     pub tool_result_ok: Color,
     pub tool_result_err: Color,
     pub thinking_fg: Color,
+    pub user_msg_bg: Color,
 }
 
 // --- Theme data loading (compile-time embedded JSON) ---
@@ -57,6 +58,12 @@ struct ThemeEntry {
     selection_bg: [u8; 3], status_bar_bg: [u8; 3], status_bar_fg: [u8; 3],
     tool_call_border: [u8; 3], tool_result_ok: [u8; 3], tool_result_err: [u8; 3],
     thinking_fg: [u8; 3],
+    #[serde(default = "default_user_msg_bg")]
+    user_msg_bg: [u8; 3],
+}
+
+fn default_user_msg_bg() -> [u8; 3] {
+    [40, 42, 54]
 }
 
 fn rgb(c: [u8; 3]) -> Color {
@@ -92,6 +99,7 @@ impl ThemeColors {
             selection_bg: rgb(entry.selection_bg), status_bar_bg: rgb(entry.status_bar_bg), status_bar_fg: rgb(entry.status_bar_fg),
             tool_call_border: rgb(entry.tool_call_border), tool_result_ok: rgb(entry.tool_result_ok), tool_result_err: rgb(entry.tool_result_err),
             thinking_fg: rgb(entry.thinking_fg),
+            user_msg_bg: rgb(entry.user_msg_bg),
         }
     }
 
@@ -128,6 +136,7 @@ impl ThemeColors {
         t.tool_result_ok = Color::LightGreen;
         t.tool_result_err = Color::LightRed;
         t.thinking_fg = Color::Gray;
+        t.user_msg_bg = Color::Rgb(40, 40, 60);
         t
     }
 

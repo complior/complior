@@ -1,8 +1,8 @@
 # Sprint S06 — Documents + Wizards + LLM + SaaS Regulatory
 
-**Версия:** 1.0.0
+**Версия:** 1.1.0
 **Дата:** 2026-03-07
-**Статус:** Planning
+**Статус:** In Progress — 5 US DONE: US-S06-03 (LLM Chat Service), US-S06-17 (TUI Chat Assistant), US-S06-18 (Chat UX), US-S06-19 (Onboarding Rework 10→8), US-S06-20 (`complior init` + Root Discovery)
 **Cross-repo:** ~/complior (CLI + Engine + SDK) + ~/PROJECT (SaaS Dashboard)
 **Длительность:** 2-3 недели
 
@@ -105,7 +105,7 @@ D-41 Eva AI Assistant ────────► D-42 Eva Tool Calling
 
 ---
 
-### US-S06-03: LLM Chat Service (Engine-side)
+### US-S06-03: LLM Chat Service (Engine-side) ✅ DONE
 **Приоритет:** HIGH
 **Продукт:** Engine
 **Backlog ref:** E-47
@@ -114,13 +114,13 @@ D-41 Eva AI Assistant ────────► D-42 Eva Tool Calling
 Как разработчик, я хочу иметь LLM chat endpoint в Engine, чтобы TUI и CLI могли задавать контекстные вопросы по compliance.
 
 **Acceptance Criteria:**
-- [ ] `POST /chat` -- отправить сообщение, получить ответ (streaming через SSE)
-- [ ] Контекст: текущий scan result, passport данные, найденные findings
-- [ ] System prompt включает: EU AI Act obligations, текущий score, deadline до 2 августа 2026
-- [ ] Поддержка Vercel AI SDK (generateText / streamText) + BYOK (OpenAI, Anthropic, Mistral)
-- [ ] Конфигурация модели: `.complior/config.toml` секция `[llm]` (model, api_key, base_url)
-- [ ] Rate limiting: максимум 50 запросов/час (настраиваемо)
-- [ ] История чата: хранится в `.complior/chat-history.json` (последние 100 сообщений)
+- [x] `POST /chat` -- отправить сообщение, получить ответ (streaming через SSE)
+- [x] Контекст: текущий scan result, passport данные, найденные findings
+- [x] System prompt включает: EU AI Act obligations, текущий score, deadline до 2 августа 2026
+- [x] Поддержка Vercel AI SDK (generateText / streamText) + BYOK (OpenAI, Anthropic, Mistral)
+- [x] Конфигурация модели: `.complior/config.toml` секция `[llm]` (model, api_key, base_url)
+- [x] Rate limiting: максимум 50 запросов/час (настраиваемо)
+- [x] История чата: хранится в `.complior/chat-history.json` (последние 100 сообщений)
 
 **Технические детали:**
 - `engine/core/src/services/chat-service.ts` -- ChatService с DI
@@ -418,7 +418,7 @@ D-41 Eva AI Assistant ────────► D-42 Eva Tool Calling
 
 ---
 
-### US-S06-17: TUI Chat Assistant
+### US-S06-17: TUI Chat Assistant ✅ DONE
 **Приоритет:** HIGH
 **Продукт:** CLI
 **Backlog ref:** C-23 (F-V9-TUI-01)
@@ -427,13 +427,13 @@ D-41 Eva AI Assistant ────────► D-42 Eva Tool Calling
 Как разработчик, я хочу использовать chat assistant прямо в TUI, чтобы задавать вопросы по compliance в контексте текущего проекта без переключения в браузер.
 
 **Acceptance Criteria:**
-- [ ] Hotkey `?` или `/` -- открывает chat overlay поверх текущей страницы
-- [ ] Ввод сообщения: текстовый input внизу overlay
-- [ ] Streaming ответ: отображается посимвольно (SSE от Engine `POST /chat`)
-- [ ] Контекст: автоматически прикрепляется текущая страница (Scan -> findings, Passport -> поля)
-- [ ] История: последние 20 сообщений сохраняются в сессии
-- [ ] Закрытие: Esc возвращает к текущей странице
-- [ ] Markdown rendering: ответ отображается с форматированием (bold, lists, code blocks)
+- [x] Hotkey `?` или `/` -- открывает chat overlay поверх текущей страницы
+- [x] Ввод сообщения: текстовый input внизу overlay
+- [x] Streaming ответ: отображается посимвольно (SSE от Engine `POST /chat`)
+- [x] Контекст: автоматически прикрепляется текущая страница (Scan -> findings, Passport -> поля)
+- [x] История: последние 20 сообщений сохраняются в сессии
+- [x] Закрытие: Esc возвращает к текущей странице
+- [x] Markdown rendering: ответ отображается с форматированием (bold, lists, code blocks)
 
 **Технические детали:**
 - `cli/src/views/chat/mod.rs` -- chat overlay view
@@ -844,4 +844,4 @@ D-41 Eva AI Assistant ────────► D-42 Eva Tool Calling
 
 ---
 
-**Обновлено:** 2026-03-07 v1.0.0 -- 30 US (16 Engine, 4 CLI, 12 SaaS), unified sprint, LLM + ISO 42001 + MCP Proxy + SaaS Regulatory
+**Обновлено:** 2026-03-13 v1.1.0 -- 30 US (16 Engine, 4 CLI, 12 SaaS), unified sprint, LLM + ISO 42001 + MCP Proxy + SaaS Regulatory. US-S06-03 (LLM Chat Service) and US-S06-17 (TUI Chat Assistant) DONE (commit e6809bd)

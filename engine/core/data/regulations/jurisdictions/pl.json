@@ -1,0 +1,15 @@
+{
+  "country_code": "PL",
+  "country_name": "Poland",
+  "msa_name": "Office of Electronic Communications (UKE)",
+  "msa_url": "https://www.uke.gov.pl",
+  "msa_contact": "uke@uke.gov.pl",
+  "local_requirements": [
+    "Polish-language documentation mandatory for consumer AI systems",
+    "National DPA (UODO) notification required for high-risk AI",
+    "Alignment with Polish AI Development Policy"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Polish",
+  "notes": "UKE oversees electronic communications and digital market surveillance"
+}

@@ -1,0 +1,15 @@
+{
+  "country_code": "IS",
+  "country_name": "Iceland",
+  "msa_name": "Post and Telecom Administration (PFS)",
+  "msa_url": "https://www.pfs.is",
+  "msa_contact": "pfs@pfs.is",
+  "local_requirements": [
+    "Icelandic-language documentation for public-facing AI systems",
+    "National DPA (Persónuvernd) notification for AI processing personal data",
+    "EEA agreement obligations for AI Act transposition"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Icelandic",
+  "notes": "EEA member; AI Act applies through EEA Agreement incorporation"
+}

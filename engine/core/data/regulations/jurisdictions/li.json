@@ -1,0 +1,15 @@
+{
+  "country_code": "LI",
+  "country_name": "Liechtenstein",
+  "msa_name": "Office for Communications (AK)",
+  "msa_url": "https://www.llv.li/inhalt/118804/amtsstellen/amt-fur-kommunikation",
+  "msa_contact": "info.ak@llv.li",
+  "local_requirements": [
+    "German-language documentation accepted",
+    "National DPA (DSS) notification for AI processing personal data",
+    "EEA agreement obligations for AI Act transposition"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "German",
+  "notes": "EEA member; AI Act applies through EEA Agreement; strong fintech sector"
+}

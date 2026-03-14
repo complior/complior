@@ -1,0 +1,15 @@
+{
+  "country_code": "BE",
+  "country_name": "Belgium",
+  "msa_name": "Federal Public Service Economy - AI Authority",
+  "msa_url": "https://economie.fgov.be",
+  "msa_contact": "info.eco@economie.fgov.be",
+  "local_requirements": [
+    "Bilingual documentation required (French and Dutch) for federal AI systems",
+    "National DPA (APD/GBA) notification required for high-risk AI",
+    "Belgian Knowledge Centre for Data & Society alignment recommended"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "French/Dutch/German",
+  "notes": "Federal structure requires coordination between regional and federal authorities"
+}

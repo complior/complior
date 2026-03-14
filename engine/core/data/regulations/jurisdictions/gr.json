@@ -1,0 +1,15 @@
+{
+  "country_code": "GR",
+  "country_name": "Greece",
+  "msa_name": "National Telecommunications and Post Commission (EETT)",
+  "msa_url": "https://www.eett.gr",
+  "msa_contact": "info@eett.gr",
+  "local_requirements": [
+    "Greek-language documentation required for consumer-facing AI systems",
+    "National DPA (HDPA) notification for AI processing personal data",
+    "Alignment with Greek National AI Strategy (Hellenic AI Society)"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Greek",
+  "notes": "EETT handles digital market oversight including AI systems"
+}

@@ -1,4 +1,5 @@
 use std::net::TcpListener;
+use std::os::unix::process::CommandExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
@@ -41,7 +42,7 @@ impl EngineManager {
             port: 0,
             status: EngineProcessStatus::NotStarted,
             restart_count: 0,
-            engine_dir: workspace_root.join("engine"),
+            engine_dir: workspace_root.join("engine").join("core"),
         }
     }
 
@@ -82,7 +83,8 @@ impl EngineManager {
             .current_dir(&self.engine_dir)
             .env("PORT", port.to_string())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stderr(Stdio::piped())
+            .process_group(0); // Own process group so we can kill npx + tsx + node together
 
         if let Some(path) = pid_path {
             cmd.env("COMPLIOR_PID_FILE", path.to_string_lossy().as_ref());
@@ -148,10 +150,16 @@ impl EngineManager {
         self.start()
     }
 
-    /// Kill the child process and clean up.
+    /// Kill the child process group and clean up.
     pub fn shutdown(&mut self) {
         if let Some(ref mut child) = self.child {
-            let _ = child.kill();
+            // Kill the entire process group (npx + tsx + node) via negative PID
+            let pid = child.id() as i32;
+            unsafe { libc::kill(-pid, libc::SIGTERM); }
+            // Give processes a moment to exit gracefully
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            // Force kill if still alive
+            unsafe { libc::kill(-pid, libc::SIGKILL); }
             let _ = child.wait();
         }
         self.child = None;

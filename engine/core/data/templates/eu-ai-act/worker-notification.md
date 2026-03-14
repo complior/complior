@@ -8,12 +8,23 @@
 ## Document Structure:
 
 ### 1. Header
+<!-- GUIDANCE: Art. 26(7) requires notification to workers' representatives before
+deployment of high-risk AI in the workplace. Send notification to both individual
+workers AND works council/union representatives where applicable. Check national
+transposition for additional requirements. Example: In Germany, notify both
+individual employees and the Betriebsrat. -->
 - From: [Company Name, HR Department / Management]
 - To: [Workers / Works Council / Union Representative]
 - Date: [Date]
 - Subject: Notification of High-Risk AI System Deployment per EU AI Act Article 26(7)
 
 ### 2. Notification Body
+<!-- GUIDANCE: Use plain, non-technical language — the notification must be
+understandable to all affected workers regardless of technical background. Explain
+specifically HOW the system affects their work (not just THAT it does). Reference
+Art. 86 right to explanation. Example: "The system analyzes your weekly activity
+reports to suggest workload distribution — your manager reviews all suggestions
+before any changes are made." -->
 
 Dear [Workers / Works Council],
 
@@ -44,6 +55,11 @@ For questions or concerns about this AI system, please contact: [Name, Title, Em
 Signed: [Management representative name and title]
 
 ### 3. Acknowledgment
+<!-- GUIDANCE: While Art. 26(7) does not require signed acknowledgment, it provides
+evidence of compliance. Consider digital acknowledgment for remote workers. If a
+worker refuses to sign, document the refusal — the obligation is to inform, not to
+obtain consent. Example: "Acknowledgment sent via HR portal on 2026-03-01,
+reminder sent 2026-03-08, escalated to manager 2026-03-15." -->
 - [ ] I acknowledge receipt of this notification
 - Employee name: _________________
 - Date: _________________

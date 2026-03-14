@@ -7,6 +7,8 @@ import { runLayer2, layer2ToCheckResults } from './layers/layer2-docs.js';
 import { runLayer3, layer3ToCheckResults } from './layers/layer3-config.js';
 import { runLayer4, layer4ToCheckResults } from './layers/layer4-patterns.js';
 import type { Layer5Analyzer } from './layers/layer5-llm.js';
+import { runNhiScan, nhiToCheckResults } from './checks/nhi-scanner.js';
+import { runDepDeepScan, depScanToCheckResults } from './checks/dep-deep-scan.js';
 import { runCrossLayerChecks, crossLayerToCheckResults } from './cross-layer.js';
 import { createEvidence, createEvidenceCollector } from './evidence.js';
 import { createRegulationVersion } from './regulation-version.js';
@@ -166,6 +168,16 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       }));
     }
 
+    // L3-ext: Dependency deep scan (lock file analysis)
+    const depScanResult = runDepDeepScan(ctx);
+    const depChecks = depScanToCheckResults(depScanResult);
+    allResults.push(...depChecks);
+    if (depScanResult.totalDeps > 0) {
+      evidenceCollector.add(createEvidence('l3-dep-scan', 'L3', 'dependency', {
+        snippet: `Analyzed ${depScanResult.totalDeps} deps: ${depScanResult.vulnerabilities.length} vulns, ${depScanResult.licenseIssues.length} license issues`,
+      }));
+    }
+
     // L4: Pattern matching
     const l4Results = runLayer4(ctx, l3Results);
     const l4Checks = layer4ToCheckResults(l4Results);
@@ -182,8 +194,20 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       }));
     }
 
+    // NHI: Non-human identity / secret scanning
+    const nhiResults = runNhiScan(ctx);
+    const nhiChecks = nhiToCheckResults(nhiResults);
+    allResults.push(...nhiChecks);
+    for (const nhi of nhiResults) {
+      evidenceCollector.add(createEvidence(`l4-nhi-${nhi.category}`, 'L4', 'nhi-scan', {
+        snippet: `${nhi.description}: ${nhi.match}`,
+        file: nhi.file,
+        line: nhi.line,
+      }));
+    }
+
     // Cross-layer verification
-    const l1Checks = allResults.slice(0, allResults.length - l2Checks.length - l3Checks.length - l4Checks.length);
+    const l1Checks = allResults.slice(0, allResults.length - l2Checks.length - l3Checks.length - l4Checks.length - nhiChecks.length);
     const crossLayerFindings = runCrossLayerChecks(l1Checks, l2Results, l3Results, l4Results);
     const crossLayerCheckResults = crossLayerToCheckResults(crossLayerFindings);
     allResults.push(...crossLayerCheckResults);

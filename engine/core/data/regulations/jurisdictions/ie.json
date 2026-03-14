@@ -1,0 +1,15 @@
+{
+  "country_code": "IE",
+  "country_name": "Ireland",
+  "msa_name": "Commission for Communications Regulation (ComReg)",
+  "msa_url": "https://www.comreg.ie",
+  "msa_contact": "info@comreg.ie",
+  "local_requirements": [
+    "English-language documentation accepted; Irish also recognized",
+    "National DPC notification required for high-risk AI processing personal data",
+    "Enterprise Ireland AI governance framework alignment recommended"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "English/Irish",
+  "notes": "Ireland hosts many multinational tech HQs; DPC has significant cross-border AI oversight role"
+}

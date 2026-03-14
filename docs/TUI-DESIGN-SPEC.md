@@ -456,6 +456,10 @@ complior daemon --watch          # daemon + file watcher
 complior daemon status           # check if daemon running
 complior daemon stop             # stop daemon
 
+# Project Setup
+complior init                    # create .complior/ (like git init)
+complior init ./path             # init at specific path
+
 # TUI
 complior                         # start daemon + TUI (default)
 complior tui                     # connect to running daemon
@@ -463,6 +467,10 @@ complior tui                     # connect to running daemon
 # MCP
 complior mcp                     # start as MCP server (stdio)
 ```
+
+> **Project root discovery:** Когда `.complior/` не найдена в CWD, TUI автоматически ищет корень проекта вверх по каталогам (до 10 уровней, стоп на `$HOME`). Маркеры: `.complior/`, `.git/`, `Cargo.toml`, `package.json`, `go.mod`, `pyproject.toml`, `pom.xml`, `build.gradle`, `.project`. Если маркер не найден — fallback на CWD.
+>
+> `complior init` создаёт `.complior/` с `project.toml` (TUI config) и `profile.json` (engine config). Если не запускать `init` вручную — `.complior/` создаётся автоматически при завершении onboarding wizard.
 
 ### 3.2. Passport Commands
 
@@ -545,4 +553,111 @@ complior cert:evidence --export             # export evidence package
 
 ---
 
-**Обновлено:** 2026-02-26 v1.0
+## 7. КОНФИГУРАЦИЯ: Global + Project Split
+
+Конфигурация разделена на два уровня: **глобальный** (пользовательские предпочтения) и **проектный** (compliance-профиль).
+
+### 7.1. Файлы
+
+| Файл | Путь | Scope | Git |
+|------|------|-------|-----|
+| Global settings | `~/.config/complior/settings.toml` | Все проекты пользователя | Нет (домашняя директория) |
+| Project config | `.complior/project.toml` | Конкретный проект | Да (safe to commit, no secrets) |
+| Engine profile | `.complior/profile.json` | Конкретный проект | Да (jurisdiction, regulation) |
+| Credentials | `~/.config/complior/credentials` | Все проекты пользователя | Нет (API keys, JWT tokens) |
+
+**Merge rule:** Global загружается первым, затем Project overlay. Для полей с override — project побеждает если задан.
+
+**Project root discovery (`find_project_root`):** `.complior/project.toml` ищется от CWD вверх по каталогам (до 10 уровней, стоп на `$HOME`). Маркеры (в порядке приоритета):
+1. `.complior/` — родная конфигурация
+2. `.git/`, `Cargo.toml`, `package.json`, `go.mod`, `pyproject.toml`, `pom.xml`, `build.gradle`, `.project` — общие маркеры корня проекта
+
+Если маркер не найден — fallback на CWD.
+
+**Инициализация:** `complior init` создаёт `.complior/` с `project.toml` + `profile.json` (аналог `git init`). Если `init` не запускался — `.complior/` автоматически создаётся при завершении onboarding wizard.
+
+**Legacy migration:** При первом запуске, если `~/.config/complior/tui.toml` существует, а `settings.toml` нет — автоматический split в два файла, `tui.toml` → `tui.toml.bak`.
+
+### 7.2. Global Settings — `~/.config/complior/settings.toml`
+
+Пользовательские UX-настройки и инфраструктура. Одинаковые для всех проектов.
+
+| Field | Type | Default | Category |
+|-------|------|---------|----------|
+| `theme` | String | `"dark"` | UX preference |
+| `navigation` | String | `"standard"` | UX preference |
+| `sidebar_visible` | bool | `true` | UX preference |
+| `animations_enabled` | bool | `true` | UX preference |
+| `scroll_acceleration` | f32 | `1.5` | UX preference |
+| `tick_rate_ms` | u64 | `250` | UX preference |
+| `engine_host` | String | `"127.0.0.1"` | Infrastructure |
+| `engine_port` | u16 | `3099` | Infrastructure |
+| `llm_provider` | Option\<String\> | `None` | LLM default |
+| `llm_model` | Option\<String\> | `None` | LLM default |
+| `project_api_url` | String | `""` | SaaS default |
+| `offline_mode` | bool | `false` | SaaS default |
+| `confirmations.batch_fix` | bool | `true` | UX preference |
+| `confirmations.undo_multiple` | bool | `true` | UX preference |
+| `confirmations.overwrite_docs` | bool | `false` | UX preference |
+
+### 7.3. Project Config — `.complior/project.toml`
+
+Compliance-профиль проекта. Можно коммитить в git (без секретов).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `onboarding_completed` | bool | `false` | Per-project onboarding status |
+| `onboarding_last_step` | Option\<usize\> | `None` | Resume partial onboarding |
+| `project_type` | String | `"existing"` | existing / demo |
+| `requirements` | Vec\<String\> | `["eu-ai-act"]` | Compliance frameworks (eu-ai-act, iso-42001) |
+| `role` | String | `"deployer"` | deployer / provider / both / auto |
+| `industry` | String | `"general"` | general / hr / finance / healthcare / ... |
+| `scan_scope` | Vec\<String\> | `["deps","env","source"]` | What to scan (default, not wizard-configurable) |
+| `watch_on_start` | bool | `false` | Auto-start file watcher |
+| `llm_provider` | Option\<String\> | `None` | Override global LLM |
+| `llm_model` | Option\<String\> | `None` | Override global LLM |
+| `project_api_url` | Option\<String\> | `None` | Override global SaaS URL |
+| `offline_mode` | Option\<bool\> | `None` | Override global offline mode |
+
+> **Legacy fields:** `jurisdiction` (String, default `"eu"`) kept for backward compatibility but no longer set by onboarding. Replaced by `requirements`.
+
+### 7.4. Override-поля (Project → Global fallback)
+
+Четыре поля существуют в обоих конфигах. Если задан project — используется project. Иначе — fallback на global.
+
+```
+llm_provider:    project.llm_provider    OR  global.llm_provider
+llm_model:       project.llm_model       OR  global.llm_model
+project_api_url: project.project_api_url OR  global.project_api_url
+offline_mode:    project.offline_mode     OR  global.offline_mode
+```
+
+**Use case:** Консультант работает над проектами разных клиентов — каждый со своим SaaS-аккаунтом, LLM-провайдером и compliance-юрисдикцией.
+
+### 7.5. Onboarding → куда что сохраняется
+
+Wizard onboarding (8 steps) записывает в оба файла:
+
+| Wizard Step | Target |
+|-------------|--------|
+| Welcome + Theme | Global (`theme`) |
+| Project type | Project (`project_type`) |
+| Workspace trust | — (gate only, not persisted) |
+| Requirements frameworks | Project (`requirements`) |
+| Role | Project (`role`) |
+| Industry | Project (`industry`) |
+| AI connection | Global (`llm_provider`, `offline_mode`) + Credentials |
+| Summary | Project (`onboarding_completed = true`) |
+
+> **Removed steps (v1.2):** Navigation style (always standard), Scan scope (always full), Jurisdiction (replaced by Requirements).
+
+### 7.6. Env Overrides
+
+| Env Variable | Overrides | Scope |
+|--------------|-----------|-------|
+| `PROJECT_API_URL` | `project_api_url` | Runtime |
+| `OFFLINE_MODE=1` | `offline_mode` | Runtime |
+
+---
+
+**Обновлено:** 2026-03-13 v1.3 — §3.1 `complior init` + project root discovery, §7.1 find_project_root + profile.json, §7.3 project_type simplified (2 opts), jurisdiction→requirements, §7.5 onboarding 8 steps

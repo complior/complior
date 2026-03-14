@@ -1,0 +1,15 @@
+{
+  "country_code": "SI",
+  "country_name": "Slovenia",
+  "msa_name": "Agency for Communication Networks and Services (AKOS)",
+  "msa_url": "https://www.akos-rs.si",
+  "msa_contact": "info.box@akos-rs.si",
+  "local_requirements": [
+    "Slovenian-language documentation mandatory for consumer AI systems",
+    "National DPA (IP RS) notification for AI processing personal data",
+    "Alignment with Slovenian National Programme for AI"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Slovenian",
+  "notes": "AKOS oversees communications networks and digital services including AI"
+}

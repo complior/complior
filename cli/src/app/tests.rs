@@ -234,10 +234,10 @@ mod tests {
         app.apply_action(Action::SubmitInput);
         assert_eq!(app.overlay, Overlay::Onboarding); // still open
 
-        // Skip rest with Esc
+        // Esc is blocked during onboarding — overlay stays
         app.apply_action(Action::EnterNormalMode);
-        assert_eq!(app.overlay, Overlay::None);
-        assert!(app.onboarding.is_none());
+        assert_eq!(app.overlay, Overlay::Onboarding);
+        assert!(app.onboarding.is_some());
     }
 
     #[test]

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { ValidationError } from '../../types/errors.js';
 import type { PassportService } from '../../services/passport-service.js';
+import { ALL_DOC_TYPES } from '../../domain/documents/document-generator.js';
 
 const AUDIT_EVENT_TYPES = [
   'passport.created', 'passport.updated', 'passport.exported',
@@ -356,6 +357,52 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(result);
   });
 
+  // US-S06-11: Import passport from external format (A2A)
+  app.post('/agent/import', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = z.object({
+      format: z.enum(['a2a']),
+      data: z.record(z.unknown()),
+      path: z.string().optional(),
+    }).safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid body: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.importPassport(
+      parsed.data.format,
+      parsed.data.data,
+      parsed.data.path,
+    );
+    return c.json(result);
+  });
+
+  // US-S06-12: Audit package export (tar.gz for auditors)
+  app.get('/agent/audit-package', async (c) => {
+    const path = c.req.query('path');
+    const result = await passportService.generateAuditPackage(path || undefined);
+    return new Response(result.buffer, {
+      headers: {
+        'Content-Type': 'application/gzip',
+        'Content-Disposition': `attachment; filename="complior-audit-${Date.now()}.tar.gz"`,
+      },
+    });
+  });
+
+  // US-S06-12: Audit package metadata (JSON)
+  app.get('/agent/audit-package/meta', async (c) => {
+    const path = c.req.query('path');
+    const result = await passportService.generateAuditPackage(path || undefined);
+    return c.json({
+      manifest: result.manifest,
+      totalFiles: result.totalFiles,
+      sizeBytes: result.buffer.length,
+    });
+  });
+
   // US-S05-24: Compare passport versions (diff)
   app.get('/agent/diff', async (c) => {
     const name = c.req.query('name');
@@ -365,6 +412,57 @@ export const createAgentRoute = (passportService: PassportService) => {
     }
 
     const result = await passportService.diffPassport(name, path || undefined);
+    return c.json(result);
+  });
+
+  // US-S06-06: Generate a single compliance document by type
+  app.post('/agent/doc', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = z.object({
+      path: z.string().min(1),
+      name: z.string().min(1),
+      docType: z.enum(ALL_DOC_TYPES),
+      organization: z.string().optional(),
+    }).safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.generateDocByType(
+      parsed.data.name,
+      parsed.data.docType,
+      parsed.data.path,
+      { organization: parsed.data.organization },
+    );
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+    }
+    return c.json(result);
+  });
+
+  // US-S06-06: Generate ALL required compliance documents
+  app.post('/agent/doc/all', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = z.object({
+      path: z.string().min(1),
+      name: z.string().min(1),
+      organization: z.string().optional(),
+    }).safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.generateAllDocs(
+      parsed.data.name,
+      parsed.data.path,
+      { organization: parsed.data.organization },
+    );
     return c.json(result);
   });
 

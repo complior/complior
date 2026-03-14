@@ -1,0 +1,15 @@
+{
+  "country_code": "MT",
+  "country_name": "Malta",
+  "msa_name": "Malta Communications Authority (MCA)",
+  "msa_url": "https://www.mca.org.mt",
+  "msa_contact": "info@mca.org.mt",
+  "local_requirements": [
+    "English or Maltese documentation accepted",
+    "Malta Digital Innovation Authority (MDIA) certification for innovative technology",
+    "National DPA (IDPC) notification for AI processing personal data"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Maltese/English",
+  "notes": "Malta was among the first EU states to establish AI-specific governance (MDIA)"
+}

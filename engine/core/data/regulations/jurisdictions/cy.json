@@ -1,0 +1,15 @@
+{
+  "country_code": "CY",
+  "country_name": "Cyprus",
+  "msa_name": "Department of Electronic Communications (DEC)",
+  "msa_url": "https://www.mcw.gov.cy/dec",
+  "msa_contact": "dec@mcw.gov.cy",
+  "local_requirements": [
+    "Greek-language documentation required for public sector AI",
+    "National DPA notification for AI processing personal data",
+    "Alignment with Cyprus Digital Strategy 2025-2030"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Greek",
+  "notes": "Small market; DEC handles AI oversight alongside telecommunications"
+}

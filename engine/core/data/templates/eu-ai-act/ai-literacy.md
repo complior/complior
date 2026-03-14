@@ -9,6 +9,10 @@
 ## Document Structure:
 
 ### 1. Policy Header
+<!-- GUIDANCE: Art. 4 is already enforceable since February 2, 2025. Set the
+Effective Date to no later than your compliance deadline. The review cycle should
+be 12 months maximum. Example: "Version 1.0, effective 2025-02-01, next review
+2026-02-01." -->
 
 | Field | Value |
 |-------|-------|
@@ -21,6 +25,11 @@
 | Applicable Regulation | EU AI Act (Regulation (EU) 2024/1689), Article 4 |
 
 ### 2. Purpose and Scope
+<!-- GUIDANCE: Art. 4 requires literacy "taking into account their technical
+knowledge, experience, education and training, the context the AI systems are
+used in, and the persons on whom the AI systems are used." List ALL AI systems
+in scope with their risk levels. Example: ChatGPT Enterprise (Limited risk, 45
+users) requires Level 2 training; HireVue (High risk, 8 users) requires Level 3. -->
 
 **Purpose:** This policy establishes [Company Name]'s approach to ensuring all staff and relevant third parties have sufficient AI literacy as required by Article 4 of the EU AI Act.
 
@@ -39,6 +48,11 @@
 | [e.g., Internal ML Pipeline] | [In-house] | [High] | [Data Science, Product] | [12] |
 
 ### 3. Training Levels
+<!-- GUIDANCE: Define training proportionate to exposure and risk. Level 1 covers
+all staff (what AI is, prohibited practices). Level 2 covers operators (how to
+use specific tools correctly). Level 3 covers technical staff (Art. 9-15
+requirements). Level 4 covers leadership (liability, penalties up to €35M/7%).
+Example: Marketing team using ChatGPT needs Level 2; ML engineers need Level 3. -->
 
 **Level 1 — General AI Awareness (All Staff)**
 - Duration: 2 hours
@@ -68,6 +82,10 @@
 - Mandatory for: C-suite, board members, heads of department, legal/compliance team
 
 ### 4. Training Delivery
+<!-- GUIDANCE: Consider accessibility requirements (disability formats, multiple
+languages for multinational workforce). Platform choice should support completion
+tracking and certificate generation. Example: "LMS with SCORM tracking, available
+in EN/DE/FR, WCAG 2.1 AA compliant." -->
 
 - **Method:** Combination of e-learning modules, in-person workshops, and practical exercises
 - **Platform:** [e.g., Complior.ai training modules / internal LMS / external provider]
@@ -75,6 +93,10 @@
 - **Accessibility:** Training materials available in accessible formats per applicable disability requirements
 
 ### 5. Training Schedule
+<!-- GUIDANCE: Art. 4 does not specify a timeline, but "sufficient level" implies
+timely training. New hires should complete training before accessing AI systems.
+Annual refresh ensures staff stay current with regulatory updates.
+Example: "New hire training within 30 days of start; Level 3 refresh annually." -->
 
 | Event | Timing |
 |-------|--------|
@@ -85,12 +107,20 @@
 | Update training | Within 30 days of significant regulatory or system change |
 
 ### 6. Training Record Template
+<!-- GUIDANCE: Maintain auditable records. Each record should link to a verifiable
+certificate. Scores below the pass threshold require re-training. Track "Next Due"
+to prevent lapses. Example: "Employee EMP-042 completed Level 2 on 2025-06-15,
+score 85%, certificate CERT-2025-042, next due 2026-06-15." -->
 
 | Employee ID | Name | Department | Role | Level | Completed Date | Score | Trainer | Certificate ID | Next Due |
 |-------------|------|------------|------|-------|----------------|-------|---------|----------------|----------|
 | EMP-001 | [Name] | [Dept] | [Role] | L2 | 2025-06-15 | 85% | [Trainer] | CERT-2025-001 | 2026-06-15 |
 
 ### 7. Roles and Responsibilities
+<!-- GUIDANCE: Assign a named Program Owner with organizational authority. The
+owner is accountable to regulators. Department heads are responsible for their
+team's completion. Legal/Compliance validates content accuracy.
+Example: "Program Owner: Jane Smith, Head of AI Governance." -->
 
 | Role | Responsibility |
 |------|---------------|
@@ -101,11 +131,19 @@
 | Legal/Compliance | Review training content for regulatory accuracy |
 
 ### 8. Non-Compliance Escalation
+<!-- GUIDANCE: Define progressive consequences to ensure completion. Restricting
+AI system access for non-compliant staff is both a practical safeguard and a
+regulatory defense. Example: "After 30 days overdue, AI system access credentials
+are suspended until training is completed." -->
 
 - Staff who miss training deadlines: reminder at 7 days, escalation to manager at 14 days, escalation to HR at 30 days
 - Persistent non-completion: formal performance discussion, potential access restriction to AI systems
 
 ### 9. Review and Update
+<!-- GUIDANCE: Trigger-based reviews ensure the policy stays current. Key triggers
+include: new AI Act implementing acts, adoption of new AI systems, audit findings,
+and incidents. Example: "Policy updated within 30 days of new Commission guidelines
+or adoption of any new high-risk AI system." -->
 
 This policy is reviewed annually or upon:
 - New EU AI Act guidance or amendments
@@ -114,6 +152,10 @@ This policy is reviewed annually or upon:
 - Audit findings requiring training updates
 
 ### Sign-off:
+<!-- GUIDANCE: Minimum sign-offs: Policy Owner, HR (for training logistics),
+Legal/Compliance (for regulatory accuracy), and CEO/MD (organizational commitment).
+Additional sign-offs may include Works Council where required by national law.
+Example: In Germany, Betriebsrat consultation is required for training policies. -->
 
 | Role | Name | Signature | Date |
 |------|------|-----------|------|

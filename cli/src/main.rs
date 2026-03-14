@@ -78,149 +78,118 @@ async fn main() -> color_eyre::Result<()> {
 
     // Handle headless commands (non-TUI)
     if cli::is_headless(&parsed_cli) {
-        match &parsed_cli.command {
+        // Auto-launch engine for commands that need it (skip for version/init/update/daemon/login/logout)
+        let mut engine_guard: Option<EngineManager> = None;
+        if config.engine_url_override.is_none() && cli::needs_engine(&parsed_cli) {
+            let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."));
+            let mut mgr = EngineManager::new(workspace_root);
+            let project_path = std::env::current_dir().unwrap_or_default();
+            let pid_path = daemon::pid_file_path(&project_path);
+            match mgr.start_with_pid(&pid_path, false) {
+                Ok(port) => {
+                    config.engine_url_override = Some(format!("http://127.0.0.1:{port}"));
+                    let client = engine_client::EngineClient::from_url(&format!("http://127.0.0.1:{port}"));
+                    eprintln!("Starting engine on port {port}...");
+                    if mgr.wait_for_ready(&client).await {
+                        engine_guard = Some(mgr);
+                    } else {
+                        eprintln!("Error: Engine failed to become ready");
+                        drop(mgr);
+                        std::process::exit(1);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error: Cannot auto-start engine: {e}");
+                    eprintln!("Start the engine manually: cd engine/core && npx tsx src/server.ts");
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        let code: i32 = match &parsed_cli.command {
             Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, path }) => {
                 if let Some(base_branch) = diff {
-                    let code = headless::scan::run_scan_diff(
-                        base_branch,
-                        *json,
-                        *fail_on_regression,
-                        *comment,
-                        path.as_deref(),
-                        &config,
-                    )
-                    .await;
-                    std::process::exit(code);
+                    headless::scan::run_scan_diff(
+                        base_branch, *json, *fail_on_regression, *comment,
+                        path.as_deref(), &config,
+                    ).await
+                } else {
+                    headless::run_headless_scan(
+                        *ci, *json, *sarif, *no_tui, *threshold,
+                        fail_on.as_deref(), path.as_deref(), &config,
+                    ).await
                 }
-                let code = headless::run_headless_scan(
-                    *ci,
-                    *json,
-                    *sarif,
-                    *no_tui,
-                    *threshold,
-                    fail_on.as_deref(),
-                    path.as_deref(),
-                    &config,
-                )
-                .await;
-                std::process::exit(code);
             }
             Some(cli::Command::Fix { dry_run, json, path }) => {
-                let code = headless::run_headless_fix(
-                    *dry_run,
-                    *json,
-                    path.as_deref(),
-                    &config,
-                )
-                .await;
-                std::process::exit(code);
+                headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config).await
             }
-            Some(cli::Command::Version) => {
-                headless::run_version();
-                return Ok(());
-            }
-            Some(cli::Command::Doctor) => {
-                headless::run_doctor(&config).await;
-                return Ok(());
-            }
+            Some(cli::Command::Version) => { headless::run_version(); 0 }
+            Some(cli::Command::Doctor) => { headless::run_doctor(&config).await; 0 }
             Some(cli::Command::Report { format, output, path }) => {
-                let code = headless::run_report(format, output.as_deref(), path.as_deref(), &config).await;
-                std::process::exit(code);
+                headless::run_report(format, output.as_deref(), path.as_deref(), &config).await
             }
-            Some(cli::Command::Init { path }) => {
-                headless::run_init(path.as_deref());
-                return Ok(());
-            }
-            Some(cli::Command::Update) => {
-                headless::run_update().await;
-                return Ok(());
-            }
+            Some(cli::Command::Init { path }) => { headless::run_init(path.as_deref()); 0 }
+            Some(cli::Command::Update) => { headless::run_update().await; 0 }
             Some(cli::Command::Daemon { action, watch }) => {
                 let project_path = std::env::current_dir().unwrap_or_default();
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
-                return Ok(());
+                0
             }
             Some(cli::Command::Chat { message, json, model }) => {
-                let code = headless::chat::run_chat(
-                    message,
-                    *json,
-                    model.as_deref(),
-                    &config,
-                )
-                .await;
-                std::process::exit(code);
+                headless::chat::run_chat(message, *json, model.as_deref(), &config).await
             }
             Some(cli::Command::Agent { action }) => {
-                let code = headless::agent::run_agent_command(action, &config).await;
-                std::process::exit(code);
+                headless::agent::run_agent_command(action, &config).await
             }
             Some(cli::Command::Cert { action }) => {
-                let code = headless::cert::run_cert_command(action, &config).await;
-                std::process::exit(code);
+                headless::cert::run_cert_command(action, &config).await
             }
             Some(cli::Command::SupplyChain { json, models, path }) => {
-                let code = headless::supply_chain::run_supply_chain(
-                    *json,
-                    *models,
-                    path.as_deref(),
-                    &config,
-                )
-                .await;
-                std::process::exit(code);
+                headless::supply_chain::run_supply_chain(*json, *models, path.as_deref(), &config).await
             }
             Some(cli::Command::Cost { hourly_rate, agent, json }) => {
-                let code = headless::cost::run_cost(
-                    *hourly_rate,
-                    agent.as_deref(),
-                    *json,
-                    &config,
-                )
-                .await;
-                std::process::exit(code);
+                headless::cost::run_cost(*hourly_rate, agent.as_deref(), *json, &config).await
             }
             Some(cli::Command::Debt { json, trend }) => {
-                let code = headless::debt::run_debt(*json, *trend, &config).await;
-                std::process::exit(code);
+                headless::debt::run_debt(*json, *trend, &config).await
             }
             Some(cli::Command::Simulate { fix, add_doc, complete_passport, json }) => {
-                let code = headless::simulate::run_simulate(
-                    fix,
-                    add_doc,
-                    complete_passport,
-                    *json,
-                    &config,
-                )
-                .await;
-                std::process::exit(code);
+                headless::simulate::run_simulate(fix, add_doc, complete_passport, *json, &config).await
             }
             Some(cli::Command::Onboarding { action }) => {
-                let code = headless::onboarding::run_onboarding(action, &config).await;
-                std::process::exit(code);
+                headless::onboarding::run_onboarding(action, &config).await
             }
             Some(cli::Command::Login) => {
                 match headless::run_login(&config).await {
-                    Ok(()) => return Ok(()),
-                    Err(e) => {
-                        eprintln!("Login failed: {e}");
-                        std::process::exit(1);
-                    }
+                    Ok(()) => 0,
+                    Err(e) => { eprintln!("Login failed: {e}"); 1 }
                 }
             }
             Some(cli::Command::Logout) => {
                 match headless::run_logout(&config).await {
-                    Ok(()) => return Ok(()),
-                    Err(e) => {
-                        eprintln!("Logout failed: {e}");
-                        std::process::exit(1);
-                    }
+                    Ok(()) => 0,
+                    Err(e) => { eprintln!("Logout failed: {e}"); 1 }
                 }
             }
             Some(cli::Command::Sync { passport, scan, docs, audit, evidence, registry, .. }) => {
-                let code = headless::run_sync(*passport, *scan, *docs, *audit, *evidence, *registry, &config).await;
-                std::process::exit(code);
+                headless::run_sync(*passport, *scan, *docs, *audit, *evidence, *registry, &config).await
+            }
+            Some(cli::Command::Doc { action }) => {
+                headless::doc::run_doc_command(action, &config).await
+            }
+            Some(cli::Command::Jurisdiction { action }) => {
+                headless::jurisdiction::run_jurisdiction_command(action, &config).await
+            }
+            Some(cli::Command::Proxy { action }) => {
+                headless::proxy::run_proxy_command(action, &config).await
             }
             None => unreachable!(),
-        }
+        };
+
+        drop(engine_guard);
+        std::process::exit(code);
     }
 
     // Initialize theme from config

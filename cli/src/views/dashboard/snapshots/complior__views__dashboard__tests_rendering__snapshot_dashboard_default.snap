@@ -9,8 +9,8 @@ expression: buf
 │                                     No scan yet — run /scan                                      ││ cli/             │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘│ No scan yet      │
 ┌ Status Log ──────────────────────────────────────────────┐┌ Info ────────────────────────────────┐│                  │
-│[HH:MM] ! Welcome to Complior. Use /scan to start, /help  ││ --/100                               ││                  │
-│for commands.                                             ││ Run /scan to check compliance        ││                  │
+│! Welcome to Complior. Use /scan to start, /help for      ││ --/100                               ││                  │
+│commands.                                                 ││ Run /scan to check compliance        ││                  │
 │                                                          ││                                      ││──────────────────│
 │                                                          ││                                      ││ Ctx: 3%  Zen: off│
 │                                                          │└──────────────────────────────────────┘│                  │

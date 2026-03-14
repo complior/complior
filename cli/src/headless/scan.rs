@@ -2,7 +2,7 @@ use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 use crate::types::Severity;
 
-use super::format::{format_human, format_json, format_sarif};
+use super::format::{format_human, format_json, format_sarif, print_paged};
 
 /// Run a headless (non-TUI) scan and print results to stdout.
 /// Returns the exit code: 0 = pass, 1 = fail/error.
@@ -54,13 +54,14 @@ pub async fn run_headless_scan(
         }
     };
 
-    // Format output
+    // Format output (default: human-readable with pager)
     if json {
         println!("{}", format_json(&result));
     } else if sarif {
         println!("{}", format_sarif(&result));
-    } else if no_tui || ci {
-        print!("{}", format_human(&result));
+    } else {
+        let text = format_human(&result);
+        print_paged(&text);
     }
 
     // Determine exit code

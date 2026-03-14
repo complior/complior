@@ -1,0 +1,15 @@
+{
+  "country_code": "RO",
+  "country_name": "Romania",
+  "msa_name": "National Authority for Management and Regulation in Communications (ANCOM)",
+  "msa_url": "https://www.ancom.ro",
+  "msa_contact": "ancom@ancom.ro",
+  "local_requirements": [
+    "Romanian-language documentation mandatory for consumer AI systems",
+    "National DPA (ANSPDCP) notification for high-risk AI processing personal data",
+    "Alignment with Romanian National Strategy on Artificial Intelligence"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Romanian",
+  "notes": "ANCOM handles communications regulation and AI market surveillance"
+}

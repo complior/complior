@@ -1,0 +1,15 @@
+{
+  "country_code": "LT",
+  "country_name": "Lithuania",
+  "msa_name": "State Consumer Rights Protection Authority (VVTAT)",
+  "msa_url": "https://www.vvtat.lt",
+  "msa_contact": "vvtat@vvtat.lt",
+  "local_requirements": [
+    "Lithuanian-language documentation for consumer-facing AI systems",
+    "National DPA (VDAI) notification for high-risk AI",
+    "Alignment with Lithuanian AI Strategy and Innovation Agency guidelines"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Lithuanian",
+  "notes": "VVTAT manages consumer protection including AI product safety"
+}

@@ -1,0 +1,15 @@
+{
+  "country_code": "LV",
+  "country_name": "Latvia",
+  "msa_name": "Consumer Rights Protection Centre (PTAC)",
+  "msa_url": "https://www.ptac.gov.lv",
+  "msa_contact": "ptac@ptac.gov.lv",
+  "local_requirements": [
+    "Latvian-language documentation required for consumer-facing AI",
+    "National DPA (DVI) notification for AI processing personal data",
+    "Alignment with Latvian AI Strategy and Digital Transformation Guidelines"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Latvian",
+  "notes": "PTAC handles consumer protection aspects of AI market surveillance"
+}

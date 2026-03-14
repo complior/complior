@@ -13,7 +13,8 @@
     "user_msg": [122, 162, 247], "assistant_msg": [158, 206, 106], "system_msg": [224, 175, 104],
     "selection_bg": [55, 55, 85], "status_bar_bg": [36, 37, 52], "status_bar_fg": [192, 202, 245],
     "tool_call_border": [122, 162, 247], "tool_result_ok": [158, 206, 106], "tool_result_err": [247, 118, 142],
-    "thinking_fg": [90, 90, 110]
+    "thinking_fg": [90, 90, 110],
+    "user_msg_bg": [34, 36, 52]
   },
   {
     "name": "Complior Light",
@@ -29,7 +30,8 @@
     "user_msg": [64, 120, 242], "assistant_msg": [0, 140, 0], "system_msg": [180, 140, 0],
     "selection_bg": [200, 220, 255], "status_bar_bg": [230, 230, 240], "status_bar_fg": [56, 58, 66],
     "tool_call_border": [64, 120, 242], "tool_result_ok": [0, 140, 0], "tool_result_err": [200, 0, 0],
-    "thinking_fg": [160, 160, 170]
+    "thinking_fg": [160, 160, 170],
+    "user_msg_bg": [230, 235, 240]
   },
   {
     "name": "Solarized Dark",
@@ -45,7 +47,8 @@
     "user_msg": [38, 139, 210], "assistant_msg": [133, 153, 0], "system_msg": [181, 137, 0],
     "selection_bg": [7, 54, 66], "status_bar_bg": [7, 54, 66], "status_bar_fg": [147, 161, 161],
     "tool_call_border": [38, 139, 210], "tool_result_ok": [133, 153, 0], "tool_result_err": [220, 50, 47],
-    "thinking_fg": [88, 110, 117]
+    "thinking_fg": [88, 110, 117],
+    "user_msg_bg": [7, 54, 66]
   },
   {
     "name": "Solarized Light",
@@ -61,7 +64,8 @@
     "user_msg": [38, 139, 210], "assistant_msg": [133, 153, 0], "system_msg": [181, 137, 0],
     "selection_bg": [238, 232, 213], "status_bar_bg": [238, 232, 213], "status_bar_fg": [101, 123, 131],
     "tool_call_border": [38, 139, 210], "tool_result_ok": [133, 153, 0], "tool_result_err": [220, 50, 47],
-    "thinking_fg": [147, 161, 161]
+    "thinking_fg": [147, 161, 161],
+    "user_msg_bg": [238, 232, 213]
   },
   {
     "name": "Dracula",
@@ -77,7 +81,8 @@
     "user_msg": [139, 233, 253], "assistant_msg": [80, 250, 123], "system_msg": [241, 250, 140],
     "selection_bg": [68, 71, 90], "status_bar_bg": [33, 34, 44], "status_bar_fg": [248, 248, 242],
     "tool_call_border": [189, 147, 249], "tool_result_ok": [80, 250, 123], "tool_result_err": [255, 85, 85],
-    "thinking_fg": [98, 114, 164]
+    "thinking_fg": [98, 114, 164],
+    "user_msg_bg": [50, 52, 66]
   },
   {
     "name": "Nord",
@@ -93,7 +98,8 @@
     "user_msg": [136, 192, 208], "assistant_msg": [163, 190, 140], "system_msg": [235, 203, 139],
     "selection_bg": [59, 66, 82], "status_bar_bg": [59, 66, 82], "status_bar_fg": [216, 222, 233],
     "tool_call_border": [136, 192, 208], "tool_result_ok": [163, 190, 140], "tool_result_err": [191, 97, 106],
-    "thinking_fg": [76, 86, 106]
+    "thinking_fg": [76, 86, 106],
+    "user_msg_bg": [55, 62, 76]
   },
   {
     "name": "Monokai",
@@ -109,7 +115,8 @@
     "user_msg": [102, 217, 239], "assistant_msg": [166, 226, 46], "system_msg": [230, 219, 116],
     "selection_bg": [60, 60, 50], "status_bar_bg": [30, 31, 26], "status_bar_fg": [248, 248, 242],
     "tool_call_border": [174, 129, 255], "tool_result_ok": [166, 226, 46], "tool_result_err": [249, 38, 114],
-    "thinking_fg": [117, 113, 94]
+    "thinking_fg": [117, 113, 94],
+    "user_msg_bg": [48, 49, 42]
   },
   {
     "name": "Gruvbox",
@@ -125,6 +132,7 @@
     "user_msg": [131, 165, 152], "assistant_msg": [184, 187, 38], "system_msg": [250, 189, 47],
     "selection_bg": [60, 56, 54], "status_bar_bg": [50, 48, 47], "status_bar_fg": [235, 219, 178],
     "tool_call_border": [211, 134, 155], "tool_result_ok": [184, 187, 38], "tool_result_err": [251, 73, 52],
-    "thinking_fg": [146, 131, 116]
+    "thinking_fg": [146, 131, 116],
+    "user_msg_bg": [50, 48, 47]
   }
 ]

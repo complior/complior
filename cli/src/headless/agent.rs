@@ -66,6 +66,12 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Onboard { json, step, path } => {
             run_agent_onboard(*json, *step, path.as_deref(), config).await
         }
+        AgentAction::Import { from, file, json, path } => {
+            run_agent_import(from, file, *json, path, config).await
+        }
+        AgentAction::AuditPackage { output, json, path } => {
+            run_agent_audit_package(output.as_deref(), *json, path.as_deref(), config).await
+        }
     }
 }
 
@@ -1672,6 +1678,158 @@ async fn run_agent_onboard(json: bool, step: Option<u32>, path: Option<&str>, co
                 0
             }
             Err(e) => { eprintln!("Error: {e}"); 1 }
+        }
+    }
+}
+
+// --- US-S06-11: Passport import from A2A format ---
+
+async fn run_agent_import(
+    from: &str,
+    file: &str,
+    json: bool,
+    path: &Option<String>,
+    config: &TuiConfig,
+) -> i32 {
+    let _project_path = resolve_project_path_buf(path.as_deref());
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    // Read the input file
+    let file_content = match std::fs::read_to_string(file) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Error reading file {}: {}", file, e);
+            return 1;
+        }
+    };
+
+    let data: serde_json::Value = match serde_json::from_str(&file_content) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Error parsing JSON from {}: {}", file, e);
+            return 1;
+        }
+    };
+
+    let mut body = serde_json::json!({
+        "format": from,
+        "data": data,
+    });
+    if let Some(p) = path {
+        body["path"] = serde_json::Value::String(p.clone());
+    }
+
+    match client.post_json("/agent/import", &body).await {
+        Ok(result) => {
+            if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+                eprintln!("Error: {}", msg);
+                return 1;
+            }
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+            } else {
+                println!("Passport imported successfully from {} format", from);
+                if let Some(imported) = result.get("fieldsImported").and_then(|v| v.as_array()) {
+                    println!("  Fields imported: {}", imported.len());
+                    for field in imported {
+                        if let Some(f) = field.as_str() {
+                            println!("    + {}", f);
+                        }
+                    }
+                }
+                if let Some(missing) = result.get("fieldsMissing").and_then(|v| v.as_array()) {
+                    println!("  Fields missing: {}", missing.len());
+                    for field in missing {
+                        if let Some(f) = field.as_str() {
+                            println!("    - {}", f);
+                        }
+                    }
+                }
+                if let Some(passport) = result.get("passport") {
+                    let name = passport.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                    println!("\n  Passport name: {}", name);
+                    println!("  Run `complior agent show {}` to view details.", name);
+                }
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("Error importing passport: {}", e);
+            1
+        }
+    }
+}
+
+// --- US-S06-12: Audit package export ---
+
+async fn run_agent_audit_package(
+    output: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let project_path = resolve_project_path_buf(path);
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    if json {
+        // Get metadata only
+        let url = format!(
+            "/agent/audit-package/meta?path={}",
+            url_encode(&project_path.to_string_lossy())
+        );
+        match client.get_json(&url).await {
+            Ok(result) => {
+                if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
+                    let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+                    eprintln!("Error: {}", msg);
+                    return 1;
+                }
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                0
+            }
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                1
+            }
+        }
+    } else {
+        // Download the binary archive
+        let url = format!(
+            "/agent/audit-package?path={}",
+            url_encode(&project_path.to_string_lossy())
+        );
+        let output_path = output.unwrap_or("complior-audit.tar.gz");
+
+        match client.get_bytes(&url).await {
+            Ok(bytes) => {
+                match std::fs::write(output_path, &bytes) {
+                    Ok(_) => {
+                        let size_kb = bytes.len() as f64 / 1024.0;
+                        println!("Audit package saved to: {}", output_path);
+                        println!("  Size: {:.1} KB ({} bytes)", size_kb, bytes.len());
+                        println!("\nExtract with: tar xzf {}", output_path);
+                        0
+                    }
+                    Err(e) => {
+                        eprintln!("Error writing file {}: {}", output_path, e);
+                        1
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Error downloading audit package: {}", e);
+                1
+            }
         }
     }
 }

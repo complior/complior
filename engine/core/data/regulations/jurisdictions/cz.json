@@ -1,0 +1,15 @@
+{
+  "country_code": "CZ",
+  "country_name": "Czech Republic",
+  "msa_name": "Czech Trade Inspection Authority (CTIA)",
+  "msa_url": "https://www.coi.cz",
+  "msa_contact": "info@coi.cz",
+  "local_requirements": [
+    "Czech-language user documentation mandatory",
+    "National DPA (UOOU) notification required for high-risk AI",
+    "Alignment with Czech National AI Strategy"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Czech",
+  "notes": "CTIA handles market surveillance for AI products alongside consumer goods"
+}

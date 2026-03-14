@@ -25,7 +25,7 @@ export const createProviderRoute = (llm: LlmPort) => {
 
     try {
       const testModelId = provider === 'openrouter'
-        ? 'anthropic/claude-haiku-4-5-20251001'
+        ? 'anthropic/claude-haiku-4.5'
         : provider === 'anthropic'
           ? 'claude-haiku-4-5-20251001'
           : 'gpt-4o-mini';

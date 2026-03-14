@@ -1,0 +1,15 @@
+{
+  "country_code": "ES",
+  "country_name": "Spain",
+  "msa_name": "Agencia Espanola de Supervision de la Inteligencia Artificial (AESIA)",
+  "msa_url": "https://www.aesia.gob.es",
+  "msa_contact": "contacto@aesia.gob.es",
+  "local_requirements": [
+    "Spanish-language documentation mandatory for all AI systems in Spanish market",
+    "AEPD notification required for high-risk AI processing personal data",
+    "National AI regulatory sandbox participation available for testing"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Spanish",
+  "notes": "Spain was the first EU member state to create a dedicated AI supervisory agency (AESIA)"
+}

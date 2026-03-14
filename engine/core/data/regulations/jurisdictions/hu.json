@@ -1,0 +1,15 @@
+{
+  "country_code": "HU",
+  "country_name": "Hungary",
+  "msa_name": "National Media and Infocommunications Authority (NMHH)",
+  "msa_url": "https://www.nmhh.hu",
+  "msa_contact": "info@nmhh.hu",
+  "local_requirements": [
+    "Hungarian-language documentation mandatory for consumer AI systems",
+    "National DPA (NAIH) notification required for high-risk AI",
+    "Alignment with Hungarian Artificial Intelligence Strategy"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Hungarian",
+  "notes": "NMHH oversees digital communications and AI market surveillance"
+}

@@ -21,6 +21,8 @@ pub enum StepKind {
     Radio,
     /// Multi-select scan scope
     Checkbox,
+    /// Text input with optional masking (e.g. API key entry)
+    TextInput { masked: bool },
     /// Config summary + action
     Summary,
 }
@@ -62,6 +64,7 @@ pub struct OnboardingStep {
     pub kind: StepKind,
     pub options: Vec<StepOption>,
     pub selected: Vec<usize>,
+    pub text_value: String,
 }
 
 /// Full onboarding wizard state.
@@ -77,6 +80,13 @@ pub struct OnboardingWizard {
     pub project_type: Option<String>,
     /// Indices of visible steps (recalculated on project_type change).
     pub active_steps: Vec<usize>,
+
+    /// AI provider substep: 0=select, 1=key input, 2=validating, 3=result
+    pub provider_substep: usize,
+    /// Cursor position within text input field.
+    pub text_cursor: usize,
+    /// Validation result message (after key submission).
+    pub validation_message: Option<String>,
 }
 
 impl OnboardingWizard {
@@ -91,6 +101,9 @@ impl OnboardingWizard {
             result_summary: None,
             project_type: None,
             active_steps,
+            provider_substep: 0,
+            text_cursor: 0,
+            validation_message: None,
         }
     }
 
@@ -156,7 +169,11 @@ impl OnboardingWizard {
                         step.selected.push(cursor);
                     }
                 }
-                _ => {}
+                // TextInput provider substep 0 uses toggle_selection for radio-like behavior
+                StepKind::TextInput { .. } => {
+                    step.selected = vec![cursor];
+                }
+                StepKind::Summary => {}
             }
         }
     }
@@ -189,6 +206,9 @@ impl OnboardingWizard {
             if pos + 1 < self.active_steps.len() {
                 self.current_step = self.active_steps[pos + 1];
                 self.cursor = 0;
+                self.provider_substep = 0;
+                self.text_cursor = 0;
+                self.validation_message = None;
                 false
             } else {
                 self.completed = true;
@@ -214,6 +234,44 @@ impl OnboardingWizard {
         }
     }
 
+    /// Insert a character at the current text cursor position.
+    pub fn insert_char(&mut self, c: char) {
+        if let Some(step) = self.steps.get_mut(self.current_step) {
+            if self.text_cursor <= step.text_value.len() {
+                step.text_value.insert(self.text_cursor, c);
+                self.text_cursor += c.len_utf8();
+            }
+        }
+    }
+
+    /// Delete the character before the text cursor (backspace).
+    pub fn delete_char_before(&mut self) {
+        if self.text_cursor == 0 {
+            return;
+        }
+        if let Some(step) = self.steps.get_mut(self.current_step) {
+            if self.text_cursor <= step.text_value.len() {
+                // Find the previous char boundary
+                let prev = step.text_value[..self.text_cursor]
+                    .char_indices()
+                    .next_back()
+                    .map(|(i, _)| i)
+                    .unwrap_or(0);
+                step.text_value.remove(prev);
+                self.text_cursor = prev;
+            }
+        }
+    }
+
+    /// Get the text_value of a step by id.
+    pub fn step_text_value(&self, id: &str) -> String {
+        self.steps
+            .iter()
+            .find(|s| s.id == id)
+            .map(|s| s.text_value.clone())
+            .unwrap_or_default()
+    }
+
     /// Recalculate active_steps based on project_type.
     pub fn recalculate_active_steps(&mut self) {
         let pt = self.project_type.as_deref().unwrap_or("existing");
@@ -226,8 +284,6 @@ impl OnboardingWizard {
                 match step.id {
                     // Skip workspace trust for demo
                     "workspace_trust" => pt != "demo",
-                    // Skip scan scope for new and demo
-                    "scan_scope" => pt == "existing",
                     _ => true,
                 }
             })
@@ -240,11 +296,23 @@ impl OnboardingWizard {
         self.steps
             .iter()
             .map(|step| {
-                let values: Vec<String> = step
-                    .selected
-                    .iter()
-                    .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
-                    .collect();
+                let values: Vec<String> = if matches!(step.kind, StepKind::TextInput { .. }) {
+                    // For TextInput, return selected provider label + masked key
+                    let mut vals: Vec<String> = step
+                        .selected
+                        .iter()
+                        .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
+                        .collect();
+                    if !step.text_value.is_empty() {
+                        vals.push("[key set]".to_string());
+                    }
+                    vals
+                } else {
+                    step.selected
+                        .iter()
+                        .filter_map(|&i| step.options.get(i).map(|o| o.label.clone()))
+                        .collect()
+                };
                 (step.id, values)
             })
             .collect()
@@ -263,16 +331,9 @@ impl OnboardingWizard {
                              "dracula", "nord", "monokai", "gruvbox"];
                 names.get(idx).unwrap_or(&"dark").to_string()
             }
-            "navigation" => match idx {
-                0 => "standard",
-                1 => "vim",
-                _ => "standard",
-            }
-            .to_string(),
             "project_type" => match idx {
                 0 => "existing",
-                1 => "new",
-                2 => "demo",
+                1 => "demo",
                 _ => "existing",
             }
             .to_string(),
@@ -282,16 +343,14 @@ impl OnboardingWizard {
                 _ => "yes",
             }
             .to_string(),
-            "jurisdiction" => match idx {
-                0 => "eu",
-                1 => "uk",
-                2 => "eu+uk",
-                3 => "us",
-                4 => "global",
-                5 => "eu", // "Not sure" → default EU
-                _ => "eu",
+            "requirements" => {
+                let labels = ["eu-ai-act", "iso-42001"];
+                step.selected
+                    .iter()
+                    .filter_map(|&i| labels.get(i).map(|s| s.to_string()))
+                    .collect::<Vec<_>>()
+                    .join(",")
             }
-            .to_string(),
             "role" => match idx {
                 0 => "deployer",
                 1 => "provider",
@@ -314,14 +373,15 @@ impl OnboardingWizard {
                 _ => "general",
             }
             .to_string(),
-            "scan_scope" => {
-                let labels = ["deps", "env", "source", "infra", "docs"];
-                step.selected
-                    .iter()
-                    .filter_map(|&i| labels.get(i).map(|s| s.to_string()))
-                    .collect::<Vec<_>>()
-                    .join(",")
-            }
+            // Matches option order in steps.rs: OpenRouter=0, Anthropic=1, OpenAI=2, Guard=3, Offline=4
+            "ai_provider" => match idx {
+                0 => "openrouter".to_string(),
+                1 => "anthropic".to_string(),
+                2 => "openai".to_string(),
+                3 => "guard_api".to_string(),
+                4 => "offline".to_string(),
+                _ => "offline".to_string(),
+            },
             _ => String::new(),
         }
     }

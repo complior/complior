@@ -1,0 +1,15 @@
+{
+  "country_code": "SE",
+  "country_name": "Sweden",
+  "msa_name": "Post and Telecom Authority (PTS)",
+  "msa_url": "https://www.pts.se",
+  "msa_contact": "pts@pts.se",
+  "local_requirements": [
+    "Swedish-language documentation required for consumer AI systems",
+    "National DPA (IMY) notification for high-risk AI processing personal data",
+    "Alignment with Swedish National Approach to Artificial Intelligence"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Swedish",
+  "notes": "PTS oversees telecommunications and digital services including AI market surveillance"
+}

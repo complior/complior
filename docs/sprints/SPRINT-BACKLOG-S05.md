@@ -1,8 +1,8 @@
 # Sprint S05 — SDK Production + Agent Governance + SaaS Registry
 
-**Версия:** 1.0.0
+**Версия:** 1.4.0
 **Дата:** 2026-03-07
-**Статус:** Planning
+**Статус:** Phase 1-5 DONE (30/34 US)
 
 ---
 
@@ -252,7 +252,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-10: Agent Permission Scanner — AST-based discovery
+### US-S05-10: Agent Permission Scanner — AST-based discovery ✅ DONE
 **Приоритет:** HIGH
 **Продукт:** Engine
 **Backlog ref:** E-29, C.S03
@@ -578,7 +578,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-22: Compliance Debt Score
+### US-S05-22: Compliance Debt Score ✅ DONE
 **Приоритет:** MEDIUM
 **Продукт:** Engine
 **Backlog ref:** E-38, C.R22
@@ -587,13 +587,13 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 Как разработчик, я хочу видеть technical debt score для compliance, чтобы понимать накопленный риск и приоритизировать remediation.
 
 **Acceptance Criteria:**
-- [ ] Compliance Debt Score (0-100): чем выше, тем больше долг
-- [ ] Факторы: количество unfixed findings × severity × days open, missing documentation, incomplete passport fields, stale evidence
-- [ ] Тренд: сравнение с предыдущим scan (debt growing/shrinking)
-- [ ] `complior debt` — CLI вывод
-- [ ] TUI: debt indicator в Dashboard (цвет: green < 20, yellow 20-50, red > 50)
-- [ ] HTTP: `GET /debt`
-- [ ] 6+ тестов
+- [x] Compliance Debt Score (0-100): чем выше, тем больше долг
+- [x] Факторы: количество unfixed findings × severity × days open, missing documentation, incomplete passport fields, stale evidence
+- [x] Тренд: сравнение с предыдущим scan (debt growing/shrinking)
+- [x] `complior debt` — CLI вывод
+- [x] TUI: debt indicator в Dashboard (цвет: green < 20, yellow 20-50, red > 50)
+- [x] HTTP: `GET /debt`
+- [x] 6+ тестов
 
 **Технические детали:**
 - `engine/core/src/domain/scanner/debt-calculator.ts` — расчёт
@@ -651,7 +651,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-25: Compliance Simulation
+### US-S05-25: Compliance Simulation ✅ DONE
 **Приоритет:** MEDIUM
 **Продукт:** Engine
 **Backlog ref:** E-60, C.P09
@@ -660,12 +660,12 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 Как разработчик, я хочу симулировать compliance score при изменениях (what-if analysis), чтобы планировать remediation эффективно.
 
 **Acceptance Criteria:**
-- [ ] `complior simulate --fix <check_id>` — показать score если fix будет применён
-- [ ] `complior simulate --add-doc <doc_type>` — показать score если документ будет создан
-- [ ] `complior simulate --complete-passport <fields>` — показать score при заполнении полей
-- [ ] Output: current score → projected score, delta, % improvement
-- [ ] HTTP: `POST /simulate` с массивом actions
-- [ ] 6+ тестов
+- [x] `complior simulate --fix <check_id>` — показать score если fix будет применён
+- [x] `complior simulate --add-doc <doc_type>` — показать score если документ будет создан
+- [x] `complior simulate --complete-passport <fields>` — показать score при заполнении полей
+- [x] Output: current score → projected score, delta, % improvement
+- [x] HTTP: `POST /simulate` с массивом actions
+- [x] 6+ тестов
 
 **Технические детали:**
 - `engine/core/src/domain/scanner/compliance-simulator.ts` — расширение существующего whatif
@@ -703,7 +703,7 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 
 ---
 
-### US-S05-27: Compliance Cost Estimator — Engine + TUI
+### US-S05-27: Compliance Cost Estimator — Engine + TUI ✅ DONE
 **Приоритет:** MEDIUM
 **Продукт:** Engine + CLI
 **Backlog ref:** C-09, E-102
@@ -714,14 +714,14 @@ Unified спринт: CLI/TUI (open-source) + SaaS Dashboard. Runtime Control (E
 > **Note:** Объединяет бывший US-S06-08 (Engine + CLI) — единая US для engine расчёта + TUI визуализации.
 
 **Acceptance Criteria:**
-- [ ] Per-finding оценка трудозатрат: severity → effort (CRITICAL: 16h, HIGH: 8h, MEDIUM: 4h, LOW: 1h)
-- [ ] Общий rollup: `total_effort_hours`, `total_cost` (effort × hourly_rate)
-- [ ] Настраиваемый hourly rate: `--hourly-rate 120` (по умолчанию EUR 100/час)
-- [ ] Сравнение: `cost_to_fix` vs `potential_penalty` (из obligation penalties)
-- [ ] ROI калькулятор: стоимость исправления vs штраф
-- [ ] `GET /cost-estimate` endpoint возвращает JSON с breakdown
-- [ ] TUI: виджет на Dashboard "Estimated remediation cost: EUR X / Penalty risk: EUR Y"
-- [ ] 8+ тестов
+- [x] Per-finding оценка трудозатрат: severity → effort (CRITICAL: 16h, HIGH: 8h, MEDIUM: 4h, LOW: 1h)
+- [x] Общий rollup: `total_effort_hours`, `total_cost` (effort × hourly_rate)
+- [x] Настраиваемый hourly rate: `--hourly-rate 120` (по умолчанию EUR 100/час)
+- [x] Сравнение: `cost_to_fix` vs `potential_penalty` (из obligation penalties)
+- [x] ROI калькулятор: стоимость исправления vs штраф
+- [x] `GET /cost-estimate` endpoint возвращает JSON с breakdown
+- [x] TUI: виджет на Dashboard "Estimated remediation cost: EUR X / Penalty risk: EUR Y"
+- [x] 8+ тестов
 
 **Технические детали:**
 - `engine/core/src/domain/cost/cost-estimator.ts` — чистая функция расчёта
@@ -1006,11 +1006,11 @@ US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 | 2: Engine Core | US-07..15 | Finding explanations, documents, registry, permissions | **DONE** |
 | 3: Launch Priorities | US-19, US-33, US-34 | AIUC-1 readiness, Onboarding, CI/CD Diff | **DONE** |
 | 4: Runtime + Cert | US-10, 16..18, 20 | Runtime Control, Permission Scanner, Adversarial | **DONE** |
-| 5: Остальное + SaaS | US-21..32 | Supply chain, debt, simulation, SaaS features | Planned |
+| 5: Остальное + SaaS | US-21..32 | Supply chain, debt, simulation, SaaS features | **DONE** (excl. SaaS US-28..32) |
 
 ---
 
-**Обновлено:** 2026-03-10 v1.3.0 — 35 user stories (US-01..32 + US-33 Onboarding, US-34 Compliance Diff, US-35 RegistryToolCard refactor). Phase 1+2+3 DONE (17 US). Phase 4: Runtime + Cert DONE (US-10, US-16..18, US-20). Phase 5: Остальное + SaaS (US-21..32, US-35 DONE)
+**Обновлено:** 2026-03-13 v1.4.0 — 35 user stories (US-01..32 + US-33 Onboarding, US-34 Compliance Diff, US-35 RegistryToolCard refactor). Phase 1-5 DONE (30/34 US). Remaining: US-23 (Dep Deep Scan), US-24 (Test Suite Gen), US-28..32 (SaaS, separate repo).
 
 ### Sprint S05 Done Summary
 - **Phase 1 (SDK, 6 US):** Prohibited 138 patterns, Sanitize 50+ PII, Permission 3 providers, Disclosure 4 langs, Bias 15 chars, HTTP Middleware 4 frameworks. SDK tests: 116→373.
@@ -1018,4 +1018,5 @@ US-S05-28 (SaaS Registry) ──> US-S05-30 (Extended Fields)
 - **Phase 3 (Launch, 3 US):** AIUC-1 Readiness Score, Guided Onboarding Wizard (5-step state machine), Compliance Diff in PR. TS tests: 589→685, Rust: 361→372.
 - **Quality (QF):** 2 rounds E2E + code audit. 11 fixes: score.totalScore bug, scoped npm names crash, onboarding path, DRY/SRP/Zod, skipStep status.
 - **Phase 4 (Runtime + Cert, DONE):** US-S05-10 (Permission Scanner) DONE, US-S05-16 (Disclosure/Marking/Logger) DONE, US-S05-17 (Safety/HITL) DONE, US-S05-18 (Proxy + Adapters) DONE, US-S05-20 (Adversarial Test Runner) DONE. SDK tests: 407→430.
-- **Totals:** 21/34 US done, tests 1453→1470+ (+17), 21/21 E2E pass
+- **Phase 5 (Остальное, DONE excl. SaaS):** US-S05-21 (Supply Chain + Model Cards) DONE, US-S05-22 (Compliance Debt Score) DONE, US-S05-25 (Compliance Simulation) DONE, US-S05-26 (Multi-Agent Awareness) DONE, US-S05-27 (Cost Estimator) DONE, US-S05-35 (RegistryToolCard refactor) DONE. Remaining: US-23, US-24 (engine), US-28..32 (SaaS).
+- **Totals:** 30/34 US done

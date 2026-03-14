@@ -210,6 +210,24 @@ pub enum Command {
         action: OnboardingAction,
     },
 
+    /// Query EU AI Act jurisdiction data (MSA, requirements)
+    Jurisdiction {
+        #[command(subcommand)]
+        action: JurisdictionAction,
+    },
+
+    /// MCP Compliance Proxy (intercept, log, enforce tool calls)
+    Proxy {
+        #[command(subcommand)]
+        action: ProxyAction,
+    },
+
+    /// Generate compliance documents from EU AI Act templates
+    Doc {
+        #[command(subcommand)]
+        action: DocAction,
+    },
+
     /// Authenticate with SaaS dashboard via browser
     Login,
 
@@ -507,6 +525,37 @@ pub enum AgentAction {
         #[arg(long)]
         json: bool,
     },
+    /// Import passport from external format (A2A, AIUC-1)
+    Import {
+        /// Source format: a2a
+        #[arg(long)]
+        from: String,
+
+        /// Input file path (JSON)
+        file: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        #[arg(long)]
+        path: Option<String>,
+    },
+    /// Export audit package (tar.gz) for auditors
+    AuditPackage {
+        /// Output file path
+        #[arg(long, short)]
+        output: Option<String>,
+
+        /// Output as JSON (metadata only)
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        #[arg(long)]
+        path: Option<String>,
+    },
     /// Show audit trail (compliance event log)
     Audit {
         /// Filter by agent name
@@ -603,13 +652,92 @@ pub enum DaemonAction {
     Stop,
 }
 
+#[derive(Subcommand, Debug, Clone)]
+pub enum ProxyAction {
+    /// Start MCP proxy bridge to upstream server
+    Start {
+        /// Upstream MCP server command (e.g., "npx @modelcontextprotocol/server-filesystem")
+        command: String,
+
+        /// Arguments to pass to the upstream server
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
+    },
+    /// Stop the running proxy
+    Stop,
+    /// Show proxy status and statistics
+    Status,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum DocAction {
+    /// Generate compliance documents (single type or all)
+    Generate {
+        /// Agent name
+        name: String,
+
+        /// Document type (ai-literacy, art5-screening, technical-documentation,
+        /// incident-report, declaration-of-conformity, monitoring-policy)
+        #[arg(long = "type")]
+        doc_type: Option<String>,
+
+        /// Generate ALL required compliance documents (6 templates + FRIA + Worker Notification)
+        #[arg(long)]
+        all: bool,
+
+        /// Organization name (for document headers)
+        #[arg(long)]
+        organization: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum JurisdictionAction {
+    /// List all 30 EU/EEA jurisdictions
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show jurisdiction details for a specific country
+    Show {
+        /// Two-letter country code (e.g., de, fr, nl)
+        code: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+/// Returns true if the command requires a running engine to function.
+/// Commands like version, init, update, daemon, login, logout work without the engine.
+pub fn needs_engine(cli: &Cli) -> bool {
+    !matches!(
+        &cli.command,
+        Some(
+            Command::Version
+                | Command::Init { .. }
+                | Command::Update
+                | Command::Daemon { .. }
+                | Command::Login
+                | Command::Logout
+        ) | None
+    )
+}
+
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
 pub fn is_headless(cli: &Cli) -> bool {
     match &cli.command {
-        Some(Command::Scan { ci, json, sarif, no_tui, diff, .. }) => {
-            *ci || *json || *sarif || *no_tui || diff.is_some()
-        }
-        Some(Command::Fix { dry_run, json, .. }) => *dry_run || *json,
+        Some(Command::Scan { .. }) => true,
+        Some(Command::Fix { .. }) => true,
         Some(
             Command::Version
             | Command::Doctor
@@ -625,6 +753,9 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Debt { .. }
             | Command::Simulate { .. }
             | Command::Onboarding { .. }
+            | Command::Doc { .. }
+            | Command::Jurisdiction { .. }
+            | Command::Proxy { .. }
             | Command::Login
             | Command::Logout
             | Command::Sync { .. },
@@ -1625,6 +1756,166 @@ mod tests {
     }
 
     #[test]
+    fn cli_parse_agent_import() {
+        let cli = Cli::parse_from(["complior", "agent", "import", "--from", "a2a", "card.json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Import { from, file, json, path } }) => {
+                assert_eq!(from, "a2a");
+                assert_eq!(file, "card.json");
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent Import command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_import_json() {
+        let cli = Cli::parse_from(["complior", "agent", "import", "--from", "a2a", "card.json", "--json"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Import { from, file, json, .. } }) => {
+                assert_eq!(from, "a2a");
+                assert_eq!(file, "card.json");
+                assert!(*json);
+            }
+            _ => panic!("Expected Agent Import command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_import_path() {
+        let cli = Cli::parse_from(["complior", "agent", "import", "--from", "a2a", "card.json", "--path", "/tmp/proj"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::Import { from, file, path, .. } }) => {
+                assert_eq!(from, "a2a");
+                assert_eq!(file, "card.json");
+                assert_eq!(path.as_deref(), Some("/tmp/proj"));
+            }
+            _ => panic!("Expected Agent Import command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_agent_audit_package() {
+        let cli = Cli::parse_from(["complior", "agent", "audit-package"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::AuditPackage { output, json, path } }) => {
+                assert!(output.is_none());
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent AuditPackage command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_audit_package_output() {
+        let cli = Cli::parse_from(["complior", "agent", "audit-package", "--output", "audit.tar.gz"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::AuditPackage { output, .. } }) => {
+                assert_eq!(output.as_deref(), Some("audit.tar.gz"));
+            }
+            _ => panic!("Expected Agent AuditPackage command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_proxy_start() {
+        let cli = Cli::parse_from(["complior", "proxy", "start", "npx", "@modelcontextprotocol/server-filesystem"]);
+        match &cli.command {
+            Some(Command::Proxy { action: ProxyAction::Start { command, args } }) => {
+                assert_eq!(command, "npx");
+                assert_eq!(args, &["@modelcontextprotocol/server-filesystem"]);
+            }
+            _ => panic!("Expected Proxy Start command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_proxy_stop() {
+        let cli = Cli::parse_from(["complior", "proxy", "stop"]);
+        assert!(matches!(
+            &cli.command,
+            Some(Command::Proxy { action: ProxyAction::Stop })
+        ));
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_proxy_status() {
+        let cli = Cli::parse_from(["complior", "proxy", "status"]);
+        assert!(matches!(
+            &cli.command,
+            Some(Command::Proxy { action: ProxyAction::Status })
+        ));
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_proxy_start_multiple_args() {
+        let cli = Cli::parse_from(["complior", "proxy", "start", "node", "server.js", "--port", "3000"]);
+        match &cli.command {
+            Some(Command::Proxy { action: ProxyAction::Start { command, args } }) => {
+                assert_eq!(command, "node");
+                assert_eq!(args, &["server.js", "--port", "3000"]);
+            }
+            _ => panic!("Expected Proxy Start command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_doc_generate_type() {
+        let cli = Cli::parse_from(["complior", "doc", "generate", "my-bot", "--type", "ai-literacy"]);
+        match &cli.command {
+            Some(Command::Doc { action: DocAction::Generate { name, doc_type, all, organization, json, path } }) => {
+                assert_eq!(name, "my-bot");
+                assert_eq!(doc_type.as_deref(), Some("ai-literacy"));
+                assert!(!all);
+                assert!(organization.is_none());
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Doc Generate command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_doc_generate_all() {
+        let cli = Cli::parse_from(["complior", "doc", "generate", "my-bot", "--all"]);
+        match &cli.command {
+            Some(Command::Doc { action: DocAction::Generate { name, all, doc_type, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*all);
+                assert!(doc_type.is_none());
+            }
+            _ => panic!("Expected Doc Generate command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_doc_generate_all_with_options() {
+        let cli = Cli::parse_from([
+            "complior", "doc", "generate", "my-bot",
+            "--all", "--organization", "Acme Corp", "--json", "/tmp/project",
+        ]);
+        match &cli.command {
+            Some(Command::Doc { action: DocAction::Generate { name, all, organization, json, path, .. } }) => {
+                assert_eq!(name, "my-bot");
+                assert!(*all);
+                assert_eq!(organization.as_deref(), Some("Acme Corp"));
+                assert!(*json);
+                assert_eq!(path.as_deref(), Some("/tmp/project"));
+            }
+            _ => panic!("Expected Doc Generate command"),
+        }
+    }
+
+    #[test]
     fn cli_headless_detection() {
         let json_cli = Cli::parse_from(["complior", "scan", "--json"]);
         assert!(is_headless(&json_cli));
@@ -1640,6 +1931,9 @@ mod tests {
 
         let dry_run_cli = Cli::parse_from(["complior", "fix", "--dry-run"]);
         assert!(is_headless(&dry_run_cli));
+
+        let bare_scan_cli = Cli::parse_from(["complior", "scan"]);
+        assert!(is_headless(&bare_scan_cli));
 
         let tui_cli = Cli::parse_from(["complior"]);
         assert!(!is_headless(&tui_cli));

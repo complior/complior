@@ -304,6 +304,32 @@ impl EngineClient {
         Ok(result)
     }
 
+    /// Generic GET returning raw bytes — used for binary downloads (e.g. tar.gz).
+    pub async fn get_bytes(&self, endpoint: &str) -> Result<Vec<u8>> {
+        let url = format!("{}{endpoint}", self.base_url);
+        self.with_retry(|| {
+            let url = url.clone();
+            async move {
+                let resp = self
+                    .client
+                    .get(&url)
+                    .timeout(std::time::Duration::from_secs(30))
+                    .send()
+                    .await?;
+                let status = resp.status();
+                if !status.is_success() {
+                    let text = resp.text().await.unwrap_or_default();
+                    return Err(crate::error::TuiError::Engine(format!(
+                        "HTTP {status}: {text}"
+                    )));
+                }
+                let bytes = resp.bytes().await?;
+                Ok(bytes.to_vec())
+            }
+        })
+        .await
+    }
+
     /// POST returning raw response for SSE stream parsing.
     pub async fn post_stream(
         &self,

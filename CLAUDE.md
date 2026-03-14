@@ -21,6 +21,7 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 5. **Agent Passport** — central entity (identity card of an AI system). 36 fields, 3 creation modes, ed25519 signed.
 6. **7-step pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
 7. **DataProvider port** — Engine retains regulation JSON locally (`engine/core/src/data/`). AI Registry data from PROJECT API (5,011+ tools online). TUI: EngineDataProvider (online) ↔ MockDataProvider (12 demo, offline fallback)
+8. **Config split** — Global `~/.config/complior/settings.toml` (UX, infra) + Project `.complior/project.toml` (jurisdiction, role, industry, scan scope). Project overrides global for `llm_provider`, `llm_model`, `project_api_url`, `offline_mode`. Details: `docs/TUI-DESIGN-SPEC.md` §7
 
 ## Coding Standards
 
@@ -44,7 +45,7 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 - `docs/PRODUCT-BACKLOG.md` — v8 features, obligation-driven roadmap
 - `docs/UNIFIED-ARCHITECTURE.md` — how open-source CLI + SaaS work together
 - `docs/DATA-FLOWS.md` — 12 data flow diagrams (daemon architecture)
-- `docs/TUI-DESIGN-SPEC.md` — 8 TUI pages, CLI commands, MCP tools
+- `docs/TUI-DESIGN-SPEC.md` — 9 TUI pages, CLI commands, MCP tools, config split (§7)
 - `docs/FEATURE-AGENT-PASSPORT.md` — Agent Passport specification (36 fields, 3 modes)
 - `docs/EU-AI-ACT-PIPELINE.md` — 108 obligations → 7-step compliance pipeline
 

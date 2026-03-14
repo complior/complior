@@ -127,7 +127,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
 
     const { provider, modelId } = parsed.data.provider && parsed.data.model
       ? { provider: parsed.data.provider, modelId: parsed.data.model }
-      : llm.routeModel(modelOverride ?? 'chat');
+      : llm.routeModel(modelOverride ?? 'chat', parsed.data.provider);
     const model = await llm.getModel(provider, modelId, parsed.data.apiKey);
 
     // Use mode-specific system prompt

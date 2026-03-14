@@ -98,19 +98,63 @@ mod tests {
     fn format_human_output() {
         let result = mock_scan_result();
         let text = format_human(&result);
-        assert!(text.contains("Score: 72/100"));
+        // Header
+        assert!(text.contains("Complior — EU AI Act Compliance Scan"));
+        assert!(text.contains("72/100"));
         assert!(text.contains("Yellow"));
-        assert!(text.contains("Findings (2)"));
-        assert!(text.contains("[HIGH] OBL-015"));
-        assert!(text.contains("[MEDIUM] OBL-022"));
+        // Severity breakdown
+        assert!(text.contains("HIGH"));
+        assert!(text.contains("MEDIUM"));
+        // Issues table with human-readable labels
+        assert!(text.contains("Issues"));
+        // Suggested fixes (only OBL-015 has fix)
+        assert!(text.contains("How to Fix"));
+        assert!(text.contains("Add disclosure"));
+        // Footer
+        assert!(text.contains("Status:"));
     }
 
     #[test]
     fn format_human_no_findings() {
         let mut result = mock_scan_result();
         result.findings.clear();
+        result.score.failed_checks = 0;
+        result.score.total_score = 85.0;
         let text = format_human(&result);
-        assert!(text.contains("No findings. Great job!"));
+        assert!(text.contains("COMPLIANT"));
+        assert!(!text.contains("Failed Checks"));
+    }
+
+    #[test]
+    fn format_human_collapses_duplicates() {
+        let mut result = mock_scan_result();
+        // Add 10 findings with same check_id
+        result.findings.clear();
+        for i in 0..10 {
+            result.findings.push(Finding {
+                check_id: "repeat-check".into(),
+                r#type: crate::types::CheckResultType::Fail,
+                message: format!("Instance {i}"),
+                severity: Severity::Low,
+                obligation_id: None,
+                article_reference: None,
+                fix: Some(format!("Fix {i}")),
+                file: None,
+                line: None,
+                code_context: None,
+                fix_diff: None,
+                priority: None,
+                confidence: None,
+                confidence_level: None,
+                evidence: None,
+                explanation: None,
+            });
+        }
+        let text = format_human(&result);
+        // Should show first 3 + "... and 7 more"
+        assert!(text.contains("... and 7 more"));
+        // Suggested fixes collapsed to 1 entry with (x10)
+        assert!(text.contains("(x10)"));
     }
 
     #[test]

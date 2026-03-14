@@ -1,6 +1,7 @@
 import { writeFile, readFile, readdir, mkdir, stat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { AppError } from '../types/errors.js';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { ScanResult } from '../types/common.types.js';
@@ -30,6 +31,8 @@ import { generateWorkerNotification as generateWorkerNotificationDoc } from '../
 import type { WorkerNotificationResult } from '../domain/documents/worker-notification-generator.js';
 import { generatePolicy as generatePolicyDoc } from '../domain/documents/policy-generator.js';
 import type { PolicyResult } from '../domain/documents/policy-generator.js';
+import { generateDocument, ALL_DOC_TYPES, TEMPLATE_FILE_MAP } from '../domain/documents/document-generator.js';
+import type { DocType, DocResult } from '../domain/documents/document-generator.js';
 import type { IndustryId } from '../data/industry-patterns.js';
 import { INDUSTRY_TEMPLATE_MAP } from '../data/industry-patterns.js';
 import type { EvidenceStore, EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
@@ -37,6 +40,8 @@ import { computeReadiness } from '../domain/certification/aiuc1-readiness.js';
 import type { ReadinessResult } from '../domain/certification/aiuc1-readiness.js';
 import { buildPermissionsMatrix } from '../domain/audit/permissions-matrix.js';
 import type { PermissionsMatrix } from '../domain/audit/permissions-matrix.js';
+import { createAuditPackage } from '../domain/audit/audit-package.js';
+import type { AuditPackageManifest, AuditPackageResult } from '../domain/audit/audit-package.js';
 import type { AuditStore, AuditFilter, AuditEntry, AuditTrailSummary } from '../domain/audit/audit-trail.js';
 import { generateComplianceTests } from '../domain/passport/test-generator.js';
 import type { GeneratedTestSuite } from '../domain/passport/test-generator.js';
@@ -658,6 +663,75 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return computeManifestDiff(name, previous, current as unknown as Record<string, unknown>);
   };
 
+  // US-S06-11: Import passport from external format (A2A)
+  const importPassport = async (
+    format: string,
+    data: unknown,
+    projectPath?: string,
+  ): Promise<{ passport: AgentPassport; fieldsImported: string[]; fieldsMissing: string[] }> => {
+    const path = projectPath ?? getProjectPath();
+
+    if (format !== 'a2a') {
+      throw new AppError(`Unsupported import format: ${format}. Supported: a2a`, 'VALIDATION_ERROR', 400);
+    }
+
+    const { importFromA2A } = await import('../domain/passport/import/a2a-importer.js');
+    const result = importFromA2A(data);
+    const passport = result.passport as AgentPassport;
+
+    // Sign and save
+    const agentsDir = join(path, '.complior', 'agents');
+    await mkdir(agentsDir, { recursive: true });
+
+    // Sign the imported passport
+    const keyPair = await loadOrCreateKeyPair();
+    const signature = signPassport(passport, keyPair.privateKey);
+    const signedPassport: AgentPassport = { ...passport, signature };
+
+    const filePath = join(agentsDir, `${signedPassport.name}-manifest.json`);
+    await writeFile(filePath, JSON.stringify(signedPassport, null, 2));
+
+    // Record in evidence chain
+    if (deps.evidenceStore) {
+      const evidence = createEvidence(
+        signedPassport.name,
+        'passport',
+        'passport-import',
+        { file: filePath, format },
+      );
+      await deps.evidenceStore.append([evidence], randomUUID());
+    }
+
+    // Record in audit trail
+    if (deps.auditStore) {
+      await deps.auditStore.append('passport.imported', {
+        name: signedPassport.name,
+        format,
+        fieldsImported: result.fieldsImported.length,
+      }, signedPassport.name);
+    }
+
+    events.emit('passport.imported', {
+      name: signedPassport.name,
+      format,
+      fieldsImported: result.fieldsImported.length,
+    });
+
+    return {
+      passport: signedPassport,
+      fieldsImported: [...result.fieldsImported],
+      fieldsMissing: [...result.fieldsMissing],
+    };
+  };
+
+  // US-S06-12: Generate audit package (tar.gz) for auditors
+  const generateAuditPackage = async (
+    projectPath?: string,
+  ): Promise<AuditPackageResult> => {
+    const path = projectPath ?? getProjectPath();
+    return createAuditPackage({ getProjectPath: () => path });
+  };
+
   // US-S05-26: Find agents whose source_files match a given file path
   const findAgentsForFile = async (changedPath: string): Promise<readonly { name: string; sourceFiles: readonly string[] }[]> => {
     const { relative } = await import('node:path');
@@ -675,6 +749,84 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     }
 
     return matched;
+  };
+
+  // US-S06-06: Generate a single compliance document by type
+  const generateDocByType = async (
+    name: string,
+    docType: DocType,
+    projectPath?: string,
+    options?: { organization?: string },
+  ): Promise<(DocResult & { savedPath: string }) | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+
+    const templateFile = TEMPLATE_FILE_MAP[docType];
+    const template = await ensureTemplate(templateFile);
+
+    const result = generateDocument({
+      manifest,
+      template,
+      docType,
+      organization: options?.organization,
+    });
+
+    const savedPath = await saveDocumentReport(
+      name, docType, result.markdown, 'document', projectPath,
+      'documents', { docType },
+    );
+
+    if (deps.auditStore) {
+      await deps.auditStore.append('document.generated', { name, docType, savedPath }, name);
+    }
+
+    return { ...result, savedPath };
+  };
+
+  // US-S06-06: Generate ALL required compliance documents
+  const generateAllDocs = async (
+    name: string,
+    projectPath?: string,
+    options?: { organization?: string },
+  ): Promise<{ generated: { docType: string; savedPath: string }[]; errors: string[] }> => {
+    const generated: { docType: string; savedPath: string }[] = [];
+    const errors: string[] = [];
+
+    // 1. Generate all 6 new document types
+    for (const docType of ALL_DOC_TYPES) {
+      try {
+        const result = await generateDocByType(name, docType, projectPath, options);
+        if (result) {
+          generated.push({ docType, savedPath: result.savedPath });
+        } else {
+          errors.push(`${docType}: passport not found`);
+        }
+      } catch (e) {
+        errors.push(`${docType}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    // 2. Generate FRIA
+    try {
+      const fria = await generateFriaReport(name, projectPath, { organization: options?.organization });
+      if (fria) {
+        generated.push({ docType: 'fria', savedPath: fria.savedPath });
+      }
+    } catch (e) {
+      errors.push(`fria: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // 3. Generate Worker Notification
+    try {
+      const wn = await generateWorkerNotification(name, projectPath, { companyName: options?.organization });
+      if (wn) {
+        generated.push({ docType: 'worker-notification', savedPath: wn.savedPath });
+      }
+    } catch (e) {
+      errors.push(`worker-notification: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    return { generated, errors };
   };
 
   return Object.freeze({
@@ -699,6 +851,10 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     findAgentsForFile,
     generateTestSuite,
     diffPassport,
+    importPassport,
+    generateAuditPackage,
+    generateDocByType,
+    generateAllDocs,
   });
 };
 

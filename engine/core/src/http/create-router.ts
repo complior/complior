@@ -53,6 +53,9 @@ import { createEventsRoute } from './routes/events.route.js';
 import { createCostRoute } from './routes/cost.route.js';
 import { createDebtRoute } from './routes/debt.route.js';
 import { createFrameworksRoute } from './routes/frameworks.route.js';
+import { createJurisdictionRoute } from './routes/jurisdiction.route.js';
+import { createProxyRoute } from './routes/proxy.route.js';
+import type { ProxyService } from '../services/proxy-service.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -88,6 +91,7 @@ export interface RouterDeps {
   readonly simulateActions?: (input: SimulationInput) => SimulationResult;
   readonly onboardingService?: import('../services/onboarding-service.js').OnboardingService;
   readonly frameworkService?: FrameworkService;
+  readonly proxyService?: ProxyService;
   readonly maxRequestsPerHour?: number;
 }
 
@@ -193,6 +197,17 @@ export const createRouter = (deps: RouterDeps) => {
   if (deps.frameworkService) {
     app.route('/', createFrameworksRoute({ frameworkService: deps.frameworkService }));
   }
+
+  // US-S06-01: MCP Compliance Proxy + US-S06-02: Policy Engine
+  if (deps.proxyService) {
+    app.route('/', createProxyRoute({
+      proxyService: deps.proxyService,
+      getProjectPath: deps.getProjectPath,
+    }));
+  }
+
+  // US-S06-14: Multi-jurisdiction data
+  app.route('/', createJurisdictionRoute());
 
   // US-S05-26: SSE events endpoint
   if (deps.events) {

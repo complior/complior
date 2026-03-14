@@ -190,6 +190,9 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
 }
 
 /// Initialize .complior/ configuration directory.
+///
+/// Creates the project marker directory (like `git init` creates `.git/`),
+/// `project.toml` (TUI config), and `profile.json` (engine config).
 pub fn run_init(path: Option<&str>) {
     let base = path.map_or_else(
         || std::env::current_dir().unwrap_or_default(),
@@ -204,17 +207,28 @@ pub fn run_init(path: Option<&str>) {
 
     match std::fs::create_dir_all(&complior_dir) {
         Ok(()) => {
-            // Create default profile
+            // Create engine profile (profile.json)
             let profile = complior_dir.join("profile.json");
             let default = serde_json::json!({
                 "jurisdiction": "EU",
                 "regulation": "eu-ai-act",
                 "scanLevels": ["L1", "L2", "L3", "L4"]
             });
-            let _ = std::fs::write(&profile, serde_json::to_string_pretty(&default).unwrap_or_default());
+            let _ = std::fs::write(
+                &profile,
+                serde_json::to_string_pretty(&default).unwrap_or_default(),
+            );
+
+            // Create TUI project config (project.toml)
+            let project_toml = complior_dir.join("project.toml");
+            let toml_content = toml::to_string_pretty(&crate::config::default_project_toml())
+                .unwrap_or_default();
+            let _ = std::fs::write(&project_toml, toml_content);
+
             println!("Initialized .complior/ at {}", complior_dir.display());
-            println!("  Created: profile.json");
-            println!("\nRun `complior scan` to check compliance.");
+            println!("  Created: project.toml (TUI config)");
+            println!("  Created: profile.json (engine config)");
+            println!("\nRun `complior` to start the dashboard, or `complior scan` to check compliance.");
         }
         Err(e) => {
             eprintln!("Failed to create .complior/: {e}");

@@ -1,0 +1,15 @@
+{
+  "country_code": "BG",
+  "country_name": "Bulgaria",
+  "msa_name": "Commission for Consumer Protection",
+  "msa_url": "https://www.kzp.bg",
+  "msa_contact": "info@kzp.bg",
+  "local_requirements": [
+    "Bulgarian-language user-facing documentation required",
+    "National DPA (CPDP) notification for AI systems processing personal data",
+    "Alignment with Bulgarian Digital Transformation Strategy"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Bulgarian",
+  "notes": "Consumer protection authority acts as primary MSA"
+}

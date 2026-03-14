@@ -1,0 +1,15 @@
+{
+  "country_code": "PT",
+  "country_name": "Portugal",
+  "msa_name": "ANACOM - Autoridade Nacional de Comunicacoes",
+  "msa_url": "https://www.anacom.pt",
+  "msa_contact": "info@anacom.pt",
+  "local_requirements": [
+    "Portuguese-language documentation required for consumer-facing AI",
+    "National DPA (CNPD) notification for AI processing personal data",
+    "Alignment with Portugal INCoDe.2030 digital competences strategy"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Portuguese",
+  "notes": "ANACOM oversees communications and digital market including AI systems"
+}

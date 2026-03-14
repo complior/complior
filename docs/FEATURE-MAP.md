@@ -4,10 +4,10 @@
 > Each feature lists its completed user stories with implementation details.
 > Sprint burndown numbers → see [BURNDOWN.md](./BURNDOWN.md)
 
-**Updated:** 2026-03-09
-**Current status:** Sprint S05 Phase 1-3 COMPLETE (17/34 US) — SDK Production + Engine Core + Launch Priorities
-**Tests:** 1430 | **TS Engine:** 685 | **Rust CLI:** 372 | **SDK:** 373
-**Next:** Sprint S05 Phase 4-5 — Runtime Control + Certification + SaaS Features (17 US remaining)
+**Updated:** 2026-03-13
+**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US) — LLM Chat + Chat UX + Onboarding Rework + Init
+**Tests:** 1709 | **TS Engine:** 862 | **Rust CLI:** 433 | **SDK:** 414
+**Next:** Sprint S06 — MCP Proxy, ISO 42001, LLM Document Fill, SaaS Regulatory (25 US remaining)
 
 ---
 
@@ -61,7 +61,16 @@
 | F44 | Guided Onboarding Wizard (5-step) | **DONE** | 1 | S05-P3 |
 | F45 | Compliance Diff in PR | **DONE** | 1 | S05-P3 |
 | F46 | S05 Quality Fixes (score.totalScore, SRP, DRY, Zod, scoped names) | **DONE** | — | S05-QF |
-| **TOTAL** | | | **~156** | |
+| F47 | Runtime Control (Permission Scanner, Disclosure, Safety, Proxy) | **DONE** | 4 | S05-P4 |
+| F48 | Adversarial Test Runner (Art.9/Art.15) | **DONE** | 1 | S05-P4 |
+| F49 | Multi-Agent + Cost/Debt/Simulation | **DONE** | 5 | S05-P5 |
+| F50 | Multi-Framework Scoring + TUI Metrics Widgets | **DONE** | — | S05-P5 |
+| F51 | LLM Chat Service + TUI Chat Page (9th View) | **DONE** | 2 | S06 |
+| F52 | S05-S06 Quality Fixes (port discovery, SDK strict, DRY) | **DONE** | — | S05-S06-QF |
+| F53 | Chat UX Improvements (multiline, tool names, timestamps removed) | **DONE** | 1 | S06 |
+| F54 | Onboarding Rework (10→8 steps, persistence, Esc block) | **DONE** | 1 | S06 |
+| F55 | `complior init` + Project Root Discovery (9 markers) | **DONE** | 1 | S06 |
+| **TOTAL** | | | **~171** | |
 
 ---
 
@@ -776,26 +785,159 @@ Two full rounds of E2E testing + code audits. 21/21 E2E tests pass.
 
 ---
 
+## F47: Runtime Control (Permission Scanner + Disclosure + Safety + Proxy)
+
+**Sprint:** S05 Phase 4 | **Status:** DONE | **Backlog:** E-63..E-72
+
+4 US delivering runtime compliance enforcement: AST-based permission detection, transparency disclosure, safety filtering, and compliance proxy.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-10 | Permission Scanner (AST-based) | Vercel AI SDK tool detection, file system operations, HTTP request patterns. Auto-updates passport `permissions.tools` from code analysis. `checkPermissionScanner()` L4 check |
+| US-S05-16 | Disclosure + Content Marking + Logger | Runtime hooks: `createDisclosureInjector()` (Art.50 transparency notice), `createContentMarker()` (AI-generated content marking), `createInteractionLogger()` (Art.12 logging). 3 SDK pre/post hooks |
+| US-S05-17 | Safety Filter + HITL Gate | `createSafetyFilter()` pre-hook: prohibited content blocking (Art.5), PII detection, context-aware filtering. `createHumanInTheLoopGate()`: approval queue for high-risk actions, timeout with auto-deny, callback integration |
+| US-S05-18 | Compliance Proxy + SDK Adapters | `createComplianceProxy()` wraps any LLM client with full compliance stack. SDK adapter pattern: OpenAI, Anthropic, Google, Vercel AI. Config-driven hook composition. `compliorProxy(client, config)` convenience function |
+
+---
+
+## F48: Adversarial Test Runner
+
+**Sprint:** S05 Phase 4 | **Status:** DONE | **Backlog:** E-73, C.T02
+
+Adversarial testing framework for AI system robustness (Art.9(6)-(8) + Art.15(4)).
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-20 | Adversarial Test Runner | `createAdversarialRunner(deps)` — 5 test categories: prompt injection, jailbreak, data extraction, bias probing, robustness. Per-test: severity, pass/fail, evidence. Overall robustness score (0-100). `complior cert test <name> [--json]`. HTTP: `POST /cert/test`. Results saved to `.complior/adversarial/`. Evidence chain integration |
+
+---
+
+## F49: Multi-Agent + Cost/Debt/Simulation
+
+**Sprint:** S05 Phase 5 | **Status:** DONE | **Backlog:** E-74..E-80
+
+5 US for multi-agent compliance, cost estimation, debt scoring, and simulation.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S05-22 | Compliance Debt Score | Technical debt scoring for compliance gaps. Weighted by severity × age × risk_class. Trend tracking. `complior agent debt <name> [--json]`. HTTP: `GET /agent/debt` |
+| US-S05-25 | Compliance Simulation | What-if simulator: predict score impact of planned changes before implementation. `computeSimulation(current, planned)` pure function. HTTP: `POST /scan/simulate` |
+| US-S05-26 | Multi-Agent Awareness | Per-agent compliance scan with SSE events. Agent grouping in TUI. Cross-agent conflict detection. `scan.agent` event type. Multi-passport scan aggregation |
+| US-S05-27 | Compliance Cost Estimator | Estimate effort/cost to achieve target compliance score. Per-finding fix cost (time + complexity). Total cost to 100%. `complior agent cost <name> [--json]`. HTTP: `GET /agent/cost` |
+| US-S05-35 | RegistryToolCard Refactor | `ModelComplianceCard` → `RegistryToolCard` rename for SaaS compatibility. Shared type between CLI and SaaS. Updated all references in registry, routes, tests |
+
+---
+
+## F50: Multi-Framework Scoring + TUI Metrics Widgets
+
+**Sprint:** S05 Phase 5 | **Status:** DONE | **Backlog:** E-105, E-106, E-107
+
+Dual-framework compliance scoring (EU AI Act + AIUC-1) and TUI dashboard metrics.
+
+| Item | Description |
+|------|-------------|
+| Multi-Framework Scoring | `eu-ai-act-framework.ts` + AIUC-1 framework. Dual scores in scan result. Framework-specific obligation mapping. Interactive focus toggle in TUI (Tab key). `compliance-constants.ts` shared across frameworks |
+| TUI Metrics Widgets | Dashboard Cost/Debt/Readiness sparkline widgets. `render_metric_widget()` reusable component. Score history visualization. Real-time SSE-driven updates |
+
+---
+
+## F51: LLM Chat Service + TUI Chat Page (9th View)
+
+**Sprint:** S06 (partial) | **Status:** DONE | **Backlog:** E-47, C-23
+
+LLM chat infrastructure in engine + dedicated 9th TUI page for interactive compliance chat.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S06-03 | LLM Chat Service | `chat-service.ts` — Anthropic Claude integration with SSE streaming. `rate-limiter.ts` — sliding window rate limiter. `POST /chat` route with Zod validation. System prompt with compliance context. Token tracking. Configurable model/temperature |
+| US-S06-17 | TUI Chat Assistant (9th View) | Dedicated `C:Chat` page separated from `L:Log`. 9-view navigation (D/S/F/P/O/T/R/L/C). Chat = interactive (SYS/YOU/AI messages, input area, streaming, /cost /mode /model commands). Log = readonly status messages. `LlmSettings` overlay for model/provider configuration. SSE streaming with cancel support |
+
+**Key files:**
+- `engine/core/src/services/chat-service.ts` — LLM chat orchestration
+- `engine/core/src/infra/rate-limiter.ts` — sliding window rate limiter
+- `engine/core/src/http/routes/chat.route.ts` — SSE streaming endpoint
+- `cli/src/views/chat.rs` — `render_chat_view()` + `render_log_view()`
+- `cli/src/chat_stream.rs` — SSE stream parser
+- `cli/src/llm_settings.rs` — LLM settings overlay
+- `cli/src/types/chat.rs` — ChatMessage, ChatRole types
+
+---
+
+## F52: S05-S06 Quality Fixes
+
+**Sprint:** S05-S06 post-sprint | **Status:** DONE
+
+Code quality audit fixes across S05 Phase 4-5 and S06 deliverables.
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | Daemon/TUI port discovery unreliable | DRY `find_preferred_port()` — prefer default 3099, fallback scan |
+| 2 | SDK TypeScript strict compliance | Unused imports, return types, test await fixes |
+| 3 | DRY/SRP audit | Extracted shared helpers, removed duplication across headless runners |
+| 4 | `render_with_sidebar()` DRY | Eliminated duplicate sidebar layout code (Log + Chat views) |
+| 5 | Charter doc alignment | Updated TUI-DESIGN-SPEC.md and PRODUCT-VISION.md for 9 pages |
+
+---
+
+## F53: Chat UX Improvements
+
+**Sprint:** S06 | **Status:** DONE
+
+Chat experience polish: multiline input, tool visibility, error handling, timestamp cleanup.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S06-18 | Chat UX Polish | Multiline input (Shift+Enter for newline, Enter to send). Tool names displayed in assistant messages. Inline error display. Scroll improvements. `[HH:MM]` timestamps removed from all messages (system, user, assistant) and status log for cleaner UI. Updated INDENT constant |
+
+**Key changes:**
+- `cli/src/views/chat.rs` — removed timestamp spans from all message types, updated INDENT
+- `cli/src/app/overlays.rs` — multiline input handling
+- `cli/src/types/chat.rs` — ChatMessage improvements
+
+---
+
+## F54: Onboarding Rework (10→8 Steps)
+
+**Sprint:** S06 | **Status:** DONE
+
+Major rework of TUI onboarding wizard: reduced from 10 to 8 steps, fixed persistence, blocked escape.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S06-19 | Onboarding Rework | 7 fixes: (1) Persistence bug — `find_project_root()` resolves absolute path instead of CWD-relative. (2) Navigation step removed (always standard). (3) Project Type simplified to 2 options: My project / Demo mode. (4) Jurisdiction → Requirements Frameworks (Checkbox: EU AI Act + ISO 42001). (5) Scan Scope step removed (always full scan). (6) AI Provider: 5 options (OpenRouter, Anthropic, OpenAI, Complior Guard API [RECOMMENDED], Offline) — BYOK key input for first 3. (7) Esc/Quit blocked during onboarding — must complete all steps. New `requirements: Vec<String>` field in ProjectConfig |
+
+**Key files:**
+- `cli/src/views/onboarding/steps.rs` — 8 step definitions (was 10)
+- `cli/src/views/onboarding/mod.rs` — `selected_config_value()` updated for new steps
+- `cli/src/views/onboarding/render.rs` — summary items, provider-specific key prompt
+- `cli/src/app/overlays.rs` — Esc blocked, substep handlers for 5-option AI provider
+- `cli/src/config.rs` — `find_project_root()`, `requirements` field, `save_onboarding_results()` rewrite
+
+---
+
+## F55: `complior init` + Project Root Discovery
+
+**Sprint:** S06 | **Status:** DONE
+
+`complior init` creates `.complior/` directory (like `git init`). Automatic project root discovery for existing projects.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S06-20 | Project Init + Root Discovery | `complior init [path]` creates `.complior/` with `project.toml` (TUI config) + `profile.json` (engine config). `find_project_root()`: walks up directory tree (max 10 levels, stops at `$HOME`) looking for 9 project markers: `.complior/`, `.git/`, `Cargo.toml`, `package.json`, `go.mod`, `pyproject.toml`, `pom.xml`, `build.gradle`, `.project`. Fallback to CWD. `default_project_toml()` public function. If `init` not run manually, `.complior/` auto-created during onboarding completion |
+
+**Key files:**
+- `cli/src/config.rs` — `find_project_root()`, `project_config_path()`, `default_project_toml()`
+- `cli/src/headless/commands.rs` — enhanced `run_init()` with `project.toml` + `profile.json`
+
+---
+
 ## Sprint S05 — Remaining (NOT YET IMPLEMENTED)
 
-The following US from S05 are planned but not yet started (Phase 4+5):
+4 US from S05 are planned but not yet started:
 
 | Phase | US | Title | Priority |
 |-------|-----|-------|----------|
-| 4 | US-S05-10 | Agent Permission Scanner (AST-based) | HIGH |
-| 4 | US-S05-16 | Runtime Control: Disclosure + Content Marking + Logger | HIGH |
-| 4 | US-S05-17 | Runtime Control: Safety Filter + HITL Gate | HIGH |
-| 4 | US-S05-18 | Runtime Control: Compliance Proxy + SDK Adapters | HIGH |
-| 4 | US-S05-20 | Adversarial Test Runner | CRITICAL |
 | 5 | US-S05-21 | Supply Chain Audit + Model Compliance Cards | MEDIUM |
-| 5 | US-S05-22 | Compliance Debt Score | MEDIUM |
 | 5 | US-S05-23 | Dependency Deep Scan | MEDIUM |
 | 5 | US-S05-24 | Agent Test Suite Gen + Manifest Diff | MEDIUM |
-| 5 | US-S05-25 | Compliance Simulation | MEDIUM |
-| 5 | US-S05-26 | Multi-Agent Awareness | HIGH |
-| 5 | US-S05-27 | Compliance Cost Estimator | MEDIUM |
-| 5 | US-S05-28 | SaaS — Unified Registry | CRITICAL |
-| 5 | US-S05-29 | SaaS — Wizard Steps 3-5 | CRITICAL |
-| 5 | US-S05-30 | SaaS — Extended Passport Fields | CRITICAL |
-| 5 | US-S05-31 | SaaS — Cert Readiness Dashboard | CRITICAL |
-| 5 | US-S05-32 | SaaS — Compliance Badge | HIGH |
+| 5 | US-S05-28-32 | SaaS features (Unified Registry, Wizard, Badge) | CRITICAL (SaaS repo) |

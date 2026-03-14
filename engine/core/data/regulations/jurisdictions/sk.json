@@ -1,0 +1,15 @@
+{
+  "country_code": "SK",
+  "country_name": "Slovakia",
+  "msa_name": "Regulatory Office for Network Industries (URSO)",
+  "msa_url": "https://www.urso.gov.sk",
+  "msa_contact": "urso@urso.gov.sk",
+  "local_requirements": [
+    "Slovak-language documentation required for consumer-facing AI",
+    "National DPA (UOOU SR) notification for high-risk AI",
+    "Alignment with Slovak Action Plan for AI Development"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Slovak",
+  "notes": "URSO handles network and digital market regulation including AI oversight"
+}

@@ -10,7 +10,8 @@ export type EvidenceSource =
   | 'passport'
   | 'fria'
   | 'adversarial-test'
-  | 'supply-chain';
+  | 'supply-chain'
+  | 'nhi-scan';
 
 export interface Evidence {
   readonly findingId: string;

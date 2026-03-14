@@ -99,9 +99,61 @@ pub async fn run_headless_fix(
             }
         }
     } else {
-        println!("Fix apply mode not yet supported in headless mode.");
-        println!("Use --dry-run to preview, or use the interactive TUI.");
-        return 1;
+        // Apply all fixes via engine
+        match client.post_json("/fix/apply-all", &serde_json::json!({})).await {
+            Ok(resp) => {
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());
+                } else {
+                    let results = resp.get("results").and_then(|v| v.as_array());
+                    let summary = resp.get("summary");
+                    let score_before = summary.and_then(|s| s.get("scoreBefore")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    let score_after = summary.and_then(|s| s.get("scoreAfter")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    let applied_count = summary.and_then(|s| s.get("applied")).and_then(|v| v.as_u64()).unwrap_or(0);
+                    let failed_count = summary.and_then(|s| s.get("failed")).and_then(|v| v.as_u64()).unwrap_or(0);
+
+                    println!("Fix Apply Results");
+                    println!("=================");
+
+                    if let Some(results) = results {
+                        for r in results {
+                            let check_id = r.get("plan").and_then(|p| p.get("checkId")).and_then(|v| v.as_str()).unwrap_or("?");
+                            let fix_type = r.get("plan").and_then(|p| p.get("fixType")).and_then(|v| v.as_str()).unwrap_or("?");
+                            let applied = r.get("applied").and_then(|v| v.as_bool()).unwrap_or(false);
+                            let r_before = r.get("scoreBefore").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                            let r_after = r.get("scoreAfter").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                            let status = if applied { "OK" } else { "FAIL" };
+
+                            // Collect file paths from actions
+                            let files: Vec<&str> = r.get("plan")
+                                .and_then(|p| p.get("actions"))
+                                .and_then(|v| v.as_array())
+                                .map(|actions| actions.iter()
+                                    .filter_map(|a| a.get("path").and_then(|v| v.as_str()))
+                                    .collect())
+                                .unwrap_or_default();
+
+                            println!("  [{status}] {check_id} ({fix_type})");
+                            for file in &files {
+                                println!("       -> {file}");
+                            }
+                            println!("       Score: {r_before:.0} -> {r_after:.0}");
+                        }
+                    } else {
+                        println!("  No results returned");
+                    }
+
+                    println!();
+                    println!("Applied: {applied_count}, Failed: {failed_count}");
+                    let delta = score_after - score_before;
+                    println!("Score: {score_before:.0} -> {score_after:.0} ({delta:+.0})");
+                }
+            }
+            Err(e) => {
+                eprintln!("Fix apply failed: {e}");
+                return 1;
+            }
+        }
     }
 
     0

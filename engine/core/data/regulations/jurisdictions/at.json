@@ -1,0 +1,15 @@
+{
+  "country_code": "AT",
+  "country_name": "Austria",
+  "msa_name": "RTR - Rundfunk und Telekom Regulierungs-GmbH",
+  "msa_url": "https://www.rtr.at",
+  "msa_contact": "rtr@rtr.at",
+  "local_requirements": [
+    "National AI strategy alignment required",
+    "German-language documentation mandatory for public-facing AI systems",
+    "Austrian DPA (DSB) notification required for high-risk AI processing personal data"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "German",
+  "notes": "RTR designated as MSA under national AI Act implementation"
+}

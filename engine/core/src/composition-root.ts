@@ -30,6 +30,8 @@ import { createCostService } from './services/cost-service.js';
 import { createOnboardingService } from './services/onboarding-service.js';
 import { createDebtService } from './services/debt-service.js';
 import { createFrameworkService } from './services/framework-service.js';
+import { createProxyService } from './services/proxy-service.js';
+import { ProxyPolicySchema } from './domain/proxy/policy-engine.js';
 import { createFrameworkRegistry, createEuAiActFramework, scoreEuAiAct, createAiuc1Framework, scoreAiuc1 } from './domain/frameworks/index.js';
 import { loadProjectConfig, getSelectedFrameworks } from './infra/project-config.js';
 import { createEvidenceStore } from './domain/scanner/evidence-store.js';
@@ -208,6 +210,11 @@ export const loadApplication = async (): Promise<Application> => {
     getLastScanResult: () => state.lastScanResult,
   });
 
+  // Lazy passport service ref (passportService created later, avoid init-order issue)
+  const lazyPassportService = {
+    listPassports: (path?: string) => passportService.listPassports(path),
+  };
+
   const fixService = createFixService({
     fixer,
     scanService,
@@ -217,6 +224,7 @@ export const loadApplication = async (): Promise<Application> => {
     loadTemplate,
     undoService,
     evidenceStore,
+    passportService: lazyPassportService,
   });
 
   const chatService = createChatService({
@@ -392,6 +400,21 @@ export const loadApplication = async (): Promise<Application> => {
     },
   });
 
+  // 5a.5. Create MCP compliance proxy service (US-S06-01) + policy engine (US-S06-02)
+  const proxyService = createProxyService({
+    loadPolicy: async (projectPath: string) => {
+      try {
+        const policyPath = resolve(projectPath, '.complior', 'proxy-policy.json');
+        const raw = await readFile(policyPath, 'utf-8');
+        const parsed = ProxyPolicySchema.safeParse(JSON.parse(raw));
+        if (parsed.success) return parsed.data;
+        return null;
+      } catch {
+        return null;
+      }
+    },
+  });
+
   // 5b. Create onboarding wizard
   const onboardingWizard = createOnboardingWizard({
     getProjectPath: () => state.projectPath,
@@ -551,6 +574,7 @@ export const loadApplication = async (): Promise<Application> => {
     simulateActions,
     onboardingService,
     frameworkService,
+    proxyService,
     maxRequestsPerHour: projectConfig.llm?.maxRequestsPerHour,
   });
 

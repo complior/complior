@@ -1,0 +1,15 @@
+{
+  "country_code": "FI",
+  "country_name": "Finland",
+  "msa_name": "Transport and Communications Agency (Traficom)",
+  "msa_url": "https://www.traficom.fi",
+  "msa_contact": "kirjaamo@traficom.fi",
+  "local_requirements": [
+    "Finnish and Swedish language documentation for public AI systems",
+    "National DPA (Tietosuojavaltuutettu) notification for high-risk AI",
+    "Alignment with Finland AuroraAI programme for ethical AI"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Finnish/Swedish",
+  "notes": "Traficom oversees digital safety including AI systems"
+}

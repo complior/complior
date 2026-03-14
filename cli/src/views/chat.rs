@@ -8,8 +8,8 @@ use crate::app::App;
 use crate::theme;
 use crate::types::MessageRole;
 
-/// Indent for continuation lines (matches "[HH:MM] X " width).
-const INDENT: &str = "         ";
+/// Indent for continuation lines (matches "YOU " / "◦ " / "● " width).
+const INDENT: &str = "    ";
 
 /// Render status log as a panel within the dashboard.
 /// Only System messages are displayed — no chat, no LLM.
@@ -75,10 +75,6 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                 let first_content_line = msg.content.lines().next().unwrap_or("");
                 lines.push(Line::from(vec![
                     Span::styled(
-                        format!("[{}] ", msg.timestamp),
-                        Style::default().fg(t.muted),
-                    ),
-                    Span::styled(
                         "\u{25E6} ",
                         Style::default().fg(t.system_msg),
                     ),
@@ -98,10 +94,6 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                 // User: YOU prefix, bold, with background tint
                 let first_content_line = msg.content.lines().next().unwrap_or("");
                 lines.push(Line::from(vec![
-                    Span::styled(
-                        format!("[{}] ", msg.timestamp),
-                        Style::default().fg(t.muted).bg(t.user_msg_bg),
-                    ),
                     Span::styled(
                         "YOU ",
                         Style::default()
@@ -131,10 +123,6 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                 // Assistant: ● prefix, green
                 let first_content_line = msg.content.lines().next().unwrap_or("");
                 lines.push(Line::from(vec![
-                    Span::styled(
-                        format!("[{}] ", msg.timestamp),
-                        Style::default().fg(t.muted),
-                    ),
                     Span::styled(
                         "\u{25CF} ",
                         Style::default()
@@ -365,12 +353,7 @@ fn render_status_log(frame: &mut Frame, area: Rect, app: &App) {
         if msg.role != MessageRole::System {
             continue;
         }
-        let time_span = Span::styled(
-            format!("[{}] ", msg.timestamp),
-            Style::default().fg(t.muted),
-        );
         lines.push(Line::from(vec![
-            time_span,
             Span::styled("! ", Style::default().fg(t.system_msg)),
             Span::raw(&msg.content),
         ]));
@@ -479,31 +462,6 @@ mod tests {
     use super::*;
     use crate::types::ChatMessage;
 
-    /// Replace `[HH:MM]` timestamps with `[00:00]` for deterministic snapshots.
-    fn normalize_timestamps(s: &str) -> String {
-        let mut result = String::with_capacity(s.len());
-        let bytes = s.as_bytes();
-        let mut i = 0;
-        while i < bytes.len() {
-            if i + 7 <= bytes.len()
-                && bytes[i] == b'['
-                && bytes[i + 1].is_ascii_digit()
-                && bytes[i + 2].is_ascii_digit()
-                && bytes[i + 3] == b':'
-                && bytes[i + 4].is_ascii_digit()
-                && bytes[i + 5].is_ascii_digit()
-                && bytes[i + 6] == b']'
-            {
-                result.push_str("[00:00]");
-                i += 7;
-            } else {
-                result.push(bytes[i] as char);
-                i += 1;
-            }
-        }
-        result
-    }
-
     fn render_chat_to_string(app: &App, width: u16, height: u16) -> String {
         let backend = TestBackend::new(width, height);
         let mut terminal = Terminal::new(backend).expect("terminal");
@@ -534,8 +492,6 @@ mod tests {
             "Scan complete: 75/100".to_string(),
         ));
         let buf = render_chat_to_string(&app, 80, 24);
-        // Normalize timestamps [HH:MM] to [00:00] for deterministic snapshots
-        let buf = normalize_timestamps(&buf);
         insta::assert_snapshot!(buf);
     }
 

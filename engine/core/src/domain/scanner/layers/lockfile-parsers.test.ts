@@ -1,0 +1,320 @@
+import { describe, it, expect } from 'vitest';
+import {
+  parsePackageLockJson,
+  parseYarnLock,
+  parsePnpmLockYaml,
+  parseCargoLock,
+  parseGoSum,
+  parsePipfileLock,
+  parseLockfiles,
+} from './lockfile-parsers.js';
+
+describe('parsePackageLockJson', () => {
+  it('parses v2/v3 packages format', () => {
+    const content = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'my-app', version: '1.0.0' },
+        'node_modules/express': { version: '4.18.2', license: 'MIT' },
+        'node_modules/body-parser': { version: '1.20.1', license: 'MIT' },
+      },
+    });
+    const deps = parsePackageLockJson(content);
+    expect(deps).toHaveLength(2);
+    expect(deps[0].name).toBe('express');
+    expect(deps[0].version).toBe('4.18.2');
+    expect(deps[0].ecosystem).toBe('npm');
+    expect(deps[0].isDirect).toBe(true);
+    expect(deps[0].license).toBe('MIT');
+  });
+
+  it('identifies transitive deps in nested node_modules', () => {
+    const content = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'app', version: '1.0.0' },
+        'node_modules/express': { version: '4.18.2' },
+        'node_modules/express/node_modules/ms': { version: '2.1.3' },
+      },
+    });
+    const deps = parsePackageLockJson(content);
+    const ms = deps.find(d => d.name === 'ms');
+    expect(ms).toBeDefined();
+    expect(ms!.isDirect).toBe(false);
+  });
+
+  it('parses v1 dependencies format', () => {
+    const content = JSON.stringify({
+      lockfileVersion: 1,
+      dependencies: {
+        lodash: { version: '4.17.21' },
+        axios: {
+          version: '1.6.2',
+          dependencies: {
+            'follow-redirects': { version: '1.15.3' },
+          },
+        },
+      },
+    });
+    const deps = parsePackageLockJson(content);
+    expect(deps).toHaveLength(3);
+    const lodash = deps.find(d => d.name === 'lodash');
+    expect(lodash!.isDirect).toBe(true);
+    const follow = deps.find(d => d.name === 'follow-redirects');
+    expect(follow!.isDirect).toBe(false);
+    expect(follow!.version).toBe('1.15.3');
+  });
+
+  it('returns empty for invalid JSON', () => {
+    const deps = parsePackageLockJson('not json');
+    expect(deps).toHaveLength(0);
+  });
+
+  it('returns empty for empty object', () => {
+    const deps = parsePackageLockJson('{}');
+    expect(deps).toHaveLength(0);
+  });
+
+  it('preserves license from packages', () => {
+    const content = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'app' },
+        'node_modules/gpl-pkg': { version: '1.0.0', license: 'GPL-3.0' },
+      },
+    });
+    const deps = parsePackageLockJson(content);
+    expect(deps[0].license).toBe('GPL-3.0');
+  });
+
+  it('handles scoped packages', () => {
+    const content = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'app' },
+        'node_modules/@scope/pkg': { version: '2.0.0' },
+      },
+    });
+    const deps = parsePackageLockJson(content);
+    expect(deps[0].name).toBe('@scope/pkg');
+  });
+});
+
+describe('parseYarnLock', () => {
+  it('parses basic yarn.lock v1 entries', () => {
+    const content = `"express@^4.18.0":
+  version "4.18.2"
+  resolved "https://registry.yarnpkg.com/express/-/express-4.18.2.tgz"
+
+"lodash@^4.17.0":
+  version "4.17.21"
+  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.21.tgz"
+`;
+    const deps = parseYarnLock(content);
+    expect(deps).toHaveLength(2);
+    expect(deps[0].name).toBe('express');
+    expect(deps[0].version).toBe('4.18.2');
+    expect(deps[0].ecosystem).toBe('npm');
+  });
+
+  it('parses scoped packages', () => {
+    const content = `"@types/node@^18.0.0":
+  version "18.19.3"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.19.3.tgz"
+`;
+    const deps = parseYarnLock(content);
+    expect(deps).toHaveLength(1);
+    expect(deps[0].name).toBe('@types/node');
+    expect(deps[0].version).toBe('18.19.3');
+  });
+
+  it('returns empty for empty content', () => {
+    const deps = parseYarnLock('');
+    expect(deps).toHaveLength(0);
+  });
+});
+
+describe('parsePnpmLockYaml', () => {
+  it('parses packages section', () => {
+    const content = `lockfileVersion: '6.0'
+
+packages:
+  /express@4.18.2:
+    resolution: {integrity: sha512-abc}
+  /lodash@4.17.21:
+    resolution: {integrity: sha512-def}
+
+settings:
+  autoInstallPeers: true
+`;
+    const deps = parsePnpmLockYaml(content);
+    expect(deps).toHaveLength(2);
+    expect(deps[0].name).toBe('express');
+    expect(deps[0].version).toBe('4.18.2');
+    expect(deps[0].ecosystem).toBe('npm');
+  });
+
+  it('returns empty for no packages section', () => {
+    const content = `lockfileVersion: '6.0'\nsettings:\n  autoInstallPeers: true\n`;
+    const deps = parsePnpmLockYaml(content);
+    expect(deps).toHaveLength(0);
+  });
+});
+
+describe('parseCargoLock', () => {
+  it('parses Cargo.lock packages', () => {
+    const content = `# This file is automatically generated
+[[package]]
+name = "serde"
+version = "1.0.193"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "tokio"
+version = "1.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+`;
+    const deps = parseCargoLock(content);
+    expect(deps).toHaveLength(2);
+    expect(deps[0].name).toBe('serde');
+    expect(deps[0].version).toBe('1.0.193');
+    expect(deps[0].ecosystem).toBe('cargo');
+    expect(deps[1].name).toBe('tokio');
+    expect(deps[1].version).toBe('1.35.0');
+  });
+
+  it('returns empty for empty content', () => {
+    const deps = parseCargoLock('');
+    expect(deps).toHaveLength(0);
+  });
+});
+
+describe('parseGoSum', () => {
+  it('parses go.sum entries', () => {
+    const content = `github.com/gin-gonic/gin v1.9.1 h1:abc=
+github.com/gin-gonic/gin v1.9.1/go.mod h1:def=
+github.com/stretchr/testify v1.8.4 h1:ghi=
+`;
+    const deps = parseGoSum(content);
+    expect(deps).toHaveLength(2); // deduped (gin appears twice, different hash)
+    expect(deps[0].name).toBe('github.com/gin-gonic/gin');
+    expect(deps[0].version).toBe('1.9.1');
+    expect(deps[0].ecosystem).toBe('go');
+  });
+
+  it('deduplicates same package+version', () => {
+    const content = `golang.org/x/text v0.14.0 h1:abc=
+golang.org/x/text v0.14.0/go.mod h1:def=
+`;
+    const deps = parseGoSum(content);
+    expect(deps).toHaveLength(1);
+  });
+
+  it('returns empty for empty content', () => {
+    const deps = parseGoSum('');
+    expect(deps).toHaveLength(0);
+  });
+});
+
+describe('parsePipfileLock', () => {
+  it('parses default and develop sections', () => {
+    const content = JSON.stringify({
+      default: {
+        requests: { version: '==2.31.0' },
+        flask: { version: '==3.0.0' },
+      },
+      develop: {
+        pytest: { version: '==7.4.3' },
+      },
+    });
+    const deps = parsePipfileLock(content);
+    expect(deps).toHaveLength(3);
+    const requests = deps.find(d => d.name === 'requests');
+    expect(requests!.version).toBe('2.31.0'); // == stripped
+    expect(requests!.isDirect).toBe(true);
+    expect(requests!.ecosystem).toBe('python');
+    const pytest = deps.find(d => d.name === 'pytest');
+    expect(pytest!.isDirect).toBe(false); // develop section
+  });
+
+  it('returns empty for invalid JSON', () => {
+    const deps = parsePipfileLock('not json');
+    expect(deps).toHaveLength(0);
+  });
+
+  it('handles missing sections', () => {
+    const content = JSON.stringify({ default: { numpy: { version: '==1.26.0' } } });
+    const deps = parsePipfileLock(content);
+    expect(deps).toHaveLength(1);
+  });
+});
+
+describe('parseLockfiles', () => {
+  it('routes to correct parser by filename', () => {
+    const files = [
+      {
+        relativePath: 'package-lock.json',
+        content: JSON.stringify({
+          lockfileVersion: 3,
+          packages: {
+            '': { name: 'app' },
+            'node_modules/express': { version: '4.18.2' },
+          },
+        }),
+      },
+    ];
+    const deps = parseLockfiles(files);
+    expect(deps).toHaveLength(1);
+    expect(deps[0].name).toBe('express');
+  });
+
+  it('handles lockfile in subdirectory', () => {
+    const files = [
+      {
+        relativePath: 'backend/package-lock.json',
+        content: JSON.stringify({
+          lockfileVersion: 3,
+          packages: {
+            '': { name: 'backend' },
+            'node_modules/hono': { version: '3.12.0' },
+          },
+        }),
+      },
+    ];
+    const deps = parseLockfiles(files);
+    expect(deps).toHaveLength(1);
+    expect(deps[0].name).toBe('hono');
+  });
+
+  it('ignores non-lockfile files', () => {
+    const files = [
+      { relativePath: 'src/app.ts', content: 'console.log("hello")' },
+      { relativePath: 'README.md', content: '# readme' },
+    ];
+    const deps = parseLockfiles(files);
+    expect(deps).toHaveLength(0);
+  });
+
+  it('combines deps from multiple lockfiles', () => {
+    const files = [
+      {
+        relativePath: 'package-lock.json',
+        content: JSON.stringify({
+          lockfileVersion: 3,
+          packages: {
+            '': { name: 'app' },
+            'node_modules/express': { version: '4.18.2' },
+          },
+        }),
+      },
+      {
+        relativePath: 'Cargo.lock',
+        content: `[[package]]\nname = "serde"\nversion = "1.0.193"\n`,
+      },
+    ];
+    const deps = parseLockfiles(files);
+    expect(deps).toHaveLength(2);
+    expect(deps.map(d => d.ecosystem)).toContain('npm');
+    expect(deps.map(d => d.ecosystem)).toContain('cargo');
+  });
+});

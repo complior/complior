@@ -26,11 +26,11 @@ const MODEL_MAP: Record<ProviderName, Record<TaskType, string>> = {
     chat: 'claude-sonnet-4-5-20250929',
   },
   openrouter: {
-    qa: 'anthropic/claude-haiku-4-5-20251001',
-    code: 'anthropic/claude-sonnet-4-5-20250929',
-    report: 'anthropic/claude-sonnet-4-5-20250929',
-    classify: 'anthropic/claude-haiku-4-5-20251001',
-    chat: 'anthropic/claude-sonnet-4-5-20250929',
+    qa: 'anthropic/claude-haiku-4.5',
+    code: 'anthropic/claude-sonnet-4.5',
+    report: 'anthropic/claude-sonnet-4.5',
+    classify: 'anthropic/claude-haiku-4.5',
+    chat: 'anthropic/claude-sonnet-4.5',
   },
 };
 
@@ -96,7 +96,9 @@ export const createLlmAdapter = (): LlmPort => {
           baseURL: 'https://openrouter.ai/api/v1',
           apiKey: apiKey || process.env['OPENROUTER_API_KEY'],
         });
-        return client(modelId);
+        // OpenRouter supports Chat Completions API, not OpenAI Responses API.
+        // Use .chat() explicitly — default client() uses Responses API in SDK v2.
+        return client.chat(modelId);
       }
       default:
         throw new LLMError(`Unknown provider: ${String(provider)}`);

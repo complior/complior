@@ -1,0 +1,15 @@
+{
+  "country_code": "NL",
+  "country_name": "Netherlands",
+  "msa_name": "Autoriteit Consument & Markt (ACM)",
+  "msa_url": "https://www.acm.nl",
+  "msa_contact": "info@acm.nl",
+  "local_requirements": [
+    "Dutch-language documentation required for consumer-facing AI",
+    "Autoriteit Persoonsgegevens (AP) notification for high-risk AI processing personal data",
+    "Algorithm Register mandatory for government AI systems"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Dutch",
+  "notes": "Netherlands has a public Algorithm Register and proactive algorithmic oversight"
+}

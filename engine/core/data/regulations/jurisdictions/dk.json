@@ -1,0 +1,15 @@
+{
+  "country_code": "DK",
+  "country_name": "Denmark",
+  "msa_name": "Danish Business Authority (Erhvervsstyrelsen)",
+  "msa_url": "https://www.erst.dk",
+  "msa_contact": "erst@erst.dk",
+  "local_requirements": [
+    "Danish-language documentation for consumer-facing AI systems",
+    "National DPA (Datatilsynet) notification for high-risk AI",
+    "Alignment with Danish National Strategy for Artificial Intelligence"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Danish",
+  "notes": "Denmark has a proactive AI ethics framework alongside EU AI Act compliance"
+}

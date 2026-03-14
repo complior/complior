@@ -1,0 +1,15 @@
+{
+  "country_code": "HR",
+  "country_name": "Croatia",
+  "msa_name": "Croatian Regulatory Authority for Network Industries (HAKOM)",
+  "msa_url": "https://www.hakom.hr",
+  "msa_contact": "info@hakom.hr",
+  "local_requirements": [
+    "Croatian-language documentation mandatory for consumer-facing AI",
+    "National DPA (AZOP) notification required for high-risk AI",
+    "Sector-specific requirements for public administration AI systems"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Croatian",
+  "notes": "HAKOM designated as primary MSA for AI systems in Croatia"
+}

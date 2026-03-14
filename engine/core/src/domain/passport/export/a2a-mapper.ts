@@ -28,7 +28,8 @@ export const A2ACardSchema = z.object({
 export type A2ACard = z.infer<typeof A2ACardSchema>;
 
 // Well-known provider URLs (avoids fragile string mangling)
-const PROVIDER_URLS: Readonly<Record<string, string>> = {
+// Canonical mapping: provider name → URL (shared with import via reverse lookup)
+export const PROVIDER_URLS: Readonly<Record<string, string>> = {
   openai: 'https://openai.com',
   anthropic: 'https://anthropic.com',
   google: 'https://ai.google',
@@ -37,7 +38,7 @@ const PROVIDER_URLS: Readonly<Record<string, string>> = {
   cohere: 'https://cohere.com',
 };
 
-const resolveProviderUrl = (provider: string): string =>
+export const resolveProviderUrl = (provider: string): string =>
   PROVIDER_URLS[provider.toLowerCase()] ?? '';
 
 // Conditional tag collector (FP — no push mutations)

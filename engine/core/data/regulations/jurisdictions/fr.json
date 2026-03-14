@@ -1,0 +1,15 @@
+{
+  "country_code": "FR",
+  "country_name": "France",
+  "msa_name": "CNIL + Direction generale des entreprises (DGE)",
+  "msa_url": "https://www.cnil.fr",
+  "msa_contact": "contact@cnil.fr",
+  "local_requirements": [
+    "French-language documentation mandatory for all consumer AI systems",
+    "CNIL AI impact assessment required for systems processing personal data",
+    "Sector-specific requirements for public sector AI (Etalab guidelines)"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "French",
+  "notes": "France has dual oversight: CNIL for data protection aspects, DGE for market surveillance"
+}

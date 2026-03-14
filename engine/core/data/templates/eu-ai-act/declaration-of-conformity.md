@@ -8,6 +8,14 @@
 ## Document Structure:
 
 ### EU DECLARATION OF CONFORMITY
+<!-- GUIDANCE: Art. 47 requires a separate declaration for each high-risk AI system.
+The declaration must be kept up to date and available to national authorities for
+10 years after the system is placed on the market. Use the exact wording structure
+from Art. 47(1)(a)-(k). If using a notified body (Annex VII route), include their
+certificate number. For Annex VI internal control, state "Not applicable — internal
+conformity assessment per Annex VI." Keep a signed copy with technical documentation.
+Example: "Declaration DoC-2026-001, issued 2026-01-15, covers AI-Screen v3.0,
+Annex VI internal control, no notified body involvement." -->
 
 *In accordance with Article 47 of Regulation (EU) 2024/1689*
 

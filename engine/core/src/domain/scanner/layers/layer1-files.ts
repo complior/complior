@@ -11,6 +11,15 @@ import { checkPassportCompleteness } from '../checks/passport-completeness.js';
 import { checkPermissions } from '../checks/permission-scanner.js';
 import { checkBehavioralConstraints } from '../checks/behavioral-constraints.js';
 import { checkIndustryPatterns } from '../checks/industry/index.js';
+import {
+  checkFriaPresence,
+  checkArt5ScreeningPresence,
+  checkTechnicalDocumentationPresence,
+  checkIncidentReportPresence,
+  checkDeclarationOfConformityPresence,
+  checkMonitoringPolicyPresence,
+  checkWorkerNotificationPresence,
+} from '../checks/presence-check-factory.js';
 
 export const L1_CHECKS: readonly CheckFunction[] = [
   checkAiDisclosure,
@@ -25,4 +34,11 @@ export const L1_CHECKS: readonly CheckFunction[] = [
   checkPermissions,
   checkBehavioralConstraints,
   checkIndustryPatterns,
+  checkFriaPresence,
+  checkArt5ScreeningPresence,
+  checkTechnicalDocumentationPresence,
+  checkIncidentReportPresence,
+  checkDeclarationOfConformityPresence,
+  checkMonitoringPolicyPresence,
+  checkWorkerNotificationPresence,
 ];

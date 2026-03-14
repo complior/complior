@@ -26,13 +26,111 @@ impl Default for ConfirmationsConfig {
         }
     }
 }
+
 const DEFAULT_TICK_RATE_MS: u64 = 250;
 /// No hardcoded SaaS URL default.  Users set it via:
 ///   1. `PROJECT_API_URL` env var, or
-///   2. `complior login` (persists to tui.toml), or
-///   3. Direct edit of `~/.config/complior/tui.toml` → `project_api_url`
+///   2. `complior login` (persists to settings.toml), or
+///   3. Direct edit of `~/.config/complior/settings.toml` → `project_api_url`
 const DEFAULT_PROJECT_API_URL: &str = "";
 
+// ── Storage types (internal) ────────────────────────────────────────────────
+
+/// Global user preferences — `~/.config/complior/settings.toml`.
+/// Fields that stay the same across all projects (UX, infra, SaaS).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+struct GlobalConfig {
+    engine_port: u16,
+    engine_host: String,
+    tick_rate_ms: u64,
+    theme: String,
+    navigation: String,
+    sidebar_visible: bool,
+    animations_enabled: bool,
+    scroll_acceleration: f32,
+    llm_provider: Option<String>,
+    llm_model: Option<String>,
+    project_api_url: String,
+    offline_mode: bool,
+    confirmations: ConfirmationsConfig,
+}
+
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        Self {
+            engine_port: DEFAULT_ENGINE_PORT,
+            engine_host: "127.0.0.1".to_string(),
+            tick_rate_ms: DEFAULT_TICK_RATE_MS,
+            theme: "dark".to_string(),
+            navigation: "standard".to_string(),
+            sidebar_visible: true,
+            animations_enabled: true,
+            scroll_acceleration: 1.5,
+            llm_provider: None,
+            llm_model: None,
+            project_api_url: DEFAULT_PROJECT_API_URL.to_string(),
+            offline_mode: false,
+            confirmations: ConfirmationsConfig::default(),
+        }
+    }
+}
+
+/// Project-level compliance profile — `.complior/project.toml`.
+/// Fields that differ per project (requirements, role, industry, etc.).
+/// Safe to commit to git (no secrets).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+struct ProjectConfig {
+    onboarding_completed: bool,
+    onboarding_last_step: Option<usize>,
+    project_type: String,
+    jurisdiction: String,
+    requirements: Vec<String>,
+    role: String,
+    industry: String,
+    scan_scope: Vec<String>,
+    watch_on_start: bool,
+    llm_provider: Option<String>,
+    llm_model: Option<String>,
+    project_api_url: Option<String>,
+    offline_mode: Option<bool>,
+}
+
+impl Default for ProjectConfig {
+    fn default() -> Self {
+        Self {
+            onboarding_completed: false,
+            onboarding_last_step: None,
+            project_type: "existing".to_string(),
+            jurisdiction: "eu".to_string(),
+            requirements: vec!["eu-ai-act".to_string()],
+            role: "deployer".to_string(),
+            industry: "general".to_string(),
+            scan_scope: vec![
+                "deps".to_string(),
+                "env".to_string(),
+                "source".to_string(),
+            ],
+            watch_on_start: false,
+            llm_provider: None,
+            llm_model: None,
+            project_api_url: None,
+            offline_mode: None,
+        }
+    }
+}
+
+/// Default project config for `complior init`. Public so headless::commands can use it.
+pub fn default_project_toml() -> impl serde::Serialize {
+    ProjectConfig::default()
+}
+
+// ── Merged runtime config (public API) ──────────────────────────────────────
+
+/// Merged runtime config — built from `GlobalConfig` + `ProjectConfig`.
+/// This is the public type used throughout the app. Project fields override
+/// global for `llm_provider` and `llm_model` when set.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct TuiConfig {
@@ -51,6 +149,7 @@ pub struct TuiConfig {
     pub navigation: String,
     pub project_type: String,
     pub jurisdiction: String,
+    pub requirements: Vec<String>,
     pub role: String,
     pub industry: String,
     pub scan_scope: Vec<String>,
@@ -104,6 +203,7 @@ impl Default for TuiConfig {
             navigation: "standard".to_string(),
             project_type: "existing".to_string(),
             jurisdiction: "eu".to_string(),
+            requirements: vec!["eu-ai-act".to_string()],
             role: "deployer".to_string(),
             industry: "general".to_string(),
             scan_scope: vec![
@@ -133,12 +233,134 @@ impl TuiConfig {
     }
 }
 
-pub fn load_config() -> TuiConfig {
-    let config_path = config_file_path();
-    let mut config: TuiConfig = match std::fs::read_to_string(&config_path) {
+// ── Config file paths ───────────────────────────────────────────────────────
+
+fn global_config_path() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("complior")
+        .join("settings.toml")
+}
+
+fn project_config_path() -> PathBuf {
+    find_project_root().join(".complior").join("project.toml")
+}
+
+/// Project root marker files, checked in priority order.
+const PROJECT_MARKERS: &[&str] = &[
+    ".complior",      // explicit Complior project (like .git/)
+    ".git",           // git repository root
+    "Cargo.toml",     // Rust
+    "package.json",   // Node.js / TS
+    "go.mod",         // Go
+    "pyproject.toml", // Python
+    "pom.xml",        // Java / Maven
+    "build.gradle",   // Java / Gradle
+    ".project",       // Eclipse / generic
+];
+
+/// Walk up directory tree to find the project root.
+/// Checks for known project markers (`.complior/`, `.git/`, `Cargo.toml`, etc.).
+/// Stops at `$HOME` or after 10 levels to avoid traversing to filesystem root.
+/// Falls back to CWD if no marker is found.
+pub fn find_project_root() -> PathBuf {
+    let start = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let home = dirs::home_dir();
+    let mut dir = start.clone();
+
+    for _ in 0..10 {
+        // .complior/ gets highest priority — explicit project root
+        if dir.join(".complior").is_dir() {
+            return dir;
+        }
+        // Check other markers
+        for marker in &PROJECT_MARKERS[1..] {
+            if dir.join(marker).exists() {
+                return dir;
+            }
+        }
+        // Stop at $HOME — don't go above user's home directory
+        if home.as_ref().is_some_and(|h| &dir == h) {
+            break;
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    start
+}
+
+/// Legacy path — `~/.config/complior/tui.toml` (pre-split).
+fn legacy_config_path() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("complior")
+        .join("tui.toml")
+}
+
+// ── Load ────────────────────────────────────────────────────────────────────
+
+fn load_global_config() -> GlobalConfig {
+    let path = global_config_path();
+    match std::fs::read_to_string(&path) {
         Ok(content) => toml::from_str(&content).unwrap_or_default(),
-        Err(_) => TuiConfig::default(),
-    };
+        Err(_) => GlobalConfig::default(),
+    }
+}
+
+fn load_project_config() -> ProjectConfig {
+    let path = project_config_path();
+    match std::fs::read_to_string(&path) {
+        Ok(content) => toml::from_str(&content).unwrap_or_default(),
+        Err(_) => ProjectConfig::default(),
+    }
+}
+
+/// Merge `GlobalConfig` + `ProjectConfig` into the runtime `TuiConfig`.
+/// Project-level `llm_provider`/`llm_model` override global when set.
+fn merge_config(global: GlobalConfig, project: ProjectConfig) -> TuiConfig {
+    TuiConfig {
+        engine_port: global.engine_port,
+        engine_host: global.engine_host,
+        tick_rate_ms: global.tick_rate_ms,
+        project_path: None,
+        theme: global.theme,
+        sidebar_visible: global.sidebar_visible,
+        animations_enabled: global.animations_enabled,
+        scroll_acceleration: global.scroll_acceleration,
+        navigation: global.navigation,
+        project_api_url: project.project_api_url.unwrap_or(global.project_api_url),
+        offline_mode: project.offline_mode.unwrap_or(global.offline_mode),
+        confirmations: global.confirmations,
+
+        // Project fields
+        onboarding_completed: project.onboarding_completed,
+        onboarding_last_step: project.onboarding_last_step,
+        project_type: project.project_type,
+        jurisdiction: project.jurisdiction,
+        requirements: project.requirements,
+        role: project.role,
+        industry: project.industry,
+        scan_scope: project.scan_scope,
+        watch_on_start: project.watch_on_start,
+
+        // LLM: project overrides global when set
+        llm_provider: project.llm_provider.or(global.llm_provider),
+        llm_model: project.llm_model.or(global.llm_model),
+
+        // Runtime-only (not persisted)
+        engine_url_override: None,
+        api_key: None,
+    }
+}
+
+pub fn load_config() -> TuiConfig {
+    // Migrate legacy tui.toml if new settings.toml doesn't exist yet
+    migrate_legacy_config();
+
+    let global = load_global_config();
+    let project = load_project_config();
+    let mut config = merge_config(global, project);
 
     // Override project_api_url from env (useful for local PROJECT dev)
     if let Ok(url) = std::env::var("PROJECT_API_URL") {
@@ -157,6 +379,213 @@ pub fn load_config() -> TuiConfig {
 
     config
 }
+
+// ── Save ────────────────────────────────────────────────────────────────────
+
+async fn save_global_config(config: &GlobalConfig) {
+    let path = global_config_path();
+    if let Some(parent) = path.parent() {
+        let _ = tokio::fs::create_dir_all(parent).await;
+    }
+    if let Ok(content) = toml::to_string_pretty(config) {
+        let _ = tokio::fs::write(&path, content).await;
+    }
+}
+
+async fn save_project_config(config: &ProjectConfig) {
+    let path = project_config_path();
+    if let Some(parent) = path.parent() {
+        if let Err(e) = tokio::fs::create_dir_all(parent).await {
+            tracing::warn!("cannot create {}: {e}", parent.display());
+            return;
+        }
+    }
+    match toml::to_string_pretty(config) {
+        Ok(content) => {
+            if let Err(e) = tokio::fs::write(&path, content).await {
+                tracing::warn!("cannot write {}: {e}", path.display());
+            }
+        }
+        Err(e) => tracing::warn!("cannot serialize project config: {e}"),
+    }
+}
+
+/// Persist the SaaS URL after successful login (global).
+pub async fn save_project_api_url(url: &str) {
+    let mut global = load_global_config();
+    global.project_api_url = url.to_string();
+    save_global_config(&global).await;
+}
+
+/// Save just the theme name to config (global).
+pub async fn save_theme(name: &str) {
+    let mut global = load_global_config();
+    global.theme = name.to_string();
+    save_global_config(&global).await;
+}
+
+/// Mark onboarding as completed in config (project).
+pub async fn mark_onboarding_complete() {
+    let mut project = load_project_config();
+    project.onboarding_completed = true;
+    project.onboarding_last_step = None;
+    save_project_config(&project).await;
+}
+
+/// Save partial onboarding progress (project — for resume on interrupt).
+pub async fn save_onboarding_partial(last_step: usize) {
+    let mut project = load_project_config();
+    project.onboarding_last_step = Some(last_step);
+    save_project_config(&project).await;
+}
+
+/// Save all onboarding results from the wizard — split across both files.
+/// Global: theme. Project: requirements, role, industry, ai provider, etc.
+pub async fn save_onboarding_results(
+    wizard: &crate::views::onboarding::OnboardingWizard,
+) {
+    // ── Global fields ──
+    let mut global = load_global_config();
+    global.theme = wizard.selected_config_value("welcome_theme");
+
+    // Save AI provider to global
+    let provider = wizard.selected_config_value("ai_provider");
+    match provider.as_str() {
+        "offline" => {
+            global.offline_mode = true;
+        }
+        "guard_api" => {
+            // Guard API mode — will trigger login flow later
+            global.llm_provider = Some("guard_api".to_string());
+        }
+        _ => {
+            // BYOK: provider detected from key prefix
+            let api_key = wizard.step_text_value("ai_provider");
+            global.llm_provider = Some(provider.clone());
+            if !api_key.is_empty() {
+                save_llm_api_key(&provider, &api_key);
+            }
+        }
+    }
+
+    save_global_config(&global).await;
+
+    // ── Project fields ──
+    let mut project = load_project_config();
+    project.project_type = wizard.selected_config_value("project_type");
+    project.role = wizard.selected_config_value("role");
+    project.industry = wizard.selected_config_value("industry");
+
+    let req_str = wizard.selected_config_value("requirements");
+    project.requirements = req_str
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect();
+
+    project.onboarding_completed = true;
+    project.onboarding_last_step = None;
+
+    save_project_config(&project).await;
+}
+
+/// Save LLM config (provider + model to global TOML, API key to credentials file).
+pub async fn save_llm_config(
+    provider: Option<&str>,
+    model: Option<&str>,
+    api_key: Option<&str>,
+) {
+    let mut global = load_global_config();
+    global.llm_provider = provider.map(String::from);
+    global.llm_model = model.map(String::from);
+    save_global_config(&global).await;
+
+    // Save API key to credentials file (never in TOML)
+    if let Some(key) = api_key {
+        if !key.is_empty() {
+            let provider_name = provider.unwrap_or("LLM");
+            save_llm_api_key(provider_name, key);
+        }
+    }
+}
+
+// ── Legacy migration ────────────────────────────────────────────────────────
+
+/// If `tui.toml` exists and `settings.toml` doesn't, split the old config
+/// into `settings.toml` (global) + `project.toml` (project), then rename
+/// `tui.toml` → `tui.toml.bak`.
+fn migrate_legacy_config() {
+    let old_path = legacy_config_path();
+    let new_path = global_config_path();
+
+    if !old_path.exists() || new_path.exists() {
+        return;
+    }
+
+    let Ok(content) = std::fs::read_to_string(&old_path) else {
+        return;
+    };
+    let Ok(legacy): Result<TuiConfig, _> = toml::from_str(&content) else {
+        return;
+    };
+
+    // Split into global
+    let global = GlobalConfig {
+        engine_port: legacy.engine_port,
+        engine_host: legacy.engine_host,
+        tick_rate_ms: legacy.tick_rate_ms,
+        theme: legacy.theme,
+        navigation: legacy.navigation,
+        sidebar_visible: legacy.sidebar_visible,
+        animations_enabled: legacy.animations_enabled,
+        scroll_acceleration: legacy.scroll_acceleration,
+        llm_provider: legacy.llm_provider.clone(),
+        llm_model: legacy.llm_model.clone(),
+        project_api_url: legacy.project_api_url,
+        offline_mode: legacy.offline_mode,
+        confirmations: legacy.confirmations,
+    };
+
+    // Split into project
+    let project = ProjectConfig {
+        onboarding_completed: legacy.onboarding_completed,
+        onboarding_last_step: legacy.onboarding_last_step,
+        project_type: legacy.project_type,
+        jurisdiction: legacy.jurisdiction,
+        requirements: legacy.requirements,
+        role: legacy.role,
+        industry: legacy.industry,
+        scan_scope: legacy.scan_scope,
+        watch_on_start: legacy.watch_on_start,
+        llm_provider: None, // don't duplicate — global is the source for legacy configs
+        llm_model: None,
+        project_api_url: None,
+        offline_mode: None,
+    };
+
+    // Write global (sync — migration runs before async runtime matters)
+    if let Some(parent) = new_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(toml_str) = toml::to_string_pretty(&global) {
+        let _ = std::fs::write(&new_path, toml_str);
+    }
+
+    // Write project
+    let proj_path = project_config_path();
+    if let Some(parent) = proj_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(toml_str) = toml::to_string_pretty(&project) {
+        let _ = std::fs::write(&proj_path, toml_str);
+    }
+
+    // Rename old file to .bak
+    let bak_path = old_path.with_extension("toml.bak");
+    let _ = std::fs::rename(&old_path, &bak_path);
+}
+
+// ── Credentials & API keys (unchanged) ──────────────────────────────────────
 
 /// Read `COMPLIOR_API_KEY` from `~/.config/complior/credentials`.
 /// Format: one `KEY=value` per line, `#` comments ignored.
@@ -180,106 +609,60 @@ pub fn load_api_key() -> Option<String> {
     None
 }
 
-/// Save specific fields to TOML config file (merge-friendly).
-pub async fn save_config(config: &TuiConfig) {
-    let path = config_file_path();
-    if let Some(parent) = path.parent() {
-        let _ = tokio::fs::create_dir_all(parent).await;
+
+/// Validate an API key for a given provider.
+/// Returns `Ok(())` if plausible, or `Err(reason)` if clearly invalid.
+pub fn validate_api_key(provider: &str, key: &str) -> Result<(), String> {
+    if key.is_empty() {
+        return Err("Key cannot be empty.".to_string());
     }
-    if let Ok(content) = toml::to_string_pretty(config) {
-        let _ = tokio::fs::write(&path, content).await;
-    }
-}
-
-/// Persist the SaaS URL after successful login.
-pub async fn save_project_api_url(url: &str) {
-    let mut config = load_config();
-    config.project_api_url = url.to_string();
-    save_config(&config).await;
-}
-
-/// Save just the theme name to config.
-pub async fn save_theme(name: &str) {
-    let mut config = load_config();
-    config.theme = name.to_string();
-    save_config(&config).await;
-}
-
-/// Mark onboarding as completed in config.
-pub async fn mark_onboarding_complete() {
-    let mut config = load_config();
-    config.onboarding_completed = true;
-    config.onboarding_last_step = None;
-    save_config(&config).await;
-}
-
-/// Save partial onboarding progress (for resume on interrupt).
-pub async fn save_onboarding_partial(last_step: usize) {
-    let mut config = load_config();
-    config.onboarding_last_step = Some(last_step);
-    save_config(&config).await;
-}
-
-/// Save all onboarding results from the wizard to config.
-pub async fn save_onboarding_results(
-    wizard: &crate::views::onboarding::OnboardingWizard,
-) {
-    let mut config = load_config();
-
-    config.theme = wizard.selected_config_value("welcome_theme");
-    config.navigation = wizard.selected_config_value("navigation");
-    config.project_type = wizard.selected_config_value("project_type");
-    config.jurisdiction = wizard.selected_config_value("jurisdiction");
-    config.role = wizard.selected_config_value("role");
-    config.industry = wizard.selected_config_value("industry");
-
-    let scope_str = wizard.selected_config_value("scan_scope");
-    config.scan_scope = scope_str
-        .split(',')
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string())
-        .collect();
-
-    config.onboarding_completed = true;
-    config.onboarding_last_step = None;
-
-    save_config(&config).await;
-}
-
-fn config_file_path() -> PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("complior")
-        .join("tui.toml")
-}
-
-/// Save LLM config (provider + model to TOML, API key to credentials file).
-pub async fn save_llm_config(
-    provider: Option<&str>,
-    model: Option<&str>,
-    api_key: Option<&str>,
-) {
-    let mut config = load_config();
-    config.llm_provider = provider.map(String::from);
-    config.llm_model = model.map(String::from);
-    save_config(&config).await;
-
-    // Save API key to credentials file (never in TOML)
-    if let Some(key) = api_key {
-        if !key.is_empty() {
-            let provider_name = provider.unwrap_or("LLM");
-            save_llm_api_key(provider_name, key);
+    match provider {
+        "openai" => {
+            if !key.starts_with("sk-") {
+                return Err("OpenAI keys start with \"sk-\".".to_string());
+            }
+            if key.len() < 20 {
+                return Err("Key too short for OpenAI.".to_string());
+            }
+        }
+        "anthropic" => {
+            if !key.starts_with("sk-ant-") {
+                return Err("Anthropic keys start with \"sk-ant-\".".to_string());
+            }
+            if key.len() < 20 {
+                return Err("Key too short for Anthropic.".to_string());
+            }
+        }
+        "openrouter" => {
+            if !key.starts_with("sk-or-") {
+                return Err("OpenRouter keys start with \"sk-or-\".".to_string());
+            }
+            if key.len() < 20 {
+                return Err("Key too short for OpenRouter.".to_string());
+            }
+        }
+        _ => {
+            if key.len() < 10 {
+                return Err("Key too short.".to_string());
+            }
         }
     }
+    Ok(())
+}
+
+/// Resolve provider name to its environment variable key.
+fn provider_env_key(provider: &str) -> Option<&'static str> {
+    use crate::llm_settings::PROVIDERS;
+    PROVIDERS
+        .iter()
+        .find(|p| p.name() == provider)
+        .map(|p| p.env_var())
 }
 
 /// Save an LLM API key to `~/.config/complior/credentials`.
-fn save_llm_api_key(provider: &str, key: &str) {
-    let env_key = match provider {
-        "anthropic" => "ANTHROPIC_API_KEY",
-        "openai" => "OPENAI_API_KEY",
-        "openrouter" => "OPENROUTER_API_KEY",
-        _ => return,
+pub fn save_llm_api_key(provider: &str, key: &str) {
+    let Some(env_key) = provider_env_key(provider) else {
+        return;
     };
 
     let Some(path) = credentials_path() else {
@@ -317,12 +700,7 @@ fn save_llm_api_key(provider: &str, key: &str) {
 
 /// Load LLM API key for a provider from `~/.config/complior/credentials`.
 pub fn load_llm_api_key(provider: &str) -> Option<String> {
-    let env_key = match provider {
-        "anthropic" => "ANTHROPIC_API_KEY",
-        "openai" => "OPENAI_API_KEY",
-        "openrouter" => "OPENROUTER_API_KEY",
-        _ => return None,
-    };
+    let env_key = provider_env_key(provider)?;
 
     // Check env var first
     if let Ok(val) = std::env::var(env_key) {
@@ -593,5 +971,147 @@ mod tests {
         };
         // batch_fix=false means auto-proceed without dialog
         assert!(!conf.batch_fix, "batch_fix=false means proceed without confirmation");
+    }
+
+    // ── Split config tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_global_config_defaults() {
+        let global = GlobalConfig::default();
+        assert_eq!(global.engine_port, 3099);
+        assert_eq!(global.theme, "dark");
+        assert_eq!(global.navigation, "standard");
+        assert!(global.sidebar_visible);
+        assert!(global.animations_enabled);
+    }
+
+    #[test]
+    fn test_project_config_defaults() {
+        let project = ProjectConfig::default();
+        assert!(!project.onboarding_completed);
+        assert_eq!(project.jurisdiction, "eu");
+        assert_eq!(project.role, "deployer");
+        assert_eq!(project.industry, "general");
+        assert_eq!(project.scan_scope, vec!["deps", "env", "source"]);
+        assert!(!project.watch_on_start);
+    }
+
+    #[test]
+    fn test_global_config_deserialization() {
+        let toml_str = r#"
+            engine_port = 4000
+            theme = "light"
+            navigation = "vim"
+            sidebar_visible = false
+        "#;
+        let config: GlobalConfig = toml::from_str(toml_str).expect("valid toml");
+        assert_eq!(config.engine_port, 4000);
+        assert_eq!(config.theme, "light");
+        assert_eq!(config.navigation, "vim");
+        assert!(!config.sidebar_visible);
+    }
+
+    #[test]
+    fn test_project_config_deserialization() {
+        let toml_str = r#"
+            onboarding_completed = true
+            jurisdiction = "us"
+            role = "provider"
+            industry = "healthcare"
+            scan_scope = ["deps", "source"]
+            watch_on_start = true
+        "#;
+        let config: ProjectConfig = toml::from_str(toml_str).expect("valid toml");
+        assert!(config.onboarding_completed);
+        assert_eq!(config.jurisdiction, "us");
+        assert_eq!(config.role, "provider");
+        assert_eq!(config.industry, "healthcare");
+        assert_eq!(config.scan_scope, vec!["deps", "source"]);
+        assert!(config.watch_on_start);
+    }
+
+    #[test]
+    fn test_merge_project_overrides_llm() {
+        let global = GlobalConfig {
+            llm_provider: Some("openai".into()),
+            llm_model: Some("gpt-4".into()),
+            ..GlobalConfig::default()
+        };
+        let project = ProjectConfig {
+            llm_provider: Some("anthropic".into()),
+            llm_model: None, // not overridden
+            ..ProjectConfig::default()
+        };
+        let merged = merge_config(global, project);
+        assert_eq!(merged.llm_provider.as_deref(), Some("anthropic"));
+        assert_eq!(merged.llm_model.as_deref(), Some("gpt-4")); // fallback to global
+    }
+
+    #[test]
+    fn test_merge_keeps_global_when_project_none() {
+        let global = GlobalConfig {
+            llm_provider: Some("openai".into()),
+            ..GlobalConfig::default()
+        };
+        let project = ProjectConfig::default(); // llm_provider = None
+        let merged = merge_config(global, project);
+        assert_eq!(merged.llm_provider.as_deref(), Some("openai"));
+    }
+
+    #[test]
+    fn test_merge_project_overrides_saas() {
+        let global = GlobalConfig {
+            project_api_url: "https://global.example.com".into(),
+            offline_mode: false,
+            ..GlobalConfig::default()
+        };
+        let project = ProjectConfig {
+            project_api_url: Some("https://project.example.com".into()),
+            offline_mode: Some(true),
+            ..ProjectConfig::default()
+        };
+        let merged = merge_config(global, project);
+        assert_eq!(merged.project_api_url, "https://project.example.com");
+        assert!(merged.offline_mode);
+    }
+
+    #[test]
+    fn test_merge_saas_falls_back_to_global() {
+        let global = GlobalConfig {
+            project_api_url: "https://global.example.com".into(),
+            offline_mode: true,
+            ..GlobalConfig::default()
+        };
+        let project = ProjectConfig::default(); // project_api_url = None, offline_mode = None
+        let merged = merge_config(global, project);
+        assert_eq!(merged.project_api_url, "https://global.example.com");
+        assert!(merged.offline_mode);
+    }
+
+    #[test]
+    fn test_merge_all_fields() {
+        let global = GlobalConfig {
+            theme: "dracula".into(),
+            navigation: "vim".into(),
+            engine_port: 4000,
+            ..GlobalConfig::default()
+        };
+        let project = ProjectConfig {
+            jurisdiction: "us".into(),
+            role: "provider".into(),
+            onboarding_completed: true,
+            ..ProjectConfig::default()
+        };
+        let merged = merge_config(global, project);
+        // Global fields
+        assert_eq!(merged.theme, "dracula");
+        assert_eq!(merged.navigation, "vim");
+        assert_eq!(merged.engine_port, 4000);
+        // Project fields
+        assert_eq!(merged.jurisdiction, "us");
+        assert_eq!(merged.role, "provider");
+        assert!(merged.onboarding_completed);
+        // Defaults preserved
+        assert_eq!(merged.industry, "general");
     }
 }

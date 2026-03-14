@@ -1,0 +1,15 @@
+{
+  "country_code": "EE",
+  "country_name": "Estonia",
+  "msa_name": "Consumer Protection and Technical Regulatory Authority (TTJA)",
+  "msa_url": "https://www.ttja.ee",
+  "msa_contact": "info@ttja.ee",
+  "local_requirements": [
+    "Estonian-language documentation for public sector AI deployments",
+    "National DPA (AKI) notification for AI processing personal data",
+    "e-Estonia digital infrastructure compliance for government AI systems"
+  ],
+  "enforcement_date": "2026-08-02",
+  "language": "Estonian",
+  "notes": "Estonia is a leader in digital governance and AI adoption in public services"
+}

@@ -2,8 +2,8 @@
 
 > Объединённые метрики CLI/Engine (open-source) и SaaS Dashboard (проприетарный). Детали реализации -- см. соответствующие FEATURE-MAP.md.
 
-**Дата:** 2026-03-09
-**Дедлайн:** 2 августа 2026 (~146 дней)
+**Дата:** 2026-03-13
+**Дедлайн:** 2 августа 2026 (~142 дня)
 
 ---
 
@@ -11,18 +11,18 @@
 
 | Метрика | CLI/Engine | SaaS | Итого |
 |---------|-----------|------|-------|
-| Спринты | v1 (19) + v8 (S01--S05-P3, 11) = 30 | S000--S8.5 (14) | 44 |
-| Story Points | 365 (v1) + ~120 (v8 est.) = ~485 | 424 | ~909 |
-| Тесты | 1430 | 554 | **1984** |
-| User Stories (DONE) | 84 (v1) + 65 (v8) = 149 | 84 | 233 |
-| Velocity (SP/day) | ~20 (v1, 2 days) / ~5 (v8, 21 days) | 12.8 | -- |
+| Спринты | v1 (19) + v8 (S01--S06-partial, 15) = 34 | S000--S8.5 (14) | 48 |
+| Story Points | 365 (v1) + ~170 (v8 est.) = ~535 | 424 | ~959 |
+| Тесты | 1709 | 554 | **2263** |
+| User Stories (DONE) | 84 (v1) + 82 (v8) = 166 | 84 | 250 |
+| Velocity (SP/day) | ~20 (v1, 2 days) / ~6.4 (v8, 25 days) | 12.8 | -- |
 | Разработчики | Claude Code | Max, Nina, Leo, Marcus | -- |
 
 ---
 
 ## Timeline к 2 августа 2026
 
-### Текущее состояние (9 марта 2026)
+### Текущее состояние (13 марта 2026)
 
 ```
 FEB  2026  |====================| CLI v1 done (365 SP, 19 sprints, 2 days)
@@ -30,8 +30,8 @@ FEB  2026  |====================| CLI v1 done (365 SP, 19 sprints, 2 days)
            |===========================| SaaS S000-S8.5 done (424 SP, 14 sprints, 33 days)
 
 MAR  2026  |==| CLI S04 done (FRIA JSON, bug fixes)
-           |=======| CLI S05 Phase 1-3 done (17 US, 1430 tests)
-           |====| CLI S05 Phase 4-5 (in progress: Runtime, Adversarial, SaaS features)
+           |==============| CLI S05 Phase 1-5 done (30 US, 1691 tests)
+           |====| CLI S06 partial (5 US: LLM Chat, Chat UX, Onboarding Rework, Init)
            |========| SaaS S9 (planned: 51 SP, 18 features, 4 weeks)
 
 APR  2026  |====| CLI S06 (planned: ISO 42001 docs, MCP Proxy, NHI Scanner)
@@ -53,9 +53,9 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 
 | Трек | Спринты осталось | SP (оценка) | Критические фичи |
 |------|-----------------|-------------|-------------------|
-| CLI/Engine | S05-P4/5 + S06--S08 (4 спринта) | ~160 SP | Runtime Control, Adversarial, ISO 42001, Guard API, MCP Proxy |
+| CLI/Engine | S06 (remaining 25 US) + S07--S08 (3 спринта) | ~110 SP | MCP Proxy, ISO 42001, Guard API, LLM Doc Fill, Wizards |
 | SaaS | S9--S10 (2 спринта) | ~100 SP | Реестр, Badge, Vendor Request, EU DB, Incidents, Monitoring |
-| **Итого до дедлайна** | **~6 спринтов** | **~260 SP** | |
+| **Итого до дедлайна** | **~5 спринтов** | **~220 SP** | |
 
 ---
 
@@ -103,8 +103,14 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S05 Phase 2 (Engine) | 1 day | 8 | 1323->1323 | Finding Explanations, Worker Notification, Passport Export (A2A/AIUC-1/NIST), Behavior Contracts, Industry Patterns (4 domains), Agent Registry, Permissions Matrix, Policy Templates (5 industries) |
 | S05 Phase 3 (Launch) | 1 day | 3 | 1323->1430 | AIUC-1 Readiness Score, Guided Onboarding Wizard (5-step), Compliance Diff in PR |
 | S05-QF (Quality) | <1 day | — | 1430->1430 | 11 fixes: score.totalScore bug, scoped names crash, DRY/SRP/Zod validation, onboarding path, skipStep status |
+| S05 Phase 4 (Runtime) | 1 day | 5 | 1430->1430 | Permission Scanner, Disclosure+Marking+Logger, Safety Filter+HITL, Compliance Proxy, Adversarial Test Runner |
+| S05 Phase 5 (Multi-Agent) | 1 day | 5 | 1430->1430 | Compliance Debt, Simulation, Multi-Agent, Cost Estimator, RegistryToolCard |
+| S05 Multi-Framework | <1 day | — | 1430->1430 | EU AI Act + AIUC-1 dual scoring, TUI metrics widgets (Cost/Debt/Readiness) |
+| S05-S06-QF (Quality) | <1 day | — | 1430->1430 | Port discovery DRY, SDK strict compliance, code quality audit |
+| S06 partial (LLM Chat) | 1 day | 2 | 1430->1691 | LLM Chat Service (rate limiter, SSE), TUI Chat Page (9th view, LLM settings) |
+| S06 partial (UX+Onboarding) | 1 day | 3 | 1691->1709 | Chat UX (multiline, tool names, no timestamps), Onboarding Rework (10→8 steps, persistence, Esc block, requirements frameworks), `complior init` + project root discovery (9 markers) |
 
-**v8 Total:** ~21 days | 65 US | +862 tests (568->1430)
+**v8 Total:** ~26 days | 82 US | +1141 tests (568->1709)
 
 ### CLI Test Count History
 
@@ -118,6 +124,8 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S05 Phase 1 (SDK prod) | 489 | 373 | 345 | **1207** |
 | S05 Phase 2 (Engine) | 589 | 373 | 361 | **1323** |
 | S05 Phase 3 (Launch) | 685 | 373 | 372 | **1430** |
+| S05 Phase 4-5 (Runtime+Multi) | 862 | 414 | 415 | **1691** |
+| S06 partial (UX+Onboarding) | 862 | 414 | 433 | **1709** |
 
 ---
 
@@ -166,11 +174,11 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | Период | CLI SP | SaaS SP | Total SP | Days | SP/day |
 |--------|--------|---------|----------|------|--------|
 | CLI v1 | 365 | -- | 365 | 2 | 182.5 |
-| CLI v8 (S01-S05-P3) | ~120 est. | -- | ~120 | 21 | ~5.7 |
+| CLI v8 (S01-S06-partial) | ~170 est. | -- | ~170 | 26 | ~6.5 |
 | SaaS S000-S4 | -- | 252 | 252 | 13 | 19.4 |
 | SaaS S5-S7 | -- | 104 | 104 | 12 | 8.7 |
 | SaaS S8-S8.5 | -- | 68 | 68 | 6 | 11.3 |
-| **Cumulative** | **~485** | **424** | **~909** | **54** | **~16.8** |
+| **Cumulative** | **~535** | **424** | **~959** | **59** | **~16.3** |
 
 ### Test Growth (Combined)
 
@@ -192,6 +200,7 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | 2026-03-07 | 1207 | 554 | **1761** |
 | 2026-03-08 | 1323 | 554 | **1877** |
 | 2026-03-09 | 1430 | 554 | **1984** |
+| 2026-03-13 | 1709 | 554 | **2263** |
 
 ### Velocity Trend (per sprint, both tracks)
 
@@ -223,7 +232,7 @@ SP/day
 | Приоритет | Что нужно | Трек | Целевой спринт | Статус |
 |-----------|----------|------|---------------|--------|
 | P0 | Cert Readiness — AIUC-1 | CLI | S05-P3 | **DONE** |
-| P0 | Guided Onboarding (5-step) | CLI | S05-P3 | **DONE** |
+| P0 | Guided Onboarding (8-step) | CLI | S05-P3+S06 | **DONE** |
 | P0 | Compliance Diff (PR gate) | CLI | S05-P3 | **DONE** |
 | P0 | Agent Registry + Permissions Matrix | CLI | S05-P2 | **DONE** |
 | P0 | Policy Templates (5 industries) | CLI | S05-P2 | **DONE** |
@@ -231,8 +240,8 @@ SP/day
 | P0 | Реестр AI систем (unified CLI+SaaS) | SaaS | S9 | PLANNED |
 | P0 | EU Database Helper (Art.49 registration) | SaaS | S9 | PLANNED |
 | P0 | Compliance Badge (prove compliance to 3rd parties) | SaaS | S9 | PLANNED |
-| P0 | Adversarial Test Runner | CLI | S05-P4 | PLANNED |
-| P1 | Runtime Control (Disclosure + Safety + Proxy) | CLI+SDK | S05-P4 | PLANNED |
+| P0 | Adversarial Test Runner | CLI | S05-P4 | **DONE** |
+| P1 | Runtime Control (Disclosure + Safety + Proxy) | CLI+SDK | S05-P4 | **DONE** |
 | P1 | Управление инцидентами (Art.73) | SaaS | S10 | PLANNED |
 | P1 | Мониторинг реального времени (Art.72) | SaaS | S10 | PLANNED |
 | P1 | Guard API (runtime compliance) | CLI | S07 | PLANNED |
@@ -263,7 +272,7 @@ SP/day
 | CLI<->SaaS Sync | DONE | 100% |
 | SDK Production (6 hooks, Art.5/9/26/50) | DONE | 100% |
 | CLI AIUC-1 Cert Readiness | DONE | 100% |
-| CLI Guided Onboarding (5-step) | DONE | 100% |
+| CLI Guided Onboarding (8-step, reworked) | DONE | 100% |
 | CLI Compliance Diff (PR gate) | DONE | 100% |
 | CLI Agent Registry + Permissions | DONE | 100% |
 | CLI Policy Templates (5 industries) | DONE | 100% |
@@ -272,8 +281,15 @@ SP/day
 | CLI Worker Notification (Art.26(7)) | DONE | 100% |
 | CLI Finding Explanations | DONE | 100% |
 | CLI Behavioral Constraints | DONE | 100% |
-| CLI Adversarial Test Runner | PLANNED (S05-P4) | 70% |
-| CLI Runtime Control (3 US) | PLANNED (S05-P4) | 65% |
+| CLI Adversarial Test Runner | DONE (S05-P4) | 100% |
+| CLI Runtime Control (4 US) | DONE (S05-P4) | 100% |
+| CLI Multi-Agent Awareness | DONE (S05-P5) | 100% |
+| CLI Cost/Debt/Simulation | DONE (S05-P5) | 100% |
+| CLI LLM Chat Service | DONE (S06) | 100% |
+| CLI TUI Chat Page (9th View) | DONE (S06) | 100% |
+| CLI Chat UX (multiline, tool names, no timestamps) | DONE (S06) | 100% |
+| CLI Onboarding Rework (10→8 steps, persistence, Esc block) | DONE (S06) | 100% |
+| CLI `complior init` + Project Root Discovery | DONE (S06) | 100% |
 | SaaS Реестр + Wizard | PLANNED (S9) | 85% |
 | SaaS EU Database Helper | PLANNED (S9) | 80% |
 | SaaS Badge + Vendor Request | PLANNED (S9) | 80% |
@@ -299,13 +315,18 @@ SP/day
 9. AIUC-1 certification readiness -- **DONE** (S05)
 10. Agent Registry + Governance -- **DONE** (S05)
 11. Policy Templates (5 industries) -- **DONE** (S05)
-12. Guided Onboarding (15 min to first report) -- **DONE** (S05)
+12. Guided Onboarding (8-step wizard, 15 min to first report) -- **DONE** (S05+S06)
 13. Compliance Diff for PRs (CI/CD gate) -- **DONE** (S05)
+14. Adversarial Test Runner (Art.9/Art.15) -- **DONE** (S05)
+15. Runtime Control (Disclosure + Safety + Proxy) -- **DONE** (S05)
+16. LLM Chat Assistant (interactive compliance Q&A) -- **DONE** (S06)
+17. Chat UX (multiline, tool names, clean timestamps) -- **DONE** (S06)
+18. `complior init` + Project Root Discovery (9 markers) -- **DONE** (S06)
 
-Из 13 must-have, **11 уже DONE**. Осталось 2 -- обе в SaaS S9.
+Из 18 must-have, **16 уже DONE**. Осталось 2 -- обе в SaaS S9.
 
-**Вывод:** При текущей velocity (12.8 SP/day SaaS) Sprint 9 (51 SP, 4 weeks) укладывается в дедлайн с запасом ~3 месяца на S10+ фичи. CLI/Engine обогнал план на ~1 спринт.
+**Вывод:** При текущей velocity (12.8 SP/day SaaS) Sprint 9 (51 SP, 4 weeks) укладывается в дедлайн с запасом ~3 месяца на S10+ фичи. CLI/Engine обогнал план на ~2 спринта.
 
 ---
 
-**Обновлено:** 2026-03-09 | **Источники:** `~/complior/docs/BURNDOWN.md` (CLI), `~/PROJECT/docs/BURNDOWN.md` (SaaS)
+**Обновлено:** 2026-03-13 | **Источники:** `~/complior/docs/BURNDOWN.md` (CLI), `~/PROJECT/docs/BURNDOWN.md` (SaaS)

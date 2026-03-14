@@ -77,6 +77,20 @@ impl App {
                 }
                 None
             }
+            Action::InsertChar(c) if matches!(step_kind, Some(StepKind::TextInput { .. })) => {
+                if let Some(wiz) = &mut self.onboarding {
+                    if wiz.provider_substep == 1 {
+                        wiz.insert_char(c);
+                    } else if wiz.provider_substep == 0 {
+                        // Allow j/k/space navigation in substep 0
+                        match c {
+                            ' ' => wiz.toggle_selection(),
+                            _ => {}
+                        }
+                    }
+                }
+                None
+            }
             Action::InsertChar(' ') => {
                 if matches!(step_kind, Some(StepKind::Checkbox | StepKind::Radio | StepKind::ThemeSelect)) {
                     if let Some(wiz) = &mut self.onboarding {
@@ -102,10 +116,82 @@ impl App {
                 None
             }
             Action::SubmitInput => {
+                // Handle TextInput substeps
+                if matches!(step_kind, Some(StepKind::TextInput { .. })) {
+                    if let Some(wiz) = &mut self.onboarding {
+                        match wiz.provider_substep {
+                            0 => {
+                                // Provider selected → set selection
+                                let idx = wiz.cursor;
+                                wiz.steps[wiz.current_step].selected = vec![idx];
+                                match idx {
+                                    0 | 1 | 2 => {
+                                        // OpenRouter/Anthropic/OpenAI — go to key input
+                                        wiz.provider_substep = 1;
+                                        wiz.text_cursor = 0;
+                                    }
+                                    3 | 4 => {
+                                        // Guard API or Offline — no key needed, advance
+                                        let _completed = wiz.next_step();
+                                    }
+                                    _ => {}
+                                }
+                                return None;
+                            }
+                            1 => {
+                                // Key submitted → validate for selected provider
+                                let key = wiz.steps[wiz.current_step].text_value.clone();
+                                let provider = wiz.selected_config_value("ai_provider");
+                                if key.is_empty() {
+                                    wiz.validation_message = Some("Invalid — Key cannot be empty.".to_string());
+                                } else {
+                                    match crate::config::validate_api_key(&provider, &key) {
+                                        Ok(()) => {
+                                            let label = match provider.as_str() {
+                                                "openrouter" => "OpenRouter",
+                                                "anthropic" => "Anthropic",
+                                                "openai" => "OpenAI",
+                                                _ => "API",
+                                            };
+                                            wiz.validation_message =
+                                                Some(format!("Key accepted ({label})."));
+                                        }
+                                        Err(reason) => {
+                                            wiz.validation_message =
+                                                Some(format!("Invalid — {reason}"));
+                                        }
+                                    }
+                                }
+                                wiz.provider_substep = 3;
+                                return None;
+                            }
+                            3 => {
+                                // Result screen → continue or retry
+                                let is_valid = wiz
+                                    .validation_message
+                                    .as_ref()
+                                    .is_some_and(|m| !m.starts_with("Invalid"));
+                                if is_valid {
+                                    let _completed = wiz.next_step();
+                                    return None;
+                                } else {
+                                    // Retry: back to key input
+                                    wiz.provider_substep = 1;
+                                    wiz.steps[wiz.current_step].text_value.clear();
+                                    wiz.text_cursor = 0;
+                                    return None;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 // Handle post-step side effects before advancing
                 if let Some(wiz) = &mut self.onboarding {
                     if wiz.completed {
-                        // Already on completion screen — close wizard
+                        // Already on completion screen — emit command.
+                        // Executor handles save + cleanup (needs wizard ref alive).
                         let summary = wiz.result_summary.clone();
                         if let Some(s) = &summary {
                             self.messages.push(ChatMessage::new(
@@ -113,8 +199,6 @@ impl App {
                                 format!("Setup complete: {s}"),
                             ));
                         }
-                        self.onboarding = None;
-                        self.overlay = Overlay::None;
                         return Some(AppCommand::CompleteOnboarding);
                     }
 
@@ -176,6 +260,33 @@ impl App {
                 None
             }
             Action::DeleteChar => {
+                // Handle TextInput substeps first
+                if matches!(step_kind, Some(StepKind::TextInput { .. })) {
+                    if let Some(wiz) = &mut self.onboarding {
+                        match wiz.provider_substep {
+                            1 => {
+                                if wiz.text_cursor > 0 {
+                                    wiz.delete_char_before();
+                                } else {
+                                    // Empty input → back to provider select
+                                    wiz.provider_substep = 0;
+                                }
+                                return None;
+                            }
+                            0 => {
+                                wiz.prev_step();
+                                return None;
+                            }
+                            3 => {
+                                // Back to key input from result
+                                wiz.provider_substep = 1;
+                                return None;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 // Backspace = previous step
                 if let Some(wiz) = &mut self.onboarding {
                     wiz.prev_step();
@@ -183,15 +294,8 @@ impl App {
                 None
             }
             Action::EnterNormalMode | Action::Quit => {
-                // Esc = save partial + close wizard
-                let last_step = self
-                    .onboarding
-                    .as_ref()
-                    .map(|wiz| wiz.current_step)
-                    .unwrap_or(0);
-                self.onboarding = None;
-                self.overlay = Overlay::None;
-                Some(AppCommand::SaveOnboardingPartial(last_step))
+                // Esc/Quit blocked during onboarding — must complete it
+                None
             }
             _ => None,
         }

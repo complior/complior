@@ -6,7 +6,7 @@ use super::{OnboardingStep, StepKind, StepOption};
 
 pub(super) fn build_steps() -> Vec<OnboardingStep> {
     vec![
-        // Step 1: Welcome + Theme
+        // Step 0: Welcome + Theme
         OnboardingStep {
             id: "welcome_theme",
             title: "Welcome + Theme",
@@ -23,38 +23,24 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                 StepOption::new("Gruvbox"),
             ],
             selected: vec![0],
+            text_value: String::new(),
         },
-        // Step 2: Navigation
-        OnboardingStep {
-            id: "navigation",
-            title: "Navigation Mode",
-            description: "How do you want to navigate?",
-            kind: StepKind::Radio,
-            options: vec![
-                StepOption::new("Standard")
-                    .with_hint("Arrow keys, Enter, Esc. Tab to cycle, Space to toggle."),
-                StepOption::new("Vim-style")
-                    .with_hint("j/k to move, Enter to confirm. h/l for tabs, / to search."),
-            ],
-            selected: vec![0],
-        },
-        // Step 3: Project Type
+        // Step 1: Project Type
         OnboardingStep {
             id: "project_type",
             title: "Project Type",
-            description: "Is this a new project or an existing one?",
+            description: "What are you working on?",
             kind: StepKind::Radio,
             options: vec![
-                StepOption::new("Existing project")
-                    .with_hint("Complior will scan and find AI tools now."),
-                StepOption::new("New project")
-                    .with_hint("Set up compliance from the start."),
-                StepOption::new("Just exploring")
-                    .with_hint("Quick demo with sample data."),
+                StepOption::new("My project")
+                    .with_hint("Scan your codebase for compliance issues."),
+                StepOption::new("Demo mode")
+                    .with_hint("Explore Complior with sample data."),
             ],
             selected: vec![0],
+            text_value: String::new(),
         },
-        // Step 5: Workspace Trust
+        // Step 2: Workspace Trust
         OnboardingStep {
             id: "workspace_trust",
             title: "Workspace Trust",
@@ -65,24 +51,24 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                 StepOption::new("No, exit"),
             ],
             selected: vec![0],
+            text_value: String::new(),
         },
-        // Step 6: Jurisdiction
+        // Step 3: Requirements Frameworks
         OnboardingStep {
-            id: "jurisdiction",
-            title: "Jurisdiction",
-            description: "Where does your company operate?\nThis determines which regulations apply.",
-            kind: StepKind::Radio,
+            id: "requirements",
+            title: "Requirements Frameworks",
+            description: "Which compliance frameworks apply to your project?\nUse Space to toggle, Enter to confirm.",
+            kind: StepKind::Checkbox,
             options: vec![
-                StepOption::new("EU / EEA").with_hint("EU AI Act applies in full"),
-                StepOption::new("UK").with_hint("UK AI framework").with_tag("coming soon"),
-                StepOption::new("EU + UK").with_hint("Both frameworks").with_tag("coming soon"),
-                StepOption::new("US").with_hint("State-level rules").with_tag("coming soon"),
-                StepOption::new("Global").with_hint("All applicable frameworks").with_tag("coming soon"),
-                StepOption::new("Not sure").with_hint("Default: EU AI Act"),
+                StepOption::new("EU AI Act")
+                    .with_hint("European regulation for AI systems. Enforcement: Aug 2, 2026."),
+                StepOption::new("ISO 42001")
+                    .with_hint("AI management system standard."),
             ],
-            selected: vec![0],
+            selected: vec![0], // EU AI Act selected by default
+            text_value: String::new(),
         },
-        // Step 7: Role
+        // Step 4: Role
         OnboardingStep {
             id: "role",
             title: "Role in AI Value Chain",
@@ -99,8 +85,9 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                     .with_hint("We'll detect from your codebase."),
             ],
             selected: vec![0],
+            text_value: String::new(),
         },
-        // Step 8: Industry
+        // Step 5: Industry
         OnboardingStep {
             id: "industry",
             title: "Industry / Domain",
@@ -119,28 +106,31 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
                 StepOption::new("Other / Not sure"),
             ],
             selected: vec![0],
+            text_value: String::new(),
         },
-        // Step 9: Scan Scope
+        // Step 6: AI Provider
         OnboardingStep {
-            id: "scan_scope",
-            title: "Scan Scope",
-            description: "What should Complior scan?\nUse Space to toggle, Enter to confirm.",
-            kind: StepKind::Checkbox,
+            id: "ai_provider",
+            title: "AI Connection",
+            description: "How should Complior connect to AI?\nAI enables deep analysis, chat assistant, and intelligent fixes.",
+            kind: StepKind::TextInput { masked: true },
             options: vec![
-                StepOption::new("Dependencies")
-                    .with_hint("package.json, requirements.txt, go.mod"),
-                StepOption::new("Environment vars")
-                    .with_hint(".env, docker-compose.yml, CI/CD configs"),
-                StepOption::new("Source code")
-                    .with_hint("imports, API calls, SDK patterns"),
-                StepOption::new("Infrastructure")
-                    .with_hint("Dockerfile, K8s manifests, Terraform"),
-                StepOption::new("Documentation")
-                    .with_hint("Check if compliance docs exist"),
+                StepOption::new("OpenRouter")
+                    .with_hint("Access 100+ models via openrouter.ai. Recommended for flexibility."),
+                StepOption::new("Anthropic")
+                    .with_hint("Claude models directly from Anthropic."),
+                StepOption::new("OpenAI")
+                    .with_hint("GPT models directly from OpenAI."),
+                StepOption::new("Complior Guard API")
+                    .with_hint("Full AI analysis via Complior cloud. Login required.")
+                    .with_tag("RECOMMENDED"),
+                StepOption::new("Offline mode")
+                    .with_hint("Rule-based scanning only (~70% coverage). No API key needed."),
             ],
-            selected: vec![0, 1, 2], // first 3 on by default
+            selected: vec![],
+            text_value: String::new(),
         },
-        // Step 10: Summary
+        // Step 7: Summary
         OnboardingStep {
             id: "summary",
             title: "Setup Complete",
@@ -148,6 +138,7 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
             kind: StepKind::Summary,
             options: vec![],
             selected: vec![],
+            text_value: String::new(),
         },
     ]
 }

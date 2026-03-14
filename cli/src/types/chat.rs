@@ -52,6 +52,8 @@ pub struct StreamingState {
     pub partial_text: String,
     pub blocks: Vec<ChatBlock>,
     pub active: bool,
+    /// When the stream started (for elapsed time display).
+    pub stream_start: Option<std::time::Instant>,
 }
 
 /// LLM config passed per-request (provider/model/apiKey).

@@ -6,8 +6,10 @@ COMPLIANCE-REPORT-*.md
 # Claude Code local settings (personal, not shared)
 .claude/
 
-# Complior project data
+# Complior project data (daemon PID, scan cache, chat history — not committed)
 .complior/
+# .complior/project.toml is safe to commit (compliance profile, no secrets)
+!.complior/project.toml
 
 # Local-only directories (not tracked in git)
 docs/*

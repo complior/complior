@@ -3,23 +3,26 @@ mod tests {
     use crate::views::onboarding::*;
 
     #[test]
-    fn test_onboarding_10_steps() {
+    fn test_onboarding_8_steps() {
         let wiz = OnboardingWizard::new();
-        assert_eq!(wiz.steps.len(), 9);
+        assert_eq!(wiz.steps.len(), 8);
         assert_eq!(wiz.current_step, 0);
         assert!(!wiz.completed);
         // new() starts with all steps active; recalculate_active_steps() applies skipping
-        assert_eq!(wiz.total_visible_steps(), 9);
+        assert_eq!(wiz.total_visible_steps(), 8);
     }
 
     #[test]
     fn test_step_kinds() {
         let wiz = OnboardingWizard::new();
         assert_eq!(wiz.steps[0].kind, StepKind::ThemeSelect);   // welcome_theme
-        assert_eq!(wiz.steps[1].kind, StepKind::Radio);          // navigation
-        assert_eq!(wiz.steps[2].kind, StepKind::Radio);          // project_type
-        assert_eq!(wiz.steps[7].kind, StepKind::Checkbox);       // scan_scope
-        assert_eq!(wiz.steps[8].kind, StepKind::Summary);        // summary
+        assert_eq!(wiz.steps[1].kind, StepKind::Radio);          // project_type
+        assert_eq!(wiz.steps[2].kind, StepKind::Radio);          // workspace_trust
+        assert_eq!(wiz.steps[3].kind, StepKind::Checkbox);       // requirements
+        assert_eq!(wiz.steps[4].kind, StepKind::Radio);          // role
+        assert_eq!(wiz.steps[5].kind, StepKind::Radio);          // industry
+        assert_eq!(wiz.steps[6].kind, StepKind::TextInput { masked: true }); // ai_provider
+        assert_eq!(wiz.steps[7].kind, StepKind::Summary);        // summary
     }
 
     #[test]
@@ -38,25 +41,25 @@ mod tests {
     #[test]
     fn test_checkbox_selection() {
         let mut wiz = OnboardingWizard::new();
-        wiz.current_step = 7; // scan_scope (checkbox)
-        assert_eq!(wiz.steps[7].selected, vec![0, 1, 2]); // defaults
-        wiz.cursor = 3;
-        wiz.toggle_selection();
-        assert_eq!(wiz.steps[7].selected, vec![0, 1, 2, 3]);
-        // Toggle off
+        wiz.current_step = 3; // requirements (checkbox)
+        assert_eq!(wiz.steps[3].selected, vec![0]); // EU AI Act default
         wiz.cursor = 1;
         wiz.toggle_selection();
-        assert_eq!(wiz.steps[7].selected, vec![0, 2, 3]);
+        assert_eq!(wiz.steps[3].selected, vec![0, 1]);
+        // Toggle off
+        wiz.cursor = 0;
+        wiz.toggle_selection();
+        assert_eq!(wiz.steps[3].selected, vec![1]);
     }
 
     #[test]
     fn test_select_all_and_minimum() {
         let mut wiz = OnboardingWizard::new();
-        wiz.current_step = 7; // scan_scope
+        wiz.current_step = 3; // requirements
         wiz.select_all();
-        assert_eq!(wiz.steps[7].selected, vec![0, 1, 2, 3, 4]);
+        assert_eq!(wiz.steps[3].selected, vec![0, 1]);
         wiz.select_minimum();
-        assert_eq!(wiz.steps[7].selected, vec![0]);
+        assert_eq!(wiz.steps[3].selected, vec![0]);
     }
 
     #[test]
@@ -74,8 +77,8 @@ mod tests {
     #[test]
     fn test_completion() {
         let mut wiz = OnboardingWizard::new();
-        // 9 active steps by default — need 8 non-completing advances
-        for _ in 0..8 {
+        // 8 active steps by default — need 7 non-completing advances
+        for _ in 0..7 {
             assert!(!wiz.next_step());
         }
         assert!(!wiz.completed);
@@ -90,23 +93,9 @@ mod tests {
         let mut wiz = OnboardingWizard::new();
         wiz.project_type = Some("demo".to_string());
         wiz.recalculate_active_steps();
-        // Skip: workspace_trust (idx 3 — demo skips it)
-        //        scan_scope (idx 7 — demo skips it)
-        assert!(!wiz.active_steps.contains(&3)); // workspace_trust skipped
-        assert!(!wiz.active_steps.contains(&7)); // scan_scope skipped
+        // Skip: workspace_trust (idx 2 — demo skips it)
+        assert!(!wiz.active_steps.contains(&2)); // workspace_trust skipped
         assert_eq!(wiz.total_visible_steps(), 7);
-    }
-
-    #[test]
-    fn test_conditional_skip_new() {
-        let mut wiz = OnboardingWizard::new();
-        wiz.project_type = Some("new".to_string());
-        wiz.recalculate_active_steps();
-        // Skip: scan_scope (idx 7 — "new" skips scan_scope)
-        // Keep: workspace_trust (idx 3 — only skipped for demo)
-        assert!(wiz.active_steps.contains(&3));  // workspace_trust kept
-        assert!(!wiz.active_steps.contains(&7)); // scan_scope skipped
-        assert_eq!(wiz.total_visible_steps(), 8);
     }
 
     #[test]
@@ -115,18 +104,55 @@ mod tests {
         wiz.project_type = Some("existing".to_string());
         wiz.recalculate_active_steps();
         // All steps visible for "existing"
-        assert_eq!(wiz.total_visible_steps(), 9);
+        assert_eq!(wiz.total_visible_steps(), 8);
     }
 
     #[test]
     fn test_selected_config_value() {
         let wiz = OnboardingWizard::new();
         assert_eq!(wiz.selected_config_value("welcome_theme"), "dark"); // idx 0 = Complior Dark
-        assert_eq!(wiz.selected_config_value("navigation"), "standard");
-        assert_eq!(wiz.selected_config_value("jurisdiction"), "eu");
+        assert_eq!(wiz.selected_config_value("project_type"), "existing"); // idx 0 = My project
+        assert_eq!(wiz.selected_config_value("requirements"), "eu-ai-act");
         assert_eq!(wiz.selected_config_value("role"), "deployer");
         assert_eq!(wiz.selected_config_value("industry"), "general");
-        assert_eq!(wiz.selected_config_value("scan_scope"), "deps,env,source");
+    }
+
+    #[test]
+    fn test_ai_provider_config_value() {
+        let mut wiz = OnboardingWizard::new();
+        // ai_provider step is at index 6 — 5 options
+        wiz.steps[6].selected = vec![0];
+        assert_eq!(wiz.selected_config_value("ai_provider"), "openrouter");
+        wiz.steps[6].selected = vec![1];
+        assert_eq!(wiz.selected_config_value("ai_provider"), "anthropic");
+        wiz.steps[6].selected = vec![2];
+        assert_eq!(wiz.selected_config_value("ai_provider"), "openai");
+        wiz.steps[6].selected = vec![3];
+        assert_eq!(wiz.selected_config_value("ai_provider"), "guard_api");
+        wiz.steps[6].selected = vec![4];
+        assert_eq!(wiz.selected_config_value("ai_provider"), "offline");
+    }
+
+    #[test]
+    fn test_text_input_methods() {
+        let mut wiz = OnboardingWizard::new();
+        wiz.current_step = 6; // ai_provider (TextInput)
+
+        // insert_char
+        wiz.insert_char('s');
+        wiz.insert_char('k');
+        wiz.insert_char('-');
+        assert_eq!(wiz.steps[6].text_value, "sk-");
+        assert_eq!(wiz.text_cursor, 3);
+
+        // delete_char_before
+        wiz.delete_char_before();
+        assert_eq!(wiz.steps[6].text_value, "sk");
+        assert_eq!(wiz.text_cursor, 2);
+
+        // step_text_value
+        assert_eq!(wiz.step_text_value("ai_provider"), "sk");
+        assert_eq!(wiz.step_text_value("nonexistent"), "");
     }
 
     #[test]
@@ -164,8 +190,8 @@ mod tests {
     #[test]
     fn test_options_with_hints_and_tags() {
         let wiz = OnboardingWizard::new();
-        // Industry step should have HIGH RISK tags (idx 6)
-        let industry = &wiz.steps[6];
+        // Industry step should have HIGH RISK tags (idx 5)
+        let industry = &wiz.steps[5];
         assert_eq!(industry.id, "industry");
         let high_risk_count = industry
             .options
@@ -173,5 +199,192 @@ mod tests {
             .filter(|o| o.tag == Some("HIGH RISK"))
             .count();
         assert_eq!(high_risk_count, 6);
+    }
+
+    #[test]
+    fn test_ai_provider_has_recommended_tag() {
+        let wiz = OnboardingWizard::new();
+        let ai_step = &wiz.steps[6];
+        assert_eq!(ai_step.id, "ai_provider");
+        assert_eq!(ai_step.options[3].tag, Some("RECOMMENDED")); // Guard API
+        assert_eq!(ai_step.options.len(), 5);
+    }
+
+    #[test]
+    fn test_next_step_resets_provider_substep() {
+        let mut wiz = OnboardingWizard::new();
+        wiz.provider_substep = 2;
+        wiz.text_cursor = 5;
+        wiz.validation_message = Some("test".to_string());
+        wiz.next_step();
+        assert_eq!(wiz.provider_substep, 0);
+        assert_eq!(wiz.text_cursor, 0);
+        assert!(wiz.validation_message.is_none());
+    }
+
+    #[test]
+    fn snapshot_ai_provider_substep0() {
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        crate::theme::init_theme("dark");
+        let mut wiz = OnboardingWizard::new();
+        // Navigate to ai_provider step (index 6)
+        for _ in 0..6 {
+            wiz.next_step();
+        }
+        assert_eq!(wiz.steps[wiz.current_step].id, "ai_provider");
+
+        let backend = TestBackend::new(80, 36);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| {
+                crate::views::onboarding::render_onboarding(frame, &wiz);
+            })
+            .expect("render");
+
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        // Verify key content is rendered
+        assert!(output.contains("AI Connection"), "Should show AI Connection title");
+        assert!(output.contains("OpenRouter"), "Should show OpenRouter option");
+        assert!(output.contains("Anthropic"), "Should show Anthropic option");
+        assert!(output.contains("RECOMMENDED"), "Should show RECOMMENDED tag");
+        assert!(output.contains("Offline"), "Should show Offline option");
+    }
+
+    #[test]
+    fn snapshot_ai_provider_substep1_key_input() {
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        crate::theme::init_theme("dark");
+        let mut wiz = OnboardingWizard::new();
+        for _ in 0..6 {
+            wiz.next_step();
+        }
+        // Simulate: OpenRouter selected, switch to key input
+        wiz.steps[wiz.current_step].selected = vec![0]; // OpenRouter
+        wiz.provider_substep = 1;
+        wiz.insert_char('s');
+        wiz.insert_char('k');
+        wiz.insert_char('-');
+        wiz.insert_char('o');
+        wiz.insert_char('r');
+        wiz.insert_char('-');
+        wiz.insert_char('t');
+        wiz.insert_char('e');
+
+        let backend = TestBackend::new(80, 36);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| crate::views::onboarding::render_onboarding(frame, &wiz))
+            .expect("render");
+
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        // First 4 chars visible, rest masked
+        assert!(output.contains("sk-o"), "Should show first 4 chars of key");
+        assert!(output.contains("credentials"), "Should show credentials path hint");
+    }
+
+    #[test]
+    fn snapshot_ai_provider_substep3_valid() {
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        crate::theme::init_theme("dark");
+        let mut wiz = OnboardingWizard::new();
+        for _ in 0..6 {
+            wiz.next_step();
+        }
+        wiz.steps[wiz.current_step].selected = vec![0];
+        wiz.provider_substep = 3;
+        wiz.validation_message = Some("Key accepted (OpenRouter).".to_string());
+
+        let backend = TestBackend::new(80, 36);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| crate::views::onboarding::render_onboarding(frame, &wiz))
+            .expect("render");
+
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        assert!(output.contains("Key accepted"), "Should show success message");
+        assert!(output.contains("\u{2713}"), "Should show checkmark");
+    }
+
+    #[test]
+    fn snapshot_ai_provider_substep3_invalid() {
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        crate::theme::init_theme("dark");
+        let mut wiz = OnboardingWizard::new();
+        for _ in 0..6 {
+            wiz.next_step();
+        }
+        wiz.steps[wiz.current_step].selected = vec![0];
+        wiz.provider_substep = 3;
+        wiz.validation_message = Some("Invalid — Key too short.".to_string());
+
+        let backend = TestBackend::new(80, 36);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| crate::views::onboarding::render_onboarding(frame, &wiz))
+            .expect("render");
+
+        let buf = terminal.backend().buffer().clone();
+        let mut output = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                output.push_str(buf[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        assert!(output.contains("Invalid"), "Should show error message");
+        assert!(output.contains("\u{2717}"), "Should show X mark");
+        assert!(output.contains("retry"), "Should show retry hint");
+    }
+
+    #[test]
+    fn test_requirements_multi_select() {
+        let mut wiz = OnboardingWizard::new();
+        // requirements step is at index 3
+        assert_eq!(wiz.steps[3].id, "requirements");
+        assert_eq!(wiz.selected_config_value("requirements"), "eu-ai-act");
+        // Select both
+        wiz.steps[3].selected = vec![0, 1];
+        assert_eq!(wiz.selected_config_value("requirements"), "eu-ai-act,iso-42001");
+        // Select none
+        wiz.steps[3].selected = vec![];
+        assert_eq!(wiz.selected_config_value("requirements"), "");
+    }
+
+    #[test]
+    fn test_project_type_two_options() {
+        let wiz = OnboardingWizard::new();
+        let pt_step = &wiz.steps[1];
+        assert_eq!(pt_step.id, "project_type");
+        assert_eq!(pt_step.options.len(), 2);
+        assert_eq!(wiz.selected_config_value("project_type"), "existing");
     }
 }
