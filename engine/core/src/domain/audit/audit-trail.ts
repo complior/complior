@@ -9,10 +9,10 @@ const MAX_TRAIL_SIZE = 50 * 1024 * 1024;
 const MAX_TRAIL_ENTRIES = 10_000;
 
 export type AuditEventType =
-  | 'passport.created' | 'passport.updated' | 'passport.exported'
+  | 'passport.created' | 'passport.updated' | 'passport.exported' | 'passport.imported'
   | 'fria.generated' | 'scan.completed' | 'fix.applied'
   | 'evidence.verified' | 'worker_notification.generated'
-  | 'policy.generated'
+  | 'policy.generated' | 'document.generated' | 'test_suite.generated'
   | 'readiness.computed'
   | 'adversarial.completed'
   | 'supply-chain.audited';

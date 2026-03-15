@@ -128,7 +128,7 @@ export const createPassportDocuments = (deps: PassportServiceDeps, ops: Passport
     await writeFile(savedPath, JSON.stringify(result.data, null, 2));
 
     if (deps.evidenceStore) {
-      const evidence = createEvidence(name, 'export', 'export', { file: savedPath, format });
+      const evidence = createEvidence(name, 'export', 'export', { file: savedPath, snippet: `format: ${format}` });
       await deps.evidenceStore.append([evidence], randomUUID());
     }
 

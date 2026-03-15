@@ -10,7 +10,8 @@ import type { UndoService } from './undo-service.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { AgentPassport } from '../types/passport.types.js';
-import { generateDocument, TEMPLATE_FILE_MAP, type DocType } from '../domain/documents/document-generator.js';
+import { generateDocument, enrichDocumentWithAI, TEMPLATE_FILE_MAP, type DocType } from '../domain/documents/document-generator.js';
+import type { LlmPort } from '../ports/llm.port.js';
 
 export interface FixServiceDeps {
   readonly fixer: Fixer;
@@ -22,6 +23,7 @@ export interface FixServiceDeps {
   readonly undoService?: UndoService;
   readonly evidenceStore?: EvidenceStore;
   readonly passportService?: { listPassports: (path?: string) => Promise<readonly AgentPassport[]> };
+  readonly llm?: LlmPort;
 }
 
 export const createFixService = (deps: FixServiceDeps) => {
@@ -41,7 +43,7 @@ export const createFixService = (deps: FixServiceDeps) => {
     return backupPath;
   };
 
-  const applyAction = async (action: FixPlan['actions'][number], projectPath: string): Promise<void> => {
+  const applyAction = async (action: FixPlan['actions'][number], projectPath: string, useAi = false): Promise<void> => {
     const fullPath = resolve(projectPath, action.path);
     await mkdir(dirname(fullPath), { recursive: true });
 
@@ -62,8 +64,21 @@ export const createFixService = (deps: FixServiceDeps) => {
             const passports = await deps.passportService.listPassports(projectPath);
             const passport = passports[0];
             if (passport) {
-              const result = generateDocument({ manifest: passport, template, docType: docTypeEntry[0] });
-              content = result.markdown;
+              const baseResult = generateDocument({ manifest: passport, template, docType: docTypeEntry[0] });
+
+              // LLM enrichment when --ai flag is set and LLM is available
+              if (useAi && deps.llm && baseResult.manualFields.length > 0) {
+                try {
+                  const selection = deps.llm.routeModel('document-generation');
+                  const model = await deps.llm.getModel(selection.provider, selection.modelId);
+                  const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
+                  content = enriched.markdown;
+                } catch {
+                  content = baseResult.markdown; // LLM failed — use deterministic output
+                }
+              } else {
+                content = baseResult.markdown;
+              }
             } else {
               content = template;
             }
@@ -94,7 +109,7 @@ export const createFixService = (deps: FixServiceDeps) => {
     return fixer.generateFixes(lastScan.findings);
   };
 
-  const applyFix = async (plan: FixPlan): Promise<FixResult> => {
+  const applyFix = async (plan: FixPlan, useAi = false): Promise<FixResult> => {
     const projectPath = getProjectPath();
     const scoreBefore = getLastScanResult()?.score.totalScore ?? 0;
     const backedUp: string[] = [];
@@ -103,7 +118,7 @@ export const createFixService = (deps: FixServiceDeps) => {
       for (const action of plan.actions) {
         const backup = await backupFile(action.path);
         backedUp.push(backup);
-        await applyAction(action, projectPath);
+        await applyAction(action, projectPath, useAi);
       }
 
       // Re-scan to get updated score
@@ -148,14 +163,14 @@ export const createFixService = (deps: FixServiceDeps) => {
     }
   };
 
-  const applyAndValidate = async (plan: FixPlan): Promise<FixResult & { validation: FixValidation }> => {
+  const applyAndValidate = async (plan: FixPlan, useAi = false): Promise<FixResult & { validation: FixValidation }> => {
     const lastScan = getLastScanResult();
     const findingBefore = lastScan?.findings.find(
       (f) => f.checkId === plan.checkId && (!plan.obligationId || f.obligationId === plan.obligationId),
     );
     const beforeType = findingBefore?.type ?? 'fail';
 
-    const result = await applyFix(plan);
+    const result = await applyFix(plan, useAi);
 
     const newScan = getLastScanResult();
     const findingAfter = newScan?.findings.find(
@@ -183,25 +198,25 @@ export const createFixService = (deps: FixServiceDeps) => {
     return { ...result, validation };
   };
 
-  const applyAllAndValidate = async (): Promise<{
+  const applyAllAndValidate = async (useAi = false): Promise<{
     results: readonly (FixResult & { validation: FixValidation })[];
     totalDelta: number;
   }> => {
     const plans = previewAll();
     const results: (FixResult & { validation: FixValidation })[] = [];
     for (const plan of plans) {
-      const result = await applyAndValidate(plan);
+      const result = await applyAndValidate(plan, useAi);
       results.push(result);
     }
     const totalDelta = results.reduce((sum, r) => sum + r.validation.scoreDelta, 0);
     return { results, totalDelta };
   };
 
-  const applyAll = async (): Promise<readonly FixResult[]> => {
+  const applyAll = async (useAi = false): Promise<readonly FixResult[]> => {
     const plans = previewAll();
     const results: FixResult[] = [];
     for (const plan of plans) {
-      const result = await applyFix(plan);
+      const result = await applyFix(plan, useAi);
       results.push(result);
     }
     return results;

@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { AgentPassport } from '../types/passport.types.js';
 import { parsePassport } from '../types/passport.types.js';
-import { createEvidence } from '../domain/scanner/evidence.js';
+import { createEvidence, type EvidenceSource } from '../domain/scanner/evidence.js';
 import { loadOrCreateKeyPair, signPassport } from '../domain/passport/crypto-signer.js';
 import type { PassportServiceDeps } from './passport-service.js';
 
@@ -23,10 +23,10 @@ export const saveDocumentReport = async (
   name: string,
   filePrefix: string,
   markdown: string,
-  evidenceType: string,
+  evidenceType: EvidenceSource,
   projectPath?: string,
   subDir: string = 'reports',
-  evidenceMeta?: Record<string, unknown>,
+  _evidenceMeta?: Record<string, unknown>,
 ): Promise<string> => {
   const path = projectPath ?? deps.getProjectPath();
   const outDir = join(path, '.complior', subDir);
@@ -35,7 +35,7 @@ export const saveDocumentReport = async (
   await writeFile(savedPath, markdown);
 
   if (deps.evidenceStore) {
-    const evidence = createEvidence(name, evidenceType, evidenceType, { file: savedPath, ...evidenceMeta });
+    const evidence = createEvidence(name, evidenceType, evidenceType, { file: savedPath });
     await deps.evidenceStore.append([evidence], randomUUID());
   }
 

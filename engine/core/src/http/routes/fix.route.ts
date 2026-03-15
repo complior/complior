@@ -7,6 +7,7 @@ import { ValidationError } from '../../types/errors.js';
 const FixApplySchema = z.object({
   checkId: z.string().min(1),
   obligationId: z.string().optional(),
+  useAi: z.boolean().optional(),
 });
 
 const FixUndoSchema = z.object({
@@ -76,7 +77,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
       return c.json({ error: 'NO_FIX', message: 'No fix available for this finding' }, 404);
     }
 
-    const result = await fixService.applyFix(plan);
+    const result = await fixService.applyFix(plan, parsed.data.useAi);
     return c.json(result);
   });
 
@@ -102,13 +103,15 @@ export const createFixRoute = (deps: FixRouteDeps) => {
       return c.json({ error: 'NO_FIX', message: 'No fix available for this finding' }, 404);
     }
 
-    const result = await fixService.applyAndValidate(plan);
+    const result = await fixService.applyAndValidate(plan, parsed.data.useAi);
     return c.json({ result, validation: result.validation });
   });
 
   // Apply all available fixes (batch mode)
   app.post('/fix/apply-all', async (c) => {
-    const results = await fixService.applyAll();
+    const body = await c.req.json().catch(() => ({}));
+    const useAi = typeof body === 'object' && body !== null && 'useAi' in body ? Boolean(body.useAi) : false;
+    const results = await fixService.applyAll(useAi);
     const applied = results.filter((r) => r.applied).length;
     const failed = results.filter((r) => !r.applied).length;
     const scoreBefore = results[0]?.scoreBefore ?? 0;

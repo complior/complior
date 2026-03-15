@@ -12,6 +12,7 @@ import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import { computeComplianceDiff, formatDiffMarkdown, type ComplianceDiff } from '../domain/scanner/compliance-diff.js';
+import { loadCustomBannedPackages } from '../domain/scanner/rules/banned-packages.js';
 
 export interface ScanServiceDeps {
   readonly scanner: Scanner;
@@ -35,6 +36,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     events.emit('scan.started', { projectPath });
 
     const previousResult = deps.getLastScanResult();
+    await loadCustomBannedPackages(projectPath);
     const ctx = await collectFiles(projectPath);
     const result = scanner.scan(ctx);
 

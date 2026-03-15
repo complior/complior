@@ -92,6 +92,8 @@ export interface ComplianceBlock {
   readonly fria_date?: string;
   readonly worker_notification_sent?: boolean;
   readonly worker_notification_date?: string;
+  readonly policy_generated?: boolean;
+  readonly policy_date?: string;
   readonly ai_literacy?: {
     readonly training_completed?: boolean;
     readonly last_training_date?: string;

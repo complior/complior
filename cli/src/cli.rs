@@ -82,6 +82,10 @@ pub enum Command {
         #[arg(long)]
         json: bool,
 
+        /// Use LLM to enrich generated documents with context-aware content
+        #[arg(long)]
+        ai: bool,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },

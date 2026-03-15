@@ -180,4 +180,52 @@ export const DOCUMENT_VALIDATORS: readonly DocumentValidator[] = [
       { title: 'Human Oversight Instructions', required: false },
     ],
   },
+  {
+    document: 'biometrics-ai-policy',
+    obligation: 'OBL-003',
+    article: 'Art. 6(2)',
+    file_patterns: [
+      'biometrics-ai-policy.md', 'BIOMETRICS-AI-POLICY.md',
+      'biometrics-policy.md', 'biometric-ai-policy.md',
+    ],
+    required_sections: [
+      { title: 'Art. 5 Compliance', required: true },
+      { title: 'Bias and Fairness', required: true },
+      { title: 'Data Governance', required: true },
+      { title: 'Human Oversight', required: false },
+      { title: 'Transparency', required: false },
+    ],
+  },
+  {
+    document: 'critical-infra-ai-policy',
+    obligation: 'OBL-003',
+    article: 'Art. 6(2)',
+    file_patterns: [
+      'critical-infra-ai-policy.md', 'CRITICAL-INFRA-AI-POLICY.md',
+      'critical-infrastructure-ai-policy.md', 'infrastructure-ai-policy.md',
+    ],
+    required_sections: [
+      { title: 'Resilience and Redundancy', required: true },
+      { title: 'Cybersecurity', required: true },
+      { title: 'Safety Function', required: true },
+      { title: 'Human Oversight', required: false },
+      { title: 'Incident Response', required: false },
+    ],
+  },
+  {
+    document: 'migration-ai-policy',
+    obligation: 'OBL-008',
+    article: 'Art. 6(2)',
+    file_patterns: [
+      'migration-ai-policy.md', 'MIGRATION-AI-POLICY.md',
+      'border-control-ai-policy.md', 'asylum-ai-policy.md',
+    ],
+    required_sections: [
+      { title: 'Fundamental Rights', required: true },
+      { title: 'Non-Discrimination', required: true },
+      { title: 'Human Oversight', required: true },
+      { title: 'Transparency', required: false },
+      { title: 'Data Governance', required: false },
+    ],
+  },
 ] as const;

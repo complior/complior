@@ -225,6 +225,7 @@ export const loadApplication = async (): Promise<Application> => {
     undoService,
     evidenceStore,
     passportService: lazyPassportService,
+    llm,
   });
 
   const chatService = createChatService({

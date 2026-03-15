@@ -122,8 +122,8 @@ async fn main() -> color_eyre::Result<()> {
                     ).await
                 }
             }
-            Some(cli::Command::Fix { dry_run, json, path }) => {
-                headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config).await
+            Some(cli::Command::Fix { dry_run, json, ai, path }) => {
+                headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await
             }
             Some(cli::Command::Version) => { headless::run_version(); 0 }
             Some(cli::Command::Doctor) => { headless::run_doctor(&config).await; 0 }

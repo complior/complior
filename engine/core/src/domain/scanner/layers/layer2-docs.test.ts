@@ -4,19 +4,22 @@ import { createScanFile, createScanCtx } from '../../../test-helpers/factories.j
 import type { DocumentValidator } from './layer2-docs.js';
 
 describe('loadValidators', () => {
-  it('loads all 12 validators', () => {
+  it('loads all 15 validators', () => {
     const validators = loadValidators();
-    expect(validators).toHaveLength(12);
+    expect(validators).toHaveLength(15);
 
     const documents = validators.map((v) => v.document).sort();
     expect(documents).toEqual([
       'ai-literacy',
       'art5-screening',
+      'biometrics-ai-policy',
+      'critical-infra-ai-policy',
       'data-governance',
       'declaration-conformity',
       'fria',
       'incident-report',
       'instructions-for-use',
+      'migration-ai-policy',
       'monitoring-policy',
       'qms',
       'risk-management',

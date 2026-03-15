@@ -8,7 +8,12 @@ export type EvidenceSource =
   | 'cross-layer'
   | 'fix'
   | 'passport'
+  | 'passport-import'
+  | 'export'
   | 'fria'
+  | 'worker-notification'
+  | 'policy'
+  | 'document'
   | 'adversarial-test'
   | 'supply-chain'
   | 'nhi-scan';

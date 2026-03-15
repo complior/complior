@@ -9,7 +9,6 @@ import { AppError } from '../types/errors.js';
 import type { AgentPassport } from '../types/passport.types.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import { computeCompleteness } from '../domain/passport/passport-validator.js';
-import type { CompletenessResult } from '../domain/passport/passport-validator.js';
 import { loadOrCreateKeyPair, signPassport } from '../domain/passport/crypto-signer.js';
 import { computeAgentScore } from '../domain/registry/compute-agent-score.js';
 import type { AgentRegistryEntry } from '../domain/registry/compute-agent-score.js';
@@ -200,7 +199,7 @@ export const createPassportAudit = (deps: PassportServiceDeps, ops: PassportAudi
     await writeFile(filePath, JSON.stringify(signedPassport, null, 2));
 
     if (deps.evidenceStore) {
-      const evidence = createEvidence(signedPassport.name, 'passport', 'passport-import', { file: filePath, format });
+      const evidence = createEvidence(signedPassport.name, 'passport', 'passport-import', { file: filePath, snippet: `format: ${format}` });
       await deps.evidenceStore.append([evidence], randomUUID());
     }
 

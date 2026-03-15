@@ -8,6 +8,7 @@ pub async fn run_headless_fix(
     json: bool,
     path: Option<&str>,
     config: &TuiConfig,
+    use_ai: bool,
 ) -> i32 {
     let engine_url = config
         .engine_url_override
@@ -100,7 +101,12 @@ pub async fn run_headless_fix(
         }
     } else {
         // Apply all fixes via engine
-        match client.post_json("/fix/apply-all", &serde_json::json!({})).await {
+        let body = serde_json::json!({ "useAi": use_ai });
+        if use_ai && !json {
+            println!("AI-enriched mode: documents will be enhanced with LLM-generated content");
+            println!();
+        }
+        match client.post_json("/fix/apply-all", &body).await {
             Ok(resp) => {
                 if json {
                     println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());
