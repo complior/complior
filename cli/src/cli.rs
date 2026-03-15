@@ -737,6 +737,12 @@ pub fn needs_engine(cli: &Cli) -> bool {
     )
 }
 
+/// Returns true if the ephemeral engine should write a PID file to `.complior/`.
+/// Read-only commands like `doctor` should NOT create `.complior/` as a side effect.
+pub fn wants_pid_file(cli: &Cli) -> bool {
+    !matches!(&cli.command, Some(Command::Doctor))
+}
+
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
 pub fn is_headless(cli: &Cli) -> bool {
     match &cli.command {

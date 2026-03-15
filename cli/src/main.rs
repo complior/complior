@@ -86,8 +86,14 @@ async fn main() -> color_eyre::Result<()> {
                 .unwrap_or_else(|| std::path::Path::new("."));
             let mut mgr = EngineManager::new(workspace_root);
             let project_path = std::env::current_dir().unwrap_or_default();
-            let pid_path = daemon::pid_file_path(&project_path);
-            match mgr.start_with_pid(&pid_path, false) {
+            // Read-only commands (doctor) skip PID file to avoid creating .complior/
+            let start_result = if cli::wants_pid_file(&parsed_cli) {
+                let pid_path = daemon::pid_file_path(&project_path);
+                mgr.start_with_pid(&pid_path, false)
+            } else {
+                mgr.start()
+            };
+            match start_result {
                 Ok(port) => {
                     config.engine_url_override = Some(format!("http://127.0.0.1:{port}"));
                     let client = engine_client::EngineClient::from_url(&format!("http://127.0.0.1:{port}"));
