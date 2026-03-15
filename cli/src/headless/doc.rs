@@ -10,6 +10,14 @@ const VALID_DOC_TYPES: &[&str] = &[
     "incident-report",
     "declaration-of-conformity",
     "monitoring-policy",
+    "fria",
+    "worker-notification",
+    "risk-management",
+    "data-governance",
+    "qms",
+    "instructions-for-use",
+    "gpai-transparency",
+    "gpai-systemic-risk",
 ];
 
 pub async fn run_doc_command(action: &DocAction, config: &TuiConfig) -> i32 {

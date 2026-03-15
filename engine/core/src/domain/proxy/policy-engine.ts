@@ -30,7 +30,7 @@ export interface PolicyDecision {
 }
 
 interface RateLimitState {
-  readonly timestamps: number[];
+  readonly timestamps: readonly number[];
 }
 
 export interface PolicyEngine {

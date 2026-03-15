@@ -172,28 +172,22 @@ describe('createFixer', () => {
   });
 });
 
-// US-S0202: FRIA strategy named tests
+// FRIA fix via documentationStrategy (OBL-013 in template-registry)
 
-describe('friaStrategy', () => {
+describe('FRIA template fix', () => {
   const ctx = makeContext();
 
-  it('test_fria_strategy_triggers_on_checkid', () => {
-    const finding = makeFinding({ checkId: 'fria' });
+  it('triggers on obligationId eu-ai-act-OBL-013', () => {
+    const finding = makeFinding({ checkId: 'fria', obligationId: 'eu-ai-act-OBL-013' });
     const plan = findStrategy(finding, ctx);
     expect(plan).not.toBeNull();
     expect(plan!.article).toBe('Art. 27');
     expect(plan!.fixType).toBe('template_generation');
-  });
-
-  it('test_fria_strategy_triggers_on_obligationid', () => {
-    const finding = makeFinding({ checkId: 'fundamental-rights-impact-assessment', obligationId: 'eu-ai-act-OBL-013' });
-    const plan = findStrategy(finding, ctx);
-    expect(plan).not.toBeNull();
     expect(plan!.obligationId).toBe('eu-ai-act-OBL-013');
   });
 
-  it('test_fria_strategy_skips_if_file_exists', () => {
-    const finding = makeFinding({ checkId: 'fria' });
+  it('skips if output file already exists', () => {
+    const finding = makeFinding({ checkId: 'fria', obligationId: 'eu-ai-act-OBL-013' });
     const ctxWithFria = makeContext({ existingFiles: ['docs/compliance/fria.md'] });
     const plan = findStrategy(finding, ctxWithFria);
     expect(plan).toBeNull();

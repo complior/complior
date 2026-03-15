@@ -2,6 +2,7 @@ import { createGzip } from 'node:zlib';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { createHash } from 'node:crypto';
+import { ENGINE_VERSION } from '../../version.js';
 
 // --- Types ---
 
@@ -129,7 +130,7 @@ export const createAuditPackage = async (
 
   const manifest: AuditPackageManifest = {
     exportDate: new Date().toISOString(),
-    toolVersion: '8.0.0',
+    toolVersion: ENGINE_VERSION,
     files: manifestFiles,
     integrityHash,
   };

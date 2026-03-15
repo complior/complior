@@ -1,16 +1,14 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
+import { DOCUMENT_VALIDATORS } from '../validators.js';
 
 const CHECK_ID = 'ai-literacy';
 const ARTICLE_REF = 'Art. 4';
 const OBLIGATION_ID = 'eu-ai-act-OBL-001';
 
-const POLICY_FILE_PATTERNS: readonly RegExp[] = [
-  /^AI[-_]?LITERACY\.md$/i,
-  /^AI[-_]?LITERACY[-_]?POLICY\.md$/i,
-  /^ai[-_]?training[-_]?policy\./i,
-  /^AI[-_]?COMPETENCY/i,
-];
+// Derive file patterns from validators.ts (single source of truth)
+const VALIDATOR_FILE_PATTERNS: readonly string[] =
+  DOCUMENT_VALIDATORS.find((v) => v.document === 'ai-literacy')?.file_patterns ?? [];
 
 const LITERACY_CONTENT_PATTERNS: readonly RegExp[] = [
   /\bai literacy\b/i,
@@ -23,7 +21,7 @@ const LITERACY_CONTENT_PATTERNS: readonly RegExp[] = [
 
 const isPolicyFile = (relativePath: string): boolean => {
   const filename = relativePath.split('/').pop() ?? '';
-  return POLICY_FILE_PATTERNS.some((p) => p.test(filename));
+  return VALIDATOR_FILE_PATTERNS.some((p) => filename.toLowerCase() === p.toLowerCase());
 };
 
 const isTrainingRecordsDir = (relativePath: string): boolean =>

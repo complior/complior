@@ -70,8 +70,8 @@ const AI_API_PATTERNS: readonly RegExp[] = [
   /\bChatCompletion\b/,
   /\blangchain\b/i,
   /\bllama_index\b/i,
-  // Generic
-  /\bllm\b/i,
+  // Generic (require API/call/client context)
+  /\bllm[_-]?(?:client|api|call|request|response|provider|service|adapter)\b/i,
   /\bai_model\b/i,
   /\bmodel_inference\b/i,
 ];

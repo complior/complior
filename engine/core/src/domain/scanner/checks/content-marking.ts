@@ -22,8 +22,9 @@ const MARKING_PATTERNS: readonly RegExp[] = [
   /\binvisible[- ]?watermark\b/i,
   /\bsteganograph/i,
   /\brobust[- ]?watermark\b/i,
-  // Generic marking
-  /\bwatermark/i,
+  // Generic marking (require AI/content context)
+  /\bwatermark.*(?:ai|generat|synthe|content|media)/i,
+  /(?:ai|generat|synthe|content|media).*\bwatermark/i,
   /\bai-generated\b/i,
   /X-AI-Generated/i,
   /\bsynthetic[- ]?media\b/i,
@@ -56,7 +57,7 @@ const CONTENT_GENERATION_PATTERNS: readonly RegExp[] = [
   /\bDALL[-.]?E\b/i,
   /\bstable[- ]?diffusion\b/i,
   /\bmidjourney\b/i,
-  /\bflux\b/i,
+  /\bflux[._-]?(?:pro|dev|schnell|1)\b/i,
   /\bsuno\b/i,
   /\bsora\b/i,
   /\belevenlabs\b/i,
