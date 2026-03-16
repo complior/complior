@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import type { ScanResult } from '../types/common.types.js';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
@@ -24,6 +24,18 @@ export interface ScanServiceDeps {
   readonly auditStore?: AuditStore;
 }
 
+/** E-11: Compute a fast project-level hash from all file contents. */
+const computeProjectHash = (ctx: ScanContext): string => {
+  const hash = createHash('sha256');
+  // Sort for determinism, then hash path + content
+  const sorted = [...ctx.files].sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  for (const f of sorted) {
+    hash.update(f.relativePath);
+    hash.update(f.content);
+  }
+  return hash.digest('hex');
+};
+
 /** US-S05-34: Result of a compliance diff scan. */
 export interface ScanDiffResult extends ComplianceDiff {
   readonly markdown?: string;
@@ -32,13 +44,34 @@ export interface ScanDiffResult extends ComplianceDiff {
 export const createScanService = (deps: ScanServiceDeps) => {
   const { scanner, collectFiles, events, setLastScanResult } = deps;
 
+  // E-11: In-memory project-level scan cache (hash of all files → ScanResult)
+  let cachedProjectHash: string | null = null;
+  let cachedResult: ScanResult | null = null;
+
   const scan = async (projectPath: string): Promise<ScanResult> => {
     events.emit('scan.started', { projectPath });
 
     const previousResult = deps.getLastScanResult();
     await loadCustomBannedPackages(projectPath);
     const ctx = await collectFiles(projectPath);
+
+    // E-11: Check if project content unchanged since last scan
+    const projectHash = computeProjectHash(ctx);
+    if (cachedProjectHash === projectHash && cachedResult !== null) {
+      // Content identical — return cached result with fresh timestamp
+      const result: ScanResult = {
+        ...cachedResult,
+        scannedAt: new Date().toISOString(),
+      };
+      events.emit('scan.completed', { result });
+      return result;
+    }
+
     const result = scanner.scan(ctx);
+
+    // E-11: Update cache
+    cachedProjectHash = projectHash;
+    cachedResult = result;
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });

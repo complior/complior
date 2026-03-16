@@ -4,6 +4,7 @@ import type { L3CheckResult } from './layer3-config.js';
 import { PATTERN_RULES } from '../rules/pattern-rules.js';
 import type { PatternCategory } from '../rules/pattern-rules.js';
 import { isSourceFile, getLineNumber } from '../source-filter.js';
+import { stripCommentsOnly } from '../rules/comment-filter.js';
 
 // --- Types ---
 
@@ -44,11 +45,18 @@ export const runLayer4 = (
   const positiveFound = new Map<PatternCategory, L4CheckResult>();
   const negativeFound: L4CheckResult[] = [];
 
+  // Pre-compute comment-stripped content per file (E-109)
+  const strippedCache = new Map<string, string>();
   for (const file of sourceFiles) {
+    strippedCache.set(file.relativePath, stripCommentsOnly(file.content, file.extension));
+  }
+
+  for (const file of sourceFiles) {
+    const stripped = strippedCache.get(file.relativePath) ?? file.content;
     for (const rule of PATTERN_RULES) {
       // Reset regex lastIndex for global patterns
       rule.regex.lastIndex = 0;
-      const match = rule.regex.exec(file.content);
+      const match = rule.regex.exec(stripped);
 
       if (match !== null) {
         const result: L4CheckResult = {

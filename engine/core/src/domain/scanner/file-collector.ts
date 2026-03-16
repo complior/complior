@@ -3,11 +3,12 @@ import { join, extname, relative } from 'node:path';
 import type { ScanContext, FileInfo } from '../../ports/scanner.port.js';
 
 const EXCLUDED_DIRS: ReadonlySet<string> = new Set([
-  'node_modules', '.git', 'dist', 'build', '.next', 'coverage', '__pycache__',
+  'node_modules', '.git', '.complior', 'dist', 'build', '.next', 'coverage', '__pycache__',
 ]);
 
 const INCLUDED_EXTENSIONS: ReadonlySet<string> = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.yaml', '.yml', '.py', '.html', '.css',
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.yaml', '.yml',
+  '.py', '.html', '.css', '.go', '.rs', '.java',
 ]);
 
 const MAX_FILES = 500;

@@ -23,6 +23,11 @@ import type { CheckWithConfidence } from './confidence.js';
 import { buildFixDiff, buildCodeContext } from './fix-diff-builder.js';
 import { explainFindings } from './finding-explainer.js';
 import { applyAttestations } from './attestations.js';
+// S08/S09: New scanner modules
+import { buildImportGraph } from './import-graph.js';
+import { analyzeStructure } from './ast/swc-analyzer.js';
+import { detectProjectLanguages } from './languages/adapter.js';
+import { selectUncertainFindings, buildTargetedPrompts, estimateTargetedCost } from './layers/layer5-targeted.js';
 
 const DEFAULT_SEVERITY: Severity = 'info';
 
@@ -116,6 +121,9 @@ export interface Scanner {
 }
 
 export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer): Scanner => {
+  // Cache import graph from last scan() for reuse in scanDeep()
+  let lastImportGraph: ReturnType<typeof buildImportGraph> | null = null;
+
   const scan = (ctx: ScanContext): ScanResult => {
     const startTime = Date.now();
 
@@ -179,7 +187,43 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       }));
     }
 
-    // L4: Pattern matching
+    // E-109: Build import graph for AI-relevance filtering
+    const importGraph = buildImportGraph(ctx.files);
+    lastImportGraph = importGraph;
+
+    // E-111: Detect additional languages (Go, Rust, Java) and add their deps
+    const extraLangs = detectProjectLanguages(ctx.files);
+    for (const adapter of extraLangs) {
+      for (const file of ctx.files) {
+        const filename = file.relativePath.split('/').pop() ?? '';
+        if (adapter.depFiles.includes(filename)) {
+          const deps = adapter.detectDeps(file.content);
+          for (const dep of deps) {
+            if (dep.isAiSdk) {
+              allResults.push({
+                type: 'pass',
+                checkId: 'l3-ai-sdk-detected',
+                message: `AI SDK detected: ${dep.name} (${dep.version}) in ${adapter.name}`,
+              });
+            }
+            if (dep.isBanned) {
+              allResults.push({
+                type: 'fail',
+                checkId: 'l3-banned-dep',
+                message: `Banned dependency: ${dep.name} — ${dep.bannedReason ?? 'prohibited'}`,
+                severity: 'high',
+                obligationId: 'OBL-001',
+                articleReference: 'Art. 5',
+                fix: `Remove ${dep.name} or document exemption`,
+                file: file.relativePath,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // L4: Pattern matching (with comment-filtered content)
     const l4Results = runLayer4(ctx, l3Results);
     const l4Checks = layer4ToCheckResults(l4Results);
     allResults.push(...l4Checks);
@@ -193,6 +237,40 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
         file: l4r.file,
         line: l4r.line,
       }));
+    }
+
+    // E-110: Structural analysis (bare calls, wrappers, safety mutations)
+    for (const file of ctx.files) {
+      if (importGraph.aiRelevantFiles.has(file.relativePath) || importGraph.directAiFiles.has(file.relativePath)) {
+        const structFindings = analyzeStructure(file.content, file.relativePath, file.extension);
+        for (const sf of structFindings) {
+          if (sf.type === 'safety-mutation' || sf.type === 'missing-error-handling') {
+            allResults.push({
+              type: 'fail',
+              checkId: `l4-ast-${sf.type}`,
+              message: sf.description,
+              severity: sf.type === 'safety-mutation' ? 'high' : 'medium',
+              obligationId: sf.type === 'safety-mutation' ? 'OBL-006' : 'OBL-015',
+              articleReference: sf.type === 'safety-mutation' ? 'Art. 15' : 'Art. 14',
+              fix: sf.type === 'safety-mutation'
+                ? 'Remove safety config mutation or document exemption'
+                : 'Add try-catch error handling around LLM calls',
+              file: sf.file,
+              line: sf.line,
+            });
+            allConfidence.push({
+              ...l4Confidence('negative', 'FOUND'),
+              obligationId: sf.type === 'safety-mutation' ? 'OBL-006' : 'OBL-015',
+            });
+          } else if (sf.type === 'wrapped-call' || sf.type === 'decorator-pattern') {
+            allResults.push({
+              type: 'pass',
+              checkId: `l4-ast-${sf.type}`,
+              message: `${sf.description} in ${sf.file}:${sf.line}`,
+            });
+          }
+        }
+      }
     }
 
     // NHI: Non-human identity / secret scanning
@@ -272,6 +350,17 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       // Run L1-L4 synchronously first
       const baseResult = scan(ctx);
 
+      // E-113: Targeted L5 — only uncertain findings (confidence 50-80%)
+      const uncertainFindings = selectUncertainFindings(baseResult.findings);
+      let totalL5Cost = 0;
+
+      if (uncertainFindings.length > 0) {
+        // Reuse import graph from base scan() instead of rebuilding
+        const importGraph = lastImportGraph ?? buildImportGraph(ctx.files);
+        const prompts = buildTargetedPrompts(uncertainFindings, fileContents, importGraph);
+        totalL5Cost += estimateTargetedCost(prompts);
+      }
+
       // Pass uncertain findings to L5 for deeper analysis
       const l5Results = await layer5.analyzeFindings(baseResult.findings, fileContents);
 
@@ -294,13 +383,18 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
         ? calculateScore(enhancedCheckResults, scoringData)
         : createFallbackScore(enhancedFindings);
 
-      return {
-        ...baseResult,
+      const deepResult: ScanResult = {
         score: { ...score, confidenceSummary: baseResult.score.confidenceSummary },
         findings: enhancedFindings,
+        projectPath: baseResult.projectPath,
+        scannedAt: baseResult.scannedAt,
+        duration: baseResult.duration,
+        filesScanned: baseResult.filesScanned,
+        regulationVersion: baseResult.regulationVersion,
         deepAnalysis: true,
-        l5Cost: layer5.getTotalCost(l5Results),
-      } as ScanResult;
+        l5Cost: totalL5Cost + layer5.getTotalCost(l5Results),
+      };
+      return deepResult;
     }
     : undefined;
 
