@@ -90,7 +90,7 @@ pub struct FixDiff {
 }
 
 /// US-S05-07: Finding explanation with article, penalty, deadline, business impact.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FindingExplanation {
     pub article: String,
@@ -260,7 +260,7 @@ impl Serialize for CategoryScore {
 impl Serialize for Finding {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("Finding", 15)?;
+        let mut state = s.serialize_struct("Finding", 16)?;
         state.serialize_field("checkId", &self.check_id)?;
         state.serialize_field("type", &self.r#type)?;
         state.serialize_field("message", &self.message)?;
@@ -276,6 +276,7 @@ impl Serialize for Finding {
         state.serialize_field("confidence", &self.confidence)?;
         state.serialize_field("confidenceLevel", &self.confidence_level)?;
         state.serialize_field("evidence", &self.evidence)?;
+        state.serialize_field("explanation", &self.explanation)?;
         state.end()
     }
 }
