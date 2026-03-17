@@ -27,15 +27,13 @@ export interface LanguageAdapter {
   readonly aiPackages: ReadonlySet<string>;
 }
 
-// --- Go Adapter ---
+import {
+  GO_AI_PACKAGES,
+  RUST_AI_PACKAGES,
+  JAVA_AI_PACKAGES,
+} from '../data/ai-packages.js';
 
-const GO_AI_PACKAGES = new Set([
-  'github.com/sashabaranov/go-openai',
-  'github.com/anthropics/anthropic-sdk-go',
-  'cloud.google.com/go/ai/generativelanguage',
-  'github.com/tmc/langchaingo',
-  'github.com/cohere-ai/cohere-go',
-]);
+// --- Go Adapter ---
 
 const GO_IMPORT_REGEX = /import\s+(?:\(\s*([\s\S]*?)\s*\)|"([^"]+)")/g;
 const GO_SINGLE_IMPORT = /"([^"]+)"/g;
@@ -103,17 +101,6 @@ const goAdapter: LanguageAdapter = Object.freeze({
 
 // --- Rust Adapter ---
 
-const RUST_AI_PACKAGES = new Set([
-  'async-openai',
-  'anthropic',
-  'google-generative-ai',
-  'llm',
-  'candle-core',
-  'tch',
-  'rust-bert',
-  'langchain-rust',
-]);
-
 const RUST_USE_REGEX = /use\s+([\w:]+(?:::\{[^}]+\})?)/g;
 
 const rustAdapter: LanguageAdapter = Object.freeze({
@@ -159,15 +146,6 @@ const rustAdapter: LanguageAdapter = Object.freeze({
 });
 
 // --- Java Adapter ---
-
-const JAVA_AI_PACKAGES = new Set([
-  'dev.langchain4j',
-  'com.theokanning.openai-gpt3-java',
-  'com.google.cloud.aiplatform',
-  'ai.djl',
-  'org.deeplearning4j',
-  'com.azure.ai.openai',
-]);
 
 const JAVA_IMPORT_REGEX = /import\s+([\w.]+(?:\.\*)?)\s*;/g;
 

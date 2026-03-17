@@ -1,4 +1,6 @@
 import type { FileInfo } from '../../ports/scanner.port.js';
+import { AI_PACKAGES } from './data/ai-packages.js';
+import { AST_SUPPORTED_EXTENSIONS } from './constants.js';
 
 export interface ImportGraphNode {
   readonly file: string;          // relative path
@@ -13,20 +15,6 @@ export interface ImportGraph {
   readonly directAiFiles: ReadonlySet<string>;
 }
 
-/** Known AI SDK packages (npm + PyPI). Canonical list for import-graph AI-relevance. */
-const AI_PACKAGES: ReadonlySet<string> = new Set([
-  // npm (JS/TS)
-  'openai', '@anthropic-ai/sdk', '@google/generative-ai',
-  '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@ai-sdk/core',
-  'langchain', '@langchain/core', '@langchain/openai', '@langchain/anthropic',
-  'cohere-ai', '@mistralai/mistralai', '@huggingface/inference',
-  'replicate', 'together-ai', '@complior/sdk',
-  // PyPI (Python)
-  'anthropic', 'google.generativeai',
-  'cohere', 'mistralai', 'huggingface_hub',
-  'transformers', 'torch', 'tensorflow', 'keras',
-]);
-
 // Regex patterns for import/require statements
 const TS_IMPORT_REGEX = /(?:import\s+(?:(?:\{[^}]*\}|[\w*]+)\s+from\s+)?['"]([^'"]+)['"]|require\s*\(\s*['"]([^'"]+)['"]\s*\))/g;
 const PYTHON_IMPORT_REGEX = /(?:^import\s+([\w.]+)|^from\s+([\w.]+)\s+import)/gm;
@@ -38,7 +26,7 @@ const PYTHON_IMPORT_REGEX = /(?:^import\s+([\w.]+)|^from\s+([\w.]+)\s+import)/gm
 export const extractImports = (content: string, extension: string): readonly string[] => {
   const imports: string[] = [];
 
-  if (['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(extension)) {
+  if (AST_SUPPORTED_EXTENSIONS.has(extension)) {
     let match: RegExpExecArray | null;
     const regex = new RegExp(TS_IMPORT_REGEX.source, 'g');
     while ((match = regex.exec(content)) !== null) {

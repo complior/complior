@@ -155,7 +155,7 @@ describe('generateWorkerNotification', () => {
 
   it('fills date with current ISO date', () => {
     const result = generateWorkerNotification({ manifest: createMockPassport(), template: TEMPLATE });
-    const today = new Date().toISOString().split('T')[0]!;
+    const today = new Date().toISOString().slice(0, 10);
     expect(result.markdown).toContain(`Date: ${today}`);
     expect(result.prefilledFields).toContain('Date');
   });

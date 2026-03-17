@@ -162,6 +162,73 @@ export const docValidationToFindings = (
   return findings;
 };
 
+/** Type guard for record-shaped objects (used instead of `as` assertions). */
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null;
+
+/**
+ * Parse LLM JSON response into a DocValidationResult.
+ * Returns undefined if the response cannot be parsed.
+ */
+export const parseDocValidationResponse = (
+  llmText: string,
+  docType: string,
+  filePath: string,
+  totalElements: number,
+): DocValidationResult | undefined => {
+  const jsonMatch = llmText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return undefined;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(jsonMatch[0]);
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(raw)) return undefined;
+
+  const overallScore = typeof raw['overallScore'] === 'number' ? raw['overallScore'] : 50;
+  const elements = Array.isArray(raw['elements']) ? raw['elements'] : [];
+
+  const present = elements.filter((e: unknown) => {
+    if (!isRecord(e)) return false;
+    return e['present'] === true && e['adequate'] === true;
+  }).length;
+
+  const missing = elements
+    .filter((e: unknown) => {
+      if (!isRecord(e)) return true;
+      return e['present'] !== true || e['adequate'] !== true;
+    })
+    .map((e: unknown) => {
+      if (!isRecord(e)) return 'unknown';
+      return typeof e['id'] === 'string' ? e['id'] : 'unknown';
+    });
+
+  const feedback: string[] = [];
+  for (const e of elements) {
+    if (!isRecord(e)) continue;
+    const fb = e['feedback'];
+    if (typeof fb === 'string' && fb.length > 0) {
+      feedback.push(fb);
+    }
+  }
+
+  const severity: DocValidationResult['severity'] =
+    overallScore < 40 ? 'high' : overallScore < 60 ? 'medium' : overallScore < 80 ? 'low' : 'info';
+
+  return {
+    docType,
+    file: filePath,
+    qualityScore: overallScore,
+    elementsPresent: present,
+    elementsTotal: totalElements,
+    missingElements: missing,
+    feedback,
+    severity,
+  };
+};
+
 /**
  * Get checklist for a document type.
  */

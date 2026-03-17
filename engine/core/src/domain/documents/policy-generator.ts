@@ -27,7 +27,7 @@ export const generatePolicy = (input: PolicyGeneratorInput): PolicyResult => {
   const manualFields: string[] = [];
 
   let markdown = template;
-  const today = new Date().toISOString().split('T')[0]!;
+  const today = new Date().toISOString().slice(0, 10);
 
   // 1. Document Header table fields
   markdown = markdown.replaceAll('[AI System Name]', manifest.display_name);

@@ -43,7 +43,7 @@ export const generateWorkerNotification = (input: WorkerNotificationInput): Work
   const manualFields: string[] = [];
 
   let markdown = template;
-  const today = new Date().toISOString().split('T')[0]!;
+  const today = new Date().toISOString().slice(0, 10);
 
   // 1. Company Name — use input or fall back to manifest.owner.team
   const company = companyName ?? manifest.owner.team;

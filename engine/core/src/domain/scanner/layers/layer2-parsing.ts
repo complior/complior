@@ -54,6 +54,76 @@ export const extractSectionContents = (content: string): ReadonlyMap<string, str
   return sections;
 };
 
+// --- Semantic Depth (E-12 enhancement) ---
+
+export interface SemanticDepth extends SectionDepth {
+  readonly hasNumericMetrics: boolean;     // percentages, counts, thresholds
+  readonly hasLegalReferences: boolean;    // "Art. X", "GDPR", "ISO"
+  readonly hasDateReferences: boolean;     // dates, deadlines, "annually"
+  readonly hasActionItems: boolean;        // "must", "shall", "required to"
+  readonly hasMeasurableTargets: boolean;  // "99.9%", ">95%", "within 24 hours"
+  readonly qualityScore: number;           // 0-100 per section
+  readonly feedback: string;              // actionable recommendation
+}
+
+const NUMERIC_METRICS_REGEX = /\b\d+(\.\d+)?%|\b\d+(\.\d+)?\s*(ms|seconds?|minutes?|hours?|days?|requests?|errors?|users?)|\b[<>≥≤]=?\s*\d+/;
+const LEGAL_REF_REGEX = /\bArt\.\s*\d+|\bGDPR\b|\bISO\s*\d+|\bNIST\b|\bAIUC|EU\s*AI\s*Act|Regulation\s*\(EU\)/i;
+const DATE_REF_REGEX = /\b\d{4}[-/]\d{2}[-/]\d{2}\b|\b(annually|quarterly|monthly|weekly|bi-annual|semi-annual)\b|\b(Q[1-4]\s*20\d{2}|H[12]\s*20\d{2})\b/i;
+const ACTION_REGEX = /\b(must|shall|required to|obliged to|needs? to|will implement|will ensure)\b/i;
+const MEASURABLE_REGEX = /\b\d+(\.\d+)?%|\bwithin\s+\d+\s*(hours?|days?|minutes?)|\b(SLA|KPI|SLO|threshold|target|benchmark)\b/i;
+
+export const measureSemanticDepth = (content: string, sectionTitle: string): SemanticDepth => {
+  const base = measureSectionDepth(content);
+  const trimmed = content.trim();
+
+  const hasNumericMetrics = NUMERIC_METRICS_REGEX.test(trimmed);
+  const hasLegalReferences = LEGAL_REF_REGEX.test(trimmed);
+  const hasDateReferences = DATE_REF_REGEX.test(trimmed);
+  const hasActionItems = ACTION_REGEX.test(trimmed);
+  const hasMeasurableTargets = MEASURABLE_REGEX.test(trimmed);
+
+  // Quality score: weighted sum of semantic signals
+  let qualityScore = 0;
+  if (base.wordCount >= 50) qualityScore += 20;
+  else if (base.wordCount >= 20) qualityScore += 10;
+  if (base.hasLists) qualityScore += 10;
+  if (base.hasTables) qualityScore += 10;
+  if (base.hasSpecifics) qualityScore += 10;
+  if (hasNumericMetrics) qualityScore += 15;
+  if (hasLegalReferences) qualityScore += 10;
+  if (hasDateReferences) qualityScore += 5;
+  if (hasActionItems) qualityScore += 10;
+  if (hasMeasurableTargets) qualityScore += 10;
+
+  // Generate feedback
+  const suggestions: string[] = [];
+  if (!hasNumericMetrics) suggestions.push('Add numeric metrics (accuracy %, response time, thresholds)');
+  if (!hasLegalReferences) suggestions.push('Add legal references (Art. numbers, standards)');
+  if (!hasDateReferences) suggestions.push('Add timeline (dates, review frequency)');
+  if (!hasMeasurableTargets) suggestions.push('Add measurable targets (KPIs, SLAs)');
+  if (base.wordCount < 50) suggestions.push(`Expand content (currently ${base.wordCount} words, minimum 50 recommended)`);
+  if (!base.hasLists && !base.hasTables) suggestions.push('Add structured content (lists or tables)');
+
+  const feedback = suggestions.length > 0
+    ? `Section "${sectionTitle}": ${suggestions.join('; ')}`
+    : `Section "${sectionTitle}": adequate`;
+
+  // Override isShallow based on semantic quality
+  const isShallow = qualityScore < 30;
+
+  return {
+    ...base,
+    isShallow,
+    hasNumericMetrics,
+    hasLegalReferences,
+    hasDateReferences,
+    hasActionItems,
+    hasMeasurableTargets,
+    qualityScore,
+    feedback,
+  };
+};
+
 export const measureSectionDepth = (content: string): SectionDepth => {
   const trimmed = content.trim();
   const words = trimmed.split(/\s+/).filter((w) => w.length > 0);

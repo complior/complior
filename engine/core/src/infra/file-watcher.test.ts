@@ -5,17 +5,12 @@
  * The watcher emits `file.changed` events on the shared event bus.
  */
 import { describe, it, expect } from 'vitest';
+import { EXCLUDED_DIRS } from '../data/scanner-constants.js';
 
 // --- Helpers ---
 
 /** Reproduces the extension filter from file-watcher.ts */
 const WATCHED_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs|json|yaml|yml|md)$/i;
-
-/** Reproduces the ignored-directory set from file-watcher.ts */
-const IGNORED_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', 'target', 'coverage',
-  '.next', '.nuxt', 'out', '.complior', '.cache',
-]);
 
 function isWatched(filePath: string): boolean {
   return WATCHED_EXTENSIONS.test(filePath);
@@ -23,7 +18,7 @@ function isWatched(filePath: string): boolean {
 
 function isIgnoredDir(filePath: string): boolean {
   const segments = filePath.split('/');
-  return segments.some((s) => IGNORED_DIRS.has(s));
+  return segments.some((s) => EXCLUDED_DIRS.has(s));
 }
 
 // US-S0202: named tests

@@ -34,14 +34,12 @@ export interface DiscoveredPermissionsDetailed extends DiscoveredPermissions {
 
 const SOURCE_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.py']);
 
-const IGNORED_DIRS: ReadonlySet<string> = new Set([
-  'node_modules', 'dist', '.git',
-]);
+import { EXCLUDED_DIRS } from '../scanner/constants.js';
 
 const isSourceFile = (relativePath: string, extension: string): boolean => {
   if (!SOURCE_EXTENSIONS.has(extension)) return false;
   const parts = relativePath.split('/');
-  return !parts.some((part) => IGNORED_DIRS.has(part));
+  return !parts.some((part) => EXCLUDED_DIRS.has(part));
 };
 
 // --- Tool detection ---

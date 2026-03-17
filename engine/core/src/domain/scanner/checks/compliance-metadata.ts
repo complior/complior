@@ -57,6 +57,7 @@ export const checkComplianceMetadata = (ctx: ScanContext): readonly CheckResult[
     message: 'No compliance metadata found',
     severity: 'low',
     obligationId: OBLIGATION_ID,
+    articleReference: 'Art. 11',
     fix: 'Add a .well-known/ai-compliance.json or .complior/ directory with compliance configuration',
   }];
 };

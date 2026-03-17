@@ -9,22 +9,17 @@
 import chokidar, { type FSWatcher } from 'chokidar';
 import { createLogger } from './logger.js';
 import type { EventBus } from './event-bus.js';
+import { EXCLUDED_DIRS } from '../data/scanner-constants.js';
 
 const log = createLogger('file-watcher');
 
 /** File extensions that can affect compliance score. */
 const WATCHED_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs|json|yaml|yml|md)$/i;
 
-/** Directories to always ignore (chokidar v4: function filter, not globs). */
-const IGNORED_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', 'target', 'coverage',
-  '.next', '.nuxt', 'out', '.complior', '.cache',
-]);
-
-/** Check if a file path should be ignored (any segment matches IGNORED_DIRS). */
+/** Check if a file path should be ignored (any segment matches EXCLUDED_DIRS). */
 const isIgnored = (filePath: string): boolean => {
   const segments = filePath.split('/');
-  return segments.some((s) => IGNORED_DIRS.has(s));
+  return segments.some((s) => EXCLUDED_DIRS.has(s));
 };
 
 /** Debounce interval matching the 200ms Compliance Gate requirement. */

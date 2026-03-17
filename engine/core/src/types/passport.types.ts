@@ -100,6 +100,17 @@ export interface ComplianceBlock {
     readonly trained_count?: number;
     readonly next_training_due?: string;
   };
+  readonly risk_management?: {
+    readonly documented?: boolean;
+    readonly last_review?: string;
+    readonly risk_count?: number;
+    readonly residual_risks_accepted?: number;
+  };
+  readonly data_governance?: {
+    readonly documented?: boolean;
+    readonly bias_tested?: boolean;
+    readonly last_audit?: string;
+  };
 }
 
 export interface OversightBlock {
@@ -281,11 +292,24 @@ const ComplianceBlockSchema = z.object({
   fria_date: z.string().optional(),
   worker_notification_sent: z.boolean().optional(),
   worker_notification_date: z.string().optional(),
+  policy_generated: z.boolean().optional(),
+  policy_date: z.string().optional(),
   ai_literacy: z.object({
     training_completed: z.boolean().optional(),
     last_training_date: z.string().optional(),
     trained_count: z.number().int().min(0).optional(),
     next_training_due: z.string().optional(),
+  }).optional(),
+  risk_management: z.object({
+    documented: z.boolean().optional(),
+    last_review: z.string().optional(),
+    risk_count: z.number().int().min(0).optional(),
+    residual_risks_accepted: z.number().int().min(0).optional(),
+  }).optional(),
+  data_governance: z.object({
+    documented: z.boolean().optional(),
+    bias_tested: z.boolean().optional(),
+    last_audit: z.string().optional(),
   }).optional(),
 });
 

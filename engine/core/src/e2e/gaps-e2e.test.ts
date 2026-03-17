@@ -15,7 +15,8 @@ import { readFile, rm, stat } from 'node:fs/promises';
 import { loadApplication, type Application } from '../composition-root.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TEST_PROJECT = resolve(__dirname, '../../../..', 'test-projects/acme-ai-support');
+const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
+  ?? resolve(__dirname, '../../../../..', 'test-projects/acme-ai-support');
 
 // Clean up any previous E2E artifacts
 const cleanup = async () => {

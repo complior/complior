@@ -28,6 +28,9 @@ import { buildImportGraph } from './import-graph.js';
 import { analyzeStructure } from './ast/swc-analyzer.js';
 import { detectProjectLanguages } from './languages/adapter.js';
 import { selectUncertainFindings, buildTargetedPrompts, estimateTargetedCost } from './layers/layer5-targeted.js';
+import type { GitHistoryPort } from './checks/git-history.js';
+import { analyzeGitHistory, gitHistoryToCheckResults } from './checks/git-history.js';
+import { detectDocType, getChecklist, buildDocValidationPrompt, parseDocValidationResponse, docValidationToFindings } from './layers/layer5-docs.js';
 
 const DEFAULT_SEVERITY: Severity = 'info';
 
@@ -120,7 +123,7 @@ export interface Scanner {
   readonly scanDeep?: (ctx: ScanContext, fileContents: ReadonlyMap<string, string>) => Promise<ScanResult>;
 }
 
-export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer): Scanner => {
+export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer, gitHistory?: GitHistoryPort): Scanner => {
   // Cache import graph from last scan() for reuse in scanDeep()
   let lastImportGraph: ReturnType<typeof buildImportGraph> | null = null;
 
@@ -285,6 +288,21 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       }));
     }
 
+    // E-112: Git history analysis (document freshness, bulk commits, author diversity)
+    if (gitHistory !== undefined) {
+      const historyResult = analyzeGitHistory(ctx.projectPath, gitHistory);
+      const historyChecks = gitHistoryToCheckResults(historyResult);
+      allResults.push(...historyChecks);
+      for (const check of historyChecks) {
+        if (check.type !== 'skip') {
+          evidenceCollector.add(createEvidence(check.checkId, 'git-history', 'git-analysis', {
+            snippet: check.type === 'pass' ? check.message : `${check.message}`,
+            file: check.type === 'fail' ? check.file : undefined,
+          }));
+        }
+      }
+    }
+
     // Cross-layer verification
     const l1Checks = allResults.slice(0, allResults.length - l2Checks.length - l3Checks.length - l4Checks.length - nhiChecks.length);
     const crossLayerFindings = runCrossLayerChecks(l1Checks, l2Results, l3Results, l4Results);
@@ -364,10 +382,35 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       // Pass uncertain findings to L5 for deeper analysis
       const l5Results = await layer5.analyzeFindings(baseResult.findings, fileContents);
 
-      if (l5Results.length === 0) return baseResult;
+      // E-114a: L5 Document content validation — check .md docs against regulation checklists
+      const docValidationResults = await Promise.all(
+        ctx.files
+          .filter((f) => f.extension === '.md')
+          .map(async (file) => {
+            const docType = detectDocType(file.relativePath);
+            if (!docType) return null;
+            const checklist = getChecklist(docType);
+            if (!checklist) return null;
+
+            try {
+              const prompt = buildDocValidationPrompt(file.content, checklist);
+              const { text, cost } = await layer5.callRaw(prompt);
+              totalL5Cost += cost;
+              return parseDocValidationResponse(text, docType, file.relativePath, checklist.elements.length);
+            } catch {
+              return null; // Skip doc validation on LLM/parse error — non-critical
+            }
+          }),
+      );
+      const docFindings = docValidationToFindings(
+        docValidationResults.filter((r): r is NonNullable<typeof r> => r !== null),
+      );
+
+      if (l5Results.length === 0 && docFindings.length === 0) return baseResult;
 
       // Merge L5 results back into findings
-      const enhancedFindings = layer5.applyResults(baseResult.findings, l5Results);
+      const l5Enhanced = layer5.applyResults(baseResult.findings, l5Results);
+      const enhancedFindings = [...l5Enhanced, ...docFindings];
 
       // Recalculate score with enhanced findings
       const enhancedCheckResults: CheckResult[] = enhancedFindings.map((f): CheckResult => {

@@ -4,6 +4,7 @@ import { checkContentMarking } from '../checks/content-marking.js';
 import { checkInteractionLogging } from '../checks/interaction-logging.js';
 import { checkAiLiteracy } from '../checks/ai-literacy.js';
 import { checkGpaiTransparency } from '../checks/gpai-transparency.js';
+import { checkGpaiSystemicRisk } from '../checks/gpai-systemic-risk.js';
 import { checkComplianceMetadata } from '../checks/compliance-metadata.js';
 import { checkDocumentation } from '../checks/documentation.js';
 import { checkPassportPresence } from '../checks/passport-presence.js';
@@ -31,6 +32,7 @@ export const L1_CHECKS: readonly CheckFunction[] = [
   checkInteractionLogging,
   checkAiLiteracy,
   checkGpaiTransparency,
+  checkGpaiSystemicRisk,
   checkComplianceMetadata,
   checkDocumentation,
   checkPassportPresence,

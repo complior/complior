@@ -35,8 +35,8 @@ const loadExplanations = (): Record<string, FindingExplanation> => {
 const normalizeCheckId = (checkId: string): string => {
   // l3-banned-{package} → l3-banned-package (generic)
   if (checkId.startsWith('l3-banned-')) return 'l3-banned-package';
-  // Strip cross- prefix for cross-layer checks
-  if (checkId.startsWith('cross-')) return checkId;
+  // l4-nhi-{category} → l4-nhi-secret (generic)
+  if (checkId.startsWith('l4-nhi-') && checkId !== 'l4-nhi-clean') return 'l4-nhi-secret';
   return checkId;
 };
 

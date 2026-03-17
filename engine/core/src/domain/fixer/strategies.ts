@@ -182,7 +182,16 @@ export const clearLogs = (): void => { logs.length = 0; };
 
 // --- Strategy: Documentation (templates) ---
 
+/** CheckIds for which the documentation strategy should generate template fixes. */
+const DOCUMENT_CHECK_IDS = new Set(
+  TEMPLATE_REGISTRY.map((e) => e.docType)
+    .concat(['ai-literacy', 'gpai-transparency', 'gpai-systemic-risk']),
+);
+
 const documentationStrategy: FixStrategy = (finding, context) => {
+  // Only generate documents for document-presence checks, not permission/pattern checks
+  if (!DOCUMENT_CHECK_IDS.has(finding.checkId)) return null;
+
   const oblId = finding.obligationId;
   if (!oblId) return null;
 

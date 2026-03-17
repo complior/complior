@@ -296,5 +296,158 @@
     "penalty": "€15M or 3% of annual global turnover",
     "deadline": "2026-08-02",
     "business_impact": "Education AI for admissions, grading, or student assessment is high-risk under Annex III. AI determining access to education affects fundamental rights and life opportunities."
+  },
+
+  "fria": {
+    "article": "Art. 27",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Fundamental Rights Impact Assessment is mandatory for deployers of high-risk AI in public services and certain private-sector uses. Without a FRIA, deployment may be unlawful."
+  },
+  "art5-screening": {
+    "article": "Art. 5",
+    "penalty": "€35M or 7% of annual global turnover",
+    "deadline": "2025-02-02",
+    "business_impact": "Prohibited practices carry the highest penalty tier. You must demonstrate systematic screening against all 8 Art. 5 categories before deploying any AI system in the EU."
+  },
+  "technical-documentation": {
+    "article": "Art. 11",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Technical documentation covering system design, data, and performance is required before market placement. Without it, conformity assessment cannot proceed."
+  },
+  "incident-report": {
+    "article": "Art. 73",
+    "penalty": "€7.5M or 1.5% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "An incident report template must exist before incidents occur. Timely reporting of serious incidents to authorities is mandatory — delays compound liability."
+  },
+  "declaration-of-conformity": {
+    "article": "Art. 47",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "The EU Declaration of Conformity is a legally binding prerequisite for placing an AI system on the EU market. Missing it blocks market access entirely."
+  },
+  "monitoring-policy": {
+    "article": "Art. 26",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Post-market monitoring policy is required to detect and respond to risks after deployment. Without it, you cannot demonstrate ongoing surveillance obligations."
+  },
+  "worker-notification": {
+    "article": "Art. 26(7)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Workers and their representatives must be informed before AI is deployed in the workplace. Missing notification is a direct worker protection violation."
+  },
+  "risk-management": {
+    "article": "Art. 9",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "A risk management system must be established, maintained, and documented throughout the AI lifecycle. It is the foundation for all high-risk AI compliance."
+  },
+  "data-governance": {
+    "article": "Art. 10",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Data governance measures must ensure training data quality, relevance, and representativeness. Without a policy, bias and data quality issues go unmanaged."
+  },
+  "qms": {
+    "article": "Art. 17",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "A quality management system ensures systematic compliance across the AI lifecycle. Without QMS documentation, you cannot demonstrate organizational compliance maturity."
+  },
+  "instructions-for-use": {
+    "article": "Art. 13",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Instructions for use must accompany every high-risk AI system, enabling deployers to understand capabilities, limitations, and required human oversight measures."
+  },
+
+  "l2-risk-management": {
+    "article": "Art. 9",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Your risk management document exists but lacks required structure. It must cover risk identification, estimation, evaluation, and mitigation across the full AI lifecycle."
+  },
+  "l2-data-governance": {
+    "article": "Art. 10",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Your data governance document exists but is structurally incomplete. It must detail data collection, labeling, quality checks, and bias mitigation procedures."
+  },
+  "l2-qms": {
+    "article": "Art. 17",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Your QMS document exists but missing key sections. A complete QMS must cover design, development, testing, and post-market processes with defined responsibilities."
+  },
+  "l2-instructions-for-use": {
+    "article": "Art. 13",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Your instructions for use document exists but is structurally incomplete. Deployers rely on these instructions to operate the AI system safely and compliantly."
+  },
+
+  "gpai-systemic-risk": {
+    "article": "Art. 55",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2025-08-02",
+    "business_impact": "GPAI models with systemic risk require additional obligations: adversarial testing, incident reporting to the AI Office, and cybersecurity protections beyond standard GPAI requirements."
+  },
+  "industry-legal": {
+    "article": "Art. 6(2), Annex III",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "AI used in legal interpretation or judicial assistance is high-risk under Annex III. Legal AI affecting access to justice requires enhanced oversight, transparency, and conformity assessment."
+  },
+  "industry-biometrics": {
+    "article": "Art. 6(2), Annex III",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Biometric AI (identification, categorization, emotion recognition) is high-risk under Annex III. Some biometric uses are outright prohibited under Art. 5."
+  },
+  "industry-critical-infra": {
+    "article": "Art. 6(2), Annex III",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "AI in critical infrastructure (energy, transport, water, digital) is high-risk under Annex III. Failures can directly endanger public safety and essential services."
+  },
+  "industry-migration": {
+    "article": "Art. 6(2), Annex III",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "AI used in migration, asylum, or border control is high-risk under Annex III. These systems directly affect fundamental rights and require the highest compliance standards."
+  },
+  "cross-banned-with-wrapper": {
+    "article": "Art. 5",
+    "penalty": "€35M or 7% of annual global turnover",
+    "deadline": "2025-02-02",
+    "business_impact": "A prohibited package is present but wrapped with compliance controls. While controls mitigate risk, the underlying package may still constitute a prohibited practice violation."
+  },
+  "cross-passport-code-mismatch": {
+    "article": "Art. 26(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Agent Passport declarations do not match actual code behavior. Passport accuracy is essential for deployer obligations — mismatches indicate governance failures."
+  },
+  "l4-nhi-secret": {
+    "article": "Art. 15(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Hardcoded secrets or credentials found in source code. Exposed credentials undermine the cybersecurity measures required by Art. 15(4) and create exploitable attack vectors."
+  },
+  "l3-dep-vuln": {
+    "article": "Art. 15(4)",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Dependencies with known vulnerabilities compromise your system's cybersecurity posture. Art. 15(4) requires resilience against unauthorized access and data manipulation."
+  },
+  "l3-dep-license": {
+    "article": "Art. 11",
+    "penalty": "€15M or 3% of annual global turnover",
+    "deadline": "2026-08-02",
+    "business_impact": "Dependency license incompatibilities may prevent lawful distribution of your AI system. Technical documentation must account for all third-party component licensing."
   }
 }

@@ -235,6 +235,13 @@ export const createLayer5 = (deps: L5AnalyzerDeps) => {
   const getTotalCost = (results: readonly L5Result[]): number =>
     results.reduce((sum, r) => sum + r.cost, 0);
 
+  /** Raw LLM call for custom prompts (e.g. doc validation). */
+  const callRaw = async (prompt: string): Promise<{ text: string; cost: number }> => {
+    const response = await callLlm(prompt);
+    const cost = calculateCost('claude-sonnet-4', response.inputTokens, response.outputTokens);
+    return { text: response.text, cost };
+  };
+
   return Object.freeze({
     isUncertain,
     analyzeFindings,
@@ -243,6 +250,7 @@ export const createLayer5 = (deps: L5AnalyzerDeps) => {
     selectPromptType,
     extractSnippets,
     buildL5Prompt,
+    callRaw,
   });
 };
 

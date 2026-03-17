@@ -12,7 +12,8 @@ import { createLogger } from './infra/logger.js';
 import { createLlmAdapter } from './infra/llm-adapter.js';
 import { createScanner } from './domain/scanner/create-scanner.js';
 import { createLayer5 } from './domain/scanner/layers/layer5-llm.js';
-import { collectFiles } from './domain/scanner/file-collector.js';
+import { collectFiles } from './infra/file-collector.js';
+import { createGitHistoryAdapter } from './infra/git-history-adapter.js';
 import { createFixer } from './domain/fixer/create-fixer.js';
 import { createScanService } from './services/scan-service.js';
 import { createChatService } from './services/chat-service.js';
@@ -138,7 +139,8 @@ export const loadApplication = async (): Promise<Application> => {
     calculateCost: (_model: string, inputTokens: number, outputTokens: number) =>
       (inputTokens * DEFAULT_INPUT_COST_PER_1K + outputTokens * DEFAULT_OUTPUT_COST_PER_1K) / 1000,
   });
-  const scanner = createScanner(regulationData.scoring?.scoring, layer5);
+  const gitHistory = createGitHistoryAdapter();
+  const scanner = createScanner(regulationData.scoring?.scoring, layer5, gitHistory);
 
   const fixer = createFixer({
     getFramework: () => {

@@ -73,6 +73,7 @@ export const checkDocumentation = (ctx: ScanContext): readonly CheckResult[] => 
     message: 'No compliance documentation found',
     severity: 'medium',
     obligationId: OBLIGATION_ID,
+    articleReference: 'Art. 11',
     fix: 'Create a COMPLIANCE.md or .complior/ directory documenting your AI Act compliance measures',
   }];
 };

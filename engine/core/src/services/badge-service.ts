@@ -24,7 +24,7 @@ export const createBadgeService = (deps: BadgeServiceDeps) => {
     }
 
     const { score } = scanResult;
-    const date = new Date().toISOString().split('T')[0]!;
+    const date = new Date().toISOString().slice(0, 10);
     const svg = generateBadgeSvg(score.totalScore, score.zone, 'EU', date);
     const md = generateComplianceMd(scanResult, getVersion());
 
@@ -56,7 +56,7 @@ export const createBadgeService = (deps: BadgeServiceDeps) => {
     if (!scanResult) return '';
 
     const { score } = scanResult;
-    const date = new Date().toISOString().split('T')[0]!;
+    const date = new Date().toISOString().slice(0, 10);
     cachedSvg = generateBadgeSvg(score.totalScore, score.zone, 'EU', date);
     return cachedSvg;
   };

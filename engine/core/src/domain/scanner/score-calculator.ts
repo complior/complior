@@ -9,6 +9,7 @@ const CHECK_ID_TO_CATEGORY: Readonly<Record<string, string>> = {
   'interaction-logging': 'technical_safeguards',
   'ai-literacy': 'organizational',
   'gpai-transparency': 'documentation',
+  'gpai-systemic-risk': 'documentation',
   'compliance-metadata': 'documentation',
   'documentation': 'documentation',
   'passport-presence': 'documentation',

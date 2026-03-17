@@ -5,6 +5,7 @@
  */
 
 import { getLineNumber } from '../source-filter.js';
+import { AST_SUPPORTED_EXTENSIONS } from '../constants.js';
 
 export interface StructuralFinding {
   readonly type: 'bare-call' | 'wrapped-call' | 'safety-mutation' | 'missing-error-handling' | 'decorator-pattern';
@@ -48,7 +49,7 @@ export const analyzeStructure = (
 
   const getLine = (index: number): number => getLineNumber(content, index);
 
-  if (['.ts', '.tsx', '.js', '.jsx'].includes(extension)) {
+  if (AST_SUPPORTED_EXTENSIONS.has(extension)) {
     // Check for LLM calls without try-catch
     const llmCallRegex = /(?:\.create|\.generate|\.invoke|\.chat|generateText|streamText)\s*\(/g;
     let match: RegExpExecArray | null;

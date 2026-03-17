@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { loadApplication, type Application } from '../composition-root.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TEST_PROJECT = resolve(__dirname, '../../../..', 'test-projects/acme-ai-support');
+const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
+  ?? resolve(__dirname, '../../../../..', 'test-projects/acme-ai-support');
 
 describe('E2E Smoke Test', () => {
   let application: Application;

@@ -10,7 +10,8 @@ import type { UndoService } from './undo-service.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { AgentPassport } from '../types/passport.types.js';
-import { generateDocument, enrichDocumentWithAI, TEMPLATE_FILE_MAP, type DocType } from '../domain/documents/document-generator.js';
+import { generateDocument, TEMPLATE_FILE_MAP, type DocType } from '../domain/documents/document-generator.js';
+import { enrichDocumentWithAI } from '../domain/documents/ai-enricher.js';
 import type { LlmPort } from '../ports/llm.port.js';
 
 export interface FixServiceDeps {

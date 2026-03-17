@@ -109,7 +109,7 @@ describe('document-generator', () => {
         template: SIMPLE_TEMPLATE,
         docType: 'ai-literacy',
       });
-      const today = new Date().toISOString().split('T')[0]!;
+      const today = new Date().toISOString().slice(0, 10);
       expect(result.markdown).toContain(today);
       expect(result.markdown).not.toContain('[Date]');
     });

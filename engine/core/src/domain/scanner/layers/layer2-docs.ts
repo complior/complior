@@ -6,11 +6,12 @@ import {
   headingMatches,
   extractSectionContents,
   measureSectionDepth,
+  measureSemanticDepth,
 } from './layer2-parsing.js';
 
 // Re-export for backward compatibility
-export { measureSectionDepth } from './layer2-parsing.js';
-export type { SectionDepth } from './layer2-parsing.js';
+export { measureSectionDepth, measureSemanticDepth } from './layer2-parsing.js';
+export type { SectionDepth, SemanticDepth } from './layer2-parsing.js';
 
 // --- Types ---
 
@@ -39,6 +40,8 @@ export interface L2CheckResult {
   readonly totalRequired: number;
   readonly matchedRequired: number;
   readonly shallowSections?: readonly string[];
+  readonly sectionFeedback?: readonly string[];     // per-section actionable feedback
+  readonly completenessScore?: number;              // 0-100 overall document quality
 }
 
 // --- Validator Loading ---
@@ -66,7 +69,7 @@ export const validateDocument = (
   validator: DocumentValidator,
   content: string,
 ): L2CheckResult => {
-  const obligationId = `eu-ai-act-${validator.obligation}`;
+  const obligationId = validator.obligation;
   const headings = parseMarkdownHeadings(content);
   const requiredSections = validator.required_sections.filter((s) => s.required);
 
@@ -99,6 +102,9 @@ export const validateDocument = (
   if (missing.length === 0 && found.length > 0) {
     const sectionContents = extractSectionContents(content);
     const shallowSections: string[] = [];
+    const feedbackItems: string[] = [];
+    let totalQualityScore = 0;
+    let scoredSections = 0;
 
     for (const sectionTitle of found) {
       // Find matching heading in extracted contents
@@ -107,15 +113,23 @@ export const validateDocument = (
       );
       if (matchedHeading !== undefined) {
         const sectionContent = sectionContents.get(matchedHeading) ?? '';
-        const depth = measureSectionDepth(sectionContent);
-        if (depth.isShallow) {
+        const semantic = measureSemanticDepth(sectionContent, sectionTitle);
+        if (semantic.isShallow) {
           shallowSections.push(sectionTitle);
         }
+        if (semantic.feedback && !semantic.feedback.endsWith(': adequate')) {
+          feedbackItems.push(semantic.feedback);
+        }
+        totalQualityScore += semantic.qualityScore;
+        scoredSections++;
       }
     }
 
     const shallowRatio = found.length > 0 ? shallowSections.length / found.length : 0;
     const status: L2Status = shallowRatio > 0.5 ? 'SHALLOW' : 'VALID';
+    const completenessScore = scoredSections > 0
+      ? Math.round(totalQualityScore / scoredSections)
+      : 0;
 
     return {
       obligationId,
@@ -127,6 +141,8 @@ export const validateDocument = (
       totalRequired: requiredSections.length,
       matchedRequired: found.length,
       shallowSections: shallowSections.length > 0 ? shallowSections : undefined,
+      sectionFeedback: feedbackItems.length > 0 ? feedbackItems : undefined,
+      completenessScore,
     };
   }
 
@@ -176,14 +192,20 @@ export const layer2ToCheckResults = (l2Results: readonly L2CheckResult[]): reado
 
     if (r.status === 'SHALLOW') {
       const shallowList = r.shallowSections?.join(', ') ?? 'multiple sections';
+      const feedbackSuffix = r.sectionFeedback && r.sectionFeedback.length > 0
+        ? `. Suggestions: ${r.sectionFeedback.join('. ')}`
+        : '';
+      const scoreSuffix = r.completenessScore !== undefined
+        ? ` (quality: ${r.completenessScore}/100)`
+        : '';
       return {
         type: 'fail',
         checkId: `l2-${r.document}`,
-        message: `${r.article}: ${r.document} — headings present but content is shallow in: ${shallowList}`,
+        message: `${r.article}: ${r.document} — headings present but content is shallow in: ${shallowList}${scoreSuffix}`,
         severity: 'medium',
         obligationId: r.obligationId,
         articleReference: r.article,
-        fix: `Expand shallow sections in ${r.document} with details (dates, specifics, lists): ${shallowList}`,
+        fix: `Expand shallow sections in ${r.document} with details (dates, specifics, lists): ${shallowList}${feedbackSuffix}`,
       };
     }
 

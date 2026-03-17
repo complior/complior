@@ -135,7 +135,7 @@ const mapOversightType = (level: string): string => {
 /** Generate structured FRIA JSON from manifest data */
 export const generateFriaStructured = (input: FriaGeneratorInput): FriaStructuredPayload => {
   const { manifest, organization, assessor } = input;
-  const today = new Date().toISOString().split('T')[0]!;
+  const today = new Date().toISOString().slice(0, 10);
   const riskClass = manifest.compliance?.eu_ai_act?.risk_class ?? '';
   const firstSeverity = deriveRiskLevel(riskClass);
 
@@ -230,7 +230,7 @@ export const generateFria = (input: FriaGeneratorInput): FriaResult => {
   prefilledFields.push('Assessment ID');
 
   // [Date] in header
-  const today = new Date().toISOString().split('T')[0]!;
+  const today = new Date().toISOString().slice(0, 10);
   markdown = markdown.replaceAll('[Date]', today);
   prefilledFields.push('Date');
 
