@@ -1,8 +1,8 @@
 # Sprint S08 — Polish + Integration + Onboarding + SaaS Enterprise Complete
 
-**Версия:** 1.0.0
-**Дата:** 2026-03-07
-**Статус:** Planning
+**Версия:** 2.0.0
+**Дата:** 2026-03-18
+**Статус:** Scanner parts merged into S07-S08 Intelligence (✅ DONE). UX/Polish items → 📌 MONTH-1.
 
 ---
 

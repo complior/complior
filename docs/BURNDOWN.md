@@ -2,8 +2,8 @@
 
 > Объединённые метрики CLI/Engine (open-source) и SaaS Dashboard (проприетарный). Детали реализации -- см. соответствующие FEATURE-MAP.md.
 
-**Дата:** 2026-03-13
-**Дедлайн:** 2 августа 2026 (~142 дня)
+**Дата:** 2026-03-17
+**Дедлайн:** 2 августа 2026 (~138 дней)
 
 ---
 
@@ -11,18 +11,18 @@
 
 | Метрика | CLI/Engine | SaaS | Итого |
 |---------|-----------|------|-------|
-| Спринты | v1 (19) + v8 (S01--S06-partial, 15) = 34 | S000--S8.5 (14) | 48 |
-| Story Points | 365 (v1) + ~170 (v8 est.) = ~535 | 424 | ~959 |
-| Тесты | 1709 | 554 | **2263** |
-| User Stories (DONE) | 84 (v1) + 82 (v8) = 166 | 84 | 250 |
-| Velocity (SP/day) | ~20 (v1, 2 days) / ~6.4 (v8, 25 days) | 12.8 | -- |
+| Спринты | v1 (19) + v8 (S01--S06-partial + S08/S09-partial, 17) = 36 | S000--S8.5 (14) | 50 |
+| Story Points | 365 (v1) + ~185 (v8 est.) = ~550 | 424 | ~974 |
+| Тесты | 2135 | 554 | **2689** |
+| User Stories (DONE) | 84 (v1) + 87 (v8) = 171 | 84 | 255 |
+| Velocity (SP/day) | ~20 (v1, 2 days) / ~6.6 (v8, 27 days) | 12.8 | -- |
 | Разработчики | Claude Code | Max, Nina, Leo, Marcus | -- |
 
 ---
 
 ## Timeline к 2 августа 2026
 
-### Текущее состояние (13 марта 2026)
+### Текущее состояние (17 марта 2026)
 
 ```
 FEB  2026  |====================| CLI v1 done (365 SP, 19 sprints, 2 days)
@@ -32,6 +32,7 @@ FEB  2026  |====================| CLI v1 done (365 SP, 19 sprints, 2 days)
 MAR  2026  |==| CLI S04 done (FRIA JSON, bug fixes)
            |==============| CLI S05 Phase 1-5 done (30 US, 1691 tests)
            |====| CLI S06 partial (5 US: LLM Chat, Chat UX, Onboarding Rework, Init)
+           |====| CLI S08/S09 partial (Scanner Intelligence, CLI Scan Output, Code Quality)
            |========| SaaS S9 (planned: 51 SP, 18 features, 4 weeks)
 
 APR  2026  |====| CLI S06 (planned: ISO 42001 docs, MCP Proxy, NHI Scanner)
@@ -53,7 +54,7 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 
 | Трек | Спринты осталось | SP (оценка) | Критические фичи |
 |------|-----------------|-------------|-------------------|
-| CLI/Engine | S06 (remaining 25 US) + S07--S08 (3 спринта) | ~110 SP | MCP Proxy, ISO 42001, Guard API, LLM Doc Fill, Wizards |
+| CLI/Engine | S06 (remaining 25 US) + S07--S09 (3 спринта) | ~100 SP | MCP Proxy, ISO 42001, Guard API, LLM Doc Fill, Wizards |
 | SaaS | S9--S10 (2 спринта) | ~100 SP | Реестр, Badge, Vendor Request, EU DB, Incidents, Monitoring |
 | **Итого до дедлайна** | **~5 спринтов** | **~220 SP** | |
 
@@ -109,8 +110,9 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S05-S06-QF (Quality) | <1 day | — | 1430->1430 | Port discovery DRY, SDK strict compliance, code quality audit |
 | S06 partial (LLM Chat) | 1 day | 2 | 1430->1691 | LLM Chat Service (rate limiter, SSE), TUI Chat Page (9th view, LLM settings) |
 | S06 partial (UX+Onboarding) | 1 day | 3 | 1691->1709 | Chat UX (multiline, tool names, no timestamps), Onboarding Rework (10→8 steps, persistence, Esc block, requirements frameworks), `complior init` + project root discovery (9 markers) |
+| S08/S09 partial (Scanner Intelligence) | 2 days | 5 | 1709->2135 | Import Graph (45 AI packages, 5 ecosystems), Multi-Language (Go/Rust/Java), Git History (21 doc types), Targeted L5 (8 prompts), L5 Doc Validation (4 doc types), GPAI systemic risk checks, AI enricher, unified constants (H1/H4/C1), enhanced CLI scan output (severity summary, fix roadmap, deadline, badges) |
 
-**v8 Total:** ~26 days | 82 US | +1141 tests (568->1709)
+**v8 Total:** ~28 days | 87 US | +1567 tests (568->2135)
 
 ### CLI Test Count History
 
@@ -126,6 +128,7 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S05 Phase 3 (Launch) | 685 | 373 | 372 | **1430** |
 | S05 Phase 4-5 (Runtime+Multi) | 862 | 414 | 415 | **1691** |
 | S06 partial (UX+Onboarding) | 862 | 414 | 433 | **1709** |
+| S08/S09 partial (Scanner Intel) | 1255 | 414 | 466 | **2135** |
 
 ---
 
@@ -174,11 +177,11 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | Период | CLI SP | SaaS SP | Total SP | Days | SP/day |
 |--------|--------|---------|----------|------|--------|
 | CLI v1 | 365 | -- | 365 | 2 | 182.5 |
-| CLI v8 (S01-S06-partial) | ~170 est. | -- | ~170 | 26 | ~6.5 |
+| CLI v8 (S01-S09-partial) | ~185 est. | -- | ~185 | 28 | ~6.6 |
 | SaaS S000-S4 | -- | 252 | 252 | 13 | 19.4 |
 | SaaS S5-S7 | -- | 104 | 104 | 12 | 8.7 |
 | SaaS S8-S8.5 | -- | 68 | 68 | 6 | 11.3 |
-| **Cumulative** | **~535** | **424** | **~959** | **59** | **~16.3** |
+| **Cumulative** | **~550** | **424** | **~974** | **61** | **~16.0** |
 
 ### Test Growth (Combined)
 
@@ -201,6 +204,7 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | 2026-03-08 | 1323 | 554 | **1877** |
 | 2026-03-09 | 1430 | 554 | **1984** |
 | 2026-03-13 | 1709 | 554 | **2263** |
+| 2026-03-17 | 2135 | 554 | **2689** |
 
 ### Velocity Trend (per sprint, both tracks)
 
@@ -290,6 +294,11 @@ SP/day
 | CLI Chat UX (multiline, tool names, no timestamps) | DONE (S06) | 100% |
 | CLI Onboarding Rework (10→8 steps, persistence, Esc block) | DONE (S06) | 100% |
 | CLI `complior init` + Project Root Discovery | DONE (S06) | 100% |
+| CLI Scanner Intelligence (Import Graph, Multi-Lang, Git History) | DONE (S08/S09) | 100% |
+| CLI Targeted L5 + Doc Validation (LLM deep analysis) | DONE (S08/S09) | 100% |
+| CLI GPAI Systemic Risk Checks | DONE (S08/S09) | 100% |
+| CLI Enhanced Scan Output (severity, roadmap, deadline, badges) | DONE (S08/S09) | 100% |
+| CLI Code Quality (H1 constants, H4 AI packages, C1 file-collector) | DONE (S08/S09) | 100% |
 | SaaS Реестр + Wizard | PLANNED (S9) | 85% |
 | SaaS EU Database Helper | PLANNED (S9) | 80% |
 | SaaS Badge + Vendor Request | PLANNED (S9) | 80% |
@@ -322,11 +331,16 @@ SP/day
 16. LLM Chat Assistant (interactive compliance Q&A) -- **DONE** (S06)
 17. Chat UX (multiline, tool names, clean timestamps) -- **DONE** (S06)
 18. `complior init` + Project Root Discovery (9 markers) -- **DONE** (S06)
+19. Scanner Intelligence (Import Graph 45 AI pkgs, Multi-Language, Git History) -- **DONE** (S08/S09)
+20. L5 Deep Analysis (Targeted L5 + Doc Validation) -- **DONE** (S08/S09)
+21. GPAI Systemic Risk Checks -- **DONE** (S08/S09)
+22. Enhanced CLI Scan Output (severity, fix roadmap, deadline, badges) -- **DONE** (S08/S09)
+23. Code Quality (unified constants, AI package registry, clean architecture) -- **DONE** (S08/S09)
 
-Из 18 must-have, **16 уже DONE**. Осталось 2 -- обе в SaaS S9.
+Из 23 must-have, **21 уже DONE**. Осталось 2 -- обе в SaaS S9.
 
-**Вывод:** При текущей velocity (12.8 SP/day SaaS) Sprint 9 (51 SP, 4 weeks) укладывается в дедлайн с запасом ~3 месяца на S10+ фичи. CLI/Engine обогнал план на ~2 спринта.
+**Вывод:** При текущей velocity (12.8 SP/day SaaS) Sprint 9 (51 SP, 4 weeks) укладывается в дедлайн с запасом ~3 месяца на S10+ фичи. CLI/Engine обогнал план на ~3 спринта.
 
 ---
 
-**Обновлено:** 2026-03-13 | **Источники:** `~/complior/docs/BURNDOWN.md` (CLI), `~/PROJECT/docs/BURNDOWN.md` (SaaS)
+**Обновлено:** 2026-03-17 | **Источники:** `~/complior/docs/BURNDOWN.md` (CLI), `~/PROJECT/docs/BURNDOWN.md` (SaaS)

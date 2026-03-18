@@ -13,6 +13,7 @@ import { createEvidence } from '../domain/scanner/evidence.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import { computeComplianceDiff, formatDiffMarkdown, type ComplianceDiff } from '../domain/scanner/compliance-diff.js';
 import { loadCustomBannedPackages } from '../domain/scanner/rules/banned-packages.js';
+import type { ScanCache } from '../domain/scanner/scan-cache.js';
 
 export interface ScanServiceDeps {
   readonly scanner: Scanner;
@@ -22,6 +23,8 @@ export interface ScanServiceDeps {
   readonly setLastScanResult: (result: ScanResult) => void;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
+  /** E-11: Per-file scan cache (SHA-256 + mtime). Persisted to .complior/cache/. */
+  readonly scanCache?: ScanCache;
 }
 
 /** E-11: Compute a fast project-level hash from all file contents. */
@@ -69,9 +72,17 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     const result = scanner.scan(ctx);
 
-    // E-11: Update cache
+    // E-11: Update in-memory cache
     cachedProjectHash = projectHash;
     cachedResult = result;
+
+    // E-11: Persist file-level cache to disk (survives daemon restarts)
+    if (deps.scanCache) {
+      for (const file of ctx.files) {
+        deps.scanCache.set(file.relativePath, file.content, 0, [], 'L4');
+      }
+      deps.scanCache.save();
+    }
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
@@ -180,7 +191,27 @@ export const createScanService = (deps: ScanServiceDeps) => {
     return Object.freeze({ ...diff, markdown });
   };
 
-  return Object.freeze({ scan, scanDeep, getSbom, scanDiff });
+  const scanTier2 = async (projectPath: string): Promise<ScanResult> => {
+    if (scanner.scanTier2 === undefined) {
+      return scan(projectPath);
+    }
+
+    events.emit('scan.started', { projectPath });
+
+    await loadCustomBannedPackages(projectPath);
+    const ctx = await collectFiles(projectPath);
+    const result = await scanner.scanTier2(ctx);
+
+    setLastScanResult(result);
+    events.emit('scan.completed', { result });
+
+    return result;
+  };
+
+  /** Alias for scanDeep — L5 LLM analysis. */
+  const scanLlm = scanDeep;
+
+  return Object.freeze({ scan, scanDeep, scanTier2, scanLlm, getSbom, scanDiff });
 };
 
 export type ScanService = ReturnType<typeof createScanService>;

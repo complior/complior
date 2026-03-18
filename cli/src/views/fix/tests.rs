@@ -278,6 +278,8 @@ fn make_scan_result(findings: &[Finding]) -> crate::types::ScanResult {
         deep_analysis: None,
         l5_cost: None,
         regulation_version: None,
+        tier: None,
+        external_tool_results: None,
     }
 }
 

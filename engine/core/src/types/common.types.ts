@@ -143,6 +143,21 @@ export interface ScoreDiff {
   readonly degraded: readonly string[];
 }
 
+// --- Scan Tiers ---
+
+export type ScanTier = 1 | 2 | 3;
+
+export type ExternalToolName = 'semgrep' | 'bandit' | 'modelscan' | 'detect-secrets';
+
+export interface ExternalToolResult {
+  readonly tool: ExternalToolName;
+  readonly version: string;
+  readonly findings: readonly Finding[];
+  readonly duration: number;
+  readonly exitCode: number;
+  readonly error?: string;
+}
+
 // --- Scan ---
 
 export interface RegulationVersion {
@@ -163,6 +178,8 @@ export interface ScanResult {
   readonly deepAnalysis?: boolean;
   readonly l5Cost?: number;
   readonly regulationVersion?: RegulationVersion;
+  readonly tier?: ScanTier;
+  readonly externalToolResults?: readonly ExternalToolResult[];
 }
 
 // --- Project Profile ---

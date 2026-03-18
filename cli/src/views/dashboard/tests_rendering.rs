@@ -105,6 +105,8 @@ fn test_dashboard_with_scan_data() {
         deep_analysis: None,
         l5_cost: None,
         regulation_version: None,
+        tier: None,
+        external_tool_results: None,
     });
     app.score_history = vec![60.0, 65.0, 75.0];
 
@@ -143,6 +145,8 @@ fn test_dashboard_2x2_grid_no_panic() {
         deep_analysis: None,
         l5_cost: None,
         regulation_version: None,
+        tier: None,
+        external_tool_results: None,
     });
     app.score_history = vec![50.0, 60.0, 70.0, 80.0, 85.0];
 

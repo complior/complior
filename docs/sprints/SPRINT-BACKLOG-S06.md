@@ -1,8 +1,9 @@
 # Sprint S06 — Documents + Wizards + LLM + SaaS Regulatory
 
-**Версия:** 1.1.0
-**Дата:** 2026-03-07
-**Статус:** In Progress — 5 US DONE: US-S06-03 (LLM Chat Service), US-S06-17 (TUI Chat Assistant), US-S06-18 (Chat UX), US-S06-19 (Onboarding Rework 10→8), US-S06-20 (`complior init` + Root Discovery)
+**Версия:** 2.0.0
+**Дата:** 2026-03-18
+**Статус:** Partial (5/30 US DONE) — 📌 MONTH-1 (continue)
+**Done:** US-S06-03 (LLM Chat Service), US-S06-17 (TUI Chat Assistant), US-S06-18 (Chat UX), US-S06-19 (Onboarding Rework 10→8), US-S06-20 (`complior init` + Root Discovery)
 **Cross-repo:** ~/complior (CLI + Engine + SDK) + ~/PROJECT (SaaS Dashboard)
 **Длительность:** 2-3 недели
 

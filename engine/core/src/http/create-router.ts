@@ -55,6 +55,10 @@ import { createDebtRoute } from './routes/debt.route.js';
 import { createFrameworksRoute } from './routes/frameworks.route.js';
 import { createJurisdictionRoute } from './routes/jurisdiction.route.js';
 import { createProxyRoute } from './routes/proxy.route.js';
+import { createImportRoute } from './routes/import.route.js';
+import { createRedteamRoute } from './routes/redteam.route.js';
+import { createToolsRoute } from './routes/tools.route.js';
+import type { ToolManager } from '../infra/tool-manager.js';
 import type { ProxyService } from '../services/proxy-service.js';
 
 export interface RouterDeps {
@@ -93,6 +97,9 @@ export interface RouterDeps {
   readonly frameworkService?: FrameworkService;
   readonly proxyService?: ProxyService;
   readonly maxRequestsPerHour?: number;
+  readonly importDeps?: { readonly evidenceStore?: EvidenceStore; readonly getProjectPath: () => string };
+  readonly redteamDeps?: { readonly callLlm: (prompt: string, systemPrompt?: string) => Promise<string>; readonly evidenceStore?: EvidenceStore; readonly auditStore?: AuditStore; readonly getProjectPath: () => string };
+  readonly toolManager?: ToolManager;
 }
 
 export const createRouter = (deps: RouterDeps) => {
@@ -212,6 +219,21 @@ export const createRouter = (deps: RouterDeps) => {
   // US-S05-26: SSE events endpoint
   if (deps.events) {
     app.route('/', createEventsRoute({ events: deps.events }));
+  }
+
+  // US-S10-05: Promptfoo import endpoint
+  if (deps.importDeps) {
+    app.route('/', createImportRoute(deps.importDeps));
+  }
+
+  // US-S10-04: Red-team endpoint
+  if (deps.redteamDeps) {
+    app.route('/', createRedteamRoute(deps.redteamDeps));
+  }
+
+  // E-115: External tools management
+  if (deps.toolManager) {
+    app.route('/', createToolsRoute({ toolManager: deps.toolManager }));
   }
 
   // Health check

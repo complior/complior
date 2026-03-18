@@ -1,8 +1,8 @@
 # Sprint S07 — Performance + Streaming + Domains + SaaS Enterprise Start
 
-**Версия:** 1.0.0
-**Дата:** 2026-03-07
-**Статус:** Planning
+**Версия:** 2.0.0
+**Дата:** 2026-03-18
+**Статус:** Merged into S07-S08 Scanner Intelligence (✅ DONE). Remaining SDK items → Month 1 backlog.
 
 ---
 

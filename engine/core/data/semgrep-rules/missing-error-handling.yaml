@@ -1,0 +1,58 @@
+rules:
+  - id: complior.missing-error-handling
+    patterns:
+      - pattern-either:
+          - pattern: await $CLIENT.chat.completions.create(...)
+          - pattern: await $CLIENT.completions.create(...)
+          - pattern: await $CLIENT.messages.create(...)
+          - pattern: await $CLIENT.embeddings.create(...)
+          - pattern: await generateText(...)
+          - pattern: await streamText(...)
+      - pattern-not-inside: |
+          try { ... } catch ($ERR) { ... }
+    message: >
+      LLM API call without error handling. LLM calls can fail from rate limits,
+      network errors, content filtering, or quota exhaustion. Unhandled errors
+      in AI systems violate EU AI Act Art. 15 (robustness) and may cause
+      undefined system behavior. Wrap in try/catch with fallback logic.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      category: robustness
+      subcategory: error-handling
+      article: "Art. 15"
+      obligation: OBL-015
+      cwe:
+        - "CWE-755: Improper Handling of Exceptional Conditions"
+        - "CWE-391: Unchecked Error Condition"
+      confidence: MEDIUM
+      impact: MEDIUM
+
+  - id: complior.missing-error-handling-python
+    patterns:
+      - pattern-either:
+          - pattern: $CLIENT.chat.completions.create(...)
+          - pattern: $CLIENT.completions.create(...)
+          - pattern: $CLIENT.messages.create(...)
+          - pattern: $CLIENT.embeddings.create(...)
+          - pattern: openai.ChatCompletion.create(...)
+      - pattern-not-inside: |
+          try:
+            ...
+          except $ERR:
+            ...
+    message: >
+      LLM API call without error handling. Unhandled exceptions from LLM APIs
+      violate EU AI Act Art. 15 (robustness). Wrap in try/except with
+      appropriate fallback logic.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      category: robustness
+      subcategory: error-handling
+      article: "Art. 15"
+      obligation: OBL-015
+      cwe:
+        - "CWE-755: Improper Handling of Exceptional Conditions"
+      confidence: MEDIUM
+      impact: MEDIUM

@@ -1,0 +1,65 @@
+rules:
+  - id: complior.unsafe-deser
+    patterns:
+      - pattern-either:
+          # Python pickle family
+          - pattern: pickle.load(...)
+          - pattern: pickle.loads(...)
+          - pattern: _pickle.load(...)
+          - pattern: _pickle.loads(...)
+          - pattern: cPickle.load(...)
+          - pattern: cPickle.loads(...)
+          # Python marshal / shelve
+          - pattern: marshal.load(...)
+          - pattern: marshal.loads(...)
+          - pattern: shelve.open(...)
+          # Python YAML (unsafe loaders)
+          - pattern: yaml.load(...)
+          - pattern: yaml.unsafe_load(...)
+          # PyTorch — unsafe model loading
+          - pattern: torch.load(...)
+          # Python dill
+          - pattern: dill.load(...)
+          - pattern: dill.loads(...)
+    message: >
+      Unsafe deserialization detected. pickle, marshal, yaml.load, and
+      torch.load can execute arbitrary code on untrusted input — a critical
+      supply-chain risk for AI systems. Violates EU AI Act Art. 15
+      (cybersecurity). Use safe alternatives: json, yaml.safe_load(),
+      safetensors, torch.load(..., weights_only=True).
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      subcategory: unsafe-deserialization
+      article: "Art. 15"
+      obligation: OBL-006
+      cwe:
+        - "CWE-502: Deserialization of Untrusted Data"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: complior.unsafe-deser-js
+    patterns:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: new Function(...)
+          - pattern: vm.runInNewContext(...)
+          - pattern: vm.runInThisContext(...)
+    message: >
+      Unsafe code execution detected. eval(), Function(), and vm.runIn*()
+      on untrusted input can lead to code injection. In AI systems this
+      violates EU AI Act Art. 15 (cybersecurity). Use JSON.parse() with
+      Zod/schema validation instead.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      subcategory: unsafe-deserialization
+      article: "Art. 15"
+      obligation: OBL-006
+      cwe:
+        - "CWE-502: Deserialization of Untrusted Data"
+        - "CWE-94: Improper Control of Generation of Code"
+      confidence: MEDIUM
+      impact: HIGH

@@ -12,15 +12,7 @@ import type {
   FrameworkCheck,
   FrameworkScoreResult,
 } from '../../types/framework.types.js';
-import { EU_AI_ACT_DEADLINE_ISO } from '../shared/compliance-constants.js';
-
-const GRADE_THRESHOLDS = [
-  { minScore: 90, grade: 'A' },
-  { minScore: 75, grade: 'B' },
-  { minScore: 60, grade: 'C' },
-  { minScore: 40, grade: 'D' },
-  { minScore: 0, grade: 'F' },
-] as const;
+import { EU_AI_ACT_DEADLINE_ISO, LETTER_GRADE_THRESHOLDS, resolveGrade } from '../shared/compliance-constants.js';
 
 export const createEuAiActFramework = (
   scoringData: ScoringData | undefined,
@@ -55,7 +47,7 @@ export const createEuAiActFramework = (
     categories,
     gradeMapping: {
       type: 'letter',
-      thresholds: GRADE_THRESHOLDS,
+      thresholds: LETTER_GRADE_THRESHOLDS,
     },
   });
 };
@@ -82,7 +74,7 @@ export const scoreEuAiAct = (
   }
 
   const grade =
-    GRADE_THRESHOLDS.find((t) => scanScore.totalScore >= t.minScore)?.grade ?? 'F';
+    resolveGrade(scanScore.totalScore);
 
   const categories: FrameworkCategoryScore[] = scanScore.categoryScores.map((cs) => ({
     categoryId: cs.category,

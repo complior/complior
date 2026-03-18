@@ -4,9 +4,9 @@
 > Each feature lists its completed user stories with implementation details.
 > Sprint burndown numbers → see [BURNDOWN.md](./BURNDOWN.md)
 
-**Updated:** 2026-03-13
-**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US) — LLM Chat + Chat UX + Onboarding Rework + Init
-**Tests:** 1709 | **TS Engine:** 862 | **Rust CLI:** 433 | **SDK:** 414
+**Updated:** 2026-03-17
+**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US) + S08/S09 partial (5 US) — Scanner Intelligence + Enhanced CLI Output
+**Tests:** 2135 | **TS Engine:** 1255 | **Rust CLI:** 466 | **SDK:** 414
 **Next:** Sprint S06 — MCP Proxy, ISO 42001, LLM Document Fill, SaaS Regulatory (25 US remaining)
 
 ---
@@ -70,7 +70,10 @@
 | F53 | Chat UX Improvements (multiline, tool names, timestamps removed) | **DONE** | 1 | S06 |
 | F54 | Onboarding Rework (10→8 steps, persistence, Esc block) | **DONE** | 1 | S06 |
 | F55 | `complior init` + Project Root Discovery (9 markers) | **DONE** | 1 | S06 |
-| **TOTAL** | | | **~171** | |
+| F56 | Scanner Intelligence (Import Graph, Multi-Lang, Git History, L5 Targeted+DocVal) | **DONE** | 5 | S08/S09 |
+| F57 | Enhanced CLI Scan Output (severity, fix roadmap, deadline, badges) | **DONE** | — | S08/S09 |
+| F58 | Code Quality Audit (H1 constants, H4 AI packages, C1 file-collector, GPAI checks) | **DONE** | — | S08/S09 |
+| **TOTAL** | | | **~176** | |
 
 ---
 
@@ -928,6 +931,80 @@ Major rework of TUI onboarding wizard: reduced from 10 to 8 steps, fixed persist
 **Key files:**
 - `cli/src/config.rs` — `find_project_root()`, `project_config_path()`, `default_project_toml()`
 - `cli/src/headless/commands.rs` — enhanced `run_init()` with `project.toml` + `profile.json`
+
+---
+
+## F56: Scanner Intelligence (Import Graph + Multi-Language + Git History + L5)
+
+**Sprint:** S08/S09 (partial) | **Status:** DONE
+
+5 scanner enhancement modules + code quality refactoring for production-grade compliance scanning.
+
+| US | Title | Description |
+|----|-------|-------------|
+| E-109 | L4 Import Graph | `import-graph.ts` — static import analysis across 5 ecosystems. 45 AI SDK packages (npm 28, pip 7, Go 5, Rust 8, Java 6). Dependency chain tracking. Wired into `create-scanner.ts` pipeline |
+| E-111 | Multi-Language Scanner | `languages/adapter.ts` — Go, Rust, Java language adapters. Regex-based pattern detection for AI SDK usage, logging, error handling, kill-switch patterns per language. `detectLanguagePatterns()` unified entry point |
+| E-112 | Git History Analysis | `checks/git-history.ts` — 21 compliance document types tracked. `analyzeGitHistory()` checks file age, update frequency, staleness. `gitHistoryToCheckResults()` converter. Wired via `GitHistoryPort` + `git-history-adapter.ts` |
+| E-113 | Targeted L5 Analysis | `layers/layer5-targeted.ts` — 8 LLM prompts for targeted deep analysis (50-80% confidence range). Focuses on specific compliance gaps identified by L1-L4. Cost-efficient partial L5 scans |
+| E-114 | L5 Document Validation | `layers/layer5-docs.ts` — LLM-powered document quality validation. 4 doc types (FRIA, transparency notice, monitoring plan, risk assessment). 34 validation elements. `buildDocValidationPrompt()` + `docValidationToFindings()` |
+
+**Key files:**
+- `engine/core/src/domain/scanner/import-graph.ts` — import analysis engine
+- `engine/core/src/domain/scanner/languages/adapter.ts` — Go/Rust/Java adapters
+- `engine/core/src/domain/scanner/checks/git-history.ts` — git history checks
+- `engine/core/src/domain/scanner/layers/layer5-targeted.ts` — targeted L5 prompts
+- `engine/core/src/domain/scanner/layers/layer5-docs.ts` — doc validation via LLM
+- `engine/core/src/domain/scanner/checks/gpai-systemic-risk.ts` — GPAI Art.51-52 checks
+- `engine/core/src/domain/documents/ai-enricher.ts` — LLM document enrichment
+- **Tests:** TS 862→1255 (+393 tests)
+
+---
+
+## F57: Enhanced CLI Scan Output
+
+**Sprint:** S08/S09 (partial) | **Status:** DONE
+
+Human-readable scan output enriched with severity summary, fix roadmap, deadline countdown, fix type badges, and actionable next steps.
+
+| Item | Description |
+|------|-------------|
+| Severity Summary | Counts by severity (critical/high/medium/low) + fixability breakdown (auto-fixable, suggestions, manual) |
+| Deadline Countdown | EU AI Act enforcement countdown (days until Aug 2, 2026) |
+| Fix Type Badges | `[A]` code fix, `[B]` missing doc, `[C]` config change — on every finding |
+| Obligation IDs | `Obligation: OBL-015` shown per finding when available |
+| Business Impact | From `FindingExplanation.business_impact` — explains real-world consequence |
+| Auto-Fix Indicator | `=>` for auto-fixable (has fixDiff), `->` for suggestion only |
+| Fix Roadmap | Top 5 fixes sorted by predicted score impact (+8/+5/+3/+1), cumulative gain |
+| Next Steps | Structured section with actionable commands (`complior fix`, `complior scan --json`, `complior scan --deep`) |
+
+**Key files:**
+- `cli/src/headless/format.rs` — `render_severity_summary()`, `render_deadline_countdown()`, `render_fix_roadmap()`, `render_finding_group()` enhanced, `render_footer()` restructured
+- `cli/src/headless/tests.rs` — 8 new tests for all output enhancements
+- **Tests:** Rust 433→466 (+33 tests)
+
+---
+
+## F58: Code Quality Audit (H1/H4/C1)
+
+**Sprint:** S08/S09 (partial) | **Status:** DONE
+
+Architecture and DRY cleanup: unified extension lists, centralized AI package registry, Clean Architecture fix.
+
+| Item | Description |
+|------|-------------|
+| H1: Unified Extensions | `data/scanner-constants.ts` — `CODE_EXTENSIONS`, `DOC_EXTENSIONS`, `CONFIG_EXTENSIONS`, `STYLE_EXTENSIONS`, `AST_SUPPORTED_EXTENSIONS`, `ALL_SCANNABLE_EXTENSIONS`. Replaced 6 inline sets across scanner modules |
+| H4: AI Package Registry | `data/ai-packages.ts` — central registry with ecosystem-tagged entries. Exports: `NPM_AI_PACKAGES`, `PIP_AI_PACKAGES`, `GO_AI_PACKAGES`, `RUST_AI_PACKAGES`, `JAVA_AI_PACKAGES`. Replaced 4 scattered lists |
+| C1: File Collector Move | `domain/scanner/file-collector.ts` → `infra/file-collector.ts`. Port interface: `FileCollectorPort`. Clean Architecture: domain no longer does direct filesystem I/O |
+| GPAI Checks | `checks/gpai-systemic-risk.ts` — Art.51/52 GPAI systemic risk compliance checks |
+| AI Enricher | `documents/ai-enricher.ts` — LLM-powered document section enrichment |
+| E2E Tests | `e2e/gaps-e2e.test.ts` — end-to-end gap closure verification |
+
+**Key files:**
+- `engine/core/src/data/scanner-constants.ts` — unified extension constants
+- `engine/core/src/data/ai-packages.ts` — centralized AI SDK package registry
+- `engine/core/src/infra/file-collector.ts` — moved from domain/ (C1 fix)
+- `engine/core/src/domain/scanner/checks/gpai-systemic-risk.ts` — GPAI checks
+- `engine/core/src/domain/documents/ai-enricher.ts` — LLM enrichment
 
 ---
 

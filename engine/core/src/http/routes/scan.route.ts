@@ -96,6 +96,34 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
     return c.json(result);
   });
 
+  // E-115: Tier 2 scan — external tools via uv
+  app.post('/scan/tier2', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = ScanRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await scanService.scanTier2(parsed.data.path);
+    return c.json(result);
+  });
+
+  // Alias: POST /scan/llm → scanDeep (L5 LLM analysis)
+  app.post('/scan/llm', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = ScanRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await scanService.scanDeep(parsed.data.path);
+    return c.json(result);
+  });
+
   app.get('/sbom', async (c) => {
     const path = c.req.query('path');
     if (!path) {

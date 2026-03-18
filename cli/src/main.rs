@@ -115,7 +115,7 @@ async fn main() -> color_eyre::Result<()> {
         }
 
         let code: i32 = match &parsed_cli.command {
-            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, path }) => {
+            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, deep, llm, cloud, path }) => {
                 if let Some(base_branch) = diff {
                     headless::scan::run_scan_diff(
                         base_branch, *json, *fail_on_regression, *comment,
@@ -124,7 +124,8 @@ async fn main() -> color_eyre::Result<()> {
                 } else {
                     headless::run_headless_scan(
                         *ci, *json, *sarif, *no_tui, *threshold,
-                        fail_on.as_deref(), path.as_deref(), &config,
+                        fail_on.as_deref(), *deep, *llm, *cloud,
+                        path.as_deref(), &config,
                     ).await
                 }
             }
@@ -190,6 +191,15 @@ async fn main() -> color_eyre::Result<()> {
             }
             Some(cli::Command::Proxy { action }) => {
                 headless::proxy::run_proxy_command(action, &config).await
+            }
+            Some(cli::Command::Import { action }) => {
+                headless::import::run_import_command(action, &config).await
+            }
+            Some(cli::Command::Redteam { action }) => {
+                headless::redteam::run_redteam_command(action, &config).await
+            }
+            Some(cli::Command::Tools { action }) => {
+                headless::tools::run_tools_command(action, &config).await
             }
             None => unreachable!(),
         };

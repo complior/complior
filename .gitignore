@@ -16,6 +16,7 @@ docs/*
 !docs/BURNDOWN.md
 !docs/FEATURE-MAP.md
 !docs/FEATURE-AGENT-PASSPORT.md
+!docs/FIX.md
 !docs/contributing/
 !docs/sprints/
 demos/

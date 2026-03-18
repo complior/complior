@@ -16,7 +16,9 @@ export type EvidenceSource =
   | 'document'
   | 'adversarial-test'
   | 'supply-chain'
-  | 'nhi-scan';
+  | 'nhi-scan'
+  | 'security-import'
+  | 'redteam';
 
 export interface Evidence {
   readonly findingId: string;

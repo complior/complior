@@ -1,0 +1,36 @@
+rules:
+  - id: complior.bare-call
+    patterns:
+      - pattern-either:
+          # Python — OpenAI
+          - pattern: openai.ChatCompletion.create(...)
+          - pattern: openai.Completion.create(...)
+          - pattern: $CLIENT.chat.completions.create(...)
+          - pattern: $CLIENT.completions.create(...)
+          # Python — Anthropic
+          - pattern: $CLIENT.messages.create(...)
+          - pattern: anthropic.Anthropic(...).messages.create(...)
+          # JS/TS — constructors (bare usage without wrapper)
+          - pattern: new OpenAI(...)
+          - pattern: new Anthropic(...)
+          # JS/TS — Vercel AI SDK
+          - pattern: generateText(...)
+          - pattern: streamText(...)
+      - pattern-not-inside: complior(...)
+      - pattern-not-inside: compliorAgent(...)
+    message: >
+      Bare LLM API call without compliance wrapper. All LLM interactions
+      must be wrapped with complior() or compliorAgent() to ensure EU AI Act
+      compliance: AI disclosure (Art. 50), interaction logging (Art. 12),
+      content marking (Art. 50(2)), and human oversight (Art. 14).
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: ai-compliance
+      subcategory: unwrapped-call
+      article: "Art. 50(1)"
+      obligation: OBL-015
+      cwe:
+        - "CWE-778: Insufficient Logging"
+      confidence: HIGH
+      impact: HIGH

@@ -23,6 +23,11 @@ export const CONFIG_EXTENSIONS: ReadonlySet<string> = new Set(['.json', '.yaml',
 /** Web/style files included in project scans but not pattern-matched. */
 export const STYLE_EXTENSIONS: ReadonlySet<string> = new Set(['.html', '.css', '.vue']);
 
+/** ML model files — checked by ModelScan in Tier 2 deep scans. */
+export const MODEL_EXTENSIONS: ReadonlySet<string> = new Set([
+  '.pkl', '.pickle', '.pt', '.pth', '.h5', '.hdf5', '.safetensors', '.onnx', '.pb', '.tflite',
+]);
+
 /** Union of all extension categories — used by file-collector for project scanning. */
 export const ALL_SCANNABLE_EXTENSIONS: ReadonlySet<string> = new Set([
   ...CODE_EXTENSIONS,
@@ -30,6 +35,7 @@ export const ALL_SCANNABLE_EXTENSIONS: ReadonlySet<string> = new Set([
   ...DOC_EXTENSIONS,
   ...CONFIG_EXTENSIONS,
   ...STYLE_EXTENSIONS,
+  ...MODEL_EXTENSIONS,
 ]);
 
 /** Directories excluded from scanning — canonical superset shared by scanner, file-watcher, passport modules. */

@@ -1,8 +1,8 @@
 # Sprint S09 — Scanner Intelligence + Deep Scan Revolution
 
-**Версия:** 1.0.0
-**Дата:** 2026-03-16
-**Статус:** Planning
+**Версия:** 2.0.0
+**Дата:** 2026-03-18
+**Статус:** ✅ DONE — Engine code quality + scanner wiring + e2e fixes
 
 ---
 

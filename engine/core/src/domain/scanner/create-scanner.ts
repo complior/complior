@@ -1,4 +1,4 @@
-import type { CheckResult, Finding, ScanResult, Severity } from '../../types/common.types.js';
+import type { CheckResult, Finding, ScanResult, Severity, ExternalToolResult } from '../../types/common.types.js';
 import type { ScanContext } from '../../ports/scanner.port.js';
 import type { ScoringData } from '../../data/schemas.js';
 import { calculateScore } from './score-calculator.js';
@@ -31,6 +31,10 @@ import { selectUncertainFindings, buildTargetedPrompts, estimateTargetedCost } f
 import type { GitHistoryPort } from './checks/git-history.js';
 import { analyzeGitHistory, gitHistoryToCheckResults } from './checks/git-history.js';
 import { detectDocType, getChecklist, buildDocValidationPrompt, parseDocValidationResponse, docValidationToFindings } from './layers/layer5-docs.js';
+import type { ExternalRunners } from './external/runner-port.js';
+import { mapExternalFindings } from './external/finding-mapper.js';
+import { deduplicateFindings, mergeFindings } from './external/dedup.js';
+import type { ProcessRunner } from '../../ports/process.port.js';
 
 const DEFAULT_SEVERITY: Severity = 'info';
 
@@ -98,6 +102,17 @@ const enrichFindings = (
   });
 };
 
+/** Convert Finding[] → CheckResult[] for score recalculation. */
+const findingsToCheckResults = (findings: readonly Finding[]): readonly CheckResult[] =>
+  findings.map((f): CheckResult => {
+    if (f.type === 'pass') return { type: 'pass', checkId: f.checkId, message: f.message };
+    if (f.type === 'fail') return {
+      type: 'fail', checkId: f.checkId, message: f.message,
+      severity: f.severity, obligationId: f.obligationId, articleReference: f.articleReference, fix: f.fix,
+    };
+    return { type: 'skip', checkId: f.checkId, reason: f.message };
+  });
+
 const createFallbackScore = (findings: readonly Finding[]) => {
   const passed = findings.filter((f) => f.type === 'pass').length;
   const failed = findings.filter((f) => f.type === 'fail').length;
@@ -121,9 +136,16 @@ const createFallbackScore = (findings: readonly Finding[]) => {
 export interface Scanner {
   readonly scan: (ctx: ScanContext) => ScanResult;
   readonly scanDeep?: (ctx: ScanContext, fileContents: ReadonlyMap<string, string>) => Promise<ScanResult>;
+  readonly scanTier2?: (ctx: ScanContext) => Promise<ScanResult>;
 }
 
-export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer, gitHistory?: GitHistoryPort): Scanner => {
+export const createScanner = (
+  scoringData?: ScoringData,
+  layer5?: Layer5Analyzer,
+  gitHistory?: GitHistoryPort,
+  externalRunners?: ExternalRunners,
+  runProcess?: ProcessRunner,
+): Scanner => {
   // Cache import graph from last scan() for reuse in scanDeep()
   let lastImportGraph: ReturnType<typeof buildImportGraph> | null = null;
 
@@ -413,14 +435,7 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
       const enhancedFindings = [...l5Enhanced, ...docFindings];
 
       // Recalculate score with enhanced findings
-      const enhancedCheckResults: CheckResult[] = enhancedFindings.map((f): CheckResult => {
-        if (f.type === 'pass') return { type: 'pass', checkId: f.checkId, message: f.message };
-        if (f.type === 'fail') return {
-          type: 'fail', checkId: f.checkId, message: f.message,
-          severity: f.severity, obligationId: f.obligationId, articleReference: f.articleReference, fix: f.fix,
-        };
-        return { type: 'skip', checkId: f.checkId, reason: f.message };
-      });
+      const enhancedCheckResults = findingsToCheckResults(enhancedFindings);
 
       const score = scoringData !== undefined
         ? calculateScore(enhancedCheckResults, scoringData)
@@ -441,7 +456,76 @@ export const createScanner = (scoringData?: ScoringData, layer5?: Layer5Analyzer
     }
     : undefined;
 
-  return Object.freeze({ scan, scanDeep });
+  const scanTier2 = externalRunners !== undefined && runProcess !== undefined
+    ? async (ctx: ScanContext): Promise<ScanResult> => {
+      const tier2Start = Date.now();
+
+      // 1. Run Tier 1 (L1-L4) synchronously
+      const baseResult = scan(ctx);
+
+      // 2. Run external tools in parallel
+      const runnerDeps = {
+        projectPath: ctx.projectPath,
+        runProcess,
+        files: ctx.files.map((f) => ({ relativePath: f.relativePath, extension: f.extension })),
+      };
+
+      const externalResults = await Promise.allSettled([
+        externalRunners.semgrep.run(runnerDeps),
+        externalRunners.bandit.run(runnerDeps),
+        externalRunners.modelscan.run(runnerDeps),
+        externalRunners.detectSecrets.run(runnerDeps),
+      ]);
+
+      // 3. Collect results and map to findings
+      const toolResults: ExternalToolResult[] = [];
+      let allExternalFindings: Finding[] = [];
+
+      for (const settled of externalResults) {
+        if (settled.status === 'rejected') continue;
+        const result = settled.value;
+        const mappedFindings = mapExternalFindings(result.rawFindings, result.tool);
+
+        toolResults.push({
+          tool: result.tool,
+          version: result.version,
+          findings: mappedFindings,
+          duration: result.duration,
+          exitCode: result.exitCode,
+          error: result.error,
+        });
+
+        allExternalFindings.push(...mappedFindings);
+      }
+
+      // 4. Deduplicate external findings against base
+      const dedupedExternal = deduplicateFindings(baseResult.findings, allExternalFindings);
+
+      // 5. Merge
+      const mergedFindings = mergeFindings(baseResult.findings, dedupedExternal);
+
+      // 6. Recalculate score
+      const mergedCheckResults = findingsToCheckResults(mergedFindings);
+
+      const score = scoringData !== undefined
+        ? calculateScore(mergedCheckResults, scoringData)
+        : createFallbackScore(mergedFindings);
+
+      return {
+        score: { ...score, confidenceSummary: baseResult.score.confidenceSummary },
+        findings: mergedFindings,
+        projectPath: baseResult.projectPath,
+        scannedAt: baseResult.scannedAt,
+        duration: Date.now() - tier2Start,
+        filesScanned: baseResult.filesScanned,
+        regulationVersion: baseResult.regulationVersion,
+        tier: 2,
+        externalToolResults: toolResults,
+      };
+    }
+    : undefined;
+
+  return Object.freeze({ scan, scanDeep, scanTier2 });
 };
 
 // Re-export types for backward compatibility

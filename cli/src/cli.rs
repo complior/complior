@@ -68,6 +68,18 @@ pub enum Command {
         #[arg(long)]
         comment: bool,
 
+        /// Tier 2: Run external security tools (Semgrep, Bandit, ModelScan, detect-secrets) via uv
+        #[arg(long)]
+        deep: bool,
+
+        /// L5: AI-powered document quality analysis (LLM)
+        #[arg(long)]
+        llm: bool,
+
+        /// Tier 3: Cloud-based analysis (stub — planned for Month 3-4)
+        #[arg(long)]
+        cloud: bool,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },
@@ -230,6 +242,24 @@ pub enum Command {
     Doc {
         #[command(subcommand)]
         action: DocAction,
+    },
+
+    /// Import external tool results (e.g. Promptfoo red-team output)
+    Import {
+        #[command(subcommand)]
+        action: ImportAction,
+    },
+
+    /// Run security red-team probes against your AI system
+    Redteam {
+        #[command(subcommand)]
+        action: RedteamAction,
+    },
+
+    /// Manage external security tools (install, update, status)
+    Tools {
+        #[command(subcommand)]
+        action: ToolsAction,
     },
 
     /// Authenticate with SaaS dashboard via browser
@@ -703,6 +733,57 @@ pub enum DocAction {
 }
 
 #[derive(Subcommand, Debug, Clone)]
+pub enum ImportAction {
+    /// Import Promptfoo red-team results (JSON)
+    Promptfoo {
+        /// Path to Promptfoo JSON output file (or read from stdin)
+        #[arg(long)]
+        file: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum RedteamAction {
+    /// Run red-team security probes against your AI system
+    Run {
+        /// Agent name to test
+        #[arg(long, default_value = "default")]
+        agent: String,
+
+        /// OWASP categories to test (e.g. LLM01,LLM06). Default: all
+        #[arg(long, value_delimiter = ',')]
+        categories: Vec<String>,
+
+        /// Maximum number of probes to run
+        #[arg(long)]
+        max_probes: Option<u32>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Show the last red-team report
+    Last {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum ToolsAction {
+    /// Show status of external security tools
+    Status,
+    /// Install or update external security tools
+    Update,
+}
+
+#[derive(Subcommand, Debug, Clone)]
 pub enum JurisdictionAction {
     /// List all 30 EU/EEA jurisdictions
     List {
@@ -766,6 +847,9 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Doc { .. }
             | Command::Jurisdiction { .. }
             | Command::Proxy { .. }
+            | Command::Import { .. }
+            | Command::Redteam { .. }
+            | Command::Tools { .. }
             | Command::Login
             | Command::Logout
             | Command::Sync { .. },
@@ -1923,6 +2007,75 @@ mod tests {
             }
             _ => panic!("Expected Doc Generate command"),
         }
+    }
+
+    #[test]
+    fn cli_parse_scan_deep() {
+        let cli = Cli::parse_from(["complior", "scan", "--deep"]);
+        match cli.command {
+            Some(Command::Scan { deep, llm, cloud, .. }) => {
+                assert!(deep);
+                assert!(!llm);
+                assert!(!cloud);
+            }
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_scan_llm() {
+        let cli = Cli::parse_from(["complior", "scan", "--llm"]);
+        match cli.command {
+            Some(Command::Scan { deep, llm, cloud, .. }) => {
+                assert!(!deep);
+                assert!(llm);
+                assert!(!cloud);
+            }
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_scan_deep_llm() {
+        let cli = Cli::parse_from(["complior", "scan", "--deep", "--llm"]);
+        match cli.command {
+            Some(Command::Scan { deep, llm, .. }) => {
+                assert!(deep);
+                assert!(llm);
+            }
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_scan_cloud() {
+        let cli = Cli::parse_from(["complior", "scan", "--cloud"]);
+        match cli.command {
+            Some(Command::Scan { cloud, .. }) => {
+                assert!(cloud);
+            }
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_tools_status() {
+        let cli = Cli::parse_from(["complior", "tools", "status"]);
+        assert!(matches!(
+            cli.command,
+            Some(Command::Tools { action: ToolsAction::Status })
+        ));
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_tools_update() {
+        let cli = Cli::parse_from(["complior", "tools", "update"]);
+        assert!(matches!(
+            cli.command,
+            Some(Command::Tools { action: ToolsAction::Update })
+        ));
+        assert!(is_headless(&cli));
     }
 
     #[test]

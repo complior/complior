@@ -59,5 +59,7 @@ pub(super) fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::t
         deep_analysis: None,
         l5_cost: None,
         regulation_version: None,
+        tier: None,
+        external_tool_results: None,
     }
 }

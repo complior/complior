@@ -42,6 +42,8 @@ mod tests {
             deep_analysis: None,
             l5_cost: None,
             regulation_version: None,
+            tier: None,
+            external_tool_results: None,
         }
     }
 

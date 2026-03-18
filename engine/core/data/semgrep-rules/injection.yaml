@@ -1,0 +1,73 @@
+rules:
+  - id: complior.injection
+    patterns:
+      - pattern-either:
+          # Python — f-strings in messages
+          - pattern: |
+              $CLIENT.chat.completions.create(
+                ...,
+                messages=[..., {"role": "user", "content": f"...{$VAR}..."}, ...],
+                ...
+              )
+          - pattern: |
+              $CLIENT.messages.create(
+                ...,
+                messages=[..., {"role": "user", "content": f"...{$VAR}..."}, ...],
+                ...
+              )
+          # Python — .format()
+          - pattern: |
+              $CLIENT.chat.completions.create(
+                ...,
+                messages=[..., {"role": "user", "content": "...{}...".format($VAR)}, ...],
+                ...
+              )
+          # Python — concatenation
+          - pattern: |
+              $CLIENT.chat.completions.create(
+                ...,
+                messages=[..., {"role": "user", "content": "..." + $VAR + "..."}, ...],
+                ...
+              )
+    message: >
+      Potential prompt injection: user-controlled input interpolated directly
+      into an LLM prompt. This allows adversarial prompt manipulation,
+      violating EU AI Act Art. 15 (robustness) and Art. 9 (risk management).
+      Use parameterized prompts, input validation, or the @complior/sdk
+      sanitize hook.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      subcategory: prompt-injection
+      article: "Art. 15"
+      obligation: OBL-006
+      cwe:
+        - "CWE-77: Command Injection"
+        - "CWE-94: Improper Control of Generation of Code"
+      confidence: MEDIUM
+      impact: HIGH
+
+  - id: complior.injection-js
+    patterns:
+      - pattern-either:
+          # Template literals in message content
+          - pattern: "{role: \"user\", content: `...${$VAR}...`}"
+          # String concatenation in message content
+          - pattern: "{role: \"user\", content: $PREFIX + $USER_INPUT}"
+          - pattern: "{role: \"user\", content: $PREFIX + $USER_INPUT + $SUFFIX}"
+    message: >
+      Potential prompt injection: user input interpolated via template literal
+      or concatenation into LLM message. Violates EU AI Act Art. 15
+      (robustness). Use parameterized prompts or input sanitization.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      subcategory: prompt-injection
+      article: "Art. 15"
+      obligation: OBL-006
+      cwe:
+        - "CWE-77: Command Injection"
+      confidence: MEDIUM
+      impact: HIGH

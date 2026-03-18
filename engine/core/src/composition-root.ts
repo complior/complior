@@ -33,14 +33,24 @@ import { createDebtService } from './services/debt-service.js';
 import { createFrameworkService } from './services/framework-service.js';
 import { createProxyService } from './services/proxy-service.js';
 import { ProxyPolicySchema } from './domain/proxy/policy-engine.js';
-import { createFrameworkRegistry, createEuAiActFramework, scoreEuAiAct, createAiuc1Framework, scoreAiuc1 } from './domain/frameworks/index.js';
+import { createFrameworkRegistry, createEuAiActFramework, scoreEuAiAct, createAiuc1Framework, scoreAiuc1, createOwaspLlmFramework, scoreOwaspLlm, createMitreAtlasFramework, scoreMitreAtlas } from './domain/frameworks/index.js';
 import { loadProjectConfig, getSelectedFrameworks } from './infra/project-config.js';
 import { createEvidenceStore } from './domain/scanner/evidence-store.js';
 import { createAuditStore } from './domain/audit/index.js';
 import { loadOrCreateKeyPair as loadEvidenceKeyPair } from './domain/passport/crypto-signer.js';
 import { sign, verify as cryptoVerify } from 'node:crypto';
 import { createRouter } from './http/create-router.js';
+import { createToolManager, DEFAULT_TOOLS_DIR, type ProcessRunner } from './infra/tool-manager.js';
+import {
+  createSemgrepRunner,
+  createBanditRunner,
+  createModelScanRunner,
+  createDetectSecretsRunner,
+} from './domain/scanner/external/index.js';
+import type { ExternalRunners } from './domain/scanner/external/runner-port.js';
 import { createFileWatcher } from './infra/file-watcher.js';
+import { createScanCache } from './domain/scanner/scan-cache.js';
+import { createFileCacheStorage } from './infra/cache-storage.js';
 import { createOnboardingWizard } from './onboarding/wizard.js';
 import { ENGINE_VERSION } from './version.js';
 import { DEFAULT_INPUT_COST_PER_1K, DEFAULT_OUTPUT_COST_PER_1K } from './domain/shared/compliance-constants.js';
@@ -140,7 +150,44 @@ export const loadApplication = async (): Promise<Application> => {
       (inputTokens * DEFAULT_INPUT_COST_PER_1K + outputTokens * DEFAULT_OUTPUT_COST_PER_1K) / 1000,
   });
   const gitHistory = createGitHistoryAdapter();
-  const scanner = createScanner(regulationData.scoring?.scoring, layer5, gitHistory);
+
+  // E-115: External tool manager (uv-based, for Tier 2 scans)
+  const toolManager = createToolManager();
+  const externalRunners: ExternalRunners = {
+    semgrep: createSemgrepRunner(),
+    bandit: createBanditRunner(),
+    modelscan: createModelScanRunner(),
+    detectSecrets: createDetectSecretsRunner(),
+  };
+
+  // Process runner for Tier 2: wraps commands via `uv tool run` so
+  // uv-installed tools (semgrep, bandit, etc.) are found correctly.
+  const { execFile: nodeExecFile } = await import('node:child_process');
+  const uvAvailable = await toolManager.isUvAvailable();
+  const tier2RunProcess: ProcessRunner = (cmd, args, options) => {
+    const actualCmd = uvAvailable ? 'uv' : cmd;
+    const actualArgs = uvAvailable ? ['tool', 'run', cmd, ...args] : [...args];
+    return new Promise((resolve) => {
+      nodeExecFile(actualCmd, actualArgs, {
+        timeout: options?.timeout ?? 60_000,
+        maxBuffer: 10 * 1024 * 1024,
+        env: { ...process.env, UV_TOOL_DIR: DEFAULT_TOOLS_DIR },
+        cwd: options?.cwd,
+      }, (error, stdout, stderr) => {
+        resolve({
+          stdout: stdout ?? '',
+          stderr: stderr ?? '',
+          exitCode: error ? (error as NodeJS.ErrnoException).code === 'ENOENT' ? 127 : 1 : 0,
+        });
+      });
+    });
+  };
+
+  // E-11: Incremental scan cache (per-file SHA-256 + mtime, persisted to .complior/cache/)
+  const cacheStorage = createFileCacheStorage(projectPath);
+  const scanCache = createScanCache(cacheStorage);
+
+  const scanner = createScanner(regulationData.scoring?.scoring, layer5, gitHistory, externalRunners, tier2RunProcess);
 
   const fixer = createFixer({
     getFramework: () => {
@@ -194,6 +241,7 @@ export const loadApplication = async (): Promise<Application> => {
     setLastScanResult: (result) => { state.lastScanResult = result; persistScanResult(result); },
     evidenceStore,
     auditStore,
+    scanCache,
   });
 
   // Template loader for fixer
@@ -382,6 +430,8 @@ export const loadApplication = async (): Promise<Application> => {
     scoreEuAiAct,
   );
   frameworkRegistry.register(createAiuc1Framework(), scoreAiuc1);
+  frameworkRegistry.register(createOwaspLlmFramework(), scoreOwaspLlm);
+  frameworkRegistry.register(createMitreAtlasFramework(), scoreMitreAtlas);
 
   const frameworkService = createFrameworkService({
     registry: frameworkRegistry,
@@ -579,6 +629,17 @@ export const loadApplication = async (): Promise<Application> => {
     frameworkService,
     proxyService,
     maxRequestsPerHour: projectConfig.llm?.maxRequestsPerHour,
+    importDeps: {
+      evidenceStore,
+      getProjectPath: () => state.projectPath,
+    },
+    redteamDeps: {
+      callLlm,
+      evidenceStore,
+      auditStore,
+      getProjectPath: () => state.projectPath,
+    },
+    toolManager,
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events
