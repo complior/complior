@@ -12,6 +12,76 @@ pub enum Severity {
     Info,
 }
 
+impl Severity {
+    /// Sort key: Critical = 0, Info = 4. Use for severity-ordered sorting.
+    pub const fn sort_key(self) -> u8 {
+        match self {
+            Self::Critical => 0,
+            Self::High => 1,
+            Self::Medium => 2,
+            Self::Low => 3,
+            Self::Info => 4,
+        }
+    }
+
+    /// Uppercase label for display.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Critical => "CRITICAL",
+            Self::High => "HIGH",
+            Self::Medium => "MEDIUM",
+            Self::Low => "LOW",
+            Self::Info => "INFO",
+        }
+    }
+
+    /// Lowercase string for serialization (matches serde rename_all = "lowercase").
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Critical => "critical",
+            Self::High => "high",
+            Self::Medium => "medium",
+            Self::Low => "low",
+            Self::Info => "info",
+        }
+    }
+}
+
+/// Strip layer prefix from a check_id, returning (layer_tag, remainder).
+///
+/// Single source of truth for prefix stripping across CLI.
+/// Example: `"l2-fria"` → `("l2", "fria")`, `"cross-doc-mismatch"` → `("cross", "doc-mismatch")`.
+pub fn strip_layer_prefix(check_id: &str) -> (&str, &str) {
+    // Order matters: longer prefixes first to avoid false matches (e.g. "l4-nhi-" before "l4-")
+    const PREFIXES: &[&str] = &[
+        "l1-", "l2-", "l3-", "l4-", "l5-", "cross-", "gpai-",
+        "ext-semgrep-", "ext-bandit-", "ext-modelscan-", "ext-detect-secrets-", "ext-",
+    ];
+    for prefix in PREFIXES {
+        if let Some(rest) = check_id.strip_prefix(prefix) {
+            let tag = &prefix[..prefix.len() - 1]; // strip trailing '-'
+            return (tag, rest);
+        }
+    }
+    ("", check_id)
+}
+
+/// Convert kebab-case string to Title Case.
+///
+/// Example: `"risk-management"` → `"Risk Management"`
+pub fn humanize_kebab(s: &str) -> String {
+    s.split('-')
+        .map(|w| {
+            let mut chars = w.chars();
+            match chars.next() {
+                Some(c) => format!("{}{}", c.to_uppercase(), chars.as_str()),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Zone {
@@ -224,6 +294,23 @@ pub struct ScanResult {
     pub l5_cost: Option<f64>,
     #[serde(default)]
     pub regulation_version: Option<serde_json::Value>,
+    #[serde(default)]
+    pub tier: Option<u8>,
+    #[serde(default)]
+    pub external_tool_results: Option<Vec<ExternalToolResult>>,
+}
+
+/// Result from a single external security tool (Semgrep, Bandit, etc.)
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalToolResult {
+    pub tool: String,
+    pub version: String,
+    pub findings: Vec<Finding>,
+    pub duration: u64,
+    pub exit_code: i32,
+    #[serde(default)]
+    pub error: Option<String>,
 }
 
 // Re-derive Serialize for nested types used in session save
@@ -264,7 +351,7 @@ impl Serialize for Finding {
         state.serialize_field("checkId", &self.check_id)?;
         state.serialize_field("type", &self.r#type)?;
         state.serialize_field("message", &self.message)?;
-        state.serialize_field("severity", &format!("{:?}", self.severity).to_lowercase())?;
+        state.serialize_field("severity", self.severity.as_str())?;
         state.serialize_field("obligationId", &self.obligation_id)?;
         state.serialize_field("articleReference", &self.article_reference)?;
         state.serialize_field("fix", &self.fix)?;
@@ -317,6 +404,81 @@ pub struct MultiFrameworkScoreResult {
     pub frameworks: Vec<FrameworkScoreResult>,
     pub selected_framework_ids: Vec<String>,
     pub computed_at: String,
+}
+
+// --- Security Score (S10: Promptfoo/Redteam) ---
+
+/// Security category score for OWASP LLM Top 10 breakdown.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecurityCategoryScore {
+    pub category_id: String,
+    #[serde(default)]
+    pub name: String,
+    pub score: f64,
+    pub probes_passed: u32,
+    pub probes_total: u32,
+}
+
+/// Security score from redteam or promptfoo import.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecurityScoreResult {
+    pub score: f64,
+    pub grade: String,
+    pub categories: Vec<SecurityCategoryScore>,
+    #[serde(default)]
+    pub critical_findings: u32,
+    #[serde(default)]
+    pub critical_capped: bool,
+}
+
+/// Probe result from a redteam run.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProbeResult {
+    pub probe_id: String,
+    #[serde(default)]
+    pub probe_name: String,
+    #[serde(default)]
+    pub owasp_category: String,
+    pub verdict: String,
+    #[serde(default)]
+    pub response: String,
+    #[serde(default)]
+    pub confidence: f64,
+}
+
+/// OWASP category summary within a redteam report.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OwaspCategorySummary {
+    pub category_id: String,
+    pub total: u32,
+    pub passed: u32,
+    pub failed: u32,
+    #[serde(default)]
+    pub inconclusive: u32,
+}
+
+/// Full redteam report from `POST /redteam/run` or `GET /redteam/last`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RedteamReport {
+    pub agent_name: String,
+    pub timestamp: String,
+    #[serde(default)]
+    pub duration: u64,
+    pub total_probes: u32,
+    pub pass_count: u32,
+    pub fail_count: u32,
+    #[serde(default)]
+    pub inconclusive_count: u32,
+    pub security_score: SecurityScoreResult,
+    #[serde(default)]
+    pub owasp_mapping: std::collections::HashMap<String, OwaspCategorySummary>,
+    #[serde(default)]
+    pub probe_results: Vec<ProbeResult>,
 }
 
 // --- Dashboard Metrics (S05: Cost, Debt, Readiness) ---

@@ -19,7 +19,6 @@ use ratatui::Frame;
 use crate::app::App;
 use crate::types::Severity;
 
-use self::explain::severity_order;
 
 /// Per-layer scanning progress.
 #[derive(Debug, Clone)]
@@ -167,12 +166,12 @@ pub(super) fn sort_findings_for_display<'a>(
     file_agent_map: &[(String, String)],
 ) {
     if file_agent_map.is_empty() {
-        filtered.sort_by_key(|f| severity_order(f.severity));
+        filtered.sort_by_key(|f| f.severity.sort_key());
     } else {
         filtered.sort_by(|a, b| {
             let agent_a = render::resolve_agent_name(a.file.as_deref(), file_agent_map);
             let agent_b = render::resolve_agent_name(b.file.as_deref(), file_agent_map);
-            agent_a.cmp(agent_b).then_with(|| severity_order(a.severity).cmp(&severity_order(b.severity)))
+            agent_a.cmp(agent_b).then_with(|| a.severity.sort_key().cmp(&b.severity.sort_key()))
         });
     }
 }

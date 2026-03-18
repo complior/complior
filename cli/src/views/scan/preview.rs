@@ -128,7 +128,7 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
             ]));
             // Article + severity
             let art = finding.article_reference.as_deref().unwrap_or("");
-            let sev_label = format!("{:?}", finding.severity).to_uppercase();
+            let sev_label = finding.severity.label().to_string();
             if !art.is_empty() {
                 lines.push(Line::from(vec![
                     Span::styled("  ", Style::default()),
@@ -158,7 +158,7 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
                 ),
             ]));
             let art = finding.article_reference.as_deref().unwrap_or("");
-            let sev_label = format!("{:?}", finding.severity).to_uppercase();
+            let sev_label = finding.severity.label().to_string();
             if !art.is_empty() {
                 lines.push(Line::from(vec![
                     Span::styled("  ", Style::default()),

@@ -8,7 +8,6 @@ use crate::app::App;
 use crate::theme;
 use crate::types::Severity;
 
-use super::explain::severity_order;
 
 pub(super) fn render_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
@@ -162,7 +161,7 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
         for f in &filtered {
             let agent = resolve_agent_name(f.file.as_deref(), &file_agent_map);
             *agent_counts.entry(agent).or_insert(0) += 1;
-            *agent_sev_counts.entry((agent, severity_order(f.severity))).or_insert(0) += 1;
+            *agent_sev_counts.entry((agent, f.severity.sort_key())).or_insert(0) += 1;
         }
     }
 
@@ -173,7 +172,7 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
     let w = inner.width as usize;
 
     for (i, f) in filtered.iter().enumerate() {
-        let sev_ord = severity_order(f.severity);
+        let sev_ord = f.severity.sort_key();
 
         // Agent group header (only when passports loaded)
         if has_passports {

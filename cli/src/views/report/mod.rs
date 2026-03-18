@@ -297,7 +297,7 @@ fn render_report_detail_view(frame: &mut Frame, area: Rect, app: &App) {
     } else {
         for (i, f) in scan.findings.iter().enumerate() {
             let sev_color = theme::severity_color(f.severity);
-            let sev_label = format!("{:?}", f.severity).to_uppercase();
+            let sev_label = f.severity.label().to_string();
             lines.push(Line::from(vec![
                 Span::styled(format!("  {:<3}", i + 1), Style::default().fg(t.muted)),
                 Span::styled(format!("{:<14}", f.check_id), Style::default().fg(t.fg)),

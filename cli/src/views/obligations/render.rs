@@ -313,31 +313,7 @@ fn render_obligation_detail(
 
 /// Format a scanner checkId into a human-readable name.
 fn format_check_name(check_id: &str) -> String {
-    // Strip layer prefix for display, capitalize
-    let (layer, name) = if let Some(rest) = check_id.strip_prefix("l2-") {
-        ("L2", rest)
-    } else if let Some(rest) = check_id.strip_prefix("l3-") {
-        ("L3", rest)
-    } else if let Some(rest) = check_id.strip_prefix("l4-") {
-        ("L4", rest)
-    } else if let Some(rest) = check_id.strip_prefix("cross-") {
-        ("Cross", rest)
-    } else {
-        ("L1", check_id)
-    };
-    let title: String = name
-        .split('-')
-        .map(|w| {
-            let mut c = w.chars();
-            match c.next() {
-                None => String::new(),
-                Some(first) => {
-                    let upper: String = first.to_uppercase().collect();
-                    upper + c.as_str()
-                }
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ");
-    format!("{layer}: {title}")
+    let (tag, name) = crate::types::strip_layer_prefix(check_id);
+    let layer = if tag.is_empty() { "L1" } else { tag };
+    format!("{}: {}", layer.to_uppercase(), crate::types::humanize_kebab(name))
 }

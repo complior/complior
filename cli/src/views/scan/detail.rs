@@ -241,7 +241,7 @@ fn render_detail_legal_column(
     let sev_color = theme::severity_color(finding.severity);
     let obl = finding.obligation_id.as_deref().unwrap_or("N/A");
     let art = finding.article_reference.as_deref().unwrap_or("N/A");
-    let sev_label = format!("{:?}", finding.severity).to_uppercase();
+    let sev_label = finding.severity.label().to_string();
     let w = area.width.saturating_sub(4) as usize;
     let mut lines: Vec<Line<'_>> = Vec::new();
 

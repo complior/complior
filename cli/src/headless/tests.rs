@@ -1,9 +1,14 @@
 #[cfg(test)]
 mod tests {
-    use crate::headless::format::{format_human, format_json, format_sarif, sarif_level};
+    use crate::headless::format::{format_human, format_json, format_sarif, sarif_level, FormatOptions};
     use crate::types::{
-        CategoryScore, Finding, FindingExplanation, ScanResult, ScoreBreakdown, Severity, Zone,
+        CategoryScore, CheckResultType, ExternalToolResult, Finding, FindingExplanation,
+        FrameworkScoreResult, ScanResult, ScoreBreakdown, Severity, Zone,
     };
+
+    fn default_opts() -> FormatOptions {
+        FormatOptions { framework_scores: None }
+    }
 
     fn mock_scan_result() -> ScanResult {
         ScanResult {
@@ -27,7 +32,7 @@ mod tests {
             findings: vec![
                 Finding {
                     check_id: "fria".into(),
-                    r#type: crate::types::CheckResultType::Fail,
+                    r#type: CheckResultType::Fail,
                     message: "Missing FRIA document".into(),
                     severity: Severity::High,
                     obligation_id: Some("OBL-015".into()),
@@ -45,7 +50,7 @@ mod tests {
                 },
                 Finding {
                     check_id: "l4-bare-llm".into(),
-                    r#type: crate::types::CheckResultType::Fail,
+                    r#type: CheckResultType::Fail,
                     message: "Bare LLM API call detected".into(),
                     severity: Severity::Medium,
                     obligation_id: None,
@@ -69,10 +74,12 @@ mod tests {
             deep_analysis: None,
             l5_cost: None,
             regulation_version: None,
+            tier: None,
+            external_tool_results: None,
         }
     }
 
-    fn make_finding(check_id: &str, typ: crate::types::CheckResultType, message: &str, severity: Severity) -> Finding {
+    fn make_finding(check_id: &str, typ: CheckResultType, message: &str, severity: Severity) -> Finding {
         Finding {
             check_id: check_id.into(),
             r#type: typ,
@@ -92,6 +99,8 @@ mod tests {
             explanation: None,
         }
     }
+
+    // ── JSON / SARIF (unchanged) ────────────────────────────────
 
     #[test]
     fn format_json_output() {
@@ -118,46 +127,123 @@ mod tests {
     }
 
     #[test]
-    fn format_human_output() {
+    fn sarif_level_mapping() {
+        assert_eq!(sarif_level(&Severity::Critical), "error");
+        assert_eq!(sarif_level(&Severity::High), "error");
+        assert_eq!(sarif_level(&Severity::Medium), "warning");
+        assert_eq!(sarif_level(&Severity::Low), "note");
+        assert_eq!(sarif_level(&Severity::Info), "note");
+    }
+
+    // ── Data extraction helpers (unchanged) ─────────────────────
+
+    #[test]
+    fn project_name_via_header() {
+        // project_name is tested indirectly through format_human header
         let result = mock_scan_result();
-        let text = format_human(&result);
-        // Header shows project name
-        assert!(text.contains("Complior — test-project"));
-        assert!(text.contains("72/100"));
-        assert!(text.contains("yellow"));
-        // Severity summary
-        assert!(text.contains("Findings:"));
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("test-project"));
+    }
+
+    // ── New format_human tests ──────────────────────────────────
+
+    #[test]
+    fn format_human_header() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Header with version
+        assert!(text.contains("Complior v"));
+        assert!(text.contains("EU AI Act Compliance Scanner"));
+        // Scan info
+        assert!(text.contains("test-project"));
+        assert!(text.contains("42 collected"));
+        assert!(text.contains("L1"));
+        assert!(text.contains("L4"));
+    }
+
+    #[test]
+    fn format_human_score_block() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Compliance score
+        assert!(text.contains("COMPLIANCE SCORE"));
+        assert!(text.contains("72 / 100"));
+        // No security score without framework_scores
+        assert!(!text.contains("SECURITY SCORE"));
+    }
+
+    #[test]
+    fn format_human_dual_score() {
+        let result = mock_scan_result();
+        let opts = FormatOptions {
+            framework_scores: Some(vec![
+                FrameworkScoreResult {
+                    framework_id: "eu-ai-act".into(),
+                    framework_name: "EU AI Act 2024/1689".into(),
+                    score: 72.0,
+                    grade: "C".into(),
+                    grade_type: "letter".into(),
+                    gaps: 5,
+                    total_checks: 25,
+                    passed_checks: 18,
+                    deadline: None,
+                    categories: vec![],
+                },
+                FrameworkScoreResult {
+                    framework_id: "owasp-llm-top10".into(),
+                    framework_name: "OWASP LLM Top 10".into(),
+                    score: 85.0,
+                    grade: "B".into(),
+                    grade_type: "letter".into(),
+                    gaps: 2,
+                    total_checks: 10,
+                    passed_checks: 8,
+                    deadline: None,
+                    categories: vec![],
+                },
+            ]),
+        };
+        let text = format_human(&result, &opts);
+        assert!(text.contains("COMPLIANCE SCORE"));
+        assert!(text.contains("SECURITY SCORE"));
+        assert!(text.contains("85 / 100"));
+        // Framework breakdown
+        assert!(text.contains("Framework Breakdown"));
+        assert!(text.contains("EU AI Act 2024/1689"));
+        assert!(text.contains("OWASP LLM Top 10"));
+    }
+
+    #[test]
+    fn format_human_findings_section() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Findings header
+        assert!(text.contains("FINDINGS"));
+        assert!(text.contains("2 total"));
         assert!(text.contains("1 high"));
         assert!(text.contains("1 medium"));
-        // Fixable summary
-        assert!(text.contains("Fixable:"));
-        // Deadline countdown
-        assert!(text.contains("EU AI Act enforcement"));
-        // Category breakdown
-        assert!(text.contains("Transparency"));
-        assert!(text.contains("80%"));
-        // What's Missing section with split
-        assert!(text.contains("What's Missing"));
-        assert!(text.contains("Documents needed"));
-        assert!(text.contains("Code & config issues"));
-        // Severity labels
+        // Finding details
         assert!(text.contains("HIGH"));
         assert!(text.contains("MEDIUM"));
-        // Fix type badges
-        assert!(text.contains("[B]"));
-        assert!(text.contains("[A]"));
-        // Obligation ID
-        assert!(text.contains("Obligation: OBL-015"));
-        // Fix suggestion inline
+        // Layer subgroup headers
+        assert!(text.contains("L1"));
+        assert!(text.contains("File Presence"));
+        assert!(text.contains("L4"));
+        assert!(text.contains("Code Patterns"));
+        // Article references
+        assert!(text.contains("Art. 27"));
+        assert!(text.contains("Art. 50(1)"));
+        // Labels
+        assert!(text.contains("Fundamental Rights Assessment"));
+        assert!(text.contains("Bare LLM API Call"));
+        // Messages
+        assert!(text.contains("Missing FRIA document"));
+        assert!(text.contains("Bare LLM API call detected"));
+        // Fix suggestions
         assert!(text.contains("Create docs/FRIA.md"));
-        // Fix Roadmap
-        assert!(text.contains("Fix Roadmap"));
-        assert!(text.contains("score gain"));
-        // Next steps
-        assert!(text.contains("Next steps:"));
-        assert!(text.contains("complior scan --deep"));
-        // Footer
-        assert!(text.contains("Status:"));
+        assert!(text.contains("Wrap with complior(client)"));
+        // File location
+        assert!(text.contains("src/chat/anthropic.ts:8"));
     }
 
     #[test]
@@ -166,58 +252,359 @@ mod tests {
         result.findings.clear();
         result.score.failed_checks = 0;
         result.score.total_score = 85.0;
-        let text = format_human(&result);
-        assert!(text.contains("COMPLIANT"));
-        assert!(!text.contains("What's Missing"));
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("No compliance issues found"));
+        assert!(text.contains("on track"));
     }
 
     #[test]
-    fn format_human_collapses_duplicates() {
+    fn format_human_layer_results() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("Layer Results"));
+        assert!(text.contains("File Presence"));
+        assert!(text.contains("FAIL")); // L1 has high severity → FAIL
+        assert!(text.contains("Code Patterns"));
+        assert!(text.contains("WARN")); // L4 has only medium → WARN
+    }
+
+    #[test]
+    fn format_human_quick_actions() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("QUICK ACTIONS"));
+        assert!(text.contains("Auto-fix available"));
+        assert!(text.contains("complior fix"));
+        assert!(text.contains("complior scan --deep"));
+        assert!(text.contains("complior tui"));
+        assert!(text.contains("Next"));
+    }
+
+    #[test]
+    fn format_human_deep_scan_hint_absent_when_deep() {
         let mut result = mock_scan_result();
-        // Add 10 findings with same check_id (type A — code issue)
-        result.findings.clear();
-        for i in 0..10 {
-            result.findings.push(Finding {
-                check_id: "l4-bare-llm".into(),
-                r#type: crate::types::CheckResultType::Fail,
-                message: format!("Instance {i}"),
-                severity: Severity::Low,
-                obligation_id: None,
-                article_reference: None,
-                fix: Some(format!("Fix {i}")),
-                file: Some(format!("src/file{i}.ts")),
-                line: Some(i + 1),
-                code_context: None,
-                fix_diff: None,
-                priority: None,
-                confidence: None,
-                confidence_level: None,
-                evidence: None,
-                explanation: None,
-            });
-        }
-        let text = format_human(&result);
-        // Should show first 3 + "... and 7 more"
-        assert!(text.contains("... and 7 more"));
-        // Auto-fixable count in footer
-        assert!(text.contains("auto-fix"));
+        result.tier = Some(2);
+        let text = format_human(&result, &default_opts());
+        // Should NOT suggest --deep when already Tier 2
+        assert!(!text.contains("complior scan --deep"));
+        // Deep mode label in header
+        assert!(text.contains("Deep Mode"));
     }
 
     #[test]
     fn format_human_critical_cap_warning() {
         let mut result = mock_scan_result();
         result.score.critical_cap_applied = true;
-        let text = format_human(&result);
+        let text = format_human(&result, &default_opts());
         assert!(text.contains("Score capped"));
         assert!(text.contains("critical violations"));
     }
 
     #[test]
-    fn format_human_explanation_penalty_deadline() {
+    fn format_human_severity_counts() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "Missing FRIA", Severity::Critical),
+            make_finding("risk-management", CheckResultType::Fail, "Missing risk mgmt", Severity::High),
+            make_finding("risk-management", CheckResultType::Fail, "Missing risk mgmt 2", Severity::High),
+            make_finding("l4-bare-llm", CheckResultType::Fail, "Bare LLM", Severity::Medium),
+        ];
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("4 total"));
+        assert!(text.contains("1 critical"));
+        assert!(text.contains("2 high"));
+        assert!(text.contains("1 medium"));
+    }
+
+    #[test]
+    fn format_human_finding_limits_medium() {
+        let mut result = mock_scan_result();
+        result.findings.clear();
+        // 8 medium findings — should only show 5
+        for i in 0..8 {
+            let mut f = make_finding(
+                "l4-bare-llm",
+                CheckResultType::Fail,
+                &format!("Bare LLM instance {i}"),
+                Severity::Medium,
+            );
+            f.fix = Some(format!("Fix {i}"));
+            f.file = Some(format!("src/file{i}.ts"));
+            f.line = Some(i + 1);
+            result.findings.push(f);
+        }
+        let text = format_human(&result, &default_opts());
+        // Header shows all 8
+        assert!(text.contains("8 total"));
+        assert!(text.contains("8 medium"));
+        // But only 5 are displayed, rest hidden
+        assert!(text.contains("3 medium not shown"));
+    }
+
+    #[test]
+    fn format_human_low_findings_hidden() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "Missing FRIA", Severity::High),
+            make_finding("l4-bare-llm", CheckResultType::Fail, "Bare LLM", Severity::Low),
+        ];
+        let text = format_human(&result, &default_opts());
+        // Low findings are not displayed
+        assert!(text.contains("1 low not shown"));
+        // High finding is shown
+        assert!(text.contains("HIGH"));
+        // LOW severity label should NOT appear in findings section
+        // (it appears in the "not shown" note only)
+    }
+
+    #[test]
+    fn format_human_all_critical_high_shown() {
+        let mut result = mock_scan_result();
+        result.findings.clear();
+        // 10 critical findings — all should be shown
+        for i in 0..10 {
+            result.findings.push(make_finding(
+                &format!("check-{i}"),
+                CheckResultType::Fail,
+                &format!("Critical issue {i}"),
+                Severity::Critical,
+            ));
+        }
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("10 total"));
+        assert!(text.contains("10 critical"));
+        // All 10 findings should be shown (all critical messages present)
+        assert!(text.contains("Critical issue 9"));
+        // No "not shown" note
+        assert!(!text.contains("not shown"));
+    }
+
+    #[test]
+    fn format_human_layer_subgrouping() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "L1 issue A", Severity::Critical),
+            make_finding("documentation", CheckResultType::Fail, "L1 issue B", Severity::High),
+            make_finding("l4-bare-llm", CheckResultType::Fail, "L4 issue", Severity::Medium),
+            make_finding("l2-fria", CheckResultType::Fail, "L2 issue", Severity::High),
+        ];
+        let text = format_human(&result, &default_opts());
+        // Layer subgroup headers should appear
+        assert!(text.contains("L1"));
+        assert!(text.contains("File Presence"));
+        assert!(text.contains("L2"));
+        assert!(text.contains("Document Structure"));
+        assert!(text.contains("L4"));
+        assert!(text.contains("Code Patterns"));
+        // L1 group should come before L2, L2 before L4
+        let l1_pos = text.find("File Presence").unwrap();
+        let l2_pos = text.find("Document Structure").unwrap();
+        let l4_pos = text.find("Code Patterns").unwrap();
+        assert!(l1_pos < l2_pos);
+        assert!(l2_pos < l4_pos);
+    }
+
+    #[test]
+    fn format_human_clean_fix_message() {
+        let mut result = mock_scan_result();
+        result.findings = vec![Finding {
+            check_id: "l4-bare-llm".into(),
+            r#type: CheckResultType::Fail,
+            message: "Bare LLM call".into(),
+            severity: Severity::High,
+            obligation_id: None,
+            article_reference: None,
+            fix: Some("Fix complior.injection: Validate user input before LLM call".into()),
+            file: None,
+            line: None,
+            code_context: None,
+            fix_diff: None,
+            priority: None,
+            confidence: None,
+            confidence_level: None,
+            evidence: None,
+            explanation: None,
+        }];
+        let text = format_human(&result, &default_opts());
+        // Engine prefix should be stripped
+        assert!(!text.contains("Fix complior.injection:"));
+        // Clean message should remain
+        assert!(text.contains("Validate user input before LLM call"));
+    }
+
+    #[test]
+    fn format_human_layer_group_headers() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "L1 finding", Severity::High),
+            make_finding("l2-fria", CheckResultType::Fail, "L2 finding", Severity::High),
+            make_finding("l3-missing-bias-testing", CheckResultType::Fail, "L3 finding", Severity::High),
+            make_finding("l4-bare-llm", CheckResultType::Fail, "L4 finding", Severity::High),
+            make_finding("l4-nhi-api-key", CheckResultType::Fail, "NHI finding", Severity::High),
+            make_finding("cross-doc-code-mismatch", CheckResultType::Fail, "Cross finding", Severity::High),
+        ];
+        let text = format_human(&result, &default_opts());
+        // Layer group headers with labels
+        assert!(text.contains("L1") && text.contains("File Presence"));
+        assert!(text.contains("L2") && text.contains("Document Structure"));
+        assert!(text.contains("L3") && text.contains("Dependencies"));
+        assert!(text.contains("L4") && text.contains("Code Patterns"));
+        assert!(text.contains("NHI") && text.contains("Secrets"));
+        assert!(text.contains("CROSS") && text.contains("Cross-Layer"));
+    }
+
+    #[test]
+    fn format_human_deep_mode_grouping() {
+        let mut result = mock_scan_result();
+        result.tier = Some(2);
+        result.external_tool_results = Some(vec![ExternalToolResult {
+            tool: "semgrep".into(),
+            version: "1.0.0".into(),
+            findings: vec![],
+            duration: 1000,
+            exit_code: 0,
+            error: None,
+        }]);
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "Base scan finding", Severity::High),
+            make_finding("ext-semgrep-unsafe-deser", CheckResultType::Fail, "Deep finding", Severity::High),
+        ];
+        let text = format_human(&result, &default_opts());
+        // Deep mode grouping (uppercase)
+        assert!(text.contains("NEW IN --DEEP"));
+        assert!(text.contains("FROM BASE SCAN"));
+        // Deep findings grouped under L4+ layer header
+        assert!(text.contains("Ext. Code Analysis"));
+    }
+
+    #[test]
+    fn format_human_deep_mode_layers() {
+        let mut result = mock_scan_result();
+        result.tier = Some(2);
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "Base", Severity::High),
+            make_finding("ext-semgrep-unsafe-deser", CheckResultType::Fail, "Semgrep finding", Severity::High),
+            make_finding("ext-bandit-B301", CheckResultType::Fail, "Bandit finding", Severity::High),
+        ];
+        let text = format_human(&result, &default_opts());
+        // Header shows tool names for deep layers
+        assert!(text.contains("L4+ Semgrep"));
+        assert!(text.contains("L4+ Bandit"));
+        assert!(text.contains("L3+ ModelScan"));
+        assert!(text.contains("NHI+ detect-secrets"));
+        // Layer Results section uses descriptive labels
+        assert!(text.contains("Ext. Code Analysis"));
+        // Scan info shows deep mode
+        assert!(text.contains("Deep Mode"));
+    }
+
+    #[test]
+    fn format_human_pass_findings_layer_status() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("l4-disclosure", CheckResultType::Pass, "Disclosure found", Severity::Info),
+        ];
+        result.score.failed_checks = 0;
+        result.score.total_score = 100.0;
+        let text = format_human(&result, &default_opts());
+        // Layer Results should show PASS for L4
+        assert!(text.contains("Layer Results"));
+        assert!(text.contains("PASS"));
+        assert!(text.contains("Code Patterns"));
+    }
+
+    #[test]
+    fn format_human_next_hint_critical() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "Critical", Severity::Critical),
+            make_finding("risk-management", CheckResultType::Fail, "Also critical", Severity::Critical),
+        ];
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("fix 2 critical issues"));
+    }
+
+    #[test]
+    fn format_human_next_hint_high() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("fria", CheckResultType::Fail, "High", Severity::High),
+        ];
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("fix 1 high-severity issue"));
+    }
+
+    #[test]
+    fn format_human_next_hint_compliant() {
+        let mut result = mock_scan_result();
+        result.findings.clear();
+        result.score.total_score = 90.0;
+        result.score.failed_checks = 0;
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("on track for EU AI Act compliance"));
+    }
+
+    #[test]
+    fn format_human_framework_breakdown_bar_chart() {
+        let result = mock_scan_result();
+        let opts = FormatOptions {
+            framework_scores: Some(vec![FrameworkScoreResult {
+                framework_id: "eu-ai-act".into(),
+                framework_name: "EU AI Act 2024/1689".into(),
+                score: 60.0,
+                grade: "D".into(),
+                grade_type: "letter".into(),
+                gaps: 10,
+                total_checks: 25,
+                passed_checks: 15,
+                deadline: None,
+                categories: vec![],
+            }]),
+        };
+        let text = format_human(&result, &opts);
+        assert!(text.contains("Framework Breakdown"));
+        assert!(text.contains("EU AI Act 2024/1689"));
+        assert!(text.contains("60 / 100"));
+        // Bar chart characters
+        assert!(text.contains('█'));
+        assert!(text.contains('░'));
+    }
+
+    #[test]
+    fn format_human_no_framework_breakdown_without_scores() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // No framework breakdown when no framework_scores provided
+        assert!(!text.contains("Framework Breakdown"));
+    }
+
+    #[test]
+    fn format_human_generate_docs_action() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            // L1 finding (missing doc) triggers "Generate docs" action
+            make_finding("fria", CheckResultType::Fail, "Missing FRIA", Severity::High),
+        ];
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("Generate docs"));
+        assert!(text.contains("complior docs generate --missing"));
+    }
+
+    #[test]
+    fn format_human_separator_width() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // 65-char separator should be present (multiple occurrences)
+        let sep = "─".repeat(65);
+        assert!(text.contains(&sep));
+    }
+
+    #[test]
+    fn format_human_finding_with_article() {
         let mut result = mock_scan_result();
         result.findings = vec![Finding {
             check_id: "fria".into(),
-            r#type: crate::types::CheckResultType::Fail,
+            r#type: CheckResultType::Fail,
             message: "Missing FRIA document".into(),
             severity: Severity::High,
             obligation_id: None,
@@ -231,36 +618,24 @@ mod tests {
             confidence: None,
             confidence_level: None,
             evidence: None,
-            explanation: Some(FindingExplanation {
-                article: "Art. 27".into(),
-                penalty: "€15M or 3% of annual global turnover".into(),
-                deadline: "2026-08-02".into(),
-                business_impact: "Fundamental rights impact assessment required for high-risk AI. Without a FRIA, deployment may be unlawful.".into(),
-            }),
+            explanation: None,
         }];
-        let text = format_human(&result);
-        // Compact penalty shown
-        assert!(text.contains("€15M / 3% turnover"));
-        // Deadline formatted
-        assert!(text.contains("Aug 2026"));
-        // Business impact shown
-        assert!(text.contains("Impact: Fundamental rights impact assessment"));
-        // Fix suggestion
-        assert!(text.contains("-> Create docs/FRIA.md"));
-        // Documents needed section
-        assert!(text.contains("Documents needed (1)"));
+        let text = format_human(&result, &default_opts());
+        // Article and label combined on same line
+        assert!(text.contains("Art. 27"));
+        assert!(text.contains("Fundamental Rights Assessment"));
     }
 
     #[test]
-    fn format_human_passed_with_mechanisms() {
+    fn format_human_finding_article_from_explanation() {
         let mut result = mock_scan_result();
         result.findings = vec![Finding {
-            check_id: "l4-disclosure".into(),
-            r#type: crate::types::CheckResultType::Pass,
-            message: "AI disclosure found in src/compliance/disclosure.tsx:3 (Art. 50)".into(),
-            severity: Severity::Info,
+            check_id: "fria".into(),
+            r#type: CheckResultType::Fail,
+            message: "Missing FRIA".into(),
+            severity: Severity::High,
             obligation_id: None,
-            article_reference: Some("Art. 50(1)".into()),
+            article_reference: None,
             fix: None,
             file: None,
             line: None,
@@ -270,364 +645,27 @@ mod tests {
             confidence: None,
             confidence_level: None,
             evidence: None,
-            explanation: None,
+            explanation: Some(FindingExplanation {
+                article: "Art. 27".into(),
+                penalty: String::new(),
+                deadline: String::new(),
+                business_impact: String::new(),
+            }),
         }];
-        result.score.failed_checks = 0;
-        result.score.passed_checks = 1;
-        result.score.total_score = 100.0;
-        let text = format_human(&result);
-        // What's in Place section
-        assert!(text.contains("What's in Place"));
-        assert!(text.contains("1 mechanisms"));
-        assert!(text.contains("AI Disclosure in Code"));
-        assert!(text.contains("src/compliance/disclosure.tsx:3"));
+        let text = format_human(&result, &default_opts());
+        // Article from explanation fallback
+        assert!(text.contains("Art. 27"));
     }
 
     #[test]
-    fn format_human_category_breakdown() {
+    fn format_human_ext_finding_label() {
         let mut result = mock_scan_result();
-        result.score.category_scores = vec![
-            CategoryScore {
-                category: "prohibited_practices".into(),
-                weight: 0.2,
-                score: 100.0,
-                obligation_count: 1,
-                passed_count: 1,
-            },
-            CategoryScore {
-                category: "documentation".into(),
-                weight: 0.3,
-                score: 40.0,
-                obligation_count: 5,
-                passed_count: 2,
-            },
-        ];
-        let text = format_human(&result);
-        assert!(text.contains("Category Breakdown"));
-        assert!(text.contains("Prohibited Practices"));
-        assert!(text.contains("100%"));
-        assert!(text.contains("Documentation"));
-        assert!(text.contains("40%"));
-        assert!(text.contains("(1/1)"));
-        assert!(text.contains("(2/5)"));
-    }
-
-    #[test]
-    fn sarif_level_mapping() {
-        assert_eq!(sarif_level(&Severity::Critical), "error");
-        assert_eq!(sarif_level(&Severity::High), "error");
-        assert_eq!(sarif_level(&Severity::Medium), "warning");
-        assert_eq!(sarif_level(&Severity::Low), "note");
-        assert_eq!(sarif_level(&Severity::Info), "note");
-    }
-
-    // ── New tests for personalized scan output ──────────────────
-
-    #[test]
-    fn project_name_extraction() {
-        use crate::headless::format::project_name;
-        assert_eq!(project_name("/home/user/projects/acme-ai-support"), "acme-ai-support");
-        assert_eq!(project_name("/tmp/test-project"), "test-project");
-        assert_eq!(project_name("single"), "single");
-        assert_eq!(project_name("/trailing/slash/"), "slash");
-    }
-
-    #[test]
-    fn parse_sdk_message() {
-        use crate::headless::format::parse_sdk;
-        let sdk = parse_sdk("AI SDK detected: OpenAI (openai@^4.20.0) in npm").unwrap();
-        assert_eq!(sdk.name, "OpenAI");
-        assert_eq!(sdk.version, "4.20.0");
-
-        let sdk2 = parse_sdk("AI SDK detected: Anthropic (anthropic@~0.10.0) in npm").unwrap();
-        assert_eq!(sdk2.name, "Anthropic");
-        assert_eq!(sdk2.version, "0.10.0");
-
-        let sdk3 = parse_sdk("AI SDK detected: Vercel AI SDK (ai@3.0.0) in npm").unwrap();
-        assert_eq!(sdk3.name, "Vercel AI SDK");
-        assert_eq!(sdk3.version, "3.0.0");
-
-        assert!(parse_sdk("not an sdk message").is_none());
-    }
-
-    #[test]
-    fn parse_mechanism_location_message() {
-        use crate::headless::format::parse_mechanism_location;
-        assert_eq!(
-            parse_mechanism_location("AI disclosure found in src/compliance/disclosure.tsx:3 (Art. 14)", "l4-disclosure"),
-            "src/compliance/disclosure.tsx:3"
-        );
-        assert_eq!(
-            parse_mechanism_location("Kill switch found in src/safety/kill.ts:20", "l4-kill-switch"),
-            "src/safety/kill.ts:20"
-        );
-        assert_eq!(
-            parse_mechanism_location("No secrets detected", "l4-nhi-clean"),
-            "clean"
-        );
-        assert_eq!(
-            parse_mechanism_location("Something without location marker", "l4-logging"),
-            ""
-        );
-    }
-
-    #[test]
-    fn format_human_ai_stack() {
-        let mut result = mock_scan_result();
+        result.tier = Some(2);
         result.findings = vec![
-            make_finding("l3-ai-sdk-detected", crate::types::CheckResultType::Pass,
-                "AI SDK detected: OpenAI (openai@^4.20.0) in npm", Severity::Info),
-            make_finding("l3-ai-sdk-detected", crate::types::CheckResultType::Pass,
-                "AI SDK detected: Anthropic (anthropic@~0.10.0) in npm", Severity::Info),
-            make_finding("l3-ai-sdk-detected", crate::types::CheckResultType::Pass,
-                "AI SDK detected: Vercel AI SDK (ai@3.0.0) in npm", Severity::Info),
+            make_finding("ext-bandit-B301", CheckResultType::Fail, "Pickle issue", Severity::High),
         ];
-        let text = format_human(&result);
-        assert!(text.contains("Your AI Stack"));
-        assert!(text.contains("OpenAI v4.20.0"));
-        assert!(text.contains("Anthropic v0.10.0"));
-        assert!(text.contains("Vercel AI SDK v3.0.0"));
-        assert!(text.contains("42 files scanned"));
-    }
-
-    #[test]
-    fn format_human_ai_stack_empty() {
-        let mut result = mock_scan_result();
-        result.findings.clear();
-        let text = format_human(&result);
-        assert!(text.contains("Your AI Stack"));
-        assert!(text.contains("No AI SDKs detected in dependencies"));
-    }
-
-    #[test]
-    fn format_human_whats_in_place() {
-        let mut result = mock_scan_result();
-        result.findings = vec![
-            {
-                let mut f = make_finding("l4-disclosure", crate::types::CheckResultType::Pass,
-                    "AI disclosure found in src/compliance/disclosure.tsx:3 (Art. 50)", Severity::Info);
-                f.article_reference = Some("Art. 50(1)".into());
-                f
-            },
-            {
-                let mut f = make_finding("l4-kill-switch", crate::types::CheckResultType::Pass,
-                    "Kill switch found in src/compliance/kill-switch.ts:2 (Art. 14)", Severity::Info);
-                f.article_reference = Some("Art. 14".into());
-                f
-            },
-            make_finding("l4-nhi-clean", crate::types::CheckResultType::Pass,
-                "No hardcoded secrets detected", Severity::Info),
-        ];
-        result.score.failed_checks = 0;
-        result.score.passed_checks = 3;
-        let text = format_human(&result);
-        assert!(text.contains("What's in Place"));
-        assert!(text.contains("3 mechanisms"));
-        assert!(text.contains("AI Disclosure in Code"));
-        assert!(text.contains("src/compliance/disclosure.tsx:3"));
-        assert!(text.contains("Kill Switch / Feature Flag"));
-        assert!(text.contains("src/compliance/kill-switch.ts:2"));
-        assert!(text.contains("Secrets Scan"));
-        assert!(text.contains("clean"));
-    }
-
-    #[test]
-    fn format_human_doc_code_split() {
-        let mut result = mock_scan_result();
-        result.findings = vec![
-            // Type B — missing doc
-            {
-                let mut f = make_finding("fria", crate::types::CheckResultType::Fail,
-                    "Missing FRIA", Severity::High);
-                f.fix = Some("Create docs/FRIA.md".into());
-                f
-            },
-            // Type B — missing doc
-            {
-                let mut f = make_finding("art5-screening", crate::types::CheckResultType::Fail,
-                    "Missing Art. 5 screening", Severity::High);
-                f.fix = Some("Create docs/ART5-SCREENING.md".into());
-                f
-            },
-            // Type A — code issue
-            {
-                let mut f = make_finding("l4-bare-llm", crate::types::CheckResultType::Fail,
-                    "Bare LLM call", Severity::Medium);
-                f.fix = Some("Wrap with complior(client)".into());
-                f.file = Some("src/chat/anthropic.ts".into());
-                f.line = Some(8);
-                f
-            },
-            // Type C — config issue
-            {
-                let mut f = make_finding("l3-missing-bias-testing", crate::types::CheckResultType::Fail,
-                    "No bias testing", Severity::Medium);
-                f.fix = Some("Add bias testing framework".into());
-                f
-            },
-        ];
-        let text = format_human(&result);
-        // Doc/code split
-        assert!(text.contains("Documents needed (2)"));
-        assert!(text.contains("Code & config issues (2)"));
-        // Check order: docs first, then code
-        let docs_pos = text.find("Documents needed").unwrap();
-        let code_pos = text.find("Code & config issues").unwrap();
-        assert!(docs_pos < code_pos);
-    }
-
-    #[test]
-    fn compact_penalty_helper() {
-        use crate::headless::format::compact_penalty;
-        assert_eq!(
-            compact_penalty("€15M or 3% of annual global turnover"),
-            "€15M / 3% turnover"
-        );
-        assert_eq!(
-            compact_penalty("€35M or 7% of annual global turnover"),
-            "€35M / 7% turnover"
-        );
-        // Pass-through for non-standard format
-        assert_eq!(compact_penalty("€10M fine"), "€10M fine");
-    }
-
-    // ── Tests for enhanced scan output (severity summary, roadmap, deep hint) ──
-
-    #[test]
-    fn format_human_severity_summary() {
-        let mut result = mock_scan_result();
-        result.findings = vec![
-            make_finding("fria", crate::types::CheckResultType::Fail, "Missing FRIA", Severity::Critical),
-            make_finding("risk-management", crate::types::CheckResultType::Fail, "Missing risk mgmt", Severity::High),
-            make_finding("risk-management", crate::types::CheckResultType::Fail, "Missing risk mgmt 2", Severity::High),
-            {
-                let mut f = make_finding("l4-bare-llm", crate::types::CheckResultType::Fail, "Bare LLM", Severity::Medium);
-                f.fix = Some("Wrap it".into());
-                f
-            },
-        ];
-        let text = format_human(&result);
-        assert!(text.contains("1 critical"));
-        assert!(text.contains("2 high"));
-        assert!(text.contains("1 medium"));
-        // Fixable breakdown
-        assert!(text.contains("0 auto-fixable"));
-        assert!(text.contains("1 with suggestions"));
-        assert!(text.contains("3 manual"));
-    }
-
-    #[test]
-    fn format_human_fix_roadmap() {
-        let mut result = mock_scan_result();
-        result.findings = vec![
-            {
-                let mut f = make_finding("fria", crate::types::CheckResultType::Fail, "Missing FRIA", Severity::High);
-                f.fix = Some("Create docs/FRIA.md".into());
-                f
-            },
-            {
-                let mut f = make_finding("l4-bare-llm", crate::types::CheckResultType::Fail, "Bare LLM", Severity::Medium);
-                f.fix = Some("Wrap with complior()".into());
-                f.file = Some("src/chat.ts".into());
-                f.line = Some(10);
-                f
-            },
-        ];
-        let text = format_human(&result);
-        // Fix Roadmap section
-        assert!(text.contains("Fix Roadmap"));
-        assert!(text.contains("by score impact"));
-        // High severity = +5 points
-        assert!(text.contains("+5"));
-        // Medium severity = +3 points
-        assert!(text.contains("+3"));
-        // Estimated total
-        assert!(text.contains("Est. score gain: +8 points"));
-    }
-
-    #[test]
-    fn format_human_fix_roadmap_with_auto_fix() {
-        let mut result = mock_scan_result();
-        result.findings = vec![{
-            let mut f = make_finding("l4-bare-llm", crate::types::CheckResultType::Fail, "Bare LLM", Severity::Medium);
-            f.fix = Some("Wrap with complior()".into());
-            f.fix_diff = Some(crate::types::FixDiff {
-                before: vec!["old code".into()],
-                after: vec!["new code".into()],
-                start_line: 10,
-                file_path: "src/chat.ts".into(),
-                import_line: None,
-            });
-            f
-        }];
-        let text = format_human(&result);
-        // Auto-fix indicator in roadmap
-        assert!(text.contains("[auto]"));
-        // Auto-fix indicator in finding (=> instead of ->)
-        assert!(text.contains("=> Wrap with complior()"));
-    }
-
-    #[test]
-    fn format_human_deep_scan_hint_absent_when_deep() {
-        let mut result = mock_scan_result();
-        result.deep_analysis = Some(true);
-        let text = format_human(&result);
-        // Should NOT suggest --deep when already deep
-        assert!(!text.contains("complior scan --deep"));
-    }
-
-    #[test]
-    fn format_human_deep_scan_hint_present_when_shallow() {
-        let result = mock_scan_result();
-        // deep_analysis is None by default
-        let text = format_human(&result);
-        assert!(text.contains("complior scan --deep"));
-    }
-
-    #[test]
-    fn format_human_fix_type_badges() {
-        let mut result = mock_scan_result();
-        result.findings = vec![
-            // Type B — missing doc
-            make_finding("fria", crate::types::CheckResultType::Fail, "Missing FRIA", Severity::High),
-            // Type A — code issue
-            {
-                let mut f = make_finding("l4-bare-llm", crate::types::CheckResultType::Fail, "Bare LLM", Severity::Medium);
-                f.file = Some("src/chat.ts".into());
-                f
-            },
-            // Type C — config issue
-            make_finding("l3-missing-bias-testing", crate::types::CheckResultType::Fail, "No bias testing", Severity::Medium),
-        ];
-        let text = format_human(&result);
-        assert!(text.contains("[B]"));  // Missing doc
-        assert!(text.contains("[A]"));  // Code fix
-        assert!(text.contains("[C]"));  // Config change
-    }
-
-    #[test]
-    fn format_human_obligation_id_shown() {
-        let mut result = mock_scan_result();
-        result.findings = vec![{
-            let mut f = make_finding("fria", crate::types::CheckResultType::Fail, "Missing FRIA", Severity::High);
-            f.obligation_id = Some("OBL-015".into());
-            f
-        }];
-        let text = format_human(&result);
-        assert!(text.contains("Obligation: OBL-015"));
-    }
-
-    #[test]
-    fn format_human_next_steps_section() {
-        let mut result = mock_scan_result();
-        result.findings = vec![{
-            let mut f = make_finding("fria", crate::types::CheckResultType::Fail, "Missing FRIA", Severity::High);
-            f.fix = Some("Create docs/FRIA.md".into());
-            f
-        }];
-        let text = format_human(&result);
-        assert!(text.contains("Next steps:"));
-        assert!(text.contains("complior fix"));
-        assert!(text.contains("complior scan --json"));
+        let text = format_human(&result, &default_opts());
+        // ext_check_label should provide nice label
+        assert!(text.contains("Unsafe Pickle Usage"));
     }
 }

@@ -1,16 +1,3 @@
-use crate::types::Severity;
-
-/// Severity sort order: Critical first, Info last.
-pub(super) const fn severity_order(severity: Severity) -> u8 {
-    match severity {
-        Severity::Critical => 0,
-        Severity::High => 1,
-        Severity::Medium => 2,
-        Severity::Low => 3,
-        Severity::Info => 4,
-    }
-}
-
 /// Penalty info for EU AI Act articles.
 pub(super) fn penalty_for_article(article: &str) -> &'static str {
     match article {
@@ -43,16 +30,8 @@ pub(super) fn wrap_text(text: &str, width: usize) -> Vec<String> {
 ///
 /// Returns (short_description, what_to_do, what_document).
 pub fn explain_check(check_id: &str) -> (&'static str, &'static str, &'static str) {
-    // Strip layer prefixes (l1-, l2-, l3-, l4-, l5-, cross-) so that
-    // engine IDs like "l2-declaration-conformity" match lookup keys.
-    let normalized = check_id
-        .strip_prefix("l1-")
-        .or_else(|| check_id.strip_prefix("l2-"))
-        .or_else(|| check_id.strip_prefix("l3-"))
-        .or_else(|| check_id.strip_prefix("l4-"))
-        .or_else(|| check_id.strip_prefix("l5-"))
-        .or_else(|| check_id.strip_prefix("cross-"))
-        .unwrap_or(check_id);
+    // Strip layer prefixes so engine IDs like "l2-declaration-conformity" match lookup keys.
+    let (_, normalized) = crate::types::strip_layer_prefix(check_id);
     match normalized {
         // L2 Document validators
         "ai-literacy" => (

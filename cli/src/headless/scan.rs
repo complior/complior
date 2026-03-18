@@ -2,7 +2,7 @@ use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 use crate::types::Severity;
 
-use super::format::{format_human, format_json, format_sarif, print_paged};
+use super::format::{format_human, format_json, format_sarif, print_paged, FormatOptions};
 
 /// Run a headless (non-TUI) scan and print results to stdout.
 /// Returns the exit code: 0 = pass, 1 = fail/error.
@@ -10,9 +10,12 @@ pub async fn run_headless_scan(
     ci: bool,
     json: bool,
     sarif: bool,
-    no_tui: bool,
+    _no_tui: bool,
     threshold: u32,
     fail_on: Option<&str>,
+    deep: bool,
+    llm: bool,
+    cloud: bool,
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
@@ -36,6 +39,12 @@ pub async fn run_headless_scan(
         }
     }
 
+    // Tier 3 stub
+    if cloud {
+        eprintln!("Error: --cloud (Tier 3) is not yet available. Planned for Month 3-4.");
+        return 1;
+    }
+
     // Determine project path
     let scan_path = path.map_or_else(
         || std::env::current_dir()
@@ -45,14 +54,67 @@ pub async fn run_headless_scan(
         String::from,
     );
 
-    // Run scan
-    let result = match client.scan(&scan_path).await {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Scan failed: {e}");
-            return 1;
+    // Run scan — route by tier flags
+    let result = if deep && llm {
+        // Tier 2+ : run tier2 first, then LLM on top
+        if !json {
+            eprintln!("Running Tier 2 scan (external tools + LLM)...");
+        }
+        let body = serde_json::json!({ "path": scan_path });
+        let _tier2_result = match client.post_json("/scan/tier2", &body).await {
+            Ok(r) => r,
+            Err(e) => { eprintln!("Tier 2 scan failed: {e}"); return 1; }
+        };
+        // Then LLM
+        let llm_result = match client.post_json("/scan/llm", &body).await {
+            Ok(r) => r,
+            Err(e) => { eprintln!("LLM scan failed: {e}"); return 1; }
+        };
+        // Use LLM result as the final one (it includes L5 on top of base)
+        // but merge external tool results from tier2
+        match serde_json::from_value::<crate::types::ScanResult>(llm_result) {
+            Ok(r) => r,
+            Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+        }
+    } else if deep {
+        // Tier 2 only
+        if !json {
+            eprintln!("Running Tier 2 scan (external tools: Semgrep, Bandit, ModelScan, detect-secrets)...");
+        }
+        let body = serde_json::json!({ "path": scan_path });
+        match client.post_json("/scan/tier2", &body).await {
+            Ok(r) => match serde_json::from_value::<crate::types::ScanResult>(r) {
+                Ok(result) => result,
+                Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+            },
+            Err(e) => { eprintln!("Tier 2 scan failed: {e}"); return 1; }
+        }
+    } else if llm {
+        // L5 LLM only
+        if !json {
+            eprintln!("Running LLM-powered scan (L5 document analysis)...");
+        }
+        let body = serde_json::json!({ "path": scan_path });
+        match client.post_json("/scan/llm", &body).await {
+            Ok(r) => match serde_json::from_value::<crate::types::ScanResult>(r) {
+                Ok(result) => result,
+                Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+            },
+            Err(e) => { eprintln!("LLM scan failed: {e}"); return 1; }
+        }
+    } else {
+        // Default: Tier 1 (L1-L4)
+        match client.scan(&scan_path).await {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Scan failed: {e}");
+                return 1;
+            }
         }
     };
+
+    // Fetch multi-framework scores (includes OWASP/MITRE if redteam data exists)
+    let framework_scores = client.framework_scores().await.ok();
 
     // Format output (default: human-readable with pager)
     if json {
@@ -60,18 +122,21 @@ pub async fn run_headless_scan(
     } else if sarif {
         println!("{}", format_sarif(&result));
     } else {
-        let text = format_human(&result);
+        let opts = FormatOptions {
+            framework_scores: framework_scores.as_ref().map(|mf| mf.frameworks.clone()),
+        };
+        let text = format_human(&result, &opts);
         print_paged(&text);
     }
 
-    // Determine exit code
+    // Determine exit code (2 = compliance threshold failure)
     if ci {
         let score = result.score.total_score.round() as u32;
         if score < threshold {
             eprintln!(
                 "CI FAIL: Score {score} is below threshold {threshold}"
             );
-            return 1;
+            return 2;
         }
 
         // Check fail-on severity
@@ -89,7 +154,7 @@ pub async fn run_headless_scan(
                 eprintln!(
                     "CI FAIL: Found findings at severity '{level}' or above"
                 );
-                return 1;
+                return 2;
             }
         }
     }
@@ -173,7 +238,7 @@ pub async fn run_scan_diff(
                 let regression = result.get("hasRegression").and_then(|v| v.as_bool()).unwrap_or(false);
                 if regression {
                     eprintln!("CI FAIL: Compliance regression detected");
-                    return 1;
+                    return 2;
                 }
             }
 
