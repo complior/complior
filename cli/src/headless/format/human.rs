@@ -5,7 +5,7 @@ use crate::types::{CheckResultType, Finding, ScanResult, Severity};
 use super::colors::*;
 use super::labels::{check_label, ext_check_label};
 use super::layers::*;
-use super::FormatOptions;
+use super::{plural, project_name, separator, FormatOptions};
 
 /// Format scan result as structured human-readable text.
 #[allow(clippy::cast_precision_loss)]
@@ -25,6 +25,7 @@ pub fn format_human(result: &ScanResult, opts: &FormatOptions) -> String {
     render_framework_breakdown(&mut o, opts);
     render_layer_results_section(&mut o, result);
     render_findings_section(&mut o, result, &fail_findings);
+    render_agent_summaries(&mut o, result);
     render_quick_actions(&mut o, result, &fail_findings);
 
     o
@@ -176,15 +177,20 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
         return;
     }
 
-    // Sort by severity, apply display limits
+    // Sort by severity
     let mut sorted: Vec<&Finding> = all_fails.to_vec();
     sorted.sort_by_key(|f| f.severity.sort_key());
-    let visible = apply_finding_limits(&sorted);
 
     let is_deep = result.tier == Some(2);
 
     o.push('\n');
-    if is_deep {
+    let has_agents = result.agent_summaries.as_ref().is_some_and(|s| !s.is_empty());
+
+    if has_agents {
+        // Show ALL findings when agent grouping is active — no display limits
+        render_findings_by_agent(o, &sorted, result);
+    } else if is_deep {
+        let visible = apply_finding_limits(&sorted);
         let ext_findings: Vec<&Finding> = visible
             .iter()
             .filter(|f| f.check_id.starts_with("ext-"))
@@ -215,10 +221,12 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
             render_findings_by_layer(o, &base_findings);
         }
     } else {
+        let visible = apply_finding_limits(&sorted);
         render_findings_by_layer(o, &visible);
     }
 
-    // Note about hidden findings
+    // Note about hidden findings (only when limits applied — not in agent mode)
+    if !has_agents {
     let low_count = all_fails
         .iter()
         .filter(|f| matches!(f.severity, Severity::Low | Severity::Info))
@@ -237,6 +245,58 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
             dim("..."),
             skip_parts.join(", "),
         ));
+    }
+    } // !has_agents
+}
+
+/// Render findings grouped first by agent, then by layer within each agent.
+fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &ScanResult) {
+    let summaries = match &result.agent_summaries {
+        Some(s) => s,
+        None => return,
+    };
+
+    for summary in summaries {
+        let agent_findings: Vec<&Finding> = findings
+            .iter()
+            .filter(|f| f.agent_id.as_deref() == Some(&summary.agent_id))
+            .copied()
+            .collect();
+        if agent_findings.is_empty() {
+            continue;
+        }
+
+        let crit = agent_findings.iter().filter(|f| f.severity == Severity::Critical).count();
+        let high = agent_findings.iter().filter(|f| f.severity == Severity::High).count();
+        let n = agent_findings.len();
+        let mut parts = vec![format!("{n} finding{}", plural(n))];
+        if crit > 0 { parts.push(format!("{crit} critical")); }
+        if high > 0 { parts.push(format!("{high} high")); }
+
+        o.push_str(&format!("  {} · {}  ({})\n",
+            bold(&summary.agent_name),
+            dim("AI System"),
+            parts.join(" · "),
+        ));
+
+        render_findings_by_layer(o, &agent_findings);
+        o.push('\n');
+    }
+
+    // Unattributed findings (no agent_id)
+    let unattributed: Vec<&Finding> = findings
+        .iter()
+        .filter(|f| f.agent_id.is_none())
+        .copied()
+        .collect();
+    if !unattributed.is_empty() {
+        let n = unattributed.len();
+        o.push_str(&format!("  {} ({n} finding{})\n",
+            bold("PROJECT-LEVEL"),
+            plural(n),
+        ));
+        render_findings_by_layer(o, &unattributed);
+        o.push('\n');
     }
 }
 
@@ -345,16 +405,37 @@ fn render_quick_actions(o: &mut String, result: &ScanResult, fail_findings: &[&F
     o.push_str(&format!("  {}\n", separator()));
 }
 
+fn render_agent_summaries(o: &mut String, result: &ScanResult) {
+    let summaries = match &result.agent_summaries {
+        Some(s) if !s.is_empty() => s,
+        _ => return,
+    };
+
+    let name_width = summaries
+        .iter()
+        .map(|s| s.agent_name.len())
+        .max()
+        .unwrap_or(22)
+        .clamp(22, 40);
+    let rule_width = name_width + 30;
+
+    o.push_str(&format!("\n  {}\n", bold("PER-AGENT SUMMARY")));
+    o.push_str(&format!("  {}\n\n", separator()));
+    o.push_str(&format!(
+        "    {:<name_width$} {:>8} {:>8} {:>6} {:>6}\n",
+        "AGENT", "FINDINGS", "CRITICAL", "HIGH", "FILES",
+    ));
+    o.push_str(&format!("    {}\n", dim(&"-".repeat(rule_width))));
+    for s in summaries {
+        o.push_str(&format!(
+            "    {:<name_width$} {:>8} {:>8} {:>6} {:>6}\n",
+            s.agent_name, s.finding_count, s.critical_count, s.high_count, s.file_count,
+        ));
+    }
+    o.push('\n');
+}
+
 // ── Small helpers ────────────────────────────────────────────────
-
-fn separator() -> String {
-    dim(&"─".repeat(SEP_WIDTH))
-}
-
-/// Extract project name from the last path segment.
-fn project_name(path: &str) -> &str {
-    path.rsplit('/').find(|s| !s.is_empty()).unwrap_or(path)
-}
 
 /// Strip engine prefix patterns from fix messages (e.g. "Fix complior.injection: ...").
 fn clean_fix_message(fix: &str) -> &str {
@@ -366,9 +447,4 @@ fn clean_fix_message(fix: &str) -> &str {
         }
     }
     fix
-}
-
-/// Pluralization suffix: "s" for n != 1, "" for n == 1.
-fn plural(n: usize) -> &'static str {
-    if n == 1 { "" } else { "s" }
 }

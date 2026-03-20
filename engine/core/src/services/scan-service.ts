@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { ScanResult } from '../types/common.types.js';
+import type { ScanResult, Finding, AgentSummary } from '../types/common.types.js';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { Scanner } from '../domain/scanner/create-scanner.js';
@@ -25,6 +25,10 @@ export interface ScanServiceDeps {
   readonly auditStore?: AuditStore;
   /** E-11: Per-file scan cache (SHA-256 + mtime). Persisted to .complior/cache/. */
   readonly scanCache?: ScanCache;
+  /** Optional passport service for per-agent finding enrichment. */
+  readonly passportService?: {
+    readonly listPassports: (path?: string) => Promise<readonly { name: string; source_files?: readonly string[] }[]>;
+  };
 }
 
 /** E-11: Compute a fast project-level hash from all file contents. */
@@ -43,6 +47,79 @@ const computeProjectHash = (ctx: ScanContext): string => {
 export interface ScanDiffResult extends ComplianceDiff {
   readonly markdown?: string;
 }
+
+/** Enrich scan findings with agentId from passport source_files mapping. */
+const enrichWithAgentIds = async (
+  result: ScanResult,
+  projectPath: string,
+  passportService?: ScanServiceDeps['passportService'],
+): Promise<ScanResult> => {
+  if (!passportService) return result;
+  let passports;
+  try { passports = await passportService.listPassports(projectPath); }
+  catch { return result; }
+  if (passports.length === 0) return result;
+
+  // Build reverse index: filePath → agentName
+  const fileToAgent = new Map<string, string>();
+  for (const p of passports) {
+    for (const sf of (p.source_files ?? [])) {
+      fileToAgent.set(sf, p.name);
+    }
+  }
+
+  // Build directory → agents map for fallback matching
+  const dirToAgents = new Map<string, Set<string>>();
+  for (const p of passports) {
+    for (const sf of (p.source_files ?? [])) {
+      const dir = sf.substring(0, sf.lastIndexOf('/'));
+      if (!dir) continue;
+      if (!dirToAgents.has(dir)) dirToAgents.set(dir, new Set());
+      dirToAgents.get(dir)!.add(p.name);
+    }
+  }
+
+  // Enrich findings
+  const enrichedFindings: Finding[] = result.findings.map(f => {
+    if (!f.file) return f;
+    // 1. Exact file match
+    const exact = fileToAgent.get(f.file);
+    if (exact) return { ...f, agentId: exact };
+    // 2. Directory match (only if unambiguous — 1 agent owns the dir)
+    const dir = f.file.substring(0, f.file.lastIndexOf('/'));
+    const owners = dirToAgents.get(dir);
+    if (owners && owners.size === 1) {
+      return { ...f, agentId: [...owners][0] };
+    }
+    return f;
+  });
+
+  // Per-agent summaries — include ALL passports (even those with 0 findings)
+  const byAgent = new Map<string, Finding[]>();
+  for (const f of enrichedFindings) {
+    if (!f.agentId) continue;
+    if (!byAgent.has(f.agentId)) byAgent.set(f.agentId, []);
+    byAgent.get(f.agentId)!.push(f);
+  }
+
+  const agentSummaries: AgentSummary[] = passports.map(p => {
+    const findings = byAgent.get(p.name) ?? [];
+    return {
+      agentId: p.name,
+      agentName: p.name,
+      findingCount: findings.filter(f => f.type === 'fail').length,
+      criticalCount: findings.filter(f => f.severity === 'critical').length,
+      highCount: findings.filter(f => f.severity === 'high').length,
+      fileCount: new Set(findings.map(f => f.file).filter(Boolean)).size,
+    };
+  });
+
+  return {
+    ...result,
+    findings: enrichedFindings,
+    agentSummaries,
+  };
+};
 
 export const createScanService = (deps: ScanServiceDeps) => {
   const { scanner, collectFiles, events, setLastScanResult } = deps;
@@ -70,7 +147,8 @@ export const createScanService = (deps: ScanServiceDeps) => {
       return result;
     }
 
-    const result = scanner.scan(ctx);
+    const rawResult = scanner.scan(ctx);
+    const result = await enrichWithAgentIds(rawResult, projectPath, deps.passportService);
 
     // E-11: Update in-memory cache
     cachedProjectHash = projectHash;
@@ -142,7 +220,8 @@ export const createScanService = (deps: ScanServiceDeps) => {
       fileContents.set(file.relativePath, file.content);
     }
 
-    const result = await scanner.scanDeep(ctx, fileContents);
+    const rawResult = await scanner.scanDeep(ctx, fileContents);
+    const result = await enrichWithAgentIds(rawResult, projectPath, deps.passportService);
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
@@ -200,7 +279,8 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     await loadCustomBannedPackages(projectPath);
     const ctx = await collectFiles(projectPath);
-    const result = await scanner.scanTier2(ctx);
+    const rawResult = await scanner.scanTier2(ctx);
+    const result = await enrichWithAgentIds(rawResult, projectPath, deps.passportService);
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
