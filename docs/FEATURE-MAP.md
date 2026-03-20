@@ -4,9 +4,9 @@
 > Each feature lists its completed user stories with implementation details.
 > Sprint burndown numbers → see [BURNDOWN.md](./BURNDOWN.md)
 
-**Updated:** 2026-03-17
-**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US) + S08/S09 partial (5 US) — Scanner Intelligence + Enhanced CLI Output
-**Tests:** 2135 | **TS Engine:** 1255 | **Rust CLI:** 466 | **SDK:** 414
+**Updated:** 2026-03-20
+**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US) + S08/S09 partial (5 US) + S10 partial (6 US) — Scanner Tier-2 + Fix Report
+**Tests:** 2308 | **TS Engine:** 1407 | **Rust CLI:** 487 | **SDK:** 414
 **Next:** Sprint S06 — MCP Proxy, ISO 42001, LLM Document Fill, SaaS Regulatory (25 US remaining)
 
 ---
@@ -73,7 +73,11 @@
 | F56 | Scanner Intelligence (Import Graph, Multi-Lang, Git History, L5 Targeted+DocVal) | **DONE** | 5 | S08/S09 |
 | F57 | Enhanced CLI Scan Output (severity, fix roadmap, deadline, badges) | **DONE** | — | S08/S09 |
 | F58 | Code Quality Audit (H1 constants, H4 AI packages, C1 file-collector, GPAI checks) | **DONE** | — | S08/S09 |
-| **TOTAL** | | | **~176** | |
+| F59 | Scanner Tier-2 (Semgrep/Bandit runners, finding mapper, dedup, scan cache) | **DONE** | 3 | S10 |
+| F60 | CLI Scan Output SRP Rewrite (format/ module, ANSI colors, layers) | **DONE** | — | S10 |
+| F61 | Fix Report: Scaffold Badges + Code Fix Dedup + Upgrade CTA | **DONE** | 3 | S10 |
+| F62 | FIX.md Pipeline Documentation | **DONE** | — | S10 |
+| **TOTAL** | | | **~182** | |
 
 ---
 
@@ -1005,6 +1009,86 @@ Architecture and DRY cleanup: unified extension lists, centralized AI package re
 - `engine/core/src/infra/file-collector.ts` — moved from domain/ (C1 fix)
 - `engine/core/src/domain/scanner/checks/gpai-systemic-risk.ts` — GPAI checks
 - `engine/core/src/domain/documents/ai-enricher.ts` — LLM enrichment
+
+---
+
+## F59: Scanner Tier-2 (External Tools + Multi-Framework)
+
+**Sprint:** S10 (partial) | **Status:** DONE
+
+Scanner Tier-2: external SAST tools (Semgrep, Bandit) via subprocess, finding mapper/dedup, multi-framework scoring (OWASP/MITRE/NIST), scan cache wiring.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S10-01 | Obligation Mapper | OWASP LLM Top 10 + MITRE ATLAS + NIST AI RMF mapping tables. `findingToFrameworks(finding)` cross-framework mapper. Data: `owasp-llm/categories.json`, `mitre-atlas/techniques.json` |
+| US-S10-08 | Semgrep Runner | `external/semgrep-runner.ts` — subprocess Semgrep execution, SARIF output parsing, finding normalization. Tier-2 SAST for taint analysis and control flow |
+| US-S10-09 | Bandit Runner | `external/bandit-runner.ts` — Python security scanner via subprocess. Bandit JSON output → complior findings with severity mapping |
+
+**Key files:**
+- `engine/core/src/domain/scanner/external/semgrep-runner.ts` — Semgrep subprocess + SARIF parsing
+- `engine/core/src/domain/scanner/external/bandit-runner.ts` — Bandit subprocess + JSON parsing
+- `engine/core/src/domain/scanner/external/finding-mapper.ts` — external finding → complior Finding normalization
+- `engine/core/src/domain/scanner/external/dedup.ts` — cross-tool finding deduplication
+- `engine/core/src/domain/scanner/score-calculator.ts` — multi-framework score extensions
+- `engine/core/src/domain/scanner/fix-diff-builder.ts` — enhanced fix diff generation
+- `engine/core/src/domain/scanner/fix-diff-builder.test.ts` — 38 builder tests (NEW)
+- **Tests:** TS 1255→1407 (+152 tests)
+
+---
+
+## F60: CLI Scan Output SRP Rewrite
+
+**Sprint:** S10 (partial) | **Status:** DONE
+
+Complete SRP rewrite of headless scan output: monolithic `format.rs` split into `format/` module with dedicated files for colors, labels, and layer rendering.
+
+| Item | Description |
+|------|-------------|
+| format/ module | `cli/src/headless/format/mod.rs` — public API, severity summary, fix roadmap, next steps, deadline countdown |
+| colors.rs | ANSI terminal color utilities with `NO_COLOR` / `TERM=dumb` detection. `OnceLock`-cached. Helpers: `red`, `green`, `yellow`, `cyan`, `bold`, `dim`, `score_color`, `severity_icon`, `layer_status_color` |
+| labels.rs | `check_label(check_id)` — maps 20+ check IDs to human-readable names (e.g. `l4-bare-llm` → "Bare LLM Call Detected") |
+| layers.rs | `render_layer_group()` — per-layer finding group rendering with severity icons, article refs, obligation IDs, fix badges, business impact |
+
+**Key files:**
+- `cli/src/headless/format/mod.rs` — public API module
+- `cli/src/headless/format/colors.rs` — ANSI color system
+- `cli/src/headless/format/labels.rs` — check ID → label mapping
+- `cli/src/headless/format/layers.rs` — layer-grouped finding rendering
+
+---
+
+## F61: Fix Report — Scaffold Badges + Code Fix Dedup + Upgrade CTA
+
+**Sprint:** S10 (partial) | **Status:** DONE
+
+Fix report enhancements: distinguish scaffold (create-action) fixes from inline (splice) fixes, collapse duplicate code fixes, dedup file paths, and add upgrade guidance.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-S10-FIX-01 | Scaffold Badge Detection | `FixEntry.is_scaffold: bool` — true when all plan actions are type `create`. Detected in `extract_entries()` from engine JSON response |
+| US-S10-FIX-02 | Scaffold Badges + Hints | `[SCAFFOLD]` yellow badge on document/code/config entries. `scaffold_hint(check_id, fix_type)` returns context-aware recommendation per fix type (6 variants: template_generation, metadata_generation, config_fix with 3 sub-matches, code_injection, dependency_fix) |
+| US-S10-FIX-03 | Code Fix Dedup | `normalize_code_desc()` strips `Inline fix:` prefix and ` at file:line` / ` from file` suffixes, capitalizes first letter. Collapses 52 individual fixes → 5 merged rows with `(+ N more)` file count. File path dedup prevents duplicate paths in merged rows |
+
+**Additional changes:**
+- `pad_article()` — ensures minimum gap between article and label (fixes `Art. 50(1)Wrap` → `Art. 50(1) Wrap`)
+- UPGRADE → PRODUCTION CTA section: shown when scaffold fixes exist, recommends `complior fix --ai` and MCP agent connection
+- 8 new unit tests: normalize_code_desc (4), pad_article (2), scaffold_hint (1), scaffold detection (1)
+
+**Key files:**
+- `cli/src/headless/fix.rs` — all scaffold badge, dedup, and CTA logic (single file, +637/-83 LOC)
+- **Tests:** Rust 466→487 (+21 tests including 8 fix-specific)
+
+---
+
+## F62: FIX.md Pipeline Documentation
+
+**Sprint:** S10 (partial) | **Status:** DONE
+
+Comprehensive documentation of the fix pipeline: methodology, 5 fix categories, 18 scaffold strategies, inline splice mechanics, evidence chain integration.
+
+| Item | Description |
+|------|-------------|
+| FIX.md | `docs/FIX.md` — full fix pipeline docs: PHASE 1 (Discovery), PHASE 2 (Planning), PHASE 3 (Apply). 5 categories (A: Code, B: Docs, C: Config, D: Deps, E: Passport). 18 strategies mapped to articles. Inline fix mechanics: constructor detection, paren-depth tracking, import injection. Backup/undo via `.complior/backups/` |
 
 ---
 
