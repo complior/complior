@@ -34,6 +34,7 @@ mod tests {
                 confidence_level: None,
                 evidence: None,
                 explanation: None,
+                agent_id: None,
             }],
             project_path: "/test/project".to_string(),
             scanned_at: "2026-02-18".to_string(),
@@ -44,6 +45,7 @@ mod tests {
             regulation_version: None,
             tier: None,
             external_tool_results: None,
+            agent_summaries: None,
         }
     }
 

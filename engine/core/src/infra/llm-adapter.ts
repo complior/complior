@@ -1,6 +1,7 @@
 import type { LanguageModel } from 'ai';
 import type { LlmPort, ProviderName, ProviderInfo, ModelSelection } from '../ports/llm.port.js';
 import { LLMError } from '../types/errors.js';
+import { complior } from '@complior/sdk';
 
 type TaskType = 'qa' | 'code' | 'report' | 'classify' | 'chat';
 
@@ -98,7 +99,12 @@ export const createLlmAdapter = (): LlmPort => {
         });
         // OpenRouter supports Chat Completions API, not OpenAI Responses API.
         // Use .chat() explicitly — default client() uses Responses API in SDK v2.
-        return client.chat(modelId);
+        try {
+          return complior(client).chat(modelId);
+        } catch (err) {
+          console.error('LLM call failed:', err);
+          throw err;
+        }
       }
       default:
         throw new LLMError(`Unknown provider: ${String(provider)}`);

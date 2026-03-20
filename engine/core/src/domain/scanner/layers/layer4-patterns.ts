@@ -56,32 +56,59 @@ export const runLayer4 = (
     for (const rule of PATTERN_RULES) {
       // Reset regex lastIndex for global patterns
       rule.regex.lastIndex = 0;
-      const match = rule.regex.exec(stripped);
 
-      if (match !== null) {
-        const result: L4CheckResult = {
-          obligationId: rule.obligationId,
-          article: rule.article,
-          category: rule.category,
-          patternType: rule.patternType,
-          status: 'FOUND',
-          file: file.relativePath,
-          line: getLineNumber(file.content, match.index),
-          matchedPattern: rule.label,
-          recommendation: rule.recommendation,
-        };
-
-        if (rule.patternType === 'negative') {
-          negativeFound.push(result);
-        } else if (!positiveFound.has(rule.category)) {
-          positiveFound.set(rule.category, result);
+      // For negative patterns, find ALL matches (each is a separate violation).
+      // For positive patterns, first match is enough.
+      if (rule.patternType === 'negative') {
+        let match: RegExpExecArray | null;
+        while ((match = rule.regex.exec(stripped)) !== null) {
+          negativeFound.push({
+            obligationId: rule.obligationId,
+            article: rule.article,
+            category: rule.category,
+            patternType: rule.patternType,
+            status: 'FOUND',
+            file: file.relativePath,
+            line: getLineNumber(file.content, match.index),
+            matchedPattern: rule.label,
+            recommendation: rule.recommendation,
+          });
+          if (!rule.regex.global) break;
+        }
+      } else {
+        const match = rule.regex.exec(stripped);
+        if (match !== null && !positiveFound.has(rule.category)) {
+          positiveFound.set(rule.category, {
+            obligationId: rule.obligationId,
+            article: rule.article,
+            category: rule.category,
+            patternType: rule.patternType,
+            status: 'FOUND',
+            file: file.relativePath,
+            line: getLineNumber(file.content, match.index),
+            matchedPattern: rule.label,
+            recommendation: rule.recommendation,
+          });
         }
       }
     }
   }
 
-  // Add all negative findings (bad patterns found)
-  results.push(...negativeFound);
+  // Filter out bare-llm findings from files that already use @complior/sdk wrapper.
+  // When a file imports @complior/sdk AND wraps constructors with complior(), method
+  // calls like `anthropic.messages.create()` are already compliant.
+  const wrappedFiles = new Set<string>();
+  for (const file of sourceFiles) {
+    if (file.content.includes('@complior/sdk') && /complior\s*\(/.test(file.content)) {
+      wrappedFiles.add(file.relativePath);
+    }
+  }
+
+  // Add negative findings, skipping bare-llm in wrapped files
+  for (const r of negativeFound) {
+    if (r.category === 'bare-llm' && r.file !== undefined && wrappedFiles.has(r.file)) continue;
+    results.push(r);
+  }
 
   // Add positive findings (good patterns found)
   for (const result of positiveFound.values()) {

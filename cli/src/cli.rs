@@ -80,6 +80,10 @@ pub enum Command {
         #[arg(long)]
         cloud: bool,
 
+        /// Filter by agent name (passport source_files)
+        #[arg(long)]
+        agent: Option<String>,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },
@@ -320,6 +324,10 @@ pub enum AgentAction {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+
+        /// Show extended columns (framework, model, owner, files)
+        #[arg(long, short = 'v')]
+        verbose: bool,
 
         /// Project path (default: current directory)
         path: Option<String>,
@@ -1035,9 +1043,22 @@ mod tests {
         let cli = Cli::parse_from(["complior", "agent", "list"]);
         assert!(matches!(
             &cli.command,
-            Some(Command::Agent { action: AgentAction::List { json: false, path: None } })
+            Some(Command::Agent { action: AgentAction::List { json: false, verbose: false, path: None } })
         ));
         assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_agent_list_verbose() {
+        let cli = Cli::parse_from(["complior", "agent", "list", "--verbose"]);
+        match &cli.command {
+            Some(Command::Agent { action: AgentAction::List { json, verbose, path } }) => {
+                assert!(!json);
+                assert!(*verbose);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Agent List command"),
+        }
     }
 
     #[test]
@@ -1623,6 +1644,17 @@ mod tests {
                 assert_eq!(model.as_deref(), Some("gpt-4o"));
             }
             _ => panic!("Expected Chat command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_scan_agent() {
+        let cli = Cli::parse_from(["complior", "scan", "--agent", "my-bot"]);
+        match &cli.command {
+            Some(Command::Scan { agent, .. }) => {
+                assert_eq!(agent.as_deref(), Some("my-bot"));
+            }
+            _ => panic!("Expected Scan command"),
         }
     }
 

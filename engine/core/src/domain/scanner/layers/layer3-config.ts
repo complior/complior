@@ -131,19 +131,26 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
   const results: L3CheckResult[] = [];
   const allDeps: ParsedDependency[] = [];
 
-  // Parse dependency files
+  // Parse dependency files — track source file for each dep
+  const depSources = new Map<string, string>(); // dep.name → relativePath
   for (const file of ctx.files) {
     const filename = file.relativePath.split('/').pop() ?? '';
+    let parsed: readonly ParsedDependency[] = [];
 
     if (filename === 'package.json' && !file.relativePath.includes('node_modules')) {
-      allDeps.push(...parsePackageJson(file.content));
+      parsed = parsePackageJson(file.content);
     } else if (filename === 'requirements.txt') {
-      allDeps.push(...parseRequirementsTxt(file.content));
+      parsed = parseRequirementsTxt(file.content);
     } else if (filename === 'Cargo.toml') {
-      allDeps.push(...parseCargoToml(file.content));
+      parsed = parseCargoToml(file.content);
     } else if (filename === 'go.mod') {
-      allDeps.push(...parseGoMod(file.content));
+      parsed = parseGoMod(file.content);
     }
+
+    for (const dep of parsed) {
+      depSources.set(dep.name, file.relativePath);
+    }
+    allDeps.push(...parsed);
   }
 
   // Check for banned packages
@@ -160,6 +167,7 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
         ecosystem: dep.ecosystem,
         penalty: banned.penalty,
         bannedPackage: banned,
+        file: depSources.get(dep.name),
       });
     }
   }

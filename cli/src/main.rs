@@ -115,7 +115,7 @@ async fn main() -> color_eyre::Result<()> {
         }
 
         let code: i32 = match &parsed_cli.command {
-            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, deep, llm, cloud, path }) => {
+            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, deep, llm, cloud, agent, path }) => {
                 if let Some(base_branch) = diff {
                     headless::scan::run_scan_diff(
                         base_branch, *json, *fail_on_regression, *comment,
@@ -125,6 +125,7 @@ async fn main() -> color_eyre::Result<()> {
                     headless::run_headless_scan(
                         *ci, *json, *sarif, *no_tui, *threshold,
                         fail_on.as_deref(), *deep, *llm, *cloud,
+                        agent.as_deref(),
                         path.as_deref(), &config,
                     ).await
                 }

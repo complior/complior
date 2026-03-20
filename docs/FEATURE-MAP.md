@@ -5,8 +5,8 @@
 > Sprint burndown numbers → see [BURNDOWN.md](./BURNDOWN.md)
 
 **Updated:** 2026-03-20
-**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US) + S08/S09 partial (5 US) + S10 partial (6 US) — Scanner Tier-2 + Fix Report
-**Tests:** 2308 | **TS Engine:** 1407 | **Rust CLI:** 487 | **SDK:** 414
+**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US + Passport Rewrite) + S08/S09 partial (5 US) + S10 partial (6 US) — Scanner Tier-2 + Fix Report + Passport Production
+**Tests:** 2342 | **TS Engine:** 1439 | **Rust CLI:** 489 | **SDK:** 414
 **Next:** Sprint S06 — MCP Proxy, ISO 42001, LLM Document Fill, SaaS Regulatory (25 US remaining)
 
 ---
@@ -77,6 +77,7 @@
 | F60 | CLI Scan Output SRP Rewrite (format/ module, ANSI colors, layers) | **DONE** | — | S10 |
 | F61 | Fix Report: Scaffold Badges + Code Fix Dedup + Upgrade CTA | **DONE** | 3 | S10 |
 | F62 | FIX.md Pipeline Documentation | **DONE** | — | S10 |
+| F63 | Passport Production Rewrite (10 fixes) | **DONE** | — | S06 |
 | **TOTAL** | | | **~182** | |
 
 ---
@@ -1089,6 +1090,36 @@ Comprehensive documentation of the fix pipeline: methodology, 5 fix categories, 
 | Item | Description |
 |------|-------------|
 | FIX.md | `docs/FIX.md` — full fix pipeline docs: PHASE 1 (Discovery), PHASE 2 (Planning), PHASE 3 (Apply). 5 categories (A: Code, B: Docs, C: Config, D: Deps, E: Passport). 18 strategies mapped to articles. Inline fix mechanics: constructor detection, paren-depth tracking, import injection. Backup/undo via `.complior/backups/` |
+
+---
+
+## F63: Passport Production Rewrite (10 Fixes)
+
+**Sprint:** S06 (partial) | **Status:** DONE
+
+Production-grade rewrite of Agent Passport Mode 1 (auto-generation). 10 fixes to make `complior agent init` EU AI Act Art.26 deployer-compliant.
+
+| # | Fix | Description |
+|---|-----|-------------|
+| 1 | resolveRiskClass | Risk classification from project profile (domain + autonomy). HR recruitment + L3 = **high** per Annex III. Takes HIGHER of autonomy-based and domain-based risk. Falls back to autonomy-only if no profile |
+| 2 | getApplicableArticles | Dynamic article mapping per risk class: high → 10 articles (Art.6,9,11-14,26,27,49,50), limited → Art.50+52, minimal → Art.50. Replaces hardcoded `['Art.50.1', 'Art.50.2', 'Art.12']` |
+| 3 | inferDataResidency | From profile `data.storage` or provider fallback. `'eu'`→`'eu'`, `'us'`→`'us'`, `'mixed'`→`'global'`. Provider fallback: anthropic/openai/google → `'us'`. Replaces `'unknown'` |
+| 4 | generateDescription | Contextual: `"Openai-based autonomous agent for healthcare, using gpt-4 (openai), with 5 tools, at autonomy level L4"`. Replaces generic `"AI agent using ${framework}"` |
+| 5 | buildOversight | Oversight block for high-risk / L3+ autonomy. Uses `killSwitchPresent` for `override_mechanism`. Returns `undefined` for minimal/limited + L1/L2 |
+| 6 | computeDeployerObligations | Groups `OBLIGATION_FIELD_MAP` by obligation ID. All fields filled → met, else → pending. Returns `{ met: string[], pending: string[] }` |
+| 7 | computeNextReview | `next_review = created + 90 days` (YYYY-MM-DD). Replaces empty string |
+| 8 | killSwitch export | `killSwitchPresent: boolean` exported from `autonomy-analyzer.ts`. Was computed but discarded |
+| 9 | Deep completeness | `passport-completeness.ts` uses deep paths (34 required fields like `owner.team`, not `owner`). High-risk adds `oversight.responsible_person`, `oversight.override_mechanism` |
+| 10 | Auto-update after scan | `updatePassportsAfterScan()` in passport-service.ts. Wired via `events.on('scan.completed')` in composition-root.ts. Refreshes `complior_score` + `last_scan` on all passports |
+
+**Key files:**
+- `engine/core/src/domain/passport/manifest-builder.ts` — fixes 1-7 (resolveRiskClass, getApplicableArticles, inferDataResidency, generateDescription, buildOversight, computeNextReview, obligation computation)
+- `engine/core/src/domain/passport/autonomy-analyzer.ts` — fix 8 (killSwitchPresent export)
+- `engine/core/src/domain/passport/obligation-field-map.ts` — fix 6 (computeDeployerObligations)
+- `engine/core/src/domain/scanner/checks/passport-completeness.ts` — fix 9 (deep-path checking)
+- `engine/core/src/services/passport-service.ts` — fixes 1,10 (profile read, updatePassportsAfterScan)
+- `engine/core/src/composition-root.ts` — fix 10 (scan.completed → passport update wiring)
+- **Tests:** TS 1407→1439 (+32), Rust 487→489 (+2)
 
 ---
 

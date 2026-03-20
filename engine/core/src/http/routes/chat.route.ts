@@ -15,6 +15,7 @@ import type { AgentMode } from '../../llm/tools/types.js';
 import { getAgentConfig, getAllModes } from '../../llm/agents/modes.js';
 import { createCostTracker, type CostTracker } from '../../llm/routing/cost-tracker.js';
 import { createRateLimiter } from '../../infra/rate-limiter.js';
+import { complior } from '@complior/sdk';
 
 const ChatRequestSchema = z.object({
   message: z.string().min(1),
@@ -141,7 +142,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
 
     return streamSSE(c, async (stream) => {
       try {
-        const result = streamText({
+        const result = complior(streamText)({
           model: model,
           system: systemPrompt,
           messages: chatService.getConversationHistory(),

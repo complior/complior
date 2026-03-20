@@ -1,13 +1,17 @@
 import type { CheckResultType, Finding } from '../../types/common.types.js';
 
-export type FixType = 'code_injection' | 'template_generation' | 'config_fix' | 'metadata_generation';
+export type FixType = 'code_injection' | 'template_generation' | 'config_fix' | 'metadata_generation' | 'dependency_fix';
 
 export interface FixAction {
-  readonly type: 'create' | 'edit';
+  readonly type: 'create' | 'edit' | 'splice';
   readonly path: string;
-  readonly content?: string;
-  readonly oldContent?: string;
-  readonly newContent?: string;
+  readonly content?: string;           // create
+  readonly oldContent?: string;        // edit
+  readonly newContent?: string;        // edit
+  readonly beforeLines?: readonly string[];  // splice: expected lines
+  readonly afterLines?: readonly string[];   // splice: replacement lines
+  readonly startLine?: number;               // splice: 1-based line
+  readonly importLine?: string;              // splice: import to inject
   readonly description: string;
 }
 
@@ -22,6 +26,7 @@ export interface FixPlan {
   readonly scoreImpact: number;
   readonly commitMessage: string;
   readonly description: string;
+  readonly manualFields?: readonly string[];
 }
 
 export interface FixResult {
@@ -51,7 +56,7 @@ export interface FixValidation {
 
 export interface FixHistoryFile {
   readonly path: string;
-  readonly action: 'create' | 'edit';
+  readonly action: 'create' | 'edit' | 'splice';
   readonly backupPath: string;
 }
 

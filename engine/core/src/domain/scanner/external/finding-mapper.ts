@@ -31,7 +31,10 @@ export const mapExternalFindings = (
   rawFindings: readonly RawExternalFinding[],
   tool: ExternalToolName,
 ): readonly Finding[] => {
-  return rawFindings.map((raw) => mapExternalFinding(raw, tool));
+  return rawFindings
+    // Filter out findings from .complior/ backup files (belt-and-suspenders — tool exclusion may not work)
+    .filter((raw) => !raw.file.includes('.complior/') && !raw.file.includes('.complior\\'))
+    .map((raw) => mapExternalFinding(raw, tool));
 };
 
 // --- Internal helpers ---

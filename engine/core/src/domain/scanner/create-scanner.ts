@@ -83,19 +83,14 @@ const enrichFindings = (
   findings: readonly Finding[],
   fileMap: ReadonlyMap<string, string>,
 ): readonly Finding[] => {
-  let enriched = 0;
   return findings.map((f) => {
-    if (enriched >= 20) return f; // Limit enrichment to top-20
     if (f.file === undefined || f.type !== 'fail') return f;
 
     const content = fileMap.get(f.file);
     if (content === undefined) return f;
 
-    enriched++;
     const codeContext = f.line !== undefined ? buildCodeContext(content, f.line) : undefined;
-    const fixDiff = f.line !== undefined
-      ? buildFixDiff(content, f.line, f.file, f.checkId)
-      : undefined;
+    const fixDiff = buildFixDiff(content, f.line ?? 0, f.file, f.checkId);
 
     if (codeContext === undefined && fixDiff === undefined) return f;
     return { ...f, codeContext, fixDiff };
@@ -504,8 +499,28 @@ export const createScanner = (
       // 5. Merge
       const mergedFindings = mergeFindings(baseResult.findings, dedupedExternal);
 
+      // 5b. Filter semgrep bare-call from files already wrapped with @complior/sdk.
+      // After fix, source files have complior() wrapper but semgrep still flags method calls.
+      const wrappedFiles = new Set<string>();
+      for (const f of ctx.files) {
+        if (f.content.includes('@complior/sdk') && /complior\s*\(/.test(f.content)) {
+          wrappedFiles.add(f.relativePath);
+        }
+      }
+      const filteredMerged = mergedFindings.filter((f) => {
+        if (f.checkId.startsWith('ext-semgrep-complior-bare-call') && f.file && wrappedFiles.has(f.file)) return false;
+        return true;
+      });
+
+      // 5c. Enrich external findings with fixDiff and codeContext
+      const fileMap = new Map<string, string>();
+      for (const f of ctx.files) {
+        fileMap.set(f.relativePath, f.content);
+      }
+      const enrichedMerged = enrichFindings(filteredMerged, fileMap);
+
       // 6. Recalculate score
-      const mergedCheckResults = findingsToCheckResults(mergedFindings);
+      const mergedCheckResults = findingsToCheckResults(enrichedMerged);
 
       const score = scoringData !== undefined
         ? calculateScore(mergedCheckResults, scoringData)
@@ -513,7 +528,7 @@ export const createScanner = (
 
       return {
         score: { ...score, confidenceSummary: baseResult.score.confidenceSummary },
-        findings: mergedFindings,
+        findings: enrichedMerged,
         projectPath: baseResult.projectPath,
         scannedAt: baseResult.scannedAt,
         duration: Date.now() - tier2Start,

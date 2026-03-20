@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { generateText } from 'ai';
 import { ValidationError } from '../../types/errors.js';
 import type { LlmPort } from '../../ports/llm.port.js';
+import { complior } from '@complior/sdk';
 
 const VerifySchema = z.object({
   provider: z.enum(['anthropic', 'openai', 'openrouter']),
@@ -32,7 +33,7 @@ export const createProviderRoute = (llm: LlmPort) => {
 
       const model = await llm.getModel(provider, testModelId, apiKey);
 
-      await generateText({
+      await complior(generateText)({
         model,
         prompt: 'Say "ok"',
         maxOutputTokens: 1,

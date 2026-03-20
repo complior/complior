@@ -17,10 +17,15 @@ pub(crate) fn find_engine_root(project_path: &std::path::Path) -> Option<std::pa
     None
 }
 
+/// Treat placeholder values as empty for display purposes.
+fn is_empty_val(s: &str) -> bool {
+    matches!(s.trim(), "" | "-" | "unknown")
+}
+
 pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
     match action {
         AgentAction::Init { json, force, path } => run_agent_init(*json, *force, path.as_deref(), config).await,
-        AgentAction::List { json, path } => run_agent_list(*json, path.as_deref(), config).await,
+        AgentAction::List { json, verbose, path } => run_agent_list(*json, *verbose, path.as_deref(), config).await,
         AgentAction::Show { name, json, path } => {
             run_agent_show(name, *json, path.as_deref(), config).await
         }
@@ -199,7 +204,10 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
     }
 }
 
-async fn run_agent_list(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+    use super::format::colors::{bold, dim, score_color};
+    use super::format::{separator, plural};
+
     let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
@@ -221,52 +229,83 @@ async fn run_agent_list(json: bool, path: Option<&str>, config: &TuiConfig) -> i
             let manifests = result.as_array();
             match manifests {
                 Some(agents) if !agents.is_empty() => {
-                    println!("Agent Passports ({}):\n", agents.len());
-                    println!(
-                        "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10}",
-                        "NAME", "LEVEL", "TYPE", "RISK", "SCORE", "STATUS"
-                    );
-                    println!("  {}", "-".repeat(68));
+                    println!("\n  {}\n", bold(&format!(
+                        "◆ Agent Passports  ·  {} agent{}",
+                        agents.len(), plural(agents.len()),
+                    )));
+                    println!("  {}", separator());
+
+                    if verbose {
+                        println!(
+                            "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10} {:<12} {:<14} {:<12} {:<6}",
+                            "NAME", "LEVEL", "TYPE", "RISK", "SCORE", "STATUS",
+                            "FRAMEWORK", "MODEL", "OWNER", "FILES",
+                        );
+                        println!("  {}", "-".repeat(112));
+                    } else {
+                        println!(
+                            "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10}",
+                            "NAME", "LEVEL", "TYPE", "RISK", "SCORE", "STATUS"
+                        );
+                        println!("  {}", "-".repeat(68));
+                    }
 
                     for agent in agents {
-                        let name = agent
-                            .get("name")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
-                        let level = agent
-                            .get("autonomy_level")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
-                        let agent_type = agent
-                            .get("type")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
-                        let risk = agent
-                            .get("compliance")
+                        let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                        let level = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
+                        let agent_type = agent.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                        let risk = agent.get("compliance")
                             .and_then(|c| c.get("eu_ai_act"))
                             .and_then(|e| e.get("risk_class"))
                             .and_then(|v| v.as_str())
                             .unwrap_or("?");
-                        let score = agent
-                            .get("compliance")
+                        let score = agent.get("compliance")
                             .and_then(|c| c.get("complior_score"))
                             .and_then(|v| v.as_f64())
                             .unwrap_or(0.0);
-                        let status = agent
-                            .get("lifecycle")
+                        let status = agent.get("lifecycle")
                             .and_then(|l| l.get("status"))
                             .and_then(|v| v.as_str())
                             .unwrap_or("?");
 
-                        println!(
-                            "  {:<20} {:<8} {:<12} {:<10} {:<8.0} {:<10}",
-                            name, level, agent_type, risk, score, status
-                        );
+                        let score_str = format!("{score:.0}");
+
+                        if verbose {
+                            let framework = agent.get("framework").and_then(|v| v.as_str()).unwrap_or("-");
+                            let model_id = agent.get("model")
+                                .and_then(|m| m.get("model_id"))
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("-");
+                            let owner = agent.get("owner")
+                                .and_then(|o| o.get("team"))
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("-");
+                            let files = agent.get("source_files")
+                                .and_then(|v| v.as_array())
+                                .map(|a| a.len())
+                                .unwrap_or(0);
+
+                            println!(
+                                "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10} {:<12} {:<14} {:<12} {:<6}",
+                                name, level, agent_type, risk,
+                                score_color(score, &score_str),
+                                status, framework, model_id, owner, files,
+                            );
+                        } else {
+                            println!(
+                                "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10}",
+                                name, level, agent_type, risk,
+                                score_color(score, &score_str),
+                                status,
+                            );
+                        }
                     }
+                    println!();
+                    println!("  {}", dim("Run `complior agent show <name>` for details"));
                 }
                 _ => {
-                    println!("No Agent Passports found.");
-                    println!("Run `complior agent init` to generate one.");
+                    println!("\n  No Agent Passports found.");
+                    println!("  Run {} to generate one.\n", dim("complior agent init"));
                 }
             }
             0
@@ -284,6 +323,9 @@ async fn run_agent_show(
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
+    use super::format::colors::{bold, dim, green, yellow, red, score_color, cyan};
+    use super::format::separator;
+
     let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
@@ -305,80 +347,210 @@ async fn run_agent_show(
 
             // Human-readable output
             let agent_name = result.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-            let display = result
-                .get("display_name")
-                .and_then(|v| v.as_str())
-                .unwrap_or(agent_name);
-            let agent_id = result
-                .get("agent_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
+            let display = result.get("display_name").and_then(|v| v.as_str()).unwrap_or(agent_name);
+            let agent_id = result.get("agent_id").and_then(|v| v.as_str()).unwrap_or("?");
             let version = result.get("version").and_then(|v| v.as_str()).unwrap_or("?");
-            let framework = result
-                .get("framework")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let level = result
-                .get("autonomy_level")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
+            let framework = result.get("framework").and_then(|v| v.as_str()).unwrap_or("?");
+            let level = result.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
             let agent_type = result.get("type").and_then(|v| v.as_str()).unwrap_or("?");
 
-            println!("Agent Passport: {display}\n");
-            println!("  ID:           {agent_id}");
-            println!("  Version:      {version}");
-            println!("  Framework:    {framework}");
-            println!("  Autonomy:     {level} ({agent_type})");
+            println!("\n  {}", bold(&format!("◆ Agent Passport  ·  {display}")));
+            println!("  {}\n", separator());
+            println!("  {}       {}", dim("ID"), agent_id);
+            println!("  {}  {}", dim("Version"), version);
+            println!("  {} {}", dim("Framework"), framework);
+            println!("  {} {level} ({agent_type})", dim("Autonomy"));
 
             // Compliance
             if let Some(compliance) = result.get("compliance") {
-                let risk = compliance
-                    .get("eu_ai_act")
+                let risk = compliance.get("eu_ai_act")
                     .and_then(|e| e.get("risk_class"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("?");
-                let score = compliance
-                    .get("complior_score")
+                let score = compliance.get("complior_score")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0);
-                println!("  Risk class:   {risk}");
-                println!("  Score:        {score:.0}/100");
+
+                println!("\n  {}", bold("COMPLIANCE"));
+                println!("  {}\n", separator());
+                let risk_colored = match risk {
+                    "high" | "prohibited" => red(risk),
+                    "limited" => yellow(risk),
+                    "minimal" => green(risk),
+                    _ => risk.to_string(),
+                };
+                let score_str = format!("{score:.0}/100");
+                println!("    {}   {}", dim("Risk class:"), risk_colored);
+                println!("    {}       {}", dim("Score:"), score_color(score, &score_str));
+
+                // Extended compliance status
+                let fria = compliance.get("fria_completed").and_then(|v| v.as_bool());
+                let notif = compliance.get("worker_notification_sent").and_then(|v| v.as_bool());
+                let policy = compliance.get("policy_generated").and_then(|v| v.as_bool());
+                if fria.is_some() || notif.is_some() || policy.is_some() {
+                    let status_label = |v: Option<bool>| match v {
+                        Some(true) => green("completed"),
+                        Some(false) => yellow("pending"),
+                        None => dim("-").to_string(),
+                    };
+                    println!("    {}        {}", dim("FRIA:"), status_label(fria));
+                    println!("    {} {}", dim("Notification:"), status_label(notif));
+                    println!("    {}      {}", dim("Policy:"), status_label(policy));
+                }
+            }
+
+            // Owner
+            if let Some(owner) = result.get("owner") {
+                let team = owner.get("team").and_then(|v| v.as_str()).unwrap_or("-");
+                let contact = owner.get("contact").and_then(|v| v.as_str()).unwrap_or("-");
+                let person = owner.get("responsible_person").and_then(|v| v.as_str()).unwrap_or("-");
+                if !is_empty_val(team) || !is_empty_val(contact) || !is_empty_val(person) {
+                    println!("\n  {}", bold("OWNER"));
+                    println!("  {}\n", separator());
+                    if !is_empty_val(team) { println!("    {}        {}", dim("Team:"), team); }
+                    if !is_empty_val(contact) { println!("    {}     {}", dim("Contact:"), contact); }
+                    if !is_empty_val(person) { println!("    {}  {}", dim("Responsible:"), person); }
+                }
+            }
+
+            // Model
+            if let Some(model) = result.get("model") {
+                let provider = model.get("provider").and_then(|v| v.as_str()).unwrap_or("-");
+                let model_id = model.get("model_id").and_then(|v| v.as_str()).unwrap_or("-");
+                let deployment = model.get("deployment").and_then(|v| v.as_str()).unwrap_or("-");
+                let residency = model.get("data_residency").and_then(|v| v.as_str()).unwrap_or("-");
+                if !is_empty_val(provider) || !is_empty_val(model_id) || !is_empty_val(deployment) || !is_empty_val(residency) {
+                    println!("\n  {}", bold("MODEL"));
+                    println!("  {}\n", separator());
+                    if !is_empty_val(provider) { println!("    {}    {}", dim("Provider:"), provider); }
+                    if !is_empty_val(model_id) { println!("    {}    {}", dim("Model ID:"), model_id); }
+                    if !is_empty_val(deployment) { println!("    {}  {}", dim("Deployment:"), deployment); }
+                    if !is_empty_val(residency) { println!("    {}   {}", dim("Residency:"), residency); }
+                }
+            }
+
+            // Constraints
+            if let Some(constraints) = result.get("constraints") {
+                let rpm = constraints.get("rate_limits")
+                    .and_then(|r| r.get("max_actions_per_minute"))
+                    .and_then(|v| v.as_u64());
+                let budget = constraints.get("budget")
+                    .and_then(|b| b.get("max_cost_per_session_usd"))
+                    .and_then(|v| v.as_f64());
+                let prohibited = constraints.get("prohibited_actions")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+
+                println!("\n  {}", bold("CONSTRAINTS"));
+                println!("  {}\n", separator());
+                if let Some(r) = rpm {
+                    println!("    {}  {}/min", dim("Rate limit:"), r);
+                }
+                if let Some(b) = budget {
+                    println!("    {}      ${:.2}/session", dim("Budget:"), b);
+                }
+                if prohibited > 0 {
+                    println!("    {}  {prohibited} action(s)", dim("Prohibited:"));
+                }
             }
 
             // Permissions
             if let Some(perms) = result.get("permissions") {
                 if let Some(tools) = perms.get("tools").and_then(|v| v.as_array()) {
                     if !tools.is_empty() {
-                        let tool_names: Vec<&str> = tools
-                            .iter()
-                            .filter_map(|v| v.as_str())
-                            .collect();
-                        println!("  Tools:        {}", tool_names.join(", "));
+                        let tool_names: Vec<&str> = tools.iter().filter_map(|v| v.as_str()).collect();
+                        println!("\n  {}", bold("PERMISSIONS"));
+                        println!("  {}\n", separator());
+                        println!("    {}       {}", dim("Tools:"), tool_names.join(", "));
+                    }
+                }
+            }
+
+            // Disclosure
+            if let Some(disclosure) = result.get("disclosure") {
+                let user_facing = disclosure.get("user_facing").and_then(|v| v.as_bool());
+                let marked = disclosure.get("ai_marking")
+                    .and_then(|a| a.get("responses_marked"))
+                    .and_then(|v| v.as_bool());
+                let text = disclosure.get("disclosure_text").and_then(|v| v.as_str()).unwrap_or("");
+                if user_facing.is_some() || marked.is_some() || !text.is_empty() {
+                    println!("\n  {}", bold("DISCLOSURE"));
+                    println!("  {}\n", separator());
+                    if let Some(uf) = user_facing {
+                        println!("    {} {}", dim("User-facing:"), if uf { green("yes") } else { yellow("no") });
+                    }
+                    if let Some(m) = marked {
+                        println!("    {}  {}", dim("AI marking:"), if m { green("yes") } else { yellow("no") });
+                    }
+                    if !text.is_empty() {
+                        let truncated = if text.len() > 60 { &text[..57] } else { text };
+                        let suffix = if text.len() > 60 { "..." } else { "" };
+                        println!("    {}        {}{}", dim("Text:"), truncated, suffix);
+                    }
+                }
+            }
+
+            // Lifecycle
+            if let Some(lifecycle) = result.get("lifecycle") {
+                let status = lifecycle.get("status").and_then(|v| v.as_str()).unwrap_or("-");
+                let deployed = lifecycle.get("deployed_since").and_then(|v| v.as_str()).unwrap_or("-");
+                let next_review = lifecycle.get("next_review").and_then(|v| v.as_str()).unwrap_or("-");
+                let freq = lifecycle.get("review_frequency_days").and_then(|v| v.as_u64());
+                if !is_empty_val(status) || !is_empty_val(deployed) || !is_empty_val(next_review) || freq.is_some() {
+                    println!("\n  {}", bold("LIFECYCLE"));
+                    println!("  {}\n", separator());
+                    if !is_empty_val(status) {
+                        let status_colored = match status {
+                            "active" => green(status),
+                            "draft" | "review" => yellow(status),
+                            "suspended" | "retired" => red(status),
+                            _ => status.to_string(),
+                        };
+                        println!("    {}      {}", dim("Status:"), status_colored);
+                    }
+                    if !is_empty_val(deployed) { println!("    {}    {}", dim("Deployed:"), deployed); }
+                    if !is_empty_val(next_review) { println!("    {} {}", dim("Next review:"), next_review); }
+                    if let Some(f) = freq {
+                        println!("    {}   every {f}d", dim("Frequency:"));
                     }
                 }
             }
 
             // Source
             if let Some(source) = result.get("source") {
-                let confidence = source
-                    .get("confidence")
-                    .and_then(|v| v.as_f64())
-                    .unwrap_or(0.0);
+                let confidence = source.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let mode = source.get("mode").and_then(|v| v.as_str()).unwrap_or("?");
-                println!("  Source mode:  {mode}");
-                println!("  Confidence:   {:.0}%", confidence * 100.0);
+                println!("\n  {}", bold("SOURCE"));
+                println!("  {}\n", separator());
+                println!("    {}        {}", dim("Mode:"), mode);
+                println!("    {}  {:.0}%", dim("Confidence:"), confidence * 100.0);
             }
 
             // Signature
             if let Some(sig) = result.get("signature") {
                 let algo = sig.get("algorithm").and_then(|v| v.as_str()).unwrap_or("?");
-                let signed_at = sig
-                    .get("signed_at")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("?");
-                println!("  Signed:       {signed_at} ({algo})");
+                let signed_at = sig.get("signed_at").and_then(|v| v.as_str()).unwrap_or("?");
+                println!("\n  {}", bold("SIGNATURE"));
+                println!("  {}\n", separator());
+                println!("    {}   {}", dim("Signed at:"), signed_at);
+                println!("    {}   {}", dim("Algorithm:"), algo);
             }
 
+            // Source files
+            if let Some(files) = result.get("source_files").and_then(|v| v.as_array()) {
+                if !files.is_empty() {
+                    println!("\n  {}", bold("SOURCE FILES"));
+                    println!("  {}\n", separator());
+                    for f in files {
+                        if let Some(p) = f.as_str() {
+                            println!("    {}", cyan(p));
+                        }
+                    }
+                }
+            }
+
+            println!();
             0
         }
         Err(e) => {

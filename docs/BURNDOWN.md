@@ -13,7 +13,7 @@
 |---------|-----------|------|-------|
 | Спринты | v1 (19) + v8 (S01--S06-partial + S08--S10-partial, 18) = 37 | S000--S8.5 (14) | 51 |
 | Story Points | 365 (v1) + ~205 (v8 est.) = ~570 | 424 | ~994 |
-| Тесты | 2308 | 554 | **2862** |
+| Тесты | 2342 | 554 | **2896** |
 | User Stories (DONE) | 84 (v1) + 93 (v8) = 177 | 84 | 261 |
 | Velocity (SP/day) | ~20 (v1, 2 days) / ~6.8 (v8, 30 days) | 12.8 | -- |
 | Разработчики | Claude Code | Max, Nina, Leo, Marcus | -- |
@@ -31,7 +31,7 @@ FEB  2026  |====================| CLI v1 done (365 SP, 19 sprints, 2 days)
 
 MAR  2026  |==| CLI S04 done (FRIA JSON, bug fixes)
            |==============| CLI S05 Phase 1-5 done (30 US, 1691 tests)
-           |====| CLI S06 partial (5 US: LLM Chat, Chat UX, Onboarding Rework, Init)
+           |====| CLI S06 partial (5 US + Passport Production Rewrite: LLM Chat, Chat UX, Onboarding, Init, 10 passport fixes)
            |====| CLI S08/S09 partial (Scanner Intelligence, CLI Scan Output, Code Quality)
            |====| CLI S10 partial (Tier-2 Scan, Multi-Framework, Fix Report, SRP)
            |========| SaaS S9 (planned: 51 SP, 18 features, 4 weeks)
@@ -111,10 +111,11 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S05-S06-QF (Quality) | <1 day | — | 1430->1430 | Port discovery DRY, SDK strict compliance, code quality audit |
 | S06 partial (LLM Chat) | 1 day | 2 | 1430->1691 | LLM Chat Service (rate limiter, SSE), TUI Chat Page (9th view, LLM settings) |
 | S06 partial (UX+Onboarding) | 1 day | 3 | 1691->1709 | Chat UX (multiline, tool names, no timestamps), Onboarding Rework (10→8 steps, persistence, Esc block, requirements frameworks), `complior init` + project root discovery (9 markers) |
+| S06 partial (Passport Rewrite) | 1 day | — | 2308->2342 | Passport Production Rewrite (10 fixes): resolveRiskClass, getApplicableArticles, inferDataResidency, generateDescription, buildOversight, computeDeployerObligations, computeNextReview, deep completeness, auto-update after scan, killSwitch export |
 | S08/S09 partial (Scanner Intelligence) | 2 days | 5 | 1709->2135 | Import Graph (45 AI packages, 5 ecosystems), Multi-Language (Go/Rust/Java), Git History (21 doc types), Targeted L5 (8 prompts), L5 Doc Validation (4 doc types), GPAI systemic risk checks, AI enricher, unified constants (H1/H4/C1), enhanced CLI scan output (severity summary, fix roadmap, deadline, badges) |
 | S10 partial (Tier-2 + Fix Report) | 3 days | 6 | 2135->2308 | Scanner Tier-2 (Semgrep/Bandit runners, finding mapper, dedup), multi-framework scoring, scan cache wiring, scan output SRP rewrite (format/ module: colors, labels, layers), fix report scaffold badges `[SCAFFOLD]`, code fix dedup, file dedup, upgrade CTA, FIX.md pipeline docs |
 
-**v8 Total:** ~31 days | 93 US | +1740 tests (568->2308)
+**v8 Total:** ~32 days | 93 US | +1774 tests (568->2342)
 
 ### CLI Test Count History
 
@@ -132,6 +133,7 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S06 partial (UX+Onboarding) | 862 | 414 | 433 | **1709** |
 | S08/S09 partial (Scanner Intel) | 1255 | 414 | 466 | **2135** |
 | S10 partial (Tier-2+Fix Report) | 1407 | 414 | 487 | **2308** |
+| S06 partial (Passport Rewrite) | 1439 | 414 | 489 | **2342** |
 
 ---
 
@@ -208,7 +210,7 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | 2026-03-09 | 1430 | 554 | **1984** |
 | 2026-03-13 | 1709 | 554 | **2263** |
 | 2026-03-17 | 2135 | 554 | **2689** |
-| 2026-03-20 | 2308 | 554 | **2862** |
+| 2026-03-20 | 2342 | 554 | **2896** |
 
 ### Velocity Trend (per sprint, both tracks)
 
@@ -274,7 +276,8 @@ SP/day
 | Что | К 2 авг 2026 | Confidence |
 |-----|-------------|------------|
 | CLI Scanner (5 layers) | DONE | 100% |
-| CLI Agent Passport (Mode 1) | DONE | 100% |
+| CLI Agent Passport (Mode 1 Auto) | DONE | 100% |
+| CLI Passport Production Rewrite (10 fixes: risk class, articles, oversight, obligations) | DONE | 100% |
 | CLI Evidence Chain | DONE | 100% |
 | CLI FRIA Generator | DONE | 100% |
 | CLI<->SaaS Sync | DONE | 100% |
@@ -350,8 +353,9 @@ SP/day
 26. Fix Report Scaffold Badges + Code Fix Dedup + Upgrade CTA -- **DONE** (S10)
 27. Scan Output SRP (format/ module, ANSI colors, layer grouping) -- **DONE** (S10)
 28. FIX.md Pipeline Documentation (18 strategies, 5 fix categories) -- **DONE** (S10)
+29. Passport Production Rewrite (10 fixes: resolveRiskClass, dynamic articles, oversight, obligations, deep completeness, auto-update after scan) -- **DONE** (S06)
 
-Из 28 must-have, **26 уже DONE**. Осталось 2 -- обе в SaaS S9.
+Из 29 must-have, **27 уже DONE**. Осталось 2 -- обе в SaaS S9.
 
 **Вывод:** При текущей velocity (12.8 SP/day SaaS) Sprint 9 (51 SP, 4 weeks) укладывается в дедлайн с запасом ~3 месяца на S10+ фичи. CLI/Engine обогнал план на ~3 спринта.
 

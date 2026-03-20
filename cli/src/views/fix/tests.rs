@@ -20,6 +20,7 @@ fn make_findings() -> Vec<Finding> {
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         },
         Finding {
             check_id: "OBL-002".to_string(),
@@ -38,6 +39,7 @@ fn make_findings() -> Vec<Finding> {
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         },
         Finding {
             check_id: "OBL-003".to_string(),
@@ -56,6 +58,7 @@ fn make_findings() -> Vec<Finding> {
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         },
     ]
 }
@@ -217,6 +220,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         },
         Finding {
             check_id: "l2-fria".to_string(),
@@ -235,6 +239,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         },
         Finding {
             check_id: "l3-compliance-metadata".to_string(),
@@ -253,6 +258,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         },
     ]
 }
@@ -280,6 +286,7 @@ fn make_scan_result(findings: &[Finding]) -> crate::types::ScanResult {
         regulation_version: None,
         tier: None,
         external_tool_results: None,
+        agent_summaries: None,
     }
 }
 
@@ -387,6 +394,7 @@ fn snapshot_fix_single_mode_type_a_recommendation() {
         confidence_level: None,
         evidence: None,
         explanation: None,
+        agent_id: None,
     }];
     app.last_scan = Some(make_scan_result(&findings));
     app.fix_view = FixViewState::from_scan(&findings);
@@ -446,6 +454,7 @@ fn test_apply_fix_diff_writes_file() {
         confidence_level: None,
         evidence: None,
         explanation: None,
+        agent_id: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -485,6 +494,7 @@ fn test_apply_type_b_creates_file() {
         confidence_level: None,
         evidence: None,
         explanation: None,
+        agent_id: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -531,6 +541,7 @@ fn test_apply_rejects_stale_diff() {
         confidence_level: None,
         evidence: None,
         explanation: None,
+        agent_id: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);

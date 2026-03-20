@@ -1,27 +1,23 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
 import { filterPassportManifests, extractRiskClass } from '../../passport/manifest-files.js';
-import { isNonEmpty } from '../../passport/obligation-field-map.js';
+import { OBLIGATION_FIELD_MAP, getFieldValue, isNonEmpty } from '../../passport/obligation-field-map.js';
 
 const CHECK_ID = 'passport-completeness';
 const ARTICLE_REF = 'Art. 26(4)';
 const OBLIGATION_ID = 'eu-ai-act-OBL-011';
 
-const ALL_FIELDS = [
-  'name', 'display_name', 'version', 'description', 'agent_id',
-  'type', 'framework', 'autonomy_level',
-  'model', 'owner', 'permissions', 'constraints',
-  'compliance', 'signature', 'source',
-  'autonomy_evidence', 'logging', 'lifecycle', 'oversight',
-] as const;
+/** Deep-path fields required for all risk levels. */
+const BASE_FIELDS = OBLIGATION_FIELD_MAP.filter((m) => m.required).map((m) => m.field);
 
-const HIGH_RISK_FIELDS = ALL_FIELDS;
-const LIMITED_RISK_FIELDS = ALL_FIELDS.slice(0, 12);
+/** Additional fields required for high-risk / prohibited passports. */
+const HIGH_RISK_EXTRA = ['oversight.responsible_person', 'oversight.override_mechanism'] as const;
 
-const countFields = (manifest: Record<string, unknown>, fields: readonly string[]): number => {
+const countDeepFields = (manifest: Record<string, unknown>, fields: readonly string[]): number => {
   let filled = 0;
-  for (const field of fields) {
-    if (isNonEmpty(manifest[field])) {
+  for (const fieldPath of fields) {
+    const value = getFieldValue(manifest as never, fieldPath);
+    if (isNonEmpty(value)) {
       filled++;
     }
   }
@@ -43,10 +39,10 @@ export const checkPassportCompleteness = (ctx: ScanContext): readonly CheckResul
       const risk = extractRiskClass(manifest);
 
       const requiredFields = risk === 'high' || risk === 'prohibited'
-        ? HIGH_RISK_FIELDS
-        : LIMITED_RISK_FIELDS;
+        ? [...BASE_FIELDS, ...HIGH_RISK_EXTRA]
+        : BASE_FIELDS;
       const totalRequired = requiredFields.length;
-      const filled = countFields(manifest, requiredFields);
+      const filled = countDeepFields(manifest, requiredFields);
       const pct = Math.round((filled / totalRequired) * 100);
       const name = (manifest.name as string) ?? file.relativePath;
 

@@ -1,24 +1,24 @@
-# Complior Fixer — Methodology & Pipeline
+# Complior Fixer — Методология и Пайплайн
 
-The Complior fixer is a **deterministic, strategy-based auto-remediation engine** that generates and applies compliance fixes for findings discovered by the scanner. It produces structured fix plans with score-impact prediction, type-aware diffs, backup/undo, post-apply validation, and evidence recording.
+Complior fixer — **детерминистический движок авто-ремедиации на основе стратегий**. Генерирует и применяет compliance-фиксы для находок сканера. Каждый фикс: структурированный план → прогноз влияния на скор → type-aware diff → backup/undo → валидация → запись в evidence chain.
 
-**Design principle:** Fixer NEVER invents compliance logic. All fixes are deterministic (templates + strategies). LLM only enriches document content when explicitly opted-in (`--ai`). Fixes are always preview-first, reversible, and validated.
+**Принцип:** Fixer НИКОГДА не изобретает compliance-логику. Все фиксы детерминистичны (шаблоны + стратегии). LLM только обогащает содержание документов при явном opt-in (`--ai`). Фиксы всегда: preview-first, обратимы, валидируются.
 
-**Rules version:** `1.0.0` — EU AI Act Regulation 2024/1689
-**Fix categories:** 5 (A: Code, B: Documentation, C: Config, D: Dependencies, E: Passport)
-**Strategies:** 5 implemented, 13 planned
-**Updated:** 2026-03-18
-**Tests:** ~60 fixer-specific tests (out of 1777 total)
+**Версия правил:** `1.0.0` — EU AI Act Regulation 2024/1689
+**Категории фиксов:** 5 (A: Код, B: Документация, C: Конфиг, D: Зависимости, E: Паспорт)
+**Стратегий:** 18 scaffold + 5 inline fix типов (splice)
+**Обновлено:** 2026-03-19
+**Тестов:** ~81 fixer-специфичных (43 fixer + 38 builder) из 1821 всего
 
 ---
 
-## Pipeline Overview
+## Обзор пайплайна
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                          COMPLIOR FIX PIPELINE                                  │
 │                                                                                 │
-│  5 categories · 18 strategies · 14 templates · backup/undo · evidence chain    │
+│  5 категорий · 18 стратегий · 14 шаблонов · backup/undo · evidence chain      │
 └─────────────────────────────────────────────────────────────────────────────────┘
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -30,14 +30,16 @@ PHASE 1: DISCOVERY                PHASE 2: PLANNING              PHASE 3: APPLY
 ├─ Last ScanResult                ├─ For each fail finding:       ├─ Backup original
 │  (from scan or cache)           │  findStrategy(finding, ctx)   │  .complior/backups/
 │                                 │                               │
-├─ Filter: type == 'fail'         ├─ Strategy returns FixPlan:    ├─ Apply actions:
-│  (skip pass/skip findings)      │  ├─ obligationId              │  ├─ create: new file
-│                                 │  ├─ article ref               │  ├─ edit: splice diff
-├─ Build FixContext:              │  ├─ fix type (A-E)            │  └─ import injection
-│  ├─ projectPath                 │  ├─ actions[]                 │
-│  ├─ framework (React/Node/…)    │  ├─ diff (unified)            ├─ Template resolution:
-│  └─ existingFiles[]             │  ├─ scoreImpact               │  [TEMPLATE:file] → content
-│                                 │  └─ commitMessage             │  + passport pre-fill
+├─ Filter: type == 'fail'         ├─ Priority 1: fixDiff present? ├─ Apply actions:
+│  (skip pass/skip findings)      │  → buildInlineFixPlan()       │  ├─ create: new file
+│                                 │  → splice action              │  ├─ edit: string replace
+├─ Build FixContext:              │                               │  ├─ splice: inline before/after
+│  ├─ projectPath                 ├─ Priority 2: findStrategy()   │  │  + stale diff protection
+│  ├─ framework (React/Node/…)    │  → scaffold action (create)   │  └─ import injection
+│  └─ existingFiles[]             │                               │
+│                                 ├─ Returns FixPlan:             ├─ Template resolution:
+│                                 │  ├─ obligationId              │  [TEMPLATE:file] → content
+│                                 │  ├─ actions[] (splice/create) │  + passport pre-fill
                                   │                               │  + optional LLM enrich
                                   ├─ Preview:                     │
                                   │  CLI: table + diff             ├─ Re-scan project
@@ -85,99 +87,156 @@ HTTP API:
   GET  /fix/history                      Fix history log
 
 ═══════════════════════════════════════════════════════════════════════════════════
- WHAT EACH SCAN LAYER PRODUCES → WHAT THE FIXER CAN REMEDIATE
+ ЧТО НАХОДИТ СКАНЕР → ЧТО ПРАВИТ FIXER
 ═══════════════════════════════════════════════════════════════════════════════════
 
-Scanner Layer          Finding Example            Fix Category    Fix Action
-─────────────────────  ───────────────────────    ────────────    ──────────────────
-L1 File Presence       ai-disclosure missing       A (Code)       Create component/middleware
-L1 File Presence       documentation missing       B (Doc)        Generate from template
-L1 File Presence       compliance-metadata missing C (Config)     Create .well-known/ai-compliance.json
-L1 File Presence       passport-presence missing   E (Passport)   complior agent init
+Слой сканера          Находка (checkId)           Категория    Действие фикса                      Статус
+─────────────────     ────────────────────────     ─────────    ─────────────────────────────────    ──────
+L1 Наличие файлов     ai-disclosure                A (Код)      Создаёт компонент/middleware          ✅
+L1 Наличие файлов     content-marking              C (Конфиг)   Создаёт C2PA/IPTC конфиг JSON        ✅
+L1 Наличие файлов     interaction-logging           A (Код)      Создаёт логгер с типизированным API  ✅
+L1 Наличие файлов     compliance-metadata           C (Конфиг)   Создаёт .well-known/ai-compliance    ✅
+L1 Наличие файлов     документы (14 типов)          B (Док)      Генерирует из шаблона                ✅
+L1 Наличие файлов     passport-presence             E (Паспорт)  complior agent init                  ✅
 
-L2 Doc Structure       l2-fria incomplete          B (Doc)        Regenerate with passport data + LLM
-L2 Doc Structure       l2-tech-documentation       B (Doc)        Generate from template
+L2 Структура док.     l2-fria incomplete            B (Док)      Регенерирует с данными паспорта      ✅
+L2 Структура док.     l2-tech-documentation         B (Док)      Генерирует из шаблона                ✅
 
-L3 Dependencies        l3-banned-deepface          —              ⚠ Manual (remove package)
-L3 Dependencies        l3-dep-vuln                 D (Deps)       🔮 Planned: semver upgrade
-L3 Dependencies        l3-missing-bias-testing     C (Config)     🔮 Planned: add fairlearn dep
+L3 Зависимости        l3-banned-*                   A (Код)      Inline: удаляет строку из manifest   ✅
+L3 Зависимости        l3-dep-vuln                   D (Зав.)     Создаёт план обновления зависимостей ✅
+L3 Зависимости        l3-dep-license                D (Зав.)     Создаёт обзор лицензий               ✅
+L3 Зависимости        l3-ci-compliance              C (Конфиг)   Создаёт GitHub Actions workflow      ✅
+L3 Зависимости        l3-missing-bias-testing       C (Конфиг)   Создаёт bias-testing.config.json     ✅
 
-L4 Code Patterns       l4-bare-llm                 A (Code)       SDK wrapper + import injection
-L4 Code Patterns       l4-security-risk            A (Code)       🔮 Planned: safe alternative
-L4 Code Patterns       l4-human-oversight          A (Code)       🔮 Planned: HITL gate template
-L4 Code Patterns       l4-logging                  A (Code)       Create interaction logger
-L4 Code Patterns       l4-kill-switch              A (Code)       🔮 Planned: feature flag
+L4 Паттерны кода      l4-bare-llm                   A (Код)      Inline: complior() SDK wrap          ✅
+L4 Паттерны кода      l4-human-oversight             A (Код)      Scaffold: human approval gate        ✅
+L4 Паттерны кода      l4-kill-switch                 A (Код)      Scaffold: kill switch (env var)      ✅
+L4 Паттерны кода      l4-security-risk               A (Код)      Inline: паттерн-специфичная замена   ✅
+L4 Паттерны кода      l4-ast-missing-error-handling   A (Код)      Inline: try/catch обёртка            ✅
+L4 Паттерны кода      l4-conformity-assessment       A (Код)      Создаёт чек-лист конформити          ✅
+L4 Паттерны кода      l4-data-governance             A (Код)      Создаёт middleware валидации данных   ✅
+L4 Паттерны кода      l4-logging                     A (Код)      Создаёт interaction logger           ✅
 
-NHI Secrets            l4-nhi-openai-key           C (Config)     🔮 Planned: .gitignore + rotation
-NHI Secrets            l4-nhi-aws-key              C (Config)     🔮 Planned: env var migration
+NHI Секреты           l4-nhi-* (любой)               A (Код)      Inline: process.env / os.environ     ✅
+NHI Секреты           l4-nhi-* (без file/line)       C (Конфиг)   Scaffold: .gitignore + .env.example  ✅
+NHI Секреты           l4-nhi-clean                   —            Нет фикса (всё чисто)                —
 
-Cross-Layer            cross-sdk-no-disclosure     A (Code)       Create disclosure (same as L1)
-Cross-Layer            cross-doc-code-mismatch     B (Doc)        🔮 Planned: update doc from code
+Кросс-слой            cross-sdk-no-disclosure        A (Код)      Создаёт disclosure (как L1)          ✅
+Кросс-слой            cross-doc-code-mismatch        B (Док)      Создаёт отчёт о рассинхронизации     ✅
 
-Deep (ext-semgrep)     ext-semgrep-bare-call       A (Code)       SDK wrapper (same strategy)
-Deep (ext-bandit)      ext-bandit-B301             A (Code)       🔮 Planned: safe deserialization
-Deep (ext-modelscan)   ext-modelscan-PickleUnsafe  —              ⚠ Manual (convert to safetensors)
-Deep (ext-detect-sec)  ext-detect-secrets-AWS      C (Config)     🔮 Planned: .gitignore + rotation
+Deep (ext-semgrep)    ext-semgrep-bare-call          A (Код)      SDK wrapper (та же стратегия)         ✅
+Deep (ext-bandit)     ext-bandit-B301                A (Код)      Безопасная десериализация             ✅
+Deep (ext-bandit)     ext-bandit-B603                A (Код)      subprocess без shell=True             ✅
+Deep (ext-bandit)     ext-bandit-B608                A (Код)      Параметризованные SQL-запросы         ✅
+Deep (ext-bandit)     ext-bandit-B105                A (Код)      Пароль в env var                     ✅
+Deep (ext-bandit)     ext-bandit-* (любой)           A (Код)      Генерик remediation + checklist       ✅
+Deep (ext-modelscan)  ext-modelscan-PickleUnsafe     —            ⚠ Ручное (convert to safetensors)    —
+Deep (ext-detect-sec) ext-detect-secrets-AWS         C (Конфиг)   .gitignore + rotation (как NHI)      ✅
 
-L5 LLM Analysis        l5-* findings               varies         🔮 Planned: LLM-suggested fix
+L5 LLM Анализ         l5-* findings                  varies       🔮 Планируется: LLM-suggested fix    —
 ```
 
 ---
 
-## Fix Categories
+## Inline Fix (приоритет 1) — splice
 
-Complior classifies every fix into one of 5 categories. Each category has distinct apply mechanics, diff rendering, and validation logic.
+Когда сканер находит bare LLM call (e.g. `new OpenAI()`, `new Anthropic()`), `buildFixDiff()` генерирует структурированный diff с before/after строками. Этот diff хранится в `finding.fixDiff` и используется для **inline-модификации исходного файла** — без создания scaffold-файла.
 
-### Category A — Code Fix
+**Приоритет:** Inline fix (splice) > Strategy-based scaffold. Если finding имеет `fixDiff`, fixer генерирует splice-план. Если нет — fallback на стратегию из реестра.
 
-Modifies or creates source code files. Most complex category — requires understanding of the project's framework, language, and import system.
+### Почему это важно
+
+Scaffold-фиксы (создание `compliance-wrapper.ts`) не меняют исходный файл. Finding `l4-bare-llm` остаётся `fail` после scaffold-фикса, потому что сканер видит тот же `new OpenAI()` в `src/ai.ts`. Inline fix **сплайсит** строки прямо в исходном файле: `new OpenAI()` → `complior(new OpenAI())`. После re-scan finding становится `pass`.
+
+### Тип действия: `splice`
+
+```
+FixAction {
+  type: 'splice'
+  path: string              // файл для модификации (e.g. "src/ai.ts")
+  beforeLines: string[]     // ожидаемые строки (для stale diff protection)
+  afterLines: string[]      // заменяющие строки
+  startLine: number         // 1-based номер начальной строки
+  importLine?: string       // import для инжекции (e.g. "import { complior } from '@complior/sdk'")
+  description: string
+}
+```
+
+### Поток применения
+
+```
+1. Читает файл целиком
+2. Валидирует before-lines (trim-сравнение) — stale diff protection
+3. Splice: заменяет before-lines на after-lines
+4. Import injection: если importLine задан и ещё не в файле →
+   вставляет после последнего import (или в начало)
+5. Пишет обратно, сохраняя trailing newline
+```
+
+Stale diff protection реализована в ОБОИХ:
+- **Rust CLI** (`cli/src/views/fix/apply.rs`) — `apply_fix_to_file()`
+- **TS Engine** (`services/fix-service.ts`) — `applyAction()` splice branch
+
+### Деdup
+
+Splice-действия дедуплицируются по `${path}:${startLine}` (а не по output path как scaffold-действия). Два finding'а на один файл, разные строки → 2 плана. Один файл, та же строка → 1 план.
+
+---
+
+## Категории фиксов
+
+Complior классифицирует каждый фикс в одну из 5 категорий. Каждая категория имеет свою механику применения, рендеринг diff, и логику валидации.
+
+### Категория A — Код
+
+Создаёт или модифицирует файлы исходного кода. Самая сложная категория — учитывает фреймворк, язык и систему импортов проекта.
 
 ```
 Fix Type:         code_injection
-Apply Method:     Structured diff (before/after lines) + import injection
-Diff Rendering:   Red/green unified diff with line numbers
-Stale Protection: Validates before-lines match file before splice
-Rollback:         File backup → restore on undo
+Применение:       Структурированный diff (before/after lines) + import injection
+Diff-рендеринг:   Red/green unified diff с номерами строк
+Защита от stale:  Валидирует before-lines до splice
+Откат:            File backup → restore on undo
 ```
 
-**Implemented strategies:**
+**Реализованные стратегии (9):**
 
-| Strategy | Check ID | Article | What it creates | Score Impact |
-|----------|----------|---------|-----------------|--------------|
-| Disclosure | `ai-disclosure` | Art. 50(1) | React component OR server middleware | +7 |
-| Content Marking | `content-marking` | Art. 50(2) | C2PA/IPTC config JSON | +5 |
-| Interaction Logging | `interaction-logging` | Art. 12 | Logger module with typed interface | +5 |
+| Стратегия | Check ID | Статья | Что создаёт | Скор |
+|-----------|----------|--------|-------------|------|
+| Disclosure | `ai-disclosure` | Art. 50(1) | React-компонент ИЛИ server middleware | +7 |
+| Interaction Logging | `interaction-logging` | Art. 12 | Логгер с типизированным API | +5 |
+| SDK Wrapper | `l4-bare-llm` | Art. 50(1) | `complior(client, config)` обёртка через `@complior/sdk` | +6 |
+| Permission Guard | `l4-human-oversight` | Art. 14 | Human approval gate с очередью, таймаутами, risk-level | +5 |
+| Kill Switch | `l4-kill-switch` | Art. 14(4) | `AI_KILL_SWITCH` env var + `isAiEnabled()` + `emergencyShutdown()` | +5 |
+| Error Handler | `l4-security-risk` / `l4-ast-missing-error-handling` | Art. 15(4) | try-catch обёртка + compliance-aware error log + fallback | +4 |
+| HITL Gate | `l4-conformity-assessment` | Art. 19 | Чек-лист конформити (8 пунктов: Art.9-15 + sign-off) | +5 |
+| Data Governance | `l4-data-governance` | Art. 10 | Middleware валидации + PII detection stub + audit log | +5 |
+| Bandit Fix | `ext-bandit-*` | Art. 15(4) | Remediation план: B301→json, B603→subprocess.run(list), B608→parameterized, B105→env var | +4 |
 
-**Planned strategies (S06-S07):**
+**Framework-aware генерация (disclosure + SDK wrapper):**
+- **React/Next.js:** TSX компонент (`AIDisclosure.tsx`) или React hook (`useCompliorAI.ts`)
+- **Express/Fastify/Hono:** Middleware с типизированным request/response
+- **Generic:** Standalone модуль с явными экспортами
 
-| Strategy | Check ID | Article | What it creates | Priority |
-|----------|----------|---------|-----------------|----------|
-| SDK Wrapper | `l4-bare-llm` | Art. 50(1) | `complior(client, config)` wrapping | HIGH |
-| Permission Guard | `l4-human-oversight` | Art. 14 | HITL approval gate function | HIGH |
-| Kill Switch | `l4-kill-switch` | Art. 14 | Feature flag with env var | MEDIUM |
-| Error Handler | `l4-security-risk` | Art. 15(4) | try/catch with compliance logging | MEDIUM |
-| Data Governance | `l4-data-governance` | Art. 10 | Validation middleware | LOW |
-| Cybersecurity | `l4-cybersecurity` | Art. 15(4) | Rate limiter + input sanitizer | LOW |
+### Категория B — Документация
 
-**Framework-aware generation:**
-- **React/Next.js:** TSX component (e.g., `AIDisclosure.tsx`)
-- **Express/Fastify/Hono:** Middleware with typed request/response
-- **Python (planned):** Decorator pattern (e.g., `@complior_disclosure`)
-- **Generic:** Standalone module with explicit exports
-
-### Category B — Documentation
-
-Generates EU AI Act compliance documents from templates. Most impactful category — typical projects gain +30-50 points from documentation alone.
+Генерирует compliance-документы EU AI Act из шаблонов. Самая результативная категория — типичный проект получает +30-50 очков только от документации.
 
 ```
 Fix Type:         template_generation
-Apply Method:     Create file from template → passport pre-fill → optional LLM enrichment
-Diff Rendering:   CREATE header + proposed content preview
-Stale Protection: Skips if output file already exists
-Rollback:         Delete created file on undo
+Применение:       Создание файла из шаблона → pre-fill из паспорта → опциональное LLM-обогащение
+Diff-рендеринг:   CREATE header + preview содержимого
+Защита от stale:  Пропускает если output файл уже существует
+Откат:            Удаление созданного файла при undo
 ```
 
-**Template Registry (14 document types, single source of truth):**
+**Дополнительные стратегии категории B:**
+
+| Стратегия | Check ID | Статья | Что создаёт | Скор |
+|-----------|----------|--------|-------------|------|
+| Doc-Code Sync | `cross-doc-code-mismatch` | Art. 11 | Отчёт о рассинхронизации документации и кода + чек-лист | +5 |
+
+**Template Registry (14 типов документов, единый источник истины):**
 
 | Doc Type | Article | Template File | Output File | Score Impact |
 |----------|---------|---------------|-------------|--------------|
@@ -223,137 +282,218 @@ Stage 3: LLM Enrichment (opt-in, --ai flag)
   Tracking: aiEnriched flag, aiFieldsCount
 ```
 
-### Category C — Config Change
+### Категория C — Конфигурация
 
-Creates or modifies configuration files. Lightweight fixes that establish compliance metadata without touching application code.
+Создаёт или модифицирует конфигурационные файлы. Лёгкие фиксы, устанавливающие compliance-метаданные без изменения кода приложения.
 
 ```
 Fix Type:         config_fix | metadata_generation
-Apply Method:     Create JSON/TOML file or edit existing config
-Diff Rendering:   MODIFY header + proposed changes
-Stale Protection: Standard file validation
-Rollback:         Restore from backup
+Применение:       Создание JSON/TOML/YAML файла или правка конфига
+Diff-рендеринг:   MODIFY header + preview изменений
+Защита от stale:  Стандартная валидация файла
+Откат:            Восстановление из backup
 ```
 
-**Implemented:**
+**Реализованные стратегии (5):**
 
-| Strategy | Check ID | Article | What it creates | Score Impact |
-|----------|----------|---------|-----------------|--------------|
+| Стратегия | Check ID | Статья | Что создаёт | Скор |
+|-----------|----------|--------|-------------|------|
 | Compliance Metadata | `compliance-metadata` | Art. 50 | `.well-known/ai-compliance.json` | +4 |
+| Content Marking | `content-marking` | Art. 50(2) | C2PA/IPTC конфиг JSON | +5 |
+| Secret Rotation | `l4-nhi-*` (кроме `l4-nhi-clean`) | Art. 15(4) | `.gitignore` (секреты) + `.env.example` с vault-ссылками. Извлекает имя переменной из checkId: `l4-nhi-openai-key` → `OPENAI_API_KEY` | +6 |
+| CI Compliance | `l3-ci-compliance` | Art. 17 | `.github/workflows/compliance-check.yml` — checkout → setup-node → `npx complior scan --ci --threshold 70` → upload SARIF | +4 |
+| Bias Testing | `l3-missing-bias-testing` | Art. 10 | `bias-testing.config.json` — protected attributes, fairness metrics (equalized_odds, demographic_parity), thresholds | +4 |
 
-**Planned (S07-S10):**
+### Категория D — Зависимости
 
-| Strategy | Check ID | What it creates | Priority |
-|----------|----------|-----------------|----------|
-| Secret Rotation | `l4-nhi-*` | `.gitignore` + `.env.example` + rotation guide | HIGH |
-| Docker Security | `l4-cybersecurity` | Security-hardened Dockerfile | MEDIUM |
-| CI Compliance | `l3-ci-compliance` | GitHub Actions compliance workflow | MEDIUM |
-| Bias Testing Config | `l3-missing-bias-testing` | `fairlearn.yaml` or `aequitas.toml` | LOW |
-
-### Category D — Dependencies (PLANNED)
-
-Modifies dependency manifests. Requires ecosystem-specific knowledge (npm, pip, cargo, go, maven).
+Создаёт планы обновления зависимостей. Учитывает экосистему (npm, pip, cargo).
 
 ```
-Fix Type:         dependency_fix (planned)
-Apply Method:     Edit manifest file + lockfile regeneration
-Diff Rendering:   Package version diff
-Stale Protection: Lockfile hash validation
-Rollback:         Restore manifest + lockfile from backup
+Fix Type:         dependency_fix
+Применение:       Создание markdown-плана обновления с командами для каждой экосистемы
+Diff-рендеринг:   CREATE header + plan content
+Защита от stale:  Стандартная
+Откат:            Удаление созданного файла при undo
 ```
 
-**Planned (S07-S10):**
+**Реализованные стратегии (2):**
 
-| Strategy | Check ID | What it does | Priority |
-|----------|----------|-------------|----------|
-| CVE Upgrade | `l3-dep-vuln` | Bump to patched version (semver-aware) | HIGH |
-| License Fix | `l3-dep-license` | Suggest license-compatible alternative | MEDIUM |
-| Model Format | `ext-modelscan-*` | Convert pickle → safetensors manifest | LOW |
+| Стратегия | Check ID | Статья | Что создаёт | Скор |
+|-----------|----------|--------|-------------|------|
+| CVE Upgrade | `l3-dep-vuln` | Art. 15 | `complior-upgrade-plan.md` — vulnerability summary из finding.message, команды обновления для npm/pip/cargo, checklist верификации | +5 |
+| License Fix | `l3-dep-license` | Art. 5 | `complior-license-review.md` — матрица совместимости лицензий (MIT/Apache/GPL/AGPL/SSPL), action items, команды аудита | +4 |
 
-### Category E — Passport
+### Категория E — Паспорт
 
-Updates Agent Passport fields. Operates through the passport service, not directly on files.
+Обновляет поля Agent Passport. Работает через passport service, не напрямую с файлами.
 
 ```
 Fix Type:         passport_update
-Apply Method:     PassportService.updatePassport() → .complior/agents/{name}.json
-Diff Rendering:   Field-level before/after
-Stale Protection: Passport version check
-Rollback:         Restore passport JSON from backup
+Применение:       PassportService.updatePassport() → .complior/agents/{name}.json
+Diff-рендеринг:   Field-level before/after
+Защита от stale:  Passport version check
+Откат:            Восстановление passport JSON из backup
 ```
 
-**Implemented:**
-- `complior agent init` — auto-discovery (creates passport)
-- `complior agent fria <name>` — generates FRIA report, sets `fria_completed: true`
-- Passport completeness update after fix application
+**Реализовано:**
+- `complior agent init` — auto-discovery (создаёт паспорт)
+- `complior agent fria <name>` — генерирует FRIA отчёт, ставит `fria_completed: true`
+- Обновление completeness паспорта после применения фикса
 
 ---
 
 ## Fix Diff Builder
 
-Generates structured diffs for Category A (Code) fixes. Used when wrapping bare LLM calls with `@complior/sdk`.
+Генерирует структурированные inline diff для 5 типов находок. Маршрутизирует по `checkId` к специализированному builder'у. Если builder не может сгенерировать diff, finding обрабатывается scaffold-стратегией (fallback).
 
-**File:** `engine/core/src/domain/scanner/fix-diff-builder.ts`
+**File:** `engine/core/src/domain/scanner/fix-diff-builder.ts` (~350 LOC)
+**Tests:** `engine/core/src/domain/scanner/fix-diff-builder.test.ts` (38 тестов)
 
 ```
-Input:  Finding with bare LLM call (e.g., openai.chat.completions.create)
-Output: FixDiff { file_path, start_line, before[], after[], import_line? }
+Input:  fileContent, line, filePath, checkId
+Output: FixDiff { filePath, startLine, before[], after[], importLine? } | undefined
 
-Process:
-1. Find call-site line in code_context
-2. Search backward for constructor (new OpenAI, OpenAI())
-3. Handle multi-line constructors (paren depth tracking)
-4. Generate before/after with @complior/sdk wrapping
-5. Set import_line: "import { complior } from '@complior/sdk'"
+Dispatch:
+  checkId contains 'bare'         → buildBareLlmDiff()     SDK wrapper
+  checkId starts 'l4-nhi-'        → buildNhiDiff()         Secret externalization
+  checkId == 'l4-security-risk'   → buildSecurityRiskDiff() → fallback → buildNhiDiff()
+  checkId == 'l4-ast-missing-...' → buildErrorHandlingDiff() try/catch wrap
+  checkId starts 'l3-banned-'     → buildBannedDepDiff()    Remove dep line
 ```
 
-**Example diff:**
+### Builder 1: Bare LLM (`buildBareLlmDiff`)
+
+Оборачивает bare LLM calls с `complior()` из `@complior/sdk`.
+
+**SDK Constructors:** `Anthropic | OpenAI | GoogleGenerativeAI | Groq | Ollama | BedrockRuntimeClient | Cohere | MistralClient`
+**Call Patterns:** `messages.create | chat.completions.create | chat.complete | chat | generateContent | invoke | images.generate | embeddings.create | send`
+**Standalone:** `generateText | streamText | generateObject` (Vercel AI SDK)
 
 ```diff
-  // Before:
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  // After:
-  import { complior } from '@complior/sdk';
-  const client = complior(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
+- const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
++ import { complior } from '@complior/sdk';
++ const client = complior(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 ```
 
-### Import Injection Logic (Rust CLI)
+Handles: multi-line constructors (paren depth tracking), backward search from call-site to constructor, forward scan from import line, standalone function calls.
 
-When `fix_diff.import_line` is set:
+### Builder 2: NHI Secrets (`buildNhiDiff`)
+
+Заменяет hardcoded секреты на env vars. Определяет язык по расширению файла.
+
+**Patterns:** `const X = 'secret'` (TS_ASSIGN), `X = "secret"` (PY_ASSIGN), `key: 'secret'` (OBJ_PROP), connection strings (mongodb/postgres/mysql/redis)
+
+```diff
+- const API_KEY = 'sk-1234567890abcdef';
++ const API_KEY = process.env.API_KEY ?? '';
+```
+```diff
+- API_KEY = "sk-1234567890abcdef"
++ API_KEY = os.environ.get('API_KEY', '')
++ import os
+```
+
+Skips: private keys (`-----BEGIN PRIVATE KEY-----`), lines already using `process.env` / `os.environ`.
+
+### Builder 3: Security Risk (`buildSecurityRiskDiff`)
+
+12 паттерн-специфичных замен с fallback на NHI builder для hardcoded secrets.
+
+| Паттерн | Замена | Import |
+|---------|--------|--------|
+| `eval(expr)` | `/* COMPLIOR: eval() disabled */ undefined` | — |
+| `new Function(...)` | `/* COMPLIOR: new Function() disabled */ undefined` | — |
+| `vm.runInNewContext(...)` | `/* COMPLIOR: vm execution disabled */ undefined` | — |
+| `pickle.load(f)` | `json.load(f)` | `import json` |
+| `pickle.loads(d)` | `json.loads(d)` | `import json` |
+| `hashlib.md5()` | `hashlib.sha256()` | — |
+| `hashlib.sha1()` | `hashlib.sha256()` | — |
+| `verify=False` | `verify=True` | — |
+| `rejectUnauthorized: false` | `rejectUnauthorized: true` | — |
+| `shell=True` | `shell=False` | — |
+| `os.system(cmd)` | `subprocess.run(cmd.split(), check=True)` | `import subprocess` |
+| `torch.load(x)` | `torch.load(x, weights_only=True)` | — |
+
+### Builder 4: Error Handling (`buildErrorHandlingDiff`)
+
+Оборачивает LLM-вызовы в try/catch (TS) или try/except (Python). Поддерживает multi-line statements через `findStatementEnd()`.
+
+```diff
+- const r = await client.messages.create({ model: "claude-3" });
++ try {
++   const r = await client.messages.create({ model: "claude-3" });
++ } catch (err) {
++   console.error('LLM call failed:', err);
++   throw err;
++ }
+```
+
+### Builder 5: Banned Dependencies (`buildBannedDepDiff`)
+
+Удаляет запрещённые зависимости из package.json / requirements.txt. Обрабатывает trailing comma cleanup.
+
+```diff
+-     "emotion-recognition": "^1.0.0",
+```
+
+### Import Injection Logic
+
+When `fix_diff.import_line` is set (implemented in both TS engine and Rust CLI):
 1. Scan file for existing `import ` lines
-2. If `@complior/sdk` already imported → skip
+2. If import already present → skip
 3. Insert after last import line (or at line 1 if no imports)
-4. Adjust line numbers for subsequent splices
+4. Bottom-up splice sorting in `fix-service.ts` prevents line-shift corruption when multiple splices affect the same file
 
 ---
 
-## Fix Service Architecture
+## Архитектура Fix Service
 
-### Domain Layer (Pure Business Logic)
+### Domain Layer (Чистая бизнес-логика)
 
 ```
 engine/core/src/domain/fixer/
-├── types.ts           FixPlan, FixResult, FixValidation, FixHistory, FixStrategy
+├── types.ts           FixPlan, FixResult, FixValidation, FixHistory, FixStrategy, FixType
 ├── create-fixer.ts    Factory: createFixer(deps) → { generateFix, generateFixes, previewFix }
-├── strategies.ts      5 strategy functions + STRATEGIES registry
+├── strategies.ts      18 strategy functions + STRATEGIES registry
 ├── diff.ts            generateUnifiedDiff(), generateCreateDiff()
 └── fix-history.ts     FixHistoryEntry helpers
 ```
 
-**Strategy Registry:** Ordered array. First matching strategy wins. `documentationStrategy` is catch-all for obligation-based template fixes.
+**Strategy Registry:** Упорядоченный массив. Первая подходящая стратегия побеждает. `documentationStrategy` — catch-all для obligation-based шаблонов.
 
 ```typescript
 const STRATEGIES: readonly FixStrategy[] = [
+  // Группа A — L4 Code Fixes (6 стратегий)
+  sdkWrapperStrategy,        // l4-bare-llm → @complior/sdk wrapper
+  permissionGuardStrategy,   // l4-human-oversight → human approval gate
+  killSwitchStrategy,        // l4-kill-switch → env var + emergency shutdown
+  errorHandlerStrategy,      // l4-security-risk | l4-ast-missing-error-handling → error handler
+  hitlGateStrategy,          // l4-conformity-assessment → conformity checklist
+  dataGovernanceStrategy,    // l4-data-governance → validation + PII detection
+
+  // Группа B — NHI + External (2 стратегии)
+  secretRotationStrategy,    // l4-nhi-* → .gitignore + .env.example
+  banditFixStrategy,         // ext-bandit-* → security remediation plan
+
+  // Группа C — L3 Config & Dependencies (4 стратегии)
+  cveUpgradeStrategy,        // l3-dep-vuln → upgrade plan (dependency_fix)
+  licenseFixStrategy,        // l3-dep-license → license review (dependency_fix)
+  ciComplianceStrategy,      // l3-ci-compliance → GitHub Actions workflow
+  biasTestingStrategy,       // l3-missing-bias-testing → fairness config
+
+  // Группа D — Cross-Layer (1 стратегия)
+  docCodeSyncStrategy,       // cross-doc-code-mismatch → sync report
+
+  // Оригинальные 5 стратегий
   disclosureStrategy,        // ai-disclosure → component/middleware
   contentMarkingStrategy,    // content-marking → C2PA config
   loggingStrategy,           // interaction-logging → logger module
   metadataStrategy,          // compliance-metadata → .well-known/
-  documentationStrategy,     // catch-all: obligation → template
+  documentationStrategy,     // catch-all: obligation → template (14 типов)
 ];
 ```
 
-### Service Layer (Orchestration)
+### Service Layer (Оркестрация)
 
 ```
 engine/core/src/services/fix-service.ts
@@ -370,7 +510,7 @@ engine/core/src/services/fix-service.ts
     llm?            → optional LLM for doc enrichment
 ```
 
-### HTTP Layer (Thin Routes)
+### HTTP Layer (Тонкие маршруты)
 
 ```
 engine/core/src/http/routes/fix.route.ts
@@ -402,9 +542,9 @@ cli/src/views/fix/
 
 ---
 
-## Fix Application Flow
+## Поток применения фиксов
 
-### Full Lifecycle (TUI)
+### Полный цикл (TUI)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -466,7 +606,7 @@ cli/src/views/fix/
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Full Lifecycle (CLI — Headless)
+### Полный цикл (CLI — Headless)
 
 ```
 $ complior fix --dry-run
@@ -494,7 +634,7 @@ $ complior fix
   5/5 applied, 0 failed
 ```
 
-### Full Lifecycle (HTTP API)
+### Полный цикл (HTTP API)
 
 ```
 GET /fix/preview
@@ -512,14 +652,14 @@ POST /fix/undo { id: 3 }
 
 ---
 
-## Safety Mechanisms
+## Механизмы безопасности
 
-### Stale Diff Protection
+### Защита от устаревших diff
 
-Before applying any code fix, validates that the file hasn't changed since the scan:
+Перед применением любого code fix, валидирует что файл не изменился с момента сканирования. Реализовано в **обоих** рантаймах:
 
+**Rust CLI** (`cli/src/views/fix/apply.rs`):
 ```rust
-// cli/src/views/fix/apply.rs
 let file_slice: Vec<&str> = lines[start..end].iter().map(|s| s.trim()).collect();
 let expected: Vec<&str> = diff.before.iter().map(|s| s.trim()).collect();
 if file_slice != expected {
@@ -527,11 +667,20 @@ if file_slice != expected {
 }
 ```
 
-If validation fails, the fix is rejected and the user must re-scan to get fresh diffs.
+**TS Engine** (`services/fix-service.ts`, splice branch):
+```typescript
+for (let i = 0; i < beforeLines.length; i++) {
+  if ((lines[startIdx + i] ?? '').trim() !== (beforeLines[i] ?? '').trim()) {
+    throw new Error(`Stale diff at line ${(action.startLine ?? 1) + i} — re-scan first`);
+  }
+}
+```
 
-### File Backup
+При ошибке валидации фикс отклоняется — нужен re-scan для свежих diff.
 
-Every file touched by a fix is backed up before modification:
+### Бэкап файлов
+
+Каждый файл, затронутый фиксом, бэкапится перед модификацией:
 
 ```
 .complior/backups/
@@ -539,22 +688,22 @@ Every file touched by a fix is backed up before modification:
   1710756234-well-known_ai-compliance.json
 ```
 
-Backups are used by the undo service to restore files to their pre-fix state.
+Бэкапы используются undo service для восстановления файлов в состояние до фикса.
 
-### Post-Apply Validation
+### Валидация после применения
 
-After every fix, a full re-scan runs and compares:
-- **Finding status:** `fail` → `pass` (expected), or still `fail` (fix insufficient)
-- **Score delta:** `scoreAfter - scoreBefore` (should be positive)
-- **Side effects:** no new findings introduced
+После каждого фикса запускается полный re-scan и сравнивает:
+- **Статус finding:** `fail` → `pass` (ожидается), или всё ещё `fail` (фикс недостаточен)
+- **Score delta:** `scoreAfter - scoreBefore` (должен быть положительным)
+- **Side effects:** нет новых findings
 
-Events emitted:
+Эмитируемые события:
 - `score.updated` — { before, after }
 - `fix.validated` — { checkId, passed: bool, scoreDelta }
 
-### Undo Stack
+### Стек отката (Undo)
 
-All fixes are recorded in `.complior/fixes-history.json`:
+Все фиксы записываются в `.complior/fixes-history.json`:
 
 ```json
 {
@@ -576,15 +725,15 @@ All fixes are recorded in `.complior/fixes-history.json`:
 }
 ```
 
-Undo logic:
-- **Created files:** Delete the file
-- **Edited files:** Restore from backup
-- Mark entry as `"status": "undone"`
-- Re-scan and emit events
+Логика undo:
+- **Созданные файлы (`create`):** Удалить файл
+- **Отредактированные файлы (`edit` / `splice`):** Восстановить из бэкапа
+- Пометить запись как `"status": "undone"`
+- Re-scan и emit events
 
-### Evidence Chain Integration (C.R20)
+### Интеграция Evidence Chain (C.R20)
 
-After successful fix, an evidence entry is appended:
+После успешного фикса добавляется запись в evidence:
 
 ```json
 {
@@ -599,13 +748,13 @@ After successful fix, an evidence entry is appended:
 }
 ```
 
-This creates a tamper-proof audit trail that an EU AI Act auditor can verify.
+Это создаёт tamper-proof audit trail, который аудитор EU AI Act может верифицировать.
 
 ---
 
-## Type-Aware Diff Rendering (TUI)
+## Type-Aware Diff Рендеринг (TUI)
 
-The TUI Fix page renders diff previews differently based on finding type:
+TUI Fix page рендерит diff preview по-разному в зависимости от типа finding:
 
 ### Type A — Code Fix
 
@@ -660,113 +809,116 @@ The TUI Fix page renders diff previews differently based on finding type:
 
 ---
 
-## Score Impact Model
+## Модель влияния на скор
 
-### Per-Strategy Impact (Implemented)
+### Влияние по стратегиям
 
-| Strategy | Score Impact | Typical Real Delta | Why Difference |
-|----------|-------------|-------------------|----------------|
-| Documentation (any) | +8 predicted | +6 to +10 actual | Depends on L2 validation result |
-| Disclosure | +7 predicted | +5 to +9 actual | May resolve cross-layer findings too |
-| Content Marking | +5 predicted | +3 to +7 actual | Variable based on AI SDK detection |
-| Interaction Logging | +5 predicted | +4 to +6 actual | Consistent |
-| Compliance Metadata | +4 predicted | +3 to +5 actual | Low-weight check |
+| Стратегия | Скор | Типичная реальная дельта | Почему разница |
+|-----------|------|-------------------------|----------------|
+| Documentation (любой) | +8 прогноз | +6 до +10 факт | Зависит от L2 валидации |
+| Disclosure | +7 прогноз | +5 до +9 факт | Может разрешить cross-layer findings |
+| SDK Wrapper | +6 прогноз | +4 до +8 факт | Зависит от кол-ва bare LLM calls |
+| Permission Guard / Kill Switch / HITL | +5 прогноз | +3 до +7 факт | Зависит от risk level проекта |
+| Secret Rotation | +6 прогноз | +5 до +7 факт | Зависит от типа секрета |
+| Error Handler | +4 прогноз | +3 до +5 факт | Стабильный |
+| CVE Upgrade | +5 прогноз | +3 до +7 факт | Зависит от severity CVE |
+| Content Marking | +5 прогноз | +3 до +7 факт | Variable based on AI SDK detection |
+| Interaction Logging | +5 прогноз | +4 до +6 факт | Стабильный |
+| Compliance Metadata | +4 прогноз | +3 до +5 факт | Low-weight check |
+| CI Compliance / Bias / License | +4 прогноз | +3 до +5 факт | Стабильный |
 
-### Cumulative Fix Scenario
+### Кумулятивный сценарий
 
 ```
-Starting Score:          32/100 (RED zone)
+Starting Score:          ~15/100 (RED zone, critical cap active)
 
 Fix all docs (8 templates): +48 to +64 predicted
   + disclosure:            +7
   + logging:               +5
   + metadata:              +4
+  + inline fixes (NHI, security, error-handling, banned-dep): lifts critical cap
 
-Realistic outcome:       72-85/100 (YELLOW → GREEN)
+Realistic outcome:       80-85/100 (RED → GREEN)
+E2E verified (acme-ai-support): 15 → 85 after `complior fix` + `complior scan`
 ```
 
-### Score Calculation After Fix
+### Расчёт скора после фикса
 
-Score is NOT just `old + sum(impacts)`. After fix, a full re-scan runs:
+Скор НЕ просто `old + sum(impacts)`. После фикса запускается полный re-scan:
 1. The fixed finding typically becomes `pass`
 2. This changes the pass/fail ratio in its category
 3. Category score is recalculated with weights
 4. Cross-layer findings may also resolve
 5. Critical cap may be lifted (if all criticals resolved)
+   Note: cap excludes L2, cross-layer, ext-*, low/info severity, and passport-presence findings
 
-This means actual delta can be higher or lower than predicted `scoreImpact`.
-
----
-
-## Fix Strategy Matrix — Full Roadmap
-
-### By Scan Layer → Fix Strategy
-
-```
-                     IMPLEMENTED                    PLANNED
-                     ───────────                    ───────
-L1 File Presence ─── disclosure (A)                 ─── SDK wrapper patterns (A)
-                     content-marking (C)                 permission guard (A)
-                     logging (A)                         kill-switch template (A)
-                     documentation × 14 (B)
-                     metadata (C)
-
-L2 Doc Structure ─── documentation regen (B)        ─── doc update from code (B)
-                                                         LLM section enrichment (B)
-
-L3 Dependencies  ─── (none)                         ─── CVE auto-upgrade (D)
-                                                         license alternative (D)
-                                                         bias testing config (C)
-
-L4 Code Patterns ─── (via L1 strategies)            ─── safe deserialization (A)
-                                                         error handler wrapper (A)
-                                                         data governance middleware (A)
-                                                         rate limiter template (A)
-
-NHI Secrets      ─── (none)                         ─── .gitignore generation (C)
-                                                         env var migration guide (C)
-                                                         secret rotation helper (C)
-
-Cross-Layer      ─── (resolved by fixing root)      ─── doc-code sync (B+A)
-                                                         passport field update (E)
-
-Deep (Tier 2)    ─── (via L1/L4 strategies)         ─── bandit-specific fixes (A)
-                                                         model format conversion (D)
-
-L5 LLM           ─── (none)                         ─── LLM-suggested custom fix (A)
-```
-
-### By EU AI Act Article → Fix Capability
-
-| Article | Obligation | Fix Status | Strategy |
-|---------|-----------|------------|----------|
-| Art. 4 | AI Literacy | ✅ Template | documentation (ai-literacy) |
-| Art. 5 | Prohibited Practices | ⚠ Manual | no auto-fix (banned package removal) |
-| Art. 9 | Risk Management | ✅ Template | documentation (risk-management) |
-| Art. 10 | Data Governance | ✅ Template + 🔮 Code | documentation + planned middleware |
-| Art. 11 | Technical Documentation | ✅ Template | documentation (tech-docs) |
-| Art. 12 | Logging | ✅ Code + Template | logging strategy + monitoring template |
-| Art. 13 | Instructions for Use | ✅ Template | documentation (instructions-for-use) |
-| Art. 14 | Human Oversight | 🔮 Planned | HITL gate template |
-| Art. 15 | Accuracy/Robustness | 🔮 Planned | error handler + rate limiter |
-| Art. 17 | Quality Management | ✅ Template | documentation (qms) |
-| Art. 26 | Deployer Monitoring | ✅ Template | documentation (monitoring-policy) |
-| Art. 26(7) | Worker Notification | ✅ Template | documentation (worker-notification) |
-| Art. 27 | FRIA | ✅ Template + FRIA gen | documentation + agent fria command |
-| Art. 43 | Conformity Assessment | 🔮 Planned | declaration template |
-| Art. 47 | Declaration of Conformity | ✅ Template | documentation (declaration) |
-| Art. 49 | Agent Passport | ✅ Passport | complior agent init |
-| Art. 50 | Transparency | ✅ Code + Config | disclosure + metadata strategies |
-| Art. 51-53 | GPAI Transparency | ✅ Template | documentation (model-card) |
-| Art. 55 | GPAI Systemic Risk | ✅ Template | documentation (systemic-risk) |
-| Art. 72 | Post-Market Monitoring | ✅ Template | documentation (monitoring) |
-| Art. 73 | Incident Reporting | ✅ Template | documentation (incident-report) |
+Это означает что реальная дельта может быть выше или ниже предсказанного `scoreImpact`.
 
 ---
 
-## Document Generation Pipeline (Detail)
+## Матрица стратегий по слоям сканера
 
-The document generator is a three-stage pipeline that converts empty templates into project-specific compliance documents.
+```
+                      РЕАЛИЗОВАНО                                          ПЛАНИРУЕТСЯ
+                      ────────────                                         ───────────
+L1 Наличие файлов ─── disclosure (A), content-marking (C),                ───
+                      logging (A), documentation × 14 (B),
+                      metadata (C)
+
+L2 Структура док. ─── documentation regen (B)                             ─── LLM section enrichment (B)
+
+L3 Зависимости   ─── Inline: banned dep removal (A),                     ───
+                      CVE upgrade plan (D), license review (D),
+                      CI compliance workflow (C),
+                      bias testing config (C)
+
+L4 Паттерны кода ─── Inline: SDK wrapper (A), security-risk (A),         ─── rate limiter template (A)
+                      error-handling try/catch (A)                             cybersecurity hardening (A)
+                      Scaffold: permission guard (A), kill switch (A),
+                      HITL gate (A), data governance (A)
+
+NHI Секреты      ─── Inline: process.env / os.environ (A)                ───
+                      Scaffold fallback: .gitignore + .env.example (C)
+
+Кросс-слой       ─── doc-code sync report (B)                            ─── passport field update (E)
+
+Deep (Tier 2)    ─── bandit-specific fixes (A)                            ─── model format conversion (D)
+                      (B301/B603/B608/B105 + generic fallback)
+
+L5 LLM           ─── (нет)                                               ─── LLM-suggested custom fix (A)
+```
+
+### По статьям EU AI Act → Покрытие фиксами
+
+| Статья | Обязательство | Статус фикса | Стратегия |
+|--------|--------------|-------------|-----------|
+| Art. 4 | AI Literacy | ✅ Шаблон | documentation (ai-literacy) |
+| Art. 5 | Запрещённые практики | ✅ Inline + ✅ Лицензии | `l3-banned-*` → inline удаление из manifest. `l3-dep-license` → license review |
+| Art. 9 | Управление рисками | ✅ Шаблон | documentation (risk-management) |
+| Art. 10 | Data Governance | ✅ Шаблон + ✅ Код + ✅ Конфиг | documentation + dataGovernanceStrategy + biasTestingStrategy |
+| Art. 11 | Техническая документация | ✅ Шаблон + ✅ Sync | documentation + docCodeSyncStrategy |
+| Art. 12 | Логирование | ✅ Код + Шаблон | loggingStrategy + monitoring template |
+| Art. 13 | Инструкции для пользователя | ✅ Шаблон | documentation (instructions-for-use) |
+| Art. 14 | Человеческий надзор | ✅ Код | permissionGuardStrategy + killSwitchStrategy |
+| Art. 15 | Точность/Устойчивость | ✅ Inline + ✅ Зависимости | Inline: security-risk (12 паттернов), error-handling (try/catch), NHI (env vars) + cveUpgradeStrategy |
+| Art. 17 | Управление качеством | ✅ Шаблон + ✅ CI | documentation (qms) + ciComplianceStrategy |
+| Art. 19 | Оценка конформити | ✅ Код | hitlGateStrategy (чек-лист 8 пунктов) |
+| Art. 26 | Мониторинг развёртывания | ✅ Шаблон | documentation (monitoring-policy) |
+| Art. 26(7) | Уведомление работников | ✅ Шаблон | documentation (worker-notification) |
+| Art. 27 | FRIA | ✅ Шаблон + FRIA gen | documentation + agent fria command |
+| Art. 47 | Декларация конформити | ✅ Шаблон | documentation (declaration) |
+| Art. 49 | Agent Passport | ✅ Паспорт | complior agent init |
+| Art. 50 | Прозрачность | ✅ Код + Конфиг | disclosure + metadata + sdkWrapperStrategy |
+| Art. 51-53 | GPAI Прозрачность | ✅ Шаблон | documentation (model-card) |
+| Art. 55 | GPAI Системный риск | ✅ Шаблон | documentation (systemic-risk) |
+| Art. 72 | Пост-маркет мониторинг | ✅ Шаблон | documentation (monitoring) |
+| Art. 73 | Отчёт об инцидентах | ✅ Шаблон | documentation (incident-report) |
+
+---
+
+## Пайплайн генерации документов (детали)
+
+Генератор документов — трёхстадийный пайплайн, превращающий пустые шаблоны в проектно-специфичные compliance-документы.
 
 ### Stage 1: Template Loading
 
@@ -826,56 +978,62 @@ When `--ai` flag is set:
 
 ---
 
-## Planned Enhancements (13)
+## Реализованные улучшения (13 из 13 → DONE)
 
-### Phase 1 — Advanced Code Fixes (S06-S07)
+Все 13 запланированных стратегий реализованы в S10. Дата: 2026-03-19.
 
-| # | Enhancement | Category | Check ID | What it generates |
-|---|------------|----------|----------|-------------------|
-| 1 | SDK Wrapper | A | `l4-bare-llm` | `complior(client)` wrapping with `@complior/sdk` |
-| 2 | Permission Guard | A | `l4-human-oversight` | `requireApproval()` gate function |
-| 3 | Kill Switch | A | `l4-kill-switch` | `AI_ENABLED` env var + feature flag util |
-| 4 | Error Handler | A | `l4-security-risk` | try/catch with compliance-aware error logging |
-| 5 | HITL Gate | A | `l4-conformity-assessment` | Human-in-the-loop approval workflow template |
+### Фаза 1 — Продвинутые фиксы кода ✅
 
-### Phase 2 — Config & Dependency Fixes (S07-S10)
+| # | Стратегия | Кат. | Check ID | Что генерирует |
+|---|-----------|------|----------|----------------|
+| 1 | SDK Wrapper | A | `l4-bare-llm` | `complior(client)` обёртка через `@complior/sdk`. React → hook, Express → middleware, generic → wrapper |
+| 2 | Permission Guard | A | `l4-human-oversight` | Approval gate: очередь, таймаут (5мин), risk-level thresholds, approve/reject |
+| 3 | Kill Switch | A | `l4-kill-switch` | `AI_KILL_SWITCH` env var, `isAiEnabled()`, `emergencyShutdown()`, `withKillSwitch()` |
+| 4 | Error Handler | A | `l4-security-risk` / `l4-ast-missing-error-handling` | Async try-catch обёртка, typed error log, safe fallback |
+| 5 | HITL Gate | A | `l4-conformity-assessment` | Чек-лист: 8 пунктов (Art.9-15 + sign-off), `ConformityStatus`, `signOff()`, `isConformityComplete()` |
+| 6 | Data Governance | A | `l4-data-governance` | Middleware: input validation, PII detection (email/SSN/CC), data quality report |
 
-| # | Enhancement | Category | Check ID | What it generates |
-|---|------------|----------|----------|-------------------|
-| 6 | Secret Rotation | C | `l4-nhi-*` | `.gitignore` + `.env.example` + rotation guide |
-| 7 | CVE Upgrade | D | `l3-dep-vuln` | Version bump in manifest (semver-aware) |
-| 8 | License Fix | D | `l3-dep-license` | Alternative package suggestion |
-| 9 | CI Compliance | C | `l3-ci-compliance` | GitHub Actions workflow with compliance gates |
-| 10 | Bias Config | C | `l3-missing-bias-testing` | Testing config for fairlearn/aequitas |
+### Фаза 2 — Конфиг + Зависимости ✅
 
-### Phase 3 — Intelligent Fixes (S10+)
+| # | Стратегия | Кат. | Check ID | Что генерирует |
+|---|-----------|------|----------|----------------|
+| 7 | Secret Rotation | C | `l4-nhi-*` | `.gitignore` (секреты) + `.env.example` с vault-ссылками. Авто-извлечение: `l4-nhi-openai-key` → `OPENAI_API_KEY` |
+| 8 | CVE Upgrade | D | `l3-dep-vuln` | `complior-upgrade-plan.md` — summary + команды npm/pip/cargo + checklist |
+| 9 | License Fix | D | `l3-dep-license` | `complior-license-review.md` — матрица лицензий + action items + audit команды |
+| 10 | CI Compliance | C | `l3-ci-compliance` | `.github/workflows/compliance-check.yml` — checkout → setup-node → complior scan → SARIF upload |
+| 11 | Bias Testing | C | `l3-missing-bias-testing` | `bias-testing.config.json` — protected attributes, fairness metrics, thresholds |
 
-| # | Enhancement | Category | Source | What it generates |
-|---|------------|----------|--------|-------------------|
-| 11 | Bandit-Specific | A | `ext-bandit-*` | Safe alternatives (e.g., pickle → json) |
-| 12 | Doc-Code Sync | B+A | `cross-doc-code-mismatch` | Update doc sections from code analysis |
-| 13 | LLM-Suggested | A | `l5-*` findings | Custom fix from LLM analysis of finding |
+### Фаза 3 — Интеллектуальные фиксы ✅
 
-### Phase 4 — Multi-File Fixes (Future)
+| # | Стратегия | Кат. | Check ID | Что генерирует |
+|---|-----------|------|----------|----------------|
+| 12 | Bandit Fix | A | `ext-bandit-*` | Remediation план: B301→json, B603→subprocess.run(list), B608→parameterized, B105→env var + generic fallback |
+| 13 | Doc-Code Sync | B | `cross-doc-code-mismatch` | `complior-doc-sync-report.md` — мисматчи + чек-лист + `complior docs generate --missing` |
 
-- **Refactoring patterns:** Split file + update imports
-- **Test generation:** Create compliance test for each fix
-- **Migration scripts:** Automated version upgrades with AST transformation
+### Оставшееся (Future)
+
+| # | Стратегия | Кат. | Что будет генерировать |
+|---|-----------|------|----------------------|
+| 14 | LLM-Suggested | A | Кастомный фикс из LLM-анализа L5 finding |
+| 15 | Rate Limiter | A | Rate limiter template для cybersecurity |
+| 16 | Model Format | D | Конвертация pickle → safetensors manifest |
+| 17 | Multi-File Refactoring | A | Split file + update imports |
+| 18 | Test Generation | A | Compliance test для каждого фикса |
 
 ---
 
-## File Locations
+## Расположение файлов
 
 ### TypeScript Engine
 
-| File | Role | LOC |
+| Файл | Роль | LOC |
 |------|------|-----|
-| `engine/core/src/domain/fixer/types.ts` | Core types (FixPlan, FixResult, etc.) | ~80 |
-| `engine/core/src/domain/fixer/create-fixer.ts` | Fixer factory | ~40 |
-| `engine/core/src/domain/fixer/strategies.ts` | 5 fix strategies + registry | ~290 |
+| `engine/core/src/domain/fixer/types.ts` | Типы (FixPlan, FixResult, FixType и др.) | ~83 |
+| `engine/core/src/domain/fixer/create-fixer.ts` | Фабрика fixer | ~40 |
+| `engine/core/src/domain/fixer/strategies.ts` | 18 стратегий + реестр STRATEGIES[] | ~1070 |
 | `engine/core/src/domain/fixer/diff.ts` | Diff generation utilities | ~50 |
 | `engine/core/src/domain/fixer/fix-history.ts` | Fix history helpers | ~20 |
-| `engine/core/src/domain/scanner/fix-diff-builder.ts` | SDK wrapping diff builder | ~120 |
+| `engine/core/src/domain/scanner/fix-diff-builder.ts` | 5-type inline diff builder (bare-llm, NHI, security, error-handling, banned-dep) | ~655 |
 | `engine/core/src/domain/documents/document-generator.ts` | Deterministic doc generation | ~200 |
 | `engine/core/src/domain/documents/ai-enricher.ts` | LLM document enrichment | ~80 |
 | `engine/core/src/data/template-registry.ts` | 14 template entries (SSoT) | ~100 |
@@ -885,37 +1043,39 @@ When `--ai` flag is set:
 
 ### Rust CLI
 
-| File | Role | LOC |
+| Файл | Роль | LOC |
 |------|------|-----|
 | `cli/src/headless/fix.rs` | Headless fix (dry-run + apply) | ~180 |
 | `cli/src/views/fix/mod.rs` | Fix view state + logic | ~200 |
 | `cli/src/views/fix/render.rs` | Multi/single-fix rendering | ~300 |
 | `cli/src/views/fix/diff_preview.rs` | Type-aware diff rendering | ~250 |
 | `cli/src/views/fix/apply.rs` | Real filesystem modification | ~150 |
-| `cli/src/views/fix/tests.rs` | 8 snapshot tests | ~200 |
+| `cli/src/views/fix/tests.rs` | 8 snapshot тестов | ~200 |
 | `cli/src/app/executor.rs` | AppCommand::ApplyFixes handler | ~50 |
 | `cli/src/types/engine.rs` | FixDiff, FindingType types | ~30 |
 
 ---
 
-## Testing
+## Тестирование
 
-### Engine Tests
+### Тесты Engine
 
-| File | Tests | What it covers |
-|------|-------|---------------|
-| `domain/fixer/fixer.test.ts` | ~20 | Strategy selection, plan generation, edge cases |
+| Файл | Тестов | Что покрывает |
+|------|--------|--------------|
+| `domain/fixer/fixer.test.ts` | 43 | Выбор стратегий (все 18), генерация планов, inline fix (NHI/security/error/banned), edge cases |
+| `domain/scanner/fix-diff-builder.test.ts` | 38 | 5 builder-функций: bare-llm (8), NHI (7), security (12), error-handling (4), banned-dep (4), context (1) |
 | `services/fix-service.test.ts` | ~15 | Apply, validate, undo, evidence recording |
 | `domain/documents/document-generator.test.ts` | ~10 | Template pre-fill, manual field tracking |
+| `services/undo-service.test.ts` | 3 | Undo history load/save, dependency_fix FixType |
 
-### CLI Tests (Rust)
+### Тесты CLI (Rust)
 
-| File | Tests | What it covers |
-|------|-------|---------------|
-| `views/fix/tests.rs` | 8 | Snapshot tests: checklist, single-fix, diff preview |
-| `headless/tests.rs` | ~5 | Headless fix output format |
+| Файл | Тестов | Что покрывает |
+|------|--------|--------------|
+| `views/fix/tests.rs` | 8 | Snapshot тесты: checklist, single-fix, diff preview |
+| `headless/tests.rs` | ~5 | Формат вывода headless fix |
 
-### Missing Test Coverage (Planned)
+### Недостающее покрытие (Планируется)
 
 - Stale diff protection edge cases
 - Multi-file fix atomicity

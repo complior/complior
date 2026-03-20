@@ -1,19 +1,83 @@
 import type { CheckResult, CategoryScore, ScoreBreakdown, ScoreDiff, ScoreZone } from '../../types/common.types.js';
 import type { ScoringData } from '../../data/schemas.js';
 
-// Sprint 1 fallback mapping: checkId → category
-// Used when checks don't have obligationId (category-level checks)
+// CheckId → category mapping for findings without obligationId.
+// Pass results from L1/L2/L3/L4/git checks lack obligationId, so they
+// need explicit category routing to contribute to category scores.
 const CHECK_ID_TO_CATEGORY: Readonly<Record<string, string>> = {
-  'ai-disclosure': 'transparency',
-  'content-marking': 'transparency',
-  'interaction-logging': 'technical_safeguards',
-  'ai-literacy': 'organizational',
-  'gpai-transparency': 'documentation',
-  'gpai-systemic-risk': 'documentation',
+  // --- L1 presence checks ---
+  'art5-screening': 'prohibited_practices',
+  'risk-management': 'risk_management',
+  'data-governance': 'risk_management',
+  'qms': 'risk_management',
+  'technical-documentation': 'documentation',
+  'declaration-of-conformity': 'documentation',
   'compliance-metadata': 'documentation',
   'documentation': 'documentation',
   'passport-presence': 'documentation',
   'passport-completeness': 'documentation',
+  'instructions-for-use': 'transparency',
+  'ai-literacy': 'organizational',
+  'monitoring-policy': 'deployer_specific',
+  'fria': 'deployer_specific',
+  'worker-notification': 'monitoring_and_reporting',
+  'incident-report': 'monitoring_and_reporting',
+
+  // --- L2 doc-quality checks ---
+  'l2-tech-documentation': 'documentation',
+  'l2-art5-screening': 'prohibited_practices',
+  'l2-risk-management': 'risk_management',
+  'l2-data-governance': 'risk_management',
+  'l2-qms': 'risk_management',
+  'l2-instructions-for-use': 'transparency',
+  'l2-ai-literacy': 'organizational',
+  'l2-monitoring-policy': 'deployer_specific',
+  'l2-fria': 'deployer_specific',
+  'l2-declaration-conformity': 'documentation',
+  'l2-worker-notification': 'monitoring_and_reporting',
+  'l2-incident-report': 'monitoring_and_reporting',
+  'l2-critical-infra-ai-policy': 'risk_management',
+
+  // --- L3 dependency/config checks ---
+  'l3-ai-sdk-detected': 'technical_safeguards',
+  'l3-dep-scan': 'technical_safeguards',
+  'l3-missing-bias-testing': 'risk_management',
+
+  // --- L4 code-pattern checks ---
+  'ai-disclosure': 'transparency',
+  'content-marking': 'transparency',
+  'interaction-logging': 'technical_safeguards',
+  'gpai-transparency': 'documentation',
+  'gpai-systemic-risk': 'documentation',
+  'l4-disclosure': 'transparency',
+  'l4-content-marking': 'transparency',
+  'l4-human-oversight': 'organizational',
+  'l4-kill-switch': 'organizational',
+  'l4-logging': 'technical_safeguards',
+  'l4-cybersecurity': 'technical_safeguards',
+  'l4-accuracy-robustness': 'technical_safeguards',
+  'l4-nhi-clean': 'technical_safeguards',
+  'l4-data-governance': 'risk_management',
+  'l4-gpai-transparency': 'documentation',
+  'l4-conformity-assessment': 'documentation',
+  'l4-deployer-monitoring': 'deployer_specific',
+  'l4-record-keeping': 'deployer_specific',
+  'l4-ast-wrapped-call': 'transparency',
+
+  // --- Git-analysis checks ---
+  'git-freshness-risk-management': 'risk_management',
+  'git-freshness-data-governance': 'risk_management',
+  'git-freshness-qms': 'risk_management',
+  'git-freshness-technical-documentation': 'documentation',
+  'git-freshness-declaration-of-conformity': 'documentation',
+  'git-freshness-instructions-for-use': 'transparency',
+  'git-freshness-monitoring-policy': 'deployer_specific',
+  'git-freshness-fria': 'deployer_specific',
+  'git-freshness-worker-notification': 'monitoring_and_reporting',
+  'git-freshness-incident-report': 'monitoring_and_reporting',
+  'git-author-diversity-fria': 'deployer_specific',
+  'git-author-diversity-risk-management': 'risk_management',
+  'git-bulk-compliance': 'organizational',
 };
 
 export const getZone = (score: number): ScoreZone => {
@@ -26,7 +90,7 @@ const findCategoryForCheck = (
   check: CheckResult,
   categories: readonly { readonly category: string; readonly obligations_in_category: readonly string[] }[],
 ): string | undefined => {
-  // First: match by obligationId if present (fail results only)
+  // First: match by obligationId if present (fail/skip results only — pass results use fallback map)
   if (check.type === 'fail' && check.obligationId !== undefined) {
     const matched = categories.find((cat) =>
       cat.obligations_in_category.includes(check.obligationId!),
@@ -113,9 +177,26 @@ export const calculateScore = (
   const rawScore = activeWeightSum === 0 ? 100 : weightedSum / activeWeightSum;
 
   // Critical cap: if any critical obligation fails, cap at 40
+  // Excluded from cap trigger:
+  //   - L2 findings: measure document quality/depth, not compliance presence
+  //   - Cross-layer findings: derived/advisory heuristic checks, not direct regulatory violations
+  //   - External tool findings: belt-and-suspenders advisory checks
+  //   - Low-severity findings: missing best-practice patterns (e.g. "no data-governance pattern found")
+  //   - passport-presence: internal best-practice (passport is our concept, not regulatory)
   const criticalIds = new Set(scoringData.critical_obligation_ids);
+  const CRITICAL_CAP_EXCLUDED = new Set(['passport-presence']);
   const criticalCapApplied = checks.some((check) => {
     if (check.type !== 'fail') return false;
+    // L2 findings measure doc quality, not compliance presence
+    if (check.checkId.startsWith('l2-')) return false;
+    // Cross-layer findings are derived heuristics (e.g. "logging found but no retention config")
+    if (check.checkId.startsWith('cross-')) return false;
+    // External tool findings are advisory (belt-and-suspenders) — they inform
+    // category scores but do NOT trigger the regulatory hard cap
+    if (check.checkId.startsWith('ext-')) return false;
+    // Low/info-severity findings indicate missing best practices, not active violations
+    if (check.severity === 'low' || check.severity === 'info') return false;
+    if (CRITICAL_CAP_EXCLUDED.has(check.checkId)) return false;
     // Check both obligationId and checkId against critical list
     if (check.obligationId !== undefined && criticalIds.has(check.obligationId)) return true;
     return criticalIds.has(check.checkId);

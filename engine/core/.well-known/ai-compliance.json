@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "scanner": "complior/1.0.0",
+  "scannedAt": "[SCAN_DATE]",
+  "organization": "[TO BE SET]",
+  "ai_systems": [
+    {
+      "name": "[TO BE SET]",
+      "provider": "[TO BE SET]",
+      "risk_level": "[TO BE SET]",
+      "compliance_score": 0
+    }
+  ],
+  "jurisdiction": "EU",
+  "regulation": "EU AI Act (Regulation (EU) 2024/1689)"
+}

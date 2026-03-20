@@ -24,7 +24,12 @@ describe('checkInteractionLogging', () => {
       createScanFile('src/ai.ts', `
         import OpenAI from 'openai';
         const client = new OpenAI();
-        const result = await client.chat.completions.create({ model: 'gpt-4' });
+        try {
+          const result = await client.chat.completions.create({ model: 'gpt-4' });
+        } catch (err) {
+          console.error('LLM call failed:', err);
+          throw err;
+        }
       `),
     ]);
 
@@ -76,7 +81,12 @@ describe('checkInteractionLogging', () => {
     const ctx = createScanCtx([
       createScanFile('src/chat.ts', `
         import { generateText } from 'ai';
-        const result = await generateText({ model, prompt });
+        try {
+          const result = await generateText({ model, prompt });
+        } catch (err) {
+          console.error('LLM call failed:', err);
+          throw err;
+        }
       `),
     ]);
 

@@ -97,6 +97,7 @@ fn test_dashboard_with_scan_data() {
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         }],
         project_path: ".".to_string(),
         scanned_at: "2025-01-01".to_string(),
@@ -107,6 +108,7 @@ fn test_dashboard_with_scan_data() {
         regulation_version: None,
         tier: None,
         external_tool_results: None,
+        agent_summaries: None,
     });
     app.score_history = vec![60.0, 65.0, 75.0];
 
@@ -147,6 +149,7 @@ fn test_dashboard_2x2_grid_no_panic() {
         regulation_version: None,
         tier: None,
         external_tool_results: None,
+        agent_summaries: None,
     });
     app.score_history = vec![50.0, 60.0, 70.0, 80.0, 85.0];
 

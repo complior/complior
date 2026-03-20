@@ -211,6 +211,9 @@ pub struct Finding {
     pub evidence: Option<Vec<serde_json::Value>>,
     #[serde(default)]
     pub explanation: Option<FindingExplanation>,
+    /// Agent passport name (enriched post-scan from passport source_files).
+    #[serde(default)]
+    pub agent_id: Option<String>,
 }
 
 impl Finding {
@@ -279,6 +282,18 @@ pub struct ScoreBreakdown {
     pub confidence_summary: Option<serde_json::Value>,
 }
 
+/// Per-agent finding summary (enriched post-scan from passport source_files).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSummary {
+    pub agent_id: String,
+    pub agent_name: String,
+    pub finding_count: u32,
+    pub critical_count: u32,
+    pub high_count: u32,
+    pub file_count: u32,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanResult {
@@ -298,6 +313,8 @@ pub struct ScanResult {
     pub tier: Option<u8>,
     #[serde(default)]
     pub external_tool_results: Option<Vec<ExternalToolResult>>,
+    #[serde(default)]
+    pub agent_summaries: Option<Vec<AgentSummary>>,
 }
 
 /// Result from a single external security tool (Semgrep, Bandit, etc.)
@@ -347,7 +364,7 @@ impl Serialize for CategoryScore {
 impl Serialize for Finding {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("Finding", 16)?;
+        let mut state = s.serialize_struct("Finding", 17)?;
         state.serialize_field("checkId", &self.check_id)?;
         state.serialize_field("type", &self.r#type)?;
         state.serialize_field("message", &self.message)?;
@@ -364,6 +381,7 @@ impl Serialize for Finding {
         state.serialize_field("confidenceLevel", &self.confidence_level)?;
         state.serialize_field("evidence", &self.evidence)?;
         state.serialize_field("explanation", &self.explanation)?;
+        state.serialize_field("agentId", &self.agent_id)?;
         state.end()
     }
 }

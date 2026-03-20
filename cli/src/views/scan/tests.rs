@@ -176,6 +176,7 @@ mod tests {
                 confidence_level: None,
                 evidence: None,
                 explanation: None,
+                agent_id: None,
             },
             // Type B: Missing file (no code_context)
             Finding {
@@ -195,6 +196,7 @@ mod tests {
                 confidence_level: None,
                 evidence: None,
                 explanation: None,
+                agent_id: None,
             },
             // Type C: Config change
             Finding {
@@ -214,6 +216,7 @@ mod tests {
                 confidence_level: None,
                 evidence: None,
                 explanation: None,
+                agent_id: None,
             },
             // Type B: Missing file, no fix
             Finding {
@@ -233,6 +236,7 @@ mod tests {
                 confidence_level: None,
                 evidence: None,
                 explanation: None,
+                agent_id: None,
             },
         ]
     }
@@ -260,6 +264,7 @@ mod tests {
             regulation_version: None,
             tier: None,
             external_tool_results: None,
+            agent_summaries: None,
         }
     }
 

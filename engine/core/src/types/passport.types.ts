@@ -79,6 +79,14 @@ export interface ConstraintsBlock {
   readonly escalation_rules?: readonly EscalationRule[];
 }
 
+export interface FrameworkScore {
+  readonly framework_id: string;
+  readonly framework_name: string;
+  readonly score: number;
+  readonly grade?: string;
+  readonly assessed_at?: string;
+}
+
 export interface ComplianceBlock {
   readonly eu_ai_act: {
     readonly risk_class: PassportRiskClass;
@@ -111,6 +119,7 @@ export interface ComplianceBlock {
     readonly bias_tested?: boolean;
     readonly last_audit?: string;
   };
+  readonly multi_framework?: readonly FrameworkScore[];
 }
 
 export interface OversightBlock {
@@ -311,6 +320,13 @@ const ComplianceBlockSchema = z.object({
     bias_tested: z.boolean().optional(),
     last_audit: z.string().optional(),
   }).optional(),
+  multi_framework: z.array(z.object({
+    framework_id: z.string(),
+    framework_name: z.string(),
+    score: z.number().min(0).max(100),
+    grade: z.string().optional(),
+    assessed_at: z.string().optional(),
+  })).optional(),
 });
 
 const OversightBlockSchema = z.object({

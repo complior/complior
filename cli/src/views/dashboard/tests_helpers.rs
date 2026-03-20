@@ -51,6 +51,7 @@ pub(super) fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::t
             confidence_level: None,
             evidence: None,
             explanation: None,
+            agent_id: None,
         }],
         project_path: ".".to_string(),
         scanned_at: "2026-02-19".to_string(),
@@ -61,5 +62,6 @@ pub(super) fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::t
         regulation_version: None,
         tier: None,
         external_tool_results: None,
+        agent_summaries: None,
     }
 }

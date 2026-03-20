@@ -16,6 +16,7 @@ pub async fn run_headless_scan(
     deep: bool,
     llm: bool,
     cloud: bool,
+    agent: Option<&str>,
     path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
@@ -113,6 +114,20 @@ pub async fn run_headless_scan(
         }
     };
 
+    // Filter by agent name if --agent is set
+    let result = if let Some(agent_name) = agent {
+        let filtered_findings: Vec<_> = result.findings
+            .into_iter()
+            .filter(|f| f.agent_id.as_deref() == Some(agent_name))
+            .collect();
+        crate::types::ScanResult {
+            findings: filtered_findings,
+            ..result
+        }
+    } else {
+        result
+    };
+
     // Fetch multi-framework scores (includes OWASP/MITRE if redteam data exists)
     let framework_scores = client.framework_scores().await.ok();
 
@@ -127,6 +142,27 @@ pub async fn run_headless_scan(
         };
         let text = format_human(&result, &opts);
         print_paged(&text);
+    }
+
+    // Hint: suggest agent init if no passports found (non-CI, non-JSON, non-SARIF)
+    if !ci && !json && !sarif {
+        let hint_url = format!(
+            "/agent/list?path={}",
+            super::common::url_encode(&scan_path)
+        );
+        if let Ok(list) = client.get_json(&hint_url).await {
+            let count = list.as_array().map(|a| a.len()).unwrap_or(0);
+            if count == 0 {
+                eprintln!();
+                eprintln!(
+                    "  {}",
+                    super::format::colors::dim(
+                        "Hint: No agent passports found. Run `complior agent init` for \
+                         passport-aware scanning and pre-filled fix scaffolds."
+                    )
+                );
+            }
+        }
     }
 
     // Determine exit code (2 = compliance threshold failure)

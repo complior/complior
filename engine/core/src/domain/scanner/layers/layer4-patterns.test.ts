@@ -19,10 +19,15 @@ describe('runLayer4', () => {
       createScanFile('src/api/chat.ts', `
 import OpenAI from 'openai';
 const client = new OpenAI();
-const response = await openai.chat.completions.create({
+try {
+  const response = await openai.chat.completions.create({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Hello' }],
-});
+  });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
 `),
     ]);
 
@@ -44,10 +49,15 @@ const response = await openai.chat.completions.create({
       createScanFile('src/api.ts', `
 import Anthropic from '@anthropic-ai/sdk';
 const client = new Anthropic();
-const msg = await anthropic.messages.create({
+try {
+  const msg = await anthropic.messages.create({
   model: 'claude-3-opus',
   messages: [],
-});
+  });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
 `),
       createScanFile('src/middleware/logger.ts', `
 export function logAiCall(req, res, input, output) {
@@ -88,13 +98,23 @@ export function add(a: number, b: number) {
   it('scans both .ts and .py files in multi-framework project', () => {
     const ctx = createScanCtx([
       createScanFile('frontend/src/chat.tsx', `
-const response = await openai.chat.completions.create({ model: 'gpt-4' });
+try {
+  const response = await openai.chat.completions.create({ model: 'gpt-4' });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
 <div className="AIDisclosure">Powered by AI</div>
 `),
       createScanFile('backend/api.py', `
 import anthropic
 client = anthropic.Anthropic()
-message = anthropic.messages.create(model="claude-3")
+try {
+  message = anthropic.messages.create(model="claude-3")
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
 `),
     ]);
 
@@ -265,13 +285,28 @@ export const conformityDeclaration = { system: 'AI', standard: 'EU AI Act' };
   it('excludes test and spec files from pattern scanning', () => {
     const ctx = createScanCtx([
       createScanFile('src/api/chat.test.ts', `
-const response = await openai.chat.completions.create({ model: 'gpt-4' });
+try {
+  const response = await openai.chat.completions.create({ model: 'gpt-4' });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
 `),
       createScanFile('src/api/chat.spec.ts', `
-const response = await openai.chat.completions.create({ model: 'gpt-4' });
+try {
+  const response = await openai.chat.completions.create({ model: 'gpt-4' });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
 `),
       createScanFile('__tests__/api.ts', `
-const response = await openai.chat.completions.create({ model: 'gpt-4' });
+try {
+  const response = await openai.chat.completions.create({ model: 'gpt-4' });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
 `),
     ]);
 

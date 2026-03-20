@@ -21,11 +21,13 @@ import { analyzeAutonomy } from '../domain/passport/autonomy-analyzer.js';
 import type { AutonomyAnalysis } from '../domain/passport/autonomy-analyzer.js';
 import { scanPermissions } from '../domain/passport/permission-scanner.js';
 import { buildPassport } from '../domain/passport/manifest-builder.js';
+import type { ProjectProfile } from '../domain/passport/manifest-builder.js';
 import { loadOrCreateKeyPair, signPassport, verifyPassport as verifyPassportCrypto } from '../domain/passport/crypto-signer.js';
 import { validatePassport, computeCompleteness } from '../domain/passport/passport-validator.js';
 import type { ValidationResult, CompletenessResult } from '../domain/passport/passport-validator.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
+import { updatePassportCompliance } from './passport-service-utils.js';
 import { createPassportDocuments } from './passport-documents.js';
 import { createPassportAudit } from './passport-audit.js';
 
@@ -63,6 +65,28 @@ const parseDepsFromContext = (ctx: ScanContext): readonly ParsedDependency[] => 
   return allDeps;
 };
 
+/** Read .complior/profile.json — non-fatal if missing. */
+const loadProjectProfile = async (projectPath: string): Promise<ProjectProfile | undefined> => {
+  try {
+    const raw = await readFile(join(projectPath, '.complior', 'profile.json'), 'utf-8');
+    const profile = JSON.parse(raw) as Record<string, unknown>;
+    const business = profile.business as Record<string, unknown> | undefined;
+    const data = profile.data as Record<string, unknown> | undefined;
+    const aiSystem = profile.aiSystem as Record<string, unknown> | undefined;
+    const computed = profile.computed as Record<string, unknown> | undefined;
+
+    const domain = (business?.domain as string) ?? 'general';
+    const dataTypes = Array.isArray(data?.types) ? (data.types as string[]) : [];
+    const systemType = (aiSystem?.type as string) ?? 'feature';
+    const riskLevel = (computed?.riskLevel as string) ?? 'limited';
+    const dataStorage = (data?.storage as string) ?? undefined;
+
+    return { domain, dataTypes, systemType, riskLevel, dataStorage };
+  } catch {
+    return undefined;
+  }
+};
+
 // --- Service factory ---
 
 export const createPassportService = (deps: PassportServiceDeps) => {
@@ -86,6 +110,9 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     const l4Results = runLayer4(ctx, l3Results);
     const scanResult = getLastScanResult();
 
+    // Load project profile for risk classification (non-fatal if missing)
+    const projectProfile = await loadProjectProfile(path);
+
     const manifests: AgentPassport[] = [];
     const savedPaths: string[] = [];
     const skipped: string[] = [];
@@ -93,16 +120,37 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     for (const agent of agents) {
       const autonomy = analyzeAutonomy(l4Results);
       const permissions = scanPermissions(ctx);
+
+      // Check for existing passport to preserve dates on --force
+      const agentsDir = join(path, '.complior', 'agents');
+      const filePath = join(agentsDir, `${agent.name}-manifest.json`);
+      let existingPassport: { created: string; deployed_since: string } | undefined;
+
+      if (force) {
+        try {
+          const raw = await readFile(filePath, 'utf-8');
+          const existing = parsePassport(raw);
+          if (existing) {
+            existingPassport = {
+              created: existing.created,
+              deployed_since: existing.lifecycle.deployed_since,
+            };
+          }
+        } catch { /* no existing passport — proceed */ }
+      }
+
       const unsignedManifest = buildPassport({
-        agent, autonomy, permissions, scanResult: scanResult ?? undefined, overrides,
+        agent, autonomy, permissions,
+        scanResult: scanResult ?? undefined,
+        overrides,
+        projectProfile,
+        existingPassport,
       });
 
       const keyPair = await loadOrCreateKeyPair();
       const signature = signPassport(unsignedManifest, keyPair.privateKey);
       const signedManifest: AgentPassport = { ...unsignedManifest, signature };
 
-      const agentsDir = join(path, '.complior', 'agents');
-      const filePath = join(agentsDir, `${agent.name}-manifest.json`);
       await mkdir(dirname(filePath), { recursive: true });
 
       if (!force) {
@@ -186,6 +234,18 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       .map((p) => ({ name: p.name, sourceFiles: p.source_files ?? [] }));
   };
 
+  /** Step 10: Auto-update passports after scan — refreshes complior_score + last_scan. */
+  const updatePassportsAfterScan = async (scanResult: ScanResult, projectPath?: string): Promise<void> => {
+    const path = projectPath ?? getProjectPath();
+    const passports = await listPassports(path);
+    for (const passport of passports) {
+      await updatePassportCompliance(deps, passport.name, {
+        complior_score: scanResult.score.totalScore,
+        last_scan: scanResult.scannedAt,
+      }, path).catch(() => {});
+    }
+  };
+
   // --- Delegate to sub-modules ---
 
   const coreOps = { showPassport, listPassports };
@@ -201,6 +261,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     validatePassportByName,
     getPassportCompleteness,
     findAgentsForFile,
+    updatePassportsAfterScan,
     ...docs,
     ...audit,
   });

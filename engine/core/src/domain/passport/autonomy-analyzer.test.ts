@@ -104,6 +104,26 @@ describe('analyzeAutonomy', () => {
     expect(l5.agentType).toBe('autonomous');
   });
 
+  it('reports killSwitchPresent when kill-switch pattern found', () => {
+    const results: readonly L4CheckResult[] = [
+      createL4Result('kill-switch', 'positive', 'FOUND'),
+    ];
+
+    const analysis = analyzeAutonomy(results);
+
+    expect(analysis.killSwitchPresent).toBe(true);
+  });
+
+  it('reports killSwitchPresent false when no kill-switch pattern', () => {
+    const results: readonly L4CheckResult[] = [
+      createL4Result('human-oversight', 'positive', 'FOUND'),
+    ];
+
+    const analysis = analyzeAutonomy(results);
+
+    expect(analysis.killSwitchPresent).toBe(false);
+  });
+
   it('tracks evidence correctly', () => {
     const results: readonly L4CheckResult[] = [
       createL4Result('human-oversight', 'positive', 'FOUND'),

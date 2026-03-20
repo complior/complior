@@ -6,6 +6,7 @@
 import type { LanguageModel } from 'ai';
 import type { AgentPassport } from '../../types/passport.types.js';
 import type { DocResult } from './document-generator.js';
+import { complior } from '@complior/sdk';
 
 export interface AiEnrichInput {
   readonly baseResult: DocResult;
@@ -67,7 +68,7 @@ ${baseResult.markdown}
 Return the complete enriched document (full Markdown). Keep all existing content, enrich unfilled sections.`;
 
   try {
-    const result = await generateText({ model, system: systemPrompt, prompt });
+    const result = await complior(generateText)({ model, system: systemPrompt, prompt });
     const enrichedMarkdown = result.text.trim();
 
     // Count how many manual fields were likely addressed

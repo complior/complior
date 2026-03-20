@@ -9,7 +9,7 @@ import { createEmptyHistory, addEntry, markUndone, getLastApplied, getById } fro
 
 const FixHistoryFileSchema = z.object({
   path: z.string(),
-  action: z.enum(['create', 'edit']),
+  action: z.enum(['create', 'edit', 'splice']),
   backupPath: z.string(),
 });
 
@@ -17,7 +17,7 @@ const FixHistoryEntrySchema = z.object({
   id: z.number(),
   checkId: z.string(),
   obligationId: z.string(),
-  fixType: z.enum(['code_injection', 'template_generation', 'config_fix', 'metadata_generation']),
+  fixType: z.enum(['code_injection', 'template_generation', 'config_fix', 'metadata_generation', 'dependency_fix']),
   status: z.enum(['applied', 'undone']),
   timestamp: z.string(),
   files: z.array(FixHistoryFileSchema),

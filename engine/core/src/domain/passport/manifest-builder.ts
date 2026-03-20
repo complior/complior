@@ -8,12 +8,27 @@ import type {
   PassportRiskClass,
   PermissionsBlock,
   ConstraintsBlock,
+  OversightBlock,
   SourceBlock,
 } from '../../types/passport.types.js';
 import type { ScanResult } from '../../types/common.types.js';
 import { findRegistryCard } from '../../data/registry-cards.js';
+import { OBLIGATION_FIELD_MAP, getFieldValue, isNonEmpty } from './obligation-field-map.js';
 
 // --- Input interface ---
+
+export interface ProjectProfile {
+  readonly domain: string;
+  readonly dataTypes: readonly string[];
+  readonly systemType: string;
+  readonly riskLevel: string;
+  readonly dataStorage?: string;
+}
+
+export interface ExistingPassportDates {
+  readonly created: string;
+  readonly deployed_since: string;
+}
 
 export interface PassportBuildInput {
   readonly agent: DiscoveredAgent;
@@ -21,6 +36,7 @@ export interface PassportBuildInput {
     readonly level: AutonomyLevel;
     readonly evidence: AutonomyEvidence;
     readonly agentType: AgentType;
+    readonly killSwitchPresent: boolean;
   };
   readonly permissions: {
     readonly tools: readonly string[];
@@ -38,6 +54,8 @@ export interface PassportBuildInput {
   };
   readonly scanResult?: ScanResult;
   readonly overrides?: Record<string, unknown>;
+  readonly projectProfile?: ProjectProfile;
+  readonly existingPassport?: ExistingPassportDates;
 }
 
 // --- Tracked passport fields for confidence calculation ---
@@ -69,7 +87,23 @@ export const ALL_PASSPORT_FIELDS: readonly string[] = [
 
 // --- Helpers ---
 
-const inferRiskClass = (level: AutonomyLevel): PassportRiskClass => {
+/** Step 4: Resolve risk class — takes the HIGHER of autonomy-based and domain-based risk. */
+const RISK_ORDER: readonly PassportRiskClass[] = ['minimal', 'limited', 'high', 'prohibited'];
+
+export const resolveRiskClass = (
+  autonomyLevel: AutonomyLevel,
+  profileRisk?: string,
+): PassportRiskClass => {
+  const autonomyRisk = inferRiskClassFromAutonomy(autonomyLevel);
+  if (!profileRisk) return autonomyRisk;
+
+  const domainRisk = normalizeRiskClass(profileRisk);
+  const autonomyIdx = RISK_ORDER.indexOf(autonomyRisk);
+  const domainIdx = RISK_ORDER.indexOf(domainRisk);
+  return domainIdx > autonomyIdx ? domainRisk : autonomyRisk;
+};
+
+const inferRiskClassFromAutonomy = (level: AutonomyLevel): PassportRiskClass => {
   switch (level) {
     case 'L1':
     case 'L2':
@@ -80,6 +114,129 @@ const inferRiskClass = (level: AutonomyLevel): PassportRiskClass => {
     case 'L5':
       return 'high';
   }
+};
+
+const normalizeRiskClass = (risk: string): PassportRiskClass => {
+  const lower = risk.toLowerCase();
+  if (lower === 'unacceptable' || lower === 'prohibited') return 'prohibited';
+  if (lower === 'high') return 'high';
+  if (lower === 'limited') return 'limited';
+  return 'minimal';
+};
+
+/** Step 5: Dynamic applicable articles based on risk class. */
+export const getApplicableArticles = (riskClass: PassportRiskClass): readonly string[] => {
+  switch (riskClass) {
+    case 'prohibited':
+      return ['Art.5'];
+    case 'high':
+      return ['Art.6', 'Art.9', 'Art.11', 'Art.12', 'Art.13', 'Art.14', 'Art.26', 'Art.27', 'Art.49', 'Art.50'];
+    case 'limited':
+      return ['Art.50', 'Art.52'];
+    case 'minimal':
+      return ['Art.50'];
+  }
+};
+
+/** Step 6: Infer data residency from profile or provider. */
+export const inferDataResidency = (profileStorage?: string, provider?: string): string => {
+  if (profileStorage) {
+    const lower = profileStorage.toLowerCase();
+    if (lower === 'eu') return 'eu';
+    if (lower === 'us') return 'us';
+    if (lower === 'mixed') return 'global';
+  }
+  if (provider) {
+    const lower = provider.toLowerCase();
+    if (lower === 'anthropic' || lower === 'openai' || lower === 'google') return 'us';
+  }
+  return 'unknown';
+};
+
+/** Step 3: Compute next review date. */
+export const computeNextReview = (isoDate: string, days: number): string => {
+  const date = new Date(isoDate);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+/** Step 7: Generate contextual description. */
+const generateDescription = (
+  agent: DiscoveredAgent,
+  autonomy: PassportBuildInput['autonomy'],
+  provider: string,
+  modelId: string,
+): string => {
+  const agentDesc = (agent as DiscoveredAgent & { description?: string }).description;
+  if (agentDesc) return agentDesc;
+
+  const parts: string[] = [];
+  parts.push(`${capitalize(provider)}-based ${autonomy.agentType} agent`);
+
+  // Domain context would come from overrides / profile, but we include framework info
+  if (agent.framework) {
+    parts[0] += ` for ${agent.framework.toLowerCase()}`;
+  }
+
+  const modelPart = modelId !== 'unknown' ? `, using ${modelId} (${provider})` : '';
+  const toolCount = agent.sourceFiles.length;
+  const toolPart = toolCount > 0 ? `, with ${toolCount} source file${toolCount > 1 ? 's' : ''}` : '';
+  const levelPart = `, at autonomy level ${autonomy.level}`;
+
+  return `${parts[0]}${modelPart}${toolPart}${levelPart}.`;
+};
+
+/** Step 8: Build oversight block for high-risk / L3+ systems. */
+export const buildOversight = (
+  riskClass: PassportRiskClass,
+  autonomyLevel: AutonomyLevel,
+  owner: { team: string; contact: string; responsible_person: string },
+  killSwitchPresent: boolean,
+): OversightBlock | undefined => {
+  const needsOversight =
+    riskClass === 'high' || riskClass === 'prohibited' ||
+    autonomyLevel === 'L3' || autonomyLevel === 'L4' || autonomyLevel === 'L5';
+
+  if (!needsOversight) return undefined;
+
+  return {
+    responsible_person: owner.responsible_person || owner.contact || '',
+    role: 'AI System Deployer Oversight',
+    contact: owner.contact || '',
+    override_mechanism: killSwitchPresent
+      ? 'Kill switch detected in codebase'
+      : 'Manual override required — no kill switch detected',
+    escalation_procedure: 'Escalate to responsible person via contact information',
+  };
+};
+
+/** Step 9: Compute deployer obligations met/pending from OBLIGATION_FIELD_MAP. */
+export const computeDeployerObligations = (
+  manifest: Record<string, unknown>,
+): { met: string[]; pending: string[] } => {
+  const obligationGroups = new Map<string, { required: string[]; filled: string[] }>();
+
+  for (const mapping of OBLIGATION_FIELD_MAP) {
+    if (!mapping.required) continue;
+    const group = obligationGroups.get(mapping.obligation) ?? { required: [], filled: [] };
+    group.required.push(mapping.field);
+    if (isNonEmpty(getFieldValue(manifest as never, mapping.field))) {
+      group.filled.push(mapping.field);
+    }
+    obligationGroups.set(mapping.obligation, group);
+  }
+
+  const met: string[] = [];
+  const pending: string[] = [];
+  for (const [oblId, group] of obligationGroups) {
+    if (group.filled.length === group.required.length) {
+      met.push(oblId);
+    } else {
+      pending.push(oblId);
+    }
+  }
+
+  return { met: met.sort(), pending: pending.sort() };
 };
 
 const detectProvider = (sdks: readonly string[]): string => {
@@ -103,7 +260,7 @@ const toDisplayName = (name: string): string =>
 export const buildPassport = (
   input: PassportBuildInput,
 ): Omit<AgentPassport, 'signature'> => {
-  const { agent, autonomy, permissions, scanResult, overrides } = input;
+  const { agent, autonomy, permissions, scanResult, overrides, projectProfile, existingPassport } = input;
 
   const agentId = 'ag_' + randomUUID();
   const now = new Date().toISOString();
@@ -111,9 +268,11 @@ export const buildPassport = (
   // --- Identity ---
   const name = agent.name;
   const displayName = toDisplayName(name);
-  const description =
-    (agent as DiscoveredAgent & { description?: string }).description ??
-    `AI agent using ${agent.framework}`;
+  const provider = detectProvider(agent.detectedSdks);
+  const modelId = agent.detectedModels[0] || 'unknown';
+
+  // Step 7: Contextual description
+  const description = generateDescription(agent, autonomy, provider, modelId);
 
   // --- Owner (placeholders) ---
   const owner = {
@@ -123,11 +282,12 @@ export const buildPassport = (
   };
 
   // --- Model ---
+  // Step 6: Infer data residency
   const model = {
-    provider: detectProvider(agent.detectedSdks),
-    model_id: agent.detectedModels[0] || 'unknown',
+    provider,
+    model_id: modelId,
     deployment: 'api' as const,
-    data_residency: 'unknown',
+    data_residency: inferDataResidency(projectProfile?.dataStorage, provider),
   };
 
   // --- Permissions ---
@@ -161,10 +321,15 @@ export const buildPassport = (
   };
 
   // --- Compliance ---
+  // Step 4: Risk classification from project profile
+  const riskClass = resolveRiskClass(autonomy.level, projectProfile?.riskLevel);
+  // Step 5: Dynamic applicable articles
+  const applicableArticles = getApplicableArticles(riskClass);
+
   const compliance = {
     eu_ai_act: {
-      risk_class: inferRiskClass(autonomy.level),
-      applicable_articles: ['Art.50.1', 'Art.50.2', 'Art.12'],
+      risk_class: riskClass,
+      applicable_articles: [...applicableArticles],
       deployer_obligations_met: [] as string[],
       deployer_obligations_pending: [] as string[],
     },
@@ -190,10 +355,11 @@ export const buildPassport = (
   };
 
   // --- Lifecycle ---
+  // Step 3: Compute next review date
   const lifecycle = {
     status: 'draft' as const,
-    deployed_since: '',
-    next_review: '',
+    deployed_since: existingPassport?.deployed_since ?? '',
+    next_review: computeNextReview(now, 90),
     review_frequency_days: 90,
   };
 
@@ -209,6 +375,9 @@ export const buildPassport = (
   const upstreamRegistry = agent.detectedModels
     .map((id) => findRegistryCard(id))
     .filter((c): c is NonNullable<typeof c> => c !== undefined);
+
+  // --- Step 8: Oversight block ---
+  const oversight = buildOversight(riskClass, autonomy.level, owner, autonomy.killSwitchPresent);
 
   // --- Source tracking ---
   const autoFilledFields: string[] = [];
@@ -263,7 +432,6 @@ export const buildPassport = (
     'constraints.rate_limits',
     'constraints.budget',
     'lifecycle.deployed_since',
-    'lifecycle.next_review',
     'description',
     'permissions.data_boundaries.geographic_restrictions',
     'permissions.data_boundaries.prohibited_data_types',
@@ -289,7 +457,7 @@ export const buildPassport = (
     display_name: displayName,
     description,
     version: '1.0.0',
-    created: now,
+    created: existingPassport?.created ?? now,
     updated: now,
     owner,
     type: autonomy.agentType,
@@ -300,6 +468,7 @@ export const buildPassport = (
     permissions: permissionsBlock,
     constraints,
     compliance,
+    ...(oversight ? { oversight } : {}),
     disclosure,
     logging,
     lifecycle,
@@ -309,9 +478,23 @@ export const buildPassport = (
     source,
   };
 
+  // --- Step 9: Compute deployer obligations met/pending ---
+  const obligations = computeDeployerObligations(manifest as unknown as Record<string, unknown>);
+  const finalManifest = {
+    ...manifest,
+    compliance: {
+      ...manifest.compliance,
+      eu_ai_act: {
+        ...manifest.compliance.eu_ai_act,
+        deployer_obligations_met: obligations.met,
+        deployer_obligations_pending: obligations.pending,
+      },
+    },
+  };
+
   // --- Apply overrides ---
   if (overrides) {
-    const result = { ...manifest };
+    const result = { ...finalManifest };
     for (const [key, value] of Object.entries(overrides)) {
       if (key in result && value !== undefined) {
         (result as Record<string, unknown>)[key] = value;
@@ -320,5 +503,5 @@ export const buildPassport = (
     return result as Omit<AgentPassport, 'signature'>;
   }
 
-  return manifest;
+  return finalManifest;
 };

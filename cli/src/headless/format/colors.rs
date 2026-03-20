@@ -31,17 +31,17 @@ fn ansi(code: &str, text: &str) -> String {
     }
 }
 
-pub(super) fn red(t: &str) -> String { ansi("31", t) }
-pub(super) fn green(t: &str) -> String { ansi("32", t) }
-pub(super) fn yellow(t: &str) -> String { ansi("33", t) }
-pub(super) fn cyan(t: &str) -> String { ansi("36", t) }
-pub(super) fn bold(t: &str) -> String { ansi("1", t) }
-pub(super) fn bold_red(t: &str) -> String { ansi("1;31", t) }
-pub(super) fn bold_green(t: &str) -> String { ansi("1;32", t) }
-pub(super) fn bold_yellow(t: &str) -> String { ansi("1;33", t) }
-pub(super) fn dim(t: &str) -> String { ansi("2", t) }
+pub(crate) fn red(t: &str) -> String { ansi("31", t) }
+pub(crate) fn green(t: &str) -> String { ansi("32", t) }
+pub(crate) fn yellow(t: &str) -> String { ansi("33", t) }
+pub(crate) fn cyan(t: &str) -> String { ansi("36", t) }
+pub(crate) fn bold(t: &str) -> String { ansi("1", t) }
+pub(crate) fn bold_red(t: &str) -> String { ansi("1;31", t) }
+pub(crate) fn bold_green(t: &str) -> String { ansi("1;32", t) }
+pub(crate) fn bold_yellow(t: &str) -> String { ansi("1;33", t) }
+pub(crate) fn dim(t: &str) -> String { ansi("2", t) }
 
-pub(super) fn score_color(score: f64, text: &str) -> String {
+pub(crate) fn score_color(score: f64, text: &str) -> String {
     if score >= 90.0 {
         bold_green(text)
     } else if score >= 80.0 {
@@ -55,7 +55,7 @@ pub(super) fn score_color(score: f64, text: &str) -> String {
     }
 }
 
-pub(super) fn severity_icon(sev: &Severity) -> String {
+pub(crate) fn severity_icon(sev: &Severity) -> String {
     match sev {
         Severity::Critical | Severity::High => red("✖"),
         Severity::Medium => yellow("▲"),
@@ -64,7 +64,7 @@ pub(super) fn severity_icon(sev: &Severity) -> String {
     }
 }
 
-pub(super) fn severity_color(sev: &Severity, text: &str) -> String {
+pub(crate) fn severity_color(sev: &Severity, text: &str) -> String {
     match sev {
         Severity::Critical => bold_red(text),
         Severity::High => red(text),
@@ -74,7 +74,7 @@ pub(super) fn severity_color(sev: &Severity, text: &str) -> String {
     }
 }
 
-pub(super) fn layer_status_color(status: &str, text: &str) -> String {
+pub(crate) fn layer_status_color(status: &str, text: &str) -> String {
     match status {
         "PASS" => green(text),
         "WARN" => yellow(text),

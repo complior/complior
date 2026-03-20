@@ -59,26 +59,36 @@ export const deduplicateFindings = (
 
 /**
  * Merge base L1-L4 findings with deduplicated external findings.
- * Removes L4 findings that have a more precise Semgrep equivalent.
+ * Removes L4 findings that have a more precise Semgrep equivalent,
+ * transferring fixDiff/codeContext from the superseded L4 finding.
  */
 export const mergeFindings = (
   baseFindings: readonly Finding[],
   externalFindings: readonly Finding[],
 ): readonly Finding[] => {
-  // Build set of Semgrep file:line keys
-  const semgrepKeys = new Set<string>();
-  for (const f of externalFindings) {
+  // Build map of Semgrep file:line keys → index in externalFindings
+  const semgrepKeys = new Map<string, number>();
+  for (let i = 0; i < externalFindings.length; i++) {
+    const f = externalFindings[i]!;
     if (f.checkId.startsWith('ext-semgrep-') && f.file && f.line !== undefined) {
-      semgrepKeys.add(`${f.file}:${f.line}`);
+      semgrepKeys.set(`${f.file}:${f.line}`, i);
     }
   }
 
-  // Filter base findings — remove L4 regex matches superseded by Semgrep
+  // Transfer fixDiff from superseded L4 findings to their semgrep replacements
+  const enrichedExternal = [...externalFindings];
   const filteredBase = baseFindings.filter((f) => {
     if (!f.checkId.startsWith('l4-') || !f.file || f.line === undefined) return true;
-    // Keep if no Semgrep equivalent at same location
-    return !semgrepKeys.has(`${f.file}:${f.line}`);
+    const key = `${f.file}:${f.line}`;
+    const extIdx = semgrepKeys.get(key);
+    if (extIdx === undefined) return true; // Keep — no semgrep equivalent
+    // Transfer fixDiff and codeContext to the semgrep finding
+    const ext = enrichedExternal[extIdx]!;
+    if (f.fixDiff && !ext.fixDiff) {
+      enrichedExternal[extIdx] = { ...ext, fixDiff: f.fixDiff, codeContext: f.codeContext ?? ext.codeContext };
+    }
+    return false; // Remove — superseded by semgrep
   });
 
-  return [...filteredBase, ...externalFindings];
+  return [...filteredBase, ...enrichedExternal];
 };

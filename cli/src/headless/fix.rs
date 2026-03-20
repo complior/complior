@@ -3,6 +3,7 @@ use crate::engine_client::EngineClient;
 use crate::headless::format::colors::*;
 use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
+use crate::headless::format::{plural, project_name, separator};
 
 /// Run a headless fix (dry-run or apply).
 pub async fn run_headless_fix(
@@ -136,14 +137,6 @@ pub async fn run_headless_fix(
 }
 
 // ── Report formatting ────────────────────────────────────────────
-
-fn separator() -> String {
-    dim(&"─".repeat(SEP_WIDTH))
-}
-
-fn project_name(path: &str) -> &str {
-    path.rsplit('/').find(|s| !s.is_empty()).unwrap_or(path)
-}
 
 /// Parsed fix result entry for grouping and rendering.
 struct FixEntry {
@@ -279,16 +272,16 @@ fn render_fix_header(o: &mut String, scan_path: &str, applied: u64, failed: u64,
     o.push('\n');
     o.push_str(&format!("  {}\n", bold(&format!("◆ Complior {mode}  ·  {subtitle}"))));
     o.push_str(&format!("  {}\n", separator()));
-    o.push_str(&format!("  {:<10}{}\n", dim("Project"), project_name(scan_path)));
+    o.push_str(&format!("  {}{}\n", dim(&format!("{:<10}", "Project")), project_name(scan_path)));
     if is_preview {
-        o.push_str(&format!("  {:<10}{}\n", dim("Fixes"), format!("{applied} planned")));
+        o.push_str(&format!("  {}{}\n", dim(&format!("{:<10}", "Fixes")), format!("{applied} planned")));
     } else {
         let fix_summary = if failed > 0 {
             format!("{applied} applied · {}", bold_red(&format!("{failed} failed")))
         } else {
             format!("{applied} applied · 0 failed")
         };
-        o.push_str(&format!("  {:<10}{}\n", dim("Fixes"), fix_summary));
+        o.push_str(&format!("  {}{}\n", dim(&format!("{:<10}", "Fixes")), fix_summary));
     }
     o.push_str(&format!("  {}\n", separator()));
 }
@@ -573,7 +566,7 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
             o.push_str(&format!("  {}  ({} file{})\n\n",
                 bold("FILES TO CREATE"),
                 creates.len(),
-                plural_s(creates.len()),
+                plural(creates.len()),
             ));
             for c in &creates {
                 let path = c.get("path").and_then(|v| v.as_str()).unwrap_or("?");
@@ -585,7 +578,7 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
             o.push_str(&format!("  {}  ({} file{})\n\n",
                 bold("FILES TO MODIFY"),
                 modifies.len(),
-                plural_s(modifies.len()),
+                plural(modifies.len()),
             ));
             for c in &modifies {
                 let path = c.get("path").and_then(|v| v.as_str()).unwrap_or("?");
@@ -606,11 +599,6 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
 /// "fix" → "fixes"
 fn plural_es(n: usize) -> &'static str {
     if n == 1 { "" } else { "es" }
-}
-
-/// "file" → "files"
-fn plural_s(n: usize) -> &'static str {
-    if n == 1 { "" } else { "s" }
 }
 
 #[cfg(test)]

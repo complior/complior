@@ -3,7 +3,7 @@
 use crate::types::humanize_kebab;
 
 /// Human-readable label for a check_id.
-pub(super) fn check_label(check_id: &str) -> String {
+pub(crate) fn check_label(check_id: &str) -> String {
     let label = match check_id {
         // ── L1: Document & component presence ───────────────
         "ai-disclosure"            => "AI Disclosure Notice",
@@ -125,7 +125,7 @@ fn check_label_dynamic(check_id: &str) -> String {
 }
 
 /// Human-readable label for an external check_id.
-pub(super) fn ext_check_label(check_id: &str) -> String {
+pub(crate) fn ext_check_label(check_id: &str) -> String {
     // Match on known rule patterns within the check_id
     if check_id.contains("unsafe-deser-js") {
         return "Unsafe Code Execution (eval/Function)".to_string();

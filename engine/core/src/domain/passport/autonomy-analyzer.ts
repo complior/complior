@@ -7,6 +7,7 @@ export interface AutonomyAnalysis {
   readonly level: AutonomyLevel;
   readonly evidence: AutonomyEvidence;
   readonly agentType: AgentType;
+  readonly killSwitchPresent: boolean;
 }
 
 // --- Helpers ---
@@ -85,8 +86,8 @@ export const analyzeAutonomy = (
   // 3. Check logging presence (logging, positive, FOUND)
   const loggingPresent = hasMatch(l4Results, 'logging', 'positive', 'FOUND');
 
-  // 4. Check kill switch (kill-switch, positive, FOUND) — tracked for future use
-  hasMatch(l4Results, 'kill-switch', 'positive', 'FOUND');
+  // 4. Check kill switch (kill-switch, positive, FOUND)
+  const killSwitchPresent = hasMatch(l4Results, 'kill-switch', 'positive', 'FOUND');
 
   // 5. Determine autonomy level
   const level = determineLevel(
@@ -108,5 +109,5 @@ export const analyzeAutonomy = (
     auto_rated: true,
   };
 
-  return { level, evidence, agentType };
+  return { level, evidence, agentType, killSwitchPresent };
 };

@@ -1,9 +1,9 @@
 //! Scan output formatting: JSON, SARIF, and human-readable.
 
-mod colors;
+pub(crate) mod colors;
 mod human;
-mod labels;
-mod layers;
+pub(crate) mod labels;
+pub(crate) mod layers;
 
 use std::io::IsTerminal as _;
 use std::io::Write as _;
@@ -19,6 +19,23 @@ pub struct FormatOptions {
 }
 
 pub use human::format_human;
+
+// ── Shared helpers (used by both scan + fix formatters) ─────────
+
+/// Full-width separator line.
+pub(crate) fn separator() -> String {
+    colors::dim(&"─".repeat(layers::SEP_WIDTH))
+}
+
+/// Extract project name from the last non-empty path segment.
+pub(crate) fn project_name(path: &str) -> &str {
+    path.rsplit('/').find(|s| !s.is_empty()).unwrap_or(path)
+}
+
+/// Pluralization suffix: "s" for n != 1, "" for n == 1.
+pub(crate) fn plural(n: usize) -> &'static str {
+    if n == 1 { "" } else { "s" }
+}
 
 /// Format scan result as JSON.
 pub fn format_json(result: &ScanResult) -> String {

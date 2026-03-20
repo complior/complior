@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "protectedAttributes": [
+    "gender",
+    "race",
+    "age",
+    "disability",
+    "religion",
+    "nationality"
+  ],
+  "fairnessMetrics": {
+    "equalized_odds": {
+      "enabled": true,
+      "threshold": 0.1
+    },
+    "demographic_parity": {
+      "enabled": true,
+      "threshold": 0.1
+    },
+    "predictive_parity": {
+      "enabled": true,
+      "threshold": 0.15
+    }
+  },
+  "testDataset": {
+    "path": "tests/bias/",
+    "format": "jsonl",
+    "minSamplesPerGroup": 100
+  },
+  "reporting": {
+    "outputDir": "reports/bias/",
+    "format": "json",
+    "includeConfidenceIntervals": true
+  }
+}

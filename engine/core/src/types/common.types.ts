@@ -102,6 +102,8 @@ export interface Finding {
   readonly codeContext?: CodeContext;
   readonly fixDiff?: FixDiff;
   readonly explanation?: FindingExplanation;
+  /** Agent passport name (enriched post-scan from passport source_files). */
+  readonly agentId?: string;
 }
 
 // --- Score ---
@@ -168,6 +170,15 @@ export interface RegulationVersion {
   readonly lastUpdated: string;
 }
 
+export interface AgentSummary {
+  readonly agentId: string;
+  readonly agentName: string;
+  readonly findingCount: number;
+  readonly criticalCount: number;
+  readonly highCount: number;
+  readonly fileCount: number;
+}
+
 export interface ScanResult {
   readonly score: ScoreBreakdown;
   readonly findings: readonly Finding[];
@@ -180,6 +191,7 @@ export interface ScanResult {
   readonly regulationVersion?: RegulationVersion;
   readonly tier?: ScanTier;
   readonly externalToolResults?: readonly ExternalToolResult[];
+  readonly agentSummaries?: readonly AgentSummary[];
 }
 
 // --- Project Profile ---

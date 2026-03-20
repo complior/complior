@@ -191,7 +191,12 @@ describe('scanner integration — confidence in findings', () => {
     const ctx = createScanCtx([
       createScanFile('src/chat.tsx', `
 import OpenAI from 'openai';
-const response = await openai.chat.completions.create({ model: 'gpt-4' });
+try {
+  const response = await openai.chat.completions.create({ model: 'gpt-4' });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
       `),
       createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0"}}'),
     ]);
@@ -212,7 +217,12 @@ const response = await openai.chat.completions.create({ model: 'gpt-4' });
       createScanFile('AI-LITERACY.md', '# Policy\n## Training Program\n## Training Levels\n## Assessment Methods'),
       createScanFile('package.json', '{"dependencies":{"openai":"^4.0.0","express":"^4.0.0"}}'),
       createScanFile('src/app.ts', `
-const res = await openai.chat.completions.create({ model: 'gpt-4' });
+try {
+  const res = await openai.chat.completions.create({ model: 'gpt-4' });
+} catch (err) {
+  console.error('LLM call failed:', err);
+  throw err;
+}
       `),
     ]);
 

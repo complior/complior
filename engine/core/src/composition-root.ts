@@ -60,10 +60,11 @@ import { simulateActions } from './domain/whatif/simulate-actions.js';
 import { compareSeverity } from './types/common.types.js';
 import { autoDetect } from './onboarding/auto-detect.js';
 import { createInitialState as createOnboardingInitialState } from './domain/onboarding/guided-onboarding.js';
+import { complior } from '@complior/sdk';
 
 export interface ApplicationState {
   readonly regulationData: RegulationData;
-  readonly projectPath: string;
+  projectPath: string;
   readonly startedAt: number;
   readonly version: string;
   /** Mutable fields — modified via event handlers and service callbacks */
@@ -115,9 +116,10 @@ export const loadApplication = async (): Promise<Application> => {
 
   /** Persist scan result to disk (fire-and-forget). */
   const persistScanResult = (result: ScanResult): void => {
-    const dir = resolve(projectPath, '.complior');
+    const dir = resolve(state.projectPath, '.complior');
+    const scanPath = resolve(state.projectPath, '.complior', 'last-scan.json');
     mkdir(dir, { recursive: true })
-      .then(() => writeFile(lastScanPath, JSON.stringify(result), 'utf-8'))
+      .then(() => writeFile(scanPath, JSON.stringify(result), 'utf-8'))
       .catch((err: unknown) => { log.warn('Failed to persist scan result:', err); });
   };
 
@@ -133,7 +135,7 @@ export const loadApplication = async (): Promise<Application> => {
         const { generateText } = await import('ai');
         const routing = llm.routeModel('classify');
         const model = await llm.getModel(routing.provider, routing.modelId);
-        const result = await generateText({ model, prompt });
+        const result = await complior(generateText)({ model, prompt });
         return {
           text: result.text,
           inputTokens: (result.usage as Record<string, number>)?.promptTokens ?? 0,
@@ -233,6 +235,11 @@ export const loadApplication = async (): Promise<Application> => {
   });
 
   // 5a. Create services
+  // Lazy passport service ref for scan enrichment (passportService created later)
+  const lazyScanPassport = {
+    listPassports: (path?: string) => passportService.listPassports(path),
+  };
+
   const scanService = createScanService({
     scanner,
     collectFiles,
@@ -242,6 +249,7 @@ export const loadApplication = async (): Promise<Application> => {
     evidenceStore,
     auditStore,
     scanCache,
+    passportService: lazyScanPassport,
   });
 
   // Template loader for fixer
@@ -582,7 +590,7 @@ export const loadApplication = async (): Promise<Application> => {
       const { generateText } = await import('ai');
       const routing = llm.routeModel('classify');
       const model = await llm.getModel(routing.provider, routing.modelId);
-      const result = await generateText({ model, prompt, system: systemPrompt });
+      const result = await complior(generateText)({ model, prompt, system: systemPrompt });
       return result.text;
     } catch {
       return '[ERROR] LLM unavailable';
@@ -642,6 +650,11 @@ export const loadApplication = async (): Promise<Application> => {
     toolManager,
   });
 
+  // 6b. Wire scan.completed → auto-update passport scores (Step 10)
+  events.on('scan.completed', ({ result }: { result: ScanResult }) => {
+    passportService.updatePassportsAfterScan(result).catch(() => {});
+  });
+
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events
   const fileChangedHandler = ({ path: changedPath }: { path: string }) => {
     scanService.scan(state.projectPath).then(
@@ -662,6 +675,13 @@ export const loadApplication = async (): Promise<Application> => {
     );
   };
   events.on('file.changed', fileChangedHandler);
+
+  // Track scanned project path so fix-service resolves files correctly
+  events.on('scan.started', ({ projectPath: scanPath }: { projectPath: string }) => {
+    if (scanPath !== state.projectPath) {
+      state.projectPath = scanPath;
+    }
+  });
 
   // 8. File watcher (US-S0202): start on demand via startWatcher()
   const fileWatcher = createFileWatcher(state.projectPath, events);
