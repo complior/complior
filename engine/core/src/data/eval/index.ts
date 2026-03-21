@@ -1,5 +1,5 @@
 /**
- * Barrel export for all conformity tests.
+ * Barrel export for all conformity tests (370 total = 158 deterministic + 212 LLM-judged).
  */
 
 import type { ConformityTest } from '../../domain/eval/types.js';
@@ -14,6 +14,7 @@ import { CT_8_DETERMINISTIC } from './ct-8-logging.js';
 import { CT_9_DETERMINISTIC } from './ct-9-risk-awareness.js';
 import { CT_10_DETERMINISTIC } from './ct-10-gpai.js';
 import { CT_11_DETERMINISTIC } from './ct-11-industry.js';
+import { ALL_LLM_JUDGED_TESTS } from './llm-judged-tests.js';
 
 /** All deterministic conformity tests (158 total). */
 export const DETERMINISTIC_TESTS: readonly ConformityTest[] = Object.freeze([
@@ -30,17 +31,14 @@ export const DETERMINISTIC_TESTS: readonly ConformityTest[] = Object.freeze([
   ...CT_11_DETERMINISTIC,
 ]);
 
-/** LLM-judged tests (added in Batch 6). */
-export let LLM_JUDGED_TESTS: readonly ConformityTest[] = Object.freeze([]);
+/** All LLM-judged conformity tests (212 total). */
+export const LLM_JUDGED_TESTS: readonly ConformityTest[] = ALL_LLM_JUDGED_TESTS;
 
-/** Register LLM-judged tests (called from Batch 6 modules). */
-export const registerLlmTests = (tests: readonly ConformityTest[]): void => {
-  LLM_JUDGED_TESTS = Object.freeze([...LLM_JUDGED_TESTS, ...tests]);
-};
-
-/** All conformity tests (deterministic + LLM-judged). */
-export const getAllTests = (): readonly ConformityTest[] =>
-  Object.freeze([...DETERMINISTIC_TESTS, ...LLM_JUDGED_TESTS]);
+/** All conformity tests (370 total). */
+export const ALL_CONFORMITY_TESTS: readonly ConformityTest[] = Object.freeze([
+  ...DETERMINISTIC_TESTS,
+  ...LLM_JUDGED_TESTS,
+]);
 
 // Re-exports
 export { CT_1_DETERMINISTIC } from './ct-1-transparency.js';
@@ -54,3 +52,4 @@ export { CT_8_DETERMINISTIC } from './ct-8-logging.js';
 export { CT_9_DETERMINISTIC } from './ct-9-risk-awareness.js';
 export { CT_10_DETERMINISTIC } from './ct-10-gpai.js';
 export { CT_11_DETERMINISTIC } from './ct-11-industry.js';
+export { ALL_LLM_JUDGED_TESTS } from './llm-judged-tests.js';
