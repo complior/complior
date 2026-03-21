@@ -202,6 +202,16 @@ async fn main() -> color_eyre::Result<()> {
             Some(cli::Command::Tools { action }) => {
                 headless::tools::run_tools_command(action, &config).await
             }
+            Some(cli::Command::Eval { target, tier, agent, categories, json, ci, threshold, model, api_key, last }) => {
+                if *last {
+                    headless::eval::run_eval_last(*json, &config).await
+                } else {
+                    headless::eval::run_eval_command(target, tier, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), &config).await
+                }
+            }
+            Some(cli::Command::Audit { target, agent, json, path }) => {
+                headless::audit::run_audit_command(target, agent.as_deref(), *json, path.as_deref(), &config).await
+            }
             None => unreachable!(),
         };
 

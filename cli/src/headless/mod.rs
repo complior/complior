@@ -26,6 +26,8 @@ pub mod import;
 pub mod redteam;
 pub mod tools;
 pub mod supply_chain;
+pub mod eval;
+pub mod audit;
 pub mod sync;
 #[cfg(test)]
 mod tests;

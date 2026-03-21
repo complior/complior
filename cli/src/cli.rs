@@ -266,6 +266,65 @@ pub enum Command {
         action: ToolsAction,
     },
 
+    /// Run dynamic AI system evaluation (probes + LLM judge + security)
+    Eval {
+        /// Target AI endpoint URL (e.g. http://localhost:4000/api/chat)
+        target: String,
+
+        /// Eval tier: basic (deterministic), standard (+LLM judge), full (+security)
+        #[arg(long, default_value = "basic")]
+        tier: String,
+
+        /// Agent name (for passport attribution)
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// Filter by category (comma-separated: transparency,bias,prohibited,...)
+        #[arg(long, value_delimiter = ',')]
+        categories: Vec<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// CI mode: exit 1 if score < threshold
+        #[arg(long)]
+        ci: bool,
+
+        /// Score threshold for CI pass (default: 60)
+        #[arg(long, default_value = "60")]
+        threshold: u32,
+
+        /// LLM model override for judge
+        #[arg(long)]
+        model: Option<String>,
+
+        /// API key for target endpoint
+        #[arg(long)]
+        api_key: Option<String>,
+
+        /// Show last eval result
+        #[arg(long)]
+        last: bool,
+    },
+
+    /// Run comprehensive audit (static scan + dynamic eval + security)
+    Audit {
+        /// Target AI endpoint URL
+        target: String,
+
+        /// Agent name (for passport attribution)
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+
     /// Authenticate with SaaS dashboard via browser
     Login,
 
@@ -858,6 +917,8 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Import { .. }
             | Command::Redteam { .. }
             | Command::Tools { .. }
+            | Command::Eval { .. }
+            | Command::Audit { .. }
             | Command::Login
             | Command::Logout
             | Command::Sync { .. },
@@ -2111,6 +2172,115 @@ mod tests {
     }
 
     #[test]
+    fn cli_parse_eval_basic() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000/api/chat"]);
+        match &cli.command {
+            Some(Command::Eval { target, tier, agent, categories, json, ci, threshold, model, api_key, last }) => {
+                assert_eq!(target, "http://localhost:4000/api/chat");
+                assert_eq!(tier, "basic");
+                assert!(agent.is_none());
+                assert!(categories.is_empty());
+                assert!(!json);
+                assert!(!ci);
+                assert_eq!(*threshold, 60);
+                assert!(model.is_none());
+                assert!(api_key.is_none());
+                assert!(!last);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_eval_full_flags() {
+        let cli = Cli::parse_from([
+            "complior", "eval", "http://localhost:4000",
+            "--tier", "full",
+            "--agent", "my-bot",
+            "--categories", "transparency,bias,prohibited",
+            "--json",
+            "--ci",
+            "--threshold", "80",
+            "--model", "gpt-4o",
+            "--api-key", "sk-test",
+        ]);
+        match &cli.command {
+            Some(Command::Eval { target, tier, agent, categories, json, ci, threshold, model, api_key, last }) => {
+                assert_eq!(target, "http://localhost:4000");
+                assert_eq!(tier, "full");
+                assert_eq!(agent.as_deref(), Some("my-bot"));
+                assert_eq!(categories, &["transparency", "bias", "prohibited"]);
+                assert!(*json);
+                assert!(*ci);
+                assert_eq!(*threshold, 80);
+                assert_eq!(model.as_deref(), Some("gpt-4o"));
+                assert_eq!(api_key.as_deref(), Some("sk-test"));
+                assert!(!last);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_last() {
+        let cli = Cli::parse_from(["complior", "eval", "dummy", "--last"]);
+        match &cli.command {
+            Some(Command::Eval { last, .. }) => {
+                assert!(*last);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_eval_ci_mode() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--ci", "--threshold", "75"]);
+        match &cli.command {
+            Some(Command::Eval { ci, threshold, .. }) => {
+                assert!(*ci);
+                assert_eq!(*threshold, 75);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_audit_basic() {
+        let cli = Cli::parse_from(["complior", "audit", "http://localhost:4000/api/chat"]);
+        match &cli.command {
+            Some(Command::Audit { target, agent, json, path }) => {
+                assert_eq!(target, "http://localhost:4000/api/chat");
+                assert!(agent.is_none());
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Audit command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_audit_full_flags() {
+        let cli = Cli::parse_from([
+            "complior", "audit", "http://localhost:4000",
+            "--agent", "my-bot",
+            "--json",
+            "/tmp/project",
+        ]);
+        match &cli.command {
+            Some(Command::Audit { target, agent, json, path }) => {
+                assert_eq!(target, "http://localhost:4000");
+                assert_eq!(agent.as_deref(), Some("my-bot"));
+                assert!(*json);
+                assert_eq!(path.as_deref(), Some("/tmp/project"));
+            }
+            _ => panic!("Expected Audit command"),
+        }
+    }
+
+    #[test]
     fn cli_headless_detection() {
         let json_cli = Cli::parse_from(["complior", "scan", "--json"]);
         assert!(is_headless(&json_cli));
@@ -2132,5 +2302,11 @@ mod tests {
 
         let tui_cli = Cli::parse_from(["complior"]);
         assert!(!is_headless(&tui_cli));
+
+        let eval_cli = Cli::parse_from(["complior", "eval", "http://localhost:4000"]);
+        assert!(is_headless(&eval_cli));
+
+        let audit_cli = Cli::parse_from(["complior", "audit", "http://localhost:4000"]);
+        assert!(is_headless(&audit_cli));
     }
 }
