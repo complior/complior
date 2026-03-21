@@ -32,6 +32,7 @@ import { createOnboardingService } from './services/onboarding-service.js';
 import { createDebtService } from './services/debt-service.js';
 import { createFrameworkService } from './services/framework-service.js';
 import { createProxyService } from './services/proxy-service.js';
+import { createEvalService } from './services/eval-service.js';
 import { ProxyPolicySchema } from './domain/proxy/policy-engine.js';
 import { createFrameworkRegistry, createEuAiActFramework, scoreEuAiAct, createAiuc1Framework, scoreAiuc1, createOwaspLlmFramework, scoreOwaspLlm, createMitreAtlasFramework, scoreMitreAtlas } from './domain/frameworks/index.js';
 import { loadProjectConfig, getSelectedFrameworks } from './infra/project-config.js';
@@ -597,6 +598,14 @@ export const loadApplication = async (): Promise<Application> => {
     }
   };
 
+  // 5d. Create evalService
+  const evalService = createEvalService({
+    getProjectPath: () => state.projectPath,
+    callLlm,
+    evidenceStore,
+    auditStore,
+  });
+
   // 6. Create router
   const app = createRouter({
     scanService,
@@ -648,6 +657,7 @@ export const loadApplication = async (): Promise<Application> => {
       getProjectPath: () => state.projectPath,
     },
     toolManager,
+    evalService,
   });
 
   // 6b. Wire scan.completed → auto-update passport scores (Step 10)

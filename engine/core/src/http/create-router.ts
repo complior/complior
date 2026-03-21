@@ -58,8 +58,11 @@ import { createProxyRoute } from './routes/proxy.route.js';
 import { createImportRoute } from './routes/import.route.js';
 import { createRedteamRoute } from './routes/redteam.route.js';
 import { createToolsRoute } from './routes/tools.route.js';
+import { createEvalRoute } from './routes/eval.route.js';
+import { createAuditRoute } from './routes/audit.route.js';
 import type { ToolManager } from '../infra/tool-manager.js';
 import type { ProxyService } from '../services/proxy-service.js';
+import type { EvalService } from '../services/eval-service.js';
 
 export interface RouterDeps {
   readonly scanService: ScanService;
@@ -100,6 +103,7 @@ export interface RouterDeps {
   readonly importDeps?: { readonly evidenceStore?: EvidenceStore; readonly getProjectPath: () => string };
   readonly redteamDeps?: { readonly callLlm: (prompt: string, systemPrompt?: string) => Promise<string>; readonly evidenceStore?: EvidenceStore; readonly auditStore?: AuditStore; readonly getProjectPath: () => string };
   readonly toolManager?: ToolManager;
+  readonly evalService?: EvalService;
 }
 
 export const createRouter = (deps: RouterDeps) => {
@@ -234,6 +238,19 @@ export const createRouter = (deps: RouterDeps) => {
   // E-115: External tools management
   if (deps.toolManager) {
     app.route('/', createToolsRoute({ toolManager: deps.toolManager }));
+  }
+
+  // US-EVAL-29: Eval endpoint
+  if (deps.evalService) {
+    app.route('/', createEvalRoute({
+      evalService: deps.evalService,
+      getProjectPath: deps.getProjectPath,
+    }));
+    app.route('/', createAuditRoute({
+      evalService: deps.evalService,
+      scanService: deps.scanService,
+      getProjectPath: deps.getProjectPath,
+    }));
   }
 
   // Health check
