@@ -1,10 +1,12 @@
 # ARCHITECTURE.md — AI Act Compliance Platform
 
-**Версия:** 3.2.0
-**Дата:** 2026-02-24
+**Версия:** 3.3.0
+**Дата:** 2026-03-23
 **Автор:** Marcus (CTO) via Claude Code
 **Статус:** Phase 0 — Утверждено
 
+> **v3.3.0 (2026-03-23):** Architecture Rules — чёткое разделение `server/` (инфраструктура) и `app/` (вся бизнес-логика). Полное описание sandbox context. Правило: scripts/ не существует — все операции через API endpoints или pg-boss jobs. Обновлено дерево модулей.
+>
 > **v3.2.0 (2026-02-24):** Audit — Implementation Status Matrix added to all Bounded Contexts. Schema counter corrected to 41 (ScanResult not yet created). Tree listing fixed. Code: refresh-service.js bug fix (tools.rows) + FP refactor (IIFE closures). Moved seed-detection-patterns.js from app/ to scripts/. Deleted pre-migration .backup files.
 >
 > **v3.0.0 (2026-02-21):** TUI+SaaS Dual-Product Model.
@@ -274,7 +276,7 @@ graph LR
 | 4.8 | Billing | **IMPLEMENTED** | 3 endpoints | S3.5–S6 |
 | 4.9 | Registry API | **IMPLEMENTED** | 7 endpoints (3 registry + 3 regulations + 1 data) | S7 |
 | 4.10 | TUI Data Collection | NOT STARTED | 0 endpoints, ScanResult schema not created | Planned S8 |
-| 4.11 | Data Migration | **IMPLEMENTED** | scripts + pg-boss jobs | S7 |
+| 4.11 | Data Migration | **IMPLEMENTED** | app/application/registry + pg-boss jobs | S7 |
 
 > **Legend:** **IMPLEMENTED** = endpoints + business logic live in production. SCHEMA ONLY = MetaSQL schema exists, no API/application code. NOT STARTED = neither schema nor code exists yet.
 
@@ -392,7 +394,7 @@ graph LR
 **Данные (текущее состояние):**
 - `Obligation`: 108 (critical=37, high=57, medium=12, low=2) — 100% `whatNotToDo` coverage
 - `RegistryTool`: 4,983 (verified=85, scanned=2,380, classified=2,518) — 99.98% evidence coverage
-- Источник: `~/complior/engine/data/` (JSON) → PostgreSQL через `scripts/run-migration.js`
+**Все registry-операции (enrichment, rescoring, export, LLM-тесты, classification) — модули в `app/application/registry/`**, доступные через admin API endpoints или pg-boss jobs. Standalone скриптов нет.
 
 **Фоновые задачи (pg-boss):**
 - `registry-refresh` — еженедельно (понедельник 03:00 UTC) — обогащение CLASSIFIED → SCANNED через passive scan
@@ -405,13 +407,6 @@ graph LR
 - `GET /v1/regulations/meta` — метаданные регуляции
 - `GET /v1/regulations/timeline` — регуляторный timeline
 
-**JSON экспорты (`npm run export:all`):**
-- `data/registry/all_tools.json` (~21MB) — полный дамп Registry
-- `data/regulations/obligations.json` (~200KB) — дамп Obligation DB
-- `data/regulations/regulation-meta.json` — метаданные
-- `data/regulations/technical-requirements.json` — технические требования
-- `data/regulations/timeline.json` — timeline events
-
 **TUI DataProvider (~/complior):**
 - `EngineDataProvider` (primary) — HTTP клиент к `/v1/registry/stats` + `/v1/registry/tools`, 30s кеш, фоновый refresh thread
 - `MockDataProvider` (fallback) — score=47, offline
@@ -422,87 +417,207 @@ graph LR
 
 ## 5. Module Structure
 
-```
-server/                              # HTTP runtime (require-based)
-├── main.js                          # Entry: loadApplication() pattern
-├── src/
-│   ├── loader.js                    # load, loadDir, loadDeepDir, loadApplication
-│   ├── http.js                      # registerSandboxRoutes + middleware
-│   ├── ws.js                        # WebSocket adapter
-│   └── logger.js                    # Logger wrapping pino (console in sandbox)
-├── lib/
-│   ├── errors.js                    # AppError hierarchy
-│   ├── schemas.js                   # Zod validators
-│   └── db.js                        # CRUD builder (future)
-└── infrastructure/                  # External clients (lazy-loaded)
-    ├── auth/workos-client.js
-    ├── email/brevo-client.js
-    ├── pdf/gotenberg-client.js
-    └── storage/s3-client.js
+### 5.1 Главное правило: `server/` vs `app/`
 
-app/                                 # Business logic (VM-sandboxed, NO require)
-├── setup.js                         # DB init (schemas + seeds)
-├── config/                          # Loaded by server via require()
-├── api/                             # Sandbox: { access, httpMethod, path, method }
-│   ├── auth/
-│   │   ├── callback.js              # WorkOS AuthKit → callback (user authenticated)
-│   │   ├── me.js                    # Session → user lookup with sync fallback
-│   │   ├── updateOrganization.js    # PATCH org profile
-│   │   └── audit.js                 # Paginated audit log
-│   └── tools/
-│       └── catalog.js               # Search pre-populated catalog
-├── application/                     # Sandbox: use-case objects
-│   ├── iam/
-│   │   ├── syncUserFromWorkOS.js    # WorkOS callback → create/update User in our DB
-│   │   └── resolveSession.js        # WorkOS session → User record
-│   └── inventory/
-│       └── searchCatalog.js         # ILIKE search, filters, pagination
-├── lib/                             # Sandbox: IIFE closures (permissions, audit, tenant)
-│   ├── permissions.js               # checkPermission with wildcard 'manage'
-│   ├── audit.js                     # createAuditEntry + query helpers
-│   └── tenant.js                    # createTenantQuery + CRUD helpers
-├── domain/                          # DDD stubs (future)
-│   ├── iam/
-│   │   ├── entities/
-│   │   └── value-objects/
-│   ├── inventory/
-│   │   ├── entities/
-│   │   └── services/
-│   ├── classification/
-│   │   ├── entities/
-│   │   ├── services/
-│   │   └── value-objects/
-│   ├── literacy/
-│   │   ├── entities/
-│   │   └── services/
-│   ├── compliance/
-│   │   ├── entities/
-│   │   └── services/
-│   ├── consultation/
-│   │   ├── entities/
-│   │   └── services/
-│   ├── registry/
-│   │   ├── entities/
-│   │   └── services/
-│   ├── tui-integration/
-│   │   ├── entities/
-│   │   └── services/
-│   └── events/
-├── schemas/                         # MetaSQL definitions (41 active files)
-│   ├── Organization.js, User.js, Role.js, Permission.js, UserRole.js, Invitation.js
-│   ├── AITool.js, AIToolCatalog.js, AIToolDiscovery.js
-│   ├── RiskClassification.js, Requirement.js, ToolRequirement.js, ClassificationLog.js
-│   ├── TrainingCourse.js, TrainingModule.js, LiteracyCompletion.js, LiteracyRequirement.js
-│   ├── ComplianceDocument.js, DocumentSection.js, ChecklistItem.js
-│   ├── FRIAAssessment.js, FRIASection.js, ImpactAssessment.js
-│   ├── Conversation.js, ChatMessage.js
-│   ├── Subscription.js, Plan.js, Notification.js, RegulatoryUpdate.js
-│   ├── AuditLog.js
-│   ├── RegistryTool.js, Obligation.js, ScoringRule.js          # Registry API (v3.0)
-│   ├── APIKey.js, APIUsage.js                                   # Registry API auth (v3.0)
-│   └── ScanResult.js                                            # TUI Data Collection (PLANNED, not created)
-└── seeds/                           # Seed data (5+ files)
-    ├── catalog.js, courses.js, plans.js, requirements.js, roles.js
+```
+server/ = ТОЛЬКО инфраструктура      app/ = ВСЯ бизнес-логика
+─────────────────────────────────     ──────────────────────────────────
+• HTTP server (Fastify)               • Алгоритмы, правила, вычисления
+• VM Sandbox loader                   • DB-запросы (через `db` из sandbox)
+• External service clients            • Оркестрация use cases
+• Zod HTTP-валидация                  • API endpoint definitions
+• require() разрешён                  • require() ЗАПРЕЩЁН (VM sandbox)
+```
+
+**Каталога `scripts/` не существует.** Любая операция (enrichment, rescoring, export, admin) — это модуль в `app/application/`, доступный через API endpoint или pg-boss job. Никаких standalone скриптов.
+
+### 5.2 `server/` — инфраструктура (require-based, Node.js)
+
+```
+server/
+├── main.js                          # Единственный entry point:
+│                                    #   1. new Pool(dbConfig) → db
+│                                    #   2. loadApplication(appPath, { db, workos, brevo, ... }) → sandbox
+│                                    #   3. registerSandboxRoutes(server, sandbox.api)
+│                                    #   4. server.listen()
+├── src/
+│   ├── loader.js                    # VM Sandbox: load(), loadDir(), loadDeepDir(), loadApplication()
+│   │                                # Загрузка слоёв: lib → domain → application → api
+│   │                                # Каждый слой видит предыдущие через frozen context
+│   ├── http.js                      # registerSandboxRoutes + middleware (session, rate-limit, CORS, errors)
+│   ├── ws.js                        # WebSocket adapter
+│   └── logger.js                    # Logger (pino) → инжектируется как `console` в sandbox
+├── lib/
+│   ├── errors.js                    # AppError hierarchy → инжектируется как `errors` в sandbox
+│   └── schemas.js                   # Zod HTTP-валидаторы (request/response) для middleware
+└── infrastructure/                  # External service clients (lazy-loaded, с заглушками если не настроены)
+    ├── auth/workos-client.js        # → `workos` в sandbox
+    ├── email/brevo-client.js        # → `brevo` в sandbox
+    ├── pdf/gotenberg-client.js      # → `gotenberg` в sandbox
+    ├── storage/s3-client.js         # → `s3` в sandbox
+    ├── billing/stripe-client.js     # → `stripe` в sandbox
+    ├── llm/llm-client.js           # → `llm` в sandbox (Mistral/OpenRouter)
+    └── jobs/pg-boss-client.js       # → `pgboss` в sandbox
+```
+
+### 5.3 Sandbox Context — что доступно внутри `app/`
+
+`server/main.js` создаёт все клиенты и передаёт в `loadApplication()`. Каждый модуль в `app/` получает frozen context:
+
+| Переменная | Откуда | Описание |
+|------------|--------|----------|
+| `db` | `new Pool(dbConfig)` | PostgreSQL pool. `db.query(sql, [params])` → `{ rows }` |
+| `config` | `app/config/*.js` | Frozen объект конфигурации (server, database, workos, stripe, llm, ...) |
+| `console` | `server/src/logger.js` | Logger (pino): `console.log()`, `console.error()`, `console.warn()` |
+| `errors` | `server/lib/errors.js` | AppError, ValidationError, NotFoundError, ForbiddenError |
+| `schemas` | `server/lib/schemas.js` | Zod-схемы для валидации |
+| `zod` | `zod` package | Zod library для создания inline-схем |
+| `lib` | `app/lib/*` | Shared: `lib.tenant.createTenantQuery(orgId)`, `lib.audit.createAuditEntry()`, `lib.permissions` |
+| `domain` | `app/domain/**/*` | Pure логика: `domain.classification.services.RuleEngine.classify()` |
+| `application` | `app/application/**/*` | Use cases (доступны в jobs и api): `application.registry.rescoreAll.process()` |
+| `workos` | `infrastructure/auth/` | WorkOS client |
+| `brevo` | `infrastructure/email/` | Email: `brevo.sendTransactional()` |
+| `gotenberg` | `infrastructure/pdf/` | PDF: `gotenberg.convertHtmlToPdf()` |
+| `s3` | `infrastructure/storage/` | Storage: `s3.upload()`, `s3.download()`, `s3.getSignedUrl()` |
+| `stripe` | `infrastructure/billing/` | Stripe client |
+| `pgboss` | `infrastructure/jobs/` | Job queue: `pgboss.send()`, `pgboss.work()`, `pgboss.schedule()` |
+| `llm` | `infrastructure/llm/` | LLM: `llm.generateText({ model, messages })` |
+| `fetch` | `globalThis.fetch` | HTTP fetch для внешних API |
+| `cheerio` | `cheerio` package | HTML parser (для passive scanning) |
+
+### 5.4 `app/` — вся бизнес-логика (VM-sandboxed, NO require)
+
+```
+app/
+├── setup.js                         # DB init: schema DDL + migrations + seeds
+├── config/                          # Конфигурация (загружается server через require(), инжектируется как `config`)
+│
+├── lib/                             # Shared utilities → доступны как `lib.*` в sandbox
+│   ├── permissions.js               # RBAC: checkPermission(role, resource, action)
+│   ├── audit.js                     # Audit trail: createAuditEntry(), findEntries()
+│   ├── tenant.js                    # Multi-tenant: createTenantQuery(orgId) → findOne/findMany/create/update/count
+│   ├── jwt.js                       # JWT: sign/verify (HMAC-SHA256)
+│   ├── apiAuth.js                   # API key auth: resolveApiAuth(headers)
+│   └── syncHelpers.js               # CLI→SaaS sync helpers
+│
+├── domain/                          # Чистая бизнес-логика (NO DB, NO side effects)
+│   ├── classification/services/     # RuleEngine, ComplianceScoreCalculator, QuickCheckAssessor
+│   ├── registry/                    # passive-scanner, evidence-analyzer, registry-scorer,
+│   │                                # public-doc-grader, score-validator, llm-tester, media-tester
+│   ├── documents/                   # templates, prompts, htmlRenderer, preFill
+│   ├── fria/                        # preFill
+│   ├── gap-analysis/                # AESIACategories (12 категорий AESIA)
+│   ├── audit/                       # executiveSummaryPrompt, obligationMatrix, htmlRenderer
+│   └── sync/                        # resolveObligations
+│
+├── application/                     # Use cases & orchestration → доступны как `application.*`
+│   ├── admin/                       # getOverviewStats, listAllOrganizations, listAllUsers, ...
+│   ├── iam/                         # syncUserFromWorkOS, resolveSession, manageInvitation, ...
+│   ├── inventory/                   # registerTool, listTools, getToolDetail, updateToolStep, ...
+│   ├── classification/              # classifyTool, getRequirements, mapRequirements, ...
+│   ├── registry/                    # searchTools, searchObligations, registryStats, createApiKey,
+│   │                                # fullEnrichment, rescoreAll, rescoreRegistry, runLlmTests,
+│   │                                # classifyRoles, exportRegistry (все registry-операции — здесь)
+│   ├── documents/                   # createDocument, generateDraft, approveSection, exportPdf, ...
+│   ├── fria/                        # createAssessment, updateSection, updateStatus, ...
+│   ├── gap-analysis/                # analyzeGaps
+│   ├── audit/                       # generateAuditPackage
+│   ├── sync/                        # mergePassport, processScanUpload, processFria, processDocuments
+│   ├── billing/                     # createCheckoutSession, handleStripeWebhook, getOrgLimits
+│   ├── regulations/                 # getRegulationMeta, getScoringRules, exportRegulationDb
+│   ├── dashboard/                   # getDashboardSummary
+│   ├── consultation/                # (Eva AI chat — planned)
+│   ├── leadgen/                     # performQuickCheck
+│   ├── auth/                        # deviceFlow
+│   └── jobs/                        # pg-boss job schedulers:
+│       ├── schedule-registry-refresh.js    # Enrichment (Mondays 03:00 UTC)
+│       ├── schedule-detection-enrichment.js # Auto-discovery enrichment
+│       ├── schedule-audit-package.js       # Audit package worker (on-demand)
+│       ├── schedule-doc-generation.js      # Document section LLM generation (on-demand)
+│       └── schedule-data-export.js         # Data export (GDPR, on-demand)
+│
+├── api/                             # HTTP endpoint definitions: { access, httpMethod, path, method }
+│                                    # Каждый файл — IIFE, возвращает { access, httpMethod, path, method }
+│                                    # `method` вызывает соответствующий application module
+│
+├── schemas/                         # MetaSQL definitions (~41 файлов) → SQL DDL + TypeScript types
+│                                    # PK: Registry → "id", Entity → "{camelCase}Id"
+│
+└── seeds/                           # Reference data (загружаются через setup.js)
+    ├── catalog.js                   # 200+ AI tools для каталога
+    ├── plans.js                     # Тарифные планы (source of truth)
+    ├── roles.js                     # IAM роли
+    ├── requirements.js              # Compliance requirements
+    ├── courses.js                   # AI Literacy курсы
+    ├── detection-patterns.js        # 100+ detection patterns для RegistryTool
+    └── ...
+```
+
+### 5.5 Куда класть новый код — правила
+
+| Что добавляешь | Куда | Паттерн |
+|---------------|------|---------|
+| Новый алгоритм / правила / вычисления | `app/domain/{context}/` | Pure function, без DB, без side effects. IIFE или factory. |
+| Новая операция (CRUD, orchestration) | `app/application/{context}/` | Object literal с async методами. Использует `db`, `domain.*`, `lib.*` из sandbox. |
+| Новый HTTP endpoint | `app/api/{context}/` | `{ access, httpMethod, path, method }` — вызывает application module. |
+| Новый background job | `app/application/jobs/schedule-{name}.js` | `init({ pgboss, application, domain, db })` — register worker + optional cron. |
+| Тяжёлая batch-операция (enrichment, rescoring) | `app/application/{context}/` + admin API endpoint | Бизнес-логика в application, запускается через `POST /api/admin/...` или pg-boss job. |
+| Новые seed данные | `app/seeds/` | Data array + seed function, вызывается из `app/setup.js`. |
+| DB миграция (ALTER TABLE, CREATE INDEX) | `app/setup.js` | Добавить в массив миграций. |
+| Новый external service client | `server/infrastructure/` | Client factory, инжектируется в sandbox через `loadApplication()`. |
+| Новый Zod HTTP-валидатор | `server/lib/schemas.js` | Валидация request/response на HTTP-уровне. |
+| Новая конфигурация | `app/config/` | `module.exports = { ...process.env... }`, загружается server. |
+
+**Запрещено:**
+- Создавать standalone скрипты (`scripts/`, `bin/`, `tools/`)
+- Использовать `require()` / `import` внутри `app/` модулей
+- Обращаться к DB напрямую (через `require('pg')`) — только через `db` из sandbox
+- Помещать бизнес-логику в `server/` — там только инфраструктура
+
+### 5.6 Как app-модуль работает с DB
+
+Модули в `app/` **не импортируют** `pg`. Они используют `db` — PostgreSQL Pool, инжектированный через sandbox:
+
+```javascript
+// app/application/registry/rescoreAll.js — пример batch-операции
+({
+  process: async ({ dryRun, batch }) => {
+    // db доступен из sandbox context (инжектирован server/main.js → loadApplication)
+    const { rows: tools } = await db.query(
+      'SELECT * FROM "RegistryTool" WHERE active = true ORDER BY slug'
+    );
+
+    // domain доступен из sandbox context (загружен loader.js из app/domain/)
+    const scorer = domain.registry['registry-scorer']({ weights, obligationMap });
+
+    for (const tool of tools) {
+      const result = scorer.score(tool);
+      if (!dryRun) {
+        await db.query(
+          'UPDATE "RegistryTool" SET assessments = jsonb_set(assessments, $1, $2) WHERE slug = $3',
+          ['{eu-ai-act,score}', JSON.stringify(result.score), tool.slug]
+        );
+      }
+    }
+
+    return { processed: tools.length, dryRun };
+  },
+})
+```
+
+Для tenant-scoped данных — всегда через `lib.tenant`:
+
+```javascript
+// app/application/inventory/listTools.js
+({
+  list: async ({ organizationId, filters }) => {
+    const tq = lib.tenant.createTenantQuery(organizationId);
+    return tq.findMany('AITool', {
+      where: filters,
+      orderBy: { column: 'createdAt', dir: 'DESC' },
+    });
+  },
+})
 ```
 
 ---

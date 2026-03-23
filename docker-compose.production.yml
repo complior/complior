@@ -7,12 +7,9 @@ services:
     environment:
       POSTGRES_DB: complior
       POSTGRES_USER: complior
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-    secrets:
-      - db_password
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./backups:/backups
     networks:
       - complior_net
     # No ports exposed — only accessible within Docker network
@@ -76,7 +73,6 @@ services:
       - '8000:8000'
     networks:
       - complior_net
-    # Port 8000 exposed for Stripe webhook testing (remove in production)
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,72 +90,8 @@ services:
         max-size: '10m'
         max-file: '3'
 
-  # Frontend — Next.js
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.production
-      args:
-        - BACKEND_URL=http://backend:8000
-    container_name: complior-frontend
-    restart: unless-stopped
-    environment:
-      BACKEND_URL: http://backend:8000
-      HOSTNAME: 0.0.0.0
-      PORT: 3001
-    networks:
-      - complior_net
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://127.0.0.1:3001/']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-  # Caddy — Reverse Proxy + Auto-TLS
-  caddy:
-    image: caddy:2-alpine
-    container_name: complior-caddy
-    restart: unless-stopped
-    ports:
-      - '80:80'
-      - '443:443'
-      - '443:443/udp'
-    volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - complior_net
-    depends_on:
-      backend:
-        condition: service_healthy
-      frontend:
-        condition: service_healthy
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-secrets:
-  db_password:
-    file: ./secrets/db_password.txt
-
 volumes:
   pgdata:
-    driver: local
-  caddy_data:
-    driver: local
-  caddy_config:
     driver: local
 
 networks:

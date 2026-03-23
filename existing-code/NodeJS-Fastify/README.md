@@ -1,1 +1,0 @@
-# Fastify + NodeJS application server

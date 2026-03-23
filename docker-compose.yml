@@ -18,45 +18,6 @@ services:
       timeout: 3s
       retries: 10
 
-  # Ory Kratos — Identity & Auth (self-hosted, EU)
-  kratos-migrate:
-    image: oryd/kratos:v1.3.1
-    container_name: aiact-kratos-migrate
-    environment:
-      DSN: postgres://postgres:postgres@postgres:5432/aiact?sslmode=disable
-    volumes:
-      - ./ory:/etc/config/kratos
-    command: migrate sql -e --yes
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  kratos:
-    image: oryd/kratos:v1.3.1
-    container_name: aiact-kratos
-    restart: unless-stopped
-    environment:
-      DSN: postgres://postgres:postgres@postgres:5432/aiact?sslmode=disable
-      SERVE_PUBLIC_BASE_URL: http://localhost:4433/
-      SERVE_ADMIN_BASE_URL: http://kratos:4434/
-      LOG_LEVEL: info
-    volumes:
-      - ./ory:/etc/config/kratos
-    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
-    ports:
-      - '4433:4433'
-      - '4434:4434'
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kratos-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:4434/health/alive']
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   # Gotenberg — HTML → PDF (self-hosted)
   gotenberg:
     image: gotenberg/gotenberg:8
@@ -83,9 +44,10 @@ services:
       HOST: 0.0.0.0
       LOG_LEVEL: info
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/aiact
-      ORY_SDK_URL: http://kratos:4433
-      ORY_ADMIN_URL: http://kratos:4434
-      ORY_WEBHOOK_SECRET: dev-webhook-secret-change-in-production
+      WORKOS_CLIENT_ID: ${WORKOS_CLIENT_ID:-}
+      WORKOS_API_KEY: ${WORKOS_API_KEY:-}
+      WORKOS_REDIRECT_URI: ${WORKOS_REDIRECT_URI:-http://localhost:3001/callback}
+      WORKOS_WEBHOOK_SECRET: ${WORKOS_WEBHOOK_SECRET:-}
       GOTENBERG_URL: http://gotenberg:3000
       S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_BUCKET: ${S3_BUCKET:-compliance-docs}
@@ -101,8 +63,6 @@ services:
       - ./package.json:/app/package.json
     depends_on:
       postgres:
-        condition: service_healthy
-      kratos:
         condition: service_healthy
       gotenberg:
         condition: service_healthy

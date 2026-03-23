@@ -4,26 +4,17 @@
   "description": "EU AI Act Compliance Platform (deployer-first)",
   "private": true,
   "workspaces": [
-    "server",
-    "frontend"
+    "server"
   ],
   "scripts": {
     "start": "node server/main.js",
     "dev": "node --watch server/main.js",
     "lint": "eslint server/ app/ --ext .js",
-    "type-check": "tsc --noEmit",
     "test": "node --test tests/*.test.js",
     "test:integration": "node --test tests/integration/**/*.test.js",
     "db:generate": "node app/setup.js generate",
     "db:seed": "node app/setup.js seed",
-    "db:setup": "node app/setup.js",
-    "migrate:regulations": "node scripts/run-migration.js",
-    "migrate:registry": "node scripts/run-ai-registry-migration.js",
-    "export:registry": "node scripts/export-registry.js",
-    "export:regulation": "node scripts/export-regulation-db.js",
-    "export:all": "npm run export:registry && npm run export:regulation",
-    "seed:detection-patterns": "node scripts/run-detection-patterns-seed.js",
-    "create:tui-key": "node scripts/create-tui-api-key.js"
+    "db:setup": "node app/setup.js"
   },
   "engines": {
     "node": ">=20.0.0"

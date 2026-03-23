@@ -38,7 +38,7 @@
       { "selector": "ForInStatement", "message": "Use Object.keys() + for...of instead of for...in" }
     ]
   },
-  "ignorePatterns": ["frontend/", "node_modules/", "existing-code/"],
+  "ignorePatterns": ["node_modules/"],
   "overrides": [
     {
       "files": ["app/schemas/**/*.js"],

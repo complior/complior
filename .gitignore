@@ -48,12 +48,8 @@ prisma/migrations/
 tmp/
 *.tmp
 
-# BUT: docs/temp/ should be tracked (setup documentation)
-!docs/temp/
-
 # OS
 Thumbs.db
-.DS_Store
 
 # Docker
 .dockerignore
@@ -72,11 +68,15 @@ pids/
 # TypeScript cache
 *.tsbuildinfo
 
+# Artifacts — not code
+*.pdf
+*.docx
+*.png
+backups/
+
 # Production secrets - DO NOT COMMIT
 .env.production
 secrets/
-backups/
-ory/webhook-secret
 
 # Security - DO NOT COMMIT
 *.pem
@@ -120,12 +120,7 @@ k8s/secrets/
 # Sentry
 .sentryclirc
 
-# Prisma
-.env.prisma
-
 # Next.js
-.next/
-out/
 .vercel
 .turbo
 
@@ -145,11 +140,3 @@ package-lock.json.backup
 # OpenClaw specific
 .openclaw/sandboxes/
 .openclaw/cache/
-
-# Lecture notes & research PDFs (local only)
-*.pdf
-01_*.md
-02_*.md
-03_*.md
-04_*.md
-08_*.md
