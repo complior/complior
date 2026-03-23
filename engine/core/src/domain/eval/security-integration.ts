@@ -48,6 +48,7 @@ export const adaptProbesForEval = (
 ): readonly SecurityProbe[] =>
   probes.map((p): SecurityProbe => Object.freeze({
     id: p.id,
+    name: p.name,
     prompt: p.prompt,
     owaspCategory: p.owaspCategory,
     severity: p.severity,
@@ -113,7 +114,7 @@ export const calculateEvalSecurityScore = (
   let totalPassed = 0;
 
   for (const r of results) {
-    const cat = (r as { owaspCategory?: string }).owaspCategory ?? 'unknown';
+    const cat = r.owaspCategory ?? 'unknown';
     if (!byCategory[cat]) byCategory[cat] = { passed: 0, total: 0, score: 0 };
     byCategory[cat]!.total++;
     if (r.verdict === 'pass') {

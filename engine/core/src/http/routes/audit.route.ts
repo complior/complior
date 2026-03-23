@@ -31,10 +31,10 @@ export const createAuditRoute = (deps: AuditRouteDeps) => {
     // Step 1: Static scan
     const scanResult = await deps.scanService.scan(projectPath);
 
-    // Step 2: Dynamic eval (full tier = all tests + security)
+    // Step 2: Dynamic eval (full = all tests + security)
     const evalResult = await deps.evalService.runEval({
       target: parsed.data.target,
-      tier: 'full',
+      full: true,
       agent: parsed.data.agent,
     });
 

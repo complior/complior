@@ -8,6 +8,8 @@ import {
   EVAL_TIERS,
   CATEGORY_META,
   TIER_INCLUDES,
+  resolveIncludes,
+  resolveTierLabel,
 } from './types.js';
 
 describe('EvalCategory', () => {
@@ -43,8 +45,8 @@ describe('CATEGORY_META', () => {
 });
 
 describe('EvalTier', () => {
-  it('has 3 tiers', () => {
-    expect(EVAL_TIERS).toHaveLength(3);
+  it('has 4 tiers', () => {
+    expect(EVAL_TIERS).toHaveLength(4);
   });
 
   it('validates known tiers', () => {
@@ -60,21 +62,73 @@ describe('EvalTier', () => {
   it('full includes everything', () => {
     expect(TIER_INCLUDES.full).toEqual({ deterministic: true, llm: true, security: true });
   });
+
+  it('security = probes only', () => {
+    expect(TIER_INCLUDES.security).toEqual({ deterministic: false, llm: false, security: true });
+  });
+});
+
+describe('resolveIncludes', () => {
+  it('no flags → deterministic only', () => {
+    expect(resolveIncludes({})).toEqual({ deterministic: true, llm: false, security: false });
+  });
+
+  it('--llm → llm-judge only', () => {
+    expect(resolveIncludes({ llm: true })).toEqual({ deterministic: false, llm: true, security: false });
+  });
+
+  it('--security → security only', () => {
+    expect(resolveIncludes({ security: true })).toEqual({ deterministic: false, llm: false, security: true });
+  });
+
+  it('--full → everything', () => {
+    expect(resolveIncludes({ full: true })).toEqual({ deterministic: true, llm: true, security: true });
+  });
+
+  it('--det --llm → deterministic + llm', () => {
+    expect(resolveIncludes({ det: true, llm: true })).toEqual({ deterministic: true, llm: true, security: false });
+  });
+
+  it('--llm --security → llm + security (no det)', () => {
+    expect(resolveIncludes({ llm: true, security: true })).toEqual({ deterministic: false, llm: true, security: true });
+  });
+
+  it('--det --security → deterministic + security', () => {
+    expect(resolveIncludes({ det: true, security: true })).toEqual({ deterministic: true, llm: false, security: true });
+  });
+
+  it('--det alone → same as default', () => {
+    expect(resolveIncludes({ det: true })).toEqual({ deterministic: true, llm: false, security: false });
+  });
+});
+
+describe('resolveTierLabel', () => {
+  it('maps includes to tier labels', () => {
+    expect(resolveTierLabel({ deterministic: true, llm: false, security: false })).toBe('basic');
+    expect(resolveTierLabel({ deterministic: false, llm: true, security: false })).toBe('standard');
+    expect(resolveTierLabel({ deterministic: true, llm: true, security: false })).toBe('standard');
+    expect(resolveTierLabel({ deterministic: true, llm: true, security: true })).toBe('full');
+    expect(resolveTierLabel({ deterministic: false, llm: false, security: true })).toBe('security');
+    expect(resolveTierLabel({ deterministic: true, llm: false, security: true })).toBe('security');
+  });
 });
 
 describe('EvalOptionsSchema', () => {
   it('parses valid options', () => {
     const result = EvalOptionsSchema.parse({
       target: 'http://localhost:4000/api/chat',
-      tier: 'basic',
     });
     expect(result.target).toBe('http://localhost:4000/api/chat');
-    expect(result.tier).toBe('basic');
   });
 
-  it('defaults tier to basic', () => {
-    const result = EvalOptionsSchema.parse({ target: 'http://localhost:4000' });
-    expect(result.tier).toBe('basic');
+  it('parses with flag booleans', () => {
+    const result = EvalOptionsSchema.parse({
+      target: 'http://localhost:4000',
+      llm: true,
+      security: true,
+    });
+    expect(result.llm).toBe(true);
+    expect(result.security).toBe(true);
   });
 
   it('rejects missing target', () => {
@@ -88,7 +142,7 @@ describe('EvalOptionsSchema', () => {
   it('accepts optional fields', () => {
     const result = EvalOptionsSchema.parse({
       target: 'http://localhost:4000',
-      tier: 'full',
+      full: true,
       categories: ['bias', 'transparency'],
       agent: 'my-agent',
       model: 'gpt-4o',
@@ -97,6 +151,7 @@ describe('EvalOptionsSchema', () => {
       json: true,
       ci: true,
     });
+    expect(result.full).toBe(true);
     expect(result.categories).toEqual(['bias', 'transparency']);
     expect(result.threshold).toBe(80);
   });

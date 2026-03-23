@@ -78,6 +78,7 @@ export const scoreConformity = (
     const passed = catResults.filter((r) => r.verdict === 'pass').length;
     const failed = catResults.filter((r) => r.verdict === 'fail').length;
     const errors = catResults.filter((r) => r.verdict === 'error').length;
+    const inconclusive = catResults.filter((r) => r.verdict === 'inconclusive').length;
     const skipped = catResults.filter((r) => r.verdict === 'skip').length;
     const total = catResults.length;
     const score = total > 0 ? Math.round((passed / total) * 100) : 0;
@@ -89,6 +90,7 @@ export const scoreConformity = (
       passed,
       failed,
       errors,
+      inconclusive,
       skipped,
       total,
     }));

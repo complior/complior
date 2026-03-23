@@ -271,9 +271,21 @@ pub enum Command {
         /// Target AI endpoint URL (e.g. http://localhost:4000/api/chat)
         target: String,
 
-        /// Eval tier: basic (deterministic), standard (+LLM judge), full (+security)
-        #[arg(long, default_value = "basic")]
-        tier: String,
+        /// Run deterministic tests (168 tests, default when no flags)
+        #[arg(long)]
+        det: bool,
+
+        /// Run LLM-judged tests (212 tests, requires API key)
+        #[arg(long)]
+        llm: bool,
+
+        /// Run security probes (300 probes, OWASP LLM Top 10)
+        #[arg(long)]
+        security: bool,
+
+        /// Run all tests: deterministic (168) + LLM (212) + security (300)
+        #[arg(long)]
+        full: bool,
 
         /// Agent name (for passport attribution)
         #[arg(long)]
@@ -287,7 +299,7 @@ pub enum Command {
         #[arg(long)]
         json: bool,
 
-        /// CI mode: exit 1 if score < threshold
+        /// CI mode: exit 2 if score < threshold (machine-parseable output)
         #[arg(long)]
         ci: bool,
 
@@ -303,9 +315,33 @@ pub enum Command {
         #[arg(long)]
         api_key: Option<String>,
 
+        /// Custom request JSON template with {{probe}} placeholder
+        #[arg(long)]
+        request_template: Option<String>,
+
+        /// Dot-path to response text (e.g. "result.text")
+        #[arg(long)]
+        response_path: Option<String>,
+
+        /// Custom headers as JSON (e.g. '{"Authorization": "Bearer xxx"}')
+        #[arg(long)]
+        headers: Option<String>,
+
         /// Show last eval result
         #[arg(long)]
         last: bool,
+
+        /// Show only failures (with --last)
+        #[arg(long)]
+        failures: bool,
+
+        /// Show verbose test details (probe/response for all tests)
+        #[arg(long)]
+        verbose: bool,
+
+        /// Parallel test execution (1-50, default: 5)
+        #[arg(long, short = 'j', default_value = "5")]
+        concurrency: u32,
     },
 
     /// Run comprehensive audit (static scan + dynamic eval + security)
@@ -839,6 +875,24 @@ pub enum RedteamAction {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+    },
+
+    /// Run eval --security against a target URL (alias for complior eval --security)
+    Target {
+        /// Target AI endpoint URL
+        url: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// CI mode: exit 1 if score < threshold
+        #[arg(long)]
+        ci: bool,
+
+        /// Score threshold for CI pass (default: 60)
+        #[arg(long, default_value = "60")]
+        threshold: u32,
     },
 }
 
@@ -2172,12 +2226,15 @@ mod tests {
     }
 
     #[test]
-    fn cli_parse_eval_basic() {
+    fn cli_parse_eval_default() {
         let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000/api/chat"]);
         match &cli.command {
-            Some(Command::Eval { target, tier, agent, categories, json, ci, threshold, model, api_key, last }) => {
+            Some(Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency }) => {
                 assert_eq!(target, "http://localhost:4000/api/chat");
-                assert_eq!(tier, "basic");
+                assert!(!det);
+                assert!(!llm);
+                assert!(!security);
+                assert!(!full);
                 assert!(agent.is_none());
                 assert!(categories.is_empty());
                 assert!(!json);
@@ -2185,7 +2242,13 @@ mod tests {
                 assert_eq!(*threshold, 60);
                 assert!(model.is_none());
                 assert!(api_key.is_none());
+                assert!(request_template.is_none());
+                assert!(response_path.is_none());
+                assert!(headers.is_none());
                 assert!(!last);
+                assert!(!failures);
+                assert!(!verbose);
+                assert_eq!(*concurrency, 5);
             }
             _ => panic!("Expected Eval command"),
         }
@@ -2193,10 +2256,36 @@ mod tests {
     }
 
     #[test]
-    fn cli_parse_eval_full_flags() {
+    fn cli_parse_eval_llm_flag() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--llm"]);
+        match &cli.command {
+            Some(Command::Eval { llm, security, full, .. }) => {
+                assert!(*llm);
+                assert!(!security);
+                assert!(!full);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_security_flag() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--security"]);
+        match &cli.command {
+            Some(Command::Eval { llm, security, full, .. }) => {
+                assert!(!llm);
+                assert!(*security);
+                assert!(!full);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_full_flag() {
         let cli = Cli::parse_from([
             "complior", "eval", "http://localhost:4000",
-            "--tier", "full",
+            "--full",
             "--agent", "my-bot",
             "--categories", "transparency,bias,prohibited",
             "--json",
@@ -2206,9 +2295,11 @@ mod tests {
             "--api-key", "sk-test",
         ]);
         match &cli.command {
-            Some(Command::Eval { target, tier, agent, categories, json, ci, threshold, model, api_key, last }) => {
+            Some(Command::Eval { target, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, .. }) => {
                 assert_eq!(target, "http://localhost:4000");
-                assert_eq!(tier, "full");
+                assert!(!llm);
+                assert!(!security);
+                assert!(*full);
                 assert_eq!(agent.as_deref(), Some("my-bot"));
                 assert_eq!(categories, &["transparency", "bias", "prohibited"]);
                 assert!(*json);
@@ -2216,7 +2307,37 @@ mod tests {
                 assert_eq!(*threshold, 80);
                 assert_eq!(model.as_deref(), Some("gpt-4o"));
                 assert_eq!(api_key.as_deref(), Some("sk-test"));
+                assert!(request_template.is_none());
+                assert!(response_path.is_none());
+                assert!(headers.is_none());
                 assert!(!last);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_det_llm_combo() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--det", "--llm"]);
+        match &cli.command {
+            Some(Command::Eval { det, llm, security, full, .. }) => {
+                assert!(*det);
+                assert!(*llm);
+                assert!(!security);
+                assert!(!full);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_llm_security_combo() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--llm", "--security"]);
+        match &cli.command {
+            Some(Command::Eval { llm, security, full, .. }) => {
+                assert!(*llm);
+                assert!(*security);
+                assert!(!full);
             }
             _ => panic!("Expected Eval command"),
         }
@@ -2226,12 +2347,58 @@ mod tests {
     fn cli_parse_eval_last() {
         let cli = Cli::parse_from(["complior", "eval", "dummy", "--last"]);
         match &cli.command {
-            Some(Command::Eval { last, .. }) => {
+            Some(Command::Eval { last, failures, .. }) => {
                 assert!(*last);
+                assert!(!failures);
             }
             _ => panic!("Expected Eval command"),
         }
         assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_eval_last_failures() {
+        let cli = Cli::parse_from(["complior", "eval", "dummy", "--last", "--failures"]);
+        match &cli.command {
+            Some(Command::Eval { last, failures, .. }) => {
+                assert!(*last);
+                assert!(*failures);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_verbose() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--verbose"]);
+        match &cli.command {
+            Some(Command::Eval { verbose, .. }) => {
+                assert!(*verbose);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_concurrency() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "-j", "10"]);
+        match &cli.command {
+            Some(Command::Eval { concurrency, .. }) => {
+                assert_eq!(*concurrency, 10);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_concurrency_long() {
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--concurrency", "1"]);
+        match &cli.command {
+            Some(Command::Eval { concurrency, .. }) => {
+                assert_eq!(*concurrency, 1);
+            }
+            _ => panic!("Expected Eval command"),
+        }
     }
 
     #[test]
@@ -2243,6 +2410,44 @@ mod tests {
                 assert_eq!(*threshold, 75);
             }
             _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_eval_custom_adapter() {
+        let cli = Cli::parse_from([
+            "complior", "eval", "http://api.company.com/predict",
+            "--request-template", r#"{"prompt":"{{probe}}"}"#,
+            "--response-path", "result.text",
+            "--headers", r#"{"Authorization":"Bearer xxx"}"#,
+        ]);
+        match &cli.command {
+            Some(Command::Eval { target, request_template, response_path, headers, .. }) => {
+                assert_eq!(target, "http://api.company.com/predict");
+                assert_eq!(request_template.as_deref(), Some(r#"{"prompt":"{{probe}}"}"#));
+                assert_eq!(response_path.as_deref(), Some("result.text"));
+                assert_eq!(headers.as_deref(), Some(r#"{"Authorization":"Bearer xxx"}"#));
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_redteam_target_alias() {
+        let cli = Cli::parse_from(["complior", "redteam", "target", "http://localhost:4000"]);
+        match &cli.command {
+            Some(Command::Redteam { action }) => {
+                match action {
+                    RedteamAction::Target { url, json, ci, threshold } => {
+                        assert_eq!(url, "http://localhost:4000");
+                        assert!(!json);
+                        assert!(!ci);
+                        assert_eq!(*threshold, 60);
+                    }
+                    _ => panic!("Expected Target subcommand"),
+                }
+            }
+            _ => panic!("Expected Redteam command"),
         }
     }
 

@@ -5,6 +5,7 @@ import { createAnthropicAdapter } from './anthropic-adapter.js';
 import { createOllamaAdapter } from './ollama-adapter.js';
 import { createCustomAdapter } from './custom-adapter.js';
 import { autoDetectAdapter } from './auto-detect.js';
+import { safeJsonParse, AdapterError, withRetry } from './adapter-port.js';
 
 // ── Mock fetch ──────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ afterEach(() => {
 });
 
 const jsonResponse = (body: unknown, status = 200, headers: Record<string, string> = {}) => ({
+  ok: status >= 200 && status < 300,
   status,
   json: async () => body,
   headers: new Map(Object.entries(headers)),
@@ -206,5 +208,96 @@ describe('autoDetectAdapter', () => {
     mockFetch.mockRejectedValue(new Error('connection refused'));
     const adapter = await autoDetectAdapter('http://localhost:9999');
     expect(adapter.name).toBe('http');
+  });
+});
+
+// ── safeJsonParse ──────────────────────────────────────────────
+
+describe('safeJsonParse', () => {
+  it('parses valid JSON from 200 response', async () => {
+    const res = { ok: true, status: 200, json: async () => ({ data: 'ok' }) } as unknown as Response;
+    const result = await safeJsonParse(res);
+    expect(result).toEqual({ data: 'ok' });
+  });
+
+  it('throws AdapterError for 429 rate limit', async () => {
+    const res = { ok: false, status: 429, json: async () => { throw new Error('not json'); } } as unknown as Response;
+    await expect(safeJsonParse(res)).rejects.toThrow(AdapterError);
+    await expect(safeJsonParse(res)).rejects.toThrow('429');
+  });
+
+  it('throws AdapterError for 500 with JSON error body', async () => {
+    const res = { ok: false, status: 500, json: async () => ({ error: { message: 'overloaded' } }) } as unknown as Response;
+    await expect(safeJsonParse(res)).rejects.toThrow('overloaded');
+  });
+
+  it('AdapterError.retryable is true for 429 and 5xx', () => {
+    expect(new AdapterError(429, 'rate limited').retryable).toBe(true);
+    expect(new AdapterError(500, 'server error').retryable).toBe(true);
+    expect(new AdapterError(502, 'bad gateway').retryable).toBe(true);
+    expect(new AdapterError(400, 'bad request').retryable).toBe(false);
+    expect(new AdapterError(401, 'unauthorized').retryable).toBe(false);
+  });
+});
+
+// ── withRetry ──────────────────────────────────────────────────
+
+describe('withRetry', () => {
+  it('returns immediately on success', async () => {
+    const fn = vi.fn().mockResolvedValue('ok');
+    const result = await withRetry(fn, 2, 1);
+    expect(result).toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries on retryable AdapterError', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new AdapterError(429, 'rate limited'))
+      .mockResolvedValue('ok');
+    const result = await withRetry(fn, 2, 1);
+    expect(result).toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry on non-retryable AdapterError', async () => {
+    const fn = vi.fn().mockRejectedValue(new AdapterError(400, 'bad request'));
+    await expect(withRetry(fn, 2, 1)).rejects.toThrow('bad request');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry on non-AdapterError', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('network error'));
+    await expect(withRetry(fn, 2, 1)).rejects.toThrow('network error');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives up after max retries', async () => {
+    const fn = vi.fn().mockRejectedValue(new AdapterError(503, 'unavailable'));
+    await expect(withRetry(fn, 2, 1)).rejects.toThrow('unavailable');
+    expect(fn).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
+  });
+});
+
+// ── Adapter error resilience ───────────────────────────────────
+
+describe('adapter error resilience', () => {
+  it('openai adapter throws descriptive error on HTML rate-limit response', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false, status: 429,
+      json: async () => { throw new SyntaxError('Unexpected token <'); },
+      headers: new Map(),
+    });
+    const adapter = createOpenAIAdapter('http://localhost:4000', 'gpt-4o', 'sk-test');
+    await expect(adapter.send('test')).rejects.toThrow('API error 429');
+  });
+
+  it('anthropic adapter throws descriptive error on 500', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false, status: 500,
+      json: async () => ({ error: { message: 'internal error' } }),
+      headers: new Map(),
+    });
+    const adapter = createAnthropicAdapter('http://localhost:4000');
+    await expect(adapter.send('test')).rejects.toThrow('internal error');
   });
 });

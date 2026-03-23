@@ -202,11 +202,11 @@ async fn main() -> color_eyre::Result<()> {
             Some(cli::Command::Tools { action }) => {
                 headless::tools::run_tools_command(action, &config).await
             }
-            Some(cli::Command::Eval { target, tier, agent, categories, json, ci, threshold, model, api_key, last }) => {
+            Some(cli::Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency }) => {
                 if *last {
-                    headless::eval::run_eval_last(*json, &config).await
+                    headless::eval::run_eval_last(*json, *failures, &config).await
                 } else {
-                    headless::eval::run_eval_command(target, tier, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), &config).await
+                    headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, &config).await
                 }
             }
             Some(cli::Command::Audit { target, agent, json, path }) => {

@@ -244,7 +244,6 @@ export const createRouter = (deps: RouterDeps) => {
   if (deps.evalService) {
     app.route('/', createEvalRoute({
       evalService: deps.evalService,
-      getProjectPath: deps.getProjectPath,
     }));
     app.route('/', createAuditRoute({
       evalService: deps.evalService,

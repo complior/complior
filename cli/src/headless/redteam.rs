@@ -10,6 +10,13 @@ pub async fn run_redteam_command(action: &RedteamAction, config: &TuiConfig) -> 
         RedteamAction::Last { json } => {
             run_redteam_last(*json, config).await
         }
+        RedteamAction::Target { url, json, ci, threshold } => {
+            // Alias: complior redteam target <url> → eval --security
+            super::eval::run_eval_command(
+                url, false, false, true, false, None, &[], *json, *ci, *threshold,
+                None, None, None, None, None, false, 5, config,
+            ).await
+        }
     }
 }
 

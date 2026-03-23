@@ -4,6 +4,7 @@
  */
 
 import type { TargetAdapter, TargetResponse, ProbeOptions } from './adapter-port.js';
+import { safeJsonParse, withRetry } from './adapter-port.js';
 
 const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_MODEL = 'gpt-4o';
@@ -25,39 +26,40 @@ export const createOpenAIAdapter = (
   const send = async (probe: string, options?: ProbeOptions): Promise<TargetResponse> => {
     const start = Date.now();
     const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
 
     const messages: { role: string; content: string }[] = [];
     if (options?.systemPrompt) messages.push({ role: 'system', content: options.systemPrompt });
     messages.push({ role: 'user', content: probe });
 
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: buildHeaders(),
-        body: JSON.stringify({
-          model: effectiveModel,
-          messages,
-          temperature: options?.temperature ?? 0,
-          max_tokens: options?.maxTokens ?? 2048,
-        }),
-        signal: controller.signal,
-      });
-      const latencyMs = Date.now() - start;
-      const raw = await res.json() as Record<string, unknown>;
+    return withRetry(async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: buildHeaders(),
+          body: JSON.stringify({
+            model: effectiveModel,
+            messages,
+            temperature: options?.temperature ?? 0,
+            max_tokens: options?.maxTokens ?? 2048,
+          }),
+          signal: controller.signal,
+        });
+        const latencyMs = Date.now() - start;
+        const raw = await safeJsonParse(res);
 
-      // Extract text from OpenAI response format
-      const choices = raw.choices as { message?: { content?: string } }[] | undefined;
-      const text = choices?.[0]?.message?.content ?? '';
+        const choices = raw.choices as { message?: { content?: string } }[] | undefined;
+        const text = choices?.[0]?.message?.content ?? '';
 
-      const responseHeaders: Record<string, string> = {};
-      res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+        const responseHeaders: Record<string, string> = {};
+        res.headers.forEach((v, k) => { responseHeaders[k] = v; });
 
-      return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
-    } finally {
-      clearTimeout(timer);
-    }
+        return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
+      } finally {
+        clearTimeout(timer);
+      }
+    });
   };
 
   const sendMultiTurn = async (probes: readonly string[], options?: ProbeOptions): Promise<readonly TargetResponse[]> => {
@@ -69,28 +71,31 @@ export const createOpenAIAdapter = (
       messages.push({ role: 'user', content: probe });
       const start = Date.now();
       const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
 
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: buildHeaders(),
-          body: JSON.stringify({ model: effectiveModel, messages, temperature: 0, max_tokens: 2048 }),
-          signal: controller.signal,
-        });
-        const latencyMs = Date.now() - start;
-        const raw = await res.json() as Record<string, unknown>;
-        const choices = raw.choices as { message?: { content?: string } }[] | undefined;
-        const text = choices?.[0]?.message?.content ?? '';
-        messages.push({ role: 'assistant', content: text });
+      const result = await withRetry(async () => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: buildHeaders(),
+            body: JSON.stringify({ model: effectiveModel, messages, temperature: 0, max_tokens: 2048 }),
+            signal: controller.signal,
+          });
+          const latencyMs = Date.now() - start;
+          const raw = await safeJsonParse(res);
+          const choices = raw.choices as { message?: { content?: string } }[] | undefined;
+          const text = choices?.[0]?.message?.content ?? '';
 
-        const responseHeaders: Record<string, string> = {};
-        res.headers.forEach((v, k) => { responseHeaders[k] = v; });
-        results.push({ text, status: res.status, headers: responseHeaders, latencyMs, raw });
-      } finally {
-        clearTimeout(timer);
-      }
+          const responseHeaders: Record<string, string> = {};
+          res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+          return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
+        } finally {
+          clearTimeout(timer);
+        }
+      });
+      messages.push({ role: 'assistant', content: result.text });
+      results.push(result);
     }
     return results;
   };

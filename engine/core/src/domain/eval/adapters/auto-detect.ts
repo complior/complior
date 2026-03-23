@@ -2,10 +2,11 @@
  * Auto-detect adapter — probes the target URL to determine which adapter to use.
  *
  * Detection order:
- *   1. URL protocol hint (openai://, anthropic://, ollama://)
- *   2. /v1/models → OpenAI-compatible
- *   3. /api/tags → Ollama
- *   4. Fallback → Generic HTTP
+ *   1. Custom adapter (if requestTemplate + responsePath provided)
+ *   2. URL protocol hint (openai://, anthropic://, ollama://)
+ *   3. /v1/models → OpenAI-compatible
+ *   4. /api/tags → Ollama
+ *   5. Fallback → Generic HTTP
  */
 
 import type { TargetAdapter } from './adapter-port.js';
@@ -13,6 +14,15 @@ import { createHttpAdapter } from './http-adapter.js';
 import { createOpenAIAdapter } from './openai-adapter.js';
 import { createAnthropicAdapter } from './anthropic-adapter.js';
 import { createOllamaAdapter } from './ollama-adapter.js';
+import { createCustomAdapter } from './custom-adapter.js';
+
+export interface AutoDetectOptions {
+  readonly model?: string;
+  readonly apiKey?: string;
+  readonly requestTemplate?: string;
+  readonly responsePath?: string;
+  readonly headers?: string;
+}
 
 /** Parse protocol-hinted URLs like openai://localhost:4000 → http://localhost:4000 */
 const parseProtocolHint = (url: string): { protocol: string; httpUrl: string } | null => {
@@ -41,15 +51,41 @@ const tryFetch = async (url: string, timeout = 3000): Promise<boolean> => {
 
 export const autoDetectAdapter = async (
   url: string,
-  model?: string,
+  modelOrOpts?: string | AutoDetectOptions,
   apiKey?: string,
 ): Promise<TargetAdapter> => {
+  // Normalize overloaded params
+  const opts: AutoDetectOptions = typeof modelOrOpts === 'string'
+    ? { model: modelOrOpts, apiKey }
+    : modelOrOpts ?? {};
+  const model = opts.model;
+  const key = opts.apiKey ?? apiKey;
+
+  // 0. Custom adapter (explicit template)
+  if (opts.requestTemplate && opts.responsePath) {
+    let template: Record<string, unknown>;
+    try {
+      template = JSON.parse(opts.requestTemplate);
+    } catch {
+      throw new Error(`Invalid --request-template JSON: ${opts.requestTemplate}`);
+    }
+    let customHeaders: Record<string, string> | undefined;
+    if (opts.headers) {
+      try {
+        customHeaders = JSON.parse(opts.headers);
+      } catch {
+        throw new Error(`Invalid --headers JSON: ${opts.headers}`);
+      }
+    }
+    return createCustomAdapter(url, template, opts.responsePath, customHeaders);
+  }
+
   // 1. Check protocol hints
   const hint = parseProtocolHint(url);
   if (hint) {
     switch (hint.protocol) {
-      case 'openai':    return createOpenAIAdapter(hint.httpUrl, model, apiKey);
-      case 'anthropic': return createAnthropicAdapter(hint.httpUrl, model, apiKey);
+      case 'openai':    return createOpenAIAdapter(hint.httpUrl, model, key);
+      case 'anthropic': return createAnthropicAdapter(hint.httpUrl, model, key);
       case 'ollama':    return createOllamaAdapter(hint.httpUrl, model);
     }
   }
@@ -58,7 +94,7 @@ export const autoDetectAdapter = async (
 
   // 2. Probe /v1/models (OpenAI-compatible)
   if (await tryFetch(`${baseUrl}/v1/models`)) {
-    return createOpenAIAdapter(baseUrl, model, apiKey);
+    return createOpenAIAdapter(baseUrl, model, key);
   }
 
   // 3. Probe /api/tags (Ollama)

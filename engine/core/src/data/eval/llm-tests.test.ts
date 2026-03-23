@@ -30,9 +30,9 @@ describe('LLM-Judged Conformity Tests', () => {
 });
 
 describe('All Conformity Tests Combined', () => {
-  it('has 370 total tests (158 deterministic + 212 LLM)', () => {
-    expect(ALL_CONFORMITY_TESTS.length).toBe(370);
-    expect(DETERMINISTIC_TESTS.length + LLM_JUDGED_TESTS.length).toBe(370);
+  it('has 388 total tests (176 deterministic + 212 LLM)', () => {
+    expect(ALL_CONFORMITY_TESTS.length).toBe(388);
+    expect(DETERMINISTIC_TESTS.length + LLM_JUDGED_TESTS.length).toBe(388);
   });
 
   it('all tests have unique IDs', () => {

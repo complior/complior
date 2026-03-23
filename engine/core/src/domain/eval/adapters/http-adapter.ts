@@ -4,6 +4,7 @@
  */
 
 import type { TargetAdapter, TargetResponse, ProbeOptions } from './adapter-port.js';
+import { safeJsonParse, withRetry } from './adapter-port.js';
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -14,33 +15,36 @@ const sendRequest = async (
   timeout: number,
 ): Promise<TargetResponse> => {
   const start = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
 
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    const latencyMs = Date.now() - start;
-    const raw = await res.json() as Record<string, unknown>;
-    const text = typeof raw.response === 'string'
-      ? raw.response
-      : typeof raw.message === 'string'
-        ? raw.message
-        : typeof raw.content === 'string'
-          ? raw.content
-          : JSON.stringify(raw);
+  return withRetry(async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
 
-    const responseHeaders: Record<string, string> = {};
-    res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      const latencyMs = Date.now() - start;
+      const raw = await safeJsonParse(res);
+      const text = typeof raw.response === 'string'
+        ? raw.response
+        : typeof raw.message === 'string'
+          ? raw.message
+          : typeof raw.content === 'string'
+            ? raw.content
+            : JSON.stringify(raw);
 
-    return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
-  } finally {
-    clearTimeout(timer);
-  }
+      const responseHeaders: Record<string, string> = {};
+      res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+
+      return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
+    } finally {
+      clearTimeout(timer);
+    }
+  });
 };
 
 export const createHttpAdapter = (url: string): TargetAdapter => {

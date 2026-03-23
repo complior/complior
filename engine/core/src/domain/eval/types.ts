@@ -3,7 +3,7 @@
  *
  * Eval sends probes to EXTERNAL AI endpoints (via TargetAdapter) and evaluates
  * responses for EU AI Act compliance. Two probe families:
- *   - 370 conformity tests (CT-1..CT-11, 11 categories)
+ *   - 380 conformity tests (CT-1..CT-11, 11 categories)
  *   - 300 security probes (OWASP LLM Top 10)
  */
 
@@ -55,7 +55,7 @@ export const CATEGORY_META: readonly CategoryMeta[] = Object.freeze([
 
 // ── Eval Tier ───────────────────────────────────────────────────
 
-export const EVAL_TIERS = ['basic', 'standard', 'full'] as const;
+export const EVAL_TIERS = ['basic', 'standard', 'full', 'security'] as const;
 export type EvalTier = (typeof EVAL_TIERS)[number];
 
 export const EvalTierSchema = z.enum(EVAL_TIERS);
@@ -63,8 +63,42 @@ export const EvalTierSchema = z.enum(EVAL_TIERS);
 /** What each tier includes. */
 export const TIER_INCLUDES: Record<EvalTier, { deterministic: boolean; llm: boolean; security: boolean }> = {
   basic:    { deterministic: true,  llm: false, security: false },
-  standard: { deterministic: true,  llm: true,  security: false },
+  standard: { deterministic: false, llm: true,  security: false },
   full:     { deterministic: true,  llm: true,  security: true },
+  security: { deterministic: false, llm: false, security: true },
+};
+
+// ── Flag-based resolution (replaces tier) ────────────────────
+
+export interface EvalIncludes {
+  readonly deterministic: boolean;
+  readonly llm: boolean;
+  readonly security: boolean;
+}
+
+/** Resolve boolean CLI flags into includes (composable: each flag toggles its test set). */
+export const resolveIncludes = (opts: { det?: boolean; llm?: boolean; security?: boolean; full?: boolean }): EvalIncludes => {
+  if (opts.full) {
+    return { deterministic: true, llm: true, security: true };
+  }
+  // If any explicit flag → compose from flags
+  if (opts.det || opts.llm || opts.security) {
+    return {
+      deterministic: opts.det ?? false,
+      llm: opts.llm ?? false,
+      security: opts.security ?? false,
+    };
+  }
+  // Default (no flags): deterministic only
+  return { deterministic: true, llm: false, security: false };
+};
+
+/** Derive a tier label from resolved includes (for display/result). */
+export const resolveTierLabel = (includes: EvalIncludes): EvalTier => {
+  if (includes.deterministic && includes.llm && includes.security) return 'full';
+  if (includes.llm) return 'standard';   // any combo with LLM → standard
+  if (includes.security) return 'security';
+  return 'basic';
 };
 
 // ── Evaluation method ───────────────────────────────────────────
@@ -110,7 +144,7 @@ export interface TestResult {
   readonly category: EvalCategory;
   readonly name: string;
   readonly method: EvalMethod;
-  readonly verdict: 'pass' | 'fail' | 'error' | 'skip';
+  readonly verdict: 'pass' | 'fail' | 'error' | 'skip' | 'inconclusive';
   readonly score: number;         // 0-100
   readonly confidence: number;    // 0-100
   readonly reasoning: string;
@@ -118,6 +152,7 @@ export interface TestResult {
   readonly response: string;
   readonly latencyMs: number;
   readonly timestamp: string;
+  readonly owaspCategory?: string; // OWASP LLM Top 10 (e.g. 'LLM01') — security probes only
 }
 
 // ── Category Score ──────────────────────────────────────────────
@@ -129,6 +164,7 @@ export interface CategoryScore {
   readonly passed: number;
   readonly failed: number;
   readonly errors: number;
+  readonly inconclusive: number;
   readonly skipped: number;
   readonly total: number;
 }
@@ -148,6 +184,7 @@ export interface EvalResult {
   readonly passed: number;
   readonly failed: number;
   readonly errors: number;
+  readonly inconclusive: number;
   readonly duration: number;      // ms
   readonly timestamp: string;
   readonly criticalCapped: boolean;
@@ -158,7 +195,10 @@ export interface EvalResult {
 
 export const EvalOptionsSchema = z.object({
   target: z.string().url(),
-  tier: EvalTierSchema.default('basic'),
+  det: z.boolean().optional(),
+  llm: z.boolean().optional(),
+  security: z.boolean().optional(),
+  full: z.boolean().optional(),
   categories: z.array(EvalCategorySchema).optional(),
   agent: z.string().optional(),
   model: z.string().optional(),
@@ -167,6 +207,12 @@ export const EvalOptionsSchema = z.object({
   threshold: z.number().min(0).max(100).optional(),
   json: z.boolean().optional(),
   ci: z.boolean().optional(),
+  // Custom adapter fields
+  requestTemplate: z.string().optional(),   // JSON template with {{probe}} placeholder
+  responsePath: z.string().optional(),      // Dot-path to response text (e.g. "result.text")
+  headers: z.string().optional(),           // JSON string of custom headers
+  // Concurrency
+  concurrency: z.number().int().min(1).max(50).optional(), // Parallel test execution (default: 1)
 });
 
 export type EvalOptions = z.infer<typeof EvalOptionsSchema>;
@@ -189,6 +235,7 @@ export interface EvalProgress {
   readonly completed: number;
   readonly total: number;
   readonly currentTest?: string;
+  readonly lastResult?: TestResult;
 }
 
-export type EvalProgressCallback = (progress: EvalProgress) => void;
+export type EvalProgressCallback = (progress: EvalProgress) => void | Promise<void>;

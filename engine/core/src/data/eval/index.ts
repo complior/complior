@@ -1,5 +1,5 @@
 /**
- * Barrel export for all conformity tests (370 total = 158 deterministic + 212 LLM-judged).
+ * Barrel export for all conformity tests (380 total = 168 deterministic + 212 LLM-judged).
  */
 
 import type { ConformityTest } from '../../domain/eval/types.js';
@@ -16,7 +16,7 @@ import { CT_10_DETERMINISTIC } from './ct-10-gpai.js';
 import { CT_11_DETERMINISTIC } from './ct-11-industry.js';
 import { ALL_LLM_JUDGED_TESTS } from './llm-judged-tests.js';
 
-/** All deterministic conformity tests (158 total). */
+/** All deterministic conformity tests (176 total). */
 export const DETERMINISTIC_TESTS: readonly ConformityTest[] = Object.freeze([
   ...CT_1_DETERMINISTIC,
   ...CT_2_DETERMINISTIC,
@@ -34,7 +34,7 @@ export const DETERMINISTIC_TESTS: readonly ConformityTest[] = Object.freeze([
 /** All LLM-judged conformity tests (212 total). */
 export const LLM_JUDGED_TESTS: readonly ConformityTest[] = ALL_LLM_JUDGED_TESTS;
 
-/** All conformity tests (370 total). */
+/** All conformity tests (388 total). */
 export const ALL_CONFORMITY_TESTS: readonly ConformityTest[] = Object.freeze([
   ...DETERMINISTIC_TESTS,
   ...LLM_JUDGED_TESTS,

@@ -16,8 +16,8 @@ import {
 import { EVAL_CATEGORIES } from '../../domain/eval/types.js';
 
 describe('Deterministic Conformity Tests', () => {
-  it('has 158 total deterministic tests', () => {
-    expect(DETERMINISTIC_TESTS.length).toBe(158);
+  it('has 176 total deterministic tests', () => {
+    expect(DETERMINISTIC_TESTS.length).toBe(176);
   });
 
   it('CT-1 Transparency has 20 tests', () => {
@@ -28,8 +28,8 @@ describe('Deterministic Conformity Tests', () => {
     expect(CT_2_DETERMINISTIC.length).toBe(15);
   });
 
-  it('CT-3 Explanation has 0 deterministic tests (all LLM)', () => {
-    expect(CT_3_DETERMINISTIC.length).toBe(0);
+  it('CT-3 Explanation has 3 deterministic tests', () => {
+    expect(CT_3_DETERMINISTIC.length).toBe(3);
   });
 
   it('CT-4 Bias has 25 tests', () => {
@@ -44,24 +44,24 @@ describe('Deterministic Conformity Tests', () => {
     expect(CT_6_DETERMINISTIC.length).toBe(35);
   });
 
-  it('CT-7 Prohibited has 15 tests', () => {
-    expect(CT_7_DETERMINISTIC.length).toBe(15);
+  it('CT-7 Prohibited has 20 tests', () => {
+    expect(CT_7_DETERMINISTIC.length).toBe(20);
   });
 
   it('CT-8 Logging has 15 tests', () => {
     expect(CT_8_DETERMINISTIC.length).toBe(15);
   });
 
-  it('CT-9 Risk Awareness has 5 tests', () => {
-    expect(CT_9_DETERMINISTIC.length).toBe(5);
+  it('CT-9 Risk Awareness has 8 tests', () => {
+    expect(CT_9_DETERMINISTIC.length).toBe(8);
   });
 
-  it('CT-10 GPAI has 4 tests', () => {
-    expect(CT_10_DETERMINISTIC.length).toBe(4);
+  it('CT-10 GPAI has 6 tests', () => {
+    expect(CT_10_DETERMINISTIC.length).toBe(6);
   });
 
-  it('CT-11 Industry has 9 tests', () => {
-    expect(CT_11_DETERMINISTIC.length).toBe(9);
+  it('CT-11 Industry has 14 tests', () => {
+    expect(CT_11_DETERMINISTIC.length).toBe(14);
   });
 
   it('all tests have unique IDs', () => {

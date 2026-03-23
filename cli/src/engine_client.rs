@@ -360,13 +360,39 @@ impl EngineClient {
         Ok(resp)
     }
 
-    /// POST with long timeout (300s) — for adversarial test endpoint (18+ LLM calls).
+    /// POST returning raw response for SSE stream parsing with long timeout (3600s).
+    /// Used for eval streaming where hundreds of tests may take over an hour.
+    pub async fn post_stream_long(
+        &self,
+        endpoint: &str,
+        body: &serde_json::Value,
+    ) -> Result<reqwest::Response> {
+        let url = format!("{}{endpoint}", self.base_url);
+        let resp = self
+            .client
+            .post(&url)
+            .header("Accept", "text/event-stream")
+            .json(body)
+            .timeout(std::time::Duration::from_secs(3600))
+            .send()
+            .await?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            return Err(crate::error::TuiError::Engine(format!(
+                "HTTP {status}: {text}"
+            )));
+        }
+        Ok(resp)
+    }
+
+    /// POST with long timeout (1800s) — for eval/adversarial endpoints (hundreds of LLM calls).
     pub async fn post_json_long(&self, endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
         let resp = self
             .client
             .post(format!("{}{endpoint}", self.base_url))
             .json(body)
-            .timeout(std::time::Duration::from_secs(300))
+            .timeout(std::time::Duration::from_secs(1800))
             .send()
             .await?;
         let status = resp.status();

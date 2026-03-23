@@ -37,3 +37,36 @@ export const sseError = (message: string): SseEventPayload => ({
   event: 'error',
   data: JSON.stringify({ message }),
 });
+
+// ── Eval SSE events ──────────────────────────────────────────────
+
+export const sseEvalStart = (target: string, model: string | undefined, mode: string): SseEventPayload => ({
+  event: 'eval:start',
+  data: JSON.stringify({ target, model: model ?? 'default', mode }),
+});
+
+export const sseEvalHealth = (ok: boolean): SseEventPayload => ({
+  event: 'eval:health',
+  data: JSON.stringify({ ok }),
+});
+
+export const sseEvalTest = (payload: {
+  testId: string;
+  name: string;
+  category: string;
+  method: string;
+  verdict: string;
+  score: number;
+  latencyMs: number;
+  phase: string;
+  completed: number;
+  total: number;
+}): SseEventPayload => ({
+  event: 'eval:test',
+  data: JSON.stringify(payload),
+});
+
+export const sseEvalDone = (result: unknown): SseEventPayload => ({
+  event: 'eval:done',
+  data: JSON.stringify(result),
+});
