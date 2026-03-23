@@ -163,7 +163,11 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
 
   // Start background jobs (if pg-boss is enabled)
   if (pgboss) {
-    const jobCtx = { pgboss, domain: appSandbox.domain, application: appSandbox.application, console: logger, config, db };
+    const jobCtx = {
+      pgboss, domain: appSandbox.domain,
+      application: appSandbox.application,
+      console: logger, config, db,
+    };
 
     if (appSandbox.application?.jobs?.['schedule-registry-refresh']) {
       try {

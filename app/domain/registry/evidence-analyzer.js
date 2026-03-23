@@ -11,10 +11,10 @@
  */
 (() => {
   // Priority hierarchy for conflict resolution
-  const SOURCE_PRIORITY = { human_tests: 4, media_tests: 3, llm_tests: 2, passive_scan: 1 };
+  // Priority hierarchy: { human_tests: 4, media_tests: 3, llm_tests: 2, passive_scan: 1 }
 
   // Status ordering for upgrade-only policy
-  const STATUS_ORDER = { unknown: 0, partially_met: 1, met: 2 };
+  // Status ordering: { unknown: 0, partially_met: 1, met: 2 }
 
   // Infrastructure signals that transfer across provider family
   const INHERITABLE_SIGNALS = [
@@ -40,7 +40,7 @@
     const parts = path.split('.');
     let current = obj;
     for (const part of parts) {
-      if (current == null) return undefined;
+      if (current === null || current === undefined) return undefined;
       current = current[part];
     }
     return current;
@@ -50,7 +50,7 @@
     const parts = path.split('.');
     let current = obj;
     for (let i = 0; i < parts.length - 1; i++) {
-      if (current[parts[i]] == null) current[parts[i]] = {};
+      if (current[parts[i]] === null || current[parts[i]] === undefined) current[parts[i]] = {};
       current = current[parts[i]];
     }
     current[parts[parts.length - 1]] = value;
@@ -65,12 +65,12 @@
     return confidence;
   };
 
-  const isUpgrade = (newStatus, oldStatus) => {
-    const newOrder = STATUS_ORDER[newStatus];
-    const oldOrder = STATUS_ORDER[oldStatus];
-    if (newOrder === undefined || oldOrder === undefined) return false;
-    return newOrder > oldOrder;
-  };
+  // isUpgrade: status upgrade check (reserved for future use)
+  // const isUpgrade = (newStatus, oldStatus) => {
+  //   return (STATUS_ORDER[newStatus] ?? -1) > (STATUS_ORDER[oldStatus] ?? -1);
+  // };
+
+
 
   // ── Rule Implementations ──────────────────────────────────────────────
 
@@ -216,7 +216,11 @@
     }
 
     // Priority 2: Some C2PA + some watermark
-    if (imageTests.length > 0 && imageTests.some((m) => m.c2pa_present) && imageTests.some((m) => m.watermark)) {
+    if (
+      imageTests.length > 0
+      && imageTests.some((m) => m.c2pa_present)
+      && imageTests.some((m) => m.watermark)
+    ) {
       results['OBL-016a'] = {
         status: 'partially_met', confidence: 0.75, source: 'media_tests',
         evidence_summary: 'Mixed image marking: some C2PA, some watermark',
@@ -294,17 +298,16 @@
       return results;
     }
 
-    const sections = [mc.has_limitations, mc.has_bias_info, mc.has_training_data, mc.has_evaluation];
+    const sections = [
+      mc.has_limitations, mc.has_bias_info,
+      mc.has_training_data, mc.has_evaluation,
+    ];
     const metSections = sections.filter(Boolean).length;
 
     const oblIds = ['OBL-022', 'OBL-022a', 'OBL-022b', 'OBL-022c'];
     let status, confidence;
 
-    if (metSections >= 4) { status = 'met'; confidence = 0.85; }
-    else if (metSections >= 3) { status = 'met'; confidence = 0.75; }
-    else if (metSections >= 2) { status = 'partially_met'; confidence = 0.6; }
-    else if (metSections === 1) { status = 'partially_met'; confidence = 0.4; }
-    else { status = 'partially_met'; confidence = 0.3; }
+    if (metSections >= 4) { status = 'met'; confidence = 0.85; } else if (metSections >= 3) { status = 'met'; confidence = 0.75; } else if (metSections >= 2) { status = 'partially_met'; confidence = 0.6; } else if (metSections === 1) { status = 'partially_met'; confidence = 0.4; } else { status = 'partially_met'; confidence = 0.3; }
 
     for (const oblId of oblIds) {
       results[oblId] = {
@@ -470,9 +473,7 @@
     if (signalsCount === 0) return results;
 
     let status, confidence;
-    if (signalsCount >= 5) { status = 'met'; confidence = 0.7; }
-    else if (signalsCount >= 3) { status = 'partially_met'; confidence = 0.5; }
-    else { status = 'partially_met'; confidence = 0.3; }
+    if (signalsCount >= 5) { status = 'met'; confidence = 0.7; } else if (signalsCount >= 3) { status = 'partially_met'; confidence = 0.5; } else { status = 'partially_met'; confidence = 0.3; }
 
     const signalNames = [];
     if (privacy.mentions_ai) signalNames.push('mentions_ai');
@@ -576,7 +577,7 @@
       score += 0.25;
     }
 
-    if (evidence.human_tests != null) {
+    if (evidence.human_tests !== null && evidence.human_tests !== undefined) {
       score += 0.20;
     }
 
@@ -596,7 +597,10 @@
     let score = 0;
     if (disclosure.visible) score += 15;
     if (privacy.mentions_ai && privacy.mentions_eu) score += 10;
-    const mcSections = [mc.has_limitations, mc.has_bias_info, mc.has_training_data, mc.has_evaluation].filter(Boolean).length;
+    const mcSections = [
+      mc.has_limitations, mc.has_bias_info,
+      mc.has_training_data, mc.has_evaluation,
+    ].filter(Boolean).length;
     if (mc.has_model_card && mcSections >= 3) score += 15;
     if (trust.has_responsible_ai_page) score += 10;
     if (trust.has_eu_ai_act_page) score += 15;
@@ -661,7 +665,7 @@
   // Obligations that are tool-specific and should NOT be inherited
   // OBL-015 (disclosure), OBL-016/016a (content marking), OBL-018 (deepfake), OBL-022 (GPAI docs)
 
-  return ({ db }) => {
+  return () => {
     const ALL_RULES = [
       ruleDisclosure,
       ruleContentMarking,
@@ -778,7 +782,7 @@
 
       const correlations = {};
 
-      for (const [providerName, group] of Object.entries(byProvider)) {
+      for (const [, group] of Object.entries(byProvider)) {
         if (group.length < 2) continue;
 
         // Find reference tool (highest evidence quality)
@@ -804,9 +808,13 @@
           const topKey = parts[0];
           const restPath = parts.slice(1).join('.');
           const source = refPs[topKey];
-          if (source != null) {
+          if (source !== null && source !== undefined) {
             const value = restPath ? getNestedValue(source, restPath) : source;
-            if (value != null && value !== false && (!Array.isArray(value) || value.length > 0)) {
+            if (
+              value !== null && value !== undefined
+              && value !== false
+              && (!Array.isArray(value) || value.length > 0)
+            ) {
               inheritableData[signalPath] = value;
             }
           }
@@ -827,10 +835,19 @@
             const topKey = parts[0];
             const restPath = parts.slice(1).join('.');
             const toolSource = toolPs[topKey];
-            const existingValue = toolSource != null && restPath ? getNestedValue(toolSource, restPath) : toolSource;
+            const existingValue = toolSource !== null
+              && toolSource !== undefined && restPath
+              ? getNestedValue(toolSource, restPath)
+              : toolSource;
 
             // Don't overwrite existing data
-            if (existingValue != null && existingValue !== false && (!Array.isArray(existingValue) || existingValue.length > 0)) {
+            if (
+              existingValue !== null
+              && existingValue !== undefined
+              && existingValue !== false
+              && (!Array.isArray(existingValue)
+                || existingValue.length > 0)
+            ) {
               continue;
             }
 
@@ -874,7 +891,7 @@
 
       const results = {};
 
-      for (const [providerName, group] of Object.entries(byProvider)) {
+      for (const [, group] of Object.entries(byProvider)) {
         if (group.length < 2) continue;
 
         // Find reference tool — highest evidence quality

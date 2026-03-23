@@ -1,5 +1,5 @@
 ({
-  update: async ({ toolId, lifecycle, organizationId, userId }) => {
+  update: async ({ toolId, lifecycle, organizationId }) => {
     const VALID_TRANSITIONS = {
       active: ['suspended'],
       suspended: ['active', 'decommissioned'],
@@ -28,7 +28,7 @@
     }
 
     await db.query(
-      `UPDATE "AITool" SET "lifecycle" = $1 WHERE "aIToolId" = $2 AND "organizationId" = $3`,
+      'UPDATE "AITool" SET "lifecycle" = $1 WHERE "aIToolId" = $2 AND "organizationId" = $3',
       [lifecycle, toolId, organizationId],
     );
 

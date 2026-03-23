@@ -248,7 +248,7 @@ const initApiKeyHook = (server, pool) => {
 
       // Update lastUsedAt
       await pool.query(
-        `UPDATE "ApiKey" SET "lastUsedAt" = NOW() WHERE "apiKeyId" = $1`,
+        'UPDATE "ApiKey" SET "lastUsedAt" = NOW() WHERE "apiKeyId" = $1',
         [key.apiKeyId],
       );
 

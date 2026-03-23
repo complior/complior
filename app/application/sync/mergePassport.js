@@ -59,7 +59,7 @@
 
     // Find existing tool by name match
     const existing = await db.query(
-      `SELECT * FROM "AITool" WHERE "organizationId" = $1 AND (LOWER("name") = LOWER($2) OR "name" = $3) LIMIT 1`,
+      'SELECT * FROM "AITool" WHERE "organizationId" = $1 AND (LOWER("name") = LOWER($2) OR "name" = $3) LIMIT 1',
       [organizationId, passport.name, passport.name],
     );
 
@@ -70,9 +70,18 @@
       const updates = {};
 
       // Technical fields — CLI wins
-      if (passport.vendorName && passport.vendorName !== tool.vendorName) updates.vendorName = passport.vendorName;
-      if (passport.vendorUrl && passport.vendorUrl !== tool.vendorUrl) updates.vendorUrl = passport.vendorUrl;
-      if (passport.description && passport.description !== tool.description) updates.description = passport.description;
+      if (passport.vendorName && passport.vendorName !== tool.vendorName) {
+        updates.vendorName = passport.vendorName;
+      }
+      if (passport.vendorUrl && passport.vendorUrl !== tool.vendorUrl) {
+        updates.vendorUrl = passport.vendorUrl;
+      }
+      if (
+        passport.description
+        && passport.description !== tool.description
+      ) {
+        updates.description = passport.description;
+      }
 
       // Organizational fields — SaaS wins (log conflict)
       if (passport.purpose && passport.purpose !== tool.purpose && tool.purpose) {
@@ -106,7 +115,12 @@
       // Extended fields
       const sanitized = sanitizeAutonomy(passport.autonomyLevel);
       if (sanitized) updates.autonomyLevel = sanitized;
-      if (passport.compliorScore !== undefined && passport.compliorScore !== null) updates.complianceScore = passport.compliorScore;
+      if (
+        passport.compliorScore !== undefined
+        && passport.compliorScore !== null
+      ) {
+        updates.complianceScore = passport.compliorScore;
+      }
       if (passport.lifecycleStatus) updates.complianceStatus = mapStatus(passport.lifecycleStatus);
 
       // Technical stack fields — CLI wins
@@ -162,7 +176,7 @@
       let mapRiskLevel = shouldCreateClassification ? passport.riskLevel : null;
       if (!mapRiskLevel && tool.riskLevel) {
         const reqCheck = await db.query(
-          `SELECT COUNT(*)::int AS c FROM "ToolRequirement" WHERE "aiToolId" = $1`,
+          'SELECT COUNT(*)::int AS c FROM "ToolRequirement" WHERE "aiToolId" = $1',
           [tool.aIToolId],
         );
         if (reqCheck.rows[0].c === 0) mapRiskLevel = tool.riskLevel;
@@ -176,7 +190,7 @@
 
     // Create new tool — all fields in single INSERT (no redundant UPDATE)
     const newAutonomy = sanitizeAutonomy(passport.autonomyLevel);
-    const hasRisk = !!passport.riskLevel;
+    const hasRisk = Boolean(passport.riskLevel);
     const mappedStatus = passport.lifecycleStatus
       ? mapStatus(passport.lifecycleStatus)
       : (hasRisk ? 'in_progress' : 'not_started');

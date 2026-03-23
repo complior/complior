@@ -82,7 +82,9 @@
         [
           document.complianceDocumentId,
           section.sectionCode,
-          (sectionDefs.find((s) => s.sectionCode === section.sectionCode) || {}).title || section.sectionCode,
+          (sectionDefs.find(
+            (s) => s.sectionCode === section.sectionCode,
+          ) || {}).title || section.sectionCode,
           JSON.stringify(section.content),
           'empty',
           (sectionDefs.find((s) => s.sectionCode === section.sectionCode) || {}).sortOrder || 0,

@@ -50,4 +50,4 @@
   jurisdictions: { type: 'json', required: false },
   detectionPatterns: { type: 'json', required: false },
   active: { type: 'boolean', default: true },
-})
+});

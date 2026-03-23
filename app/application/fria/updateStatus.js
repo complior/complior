@@ -46,7 +46,7 @@
     let idx = 2;
 
     if (parsed.status === 'completed') {
-      setClauses.push(`"completedAt" = now()`);
+      setClauses.push('"completedAt" = now()');
       setClauses.push(`"approvedById" = $${idx++}`);
       values.push(userId);
     }

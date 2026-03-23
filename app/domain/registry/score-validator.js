@@ -249,7 +249,7 @@
         const scoring = tool._scoring || {};
         const grade = scoring.grade;
         const score = tool._score;
-        if (!grade || score == null) continue;
+        if (!grade || score === null || score === undefined) continue;
 
         const expectedMin = GRADE_BOUNDARIES[grade];
         if (expectedMin === undefined) continue;
@@ -347,7 +347,7 @@
         const confidence = scoring.confidence;
         const level = tool.level || 'classified';
 
-        if (confidence == null || typeof confidence !== 'number' || isNaN(confidence)) continue;
+        if (confidence === null || confidence === undefined || typeof confidence !== 'number' || isNaN(confidence)) continue;
 
         if (level === 'classified' && confidence > 0.35) {
           anomalies.push({
@@ -422,7 +422,7 @@
         const scoring = tool._scoring || {};
         const maturity = scoring.maturity;
         const score = tool._score;
-        if (!maturity || score == null) continue;
+        if (!maturity || score === null || score === undefined) continue;
 
         const label = maturity.criteria || maturity.label;
 
@@ -449,7 +449,7 @@
             tool: tool.name || tool.slug,
             check: 'maturity_score_coherence',
             severity: 'error',
-            message: `Maturity 'compliant' but critical cap applied (cannot be compliant with critical not_met)`,
+            message: 'Maturity \'compliant\' but critical cap applied (cannot be compliant with critical not_met)',
           });
         }
 
@@ -474,7 +474,10 @@
         const scoring = tool._scoring || {};
         const score = tool._score;
         const coverage = scoring.coverage;
-        if (score == null || coverage == null) continue;
+        if (
+          score === null || score === undefined
+          || coverage === null || coverage === undefined
+        ) continue;
         if (score > 80 && coverage < 20) {
           anomalies.push({
             tool: tool.name || tool.slug,

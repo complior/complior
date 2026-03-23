@@ -18,7 +18,7 @@
     "prefer-const": "error",
     "arrow-parens": ["error", "always"],
     "no-console": "warn",
-    "camelcase": ["error", { "allow": ["^_"] }],
+    "camelcase": ["error", { "allow": ["^_"], "properties": "never" }],
     "max-len": ["error", { "code": 100, "ignoreUrls": true, "ignoreStrings": true, "ignoreTemplateLiterals": true }],
     "object-curly-spacing": ["error", "always"],
     "comma-style": ["error", "last"],
@@ -40,6 +40,12 @@
   },
   "ignorePatterns": ["node_modules/"],
   "overrides": [
+    {
+      "files": ["server/infrastructure/**/*.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    },
     {
       "files": ["app/schemas/**/*.js"],
       "rules": {
@@ -66,6 +72,11 @@
         "gotenberg": "readonly",
         "s3": "readonly",
         "stripe": "readonly",
+        "pgboss": "readonly",
+        "llm": "readonly",
+        "zipBuilder": "readonly",
+        "fetch": "readonly",
+        "cheerio": "readonly",
         "lib": "readonly",
         "domain": "readonly",
         "application": "readonly",
@@ -75,7 +86,7 @@
         "strict": "off",
         "no-console": "off",
         "semi": "off",
-        "camelcase": ["error", { "allow": ["^_", "session_id"] }]
+        "camelcase": ["error", { "allow": ["^_", "session_id"], "properties": "never" }]
       }
     }
   ]

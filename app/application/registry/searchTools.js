@@ -1,5 +1,9 @@
 ({
-  search: async ({ q, category, risk, aiActRole, jurisdiction, hasDetectionPatterns, level, sort, page = 1, limit = 20 }) => {
+  search: async ({
+    q, category, risk, aiActRole, jurisdiction,
+    hasDetectionPatterns, level, sort,
+    page = 1, limit = 20,
+  }) => {
     const conditions = ['"active" = true'];
     const values = [];
     let idx = 1;
@@ -18,7 +22,7 @@
     }
 
     if (risk) {
-      const riskValues = risk.split(',').map(r => r.trim()).filter(Boolean);
+      const riskValues = risk.split(',').map((r) => r.trim()).filter(Boolean);
       if (riskValues.length === 1) {
         conditions.push(`"riskLevel" = $${idx++}`);
         values.push(riskValues[0]);
@@ -35,9 +39,9 @@
     }
 
     if (hasDetectionPatterns === true) {
-      conditions.push(`"detectionPatterns" IS NOT NULL AND "detectionPatterns" != 'null'::jsonb`);
+      conditions.push('"detectionPatterns" IS NOT NULL AND "detectionPatterns" != \'null\'::jsonb');
     } else if (hasDetectionPatterns === false) {
-      conditions.push(`("detectionPatterns" IS NULL OR "detectionPatterns" = 'null'::jsonb)`);
+      conditions.push('("detectionPatterns" IS NULL OR "detectionPatterns" = \'null\'::jsonb)');
     }
 
     if (aiActRole) {

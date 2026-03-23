@@ -25,7 +25,10 @@
   },
 
   // Record sync event in SyncHistory
-  recordSyncHistory: async ({ organizationId, userId, syncType, status, toolSlug, conflicts, metadata }) => {
+  recordSyncHistory: async ({
+    organizationId, userId, syncType, status,
+    toolSlug, conflicts, metadata,
+  }) => {
     const hasConflicts = conflicts && conflicts.length > 0;
     if (hasConflicts) {
       await db.query(

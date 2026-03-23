@@ -1,6 +1,6 @@
 ({
   build: (orgName, tools, riskDistribution, complianceScore, requirementSummary) => {
-    const systemPrompt = `You are an EU AI Act compliance expert. Generate a concise executive summary for an audit package. Use formal, regulatory language suitable for official documentation. Write in English. Keep it under 500 words.`;
+    const systemPrompt = 'You are an EU AI Act compliance expert. Generate a concise executive summary for an audit package. Use formal, regulatory language suitable for official documentation. Write in English. Keep it under 500 words.';
 
     const toolLines = tools
       .map((t) => `- ${t.name} (${t.vendorName || 'Unknown vendor'}): Risk Level ${t.riskLevel || 'unclassified'}, Compliance ${t.complianceScore ?? 0}%`)

@@ -236,11 +236,15 @@
     }
     const text = $.text().toLowerCase();
     return {
+      // eslint-disable-next-line max-len
       mentions_ai: /artificial intelligence|machine learning|ai model|ai system|ai.powered|neural network|large language model|llm|generative ai/i.test(text),
       mentions_eu: /european union|eu regulation|eu law|gdpr|general data protection/i.test(text),
       gdpr_compliant: /gdpr|general data protection regulation|data protection officer/i.test(text),
+      // eslint-disable-next-line max-len
       training_opt_out: /opt.out.*training|training.*opt.out|do not.*train|exclude.*training/i.test(text),
+      // eslint-disable-next-line max-len
       deletion_right: /right.*delet|right.*eras|delete.*data|erase.*data|right to be forgotten/i.test(text),
+      // eslint-disable-next-line max-len
       retention_specified: /retention|retain.*data.*\d|data.*kept.*\d|store.*data.*\d|days|months|years/i.test(text),
     };
   };
@@ -270,6 +274,7 @@
     result.has_eu_ai_act_page = pages.some((p) => p.label === 'eu-ai-act' && p.status === 200);
 
     // AI Act mentions
+    // eslint-disable-next-line max-len
     result.mentions_ai_act = /ai\s*act|artificial intelligence act|eu.*2024.*1689|regulation.*ai/i.test(allText);
 
     // Responsible AI page
@@ -288,12 +293,21 @@
 
   const parseModelCard = ($) => {
     if (!$) {
-      return { has_model_card: false, has_limitations: false, has_bias_info: false, has_training_data: false, has_evaluation: false };
+      return {
+        has_model_card: false, has_limitations: false,
+        has_bias_info: false, has_training_data: false,
+        has_evaluation: false,
+      };
     }
     const text = $.text().toLowerCase();
+    // eslint-disable-next-line max-len
     const hasModelCard = /model\s*card|model\s*documentation|technical\s*report|system\s*card|model\s*spec|model\s*overview|safety\s*report/i.test(text);
     if (!hasModelCard) {
-      return { has_model_card: false, has_limitations: false, has_bias_info: false, has_training_data: false, has_evaluation: false };
+      return {
+        has_model_card: false, has_limitations: false,
+        has_bias_info: false, has_training_data: false,
+        has_evaluation: false,
+      };
     }
     return {
       has_model_card: true,
@@ -352,7 +366,9 @@
     if (!$) return { has_cookie_consent: false, has_public_api: false };
     const html = $.html().toLowerCase();
     return {
+      // eslint-disable-next-line max-len
       has_cookie_consent: /cookie.consent|cookie.banner|cookiebot|onetrust|cookie.policy|accept.*cookie/i.test(html),
+      // eslint-disable-next-line max-len
       has_public_api: /api\..*\.com|\/api\/v\d|developer.*doc|api.*reference|swagger|openapi/i.test(html),
     };
   };
@@ -377,7 +393,8 @@
     }
     const allText = pages.map((p) => p.text || '').join(' ').toLowerCase();
     return {
-      has_public_bias_audit: /bias\s*audit|algorithmic\s*audit|fairness\s*assessment/i.test(allText),
+      has_public_bias_audit:
+        /bias\s*audit|algorithmic\s*audit|fairness\s*assessment/i.test(allText),
       bias_audit_url: null,
       has_transparency_report: /transparency\s*report|transparency\s*center/i.test(allText),
       gdpr_enforcement_history: [],
@@ -402,7 +419,7 @@
 
   // ── Main Factory ──────────────────────────────────────────────────
 
-  return ({ fetch, cheerio, config, console }) => {
+  return ({ fetch, cheerio, config }) => {
     const scanConfig = (config && config.enrichment && config.enrichment.passiveScanner) || {};
     const ratePerSec = scanConfig.ratePerSec || 2;
     const timeoutMs = scanConfig.timeoutMs || 10000;
@@ -526,7 +543,7 @@
 
         // 2) Privacy — load once, parse, discard
         const privacy$ = privacyHtml ? cheerio.load(privacyHtml) : null;
-        const privacy_policy = parsePrivacyPolicy(privacy$);
+        const privacyPolicy = parsePrivacyPolicy(privacy$);
 
         // 3) Trust — combine text, load once
         const trustHtml = [homepageHtml, aboutHtml, responsibleAiHtml].filter(Boolean).join('');
@@ -536,26 +553,26 @@
         // 4) Model card — reuse responsibleAi if no model-card page
         const modelCard$ = modelCardHtml ? cheerio.load(modelCardHtml)
           : responsibleAiHtml ? cheerio.load(responsibleAiHtml) : null;
-        const model_card = parseModelCard(modelCard$);
+        const modelCardResult = parseModelCard(modelCard$);
 
         // 5) Content marking — use homepage$ (DOM already loaded)
-        const content_marking = parseContentMarking(homepage$);
+        const contentMarking = parseContentMarking(homepage$);
 
         // 6) Infra — use homepage$ (DOM already loaded)
         const infra = parseInfraSignals(homepage$);
 
         // 7) Company size — combine text, load once
         const aboutOrHome$ = aboutHtml ? cheerio.load(aboutHtml) : homepage$;
-        const estimated_company_size = estimateCompanySize(aboutOrHome$);
+        const estimatedCompanySize = estimateCompanySize(aboutOrHome$);
 
         // 8) Web search — text-only from pagesData
-        const web_search = extractWebSearchSignals(homepage$, pagesData);
+        const webSearch = extractWebSearchSignals(homepage$, pagesData);
 
         // 9) Robots
         const robotsTxt = parseRobotsTxt(fetchedDocs['robots.txt'] || null);
 
         // Count successful fetches
-        const pages_fetched = pagesData.filter((p) => p.status === 200).length;
+        const pagesFetched = pagesData.filter((p) => p.status === 200).length;
 
         // Clear heavy references to aid GC
         for (const p of pagesData) { p.text = null; }
@@ -563,15 +580,15 @@
 
         return {
           disclosure,
-          privacy_policy,
+          privacy_policy: privacyPolicy,
           trust,
-          model_card,
-          content_marking,
+          model_card: modelCardResult,
+          content_marking: contentMarking,
           robots_txt: robotsTxt,
           infra,
-          social: { estimated_company_size },
-          web_search,
-          pages_fetched,
+          social: { estimated_company_size: estimatedCompanySize },
+          web_search: webSearch,
+          pages_fetched: pagesFetched,
           scanned_at: new Date().toISOString(),
         };
       },

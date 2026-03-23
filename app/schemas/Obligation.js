@@ -58,4 +58,4 @@
     enum: ['prohibited', 'high', 'gpai', 'limited', 'minimal'],
     required: false,
   },
-})
+});

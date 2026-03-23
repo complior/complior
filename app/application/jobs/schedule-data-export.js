@@ -143,7 +143,7 @@ async function exportAll({ db, console, writeFile }) {
   try {
     const { rows: meta } = await db.query('SELECT * FROM "RegulationMeta"');
     writeFile('data/regulations/regulation-meta.json', JSON.stringify(meta[0] ?? {}, null, 2));
-    console.log(`  ✅ RegulationMeta → data/regulations/regulation-meta.json`);
+    console.log('  ✅ RegulationMeta → data/regulations/regulation-meta.json');
     stats.files++;
   } catch (err) {
     console.error('  ❌ RegulationMeta export failed:', err.message);

@@ -208,7 +208,9 @@
           if (mediaApiConfig.type === 'openai-images') {
             imageBuffer = await generateOpenAIImage(fetch, mediaApiConfig, testPrompt, timeoutMs);
           } else if (mediaApiConfig.type === 'stability') {
-            imageBuffer = await generateStabilityImage(fetch, mediaApiConfig, testPrompt, timeoutMs);
+            imageBuffer = await generateStabilityImage(
+              fetch, mediaApiConfig, testPrompt, timeoutMs,
+            );
           }
 
           if (!imageBuffer) {

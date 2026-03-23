@@ -125,7 +125,7 @@
           const existingContent = parseJsonField(sectionResult.rows[0].content, {});
           const merged = mergeSection(existingContent, incoming);
           await db.query(
-            `UPDATE "FRIASection" SET "content" = $1 WHERE "fRIASectionId" = $2`,
+            'UPDATE "FRIASection" SET "content" = $1 WHERE "fRIASectionId" = $2',
             [JSON.stringify(merged), sectionResult.rows[0].fRIASectionId],
           );
         } else {

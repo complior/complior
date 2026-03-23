@@ -4,4 +4,4 @@
   weight: { type: 'decimal' },
   label: { type: 'string', length: { max: 100 } },
   regulation: { type: 'string', length: { max: 100 }, default: 'eu-ai-act' },
-})
+});

@@ -223,7 +223,7 @@ const MIGRATIONS = [
   `ALTER TABLE "FRIAAssessment"
    ADD COLUMN IF NOT EXISTS "organizationId" bigint REFERENCES "Organization"("id") ON DELETE CASCADE`,
   // Sprint 9: CLI sync — allow cli_import as classification method
-  `ALTER TABLE "RiskClassification" DROP CONSTRAINT IF EXISTS "RiskClassification_method_check"`,
+  'ALTER TABLE "RiskClassification" DROP CONSTRAINT IF EXISTS "RiskClassification_method_check"',
   `ALTER TABLE "RiskClassification" ADD CONSTRAINT "RiskClassification_method_check"
    CHECK ("method" IN ('rule_only', 'rule_plus_llm', 'cross_validated', 'cli_import'))`,
   // Sprint 9: Backfill ToolRequirements for tools with riskLevel but no requirements
@@ -244,12 +244,12 @@ const MIGRATIONS = [
      )
    ON CONFLICT DO NOTHING`,
   // Sprint 9: CLI ↔ SaaS passport parity — new AITool columns
-  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "framework" varchar(100)`,
-  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelProvider" varchar(100)`,
-  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelId" varchar(255)`,
-  `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "syncMetadata" jsonb`,
+  'ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "framework" varchar(100)',
+  'ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelProvider" varchar(100)',
+  'ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "modelId" varchar(255)',
+  'ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "syncMetadata" jsonb',
   // Sprint 9: FRIA sync — extend SyncHistory syncType enum
-  `ALTER TABLE "SyncHistory" DROP CONSTRAINT IF EXISTS "SyncHistory_syncType_check"`,
+  'ALTER TABLE "SyncHistory" DROP CONSTRAINT IF EXISTS "SyncHistory_syncType_check"',
   `ALTER TABLE "SyncHistory" ADD CONSTRAINT "SyncHistory_syncType_check"
    CHECK ("syncType" IN ('passport', 'scan', 'document', 'fria'))`,
   // Sprint 9 US-091: Unified Registry — lifecycle, source, autonomyLevel L1-L5
@@ -257,15 +257,15 @@ const MIGRATIONS = [
    CHECK ("lifecycle" IN ('active', 'suspended', 'decommissioned'))`,
   `ALTER TABLE "AITool" ADD COLUMN IF NOT EXISTS "source" varchar DEFAULT 'manual'
    CHECK ("source" IN ('manual', 'cli_scan', 'discovery', 'registry_autofill'))`,
-  `ALTER TABLE "AITool" DROP CONSTRAINT IF EXISTS "AITool_autonomyLevel_check"`,
+  'ALTER TABLE "AITool" DROP CONSTRAINT IF EXISTS "AITool_autonomyLevel_check"',
   `ALTER TABLE "AITool" ADD CONSTRAINT "AITool_autonomyLevel_check"
    CHECK ("autonomyLevel" IN ('L1', 'L2', 'L3', 'L4', 'L5',
      'advisory', 'semi_autonomous', 'autonomous'))`,
-  `UPDATE "AITool" SET "autonomyLevel" = 'L1' WHERE "autonomyLevel" = 'advisory'`,
-  `UPDATE "AITool" SET "autonomyLevel" = 'L3' WHERE "autonomyLevel" = 'semi_autonomous'`,
-  `UPDATE "AITool" SET "autonomyLevel" = 'L4' WHERE "autonomyLevel" = 'autonomous'`,
+  'UPDATE "AITool" SET "autonomyLevel" = \'L1\' WHERE "autonomyLevel" = \'advisory\'',
+  'UPDATE "AITool" SET "autonomyLevel" = \'L3\' WHERE "autonomyLevel" = \'semi_autonomous\'',
+  'UPDATE "AITool" SET "autonomyLevel" = \'L4\' WHERE "autonomyLevel" = \'autonomous\'',
   // Sprint 9 US-091: Make autonomyLevel nullable (tools from scan may not have it)
-  `ALTER TABLE "AITool" ALTER COLUMN "autonomyLevel" DROP NOT NULL`,
+  'ALTER TABLE "AITool" ALTER COLUMN "autonomyLevel" DROP NOT NULL',
   // Sprint 9: Backfill source for CLI-synced tools
   `UPDATE "AITool" SET "source" = 'cli_scan'
    WHERE "syncMetadata" IS NOT NULL AND "source" = 'manual'`,

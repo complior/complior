@@ -9,7 +9,7 @@
       .replace(/'/g, '&#x27;');
   },
 
-  renderExecutiveSummary: function (orgName, summaryText, generatedAt) {
+  renderExecutiveSummary: function(orgName, summaryText, generatedAt) {
     const esc = this._escapeHtml;
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       body{font-family:'Helvetica Neue',Arial,sans-serif;margin:40px;color:#1a1a2e;line-height:1.6;}
@@ -25,7 +25,7 @@
     </body></html>`;
   },
 
-  renderObligationMatrix: function (orgName, matrixHtml, generatedAt) {
+  renderObligationMatrix: function(orgName, matrixHtml, generatedAt) {
     const esc = this._escapeHtml;
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       body{font-family:'Helvetica Neue',Arial,sans-serif;margin:40px;color:#1a1a2e;}
@@ -42,7 +42,7 @@
     </body></html>`;
   },
 
-  renderAIRegistry: function (orgName, tools, generatedAt) {
+  renderAIRegistry: function(orgName, tools, generatedAt) {
     const esc = this._escapeHtml;
     let rows = '';
     for (const tool of tools) {

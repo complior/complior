@@ -86,14 +86,14 @@
             scorer: domain.registry['registry-scorer'](scorerData),
           });
 
-          console.log(`✅ Registry refresh job completed:`, result);
+          console.log('✅ Registry refresh job completed:', result);
 
           return {
             success: true,
             ...result,
           };
         } catch (error) {
-          console.error(`❌ Registry refresh job failed:`, error);
+          console.error('❌ Registry refresh job failed:', error);
           throw error; // pg-boss will retry
         }
       });
@@ -111,7 +111,7 @@
         scheduled: true,
       };
     } catch (error) {
-      console.error(`❌ Failed to schedule registry refresh:`, error);
+      console.error('❌ Failed to schedule registry refresh:', error);
       throw error;
     }
   },
@@ -130,7 +130,7 @@
 
       return { jobId };
     } catch (error) {
-      console.error(`❌ Failed to trigger manual refresh:`, error);
+      console.error('❌ Failed to trigger manual refresh:', error);
       throw error;
     }
   },
