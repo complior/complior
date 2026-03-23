@@ -41,26 +41,26 @@
       severityPoints: { critical: 15, high: 10, medium: 5, low: 2 },
 
       statusScores: {
-        met_verified: 100,
-        met_unverified: 75,
-        met_low_confidence: 65,
-        partially_met_high: 60,
-        partially_met: 50,
-        partially_met_low: 40,
+        metVerified: 100,
+        metUnverified: 75,
+        metLowConfidence: 65,
+        partiallyMetHigh: 60,
+        partiallyMet: 50,
+        partiallyMetLow: 40,
         unknown: 15,
-        not_met: 0,
+        notMet: 0,
       },
 
       urgencyMultipliers: {
-        overdue_1year: 1.5,
-        overdue_6months: 1.3,
+        overdue1year: 1.5,
+        overdue6months: 1.3,
         overdue: 1.15,
-        approaching_180days: 1.1,
+        approaching180days: 1.1,
         distant: 1.0,
       },
 
       sectorMultipliers: {
-        matching_sector: 1.25,
+        matchingSector: 1.25,
         default: 1.0,
         sectors: ['HR', 'FIN', 'MED', 'EDU', 'BIO', 'LAW'],
       },
