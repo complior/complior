@@ -65,11 +65,6 @@ jobs:
 
             echo "=== Restart backend ==="
             docker compose up -d --no-deps backend
-            sleep 10
-            echo "=== Container logs after start ==="
-            docker logs complior-backend --tail=50 || true
-            echo "=== Container status ==="
-            docker inspect --format='{{.State.Status}} health={{.State.Health.Status}}' complior-backend || true
 
             echo "=== Waiting for healthy (90s) ==="
             timeout 90 sh -c 'until docker inspect --format="{{.State.Health.Status}}" complior-backend 2>/dev/null | grep -q healthy; do sleep 5; done' || {
@@ -87,10 +82,14 @@ jobs:
             echo "=== Done: ${{ github.sha }} ==="
 
       - name: Smoke test
-        run: |
-          sleep 10
-          curl -sf https://api.complior.ai/health || exit 1
-          echo "Smoke test passed"
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            curl -sf http://127.0.0.1:8000/health || exit 1
+            echo "Smoke test passed"
 
       - name: Rollback on failure
         if: failure()
