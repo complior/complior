@@ -455,20 +455,30 @@ const seedCourses = async (client) => {
   console.log(`  Seeded ${courses.length} courses with modules`);
 };
 
+const toSlug = (name) => name
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '');
+
 const seedRegistryTools = async (client) => {
   const tools = require(path.join(SEEDS_DIR, 'registry-tools.js'));
   for (const tool of tools) {
+    const slug = toSlug(tool.name);
     await client.query(
       `INSERT INTO "RegistryTool"
-       ("name", "provider", "category", "riskLevel",
-       "description", "websiteUrl", "vendorCountry",
-       "dataResidency", "capabilities", "jurisdictions",
+       ("slug", "name", "provider", "category",
+       "riskLevel", "description", "websiteUrl",
+       "vendorCountry", "dataResidency",
+       "capabilities", "jurisdictions",
        "detectionPatterns", "evidence", "active")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       VALUES ($1, $2, $3, $4, $5, $6, $7,
+       $8, $9, $10, $11, $12, $13, $14)
        ON CONFLICT ("name") DO NOTHING`,
-      [tool.name, JSON.stringify(tool.provider), tool.category, tool.riskLevel,
-        tool.description, tool.websiteUrl, tool.vendorCountry,
-        tool.dataResidency, JSON.stringify(tool.capabilities),
+      [slug, tool.name,
+        JSON.stringify(tool.provider), tool.category,
+        tool.riskLevel, tool.description,
+        tool.websiteUrl, tool.vendorCountry,
+        tool.dataResidency,
+        JSON.stringify(tool.capabilities),
         JSON.stringify(tool.jurisdictions),
         JSON.stringify(tool.detectionPatterns),
         JSON.stringify(tool.evidence), tool.active],
@@ -482,7 +492,7 @@ const seedObligations = async (client) => {
   for (const obl of obligations) {
     await client.query(
       `INSERT INTO "Obligation"
-       ("code", "regulation", "name", "description",
+       ("code", "regulation", "title", "description",
        "articleReference", "riskLevel", "category",
        "checkCriteria", "sortOrder")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

@@ -5,10 +5,10 @@
   slug: { type: 'string', length: { max: 100 }, unique: true },
 
   // Core fields
-  name: { type: 'string', length: { max: 255 } },
+  name: { type: 'string', length: { max: 255 }, unique: true },
   provider: { type: 'json' }, // { name: string, website: string }
   website: { type: 'string', length: { max: 500 }, required: false },
-  categories: { type: 'json' }, // array: ['chatbot', 'foundation-model', ...]
+  categories: { type: 'json', required: false }, // array: ['chatbot', 'foundation-model', ...]
   description: { type: 'text', required: false },
 
   // Source tracking
