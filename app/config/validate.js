@@ -44,7 +44,7 @@ const validate = () => {
     warnings.push('No LLM API key set (MISTRAL_API_KEY or OPENROUTER_API_KEY) — AI draft generation disabled');
   }
 
-  return { missing, warnings };
+  return { warnings };
 };
 
 module.exports = validate;
