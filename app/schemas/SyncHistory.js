@@ -8,4 +8,4 @@
   toolSlug: { type: 'string' },
   conflicts: { type: 'json', required: false },
   metadata: { type: 'json', required: false },
-})
+});

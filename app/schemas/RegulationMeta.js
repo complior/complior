@@ -12,4 +12,4 @@
   keyDefinitions: { type: 'json', required: false },
   roles: { type: 'json', required: false },
   classificationQuestions: { type: 'json', required: false },
-})
+});

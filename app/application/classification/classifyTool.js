@@ -94,7 +94,8 @@
       complianceStatus: 'in_progress',
     });
 
-    // 10. Map requirements (inlined — cannot cross-reference application layer siblings in VM context)
+    // 10. Map requirements (inlined — cannot cross-reference
+    // application layer siblings in VM context)
     const LEVEL_REQUIREMENTS = {
       minimal: ['minimal'],
       limited: ['minimal', 'limited'],

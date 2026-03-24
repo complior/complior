@@ -9,4 +9,4 @@
     enum: ['prohibited', 'high', 'gpai', 'limited', 'minimal'],
   },
   description: { type: 'text', required: false },
-})
+});

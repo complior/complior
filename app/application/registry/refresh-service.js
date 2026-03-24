@@ -105,7 +105,9 @@
             // Parse existing evidence if stored as string
             let existingEvidence = tool.evidence || {};
             if (typeof existingEvidence === 'string') {
-              try { existingEvidence = JSON.parse(existingEvidence); } catch { existingEvidence = {}; }
+              try {
+                existingEvidence = JSON.parse(existingEvidence);
+              } catch { existingEvidence = {}; }
             }
 
             const evidence = { ...existingEvidence };
@@ -169,7 +171,7 @@
 
             // 4. Determine new level
             let newLevel = tool.level;
-            const hasPassiveScan = !!evidence.passive_scan;
+            const hasPassiveScan = Boolean(evidence.passive_scan);
             const hasLlmTests = evidence.llm_tests && evidence.llm_tests.length > 0;
             const hasMediaTests = evidence.media_tests && evidence.media_tests.length > 0;
 
@@ -191,17 +193,21 @@
             if (evidenceAnalyzer && scorer) {
               try {
                 const fullTool = await db.query(
-                  `SELECT * FROM "RegistryTool" WHERE slug = $1`,
+                  'SELECT * FROM "RegistryTool" WHERE slug = $1',
                   [tool.slug],
                 );
                 if (fullTool.rows.length > 0) {
                   const toolData = fullTool.rows[0];
                   // Parse evidence if needed
                   if (typeof toolData.evidence === 'string') {
-                    try { toolData.evidence = JSON.parse(toolData.evidence); } catch { /* keep as-is */ }
+                    try {
+                      toolData.evidence = JSON.parse(toolData.evidence);
+                    } catch { /* keep as-is */ }
                   }
                   if (typeof toolData.assessments === 'string') {
-                    try { toolData.assessments = JSON.parse(toolData.assessments); } catch { /* keep as-is */ }
+                    try {
+                      toolData.assessments = JSON.parse(toolData.assessments);
+                    } catch { /* keep as-is */ }
                   }
 
                   const analysisResult = evidenceAnalyzer.analyze(toolData);
@@ -209,7 +215,10 @@
 
                   // v3: store score (even null), coverage, transparencyGrade, algorithm
                   const scoreVal = scoreResult.score;
-                  const coverageVal = scoreResult.coverage != null ? scoreResult.coverage : 0;
+                  const coverageVal = (
+                    scoreResult.coverage !== null
+                    && scoreResult.coverage !== undefined
+                  ) ? scoreResult.coverage : 0;
                   const tGrade = scoreResult.transparencyGrade || null;
 
                   await db.query(

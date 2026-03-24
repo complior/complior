@@ -6,4 +6,4 @@
   requestCount: { type: 'number', default: 0 },
   bytesTransferred: { type: 'number', default: 0 },
   naturalKey: { unique: ['apiKey', 'usageDate'] },
-})
+});

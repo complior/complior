@@ -13,7 +13,7 @@
    * Initialize and register the enrichment job
    * @param {Object} ctx - { pgboss, domain, console, db, config }
    */
-  async init({ pgboss, domain, application, console, db, config }) {
+  async init({ pgboss, application, console, db, config }) {
     const jobName = 'enrich-detection-patterns';
 
     // Every Wednesday at 03:00 UTC (0 3 * * 3)

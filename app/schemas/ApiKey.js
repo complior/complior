@@ -10,4 +10,4 @@
   lastUsedAt: { type: 'datetime', required: false },
   expiresAt: { type: 'datetime', required: false },
   active: { type: 'boolean', default: true },
-})
+});

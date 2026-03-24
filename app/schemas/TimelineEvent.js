@@ -8,4 +8,4 @@
   whatApplies: { type: 'text', required: false },
   status: { enum: ['upcoming', 'in-force', 'completed'] },
   monitoringUrl: { type: 'string', length: { max: 500 }, required: false },
-})
+});

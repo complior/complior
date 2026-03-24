@@ -81,14 +81,14 @@
 
     // Simple dot-path: "disclosure.visible"
     const val = getNestedValue(ps, signalExpr);
-    return !!val;
+    return Boolean(val);
   };
 
   const getNestedValue = (obj, path) => {
     const parts = path.split('.');
     let current = obj;
     for (const part of parts) {
-      if (current == null || typeof current !== 'object') return undefined;
+      if (current === null || typeof current !== 'object') return undefined;
       current = current[part];
     }
     return current;
@@ -109,7 +109,9 @@
    *
    * @param {object} tool - Registry tool with evidence.passive_scan
    * @param {string|null} [roleOverride] - Force a specific role checklist
-   * @returns {object} { grade, score, total, percent, weightedPercent, requiredFound, requiredTotal, bpFound, bpTotal, items, checklist, gradedAt }
+   * @returns {object} { grade, score, total, percent,
+   *   weightedPercent, requiredFound, requiredTotal,
+   *   bpFound, bpTotal, items, checklist, gradedAt }
    */
   const grade = (tool, roleOverride) => {
     const ps = (tool.evidence && tool.evidence.passive_scan) || {};

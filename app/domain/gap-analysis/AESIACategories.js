@@ -95,15 +95,15 @@
     },
   ],
 
-  getAll: function () {
+  getAll: function() {
     return this.categories;
   },
 
-  getById: function (categoryId) {
+  getById: function(categoryId) {
     return this.categories.find((c) => c.id === categoryId) || null;
   },
 
-  getAllRequirementCodes: function () {
+  getAllRequirementCodes: function() {
     const codes = new Set();
     for (const cat of this.categories) {
       for (const code of cat.requiredRequirementCodes) {
@@ -115,7 +115,7 @@
 
   // Evaluate a single category against its tool requirements
   // toolRequirements: array of { code, status, progress, estimatedEffortHours }
-  evaluate: function (category, toolRequirements) {
+  evaluate: function(category, toolRequirements) {
     const matchingReqs = toolRequirements.filter(
       (tr) => category.requiredRequirementCodes.includes(tr.code),
     );
@@ -200,7 +200,7 @@
   },
 
   // Build prioritised action plan from evaluated categories
-  buildActionPlan: function (evaluatedCategories) {
+  buildActionPlan: function(evaluatedCategories) {
     const URGENCY_WEIGHT = { red: 3, yellow: 2, green: 1 };
     const IMPACT_WEIGHT = {
       risk_management: 5,

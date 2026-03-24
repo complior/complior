@@ -25,7 +25,7 @@
 
   pollToken: async ({ deviceCode }) => {
     const result = await db.query(
-      `SELECT * FROM "DeviceCode" WHERE "deviceCode" = $1`,
+      'SELECT * FROM "DeviceCode" WHERE "deviceCode" = $1',
       [deviceCode],
     );
     if (result.rows.length === 0) {
@@ -36,7 +36,7 @@
 
     if (new Date(dc.expiresAt) < new Date()) {
       await db.query(
-        `UPDATE "DeviceCode" SET "status" = 'expired' WHERE "deviceCodeId" = $1`,
+        'UPDATE "DeviceCode" SET "status" = \'expired\' WHERE "deviceCodeId" = $1',
         [dc.deviceCodeId],
       );
       return { error: 'expired_token' };
@@ -70,7 +70,7 @@
       );
 
       await db.query(
-        `UPDATE "DeviceCode" SET "status" = 'used' WHERE "deviceCodeId" = $1`,
+        'UPDATE "DeviceCode" SET "status" = \'used\' WHERE "deviceCodeId" = $1',
         [dc.deviceCodeId],
       );
 

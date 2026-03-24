@@ -11,4 +11,4 @@
   scope: { type: 'string', default: 'sync:read sync:write' },
   expiresAt: { type: 'datetime' },
   authorizedAt: { type: 'datetime', required: false },
-})
+});

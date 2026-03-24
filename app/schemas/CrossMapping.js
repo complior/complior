@@ -7,4 +7,4 @@
   sourceObligationId: { type: 'string', length: { max: 50 }, required: false },
   targetObligationId: { type: 'string', length: { max: 50 }, required: false },
   relationship: { enum: ['equivalent', 'stricter', 'subset', 'superset'] },
-})
+});

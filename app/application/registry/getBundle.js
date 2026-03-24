@@ -6,18 +6,24 @@
       db.query('SELECT * FROM "ScoringRule" ORDER BY "regulation", "checkId"'),
     ]);
 
+    const tools = toolsResult.rows;
+    const obligations = obligationsResult.rows;
+    const scoringRules = rulesResult.rows;
+
+    // Hash only data (exclude generatedAt for stable ETags)
+    const dataContent = JSON.stringify({ tools, obligations, scoringRules });
+    const checksum = crypto
+      .createHash('md5').update(dataContent).digest('hex');
+    const etag = `"${checksum}"`;
+
     const bundle = {
       version: '1.0.0',
       generatedAt: new Date().toISOString(),
-      tools: toolsResult.rows,
-      obligations: obligationsResult.rows,
-      scoringRules: rulesResult.rows,
+      tools,
+      obligations,
+      scoringRules,
+      checksum,
     };
-
-    const content = JSON.stringify(bundle);
-    const checksum = crypto.createHash('md5').update(content).digest('hex');
-    bundle.checksum = checksum;
-    const etag = `"${checksum}"`;
 
     return { bundle, etag };
   },

@@ -132,7 +132,10 @@
     let score = 0;
     if (disclosure.visible) score += 15;
     if (privacy.mentions_ai && privacy.mentions_eu) score += 10;
-    const mcSections = [mc.has_limitations, mc.has_bias_info, mc.has_training_data, mc.has_evaluation].filter(Boolean).length;
+    const mcSections = [
+      mc.has_limitations, mc.has_bias_info,
+      mc.has_training_data, mc.has_evaluation,
+    ].filter(Boolean).length;
     if (mc.has_model_card && mcSections >= 3) score += 15;
     if (trust.has_responsible_ai_page) score += 10;
     if (trust.has_eu_ai_act_page) score += 15;
@@ -149,7 +152,10 @@
     const confidence = typeof obl.confidence === 'number' ? obl.confidence : null;
 
     if (status === 'met') {
-      if (obl.evidence_summary && confidence !== null && confidence >= 0.8) return STATUS_SCORES.met_verified;
+      if (
+        obl.evidence_summary
+        && confidence !== null && confidence >= 0.8
+      ) return STATUS_SCORES.met_verified;
       if (confidence !== null && confidence < 0.5) return STATUS_SCORES.met_low_confidence;
       if (obl.evidence_summary) return STATUS_SCORES.met_verified;
       return STATUS_SCORES.met_unverified;
@@ -191,7 +197,8 @@
             merged[obl.obligation_id] = { ...obl, evidence_summary: evidenceSummary };
             if (existing.evidence_summary && obl.evidence_summary) {
               // Both have evidence but disagree — penalty
-              merged[obl.obligation_id].confidence = (merged[obl.obligation_id].confidence || 0.5) * 0.8;
+              merged[obl.obligation_id].confidence =
+                (merged[obl.obligation_id].confidence || 0.5) * 0.8;
             }
           } else if (obl.evidence_summary && !existing.evidence_summary) {
             // Same or better status but new has evidence — take it
@@ -250,7 +257,9 @@
           // Otherwise: upgrade only, or higher confidence wins
           if (derivedConfidence > existingConfidence || (existingStatus === 'unknown' && derived.status !== 'unknown')) {
             const statusOrderMap = { unknown: 0, partially_met: 1, met: 2 };
-            const canUpgrade = (statusOrderMap[derived.status] ?? 0) >= (statusOrderMap[existingStatus] ?? 0);
+            const canUpgrade =
+              (statusOrderMap[derived.status] ?? 0)
+              >= (statusOrderMap[existingStatus] ?? 0);
 
             if (canUpgrade || derivedConfidence > existingConfidence) {
               merged[oblId] = {
@@ -327,14 +336,20 @@
         let providerName = null;
         if (tool.provider) {
           if (typeof tool.provider === 'string') {
-            try { providerName = JSON.parse(tool.provider).name; } catch { providerName = tool.provider; }
+            try {
+              providerName = JSON.parse(tool.provider).name;
+            } catch {
+              providerName = tool.provider;
+            }
           } else {
             providerName = tool.provider.name;
           }
         }
 
         // Step 2: Merge + enrich
-        const derivedOblMap = enrichedObligations ? enrichedObligations.derivedObligations || {} : {};
+        const derivedOblMap = enrichedObligations
+          ? enrichedObligations.derivedObligations || {}
+          : {};
         const merged = mergeObligations(assessment, derivedOblMap);
 
         // Step 3: Parent→Child cascade
@@ -353,7 +368,7 @@
 
           const status = obl.status || 'unknown';
           const baseScore = computeStatusScore(obl);
-          let severityWeight = SEVERITY_POINTS[meta.severity] || 2;
+          const severityWeight = SEVERITY_POINTS[meta.severity] || 2;
 
           // Deadline urgency (only for not_met/unknown)
           let urgencyMultiplier = 1.0;
@@ -370,7 +385,9 @@
           // Penalty multiplier
           const penaltyMultiplier = getPenaltyMultiplier(meta.penaltyForNonCompliance);
 
-          const effectiveSeverityWeight = severityWeight * urgencyMultiplier * sectorMultiplier * penaltyMultiplier;
+          const effectiveSeverityWeight =
+            severityWeight * urgencyMultiplier
+            * sectorMultiplier * penaltyMultiplier;
           const weightedScore = baseScore * effectiveSeverityWeight;
           const maxScore = 100 * effectiveSeverityWeight;
 
@@ -382,7 +399,11 @@
           if (obl.isBonus) counts.bonus++;
 
           if (!categoryGroups[meta.category]) {
-            categoryGroups[meta.category] = { earned: 0, max: 0, weight: weights[meta.category] || 0, obligations: [] };
+            categoryGroups[meta.category] = {
+              earned: 0, max: 0,
+              weight: weights[meta.category] || 0,
+              obligations: [],
+            };
           }
 
           // Always add to category math (unknowns count as 25/100)
@@ -444,7 +465,11 @@
         counts.assessed = counts.met + counts.partially_met + counts.not_met;
         const applicableAssessed = counts.assessed - counts.bonus;
         const coverageDenom = Math.max(applicableIds.length, 5);
-        const coverage = coverageDenom > 0 ? Math.min(100, Math.round((applicableAssessed / coverageDenom) * 100)) : 0;
+        const coverage = coverageDenom > 0
+          ? Math.min(100, Math.round(
+            (applicableAssessed / coverageDenom) * 100,
+          ))
+          : 0;
 
         // Compute transparency regardless
         const transparencyScore = computeTransparencySignals(ps);
@@ -513,7 +538,7 @@
         // Step 6: Weighted total
         let weightedSum = 0;
         let activeWeightSum = 0;
-        for (const [cat, cs] of Object.entries(categoryScores)) {
+        for (const [, cs] of Object.entries(categoryScores)) {
           const w = cs.weight;
           if (w > 0) {
             weightedSum += cs.percent * w;
@@ -585,7 +610,10 @@
         if (trust.has_eu_ai_act_page) { bonuses.euAiActPage = 3; evidenceBonus += 3; }
         if (trust.mentions_ai_act) { bonuses.aiActMention = 2; evidenceBonus += 2; }
 
-        const mcSections = [mc.has_limitations, mc.has_bias_info, mc.has_training_data, mc.has_evaluation].filter(Boolean).length;
+        const mcSections = [
+          mc.has_limitations, mc.has_bias_info,
+          mc.has_training_data, mc.has_evaluation,
+        ].filter(Boolean).length;
         if (mc.has_model_card && mcSections >= 3) { bonuses.modelCard = 3; evidenceBonus += 3; }
 
         if (privacy.training_opt_out && privacy.deletion_right && privacy.retention_specified) {
@@ -618,13 +646,19 @@
           o.derivedStatus === 'met' && (o.evidenceSignals.length > 0 || o.statusSource !== 'original'),
         ).length / Math.max(1, counts.met);
 
-        const hasDisclosure = !!(ps.disclosure && ps.disclosure.visible);
-        const hasResponsibleAiPage = !!trust.has_responsible_ai_page;
-        const privacyMentionsAi = !!privacy.mentions_ai;
-        const hasAnyEvidence = (enrichedObligations && enrichedObligations.evidenceQuality > 0) || false;
+        const hasDisclosure = Boolean(ps.disclosure && ps.disclosure.visible);
+        const hasResponsibleAiPage = Boolean(trust.has_responsible_ai_page);
+        const privacyMentionsAi = Boolean(privacy.mentions_ai);
+        const hasAnyEvidence = (
+          enrichedObligations
+          && enrichedObligations.evidenceQuality > 0
+        ) || false;
 
         let maturityKey = 'unaware';
-        if (bonuses.euAiActPage && bonuses.iso42001 && metRatioTotal >= 0.9 && !criticalCapApplied) {
+        if (
+          bonuses.euAiActPage && bonuses.iso42001
+          && metRatioTotal >= 0.9 && !criticalCapApplied
+        ) {
           maturityKey = 'exemplary';
         } else if (metAndPartialRatio >= 0.75 && !criticalCapApplied && evidenceRatio >= 0.6) {
           maturityKey = 'compliant';
@@ -687,8 +721,12 @@
           }
         }
 
-        const optimisticScore = optimisticMax > 0 ? Math.min(100, Math.round(optimisticEarned / optimisticMax)) : finalScore;
-        const pessimisticScore = pessimisticMax > 0 ? Math.max(0, Math.round(pessimisticEarned / pessimisticMax)) : finalScore;
+        const optimisticScore = optimisticMax > 0
+          ? Math.min(100, Math.round(optimisticEarned / optimisticMax))
+          : finalScore;
+        const pessimisticScore = pessimisticMax > 0
+          ? Math.max(0, Math.round(pessimisticEarned / pessimisticMax))
+          : finalScore;
 
         const confidenceInterval = {
           low: pessimisticScore,
@@ -709,12 +747,18 @@
         if ((ps.social || {}).estimated_company_size === 'enterprise') reputationScore += 0.5;
         if (certs.length >= 2) reputationScore += 1;
         if ((ws.eu_ai_act_media_mentions || 0) > 10) reputationScore += 0.5;
-        if (gdprHistory && gdprHistory.length > 0) reputationScore -= Math.min(gdprHistory.length, 2);
-        if (incidents && incidents.length > 0) reputationScore -= Math.min(incidents.length * 0.5, 1.5);
+        if (gdprHistory && gdprHistory.length > 0) {
+          reputationScore -= Math.min(gdprHistory.length, 2);
+        }
+        if (incidents && incidents.length > 0) {
+          reputationScore -= Math.min(incidents.length * 0.5, 1.5);
+        }
         reputationScore = Math.max(-3, Math.min(3, reputationScore));
         const reputationAdj = reputationScore * 0.05;
 
-        const confidence = Math.max(0.05, Math.min(1.0, baseConfidence + evidenceAdj + reputationAdj));
+        const confidence = Math.max(
+          0.05, Math.min(1.0, baseConfidence + evidenceAdj + reputationAdj),
+        );
 
         return {
           score: finalScore,
@@ -737,7 +781,9 @@
           counts,
 
           evidenceQuality,
-          evidenceFreshness: enrichedObligations ? enrichedObligations.evidenceFreshness || 1.0 : 1.0,
+          evidenceFreshness: enrichedObligations
+            ? enrichedObligations.evidenceFreshness || 1.0
+            : 1.0,
           reputationScore: Math.round(reputationScore * 100) / 100,
 
           providerCorrelation: providerCorrelation || {
@@ -764,7 +810,7 @@
         for (const item of scoredTools) {
           const tool = item.tool || item;
           const score = item.score ?? item._score;
-          if (score == null) continue;
+          if (score === null || score === undefined) continue;
 
           const assessment = tool.assessments && tool.assessments['eu-ai-act'];
           const riskLevel = (assessment && assessment.risk_level) || tool.riskLevel || 'unknown';

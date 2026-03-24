@@ -15,7 +15,7 @@
     return {
       jurisdictionId,
       total: events.length,
-      events: events.map(e => ({
+      events: events.map((e) => ({
         eventId: e.eventId,
         phase: e.phase,
         date: e.date,

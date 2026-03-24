@@ -14,4 +14,4 @@
   expiresAt: { type: 'datetime', required: false },
   errorMessage: { type: 'string', required: false },
   createdAt: { type: 'datetime', default: 'now()' },
-})
+});

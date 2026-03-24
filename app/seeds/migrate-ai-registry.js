@@ -1,5 +1,5 @@
+'use strict';
 const fs = require('fs');
-const path = require('path');
 
 const SOURCE_FILE = '/home/openclaw/complior/engine/data/registry/all_tools.json';
 
@@ -81,7 +81,7 @@ module.exports = async ({ db }) => {
     }
   }
 
-  console.log(`\n✅ Миграция AI Registry завершена!`);
+  console.log('\n✅ Миграция AI Registry завершена!');
   console.log(`Добавлено: ${inserted}`);
   console.log(`Обновлено: ${updated}`);
   console.log(`Пропущено (ошибки): ${skipped}`);

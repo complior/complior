@@ -7,4 +7,4 @@
   language: { type: 'string', length: { max: 5 } },
   translation: { type: 'string', length: { max: 500 } },
   culturalNote: { type: 'text', required: false },
-})
+});

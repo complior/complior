@@ -6,7 +6,7 @@
     for (const detected of (scanData.toolsDetected || [])) {
       // Find or create tool
       const existing = await db.query(
-        `SELECT "aIToolId" FROM "AITool" WHERE "organizationId" = $1 AND LOWER("name") = LOWER($2) LIMIT 1`,
+        'SELECT "aIToolId" FROM "AITool" WHERE "organizationId" = $1 AND LOWER("name") = LOWER($2) LIMIT 1',
         [organizationId, detected.name],
       );
 

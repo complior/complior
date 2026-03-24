@@ -7,4 +7,4 @@
   question: { type: 'text' },
   answers: { type: 'json', required: false },
   isRoot: { type: 'boolean', default: false },
-})
+});

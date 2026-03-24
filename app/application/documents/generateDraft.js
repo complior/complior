@@ -72,7 +72,7 @@
   },
 
   // Actual LLM generation — called by pg-boss worker or fallback
-  processGeneration: async ({ documentId, sectionCode, userId, organizationId }) => {
+  processGeneration: async ({ documentId, sectionCode, organizationId }) => {
     const docResult = await db.query(
       `SELECT d."complianceDocumentId", d."documentType", d."status",
               t."name", t."vendorName", t."purpose", t."domain",
