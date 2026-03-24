@@ -64,7 +64,13 @@ jobs:
               ghcr.io/${{ github.repository_owner }}/complior-backend:latest
 
             echo "=== Restart backend ==="
-            docker compose up -d --no-deps --wait backend
+            docker compose up -d --no-deps backend
+            echo "=== Waiting for healthy (90s) ==="
+            timeout 90 sh -c 'until docker inspect --format="{{.State.Health.Status}}" complior-backend 2>/dev/null | grep -q healthy; do sleep 5; done' || {
+              echo "=== UNHEALTHY — Container logs ==="
+              docker logs complior-backend --tail=50
+              exit 1
+            }
 
             echo "=== Run migrations ==="
             docker compose exec -T backend node app/setup.js
