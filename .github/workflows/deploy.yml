@@ -82,14 +82,10 @@ jobs:
             echo "=== Done: ${{ github.sha }} ==="
 
       - name: Smoke test
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            curl -sf http://127.0.0.1:8000/health || exit 1
-            echo "Smoke test passed"
+        run: |
+          sleep 10
+          curl -sf https://api.complior.ai/health || exit 1
+          echo "Smoke test passed"
 
       - name: Rollback on failure
         if: failure()
