@@ -42,7 +42,13 @@ pub(crate) fn resolve_client(config: &TuiConfig) -> EngineClient {
 /// retries up to 25 times (~6.4s) to allow cold start.
 /// Without a PID, retries only 5 times (~3.1s) before auto-launching.
 pub(crate) async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
-    let project_path = std::env::current_dir().unwrap_or_default();
+    ensure_engine_for(config, &std::env::current_dir().unwrap_or_default()).await
+}
+
+/// Like `ensure_engine` but with an explicit project path (used by commands
+/// that accept a `[path]` argument, so the engine writes files to the correct directory).
+pub(crate) async fn ensure_engine_for(config: &TuiConfig, project_path: &std::path::Path) -> Result<EngineClient, i32> {
+    let project_path = project_path.to_path_buf();
     let daemon_exists = daemon::find_running_daemon(&project_path).is_some();
 
     // First try: check for existing daemon
@@ -85,7 +91,7 @@ pub(crate) async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i3
     if let Some(root) = engine_root {
         eprintln!("Engine not responding. Starting engine...");
         let pid_path = daemon::pid_file_path(&project_path);
-        let mut mgr = EngineManager::new(&root);
+        let mut mgr = EngineManager::new(&root).with_project_path(&project_path);
         match mgr.start_with_pid(&pid_path, false) {
             Ok(port) => {
                 let new_client = EngineClient::from_url(&format!("http://127.0.0.1:{port}"));

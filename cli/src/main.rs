@@ -91,8 +91,8 @@ async fn main() -> color_eyre::Result<()> {
             let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .parent()
                 .unwrap_or_else(|| std::path::Path::new("."));
-            let mut mgr = EngineManager::new(workspace_root);
             let project_path = std::env::current_dir().unwrap_or_default();
+            let mut mgr = EngineManager::new(workspace_root).with_project_path(&project_path);
             // Read-only commands (doctor) skip PID file to avoid creating .complior/
             let start_result = if cli::wants_pid_file(&parsed_cli) {
                 let pid_path = daemon::pid_file_path(&project_path);
@@ -267,7 +267,7 @@ async fn main() -> color_eyre::Result<()> {
             EngineManager::external(info.port)
         } else {
             // Auto-launch with PID file so other instances can discover it
-            let mut mgr = EngineManager::new(workspace_root);
+            let mut mgr = EngineManager::new(workspace_root).with_project_path(&project_path);
             let pid_path = daemon::pid_file_path(&project_path);
             match mgr.start_with_pid(&pid_path, config.watch_on_start) {
                 Ok(port) => {

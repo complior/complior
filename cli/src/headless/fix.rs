@@ -108,7 +108,7 @@ pub async fn run_headless_fix(
         }
     } else {
         // Apply all fixes via engine
-        let body = serde_json::json!({ "useAi": use_ai });
+        let body = serde_json::json!({ "useAi": use_ai, "projectPath": scan_path });
         if use_ai && !json {
             println!("AI-enriched mode: documents will be enhanced with LLM-generated content\n");
         }

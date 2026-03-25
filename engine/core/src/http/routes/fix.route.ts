@@ -111,6 +111,10 @@ export const createFixRoute = (deps: FixRouteDeps) => {
   app.post('/fix/apply-all', async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const useAi = typeof body === 'object' && body !== null && 'useAi' in body ? Boolean(body.useAi) : false;
+    // Allow CLI to override project path for file writes
+    if (typeof body === 'object' && body !== null && typeof body.projectPath === 'string' && body.projectPath) {
+      fixService.overrideProjectPath(body.projectPath);
+    }
     const results = await fixService.applyAll(useAi);
     const applied = results.filter((r) => r.applied).length;
     const failed = results.filter((r) => !r.applied).length;

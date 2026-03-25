@@ -29,6 +29,7 @@ pub struct EngineManager {
     pub status: EngineProcessStatus,
     restart_count: u8,
     engine_dir: PathBuf,
+    project_path: Option<PathBuf>,
 }
 
 const MAX_RESTARTS: u8 = 3;
@@ -43,7 +44,14 @@ impl EngineManager {
             status: EngineProcessStatus::NotStarted,
             restart_count: 0,
             engine_dir: workspace_root.join("engine").join("core"),
+            project_path: None,
         }
+    }
+
+    /// Set the project path that the engine should operate on.
+    pub fn with_project_path(mut self, path: &Path) -> Self {
+        self.project_path = Some(path.to_path_buf());
+        self
     }
 
     /// Create a manager for external mode (`--engine-url` provided).
@@ -54,6 +62,7 @@ impl EngineManager {
             status: EngineProcessStatus::External,
             restart_count: 0,
             engine_dir: PathBuf::new(),
+            project_path: None,
         }
     }
 
@@ -88,6 +97,9 @@ impl EngineManager {
 
         if let Some(path) = pid_path {
             cmd.env("COMPLIOR_PID_FILE", path.to_string_lossy().as_ref());
+        }
+        if let Some(ref pp) = self.project_path {
+            cmd.env("COMPLIOR_PROJECT_PATH", pp.to_string_lossy().as_ref());
         }
         if watch {
             cmd.env("COMPLIOR_WATCH", "1");

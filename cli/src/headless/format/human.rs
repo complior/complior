@@ -435,9 +435,10 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
         Some(art) => format!("{art} · {label}"),
         None => label,
     };
+    let _fid = fid; // retained for JSON/SARIF; hidden from human output
     o.push_str(&format!(
-        "      {}  {}  {}  {}  {}\n",
-        dim(&fid), icon, sev, dim(&format!("[{layer_tag}]")), header_detail,
+        "      {}  {}  {}  {}\n",
+        icon, sev, dim(&format!("[{layer_tag}]")), header_detail,
     ));
     o.push_str(&format!("         {}\n", f.message));
 

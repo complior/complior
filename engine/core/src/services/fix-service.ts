@@ -49,7 +49,10 @@ export interface FixServiceDeps {
 }
 
 export const createFixService = (deps: FixServiceDeps) => {
-  const { fixer, scanService, events, getProjectPath, getLastScanResult, loadTemplate, undoService } = deps;
+  const { fixer, scanService, events, getProjectPath: _getProjectPath, getLastScanResult, loadTemplate, undoService } = deps;
+
+  let projectPathOverride: string | null = null;
+  const getProjectPath = () => projectPathOverride ?? _getProjectPath();
 
   const backupFile = async (filePath: string): Promise<string> => {
     const projectPath = getProjectPath();
@@ -513,7 +516,9 @@ export const createFixService = (deps: FixServiceDeps) => {
     return results;
   };
 
-  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate });
+  const overrideProjectPath = (path: string) => { projectPathOverride = path; };
+
+  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate, overrideProjectPath });
 };
 
 export type FixService = ReturnType<typeof createFixService>;

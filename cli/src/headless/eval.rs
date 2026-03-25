@@ -632,7 +632,7 @@ fn print_phase_header(phase: &str, total: u64) {
 
 /// Print a single test result line with optional severity and timeout/error handling.
 fn print_test_line(
-    test_id: &str,
+    _test_id: &str,
     name: &str,
     verdict: &str,
     latency_ms: u64,
@@ -642,17 +642,17 @@ fn print_test_line(
     // Phase 9a: timeout handling
     if latency_ms > 30000 {
         let timeout_str = format!("{:.1}s", latency_ms as f64 / 1000.0);
-        println!("    {}  {} TIMEOUT ({})  {}",
+        println!("    {}  TIMEOUT ({})  {}",
             yellow(if use_unicode() { "▲" } else { "!" }),
-            dim(test_id), timeout_str, name);
+            timeout_str, name);
         return;
     }
 
     // Phase 9b: LLM error display
     if verdict == "error" && method == "llm-judge" {
-        println!("    {}  {} LLM ERROR  {}",
+        println!("    {}  LLM ERROR  {}",
             yellow(if use_unicode() { "▲" } else { "!" }),
-            dim(test_id), name);
+            name);
         return;
     }
 
@@ -666,7 +666,7 @@ fn print_test_line(
 
     // Compact format for passes: icon + id + name (no padding, no latency)
     if verdict == "pass" || verdict == "skip" {
-        println!("    {}  {} {}", icon, dim(test_id), dim(&truncate_str(name, 50)));
+        println!("    {}  {}", icon, dim(&truncate_str(name, 50)));
         return;
     }
 
@@ -680,7 +680,7 @@ fn print_test_line(
         _ => String::new(),
     };
 
-    println!("    {}  {} {}{} {}", icon, dim(test_id), name, sev_tag, dim(&latency));
+    println!("    {}  {}{} {}", icon, name, sev_tag, dim(&latency));
 }
 
 /// Erase previous line using ANSI: move up 1 + clear entire line.

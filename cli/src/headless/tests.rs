@@ -688,12 +688,12 @@ mod tests {
     // ── New tests for CLI output spec compliance ──────────────────
 
     #[test]
-    fn format_human_finding_ids() {
+    fn format_human_finding_ids_hidden() {
         let result = mock_scan_result();
         let text = format_human(&result, &default_opts());
-        // Finding IDs should be present (F-001, F-002)
-        assert!(text.contains("F-001"));
-        assert!(text.contains("F-002"));
+        // Finding IDs are hidden from human output (kept in JSON/SARIF)
+        assert!(!text.contains("F-001"));
+        assert!(!text.contains("F-002"));
     }
 
     #[test]
