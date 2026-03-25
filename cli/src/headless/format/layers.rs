@@ -5,6 +5,13 @@ use crate::types::{CheckResultType, Finding, Severity};
 // ── Constants ────────────────────────────────────────────────────
 
 pub(crate) const SEP_WIDTH: usize = 65;
+
+/// Dynamic separator width: terminal width capped at 80, falling back to SEP_WIDTH.
+pub(crate) fn display_width() -> usize {
+    crossterm::terminal::size()
+        .map(|(cols, _)| (cols as usize).min(80))
+        .unwrap_or(SEP_WIDTH)
+}
 pub(crate) const BAR_WIDTH: usize = 20;
 /// Maximum medium-severity findings to display.
 pub(crate) const MAX_MEDIUM: usize = 5;
@@ -119,6 +126,38 @@ fn compute_layer_status(findings: &[&Finding]) -> (&'static str, String) {
         ("FAIL", format!("{fail_count} issues found"))
     } else {
         ("WARN", format!("{fail_count} issues found"))
+    }
+}
+
+/// Multi-key finding sort: severity → layer order → confidence (desc).
+pub(crate) fn sort_findings_full(findings: &mut [&Finding]) {
+    findings.sort_by(|a, b| {
+        a.severity
+            .sort_key()
+            .cmp(&b.severity.sort_key())
+            .then_with(|| layer_order(&a.check_id).cmp(&layer_order(&b.check_id)))
+            .then_with(|| {
+                let ca = a.confidence.unwrap_or(0.0);
+                let cb = b.confidence.unwrap_or(0.0);
+                cb.partial_cmp(&ca).unwrap_or(std::cmp::Ordering::Equal)
+            })
+    });
+}
+
+fn layer_order(check_id: &str) -> u8 {
+    match infer_layer_tag(check_id) {
+        "L1" => 0,
+        "L2" => 1,
+        "L3" => 2,
+        "L4" => 3,
+        "NHI" => 4,
+        "CROSS" => 5,
+        "GPAI" => 6,
+        "L5" => 7,
+        "L4+" => 8,
+        "L3+" => 9,
+        "NHI+" => 10,
+        _ => 11,
     }
 }
 

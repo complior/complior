@@ -8,6 +8,7 @@
 
 import type { AttackProbe } from '../../data/security/attack-probes.js';
 import type { EvalTestSources } from './eval-runner.js';
+import { calculateScore } from './verdict-utils.js';
 
 /** The shape the eval runner expects for security probes. */
 export type SecurityProbe = EvalTestSources['getSecurityProbes'] extends () => readonly (infer T)[] ? T : never;
@@ -125,11 +126,11 @@ export const calculateEvalSecurityScore = (
 
   for (const cat of Object.keys(byCategory)) {
     const c = byCategory[cat]!;
-    c.score = Math.round((c.passed / c.total) * 100);
+    c.score = calculateScore(c.passed, c.total);
   }
 
   return Object.freeze({
-    overall: Math.round((totalPassed / results.length) * 100),
+    overall: calculateScore(totalPassed, results.length),
     byCategory: Object.freeze(byCategory),
   });
 };

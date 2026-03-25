@@ -150,13 +150,7 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
         }
     }
 
-    let scan_path = path.map_or_else(
-        || std::env::current_dir()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string(),
-        String::from,
-    );
+    let scan_path = super::common::resolve_project_path(path);
 
     // First scan, then generate report
     match client.scan(&scan_path).await {
@@ -189,51 +183,101 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
     }
 }
 
-/// Initialize .complior/ configuration directory.
+/// Initialize .complior/ configuration directory and auto-discover AI agents.
 ///
 /// Creates the project marker directory (like `git init` creates `.git/`),
 /// `project.toml` (TUI config), and `profile.json` (engine config).
-pub fn run_init(path: Option<&str>) {
-    let base = path.map_or_else(
-        || std::env::current_dir().unwrap_or_default(),
-        std::path::PathBuf::from,
-    );
+/// Then starts the engine and runs agent discovery to auto-create passports.
+pub async fn run_init(path: Option<&str>, config: &TuiConfig) -> i32 {
+    use super::common::{ensure_engine, resolve_project_path_buf};
+
+    let base = resolve_project_path_buf(path);
     let complior_dir = base.join(".complior");
+    let profile_path = complior_dir.join("profile.json");
+    let project_toml_path = complior_dir.join("project.toml");
 
-    if complior_dir.exists() {
-        println!(".complior/ already exists at {}", complior_dir.display());
-        return;
-    }
+    // Check for config files (not just directory — engine PID may pre-create .complior/)
+    let has_config = profile_path.exists() && project_toml_path.exists();
 
-    match std::fs::create_dir_all(&complior_dir) {
-        Ok(()) => {
-            // Create engine profile (profile.json)
-            let profile = complior_dir.join("profile.json");
+    if !has_config {
+        if let Err(e) = std::fs::create_dir_all(&complior_dir) {
+            eprintln!("Failed to create .complior/: {e}");
+            return 1;
+        }
+
+        if !profile_path.exists() {
             let default = serde_json::json!({
                 "jurisdiction": "EU",
                 "regulation": "eu-ai-act",
                 "scanLevels": ["L1", "L2", "L3", "L4"]
             });
             let _ = std::fs::write(
-                &profile,
+                &profile_path,
                 serde_json::to_string_pretty(&default).unwrap_or_default(),
             );
+        }
 
-            // Create TUI project config (project.toml)
-            let project_toml = complior_dir.join("project.toml");
+        if !project_toml_path.exists() {
             let toml_content = toml::to_string_pretty(&crate::config::default_project_toml())
                 .unwrap_or_default();
-            let _ = std::fs::write(&project_toml, toml_content);
-
-            println!("Initialized .complior/ at {}", complior_dir.display());
-            println!("  Created: project.toml (TUI config)");
-            println!("  Created: profile.json (engine config)");
-            println!("\nRun `complior` to start the dashboard, or `complior scan` to check compliance.");
+            let _ = std::fs::write(&project_toml_path, toml_content);
         }
-        Err(e) => {
-            eprintln!("Failed to create .complior/: {e}");
+
+        println!("Initialized .complior/ at {}", complior_dir.display());
+        println!("  Created: project.toml (TUI config)");
+        println!("  Created: profile.json (engine config)");
+    } else {
+        println!(".complior/ already initialized at {}", complior_dir.display());
+    }
+
+    // Auto-discover AI agents and create passports (non-fatal on error)
+    println!("\nDiscovering AI agents...");
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(_) => {
+            eprintln!("Warning: Could not start engine for agent discovery.");
+            eprintln!("Run `complior agent init` later to discover AI agents.");
+            println!("\nRun `complior scan` to check compliance.");
+            return 0;
+        }
+    };
+
+    let body = serde_json::json!({
+        "path": base.to_string_lossy(),
+    });
+
+    match client.post_json("/agent/init", &body).await {
+        Ok(result) => {
+            let manifests = result.get("manifests").and_then(|v| v.as_array());
+            let skipped = result.get("skipped").and_then(|v| v.as_array());
+            let created_count = manifests.map(|m| m.len()).unwrap_or(0);
+            let skipped_count = skipped.map(|s| s.len()).unwrap_or(0);
+
+            if created_count > 0 {
+                println!("Discovered {created_count} AI agent(s):\n");
+                if let Some(agents) = manifests {
+                    for (i, agent) in agents.iter().enumerate() {
+                        let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        let framework = agent.get("framework").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        let autonomy = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
+                        println!("  {}. {} ({}, {})", i + 1, name, framework, autonomy);
+                    }
+                }
+                println!("\nPassport(s) saved to .complior/agents/");
+            } else if skipped_count > 0 {
+                println!("All {skipped_count} agent(s) already have passports.");
+            } else {
+                println!("No AI agents detected.");
+            }
+        }
+        Err(_) => {
+            eprintln!("Warning: Agent discovery failed.");
+            eprintln!("Run `complior agent init` later to discover AI agents.");
         }
     }
+
+    println!("\nRun `complior scan` to check compliance.");
+    0
 }
 
 /// Check for updates.

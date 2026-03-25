@@ -20,6 +20,8 @@ export interface PassportEvalBlock {
   readonly eval_critical_capped: boolean;
   readonly eval_security_score?: number;
   readonly eval_security_grade?: string;
+  readonly eval_critical_gaps: readonly string[];
+  readonly eval_category_pass_rates: Readonly<Record<string, number>>;
   readonly eval_categories: readonly {
     readonly category: string;
     readonly score: number;
@@ -30,8 +32,20 @@ export interface PassportEvalBlock {
 /**
  * Build passport eval block from an EvalResult.
  */
-export const buildPassportEvalBlock = (result: EvalResult): PassportEvalBlock =>
-  Object.freeze({
+export const buildPassportEvalBlock = (result: EvalResult): PassportEvalBlock => {
+  // critical_gaps: categories with grade F or score < 40
+  const critical_gaps = result.categories
+    .filter((c) => c.grade === 'F' || c.score < 40)
+    .map((c) => c.category);
+
+  // category_pass_rates: { ct_1: 0.85, ct_2: 0.72, ... }
+  const category_pass_rates: Record<string, number> = {};
+  for (const c of result.categories) {
+    const key = c.category.replace(/-/g, '_');
+    category_pass_rates[key] = Math.round((c.score / 100) * 100) / 100;
+  }
+
+  return Object.freeze({
     eval_score: result.overallScore,
     eval_grade: result.grade,
     eval_tier: result.tier,
@@ -43,12 +57,15 @@ export const buildPassportEvalBlock = (result: EvalResult): PassportEvalBlock =>
     eval_critical_capped: result.criticalCapped,
     eval_security_score: result.securityScore,
     eval_security_grade: result.securityGrade,
+    eval_critical_gaps: Object.freeze(critical_gaps),
+    eval_category_pass_rates: Object.freeze(category_pass_rates),
     eval_categories: Object.freeze(
       result.categories.map((c) =>
         Object.freeze({ category: c.category, score: c.score, grade: c.grade }),
       ),
     ),
   });
+};
 
 /**
  * Merge eval data into an existing passport JSON (mutable clone).
@@ -61,12 +78,12 @@ export const mergeEvalIntoPassport = (
   evalBlock: PassportEvalBlock,
 ): Record<string, unknown> => {
   const compliance = (passport.compliance ?? {}) as Record<string, unknown>;
-  return {
+  return Object.freeze({
     ...passport,
-    compliance: {
+    compliance: Object.freeze({
       ...compliance,
       eval: evalBlock,
-    },
+    }),
     updated: new Date().toISOString(),
-  };
+  });
 };

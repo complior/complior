@@ -16,15 +16,19 @@ use crate::types::{FrameworkScoreResult, ScanResult, Severity};
 pub struct FormatOptions {
     /// Framework scores from multi-framework scoring (EU AI Act, OWASP, MITRE).
     pub framework_scores: Option<Vec<FrameworkScoreResult>>,
+    /// Quiet mode: show only critical findings and score.
+    pub quiet: bool,
+    /// Previous score for delta display (e.g. `63 / 100  (was 71)`).
+    pub prev_score: Option<f64>,
 }
 
 pub use human::format_human;
 
 // ── Shared helpers (used by both scan + fix formatters) ─────────
 
-/// Full-width separator line.
+/// Full-width separator line using dynamic terminal width.
 pub(crate) fn separator() -> String {
-    colors::dim(&"─".repeat(layers::SEP_WIDTH))
+    colors::dim(&colors::h_line().repeat(layers::display_width()))
 }
 
 /// Extract project name from the last non-empty path segment.
@@ -37,12 +41,64 @@ pub(crate) fn plural(n: usize) -> &'static str {
     if n == 1 { "" } else { "s" }
 }
 
-/// Format scan result as JSON.
+/// Format scan result as JSON with enrichments (grade, finding IDs, obligationIds).
 pub fn format_json(result: &ScanResult) -> String {
-    serde_json::to_string_pretty(result).unwrap_or_else(|e| {
-        serde_json::to_string(&serde_json::json!({"error": e.to_string()}))
-            .unwrap_or_default()
+    let mut value = match serde_json::to_value(result) {
+        Ok(v) => v,
+        Err(e) => {
+            return serde_json::to_string(&serde_json::json!({"error": e.to_string()}))
+                .unwrap_or_default();
+        }
+    };
+
+    // Add grade object
+    let compliance_grade = colors::resolve_grade(result.score.total_score);
+    let grade_obj = serde_json::json!({
+        "compliance": compliance_grade,
+    });
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert("grade".to_string(), grade_obj);
+    }
+
+    // Sort findings by severity and add IDs + obligationIds
+    if let Some(findings_arr) = value.get_mut("findings").and_then(|v| v.as_array_mut()) {
+        // Sort by severity key
+        findings_arr.sort_by(|a, b| {
+            let sa = severity_sort_key(a.get("severity").and_then(|v| v.as_str()).unwrap_or("info"));
+            let sb = severity_sort_key(b.get("severity").and_then(|v| v.as_str()).unwrap_or("info"));
+            sa.cmp(&sb)
+        });
+
+        for (i, finding) in findings_arr.iter_mut().enumerate() {
+            if let Some(obj) = finding.as_object_mut() {
+                // Add finding ID
+                obj.insert("id".to_string(), serde_json::json!(format!("F-{:03}", i + 1)));
+
+                // Map obligationId → obligationIds array
+                if let Some(oblig_id) = obj.get("obligationId").and_then(|v| v.as_str()).map(String::from) {
+                    if !oblig_id.is_empty() {
+                        obj.insert("obligationIds".to_string(), serde_json::json!([oblig_id]));
+                    }
+                }
+            }
+        }
+    }
+
+    serde_json::to_string_pretty(&value).unwrap_or_else(|e| {
+        format!("{{\"error\": \"{e}\"}}")
     })
+}
+
+/// Map severity string to sort key for JSON output.
+fn severity_sort_key(sev: &str) -> u8 {
+    match sev {
+        "critical" => 0,
+        "high" => 1,
+        "medium" => 2,
+        "low" => 3,
+        "info" => 4,
+        _ => 5,
+    }
 }
 
 /// Format scan result as SARIF v2.1.0.

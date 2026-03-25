@@ -28,13 +28,7 @@ pub async fn run_headless_fix(
         }
     }
 
-    let scan_path = path.map_or_else(
-        || std::env::current_dir()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string(),
-        String::from,
-    );
+    let scan_path = super::common::resolve_project_path(path);
 
     // Check if engine already has a scan result (may be from deep/tier2 scan).
     // If yes — reuse it to avoid overwriting deep scan findings with a regular scan.

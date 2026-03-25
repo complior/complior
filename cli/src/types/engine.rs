@@ -304,6 +304,8 @@ pub struct ScanResult {
     pub duration: u64,
     pub files_scanned: u32,
     #[serde(default)]
+    pub files_excluded: Option<u32>,
+    #[serde(default)]
     pub deep_analysis: Option<bool>,
     #[serde(default)]
     pub l5_cost: Option<f64>,

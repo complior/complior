@@ -18,7 +18,6 @@ pub mod jurisdiction;
 mod fix;
 pub(crate) mod format;
 pub mod login;
-pub mod onboarding;
 pub mod proxy;
 pub mod scan;
 pub mod simulate;

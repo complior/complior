@@ -252,6 +252,48 @@ export const createPassportService = (deps: PassportServiceDeps) => {
   const docs = createPassportDocuments(deps, coreOps);
   const audit = createPassportAudit(deps, coreOps);
 
+  /** Rename a passport: update file name, internal name field, re-sign. */
+  const renamePassport = async (
+    oldName: string,
+    newName: string,
+    projectPath?: string,
+  ): Promise<{ oldPath: string; newPath: string }> => {
+    const path = projectPath ?? getProjectPath();
+    const agentsDir = join(path, '.complior', 'agents');
+    const oldPath = join(agentsDir, `${oldName}-manifest.json`);
+    const newPath = join(agentsDir, `${newName}-manifest.json`);
+
+    // Read existing passport
+    const raw = await readFile(oldPath, 'utf-8');
+    const passport = parsePassport(raw);
+    if (!passport) throw new Error(`Invalid passport: ${oldName}`);
+
+    // Check target doesn't already exist
+    try { await stat(newPath); throw new Error(`Passport '${newName}' already exists`); } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    }
+
+    // Update name + re-sign
+    const updated: AgentPassport = { ...passport, name: newName, updated: new Date().toISOString() };
+    const keyPair = await loadOrCreateKeyPair();
+    const signature = signPassport(updated, keyPair.privateKey);
+    const signed: AgentPassport = { ...updated, signature };
+
+    // Write new file, remove old
+    await writeFile(newPath, JSON.stringify(signed, null, 2));
+    const { unlink } = await import('node:fs/promises');
+    await unlink(oldPath);
+
+    // Audit trail
+    if (deps.auditStore) {
+      await deps.auditStore.append('passport.updated' as Parameters<typeof deps.auditStore.append>[0], {
+        action: 'rename', oldName, newName, path: newPath,
+      }, newName);
+    }
+
+    return { oldPath, newPath };
+  };
+
   return Object.freeze({
     initPassport,
     listPassports,
@@ -262,6 +304,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     getPassportCompleteness,
     findAgentsForFile,
     updatePassportsAfterScan,
+    renamePassport,
     ...docs,
     ...audit,
   });

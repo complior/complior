@@ -1,10 +1,17 @@
 //! Headless `complior eval` — run conformity assessment with live SSE progress.
 
+use std::time::Instant;
+
 use futures_util::StreamExt;
 
 use crate::config::TuiConfig;
-use super::common::ensure_engine;
-use super::format::colors::{bold, bold_green, bold_red, bold_yellow, dim, green, red, score_color, yellow};
+use super::common::{ensure_engine, url_encode};
+use super::format::colors::{
+    bold, bar_filled, bar_empty, cyan,
+    check_mark, diamond, dim, green, h_line, red, resolve_grade,
+    score_color, skip_icon, use_unicode, warning_icon, yellow,
+};
+use super::format::layers::display_width;
 use super::format::separator;
 
 // ── Category metadata (CT-1..CT-11 in display order) ────────
@@ -65,6 +72,77 @@ fn category_article(cat: &str) -> &str {
     }
 }
 
+// ── Adapter detection (Phase 3a) ─────────────────────────────
+
+/// Detect adapter type from target URL (client-side heuristic).
+fn detect_adapter(target: &str) -> &'static str {
+    if target.contains("openai.com") || target.contains("/v1/") {
+        "openai"
+    } else if target.contains("anthropic.com") {
+        "anthropic"
+    } else if target.contains(":11434") || target.contains("ollama") {
+        "ollama"
+    } else {
+        "http"
+    }
+}
+
+/// Derive judge provider label from model string.
+fn judge_provider_label(model: &str) -> &'static str {
+    if model.contains("openrouter") || model.starts_with("openrouter/") {
+        "via OpenRouter"
+    } else if model.contains("anthropic") || model.starts_with("claude") {
+        "via Anthropic"
+    } else if model.contains("openai") || model.starts_with("gpt") {
+        "via OpenAI"
+    } else if model.contains("gemini") || model.contains("google") {
+        "via Google"
+    } else {
+        "via API"
+    }
+}
+
+// ── Phase tracking for progress display ─────────────────────
+
+/// Accumulated phase stats for completion summaries.
+struct PhaseStats {
+    phase: String,
+    passed: u64,
+    failed: u64,
+    total: u64,
+    start: Instant,
+    cost_estimate: f64,
+}
+
+impl PhaseStats {
+    fn new(phase: &str, total: u64) -> Self {
+        Self {
+            phase: phase.to_string(),
+            passed: 0,
+            failed: 0,
+            total,
+            start: Instant::now(),
+            cost_estimate: 0.0,
+        }
+    }
+
+    fn record(&mut self, verdict: &str, method: &str) {
+        match verdict {
+            "pass" => self.passed += 1,
+            "fail" | "error" => self.failed += 1,
+            _ => {}
+        }
+        // Estimate cost for LLM-judge calls
+        if method == "llm-judge" {
+            self.cost_estimate += 0.006; // ~$0.006 per call
+        }
+    }
+
+    fn elapsed_ms(&self) -> u64 {
+        self.start.elapsed().as_millis() as u64
+    }
+}
+
 // ── Public commands ──────────────────────────────────────────
 
 pub async fn run_eval_command(
@@ -85,6 +163,8 @@ pub async fn run_eval_command(
     headers: Option<&str>,
     _verbose: bool,
     concurrency: u32,
+    no_remediation: bool,
+    remediation_report: bool,
     config: &TuiConfig,
 ) -> i32 {
     let client = match ensure_engine(config).await {
@@ -124,9 +204,64 @@ pub async fn run_eval_command(
         body["concurrency"] = serde_json::json!(concurrency);
     }
 
+    // Validate --agent passport exists before eval (skip in CI/JSON modes)
+    if !ci && !json {
+        if let Some(agent_name) = agent {
+            let project_path = config.project_path.clone().unwrap_or_else(|| ".".to_string());
+            let show_url = format!(
+                "/agent/show?path={}&name={}",
+                url_encode(&project_path),
+                url_encode(agent_name)
+            );
+            let passport_exists = match client.get_json(&show_url).await {
+                Ok(resp) => resp.get("error").is_none(),
+                Err(_) => false,
+            };
+
+            if !passport_exists {
+                eprintln!(
+                    "{}  Passport '{}' not found.",
+                    warning_icon(),
+                    bold(agent_name)
+                );
+                eprint!("   Create a new passport with this name? [y/N] ");
+
+                let mut answer = String::new();
+                if std::io::stdin().read_line(&mut answer).is_ok()
+                    && answer.trim().eq_ignore_ascii_case("y")
+                {
+                    let init_body = serde_json::json!({
+                        "path": project_path,
+                        "name": agent_name,
+                    });
+                    match client.post_json("/agent/init", &init_body).await {
+                        Ok(_) => eprintln!("   {} Passport '{}' created.", check_mark(), agent_name),
+                        Err(e) => {
+                            eprintln!("   Error creating passport: {e}");
+                            return 1;
+                        }
+                    }
+                } else {
+                    eprintln!("   Eval will run but results won't be saved to a passport.");
+                    // Remove agent from body so engine doesn't try to sync
+                    body.as_object_mut().map(|o| o.remove("agent"));
+                }
+            }
+        } else {
+            eprintln!(
+                "{}  No --agent specified. Eval results won't be linked to any passport.",
+                dim("hint:")
+            );
+            eprintln!(
+                "{}  Use: complior eval --target <url> --agent <passport-name>",
+                dim("     ")
+            );
+        }
+    }
+
     // JSON mode: use blocking JSON endpoint (no streaming)
     if json {
-        return run_eval_json(&client, &body, ci, threshold).await;
+        return run_eval_json(&client, &body, ci, threshold, remediation_report).await;
     }
 
     // Streaming mode: use SSE endpoint for live progress
@@ -136,7 +271,18 @@ pub async fn run_eval_command(
 
             // Print full summary report after stream
             if let Some(ref result) = result {
-                format_eval_report(result);
+                // Fetch remediation data for inline recommendations
+                if !no_remediation {
+                    let remediation = fetch_remediation(&client, result).await;
+                    format_eval_report_with_remediation(result, &remediation);
+                } else {
+                    format_eval_report(result);
+                }
+
+                // Full remediation report export
+                if remediation_report {
+                    print_remediation_report(&client).await;
+                }
             }
 
             // CI mode: check threshold (exit 2 = threshold violation, exit 1 = error)
@@ -180,7 +326,7 @@ pub async fn run_eval_last(json: bool, failures_only: bool, config: &TuiConfig) 
                 let tier = result.get("tier").and_then(|v| v.as_str()).unwrap_or("basic");
                 let mode_label = mode_label_from_tier(tier);
                 println!();
-                println!("  {} {}", bold("◆"), bold(&format!(
+                println!("  {} {}", bold(diamond()), bold(&format!(
                     "Complior v{}  ·  EU AI Act Eval  ·  {}",
                     env!("CARGO_PKG_VERSION"), mode_label
                 )));
@@ -188,15 +334,16 @@ pub async fn run_eval_last(json: bool, failures_only: bool, config: &TuiConfig) 
 
                 let failed = result.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
                 let errors = result.get("errors").and_then(|v| v.as_u64()).unwrap_or(0);
+                let inconclusive = result.get("inconclusive").and_then(|v| v.as_u64()).unwrap_or(0);
                 let results_arr = result.get("results").and_then(|v| v.as_array());
-                print_failures(results_arr, failed, errors);
+                print_failures(results_arr, failed, errors, inconclusive);
                 println!("  {}", separator());
             } else {
                 // Show header for standalone view
                 let tier = result.get("tier").and_then(|v| v.as_str()).unwrap_or("basic");
                 let mode_label = mode_label_from_tier(tier);
                 println!();
-                println!("  {} {}", bold("◆"), bold(&format!(
+                println!("  {} {}", bold(diamond()), bold(&format!(
                     "Complior v{}  ·  EU AI Act Eval  ·  {}",
                     env!("CARGO_PKG_VERSION"), mode_label
                 )));
@@ -225,13 +372,29 @@ async fn run_eval_json(
     body: &serde_json::Value,
     ci: bool,
     threshold: u32,
+    remediation_report: bool,
 ) -> i32 {
     match client.post_json_long("/eval/run", body).await {
-        Ok(result) => {
+        Ok(mut result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
                 let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
+            }
+
+            // US-REM-08: Include remediationPlan in JSON when --remediation
+            if remediation_report {
+                if let Ok(report) = client.post_json("/eval/remediation-report", &serde_json::json!({})).await {
+                    if let Some(actions) = report.get("actions") {
+                        result.as_object_mut().map(|obj| obj.insert("remediationPlan".to_string(), actions.clone()));
+                    }
+                    if let Some(patch) = report.get("system_prompt_patch") {
+                        result.as_object_mut().map(|obj| obj.insert("systemPromptPatch".to_string(), patch.clone()));
+                    }
+                    if let Some(api_config) = report.get("api_config_patch") {
+                        result.as_object_mut().map(|obj| obj.insert("apiConfigPatch".to_string(), api_config.clone()));
+                    }
+                }
             }
 
             println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
@@ -261,6 +424,14 @@ async fn parse_eval_stream(
     let mut current_event = String::new();
     let mut current_phase = String::new();
     let mut result: Option<serde_json::Value> = None;
+
+    // Phase 3b: track health check latency
+    let mut start_time = Instant::now();
+
+    // Phase 4: track phase stats for completion summaries
+    let mut phase_stats: Option<PhaseStats> = None;
+    let mut prev_category = String::new();
+    let mut total_cost: f64 = 0.0;
 
     while let Some(chunk) = stream.next().await {
         let chunk = match chunk {
@@ -295,17 +466,27 @@ async fn parse_eval_stream(
                             let target = parsed.get("target").and_then(|v| v.as_str()).unwrap_or("?");
                             let model_name = parsed.get("model").and_then(|v| v.as_str()).unwrap_or("default");
                             let mode = parsed.get("mode").and_then(|v| v.as_str()).unwrap_or("deterministic tests");
-                            print_eval_header(target, model_name, mode);
+                            let judge_model = parsed.get("judgeModel").and_then(|v| v.as_str());
+
+                            // Phase 3: Enhanced header
+                            print_eval_header(target, model_name, mode, judge_model);
                             print_concurrency_info(concurrency);
+
+                            start_time = Instant::now();
                         }
                     }
                     "eval:health" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
                             let ok = parsed.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+                            // Phase 3b: health check with latency
+                            let latency_ms = start_time.elapsed().as_millis();
                             if ok {
-                                println!("  {}  Health check passed", green("✓"));
+                                println!("  {}  Health check passed ({}ms)", green(check_mark()), latency_ms);
                             } else {
-                                println!("  {}  Health check failed", red("✖"));
+                                // Phase 3e: actionable error message
+                                println!("  {}  Health check failed — target not reachable",
+                                    red(if use_unicode() { "✖" } else { "X" }));
+                                println!("     Check: is the endpoint running? Try: curl <target>");
                                 return (1, None);
                             }
                         }
@@ -315,27 +496,68 @@ async fn parse_eval_stream(
                             let phase = parsed.get("phase").and_then(|v| v.as_str()).unwrap_or("");
                             let completed = parsed.get("completed").and_then(|v| v.as_u64()).unwrap_or(0);
                             let total = parsed.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
-
-                            // Print phase header when phase changes
-                            let is_first = phase != current_phase;
-                            if is_first {
-                                current_phase = phase.to_string();
-                                println!();
-                                print_phase_header(&current_phase, total);
-                            }
-
+                            let verdict = parsed.get("verdict").and_then(|v| v.as_str()).unwrap_or("?");
+                            let method = parsed.get("method").and_then(|v| v.as_str()).unwrap_or("deterministic");
+                            let category = parsed.get("category").and_then(|v| v.as_str()).unwrap_or("");
                             let test_id = parsed.get("testId").and_then(|v| v.as_str()).unwrap_or("?");
                             let name = parsed.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                            let verdict = parsed.get("verdict").and_then(|v| v.as_str()).unwrap_or("?");
                             let latency_ms = parsed.get("latencyMs").and_then(|v| v.as_u64()).unwrap_or(0);
+                            let severity = parsed.get("severity").and_then(|v| v.as_str());
 
-                            print_test_line(test_id, name, verdict, latency_ms, is_first);
+                            // Phase change: print completion summary for previous phase
+                            let is_first = phase != current_phase;
+                            if is_first {
+                                // Erase previous progress bar, print phase completion
+                                if let Some(stats) = phase_stats.take() {
+                                    erase_prev_line();
+                                    print_phase_completion(&stats);
+                                    total_cost += stats.cost_estimate;
+                                }
 
-                            // Update phase counter line
-                            print_phase_progress(&current_phase, completed, total);
+                                current_phase = phase.to_string();
+                                prev_category.clear();
+                                println!();
+                                print_phase_header(&current_phase, total);
+
+                                // Start tracking new phase
+                                phase_stats = Some(PhaseStats::new(phase, total));
+                            }
+
+                            // Record verdict in phase stats
+                            if let Some(ref mut stats) = phase_stats {
+                                stats.record(verdict, method);
+                            }
+
+                            // Erase previous progress bar line (except first test in phase)
+                            if !is_first {
+                                erase_prev_line();
+                            }
+
+                            // Category separator when category changes within a phase
+                            if category != prev_category && !category.is_empty() {
+                                let ct = category_ct_id(category);
+                                let label = category_label(category);
+                                println!("  {} {} {} {}",
+                                    dim(h_line()), dim(h_line()), dim(&format!("{ct} {label}")),
+                                    dim(&h_line().repeat(3)));
+                                prev_category = category.to_string();
+                            }
+
+                            // Show every test result line
+                            print_test_line(test_id, name, verdict, latency_ms, severity, method);
+
+                            // Always print progress bar (as a full line, will be erased on next update)
+                            print_progress_bar(completed, total, test_id, category, name, method == "llm-judge");
                         }
                     }
                     "eval:done" => {
+                        // Print final phase completion summary
+                        if let Some(stats) = phase_stats.take() {
+                            erase_prev_line();
+                            print_phase_completion(&stats);
+                            total_cost += stats.cost_estimate;
+                        }
+
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
                             result = Some(parsed);
                         }
@@ -361,8 +583,8 @@ async fn parse_eval_stream(
     }
 }
 
-/// Print the styled eval header block with version and mode.
-fn print_eval_header(target: &str, model: &str, mode: &str) {
+/// Print the styled eval header block with version, mode, adapter, and judge model.
+fn print_eval_header(target: &str, model: &str, mode: &str, judge_model: Option<&str>) {
     let mode_label = match mode {
         "full" => "Full Eval · Conformity + Security",
         "deterministic + LLM-judged" => "Conformity Check · Det + LLM",
@@ -372,7 +594,7 @@ fn print_eval_header(target: &str, model: &str, mode: &str) {
     };
 
     println!();
-    println!("  {} {}", bold("◆"), bold(&format!(
+    println!("  {} {}", bold(diamond()), bold(&format!(
         "Complior v{}  ·  EU AI Act Eval  ·  {}",
         env!("CARGO_PKG_VERSION"), mode_label
     )));
@@ -380,12 +602,24 @@ fn print_eval_header(target: &str, model: &str, mode: &str) {
     println!();
     println!("  {}     {}", dim("Target"), target);
     println!("  {}      {}", dim("Model"), model);
+
+    // Phase 3a: Adapter detection line
+    let adapter = detect_adapter(target);
+    println!("  {}    {} (auto-detected)", dim("Adapter"), adapter);
+
+    // Phase 3c: LLM judge block
+    if let Some(jm) = judge_model {
+        if jm != "default" {
+            let provider = judge_provider_label(jm);
+            println!("  {}  {} ({})", dim("LLM Judge"), jm, provider);
+        }
+    }
 }
 
-/// Print concurrency info line (only if > 1).
+/// Print concurrency info line (only if > 1). Phase 3d: consistent alignment.
 fn print_concurrency_info(concurrency: u32) {
     if concurrency > 1 {
-        println!("  {} {}", dim("Parallel"), format!("{concurrency} workers"));
+        println!("  {}   {}", dim("Parallel"), format!("{concurrency} workers"));
     }
     println!();
 }
@@ -396,31 +630,111 @@ fn print_phase_header(phase: &str, total: u64) {
     println!("  {}  {}", bold(label), dim(&format!("0/{total}")));
 }
 
-/// Print a single test result line. Overwrites previous progress counter line.
-fn print_test_line(test_id: &str, name: &str, verdict: &str, latency_ms: u64, is_first: bool) {
+/// Print a single test result line with optional severity and timeout/error handling.
+fn print_test_line(
+    test_id: &str,
+    name: &str,
+    verdict: &str,
+    latency_ms: u64,
+    severity: Option<&str>,
+    method: &str,
+) {
+    // Phase 9a: timeout handling
+    if latency_ms > 30000 {
+        let timeout_str = format!("{:.1}s", latency_ms as f64 / 1000.0);
+        println!("    {}  {} TIMEOUT ({})  {}",
+            yellow(if use_unicode() { "▲" } else { "!" }),
+            dim(test_id), timeout_str, name);
+        return;
+    }
+
+    // Phase 9b: LLM error display
+    if verdict == "error" && method == "llm-judge" {
+        println!("    {}  {} LLM ERROR  {}",
+            yellow(if use_unicode() { "▲" } else { "!" }),
+            dim(test_id), name);
+        return;
+    }
+
     let icon = match verdict {
-        "pass" => green("✓"),
-        "fail" => red("✖"),
-        "error" | "inconclusive" => yellow("▲"),
-        _ => dim("·"),
+        "pass" => green(check_mark()),
+        "fail" => red(if use_unicode() { "✖" } else { "X" }),
+        "skip" => dim(skip_icon()),
+        "error" | "inconclusive" => yellow(if use_unicode() { "▲" } else { "!" }),
+        _ => dim(if use_unicode() { "·" } else { "." }),
     };
 
-    let latency = format_latency(latency_ms);
-    // Pad test_id before applying dim() — ANSI codes would break format width
-    let padded_id = format!("{:<11}", test_id);
-
-    // Overwrite the previous progress counter line (move up + erase),
-    // but NOT on the first test — that would eat the phase header.
-    if !is_first {
-        print!("\x1b[1A\x1b[2K");
+    // Compact format for passes: icon + id + name (no padding, no latency)
+    if verdict == "pass" || verdict == "skip" {
+        println!("    {}  {} {}", icon, dim(test_id), dim(&truncate_str(name, 50)));
+        return;
     }
-    println!("    {}  {} {:<38} {}", icon, dim(&padded_id), name, dim(&latency));
+
+    // Detailed format for failures/errors: icon + id + name + severity + latency
+    let latency = format_latency(latency_ms);
+    let sev_tag = match severity {
+        Some("critical") => format!(" · {}", red("CRITICAL")),
+        Some("high") => format!(" · {}", yellow("HIGH")),
+        Some("medium") => format!(" · {}", cyan("MEDIUM")),
+        Some("low") => format!(" · {}", dim("LOW")),
+        _ => String::new(),
+    };
+
+    println!("    {}  {} {}{} {}", icon, dim(test_id), name, sev_tag, dim(&latency));
 }
 
-/// Print the running progress counter for the current phase.
-fn print_phase_progress(phase: &str, completed: u64, total: u64) {
-    let label = phase_label(phase);
-    println!("  {}  {}", dim(label), dim(&format!("{completed}/{total}")));
+/// Erase previous line using ANSI: move up 1 + clear entire line.
+/// Used to overwrite the progress bar before printing the next update.
+fn erase_prev_line() {
+    if use_unicode() {
+        print!("\x1b[1A\x1b[2K");
+    }
+}
+
+/// Progress bar printed as a full line (with newline).
+/// Gets erased on next test update via `erase_prev_line()`.
+fn print_progress_bar(completed: u64, total: u64, _test_id: &str, category: &str, name: &str, is_llm: bool) {
+    if total == 0 { return; }
+    let bar_width: usize = 20;
+    let filled = ((completed as f64 / total as f64) * bar_width as f64).round() as usize;
+    let empty = bar_width.saturating_sub(filled);
+    let bar = format!("{}{}", bar_filled().repeat(filled), bar_empty().repeat(empty));
+
+    let ct_id = category_ct_id(category);
+
+    // Phase 4c: LLM pending indicator
+    let pending = if is_llm && completed < total {
+        if use_unicode() { " \u{27F3}" } else { " ~" }
+    } else {
+        ""
+    };
+
+    // Print as full line with println! — will be erased on next update
+    println!("  [{}] {:>3}/{}  {} {}: {}{}",
+        bar, completed, total, ct_id, category_label(category),
+        truncate_str(name, 30), pending);
+}
+
+/// Phase 4d: phase completion summary line.
+fn print_phase_completion(stats: &PhaseStats) {
+    let label = phase_label(&stats.phase);
+    let dur = format_duration(stats.elapsed_ms());
+    let failed_part = if stats.failed > 0 {
+        format!("  ({} failed)", stats.failed)
+    } else {
+        String::new()
+    };
+
+    // Phase 4e: cost in LLM completion
+    let cost_part = if stats.cost_estimate > 0.0 {
+        format!("  ~${:.2}", stats.cost_estimate)
+    } else {
+        String::new()
+    };
+
+    println!("  {}  {}  {}/{} passed{}  in {}{}",
+        green(check_mark()), bold(label),
+        stats.passed, stats.total, failed_part, dur, cost_part);
 }
 
 fn phase_label(phase: &str) -> &str {
@@ -445,10 +759,12 @@ fn format_eval_report(result: &serde_json::Value) {
     let failed = result.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
     let errors = result.get("errors").and_then(|v| v.as_u64()).unwrap_or(0);
     let inconclusive = result.get("inconclusive").and_then(|v| v.as_u64()).unwrap_or(0);
+    let skipped = result.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
     let duration = result.get("duration").and_then(|v| v.as_u64()).unwrap_or(0);
     let capped = result.get("criticalCapped").and_then(|v| v.as_bool()).unwrap_or(false);
     let sec_score = result.get("securityScore").and_then(|v| v.as_u64());
     let sec_grade = result.get("securityGrade").and_then(|v| v.as_str());
+    let adapter_name = result.get("adapterName").and_then(|v| v.as_str());
     let results_arr = result.get("results").and_then(|v| v.as_array());
     let categories_arr = result.get("categories").and_then(|v| v.as_array());
 
@@ -461,31 +777,36 @@ fn format_eval_report(result: &serde_json::Value) {
     println!();
     print_completion_line(total_tests, duration, llm_count);
 
-    // 2. Summary
-    print_summary(target, tier, overall, grade, sec_score, sec_grade,
-        passed, failed, errors, inconclusive, total_tests, duration, llm_count, capped);
+    // 2. Failures (detailed problems)
+    print_failures(results_arr, failed, errors, inconclusive);
 
-    // 3. Critical gaps
-    print_critical_gaps(categories_arr);
-
-    // 4. Category breakdown
-    print_category_breakdown(categories_arr, tier);
-
-    // 4b. OWASP security breakdown (if security probes present)
-    if sec_score.is_some() {
-        print_owasp_breakdown(results_arr);
-    }
-
-    // 5. Failures
-    print_failures(results_arr, failed, errors);
-
-    // 6. Cost estimation (LLM judge calls)
+    // 3. Cost estimation (LLM judge calls)
     if llm_count > 0 {
         print_cost_estimate(llm_count);
     }
 
-    // 7. Quick actions
-    print_quick_actions(target, tier, overall, sec_score, categories_arr, failed);
+    // 4. Quick actions
+    print_quick_actions(target, tier, overall, sec_score, categories_arr, failed, results_arr);
+
+    // 5. RESULTS — final summary block
+    print_summary(target, tier, overall, grade, sec_score, sec_grade,
+        passed, failed, errors, inconclusive, skipped, total_tests, duration,
+        llm_count, capped, adapter_name, results_arr);
+
+    // 6. Critical gaps (inside results block)
+    print_critical_gaps(categories_arr);
+
+    // 7. Category breakdown
+    print_category_breakdown(categories_arr, tier);
+
+    // 8. OWASP security breakdown
+    if sec_score.is_some() {
+        print_owasp_breakdown(results_arr);
+    }
+
+    // Closing separator
+    println!();
+    println!("  {}", separator());
 }
 
 /// Completion line: "✓ N tests completed in Xm Ys"
@@ -496,7 +817,7 @@ fn print_completion_line(total: u64, duration_ms: u64, llm_count: u64) {
     } else {
         String::new()
     };
-    println!("  {}  {} tests completed in {}{}", green("✓"), total, dur, dim(&llm_suffix));
+    println!("  {}  {} tests completed in {}{}", green(check_mark()), total, dur, dim(&llm_suffix));
 }
 
 /// Summary section with scores, grade, and test stats.
@@ -504,19 +825,23 @@ fn print_completion_line(total: u64, duration_ms: u64, llm_count: u64) {
 fn print_summary(
     target: &str, tier: &str, overall: u64, grade: &str,
     sec_score: Option<u64>, sec_grade: Option<&str>,
-    passed: u64, failed: u64, errors: u64, inconclusive: u64, total: u64,
+    passed: u64, failed: u64, errors: u64, inconclusive: u64, skipped: u64, total: u64,
     duration_ms: u64, llm_count: u64, capped: bool,
+    adapter_name: Option<&str>,
+    results_arr: Option<&Vec<serde_json::Value>>,
 ) {
-    const W: usize = 65;
+    let w = display_width();
 
     println!();
+    println!("  {}", separator());
+    println!("  {}", bold("RESULTS"));
     println!("  {}", separator());
 
     // Conformity score (all modes except security-only)
     if tier != "security" {
         let score_str = format!("{overall} / 100");
         let label = "CONFORMITY SCORE";
-        let pad = W.saturating_sub(label.len() + score_str.len());
+        let pad = w.saturating_sub(label.len() + score_str.len());
         println!("  {}{}{}", bold(label), " ".repeat(pad), score_color(overall as f64, &score_str));
     }
 
@@ -524,46 +849,68 @@ fn print_summary(
     if let Some(ss) = sec_score {
         let score_str = format!("{ss} / 100");
         let label = "SECURITY SCORE";
-        let pad = W.saturating_sub(label.len() + score_str.len());
+        let pad = w.saturating_sub(label.len() + score_str.len());
         println!("  {}{}{}", bold(label), " ".repeat(pad), score_color(ss as f64, &score_str));
     }
 
     // Grade (overall or single)
     let display_grade = if tier == "full" {
         let min_score = sec_score.map(|s| s.min(overall)).unwrap_or(overall);
-        let g = resolve_display_grade(min_score);
+        let g = resolve_grade(min_score as f64).to_string();
         let label = "OVERALL GRADE";
-        let pad = W.saturating_sub(label.len() + g.len());
-        println!("  {}{}{}", bold(label), " ".repeat(pad), grade_color(&g));
+        let pad = w.saturating_sub(label.len() + g.len());
+        println!("  {}{}{}", bold(label), " ".repeat(pad), eval_grade_color(&g));
         g
     } else if tier == "security" {
         // Security-only: use security grade, not conformity grade (which is 0/F)
         let g = sec_grade.unwrap_or(grade);
         let label = "GRADE";
-        let pad = W.saturating_sub(label.len() + g.len());
-        println!("  {}{}{}", bold(label), " ".repeat(pad), grade_color(g));
+        let pad = w.saturating_sub(label.len() + g.len());
+        println!("  {}{}{}", bold(label), " ".repeat(pad), eval_grade_color(g));
         g.to_string()
     } else {
         let label = "GRADE";
-        let pad = W.saturating_sub(label.len() + grade.len());
-        println!("  {}{}{}", bold(label), " ".repeat(pad), grade_color(grade));
+        let pad = w.saturating_sub(label.len() + grade.len());
+        println!("  {}{}{}", bold(label), " ".repeat(pad), eval_grade_color(grade));
         grade.to_string()
     };
 
     println!("  {}", separator());
 
     if capped {
-        println!("  {}  Score capped due to critical category failure", yellow("▲"));
+        println!("  {}  Score capped due to critical category failure", yellow(if use_unicode() { "▲" } else { "!" }));
     }
 
     // Stats block
     println!();
 
-    // Test/probe summary line
+    // Phase 5a: Separate conformity/security stats when tier=full
+    if tier == "full" {
+        // Count conformity vs security results separately
+        let (conf_passed, conf_failed, sec_passed, sec_failed, sec_inconc) =
+            count_conformity_security(results_arr);
+
+        println!("  {}  {} passed · {} failed",
+            dim(&format!("{:<10}", "Conformity")), conf_passed, conf_failed);
+        let sec_inconc_part = if sec_inconc > 0 {
+            format!(" · {} inconclusive", sec_inconc)
+        } else {
+            String::new()
+        };
+        println!("  {}  {} passed · {} failed{}",
+            dim(&format!("{:<10}", "Security")), sec_passed, sec_failed, sec_inconc_part);
+    }
+
+    // Phase 5b: Warning/skipped counts in main stats line
     let label = if tier == "security" { "Probes" } else { "Tests" };
     let pad = if tier == "security" { "     " } else { "      " };
     let inc_part = if inconclusive > 0 {
-        format!(" · {} inconclusive", inconclusive)
+        format!(" · {} warnings", inconclusive)
+    } else {
+        String::new()
+    };
+    let skip_part = if skipped > 0 {
+        format!(" · {} skipped", skipped)
     } else {
         String::new()
     };
@@ -572,10 +919,14 @@ fn print_summary(
     } else {
         String::new()
     };
-    println!("  {}{}{} passed · {} failed{}{}",
-        dim(label), pad, passed, failed, inc_part, err_part);
+    println!("  {}{}{} passed · {} failed{}{}{}",
+        dim(label), pad, passed, failed, inc_part, skip_part, err_part);
 
     println!("  {}     {}", dim("Target"), target);
+
+    // Phase 5c: Adapter line in summary
+    let adapter = adapter_name.unwrap_or_else(|| detect_adapter(target));
+    println!("  {}    {} (auto-detected)", dim("Adapter"), adapter);
 
     // Duration with LLM info
     let dur = format_duration(duration_ms);
@@ -585,12 +936,50 @@ fn print_summary(
         println!("  {}   {}", dim("Duration"), dur);
     }
 
-    // Mode description
-    let mode_desc = mode_description(tier, total, llm_count);
+    // Mode description — count security probes from results (not hardcoded)
+    let security_count = results_arr
+        .map(|r| r.iter().filter(|t| t.get("owaspCategory").and_then(|v| v.as_str()).is_some()).count() as u64)
+        .unwrap_or(0);
+    let mode_desc = mode_description(tier, total, llm_count, security_count);
     println!("  {}       {}", dim("Mode"), mode_desc);
 
-    // Blank after display_grade usage (suppress unused warning)
+    // Suppress unused warning
     let _ = &display_grade;
+}
+
+/// Count conformity vs security results separately.
+fn count_conformity_security(results: Option<&Vec<serde_json::Value>>) -> (u64, u64, u64, u64, u64) {
+    let results = match results {
+        Some(r) => r,
+        None => return (0, 0, 0, 0, 0),
+    };
+
+    let mut conf_passed = 0u64;
+    let mut conf_failed = 0u64;
+    let mut sec_passed = 0u64;
+    let mut sec_failed = 0u64;
+    let mut sec_inconc = 0u64;
+
+    for r in results {
+        let has_owasp = r.get("owaspCategory").and_then(|v| v.as_str()).is_some();
+        let verdict = r.get("verdict").and_then(|v| v.as_str()).unwrap_or("");
+        if has_owasp {
+            match verdict {
+                "pass" => sec_passed += 1,
+                "fail" | "error" => sec_failed += 1,
+                "inconclusive" => sec_inconc += 1,
+                _ => {}
+            }
+        } else {
+            match verdict {
+                "pass" => conf_passed += 1,
+                "fail" | "error" => conf_failed += 1,
+                _ => {}
+            }
+        }
+    }
+
+    (conf_passed, conf_failed, sec_passed, sec_failed, sec_inconc)
 }
 
 /// Critical gaps: categories with pass rate < 20% or transparency/prohibited with any failures.
@@ -608,27 +997,31 @@ fn print_critical_gaps(categories: Option<&Vec<serde_json::Value>>) {
         let cat_total = cat.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
         let cat_failed = cat.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
 
-        if cat_total == 0 { continue; }
+        if cat_total == 0 || cat_failed == 0 { continue; }
 
-        let pass_rate = cat_passed as f64 / cat_total as f64;
-        let is_critical_cat = cat_name == "transparency" || cat_name == "prohibited";
-
-        if pass_rate < 0.20 || (is_critical_cat && cat_failed > 0) {
-            let desc = match cat_name {
-                "transparency" => "AI system disclosure failures. Art. 50 enforcement risk.",
-                "prohibited" => "System performed prohibited actions. Art. 5 enforcement risk.",
-                _ => "Low pass rate — review required.",
-            };
-            gaps.push((cat_name, cat_passed, cat_total, desc));
-        }
+        let desc = match cat_name {
+            "transparency" => "AI system disclosure failures. Art. 50 enforcement risk.",
+            "prohibited" => "System performed prohibited actions. Art. 5 enforcement risk.",
+            "oversight" => "Missing human oversight controls. Art. 14 enforcement risk.",
+            "explanation" => "Insufficient explainability. Art. 13 enforcement risk.",
+            "bias" => "Discrimination or bias detected. Art. 10 enforcement risk.",
+            "accuracy" => "Accuracy or reliability issues. Art. 15 enforcement risk.",
+            "robustness" => "Robustness/security failures. Art. 15 enforcement risk.",
+            "logging" => "Insufficient logging/audit trail. Art. 12 enforcement risk.",
+            "risk-awareness" => "Missing risk awareness. Art. 9 enforcement risk.",
+            "gpai" => "GPAI transparency failures. Art. 52 enforcement risk.",
+            "industry" => "Industry-specific compliance gaps. Art. 6 enforcement risk.",
+            _ => "Compliance failures detected.",
+        };
+        gaps.push((cat_name, cat_passed, cat_total, desc));
     }
 
     println!();
     if gaps.is_empty() {
-        println!("  {}  No critical gaps detected.", green("✓"));
+        println!("  {}  No critical gaps detected.", green(check_mark()));
     } else {
         println!("  {}", separator());
-        println!("  {}  ({} total · enforcement risk)", bold("CRITICAL GAPS"), gaps.len());
+        println!("  {}  ({} categories with failures)", bold("COMPLIANCE GAPS"), gaps.len());
         println!("  {}", separator());
 
         for (cat_name, cat_passed, cat_total, desc) in &gaps {
@@ -636,13 +1029,13 @@ fn print_critical_gaps(categories: Option<&Vec<serde_json::Value>>) {
             let label = category_label(cat_name);
             println!();
             println!("  {}  {} · {} — {}/{} tests passed",
-                red("✖"), article, label, cat_passed, cat_total);
+                red(if use_unicode() { "✖" } else { "X" }), article, label, cat_passed, cat_total);
             println!("     {}", desc);
         }
     }
 }
 
-/// Category breakdown with visual bars.
+/// Category breakdown with visual bars. Phase 6: enhanced skip/warning handling.
 fn print_category_breakdown(categories: Option<&Vec<serde_json::Value>>, tier: &str) {
     let categories = match categories {
         Some(c) if !c.is_empty() => c,
@@ -672,51 +1065,87 @@ fn print_category_breakdown(categories: Option<&Vec<serde_json::Value>>, tier: &
                     let cat_total = cat.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
                     let cat_grade = cat.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
                     let cat_score = cat.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let cat_skipped = cat.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
 
                     if cat_total == 0 {
-                        // Category exists but no tests
-                        println!("    {:<6}{:<24}  —      (no tests)", ct_id, label);
+                        // Phase 6a: skip icon for categories with no tests
+                        println!("    {:<6}{:<24}  {}      (no tests)", ct_id, label, skip_icon());
                     } else {
                         let bar = format_bar(cat_passed, cat_total, 15);
                         let ratio = format!("{:>2}/{:>2}", cat_passed, cat_total);
-                        let grade_str = grade_color(cat_grade);
-                        let warn = if cat_score < 20 { format!("  {}", red("⚠")) } else { String::new() };
-                        println!("    {:<6}{:<24} {}   {}  {}{}", ct_id, label, ratio, bar, grade_str, warn);
+                        let grade_str = eval_grade_color(cat_grade);
+
+                        // Phase 6c: warning indicator for 0% pass categories
+                        let warn = if cat_score == 0 && cat_total > 0 {
+                            format!("  {}", red(warning_icon()))
+                        } else if cat_score < 20 {
+                            format!("  {}", red(warning_icon()))
+                        } else {
+                            String::new()
+                        };
+
+                        // Phase 6d: skipped count per category
+                        let skip_note = if cat_skipped > 0 {
+                            format!("    ({})", dim(&format!("{} skipped", cat_skipped)))
+                        } else {
+                            String::new()
+                        };
+
+                        println!("    {:<6}{:<24} {}   {}  {}{}{}",
+                            ct_id, label, ratio, bar, grade_str, warn, skip_note);
                     }
                 }
                 None => {
-                    // Category not in results — skipped or requires different mode
+                    // Phase 6b: specific skip reasons
                     let skip_reason = match cat_key {
                         "explanation" if tier == "basic" => "(requires --llm)",
+                        "bias" if tier == "basic" => "(requires --llm)",
+                        "gpai" if tier == "basic" => "(requires --llm)",
+                        "robustness" if tier == "basic" || tier == "standard" => "(requires --security)",
+                        _ if tier == "basic" => "(not tested)",
+                        _ if tier == "security" => "(not in scope)",
                         _ => "(not tested)",
                     };
-                    println!("    {:<6}{:<24}  —      {}", ct_id, label, dim(skip_reason));
+                    // Phase 6a: skip icon instead of —
+                    println!("    {:<6}{:<24}  {}      {}", ct_id, label, skip_icon(), dim(skip_reason));
                 }
             }
         }
     }
-
 }
 
-/// Failures section grouped by category (excludes inconclusive — those are evaluator limitations, not model failures).
-fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors: u64) {
+/// Failures section grouped by category. Phase 7: enhanced with severity, warnings, limits.
+fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors: u64, inconclusive: u64) {
     let results = match results {
         Some(r) => r,
         None => return,
     };
 
-    let total_failed = failed + errors;  // inconclusive excluded
+    let total_failed = failed + errors;  // inconclusive excluded from "failed" count
 
     println!();
     println!("  {}", separator());
 
-    if total_failed == 0 {
-        println!("  {}  All tests passed.", green("✓"));
+    // Phase 7d: Enhanced all-passed message
+    if total_failed == 0 && inconclusive == 0 {
+        println!("  {}  All tests passed — no conformity or security failures detected.", green(check_mark()));
         println!("  {}", separator());
         return;
     }
 
-    println!("  {}  ({} failed)", bold("FAILURES"), total_failed);
+    if total_failed == 0 {
+        println!("  {}  All tests passed.", green(check_mark()));
+        println!("  {}", separator());
+        return;
+    }
+
+    // Phase 7c: Warning count in failures header
+    let warn_part = if inconclusive > 0 {
+        format!(" · {} warnings", inconclusive)
+    } else {
+        String::new()
+    };
+    println!("  {}  ({} failed{})", bold("FAILURES"), total_failed, warn_part);
     println!("  {}", separator());
 
     // Collect failures
@@ -741,18 +1170,35 @@ fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors:
         println!();
         println!("  {}  {}  ({} failed)", bold(ct_id), bold(label), count);
         let header_text = format!("{}  {}", ct_id, label);
-        println!("  {}", dim(&"─".repeat(header_text.len())));
+        println!("  {}", dim(&h_line().repeat(header_text.len())));
         println!();
 
-        // Show up to 5 detailed failures, summarize rest
-        let max_detailed = 5;
-        for (i, t) in cat_failures.iter().enumerate() {
-            if i >= max_detailed {
-                let remaining = count - max_detailed;
-                println!("  {} and {} more failures.",
-                    dim("..."), remaining);
-                println!("  Full list: {}", dim("complior eval --json > eval-report.json"));
-                break;
+        // Phase 7e: severity-based limits
+        // Critical/High: always show. Medium: max 3. Low: max 2.
+        let mut medium_shown = 0u32;
+        let mut medium_hidden = 0u32;
+        let mut low_shown = 0u32;
+        let mut low_hidden = 0u32;
+
+        for t in &cat_failures {
+            let severity = t.get("severity").and_then(|v| v.as_str()).unwrap_or("medium");
+
+            match severity {
+                "medium" => {
+                    if medium_shown >= 3 {
+                        medium_hidden += 1;
+                        continue;
+                    }
+                    medium_shown += 1;
+                }
+                "low" => {
+                    if low_shown >= 2 {
+                        low_hidden += 1;
+                        continue;
+                    }
+                    low_shown += 1;
+                }
+                _ => {} // critical/high always shown
             }
 
             let test_id = t.get("testId").and_then(|v| v.as_str()).unwrap_or("?");
@@ -763,34 +1209,69 @@ fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors:
             let verdict = t.get("verdict").and_then(|v| v.as_str()).unwrap_or("fail");
             let article = category_article(cat_key);
 
-            let icon = if verdict == "error" { yellow("▲") } else { red("✖") };
+            let icon = if verdict == "error" {
+                yellow(if use_unicode() { "▲" } else { "!" })
+            } else {
+                red(if use_unicode() { "✖" } else { "X" })
+            };
+
+            // Phase 7a: severity tag on failure lines
+            let sev_tag = match severity {
+                "critical" => format!(" · {}", red("CRITICAL")),
+                "high" => format!(" · {}", yellow("HIGH")),
+                "medium" => format!(" · {}", cyan("MEDIUM")),
+                "low" => format!(" · {}", dim("LOW")),
+                _ => String::new(),
+            };
 
             // Test header line
             if article.is_empty() {
-                println!("  {}  {}  {}", icon, dim(test_id), name);
+                println!("  {}  {}{} · {}", icon, dim(test_id), sev_tag, name);
             } else {
-                println!("  {}  {}  {} · {}", icon, dim(test_id), dim(article), name);
+                println!("  {}  {}  {}{} · {}", icon, dim(test_id), dim(article), sev_tag, name);
+            }
+
+            let tw = term_width();
+
+            // Phase 7b: Expected line
+            if !name.is_empty() {
+                println!("{}", wrap_aligned("     Expected: ", name, tw));
             }
 
             // Probe
             if !probe.is_empty() {
-                println!("     {}    \"{}\"", dim("Probe:"), truncate_str(probe, 70));
+                let label = format!("     {}    \"", dim("Probe:"));
+                println!("{}\"", wrap_aligned(&label, probe, tw));
             }
 
             // Response
-            let resp_display = if response.is_empty() {
-                dim("(empty response)").to_string()
+            if response.is_empty() {
+                println!("     {} {}", dim("Response:"), dim("(empty response)"));
             } else {
-                format!("\"{}\"", truncate_str(response, 80))
-            };
-            println!("     {} {}", dim("Response:"), resp_display);
+                let resp_text = truncate_str(response, 300);
+                let label = format!("     {} \"", dim("Response:"));
+                println!("{}\"", wrap_aligned(&label, &resp_text, tw));
+            }
 
             // Reason
             if !reasoning.is_empty() {
-                println!("     {}   {}", dim("Reason:"), truncate_str(reasoning, 70));
+                println!("{}", wrap_aligned("     Reason:   ", reasoning, tw));
             }
 
             println!();
+        }
+
+        // Phase 7e: summary for hidden medium/low failures
+        if medium_hidden > 0 {
+            println!("  {} and {} more medium failures.",
+                dim("..."), medium_hidden);
+        }
+        if low_hidden > 0 {
+            println!("  {} and {} more low failures.",
+                dim("..."), low_hidden);
+        }
+        if medium_hidden > 0 || low_hidden > 0 {
+            println!("  Full list: {}", dim("complior eval --json > eval-report.json"));
         }
     }
 
@@ -806,7 +1287,7 @@ fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors:
     if !other_failures.is_empty() {
         println!();
         println!("  {}  ({} failed)", bold("Other"), other_failures.len());
-        println!("  {}", dim(&"─".repeat(5)));
+        println!("  {}", dim(&h_line().repeat(5)));
         println!();
 
         for (i, t) in other_failures.iter().enumerate() {
@@ -814,7 +1295,13 @@ fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors:
             let test_id = t.get("testId").and_then(|v| v.as_str()).unwrap_or("?");
             let name = t.get("name").and_then(|v| v.as_str()).unwrap_or("?");
             let reasoning = t.get("reasoning").and_then(|v| v.as_str()).unwrap_or("");
-            println!("  {}  {}  {}", red("✖"), dim(test_id), name);
+            let severity = t.get("severity").and_then(|v| v.as_str());
+            let sev_tag = match severity {
+                Some("critical") => format!(" · {}", red("CRITICAL")),
+                Some("high") => format!(" · {}", yellow("HIGH")),
+                _ => String::new(),
+            };
+            println!("  {}  {}{} · {}", red(if use_unicode() { "✖" } else { "X" }), dim(test_id), sev_tag, name);
             if !reasoning.is_empty() {
                 println!("     {}   {}", dim("Reason:"), truncate_str(reasoning, 70));
             }
@@ -823,7 +1310,7 @@ fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors:
     }
 }
 
-/// Quick actions section with contextual suggestions.
+/// Quick actions section with contextual suggestions. Phase 8: enhanced.
 fn print_quick_actions(
     target: &str,
     tier: &str,
@@ -831,6 +1318,7 @@ fn print_quick_actions(
     sec_score: Option<u64>,
     categories: Option<&Vec<serde_json::Value>>,
     failed: u64,
+    results: Option<&Vec<serde_json::Value>>,
 ) {
     println!("  {}", separator());
     println!("  {}", bold("QUICK ACTIONS"));
@@ -840,6 +1328,7 @@ fn print_quick_actions(
     let has_transparency_failures = has_category_failures(categories, "transparency");
     let has_bias_failures = has_category_failures(categories, "bias");
     let has_prohibited_failures = has_category_failures(categories, "prohibited");
+    let has_logging_failures = has_category_failures(categories, "logging");
 
     // Conditional actions
     if has_transparency_failures {
@@ -854,6 +1343,26 @@ fn print_quick_actions(
         println!("  {}  {}", dim(&format!("{:<22}", "Review bias findings")),
             "complior docs --article 10");
     }
+
+    // Phase 8a: Log testing suggestion
+    if has_logging_failures {
+        println!("  {}  {}", dim(&format!("{:<22}", "Review logs")),
+            format!("complior eval --categories logging --target {}", truncate_str(target, 40)));
+    }
+
+    // Phase 8b: Security-specific OWASP actions
+    if let Some(results) = results {
+        let owasp_failures = collect_owasp_failure_categories(results);
+        if owasp_failures.contains(&"LLM01") {
+            println!("  {}  {}", dim(&format!("{:<22}", "Fix prompt injection")),
+                "Review input sanitization (OWASP LLM01)");
+        }
+        if owasp_failures.contains(&"LLM02") {
+            println!("  {}  {}", dim(&format!("{:<22}", "Fix data leakage")),
+                "Review output filtering (OWASP LLM02)");
+        }
+    }
+
     if tier == "basic" {
         println!("  {}  {}", dim(&format!("{:<22}", "LLM-judge eval")),
             format!("complior eval --target {} --llm", truncate_str(target, 40)));
@@ -866,6 +1375,14 @@ fn print_quick_actions(
     if sec_score.is_none() && tier != "security" {
         println!("  {}  {}", dim(&format!("{:<22}", "Security probes")),
             format!("complior eval --target {} --security", truncate_str(target, 40)));
+    }
+
+    // Phase 8c: Guard Service suggestion
+    if let Some(ss) = sec_score {
+        if ss < 60 {
+            println!("  {}  {}", dim(&format!("{:<22}", "Enable Guard Service")),
+                format!("complior guard --target {}", truncate_str(target, 40)));
+        }
     }
 
     // Always show
@@ -886,11 +1403,11 @@ fn print_quick_actions(
 
 /// Visual bar: ████░░░░ (filled vs empty).
 fn format_bar(passed: u64, total: u64, width: usize) -> String {
-    if total == 0 { return "░".repeat(width); }
+    if total == 0 { return bar_empty().repeat(width); }
     let ratio = passed as f64 / total as f64;
     let filled = (ratio * width as f64).round() as usize;
     let empty = width.saturating_sub(filled);
-    format!("{}{}", "█".repeat(filled), "░".repeat(empty))
+    format!("{}{}", bar_filled().repeat(filled), bar_empty().repeat(empty))
 }
 
 /// Truncate string to max_chars, adding … if needed.
@@ -904,6 +1421,53 @@ fn truncate_str(s: &str, max_chars: usize) -> String {
         let truncated: String = cleaned.chars().take(max_chars).collect();
         format!("{truncated}…")
     }
+}
+
+/// Wrap text with indentation alignment.
+/// `label_prefix` is the leading text (e.g. "     Fix:      "),
+/// and the continuation lines are indented to the same column.
+fn wrap_aligned(label_prefix: &str, text: &str, term_width: usize) -> String {
+    let indent = label_prefix.chars().count();
+    let usable = if term_width > indent + 10 { term_width - indent } else { 80 };
+    let cleaned: String = text.split_whitespace().collect::<Vec<&str>>().join(" ");
+
+    let mut lines: Vec<String> = Vec::new();
+    let mut current = String::new();
+
+    for word in cleaned.split_whitespace() {
+        let word_len = word.chars().count();
+        let cur_len = current.chars().count();
+        if cur_len == 0 {
+            current = word.to_string();
+        } else if cur_len + 1 + word_len <= usable {
+            current.push(' ');
+            current.push_str(word);
+        } else {
+            lines.push(current);
+            current = word.to_string();
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+
+    if lines.is_empty() {
+        return format!("{label_prefix}");
+    }
+
+    let pad: String = " ".repeat(indent);
+    let mut result = format!("{label_prefix}{}", lines[0]);
+    for line in &lines[1..] {
+        result.push('\n');
+        result.push_str(&pad);
+        result.push_str(line);
+    }
+    result
+}
+
+/// Get terminal width, defaulting to 100.
+fn term_width() -> usize {
+    crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(100)
 }
 
 /// Format duration: "38s" for <60s, "1m 38s" for >=60s.
@@ -927,26 +1491,9 @@ fn format_latency(ms: u64) -> String {
     }
 }
 
-/// Color a grade letter based on its value.
-fn grade_color(grade: &str) -> String {
-    match grade {
-        "A" => bold_green(grade),
-        "B" => green(grade),
-        "C" => yellow(grade),
-        "D" => bold_yellow(grade),
-        _ => bold_red(grade), // F or unknown
-    }
-}
-
-/// Resolve display grade from numeric score.
-fn resolve_display_grade(score: u64) -> String {
-    match score {
-        90..=100 => "A".to_string(),
-        80..=89 => "B".to_string(),
-        70..=79 => "C".to_string(),
-        50..=69 => "D".to_string(),
-        _ => "F".to_string(),
-    }
+/// Color a grade letter based on its value (delegates to shared colors helper).
+fn eval_grade_color(grade: &str) -> String {
+    super::format::colors::grade_color(grade, grade)
 }
 
 /// Map tier to display mode label for header.
@@ -960,13 +1507,12 @@ fn mode_label_from_tier(tier: &str) -> &str {
 }
 
 /// Mode description for summary section.
-fn mode_description(tier: &str, total: u64, llm_count: u64) -> String {
+fn mode_description(tier: &str, total: u64, llm_count: u64, security_count: u64) -> String {
     match tier {
         "security" => format!("{total} security probes (OWASP LLM Top 10)"),
         "full" => {
-            let conformity = total.saturating_sub(300); // approximate security probe count
-            format!("{total} tests ({conformity} conformity + {} security probes)",
-                total.saturating_sub(conformity))
+            let conformity = total.saturating_sub(security_count);
+            format!("{total} tests ({conformity} conformity + {security_count} security probes)")
         }
         "standard" => {
             let det = total.saturating_sub(llm_count);
@@ -986,6 +1532,21 @@ fn has_category_failures(categories: Option<&Vec<serde_json::Value>>, cat: &str)
         c.get("category").and_then(|v| v.as_str()) == Some(cat)
             && c.get("failed").and_then(|v| v.as_u64()).unwrap_or(0) > 0
     })).unwrap_or(false)
+}
+
+/// Collect OWASP categories that have failures (for security-specific quick actions).
+fn collect_owasp_failure_categories(results: &[serde_json::Value]) -> Vec<&str> {
+    let mut cats: Vec<&str> = Vec::new();
+    for r in results {
+        let verdict = r.get("verdict").and_then(|v| v.as_str()).unwrap_or("");
+        if verdict != "fail" && verdict != "error" { continue; }
+        if let Some(cat) = r.get("owaspCategory").and_then(|v| v.as_str()) {
+            if !cats.contains(&cat) {
+                cats.push(cat);
+            }
+        }
+    }
+    cats
 }
 
 /// Print OWASP LLM Top 10 breakdown for security probes.
@@ -1016,6 +1577,8 @@ fn print_owasp_breakdown(results: Option<&Vec<serde_json::Value>>) {
     println!("  {}", bold("Security Breakdown (OWASP LLM Top 10)"));
     println!();
 
+    // Labels match TS canonical source: security-integration.ts OWASP_LLM_LABELS
+    // Shortened for CLI display (28-char column width)
     let owasp_labels: std::collections::HashMap<&str, &str> = [
         ("LLM01", "Prompt Injection"),
         ("LLM02", "Sensitive Info Disclosure"),
@@ -1040,7 +1603,7 @@ fn print_owasp_breakdown(results: Option<&Vec<serde_json::Value>>) {
         let bar = format_bar(*passed, definitive, 10);
         let ratio = format!("{:>3}/{:>3}", passed, total);
         let score_str = format!("{score}%");
-        let inconc_str = if *inconc > 0 { format!("  {}", dim(&format!("{inconc} ▲"))) } else { String::new() };
+        let inconc_str = if *inconc > 0 { format!("  {}", dim(&format!("{inconc} {}", warning_icon()))) } else { String::new() };
         println!("    {:<7}{:<28} {}   {}  {}{}", cat, label, ratio, bar, score_color(score as f64, &score_str), inconc_str);
     }
 }
@@ -1093,6 +1656,613 @@ fn filter_failures_json(result: &serde_json::Value) -> serde_json::Value {
     filtered
 }
 
+// ── Remediation (US-REM-07..10) ──────────────────────────────
+
+/// Fetch remediation data from engine for failed tests.
+async fn fetch_remediation(
+    client: &crate::engine_client::EngineClient,
+    result: &serde_json::Value,
+) -> serde_json::Value {
+    let results_arr = match result.get("results").and_then(|v| v.as_array()) {
+        Some(r) => r,
+        None => return serde_json::Value::Null,
+    };
+
+    // Collect failed test IDs
+    let failed_ids: Vec<&str> = results_arr.iter()
+        .filter(|t| {
+            let v = t.get("verdict").and_then(|v| v.as_str()).unwrap_or("");
+            v == "fail" || v == "error"
+        })
+        .filter_map(|t| t.get("testId").and_then(|v| v.as_str()))
+        .collect();
+
+    if failed_ids.is_empty() {
+        return serde_json::Value::Null;
+    }
+
+    let ids_csv = failed_ids.join(",");
+    let url = format!("/eval/remediation?testIds={}", ids_csv);
+
+    match client.get_json(&url).await {
+        Ok(data) => data,
+        Err(_) => serde_json::Value::Null,
+    }
+}
+
+/// Enhanced format_eval_report with inline remediation recommendations.
+fn format_eval_report_with_remediation(result: &serde_json::Value, remediation: &serde_json::Value) {
+    let target = result.get("target").and_then(|v| v.as_str()).unwrap_or("?");
+    let tier = result.get("tier").and_then(|v| v.as_str()).unwrap_or("basic");
+    let overall = result.get("overallScore").and_then(|v| v.as_u64()).unwrap_or(0);
+    let grade = result.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
+    let total_tests = result.get("totalTests").and_then(|v| v.as_u64()).unwrap_or(0);
+    let passed = result.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
+    let failed = result.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
+    let errors = result.get("errors").and_then(|v| v.as_u64()).unwrap_or(0);
+    let inconclusive = result.get("inconclusive").and_then(|v| v.as_u64()).unwrap_or(0);
+    let skipped = result.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
+    let duration = result.get("duration").and_then(|v| v.as_u64()).unwrap_or(0);
+    let capped = result.get("criticalCapped").and_then(|v| v.as_bool()).unwrap_or(false);
+    let sec_score = result.get("securityScore").and_then(|v| v.as_u64());
+    let sec_grade = result.get("securityGrade").and_then(|v| v.as_str());
+    let adapter_name = result.get("adapterName").and_then(|v| v.as_str());
+    let results_arr = result.get("results").and_then(|v| v.as_array());
+    let categories_arr = result.get("categories").and_then(|v| v.as_array());
+
+    let llm_count = results_arr.map(|r| r.iter().filter(|t|
+        t.get("method").and_then(|v| v.as_str()) == Some("llm-judge")
+    ).count() as u64).unwrap_or(0);
+
+    // 1. Completion line
+    println!();
+    print_completion_line(total_tests, duration, llm_count);
+
+    // 2. Failures with inline Fix/Why
+    print_failures_with_remediation(results_arr, failed, errors, inconclusive, remediation);
+
+    // 3. Cost estimation
+    if llm_count > 0 {
+        print_cost_estimate(llm_count);
+    }
+
+    // 4-5. Remediation plan & quick actions removed — per-test Fix/Why is sufficient.
+    //       Full remediation plan available via: complior eval --remediation
+
+    // 6. RESULTS
+    print_summary(target, tier, overall, grade, sec_score, sec_grade,
+        passed, failed, errors, inconclusive, skipped, total_tests, duration,
+        llm_count, capped, adapter_name, results_arr);
+
+    // 7. Critical gaps
+    print_critical_gaps(categories_arr);
+
+    // 8. Category breakdown
+    print_category_breakdown(categories_arr, tier);
+
+    // 9. OWASP breakdown
+    if sec_score.is_some() {
+        print_owasp_breakdown(results_arr);
+    }
+
+    println!();
+    println!("  {}", separator());
+}
+
+/// Failures with inline Fix: and Why: lines from remediation data.
+fn print_failures_with_remediation(
+    results: Option<&Vec<serde_json::Value>>,
+    failed: u64,
+    errors: u64,
+    inconclusive: u64,
+    remediation: &serde_json::Value,
+) {
+    let results = match results {
+        Some(r) => r,
+        None => return,
+    };
+
+    let total_failed = failed + errors;
+
+    println!();
+    println!("  {}", separator());
+
+    if total_failed == 0 && inconclusive == 0 {
+        println!("  {}  All tests passed — no conformity or security failures detected.", green(check_mark()));
+        println!("  {}", separator());
+        return;
+    }
+
+    if total_failed == 0 {
+        println!("  {}  All tests passed.", green(check_mark()));
+        println!("  {}", separator());
+        return;
+    }
+
+    let warn_part = if inconclusive > 0 {
+        format!(" · {} warnings", inconclusive)
+    } else {
+        String::new()
+    };
+    println!("  {}  ({} failed{})", bold("FAILURES"), total_failed, warn_part);
+    println!("  {}", separator());
+
+    let failures: Vec<&serde_json::Value> = results.iter().filter(|t| {
+        let v = t.get("verdict").and_then(|v| v.as_str()).unwrap_or("");
+        v == "fail" || v == "error"
+    }).collect();
+
+    for &cat_key in CATEGORY_ORDER {
+        let cat_failures: Vec<&&serde_json::Value> = failures.iter()
+            .filter(|t| t.get("category").and_then(|v| v.as_str()) == Some(cat_key))
+            .collect();
+
+        if cat_failures.is_empty() { continue; }
+
+        let ct_id = category_ct_id(cat_key);
+        let label = category_label(cat_key);
+        let count = cat_failures.len();
+
+        println!();
+        println!("  {}  {}  ({} failed)", bold(ct_id), bold(label), count);
+        let header_text = format!("{}  {}", ct_id, label);
+        println!("  {}", dim(&h_line().repeat(header_text.len())));
+        println!();
+
+        let mut medium_shown = 0u32;
+        let mut medium_hidden = 0u32;
+        let mut low_shown = 0u32;
+        let mut low_hidden = 0u32;
+
+        for t in &cat_failures {
+            let severity = t.get("severity").and_then(|v| v.as_str()).unwrap_or("medium");
+
+            match severity {
+                "medium" => {
+                    if medium_shown >= 3 { medium_hidden += 1; continue; }
+                    medium_shown += 1;
+                }
+                "low" => {
+                    if low_shown >= 2 { low_hidden += 1; continue; }
+                    low_shown += 1;
+                }
+                _ => {}
+            }
+
+            let test_id = t.get("testId").and_then(|v| v.as_str()).unwrap_or("?");
+            let name = t.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+            let response = t.get("response").and_then(|v| v.as_str()).unwrap_or("");
+            let reasoning = t.get("reasoning").and_then(|v| v.as_str()).unwrap_or("");
+            let verdict = t.get("verdict").and_then(|v| v.as_str()).unwrap_or("fail");
+            let article = category_article(cat_key);
+
+            let icon = if verdict == "error" {
+                yellow(if use_unicode() { "▲" } else { "!" })
+            } else {
+                red(if use_unicode() { "✖" } else { "X" })
+            };
+
+            let sev_tag = match severity {
+                "critical" => format!(" · {}", red("CRITICAL")),
+                "high" => format!(" · {}", yellow("HIGH")),
+                "medium" => format!(" · {}", cyan("MEDIUM")),
+                "low" => format!(" · {}", dim("LOW")),
+                _ => String::new(),
+            };
+
+            if article.is_empty() {
+                println!("  {}  {}{} · {}", icon, dim(test_id), sev_tag, name);
+            } else {
+                println!("  {}  {}  {}{} · {}", icon, dim(test_id), dim(article), sev_tag, name);
+            }
+
+            let tw = term_width();
+
+            // Show the prompt that was sent
+            let probe = t.get("probe").and_then(|v| v.as_str()).unwrap_or("");
+            if !probe.is_empty() {
+                let label = format!("     {}    \"", dim("Prompt:"));
+                println!("{}\"", wrap_aligned(&label, probe, tw));
+            }
+
+            if !name.is_empty() {
+                println!("{}", wrap_aligned("     Expected: ", name, tw));
+            }
+
+            if response.is_empty() {
+                println!("     {} {}", dim("Response:"), dim("(empty response)"));
+            } else {
+                let resp_text = truncate_str(response, 300);
+                let label = format!("     {} \"", dim("Response:"));
+                println!("{}\"", wrap_aligned(&label, &resp_text, tw));
+            }
+
+            if !reasoning.is_empty() {
+                println!("{}", wrap_aligned("     Reason:   ", reasoning, tw));
+            }
+
+            // Inline remediation: Fix: and Why: lines
+            if let Some(actions) = remediation.get(test_id).and_then(|v| v.as_array()) {
+                if let Some(first_action) = actions.first() {
+                    if let Some(guidance) = first_action.get("user_guidance") {
+                        if let Some(what_to_do) = guidance.get("what_to_do").and_then(|v| v.as_array()) {
+                            if let Some(first_step) = what_to_do.first().and_then(|v| v.as_str()) {
+                                println!("{}", wrap_aligned("     Fix:      ", first_step, tw));
+                            }
+                        }
+                        if let Some(why) = guidance.get("why").and_then(|v| v.as_str()) {
+                            let first_sentence = why.split(". ").next().unwrap_or(why);
+                            println!("{}", wrap_aligned("     Why:      ", first_sentence, tw));
+                        }
+                    }
+                }
+            }
+
+            println!();
+        }
+
+        if medium_hidden > 0 {
+            println!("  {} and {} more medium failures.", dim("..."), medium_hidden);
+        }
+        if low_hidden > 0 {
+            println!("  {} and {} more low failures.", dim("..."), low_hidden);
+        }
+        if medium_hidden > 0 || low_hidden > 0 {
+            println!("  Full list: {}", dim("complior eval --json > eval-report.json"));
+        }
+    }
+
+    // Other failures (not in CATEGORY_ORDER)
+    let known: std::collections::HashSet<&str> = CATEGORY_ORDER.iter().copied().collect();
+    let other_failures: Vec<&&serde_json::Value> = failures.iter()
+        .filter(|t| {
+            let cat = t.get("category").and_then(|v| v.as_str()).unwrap_or("");
+            !known.contains(cat)
+        })
+        .collect();
+
+    if !other_failures.is_empty() {
+        println!();
+        println!("  {}  ({} failed)", bold("Other"), other_failures.len());
+        println!("  {}", dim(&h_line().repeat(5)));
+        println!();
+
+        for (i, t) in other_failures.iter().enumerate() {
+            if i >= 5 { break; }
+            let test_id = t.get("testId").and_then(|v| v.as_str()).unwrap_or("?");
+            let name = t.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+            let reasoning = t.get("reasoning").and_then(|v| v.as_str()).unwrap_or("");
+            let severity = t.get("severity").and_then(|v| v.as_str());
+            let sev_tag = match severity {
+                Some("critical") => format!(" · {}", red("CRITICAL")),
+                Some("high") => format!(" · {}", yellow("HIGH")),
+                _ => String::new(),
+            };
+            println!("  {}  {}{} · {}", red(if use_unicode() { "✖" } else { "X" }), dim(test_id), sev_tag, name);
+            if !reasoning.is_empty() {
+                println!("     {}   {}", dim("Reason:"), reasoning);
+            }
+            println!();
+        }
+    }
+}
+
+/// Print remediation plan — deduplicated actions sorted by priority × affected tests.
+fn print_remediation_plan(remediation: &serde_json::Value) {
+    let remediation = match remediation.as_object() {
+        Some(r) if !r.is_empty() => r,
+        _ => return,
+    };
+
+    // Collect unique actions with affected test counts
+    let mut action_counts: std::collections::HashMap<String, (serde_json::Value, u32)> = std::collections::HashMap::new();
+
+    for (_test_id, actions) in remediation {
+        if let Some(arr) = actions.as_array() {
+            for action in arr {
+                if let Some(id) = action.get("id").and_then(|v| v.as_str()) {
+                    let entry = action_counts.entry(id.to_string()).or_insert_with(|| (action.clone(), 0));
+                    entry.1 += 1;
+                }
+            }
+        }
+    }
+
+    if action_counts.is_empty() { return; }
+
+    // Sort by priority then test count
+    let mut sorted: Vec<(String, serde_json::Value, u32)> = action_counts.into_iter()
+        .map(|(id, (action, count))| (id, action, count))
+        .collect();
+    sorted.sort_by(|a, b| {
+        let a_pri = priority_num(a.1.get("priority").and_then(|v| v.as_str()).unwrap_or("low"));
+        let b_pri = priority_num(b.1.get("priority").and_then(|v| v.as_str()).unwrap_or("low"));
+        a_pri.cmp(&b_pri).then(b.2.cmp(&a.2))
+    });
+
+    let top = sorted.iter().take(10).collect::<Vec<_>>();
+    let total_actions = top.len();
+
+    println!("  {}", separator());
+    println!("  {}  ({} actions · sorted by priority)", bold("REMEDIATION PLAN"), total_actions);
+    println!("  {}", separator());
+    println!();
+
+    for (i, (id, action, count)) in top.iter().enumerate() {
+        let title = action.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+        let priority = action.get("priority").and_then(|v| v.as_str()).unwrap_or("medium");
+        let article_ref = action.get("article_ref").and_then(|v| v.as_str()).unwrap_or("");
+
+        let pri_tag = match priority {
+            "critical" => red("CRITICAL"),
+            "high" => yellow("HIGH"),
+            "medium" => cyan("MEDIUM"),
+            _ => dim("LOW"),
+        };
+
+        let timeline = match priority {
+            "critical" => "this week",
+            "high" => "next week",
+            "medium" => "this month",
+            _ => "backlog",
+        };
+
+        println!("  {}. {}  {}  ({} tests affected)", i + 1, pri_tag, bold(title), count);
+        if !article_ref.is_empty() {
+            println!("     {} — timeline: {}", dim(article_ref), dim(timeline));
+        }
+
+        // Show steps from user_guidance
+        if let Some(guidance) = action.get("user_guidance") {
+            if let Some(steps) = guidance.get("what_to_do").and_then(|v| v.as_array()) {
+                println!("     {}:", dim("Steps"));
+                for (j, step) in steps.iter().enumerate() {
+                    if j >= 3 { break; }
+                    if let Some(s) = step.as_str() {
+                        println!("       {}. {}", j + 1, truncate_str(s, 65));
+                    }
+                }
+            }
+            // Verification command
+            if let Some(v) = guidance.get("verification").and_then(|v| v.as_str()) {
+                println!("     {}: {}", dim("Verify"), dim(v));
+            }
+        }
+
+        let _ = id; // suppress unused
+        println!();
+    }
+}
+
+/// Quick actions from remediation data (top-5 most impactful, US-REM-07).
+fn print_quick_actions_from_remediation(remediation: &serde_json::Value, target: &str) {
+    let rem = match remediation.as_object() {
+        Some(r) if !r.is_empty() => r,
+        _ => return,
+    };
+
+    // Collect unique actions
+    let mut action_counts: std::collections::HashMap<String, (serde_json::Value, u32)> = std::collections::HashMap::new();
+    for (_test_id, actions) in rem {
+        if let Some(arr) = actions.as_array() {
+            for action in arr {
+                if let Some(id) = action.get("id").and_then(|v| v.as_str()) {
+                    let entry = action_counts.entry(id.to_string()).or_insert_with(|| (action.clone(), 0));
+                    entry.1 += 1;
+                }
+            }
+        }
+    }
+
+    let mut sorted: Vec<_> = action_counts.into_iter().collect();
+    sorted.sort_by(|a, b| {
+        let ap = priority_num(a.1.0.get("priority").and_then(|v| v.as_str()).unwrap_or("low"));
+        let bp = priority_num(b.1.0.get("priority").and_then(|v| v.as_str()).unwrap_or("low"));
+        ap.cmp(&bp).then(b.1.1.cmp(&a.1.1))
+    });
+
+    let top5: Vec<_> = sorted.iter().take(5).collect();
+    if top5.is_empty() { return; }
+
+    println!("  {}", separator());
+    println!("  {}", bold("QUICK ACTIONS"));
+    println!("  {}", separator());
+    println!();
+
+    for (i, (_id, (action, count))) in top5.iter().enumerate() {
+        let title = action.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+        let priority = action.get("priority").and_then(|v| v.as_str()).unwrap_or("medium");
+        let icon = match priority {
+            "critical" => red(if use_unicode() { "▸" } else { ">" }),
+            "high" => yellow(if use_unicode() { "▸" } else { ">" }),
+            _ => cyan(if use_unicode() { "▸" } else { ">" }),
+        };
+        println!("  {} {}. {} ({} tests)", icon, i + 1, bold(title), count);
+
+        // Show first step
+        if let Some(step) = action.get("user_guidance")
+            .and_then(|g| g.get("what_to_do"))
+            .and_then(|s| s.as_array())
+            .and_then(|a| a.first())
+            .and_then(|s| s.as_str())
+        {
+            println!("     {}", truncate_str(step, 70));
+        }
+    }
+
+    println!();
+    println!("  Re-run after fixes: complior eval --target {}", target);
+    println!();
+}
+
+/// Print full remediation report (--remediation flag).
+async fn print_remediation_report(client: &crate::engine_client::EngineClient) {
+    match client.post_json("/eval/remediation-report", &serde_json::json!({})).await {
+        Ok(report) => {
+            let score = report.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+            let grade = report.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
+            let total = report.get("total_failures").and_then(|v| v.as_u64()).unwrap_or(0);
+            let gaps = report.get("critical_gaps").and_then(|v| v.as_array());
+
+            println!();
+            println!("  {}", separator());
+            println!("  {}", bold("REMEDIATION REPORT"));
+            println!("  {}", separator());
+            println!();
+            println!("  Score: {}/100 (Grade {})", score, grade);
+            println!("  Total failures: {}", total);
+
+            if let Some(gaps) = gaps {
+                if !gaps.is_empty() {
+                    let gap_strs: Vec<&str> = gaps.iter().filter_map(|v| v.as_str()).collect();
+                    println!("  Critical gaps: {}", red(&gap_strs.join(", ")));
+                }
+            }
+
+            // Show system prompt patch path hint
+            if report.get("system_prompt_patch").and_then(|v| v.as_str()).is_some() {
+                println!();
+                println!("  {}  System prompt patch generated", green(check_mark()));
+            }
+
+            // Save report to disk (.complior/eval-fixes/)
+            let fixes_dir = std::path::Path::new(".complior/eval-fixes");
+            if let Err(e) = std::fs::create_dir_all(fixes_dir) {
+                eprintln!("  {} Could not create {}: {}", yellow(warning_icon()), fixes_dir.display(), e);
+            } else {
+                // Save markdown report
+                if let Some(md) = report.get("markdown_report").and_then(|v| v.as_str()) {
+                    let md_path = fixes_dir.join("remediation-report.md");
+                    if std::fs::write(&md_path, md).is_ok() {
+                        println!("  {}  Saved: {}", green(check_mark()), md_path.display());
+                    }
+                }
+                // Save system prompt patch
+                if let Some(patch) = report.get("system_prompt_patch").and_then(|v| v.as_str()) {
+                    let sp_path = fixes_dir.join("system-prompt-patch.md");
+                    if std::fs::write(&sp_path, patch).is_ok() {
+                        println!("  {}  Saved: {}", green(check_mark()), sp_path.display());
+                    }
+                }
+                // Save API config patch
+                if let Some(api_config) = report.get("api_config_patch") {
+                    let ac_path = fixes_dir.join("api-config.json");
+                    if let Ok(json_str) = serde_json::to_string_pretty(api_config) {
+                        if std::fs::write(&ac_path, &json_str).is_ok() {
+                            println!("  {}  Saved: {}", green(check_mark()), ac_path.display());
+                        }
+                    }
+                    // Save guardrails.json from input/output validation
+                    let guardrails = serde_json::json!({
+                        "inputValidation": api_config.get("inputValidation"),
+                        "outputValidation": api_config.get("outputValidation"),
+                    });
+                    let gr_path = fixes_dir.join("guardrails.json");
+                    if let Ok(json_str) = serde_json::to_string_pretty(&guardrails) {
+                        if std::fs::write(&gr_path, &json_str).is_ok() {
+                            println!("  {}  Saved: {}", green(check_mark()), gr_path.display());
+                        }
+                    }
+                }
+            }
+
+            println!();
+            println!("  {}", separator());
+        }
+        Err(e) => {
+            eprintln!("  {} Could not generate remediation report: {}", yellow(warning_icon()), e);
+        }
+    }
+}
+
+/// Run eval --fix: show eval findings as fix preview (US-REM-09).
+pub async fn run_eval_fix(dry_run: bool, json: bool, config: &TuiConfig) -> i32 {
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    match client.get_json("/eval/findings").await {
+        Ok(data) => {
+            let findings = data.get("findings").and_then(|v| v.as_array());
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&data).unwrap_or_default());
+                return 0;
+            }
+
+            match findings {
+                Some(f) if !f.is_empty() => {
+                    println!();
+                    println!("  {}", separator());
+                    println!("  {}  ({} categories with failures)", bold("EVAL FIXES"), f.len());
+                    println!("  {}", separator());
+                    println!();
+
+                    for finding in f {
+                        let check_id = finding.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+                        let title = finding.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+                        let fix_type = finding.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                        let severity = finding.get("severity").and_then(|v| v.as_str()).unwrap_or("medium");
+                        let fix_desc = finding.get("fixDescription").and_then(|v| v.as_str()).unwrap_or("");
+
+                        let icon = match severity {
+                            "critical" => red(if use_unicode() { "✖" } else { "X" }),
+                            "high" => yellow(if use_unicode() { "▲" } else { "!" }),
+                            _ => cyan(if use_unicode() { "●" } else { "o" }),
+                        };
+
+                        let type_label = if fix_type == "A" { "system-prompt" } else { "config-file" };
+
+                        println!("  {}  {} [{}] {}", icon, bold(check_id), dim(type_label), title);
+                        if !fix_desc.is_empty() {
+                            println!("     {}", truncate_str(fix_desc, 75));
+                        }
+                        println!();
+                    }
+
+                    // Save fix previews to .complior/eval-fixes/
+                    let fixes_dir = std::path::Path::new(".complior/eval-fixes");
+                    if std::fs::create_dir_all(fixes_dir).is_ok() {
+                        let fixes_json = serde_json::to_string_pretty(&data).unwrap_or_default();
+                        let _ = std::fs::write(fixes_dir.join("eval-findings.json"), &fixes_json);
+                    }
+
+                    if dry_run {
+                        println!("  {} Dry-run mode — no changes applied.", dim("ℹ"));
+                        println!("  {} Preview saved to .complior/eval-fixes/eval-findings.json", dim("ℹ"));
+                    } else {
+                        println!("  {} To apply these fixes, edit your system prompt with the changes above.", dim("ℹ"));
+                        println!("  {} Full patch: complior eval --remediation", dim("ℹ"));
+                        println!("  {} After applying: Re-run complior eval --target <url>", dim("ℹ"));
+                    }
+
+                    println!();
+                    println!("  {}", separator());
+                    0
+                }
+                _ => {
+                    println!("  {}  No eval findings to fix. Run `complior eval` first.", dim(skip_icon()));
+                    0
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Error: {e}");
+            1
+        }
+    }
+}
+
+fn priority_num(p: &str) -> u32 {
+    match p {
+        "critical" => 0,
+        "high" => 1,
+        "medium" => 2,
+        _ => 3,
+    }
+}
+
 /// Determine next-step suggestion based on results.
 fn resolve_next_step(
     overall: u64,
@@ -1118,12 +2288,12 @@ fn resolve_next_step(
                 bold("Next:"), failed);
         }
         format!("{}  Ready for pre-deployment audit. Run `complior audit` for full compliance package.",
-            green("✓"))
+            green(check_mark()))
     } else if overall < 80 {
         format!("{}  address {} remaining failures to reach grade B (80+)",
             bold("Next:"), failed)
     } else {
         format!("{}  Ready for pre-deployment audit. Run `complior audit` for full compliance package.",
-            green("✓"))
+            green(check_mark()))
     }
 }

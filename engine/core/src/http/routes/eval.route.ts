@@ -1,10 +1,13 @@
 /**
  * Eval Route — HTTP endpoints for `complior eval`.
  *
- * POST /eval/run         — Run eval against target (blocking JSON)
- * POST /eval/run/stream  — Run eval with SSE progress streaming
- * GET  /eval/last        — Get last eval result
- * GET  /eval/list        — List eval results
+ * POST /eval/run              — Run eval against target (blocking JSON)
+ * POST /eval/run/stream       — Run eval with SSE progress streaming
+ * GET  /eval/last             — Get last eval result
+ * GET  /eval/list             — List eval results
+ * GET  /eval/remediation      — Get remediation actions for test IDs (US-REM-07)
+ * POST /eval/remediation-report — Full remediation report (US-REM-08)
+ * GET  /eval/findings         — Get eval failures as scanner findings (US-REM-09)
  */
 
 import { Hono } from 'hono';
@@ -52,8 +55,9 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
 
     return streamSSE(c, async (stream) => {
       try {
-        // Emit start event
-        const startPayload = sseEvalStart(options.target, options.model, modeLabel);
+        // Emit start event (pass model as judgeModel when LLM-judge is enabled)
+        const judgeModel = (includes.llm || includes.security) ? options.model : undefined;
+        const startPayload = sseEvalStart(options.target, options.model, modeLabel, judgeModel);
         await stream.writeSSE({ event: startPayload.event, data: startPayload.data });
 
         let healthEmitted = false;
@@ -81,6 +85,7 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
               completed: progress.completed,
               total: progress.total,
               ...(r.owaspCategory ? { owaspCategory: r.owaspCategory } : {}),
+              ...(r.severity ? { severity: r.severity } : {}),
             });
             await stream.writeSSE({ event: testPayload.event, data: testPayload.data });
           }
@@ -112,6 +117,50 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
     const results = await deps.evalService.listResults();
     const judgeConfigured = !!process.env.COMPLIOR_JUDGE_API_KEY;
     return c.json({ results, judgeConfigured });
+  });
+
+  // GET /eval/remediation?testIds=CT-1-003,CT-1-005 — remediation for specific tests (US-REM-07)
+  app.get('/eval/remediation', async (c) => {
+    const testIdsParam = c.req.query('testIds');
+    if (!testIdsParam) {
+      return c.json({ error: 'VALIDATION', message: 'testIds query parameter required' }, 400);
+    }
+
+    const result = await deps.evalService.getLastResult();
+    if (!result) {
+      return c.json({ error: 'NOT_FOUND', message: 'No eval results found. Run complior eval first.' }, 404);
+    }
+
+    const testIds = testIdsParam.split(',').map((s) => s.trim()).filter(Boolean);
+    const remediation = await deps.evalService.getRemediationForTests(testIds, result.results);
+    return c.json(remediation);
+  });
+
+  // POST /eval/remediation-report — full remediation report (US-REM-08)
+  app.post('/eval/remediation-report', async (c) => {
+    const result = await deps.evalService.getLastResult();
+    if (!result) {
+      return c.json({ error: 'NOT_FOUND', message: 'No eval results found. Run complior eval first.' }, 404);
+    }
+
+    const report = await deps.evalService.generateRemediationReport(result);
+
+    // Include markdown rendering for CLI disk persistence
+    const { renderRemediationMarkdown } = await import('../../domain/eval/eval-remediation-report.js');
+    const markdown_report = renderRemediationMarkdown(report);
+
+    return c.json({ ...report, markdown_report });
+  });
+
+  // GET /eval/findings — eval failures as scanner findings (US-REM-09)
+  app.get('/eval/findings', async (c) => {
+    const result = await deps.evalService.getLastResult();
+    if (!result) {
+      return c.json({ error: 'NOT_FOUND', message: 'No eval results found. Run complior eval first.' }, 404);
+    }
+
+    const findings = await deps.evalService.getEvalFindings(result);
+    return c.json({ findings });
   });
 
   return app;

@@ -2,8 +2,8 @@
 
 > Объединённые метрики CLI/Engine (open-source) и SaaS Dashboard (проприетарный). Детали реализации -- см. соответствующие FEATURE-MAP.md.
 
-**Дата:** 2026-03-20
-**Дедлайн:** 2 августа 2026 (~135 дней)
+**Дата:** 2026-03-24
+**Дедлайн:** 2 августа 2026 (~131 день)
 
 ---
 
@@ -11,11 +11,11 @@
 
 | Метрика | CLI/Engine | SaaS | Итого |
 |---------|-----------|------|-------|
-| Спринты | v1 (19) + v8 (S01--S06-partial + S08--S10-partial, 18) = 37 | S000--S8.5 (14) | 51 |
-| Story Points | 365 (v1) + ~205 (v8 est.) = ~570 | 424 | ~994 |
-| Тесты | 2342 | 554 | **2896** |
-| User Stories (DONE) | 84 (v1) + 93 (v8) = 177 | 84 | 261 |
-| Velocity (SP/day) | ~20 (v1, 2 days) / ~6.8 (v8, 30 days) | 12.8 | -- |
+| Спринты | v1 (19) + v8 (S01--S06-partial + S08--S11-partial, 19) = 38 | S000--S8.5 (14) | 52 |
+| Story Points | 365 (v1) + ~220 (v8 est.) = ~585 | 424 | ~1009 |
+| Тесты | 2808 | 554 | **3362** |
+| User Stories (DONE) | 84 (v1) + 117 (v8) = 201 | 84 | 285 |
+| Velocity (SP/day) | ~20 (v1, 2 days) / ~6.5 (v8, 33 days) | 12.8 | -- |
 | Разработчики | Claude Code | Max, Nina, Leo, Marcus | -- |
 
 ---
@@ -34,6 +34,8 @@ MAR  2026  |==| CLI S04 done (FRIA JSON, bug fixes)
            |====| CLI S06 partial (5 US + Passport Production Rewrite: LLM Chat, Chat UX, Onboarding, Init, 10 passport fixes)
            |====| CLI S08/S09 partial (Scanner Intelligence, CLI Scan Output, Code Quality)
            |====| CLI S10 partial (Tier-2 Scan, Multi-Framework, Fix Report, SRP)
+           |====| CLI S11 partial (Eval: 688 conformity+security tests, LLM judge, OWASP rubrics)
+           |==| CLI S12-REM (Eval Remediation: 22 playbooks, fix generators, passport sync, CLI output)
            |========| SaaS S9 (planned: 51 SP, 18 features, 4 weeks)
 
 APR  2026  |====| CLI S06 (planned: ISO 42001 docs, MCP Proxy, NHI Scanner)
@@ -55,7 +57,7 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 
 | Трек | Спринты осталось | SP (оценка) | Критические фичи |
 |------|-----------------|-------------|-------------------|
-| CLI/Engine | S06 (remaining 25 US) + S07--S09 (3 спринта) + S10 Phase B-C | ~90 SP | MCP Proxy, ISO 42001, Guard API, LLM Doc Fill, Wizards, Cloud Scan |
+| CLI/Engine | S06 (remaining 25 US) + S07--S09 (3 спринта) + S10 Phase B-C + S11 remaining (3 US) | ~70 SP | MCP Proxy, ISO 42001, Guard API, LLM Doc Fill, Wizards, Cloud Scan |
 | SaaS | S9--S10 (2 спринта) | ~100 SP | Реестр, Badge, Vendor Request, EU DB, Incidents, Monitoring |
 | **Итого до дедлайна** | **~5 спринтов** | **~220 SP** | |
 
@@ -114,8 +116,11 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S06 partial (Passport Rewrite) | 1 day | — | 2308->2342 | Passport Production Rewrite (10 fixes): resolveRiskClass, getApplicableArticles, inferDataResidency, generateDescription, buildOversight, computeDeployerObligations, computeNextReview, deep completeness, auto-update after scan, killSwitch export |
 | S08/S09 partial (Scanner Intelligence) | 2 days | 5 | 1709->2135 | Import Graph (45 AI packages, 5 ecosystems), Multi-Language (Go/Rust/Java), Git History (21 doc types), Targeted L5 (8 prompts), L5 Doc Validation (4 doc types), GPAI systemic risk checks, AI enricher, unified constants (H1/H4/C1), enhanced CLI scan output (severity summary, fix roadmap, deadline, badges) |
 | S10 partial (Tier-2 + Fix Report) | 3 days | 6 | 2135->2308 | Scanner Tier-2 (Semgrep/Bandit runners, finding mapper, dedup), multi-framework scoring, scan cache wiring, scan output SRP rewrite (format/ module: colors, labels, layers), fix report scaffold badges `[SCAFFOLD]`, code fix dedup, file dedup, upgrade CTA, FIX.md pipeline docs |
+| S11 partial (Eval) | 2 days | 12 | 2342->2545 | Eval subsystem: 688 conformity+security tests (176 deterministic, 212 LLM-judged, 300 security probes). 5 adapters (OpenAI, Anthropic, Ollama, HTTP, Custom). LLM-as-judge with 11 OWASP rubrics. Dedicated judge model (COMPLIOR_JUDGE_API_KEY). Scoring, passport integration, evidence chain, report. CLI: `complior eval` + `complior audit`. HTTP: POST /eval, GET /eval/latest, GET /eval/list |
+| S12-REM (Eval Remediation) | 1 day | 12 | 2545->2814 | 22 remediation playbooks (11 CT + 11 OWASP), per-test mapping (176+300), fix generators (system prompt + API config), eval→passport auto-sync, remediation report (MD+JSON), eval→findings pipeline, `--fix`/`--remediation`/`--no-remediation` CLI flags, inline Fix/Why per failure, COMPLIANCE GAPS section, text wrapping alignment, eval→passport binding via --agent, passport rename |
+| S12-REM (Cleanup) | <1 day | 1 | 2814->2808 | Remove CLI onboarding commands (`complior onboarding`, `complior agent onboard`), sync workflow docs. TUI onboarding wizard stays |
 
-**v8 Total:** ~32 days | 93 US | +1774 tests (568->2342)
+**v8 Total:** ~35 days | 118 US | +2240 tests (568->2808)
 
 ### CLI Test Count History
 
@@ -134,6 +139,9 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | S08/S09 partial (Scanner Intel) | 1255 | 414 | 466 | **2135** |
 | S10 partial (Tier-2+Fix Report) | 1407 | 414 | 487 | **2308** |
 | S06 partial (Passport Rewrite) | 1439 | 414 | 489 | **2342** |
+| S11 partial (Eval) | 1626 | 414 | 505 | **2545** |
+| S12-REM (Eval Remediation) | 1876 | 414 | 524 | **2814** |
+| S12-REM (Cleanup) | 1876 | 414 | 518 | **2808** |
 
 ---
 
@@ -182,11 +190,11 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | Период | CLI SP | SaaS SP | Total SP | Days | SP/day |
 |--------|--------|---------|----------|------|--------|
 | CLI v1 | 365 | -- | 365 | 2 | 182.5 |
-| CLI v8 (S01-S10-partial) | ~205 est. | -- | ~205 | 31 | ~6.6 |
+| CLI v8 (S01-S12-REM) | ~230 est. | -- | ~230 | 35 | ~6.6 |
 | SaaS S000-S4 | -- | 252 | 252 | 13 | 19.4 |
 | SaaS S5-S7 | -- | 104 | 104 | 12 | 8.7 |
 | SaaS S8-S8.5 | -- | 68 | 68 | 6 | 11.3 |
-| **Cumulative** | **~570** | **424** | **~994** | **64** | **~15.5** |
+| **Cumulative** | **~595** | **424** | **~1019** | **68** | **~15.0** |
 
 ### Test Growth (Combined)
 
@@ -211,6 +219,8 @@ AUG 2 2026 |##| EU AI ACT FULL ENFORCEMENT -- HIGH-RISK DEADLINE
 | 2026-03-13 | 1709 | 554 | **2263** |
 | 2026-03-17 | 2135 | 554 | **2689** |
 | 2026-03-20 | 2342 | 554 | **2896** |
+| 2026-03-23 | 2545 | 554 | **3099** |
+| 2026-03-24 | 2808 | 554 | **3362** |
 
 ### Velocity Trend (per sprint, both tracks)
 
@@ -311,6 +321,14 @@ SP/day
 | CLI Scan Output SRP (format/ module, ANSI colors, layer grouping) | DONE (S10) | 100% |
 | CLI Fix Report Scaffold Badges + Code Fix Dedup + Upgrade CTA | DONE (S10) | 100% |
 | CLI FIX.md Pipeline Documentation (18 strategies, 5 categories) | DONE (S10) | 100% |
+| CLI Eval Subsystem (688 conformity+security tests, 5 adapters, LLM judge) | DONE (S11) | 100% |
+| CLI Eval: 11 OWASP Rubrics + Dedicated Judge Model | DONE (S11) | 100% |
+| CLI `complior eval` + `complior audit` CLI Commands | DONE (S11) | 100% |
+| CLI Eval Remediation KB (22 playbooks, per-test mapping, fix generators) | DONE (S12-REM) | 100% |
+| CLI Eval → Passport Auto-Sync + Evidence Chain | DONE (S12-REM) | 100% |
+| CLI Eval CLI Output (inline Fix/Why, Compliance Gaps, text wrapping) | DONE (S12-REM) | 100% |
+| CLI `--remediation` Report + `--fix` Pipeline + `--no-remediation` | DONE (S12-REM) | 100% |
+| CLI Eval → Passport Binding via --agent + Passport Rename | DONE (S12-REM) | 100% |
 | SaaS Реестр + Wizard | PLANNED (S9) | 85% |
 | SaaS EU Database Helper | PLANNED (S9) | 80% |
 | SaaS Badge + Vendor Request | PLANNED (S9) | 80% |
@@ -354,11 +372,20 @@ SP/day
 27. Scan Output SRP (format/ module, ANSI colors, layer grouping) -- **DONE** (S10)
 28. FIX.md Pipeline Documentation (18 strategies, 5 fix categories) -- **DONE** (S10)
 29. Passport Production Rewrite (10 fixes: resolveRiskClass, dynamic articles, oversight, obligations, deep completeness, auto-update after scan) -- **DONE** (S06)
+30. Eval Subsystem: 688 conformity+security tests, 5 AI adapters, LLM-as-judge -- **DONE** (S11)
+31. Eval: 11 Specialized OWASP Rubrics + Dedicated Judge Model (COMPLIOR_JUDGE_API_KEY) -- **DONE** (S11)
+32. `complior eval` + `complior audit` CLI (--det/--llm/--security/--full, --json, --ci) -- **DONE** (S11)
+33. Eval Remediation KB: 22 playbooks (11 CT + 11 OWASP), 176+ per-test mappings, fix generators -- **DONE** (S12-REM)
+34. Eval → Passport Auto-Sync (compliance.eval block, re-sign) -- **DONE** (S12-REM)
+35. Eval CLI: inline Fix/Why per failure, Compliance Gaps, `--remediation`/`--fix`/`--no-remediation` -- **DONE** (S12-REM)
+36. Eval Fix Pipeline: eval→findings, `complior fix --source eval`, system prompt + API config patches -- **DONE** (S12-REM)
+37. Eval → Passport Binding (`--agent` links eval to specific passport, interactive create) -- **DONE** (S12-REM)
+38. Passport Rename (`complior agent rename`, file + name + re-sign) -- **DONE** (S12-REM)
 
-Из 29 must-have, **27 уже DONE**. Осталось 2 -- обе в SaaS S9.
+Из 38 must-have, **36 уже DONE**. Осталось 2 -- обе в SaaS S9.
 
-**Вывод:** При текущей velocity (12.8 SP/day SaaS) Sprint 9 (51 SP, 4 weeks) укладывается в дедлайн с запасом ~3 месяца на S10+ фичи. CLI/Engine обогнал план на ~3 спринта.
+**Вывод:** При текущей velocity (12.8 SP/day SaaS) Sprint 9 (51 SP, 4 weeks) укладывается в дедлайн с запасом ~3 месяца на S10+ фичи. CLI/Engine обогнал план на ~4 спринта.
 
 ---
 
-**Обновлено:** 2026-03-20 | **Источники:** `~/complior/docs/BURNDOWN.md` (CLI), `~/PROJECT/docs/BURNDOWN.md` (SaaS)
+**Обновлено:** 2026-03-24 | **Источники:** `~/complior/docs/BURNDOWN.md` (CLI), `~/PROJECT/docs/BURNDOWN.md` (SaaS)

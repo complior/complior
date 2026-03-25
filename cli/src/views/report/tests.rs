@@ -40,6 +40,7 @@ mod tests {
             scanned_at: "2026-02-18".to_string(),
             duration: 1500,
             files_scanned: 42,
+            files_excluded: None,
             deep_analysis: None,
             l5_cost: None,
             regulation_version: None,

@@ -26,6 +26,10 @@ pub struct Cli {
     /// Skip interactive onboarding, use defaults (EU, deployer, general)
     #[arg(long, short = 'y', global = true)]
     pub yes: bool,
+
+    /// Disable colored output (same as NO_COLOR=1)
+    #[arg(long, global = true)]
+    pub no_color: bool,
 }
 
 #[derive(Subcommand)]
@@ -80,6 +84,10 @@ pub enum Command {
         #[arg(long)]
         cloud: bool,
 
+        /// Show only critical findings and score
+        #[arg(long, short = 'q')]
+        quiet: bool,
+
         /// Filter by agent name (passport source_files)
         #[arg(long)]
         agent: Option<String>,
@@ -101,6 +109,10 @@ pub enum Command {
         /// Use LLM to enrich generated documents with context-aware content
         #[arg(long)]
         ai: bool,
+
+        /// Source for fixes: scan (default) or eval
+        #[arg(long, default_value = "scan")]
+        source: String,
 
         /// Project path (default: current directory)
         path: Option<String>,
@@ -224,12 +236,6 @@ pub enum Command {
         json: bool,
     },
 
-    /// Guided onboarding wizard (5-step compliance setup)
-    Onboarding {
-        #[command(subcommand)]
-        action: OnboardingAction,
-    },
-
     /// Query EU AI Act jurisdiction data (MSA, requirements)
     Jurisdiction {
         #[command(subcommand)]
@@ -342,6 +348,22 @@ pub enum Command {
         /// Parallel test execution (1-50, default: 5)
         #[arg(long, short = 'j', default_value = "5")]
         concurrency: u32,
+
+        /// Disable inline remediation recommendations
+        #[arg(long)]
+        no_remediation: bool,
+
+        /// Generate full remediation report (saved to .complior/eval-fixes/)
+        #[arg(long)]
+        remediation: bool,
+
+        /// Auto-apply fixes from eval failures (interactive preview)
+        #[arg(long)]
+        fix: bool,
+
+        /// Dry-run mode for --fix (preview without applying)
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Run comprehensive audit (static scan + dynamic eval + security)
@@ -401,6 +423,21 @@ pub enum Command {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum AgentAction {
+    /// Rename an existing Agent Passport
+    Rename {
+        /// Current passport name
+        old_name: String,
+
+        /// New passport name
+        new_name: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
     /// Auto-generate Agent Passport from codebase analysis
     Init {
         /// Output as JSON
@@ -623,19 +660,6 @@ pub enum AgentAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
-    /// Start or resume guided 5-step onboarding wizard
-    Onboard {
-        /// Output as JSON
-        #[arg(long)]
-        json: bool,
-
-        /// Run specific step (1-5), or omit to run next pending step
-        #[arg(long)]
-        step: Option<u32>,
-
-        /// Project path (default: current directory)
-        path: Option<String>,
-    },
     /// Generate compliance test suite from passport constraints
     TestGen {
         /// Agent name
@@ -754,21 +778,6 @@ pub enum CertAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
-}
-
-#[derive(Subcommand, Debug, Clone)]
-pub enum OnboardingAction {
-    /// Start the onboarding wizard (auto-executes step 1)
-    Start,
-    /// Show current onboarding status
-    Status,
-    /// Execute a specific step (1-5)
-    Step {
-        /// Step number (1-5)
-        number: u32,
-    },
-    /// Reset onboarding progress
-    Reset,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -930,7 +939,6 @@ pub fn needs_engine(cli: &Cli) -> bool {
         &cli.command,
         Some(
             Command::Version
-                | Command::Init { .. }
                 | Command::Update
                 | Command::Daemon { .. }
                 | Command::Login
@@ -964,7 +972,6 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Cost { .. }
             | Command::Debt { .. }
             | Command::Simulate { .. }
-            | Command::Onboarding { .. }
             | Command::Doc { .. }
             | Command::Jurisdiction { .. }
             | Command::Proxy { .. }
@@ -1805,32 +1812,6 @@ mod tests {
     }
 
     #[test]
-    fn cli_parse_agent_onboard() {
-        let cli = Cli::parse_from(["complior", "agent", "onboard"]);
-        match &cli.command {
-            Some(Command::Agent { action: AgentAction::Onboard { json, step, path } }) => {
-                assert!(!json);
-                assert!(step.is_none());
-                assert!(path.is_none());
-            }
-            _ => panic!("Expected Agent Onboard command"),
-        }
-        assert!(is_headless(&cli));
-    }
-
-    #[test]
-    fn cli_parse_agent_onboard_step() {
-        let cli = Cli::parse_from(["complior", "agent", "onboard", "--step", "3", "--json"]);
-        match &cli.command {
-            Some(Command::Agent { action: AgentAction::Onboard { json, step, .. } }) => {
-                assert!(*json);
-                assert_eq!(*step, Some(3));
-            }
-            _ => panic!("Expected Agent Onboard command"),
-        }
-    }
-
-    #[test]
     fn cli_parse_cert_readiness() {
         let cli = Cli::parse_from(["complior", "cert", "readiness", "my-bot"]);
         match &cli.command {
@@ -1881,48 +1862,6 @@ mod tests {
             }
             _ => panic!("Expected Sync command"),
         }
-    }
-
-    #[test]
-    fn cli_parse_onboarding_start() {
-        let cli = Cli::parse_from(["complior", "onboarding", "start"]);
-        assert!(matches!(
-            &cli.command,
-            Some(Command::Onboarding { action: OnboardingAction::Start })
-        ));
-        assert!(is_headless(&cli));
-    }
-
-    #[test]
-    fn cli_parse_onboarding_status() {
-        let cli = Cli::parse_from(["complior", "onboarding", "status"]);
-        assert!(matches!(
-            &cli.command,
-            Some(Command::Onboarding { action: OnboardingAction::Status })
-        ));
-        assert!(is_headless(&cli));
-    }
-
-    #[test]
-    fn cli_parse_onboarding_step() {
-        let cli = Cli::parse_from(["complior", "onboarding", "step", "3"]);
-        match &cli.command {
-            Some(Command::Onboarding { action: OnboardingAction::Step { number } }) => {
-                assert_eq!(*number, 3);
-            }
-            _ => panic!("Expected Onboarding Step command"),
-        }
-        assert!(is_headless(&cli));
-    }
-
-    #[test]
-    fn cli_parse_onboarding_reset() {
-        let cli = Cli::parse_from(["complior", "onboarding", "reset"]);
-        assert!(matches!(
-            &cli.command,
-            Some(Command::Onboarding { action: OnboardingAction::Reset })
-        ));
-        assert!(is_headless(&cli));
     }
 
     #[test]
@@ -2229,7 +2168,7 @@ mod tests {
     fn cli_parse_eval_default() {
         let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000/api/chat"]);
         match &cli.command {
-            Some(Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency }) => {
+            Some(Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run }) => {
                 assert_eq!(target, "http://localhost:4000/api/chat");
                 assert!(!det);
                 assert!(!llm);
@@ -2249,6 +2188,10 @@ mod tests {
                 assert!(!failures);
                 assert!(!verbose);
                 assert_eq!(*concurrency, 5);
+                assert!(!no_remediation);
+                assert!(!remediation);
+                assert!(!fix);
+                assert!(!dry_run);
             }
             _ => panic!("Expected Eval command"),
         }

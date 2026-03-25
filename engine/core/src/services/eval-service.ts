@@ -7,7 +7,7 @@
 
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import type { EvalResult, EvalOptions, EvalProgressCallback } from '../domain/eval/types.js';
+import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult } from '../domain/eval/types.js';
 import type { TargetAdapter } from '../domain/eval/adapters/adapter-port.js';
 import type { EvalRunnerDeps, EvalTestSources, EvalScorer, EvalJudge } from '../domain/eval/eval-runner.js';
 import { createEvalRunner } from '../domain/eval/eval-runner.js';
@@ -15,10 +15,13 @@ import { autoDetectAdapter } from '../domain/eval/adapters/auto-detect.js';
 import { createConformityScorer } from '../domain/eval/conformity-score.js';
 import { createLlmJudge } from '../domain/eval/llm-judge.js';
 import { createSecurityProbeLoader } from '../domain/eval/security-integration.js';
+import { getSecurityRubric } from '../data/eval/security-rubrics.js';
 import { buildPassportEvalBlock, mergeEvalIntoPassport } from '../domain/eval/eval-passport.js';
 import { generateEvalReport } from '../domain/eval/eval-report.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
+import type { RemediationAction, RemediationReport } from '../domain/eval/remediation-types.js';
+import type { EvalFinding } from '../domain/eval/eval-to-findings.js';
 
 // ── Service deps ─────────────────────────────────────────────────
 
@@ -27,6 +30,8 @@ export interface EvalServiceDeps {
   readonly callLlm?: (prompt: string, systemPrompt?: string) => Promise<string>;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
+  /** Optional: auto-sync eval results into agent passport (US-REM-04). */
+  readonly updatePassportEval?: (result: EvalResult) => Promise<void>;
 }
 
 // ── Factory ──────────────────────────────────────────────────────
@@ -52,6 +57,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     evidenceStore: deps.evidenceStore,
     auditStore: deps.auditStore,
     callLlm: deps.callLlm,
+    getSecurityRubric,
   };
 
   const runner = createEvalRunner(runnerDeps);
@@ -150,7 +156,14 @@ export const createEvalService = (deps: EvalServiceDeps) => {
       ? createEvalRunner(runnerDeps)
       : runner;
 
-    return effectiveRunner.runEval(adapter, options, testSources, scorer, judge, onProgress);
+    const result = await effectiveRunner.runEval(adapter, options, testSources, scorer, judge, onProgress);
+
+    // US-REM-04: Auto-sync eval results into agent passport (non-fatal)
+    if (deps.updatePassportEval) {
+      try { await deps.updatePassportEval(result); } catch { /* non-fatal */ }
+    }
+
+    return result;
   };
 
   /**
@@ -207,6 +220,58 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     }
   };
 
+  // ── Remediation methods (US-REM-03..10) ─────────────────────
+
+  /**
+   * Get remediation actions for specific test IDs.
+   * Lazy-loads remediation data to avoid boot-time import cost.
+   */
+  const getRemediationForTests = async (
+    testIds: readonly string[],
+    results: readonly TestResult[],
+  ): Promise<Record<string, readonly RemediationAction[]>> => {
+    const { ALL_PLAYBOOKS } = await import('../data/eval/remediation/index.js');
+    const { getRemediationForTest } = await import('../data/eval/remediation/test-mapping.js');
+
+    const out: Record<string, readonly RemediationAction[]> = {};
+    for (const id of testIds) {
+      const result = results.find((r) => r.testId === id);
+      const category = result?.category ?? '';
+      const owaspCategory = result?.owaspCategory;
+      out[id] = getRemediationForTest(id, category, ALL_PLAYBOOKS, owaspCategory);
+    }
+    return out;
+  };
+
+  /**
+   * Generate a full remediation report for a completed eval.
+   */
+  const generateRemediationReport = async (
+    evalResult: EvalResult,
+  ): Promise<RemediationReport> => {
+    const { ALL_PLAYBOOKS } = await import('../data/eval/remediation/index.js');
+    const { generateRemediationReport: genReport } = await import('../domain/eval/eval-remediation-report.js');
+
+    const { isFailedVerdict } = await import('../domain/eval/verdict-utils.js');
+    // Get remediation for all failures
+    const failures = evalResult.results.filter(isFailedVerdict);
+    const failedIds = failures.map((f) => f.testId);
+    const remediation = await getRemediationForTests(failedIds, evalResult.results);
+
+    return genReport(evalResult, remediation, ALL_PLAYBOOKS);
+  };
+
+  /**
+   * Convert eval failures into scanner Finding format for fix pipeline (US-REM-09).
+   */
+  const getEvalFindings = async (
+    evalResult: EvalResult,
+  ): Promise<readonly EvalFinding[]> => {
+    const { ALL_PLAYBOOKS } = await import('../data/eval/remediation/index.js');
+    const { evalToFindings } = await import('../domain/eval/eval-to-findings.js');
+    return evalToFindings(evalResult, ALL_PLAYBOOKS);
+  };
+
   return Object.freeze({
     runEval,
     runEvalWithReport,
@@ -214,6 +279,9 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     updatePassportWithEval,
     getLastResult,
     listResults,
+    getRemediationForTests,
+    generateRemediationReport,
+    getEvalFindings,
   });
 };
 

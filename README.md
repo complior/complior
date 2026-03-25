@@ -160,17 +160,136 @@ docker run -it -v $(pwd):/project complior/complior
 ## Quick Start
 
 ```bash
-# Launch daemon + TUI dashboard
-complior
+# 1. Initialize project (auto-discovers AI agents + creates passports)
+complior init
 
-# Scan current project (standalone)
+# 2. Scan code for compliance gaps (5-layer static analysis)
 complior scan
 
+# 3. Evaluate live AI endpoint (688 dynamic tests)
+complior eval --target http://localhost:4000/api/chat --agent my-bot
+
+# 4. Apply recommended fixes
+complior fix
+
+# 5. Generate compliance documents (FRIA, policy, audit package)
+complior agent fria my-bot
+complior agent audit-package
+
+# 6. Launch TUI dashboard for continuous monitoring
+complior
+```
+
+```bash
 # CI/CD pipeline
 complior scan --ci --threshold 80 --json
+complior eval --target $API_URL --agent $AGENT --ci --threshold 70
+```
 
-# Generate compliance badge
-complior badge
+## All CLI Commands
+
+> Full flag reference: [`docs/TUI-DESIGN-SPEC.md` §3](docs/TUI-DESIGN-SPEC.md)
+
+```bash
+# ─── CORE ───
+complior                                     # TUI dashboard (default)
+complior init [path]                         # initialize .complior/ config
+complior scan [path]                         # 5-layer static analysis
+  --ci --threshold 80 --json --sarif --no-tui --quiet/-q
+  --deep --llm --cloud                       # scan tiers (1/2/3)
+  --fail-on critical --agent <name>
+  --diff main --fail-on-regression --comment # PR diff mode
+complior fix [path]                          # apply compliance fixes
+  --dry-run --json --ai --source scan|eval
+complior eval <url>                          # dynamic AI testing (688 tests)
+  --det --llm --security --full              # test tiers
+  --agent <name> --categories cat1,cat2
+  --ci --threshold 80 --json --verbose
+  -j 10 / --concurrency 10                  # parallelism (1-50)
+  --api-key --request-template --response-path --headers  # custom adapter
+  --model gpt-4o                             # LLM judge model
+  --remediation --no-remediation --fix --dry-run
+  --last --failures                          # cached results
+complior audit <url>                         # full audit: scan + eval + security
+  --agent <name> --json [path]
+complior report [path]                       # compliance report
+  --format md|pdf --output/-o file
+
+# ─── AGENT PASSPORT ───
+complior agent init [path]                   # (optional) manual agent discovery → passports
+  --force --json                             # init does this automatically
+complior agent list [path]                   # list all passports
+  --verbose/-v --json
+complior agent show <name> [path] --json     # show specific passport
+complior agent rename <old> <new> [path]     # rename passport + re-sign
+complior agent validate [name] [path]        # schema + signature + completeness
+  --ci --strict --verbose --json
+complior agent completeness <name> --json    # obligation gaps breakdown
+complior agent autonomy [path] --json        # autonomy level (L1-L5)
+complior agent diff <name> --json            # compare passport versions
+complior agent fria <name> [path]            # FRIA report (Art.27)
+  --organization --impact --mitigation --approval --json
+complior agent notify <name> [path]          # worker notification (Art.26(7))
+  --company-name --contact-name --contact-email --contact-phone
+  --deployment-date --affected-roles --impact-description --json
+complior agent policy <name> --industry hr   # AI usage policy (Art.6)
+  --organization --approver --json [path]    # industries: hr|finance|healthcare|education|legal
+complior agent export <name> --format a2a    # export (a2a|aiuc-1|nist)
+complior agent import --from a2a <file>      # import external passport
+complior agent test-gen <name> --json        # generate compliance tests
+complior agent audit-package [-o file]       # audit package (tar.gz)
+complior agent evidence [--verify] --json    # evidence chain
+complior agent permissions --json            # cross-agent permissions matrix
+complior agent registry --json               # per-agent compliance registry
+complior agent audit                         # audit trail (event log)
+  --agent <name> --since DATE --type EVENT --limit N --json
+
+# ─── CERTIFICATION ───
+complior cert readiness <name> --json [path] # AIUC-1 readiness score
+complior cert test <name> [path]             # adversarial tests
+  --adversarial --categories cats --json
+
+# ─── ANALYSIS ───
+complior chat "question" --json --model m    # compliance assistant (LLM)
+complior supply-chain [path] --models --json # AI dependency audit
+complior cost --hourly-rate 200 --agent n    # remediation cost estimator
+complior debt --trend --json                 # compliance debt score
+complior simulate                            # what-if score projection
+  --fix id --add-doc type --complete-passport field --json
+
+# ─── DOCUMENTS ───
+complior doc generate <name> --type TYPE     # single doc (ai-literacy, art5-screening,
+  --all --organization "Acme" --json [path]  #   technical-documentation, incident-report,
+                                             #   declaration-of-conformity, monitoring-policy)
+
+# ─── INFRASTRUCTURE ───
+complior daemon [start] --watch --port 4000  # background daemon
+complior daemon status / stop
+complior proxy start <cmd> [args...]         # MCP compliance proxy
+complior proxy stop / status
+complior tools status / update               # external security tools
+complior redteam run --agent n --categories LLM01 --max-probes 50 --json
+complior redteam last --json                 # last red-team report
+complior redteam target <url> --ci --threshold 70 --json
+complior import promptfoo --file f.json      # import Promptfoo results
+complior jurisdiction list / show <code>     # EU/EEA jurisdiction data
+
+# ─── SAAS ───
+complior login / logout                      # SaaS auth
+complior sync                                # sync all data with SaaS
+  --passport --scan --docs --audit --evidence --registry --no-sync
+
+# ─── UTILITIES ───
+complior version                             # version and build info
+complior doctor                              # system health diagnostics
+complior update                              # check for updates
+
+# ─── GLOBAL FLAGS (work with any command) ───
+  --engine-url <URL>                         # engine URL override
+  --resume                                   # resume previous session
+  --theme <name>                             # color theme
+  --yes / -y                                 # skip onboarding wizard
+  --no-color                                 # disable colors (= NO_COLOR=1)
 ```
 
 ## Project Structure

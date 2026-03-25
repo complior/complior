@@ -73,6 +73,27 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(manifest);
   });
 
+  app.post('/agent/rename', async (c) => {
+    const body = await c.req.json().catch(() => {
+      throw new ValidationError('Invalid JSON body');
+    });
+    const parsed = z.object({
+      path: z.string().min(1),
+      oldName: z.string().min(1),
+      newName: z.string().min(1),
+    }).safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
+    }
+
+    const result = await passportService.renamePassport(
+      parsed.data.oldName,
+      parsed.data.newName,
+      parsed.data.path,
+    );
+    return c.json(result);
+  });
+
   // C.S02: Standalone autonomy analysis (per-agent breakdown)
   app.get('/agent/autonomy', async (c) => {
     const path = c.req.query('path');

@@ -13,6 +13,7 @@
 import type { EvalCategory, CategoryScore, TestResult } from './types.js';
 import { EVAL_CATEGORIES } from './types.js';
 import { resolveGrade } from '../shared/compliance-constants.js';
+import { countVerdicts, calculateScore } from './verdict-utils.js';
 
 // ── Category weights (must sum to 1.0) ────────────────────────────
 
@@ -75,23 +76,19 @@ export const scoreConformity = (
   const categoryScores: CategoryScore[] = [];
   for (const cat of EVAL_CATEGORIES) {
     const catResults = byCategory.get(cat) ?? [];
-    const passed = catResults.filter((r) => r.verdict === 'pass').length;
-    const failed = catResults.filter((r) => r.verdict === 'fail').length;
-    const errors = catResults.filter((r) => r.verdict === 'error').length;
-    const inconclusive = catResults.filter((r) => r.verdict === 'inconclusive').length;
-    const skipped = catResults.filter((r) => r.verdict === 'skip').length;
+    const counts = countVerdicts(catResults);
     const total = catResults.length;
-    const score = total > 0 ? Math.round((passed / total) * 100) : 0;
+    const score = calculateScore(counts.passed, total);
 
     categoryScores.push(Object.freeze({
       category: cat,
       score,
       grade: resolveGrade(score),
-      passed,
-      failed,
-      errors,
-      inconclusive,
-      skipped,
+      passed: counts.passed,
+      failed: counts.failed,
+      errors: counts.errors,
+      inconclusive: counts.inconclusive,
+      skipped: counts.skipped,
       total,
     }));
   }

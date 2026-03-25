@@ -477,61 +477,70 @@ complior monitor — runtime мониторинг → drift detection, anomaly a
 
 Паспорт участвует в каждой из 4 команд:
 - **scan**: авто-обновление `complior_score` и `last_scan` после каждого скана (любой тир)
-- **eval**: результаты eval (conformity/security scores, critical gaps) — входные данные для паспорта (PLANNED)
+- **eval**: `--agent <name>` привязывает результаты к конкретному паспорту. Записывает conformity/security scores, grades, critical gaps, category pass rates в `compliance.eval` блок. Переподписывает ed25519. Без `--agent` → eval работает, но не обновляет паспорт
 - **audit**: паспорт — обязательный документ в audit package (ZIP) для аудитора
 - **monitor**: drift detection может выявить несоответствие паспорта и runtime-поведения (PLANNED)
 
 ### 3.2. Типичный пайплайн пользователя
 
+**Путь A: CLI (headless)**
+
 ```bash
-# 1. Онбординг — создаёт .complior/profile.json с доменом, данными, риском
-complior agent onboard
+# 1. Инициализация (auto-discovers agents + creates passports)
+complior init
+#   → Creates .complior/ + profile.json + project.toml
+#   → Auto-discovers agents via Agent Discovery (6 frameworks)
+#   → Analyzes autonomy, permissions, risk class
+#   → Signs ed25519, saves .complior/agents/{name}-manifest.json
 
-# 2. Первый скан — определяет baseline score
+# 2. Скан кода — 5-layer static analysis
 complior scan
+#   → Auto-discovers NEW agents added since init (idempotent)
 
-# 3. Генерация паспортов — анализирует код, создаёт манифесты
-complior agent init
-#   → Находит агентов через Agent Discovery
-#   → Анализирует автономию (L1-L5) + kill-switch
-#   → Сканирует permissions (tools, data access, denied)
-#   → Определяет risk class (автономия × профиль проекта)
-#   → Вычисляет applicable articles, deployer obligations
-#   → Генерирует oversight для high-risk / L3+
-#   → Подписывает ed25519
-#   → Сохраняет .complior/agents/{name}-manifest.json
+# 3. Eval — динамическое тестирование (688 проб)
+complior eval --target http://localhost:3000/api/chat --agent my-chatbot
 
-# 4. Проверка полноты и валидация
-complior agent validate my-agent
-complior agent completeness my-agent
+# 4. Авто-фикс — исправляет findings от scan + eval
+complior fix
 
-# 5. Заполнение пробелов (owner, disclosure)
-# Ручная правка JSON или через TUI wizard
-
-# 6. Для high-risk — генерация FRIA (Art.27)
-complior agent fria my-agent --organization "ACME Corp"
-
-# 6a. LLM-обогащение документов (дозаполняет [TO BE COMPLETED] секции)
-complior fix --ai
-#   → ai-enricher.ts получает контекст из 9 полей паспорта
-#   → LLM заполняет пустые секции FRIA, Policy, Notification
-#   → Обёрнут через complior() SDK proxy (prohibited, sanitize, rate limit)
-#   → Graceful degradation: при ошибке LLM → документ из Stage 6 без обогащения
-
-# 7. Повторный скан — score обновляется в паспорте автоматически
-complior scan
-#   → scan.completed event → updatePassportsAfterScan()
-#   → Все паспорты обновляют complior_score и last_scan
-
-# 8. Eval — динамическое тестирование работающей системы (PLANNED)
-complior eval --target http://localhost:3000/api/chat --full
-#   → 670 тестов: 11 категорий conformity + security probes
-#   → Результаты → compliance.eval блок в паспорте
-#   → Паспорт переподписывается ed25519
-
-# 9. Export для аудитора
-complior agent export my-agent --format a2a
+# 5. Документы (FRIA, audit package)
+complior agent fria my-chatbot --organization "ACME Corp"
 complior agent audit-package
+
+# 6. TUI dashboard — continuous monitoring
+complior
+```
+
+**Путь B: TUI (interactive)**
+
+```bash
+# 1. Запуск TUI — onboarding wizard (8 шагов: theme, project type,
+#    requirements, role, industry, AI provider)
+complior
+#   → Saves .complior/project.toml (richer config from wizard)
+#   → Auto-scan on completion → scan.completed event
+#   → Auto-discovers agents via scan.completed handler
+
+# 2-5. Далее — через TUI pages или CLI commands
+#   Page 2 (Scan), Page 3 (Fix), Page 4 (Passport), etc.
+```
+
+```bash
+# (optional) Manual agent discovery — if init/scan missed something
+complior agent init --force
+```
+
+**Дополнительные команды** (по необходимости):
+
+```bash
+# Валидация полноты паспорта
+complior agent validate my-chatbot
+
+# Export в A2A формате
+complior agent export my-chatbot --format a2a
+
+# Повторный скан после fix — score обновляется в паспорте автоматически
+complior scan
 ```
 
 ### 3.3. Автообновление при scan
@@ -572,27 +581,31 @@ complior agent init --force
 
 ### 3.5. Полная справка CLI-команд
 
-| Команда | Описание |
-|---------|----------|
-| `complior agent init [path] [--force] [--json]` | Генерация паспортов из AST-анализа кода |
-| `complior agent list [--verbose] [--json]` | Таблица всех паспортов проекта |
-| `complior agent show <name> [--json]` | Показать конкретный паспорт |
-| `complior agent validate [name] [--ci] [--strict] [--verbose]` | Валидация: schema + подпись + полнота |
-| `complior agent completeness <name> [--json]` | Полнота паспорта и obligation gaps |
-| `complior agent autonomy [--json]` | Анализ автономии (L1-L5) без генерации паспорта |
-| `complior agent fria <name> [--organization] [--impact] [--mitigation] [--approval]` | Генерация FRIA (Art.27) |
-| `complior agent notify <name> [--company-name] [--contact-*] [--deployment-date]` | Worker Notification (Art.26(7)) |
-| `complior agent export <name> --format <a2a\|aiuc-1\|nist>` | Экспорт в внешний формат |
-| `complior agent import --from <a2a> <file>` | Импорт из внешнего формата |
-| `complior agent evidence [--verify] [--json]` | Evidence chain: summary или verify |
-| `complior agent permissions [--json]` | Матрица permissions по всем агентам |
-| `complior agent registry [--json]` | Unified compliance registry |
-| `complior agent policy <name> --industry <hr\|finance\|...>` | Генерация AI usage policy (Art.6) |
-| `complior agent test-gen <name>` | Генерация compliance тестов из constraints |
-| `complior agent diff <name>` | Сравнение версий паспорта |
-| `complior agent audit [--agent] [--since] [--type] [--limit]` | Audit trail (compliance events) |
-| `complior agent audit-package [-o file]` | Audit package (tar.gz) для аудитора |
-| `complior agent onboard [--step N]` | Guided 10-step onboarding wizard |
+> Все `[path]` — опциональный путь к проекту (default: текущая директория).
+> Все `--json` — JSON output для скриптинга и CI.
+> Полная справка всех команд (не только agent): `docs/TUI-DESIGN-SPEC.md` §3.
+
+| Команда | Все флаги | Описание |
+|---------|-----------|----------|
+| `complior agent init` | `[path] [--force] [--json]` | (Optional) Ручная генерация паспортов. `complior init` делает это автоматически. `--force` перезаписывает существующие |
+| `complior agent list` | `[path] [--verbose / -v] [--json]` | Таблица всех паспортов. `-v` добавляет framework, model, owner, files |
+| `complior agent show <name>` | `[path] [--json]` | Показать конкретный паспорт (все 36 полей) |
+| `complior agent rename <old> <new>` | `[path] [--json]` | Переименовать паспорт (файл + имя + переподпись ed25519) |
+| `complior agent validate [name]` | `[path] [--ci] [--strict] [--verbose] [--json]` | Валидация: schema + подпись + полнота. `--ci` exit 1 при ошибках. `--strict` warnings = failure. `--verbose` breakdown по полям |
+| `complior agent completeness <name>` | `[path] [--json]` | Полнота паспорта и obligation gaps (% заполнения) |
+| `complior agent autonomy` | `[path] [--json]` | Анализ автономии проекта (L1-L5) без генерации паспорта |
+| `complior agent fria <name>` | `[path] [--json] [--organization ORG] [--impact TEXT] [--mitigation TEXT] [--approval TEXT]` | Генерация FRIA (Art.27). `--impact` описание воздействия (§4), `--mitigation` меры (§4), `--approval` подпись (§10) |
+| `complior agent notify <name>` | `[path] [--json] [--company-name] [--contact-name] [--contact-email] [--contact-phone] [--deployment-date] [--affected-roles] [--impact-description]` | Worker Notification (Art.26(7)). Все `--contact-*` для шапки. `--affected-roles` роли/отделы |
+| `complior agent export <name>` | `--format <a2a\|aiuc-1\|nist> [path] [--json]` | Экспорт в внешний формат. `--format` обязательный |
+| `complior agent import` | `--from <a2a> <file> [--path PATH] [--json]` | Импорт из внешнего формата. `--from` обязательный |
+| `complior agent evidence` | `[path] [--verify] [--json]` | Evidence chain: summary или `--verify` (проверка hashes + ed25519 подписей) |
+| `complior agent permissions` | `[path] [--json]` | Матрица permissions по всем агентам + конфликты |
+| `complior agent registry` | `[path] [--json]` | Unified per-agent compliance registry |
+| `complior agent policy <name>` | `--industry <hr\|finance\|healthcare\|education\|legal> [path] [--json] [--organization ORG] [--approver TEXT]` | Генерация AI usage policy (Art.6, Annex III). `--industry` обязательный |
+| `complior agent test-gen <name>` | `[--path PATH] [--json]` | Генерация compliance тестов из passport constraints |
+| `complior agent diff <name>` | `[--path PATH] [--json]` | Сравнение версий паспорта (текущий vs предыдущий) |
+| `complior agent audit` | `[path] [--agent NAME] [--since DATE] [--type EVENT] [--limit N] [--json]` | Audit trail. `--limit` default 50. `--since` ISO date. `--type` e.g. scan.completed |
+| `complior agent audit-package` | `[path] [--output / -o FILE] [--json]` | Audit package (tar.gz) для аудитора. `--json` = metadata only |
 
 ### 3.6. HTTP API (24 endpoints)
 
@@ -655,9 +668,9 @@ complior agent init --force
 
 Полная карта сбора данных паспорта по стадиям: какие поля, из каких источников, какая полнота.
 
-#### Стадия 0: Onboarding (`complior init`)
+#### Стадия 0: Init (`complior init`) → 65-70%
 
-Создаёт `.complior/profile.json` — входные данные для паспорта (не сам паспорт):
+Creates `.complior/` + profile + project config, then auto-discovers AI agents:
 
 | Поле profile.json | Использование в паспорте |
 |-------------------|--------------------------|
@@ -669,9 +682,8 @@ complior agent init --force
 
 Без профиля — risk class только из автономии (L-level).
 
-#### Стадия 1: Agent Init (`complior agent init`) → 65-70%
-
-AST-анализ кода → авто-заполнение ~44 полей из ~78 total (19/27 required):
+AST-анализ кода → авто-заполнение ~44 полей из ~78 total (19/27 required).
+`complior agent init` остаётся опциональной (для `--force` regenerate):
 
 | Блок | Поля | Источник |
 |------|------|----------|
@@ -689,9 +701,9 @@ AST-анализ кода → авто-заполнение ~44 полей из 
 
 **Пусто после init:** `owner.*` (3), `disclosure.*` (3), `lifecycle.deployed_since`, `compliance.last_scan` (если нет scan).
 
-#### Стадия 2: Scan (`complior scan`) → 70%
+#### Стадия 1: Scan (`complior scan`) → 70%
 
-`scan.completed` event → `updatePassportsAfterScan()`:
+`scan.completed` event → auto-discover new agents (idempotent) → `updatePassportsAfterScan()`:
 
 | Поле | Изменение |
 |------|-----------|
@@ -789,14 +801,14 @@ Wizard заполнения всех 78 полей. Pre-fill из AI Registry. `
 
 | Стадия | Команда | Полей | Полнота | Статус |
 |--------|---------|-------|---------|--------|
-| 0. Onboarding | `complior init` | profile.json | — | Done |
-| 1. Agent Init | `complior agent init` | ~44 авто + defaults | 65-70% | Done |
-| 2. Scan | `complior scan` | +2 (score, last_scan) | 70% | Done |
+| 0. Init | `complior init` / TUI onboarding | ~44 авто + profile + defaults | 65-70% | Done |
+| 1. Scan | `complior scan` / TUI auto-scan | +2 (score, last_scan) + auto-discover | 70% | Done |
+| 2. Fix | `complior fix` | score↑ via rescan | varies | Done |
 | 3. Ручное | TUI / JSON edit | +6 (owner, disclosure) | 93% | Done |
-| 4. Документы | `complior fix` | +3 flags (fria, policy, notify) | 96% | Done |
+| 4. Документы | `agent fria/notify/policy/audit-package` | +3 flags + ZIP | 100% | Done |
 | 4a. LLM docs | `complior fix --ai` | дозаполняет документы | 100% | Done |
-| 5. Live update | daemon watcher | score refresh | 100% | Done |
-| 6. Eval | `complior eval --target` | +20 (11 categories + security) | 100%+ | Planned |
+| 5. Eval | `complior eval --target` | +20 (11 categories + security) | 100%+ | Done |
+| 6. Live update | daemon watcher | score refresh + auto-discover | 100% | Done |
 | 7. MCP Proxy | `complior proxy` | runtime enrichment | varies | Planned |
 | 8. Monitor | `complior monitor` | +4 (drift, anomalies) | varies | Planned |
 | 9. SaaS | `app.complior.dev` | все 78 полей | 100% | Planned |
@@ -862,7 +874,7 @@ complior agent <cmd> ──HTTP──► TS Engine (Hono) ──► agent.route.
    │                            passport-completeness (L2)    │
    │  domain/certification/     AIUC-1 Readiness, Test Runner │
    │  domain/registry/          Agent Score Computation       │
-   │  domain/onboarding/        Guided Onboarding (10 шагов) │
+   │  domain/onboarding/        TUI Onboarding Wizard        │
    │  domain/passport/          Domain Mapper, Manifest Files,│
    │                            Test Generator                │
    └──────────────────────────────────────────────────────────┘

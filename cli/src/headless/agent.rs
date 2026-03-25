@@ -1,7 +1,7 @@
 use crate::cli::AgentAction;
 use crate::config::TuiConfig;
 
-use super::common::{ensure_engine, print_onboarding_status, print_onboarding_step_result, resolve_project_path_buf, url_encode};
+use super::common::{ensure_engine, resolve_project_path_buf, url_encode};
 
 /// Walk up from project_path to find the complior repo root (containing engine/).
 pub(crate) fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
@@ -24,6 +24,7 @@ fn is_empty_val(s: &str) -> bool {
 
 pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
     match action {
+        AgentAction::Rename { old_name, new_name, json, path } => run_agent_rename(old_name, new_name, *json, path.as_deref(), config).await,
         AgentAction::Init { json, force, path } => run_agent_init(*json, *force, path.as_deref(), config).await,
         AgentAction::List { json, verbose, path } => run_agent_list(*json, *verbose, path.as_deref(), config).await,
         AgentAction::Show { name, json, path } => {
@@ -68,14 +69,45 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Audit { agent, since, event_type, limit, json, path } => {
             run_agent_audit(agent.as_deref(), since.as_deref(), event_type.as_deref(), *limit, *json, path.as_deref(), config).await
         }
-        AgentAction::Onboard { json, step, path } => {
-            run_agent_onboard(*json, *step, path.as_deref(), config).await
-        }
         AgentAction::Import { from, file, json, path } => {
             run_agent_import(from, file, *json, path, config).await
         }
         AgentAction::AuditPackage { output, json, path } => {
             run_agent_audit_package(output.as_deref(), *json, path.as_deref(), config).await
+        }
+    }
+}
+
+async fn run_agent_rename(old_name: &str, new_name: &str, json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+    let project_path = resolve_project_path_buf(path);
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let body = serde_json::json!({
+        "path": project_path.to_string_lossy(),
+        "oldName": old_name,
+        "newName": new_name,
+    });
+
+    match client.post_json("/agent/rename", &body).await {
+        Ok(result) => {
+            if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+            } else {
+                println!("Renamed passport: '{}' → '{}'", old_name, new_name);
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: {e}");
+            1
         }
     }
 }
@@ -1791,65 +1823,6 @@ async fn run_agent_diff(
         Err(e) => {
             eprintln!("Error: Passport diff failed: {e}");
             1
-        }
-    }
-}
-
-// --- US-S05-33: Guided onboarding ---
-
-async fn run_agent_onboard(json: bool, step: Option<u32>, path: Option<&str>, config: &TuiConfig) -> i32 {
-    let client = match ensure_engine(config).await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
-    let project_path = super::common::resolve_project_path(path);
-    let body = serde_json::json!({ "path": project_path });
-
-    // If specific step requested, POST that step
-    if let Some(step_num) = step {
-        if !(1..=5).contains(&step_num) {
-            eprintln!("Error: Step must be between 1 and 5");
-            return 1;
-        }
-
-        let url = format!("/onboarding/guided/step/{step_num}");
-        match client.post_json(&url, &body).await {
-            Ok(result) => {
-                if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                    let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
-                    eprintln!("Error: {msg}");
-                    return 1;
-                }
-
-                if json {
-                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
-                } else {
-                    print_onboarding_step_result(&result, step_num, "complior agent onboard --step");
-                }
-                0
-            }
-            Err(e) => { eprintln!("Error: {e}"); 1 }
-        }
-    } else {
-        // Start or show status
-        let start_url = "/onboarding/guided/start";
-        match client.post_json(start_url, &body).await {
-            Ok(result) => {
-                if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                    let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
-                    eprintln!("Error: {msg}");
-                    return 1;
-                }
-
-                if json {
-                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
-                } else {
-                    print_onboarding_status(&result, "complior agent onboard --step");
-                }
-                0
-            }
-            Err(e) => { eprintln!("Error: {e}"); 1 }
         }
     }
 }

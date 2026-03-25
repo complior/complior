@@ -57,6 +57,7 @@ pub(super) fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::t
         scanned_at: "2026-02-19".to_string(),
         duration: 1200,
         files_scanned: 42,
+        files_excluded: None,
         deep_analysis: None,
         l5_cost: None,
         regulation_version: None,

@@ -23,7 +23,8 @@ import { resolveIncludes, resolveTierLabel } from './types.js';
 import { resolveGrade } from '../shared/compliance-constants.js';
 import type { EvidenceStore } from '../scanner/evidence-store.js';
 import type { AuditStore } from '../audit/audit-trail.js';
-import { getSecurityRubric } from '../../data/eval/security-rubrics.js';
+import { countVerdicts, calculateScore } from './verdict-utils.js';
+import type { SecurityRubric } from '../../data/eval/security-rubrics.js';
 
 // ── Runner deps ─────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ export interface EvalRunnerDeps {
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
   readonly callLlm?: (prompt: string, systemPrompt?: string) => Promise<string>;
+  readonly getSecurityRubric?: (owaspCategory: string) => SecurityRubric;
 }
 
 // ── Test & probe loaders (injected lazily) ──────────────────────
@@ -73,7 +75,7 @@ export interface EvalJudge {
 // ── Runner factory ──────────────────────────────────────────────
 
 export const createEvalRunner = (deps: EvalRunnerDeps) => {
-  const { getProjectPath, evidenceStore, auditStore } = deps;
+  const { getProjectPath, evidenceStore, auditStore, getSecurityRubric: getRubric } = deps;
 
   /** Run a single deterministic test against the target. */
   const runDeterministicTest = async (
@@ -88,12 +90,14 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
         testId: test.id, category: test.category, name: test.name, method: 'deterministic',
         verdict, score, confidence, reasoning,
         probe: test.probe, response: response.text, latencyMs: response.latencyMs, timestamp,
+        severity: test.severity,
       };
     } catch (err) {
       return {
         testId: test.id, category: test.category, name: test.name, method: 'deterministic',
         verdict: 'error', score: 0, confidence: 0, reasoning: `Error: ${String(err)}`,
         probe: test.probe, response: '', latencyMs: 0, timestamp,
+        severity: test.severity,
       };
     }
   };
@@ -120,12 +124,14 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
         score: judgeResult.score, confidence: judgeResult.confidence,
         reasoning: judgeResult.reasoning,
         probe: test.probe, response: response.text, latencyMs: response.latencyMs, timestamp,
+        severity: test.severity,
       };
     } catch (err) {
       return {
         testId: test.id, category: test.category, name: test.name, method: 'llm-judge',
         verdict: 'error', score: 0, confidence: 0, reasoning: `Error: ${String(err)}`,
         probe: test.probe, response: '', latencyMs: 0, timestamp,
+        severity: test.severity,
       };
     }
   };
@@ -148,7 +154,7 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
       if (verdict === 'inconclusive' && deps.callLlm) {
         try {
           const judgeResult = await judgeSecurityProbe(
-            deps.callLlm, probe.prompt, response.text, probe.owaspCategory,
+            deps.callLlm, probe.prompt, response.text, probe.owaspCategory, getRubric,
           );
           verdict = judgeResult.pass ? 'pass' : 'fail';
           confidence = judgeResult.confidence;
@@ -166,6 +172,7 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
         confidence, reasoning,
         probe: probe.prompt, response: response.text, latencyMs: response.latencyMs, timestamp,
         owaspCategory: probe.owaspCategory,
+        severity: probe.severity,
       };
     } catch (err) {
       return {
@@ -174,6 +181,7 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
         verdict: 'error', score: 0, confidence: 0, reasoning: `Error: ${String(err)}`,
         probe: probe.prompt, response: '', latencyMs: 0, timestamp,
         owaspCategory: probe.owaspCategory,
+        severity: probe.severity,
       };
     }
   };
@@ -293,19 +301,15 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
     let securityScore: number | undefined;
     let securityGrade: string | undefined;
     if (securityResults.length > 0) {
-      const secPassed = securityResults.filter((r) => r.verdict === 'pass').length;
-      const secFailed = securityResults.filter((r) => r.verdict === 'fail').length;
-      const definitive = secPassed + secFailed;
+      const secCounts = countVerdicts(securityResults);
+      const definitive = secCounts.passed + secCounts.failed;
       // Score = pass / (pass + fail) — exclude inconclusive from denominator
-      securityScore = definitive > 0 ? Math.round((secPassed / definitive) * 100) : 0;
+      securityScore = calculateScore(secCounts.passed, definitive);
       securityGrade = resolveGrade(securityScore);
     }
 
     const allTestResults = [...allResults, ...securityResults];
-    const passed = allTestResults.filter((r) => r.verdict === 'pass').length;
-    const failed = allTestResults.filter((r) => r.verdict === 'fail').length;
-    const errors = allTestResults.filter((r) => r.verdict === 'error').length;
-    const inconclusive = allTestResults.filter((r) => r.verdict === 'inconclusive').length;
+    const totals = countVerdicts(allTestResults);
     const duration = Date.now() - start;
 
     const evalResult: EvalResult = Object.freeze({
@@ -318,14 +322,16 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
       securityGrade,
       results: allTestResults,
       totalTests: allTestResults.length,
-      passed,
-      failed,
-      errors,
-      inconclusive,
+      passed: totals.passed,
+      failed: totals.failed,
+      errors: totals.errors,
+      inconclusive: totals.inconclusive,
+      skipped: totals.skipped,
       duration,
       timestamp: new Date().toISOString(),
       criticalCapped: scoring.criticalCapped,
       agent: options.agent,
+      adapterName: adapter.name,
     });
 
     // Persist report
@@ -350,8 +356,8 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
           target: options.target,
           tier,
           totalTests: allTestResults.length,
-          passed,
-          failed,
+          passed: totals.passed,
+          failed: totals.failed,
           overallScore: scoring.overallScore,
           grade: scoring.grade,
         }, options.agent);
@@ -534,8 +540,11 @@ const judgeSecurityProbe = async (
   attackPrompt: string,
   modelResponse: string,
   owaspCategory: string,
+  rubricFn?: (category: string) => SecurityRubric,
 ): Promise<{ pass: boolean; reason: string; confidence: number }> => {
-  const rubric = getSecurityRubric(owaspCategory);
+  // Use injected rubric lookup; fallback to dynamic import if not provided
+  const rubricLookup = rubricFn ?? (await import('../../data/eval/security-rubrics.js')).getSecurityRubric;
+  const rubric = rubricLookup(owaspCategory);
 
   // Build few-shot examples block
   const examplesBlock = rubric.examples.map((ex) =>

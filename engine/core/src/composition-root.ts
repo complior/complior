@@ -33,12 +33,15 @@ import { createDebtService } from './services/debt-service.js';
 import { createFrameworkService } from './services/framework-service.js';
 import { createProxyService } from './services/proxy-service.js';
 import { createEvalService } from './services/eval-service.js';
+import { buildPassportEvalBlock } from './domain/eval/eval-passport.js';
+import type { EvalResult } from './domain/eval/types.js';
 import { ProxyPolicySchema } from './domain/proxy/policy-engine.js';
 import { createFrameworkRegistry, createEuAiActFramework, scoreEuAiAct, createAiuc1Framework, scoreAiuc1, createOwaspLlmFramework, scoreOwaspLlm, createMitreAtlasFramework, scoreMitreAtlas } from './domain/frameworks/index.js';
 import { loadProjectConfig, getSelectedFrameworks } from './infra/project-config.js';
 import { createEvidenceStore } from './domain/scanner/evidence-store.js';
 import { createAuditStore } from './domain/audit/index.js';
-import { loadOrCreateKeyPair as loadEvidenceKeyPair } from './domain/passport/crypto-signer.js';
+import { loadOrCreateKeyPair as loadEvidenceKeyPair, signPassport } from './domain/passport/crypto-signer.js';
+import { parsePassport } from './types/passport.types.js';
 import { sign, verify as cryptoVerify } from 'node:crypto';
 import { createRouter } from './http/create-router.js';
 import { createToolManager, DEFAULT_TOOLS_DIR, type ProcessRunner } from './infra/tool-manager.js';
@@ -598,12 +601,50 @@ export const loadApplication = async (): Promise<Application> => {
     }
   };
 
-  // 5d. Create evalService
+  // 5d. Create evalService (US-REM-04: auto-sync eval → passport)
+  const updatePassportEval = async (result: EvalResult): Promise<void> => {
+    // Skip passport sync if no agent specified
+    if (!result.agent) return;
+
+    const block = buildPassportEvalBlock(result);
+    const manifestPath = resolve(state.projectPath, '.complior', 'agents', `${result.agent}-manifest.json`);
+
+    try {
+      const raw = await readFile(manifestPath, 'utf-8');
+      const currentPassport = parsePassport(raw);
+      if (!currentPassport) return; // invalid passport — skip
+
+      const compliance = (currentPassport.compliance ?? {}) as Record<string, unknown>;
+      const prevEval = compliance.eval as Record<string, unknown> | undefined;
+
+      // Merge strategy: preserve previous security_score if new eval doesn't include one
+      const mergedBlock = { ...block } as Record<string, unknown>;
+      if (!block.eval_security_score && prevEval?.eval_security_score) {
+        mergedBlock.eval_security_score = prevEval.eval_security_score;
+        mergedBlock.eval_security_grade = prevEval.eval_security_grade;
+      }
+
+      const updated = {
+        ...currentPassport,
+        compliance: { ...compliance, eval: mergedBlock },
+        updated: new Date().toISOString(),
+      };
+
+      // Ed25519 re-sign
+      const keyPair = await loadEvidenceKeyPair();
+      const signature = signPassport(updated as never, keyPair.privateKey);
+      const signed = { ...updated, signature };
+
+      await writeFile(manifestPath, JSON.stringify(signed, null, 2));
+    } catch { /* non-fatal — passport file may not exist */ }
+  };
+
   const evalService = createEvalService({
     getProjectPath: () => state.projectPath,
     callLlm,
     evidenceStore,
     auditStore,
+    updatePassportEval,
   });
 
   // 6. Create router
@@ -660,9 +701,19 @@ export const loadApplication = async (): Promise<Application> => {
     evalService,
   });
 
-  // 6b. Wire scan.completed → auto-update passport scores (Step 10)
+  // 6b. Wire scan.completed → auto-discover new agents + update passport scores
   events.on('scan.completed', ({ result }: { result: ScanResult }) => {
-    passportService.updatePassportsAfterScan(result).catch(() => {});
+    // 1. Auto-discover new agents (idempotent — skips existing)
+    passportService.initPassport()
+      .catch(() => ({ manifests: [], savedPaths: [], skipped: [] }))
+      .then(({ manifests }) => {
+        if (manifests.length > 0) {
+          log.info(`Auto-discovered ${manifests.length} new agent(s)`);
+        }
+        // 2. Update scores on ALL passports (including just-created)
+        return passportService.updatePassportsAfterScan(result);
+      })
+      .catch((err: unknown) => { log.warn('Failed to update passports after scan:', err); });
   });
 
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events

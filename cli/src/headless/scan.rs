@@ -1,11 +1,17 @@
+use std::io::IsTerminal as _;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 use crate::types::Severity;
 
+use super::format::colors::{bold, check_mark, dim, green, red, tree_branch, tree_end};
 use super::format::{format_human, format_json, format_sarif, print_paged, FormatOptions};
 
 /// Run a headless (non-TUI) scan and print results to stdout.
 /// Returns the exit code: 0 = pass, 1 = fail/error.
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 pub async fn run_headless_scan(
     ci: bool,
     json: bool,
@@ -16,6 +22,7 @@ pub async fn run_headless_scan(
     deep: bool,
     llm: bool,
     cloud: bool,
+    quiet: bool,
     agent: Option<&str>,
     path: Option<&str>,
     config: &TuiConfig,
@@ -47,67 +54,75 @@ pub async fn run_headless_scan(
     }
 
     // Determine project path
-    let scan_path = path.map_or_else(
-        || std::env::current_dir()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string(),
-        String::from,
-    );
+    let scan_path = super::common::resolve_project_path(path);
+
+    // Deep scan: check uv availability and show tool display
+    if deep {
+        if !check_uv_available() {
+            return 1;
+        }
+        if !json && !sarif {
+            show_deep_scan_tools();
+        }
+    }
+
+    // Start spinner (stderr, only for TTY and non-JSON/SARIF)
+    let spinner_active = Arc::new(AtomicBool::new(false));
+    let spinner_handle = if !json && !sarif && std::io::stderr().is_terminal() {
+        Some(start_spinner(Arc::clone(&spinner_active)))
+    } else {
+        None
+    };
 
     // Run scan — route by tier flags
     let result = if deep && llm {
         // Tier 2+ : run tier2 first, then LLM on top
-        if !json {
-            eprintln!("Running Tier 2 scan (external tools + LLM)...");
-        }
         let body = serde_json::json!({ "path": scan_path });
         let _tier2_result = match client.post_json("/scan/tier2", &body).await {
             Ok(r) => r,
-            Err(e) => { eprintln!("Tier 2 scan failed: {e}"); return 1; }
+            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("Tier 2 scan failed: {e}"); return 1; }
         };
         // Then LLM
         let llm_result = match client.post_json("/scan/llm", &body).await {
             Ok(r) => r,
-            Err(e) => { eprintln!("LLM scan failed: {e}"); return 1; }
+            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("LLM scan failed: {e}"); return 1; }
         };
-        // Use LLM result as the final one (it includes L5 on top of base)
-        // but merge external tool results from tier2
         match serde_json::from_value::<crate::types::ScanResult>(llm_result) {
-            Ok(r) => r,
-            Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+            Ok(r) => { stop_spinner(&spinner_active, spinner_handle); r },
+            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("Failed to parse scan result: {e}"); return 1; }
         }
     } else if deep {
         // Tier 2 only
-        if !json {
-            eprintln!("Running Tier 2 scan (external tools: Semgrep, Bandit, ModelScan, detect-secrets)...");
-        }
         let body = serde_json::json!({ "path": scan_path });
         match client.post_json("/scan/tier2", &body).await {
-            Ok(r) => match serde_json::from_value::<crate::types::ScanResult>(r) {
-                Ok(result) => result,
-                Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+            Ok(r) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                match serde_json::from_value::<crate::types::ScanResult>(r) {
+                    Ok(result) => result,
+                    Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+                }
             },
-            Err(e) => { eprintln!("Tier 2 scan failed: {e}"); return 1; }
+            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("Tier 2 scan failed: {e}"); return 1; }
         }
     } else if llm {
         // L5 LLM only
-        if !json {
-            eprintln!("Running LLM-powered scan (L5 document analysis)...");
-        }
         let body = serde_json::json!({ "path": scan_path });
         match client.post_json("/scan/llm", &body).await {
-            Ok(r) => match serde_json::from_value::<crate::types::ScanResult>(r) {
-                Ok(result) => result,
-                Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+            Ok(r) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                match serde_json::from_value::<crate::types::ScanResult>(r) {
+                    Ok(result) => result,
+                    Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+                }
             },
-            Err(e) => { eprintln!("LLM scan failed: {e}"); return 1; }
+            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("LLM scan failed: {e}"); return 1; }
         }
     } else {
         // Default: Tier 1 (L1-L4)
         match client.scan(&scan_path).await {
-            Ok(r) => r,
+            Ok(r) => { stop_spinner(&spinner_active, spinner_handle); r },
             Err(e) => {
+                stop_spinner(&spinner_active, spinner_handle);
                 eprintln!("Scan failed: {e}");
                 return 1;
             }
@@ -137,11 +152,39 @@ pub async fn run_headless_scan(
     } else if sarif {
         println!("{}", format_sarif(&result));
     } else {
+        // Read previous score for delta display
+        let prev_score = if deep {
+            read_last_score(&scan_path)
+        } else {
+            None
+        };
+
         let opts = FormatOptions {
             framework_scores: framework_scores.as_ref().map(|mf| mf.frameworks.clone()),
+            quiet,
+            prev_score,
         };
         let text = format_human(&result, &opts);
         print_paged(&text);
+
+        // Deep scan: cache hint footer
+        if deep {
+            eprintln!();
+            eprintln!(
+                "  {}",
+                dim("Deep tools cached at ~/.complior/tools/  (next run: faster)"),
+            );
+        }
+    }
+
+    // CI env-var output line
+    if ci {
+        let score = result.score.total_score.round() as u32;
+        let grade = super::format::colors::resolve_grade(result.score.total_score);
+        let finding_count = result.findings.iter()
+            .filter(|f| f.r#type == crate::types::CheckResultType::Fail)
+            .count();
+        eprintln!("COMPLIOR_SCORE={score} COMPLIOR_GRADE={grade} COMPLIOR_FINDINGS={finding_count}");
     }
 
     // Hint: suggest agent init if no passports found (non-CI, non-JSON, non-SARIF)
@@ -223,10 +266,7 @@ pub async fn run_scan_diff(
         }
     }
 
-    let scan_path = path.map_or_else(
-        || std::env::current_dir().unwrap_or_default().to_string_lossy().to_string(),
-        String::from,
-    );
+    let scan_path = super::common::resolve_project_path(path);
 
     // Get changed files via git
     let changed_files = get_changed_files(base_branch, &scan_path);
@@ -285,6 +325,97 @@ pub async fn run_scan_diff(
             1
         }
     }
+}
+
+// ── Phase 6 helpers ─────────────────────────────────────────────
+
+/// Start a spinner on stderr showing elapsed time.
+fn start_spinner(active: Arc<AtomicBool>) -> tokio::task::JoinHandle<()> {
+    active.store(true, Ordering::SeqCst);
+    tokio::spawn(async move {
+        let frames = ['◐', '◓', '◑', '◒'];
+        let mut i: usize = 0;
+        let start = std::time::Instant::now();
+        while active.load(Ordering::SeqCst) {
+            let elapsed = start.elapsed().as_secs();
+            eprint!("\r  {} Scanning... ({}s)", frames[i % frames.len()], elapsed);
+            i += 1;
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
+        eprint!("\r{}\r", " ".repeat(40)); // clear spinner line
+    })
+}
+
+/// Stop the spinner.
+fn stop_spinner(active: &AtomicBool, handle: Option<tokio::task::JoinHandle<()>>) {
+    active.store(false, Ordering::SeqCst);
+    if let Some(h) = handle {
+        h.abort();
+        eprint!("\r{}\r", " ".repeat(40)); // clear spinner line
+    }
+}
+
+/// Check if `uv` is available (required for --deep).
+fn check_uv_available() -> bool {
+    match std::process::Command::new("uv")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+    {
+        Ok(s) if s.success() => true,
+        _ => {
+            eprintln!("  {}  {}", red("X"), bold("Error: uv not found. Deep scan requires uv for tool management."));
+            eprintln!("     Install: curl -LsSf https://astral.sh/uv/install.sh | sh");
+            false
+        }
+    }
+}
+
+/// Show deep scan tool download/cache display.
+fn show_deep_scan_tools() {
+    let tools_dir = dirs::home_dir()
+        .map(|h| h.join(".complior/tools"))
+        .unwrap_or_default();
+
+    let tools = [
+        ("Semgrep", "semgrep"),
+        ("Bandit", "bandit"),
+        ("ModelScan", "modelscan"),
+    ];
+
+    eprintln!();
+    let first_run = !tools_dir.exists();
+    if first_run {
+        eprintln!("  {}", bold("First run — downloading deep scan tools (~150MB)"));
+    } else {
+        eprintln!("  {}", bold("Deep scan tools"));
+    }
+
+    for (i, (name, dir_name)) in tools.iter().enumerate() {
+        let cached = tools_dir.join(dir_name).exists();
+        let status = if cached {
+            format!("{}  cached", green(check_mark()))
+        } else {
+            dim("pending").to_string()
+        };
+        let bar = if cached {
+            super::format::colors::bar_filled().repeat(20)
+        } else {
+            super::format::colors::bar_empty().repeat(20)
+        };
+        let prefix = if i < tools.len() - 1 { tree_branch() } else { tree_end() };
+        eprintln!("  {}  {:<20}{}  {}", prefix, name, dim(&bar), status);
+    }
+    eprintln!();
+}
+
+/// Read previous scan score from `.complior/last-scan.json` for delta display.
+fn read_last_score(project_path: &str) -> Option<f64> {
+    let path = std::path::Path::new(project_path).join(".complior/last-scan.json");
+    let content = std::fs::read_to_string(path).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&content).ok()?;
+    v.get("score")?.get("totalScore")?.as_f64()
 }
 
 fn get_changed_files(base_branch: &str, project_path: &str) -> Vec<String> {

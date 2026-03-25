@@ -63,6 +63,13 @@ async fn main() -> color_eyre::Result<()> {
     let resume = parsed_cli.resume;
     config.engine_url_override = parsed_cli.engine_url.clone();
 
+    // Apply --no-color: set env var so OnceLock picks it up
+    if parsed_cli.no_color {
+        // SAFETY: This runs single-threaded before any other threads start,
+        // and before the OnceLock for color/unicode detection is initialized.
+        unsafe { std::env::set_var("NO_COLOR", "1"); }
+    }
+
     // Apply theme from CLI if provided
     if let Some(ref theme_name) = parsed_cli.theme {
         config.theme = theme_name.clone();
@@ -78,7 +85,7 @@ async fn main() -> color_eyre::Result<()> {
 
     // Handle headless commands (non-TUI)
     if cli::is_headless(&parsed_cli) {
-        // Auto-launch engine for commands that need it (skip for version/init/update/daemon/login/logout)
+        // Auto-launch engine for commands that need it (skip for version/update/daemon/login/logout)
         let mut engine_guard: Option<EngineManager> = None;
         if config.engine_url_override.is_none() && cli::needs_engine(&parsed_cli) {
             let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -115,7 +122,7 @@ async fn main() -> color_eyre::Result<()> {
         }
 
         let code: i32 = match &parsed_cli.command {
-            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, deep, llm, cloud, agent, path }) => {
+            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, deep, llm, cloud, quiet, agent, path }) => {
                 if let Some(base_branch) = diff {
                     headless::scan::run_scan_diff(
                         base_branch, *json, *fail_on_regression, *comment,
@@ -124,21 +131,30 @@ async fn main() -> color_eyre::Result<()> {
                 } else {
                     headless::run_headless_scan(
                         *ci, *json, *sarif, *no_tui, *threshold,
-                        fail_on.as_deref(), *deep, *llm, *cloud,
+                        fail_on.as_deref(), *deep, *llm, *cloud, *quiet,
                         agent.as_deref(),
                         path.as_deref(), &config,
                     ).await
                 }
             }
-            Some(cli::Command::Fix { dry_run, json, ai, path }) => {
-                headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await
+            Some(cli::Command::Fix { dry_run, json, ai, source, path }) => {
+                if source == "eval" {
+                    headless::eval::run_eval_fix(*dry_run, *json, &config).await
+                } else if source == "all" {
+                    // Combined: scan + eval findings
+                    let scan_code = headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await;
+                    let eval_code = headless::eval::run_eval_fix(*dry_run, *json, &config).await;
+                    if scan_code != 0 { scan_code } else { eval_code }
+                } else {
+                    headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await
+                }
             }
             Some(cli::Command::Version) => { headless::run_version(); 0 }
             Some(cli::Command::Doctor) => { headless::run_doctor(&config).await; 0 }
             Some(cli::Command::Report { format, output, path }) => {
                 headless::run_report(format, output.as_deref(), path.as_deref(), &config).await
             }
-            Some(cli::Command::Init { path }) => { headless::run_init(path.as_deref()); 0 }
+            Some(cli::Command::Init { path }) => headless::run_init(path.as_deref(), &config).await,
             Some(cli::Command::Update) => { headless::run_update().await; 0 }
             Some(cli::Command::Daemon { action, watch }) => {
                 let project_path = std::env::current_dir().unwrap_or_default();
@@ -165,9 +181,6 @@ async fn main() -> color_eyre::Result<()> {
             }
             Some(cli::Command::Simulate { fix, add_doc, complete_passport, json }) => {
                 headless::simulate::run_simulate(fix, add_doc, complete_passport, *json, &config).await
-            }
-            Some(cli::Command::Onboarding { action }) => {
-                headless::onboarding::run_onboarding(action, &config).await
             }
             Some(cli::Command::Login) => {
                 match headless::run_login(&config).await {
@@ -202,11 +215,19 @@ async fn main() -> color_eyre::Result<()> {
             Some(cli::Command::Tools { action }) => {
                 headless::tools::run_tools_command(action, &config).await
             }
-            Some(cli::Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency }) => {
+            Some(cli::Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run }) => {
                 if *last {
                     headless::eval::run_eval_last(*json, *failures, &config).await
+                } else if *fix {
+                    // Run eval then show fix preview
+                    let code = headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await;
+                    if code == 0 {
+                        headless::eval::run_eval_fix(*dry_run, *json, &config).await
+                    } else {
+                        code
+                    }
                 } else {
-                    headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, &config).await
+                    headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await
                 }
             }
             Some(cli::Command::Audit { target, agent, json, path }) => {

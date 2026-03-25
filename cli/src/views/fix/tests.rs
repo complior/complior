@@ -281,6 +281,7 @@ fn make_scan_result(findings: &[Finding]) -> crate::types::ScanResult {
         scanned_at: "2026-02-28T12:00:00Z".to_string(),
         duration: 450,
         files_scanned: 24,
+        files_excluded: None,
         deep_analysis: None,
         l5_cost: None,
         regulation_version: None,

@@ -6,6 +6,7 @@
  */
 
 import type { EvalResult, TestResult } from './types.js';
+import { countVerdicts } from './verdict-utils.js';
 
 /** Evidence type matching the scanner's Evidence interface. */
 interface EvalEvidence {
@@ -91,11 +92,12 @@ export const summarizeTestResults = (
   readonly categories: readonly string[];
 } => {
   const categories = [...new Set(results.map((r) => r.category))];
+  const counts = countVerdicts(results);
   return Object.freeze({
     total: results.length,
-    passed: results.filter((r) => r.verdict === 'pass').length,
-    failed: results.filter((r) => r.verdict === 'fail').length,
-    errors: results.filter((r) => r.verdict === 'error').length,
+    passed: counts.passed,
+    failed: counts.failed,
+    errors: counts.errors,
     categories,
   });
 };

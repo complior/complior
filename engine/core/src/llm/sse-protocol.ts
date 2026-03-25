@@ -40,9 +40,9 @@ export const sseError = (message: string): SseEventPayload => ({
 
 // ── Eval SSE events ──────────────────────────────────────────────
 
-export const sseEvalStart = (target: string, model: string | undefined, mode: string): SseEventPayload => ({
+export const sseEvalStart = (target: string, model: string | undefined, mode: string, judgeModel?: string): SseEventPayload => ({
   event: 'eval:start',
-  data: JSON.stringify({ target, model: model ?? 'default', mode }),
+  data: JSON.stringify({ target, model: model ?? 'default', mode, ...(judgeModel ? { judgeModel } : {}) }),
 });
 
 export const sseEvalHealth = (ok: boolean): SseEventPayload => ({
@@ -61,6 +61,8 @@ export const sseEvalTest = (payload: {
   phase: string;
   completed: number;
   total: number;
+  owaspCategory?: string;
+  severity?: string;
 }): SseEventPayload => ({
   event: 'eval:test',
   data: JSON.stringify(payload),

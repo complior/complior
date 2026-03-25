@@ -153,6 +153,7 @@ export interface TestResult {
   readonly latencyMs: number;
   readonly timestamp: string;
   readonly owaspCategory?: string; // OWASP LLM Top 10 (e.g. 'LLM01') — security probes only
+  readonly severity?: 'critical' | 'high' | 'medium' | 'low'; // Carried from ConformityTest/probe
 }
 
 // ── Category Score ──────────────────────────────────────────────
@@ -185,10 +186,12 @@ export interface EvalResult {
   readonly failed: number;
   readonly errors: number;
   readonly inconclusive: number;
+  readonly skipped: number;
   readonly duration: number;      // ms
   readonly timestamp: string;
   readonly criticalCapped: boolean;
   readonly agent?: string;        // Agent passport name
+  readonly adapterName?: string;  // Target adapter type (openai, anthropic, ollama, http)
 }
 
 // ── Eval Options (input to runner) ──────────────────────────────

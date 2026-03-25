@@ -7,7 +7,7 @@ mod tests {
     };
 
     fn default_opts() -> FormatOptions {
-        FormatOptions { framework_scores: None }
+        FormatOptions { framework_scores: None, quiet: false, prev_score: None }
     }
 
     fn mock_scan_result() -> ScanResult {
@@ -73,6 +73,7 @@ mod tests {
             scanned_at: "2026-02-19T12:00:00Z".into(),
             duration: 1234,
             files_scanned: 42,
+            files_excluded: None,
             deep_analysis: None,
             l5_cost: None,
             regulation_version: None,
@@ -172,8 +173,9 @@ mod tests {
         // Compliance score
         assert!(text.contains("COMPLIANCE SCORE"));
         assert!(text.contains("72 / 100"));
-        // No security score without framework_scores
-        assert!(!text.contains("SECURITY SCORE"));
+        // Security score N/A hint when no framework_scores
+        assert!(text.contains("SECURITY SCORE"));
+        assert!(text.contains("N/A"));
     }
 
     #[test]
@@ -206,6 +208,8 @@ mod tests {
                     categories: vec![],
                 },
             ]),
+            quiet: false,
+            prev_score: None,
         };
         let text = format_human(&result, &opts);
         assert!(text.contains("COMPLIANCE SCORE"));
@@ -565,14 +569,17 @@ mod tests {
                 deadline: None,
                 categories: vec![],
             }]),
+            quiet: false,
+            prev_score: None,
         };
         let text = format_human(&result, &opts);
         assert!(text.contains("Framework Breakdown"));
         assert!(text.contains("EU AI Act 2024/1689"));
         assert!(text.contains("60 / 100"));
-        // Bar chart characters
-        assert!(text.contains('█'));
-        assert!(text.contains('░'));
+        // Bar chart characters (uses ASCII fallback in test/CI environment)
+        use crate::headless::format::colors::{bar_filled, bar_empty};
+        assert!(text.contains(bar_filled()));
+        assert!(text.contains(bar_empty()));
     }
 
     #[test]
@@ -599,8 +606,10 @@ mod tests {
     fn format_human_separator_width() {
         let result = mock_scan_result();
         let text = format_human(&result, &default_opts());
-        // 65-char separator should be present (multiple occurrences)
-        let sep = "─".repeat(65);
+        // Dynamic separator uses h_line() repeated to display_width()
+        use crate::headless::format::colors::h_line;
+        use crate::headless::format::layers::display_width;
+        let sep = h_line().repeat(display_width());
         assert!(text.contains(&sep));
     }
 
@@ -674,5 +683,206 @@ mod tests {
         let text = format_human(&result, &default_opts());
         // ext_check_label should provide nice label
         assert!(text.contains("Unsafe Pickle Usage"));
+    }
+
+    // ── New tests for CLI output spec compliance ──────────────────
+
+    #[test]
+    fn format_human_finding_ids() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Finding IDs should be present (F-001, F-002)
+        assert!(text.contains("F-001"));
+        assert!(text.contains("F-002"));
+    }
+
+    #[test]
+    fn format_human_layer_tag_in_finding() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Layer tags should appear in finding lines
+        assert!(text.contains("[L1]") || text.contains("[L4]"));
+    }
+
+    #[test]
+    fn format_human_grade_in_score() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Grade letter should appear near score (72 = C)
+        assert!(text.contains("C"));
+    }
+
+    #[test]
+    fn format_human_elapsed_time() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Elapsed time should be displayed (1234ms = 1.2s)
+        assert!(text.contains("Elapsed"));
+        assert!(text.contains("1.2s"));
+    }
+
+    #[test]
+    fn format_human_quiet_mode() {
+        let mut result = mock_scan_result();
+        result.findings = vec![
+            make_finding("l1-crit", CheckResultType::Fail, "Critical issue", Severity::Critical),
+            make_finding("l4-med", CheckResultType::Fail, "Medium issue", Severity::Medium),
+        ];
+        let opts = FormatOptions { framework_scores: None, quiet: true, prev_score: None };
+        let text = format_human(&result, &opts);
+        // Quiet mode: shows critical findings
+        assert!(text.contains("CRITICAL FINDINGS"));
+        assert!(text.contains("Critical issue"));
+        // Quiet mode: does NOT show quick actions or framework breakdown
+        assert!(!text.contains("QUICK ACTIONS"));
+        assert!(!text.contains("Framework Breakdown"));
+    }
+
+    #[test]
+    fn format_human_security_na_hint() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Security N/A when no OWASP/MITRE framework data
+        assert!(text.contains("SECURITY SCORE"));
+        assert!(text.contains("N/A"));
+        assert!(text.contains("complior eval --security"));
+    }
+
+    #[test]
+    fn format_human_docs_command() {
+        let result = mock_scan_result();
+        let text = format_human(&result, &default_opts());
+        // Docs command hint for findings with article reference
+        assert!(text.contains("complior docs --article 27") || text.contains("complior docs --article 50"));
+    }
+
+    #[test]
+    fn format_human_prev_score_delta() {
+        let result = mock_scan_result();
+        let opts = FormatOptions { framework_scores: None, quiet: false, prev_score: Some(85.0) };
+        let text = format_human(&result, &opts);
+        // Previous score delta displayed
+        assert!(text.contains("was 85"));
+    }
+
+    #[test]
+    fn format_human_severity_icons_distinct() {
+        // Critical and High should have different icons
+        use crate::headless::format::colors::severity_icon;
+        let crit = severity_icon(&Severity::Critical);
+        let high = severity_icon(&Severity::High);
+        assert_ne!(crit, high, "Critical and High should have different icons");
+    }
+
+    #[test]
+    fn format_json_has_grade() {
+        let result = mock_scan_result();
+        let json_text = format_json(&result);
+        let v: serde_json::Value = serde_json::from_str(&json_text).unwrap();
+        let grade = v.get("grade").expect("grade object should exist");
+        assert_eq!(grade.get("compliance").unwrap().as_str().unwrap(), "C");
+    }
+
+    #[test]
+    fn format_json_has_finding_ids() {
+        let result = mock_scan_result();
+        let json_text = format_json(&result);
+        let v: serde_json::Value = serde_json::from_str(&json_text).unwrap();
+        let findings = v.get("findings").unwrap().as_array().unwrap();
+        // All fail findings should have IDs
+        let ids: Vec<&str> = findings.iter()
+            .filter_map(|f| f.get("id").and_then(|v| v.as_str()))
+            .collect();
+        assert!(!ids.is_empty());
+        assert!(ids.contains(&"F-001"));
+    }
+
+    #[test]
+    fn format_json_has_obligation_ids() {
+        let result = mock_scan_result();
+        let json_text = format_json(&result);
+        let v: serde_json::Value = serde_json::from_str(&json_text).unwrap();
+        let findings = v.get("findings").unwrap().as_array().unwrap();
+        // Finding with obligationId should also have obligationIds array
+        let has_ids = findings.iter().any(|f|
+            f.get("obligationIds").and_then(|v| v.as_array()).is_some()
+        );
+        assert!(has_ids, "At least one finding should have obligationIds array");
+    }
+
+    #[test]
+    fn resolve_grade_boundaries() {
+        use crate::headless::format::colors::resolve_grade;
+        assert_eq!(resolve_grade(95.0), "A");
+        assert_eq!(resolve_grade(90.0), "A");
+        assert_eq!(resolve_grade(89.9), "B");
+        assert_eq!(resolve_grade(75.0), "B");
+        assert_eq!(resolve_grade(74.9), "C");
+        assert_eq!(resolve_grade(60.0), "C");
+        assert_eq!(resolve_grade(59.9), "D");
+        assert_eq!(resolve_grade(40.0), "D");
+        assert_eq!(resolve_grade(39.9), "F");
+        assert_eq!(resolve_grade(0.0), "F");
+    }
+
+    #[test]
+    fn cli_parse_quiet_flag() {
+        use clap::Parser;
+        use crate::cli::Cli;
+        let cli = Cli::parse_from(["complior", "scan", "--quiet"]);
+        match cli.command {
+            Some(crate::cli::Command::Scan { quiet, .. }) => assert!(quiet),
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_quiet_short() {
+        use clap::Parser;
+        use crate::cli::Cli;
+        let cli = Cli::parse_from(["complior", "scan", "-q"]);
+        match cli.command {
+            Some(crate::cli::Command::Scan { quiet, .. }) => assert!(quiet),
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_no_color_flag() {
+        use clap::Parser;
+        use crate::cli::Cli;
+        let cli = Cli::parse_from(["complior", "--no-color", "scan"]);
+        assert!(cli.no_color);
+    }
+
+    #[test]
+    fn format_human_large_project_warning() {
+        let mut result = mock_scan_result();
+        result.files_scanned = 600;
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("Large project"));
+        assert!(text.contains(".compliorignore"));
+    }
+
+    #[test]
+    fn format_human_files_excluded() {
+        let mut result = mock_scan_result();
+        result.files_excluded = Some(15);
+        let text = format_human(&result, &default_opts());
+        assert!(text.contains("15 excluded"));
+    }
+
+    #[test]
+    fn sort_findings_full_order() {
+        use crate::headless::format::layers::sort_findings_full;
+        let f1 = make_finding("l4-bare", CheckResultType::Fail, "m1", Severity::Medium);
+        let f2 = make_finding("l1-risk", CheckResultType::Fail, "m2", Severity::Critical);
+        let f3 = make_finding("l2-fria", CheckResultType::Fail, "m3", Severity::High);
+        let mut refs: Vec<&Finding> = vec![&f1, &f2, &f3];
+        sort_findings_full(&mut refs);
+        // Critical first, then High, then Medium
+        assert_eq!(refs[0].severity, Severity::Critical);
+        assert_eq!(refs[1].severity, Severity::High);
+        assert_eq!(refs[2].severity, Severity::Medium);
     }
 }

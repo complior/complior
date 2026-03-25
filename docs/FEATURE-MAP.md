@@ -4,10 +4,10 @@
 > Each feature lists its completed user stories with implementation details.
 > Sprint burndown numbers → see [BURNDOWN.md](./BURNDOWN.md)
 
-**Updated:** 2026-03-20
-**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US + Passport Rewrite) + S08/S09 partial (5 US) + S10 partial (6 US) — Scanner Tier-2 + Fix Report + Passport Production
-**Tests:** 2342 | **TS Engine:** 1439 | **Rust CLI:** 489 | **SDK:** 414
-**Next:** Sprint S06 — MCP Proxy, ISO 42001, LLM Document Fill, SaaS Regulatory (25 US remaining)
+**Updated:** 2026-03-24
+**Current status:** Sprint S05 Phase 1-5 DONE (30/34 US) + S06 partial (5/30 US + Passport Rewrite) + S08/S09 partial (5 US) + S10 partial (6 US) + S11 partial (12 US) + S12-REM DONE (10 US) — Eval Remediation
+**Tests:** 2808 | **TS Engine:** 1876 | **Rust CLI:** 518 | **SDK:** 414
+**Next:** Sprint S06 (remaining 25 US) — ISO 42001, MCP Proxy, NHI Scanner
 
 ---
 
@@ -78,7 +78,12 @@
 | F61 | Fix Report: Scaffold Badges + Code Fix Dedup + Upgrade CTA | **DONE** | 3 | S10 |
 | F62 | FIX.md Pipeline Documentation | **DONE** | — | S10 |
 | F63 | Passport Production Rewrite (10 fixes) | **DONE** | — | S06 |
-| **TOTAL** | | | **~182** | |
+| F64 | Eval Subsystem (Conformity + Security + LLM Judge) | **DONE** | 12 | S11 |
+| F65 | Eval Remediation (Knowledge Base + Fix Generator + CLI Output) | **DONE** | 7 | S12 |
+| F66 | Eval → Passport Sync + Fix Pipeline Integration | **DONE** | 3 | S12 |
+| F67 | Eval → Passport Binding + Passport Rename | **DONE** | 2 | S12 |
+| F68 | CLI Onboarding Removal + Doc Sync | **DONE** | 1 | S12-REM |
+| **TOTAL** | | | **~207** | |
 
 ---
 
@@ -1120,6 +1125,131 @@ Production-grade rewrite of Agent Passport Mode 1 (auto-generation). 10 fixes to
 - `engine/core/src/services/passport-service.ts` — fixes 1,10 (profile read, updatePassportsAfterScan)
 - `engine/core/src/composition-root.ts` — fix 10 (scan.completed → passport update wiring)
 - **Tests:** TS 1407→1439 (+32), Rust 487→489 (+2)
+
+---
+
+## F64: Eval Subsystem (Conformity + Security + LLM Judge)
+
+**Sprint:** S11 (partial) | **Status:** DONE
+
+Full AI system evaluation pipeline: 688 tests (176 deterministic + 212 LLM-judged + 300 security probes), 5 target adapters, LLM-as-judge with 11 specialized OWASP rubrics, dedicated judge model, scoring engine, passport integration, evidence chain, CLI commands.
+
+| US | Title | Description |
+|----|-------|-------------|
+| E-130 | Eval Core Runner | `eval-runner.ts` — 6-phase pipeline: load tests → run deterministic → run LLM-judged → run security probes → score → persist. `EvalRunnerDeps` with DI. `EvalTestSources` lazy loader. `verdict-utils.ts` shared helpers (countVerdicts, calculateScore) |
+| E-131 | LLM Judge + Dedicated Judge Model | `llm-judge.ts` — LLM-as-judge for subjective conformity tests. `COMPLIOR_JUDGE_API_KEY` env var: auto-detect provider from key format (Anthropic/OpenRouter/OpenAI). Separate judge avoids circular grading. Fallback: target adapter → deps.callLlm → regex-only |
+| E-132 | Security Probes (300 OWASP) | `security-integration.ts` — bridges 300 `AttackProbe` → eval pipeline. 10 OWASP LLM Top 10 categories + Art.5. `adaptProbesForEval()`, `calculateEvalSecurityScore()` with per-category breakdown. `security-rubrics.ts` — 11 specialized rubrics with few-shot examples per OWASP category |
+| E-133 | Conformity Scoring Engine | `conformity-score.ts` — per-category weighted scoring. 11 categories: transparency, oversight, explanation, bias, accuracy, robustness, prohibited, monitoring, risk-awareness, gpai, industry. Grade assignment: A (90+), B (75+), C (60+), D (40+), F (<40). Security cap: critical fail → max grade C |
+| E-134 | Passport Integration | `eval-passport.ts` — `buildPassportEvalBlock()` creates passport-compatible eval summary. `mergeEvalIntoPassport()` — non-destructive merge into existing passport JSON |
+| E-135 | Evidence Chain Integration | `eval-evidence.ts` — converts EvalResult to evidence entries. Per-test + summary entries. `evalResultHash()` for chain verification. `summarizeTestResults()` for compact storage |
+| E-136 | Report Generation | `eval-report.ts` — markdown report from EvalResult. Sections: summary, per-category breakdown, security analysis, failed tests detail, recommendations |
+| E-137 | Specialized Security Rubrics | `security-rubrics.ts` — 11 per-OWASP rubrics (LLM01-LLM10 + ART5). Each has: systemPrompt with PASS/FAIL criteria, 2-3 few-shot examples. Injected via `EvalRunnerDeps.getSecurityRubric` (Clean Architecture) |
+| E-138 | Eval Adapters (5 Providers) | `adapters/` — OpenAI, Anthropic, Ollama, HTTP (generic), Custom (request template + response path). `auto-detect.ts` — URL-based auto-detection. `TargetAdapter` port with `send()` + `healthCheck()` |
+| E-139 | Expanded Conformity Tests | 176 deterministic tests across 11 CT categories + 212 LLM-judged tests. CT-6 robustness (injection patterns), CT-7 prohibited (copyright, graphic, profanity), CT-11 industry (specialized advice refusal). `deterministic-evaluator.ts` with 88 refusal patterns |
+| C-29 | CLI `complior eval` | `headless/eval.rs` — `complior eval <url> [--model M] [--api-key K] [--tier det\|llm\|security\|full] [--json] [--ci --threshold N]`. Progress display with live category scores. Summary: conformity + security scores, grade, pass/fail counts. OWASP breakdown table |
+| C-31 | CLI `complior audit` | `headless/eval.rs` — `complior audit` reads last eval result from `.complior/eval/latest.json`. Displays cached results without re-running eval |
+
+**Key files:**
+- `engine/core/src/domain/eval/` — eval-runner.ts, types.ts, conformity-score.ts, llm-judge.ts, eval-passport.ts, eval-evidence.ts, eval-report.ts, verdict-utils.ts
+- `engine/core/src/domain/eval/adapters/` — adapter-port.ts, auto-detect.ts, openai-adapter.ts, anthropic-adapter.ts, ollama-adapter.ts, http-adapter.ts, custom-adapter.ts
+- `engine/core/src/data/eval/` — 11 CT files (ct-1 through ct-11), deterministic-evaluator.ts, index.ts, security-rubrics.ts
+- `engine/core/src/data/security/attack-probes.ts` — 300 security probes
+- `engine/core/src/services/eval-service.ts` — application orchestration
+- `engine/core/src/http/routes/eval.route.ts` — POST /eval, GET /eval/latest, GET /eval/list
+- `cli/src/headless/eval.rs` — CLI eval + audit runners
+- **Tests:** TS 1439->1626 (+187), Rust 489->505 (+16)
+
+---
+
+## F65: Eval Remediation (Knowledge Base + Fix Generator + CLI Output)
+
+**Sprint:** S12-REM | **Status:** DONE
+
+22 remediation playbooks (11 CT categories + 11 OWASP LLM Top 10), per-test mapping for 176 deterministic + 300 security probes, system prompt patch generator, API config patch generator, CLI inline recommendations with Fix/Why per failure.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-REM-01 | CT Category Playbooks | 11 playbooks (`ct-1-transparency.ts` .. `ct-11-industry.ts`). Each: 3-5 `RemediationAction` items with `user_guidance` (why, what_to_do[], verification, resources[]). Types: `system_prompt`, `api_config`, `infrastructure`, `process`. Priority/effort/article_ref per action |
+| US-REM-02 | OWASP Playbooks | 11 playbooks (`owasp-llm01.ts` .. `owasp-art5.ts`). Each extends `CategoryPlaybook` with `owasp_ref` + `cwe_ref`. Concrete actionable steps: regex patterns, code examples, verification procedures |
+| US-REM-03 | Per-Test Mapping | `test-mapping.ts` — 176 deterministic tests explicitly mapped to 1-3 action IDs. 300 security probes: fallback by `owaspCategory`. CT fallback: top-3 actions by priority. `getRemediationForTest(testId, category, playbooks, owaspCategory)` |
+| US-REM-05 | System Prompt Patch Generator | `eval-fix-generator.ts` — `generateSystemPromptPatch(failures, playbooks)`: groups by category, deduplicates, sorts by priority. Pure function, no LLM. Outputs markdown with numbered instruction blocks |
+| US-REM-06 | API Config Patch Generator | `generateApiConfigPatch(failures, playbooks)`: headers (`x-ai-disclosure`, etc.), input validation (banned patterns), output validation (PII filter, prompt leak). Structured JSON output |
+| US-REM-07 | CLI Inline Recommendations | `eval.rs` — `Fix:` and `Why:` lines per failure + `Prompt:` field showing request. COMPLIANCE GAPS section (all 11 categories with descriptions). `--no-remediation` flag. Text wrapping with column alignment via `wrap_aligned()` + `term_width()` |
+| US-REM-08 | Remediation Report Export | `eval-remediation-report.ts` — `generateRemediationReport()` + `renderRemediationMarkdown()`. `--remediation` CLI flag → full report. Executive summary, prioritized action plan (top 10), system prompt patch, API config patch. JSON + markdown formats |
+
+**Key files:**
+- `engine/core/src/domain/eval/remediation-types.ts` — `RemediationAction`, `CategoryPlaybook`, `OwaspPlaybook`, `ApiConfigPatch`, `RemediationReport`
+- `engine/core/src/data/eval/remediation/` — 22 playbook files + index.ts + test-mapping.ts
+- `engine/core/src/domain/eval/eval-fix-generator.ts` — system prompt + API config generators
+- `engine/core/src/domain/eval/eval-remediation-report.ts` — report generation + markdown rendering
+- `engine/core/src/domain/eval/eval-constants.ts` — shared constants (PRIORITY_ORDER, CATEGORY_ARTICLES, CATEGORY_FINES, PRIORITY_TIMELINE, findPlaybook, groupFailuresByCategory)
+- `engine/core/src/domain/eval/verdict-utils.ts` — shared `isFailedVerdict` predicate
+- `cli/src/headless/eval.rs` — inline Fix/Why, Prompt field, COMPLIANCE GAPS, wrap_aligned()
+- **Tests:** TS 1626→1876 (+250), Rust 505→524 (+19)
+
+---
+
+## F66: Eval → Passport Sync + Fix Pipeline Integration
+
+**Sprint:** S12-REM | **Status:** DONE
+
+Eval results auto-sync to Agent Passport, eval failures convert to Fix pipeline findings, `complior eval --fix` interactive mode.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-REM-04 | Eval → Passport Auto-Sync | `eval-service.ts` calls `updatePassportEval` after eval. `eval-passport.ts` — `buildPassportEvalBlock()` creates compliance.eval block (conformity_score, security_score, grades, category_pass_rates, critical_gaps). `mergeEvalIntoPassport()` — non-destructive merge with Object.freeze. Wired via composition-root deps |
+| US-REM-09 | Eval → Findings Pipeline | `eval-to-findings.ts` — `evalToFindings(result, playbooks)` converts eval failures to `Finding[]`. Type mapping: transparency/prohibited → Type A (system prompt), security → Type B (guardrails.json), bias → Type B (checklist). HTTP: `GET /eval/findings`. CLI: `complior fix --source eval` |
+| US-REM-10 | `complior eval --fix` Interactive | `--fix` flag runs eval → shows results → lists available fixes → interactive apply/skip. `--fix --dry-run` for preview only. Reuses existing fix preview from `headless/fix.rs`. Applied fixes saved to `.complior/eval-fixes/` |
+
+**Key files:**
+- `engine/core/src/domain/eval/eval-passport.ts` — passport eval block builder + merger (Object.freeze)
+- `engine/core/src/domain/eval/eval-to-findings.ts` — eval result → Finding converter
+- `engine/core/src/services/eval-service.ts` — orchestration with passport sync + findings + remediation
+- `engine/core/src/http/routes/eval.route.ts` — GET /eval/remediation, POST /eval/remediation-report, GET /eval/findings
+- `engine/core/src/composition-root.ts` — wiring updatePassportEval dep
+- `cli/src/cli.rs` — `--fix`, `--dry-run`, `--remediation`, `--no-remediation`, `--source` flags
+- `cli/src/main.rs` — flag passthrough
+
+---
+
+## F67: Eval → Passport Binding + Passport Rename
+
+**Sprint:** S12-REM | **Status:** DONE
+
+Eval results are written only to the passport specified by `--agent`. New `complior agent rename` command for passport management.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-REM-11 | Eval → Passport Binding via --agent | CLI validates passport existence before eval via `GET /agent/show`. If not found → interactive prompt to create. If no `--agent` → hint shown, eval runs without passport sync. Engine `updatePassportEval` filters by `result.agent` (writes only to named passport, not all). CI/JSON modes skip interactive prompts |
+| US-REM-12 | Passport Rename | `complior agent rename <old> <new>`. Engine: `renamePassport()` in passport-service.ts — reads old passport, updates `name` field, re-signs ed25519, writes new file, deletes old. Validates target doesn't exist. Audit trail entry. HTTP: `POST /agent/rename` with Zod validation |
+
+**Key files:**
+- `cli/src/headless/eval.rs` — passport existence check, interactive create prompt, hint for missing --agent
+- `engine/core/src/composition-root.ts` — `updatePassportEval` filters by `result.agent`
+- `engine/core/src/services/passport-service.ts` — `renamePassport()` method
+- `engine/core/src/http/routes/agent.route.ts` — `POST /agent/rename` route
+- `cli/src/cli.rs` — `AgentAction::Rename` variant
+- `cli/src/headless/agent.rs` — `run_agent_rename()` handler
+
+---
+
+## F68: CLI Onboarding Removal + Doc Sync
+
+**Sprint:** S12-REM | **Status:** DONE
+
+Removed CLI onboarding commands (`complior onboarding [start|status|step|reset]` and `complior agent onboard [--step N]`). TUI onboarding wizard and engine onboarding code remain untouched.
+
+| US | Title | Description |
+|----|-------|-------------|
+| US-REM-13 | CLI Onboarding Removal | Deleted `headless/onboarding.rs`, removed `Command::Onboarding` + `OnboardingAction` enum + `AgentAction::Onboard` from cli.rs, removed 3 helper functions from common.rs (`ONBOARDING_STEP_NAMES`, `print_onboarding_status`, `print_onboarding_step_result`), removed dispatch from main.rs. 6 CLI tests removed. Docs synced: FEATURE-AGENT-PASSPORT.md pipeline updated to match README.md flow (init → scan → agent init → validate → fria → fix → scan → eval → export) |
+
+**Key files deleted:**
+- `cli/src/headless/onboarding.rs`
+
+**Key files edited:**
+- `cli/src/headless/mod.rs`, `cli/src/headless/common.rs`, `cli/src/headless/agent.rs`
+- `cli/src/cli.rs`, `cli/src/main.rs`
+- `docs/FEATURE-AGENT-PASSPORT.md`
 
 ---
 

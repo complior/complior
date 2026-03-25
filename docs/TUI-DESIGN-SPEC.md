@@ -435,76 +435,306 @@ NORMAL  j/k:scroll
 > CLI команды работают standalone (без daemon) или через daemon (если running).
 > Каждая команда = одна атомарная операция. TUI = визуализация тех же данных.
 
-### 3.1. Core Commands
+### 3.1. Global Flags
 
 ```bash
-# Scanning
-complior scan                    # scan project, output to stdout
-complior scan --ci               # exit code 0/1, minimal output
-complior scan --json             # JSON output for piping
-complior scan --watch            # continuous scan on file changes
+complior [command] --engine-url <URL>    # Engine URL override (e.g. http://127.0.0.1:3099)
+complior [command] --resume              # Resume previous session
+complior [command] --theme <THEME>       # Color theme (dark, light, dracula, nord, solarized)
+complior [command] --yes / -y            # Skip interactive onboarding, use defaults
+complior [command] --no-color            # Disable colored output (same as NO_COLOR=1)
+```
 
-# Fixing
-complior fix                     # interactive fix (select items)
-complior fix --all               # apply all fixes
-complior fix --id OBL-013        # fix specific obligation
-complior fix --dry-run           # show what would change
+### 3.2. Core Commands
 
-# Daemon
-complior daemon                  # start daemon (headless)
-complior daemon --watch          # daemon + file watcher
-complior daemon status           # check if daemon running
-complior daemon stop             # stop daemon
+```bash
+# TUI
+complior                                 # start daemon + TUI dashboard (default)
+complior -y                              # start TUI, skip onboarding wizard
 
 # Project Setup
-complior init                    # create .complior/ (like git init)
-complior init ./path             # init at specific path
+complior init                            # create .complior/ (like git init)
+complior init ./path                     # init at specific path
 
-# TUI
-complior                         # start daemon + TUI (default)
-complior tui                     # connect to running daemon
+# Scanning — 5-layer static analysis
+complior scan [path]                     # scan project, output to stdout
+complior scan --ci                       # CI mode: exit 0 if score >= threshold, exit 1 otherwise
+complior scan --ci --threshold 80        # set score threshold (default: 50)
+complior scan --json                     # JSON output for piping
+complior scan --sarif                    # SARIF v2.1.0 output (IDE integration)
+complior scan --no-tui                   # headless human-readable output
+complior scan --quiet / -q               # show only critical findings and score
+complior scan --fail-on <LEVEL>          # fail on severity level (critical, high, medium, low)
+complior scan --agent <name>             # filter findings by agent (passport source_files)
+complior scan --deep                     # Tier 2: external security tools (Semgrep, Bandit, etc.)
+complior scan --llm                      # L5: AI-powered document quality analysis
+complior scan --cloud                    # Tier 3: cloud-based analysis (planned)
+complior scan --deep --llm --cloud       # Tier 3+: all analysis layers combined
+complior scan --diff <branch>            # diff mode: compare against base branch
+complior scan --diff main --fail-on-regression  # exit 1 if score regressed
+complior scan --diff main --comment      # post diff as PR comment (requires gh CLI)
 
-# MCP
-complior mcp                     # start as MCP server (stdio)
+# Fixing — apply compliance fixes
+complior fix [path]                      # preview fixes from scan findings
+complior fix --dry-run                   # preview without modifying files
+complior fix --json                      # JSON output
+complior fix --ai                        # use LLM to enrich generated documents
+complior fix --source scan               # fixes from scan findings (default)
+complior fix --source eval               # fixes from eval failures
+
+# Daemon — background compliance monitoring
+complior daemon                          # start daemon (headless, default)
+complior daemon --watch                  # daemon + file watcher (auto-rescan)
+complior daemon start                    # start daemon (explicit)
+complior daemon start --watch            # start with file watcher
+complior daemon start --port 4000        # bind to specific port (default: auto)
+complior daemon status                   # check if daemon running
+complior daemon stop                     # stop running daemon
+
+# Report
+complior report [path]                   # generate compliance report (markdown)
+complior report --format md              # markdown format (default)
+complior report --format pdf             # PDF format
+complior report --output report.md       # custom output path
+
+# Utilities
+complior version                         # show version and build info
+complior doctor                          # diagnose system health (engine, config)
+complior update                          # check for and install updates
 ```
 
 > **Project root discovery:** Когда `.complior/` не найдена в CWD, TUI автоматически ищет корень проекта вверх по каталогам (до 10 уровней, стоп на `$HOME`). Маркеры: `.complior/`, `.git/`, `Cargo.toml`, `package.json`, `go.mod`, `pyproject.toml`, `pom.xml`, `build.gradle`, `.project`. Если маркер не найден — fallback на CWD.
 >
-> `complior init` создаёт `.complior/` с `project.toml` (TUI config) и `profile.json` (engine config). Если не запускать `init` вручную — `.complior/` создаётся автоматически при завершении onboarding wizard.
+> `complior init` создаёт `.complior/` с `project.toml` (TUI config) и `profile.json` (engine config), затем автоматически обнаруживает AI-агентов и создаёт паспорта. Если не запускать `init` вручную — `.complior/` создаётся автоматически при завершении onboarding wizard.
 
-### 3.2. Passport Commands
+### 3.3. Agent Passport Commands
 
 ```bash
 # Generation
-complior agent:init              # discover agents, generate passports (Mode 1: Auto)
-complior agent:init --path ./    # specify path
-complior agent:init --non-interactive --owner "team" --contact "email"
+complior agent init [path]                        # (optional) manual agent discovery (init does this automatically)
+complior agent init --force                       # overwrite existing passports
+complior agent init --json                        # JSON output
 
 # Management
-complior agent:list              # table of all passports
-complior agent:validate          # check completeness
-complior agent:validate --verbose # show per-field status
-complior agent:diff              # manifest vs actual code
-complior agent:verify            # verify cryptographic signature
+complior agent list [path]                        # table of all passports
+complior agent list --verbose / -v                # extended columns (framework, model, owner, files)
+complior agent list --json                        # JSON output
+complior agent show <name> [path] --json          # show specific passport (JSON)
+complior agent show <name>                        # show specific passport (human)
+complior agent rename <old> <new> [path]          # rename passport (file + name + re-sign)
+complior agent rename <old> <new> --json          # JSON output
 
-# Export/Import
-complior agent:export --format a2a       # export to A2A Agent Card
-complior agent:export --format aiuc-1    # export for AIUC-1 evidence
-complior agent:import --from a2a <url>   # import A2A Agent Card → pre-fill
+# Validation
+complior agent validate [name] [path]             # validate all or specific passport
+complior agent validate --ci                      # CI mode: exit 1 if validation fails
+complior agent validate --strict                  # strict: warnings also cause failure
+complior agent validate --verbose                 # show per-field breakdown (filled/empty)
+complior agent validate --json                    # JSON output
+complior agent completeness <name> [path]         # detailed completeness breakdown
+complior agent completeness <name> --json         # JSON output
+complior agent autonomy [path]                    # analyze project autonomy (L1-L5)
+complior agent autonomy --json                    # JSON output
+complior agent diff <name> [--path PATH]          # compare passport versions
+complior agent diff <name> --json                 # JSON output
+
+# Export / Import
+complior agent export <name> --format a2a [path]   # export to A2A Agent Card
+complior agent export <name> --format aiuc-1       # export for AIUC-1 evidence
+complior agent export <name> --format nist         # export for NIST AI RMF
+complior agent export <name> --format a2a --json   # JSON output
+complior agent import --from a2a <file> [--path P] # import A2A Agent Card → passport
+complior agent import --from a2a <file> --json     # JSON output
 
 # Document Generation
-complior fria:generate <agent>   # generate FRIA from passport (Art.27)
-complior notify:generate <agent> # generate worker notification (Art.26(7))
-complior report:audit            # generate audit package ZIP
+complior agent fria <name> [path]                 # generate FRIA from passport (Art.27)
+complior agent fria <name> --organization "Acme"  # organization name for header
+complior agent fria <name> --impact "..."         # impact description (Section 4)
+complior agent fria <name> --mitigation "..."     # mitigation measures (Section 4)
+complior agent fria <name> --approval "Jane, CTO" # decision-maker sign-off (Section 10)
+complior agent fria <name> --json                 # JSON output
+complior agent notify <name> [path]               # worker notification (Art.26(7))
+complior agent notify <name> --company-name "Acme"       # company name for header
+complior agent notify <name> --contact-name "Jane Doe"   # contact person
+complior agent notify <name> --contact-email "j@acme.com"# contact email
+complior agent notify <name> --contact-phone "+1-555"    # contact phone
+complior agent notify <name> --deployment-date "2026-08" # planned deployment date
+complior agent notify <name> --affected-roles "Support"  # affected roles/departments
+complior agent notify <name> --impact-description "..."  # how system affects workers
+complior agent notify <name> --json                      # JSON output
+complior agent policy <name> --industry hr [path]  # generate AI usage policy (Art.6)
+complior agent policy <name> --industry finance    # industries: hr, finance, healthcare,
+complior agent policy <name> --industry healthcare #   education, legal
+complior agent policy <name> --organization "Acme" # organization name for header
+complior agent policy <name> --approver "Jane, CTO"# approver name/title
+complior agent policy <name> --json                # JSON output
+complior agent test-gen <name> [--path P]          # generate compliance tests from constraints
+complior agent test-gen <name> --json              # JSON output
+complior agent audit-package [path]                # generate audit package (tar.gz)
+complior agent audit-package --output audit.tar.gz # custom output path
+complior agent audit-package --json                # JSON metadata output
+
+# Governance
+complior agent registry [path]                    # unified per-agent compliance scores
+complior agent registry --json                    # JSON output
+complior agent permissions [path]                 # cross-agent permissions matrix + conflicts
+complior agent permissions --json                 # JSON output
+complior agent evidence [path]                    # evidence chain summary
+complior agent evidence --verify                  # verify chain integrity (hashes + signatures)
+complior agent evidence --json                    # JSON output
+complior agent audit [path]                       # audit trail (compliance event log)
+complior agent audit --agent <name>               # filter by agent
+complior agent audit --since 2026-01-01           # filter events since date (ISO)
+complior agent audit --type scan.completed        # filter by event type
+complior agent audit --limit 100                  # max entries (default: 50)
+complior agent audit --json                       # JSON output
 ```
 
-### 3.3. Certification Commands
+### 3.4. Eval Commands
 
 ```bash
-complior cert:readiness --standard aiuc-1   # AIUC-1 readiness score
-complior cert:readiness --standard iso42001  # ISO 42001 readiness
-complior cert:test --adversarial            # run adversarial tests
-complior cert:evidence --export             # export evidence package
+# Dynamic AI system evaluation (688 tests: 168 det + 212 LLM + 300 security)
+complior eval <url>                      # eval target (deterministic tests by default)
+complior eval <url> --det                # deterministic tests only (168 tests)
+complior eval <url> --llm                # LLM-judged tests (212 tests, requires API key)
+complior eval <url> --security           # security probes (300, OWASP LLM Top 10)
+complior eval <url> --full               # all: deterministic + LLM + security (688 tests)
+complior eval <url> --det --llm          # combine tiers: det + LLM (380 tests)
+complior eval <url> --llm --security     # combine tiers: LLM + security (512 tests)
+complior eval <url> --agent <name>       # link results to passport (updates eval block)
+complior eval <url> --categories transparency,bias,prohibited  # filter categories (comma-separated)
+
+# Output
+complior eval <url> --json               # JSON output
+complior eval <url> --verbose            # show probe/response for all tests
+complior eval <url> --ci                 # CI mode: exit 2 if score < threshold
+complior eval <url> --ci --threshold 80  # score threshold (default: 60)
+
+# Performance
+complior eval <url> -j 10               # parallel execution (1-50, default: 5)
+complior eval <url> --concurrency 1      # sequential execution
+
+# Custom endpoint adapter
+complior eval <url> --api-key sk-xxx                         # API key for target
+complior eval <url> --request-template '{"prompt":"{{probe}}"}'  # custom request JSON
+complior eval <url> --response-path "result.text"            # dot-path to response text
+complior eval <url> --headers '{"Authorization":"Bearer x"}' # custom headers (JSON)
+
+# LLM judge model
+complior eval <url> --llm --model gpt-4o     # override judge model
+
+# Remediation
+complior eval <url> --remediation        # generate full remediation report (.complior/eval-fixes/)
+complior eval <url> --no-remediation     # suppress inline remediation recommendations
+complior eval <url> --fix                # auto-apply fixes from eval failures (interactive)
+complior eval <url> --fix --dry-run      # preview fixes without applying
+
+# Cached results
+complior eval dummy --last               # show last eval result
+complior eval dummy --last --failures    # show only failures from last eval
+
+# Fix from eval
+complior fix --source eval               # show eval-based fixes
+complior fix --source all                # scan + eval combined
+```
+
+### 3.5. Audit, Certification, and Other Commands
+
+```bash
+# Comprehensive audit (static scan + dynamic eval + security)
+complior audit <url>                     # run full audit pipeline
+complior audit <url> --agent <name>      # link to passport
+complior audit <url> --json              # JSON output
+complior audit <url> [path]              # specify project path
+
+# AIUC-1 certification
+complior cert readiness <name> [path]    # AIUC-1 readiness score
+complior cert readiness <name> --json    # JSON output
+complior cert test <name> [path]         # run adversarial tests
+complior cert test <name> --adversarial  # prompt injection, bias, safety suite
+complior cert test <name> --categories prompt_injection,bias_detection  # filter categories
+complior cert test <name> --json         # JSON output
+
+# Chat with compliance assistant (LLM-powered)
+complior chat "What is Article 5?"       # ask a question
+complior chat "..." --json               # raw JSON events
+complior chat "..." --model gpt-4o       # model override
+
+# Supply chain audit
+complior supply-chain [path]             # audit AI dependencies + model compliance cards
+complior supply-chain --models           # show model compliance cards only
+complior supply-chain --json             # JSON output
+
+# Compliance cost estimator
+complior cost                            # estimate remediation costs
+complior cost --hourly-rate 200          # hourly rate in EUR (default: 150)
+complior cost --agent <name>             # for specific agent
+complior cost --json                     # JSON output
+
+# Compliance debt
+complior debt                            # compliance debt score
+complior debt --trend                    # compare to previous (trend)
+complior debt --json                     # JSON output
+
+# What-if simulation
+complior simulate --fix l1-risk          # simulate fixing a finding
+complior simulate --fix l1-risk --fix l2-fria  # simulate multiple fixes
+complior simulate --add-doc fria         # simulate adding a document
+complior simulate --complete-passport description  # simulate completing a field
+complior simulate --json                 # JSON output
+
+# Document generation (EU AI Act templates)
+complior doc generate <name> --type ai-literacy       # single document type
+complior doc generate <name> --type technical-documentation
+complior doc generate <name> --type incident-report
+complior doc generate <name> --type declaration-of-conformity
+complior doc generate <name> --type monitoring-policy
+complior doc generate <name> --type art5-screening
+complior doc generate <name> --all                    # ALL required docs (6 + FRIA + notification)
+complior doc generate <name> --all --organization "Acme"  # org name for headers
+complior doc generate <name> --json [path]            # JSON output
+
+# Jurisdiction data
+complior jurisdiction list               # list all 30 EU/EEA jurisdictions
+complior jurisdiction list --json        # JSON output
+complior jurisdiction show de            # show details for country (2-letter code)
+complior jurisdiction show de --json     # JSON output
+
+# MCP Compliance Proxy
+complior proxy start <command> [args...] # start proxy to upstream MCP server
+complior proxy stop                      # stop running proxy
+complior proxy status                    # show proxy status and statistics
+
+# Import external results
+complior import promptfoo --file results.json  # import Promptfoo red-team JSON
+complior import promptfoo --json               # JSON output (reads from stdin if no --file)
+
+# Red-team security probes
+complior redteam run                     # run probes against default agent
+complior redteam run --agent <name>      # target specific agent
+complior redteam run --categories LLM01,LLM06  # OWASP categories (comma-separated)
+complior redteam run --max-probes 50     # limit number of probes
+complior redteam run --json              # JSON output
+complior redteam last                    # show last red-team report
+complior redteam last --json             # JSON output
+complior redteam target <url>            # run eval --security against URL
+complior redteam target <url> --ci --threshold 70  # CI gate mode
+complior redteam target <url> --json     # JSON output
+
+# External security tools
+complior tools status                    # show status of external tools (Semgrep, etc.)
+complior tools update                    # install or update external tools
+
+# SaaS integration
+complior login                           # authenticate with SaaS dashboard
+complior logout                          # clear SaaS tokens
+complior sync                            # sync all data with SaaS
+complior sync --passport                 # sync only passports
+complior sync --scan                     # sync only scan results
+complior sync --docs                     # sync only documents
+complior sync --audit                    # sync only audit trail
+complior sync --evidence                 # sync only evidence chain
+complior sync --registry                 # sync only agent registry
+complior sync --no-sync                  # skip auto-sync after scan
 ```
 
 ---
@@ -574,7 +804,7 @@ complior cert:evidence --export             # export evidence package
 
 Если маркер не найден — fallback на CWD.
 
-**Инициализация:** `complior init` создаёт `.complior/` с `project.toml` + `profile.json` (аналог `git init`). Если `init` не запускался — `.complior/` автоматически создаётся при завершении onboarding wizard.
+**Инициализация:** `complior init` создаёт `.complior/` с `project.toml` + `profile.json` (аналог `git init`), затем автоматически обнаруживает AI-агентов и создаёт паспорта. Если `init` не запускался — `.complior/` автоматически создаётся при завершении onboarding wizard.
 
 **Legacy migration:** При первом запуске, если `~/.config/complior/tui.toml` существует, а `settings.toml` нет — автоматический split в два файла, `tui.toml` → `tui.toml.bak`.
 

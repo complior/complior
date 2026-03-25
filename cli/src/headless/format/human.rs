@@ -22,18 +22,24 @@ pub fn format_human(result: &ScanResult, opts: &FormatOptions) -> String {
     render_header(&mut o, result);
     render_scan_info(&mut o, result);
     render_score_block(&mut o, result, opts);
-    render_framework_breakdown(&mut o, opts);
-    render_layer_results_section(&mut o, result);
-    render_findings_section(&mut o, result, &fail_findings);
-    render_agent_summaries(&mut o, result);
-    render_quick_actions(&mut o, result, &fail_findings);
+
+    if opts.quiet {
+        // Quiet mode: only critical findings after score
+        render_quiet_findings(&mut o, &fail_findings);
+    } else {
+        render_framework_breakdown(&mut o, opts);
+        render_layer_results_section(&mut o, result);
+        render_findings_section(&mut o, result, &fail_findings);
+        render_agent_summaries(&mut o, result);
+        render_quick_actions(&mut o, result, &fail_findings);
+    }
 
     o
 }
 
 fn render_header(o: &mut String, result: &ScanResult) {
     let version = env!("CARGO_PKG_VERSION");
-    let mut title = format!("◆ Complior v{version}  ·  EU AI Act Compliance Scanner");
+    let mut title = format!("{} Complior v{version}  ·  EU AI Act Compliance Scanner", diamond());
     if result.tier == Some(2) {
         title.push_str("  ·  Deep Mode");
     }
@@ -45,7 +51,32 @@ fn render_header(o: &mut String, result: &ScanResult) {
 fn render_scan_info(o: &mut String, result: &ScanResult) {
     let name = project_name(&result.project_path);
     o.push_str(&format!("  {}  {}\n", dim("Scanning"), name));
-    o.push_str(&format!("  {}     {} collected\n", dim("Files"), result.files_scanned));
+
+    // Files line with optional excluded count
+    let mut files_info = format!("{} collected", result.files_scanned);
+    if let Some(excl) = result.files_excluded {
+        if excl > 0 {
+            files_info.push_str(&format!(", {excl} excluded"));
+        }
+    }
+    o.push_str(&format!("  {}     {}\n", dim("Files"), files_info));
+
+    // >500 files warning
+    if result.files_scanned > 500 {
+        o.push_str(&format!(
+            "  {}  {}\n",
+            yellow("!"),
+            dim("Large project — consider adding .compliorignore to speed up scans"),
+        ));
+    }
+
+    // Elapsed time
+    let elapsed = if result.duration >= 1000 {
+        format!("{:.1}s", result.duration as f64 / 1000.0)
+    } else {
+        format!("{}ms", result.duration)
+    };
+    o.push_str(&format!("  {}   {}\n", dim("Elapsed"), elapsed));
 
     // Derive layers from constants (single source of truth)
     let mut layers: Vec<String> = BASE_LAYERS
@@ -72,35 +103,89 @@ fn render_scan_info(o: &mut String, result: &ScanResult) {
 #[allow(clippy::cast_precision_loss)]
 fn render_score_block(o: &mut String, result: &ScanResult, opts: &FormatOptions) {
     o.push_str(&format!("  {}\n", separator()));
+    let width = display_width();
 
-    // Compliance score
+    // Compliance score with grade
     let compliance = result.score.total_score;
+    let grade = resolve_grade(compliance);
     let cscore_text = format!("{:.0} / 100", compliance);
+    let grade_text = format!("  {}", grade_color(grade, grade));
     let clabel = "COMPLIANCE SCORE";
-    let cpad = SEP_WIDTH.saturating_sub(clabel.len() + cscore_text.len());
+
+    // Build score + delta + grade
+    let mut score_suffix = cscore_text.clone();
+    if let Some(prev) = opts.prev_score {
+        score_suffix.push_str(&format!("  {}", dim(&format!("(was {:.0})", prev))));
+    }
+    score_suffix.push_str(&grade_text);
+
+    // Pad (use raw text len without ANSI for alignment)
+    let raw_score_len = format!("{:.0} / 100", compliance).len() + 2 + grade.len();
+    let extra = if opts.prev_score.is_some() {
+        let prev_str = format!("(was {:.0})", opts.prev_score.unwrap_or(0.0));
+        prev_str.len() + 2
+    } else {
+        0
+    };
+    let cpad = width.saturating_sub(clabel.len() + raw_score_len + extra);
     o.push_str(&format!(
         "  {}{}{}\n",
         bold(clabel),
         " ".repeat(cpad),
-        score_color(compliance, &cscore_text),
+        format!("{}{}",
+            score_color(compliance, &cscore_text),
+            if opts.prev_score.is_some() {
+                format!("  {}", dim(&format!("(was {:.0})", opts.prev_score.unwrap_or(0.0))))
+            } else {
+                String::new()
+            },
+        ),
     ));
+    // Grade on same line — append after score
+    o.pop(); // remove trailing newline
+    o.push_str(&format!("  {}\n", grade_color(grade, grade)));
 
     // Security score: infer from OWASP/MITRE frameworks
-    if let Some(ref frameworks) = opts.framework_scores {
+    let has_security = if let Some(ref frameworks) = opts.framework_scores {
         let security_fw = frameworks.iter().find(|fw| {
             fw.framework_id.contains("owasp") || fw.framework_id.contains("mitre")
         });
         if let Some(sec) = security_fw {
+            let sgrade = resolve_grade(sec.score);
             let sscore_text = format!("{:.0} / 100", sec.score);
             let slabel = "SECURITY SCORE";
-            let spad = SEP_WIDTH.saturating_sub(slabel.len() + sscore_text.len());
+            let raw_slen = sscore_text.len() + 2 + sgrade.len();
+            let spad = width.saturating_sub(slabel.len() + raw_slen);
             o.push_str(&format!(
-                "  {}{}{}\n",
+                "  {}{}{}  {}\n",
                 bold(slabel),
                 " ".repeat(spad),
                 score_color(sec.score, &sscore_text),
+                grade_color(sgrade, sgrade),
             ));
+            true
+        } else {
+            false
         }
+    } else {
+        false
+    };
+
+    // Security N/A hint when no security data
+    if !has_security {
+        let slabel = "SECURITY SCORE";
+        let na_text = "N/A";
+        let spad = width.saturating_sub(slabel.len() + na_text.len());
+        o.push_str(&format!(
+            "  {}{}{}\n",
+            bold(slabel),
+            " ".repeat(spad),
+            dim(na_text),
+        ));
+        o.push_str(&format!(
+            "  {}\n",
+            dim("Run `complior eval --security <url>` for security scoring"),
+        ));
     }
 
     o.push_str(&format!("  {}\n", separator()));
@@ -128,7 +213,7 @@ fn render_framework_breakdown(o: &mut String, opts: &FormatOptions) {
         let padded_score = format!("{:>8}", score_text);
         let filled = ((fw.score / 100.0) * BAR_WIDTH as f64).round() as usize;
         let empty = BAR_WIDTH.saturating_sub(filled);
-        let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty));
+        let bar = format!("{}{}", bar_filled().repeat(filled), bar_empty().repeat(empty));
         o.push_str(&format!(
             "    {:<name_width$}{}   {}\n",
             fw.framework_name,
@@ -149,7 +234,7 @@ fn render_layer_results_section(o: &mut String, result: &ScanResult) {
     for lr in &layers {
         let status_colored = layer_status_color(lr.status, lr.status);
         o.push_str(&format!(
-            "    {:<6}{:<23}{}   {}\n",
+            "    {:<6}{:<25}{}   {}\n",
             lr.id, lr.label, status_colored, dim(&lr.summary),
         ));
     }
@@ -173,22 +258,25 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
     o.push_str(&format!("  {}\n", separator()));
 
     if all_fails.is_empty() {
-        o.push_str(&format!("\n  {}  {}\n\n", green("✓"), "No compliance issues found"));
+        o.push_str(&format!("\n  {}  {}\n\n", green(check_mark()), "No compliance issues found"));
         return;
     }
 
-    // Sort by severity
+    // Multi-key sort: severity → layer → confidence
     let mut sorted: Vec<&Finding> = all_fails.to_vec();
-    sorted.sort_by_key(|f| f.severity.sort_key());
+    sort_findings_full(&mut sorted);
 
     let is_deep = result.tier == Some(2);
 
     o.push('\n');
     let has_agents = result.agent_summaries.as_ref().is_some_and(|s| !s.is_empty());
 
+    // Global finding counter for F-001 IDs
+    let mut finding_num: usize = 1;
+
     if has_agents {
         // Show ALL findings when agent grouping is active — no display limits
-        render_findings_by_agent(o, &sorted, result);
+        render_findings_by_agent(o, &sorted, result, &mut finding_num);
     } else if is_deep {
         let visible = apply_finding_limits(&sorted);
         let ext_findings: Vec<&Finding> = visible
@@ -209,7 +297,7 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
                 bold("NEW IN --DEEP"),
                 plural(n),
             ));
-            render_findings_by_layer(o, &ext_findings);
+            render_findings_by_layer(o, &ext_findings, &mut finding_num);
         }
         if !base_findings.is_empty() {
             let n = base_findings.len();
@@ -218,11 +306,11 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
                 bold("FROM BASE SCAN"),
                 plural(n),
             ));
-            render_findings_by_layer(o, &base_findings);
+            render_findings_by_layer(o, &base_findings, &mut finding_num);
         }
     } else {
         let visible = apply_finding_limits(&sorted);
-        render_findings_by_layer(o, &visible);
+        render_findings_by_layer(o, &visible, &mut finding_num);
     }
 
     // Note about hidden findings (only when limits applied — not in agent mode)
@@ -250,7 +338,7 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
 }
 
 /// Render findings grouped first by agent, then by layer within each agent.
-fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &ScanResult) {
+fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &ScanResult, finding_num: &mut usize) {
     let summaries = match &result.agent_summaries {
         Some(s) => s,
         None => return,
@@ -279,7 +367,7 @@ fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &Scan
             parts.join(" · "),
         ));
 
-        render_findings_by_layer(o, &agent_findings);
+        render_findings_by_layer(o, &agent_findings, finding_num);
         o.push('\n');
     }
 
@@ -295,13 +383,13 @@ fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &Scan
             bold("PROJECT-LEVEL"),
             plural(n),
         ));
-        render_findings_by_layer(o, &unattributed);
+        render_findings_by_layer(o, &unattributed, finding_num);
         o.push('\n');
     }
 }
 
 /// Render findings grouped by layer subcategories.
-fn render_findings_by_layer(o: &mut String, findings: &[&Finding]) {
+fn render_findings_by_layer(o: &mut String, findings: &[&Finding], finding_num: &mut usize) {
     let all_layers: Vec<(&str, &str)> = [BASE_LAYERS, DEEP_LAYERS].concat();
 
     for (tag, label) in &all_layers {
@@ -315,14 +403,17 @@ fn render_findings_by_layer(o: &mut String, findings: &[&Finding]) {
 
         o.push_str(&format!("\n    {} {}\n", bold(tag), dim(label)));
         for f in layer_findings {
-            render_single_finding(o, f);
+            render_single_finding(o, f, finding_num);
+            *finding_num += 1;
         }
     }
 }
 
-fn render_single_finding(o: &mut String, f: &Finding) {
+fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
+    let fid = format!("F-{:03}", finding_num);
     let icon = severity_icon(&f.severity);
     let sev = severity_color(&f.severity, f.severity.label());
+    let layer_tag = infer_layer_tag(&f.check_id);
 
     let label = if f.check_id.starts_with("ext-") {
         ext_check_label(&f.check_id)
@@ -344,7 +435,10 @@ fn render_single_finding(o: &mut String, f: &Finding) {
         Some(art) => format!("{art} · {label}"),
         None => label,
     };
-    o.push_str(&format!("      {}  {}  {}\n", icon, sev, header_detail));
+    o.push_str(&format!(
+        "      {}  {}  {}  {}  {}\n",
+        dim(&fid), icon, sev, dim(&format!("[{layer_tag}]")), header_detail,
+    ));
     o.push_str(&format!("         {}\n", f.message));
 
     if let Some(ref loc) = f.file_line_label() {
@@ -354,7 +448,36 @@ fn render_single_finding(o: &mut String, f: &Finding) {
         o.push_str(&format!("         {}  {}\n", dim("Fix:"), clean_fix_message(fix)));
     }
 
+    // Docs command hint (if article reference exists)
+    if let Some(art) = article {
+        if let Some(art_num) = extract_article_number(art) {
+            o.push_str(&format!("         {}  {}\n", dim("Docs:"), dim(&format!("complior docs --article {art_num}"))));
+        }
+    }
+
     o.push('\n');
+}
+
+/// Quiet mode: show only header + score + critical findings.
+fn render_quiet_findings(o: &mut String, all_fails: &[&Finding]) {
+    let critical: Vec<&Finding> = all_fails
+        .iter()
+        .filter(|f| f.severity == Severity::Critical)
+        .copied()
+        .collect();
+
+    if critical.is_empty() {
+        return;
+    }
+
+    o.push_str(&format!("  {}  ({} critical)\n", bold("CRITICAL FINDINGS"), critical.len()));
+    o.push_str(&format!("  {}\n\n", separator()));
+
+    let mut finding_num: usize = 1;
+    for f in &critical {
+        render_single_finding(o, f, &mut finding_num);
+        finding_num += 1;
+    }
 }
 
 fn render_quick_actions(o: &mut String, result: &ScanResult, fail_findings: &[&Finding]) {
@@ -447,4 +570,16 @@ fn clean_fix_message(fix: &str) -> &str {
         }
     }
     fix
+}
+
+/// Extract article number from reference like "Art. 50(1)" → "50", "Art.6" → "6".
+fn extract_article_number(art_ref: &str) -> Option<&str> {
+    let s = art_ref.strip_prefix("Art.").or_else(|| art_ref.strip_prefix("Art "))?;
+    let s = s.trim_start();
+    // Take digits (stop at parenthesis, space, etc.)
+    let end = s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
+    if end == 0 {
+        return None;
+    }
+    Some(&s[..end])
 }
