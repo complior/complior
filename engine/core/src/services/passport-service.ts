@@ -240,15 +240,23 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     const path = projectPath ?? getProjectPath();
     const passports = await listPassports(path);
 
+    // Project-level pass findings (no agentId) = shared infrastructure credit for all agents
+    const sharedPassFindings = scanResult.findings.filter(f => !f.agentId && f.type === 'pass');
+
     for (const passport of passports) {
-      // Filter findings attributed to this agent — project-level findings (no agentId) stay out
+      // Agent-attributed findings
       const agentFindings = scanResult.findings.filter(f => f.agentId === passport.name);
       const docStatus = deriveDocStatusFromFindings(agentFindings, scanResult.scannedAt);
+
+      // Scan summary reflects agent-attributed findings only (what this agent specifically owns)
       const scanSummary = buildScanSummary(agentFindings, scanResult.scannedAt);
 
-      // Per-agent score: passed / (passed + failed) * 100 — matches project score formula (skipped excluded)
-      const applicable = scanSummary.passed + scanSummary.failed;
-      const agentScore = applicable > 0 ? Math.round((scanSummary.passed / applicable) * 100) : 0;
+      // Per-agent score: agent's own findings + project-level passes as shared credit
+      // This ensures agents benefit from project infrastructure (CI, package.json, etc.)
+      const agentPassed = agentFindings.filter(f => f.type === 'pass').length + sharedPassFindings.length;
+      const agentFailed = agentFindings.filter(f => f.type === 'fail').length;
+      const applicable = agentPassed + agentFailed;
+      const agentScore = applicable > 0 ? Math.round((agentPassed / applicable) * 100) : 0;
 
       await updatePassportCompliance(deps, passport.name, {
         complior_score: agentScore,
