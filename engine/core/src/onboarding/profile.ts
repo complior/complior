@@ -17,28 +17,28 @@ export const ProjectProfileSchema = z.object({
     confidence: z.number(),
   }),
   aiSystem: z.object({
-    type: z.enum(['feature', 'standalone', 'platform', 'internal']),
-    outputTypes: z.array(z.string()),
-  }),
+    type: z.enum(['feature', 'standalone', 'platform', 'internal']).default('feature'),
+    outputTypes: z.array(z.string()).default(['text']),
+  }).default({ type: 'feature', outputTypes: ['text'] }),
   jurisdiction: z.object({
-    primary: z.string(),
-    regulations: z.array(z.string()),
-  }),
+    primary: z.string().default('EU'),
+    regulations: z.array(z.string()).default(['eu-ai-act']),
+  }).default({ primary: 'EU', regulations: ['eu-ai-act'] }),
   organization: z.object({
     role: z.enum(['provider', 'deployer', 'both']),
   }),
   business: z.object({
     domain: z.string(),
-    companySize: z.enum(['startup', 'sme', 'enterprise']),
+    companySize: z.enum(['startup', 'sme', 'enterprise']).default('startup'),
   }),
   data: z.object({
     types: z.array(z.string()),
     storage: z.enum(['eu', 'us', 'mixed']),
   }),
   goals: z.object({
-    priority: z.string(),
-    budget: z.enum(['minimal', 'moderate', 'full']),
-  }),
+    priority: z.string().default('full'),
+    budget: z.enum(['minimal', 'moderate', 'full']).default('moderate'),
+  }).default({ priority: 'full', budget: 'moderate' }),
   computed: z.object({
     riskLevel: z.enum(['minimal', 'limited', 'high', 'unacceptable']),
     applicableObligations: z.array(z.string()),

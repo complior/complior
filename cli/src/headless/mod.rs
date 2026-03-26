@@ -10,6 +10,7 @@ pub mod cert;
 pub mod chat;
 mod commands;
 pub mod cost;
+pub(crate) mod interactive;
 pub(crate) mod common;
 pub mod debt;
 pub mod daemon;

@@ -53,41 +53,26 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
             selected: vec![0],
             text_value: String::new(),
         },
-        // Step 3: Requirements Frameworks
-        OnboardingStep {
-            id: "requirements",
-            title: "Requirements Frameworks",
-            description: "Which compliance frameworks apply to your project?\nUse Space to toggle, Enter to confirm.",
-            kind: StepKind::Checkbox,
-            options: vec![
-                StepOption::new("EU AI Act")
-                    .with_hint("European regulation for AI systems. Enforcement: Aug 2, 2026."),
-                StepOption::new("ISO 42001")
-                    .with_hint("AI management system standard."),
-            ],
-            selected: vec![0], // EU AI Act selected by default
-            text_value: String::new(),
-        },
-        // Step 4: Role
+        // Step 3: Role
         OnboardingStep {
             id: "role",
             title: "Role in AI Value Chain",
-            description: "What is your company's role?\nEU AI Act assigns different obligations to each role.",
+            description: "What is your company's role under the EU AI Act?\nThis determines which obligations apply to you.",
             kind: StepKind::Radio,
             options: vec![
-                StepOption::new("We USE AI tools (Deployer)")
-                    .with_hint("~10 obligations. Most companies are here."),
-                StepOption::new("We BUILD AI systems (Provider)")
-                    .with_hint("~30 obligations. Train/fine-tune/ship AI."),
-                StepOption::new("Both (Provider + Deployer)")
-                    .with_hint("Build your own AI AND use third-party AI."),
+                StepOption::new("Deployer — we USE AI systems")
+                    .with_hint("~10 obligations. You integrate AI APIs (OpenAI, Anthropic, Google) or use AI tools. Examples: SaaS with AI chatbot, internal AI tool."),
+                StepOption::new("Provider — we BUILD AI systems")
+                    .with_hint("~30 obligations. You develop, train, or rebrand AI under your name. Art.25: if you put your brand on it, you are a provider."),
+                StepOption::new("Both provider and deployer")
+                    .with_hint("You build your own AI AND use third-party AI. Full obligation set."),
                 StepOption::new("Not sure")
                     .with_hint("We'll detect from your codebase."),
             ],
             selected: vec![0],
             text_value: String::new(),
         },
-        // Step 5: Industry
+        // Step 4: Industry
         OnboardingStep {
             id: "industry",
             title: "Industry / Domain",
@@ -108,7 +93,7 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
             selected: vec![0],
             text_value: String::new(),
         },
-        // Step 6: AI Provider
+        // Step 5: AI Provider
         OnboardingStep {
             id: "ai_provider",
             title: "AI Connection",
@@ -130,7 +115,7 @@ pub(super) fn build_steps() -> Vec<OnboardingStep> {
             selected: vec![],
             text_value: String::new(),
         },
-        // Step 7: Summary
+        // Step 6: Summary
         OnboardingStep {
             id: "summary",
             title: "Setup Complete",

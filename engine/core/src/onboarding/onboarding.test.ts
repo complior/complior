@@ -16,9 +16,9 @@ const mockAutoDetect: AutoDetectResult = {
 };
 
 describe('Onboarding Questions', () => {
-  it('has 6 question blocks', () => {
-    expect(QUESTION_BLOCKS).toHaveLength(6);
-    expect(getAllBlockIds()).toEqual(['ai_system', 'jurisdiction', 'role', 'business', 'data', 'goals']);
+  it('has 3 question blocks', () => {
+    expect(QUESTION_BLOCKS).toHaveLength(3);
+    expect(getAllBlockIds()).toEqual(['role', 'business', 'data']);
   });
 
   it('every block has at least one question', () => {
@@ -35,22 +35,16 @@ describe('Onboarding Questions', () => {
 describe('Profile Builder', () => {
   it('builds complete profile with computed fields', () => {
     const profile = buildProfile(mockAutoDetect, {
-      system_type: 'feature',
-      output_types: ['text', 'code'],
-      primary_jurisdiction: 'EU',
       org_role: 'deployer',
       domain: 'healthcare',
-      company_size: 'startup',
       data_types: ['personal', 'health'],
       data_storage: 'eu',
-      priority: 'full',
-      budget: 'moderate',
     });
 
     expect(profile.version).toBe('1.0');
     expect(profile.autoDetected.language).toBe('TypeScript');
-    expect(profile.aiSystem.type).toBe('feature');
-    expect(profile.jurisdiction.primary).toBe('EU');
+    expect(profile.aiSystem.type).toBe('feature'); // default
+    expect(profile.jurisdiction.primary).toBe('EU'); // default
     expect(profile.business.domain).toBe('healthcare');
     expect(profile.computed.riskLevel).toBe('high');
     expect(profile.computed.applicableObligations.length).toBeGreaterThan(15);

@@ -1,3 +1,5 @@
+use std::io::IsTerminal;
+
 use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 
@@ -187,96 +189,200 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
 ///
 /// Creates the project marker directory (like `git init` creates `.git/`),
 /// `project.toml` (TUI config), and `profile.json` (engine config).
+/// If interactive (TTY + no --yes), asks onboarding questions via stdin.
 /// Then starts the engine and runs agent discovery to auto-create passports.
-pub async fn run_init(path: Option<&str>, config: &TuiConfig) -> i32 {
-    use super::common::{ensure_engine, resolve_project_path_buf};
+pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 {
+    use super::common::{ensure_engine_for, resolve_project_path_buf};
+    use super::format::colors::{bold, bold_green, bold_red, bold_yellow, check_mark, cyan, dim, diamond, green, red, yellow};
+    use super::format::separator;
+    use super::interactive;
 
     let base = resolve_project_path_buf(path);
     let complior_dir = base.join(".complior");
-    let profile_path = complior_dir.join("profile.json");
     let project_toml_path = complior_dir.join("project.toml");
 
-    // Check for config files (not just directory — engine PID may pre-create .complior/)
-    let has_config = profile_path.exists() && project_toml_path.exists();
-
-    if !has_config {
-        if let Err(e) = std::fs::create_dir_all(&complior_dir) {
-            eprintln!("Failed to create .complior/: {e}");
-            return 1;
-        }
-
-        if !profile_path.exists() {
-            let default = serde_json::json!({
-                "jurisdiction": "EU",
-                "regulation": "eu-ai-act",
-                "scanLevels": ["L1", "L2", "L3", "L4"]
-            });
-            let _ = std::fs::write(
-                &profile_path,
-                serde_json::to_string_pretty(&default).unwrap_or_default(),
-            );
-        }
-
-        if !project_toml_path.exists() {
-            let toml_content = toml::to_string_pretty(&crate::config::default_project_toml())
-                .unwrap_or_default();
-            let _ = std::fs::write(&project_toml_path, toml_content);
-        }
-
-        println!("Initialized .complior/ at {}", complior_dir.display());
-        println!("  Created: project.toml (TUI config)");
-        println!("  Created: profile.json (engine config)");
-    } else {
-        println!(".complior/ already initialized at {}", complior_dir.display());
+    // Create .complior/ directory
+    if let Err(e) = std::fs::create_dir_all(&complior_dir) {
+        eprintln!("Failed to create .complior/: {e}");
+        return 1;
     }
 
-    // Auto-discover AI agents and create passports (non-fatal on error)
-    println!("\nDiscovering AI agents...");
-    let client = match ensure_engine(config).await {
+    // Create project.toml if missing
+    if !project_toml_path.exists() {
+        let toml_content = toml::to_string_pretty(&crate::config::default_project_toml())
+            .unwrap_or_default();
+        let _ = std::fs::write(&project_toml_path, toml_content);
+    }
+
+    // Start engine for onboarding + agent discovery
+    let client = match ensure_engine_for(config, &base).await {
         Ok(c) => c,
         Err(_) => {
-            eprintln!("Warning: Could not start engine for agent discovery.");
-            eprintln!("Run `complior agent init` later to discover AI agents.");
-            println!("\nRun `complior scan` to check compliance.");
+            eprintln!("Warning: Could not start engine.");
+            eprintln!("Run `complior init` again when engine is available.");
             return 0;
         }
     };
 
+    // Interactive onboarding: fetch questions, ask user, submit answers
+    let is_interactive = !yes && std::io::stdin().is_terminal();
+    let profile_path = complior_dir.join("profile.json");
+    let profile_exists = profile_path.exists();
+
+    // Collect profile data for unified summary
+    let mut profile_role = String::from("deployer");
+    let mut profile_risk = String::from("limited");
+    let mut profile_obligations: usize = 15;
+    let mut profile_storage = String::from("eu");
+    let mut profile_created = false;
+
+    if !profile_exists {
+        println!("\n  {}", bold(&format!("{} Complior Setup", diamond())));
+        println!("  {}", separator());
+
+        match client.get_json("/onboarding/questions").await {
+            Ok(questions_json) => {
+                let answers = if is_interactive {
+                    interactive::run_interactive_onboarding(&questions_json)
+                } else {
+                    if yes {
+                        println!("\n  {} Using defaults (--yes)", dim("*"));
+                    }
+                    interactive::build_default_answers(&questions_json)
+                };
+
+                let body = serde_json::json!({ "answers": answers });
+                match client.post_json("/onboarding/complete", &body).await {
+                    Ok(result) => {
+                        profile_created = true;
+                        if let Some(profile) = result.get("profile") {
+                            profile_role = profile.pointer("/organization/role")
+                                .and_then(|v| v.as_str()).unwrap_or("deployer").to_string();
+                            profile_risk = profile.pointer("/computed/riskLevel")
+                                .and_then(|v| v.as_str()).unwrap_or("limited").to_string();
+                            profile_obligations = profile.pointer("/computed/applicableObligations")
+                                .and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(15);
+                            profile_storage = profile.pointer("/data/storage")
+                                .and_then(|v| v.as_str()).unwrap_or("eu").to_string();
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("  Warning: Could not save profile: {e}");
+                        let default = serde_json::json!({
+                            "jurisdiction": "EU",
+                            "regulation": "eu-ai-act",
+                            "scanLevels": ["L1", "L2", "L3", "L4"]
+                        });
+                        let _ = std::fs::write(
+                            &profile_path,
+                            serde_json::to_string_pretty(&default).unwrap_or_default(),
+                        );
+                    }
+                }
+            }
+            Err(_) => {
+                let default = serde_json::json!({
+                    "jurisdiction": "EU",
+                    "regulation": "eu-ai-act",
+                    "scanLevels": ["L1", "L2", "L3", "L4"]
+                });
+                let _ = std::fs::write(
+                    &profile_path,
+                    serde_json::to_string_pretty(&default).unwrap_or_default(),
+                );
+                profile_created = true;
+            }
+        }
+    } else {
+        println!("  .complior/ already initialized at {}", complior_dir.display());
+        // Try to read existing profile for summary
+        if let Ok(content) = std::fs::read_to_string(&profile_path) {
+            if let Ok(profile) = serde_json::from_str::<serde_json::Value>(&content) {
+                profile_role = profile.pointer("/organization/role")
+                    .and_then(|v| v.as_str()).unwrap_or("deployer").to_string();
+                profile_risk = profile.pointer("/computed/riskLevel")
+                    .and_then(|v| v.as_str()).unwrap_or("limited").to_string();
+                profile_obligations = profile.pointer("/computed/applicableObligations")
+                    .and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(15);
+                profile_storage = profile.pointer("/data/storage")
+                    .and_then(|v| v.as_str()).unwrap_or("eu").to_string();
+            }
+        }
+        profile_created = true;
+    }
+
+    // Auto-discover AI agents and create passports (non-fatal on error)
     let body = serde_json::json!({
         "path": base.to_string_lossy(),
     });
+
+    let mut agent_list: Vec<(String, String, String)> = Vec::new();
+    let mut skipped_count: usize = 0;
 
     match client.post_json("/agent/init", &body).await {
         Ok(result) => {
             let manifests = result.get("manifests").and_then(|v| v.as_array());
             let skipped = result.get("skipped").and_then(|v| v.as_array());
-            let created_count = manifests.map(|m| m.len()).unwrap_or(0);
-            let skipped_count = skipped.map(|s| s.len()).unwrap_or(0);
+            skipped_count = skipped.map(|s| s.len()).unwrap_or(0);
 
-            if created_count > 0 {
-                println!("Discovered {created_count} AI agent(s):\n");
-                if let Some(agents) = manifests {
-                    for (i, agent) in agents.iter().enumerate() {
-                        let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
-                        let framework = agent.get("framework").and_then(|v| v.as_str()).unwrap_or("unknown");
-                        let autonomy = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
-                        println!("  {}. {} ({}, {})", i + 1, name, framework, autonomy);
-                    }
+            if let Some(agents) = manifests {
+                for agent in agents {
+                    let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+                    let framework = agent.get("framework").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+                    let autonomy = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?").to_string();
+                    agent_list.push((name, framework, autonomy));
                 }
-                println!("\nPassport(s) saved to .complior/agents/");
-            } else if skipped_count > 0 {
-                println!("All {skipped_count} agent(s) already have passports.");
-            } else {
-                println!("No AI agents detected.");
             }
         }
         Err(_) => {
-            eprintln!("Warning: Agent discovery failed.");
-            eprintln!("Run `complior agent init` later to discover AI agents.");
+            eprintln!("  Warning: Agent discovery failed. Run `complior agent init` later.");
         }
     }
 
-    println!("\nRun `complior scan` to check compliance.");
+    // ── Unified Summary ──────────────────────────────────────────
+    println!("\n  {}", bold(&format!("{} Setup Complete", diamond())));
+    println!("  {}\n", separator());
+
+    // Profile section
+    if profile_created {
+        let risk_colored = match profile_risk.as_str() {
+            "minimal" => green(&profile_risk),
+            "limited" => bold_yellow(&profile_risk),
+            "high" => red(&profile_risk),
+            "unacceptable" => bold_red(&profile_risk),
+            _ => profile_risk.clone(),
+        };
+        let storage_display = match profile_storage.as_str() {
+            "eu" => "EU only",
+            "us" => "US only",
+            "mixed" => "Mixed / Multi-region",
+            _ => &profile_storage,
+        };
+
+        println!("  {}      .complior/profile.json", dim("Profile"));
+        println!("  {}         {}", dim("Role"), cyan(&profile_role));
+        println!("  {}   {}", dim("Risk Level"), risk_colored);
+        println!("  {}  {} applicable", dim("Obligations"), bold(&profile_obligations.to_string()));
+        println!("  {}         {}", dim("Data"), storage_display);
+    }
+
+    // Agents section
+    let created_count = agent_list.len();
+    if created_count > 0 {
+        println!("\n  {}       {} discovered", dim("Agents"), bold(&created_count.to_string()));
+        println!("  {}", separator());
+        for (i, (name, framework, autonomy)) in agent_list.iter().enumerate() {
+            println!("    {}  {:<24} {:<12} {}", dim(&format!("{}.", i + 1)), name, framework, autonomy);
+        }
+        println!("  {}", separator());
+        println!("\n  {} Passports saved to .complior/agents/", check_mark());
+    } else if skipped_count > 0 {
+        println!("\n  {}       {} already have passports", dim("Agents"), bold(&skipped_count.to_string()));
+    } else {
+        println!("\n  {}       {}", dim("Agents"), dim("none detected"));
+    }
+
+    println!("\n  Next: {}", bold("complior scan"));
     0
 }
 

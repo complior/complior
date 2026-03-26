@@ -15,78 +15,36 @@ export interface Question {
   readonly type: 'single' | 'multi' | 'text';
   readonly options?: readonly QuestionOption[];
   readonly default?: string;
+  /** Per-option explanations (value → description). Shown below the option in interactive CLI. */
+  readonly descriptions?: Readonly<Record<string, string>>;
 }
 
 export const QUESTION_BLOCKS: readonly QuestionBlock[] = [
-  {
-    id: 'ai_system',
-    title: 'AI System',
-    questions: [
-      {
-        id: 'system_type',
-        text: 'What type of AI system are you building?',
-        type: 'single',
-        options: [
-          { value: 'feature', label: 'AI-powered feature in a larger app (chatbot, recommendation)' },
-          { value: 'standalone', label: 'Standalone AI product (SaaS AI tool)' },
-          { value: 'platform', label: 'AI API/Platform (model hosting, MLOps)' },
-          { value: 'internal', label: 'Internal AI tool (not customer-facing)' },
-        ],
-        default: 'feature',
-      },
-      {
-        id: 'output_types',
-        text: 'What does your AI output?',
-        type: 'multi',
-        options: [
-          { value: 'text', label: 'Text/Chat responses' },
-          { value: 'images', label: 'Generated images' },
-          { value: 'audio', label: 'Audio/Speech' },
-          { value: 'code', label: 'Code generation' },
-          { value: 'decisions', label: 'Automated decisions' },
-          { value: 'recommendations', label: 'Recommendations' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'jurisdiction',
-    title: 'Jurisdiction',
-    questions: [
-      {
-        id: 'primary_jurisdiction',
-        text: 'Primary jurisdiction for compliance?',
-        type: 'single',
-        options: [
-          { value: 'EU', label: 'European Union (EU AI Act)' },
-          { value: 'UK', label: 'United Kingdom' },
-          { value: 'US', label: 'United States' },
-          { value: 'global', label: 'Global (all major jurisdictions)' },
-        ],
-        default: 'EU',
-      },
-    ],
-  },
   {
     id: 'role',
     title: 'Organization Role',
     questions: [
       {
         id: 'org_role',
-        text: 'Your organization\'s role under AI Act?',
+        text: 'Your role under EU AI Act?',
         type: 'single',
         options: [
-          { value: 'provider', label: 'Provider — develop/train the AI system' },
-          { value: 'deployer', label: 'Deployer — use AI system in production' },
+          { value: 'deployer', label: 'Deployer — we USE AI systems' },
+          { value: 'provider', label: 'Provider — we BUILD AI systems' },
           { value: 'both', label: 'Both provider and deployer' },
         ],
+        descriptions: {
+          deployer: 'You integrate AI APIs (OpenAI, Anthropic, Google) or use AI tools. ~10 obligations. Examples: SaaS with AI chatbot, internal AI tool, API-powered feature.',
+          provider: 'You develop, train, or rebrand AI systems under your name. ~30 obligations. Examples: AI SaaS product, model hosting, AI API provider. Art.25: if you put your brand on it, you are a provider.',
+          both: 'You build your own AI AND use third-party AI. Full obligation set.',
+        },
         default: 'deployer',
       },
     ],
   },
   {
     id: 'business',
-    title: 'Business Context',
+    title: 'Business Domain',
     questions: [
       {
         id: 'domain',
@@ -101,18 +59,13 @@ export const QUESTION_BLOCKS: readonly QuestionBlock[] = [
           { value: 'content', label: 'Content Generation' },
           { value: 'customer_service', label: 'Customer Service' },
         ],
+        descriptions: {
+          healthcare: 'Triggers HIGH RISK classification under EU AI Act.',
+          finance: 'Triggers HIGH RISK classification under EU AI Act.',
+          hr: 'Triggers HIGH RISK classification under EU AI Act.',
+          education: 'Triggers HIGH RISK classification under EU AI Act.',
+        },
         default: 'general',
-      },
-      {
-        id: 'company_size',
-        text: 'Company size?',
-        type: 'single',
-        options: [
-          { value: 'startup', label: 'Startup (< 50 employees)' },
-          { value: 'sme', label: 'SME (50-250 employees)' },
-          { value: 'enterprise', label: 'Enterprise (250+ employees)' },
-        ],
-        default: 'startup',
       },
     ],
   },
@@ -131,6 +84,11 @@ export const QUESTION_BLOCKS: readonly QuestionBlock[] = [
           { value: 'financial', label: 'Financial data' },
           { value: 'public', label: 'Public/Open data only' },
         ],
+        descriptions: {
+          biometric: 'Triggers HIGH RISK classification.',
+          health: 'Triggers HIGH RISK classification.',
+          financial: 'Triggers HIGH RISK classification.',
+        },
       },
       {
         id: 'data_storage',
@@ -142,35 +100,6 @@ export const QUESTION_BLOCKS: readonly QuestionBlock[] = [
           { value: 'mixed', label: 'Mixed / Multi-region' },
         ],
         default: 'eu',
-      },
-    ],
-  },
-  {
-    id: 'goals',
-    title: 'Compliance Goals',
-    questions: [
-      {
-        id: 'priority',
-        text: 'Top compliance priority?',
-        type: 'single',
-        options: [
-          { value: 'risk_classification', label: 'Understand my risk level' },
-          { value: 'documentation', label: 'Generate required documents' },
-          { value: 'monitoring', label: 'Set up monitoring & reporting' },
-          { value: 'full', label: 'Full compliance assessment' },
-        ],
-        default: 'full',
-      },
-      {
-        id: 'budget',
-        text: 'Compliance effort budget?',
-        type: 'single',
-        options: [
-          { value: 'minimal', label: 'Minimal — quick fixes only' },
-          { value: 'moderate', label: 'Moderate — key gaps' },
-          { value: 'full', label: 'Full — comprehensive compliance' },
-        ],
-        default: 'moderate',
       },
     ],
   },

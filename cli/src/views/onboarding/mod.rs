@@ -343,14 +343,6 @@ impl OnboardingWizard {
                 _ => "yes",
             }
             .to_string(),
-            "requirements" => {
-                let labels = ["eu-ai-act", "iso-42001"];
-                step.selected
-                    .iter()
-                    .filter_map(|&i| labels.get(i).map(|s| s.to_string()))
-                    .collect::<Vec<_>>()
-                    .join(",")
-            }
             "role" => match idx {
                 0 => "deployer",
                 1 => "provider",
