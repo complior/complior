@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { ScanResult, Finding, AgentSummary } from '../types/common.types.js';
+import type { ScanResult, Finding, AgentSummary, Role } from '../types/common.types.js';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { Scanner } from '../domain/scanner/create-scanner.js';
@@ -7,12 +7,17 @@ import { detectDrift } from '../domain/scanner/drift.js';
 import { generateSbom, type CycloneDxBom } from '../domain/scanner/sbom.js';
 import {
   parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod,
+  type ParsedDependency,
 } from '../domain/scanner/layers/layer3-parsers.js';
+import { discoverAgents } from '../domain/passport/agent-discovery.js';
+import { attributeFindings, expandPerAgentFindings, type AgentInfo } from '../domain/scanner/finding-attribution.js';
+import { buildImportGraph } from '../domain/scanner/import-graph.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import { computeComplianceDiff, formatDiffMarkdown, type ComplianceDiff } from '../domain/scanner/compliance-diff.js';
 import { loadCustomBannedPackages } from '../domain/scanner/rules/banned-packages.js';
+import { filterFindingsByRole } from '../domain/scanner/role-filter.js';
 import type { ScanCache } from '../domain/scanner/scan-cache.js';
 
 export interface ScanServiceDeps {
@@ -29,6 +34,8 @@ export interface ScanServiceDeps {
   readonly passportService?: {
     readonly listPassports: (path?: string) => Promise<readonly { name: string; source_files?: readonly string[] }[]>;
   };
+  /** Project role from onboarding profile. Injected via composition-root. */
+  readonly getProjectRole?: (projectPath: string) => Promise<Role>;
 }
 
 /** E-11: Compute a fast project-level hash from all file contents. */
@@ -48,55 +55,82 @@ export interface ScanDiffResult extends ComplianceDiff {
   readonly markdown?: string;
 }
 
+/** Parse dependencies from scan context (same logic as passport-service). */
+const parseDepsFromCtx = (ctx: ScanContext): readonly ParsedDependency[] => {
+  const allDeps: ParsedDependency[] = [];
+  for (const f of ctx.files) {
+    const fn = f.relativePath.split('/').pop() ?? '';
+    if (fn === 'package.json' && !f.relativePath.includes('node_modules'))
+      allDeps.push(...parsePackageJson(f.content));
+    else if (fn === 'requirements.txt') allDeps.push(...parseRequirementsTxt(f.content));
+    else if (fn === 'Cargo.toml') allDeps.push(...parseCargoToml(f.content));
+    else if (fn === 'go.mod') allDeps.push(...parseGoMod(f.content));
+  }
+  return allDeps;
+};
+
+/** Recalculate score after role filtering (some fails → skip). */
+const recalcScore = (findings: readonly Finding[], original: ScanResult['score']): ScanResult['score'] => {
+  const passed = findings.filter(f => f.type === 'pass').length;
+  const failed = findings.filter(f => f.type === 'fail').length;
+  const skipped = findings.filter(f => f.type === 'skip').length;
+  const applicable = passed + failed;
+  const totalScore = applicable === 0 ? 100 : Math.round((passed / applicable) * 100);
+  return {
+    ...original,
+    totalScore,
+    zone: totalScore >= 80 ? 'green' : totalScore >= 50 ? 'yellow' : 'red',
+    passedChecks: passed,
+    failedChecks: failed,
+    skippedChecks: skipped,
+    totalChecks: findings.length,
+  };
+};
+
 /** Enrich scan findings with agentId from passport source_files mapping. */
 const enrichWithAgentIds = async (
   result: ScanResult,
   projectPath: string,
   passportService?: ScanServiceDeps['passportService'],
+  ctx?: ScanContext,
 ): Promise<ScanResult> => {
-  if (!passportService) return result;
-  let passports;
-  try { passports = await passportService.listPassports(projectPath); }
-  catch { return result; }
+  if (!passportService && !ctx) return result;
+
+  let passports: { name: string; source_files?: readonly string[] }[] = [];
+
+  if (passportService) {
+    try { passports = [...await passportService.listPassports(projectPath)]; }
+    catch { /* continue to fallback */ }
+  }
+
+  // Fallback: no persisted passports → auto-discover from code patterns
+  if (passports.length === 0 && ctx) {
+    const discovered = discoverAgents(ctx, parseDepsFromCtx(ctx));
+    if (discovered.length === 0) return result;
+    passports = discovered.map(a => ({ name: a.name, source_files: a.sourceFiles }));
+  }
+
   if (passports.length === 0) return result;
 
-  // Build reverse index: filePath → agentName
-  const fileToAgent = new Map<string, string>();
-  for (const p of passports) {
-    for (const sf of (p.source_files ?? [])) {
-      fileToAgent.set(sf, p.name);
-    }
-  }
+  // Map passports to AgentInfo for attribution
+  const agents: AgentInfo[] = passports.map(p => ({
+    name: p.name,
+    sourceFiles: p.source_files ?? [],
+  }));
 
-  // Build directory → agents map for fallback matching
-  const dirToAgents = new Map<string, Set<string>>();
-  for (const p of passports) {
-    for (const sf of (p.source_files ?? [])) {
-      const dir = sf.substring(0, sf.lastIndexOf('/'));
-      if (!dir) continue;
-      if (!dirToAgents.has(dir)) dirToAgents.set(dir, new Set());
-      dirToAgents.get(dir)!.add(p.name);
-    }
-  }
+  // Build import graph from scan context for graph-based attribution
+  const importGraph = ctx ? buildImportGraph(ctx.files) : null;
 
-  // Enrich findings
-  const enrichedFindings: Finding[] = result.findings.map(f => {
-    if (!f.file) return f;
-    // 1. Exact file match
-    const exact = fileToAgent.get(f.file);
-    if (exact) return { ...f, agentId: exact };
-    // 2. Directory match (only if unambiguous — 1 agent owns the dir)
-    const dir = f.file.substring(0, f.file.lastIndexOf('/'));
-    const owners = dirToAgents.get(dir);
-    if (owners && owners.size === 1) {
-      return { ...f, agentId: [...owners][0] };
-    }
-    return f;
-  });
+  const enrichedFindings: readonly Finding[] = importGraph
+    ? attributeFindings(result.findings, agents, importGraph)
+    : result.findings.map(f => agents.length === 1 ? { ...f, agentId: agents[0].name } : f);
+
+  // Per-agent document requirements: each agent gets its own doc-presence findings
+  const expandedFindings = expandPerAgentFindings(enrichedFindings, agents);
 
   // Per-agent summaries — include ALL passports (even those with 0 findings)
   const byAgent = new Map<string, Finding[]>();
-  for (const f of enrichedFindings) {
+  for (const f of expandedFindings) {
     if (!f.agentId) continue;
     if (!byAgent.has(f.agentId)) byAgent.set(f.agentId, []);
     byAgent.get(f.agentId)!.push(f);
@@ -116,7 +150,7 @@ const enrichWithAgentIds = async (
 
   return {
     ...result,
-    findings: enrichedFindings,
+    findings: expandedFindings,
     agentSummaries,
   };
 };
@@ -128,6 +162,16 @@ export const createScanService = (deps: ScanServiceDeps) => {
   let cachedProjectHash: string | null = null;
   let cachedResult: ScanResult | null = null;
 
+  /** Apply role filtering to a scan result (pure, no caching side effects). */
+  const applyRoleFilter = async (scanResult: ScanResult, projectPath: string): Promise<ScanResult> => {
+    const projectRole = deps.getProjectRole
+      ? await deps.getProjectRole(projectPath)
+      : 'both' as Role;
+    const filtered = filterFindingsByRole(scanResult.findings, projectRole);
+    if (filtered === scanResult.findings) return scanResult;
+    return { ...scanResult, findings: filtered, score: recalcScore(filtered, scanResult.score) };
+  };
+
   const scan = async (projectPath: string): Promise<ScanResult> => {
     events.emit('scan.started', { projectPath });
 
@@ -138,21 +182,24 @@ export const createScanService = (deps: ScanServiceDeps) => {
     // E-11: Check if project content unchanged since last scan
     const projectHash = computeProjectHash(ctx);
     if (cachedProjectHash === projectHash && cachedResult !== null) {
-      // Content identical — return cached result with fresh timestamp
-      const result: ScanResult = {
+      // Content identical — apply role filter (role may have changed) and return
+      const result = await applyRoleFilter({
         ...cachedResult,
         scannedAt: new Date().toISOString(),
-      };
+      }, projectPath);
       events.emit('scan.completed', { result });
       return result;
     }
 
     const rawResult = scanner.scan(ctx);
-    const result = await enrichWithAgentIds(rawResult, projectPath, deps.passportService);
+    const enriched = await enrichWithAgentIds(rawResult, projectPath, deps.passportService, ctx);
 
-    // E-11: Update in-memory cache
+    // E-11: Update in-memory cache with pre-filter result (role-independent)
     cachedProjectHash = projectHash;
-    cachedResult = result;
+    cachedResult = enriched;
+
+    // Apply role-based filtering after caching
+    const result = await applyRoleFilter(enriched, projectPath);
 
     // E-11: Persist file-level cache to disk (survives daemon restarts)
     if (deps.scanCache) {
@@ -221,7 +268,8 @@ export const createScanService = (deps: ScanServiceDeps) => {
     }
 
     const rawResult = await scanner.scanDeep(ctx, fileContents);
-    const result = await enrichWithAgentIds(rawResult, projectPath, deps.passportService);
+    const enriched = await enrichWithAgentIds(rawResult, projectPath, deps.passportService, ctx);
+    const result = await applyRoleFilter(enriched, projectPath);
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
@@ -280,7 +328,8 @@ export const createScanService = (deps: ScanServiceDeps) => {
     await loadCustomBannedPackages(projectPath);
     const ctx = await collectFiles(projectPath);
     const rawResult = await scanner.scanTier2(ctx);
-    const result = await enrichWithAgentIds(rawResult, projectPath, deps.passportService);
+    const enriched = await enrichWithAgentIds(rawResult, projectPath, deps.passportService, ctx);
+    const result = await applyRoleFilter(enriched, projectPath);
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });

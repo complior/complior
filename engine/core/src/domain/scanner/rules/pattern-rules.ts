@@ -274,10 +274,10 @@ export const PATTERN_RULES: readonly PatternRule[] = [
     category: 'security-risk',
     patternType: 'negative',
     regex: /eval\s*\(\s*.*user|eval\s*\(\s*.*req\.|eval\s*\(\s*.*input/gi,
-    label: 'Unsafe /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: eval() disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined with user input',
+    label: 'Unsafe /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: eval() disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined with user input',
     obligationId: 'eu-ai-act-OBL-008',
     article: 'Art. 15(4)',
-    recommendation: 'Remove /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: eval() disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined calls with user input — code injection risk (Art. 15(4))',
+    recommendation: 'Remove /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: /* COMPLIOR: eval() disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined disabled — Art. 15 */ undefined calls with user input — code injection risk (Art. 15(4))',
   },
   {
     category: 'security-risk',

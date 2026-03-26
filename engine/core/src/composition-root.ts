@@ -244,6 +244,17 @@ export const loadApplication = async (): Promise<Application> => {
     listPassports: (path?: string) => passportService.listPassports(path),
   };
 
+  // Lazy role loader — reads profile.json at scan time (wizard created later)
+  let lazyWizard: import('./onboarding/wizard.js').OnboardingWizard | null = null;
+  const getProjectRole = async (_projectPath: string): Promise<import('./types/common.types.js').Role> => {
+    try {
+      const profile = await lazyWizard?.loadProfile();
+      const role = profile?.organization?.role;
+      if (role === 'provider' || role === 'deployer' || role === 'both') return role;
+    } catch { /* profile missing or invalid */ }
+    return 'both';
+  };
+
   const scanService = createScanService({
     scanner,
     collectFiles,
@@ -254,6 +265,7 @@ export const loadApplication = async (): Promise<Application> => {
     auditStore,
     scanCache,
     passportService: lazyScanPassport,
+    getProjectRole,
   });
 
   // Template loader for fixer
@@ -484,6 +496,7 @@ export const loadApplication = async (): Promise<Application> => {
   const onboardingWizard = createOnboardingWizard({
     getProjectPath: () => state.projectPath,
   });
+  lazyWizard = onboardingWizard; // Wire lazy ref for scan-service role filtering
 
   // 5b.2 Create guided onboarding service (US-S05-33)
   const onboardingService = createOnboardingService({

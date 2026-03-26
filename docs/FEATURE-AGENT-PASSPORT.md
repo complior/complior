@@ -50,6 +50,68 @@ EU AI Act обязывает каждого deployer'а вести реестр 
 
 Хранится в `.complior/agents/{name}-manifest.json`. Подписывается ed25519 при каждом создании и обновлении.
 
+### 2.1.1. Per-Agent Document Requirements (Multi-Agent)
+
+Each AI system (agent) in a multi-agent project requires its own compliance documents:
+
+| Document | Article | When Required |
+|----------|---------|---------------|
+| FRIA | Art. 27 | High-risk deployments |
+| Risk Management | Art. 9 | All high-risk AI systems |
+| Technical Documentation | Art. 11 | All AI systems |
+| Declaration of Conformity | Art. 47 | Before placing on market |
+| Art. 5 Screening | Art. 5 | All AI systems |
+| Instructions for Use | Art. 13 | All AI systems |
+| Data Governance | Art. 10 | All AI systems |
+
+The scanner generates per-agent findings for missing documents. Generated docs are stored at:
+- `.complior/documents/{agent-name}/` — generated compliance docs
+- `docs/agents/{agent-name}/` — manual compliance docs
+
+Organizational documents (QMS, Incident Report, Worker Notification, Monitoring Policy, AI Literacy) are shared across all agents.
+
+#### Passport ↔ Scanner Mapping
+
+Each per-agent document has a corresponding passport field and scanner check. After every scan, `updatePassportsAfterScan()` **filters findings per-agent** (by `agentId` field on each Finding), then derives doc-status fields and populates `scan_summary` from that agent's findings only:
+
+| Passport Field | Scanner CheckId | Obligation | Article | Auto-Populated |
+|---------------|----------------|------------|---------|----------------|
+| `compliance.fria_completed` | `fria` | — | Art.27 | Yes |
+| `compliance.risk_management.documented` | `risk-management` | OBL-009 | Art.9 | Yes |
+| `compliance.data_governance.documented` | `data-governance` | — | Art.10 | Yes |
+| `compliance.technical_documentation.documented` | `technical-documentation` | OBL-005 | Art.11 | Yes |
+| `compliance.declaration_of_conformity.documented` | `declaration-of-conformity` | OBL-019 | Art.47 | Yes |
+| `compliance.art5_screening.completed` | `art5-screening` | OBL-002 | Art.5 | Yes |
+| `compliance.instructions_for_use.documented` | `instructions-for-use` | OBL-007 | Art.13 | Yes |
+
+Additionally, `compliance.scan_summary` is populated after every scan with **per-agent** totals:
+
+```jsonc
+{
+  "scan_summary": {
+    "total_checks": 15,        // only this agent's findings
+    "passed": 10,
+    "failed": 4,
+    "skipped": 1,
+    "by_category": {
+      "fria": { "passed": 1, "failed": 0 },
+      "risk-management": { "passed": 0, "failed": 1 },
+      // ... categories from this agent's findings only
+    },
+    "failed_checks": ["l1-risk-management", "l3-banned-package", ...],
+    "scan_date": "2026-03-26T10:00:00.000Z"
+  }
+}
+```
+
+**Per-agent filtering:** Findings with no `agentId` (QMS, worker notification, monitoring policy, incident report, GPAI, node_modules) are organizational/project-level and do NOT appear in individual agent passports.
+
+**Dual scoring:** Each passport carries two scores:
+- `complior_score` — **per-agent** score computed from agent's own findings (passed / total * 100)
+- `project_score` — **project-level** score (same for all passports, from score-calculator)
+
+This makes the passport a **self-contained per-agent compliance record** — each passport reflects only its own scanner findings, no need to re-run scan to know current status.
+
 ### 2.2. Три режима генерации
 
 ```
@@ -553,7 +615,7 @@ events.on('scan.completed', ({ result }) => {
 });
 ```
 
-Все паспорта в `.complior/agents/` обновляют `compliance.complior_score` и `compliance.last_scan`, переподписываются ed25519. Ошибки non-fatal.
+Для каждого паспорта в `.complior/agents/` фильтруются findings по `agentId === passport.name`, затем вычисляются `scan_summary` и doc-status поля только из findings этого агента. `complior_score` = per-agent (passed/total*100 из findings агента), `project_score` = проектный (одинаковый для всех). Паспорт переподписывается ed25519. Ошибки non-fatal.
 
 **Scan tiers и покрытие:**
 
@@ -705,10 +767,15 @@ AST-анализ кода → авто-заполнение ~44 полей из 
 
 `scan.completed` event → auto-discover new agents (idempotent) → `updatePassportsAfterScan()`:
 
+Per-agent фильтрация: для каждого паспорта берутся только findings с `agentId === passport.name`. Project-level findings (без agentId) не попадают в индивидуальные паспорта.
+
 | Поле | Изменение |
 |------|-----------|
-| `compliance.complior_score` | 0 → реальный score (74) |
+| `compliance.complior_score` | 0 → per-agent score (passed/total*100 из findings агента) |
+| `compliance.project_score` | 0 → проектный score (одинаковый для всех) |
 | `compliance.last_scan` | "" → ISO timestamp |
+| `compliance.scan_summary` | Per-agent: totals вычисляются из findings этого агента |
+| `compliance.{doc_fields}` | Per-agent: doc-status из findings этого агента |
 | `updated` | Новый timestamp |
 | `signature` | Переподписывается |
 

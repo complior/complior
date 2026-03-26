@@ -37,6 +37,8 @@ export const createSemgrepRunner = (): ExternalRunner => Object.freeze({
       '--quiet',
       '--no-git-ignore',
       '--exclude', '.complior',
+      '--exclude', 'node_modules',
+      '--exclude', 'dist',
       deps.projectPath,
     ], { timeout: 120_000 });
 

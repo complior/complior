@@ -14,6 +14,7 @@ import type {
 import type { ScanResult } from '../../types/common.types.js';
 import { findRegistryCard } from '../../data/registry-cards.js';
 import { OBLIGATION_FIELD_MAP, getFieldValue, isNonEmpty } from './obligation-field-map.js';
+import { buildScanSummary, deriveDocStatusFromFindings } from './scan-to-compliance.js';
 
 // --- Input interface ---
 
@@ -69,6 +70,9 @@ export const ALL_PASSPORT_FIELDS: readonly string[] = [
   'permissions.data_boundaries',
   'constraints.human_approval_required', 'constraints.escalation_rules',
   'compliance.risk_class', 'compliance.complior_score', 'compliance.last_scan',
+  'compliance.technical_documentation', 'compliance.declaration_of_conformity',
+  'compliance.art5_screening', 'compliance.instructions_for_use',
+  'compliance.scan_summary',
   'interop.mcp_servers',
   'upstream_registry',
   // Manual (always need human input)
@@ -326,6 +330,9 @@ export const buildPassport = (
   // Step 5: Dynamic applicable articles
   const applicableArticles = getApplicableArticles(riskClass);
 
+  const docStatus = scanResult ? deriveDocStatusFromFindings(scanResult.findings, scanResult.scannedAt) : {};
+  const scanSummary = scanResult ? buildScanSummary(scanResult.findings, scanResult.scannedAt) : undefined;
+
   const compliance = {
     eu_ai_act: {
       risk_class: riskClass,
@@ -334,7 +341,10 @@ export const buildPassport = (
       deployer_obligations_pending: [] as string[],
     },
     complior_score: scanResult?.score.totalScore ?? 0,
+    project_score: scanResult?.score.totalScore ?? 0,
     last_scan: scanResult?.scannedAt ?? '',
+    ...docStatus,
+    ...(scanSummary ? { scan_summary: scanSummary } : {}),
   };
 
   // --- Disclosure ---
@@ -412,7 +422,13 @@ export const buildPassport = (
   // Compliance
   autoFilledFields.push('compliance.risk_class');
   if (scanResult) {
-    autoFilledFields.push('compliance.complior_score', 'compliance.last_scan');
+    autoFilledFields.push('compliance.complior_score', 'compliance.last_scan', 'compliance.scan_summary');
+    if (Object.keys(docStatus).length > 0) {
+      autoFilledFields.push(
+        'compliance.technical_documentation', 'compliance.declaration_of_conformity',
+        'compliance.art5_screening', 'compliance.instructions_for_use',
+      );
+    }
   }
 
   // Interop

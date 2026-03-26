@@ -60,6 +60,12 @@ export const OBLIGATION_FIELD_MAP: readonly ObligationFieldMapping[] = [
   { field: 'compliance.complior_score', obligation: 'OBL-009', article: 'Art.9(4)', description: 'Overall compliance score', required: true },
   { field: 'compliance.last_scan', obligation: 'OBL-009', article: 'Art.9(9)', description: 'Date of last compliance scan', required: true },
 
+  // Per-agent document status
+  { field: 'compliance.technical_documentation.documented', obligation: 'OBL-005', article: 'Art.11', description: 'Technical documentation exists for this AI system', required: false },
+  { field: 'compliance.declaration_of_conformity.documented', obligation: 'OBL-019', article: 'Art.47', description: 'Declaration of conformity issued', required: false },
+  { field: 'compliance.art5_screening.completed', obligation: 'OBL-002', article: 'Art.5', description: 'Art.5 prohibited practices screening completed', required: false },
+  { field: 'compliance.instructions_for_use.documented', obligation: 'OBL-007', article: 'Art.13', description: 'Instructions for use documented', required: false },
+
   // Disclosure (Art.50 — Transparency for users)
   { field: 'disclosure.user_facing', obligation: 'OBL-050', article: 'Art.50(1)', description: 'Whether AI system interacts with users', required: true },
   { field: 'disclosure.disclosure_text', obligation: 'OBL-050', article: 'Art.50(1)', description: 'Disclosure text shown to users', required: true },

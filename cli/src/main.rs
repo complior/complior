@@ -154,7 +154,7 @@ async fn main() -> color_eyre::Result<()> {
             Some(cli::Command::Report { format, output, path }) => {
                 headless::run_report(format, output.as_deref(), path.as_deref(), &config).await
             }
-            Some(cli::Command::Init { path }) => headless::run_init(path.as_deref(), &config).await,
+            Some(cli::Command::Init { path }) => headless::run_init(path.as_deref(), parsed_cli.yes, &config).await,
             Some(cli::Command::Update) => { headless::run_update().await; 0 }
             Some(cli::Command::Daemon { action, watch }) => {
                 let project_path = std::env::current_dir().unwrap_or_default();

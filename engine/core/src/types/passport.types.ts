@@ -95,6 +95,7 @@ export interface ComplianceBlock {
     readonly deployer_obligations_pending: readonly string[];
   };
   readonly complior_score: number;
+  readonly project_score?: number;
   readonly last_scan: string;
   readonly fria_completed?: boolean;
   readonly fria_date?: string;
@@ -118,6 +119,31 @@ export interface ComplianceBlock {
     readonly documented?: boolean;
     readonly bias_tested?: boolean;
     readonly last_audit?: string;
+  };
+  readonly technical_documentation?: {
+    readonly documented?: boolean;
+    readonly last_update?: string;
+  };
+  readonly declaration_of_conformity?: {
+    readonly documented?: boolean;
+    readonly date?: string;
+  };
+  readonly art5_screening?: {
+    readonly completed?: boolean;
+    readonly date?: string;
+  };
+  readonly instructions_for_use?: {
+    readonly documented?: boolean;
+    readonly last_update?: string;
+  };
+  readonly scan_summary?: {
+    readonly total_checks: number;
+    readonly passed: number;
+    readonly failed: number;
+    readonly skipped: number;
+    readonly by_category: Readonly<Record<string, { readonly passed: number; readonly failed: number }>>;
+    readonly failed_checks: readonly string[];
+    readonly scan_date: string;
   };
   readonly multi_framework?: readonly FrameworkScore[];
 }
@@ -296,6 +322,7 @@ const ComplianceBlockSchema = z.object({
     deployer_obligations_pending: z.array(z.string()),
   }),
   complior_score: z.number().min(0).max(100),
+  project_score: z.number().min(0).max(100).optional(),
   last_scan: z.string(),
   fria_completed: z.boolean().optional(),
   fria_date: z.string().optional(),
@@ -319,6 +346,34 @@ const ComplianceBlockSchema = z.object({
     documented: z.boolean().optional(),
     bias_tested: z.boolean().optional(),
     last_audit: z.string().optional(),
+  }).optional(),
+  technical_documentation: z.object({
+    documented: z.boolean().optional(),
+    last_update: z.string().optional(),
+  }).optional(),
+  declaration_of_conformity: z.object({
+    documented: z.boolean().optional(),
+    date: z.string().optional(),
+  }).optional(),
+  art5_screening: z.object({
+    completed: z.boolean().optional(),
+    date: z.string().optional(),
+  }).optional(),
+  instructions_for_use: z.object({
+    documented: z.boolean().optional(),
+    last_update: z.string().optional(),
+  }).optional(),
+  scan_summary: z.object({
+    total_checks: z.number().int().min(0),
+    passed: z.number().int().min(0),
+    failed: z.number().int().min(0),
+    skipped: z.number().int().min(0),
+    by_category: z.record(z.object({
+      passed: z.number().int().min(0),
+      failed: z.number().int().min(0),
+    })),
+    failed_checks: z.array(z.string()),
+    scan_date: z.string(),
   }).optional(),
   multi_framework: z.array(z.object({
     framework_id: z.string(),

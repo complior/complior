@@ -3,6 +3,8 @@ import { normalizeFilePath } from './path-utils.js';
 
 const MODEL_EXTENSIONS = new Set(['.pkl', '.pickle', '.pt', '.pth', '.h5', '.hdf5', '.safetensors', '.onnx', '.pb', '.tflite']);
 
+const EXCLUDED_DIRS = ['node_modules/', 'dist/', '.complior/'];
+
 interface ModelScanResult {
   readonly summary?: {
     readonly total_issues_by_severity?: Record<string, number>;
@@ -20,8 +22,9 @@ interface ModelScanIssue {
 export const createModelScanRunner = (): ExternalRunner => Object.freeze({
   name: 'modelscan',
   run: async (deps: ExternalRunnerDeps): Promise<ExternalRunnerResult> => {
-    // Only run if model files exist
-    const hasModels = deps.files.some((f) => MODEL_EXTENSIONS.has(f.extension));
+    // Only run if model files exist outside excluded dirs
+    const isExcluded = (path: string) => EXCLUDED_DIRS.some(d => path.includes(d));
+    const hasModels = deps.files.some((f) => MODEL_EXTENSIONS.has(f.extension) && !isExcluded(f.relativePath));
     if (!hasModels) {
       return {
         tool: 'modelscan',
@@ -86,11 +89,13 @@ export const parseModelScanOutput = (stdout: string, projectPath: string): RawEx
 
   if (!parsed.issues) return [];
 
-  return parsed.issues.map((issue): RawExternalFinding => ({
-    ruleId: `modelscan-${issue.scanner}`,
-    message: issue.description,
-    severity: issue.severity,
-    file: normalizeFilePath(issue.source, projectPath),
-    category: 'model-safety',
-  }));
+  return parsed.issues
+    .filter((issue) => !EXCLUDED_DIRS.some(d => issue.source.includes(d)))
+    .map((issue): RawExternalFinding => ({
+      ruleId: `modelscan-${issue.scanner}`,
+      message: issue.description,
+      severity: issue.severity,
+      file: normalizeFilePath(issue.source, projectPath),
+      category: 'model-safety',
+    }));
 };

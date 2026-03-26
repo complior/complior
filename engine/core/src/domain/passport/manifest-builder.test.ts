@@ -305,6 +305,84 @@ describe('buildPassport', () => {
     expect(manifest.created).toBe('2026-01-01T00:00:00.000Z');
     expect(manifest.lifecycle.deployed_since).toBe('2026-02-01');
   });
+
+  it('populates scan_summary when scanResult provided', () => {
+    const scanResult: ScanResult = {
+      score: {
+        totalScore: 65,
+        zone: 'yellow',
+        categoryScores: [],
+        criticalCapApplied: false,
+        totalChecks: 4,
+        passedChecks: 2,
+        failedChecks: 1,
+        skippedChecks: 1,
+      },
+      findings: [
+        { checkId: 'l1-fria', type: 'pass', message: 'FRIA found', severity: 'medium' },
+        { checkId: 'l1-risk-management', type: 'fail', message: 'Missing', severity: 'high' },
+        { checkId: 'l2-data-governance', type: 'pass', message: 'Found', severity: 'medium' },
+        { checkId: 'l3-dep-check', type: 'skip', message: 'Skipped', severity: 'info' },
+      ],
+      projectPath: '/test',
+      scannedAt: '2026-03-26T10:00:00.000Z',
+      duration: 100,
+      filesScanned: 5,
+    };
+
+    const manifest = buildPassport({ ...testInput, scanResult });
+
+    expect(manifest.compliance.scan_summary).toBeDefined();
+    expect(manifest.compliance.scan_summary!.total_checks).toBe(4);
+    expect(manifest.compliance.scan_summary!.passed).toBe(2);
+    expect(manifest.compliance.scan_summary!.failed).toBe(1);
+    expect(manifest.compliance.scan_summary!.skipped).toBe(1);
+    expect(manifest.compliance.scan_summary!.scan_date).toBe('2026-03-26T10:00:00.000Z');
+    expect(manifest.compliance.scan_summary!.failed_checks).toContain('l1-risk-management');
+  });
+
+  it('populates doc status fields from scan findings', () => {
+    const scanResult: ScanResult = {
+      score: {
+        totalScore: 70,
+        zone: 'yellow',
+        categoryScores: [],
+        criticalCapApplied: false,
+        totalChecks: 2,
+        passedChecks: 1,
+        failedChecks: 1,
+        skippedChecks: 0,
+      },
+      findings: [
+        { checkId: 'fria', type: 'pass', message: 'FRIA found', severity: 'medium' },
+        { checkId: 'technical-documentation', type: 'fail', message: 'Missing', severity: 'high' },
+      ],
+      projectPath: '/test',
+      scannedAt: '2026-03-26T10:00:00.000Z',
+      duration: 100,
+      filesScanned: 5,
+    };
+
+    const manifest = buildPassport({ ...testInput, scanResult });
+
+    expect(manifest.compliance.fria_completed).toBe(true);
+    expect(manifest.compliance.technical_documentation?.documented).toBe(false);
+  });
+
+  it('does not include scan_summary when no scanResult', () => {
+    const manifest = buildPassport({ ...testInput, scanResult: undefined });
+    expect(manifest.compliance.scan_summary).toBeUndefined();
+  });
+});
+
+describe('ALL_PASSPORT_FIELDS', () => {
+  it('includes new compliance doc fields', () => {
+    expect(ALL_PASSPORT_FIELDS).toContain('compliance.technical_documentation');
+    expect(ALL_PASSPORT_FIELDS).toContain('compliance.declaration_of_conformity');
+    expect(ALL_PASSPORT_FIELDS).toContain('compliance.art5_screening');
+    expect(ALL_PASSPORT_FIELDS).toContain('compliance.instructions_for_use');
+    expect(ALL_PASSPORT_FIELDS).toContain('compliance.scan_summary');
+  });
 });
 
 // --- Unit tests for exported helpers ---

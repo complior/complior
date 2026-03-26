@@ -22,6 +22,7 @@ import type { AutonomyAnalysis } from '../domain/passport/autonomy-analyzer.js';
 import { scanPermissions } from '../domain/passport/permission-scanner.js';
 import { buildPassport } from '../domain/passport/manifest-builder.js';
 import type { ProjectProfile } from '../domain/passport/manifest-builder.js';
+import { deriveDocStatusFromFindings, buildScanSummary } from '../domain/passport/scan-to-compliance.js';
 import { loadOrCreateKeyPair, signPassport, verifyPassport as verifyPassportCrypto } from '../domain/passport/crypto-signer.js';
 import { validatePassport, computeCompleteness } from '../domain/passport/passport-validator.js';
 import type { ValidationResult, CompletenessResult } from '../domain/passport/passport-validator.js';
@@ -234,14 +235,27 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       .map((p) => ({ name: p.name, sourceFiles: p.source_files ?? [] }));
   };
 
-  /** Step 10: Auto-update passports after scan — refreshes complior_score + last_scan. */
+  /** Step 10: Auto-update passports after scan — refreshes score, doc status, and scan_summary per-agent. */
   const updatePassportsAfterScan = async (scanResult: ScanResult, projectPath?: string): Promise<void> => {
     const path = projectPath ?? getProjectPath();
     const passports = await listPassports(path);
+
     for (const passport of passports) {
+      // Filter findings attributed to this agent — project-level findings (no agentId) stay out
+      const agentFindings = scanResult.findings.filter(f => f.agentId === passport.name);
+      const docStatus = deriveDocStatusFromFindings(agentFindings, scanResult.scannedAt);
+      const scanSummary = buildScanSummary(agentFindings, scanResult.scannedAt);
+
+      // Per-agent score: passed / (passed + failed) * 100 — matches project score formula (skipped excluded)
+      const applicable = scanSummary.passed + scanSummary.failed;
+      const agentScore = applicable > 0 ? Math.round((scanSummary.passed / applicable) * 100) : 0;
+
       await updatePassportCompliance(deps, passport.name, {
-        complior_score: scanResult.score.totalScore,
+        complior_score: agentScore,
+        project_score: scanResult.score.totalScore,
         last_scan: scanResult.scannedAt,
+        scan_summary: scanSummary,
+        ...docStatus,
       }, path).catch(() => {});
     }
   };

@@ -41,7 +41,7 @@ export const createBanditRunner = (): ExternalRunner => Object.freeze({
       '-r', deps.projectPath,
       '-f', 'json',
       '-q',
-      '--exclude', `${deps.projectPath}/.complior`,
+      '--exclude', `${deps.projectPath}/.complior,${deps.projectPath}/node_modules,${deps.projectPath}/dist`,
     ], { timeout: 120_000 });
 
     const duration = Date.now() - startTime;
