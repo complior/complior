@@ -10,8 +10,8 @@ import type { UndoService } from './undo-service.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { AgentPassport } from '../types/passport.types.js';
-import { generateDocument, TEMPLATE_FILE_MAP, type DocType } from '../domain/documents/document-generator.js';
-import { enrichDocumentWithAI } from '../domain/documents/ai-enricher.js';
+import { generateDocument, TEMPLATE_FILE_MAP, type DocType, type DocResult } from '../domain/documents/document-generator.js';
+import { enrichDocumentWithAI, detectWeakSections } from '../domain/documents/ai-enricher.js';
 import type { LlmPort } from '../ports/llm.port.js';
 
 /** Resolve [PASSPORT:field] tokens from agent passport data. */
@@ -90,21 +90,51 @@ export const createFixService = (deps: FixServiceDeps) => {
             const passports = await deps.passportService.listPassports(projectPath);
             const passport = passports[0];
             if (passport) {
-              const baseResult = generateDocument({ manifest: passport, template, docType: docTypeEntry[0] });
-              manualFields = baseResult.manualFields;
+              // Check if file already exists on disk — enhance existing instead of overwriting
+              let existingContent: string | undefined;
+              try { existingContent = await readFile(fullPath, 'utf-8'); } catch { /* file doesn't exist */ }
 
-              // LLM enrichment when --ai flag is set and LLM is available
-              if (useAi && deps.llm && baseResult.manualFields.length > 0) {
-                try {
-                  const selection = deps.llm.routeModel('document-generation');
-                  const model = await deps.llm.getModel(selection.provider, selection.modelId);
-                  const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
-                  content = enriched.markdown;
-                } catch {
-                  content = baseResult.markdown; // LLM failed — use deterministic output
+              if (existingContent && existingContent.trim().length > 0 && useAi && deps.llm) {
+                // Existing doc: enhance with L2-informed LLM feedback (preserve user edits)
+                const weakSections = detectWeakSections(existingContent);
+                const baseResult: DocResult = {
+                  markdown: existingContent,
+                  docType: docTypeEntry[0],
+                  prefilledFields: [],
+                  manualFields: [...weakSections],
+                };
+                manualFields = weakSections;
+
+                if (weakSections.length > 0) {
+                  try {
+                    const selection = deps.llm.routeModel('document-generation');
+                    const model = await deps.llm.getModel(selection.provider, selection.modelId);
+                    const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
+                    content = enriched.markdown;
+                  } catch {
+                    content = existingContent; // LLM failed — keep existing
+                  }
+                } else {
+                  content = existingContent; // All sections adequate — no changes needed
                 }
               } else {
-                content = baseResult.markdown;
+                // No existing file or no --ai — generate fresh scaffold
+                const baseResult = generateDocument({ manifest: passport, template, docType: docTypeEntry[0] });
+                manualFields = baseResult.manualFields;
+
+                // LLM enrichment for fresh scaffold
+                if (useAi && deps.llm && baseResult.manualFields.length > 0) {
+                  try {
+                    const selection = deps.llm.routeModel('document-generation');
+                    const model = await deps.llm.getModel(selection.provider, selection.modelId);
+                    const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
+                    content = enriched.markdown;
+                  } catch {
+                    content = baseResult.markdown; // LLM failed — use deterministic output
+                  }
+                } else {
+                  content = baseResult.markdown;
+                }
               }
             } else {
               content = template;
