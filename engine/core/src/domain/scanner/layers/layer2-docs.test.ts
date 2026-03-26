@@ -416,6 +416,41 @@ Ongoing monitoring ensures continuous compliance with regulatory requirements.
     expect(depth.wordCount).toBe(0);
   });
 
+  it('detects scaffold placeholders and penalizes qualityScore', () => {
+    // Scaffold content: good structure but [TODO] placeholders
+    const content = `| Field | Value |
+| --- | --- |
+| Provider | [Company Name] |
+| Assessor | [Name, Title] |
+| DPO Consulted | [Name, Date] |
+- System name: [Name]
+- Version: [Number]
+- Deployment context: [Where and how the system is used]
+As required by Art. 9 of the EU AI Act, the deployer must ensure compliance.`;
+    const depth = measureSemanticDepth(content, 'Header');
+    expect(depth.placeholderCount).toBeGreaterThanOrEqual(5);
+    expect(depth.isShallow).toBe(true);
+    expect(depth.feedback).toContain('placeholder');
+  });
+
+  it('does not count markdown links as placeholders', () => {
+    const content = `See [EU AI Act](https://eur-lex.europa.eu) and [GDPR](https://gdpr-info.eu) for details.
+This comprehensive section documents all compliance requirements with Art. 9 references.`;
+    const depth = measureSemanticDepth(content, 'References');
+    expect(depth.placeholderCount).toBe(0);
+  });
+
+  it('marks scaffold table sections as shallow despite good structure', () => {
+    const content = `| Fundamental Right | Risk Level | Description | Affected Group | Mitigation |
+|---|---|---|---|---|
+| Non-discrimination (Charter Art. 21) | [H/M/L/N] | [Description of risk] | [Group] | [Measures] |
+| Privacy (Charter Art. 7-8) | [H/M/L/N] | [Description of risk] | [Group] | [Measures] |
+| Expression (Charter Art. 11) | [H/M/L/N] | [Description of risk] | [Group] | [Measures] |`;
+    const depth = measureSemanticDepth(content, 'Risk Assessment');
+    expect(depth.placeholderCount).toBeGreaterThanOrEqual(9);
+    expect(depth.isShallow).toBe(true);
+  });
+
   it('overrides isShallow based on qualityScore not just word count', () => {
     // Content with few words but has lists + specifics + legal ref = qualityScore >= 30
     const content = '- Art. 9 compliance check\n- 95% accuracy achieved';
@@ -598,6 +633,50 @@ ${richSection}
     expect(result.status).toBe('EMPTY');
     expect(result.sectionFeedback).toBeUndefined();
     expect(result.completenessScore).toBeUndefined();
+  });
+
+  it('detects scaffold documents with placeholders as SHALLOW', () => {
+    const scaffoldValidator: DocumentValidator = {
+      document: 'fria',
+      obligation: 'eu-ai-act-OBL-013',
+      article: 'Art. 27',
+      file_patterns: ['FRIA.md'],
+      required_sections: [
+        { title: 'Risk Assessment', required: true },
+        { title: 'Impact Analysis', required: true },
+        { title: 'Mitigation Measures', required: true },
+      ],
+    };
+
+    const content = `# Fundamental Rights Impact Assessment
+
+## Risk Assessment
+| Right | Risk Level | Description | Group | Mitigation |
+|---|---|---|---|---|
+| Non-discrimination (Art. 21) | [H/M/L/N] | [Description of risk] | [Group] | [Measures] |
+| Privacy (Art. 7-8) | [H/M/L/N] | [Description of risk] | [Group] | [Measures] |
+
+## Impact Analysis
+- System name: [Name]
+- Provider: [Company Name]
+- Version: [Number]
+- Intended purpose: [Description of purpose]
+- Deployment context: [Where and how the system is used]
+- Categories of persons affected: [List]
+
+## Mitigation Measures
+| # | Measure | Responsible | Timeline | Status |
+|---|---------|------------|----------|--------|
+| 1 | [Measure description] | [Name, Title] | [Date] | [Status] |
+| 2 | [Measure description] | [Name, Title] | [Date] | [Status] |
+`;
+    const result = validateDocument(scaffoldValidator, content);
+
+    expect(result.status).toBe('SHALLOW');
+    expect(result.shallowSections).toBeDefined();
+    expect(result.shallowSections!.length).toBeGreaterThan(0);
+    expect(result.sectionFeedback).toBeDefined();
+    expect(result.sectionFeedback!.some(f => f.includes('placeholder'))).toBe(true);
   });
 
   it('does not return semantic fields for PARTIAL documents', () => {

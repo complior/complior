@@ -32,9 +32,11 @@ export const deriveDocStatusFromFindings = (
   let result: Partial<ComplianceBlock> = {};
 
   for (const [prefix, mapper] of DOC_CHECK_TO_FIELD) {
-    const match = findings.find(
+    const matches = findings.filter(
       (f) => f.checkId === prefix || f.checkId.startsWith(`${prefix}-`) || f.checkId.startsWith(`l1-${prefix}`) || f.checkId.startsWith(`l2-${prefix}`),
     );
+    // Prefer worst-case: L2 SHALLOW (fail) overrides L1 presence (pass)
+    const match = matches.find(f => f.type === 'fail') ?? matches[0];
     if (match) {
       result = { ...result, ...mapper(match.type === 'pass', date) };
     }

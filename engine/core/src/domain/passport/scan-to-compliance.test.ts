@@ -91,6 +91,21 @@ describe('deriveDocStatusFromFindings', () => {
     expect(result.risk_management?.documented).toBe(false);
   });
 
+  it('L2 fail overrides L1 pass for same document (scaffold detection)', () => {
+    const findings = [
+      makeFinding('l1-fria', 'pass'),       // L1: file exists
+      makeFinding('l2-fria', 'fail'),        // L2: content is shallow/scaffold
+      makeFinding('l1-risk-management', 'pass'),
+      makeFinding('l2-risk-management', 'fail'),
+    ];
+
+    const result = deriveDocStatusFromFindings(findings, '2026-03-26T10:00:00.000Z');
+
+    // L2 fail should win over L1 pass
+    expect(result.fria_completed).toBe(false);
+    expect(result.risk_management?.documented).toBe(false);
+  });
+
   it('returns empty when no findings', () => {
     const result = deriveDocStatusFromFindings([]);
     expect(Object.keys(result)).toHaveLength(0);
