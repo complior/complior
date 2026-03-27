@@ -845,6 +845,8 @@ engine/core/src/
 │   │   ├── checks/      # 7 check modules
 │   │   └── external/    # External URL scanner
 │   ├── fixer/           # Fix strategies + templates
+│   │   └── strategies/  # 18 individual fix strategy files + chain-of-responsibility index
+│   ├── shared/          # Cross-domain pure helpers (e.g. parse-dependencies)
 │   ├── reporter/        # PDF, audit report, badge, share
 │   └── whatif/          # Scenario engine
 ├── services/            # Application orchestration (10 services)

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ValidationError } from '../../types/errors.js';
 import type { PassportService } from '../../services/passport-service.js';
 import { ALL_DOC_TYPES } from '../../domain/documents/document-generator.js';
-import { parseBody, parseQuery } from '../utils/validation.js';
+import { parseBody, parseQuery, requireQuery } from '../utils/validation.js';
 
 const AUDIT_EVENT_TYPES = [
   'passport.created', 'passport.updated', 'passport.exported',
@@ -42,25 +42,14 @@ export const createAgentRoute = (passportService: PassportService) => {
   });
 
   app.get('/agent/list', async (c) => {
-    const path = c.req.query('path');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
-
+    const path = requireQuery(c, 'path');
     const manifests = await passportService.listPassports(path);
     return c.json(manifests);
   });
 
   app.get('/agent/show', async (c) => {
-    const path = c.req.query('path');
-    const name = c.req.query('name');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
-    if (!name) {
-      throw new ValidationError('Missing "name" query parameter');
-    }
-
+    const path = requireQuery(c, 'path');
+    const name = requireQuery(c, 'name');
     const manifest = await passportService.showPassport(name, path);
     if (manifest === null) {
       throw new ValidationError(`Passport not found: ${name}`);
@@ -85,10 +74,7 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // C.S02: Standalone autonomy analysis (per-agent breakdown)
   app.get('/agent/autonomy', async (c) => {
-    const path = c.req.query('path');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
+    const path = requireQuery(c, 'path');
 
     // Return per-agent breakdown from existing passports
     const manifests = await passportService.listPassports(path);
@@ -116,15 +102,8 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // C.S07: Passport validation (schema + signature + completeness)
   app.get('/agent/validate', async (c) => {
-    const path = c.req.query('path');
-    const name = c.req.query('name');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
-    if (!name) {
-      throw new ValidationError('Missing "name" query parameter');
-    }
-
+    const path = requireQuery(c, 'path');
+    const name = requireQuery(c, 'name');
     const result = await passportService.validatePassportByName(name, path);
     if (result === null) {
       throw new ValidationError(`Passport not found: ${name}`);
@@ -134,15 +113,8 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // C.S09: Passport completeness score
   app.get('/agent/completeness', async (c) => {
-    const path = c.req.query('path');
-    const name = c.req.query('name');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
-    if (!name) {
-      throw new ValidationError('Missing "name" query parameter');
-    }
-
+    const path = requireQuery(c, 'path');
+    const name = requireQuery(c, 'name');
     const result = await passportService.getPassportCompleteness(name, path);
     if (result === null) {
       throw new ValidationError(`Passport not found: ${name}`);
@@ -214,11 +186,9 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // C.S08: Export passport to external format (A2A, AIUC-1, NIST)
   app.get('/agent/export', async (c) => {
-    const path = c.req.query('path');
-    const name = c.req.query('name');
+    const path = requireQuery(c, 'path');
+    const name = requireQuery(c, 'name');
     const format = c.req.query('format');
-    if (!path) throw new ValidationError('Missing "path" query parameter');
-    if (!name) throw new ValidationError('Missing "name" query parameter');
 
     const validFormats = ['a2a', 'aiuc-1', 'nist'] as const;
     const parsed = validFormats.find(f => f === format);
@@ -233,37 +203,25 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // C.R20: Evidence chain summary
   app.get('/agent/evidence', async (c) => {
-    const path = c.req.query('path');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
+    const path = requireQuery(c, 'path');
     return c.json(await passportService.getEvidenceChainSummary(path));
   });
 
   // C.R20: Evidence chain verification
   app.get('/agent/evidence/verify', async (c) => {
-    const path = c.req.query('path');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
+    const path = requireQuery(c, 'path');
     return c.json(await passportService.verifyEvidenceChain(path));
   });
 
   // US-S05-13: Agent Registry — per-agent compliance dashboard
   app.get('/agent/registry', async (c) => {
-    const path = c.req.query('path');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
+    const path = requireQuery(c, 'path');
     return c.json(await passportService.getAgentRegistry(path));
   });
 
   // US-S05-14: Permissions matrix
   app.get('/agent/permissions', async (c) => {
-    const path = c.req.query('path');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
+    const path = requireQuery(c, 'path');
     return c.json(await passportService.getPermissionsMatrix(path));
   });
 
@@ -325,15 +283,11 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // US-S05-19: AIUC-1 Readiness Score
   app.get('/agent/readiness', async (c) => {
-    const name = c.req.query('name');
+    const name = requireQuery(c, 'name');
     const path = c.req.query('path');
-    if (!name) {
-      throw new ValidationError('Missing "name" query parameter');
-    }
-
     const result = await passportService.getReadiness(name, path || undefined);
     if (!result) {
-      return c.json({ error: 'not_found', message: `Passport "${name}" not found` }, 404);
+      throw new ValidationError(`Passport not found: ${name}`);
     }
     return c.json(result);
   });
@@ -379,12 +333,8 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // US-S05-24: Compare passport versions (diff)
   app.get('/agent/diff', async (c) => {
-    const name = c.req.query('name');
+    const name = requireQuery(c, 'name');
     const path = c.req.query('path');
-    if (!name) {
-      throw new ValidationError('Missing "name" query parameter');
-    }
-
     const result = await passportService.diffPassport(name, path || undefined);
     return c.json(result);
   });

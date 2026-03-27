@@ -22,3 +22,10 @@ export const parseQuery = <S extends ZodType>(c: Context, schema: S): z.output<S
   if (!parsed.success) throw new ValidationError(`Invalid query: ${parsed.error.message}`);
   return parsed.data;
 };
+
+/** Extract a required query parameter. Throws ValidationError if missing. */
+export const requireQuery = (c: Context, param: string): string => {
+  const value = c.req.query(param);
+  if (!value) throw new ValidationError(`Missing "${param}" query parameter`);
+  return value;
+};

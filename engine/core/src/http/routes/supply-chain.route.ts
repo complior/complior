@@ -2,7 +2,6 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ValidationError } from '../../types/errors.js';
 import { parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod } from '../../domain/scanner/layers/layer3-parsers.js';
 import type { ParsedDependency } from '../../domain/scanner/layers/layer3-parsers.js';
 import { analyzeSupplyChain } from '../../domain/supply-chain/index.js';
@@ -10,6 +9,7 @@ import { createEvidence } from '../../domain/scanner/evidence.js';
 import { REGISTRY_CARDS, REGISTRY_SLUG_PATTERN, getProviderName } from '../../data/registry-cards.js';
 import type { EvidenceStore } from '../../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../../domain/audit/audit-trail.js';
+import { parseBody, parseQuery } from '../utils/validation.js';
 
 const SupplyChainRequestSchema = z.object({
   path: z.string().min(1),
@@ -67,13 +67,9 @@ export const createSupplyChainRoute = (deps: SupplyChainRouteDeps) => {
   const app = new Hono();
 
   app.post('/supply-chain', async (c) => {
-    const body = await c.req.json();
-    const parsed = SupplyChainRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, SupplyChainRequestSchema);
 
-    const projectPath = parsed.data.path;
+    const projectPath = data.path;
     const allDeps = await collectDependencies(projectPath);
     const detectedModels = await detectModels(projectPath);
     const report = analyzeSupplyChain(projectPath, allDeps, detectedModels);
@@ -111,14 +107,9 @@ export const createSupplyChainRoute = (deps: SupplyChainRouteDeps) => {
   });
 
   app.get('/supply-chain/models', async (c) => {
-    const parsed = ModelsQuerySchema.safeParse({
-      provider: c.req.query('provider'),
-    });
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const query = parseQuery(c, ModelsQuerySchema);
 
-    const { provider } = parsed.data;
+    const { provider } = query;
     const cards = provider
       ? REGISTRY_CARDS.filter((card) => getProviderName(card).toLowerCase() === provider.toLowerCase())
       : REGISTRY_CARDS;

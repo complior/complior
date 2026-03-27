@@ -28,6 +28,9 @@ import type { ValidationResult, CompletenessResult } from '../domain/passport/pa
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import { updatePassportCompliance } from './passport-service-utils.js';
+import { createLogger } from '../infra/logger.js';
+
+const log = createLogger('passport-service');
 import { createPassportDocuments } from './passport-documents.js';
 import { createPassportAudit } from './passport-audit.js';
 
@@ -70,7 +73,8 @@ const loadProjectProfile = async (projectPath: string): Promise<ProjectProfile |
     const dataStorage = (data?.storage as string) ?? undefined;
 
     return { domain, dataTypes, systemType, riskLevel, dataStorage };
-  } catch {
+  } catch (err) {
+    log.debug('No project profile found:', err);
     return undefined;
   }
 };
@@ -124,7 +128,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
               deployed_since: existing.lifecycle.deployed_since,
             };
           }
-        } catch { /* no existing passport — proceed */ }
+        } catch (err) { log.debug(`No existing passport for ${agent.name}:`, err); }
       }
 
       const unsignedManifest = buildPassport({
@@ -142,7 +146,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       await mkdir(dirname(filePath), { recursive: true });
 
       if (!force) {
-        try { await stat(filePath); skipped.push(agent.name); continue; } catch { /* proceed */ }
+        try { await stat(filePath); skipped.push(agent.name); continue; } catch { /* file doesn't exist — create it */ }
       }
 
       await writeFile(filePath, JSON.stringify(signedManifest, null, 2));
@@ -179,7 +183,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
         if (passport) manifests.push(passport);
       }
       return manifests;
-    } catch { return []; }
+    } catch (err) { log.debug('Failed to list passports:', err); return []; }
   };
 
   const showPassport = async (name: string, projectPath?: string): Promise<AgentPassport | null> => {
@@ -187,7 +191,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     try {
       const content = await readFile(join(path, '.complior', 'agents', `${name}-manifest.json`), 'utf-8');
       return parsePassport(content);
-    } catch { return null; }
+    } catch (err) { log.debug(`Failed to read passport ${name}:`, err); return null; }
   };
 
   const verifyPassport = async (name: string, projectPath?: string): Promise<boolean> => {
@@ -254,7 +258,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
         scan_summary: scanSummary,
         doc_quality_summary: docQualitySummary,
         ...docStatus,
-      }, path).catch(() => {});
+      }, path).catch((err) => { log.debug(`Failed to update passport ${passport.name}:`, err); });
     }
   };
 

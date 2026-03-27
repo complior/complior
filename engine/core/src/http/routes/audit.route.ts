@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import type { EvalService } from '../../services/eval-service.js';
 import type { ScanService } from '../../services/scan-service.js';
 import { AuditOptionsSchema } from '../../domain/eval/types.js';
+import { parseBody } from '../utils/validation.js';
 
 export interface AuditRouteDeps {
   readonly evalService: EvalService;
@@ -20,22 +21,18 @@ export const createAuditRoute = (deps: AuditRouteDeps) => {
 
   // POST /audit/run — combined scan + eval
   app.post('/audit/run', async (c) => {
-    const body = await c.req.json();
-    const parsed = AuditOptionsSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'VALIDATION', message: parsed.error.message }, 400);
-    }
+    const parsed = await parseBody(c, AuditOptionsSchema);
 
-    const projectPath = parsed.data.path ?? deps.getProjectPath();
+    const projectPath = parsed.path ?? deps.getProjectPath();
 
     // Step 1: Static scan
     const scanResult = await deps.scanService.scan(projectPath);
 
     // Step 2: Dynamic eval (full = all tests + security)
     const evalResult = await deps.evalService.runEval({
-      target: parsed.data.target,
+      target: parsed.target,
       full: true,
-      agent: parsed.data.agent,
+      agent: parsed.agent,
     });
 
     // Step 3: Combined result
@@ -58,7 +55,7 @@ export const createAuditRoute = (deps: AuditRouteDeps) => {
         // Weighted: 40% scan + 60% eval
         score: Math.round(scanResult.score.totalScore * 0.4 + evalResult.overallScore * 0.6),
         timestamp: new Date().toISOString(),
-        agent: parsed.data.agent,
+        agent: parsed.agent,
       },
     };
 

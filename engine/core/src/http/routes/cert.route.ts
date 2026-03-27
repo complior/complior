@@ -4,6 +4,7 @@ import { ValidationError } from '../../types/errors.js';
 import type { PassportService } from '../../services/passport-service.js';
 import type { EvidenceStore } from '../../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../../domain/audit/audit-trail.js';
+import { parseBody, parseQuery } from '../utils/validation.js';
 
 const ReadinessQuerySchema = z.object({
   path: z.string().min(1),
@@ -28,28 +29,18 @@ export const createCertRoute = (deps: CertRouteDeps) => {
 
   // US-S05-19: AIUC-1 Readiness Score
   app.get('/cert/readiness', async (c) => {
-    const parsed = ReadinessQuerySchema.safeParse({
-      path: c.req.query('path'),
-      name: c.req.query('name'),
-    });
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const query = parseQuery(c, ReadinessQuerySchema);
 
-    const result = await deps.passportService.getReadiness(parsed.data.name, parsed.data.path);
+    const result = await deps.passportService.getReadiness(query.name, query.path);
     if (result === null) {
-      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+      throw new ValidationError(`Passport not found: ${query.name}`);
     }
     return c.json(result);
   });
 
   // US-S05-20: Adversarial Test Runner
   app.post('/cert/test/adversarial', async (c) => {
-    const body = await c.req.json();
-    const parsed = AdversarialRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, AdversarialRequestSchema);
 
     if (!deps.callLlm) {
       throw new ValidationError('LLM not configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_GENERATIVE_AI_API_KEY.');
@@ -64,8 +55,8 @@ export const createCertRoute = (deps: CertRouteDeps) => {
     });
 
     const report = await runner.runAdversarialTests(
-      parsed.data.agent_name,
-      parsed.data.test_categories,
+      data.agent_name,
+      data.test_categories,
     );
 
     return c.json(report);

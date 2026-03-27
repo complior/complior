@@ -17,6 +17,7 @@ import { EvalOptionsSchema } from '../../domain/eval/types.js';
 import type { EvalProgress } from '../../domain/eval/types.js';
 import { sseEvalStart, sseEvalHealth, sseEvalTest, sseEvalDone, sseError } from '../../llm/sse-protocol.js';
 import { resolveIncludes } from '../../domain/eval/types.js';
+import { parseBody, requireQuery } from '../utils/validation.js';
 
 export interface EvalRouteDeps {
   readonly evalService: EvalService;
@@ -27,25 +28,14 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
 
   // POST /eval/run — run eval (blocking JSON response)
   app.post('/eval/run', async (c) => {
-    const body = await c.req.json();
-    const parsed = EvalOptionsSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'VALIDATION', message: parsed.error.message }, 400);
-    }
-
-    const result = await deps.evalService.runEval(parsed.data);
+    const options = await parseBody(c, EvalOptionsSchema);
+    const result = await deps.evalService.runEval(options);
     return c.json(result);
   });
 
   // POST /eval/run/stream — run eval with SSE progress streaming
   app.post('/eval/run/stream', async (c) => {
-    const body = await c.req.json();
-    const parsed = EvalOptionsSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'VALIDATION', message: parsed.error.message }, 400);
-    }
-
-    const options = parsed.data;
+    const options = await parseBody(c, EvalOptionsSchema);
     const includes = resolveIncludes(options);
     const modeLabel = includes.deterministic && includes.llm && includes.security ? 'full'
       : includes.deterministic && includes.llm ? 'deterministic + LLM-judged'
@@ -121,10 +111,7 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
 
   // GET /eval/remediation?testIds=CT-1-003,CT-1-005 — remediation for specific tests (US-REM-07)
   app.get('/eval/remediation', async (c) => {
-    const testIdsParam = c.req.query('testIds');
-    if (!testIdsParam) {
-      return c.json({ error: 'VALIDATION', message: 'testIds query parameter required' }, 400);
-    }
+    const testIdsParam = requireQuery(c, 'testIds');
 
     const result = await deps.evalService.getLastResult();
     if (!result) {
