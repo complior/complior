@@ -5,6 +5,7 @@
 
 import type { TargetAdapter, TargetResponse, ProbeOptions } from './adapter-port.js';
 import { safeJsonParse, withRetry } from './adapter-port.js';
+import { withTimeout } from './with-timeout.js';
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -34,29 +35,23 @@ export const createCustomAdapter = (
       JSON.stringify(template).replace(/\{\{probe\}\}/g, probe.replace(/"/g, '\\"')),
     );
 
-    return withRetry(async () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...headers },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        const latencyMs = Date.now() - start;
-        const raw = await safeJsonParse(res);
-        const resolved = resolvePath(raw, responsePath);
-        const text = typeof resolved === 'string' ? resolved : JSON.stringify(resolved ?? '');
+    return withRetry(async () => withTimeout(async (signal) => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+        signal,
+      });
+      const latencyMs = Date.now() - start;
+      const raw = await safeJsonParse(res);
+      const resolved = resolvePath(raw, responsePath);
+      const text = typeof resolved === 'string' ? resolved : JSON.stringify(resolved ?? '');
 
-        const responseHeaders: Record<string, string> = {};
-        res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+      const responseHeaders: Record<string, string> = {};
+      res.headers.forEach((v, k) => { responseHeaders[k] = v; });
 
-        return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
-      } finally {
-        clearTimeout(timer);
-      }
-    });
+      return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
+    }, timeout));
   };
 
   const sendMultiTurn = async (probes: readonly string[], options?: ProbeOptions): Promise<readonly TargetResponse[]> => {
@@ -69,14 +64,10 @@ export const createCustomAdapter = (
 
   const checkHealth = async (): Promise<boolean> => {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      try {
-        const res = await fetch(url, { method: 'GET', signal: controller.signal });
+      return await withTimeout(async (signal) => {
+        const res = await fetch(url, { method: 'GET', signal });
         return res.status < 500;
-      } finally {
-        clearTimeout(timer);
-      }
+      }, 5000);
     } catch {
       return false;
     }

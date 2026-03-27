@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ScanService } from '../../services/scan-service.js';
 import type { ScanResult } from '../../types/common.types.js';
 import { ValidationError } from '../../types/errors.js';
+import { parseBody } from '../utils/validation.js';
 
 const ScanRequestSchema = z.object({
   path: z.string().min(1),
@@ -26,26 +27,20 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
   const { scanService } = deps;
 
   app.post('/scan', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ScanRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, ScanRequestSchema);
 
-    const result = await scanService.scan(parsed.data.path);
+    const result = await scanService.scan(data.path);
 
     // Auto-sync: if saasToken provided, push scan to SaaS
-    const saasToken = parsed.data.saasToken;
+    const saasToken = data.saasToken;
     if (saasToken) {
       try {
         const { createSaasClient } = await import('../../infra/saas-client.js');
-        const saasUrl = parsed.data.saasUrl;
+        const saasUrl = data.saasUrl;
         if (!saasUrl) throw new Error('saasUrl required for auto-sync');
         const client = createSaasClient(saasUrl);
         await client.syncScan(saasToken, {
-          projectPath: parsed.data.path,
+          projectPath: data.path,
           score: result.score?.totalScore,
           findings: result.findings?.map((f) => ({
             severity: f.severity ?? 'info',
@@ -64,33 +59,20 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
   });
 
   app.post('/scan/deep', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ScanRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, ScanRequestSchema);
 
-    const result = await scanService.scanDeep(parsed.data.path);
+    const result = await scanService.scanDeep(data.path);
     return c.json(result);
   });
 
   // US-S05-34: Compliance Diff — delegates to scanService.scanDiff()
   app.post('/scan/diff', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ScanDiffRequestSchema.safeParse(body);
-
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, ScanDiffRequestSchema);
 
     const result = await scanService.scanDiff(
-      parsed.data.path,
-      parsed.data.changedFiles,
-      { markdown: parsed.data.markdown },
+      data.path,
+      data.changedFiles,
+      { markdown: data.markdown },
     );
 
     return c.json(result);
@@ -98,29 +80,17 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
 
   // E-115: Tier 2 scan — external tools via uv
   app.post('/scan/tier2', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ScanRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, ScanRequestSchema);
 
-    const result = await scanService.scanTier2(parsed.data.path);
+    const result = await scanService.scanTier2(data.path);
     return c.json(result);
   });
 
   // Alias: POST /scan/llm → scanDeep (L5 LLM analysis)
   app.post('/scan/llm', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ScanRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, ScanRequestSchema);
 
-    const result = await scanService.scanDeep(parsed.data.path);
+    const result = await scanService.scanDeep(data.path);
     return c.json(result);
   });
 

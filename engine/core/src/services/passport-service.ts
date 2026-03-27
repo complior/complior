@@ -12,8 +12,7 @@ import type { AgentPassport } from '../types/passport.types.js';
 import { parsePassport } from '../types/passport.types.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import type { Scanner } from '../domain/scanner/create-scanner.js';
-import { parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod } from '../domain/scanner/layers/layer3-parsers.js';
-import type { ParsedDependency } from '../domain/scanner/layers/layer3-parsers.js';
+import { parseDepsFromContext } from '../domain/shared/parse-dependencies.js';
 import { runLayer3 } from '../domain/scanner/layers/layer3-config.js';
 import { runLayer4 } from '../domain/scanner/layers/layer4-patterns.js';
 import { discoverAgents } from '../domain/passport/agent-discovery.js';
@@ -53,18 +52,6 @@ export interface InitPassportResult {
 }
 
 // --- Helpers ---
-
-const parseDepsFromContext = (ctx: ScanContext): readonly ParsedDependency[] => {
-  const allDeps: ParsedDependency[] = [];
-  for (const file of ctx.files) {
-    const filename = file.relativePath.split('/').pop() ?? '';
-    if (filename === 'package.json') allDeps.push(...parsePackageJson(file.content));
-    else if (filename === 'requirements.txt') allDeps.push(...parseRequirementsTxt(file.content));
-    else if (filename === 'Cargo.toml') allDeps.push(...parseCargoToml(file.content));
-    else if (filename === 'go.mod') allDeps.push(...parseGoMod(file.content));
-  }
-  return allDeps;
-};
 
 /** Read .complior/profile.json — non-fatal if missing. */
 const loadProjectProfile = async (projectPath: string): Promise<ProjectProfile | undefined> => {

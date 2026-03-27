@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { FixService } from '../../services/fix-service.js';
 import type { UndoService } from '../../services/undo-service.js';
-import { ValidationError } from '../../types/errors.js';
+import { parseBody } from '../utils/validation.js';
 
 const FixApplySchema = z.object({
   checkId: z.string().min(1),
@@ -31,21 +31,15 @@ export const createFixRoute = (deps: FixRouteDeps) => {
 
   // Preview fix for a specific finding
   app.post('/fix/preview', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = FixApplySchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, FixApplySchema);
 
     // Build a minimal finding to preview
     const plan = fixService.preview({
-      checkId: parsed.data.checkId,
+      checkId: data.checkId,
       type: 'fail',
       message: '',
       severity: 'high',
-      obligationId: parsed.data.obligationId,
+      obligationId: data.obligationId,
     });
 
     if (!plan) {
@@ -57,53 +51,41 @@ export const createFixRoute = (deps: FixRouteDeps) => {
 
   // Apply a specific fix
   app.post('/fix/apply', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = FixApplySchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, FixApplySchema);
 
     const plan = fixService.preview({
-      checkId: parsed.data.checkId,
+      checkId: data.checkId,
       type: 'fail',
       message: '',
       severity: 'high',
-      obligationId: parsed.data.obligationId,
+      obligationId: data.obligationId,
     });
 
     if (!plan) {
       return c.json({ error: 'NO_FIX', message: 'No fix available for this finding' }, 404);
     }
 
-    const result = await fixService.applyFix(plan, parsed.data.useAi);
+    const result = await fixService.applyFix(plan, data.useAi);
     return c.json(result);
   });
 
   // Apply a fix and validate the result
   app.post('/fix/apply-and-validate', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = FixApplySchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, FixApplySchema);
 
     const plan = fixService.preview({
-      checkId: parsed.data.checkId,
+      checkId: data.checkId,
       type: 'fail',
       message: '',
       severity: 'high',
-      obligationId: parsed.data.obligationId,
+      obligationId: data.obligationId,
     });
 
     if (!plan) {
       return c.json({ error: 'NO_FIX', message: 'No fix available for this finding' }, 404);
     }
 
-    const result = await fixService.applyAndValidate(plan, parsed.data.useAi);
+    const result = await fixService.applyAndValidate(plan, data.useAi);
     return c.json({ result, validation: result.validation });
   });
 
@@ -129,16 +111,10 @@ export const createFixRoute = (deps: FixRouteDeps) => {
 
   // Undo a fix (last or by id)
   app.post('/fix/undo', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = FixUndoSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, FixUndoSchema);
 
-    const validation = parsed.data.id != null
-      ? await undoService.undoById(parsed.data.id)
+    const validation = data.id != null
+      ? await undoService.undoById(data.id)
       : await undoService.undoLast();
 
     return c.json({ validation });

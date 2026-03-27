@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Finding } from '../../types/common.types.js';
 import { createFixer } from './create-fixer.js';
-import { findStrategy } from './strategies.js';
+import { findStrategy } from './strategies/index.js';
 import { generateUnifiedDiff, generateCreateDiff } from './diff.js';
 import type { FixContext } from './types.js';
 

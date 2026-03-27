@@ -7,8 +7,8 @@ import { z } from 'zod';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createRedteamRunner } from '../../domain/certification/redteam-runner.js';
-import { ValidationError } from '../../types/errors.js';
 import type { RedteamRunnerDeps } from '../../domain/certification/redteam-runner.js';
+import { parseBody } from '../utils/validation.js';
 
 const RedteamRunSchema = z.object({
   agentName: z.string().min(1).default('default'),
@@ -39,18 +39,11 @@ export const createRedteamRoute = (deps: RedteamRouteDeps) => {
    * Returns: RedteamReport
    */
   app.post('/redteam/run', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
+    const data = await parseBody(c, RedteamRunSchema);
 
-    const parsed = RedteamRunSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
-
-    const report = await runner.runRedteam(parsed.data.agentName, {
-      categories: parsed.data.categories,
-      maxProbes: parsed.data.maxProbes,
+    const report = await runner.runRedteam(data.agentName, {
+      categories: data.categories,
+      maxProbes: data.maxProbes,
     });
 
     return c.json(report);

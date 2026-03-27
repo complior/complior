@@ -1,6 +1,6 @@
 import type { Finding } from '../../types/common.types.js';
 import type { FixPlan, FixAction, FixContext } from './types.js';
-import { findStrategy } from './strategies.js';
+import { findStrategy } from './strategies/index.js';
 import { generateUnifiedDiff } from './diff.js';
 
 export interface FixerDeps {

@@ -10,6 +10,7 @@
  */
 
 import type { TargetAdapter } from './adapter-port.js';
+import { withTimeout } from './with-timeout.js';
 import { createHttpAdapter } from './http-adapter.js';
 import { createOpenAIAdapter } from './openai-adapter.js';
 import { createAnthropicAdapter } from './anthropic-adapter.js';
@@ -36,14 +37,10 @@ const parseProtocolHint = (url: string): { protocol: string; httpUrl: string } |
 
 const tryFetch = async (url: string, timeout = 3000): Promise<boolean> => {
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-    try {
-      const res = await fetch(url, { signal: controller.signal });
+    return await withTimeout(async (signal) => {
+      const res = await fetch(url, { signal });
       return res.status === 200;
-    } finally {
-      clearTimeout(timer);
-    }
+    }, timeout);
   } catch {
     return false;
   }

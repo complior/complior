@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ValidationError } from '../../types/errors.js';
 import type { PassportService } from '../../services/passport-service.js';
 import { ALL_DOC_TYPES } from '../../domain/documents/document-generator.js';
+import { parseBody, parseQuery } from '../utils/validation.js';
 
 const AUDIT_EVENT_TYPES = [
   'passport.created', 'passport.updated', 'passport.exported',
@@ -30,18 +31,12 @@ export const createAgentRoute = (passportService: PassportService) => {
   const app = new Hono();
 
   app.post('/agent/init', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = InitRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, InitRequestSchema);
 
     const result = await passportService.initPassport(
-      parsed.data.path,
-      parsed.data.overrides,
-      parsed.data.force,
+      data.path,
+      data.overrides,
+      data.force,
     );
     return c.json(result);
   });
@@ -74,22 +69,16 @@ export const createAgentRoute = (passportService: PassportService) => {
   });
 
   app.post('/agent/rename', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       path: z.string().min(1),
       oldName: z.string().min(1),
       newName: z.string().min(1),
-    }).safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    }));
 
     const result = await passportService.renamePassport(
-      parsed.data.oldName,
-      parsed.data.newName,
-      parsed.data.path,
+      data.oldName,
+      data.newName,
+      data.path,
     );
     return c.json(result);
   });
@@ -163,10 +152,7 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // C.D01: Generate FRIA from passport
   app.post('/agent/fria', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       path: z.string().min(1),
       name: z.string().min(1),
       organization: z.string().optional(),
@@ -174,35 +160,28 @@ export const createAgentRoute = (passportService: PassportService) => {
       impact: z.string().optional(),
       mitigation: z.string().optional(),
       approval: z.string().optional(),
-    }).safeParse(body);
-
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    }));
 
     const result = await passportService.generateFriaReport(
-      parsed.data.name,
-      parsed.data.path,
+      data.name,
+      data.path,
       {
-        organization: parsed.data.organization,
-        assessor: parsed.data.assessor,
-        impact: parsed.data.impact,
-        mitigation: parsed.data.mitigation,
-        approval: parsed.data.approval,
+        organization: data.organization,
+        assessor: data.assessor,
+        impact: data.impact,
+        mitigation: data.mitigation,
+        approval: data.approval,
       },
     );
     if (result === null) {
-      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+      throw new ValidationError(`Passport not found: ${data.name}`);
     }
     return c.json(result);
   });
 
   // C.D02: Generate Worker Notification from passport (Art.26(7))
   app.post('/agent/notify', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       path: z.string().min(1),
       name: z.string().min(1),
       companyName: z.string().optional(),
@@ -212,27 +191,23 @@ export const createAgentRoute = (passportService: PassportService) => {
       deploymentDate: z.string().optional(),
       affectedRoles: z.string().optional(),
       impactDescription: z.string().optional(),
-    }).safeParse(body);
-
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    }));
 
     const result = await passportService.generateWorkerNotification(
-      parsed.data.name,
-      parsed.data.path,
+      data.name,
+      data.path,
       {
-        companyName: parsed.data.companyName,
-        contactName: parsed.data.contactName,
-        contactEmail: parsed.data.contactEmail,
-        contactPhone: parsed.data.contactPhone,
-        deploymentDate: parsed.data.deploymentDate,
-        affectedRoles: parsed.data.affectedRoles,
-        impactDescription: parsed.data.impactDescription,
+        companyName: data.companyName,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        deploymentDate: data.deploymentDate,
+        affectedRoles: data.affectedRoles,
+        impactDescription: data.impactDescription,
       },
     );
     if (result === null) {
-      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+      throw new ValidationError(`Passport not found: ${data.name}`);
     }
     return c.json(result);
   });
@@ -294,15 +269,14 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // US-S05-14: Audit trail query
   app.get('/agent/audit', async (c) => {
-    const parsed = AuditQuerySchema.safeParse(c.req.query());
-    if (!parsed.success) throw new ValidationError(`Invalid query: ${parsed.error.message}`);
+    const data = parseQuery(c, AuditQuerySchema);
 
     const entries = await passportService.getAuditTrail({
-      agentName: parsed.data.agent,
-      since: parsed.data.since,
-      until: parsed.data.until,
-      eventType: parsed.data.type,
-      limit: parsed.data.limit,
+      agentName: data.agent,
+      since: data.since,
+      until: data.until,
+      eventType: data.type,
+      limit: data.limit,
     });
     return c.json(entries);
   });
@@ -314,52 +288,38 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // US-S05-15: Generate industry-specific AI usage policy
   app.post('/agent/policy', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
     const VALID_INDUSTRIES = ['hr', 'finance', 'healthcare', 'education', 'legal'] as const;
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       path: z.string().min(1),
       name: z.string().min(1),
       industry: z.enum(VALID_INDUSTRIES),
       organization: z.string().optional(),
       approver: z.string().optional(),
-    }).safeParse(body);
-
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    }));
 
     const result = await passportService.generatePolicy(
-      parsed.data.name,
-      parsed.data.industry,
-      parsed.data.path,
+      data.name,
+      data.industry,
+      data.path,
       {
-        organization: parsed.data.organization,
-        approver: parsed.data.approver,
+        organization: data.organization,
+        approver: data.approver,
       },
     );
     if (result === null) {
-      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+      throw new ValidationError(`Passport not found: ${data.name}`);
     }
     return c.json(result);
   });
 
   // US-S05-24: Generate compliance test suite from passport constraints
   app.post('/agent/test-gen', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       name: z.string().min(1),
       path: z.string().optional(),
-    }).safeParse(body);
+    }));
 
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
-
-    const result = await passportService.generateTestSuite(parsed.data.name, parsed.data.path);
+    const result = await passportService.generateTestSuite(data.name, data.path);
     return c.json(result);
   });
 
@@ -380,23 +340,16 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // US-S06-11: Import passport from external format (A2A)
   app.post('/agent/import', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       format: z.enum(['a2a']),
       data: z.record(z.unknown()),
       path: z.string().optional(),
-    }).safeParse(body);
-
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid body: ${parsed.error.message}`);
-    }
+    }));
 
     const result = await passportService.importPassport(
-      parsed.data.format,
-      parsed.data.data,
-      parsed.data.path,
+      data.format,
+      data.data,
+      data.path,
     );
     return c.json(result);
   });
@@ -438,51 +391,37 @@ export const createAgentRoute = (passportService: PassportService) => {
 
   // US-S06-06: Generate a single compliance document by type
   app.post('/agent/doc', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       path: z.string().min(1),
       name: z.string().min(1),
       docType: z.enum(ALL_DOC_TYPES),
       organization: z.string().optional(),
-    }).safeParse(body);
-
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    }));
 
     const result = await passportService.generateDocByType(
-      parsed.data.name,
-      parsed.data.docType,
-      parsed.data.path,
-      { organization: parsed.data.organization },
+      data.name,
+      data.docType,
+      data.path,
+      { organization: data.organization },
     );
     if (result === null) {
-      throw new ValidationError(`Passport not found: ${parsed.data.name}`);
+      throw new ValidationError(`Passport not found: ${data.name}`);
     }
     return c.json(result);
   });
 
   // US-S06-06: Generate ALL required compliance documents
   app.post('/agent/doc/all', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = z.object({
+    const data = await parseBody(c, z.object({
       path: z.string().min(1),
       name: z.string().min(1),
       organization: z.string().optional(),
-    }).safeParse(body);
-
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    }));
 
     const result = await passportService.generateAllDocs(
-      parsed.data.name,
-      parsed.data.path,
-      { organization: parsed.data.organization },
+      data.name,
+      data.path,
+      { organization: data.organization },
     );
     return c.json(result);
   });

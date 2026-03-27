@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { streamText, stepCountIs, type CoreMessage } from 'ai';
-import { ValidationError } from '../../types/errors.js';
 import type { ChatService } from '../../services/chat-service.js';
 import type { LlmPort } from '../../ports/llm.port.js';
 import type { ToolExecutorDeps } from '../../llm/tool-executors.js';
@@ -16,6 +15,7 @@ import { getAgentConfig, getAllModes } from '../../llm/agents/modes.js';
 import { createCostTracker, type CostTracker } from '../../llm/routing/cost-tracker.js';
 import { createRateLimiter } from '../../infra/rate-limiter.js';
 import { complior } from '@complior/sdk';
+import { parseBody } from '../utils/validation.js';
 
 const ChatRequestSchema = z.object({
   message: z.string().min(1),
@@ -90,16 +90,10 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
   app.get('/cost', (c) => c.json(costTracker.getBreakdown()));
 
   app.post('/chat', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ChatRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const parsed = await parseBody(c, ChatRequestSchema);
 
     // Handle slash commands
-    const cmd = parseCommand(parsed.data.message);
+    const cmd = parseCommand(parsed.message);
     if (cmd) {
       if (cmd.command === 'mode' && cmd.arg) {
         if (isAgentMode(cmd.arg)) {
@@ -124,12 +118,12 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     }
 
     // Apply mode from request or session
-    if (parsed.data.mode) setMode(parsed.data.mode);
+    if (parsed.mode) setMode(parsed.mode);
 
-    const { provider, modelId } = parsed.data.provider && parsed.data.model
-      ? { provider: parsed.data.provider, modelId: parsed.data.model }
-      : llm.routeModel(modelOverride ?? 'chat', parsed.data.provider);
-    const model = await llm.getModel(provider, modelId, parsed.data.apiKey);
+    const { provider, modelId } = parsed.provider && parsed.model
+      ? { provider: parsed.provider, modelId: parsed.model }
+      : llm.routeModel(modelOverride ?? 'chat', parsed.provider);
+    const model = await llm.getModel(provider, modelId, parsed.apiKey);
 
     // Use mode-specific system prompt
     const modeConfig = getAgentConfig(getMode());
@@ -137,7 +131,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
     const tools = createCodingTools(chatService.getProjectPath(), toolExecutorDeps);
 
     // Append user message to conversation history
-    const userMessage: CoreMessage = { role: 'user', content: parsed.data.message };
+    const userMessage: CoreMessage = { role: 'user', content: parsed.message };
     chatService.appendConversationHistory(userMessage);
 
     return streamSSE(c, async (stream) => {

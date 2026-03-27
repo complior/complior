@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { generateText } from 'ai';
-import { ValidationError } from '../../types/errors.js';
 import type { LlmPort } from '../../ports/llm.port.js';
 import { complior } from '@complior/sdk';
+import { parseBody } from '../utils/validation.js';
 
 const VerifySchema = z.object({
   provider: z.enum(['anthropic', 'openai', 'openrouter']),
@@ -14,15 +14,7 @@ export const createProviderRoute = (llm: LlmPort) => {
   const app = new Hono();
 
   app.post('/provider/verify', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = VerifySchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
-
-    const { provider, apiKey } = parsed.data;
+    const { provider, apiKey } = await parseBody(c, VerifySchema);
 
     try {
       const testModelId = provider === 'openrouter'

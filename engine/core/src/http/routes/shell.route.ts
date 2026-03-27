@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { runCommand } from '../../infra/shell-adapter.js';
-import { ValidationError } from '../../types/errors.js';
+import { parseBody } from '../utils/validation.js';
 
 const ShellRequestSchema = z.object({
   command: z.string().min(1),
@@ -13,18 +13,12 @@ export const createShellRoute = () => {
   const app = new Hono();
 
   app.post('/shell', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ShellRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, ShellRequestSchema);
 
     const result = await runCommand(
-      parsed.data.command,
-      parsed.data.cwd,
-      parsed.data.timeout,
+      data.command,
+      data.cwd,
+      data.timeout,
     );
     return c.json(result);
   });

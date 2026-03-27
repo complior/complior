@@ -1,4 +1,4 @@
-import { getTemplateMap } from './strategies.js';
+import { getTemplateMap } from './strategies/index.js';
 import type { TemplateMapping } from './types.js';
 
 export interface TemplateData {

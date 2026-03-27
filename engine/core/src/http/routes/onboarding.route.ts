@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ValidationError } from '../../types/errors.js';
 import type { OnboardingWizard } from '../../onboarding/wizard.js';
+import { parseBody } from '../utils/validation.js';
 
 const CompleteSchema = z.object({
   answers: z.record(z.union([z.string(), z.array(z.string())])),
@@ -30,15 +30,9 @@ export const createOnboardingRoute = (wizard: OnboardingWizard) => {
 
   // POST /onboarding/complete — submit answers + build profile
   app.post('/onboarding/complete', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = CompleteSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, CompleteSchema);
 
-    const result = await wizard.complete(parsed.data.answers);
+    const result = await wizard.complete(data.answers);
     return c.json({
       profile: result.profile,
       autoDetected: result.autoDetected,

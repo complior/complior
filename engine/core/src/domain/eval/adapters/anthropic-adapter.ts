@@ -4,6 +4,7 @@
 
 import type { TargetAdapter, TargetResponse, ProbeOptions } from './adapter-port.js';
 import { safeJsonParse, withRetry } from './adapter-port.js';
+import { withTimeout } from './with-timeout.js';
 
 const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
@@ -37,30 +38,24 @@ export const createAnthropicAdapter = (
     if (options?.systemPrompt) body.system = options.systemPrompt;
     if (options?.temperature !== undefined) body.temperature = options.temperature;
 
-    return withRetry(async () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: buildHeaders(),
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        const latencyMs = Date.now() - start;
-        const raw = await safeJsonParse(res);
+    return withRetry(async () => withTimeout(async (signal) => {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify(body),
+        signal,
+      });
+      const latencyMs = Date.now() - start;
+      const raw = await safeJsonParse(res);
 
-        const content = raw.content as { type?: string; text?: string }[] | undefined;
-        const text = content?.find((c) => c.type === 'text')?.text ?? '';
+      const content = raw.content as { type?: string; text?: string }[] | undefined;
+      const text = content?.find((c) => c.type === 'text')?.text ?? '';
 
-        const responseHeaders: Record<string, string> = {};
-        res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+      const responseHeaders: Record<string, string> = {};
+      res.headers.forEach((v, k) => { responseHeaders[k] = v; });
 
-        return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
-      } finally {
-        clearTimeout(timer);
-      }
-    });
+      return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
+    }, timeout));
   };
 
   const sendMultiTurn = async (probes: readonly string[], options?: ProbeOptions): Promise<readonly TargetResponse[]> => {
@@ -79,28 +74,22 @@ export const createAnthropicAdapter = (
       };
       if (options?.systemPrompt) body.system = options.systemPrompt;
 
-      const result = await withRetry(async () => {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeout);
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: buildHeaders(),
-            body: JSON.stringify(body),
-            signal: controller.signal,
-          });
-          const latencyMs = Date.now() - start;
-          const raw = await safeJsonParse(res);
-          const content = raw.content as { type?: string; text?: string }[] | undefined;
-          const text = content?.find((c) => c.type === 'text')?.text ?? '';
+      const result = await withRetry(async () => withTimeout(async (signal) => {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: buildHeaders(),
+          body: JSON.stringify(body),
+          signal,
+        });
+        const latencyMs = Date.now() - start;
+        const raw = await safeJsonParse(res);
+        const content = raw.content as { type?: string; text?: string }[] | undefined;
+        const text = content?.find((c) => c.type === 'text')?.text ?? '';
 
-          const responseHeaders: Record<string, string> = {};
-          res.headers.forEach((v, k) => { responseHeaders[k] = v; });
-          return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
-        } finally {
-          clearTimeout(timer);
-        }
-      });
+        const responseHeaders: Record<string, string> = {};
+        res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+        return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
+      }, timeout));
       messages.push({ role: 'assistant', content: result.text });
       results.push(result);
     }
@@ -109,19 +98,15 @@ export const createAnthropicAdapter = (
 
   const checkHealth = async (): Promise<boolean> => {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      try {
+      return await withTimeout(async (signal) => {
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: buildHeaders(),
           body: JSON.stringify({ model: effectiveModel, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
-          signal: controller.signal,
+          signal,
         });
         return res.status < 500;
-      } finally {
-        clearTimeout(timer);
-      }
+      }, 5000);
     } catch {
       return false;
     }

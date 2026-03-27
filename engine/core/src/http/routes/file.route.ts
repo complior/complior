@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { FileService } from '../../services/file-service.js';
 import { ValidationError } from '../../types/errors.js';
+import { parseBody } from '../utils/validation.js';
 
 const CreateFileSchema = z.object({
   path: z.string().min(1),
@@ -22,42 +23,24 @@ export const createFileRoute = (fileService: FileService) => {
   const app = new Hono();
 
   app.post('/file/create', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = CreateFileSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, CreateFileSchema);
 
-    await fileService.create(parsed.data.path, parsed.data.content);
-    return c.json({ success: true, path: parsed.data.path });
+    await fileService.create(data.path, data.content);
+    return c.json({ success: true, path: data.path });
   });
 
   app.post('/file/edit', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = EditFileSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, EditFileSchema);
 
-    await fileService.edit(parsed.data.path, parsed.data.oldContent, parsed.data.newContent);
-    return c.json({ success: true, path: parsed.data.path });
+    await fileService.edit(data.path, data.oldContent, data.newContent);
+    return c.json({ success: true, path: data.path });
   });
 
   app.post('/file/read', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = ReadFileSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, ReadFileSchema);
 
-    const content = await fileService.read(parsed.data.path);
-    return c.json({ content, path: parsed.data.path });
+    const content = await fileService.read(data.path);
+    return c.json({ content, path: data.path });
   });
 
   app.get('/file/list', async (c) => {

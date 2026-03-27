@@ -5,10 +5,7 @@ import type { EventBusPort } from '../ports/events.port.js';
 import type { Scanner } from '../domain/scanner/create-scanner.js';
 import { detectDrift } from '../domain/scanner/drift.js';
 import { generateSbom, type CycloneDxBom } from '../domain/scanner/sbom.js';
-import {
-  parsePackageJson, parseRequirementsTxt, parseCargoToml, parseGoMod,
-  type ParsedDependency,
-} from '../domain/scanner/layers/layer3-parsers.js';
+import { parseDepsFromContext } from '../domain/shared/parse-dependencies.js';
 import { discoverAgents } from '../domain/passport/agent-discovery.js';
 import { attributeFindings, expandPerAgentFindings, type AgentInfo } from '../domain/scanner/finding-attribution.js';
 import { buildImportGraph } from '../domain/scanner/import-graph.js';
@@ -55,19 +52,6 @@ export interface ScanDiffResult extends ComplianceDiff {
   readonly markdown?: string;
 }
 
-/** Parse dependencies from scan context (same logic as passport-service). */
-const parseDepsFromCtx = (ctx: ScanContext): readonly ParsedDependency[] => {
-  const allDeps: ParsedDependency[] = [];
-  for (const f of ctx.files) {
-    const fn = f.relativePath.split('/').pop() ?? '';
-    if (fn === 'package.json' && !f.relativePath.includes('node_modules'))
-      allDeps.push(...parsePackageJson(f.content));
-    else if (fn === 'requirements.txt') allDeps.push(...parseRequirementsTxt(f.content));
-    else if (fn === 'Cargo.toml') allDeps.push(...parseCargoToml(f.content));
-    else if (fn === 'go.mod') allDeps.push(...parseGoMod(f.content));
-  }
-  return allDeps;
-};
 
 /** Recalculate score after role filtering (some fails → skip). */
 const recalcScore = (findings: readonly Finding[], original: ScanResult['score']): ScanResult['score'] => {
@@ -105,7 +89,7 @@ const enrichWithAgentIds = async (
 
   // Fallback: no persisted passports → auto-discover from code patterns
   if (passports.length === 0 && ctx) {
-    const discovered = discoverAgents(ctx, parseDepsFromCtx(ctx));
+    const discovered = discoverAgents(ctx, parseDepsFromContext(ctx));
     if (discovered.length === 0) return result;
     passports = discovered.map(a => ({ name: a.name, source_files: a.sourceFiles }));
   }
@@ -279,22 +263,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
   const getSbom = async (projectPath: string): Promise<CycloneDxBom> => {
     const ctx = await collectFiles(projectPath);
-    const allDeps = [];
-
-    for (const file of ctx.files) {
-      const filename = file.relativePath.split('/').pop() ?? '';
-      if (filename === 'package.json' && !file.relativePath.includes('node_modules')) {
-        allDeps.push(...parsePackageJson(file.content));
-      } else if (filename === 'requirements.txt') {
-        allDeps.push(...parseRequirementsTxt(file.content));
-      } else if (filename === 'Cargo.toml') {
-        allDeps.push(...parseCargoToml(file.content));
-      } else if (filename === 'go.mod') {
-        allDeps.push(...parseGoMod(file.content));
-      }
-    }
-
-    return generateSbom(allDeps);
+    return generateSbom(parseDepsFromContext(ctx));
   };
 
   /** US-S05-34: Compliance Diff — run scan and compare against baseline. */

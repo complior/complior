@@ -9,7 +9,7 @@ import type { PassportService } from '../../services/passport-service.js';
 import type { AuditFilter, AuditEntry } from '../../domain/audit/audit-trail.js';
 import { mapDomain } from '../../domain/passport/domain-mapper.js';
 import { createLogger } from '../../infra/logger.js';
-import { ValidationError } from '../../types/errors.js';
+import { parseBody } from '../utils/validation.js';
 
 const log = createLogger('sync');
 
@@ -92,11 +92,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
   // POST /sync/passport — push all passports to SaaS
   app.post('/sync/passport', async (c) => {
-    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
-    const parsed = SyncRequestSchema.safeParse(body);
-    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-
-    const { token, saasUrl } = parsed.data;
+    const { token, saasUrl } = await parseBody(c, SyncRequestSchema);
     const client = createSaasClient(saasUrl);
     const projectPath = deps.getProjectPath();
     const agentsDir = join(projectPath, '.complior', 'agents');
@@ -135,11 +131,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
   // POST /sync/scan — push last scan results to SaaS
   app.post('/sync/scan', async (c) => {
-    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
-    const parsed = SyncRequestSchema.safeParse(body);
-    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-
-    const { token, saasUrl } = parsed.data;
+    const { token, saasUrl } = await parseBody(c, SyncRequestSchema);
     const client = createSaasClient(saasUrl);
     const lastScan = deps.getLastScan();
 
@@ -190,11 +182,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
   // POST /sync/fria — push structured FRIA assessments to SaaS
   app.post('/sync/fria', async (c) => {
-    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
-    const parsed = SyncRequestSchema.safeParse(body);
-    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-
-    const { token, saasUrl } = parsed.data;
+    const { token, saasUrl } = await parseBody(c, SyncRequestSchema);
     const client = createSaasClient(saasUrl);
     const projectPath = deps.getProjectPath();
     const reportsDir = join(projectPath, '.complior', 'reports');
@@ -230,11 +218,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
   // POST /sync/documents — push compliance docs to SaaS
   app.post('/sync/documents', async (c) => {
-    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
-    const parsed = SyncRequestSchema.safeParse(body);
-    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-
-    const { token, saasUrl } = parsed.data;
+    const { token, saasUrl } = await parseBody(c, SyncRequestSchema);
     const client = createSaasClient(saasUrl);
     const projectPath = deps.getProjectPath();
     const reportsDir = join(projectPath, '.complior', 'reports');
@@ -275,11 +259,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
   // POST /sync/audit — push audit trail entries to SaaS
   app.post('/sync/audit', async (c) => {
-    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
-    const parsed = SyncRequestSchema.safeParse(body);
-    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-
-    const { token, saasUrl } = parsed.data;
+    const { token, saasUrl } = await parseBody(c, SyncRequestSchema);
     const client = createSaasClient(saasUrl);
 
     const entries = deps.getAuditEntries
@@ -297,11 +277,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
   // POST /sync/evidence — push evidence chain summary to SaaS
   app.post('/sync/evidence', async (c) => {
-    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
-    const parsed = SyncRequestSchema.safeParse(body);
-    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-
-    const { token, saasUrl } = parsed.data;
+    const { token, saasUrl } = await parseBody(c, SyncRequestSchema);
     const client = createSaasClient(saasUrl);
 
     const summary = deps.passportService
@@ -314,11 +290,7 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
 
   // POST /sync/registry — push agent registry scores to SaaS
   app.post('/sync/registry', async (c) => {
-    const body = await c.req.json().catch(() => { throw new ValidationError('Invalid JSON body'); });
-    const parsed = SyncRequestSchema.safeParse(body);
-    if (!parsed.success) throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-
-    const { token, saasUrl } = parsed.data;
+    const { token, saasUrl } = await parseBody(c, SyncRequestSchema);
     const client = createSaasClient(saasUrl);
 
     const entries = deps.passportService

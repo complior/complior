@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ValidationError } from '../../types/errors.js';
+import { parseBody } from '../utils/validation.js';
 import type { WhatIfRequest, WhatIfResult } from '../../domain/whatif/scenario-engine.js';
 import type { GeneratedConfig } from '../../domain/whatif/config-fixer.js';
 import type { SimulationInput, SimulationResult } from '../../domain/whatif/simulate-actions.js';
@@ -36,13 +36,7 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
 
   // POST /whatif — analyze a what-if scenario
   app.post('/whatif', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = WhatIfSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, WhatIfSchema);
 
     const profile = await deps.loadProfile();
     if (!profile) {
@@ -55,8 +49,8 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
     }
 
     const result = deps.analyzeScenario({
-      type: parsed.data.type,
-      params: parsed.data.params,
+      type: data.type,
+      params: data.params,
       currentProfile: profile,
       currentScore: score,
     });
@@ -77,13 +71,7 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
 
   // POST /simulate — US-S05-25: batch compliance simulation (what-if for fixes/docs/passport)
   app.post('/simulate', async (c) => {
-    const body = await c.req.json().catch(() => {
-      throw new ValidationError('Invalid JSON body');
-    });
-    const parsed = SimulateSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ValidationError(`Invalid request: ${parsed.error.message}`);
-    }
+    const data = await parseBody(c, SimulateSchema);
 
     const scanResult = deps.getLastScan?.();
     if (!scanResult) {
@@ -91,14 +79,14 @@ export const createWhatIfRoute = (deps: WhatIfRouteDeps) => {
     }
 
     const result = deps.simulateActions({
-      actions: parsed.data.actions,
+      actions: data.actions,
       currentScore: scanResult.score.totalScore,
       findings: scanResult.findings.map((f) => ({
         checkId: f.checkId,
         severity: f.severity,
         status: f.type ?? 'fail',
       })),
-      passportCompleteness: parsed.data.passportCompleteness ?? 50,
+      passportCompleteness: data.passportCompleteness ?? 50,
     });
 
     return c.json(result);
