@@ -51,6 +51,12 @@ export interface L2CheckResult {
 
 export const loadValidators = (): readonly DocumentValidator[] => DOCUMENT_VALIDATORS;
 
+/** Derive doc quality from L2 status + AI review marker presence. */
+const classifyDocQuality = (status: L2Status, content: string): DocQualityLevel =>
+  hasAiReviewMarker(content)
+    ? 'reviewed'
+    : (status === 'SHALLOW' || status === 'EMPTY' || status === 'PARTIAL') ? 'scaffold' : 'draft';
+
 // --- L2 Check Logic ---
 
 const findMatchingFile = (
@@ -86,7 +92,7 @@ export const validateDocument = (
       missingSections: requiredSections.map((s) => s.title),
       totalRequired: requiredSections.length,
       matchedRequired: 0,
-      docQuality: 'scaffold',
+      docQuality: classifyDocQuality('EMPTY', content),
     };
   }
 
@@ -135,10 +141,7 @@ export const validateDocument = (
       ? Math.round(totalQualityScore / scoredSections)
       : 0;
 
-    // Derive docQuality from L2Status + AI review marker
-    const docQuality: DocQualityLevel = hasAiReviewMarker(content)
-      ? 'reviewed'
-      : status === 'SHALLOW' ? 'scaffold' : 'draft';
+    const docQuality = classifyDocQuality(status, content);
 
     return {
       obligationId,
@@ -162,10 +165,7 @@ export const validateDocument = (
       ? 'EMPTY'
       : 'PARTIAL';
 
-  // PARTIAL means some sections missing — treat as scaffold quality
-  const docQuality: DocQualityLevel = hasAiReviewMarker(content)
-    ? 'reviewed'
-    : status === 'VALID' ? 'draft' : 'scaffold';
+  const docQuality = classifyDocQuality(status, content);
 
   return {
     obligationId,

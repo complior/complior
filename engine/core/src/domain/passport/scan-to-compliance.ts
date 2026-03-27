@@ -101,17 +101,16 @@ export const buildDocQualitySummary = (
 ): ComplianceBlock['doc_quality_summary'] => {
   const summary = { none: 0, scaffold: 0, draft: 0, reviewed: 0 };
 
-  const docFields = [
-    compliance.risk_management,
-    compliance.data_governance,
-    compliance.technical_documentation,
-    compliance.declaration_of_conformity,
-    compliance.art5_screening,
-    compliance.instructions_for_use,
-  ] as const;
+  const qualities: readonly (DocQualityLevel | undefined)[] = [
+    compliance.risk_management?.doc_quality,
+    compliance.data_governance?.doc_quality,
+    compliance.technical_documentation?.doc_quality,
+    compliance.declaration_of_conformity?.doc_quality,
+    compliance.art5_screening?.doc_quality,
+    compliance.instructions_for_use?.doc_quality,
+  ];
 
-  for (const field of docFields) {
-    const quality = (field as Record<string, unknown> | undefined)?.doc_quality as DocQualityLevel | undefined;
+  for (const quality of qualities) {
     if (quality !== undefined && quality in summary) {
       summary[quality]++;
     } else {
