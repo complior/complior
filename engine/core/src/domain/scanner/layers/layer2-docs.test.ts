@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { runLayer2, validateDocument, loadValidators, measureSectionDepth, measureSemanticDepth } from './layer2-docs.js';
+import { hasAiReviewMarker, extractReviewDate } from './layer2-parsing.js';
 import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 import type { DocumentValidator } from './layer2-docs.js';
 
@@ -690,5 +691,134 @@ Some content here about monitoring.
     expect(result.status).toBe('PARTIAL');
     expect(result.sectionFeedback).toBeUndefined();
     expect(result.completenessScore).toBeUndefined();
+  });
+});
+
+// --- AI Review Marker ---
+
+describe('hasAiReviewMarker', () => {
+  it('detects valid review marker', () => {
+    expect(hasAiReviewMarker('some content\n<!-- complior:reviewed 2026-03-26T10:00:00.000Z -->')).toBe(true);
+  });
+
+  it('detects marker with flexible whitespace', () => {
+    expect(hasAiReviewMarker('<!--  complior:reviewed  2026-03-26T10:00:00Z  -->')).toBe(true);
+  });
+
+  it('returns false when no marker present', () => {
+    expect(hasAiReviewMarker('# Just a document\n\nSome content.')).toBe(false);
+  });
+
+  it('returns false for similar but different comments', () => {
+    expect(hasAiReviewMarker('<!-- reviewed 2026-03-26T10:00:00Z -->')).toBe(false);
+    expect(hasAiReviewMarker('<!-- complior:draft 2026-03-26T10:00:00Z -->')).toBe(false);
+  });
+});
+
+describe('extractReviewDate', () => {
+  it('extracts ISO timestamp from marker', () => {
+    expect(extractReviewDate('<!-- complior:reviewed 2026-03-26T10:00:00.000Z -->')).toBe('2026-03-26T10:00:00.000Z');
+  });
+
+  it('returns undefined when no marker', () => {
+    expect(extractReviewDate('no marker here')).toBeUndefined();
+  });
+});
+
+// --- docQuality classification ---
+
+describe('validateDocument docQuality', () => {
+  const validator: DocumentValidator = {
+    document: 'risk-management',
+    obligation: 'eu-ai-act-OBL-005',
+    article: 'Art. 9',
+    file_patterns: ['RISK-MANAGEMENT.md'],
+    required_sections: [
+      { title: 'Risk Assessment', required: true },
+      { title: 'Mitigation Measures', required: true },
+    ],
+  };
+
+  it('returns scaffold for EMPTY document', () => {
+    const result = validateDocument(validator, '');
+    expect(result.docQuality).toBe('scaffold');
+    expect(result.status).toBe('EMPTY');
+  });
+
+  it('returns scaffold for SHALLOW document', () => {
+    const content = `# Risk Management
+
+## Risk Assessment
+[TODO: Describe risks]
+
+## Mitigation Measures
+[TODO: Describe mitigations]
+`;
+    const result = validateDocument(validator, content);
+    expect(result.docQuality).toBe('scaffold');
+    expect(result.status).toBe('SHALLOW');
+  });
+
+  it('returns draft for VALID document without review marker', () => {
+    const content = `# Risk Management
+
+## Risk Assessment
+The company has conducted a thorough risk assessment covering all aspects of the AI system deployment.
+We identified 12 risk categories including bias, accuracy degradation, and data drift. Each risk is rated
+on a 5-point scale for likelihood and impact per Art. 9 requirements. Annual reviews are conducted.
+
+## Mitigation Measures
+For each identified risk, specific mitigation controls have been implemented including automated monitoring
+with 99.9% uptime SLA, quarterly bias audits achieving <2% demographic parity gap, and incident response
+procedures with 24-hour resolution targets. All measures documented per ISO 42001 requirements.
+`;
+    const result = validateDocument(validator, content);
+    expect(result.docQuality).toBe('draft');
+    expect(result.status).toBe('VALID');
+  });
+
+  it('returns reviewed for document with AI review marker', () => {
+    const content = `# Risk Management
+
+## Risk Assessment
+The company has conducted a thorough risk assessment covering all aspects of the AI system deployment.
+We identified 12 risk categories including bias, accuracy degradation, and data drift. Each risk is rated
+on a 5-point scale for likelihood and impact per Art. 9 requirements. Annual reviews are conducted.
+
+## Mitigation Measures
+For each identified risk, specific mitigation controls have been implemented including automated monitoring
+with 99.9% uptime SLA, quarterly bias audits achieving <2% demographic parity gap, and incident response
+procedures with 24-hour resolution targets. All measures documented per ISO 42001 requirements.
+
+<!-- complior:reviewed 2026-03-26T10:00:00.000Z -->
+`;
+    const result = validateDocument(validator, content);
+    expect(result.docQuality).toBe('reviewed');
+  });
+
+  it('returns scaffold for PARTIAL document (missing sections)', () => {
+    const content = `# Risk Management
+
+## Risk Assessment
+Some basic content about risk assessment.
+`;
+    const result = validateDocument(validator, content);
+    expect(result.docQuality).toBe('scaffold');
+    expect(result.status).toBe('PARTIAL');
+  });
+
+  it('reviewed overrides SHALLOW status when marker present', () => {
+    const content = `# Risk Management
+
+## Risk Assessment
+[TODO: Fill in]
+
+## Mitigation Measures
+[TODO: Fill in]
+
+<!-- complior:reviewed 2026-03-26T10:00:00.000Z -->
+`;
+    const result = validateDocument(validator, content);
+    expect(result.docQuality).toBe('reviewed');
   });
 });

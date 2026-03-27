@@ -104,6 +104,30 @@ Additionally, `compliance.scan_summary` is populated after every scan with **per
 }
 ```
 
+**Document Quality Tracking:** Each doc sub-block includes a `doc_quality` field tracking the 4-step quality progression:
+
+| Level | Value | Detection | Score Impact |
+|-------|-------|-----------|-------------|
+| 0 | `none` | No file found | L1 fail |
+| 1 | `scaffold` | File exists but SHALLOW (placeholders, thin content) | L1 pass, L2 fail |
+| 2 | `draft` | File with real content, no placeholders | L1 pass, L2 pass |
+| 3 | `reviewed` | `<!-- complior:reviewed TIMESTAMP -->` marker present | L1 pass, L2 pass + verified |
+
+Example: `compliance.risk_management.doc_quality: "draft"`
+
+Additionally, `compliance.doc_quality_summary` aggregates counts across all 6 doc fields:
+
+```jsonc
+{
+  "doc_quality_summary": {
+    "none": 1,       // missing docs
+    "scaffold": 2,   // generated but not filled
+    "draft": 2,      // real content
+    "reviewed": 1    // AI-enriched and marked
+  }
+}
+```
+
 **Per-agent filtering:** Findings with no `agentId` (QMS, worker notification, monitoring policy, incident report, GPAI, node_modules) are organizational/project-level and do NOT appear in individual agent passports.
 
 **Dual scoring:** Each passport carries two scores:

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { deriveDocStatusFromFindings, buildScanSummary } from './scan-to-compliance.js';
+import { deriveDocStatusFromFindings, buildScanSummary, buildDocQualitySummary } from './scan-to-compliance.js';
 import type { Finding } from '../../types/common.types.js';
+import type { DocQualityLevel } from '../../types/passport.types.js';
 
 // --- Helpers ---
 
@@ -196,5 +197,92 @@ describe('buildScanSummary', () => {
 
     expect(summary.skipped).toBe(1);
     expect(summary.passed).toBe(1);
+  });
+});
+
+// --- doc_quality propagation ---
+
+const makeFindingWithQuality = (
+  checkId: string,
+  type: 'pass' | 'fail' | 'skip',
+  docQuality?: DocQualityLevel,
+): Finding => ({
+  checkId,
+  type,
+  message: `Check ${checkId}`,
+  severity: 'medium',
+  docQuality,
+});
+
+describe('deriveDocStatusFromFindings with docQuality', () => {
+  it('propagates docQuality from L2 findings to compliance block', () => {
+    const findings = [
+      makeFindingWithQuality('l2-risk-management', 'fail', 'scaffold'),
+      makeFindingWithQuality('l2-technical-documentation', 'pass', 'draft'),
+      makeFindingWithQuality('l2-data-governance', 'pass', 'reviewed'),
+    ];
+
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+
+    expect(result.risk_management?.doc_quality).toBe('scaffold');
+    expect(result.technical_documentation?.doc_quality).toBe('draft');
+    expect(result.data_governance?.doc_quality).toBe('reviewed');
+  });
+
+  it('defaults docQuality to draft for pass findings without explicit quality', () => {
+    const findings = [makeFinding('risk-management', 'pass')];
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+    expect(result.risk_management?.doc_quality).toBe('draft');
+  });
+
+  it('defaults docQuality to none for fail findings without explicit quality', () => {
+    const findings = [makeFinding('risk-management', 'fail')];
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+    expect(result.risk_management?.doc_quality).toBe('none');
+  });
+});
+
+describe('buildDocQualitySummary', () => {
+  it('counts quality levels across all doc fields', () => {
+    const compliance = {
+      risk_management: { documented: true, doc_quality: 'reviewed' as const },
+      data_governance: { documented: true, doc_quality: 'draft' as const },
+      technical_documentation: { documented: false, doc_quality: 'scaffold' as const },
+      declaration_of_conformity: { documented: false, doc_quality: 'none' as const },
+      art5_screening: { completed: true, doc_quality: 'draft' as const },
+      instructions_for_use: { documented: true, doc_quality: 'reviewed' as const },
+    };
+
+    const summary = buildDocQualitySummary(compliance);
+
+    expect(summary).toEqual({
+      none: 1,
+      scaffold: 1,
+      draft: 2,
+      reviewed: 2,
+    });
+  });
+
+  it('counts missing doc fields as none', () => {
+    const summary = buildDocQualitySummary({});
+
+    expect(summary).toEqual({
+      none: 6,
+      scaffold: 0,
+      draft: 0,
+      reviewed: 0,
+    });
+  });
+
+  it('counts fields without doc_quality as none', () => {
+    const compliance = {
+      risk_management: { documented: true },
+      data_governance: { documented: true },
+    };
+
+    const summary = buildDocQualitySummary(compliance);
+
+    // 2 fields without doc_quality + 4 missing fields = 6 none
+    expect(summary?.none).toBe(6);
   });
 });

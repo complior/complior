@@ -147,6 +147,18 @@ export const measureSemanticDepth = (content: string, sectionTitle: string): Sem
   };
 };
 
+// --- AI Review Marker Detection ---
+
+export const AI_REVIEW_MARKER_REGEX = /<!--\s*complior:reviewed\s+(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)\s*-->/;
+
+export const hasAiReviewMarker = (content: string): boolean =>
+  AI_REVIEW_MARKER_REGEX.test(content);
+
+export const extractReviewDate = (content: string): string | undefined =>
+  content.match(AI_REVIEW_MARKER_REGEX)?.[1];
+
+// --- Section Depth ---
+
 export const measureSectionDepth = (content: string): SectionDepth => {
   const trimmed = content.trim();
   const words = trimmed.split(/\s+/).filter((w) => w.length > 0);

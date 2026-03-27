@@ -347,12 +347,19 @@ export const createScanner = (
       }
     }
 
+    // Attach docQuality from L2 results to corresponding findings
+    const l2QualityMap = new Map(l2Results.map((r) => [`l2-${r.document}`, r.docQuality]));
+    const findingsWithQuality = findings.map((f) => {
+      const quality = l2QualityMap.get(f.checkId);
+      return quality !== undefined ? { ...f, docQuality: quality } : f;
+    });
+
     // Enrich findings with code context from files already in memory
     const fileMap = new Map<string, string>();
     for (const f of ctx.files) {
       fileMap.set(f.relativePath, f.content);
     }
-    const enrichedFindings = enrichFindings(findings, fileMap);
+    const enrichedFindings = enrichFindings(findingsWithQuality, fileMap);
 
     // Apply manual attestations from .complior/attestations.json
     const attestedFindings = applyAttestations(enrichedFindings, ctx);

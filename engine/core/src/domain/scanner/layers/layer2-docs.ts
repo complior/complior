@@ -1,4 +1,5 @@
 import type { CheckResult } from '../../../types/common.types.js';
+import type { DocQualityLevel } from '../../../types/passport.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
 import { DOCUMENT_VALIDATORS } from '../validators.js';
 import {
@@ -7,6 +8,7 @@ import {
   extractSectionContents,
   measureSectionDepth,
   measureSemanticDepth,
+  hasAiReviewMarker,
 } from './layer2-parsing.js';
 
 // Re-export for backward compatibility
@@ -42,6 +44,7 @@ export interface L2CheckResult {
   readonly shallowSections?: readonly string[];
   readonly sectionFeedback?: readonly string[];     // per-section actionable feedback
   readonly completenessScore?: number;              // 0-100 overall document quality
+  readonly docQuality: DocQualityLevel;
 }
 
 // --- Validator Loading ---
@@ -83,6 +86,7 @@ export const validateDocument = (
       missingSections: requiredSections.map((s) => s.title),
       totalRequired: requiredSections.length,
       matchedRequired: 0,
+      docQuality: 'scaffold',
     };
   }
 
@@ -131,6 +135,11 @@ export const validateDocument = (
       ? Math.round(totalQualityScore / scoredSections)
       : 0;
 
+    // Derive docQuality from L2Status + AI review marker
+    const docQuality: DocQualityLevel = hasAiReviewMarker(content)
+      ? 'reviewed'
+      : status === 'SHALLOW' ? 'scaffold' : 'draft';
+
     return {
       obligationId,
       article: validator.article,
@@ -143,6 +152,7 @@ export const validateDocument = (
       shallowSections: shallowSections.length > 0 ? shallowSections : undefined,
       sectionFeedback: feedbackItems.length > 0 ? feedbackItems : undefined,
       completenessScore,
+      docQuality,
     };
   }
 
@@ -151,6 +161,11 @@ export const validateDocument = (
     : found.length === 0
       ? 'EMPTY'
       : 'PARTIAL';
+
+  // PARTIAL means some sections missing — treat as scaffold quality
+  const docQuality: DocQualityLevel = hasAiReviewMarker(content)
+    ? 'reviewed'
+    : status === 'VALID' ? 'draft' : 'scaffold';
 
   return {
     obligationId,
@@ -161,6 +176,7 @@ export const validateDocument = (
     missingSections: missing,
     totalRequired: requiredSections.length,
     matchedRequired: found.length,
+    docQuality,
   };
 };
 

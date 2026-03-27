@@ -1,3 +1,5 @@
+import type { DocQualityLevel } from './passport.types.js';
+
 // --- Risk & Severity ---
 
 export type RiskLevel = 'unacceptable' | 'high' | 'limited' | 'minimal' | 'gpai' | 'gpai_systemic';
@@ -104,6 +106,8 @@ export interface Finding {
   readonly explanation?: FindingExplanation;
   /** Agent passport name (enriched post-scan from passport source_files). */
   readonly agentId?: string;
+  /** Document quality level (none → scaffold → draft → reviewed). */
+  readonly docQuality?: DocQualityLevel;
 }
 
 // --- Score ---

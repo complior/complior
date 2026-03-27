@@ -20,6 +20,8 @@ export type PassportRiskClass = 'prohibited' | 'high' | 'limited' | 'minimal';
 export type LifecycleStatus = 'draft' | 'review' | 'active' | 'suspended' | 'retired';
 export type SourceMode = 'auto' | 'semi-auto' | 'manual';
 
+export type DocQualityLevel = 'none' | 'scaffold' | 'draft' | 'reviewed';
+
 // --- Sub-interfaces ---
 
 export interface OwnerBlock {
@@ -114,27 +116,33 @@ export interface ComplianceBlock {
     readonly last_review?: string;
     readonly risk_count?: number;
     readonly residual_risks_accepted?: number;
+    readonly doc_quality?: DocQualityLevel;
   };
   readonly data_governance?: {
     readonly documented?: boolean;
     readonly bias_tested?: boolean;
     readonly last_audit?: string;
+    readonly doc_quality?: DocQualityLevel;
   };
   readonly technical_documentation?: {
     readonly documented?: boolean;
     readonly last_update?: string;
+    readonly doc_quality?: DocQualityLevel;
   };
   readonly declaration_of_conformity?: {
     readonly documented?: boolean;
     readonly date?: string;
+    readonly doc_quality?: DocQualityLevel;
   };
   readonly art5_screening?: {
     readonly completed?: boolean;
     readonly date?: string;
+    readonly doc_quality?: DocQualityLevel;
   };
   readonly instructions_for_use?: {
     readonly documented?: boolean;
     readonly last_update?: string;
+    readonly doc_quality?: DocQualityLevel;
   };
   readonly scan_summary?: {
     readonly total_checks: number;
@@ -146,6 +154,12 @@ export interface ComplianceBlock {
     readonly scan_date: string;
   };
   readonly multi_framework?: readonly FrameworkScore[];
+  readonly doc_quality_summary?: {
+    readonly none: number;
+    readonly scaffold: number;
+    readonly draft: number;
+    readonly reviewed: number;
+  };
 }
 
 export interface OversightBlock {
@@ -341,27 +355,33 @@ const ComplianceBlockSchema = z.object({
     last_review: z.string().optional(),
     risk_count: z.number().int().min(0).optional(),
     residual_risks_accepted: z.number().int().min(0).optional(),
+    doc_quality: z.enum(['none', 'scaffold', 'draft', 'reviewed']).optional(),
   }).optional(),
   data_governance: z.object({
     documented: z.boolean().optional(),
     bias_tested: z.boolean().optional(),
     last_audit: z.string().optional(),
+    doc_quality: z.enum(['none', 'scaffold', 'draft', 'reviewed']).optional(),
   }).optional(),
   technical_documentation: z.object({
     documented: z.boolean().optional(),
     last_update: z.string().optional(),
+    doc_quality: z.enum(['none', 'scaffold', 'draft', 'reviewed']).optional(),
   }).optional(),
   declaration_of_conformity: z.object({
     documented: z.boolean().optional(),
     date: z.string().optional(),
+    doc_quality: z.enum(['none', 'scaffold', 'draft', 'reviewed']).optional(),
   }).optional(),
   art5_screening: z.object({
     completed: z.boolean().optional(),
     date: z.string().optional(),
+    doc_quality: z.enum(['none', 'scaffold', 'draft', 'reviewed']).optional(),
   }).optional(),
   instructions_for_use: z.object({
     documented: z.boolean().optional(),
     last_update: z.string().optional(),
+    doc_quality: z.enum(['none', 'scaffold', 'draft', 'reviewed']).optional(),
   }).optional(),
   scan_summary: z.object({
     total_checks: z.number().int().min(0),
@@ -382,6 +402,12 @@ const ComplianceBlockSchema = z.object({
     grade: z.string().optional(),
     assessed_at: z.string().optional(),
   })).optional(),
+  doc_quality_summary: z.object({
+    none: z.number().int().min(0),
+    scaffold: z.number().int().min(0),
+    draft: z.number().int().min(0),
+    reviewed: z.number().int().min(0),
+  }).optional(),
 });
 
 const OversightBlockSchema = z.object({

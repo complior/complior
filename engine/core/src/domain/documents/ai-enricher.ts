@@ -138,7 +138,8 @@ Return the complete improved document (full Markdown). Preserve all existing con
 
   try {
     const result = await complior(generateText)({ model, system: systemPrompt, prompt });
-    const enrichedMarkdown = result.text.trim();
+    const marker = `\n\n<!-- complior:reviewed ${new Date().toISOString()} -->`;
+    const enrichedMarkdown = result.text.trim() + marker;
 
     // Count how many fields were likely addressed
     const remainingPlaceholders = (enrichedMarkdown.match(/\[(?:TO BE COMPLETED|REVIEW REQUIRED)[^\]]*\]/g) ?? []).length;

@@ -3,20 +3,20 @@
  * Maps scanner checkIds → ComplianceBlock doc-status fields and builds scan_summary.
  */
 import type { Finding } from '../../types/common.types.js';
-import type { ComplianceBlock } from '../../types/passport.types.js';
+import type { ComplianceBlock, DocQualityLevel } from '../../types/passport.types.js';
 
 // --- Check ID → compliance field mapping ---
 
-type DocFieldMapper = (pass: boolean, date: string) => Partial<ComplianceBlock>;
+type DocFieldMapper = (pass: boolean, date: string, docQuality?: DocQualityLevel) => Partial<ComplianceBlock>;
 
 const DOC_CHECK_TO_FIELD = new Map<string, DocFieldMapper>([
   ['fria', (p) => ({ fria_completed: p })],
-  ['risk-management', (p, d) => ({ risk_management: { documented: p, last_review: d } })],
-  ['data-governance', (p, d) => ({ data_governance: { documented: p, last_audit: d } })],
-  ['technical-documentation', (p, d) => ({ technical_documentation: { documented: p, last_update: d } })],
-  ['declaration-of-conformity', (p, d) => ({ declaration_of_conformity: { documented: p, date: d } })],
-  ['art5-screening', (p, d) => ({ art5_screening: { completed: p, date: d } })],
-  ['instructions-for-use', (p, d) => ({ instructions_for_use: { documented: p, last_update: d } })],
+  ['risk-management', (p, d, q) => ({ risk_management: { documented: p, last_review: d, doc_quality: q } })],
+  ['data-governance', (p, d, q) => ({ data_governance: { documented: p, last_audit: d, doc_quality: q } })],
+  ['technical-documentation', (p, d, q) => ({ technical_documentation: { documented: p, last_update: d, doc_quality: q } })],
+  ['declaration-of-conformity', (p, d, q) => ({ declaration_of_conformity: { documented: p, date: d, doc_quality: q } })],
+  ['art5-screening', (p, d, q) => ({ art5_screening: { completed: p, date: d, doc_quality: q } })],
+  ['instructions-for-use', (p, d, q) => ({ instructions_for_use: { documented: p, last_update: d, doc_quality: q } })],
 ]);
 
 /**
@@ -38,7 +38,9 @@ export const deriveDocStatusFromFindings = (
     // Prefer worst-case: L2 SHALLOW (fail) overrides L1 presence (pass)
     const match = matches.find(f => f.type === 'fail') ?? matches[0];
     if (match) {
-      result = { ...result, ...mapper(match.type === 'pass', date) };
+      // Extract docQuality from L2 finding (L1 findings won't have it)
+      const docQuality = match.docQuality ?? (match.type === 'pass' ? 'draft' : 'none');
+      result = { ...result, ...mapper(match.type === 'pass', date, docQuality) };
     }
   }
 
@@ -88,6 +90,36 @@ export const buildScanSummary = (
     failed_checks: failedChecks,
     scan_date: scanDate,
   };
+};
+
+/**
+ * Build a summary of document quality levels across all doc fields in the compliance block.
+ * Counts how many docs are at each quality level (none, scaffold, draft, reviewed).
+ */
+export const buildDocQualitySummary = (
+  compliance: Partial<ComplianceBlock>,
+): ComplianceBlock['doc_quality_summary'] => {
+  const summary = { none: 0, scaffold: 0, draft: 0, reviewed: 0 };
+
+  const docFields = [
+    compliance.risk_management,
+    compliance.data_governance,
+    compliance.technical_documentation,
+    compliance.declaration_of_conformity,
+    compliance.art5_screening,
+    compliance.instructions_for_use,
+  ] as const;
+
+  for (const field of docFields) {
+    const quality = (field as Record<string, unknown> | undefined)?.doc_quality as DocQualityLevel | undefined;
+    if (quality !== undefined && quality in summary) {
+      summary[quality]++;
+    } else {
+      summary.none++;
+    }
+  }
+
+  return summary;
 };
 
 /** Known multi-segment category names (3+ words) that must not be truncated. */

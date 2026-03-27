@@ -22,7 +22,7 @@ import type { AutonomyAnalysis } from '../domain/passport/autonomy-analyzer.js';
 import { scanPermissions } from '../domain/passport/permission-scanner.js';
 import { buildPassport } from '../domain/passport/manifest-builder.js';
 import type { ProjectProfile } from '../domain/passport/manifest-builder.js';
-import { deriveDocStatusFromFindings, buildScanSummary } from '../domain/passport/scan-to-compliance.js';
+import { deriveDocStatusFromFindings, buildScanSummary, buildDocQualitySummary } from '../domain/passport/scan-to-compliance.js';
 import { loadOrCreateKeyPair, signPassport, verifyPassport as verifyPassportCrypto } from '../domain/passport/crypto-signer.js';
 import { validatePassport, computeCompleteness } from '../domain/passport/passport-validator.js';
 import type { ValidationResult, CompletenessResult } from '../domain/passport/passport-validator.js';
@@ -258,11 +258,14 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       const applicable = agentPassed + agentFailed;
       const agentScore = applicable > 0 ? Math.round((agentPassed / applicable) * 100) : 0;
 
+      const docQualitySummary = buildDocQualitySummary(docStatus);
+
       await updatePassportCompliance(deps, passport.name, {
         complior_score: agentScore,
         project_score: scanResult.score.totalScore,
         last_scan: scanResult.scannedAt,
         scan_summary: scanSummary,
+        doc_quality_summary: docQualitySummary,
         ...docStatus,
       }, path).catch(() => {});
     }
