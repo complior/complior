@@ -1,4 +1,4 @@
-import type { FileInfo } from '../../ports/scanner.port.js';
+import type { FileInfo } from '../../../ports/scanner.port.js';
 
 const AGENTS_DIR = '.complior/agents/';
 const MANIFEST_SUFFIX = '-manifest.json';

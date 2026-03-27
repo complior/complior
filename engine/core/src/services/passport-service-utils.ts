@@ -6,7 +6,7 @@ import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { AgentPassport } from '../types/passport.types.js';
-import { parsePassport } from '../types/passport.types.js';
+import { parsePassport } from '../types/passport-schemas.js';
 import { createEvidence, type EvidenceSource } from '../domain/scanner/evidence.js';
 import { loadOrCreateKeyPair, signPassport } from '../domain/passport/crypto-signer.js';
 import type { PassportServiceDeps } from './passport-service.js';

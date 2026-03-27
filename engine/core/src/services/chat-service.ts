@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { CoreMessage } from 'ai';
 import type { ScanResult } from '../types/common.types.js';
 import type { PassportSummary } from '../types/passport.types.js';
-import type { RegulationData } from '../data/regulation-loader.js';
+import type { RegulationData } from '../data/regulation/regulation-loader.js';
 import { EU_AI_ACT_DEADLINE } from '../domain/shared/compliance-constants.js';
 
 /** Maximum chat messages retained in history (disk + memory). */

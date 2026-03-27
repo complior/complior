@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { L4CheckResult } from '../scanner/layers/layer4-patterns.js';
-import type { PatternCategory } from '../scanner/rules/pattern-rules.js';
+import type { L4CheckResult } from '../../scanner/layers/layer4-patterns.js';
+import type { PatternCategory } from '../../scanner/rules/pattern-rules.js';
 import { analyzeAutonomy } from './autonomy-analyzer.js';
 
 // --- Helpers ---

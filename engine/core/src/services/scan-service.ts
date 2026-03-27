@@ -6,7 +6,7 @@ import type { Scanner } from '../domain/scanner/create-scanner.js';
 import { detectDrift } from '../domain/scanner/drift.js';
 import { generateSbom, type CycloneDxBom } from '../domain/scanner/sbom.js';
 import { parseDepsFromContext } from '../domain/shared/parse-dependencies.js';
-import { discoverAgents } from '../domain/passport/agent-discovery.js';
+import { discoverAgents } from '../domain/passport/discovery/agent-discovery.js';
 import { attributeFindings, expandPerAgentFindings, type AgentInfo } from '../domain/scanner/finding-attribution.js';
 import { buildImportGraph } from '../domain/scanner/import-graph.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';

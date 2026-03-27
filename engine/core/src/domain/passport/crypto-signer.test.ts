@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateKeyPair, signPassport, verifyPassport } from './crypto-signer.js';
-import { buildPassport } from './manifest-builder.js';
-import type { PassportBuildInput } from './manifest-builder.js';
+import { buildPassport } from './builder/manifest-builder.js';
+import type { PassportBuildInput } from './builder/manifest-builder.js';
 import type { AgentPassport } from '../../types/passport.types.js';
 
 // --- Helpers ---

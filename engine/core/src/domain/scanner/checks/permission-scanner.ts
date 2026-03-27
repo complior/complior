@@ -1,7 +1,7 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
-import { scanPermissionsDetailed } from '../../passport/permission-scanner.js';
-import { filterPassportManifests } from '../../passport/manifest-files.js';
+import { scanPermissionsDetailed } from '../../passport/discovery/permission-scanner.js';
+import { filterPassportManifests } from '../../passport/builder/manifest-files.js';
 
 const CHECK_ID_UNDECLARED = 'undeclared-permission';
 const CHECK_ID_UNUSED = 'unused-declared-permission';

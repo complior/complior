@@ -1,0 +1,9 @@
+export { detectWeakSections, buildL2Feedback, enrichDocumentWithAI } from './ai-enricher.js';
+export type { AiEnrichInput, AiEnrichedResult } from './ai-enricher.js';
+export { generateDocument, ALL_DOC_TYPES, TEMPLATE_FILE_MAP } from './document-generator.js';
+export type { DocType, DocGeneratorInput, DocResult } from './document-generator.js';
+export { deriveOversightDescription } from './passport-helpers.js';
+export { generatePolicy } from './policy-generator.js';
+export type { PolicyGeneratorInput, PolicyResult } from './policy-generator.js';
+export { generateWorkerNotification } from './worker-notification-generator.js';
+export type { WorkerNotificationInput, WorkerNotificationResult } from './worker-notification-generator.js';

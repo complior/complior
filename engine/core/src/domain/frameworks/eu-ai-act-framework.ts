@@ -3,7 +3,7 @@
  * Does NOT re-run calculateScore; reads metrics.scanResult.score directly.
  */
 
-import type { ScoringData, WeightedCategory } from '../../data/schemas.js';
+import type { ScoringData, WeightedCategory } from '../../data/schemas/schemas.js';
 import type {
   ComplianceFramework,
   FoundationMetrics,

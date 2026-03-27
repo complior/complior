@@ -6,8 +6,8 @@ import {
   getMissingFields,
 } from './obligation-field-map.js';
 import type { AgentPassport } from '../../types/passport.types.js';
-import { buildPassport } from './manifest-builder.js';
-import type { PassportBuildInput } from './manifest-builder.js';
+import { buildPassport } from './builder/manifest-builder.js';
+import type { PassportBuildInput } from './builder/manifest-builder.js';
 import { generateKeyPair, signPassport } from './crypto-signer.js';
 
 // --- Helper: create a fully signed manifest ---

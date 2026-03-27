@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { listJurisdictions, getJurisdiction } from '../../data/jurisdiction-data.js';
+import { listJurisdictions, getJurisdiction } from '../../data/regulation/jurisdiction-data.js';
 import { NotFoundError } from '../../types/errors.js';
 
 export const createJurisdictionRoute = () => {

@@ -1,5 +1,5 @@
 import type { AgentPassport } from '../../types/passport.types.js';
-import { mapDomain } from '../passport/domain-mapper.js';
+import { mapDomain } from '../passport/builder/domain-mapper.js';
 import { deriveOversightDescription } from '../documents/passport-helpers.js';
 
 // --- Types ---

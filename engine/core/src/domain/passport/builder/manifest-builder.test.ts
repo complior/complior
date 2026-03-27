@@ -10,7 +10,7 @@ import {
   computeDeployerObligations,
 } from './manifest-builder.js';
 import type { PassportBuildInput } from './manifest-builder.js';
-import type { ScanResult } from '../../types/common.types.js';
+import type { ScanResult } from '../../../types/common.types.js';
 
 // --- Standard test input ---
 

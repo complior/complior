@@ -22,8 +22,8 @@ import type { AuditPackageResult } from '../domain/audit/audit-package.js';
 import type { AuditFilter, AuditEntry, AuditTrailSummary } from '../domain/audit/audit-trail.js';
 import { generateComplianceTests } from '../domain/passport/test-generator.js';
 import type { GeneratedTestSuite } from '../domain/passport/test-generator.js';
-import { computeManifestDiff } from '../domain/passport/manifest-diff.js';
-import type { ManifestDiffResult } from '../domain/passport/manifest-diff.js';
+import { computeManifestDiff } from '../domain/passport/builder/manifest-diff.js';
+import type { ManifestDiffResult } from '../domain/passport/builder/manifest-diff.js';
 import type { PassportServiceDeps } from './passport-service.js';
 
 export interface PassportAuditOps {

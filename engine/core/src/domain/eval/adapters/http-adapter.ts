@@ -5,7 +5,7 @@
 
 import type { TargetAdapter, TargetResponse, ProbeOptions } from './adapter-port.js';
 import { safeJsonParse, withRetry } from './adapter-port.js';
-import { withTimeout } from './with-timeout.js';
+import { withTimeout, extractResponseHeaders } from './with-timeout.js';
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -34,10 +34,7 @@ const sendRequest = async (
           ? raw.content
           : JSON.stringify(raw);
 
-    const responseHeaders: Record<string, string> = {};
-    res.headers.forEach((v, k) => { responseHeaders[k] = v; });
-
-    return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
+    return { text, status: res.status, headers: extractResponseHeaders(res), latencyMs, raw };
   }, timeout));
 };
 

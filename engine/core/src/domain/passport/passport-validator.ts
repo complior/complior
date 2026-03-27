@@ -1,4 +1,4 @@
-import { AgentPassportSchema } from '../../types/passport.types.js';
+import { AgentPassportSchema } from '../../types/passport-schemas.js';
 import type { AgentPassport } from '../../types/passport.types.js';
 import { verifyPassport as verifyPassportCrypto } from './crypto-signer.js';
 import {

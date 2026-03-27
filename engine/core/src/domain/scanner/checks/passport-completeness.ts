@@ -1,6 +1,6 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
-import { filterPassportManifests, extractRiskClass } from '../../passport/manifest-files.js';
+import { filterPassportManifests, extractRiskClass } from '../../passport/builder/manifest-files.js';
 import { OBLIGATION_FIELD_MAP, getFieldValue, isNonEmpty } from '../../passport/obligation-field-map.js';
 
 const CHECK_ID = 'passport-completeness';

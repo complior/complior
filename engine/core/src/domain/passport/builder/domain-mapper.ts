@@ -1,4 +1,4 @@
-import type { AgentPassport } from '../../types/passport.types.js';
+import type { AgentPassport } from '../../../types/passport.types.js';
 
 /** Map AgentPassport to a domain string (analytics, coding, other). */
 export const mapDomain = (manifest: AgentPassport): string => {

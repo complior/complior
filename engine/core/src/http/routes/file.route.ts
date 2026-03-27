@@ -1,8 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { FileService } from '../../services/file-service.js';
-import { ValidationError } from '../../types/errors.js';
-import { parseBody } from '../utils/validation.js';
+import { parseBody, requireQuery } from '../utils/validation.js';
 
 const CreateFileSchema = z.object({
   path: z.string().min(1),
@@ -44,12 +43,8 @@ export const createFileRoute = (fileService: FileService) => {
   });
 
   app.get('/file/list', async (c) => {
-    const path = c.req.query('path');
+    const path = requireQuery(c, 'path');
     const pattern = c.req.query('pattern');
-
-    if (!path) {
-      throw new ValidationError('Missing path query parameter');
-    }
 
     const files = await fileService.list(path, pattern);
     return c.json({ files, count: files.length });

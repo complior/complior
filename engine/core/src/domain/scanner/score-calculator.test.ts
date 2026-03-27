@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateScore, calculateScoreDiff, getZone } from './score-calculator.js';
 import type { CheckResult } from '../../types/common.types.js';
-import type { ScoringData } from '../../data/schemas.js';
+import type { ScoringData } from '../../data/schemas/schemas.js';
 
 // Minimal scoring data matching the real structure
 const makeScoringData = (overrides?: Partial<ScoringData>): ScoringData => ({

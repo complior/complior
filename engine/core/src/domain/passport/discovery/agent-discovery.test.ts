@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { ScanContext, FileInfo } from '../../ports/scanner.port.js';
-import type { ParsedDependency } from '../scanner/layers/layer3-parsers.js';
+import type { ScanContext, FileInfo } from '../../../ports/scanner.port.js';
+import type { ParsedDependency } from '../../scanner/layers/layer3-parsers.js';
 import { discoverAgents } from './agent-discovery.js';
 
 // --- Helpers ---

@@ -7,7 +7,7 @@ import { gitOperation } from '../infra/git-adapter.js';
 import { collectFiles } from '../infra/file-collector.js';
 import { createScanner } from '../domain/scanner/create-scanner.js';
 import type { ScanResult } from '../types/common.types.js';
-import type { ScoringData } from '../data/schemas.js';
+import type { ScoringData } from '../data/schemas/schemas.js';
 
 export type ToolExecutor = (args: Record<string, unknown>) => Promise<string>;
 

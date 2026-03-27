@@ -15,7 +15,7 @@ import {
   type CrossMappingFile,
   type LocalizationFile,
   type TimelineFile,
-} from './schemas.js';
+} from '../schemas/schemas.js';
 import { REGULATION_RAW } from './regulation-data.js';
 
 export interface RegulationData {

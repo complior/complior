@@ -2,8 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { ScanService } from '../../services/scan-service.js';
 import type { ScanResult } from '../../types/common.types.js';
-import { ValidationError } from '../../types/errors.js';
-import { parseBody } from '../utils/validation.js';
+import { parseBody, requireQuery } from '../utils/validation.js';
 
 const ScanRequestSchema = z.object({
   path: z.string().min(1),
@@ -95,10 +94,7 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
   });
 
   app.get('/sbom', async (c) => {
-    const path = c.req.query('path');
-    if (!path) {
-      throw new ValidationError('Missing "path" query parameter');
-    }
+    const path = requireQuery(c, 'path');
 
     const sbom = await scanService.getSbom(path);
     return c.json(sbom);

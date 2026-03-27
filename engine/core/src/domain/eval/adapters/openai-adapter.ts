@@ -2,10 +2,8 @@
  * OpenAI-compatible adapter — sends to `/v1/chat/completions` format.
  * Works with OpenAI, Azure OpenAI, vLLM, LM Studio, and any OpenAI-compatible API.
  */
-
-import type { TargetAdapter, TargetResponse, ProbeOptions } from './adapter-port.js';
-import { safeJsonParse, withRetry } from './adapter-port.js';
-import { withTimeout } from './with-timeout.js';
+import type { TargetAdapter } from './adapter-port.js';
+import { createChatAdapter } from './create-chat-adapter.js';
 
 const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_MODEL = 'gpt-4o';
@@ -24,82 +22,37 @@ export const createOpenAIAdapter = (
     return h;
   };
 
-  const send = async (probe: string, options?: ProbeOptions): Promise<TargetResponse> => {
-    const start = Date.now();
-    const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
-
-    const messages: { role: string; content: string }[] = [];
-    if (options?.systemPrompt) messages.push({ role: 'system', content: options.systemPrompt });
-    messages.push({ role: 'user', content: probe });
-
-    return withRetry(async () => withTimeout(async (signal) => {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: buildHeaders(),
-        body: JSON.stringify({
-          model: effectiveModel,
-          messages,
-          temperature: options?.temperature ?? 0,
-          max_tokens: options?.maxTokens ?? 2048,
-        }),
-        signal,
-      });
-      const latencyMs = Date.now() - start;
-      const raw = await safeJsonParse(res);
-
+  return createChatAdapter({
+    name: 'openai',
+    endpoint,
+    defaultTimeout: DEFAULT_TIMEOUT,
+    buildHeaders,
+    buildInitialMessages: (probe, options) => {
+      const msgs: { role: string; content: string }[] = [];
+      if (options?.systemPrompt) msgs.push({ role: 'system', content: options.systemPrompt });
+      msgs.push({ role: 'user', content: probe });
+      return msgs;
+    },
+    buildMultiTurnPrefix: (options) => {
+      const msgs: { role: string; content: string }[] = [];
+      if (options?.systemPrompt) msgs.push({ role: 'system', content: options.systemPrompt });
+      return msgs;
+    },
+    buildBody: (messages, options) => ({
+      model: effectiveModel,
+      messages,
+      temperature: options?.temperature ?? 0,
+      max_tokens: options?.maxTokens ?? 2048,
+    }),
+    extractText: (raw) => {
       const choices = raw.choices as { message?: { content?: string } }[] | undefined;
-      const text = choices?.[0]?.message?.content ?? '';
-
-      const responseHeaders: Record<string, string> = {};
-      res.headers.forEach((v, k) => { responseHeaders[k] = v; });
-
-      return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
-    }, timeout));
-  };
-
-  const sendMultiTurn = async (probes: readonly string[], options?: ProbeOptions): Promise<readonly TargetResponse[]> => {
-    const results: TargetResponse[] = [];
-    const messages: { role: string; content: string }[] = [];
-    if (options?.systemPrompt) messages.push({ role: 'system', content: options.systemPrompt });
-
-    for (const probe of probes) {
-      messages.push({ role: 'user', content: probe });
-      const start = Date.now();
-      const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
-
-      const result = await withRetry(async () => withTimeout(async (signal) => {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: buildHeaders(),
-          body: JSON.stringify({ model: effectiveModel, messages, temperature: 0, max_tokens: 2048 }),
-          signal,
-        });
-        const latencyMs = Date.now() - start;
-        const raw = await safeJsonParse(res);
-        const choices = raw.choices as { message?: { content?: string } }[] | undefined;
-        const text = choices?.[0]?.message?.content ?? '';
-
-        const responseHeaders: Record<string, string> = {};
-        res.headers.forEach((v, k) => { responseHeaders[k] = v; });
-        return { text, status: res.status, headers: responseHeaders, latencyMs, raw };
-      }, timeout));
-      messages.push({ role: 'assistant', content: result.text });
-      results.push(result);
-    }
-    return results;
-  };
-
-  const checkHealth = async (): Promise<boolean> => {
-    try {
-      const modelsUrl = baseUrl.replace(/\/$/, '') + '/v1/models';
-      return await withTimeout(async (signal) => {
-        const res = await fetch(modelsUrl, { headers: buildHeaders(), signal });
-        return res.status === 200;
-      }, 5000);
-    } catch {
-      return false;
-    }
-  };
-
-  return Object.freeze({ send, sendMultiTurn, checkHealth, name: 'openai' });
+      return choices?.[0]?.message?.content ?? '';
+    },
+    healthCheck: {
+      url: baseUrl.replace(/\/$/, '') + '/v1/models',
+      method: 'GET',
+      headers: buildHeaders,
+      isHealthy: (status) => status === 200,
+    },
+  });
 };

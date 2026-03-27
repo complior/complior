@@ -2,46 +2,13 @@ import type { LanguageModel } from 'ai';
 import type { LlmPort, ProviderName, ProviderInfo, ModelSelection } from '../ports/llm.port.js';
 import { LLMError } from '../types/errors.js';
 import { complior } from '@complior/sdk';
-
-type TaskType = 'qa' | 'code' | 'report' | 'classify' | 'chat';
+import { routeModelForProvider } from '../llm/routing/model-routing.js';
 
 const PROVIDERS: readonly ProviderInfo[] = [
   { name: 'openai', available: false, envVar: 'OPENAI_API_KEY' },
   { name: 'anthropic', available: false, envVar: 'ANTHROPIC_API_KEY' },
   { name: 'openrouter', available: false, envVar: 'OPENROUTER_API_KEY' },
 ];
-
-const MODEL_MAP: Record<ProviderName, Record<TaskType, string>> = {
-  openai: {
-    qa: 'gpt-4o-mini',
-    code: 'gpt-4o',
-    report: 'gpt-4o',
-    classify: 'gpt-4o-mini',
-    chat: 'gpt-4o',
-  },
-  anthropic: {
-    qa: 'claude-haiku-4-5-20251001',
-    code: 'claude-sonnet-4-5-20250929',
-    report: 'claude-sonnet-4-5-20250929',
-    classify: 'claude-haiku-4-5-20251001',
-    chat: 'claude-sonnet-4-5-20250929',
-  },
-  openrouter: {
-    qa: 'anthropic/claude-haiku-4.5',
-    code: 'anthropic/claude-sonnet-4.5',
-    report: 'anthropic/claude-sonnet-4.5',
-    classify: 'anthropic/claude-haiku-4.5',
-    chat: 'anthropic/claude-sonnet-4.5',
-  },
-};
-
-const TASK_REASONS: Record<TaskType, string> = {
-  qa: 'Fast, cheap model for simple Q&A',
-  code: 'Balanced model for code generation',
-  report: 'Powerful model for detailed reports',
-  classify: 'Fast model for classification tasks',
-  chat: 'Balanced model for interactive chat',
-};
 
 export const createLlmAdapter = (): LlmPort => {
   const detectProviders = (): readonly ProviderInfo[] =>
@@ -61,19 +28,8 @@ export const createLlmAdapter = (): LlmPort => {
     return available[0]!.name;
   };
 
-  const isTaskType = (s: string): s is TaskType => s in TASK_REASONS;
-
-  const routeModel = (taskType: string, preferredProvider?: ProviderName): ModelSelection => {
-    const provider = preferredProvider ?? getDefaultProvider();
-    const validType = isTaskType(taskType) ? taskType : 'chat';
-    const modelId = MODEL_MAP[provider][validType];
-
-    return {
-      provider,
-      modelId,
-      reason: TASK_REASONS[validType],
-    };
-  };
+  const routeModel = (taskType: string, preferredProvider?: ProviderName): ModelSelection =>
+    routeModelForProvider(taskType, preferredProvider ?? getDefaultProvider());
 
   const getModel = async (
     provider: ProviderName,

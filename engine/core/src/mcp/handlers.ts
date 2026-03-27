@@ -1,8 +1,8 @@
 import type { ScanService } from '../services/scan-service.js';
 import type { FixService } from '../services/fix-service.js';
 import type { ScanResult } from '../types/common.types.js';
-import type { RegulationData } from '../data/regulation-loader.js';
-import type { Obligation } from '../data/schemas.js';
+import type { RegulationData } from '../data/regulation/regulation-loader.js';
+import type { Obligation } from '../data/schemas/schemas.js';
 import { toJsonOutput } from '../output/json-output.js';
 import { toGithubIssue } from '../output/github-issue.js';
 

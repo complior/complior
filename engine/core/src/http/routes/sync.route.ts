@@ -7,7 +7,7 @@ import type { AgentPassport } from '../../types/passport.types.js';
 import type { ScanResult } from '../../types/common.types.js';
 import type { PassportService } from '../../services/passport-service.js';
 import type { AuditFilter, AuditEntry } from '../../domain/audit/audit-trail.js';
-import { mapDomain } from '../../domain/passport/domain-mapper.js';
+import { mapDomain } from '../../domain/passport/builder/domain-mapper.js';
 import { createLogger } from '../../infra/logger.js';
 import { parseBody } from '../utils/validation.js';
 

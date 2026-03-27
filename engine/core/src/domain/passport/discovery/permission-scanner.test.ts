@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createScanFile, createScanCtx } from '../../test-helpers/factories.js';
+import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 import { scanPermissions, scanPermissionsDetailed } from './permission-scanner.js';
 describe('scanPermissions', () => {
   it('detects tool definitions', () => {

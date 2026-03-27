@@ -1,7 +1,7 @@
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
 import { AI_SDK_PACKAGES } from '../rules/banned-packages-sdk.js';
-import { filterPassportManifests } from '../../passport/manifest-files.js';
+import { filterPassportManifests } from '../../passport/builder/manifest-files.js';
 
 const CHECK_ID = 'passport-presence';
 const ARTICLE_REF = 'Art. 26(4)';

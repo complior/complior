@@ -10,11 +10,11 @@ import type {
   ConstraintsBlock,
   OversightBlock,
   SourceBlock,
-} from '../../types/passport.types.js';
-import type { ScanResult } from '../../types/common.types.js';
-import { findRegistryCard } from '../../data/registry-cards.js';
-import { OBLIGATION_FIELD_MAP, getFieldValue, isNonEmpty } from './obligation-field-map.js';
-import { buildScanSummary, deriveDocStatusFromFindings } from './scan-to-compliance.js';
+} from '../../../types/passport.types.js';
+import type { ScanResult } from '../../../types/common.types.js';
+import { findRegistryCard } from '../../../data/registry-cards.js';
+import { OBLIGATION_FIELD_MAP, getFieldValue, isNonEmpty } from '../obligation-field-map.js';
+import { buildScanSummary, deriveDocStatusFromFindings } from '../scan-to-compliance.js';
 
 // --- Input interface ---
 

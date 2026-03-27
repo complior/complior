@@ -1,5 +1,5 @@
 import type { ScanResult } from '../types/common.types.js';
-import { loadRegulationData } from '../data/regulation-loader.js';
+import { loadRegulationData } from '../data/regulation/regulation-loader.js';
 import { createLogger } from '../infra/logger.js';
 import { createMcpStack } from './create-mcp-stack.js';
 

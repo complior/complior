@@ -1,4 +1,4 @@
-import type { ScanContext } from '../../ports/scanner.port.js';
+import type { ScanContext } from '../../../ports/scanner.port.js';
 
 // --- Types ---
 
@@ -34,7 +34,7 @@ export interface DiscoveredPermissionsDetailed extends DiscoveredPermissions {
 
 const SOURCE_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.py']);
 
-import { EXCLUDED_DIRS } from '../scanner/constants.js';
+import { EXCLUDED_DIRS } from '../../scanner/constants.js';
 
 const isSourceFile = (relativePath: string, extension: string): boolean => {
   if (!SOURCE_EXTENSIONS.has(extension)) return false;

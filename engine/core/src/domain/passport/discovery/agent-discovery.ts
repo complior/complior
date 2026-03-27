@@ -1,7 +1,7 @@
-import type { ScanContext } from '../../ports/scanner.port.js';
-import type { ParsedDependency } from '../scanner/layers/layer3-parsers.js';
-import type { DiscoveredAgent } from '../../types/passport.types.js';
-import { AI_SDK_PACKAGES } from '../scanner/rules/banned-packages-sdk.js';
+import type { ScanContext } from '../../../ports/scanner.port.js';
+import type { ParsedDependency } from '../../scanner/layers/layer3-parsers.js';
+import type { DiscoveredAgent } from '../../../types/passport.types.js';
+import { AI_SDK_PACKAGES } from '../../scanner/rules/banned-packages-sdk.js';
 
 // --- Framework detection patterns ---
 
@@ -35,7 +35,7 @@ const SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.ts', '.js', '.py', '.rs', '.go',
 ]);
 
-import { EXCLUDED_DIRS } from '../scanner/constants.js';
+import { EXCLUDED_DIRS } from '../../scanner/constants.js';
 
 const isSourceFile = (relativePath: string, extension: string): boolean => {
   if (!SOURCE_EXTENSIONS.has(extension)) return false;

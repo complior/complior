@@ -1,5 +1,5 @@
-import type { L4CheckResult } from '../scanner/layers/layer4-patterns.js';
-import type { AutonomyLevel, AgentType, AutonomyEvidence } from '../../types/passport.types.js';
+import type { L4CheckResult } from '../../scanner/layers/layer4-patterns.js';
+import type { AutonomyLevel, AgentType, AutonomyEvidence } from '../../../types/passport.types.js';
 
 // --- Analysis result ---
 

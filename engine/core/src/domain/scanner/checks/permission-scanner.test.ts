@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 import { checkPermissions } from './permission-scanner.js';
-import { scanPermissionsDetailed } from '../../passport/permission-scanner.js';
+import { scanPermissionsDetailed } from '../../passport/discovery/permission-scanner.js';
 
 const createPassportManifest = (tools: readonly string[] = []): string =>
   JSON.stringify({

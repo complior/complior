@@ -1,6 +1,6 @@
 import type { CheckResult, Finding, ScanResult, Severity, ExternalToolResult } from '../../types/common.types.js';
 import type { ScanContext } from '../../ports/scanner.port.js';
-import type { ScoringData } from '../../data/schemas.js';
+import type { ScoringData } from '../../data/schemas/schemas.js';
 import { calculateScore } from './score-calculator.js';
 import { L1_CHECKS } from './layers/layer1-files.js';
 import { runLayer2, layer2ToCheckResults } from './layers/layer2-docs.js';

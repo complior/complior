@@ -1,5 +1,5 @@
 import type { CheckResult, CategoryScore, ScoreBreakdown, ScoreDiff, ScoreZone } from '../../types/common.types.js';
-import type { ScoringData } from '../../data/schemas.js';
+import type { ScoringData } from '../../data/schemas/schemas.js';
 
 // CheckId → category mapping for findings without obligationId.
 // Pass results from L1/L2/L3/L4/git checks lack obligationId, so they

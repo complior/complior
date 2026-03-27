@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types/common.types.js';
-import type { RegulationData } from '../data/regulation-loader.js';
+import type { RegulationData } from '../data/regulation/regulation-loader.js';
 import { createEventBus } from '../infra/event-bus.js';
 import { createScanner } from '../domain/scanner/create-scanner.js';
 import { collectFiles } from '../infra/file-collector.js';
