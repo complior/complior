@@ -256,6 +256,9 @@ export const layer2ToCheckResults = (l2Results: readonly L2CheckResult[]): reado
       const feedbackSuffix = r.sectionFeedback && r.sectionFeedback.length > 0
         ? `. Suggestions: ${r.sectionFeedback.join('. ')}`
         : '';
+      const scaffoldHint = r.docQuality === 'scaffold'
+        ? '. Remove <!-- COMPLIOR:SCAFFOLD --> comment after editing to upgrade to draft quality'
+        : '';
       return {
         type: 'fail',
         checkId: `l2-${r.document}`,
@@ -263,7 +266,7 @@ export const layer2ToCheckResults = (l2Results: readonly L2CheckResult[]): reado
         severity: 'low',
         obligationId: r.obligationId,
         articleReference: r.article,
-        fix: `Enrich content in ${r.document} — add specifics, dates, tables${feedbackSuffix}`,
+        fix: `Enrich content in ${r.document} — add specifics, dates, tables${feedbackSuffix}${scaffoldHint}`,
       };
     }
 

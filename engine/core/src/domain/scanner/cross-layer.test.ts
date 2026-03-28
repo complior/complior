@@ -215,12 +215,19 @@ describe('cross-logging-no-retention', () => {
 });
 
 describe('cross-kill-switch-no-test', () => {
-  it('fires when kill switch found but no test files', () => {
+  it('fires when kill switch found but no test file in context', () => {
+    const ctx = {
+      projectPath: '/test',
+      files: [
+        { relativePath: 'src/kill-switch.ts', content: '', extension: '.ts' },
+      ],
+    };
     const findings = runCrossLayerChecks(
       [makeL1Fail('documentation')],
       [],
       [],
       [makeL4({ category: 'kill-switch', status: 'FOUND' })],
+      ctx,
     );
 
     const noTest = findings.find((f) => f.ruleId === 'cross-kill-switch-no-test');
@@ -228,16 +235,36 @@ describe('cross-kill-switch-no-test', () => {
     expect(noTest?.severity).toBe('low');
   });
 
-  it('does not fire when test-related L1 passes exist', () => {
+  it('does not fire when kill-switch test file exists in context', () => {
+    const ctx = {
+      projectPath: '/test',
+      files: [
+        { relativePath: 'src/kill-switch.ts', content: '', extension: '.ts' },
+        { relativePath: 'src/kill-switch.test.ts', content: '', extension: '.ts' },
+      ],
+    };
     const findings = runCrossLayerChecks(
-      [makeL1Pass('test-coverage')],
+      [],
+      [],
+      [],
+      [makeL4({ category: 'kill-switch', status: 'FOUND' })],
+      ctx,
+    );
+
+    const noTest = findings.find((f) => f.ruleId === 'cross-kill-switch-no-test');
+    expect(noTest).toBeUndefined();
+  });
+
+  it('fires when no context provided', () => {
+    const findings = runCrossLayerChecks(
+      [],
       [],
       [],
       [makeL4({ category: 'kill-switch', status: 'FOUND' })],
     );
 
     const noTest = findings.find((f) => f.ruleId === 'cross-kill-switch-no-test');
-    expect(noTest).toBeUndefined();
+    expect(noTest).toBeDefined();
   });
 });
 

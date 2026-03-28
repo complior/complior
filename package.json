@@ -2,10 +2,17 @@
   "name": "complior",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["engine/core", "engine/sdk", "engine/npm"],
+  "workspaces": [
+    "engine/core",
+    "engine/sdk",
+    "engine/npm"
+  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/a3ka/complior"
+  },
+  "devDependencies": {
+    "metaskills": "^1.0.4"
   }
 }

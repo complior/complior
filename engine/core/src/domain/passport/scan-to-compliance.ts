@@ -38,7 +38,9 @@ export const deriveDocStatusFromFindings = (
       (f) => f.checkId === prefix || f.checkId.startsWith(`${prefix}-`) || f.checkId.startsWith(`l1-${prefix}`) || f.checkId.startsWith(`l2-${prefix}`),
     );
     // Prefer worst-case: L2 SHALLOW (fail) overrides L1 presence (pass)
-    const match = matches.find(f => f.type === 'fail') ?? matches[0];
+    const match = matches.find(f => f.type === 'fail')
+      ?? matches.find(f => f.docQuality !== undefined)
+      ?? matches[0];
     if (match) {
       // Extract docQuality from L2 finding (L1 findings won't have it)
       const docQuality = match.docQuality ?? (match.type === 'pass' ? 'draft' : 'none');

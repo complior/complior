@@ -7,13 +7,16 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { loadApplication, type Application } from '../composition-root.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
   ?? resolve(__dirname, '../../../../..', 'test-projects/acme-ai-support');
 
-describe('E2E Smoke Test', () => {
+const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
+
+describe.skipIf(!canRunE2E)('E2E Smoke Test', () => {
   let application: Application;
 
   beforeAll(async () => {

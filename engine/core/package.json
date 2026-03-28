@@ -14,7 +14,7 @@
   "keywords": ["ai", "compliance", "eu-ai-act", "scanner", "fixer", "hono"],
   "scripts": {
     "dev": "tsx src/server.ts",
-    "build": "tsc",
+    "build": "tsc --noCheck",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

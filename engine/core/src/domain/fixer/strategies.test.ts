@@ -247,6 +247,24 @@ describe('FRIA template fix', () => {
   });
 });
 
+describe('R2: kill-switch test strategy', () => {
+  it('generates test file for cross-kill-switch-no-test', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'cross-kill-switch-no-test' }), makeContext());
+    expect(plan).not.toBeNull();
+    expect(plan!.fixType).toBe('code_injection');
+    expect(plan!.scoreImpact).toBe(4);
+    expect(plan!.actions[0].path).toContain('kill-switch.test.ts');
+    expect(plan!.actions[0].type).toBe('create');
+  });
+
+  it('returns null for unrelated checkIds', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'l4-kill-switch' }), makeContext());
+    // l4-kill-switch is handled by killSwitchStrategy, not killSwitchTestStrategy
+    expect(plan).not.toBeNull();
+    expect(plan!.actions[0].path).not.toContain('kill-switch.test.ts');
+  });
+});
+
 describe('N5: L4 logging and record-keeping strategies', () => {
   it('generates logging fix for l4-logging (not just interaction-logging)', () => {
     const plan = findStrategy(makeFinding({ checkId: 'l4-logging' }), makeContext());

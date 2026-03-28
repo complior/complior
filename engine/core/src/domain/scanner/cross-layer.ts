@@ -1,4 +1,5 @@
 import type { CheckResult } from '../../types/common.types.js';
+import type { ScanContext } from '../../ports/scanner.port.js';
 import type { L2CheckResult } from './layers/layer2-docs.js';
 import type { L3CheckResult } from './layers/layer3-config.js';
 import type { L4CheckResult } from './layers/layer4-patterns.js';
@@ -20,6 +21,7 @@ export interface CrossLayerRule {
     l2Results: readonly L2CheckResult[],
     l3Results: readonly L3CheckResult[],
     l4Results: readonly L4CheckResult[],
+    ctx?: ScanContext,
   ) => readonly CrossLayerFinding[];
 }
 
@@ -140,18 +142,16 @@ const loggingNoRetention: CrossLayerRule = {
 const killSwitchWithoutTest: CrossLayerRule = {
   id: 'cross-kill-switch-no-test',
   description: 'Kill switch pattern found but no test files detected',
-  check: (l1Results, _l2, _l3, l4Results) => {
+  check: (_l1, _l2, _l3, l4Results, ctx) => {
     const findings: CrossLayerFinding[] = [];
 
     const hasKillSwitch = l4Results.some(
       (r) => r.category === 'kill-switch' && r.status === 'FOUND',
     );
-    const hasTestFiles = l1Results.some(
-      (r) => r.type === 'pass' && r.checkId.includes('test'),
+    const hasTestFiles = ctx !== undefined && ctx.files.some(
+      (f) => /kill.?switch/i.test(f.relativePath) && /\.(test|spec)\./i.test(f.relativePath),
     );
 
-    // Approximate: check if any file in L1 indicates tests
-    // This checks the L1 pass checks — if none pass related to testing, flag it
     if (hasKillSwitch && !hasTestFiles) {
       findings.push({
         ruleId: 'cross-kill-switch-no-test',
@@ -243,11 +243,12 @@ export const runCrossLayerChecks = (
   l2Results: readonly L2CheckResult[],
   l3Results: readonly L3CheckResult[],
   l4Results: readonly L4CheckResult[],
+  ctx?: ScanContext,
 ): readonly CrossLayerFinding[] => {
   const allFindings: CrossLayerFinding[] = [];
 
   for (const rule of CROSS_LAYER_RULES) {
-    allFindings.push(...rule.check(l1Results, l2Results, l3Results, l4Results));
+    allFindings.push(...rule.check(l1Results, l2Results, l3Results, l4Results, ctx));
   }
 
   return allFindings;

@@ -276,6 +276,20 @@ describe('N1: fria_completed false for scaffold quality', () => {
   });
 });
 
+describe('P-BUG-2: docQuality from L2 finding preferred over L1', () => {
+  it('uses docQuality from L2 finding when both L1 and L2 pass', () => {
+    const findings = [
+      makeFindingWithQuality('risk-management', 'pass', undefined),    // L1 pass, no docQuality
+      makeFindingWithQuality('l2-risk-management', 'pass', 'reviewed'), // L2 pass with docQuality
+    ];
+
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+
+    expect(result.risk_management?.doc_quality).toBe('reviewed');
+    expect(result.risk_management?.documented).toBe(true);
+  });
+});
+
 describe('buildDocQualitySummary', () => {
   it('counts quality levels across all doc fields', () => {
     const compliance = {

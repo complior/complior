@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { readFile, rm, stat } from 'node:fs/promises';
 import { loadApplication, type Application } from '../composition-root.js';
 
@@ -18,12 +19,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
   ?? resolve(__dirname, '../../../../..', 'test-projects/acme-ai-support');
 
+const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
+
 // Clean up any previous E2E artifacts
 const cleanup = async () => {
   await rm(resolve(TEST_PROJECT, '.complior', 'reports'), { recursive: true, force: true });
 };
 
-describe('Gap Closures E2E', () => {
+describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
   let application: Application;
 
   beforeAll(async () => {

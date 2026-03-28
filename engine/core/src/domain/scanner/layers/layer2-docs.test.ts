@@ -1066,6 +1066,28 @@ ${richSection}
     expect(results[0].fix).toContain('Enrich content');
     expect(results[0].fix).toContain('Suggestions:');
   });
+
+  it('includes scaffold removal hint when docQuality is scaffold', () => {
+    const l2Result = {
+      obligationId: 'eu-ai-act-OBL-020',
+      article: 'Art. 72',
+      document: 'monitoring-policy',
+      status: 'PARTIAL' as const,
+      foundSections: ['Monitoring Scope', 'Frequency', 'Escalation Procedures'],
+      missingSections: [] as string[],
+      totalRequired: 3,
+      matchedRequired: 3,
+      completenessScore: 30,
+      sectionFeedback: ['Section "Monitoring Scope": Add numeric metrics'],
+      docQuality: 'scaffold' as const,
+    };
+
+    const results = layer2ToCheckResults([l2Result]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].fix).toContain('COMPLIOR:SCAFFOLD');
+    expect(results[0].fix).toContain('Remove <!-- COMPLIOR:SCAFFOLD -->');
+  });
 });
 
 describe('N1: scaffold marker detection in docQuality', () => {

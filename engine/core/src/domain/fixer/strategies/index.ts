@@ -8,6 +8,7 @@ import type { FixContext, FixPlan } from '../types.js';
 import { sdkWrapperStrategy } from './sdk-wrapper.js';
 import { permissionGuardStrategy } from './permission-guard.js';
 import { killSwitchStrategy } from './kill-switch.js';
+import { killSwitchTestStrategy } from './kill-switch-test.js';
 import { errorHandlerStrategy } from './error-handler.js';
 import { hitlGateStrategy } from './hitl-gate.js';
 import { dataGovernanceStrategy } from './data-governance.js';
@@ -30,6 +31,7 @@ const STRATEGIES = [
   sdkWrapperStrategy,
   permissionGuardStrategy,
   killSwitchStrategy,
+  killSwitchTestStrategy,
   errorHandlerStrategy,
   hitlGateStrategy,
   dataGovernanceStrategy,

@@ -35,8 +35,8 @@ export const createDebtService = (deps: DebtServiceDeps): DebtService => {
     const evidenceFreshness = await deps.getEvidenceFreshness();
 
     // Calculate days since last scan
-    const daysSinceLastScan = scan?.timestamp
-      ? Math.max(0, (Date.now() - new Date(scan.timestamp).getTime()) / (1000 * 60 * 60 * 24))
+    const daysSinceLastScan = scan?.scannedAt
+      ? Math.max(0, (Date.now() - new Date(scan.scannedAt).getTime()) / (1000 * 60 * 60 * 24))
       : 30;
 
     const result = computeDebt({

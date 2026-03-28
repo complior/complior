@@ -243,7 +243,16 @@ export const computeDeployerObligations = (
   return { met: met.sort(), pending: pending.sort() };
 };
 
-const detectProvider = (sdks: readonly string[]): string => {
+const detectProvider = (sdks: readonly string[], framework?: string): string => {
+  // Framework match takes priority (per-agent, more specific than project-level SDKs)
+  if (framework) {
+    const fw = framework.toLowerCase();
+    if (fw.includes('anthropic')) return 'anthropic';
+    if (fw.includes('openai')) return 'openai';
+    if (fw.includes('google') || fw.includes('gemini')) return 'google';
+    if (fw.includes('vercel')) return 'vercel';
+  }
+  // Fallback to SDK list
   if (sdks.length === 0) return 'unknown';
   const first = sdks[0].toLowerCase();
   if (first.includes('anthropic')) return 'anthropic';
@@ -272,7 +281,7 @@ export const buildPassport = (
   // --- Identity ---
   const name = agent.name;
   const displayName = toDisplayName(name);
-  const provider = detectProvider(agent.detectedSdks);
+  const provider = detectProvider(agent.detectedSdks, agent.framework);
   const modelId = agent.detectedModels[0] || 'unknown';
 
   // Step 7: Contextual description

@@ -322,7 +322,7 @@ export const createScanner = (
 
     // Cross-layer verification
     const l1Checks = allResults.slice(0, allResults.length - l2Checks.length - l3Checks.length - l4Checks.length - nhiChecks.length);
-    const crossLayerFindings = runCrossLayerChecks(l1Checks, l2Results, l3Results, l4Results);
+    const crossLayerFindings = runCrossLayerChecks(l1Checks, l2Results, l3Results, l4Results, ctx);
     const crossLayerCheckResults = crossLayerToCheckResults(crossLayerFindings);
     allResults.push(...crossLayerCheckResults);
     for (const clf of crossLayerFindings) {

@@ -483,6 +483,34 @@ describe('buildOversight', () => {
   });
 });
 
+describe('detectProvider via buildPassport', () => {
+  it('detects anthropic provider from framework hint over SDK list', () => {
+    const manifest = buildPassport({
+      ...testInput,
+      agent: {
+        ...testInput.agent,
+        detectedSdks: ['openai', '@anthropic-ai/sdk'],
+        framework: 'Anthropic',
+      },
+    });
+
+    expect(manifest.model.provider).toBe('anthropic');
+  });
+
+  it('falls back to SDK when framework is unknown', () => {
+    const manifest = buildPassport({
+      ...testInput,
+      agent: {
+        ...testInput.agent,
+        detectedSdks: ['openai'],
+        framework: 'Custom',
+      },
+    });
+
+    expect(manifest.model.provider).toBe('openai');
+  });
+});
+
 describe('computeDeployerObligations', () => {
   it('groups obligations by ID and classifies met/pending', () => {
     const manifest = {
