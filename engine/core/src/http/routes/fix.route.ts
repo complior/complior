@@ -103,9 +103,17 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     const scoreBefore = results[0]?.scoreBefore ?? 0;
     const scoreAfter = results.at(-1)?.scoreAfter ?? scoreBefore;
 
+    const unfixedFindings = fixService.getUnfixedFindings();
+
     return c.json({
       results,
       summary: { total: results.length, applied, failed, scoreBefore, scoreAfter },
+      unfixedFindings: unfixedFindings.map((f) => ({
+        checkId: f.checkId,
+        message: f.message,
+        severity: f.severity,
+        fix: f.fix,
+      })),
     });
   });
 

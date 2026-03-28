@@ -137,10 +137,14 @@ export const validateDocument = (
     }
 
     const shallowRatio = found.length > 0 ? shallowSections.length / found.length : 0;
-    const status: L2Status = shallowRatio > 0.5 ? 'SHALLOW' : 'VALID';
     const completenessScore = scoredSections > 0
       ? Math.round(totalQualityScore / scoredSections)
       : 0;
+    const status: L2Status = shallowRatio > 0.5
+      ? 'SHALLOW'
+      : completenessScore < 50
+        ? 'PARTIAL'
+        : 'VALID';
 
     const docQuality = classifyDocQuality(status, content);
 
@@ -227,14 +231,33 @@ export const layer2ToCheckResults = (l2Results: readonly L2CheckResult[]): reado
     }
 
     if (r.status === 'PARTIAL') {
+      // Two PARTIAL triggers: missing sections OR low content quality
+      if (r.missingSections.length > 0) {
+        return {
+          type: 'fail',
+          checkId: `l2-${r.document}`,
+          message: `${r.article}: ${r.document} — missing sections: ${r.missingSections.join(', ')} (${r.matchedRequired}/${r.totalRequired})`,
+          severity: 'medium',
+          obligationId: r.obligationId,
+          articleReference: r.article,
+          fix: `Add missing sections to ${r.document}: ${r.missingSections.join(', ')}`,
+        };
+      }
+      // All headings present but content quality < 50
+      const scoreSuffix = r.completenessScore !== undefined
+        ? ` (quality: ${r.completenessScore}/100)`
+        : '';
+      const feedbackSuffix = r.sectionFeedback && r.sectionFeedback.length > 0
+        ? `. Suggestions: ${r.sectionFeedback.join('. ')}`
+        : '';
       return {
         type: 'fail',
         checkId: `l2-${r.document}`,
-        message: `${r.article}: ${r.document} — missing sections: ${r.missingSections.join(', ')} (${r.matchedRequired}/${r.totalRequired})`,
-        severity: 'medium',
+        message: `${r.article}: ${r.document} — all sections present but content needs enrichment${scoreSuffix}`,
+        severity: 'low',
         obligationId: r.obligationId,
         articleReference: r.article,
-        fix: `Add missing sections to ${r.document}: ${r.missingSections.join(', ')}`,
+        fix: `Enrich content in ${r.document} — add specifics, dates, tables${feedbackSuffix}`,
       };
     }
 

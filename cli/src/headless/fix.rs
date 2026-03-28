@@ -252,6 +252,9 @@ fn format_fix_report(resp: &serde_json::Value, scan_path: &str) -> String {
         render_failures(&mut o, &failures);
     }
 
+    // Unfixed findings (manual action needed)
+    render_unfixed_findings(&mut o, resp);
+
     // Next steps
     let has_todos = docs.iter().any(|e| !e.manual_fields.is_empty());
     let has_scaffold = entries.iter().any(|e| e.applied && e.is_scaffold);
@@ -509,6 +512,45 @@ fn render_failures(o: &mut String, failures: &[&FixEntry]) {
     o.push('\n');
 }
 
+// ── Unfixed findings ─────────────────────────────────────────────
+
+fn render_unfixed_findings(o: &mut String, resp: &serde_json::Value) {
+    let unfixed = match resp.get("unfixedFindings").and_then(|v| v.as_array()) {
+        Some(arr) if !arr.is_empty() => arr,
+        _ => return,
+    };
+
+    o.push_str(&format!("  {}\n", separator()));
+    o.push_str(&format!("  {}  ({} finding{})\n",
+        bold("MANUAL ACTION NEEDED"),
+        unfixed.len(),
+        plural(unfixed.len()),
+    ));
+    o.push_str(&format!("  {}\n\n", separator()));
+
+    for item in unfixed {
+        let check_id = item.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+        let severity = item.get("severity").and_then(|v| v.as_str()).unwrap_or("medium");
+        let message = item.get("message").and_then(|v| v.as_str()).unwrap_or("");
+        let fix_hint = item.get("fix").and_then(|v| v.as_str());
+
+        let sev_colored = match severity {
+            "high" => red(severity),
+            "medium" => yellow(severity),
+            _ => dim(severity),
+        };
+
+        o.push_str(&format!("    {} [{}]  {}\n", yellow("▸"), sev_colored, check_label(check_id)));
+        if !message.is_empty() {
+            o.push_str(&format!("         {}\n", dim(message)));
+        }
+        if let Some(hint) = fix_hint {
+            o.push_str(&format!("         {}: {}\n", bold("Fix"), hint));
+        }
+    }
+    o.push('\n');
+}
+
 // ── Next steps ───────────────────────────────────────────────────
 
 fn render_next_steps(o: &mut String, has_todos: bool, has_scaffold: bool) {
@@ -698,5 +740,54 @@ mod tests {
         assert!(!entries[0].is_scaffold, "splice action should not be scaffold");
         assert!(entries[1].is_scaffold, "create-only action should be scaffold");
         assert!(entries[2].is_scaffold, "create-only code_injection should be scaffold");
+    }
+
+    #[test]
+    fn test_render_unfixed_findings_present() {
+        // Force NO_COLOR for deterministic output
+        // SAFETY: single-threaded test context
+        unsafe { std::env::set_var("NO_COLOR", "1"); }
+
+        let resp = serde_json::json!({
+            "results": [],
+            "summary": { "total": 0, "applied": 0, "failed": 0, "scoreBefore": 91, "scoreAfter": 91 },
+            "unfixedFindings": [
+                {
+                    "checkId": "l4-logging",
+                    "message": "Art. 12: No structured logging detected",
+                    "severity": "medium",
+                    "fix": "Add structured logging to your application"
+                },
+                {
+                    "checkId": "l4-record-keeping",
+                    "message": "Art. 12: No record-keeping policy found",
+                    "severity": "high",
+                    "fix": "Create a record-keeping policy document"
+                }
+            ]
+        });
+
+        let mut o = String::new();
+        render_unfixed_findings(&mut o, &resp);
+
+        assert!(o.contains("MANUAL ACTION NEEDED"), "should contain header");
+        assert!(o.contains("2 findings"), "should show count");
+        assert!(o.contains("Logging"), "should contain check label for l4-logging");
+        assert!(o.contains("Record Keeping"), "should contain check label for l4-record-keeping");
+        assert!(o.contains("Fix"), "should show fix hints");
+    }
+
+    #[test]
+    fn test_render_unfixed_findings_empty() {
+        let resp = serde_json::json!({
+            "results": [],
+            "summary": { "total": 0, "applied": 0, "failed": 0, "scoreBefore": 91, "scoreAfter": 91 },
+            "unfixedFindings": []
+        });
+
+        let mut o = String::new();
+        render_unfixed_findings(&mut o, &resp);
+
+        assert!(o.is_empty(), "should produce no output for empty unfixed findings");
     }
 }

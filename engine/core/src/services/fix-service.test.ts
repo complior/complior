@@ -50,25 +50,47 @@ const createTestDeps = () => {
     ]),
   };
 
+  let scanCallCount = 0;
   const scanService = {
     scan: vi.fn().mockImplementation(async () => {
-      // After fix, simulate pass for the fixed check
-      scanResult = createMockScanResult({
-        score: {
-          totalScore: 70,
-          zone: 'yellow',
-          categoryScores: [],
-          criticalCapApplied: false,
-          totalChecks: 10,
-          passedChecks: 7,
-          failedChecks: 2,
-          skippedChecks: 1,
-        },
-        findings: [
-          createMockFinding({ checkId: 'ai-disclosure', type: 'pass', obligationId: 'OBL-015' }),
-          createMockFinding({ checkId: 'data-governance', type: 'fail', obligationId: 'OBL-006' }),
-        ],
-      });
+      scanCallCount++;
+      if (scanCallCount <= 1) {
+        // First call: baseline scan (P14 normalization) — returns pre-fix score
+        scanResult = createMockScanResult({
+          score: {
+            totalScore: 60,
+            zone: 'yellow',
+            categoryScores: [],
+            criticalCapApplied: false,
+            totalChecks: 10,
+            passedChecks: 6,
+            failedChecks: 3,
+            skippedChecks: 1,
+          },
+          findings: [
+            createMockFinding({ checkId: 'ai-disclosure', type: 'fail', obligationId: 'OBL-015' }),
+            createMockFinding({ checkId: 'data-governance', type: 'fail', obligationId: 'OBL-006' }),
+          ],
+        });
+      } else {
+        // Subsequent calls: after fix, simulate pass for the fixed check
+        scanResult = createMockScanResult({
+          score: {
+            totalScore: 70,
+            zone: 'yellow',
+            categoryScores: [],
+            criticalCapApplied: false,
+            totalChecks: 10,
+            passedChecks: 7,
+            failedChecks: 2,
+            skippedChecks: 1,
+          },
+          findings: [
+            createMockFinding({ checkId: 'ai-disclosure', type: 'pass', obligationId: 'OBL-015' }),
+            createMockFinding({ checkId: 'data-governance', type: 'fail', obligationId: 'OBL-006' }),
+          ],
+        });
+      }
       return scanResult;
     }),
   };
@@ -214,6 +236,149 @@ describe('fix-service', () => {
       const result = await service.applyAndValidate(plan);
 
       expect(result.validation.scoreDelta).toBe(0);
+    });
+  });
+
+  describe('P14: scoreBefore normalization', () => {
+    it('scoreBefore reflects basic scan even when last scan was deep', async () => {
+      // Simulate: getLastScanResult returns deep scan score (86)
+      // but scanService.scan() returns basic scan score (91)
+      const deepScanResult = createMockScanResult({
+        score: {
+          totalScore: 86,
+          zone: 'green',
+          categoryScores: [],
+          criticalCapApplied: false,
+          totalChecks: 10,
+          passedChecks: 8,
+          failedChecks: 1,
+          skippedChecks: 1,
+        },
+        findings: [
+          createMockFinding({ checkId: 'ai-disclosure', type: 'fail', obligationId: 'OBL-015' }),
+        ],
+      });
+
+      const basicScanResult = createMockScanResult({
+        score: {
+          totalScore: 91,
+          zone: 'green',
+          categoryScores: [],
+          criticalCapApplied: false,
+          totalChecks: 10,
+          passedChecks: 9,
+          failedChecks: 0,
+          skippedChecks: 1,
+        },
+        findings: [
+          createMockFinding({ checkId: 'ai-disclosure', type: 'pass', obligationId: 'OBL-015' }),
+        ],
+      });
+
+      const events = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+      const scanService = {
+        scan: vi.fn().mockResolvedValue(basicScanResult),
+      };
+
+      const service = createFixService({
+        fixer: {
+          previewFix: vi.fn().mockReturnValue(createMockPlan()),
+          generateFix: vi.fn(),
+          generateFixes: vi.fn(),
+        },
+        scanService,
+        events,
+        getProjectPath: () => '/tmp/test-project',
+        getLastScanResult: () => deepScanResult, // Deep scan with score 86
+        loadTemplate: vi.fn(),
+      });
+
+      const plan = createMockPlan();
+      const result = await service.applyFix(plan);
+
+      // scoreBefore should be 91 (from basic baseline scan), not 86 (from deep scan)
+      expect(result.scoreBefore).toBe(91);
+    });
+  });
+
+  describe('P15: getUnfixedFindings', () => {
+    it('returns fail findings without auto-fix', () => {
+      const scanResult = createMockScanResult({
+        score: {
+          totalScore: 80,
+          zone: 'green',
+          categoryScores: [],
+          criticalCapApplied: false,
+          totalChecks: 10,
+          passedChecks: 7,
+          failedChecks: 3,
+          skippedChecks: 0,
+        },
+        findings: [
+          createMockFinding({ checkId: 'ai-disclosure', type: 'fail', obligationId: 'OBL-015' }),
+          createMockFinding({ checkId: 'l4-logging', type: 'fail', obligationId: 'OBL-020' }),
+          createMockFinding({ checkId: 'l4-record-keeping', type: 'fail', obligationId: 'OBL-021' }),
+          createMockFinding({ checkId: 'data-governance', type: 'pass', obligationId: 'OBL-006' }),
+        ],
+      });
+
+      const events = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+      const fixer = {
+        previewFix: vi.fn(),
+        generateFix: vi.fn(),
+        // Only ai-disclosure has an auto-fix
+        generateFixes: vi.fn().mockReturnValue([
+          createMockPlan({ checkId: 'ai-disclosure' }),
+        ]),
+      };
+
+      const service = createFixService({
+        fixer,
+        scanService: { scan: vi.fn() },
+        events,
+        getProjectPath: () => '/tmp/test-project',
+        getLastScanResult: () => scanResult,
+        loadTemplate: vi.fn(),
+      });
+
+      const unfixed = service.getUnfixedFindings();
+
+      // l4-logging and l4-record-keeping are fail findings without auto-fix
+      expect(unfixed).toHaveLength(2);
+      expect(unfixed.map((f) => f.checkId)).toEqual(['l4-logging', 'l4-record-keeping']);
+    });
+
+    it('returns empty array when all fail findings have auto-fixes', () => {
+      const scanResult = createMockScanResult({
+        score: {
+          totalScore: 80,
+          zone: 'green',
+          categoryScores: [],
+          criticalCapApplied: false,
+          totalChecks: 10,
+          passedChecks: 9,
+          failedChecks: 1,
+          skippedChecks: 0,
+        },
+        findings: [
+          createMockFinding({ checkId: 'ai-disclosure', type: 'fail', obligationId: 'OBL-015' }),
+        ],
+      });
+
+      const service = createFixService({
+        fixer: {
+          previewFix: vi.fn(),
+          generateFix: vi.fn(),
+          generateFixes: vi.fn().mockReturnValue([createMockPlan({ checkId: 'ai-disclosure' })]),
+        },
+        scanService: { scan: vi.fn() },
+        events: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
+        getProjectPath: () => '/tmp/test-project',
+        getLastScanResult: () => scanResult,
+        loadTemplate: vi.fn(),
+      });
+
+      expect(service.getUnfixedFindings()).toHaveLength(0);
     });
   });
 });

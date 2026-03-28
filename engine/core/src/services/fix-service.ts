@@ -221,7 +221,9 @@ export const createFixService = (deps: FixServiceDeps) => {
 
   const applyFix = async (plan: FixPlan, useAi = false): Promise<FixResult> => {
     const projectPath = getProjectPath();
-    const scoreBefore = getLastScanResult()?.score.totalScore ?? 0;
+    // Normalize: run a basic scan first so scoreBefore matches scoreAfter tier
+    const baselineScan = await scanService.scan(projectPath);
+    const scoreBefore = baselineScan.score.totalScore;
     const backedUp: string[] = [];
 
     try {
@@ -330,7 +332,9 @@ export const createFixService = (deps: FixServiceDeps) => {
     if (plans.length === 0) return [];
 
     const projectPath = getProjectPath();
-    const scoreBefore = getLastScanResult()?.score.totalScore ?? 0;
+    // Normalize: ensure scoreBefore reflects basic scan (same tier as scoreAfter)
+    const baselineScan = await scanService.scan(projectPath);
+    const scoreBefore = baselineScan.score.totalScore;
     const results: FixResult[] = [];
     const appliedSpliceKeys = new Set<string>(); // Track path:startLine to avoid re-applying
 
@@ -552,9 +556,18 @@ export const createFixService = (deps: FixServiceDeps) => {
     return results;
   };
 
+  const getUnfixedFindings = (): readonly Finding[] => {
+    const lastScan = getLastScanResult();
+    if (!lastScan) return [];
+    const fixableIds = new Set(previewAll().map((p) => p.checkId));
+    return lastScan.findings.filter(
+      (f) => f.type === 'fail' && !fixableIds.has(f.checkId),
+    );
+  };
+
   const overrideProjectPath = (path: string) => { projectPathOverride = path; };
 
-  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate, overrideProjectPath });
+  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate, overrideProjectPath, getUnfixedFindings });
 };
 
 export type FixService = ReturnType<typeof createFixService>;

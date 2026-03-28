@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { runLayer2, validateDocument, loadValidators, measureSectionDepth, measureSemanticDepth } from './layer2-docs.js';
+import { runLayer2, validateDocument, loadValidators, measureSectionDepth, measureSemanticDepth, layer2ToCheckResults } from './layer2-docs.js';
 import { hasAiReviewMarker, extractReviewDate } from './layer2-parsing.js';
 import { createScanFile, createScanCtx } from '../../../test-helpers/factories.js';
 import type { DocumentValidator } from './layer2-docs.js';
@@ -59,9 +59,12 @@ quarterly with updated materials reflecting the latest regulatory guidance from 
 ## Training Levels
 Training is delivered at three levels based on the employee's role and interaction with AI systems.
 Level 1 is for general staff awareness, Level 2 for technical teams who develop or maintain AI,
-and Level 3 for compliance officers and management who oversee AI governance. Each level has
-specific learning objectives, materials, and certification requirements documented in the HR system.
-Completion rates are tracked monthly and reported to the compliance committee.
+and Level 3 for compliance officers and management who oversee AI governance per Art. 4.
+Each level has specific learning objectives, materials, and certification requirements in the HR system.
+Completion rates must reach 95% within 30 days of onboarding. Monthly reports to compliance committee.
+- Level 1: General awareness (4 hours)
+- Level 2: Technical depth (16 hours)
+- Level 3: Governance certification (40 hours)
 
 ## Assessment Methods
 Assessment is conducted through a combination of online quizzes, practical exercises, and
@@ -187,12 +190,17 @@ All measures documented per ISO 42001 requirements for ongoing compliance.
 - Annual comprehensive review
 
 ## Section B
-Brief.
+This section provides additional configuration and deployment documentation as required by Art. 11.
+The system must be deployed with proper logging and monitoring. Reviews conducted quarterly per ISO 42001.
+All deployment records are maintained for 5 years with 99.9% availability SLA targets.
+- Deployment checklist verified before each release
+- Rollback procedures documented and tested
 `;
     const result = validateDocument(mixedValidator, content);
 
     // Section A has rich subsections → not shallow
-    // Section B is shallow → 1/2 = 50%, not > 50% → VALID
+    // Section B now has substantive content → not shallow
+    // Both sections have completenessScore >= 50 → VALID
     expect(result.status).toBe('VALID');
   });
 
@@ -321,10 +329,13 @@ describe('runLayer2', () => {
 
   it('returns VALID when some sections shallow but not over 50%', () => {
     const richSection = `This section provides comprehensive documentation as required by the EU AI Act regulation.
-The assessment was conducted on 2026-01-15 and covers all applicable requirements.
-Key findings include a 95% compliance rate across all evaluated criteria.
+The assessment was conducted on 2026-01-15 and covers all applicable requirements per Art. 72.
+Key findings include a 95% compliance rate across all evaluated criteria and objectives.
+The SLA target is within 24 hours response time. Monthly audits are conducted quarterly.
+All measures documented per ISO 42001 requirements for ongoing regulatory compliance.
 - Item 1: Detailed analysis of requirements
-- Item 2: Evidence of compliance measures`;
+- Item 2: Evidence of compliance measures
+- Item 3: Documented procedures and policies`;
 
     const ctx = createScanCtx([
       createScanFile('AI-LITERACY.md', `# AI Literacy\n## Training Program\n${richSection}\n## Training Levels\n${richSection}\n## Assessment Methods\nBrief.`),
@@ -333,7 +344,8 @@ Key findings include a 95% compliance rate across all evaluated criteria.
     const results = runLayer2(ctx);
 
     expect(results).toHaveLength(1);
-    // 1 out of 3 shallow = 33% < 50% → VALID
+    // 1 out of 3 shallow = 33% < 50% → shallowRatio OK
+    // 2 rich sections + 1 shallow → avg completenessScore >= 50 → VALID
     expect(results[0].status).toBe('VALID');
   });
 });
@@ -625,7 +637,8 @@ Post-incident reviews help improve the process.
 `;
     const result = validateDocument(validator, content);
 
-    expect(result.status).toBe('VALID');
+    // P17: completenessScore ≈ 30 (words+lists only) < 50 → PARTIAL
+    expect(result.status).toBe('PARTIAL');
     expect(result.sectionFeedback).toBeDefined();
     expect(result.sectionFeedback!.length).toBeGreaterThan(0);
     // Should suggest adding numeric metrics, legal references, etc.
@@ -880,12 +893,19 @@ describe('validateDocument docQuality', () => {
 ## Risk Assessment
 The company has conducted a thorough risk assessment covering all aspects of the AI system deployment.
 We identified 12 risk categories including bias, accuracy degradation, and data drift. Each risk is rated
-on a 5-point scale for likelihood and impact per Art. 9 requirements. Annual reviews are conducted.
+on a 5-point scale for likelihood and impact per Art. 9 requirements. Reviews are conducted quarterly
+starting from 2026-01-01. The SLA target is 99.9% uptime with KPI tracking for all risk indicators.
+All identified risks must be documented and reviewed within 30 days of detection.
+- Bias monitoring: <2% demographic parity gap
+- Accuracy tracking: >95% precision target
 
 ## Mitigation Measures
 For each identified risk, specific mitigation controls have been implemented including automated monitoring
 with 99.9% uptime SLA, quarterly bias audits achieving <2% demographic parity gap, and incident response
 procedures with 24-hour resolution targets. All measures documented per ISO 42001 requirements.
+The deployer must ensure continuous compliance with Art. 9 obligations and report within 72 hours.
+- Automated monitoring dashboards with threshold alerts
+- Incident response within 4 hours for critical issues
 `;
     const result = validateDocument(validator, content);
     expect(result.docQuality).toBe('draft');
@@ -935,5 +955,115 @@ Some basic content about risk assessment.
 `;
     const result = validateDocument(validator, content);
     expect(result.docQuality).toBe('reviewed');
+  });
+});
+
+// --- P17: Low-quality VALID → PARTIAL ---
+
+describe('P17: quality-based PARTIAL status', () => {
+  const validator: DocumentValidator = {
+    document: 'monitoring-policy',
+    obligation: 'eu-ai-act-OBL-020',
+    article: 'Art. 72',
+    file_patterns: ['MONITORING-POLICY.md'],
+    required_sections: [
+      { title: 'Monitoring Scope', required: true },
+      { title: 'Frequency', required: true },
+      { title: 'Escalation Procedures', required: true },
+    ],
+  };
+
+  it('marks PARTIAL when completenessScore < 50 despite all headings present', () => {
+    // Each section has lists + specifics → qualityScore ~30-40 (not shallow individually)
+    // but no numeric metrics, legal refs, action items → avg < 50 → PARTIAL
+    const content = `# Monitoring Policy
+
+## Monitoring Scope
+This section describes the monitoring scope for the AI system and its main components.
+The monitoring covers all production deployments and ensures broad compliance coverage.
+Regular checks are performed to maintain system integrity across all environments today.
+Assessment was last updated on 2026-01-15 with full scope reviewed for accuracy.
+- Production environment coverage
+- Development environment spot checks
+
+## Frequency
+Monitoring is performed regularly according to the defined schedule and requirements.
+The frequency is determined by risk level and applicable compliance requirements here.
+Higher risk systems are monitored more often. Last review completed on 2026-02-01.
+The schedule is documented and tracked consistently for all monitored systems today.
+- Continuous automated monitoring
+- Periodic manual reviews
+
+## Escalation Procedures
+When issues are detected the escalation procedures are followed for proper resolution.
+The team is notified promptly and appropriate corrective actions are taken for issues.
+Escalation paths are clearly defined for all severity levels. Updated on 2026-03-01.
+All escalation events are documented and tracked for future reference and audit needs.
+- Level 1: Team lead notification
+- Level 2: Department head escalation
+`;
+    const result = validateDocument(validator, content);
+
+    expect(result.status).toBe('PARTIAL');
+    expect(result.completenessScore).toBeDefined();
+    expect(result.completenessScore!).toBeLessThan(50);
+    expect(result.missingSections).toHaveLength(0);
+  });
+
+  it('marks VALID when completenessScore >= 50', () => {
+    const richSection = `As required by Art. 72 of the EU AI Act, the system must achieve 99.9% accuracy.
+Reviews are conducted quarterly starting from 2026-01-01.
+The SLA target is within 24 hours response time for all incidents.
+This comprehensive section documents all compliance requirements and obligations.
+The risk management framework covers identification, assessment, and mitigation of all known risks.
+Ongoing monitoring ensures continuous compliance with regulatory requirements.
+- Monitoring dashboard tracks KPIs
+- Automated alerts for threshold breaches
+| Metric | Target | Current |
+| --- | --- | --- |
+| Uptime | 99.9% | 99.95% |`;
+
+    const content = `# Monitoring Policy
+
+## Monitoring Scope
+${richSection}
+
+## Frequency
+${richSection}
+
+## Escalation Procedures
+${richSection}
+`;
+    const result = validateDocument(validator, content);
+
+    expect(result.status).toBe('VALID');
+    expect(result.completenessScore).toBeDefined();
+    expect(result.completenessScore!).toBeGreaterThanOrEqual(50);
+  });
+
+  it('layer2ToCheckResults generates low-severity fail for quality-based PARTIAL', () => {
+    const l2Result = {
+      obligationId: 'eu-ai-act-OBL-020',
+      article: 'Art. 72',
+      document: 'monitoring-policy',
+      status: 'PARTIAL' as const,
+      foundSections: ['Monitoring Scope', 'Frequency', 'Escalation Procedures'],
+      missingSections: [] as string[],
+      totalRequired: 3,
+      matchedRequired: 3,
+      completenessScore: 30,
+      sectionFeedback: ['Section "Monitoring Scope": Add numeric metrics'],
+      docQuality: 'scaffold' as const,
+    };
+
+    const results = layer2ToCheckResults([l2Result]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('fail');
+    expect(results[0].severity).toBe('low');
+    expect(results[0].message).toContain('content needs enrichment');
+    expect(results[0].message).toContain('quality: 30/100');
+    expect(results[0].fix).toContain('Enrich content');
+    expect(results[0].fix).toContain('Suggestions:');
   });
 });

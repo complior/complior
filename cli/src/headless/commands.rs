@@ -316,7 +316,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
         "path": base.to_string_lossy(),
     });
 
-    let mut agent_list: Vec<(String, String, String)> = Vec::new();
+    let mut agent_list: Vec<(String, String, String, f64)> = Vec::new();
     let mut skipped_count: usize = 0;
 
     match client.post_json("/agent/init", &body).await {
@@ -330,7 +330,11 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
                     let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
                     let framework = agent.get("framework").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
                     let autonomy = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?").to_string();
-                    agent_list.push((name, framework, autonomy));
+                    let confidence = agent.get("source")
+                        .and_then(|s| s.get("confidence"))
+                        .and_then(|c| c.as_f64())
+                        .unwrap_or(0.0);
+                    agent_list.push((name, framework, autonomy, confidence));
                 }
             }
         }
@@ -371,10 +375,26 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
     if created_count > 0 {
         println!("\n  {}       {} discovered", dim("Agents"), bold(&created_count.to_string()));
         println!("  {}", separator());
-        for (i, (name, framework, autonomy)) in agent_list.iter().enumerate() {
-            println!("    {}  {:<24} {:<12} {}", dim(&format!("{}.", i + 1)), name, framework, autonomy);
+        for (i, (name, framework, autonomy, confidence)) in agent_list.iter().enumerate() {
+            let conf_pct = (confidence * 100.0) as u32;
+            let conf_colored = if conf_pct >= 80 {
+                green(&format!("{}%", conf_pct))
+            } else if conf_pct >= 50 {
+                bold_yellow(&format!("{}%", conf_pct))
+            } else {
+                red(&format!("{}%", conf_pct))
+            };
+            println!("    {}  {:<24} {:<12} {} confidence: {}",
+                dim(&format!("{}.", i + 1)), name, framework, autonomy, conf_colored);
         }
         println!("  {}", separator());
+
+        if agent_list.iter().any(|(_, _, _, c)| *c < 0.5) {
+            println!("\n  {} Low confidence — fill owner, disclosure, and lifecycle fields:", bold_yellow("⚠"));
+            println!("      {}", dim("complior agent show <name>  — view missing fields"));
+            println!("      {}", dim("Edit .complior/agents/<name>-manifest.json manually"));
+        }
+
         println!("\n  {} Passports saved to .complior/agents/", check_mark());
     } else if skipped_count > 0 {
         println!("\n  {}       {} already have passports", dim("Agents"), bold(&skipped_count.to_string()));
