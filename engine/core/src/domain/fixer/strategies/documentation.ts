@@ -30,8 +30,9 @@ export const documentationStrategy: FixStrategy = (finding, context) => {
   if (!mapping) return null;
 
   // For L1 (presence) findings: skip if file already exists
-  // For L2 (structure/quality) findings: regenerate even if file exists (shallow doc → better template)
+  // For L2 (structure/quality) findings: only fix scaffold/none — never overwrite draft/reviewed docs
   const isL2 = finding.checkId.startsWith('l2-');
+  if (isL2 && (finding.docQuality === 'draft' || finding.docQuality === 'reviewed')) return null;
   if (!isL2 && context.existingFiles.some((f) => f.endsWith(mapping.outputFile))) return null;
 
   const action: FixAction = {

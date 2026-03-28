@@ -392,6 +392,7 @@ impl Serialize for Finding {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct FrameworkCategoryScore {
     pub category_id: String,
     pub category_name: String,
@@ -403,6 +404,7 @@ pub struct FrameworkCategoryScore {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct FrameworkScoreResult {
     pub framework_id: String,
     pub framework_name: String,
@@ -420,6 +422,7 @@ pub struct FrameworkScoreResult {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct MultiFrameworkScoreResult {
     pub frameworks: Vec<FrameworkScoreResult>,
     pub selected_framework_ids: Vec<String>,
@@ -431,6 +434,7 @@ pub struct MultiFrameworkScoreResult {
 /// Security category score for OWASP LLM Top 10 breakdown.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct SecurityCategoryScore {
     pub category_id: String,
     #[serde(default)]
@@ -443,6 +447,7 @@ pub struct SecurityCategoryScore {
 /// Security score from redteam or promptfoo import.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct SecurityScoreResult {
     pub score: f64,
     pub grade: String,
@@ -456,6 +461,7 @@ pub struct SecurityScoreResult {
 /// Probe result from a redteam run.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ProbeResult {
     pub probe_id: String,
     #[serde(default)]
@@ -472,6 +478,7 @@ pub struct ProbeResult {
 /// OWASP category summary within a redteam report.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct OwaspCategorySummary {
     pub category_id: String,
     pub total: u32,
@@ -484,6 +491,7 @@ pub struct OwaspCategorySummary {
 /// Full redteam report from `POST /redteam/run` or `GET /redteam/last`.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct RedteamReport {
     pub agent_name: String,
     pub timestamp: String,
@@ -506,6 +514,7 @@ pub struct RedteamReport {
 /// GET /cost-estimate response.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct CostEstimateResult {
     pub remediation_cost: f64,
     pub documentation_cost: f64,
@@ -517,6 +526,7 @@ pub struct CostEstimateResult {
 /// GET /debt response.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct DebtResult {
     pub total_debt: f64,
     pub level: String,
@@ -528,6 +538,7 @@ pub struct DebtResult {
 /// GET /cert/readiness response.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ReadinessResult {
     pub overall_score: f64,
     pub readiness_level: String,
@@ -546,6 +557,7 @@ pub struct ReadinessResult {
 /// Readiness category from engine (matches TS `Aiuc1CategoryScore`).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ReadinessCategory {
     pub category: String,
     #[serde(default)]
@@ -558,6 +570,7 @@ pub struct ReadinessCategory {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct EngineStatus {
     pub ready: bool,
     #[serde(default)]

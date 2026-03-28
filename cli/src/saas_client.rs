@@ -47,6 +47,7 @@ struct TokenSuccessResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SyncResult {
     pub action: String,
     #[serde(rename = "toolId")]
@@ -57,12 +58,14 @@ pub struct SyncResult {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SyncScanResult {
     pub processed: i64,
     pub tools: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SyncStatusResult {
     pub stats: SyncStats,
     #[serde(rename = "recentHistory")]
@@ -82,6 +85,7 @@ pub struct SyncStats {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SyncDocResult {
     pub synced: i64,
     pub created: i64,
@@ -194,6 +198,7 @@ impl SaasClient {
         (email, org)
     }
 
+    #[allow(dead_code)]
     pub async fn sync_status(&self, token: &str) -> Result<SyncStatusResult, String> {
         let url = format!("{}/api/sync/status", self.base_url);
         let resp = self.client.get(&url)

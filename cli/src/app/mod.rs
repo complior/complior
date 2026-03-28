@@ -34,6 +34,7 @@ use crate::views::scan::ScanViewState;
 use crate::views::timeline::TimelineViewState;
 
 #[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 pub struct SyncState {
     pub authenticated: bool,
     pub user_email: Option<String>,

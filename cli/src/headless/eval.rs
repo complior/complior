@@ -431,7 +431,7 @@ async fn parse_eval_stream(
     // Phase 4: track phase stats for completion summaries
     let mut phase_stats: Option<PhaseStats> = None;
     let mut prev_category = String::new();
-    let mut total_cost: f64 = 0.0;
+    let mut _total_cost: f64 = 0.0;
 
     while let Some(chunk) = stream.next().await {
         let chunk = match chunk {
@@ -511,7 +511,7 @@ async fn parse_eval_stream(
                                 if let Some(stats) = phase_stats.take() {
                                     erase_prev_line();
                                     print_phase_completion(&stats);
-                                    total_cost += stats.cost_estimate;
+                                    _total_cost += stats.cost_estimate;
                                 }
 
                                 current_phase = phase.to_string();
@@ -555,7 +555,7 @@ async fn parse_eval_stream(
                         if let Some(stats) = phase_stats.take() {
                             erase_prev_line();
                             print_phase_completion(&stats);
-                            total_cost += stats.cost_estimate;
+                            _total_cost += stats.cost_estimate;
                         }
 
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
@@ -1948,6 +1948,7 @@ fn print_failures_with_remediation(
 }
 
 /// Print remediation plan — deduplicated actions sorted by priority × affected tests.
+#[allow(dead_code)]
 fn print_remediation_plan(remediation: &serde_json::Value) {
     let remediation = match remediation.as_object() {
         Some(r) if !r.is_empty() => r,
@@ -2035,6 +2036,7 @@ fn print_remediation_plan(remediation: &serde_json::Value) {
 }
 
 /// Quick actions from remediation data (top-5 most impactful, US-REM-07).
+#[allow(dead_code)]
 fn print_quick_actions_from_remediation(remediation: &serde_json::Value, target: &str) {
     let rem = match remediation.as_object() {
         Some(r) if !r.is_empty() => r,
@@ -2254,6 +2256,7 @@ pub async fn run_eval_fix(dry_run: bool, json: bool, config: &TuiConfig) -> i32 
     }
 }
 
+#[allow(dead_code)]
 fn priority_num(p: &str) -> u32 {
     match p {
         "critical" => 0,

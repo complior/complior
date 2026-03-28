@@ -1,6 +1,8 @@
 pub mod chat;
+#[allow(dead_code)]
 pub mod code_viewer;
 pub mod dashboard;
+#[allow(dead_code)]
 pub mod file_browser;
 pub mod fix;
 pub mod obligations;
@@ -9,6 +11,7 @@ pub mod passport;
 pub mod report;
 pub mod scan;
 pub mod sidebar;
+#[allow(dead_code)]
 pub mod terminal;
 pub mod timeline;
 

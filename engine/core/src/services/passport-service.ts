@@ -243,7 +243,8 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       const docStatus = deriveDocStatusFromFindings(allAgentFindings, scanResult.scannedAt);
       const scanSummary = buildScanSummary(allAgentFindings, scanResult.scannedAt);
 
-      // Per-agent score: agent's own + global findings (both passes and fails)
+      // complior_score: per-agent simple ratio (no category weights).
+      // Contrast with project_score (weighted 8-category score from score-calculator.ts).
       const agentPassed = allAgentFindings.filter(f => f.type === 'pass').length;
       const agentFailed = allAgentFindings.filter(f => f.type === 'fail').length;
       const applicable = agentPassed + agentFailed;

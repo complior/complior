@@ -193,7 +193,7 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
 /// Then starts the engine and runs agent discovery to auto-create passports.
 pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 {
     use super::common::{ensure_engine_for, resolve_project_path_buf};
-    use super::format::colors::{bold, bold_green, bold_red, bold_yellow, check_mark, cyan, dim, diamond, green, red, yellow};
+    use super::format::colors::{bold, bold_red, bold_yellow, check_mark, cyan, dim, diamond, green, red};
     use super::format::separator;
     use super::interactive;
 

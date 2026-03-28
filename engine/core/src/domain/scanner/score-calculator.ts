@@ -108,6 +108,12 @@ const findCategoryForCheck = (
   return undefined;
 };
 
+/**
+ * Calculate project-wide weighted compliance score (→ passport.project_score).
+ * Groups checks into 8 categories, applies per-category weights, and caps at 40
+ * if any critical obligation fails with high/medium severity.
+ * Contrast with complior_score: simple per-agent passed/(passed+failed)×100 ratio.
+ */
 export const calculateScore = (
   checks: readonly CheckResult[],
   scoringData: ScoringData,

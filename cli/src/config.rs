@@ -731,6 +731,7 @@ pub fn load_llm_api_key(provider: &str) -> Option<String> {
 
 /// Stored token data loaded from credentials file.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct StoredTokens {
     pub access_token: String,
     pub refresh_token: String,

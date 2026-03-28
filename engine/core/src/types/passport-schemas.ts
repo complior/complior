@@ -67,7 +67,9 @@ const ComplianceBlockSchema = z.object({
     deployer_obligations_met: z.array(z.string()),
     deployer_obligations_pending: z.array(z.string()),
   }),
+  /** Per-agent: passed / (passed + failed) × 100. No category weights. */
   complior_score: z.number().min(0).max(100),
+  /** Project-wide: 8-category weighted average, capped at 40 if critical obligation fails. */
   project_score: z.number().min(0).max(100).optional(),
   last_scan: z.string(),
   fria_completed: z.boolean().optional(),

@@ -43,6 +43,7 @@ const THEMES_JSON: &str = include_str!("../data/themes.json");
 
 /// Parsed theme entry from JSON.
 #[derive(serde::Deserialize)]
+#[allow(dead_code)]
 struct ThemeEntry {
     name: String,
     aliases: Vec<String>,
@@ -174,6 +175,7 @@ pub fn list_themes() -> Vec<ThemeColors> {
 }
 
 /// Syntect theme name for each TUI theme (for code highlighting).
+#[allow(dead_code)]
 pub fn syntect_theme_for(name: &str) -> &'static str {
     let lower = name.to_lowercase();
     let entries = load_theme_entries();
@@ -258,6 +260,7 @@ pub fn title_style() -> Style {
     Style::default().fg(t.accent).add_modifier(Modifier::BOLD)
 }
 
+#[allow(dead_code)]
 pub fn muted_style() -> Style {
     Style::default().fg(theme().muted)
 }

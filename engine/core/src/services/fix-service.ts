@@ -94,31 +94,37 @@ export const createFixService = (deps: FixServiceDeps) => {
               let existingContent: string | undefined;
               try { existingContent = await readFile(fullPath, 'utf-8'); } catch { /* file doesn't exist */ }
 
-              if (existingContent && existingContent.trim().length > 0 && useAi && deps.llm) {
-                // Existing doc: enhance with L2-informed LLM feedback (preserve user edits)
-                const weakSections = detectWeakSections(existingContent);
-                const baseResult: DocResult = {
-                  markdown: existingContent,
-                  docType: docTypeEntry[0],
-                  prefilledFields: [],
-                  manualFields: [...weakSections],
-                };
-                manualFields = weakSections;
+              if (existingContent && existingContent.trim().length > 0) {
+                if (useAi && deps.llm) {
+                  // Existing doc + --ai: enhance with L2-informed LLM feedback (preserve user edits)
+                  const weakSections = detectWeakSections(existingContent);
+                  const baseResult: DocResult = {
+                    markdown: existingContent,
+                    docType: docTypeEntry[0],
+                    prefilledFields: [],
+                    manualFields: [...weakSections],
+                  };
+                  manualFields = weakSections;
 
-                if (weakSections.length > 0) {
-                  try {
-                    const selection = deps.llm.routeModel('document-generation');
-                    const model = await deps.llm.getModel(selection.provider, selection.modelId);
-                    const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
-                    content = enriched.markdown;
-                  } catch {
-                    content = existingContent; // LLM failed — keep existing
+                  if (weakSections.length > 0) {
+                    try {
+                      const selection = deps.llm.routeModel('document-generation');
+                      const model = await deps.llm.getModel(selection.provider, selection.modelId);
+                      const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
+                      content = enriched.markdown;
+                    } catch {
+                      content = existingContent; // LLM failed — keep existing
+                    }
+                  } else {
+                    content = existingContent; // All sections adequate — no changes needed
                   }
                 } else {
-                  content = existingContent; // All sections adequate — no changes needed
+                  // Existing doc without --ai: keep existing content, never overwrite with scaffold
+                  content = existingContent;
+                  manualFields = detectWeakSections(existingContent);
                 }
               } else {
-                // No existing file or no --ai — generate fresh scaffold
+                // No existing file — generate fresh scaffold
                 const baseResult = generateDocument({ manifest: passport, template, docType: docTypeEntry[0] });
                 manualFields = baseResult.manualFields;
 

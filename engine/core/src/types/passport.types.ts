@@ -95,7 +95,11 @@ export interface ComplianceBlock {
     readonly deployer_obligations_met: readonly string[];
     readonly deployer_obligations_pending: readonly string[];
   };
+  /** Per-agent compliance score: passed / (passed + failed) × 100.
+   *  Uses agent-specific + global findings. Simple ratio without category weights. */
   readonly complior_score: number;
+  /** Project-wide weighted score: 8-category weighted average with critical cap at 40.
+   *  Computed by score-calculator.ts using category weights and obligation severity. */
   readonly project_score?: number;
   readonly last_scan: string;
   readonly fria_completed?: boolean;
