@@ -265,6 +265,25 @@ describe('R2: kill-switch test strategy', () => {
   });
 });
 
+describe('N2: log-retention strategy', () => {
+  it('generates docker-compose override for cross-logging-no-retention', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'cross-logging-no-retention' }), makeContext());
+    expect(plan).not.toBeNull();
+    expect(plan!.fixType).toBe('config_fix');
+    expect(plan!.scoreImpact).toBe(4);
+    expect(plan!.actions[0].path).toBe('docker-compose.override.yml');
+    expect(plan!.actions[0].content).toContain('max-size');
+    expect(plan!.actions[0].content).toContain('max-file');
+  });
+
+  it('returns null for unrelated checkIds', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'l4-logging' }), makeContext());
+    expect(plan).not.toBeNull();
+    // l4-logging is handled by loggingStrategy, not logRetentionStrategy
+    expect(plan!.actions[0].path).not.toBe('docker-compose.override.yml');
+  });
+});
+
 describe('N5: L4 logging and record-keeping strategies', () => {
   it('generates logging fix for l4-logging (not just interaction-logging)', () => {
     const plan = findStrategy(makeFinding({ checkId: 'l4-logging' }), makeContext());

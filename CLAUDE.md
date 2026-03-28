@@ -15,9 +15,9 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 ## Architecture Rules
 
 1. **Daemon architecture**: Background daemon (file watcher + engine + MCP server + HTTP API) ↔ TUI dashboard (Rust, connects via HTTP/SSE) ↔ CLI commands (standalone or via daemon)
-2. **Deterministic core, AI interface** — LLM NEVER makes compliance determinations. All checks are deterministic (AST + rules). LLM helps understand and fix.
+2. **Deterministic core, AI-assisted fix** — LLM NEVER makes compliance determinations. All checks are deterministic (AST + rules). Fix pipeline applies deterministic fixes (splice, template, config). LLM assists with complex refactoring when `--ai` flag is used (`complior eval`, `complior fix --ai`). Roadmap: `eval` (with all flags) → `fix --ai`.
 3. **Compliance Gate** — every file change → background rescan (200ms) → score update → SSE notification
-4. **Daemon principle** — Complior does NOT write code. It monitors file changes and provides compliance feedback. Auto-fixes are delegated to any coding agent via MCP.
+4. **Fix principle** — Deterministic fixes run automatically (wrap SDK calls, generate templates, create configs). Complex fixes (raw HTTP→SDK refactor, multi-file changes) require LLM via `fix --ai` or delegation to coding agent via MCP.
 5. **Agent Passport** — central entity (identity card of an AI system). 36 fields, 3 creation modes, ed25519 signed.
 6. **7-step pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
 7. **DataProvider port** — Engine retains regulation JSON locally (`engine/core/src/data/`). AI Registry data from PROJECT API (5,011+ tools online). TUI: EngineDataProvider (online) ↔ MockDataProvider (12 demo, offline fallback)

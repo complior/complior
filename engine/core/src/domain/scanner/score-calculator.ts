@@ -78,6 +78,17 @@ const CHECK_ID_TO_CATEGORY: Readonly<Record<string, string>> = {
   'git-author-diversity-fria': 'deployer_specific',
   'git-author-diversity-risk-management': 'risk_management',
   'git-bulk-compliance': 'organizational',
+
+  // --- External tool checks ---
+  'ext-semgrep-complior-bare-call': 'transparency',
+  'ext-semgrep-complior-injection-js': 'technical_safeguards',
+  'ext-semgrep-complior-injection-py': 'technical_safeguards',
+  'ext-detect-secrets-Secret-Keyword': 'technical_safeguards',
+  'ext-detect-secrets-Base64-High-Entropy': 'technical_safeguards',
+  'ext-detect-secrets-Hex-High-Entropy': 'technical_safeguards',
+  'ext-bandit-hardcoded-password': 'technical_safeguards',
+  'ext-bandit-sql-injection': 'technical_safeguards',
+  'ext-modelscan-malicious-model': 'risk_management',
 };
 
 export const getZone = (score: number): ScoreZone => {

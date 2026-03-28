@@ -260,6 +260,22 @@ describe('calculateScore', () => {
     expect(result.categoryScores[0].score).toBe(0);
   });
 
+  it('includes ext-* findings in category scores', () => {
+    // ext-semgrep-complior-bare-call maps to transparency
+    const checks: readonly CheckResult[] = [
+      pass('ai-disclosure'),
+      fail('ext-semgrep-complior-bare-call'),
+    ];
+
+    const result = calculateScore(checks, scoringData);
+
+    const transparency = result.categoryScores.find((c) => c.category === 'transparency');
+    expect(transparency).toBeDefined();
+    expect(transparency!.obligationCount).toBe(2);
+    expect(transparency!.passedCount).toBe(1);
+    expect(transparency!.score).toBe(50);
+  });
+
   it('skips categories with no matching checks', () => {
     // Only transparency checks
     const checks: readonly CheckResult[] = [

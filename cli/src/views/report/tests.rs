@@ -35,6 +35,7 @@ mod tests {
                 evidence: None,
                 explanation: None,
                 agent_id: None,
+                doc_quality: None,
             }],
             project_path: "/test/project".to_string(),
             scanned_at: "2026-02-18".to_string(),

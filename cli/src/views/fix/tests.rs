@@ -21,6 +21,7 @@ fn make_findings() -> Vec<Finding> {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         },
         Finding {
             check_id: "OBL-002".to_string(),
@@ -40,6 +41,7 @@ fn make_findings() -> Vec<Finding> {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         },
         Finding {
             check_id: "OBL-003".to_string(),
@@ -59,6 +61,7 @@ fn make_findings() -> Vec<Finding> {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         },
     ]
 }
@@ -221,6 +224,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         },
         Finding {
             check_id: "l2-fria".to_string(),
@@ -240,6 +244,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         },
         Finding {
             check_id: "l3-compliance-metadata".to_string(),
@@ -259,6 +264,7 @@ fn make_enriched_findings() -> Vec<Finding> {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         },
     ]
 }
@@ -396,6 +402,7 @@ fn snapshot_fix_single_mode_type_a_recommendation() {
         evidence: None,
         explanation: None,
         agent_id: None,
+        doc_quality: None,
     }];
     app.last_scan = Some(make_scan_result(&findings));
     app.fix_view = FixViewState::from_scan(&findings);
@@ -456,6 +463,7 @@ fn test_apply_fix_diff_writes_file() {
         evidence: None,
         explanation: None,
         agent_id: None,
+        doc_quality: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -496,6 +504,7 @@ fn test_apply_type_b_creates_file() {
         evidence: None,
         explanation: None,
         agent_id: None,
+        doc_quality: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);
@@ -543,6 +552,7 @@ fn test_apply_rejects_stale_diff() {
         evidence: None,
         explanation: None,
         agent_id: None,
+        doc_quality: None,
     };
 
     let result = apply_fix_to_file(&dir, &finding);

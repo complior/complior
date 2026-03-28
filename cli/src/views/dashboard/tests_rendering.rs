@@ -98,6 +98,7 @@ fn test_dashboard_with_scan_data() {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         }],
         project_path: ".".to_string(),
         scanned_at: "2025-01-01".to_string(),

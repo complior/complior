@@ -48,6 +48,7 @@ mod tests {
                     evidence: None,
                     explanation: None,
                     agent_id: None,
+                    doc_quality: None,
                 },
                 Finding {
                     check_id: "l4-bare-llm".into(),
@@ -67,6 +68,7 @@ mod tests {
                     evidence: None,
                     explanation: None,
                     agent_id: None,
+                    doc_quality: None,
                 },
             ],
             project_path: "/tmp/test-project".into(),
@@ -102,6 +104,7 @@ mod tests {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         }
     }
 
@@ -433,6 +436,7 @@ mod tests {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         }];
         let text = format_human(&result, &default_opts());
         // Engine prefix should be stripped
@@ -634,6 +638,7 @@ mod tests {
             evidence: None,
             explanation: None,
             agent_id: None,
+            doc_quality: None,
         }];
         let text = format_human(&result, &default_opts());
         // Article and label combined on same line
@@ -667,6 +672,7 @@ mod tests {
                 business_impact: String::new(),
             }),
             agent_id: None,
+            doc_quality: None,
         }];
         let text = format_human(&result, &default_opts());
         // Article from explanation fallback

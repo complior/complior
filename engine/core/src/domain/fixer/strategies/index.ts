@@ -24,6 +24,7 @@ import { contentMarkingStrategy } from './content-marking.js';
 import { loggingStrategy } from './logging.js';
 import { metadataStrategy } from './metadata.js';
 import { recordKeepingStrategy } from './record-keeping.js';
+import { logRetentionStrategy } from './log-retention.js';
 import { documentationStrategy, getTemplateMap } from './documentation.js';
 
 // NOTE: friaStrategy removed — documentationStrategy handles OBL-013 via template-registry
@@ -46,6 +47,7 @@ const STRATEGIES = [
   contentMarkingStrategy,
   loggingStrategy,
   recordKeepingStrategy,
+  logRetentionStrategy,
   metadataStrategy,
   documentationStrategy,    // catch-all for obligation-based template fixes (incl. FRIA)
 ] as const;

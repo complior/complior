@@ -85,6 +85,39 @@ require (
     expect(okEnvs.length).toBeGreaterThan(0);
   });
 
+  it('detects log retention in docker-compose.override.yml', () => {
+    const ctx = createScanCtx([
+      createScanFile('docker-compose.override.yml', `services:
+  app:
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "60"
+`),
+    ]);
+
+    const results = runLayer3(ctx);
+    const retention = results.filter((r) => r.type === 'log-retention');
+
+    expect(retention).toHaveLength(1);
+    expect(retention[0].status).toBe('OK');
+  });
+
+  it('skips bias-testing warning when bias-testing config file present', () => {
+    const ctx = createScanCtx([
+      createScanFile('package.json', JSON.stringify({
+        dependencies: { 'openai': '^4.56.0' },
+      })),
+      createScanFile('bias-testing.config.json', '{ "enabled": true }'),
+    ]);
+
+    const results = runLayer3(ctx);
+    const biasFindings = results.filter((r) => r.type === 'missing-bias-testing');
+
+    expect(biasFindings).toHaveLength(0);
+  });
+
   it('returns no AI SDK findings for non-AI project', () => {
     const ctx = createScanCtx([
       createScanFile('package.json', JSON.stringify({

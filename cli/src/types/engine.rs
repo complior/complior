@@ -214,6 +214,9 @@ pub struct Finding {
     /// Agent passport name (enriched post-scan from passport source_files).
     #[serde(default)]
     pub agent_id: Option<String>,
+    /// Document quality assessment from L2 scanner (e.g. "COMPREHENSIVE", "SHALLOW").
+    #[serde(default)]
+    pub doc_quality: Option<String>,
 }
 
 impl Finding {
@@ -366,7 +369,7 @@ impl Serialize for CategoryScore {
 impl Serialize for Finding {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("Finding", 17)?;
+        let mut state = s.serialize_struct("Finding", 18)?;
         state.serialize_field("checkId", &self.check_id)?;
         state.serialize_field("type", &self.r#type)?;
         state.serialize_field("message", &self.message)?;
@@ -384,6 +387,7 @@ impl Serialize for Finding {
         state.serialize_field("evidence", &self.evidence)?;
         state.serialize_field("explanation", &self.explanation)?;
         state.serialize_field("agentId", &self.agent_id)?;
+        state.serialize_field("docQuality", &self.doc_quality)?;
         state.end()
     }
 }

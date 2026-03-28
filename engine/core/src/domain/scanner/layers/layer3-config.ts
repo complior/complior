@@ -191,7 +191,10 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
   // Check for bias testing if AI SDK detected
   if (detectedAiSdks.length > 0) {
     const hasBiasTesting = allDeps.some((d) => BIAS_TESTING_PACKAGES.has(d.name));
-    if (!hasBiasTesting) {
+    const hasBiasConfig = ctx.files.some((f) =>
+      /bias.?testing\.config/i.test(f.relativePath),
+    );
+    if (!hasBiasTesting && !hasBiasConfig) {
       results.push({
         type: 'missing-bias-testing',
         status: 'WARNING',
@@ -205,7 +208,7 @@ export const runLayer3 = (ctx: ScanContext): readonly L3CheckResult[] => {
   // Check docker-compose
   for (const file of ctx.files) {
     const filename = file.relativePath.split('/').pop() ?? '';
-    if (filename === 'docker-compose.yml' || filename === 'docker-compose.yaml') {
+    if (/^docker-compose[\w.-]*\.ya?ml$/.test(filename)) {
       const result = checkDockerComposeLogRetention(file.content, file.relativePath);
       if (result !== null) results.push(result);
     }
