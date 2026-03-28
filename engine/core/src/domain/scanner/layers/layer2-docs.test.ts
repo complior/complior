@@ -110,6 +110,121 @@ Some records.
     expect(result.status).toBe('EMPTY');
     expect(result.matchedRequired).toBe(0);
   });
+
+  it('aggregates child section content under parent headings', () => {
+    const techDocValidator: DocumentValidator = {
+      document: 'tech-documentation',
+      obligation: 'eu-ai-act-OBL-010',
+      article: 'Art. 11',
+      file_patterns: ['TECH-DOCUMENTATION.md'],
+      required_sections: [
+        { title: 'General Description', required: true },
+        { title: 'System Elements', required: true },
+      ],
+    };
+
+    const content = `# Technical Documentation
+
+## General Description
+This AI system is a classification engine used for high-risk compliance assessment.
+It processes documents against the EU AI Act requirements per Art. 11 obligations.
+Quarterly reviews ensure continued compliance with all applicable standards.
+- Input: regulatory documents
+- Output: compliance scores with 95% accuracy target
+
+## System Elements
+
+### 2.1 Architecture
+The system uses a layered architecture with deterministic scanning pipelines.
+Each layer handles a specific level of analysis from file presence to deep AST inspection.
+Components are orchestrated by a daemon process that monitors file changes in real-time.
+The architecture is designed per ISO 25010 quality model with documented SLA targets.
+- Scanner engine with 5 detection layers
+- Evidence chain with ed25519 signatures
+
+### 2.2 Components
+The core components include the file watcher, scanner engine, and reporting module.
+All components are independently testable and communicate via typed event bus.
+Performance monitoring tracks KPI metrics with automated alerts at >5% deviation.
+- File watcher: <200ms detection latency
+- Scanner: processes 1000 files/minute
+`;
+    const result = validateDocument(techDocValidator, content);
+
+    // With grouped extraction, ### subsections aggregate under ## System Elements
+    expect(result.status).toBe('VALID');
+    expect(result.shallowSections).toBeUndefined();
+  });
+
+  it('handles mixed heading levels — only marks truly shallow sections', () => {
+    const mixedValidator: DocumentValidator = {
+      document: 'tech-documentation',
+      obligation: 'eu-ai-act-OBL-010',
+      article: 'Art. 11',
+      file_patterns: ['TECH-DOCUMENTATION.md'],
+      required_sections: [
+        { title: 'Section A', required: true },
+        { title: 'Section B', required: true },
+      ],
+    };
+
+    const content = `# Document
+
+## Section A
+
+### A.1 Details
+This subsection provides comprehensive documentation as required by the EU AI Act.
+Assessment conducted on 2026-01-15 covering all applicable requirements per Art. 9.
+Key findings include a 95% compliance rate across all evaluated criteria.
+- Item 1: Detailed analysis
+- Item 2: Evidence of compliance
+
+### A.2 More Details
+Additional documentation with quarterly review schedule and SLA targets.
+Monitoring dashboard tracks KPIs with automated threshold alerts.
+All measures documented per ISO 42001 requirements for ongoing compliance.
+- Monthly audits
+- Annual comprehensive review
+
+## Section B
+Brief.
+`;
+    const result = validateDocument(mixedValidator, content);
+
+    // Section A has rich subsections → not shallow
+    // Section B is shallow → 1/2 = 50%, not > 50% → VALID
+    expect(result.status).toBe('VALID');
+  });
+
+  it('works with single-level headings (no regression)', () => {
+    const content = `# AI Literacy Policy
+
+## Training Program
+The company has established a comprehensive AI literacy training program that covers all employees.
+Training covers EU AI Act obligations, risk assessment procedures, and practical compliance per Art. 4.
+Sessions are conducted quarterly with updated materials. Completion target is 95% annually.
+- Module 1: AI fundamentals and EU AI Act overview
+- Module 2: Risk classification and prohibited practices
+
+## Training Levels
+Training is delivered at three levels based on the employee's role. Level 1 for general staff,
+Level 2 for technical teams, Level 3 for compliance officers. Each level has specific learning
+objectives and certification requirements documented in the HR system per GDPR requirements.
+Completion rates tracked monthly with SLA target of 90% within 30 days of onboarding.
+
+## Assessment Methods
+Assessment uses online quizzes, practical exercises, and scenario-based evaluations.
+Pass threshold is 80% for all levels. Re-test within 30 days per Art. 4 requirements.
+Records maintained for minimum 5 years. Annual review of assessment materials.
+- Knowledge tests with >80% pass rate
+- Practical scenario exercises quarterly
+`;
+    const result = validateDocument(validator, content);
+
+    expect(result.status).toBe('VALID');
+    expect(result.matchedRequired).toBe(3);
+    expect(result.missingSections).toHaveLength(0);
+  });
 });
 
 describe('runLayer2', () => {

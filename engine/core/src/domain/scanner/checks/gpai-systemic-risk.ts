@@ -66,9 +66,12 @@ export const checkGpaiSystemicRisk = (ctx: ScanContext): readonly CheckResult[] 
     }
   }
 
-  // 3. Only flag if project has systemic risk indicators
+  // 3. Only flag if project has systemic risk indicators in code/config files.
+  // Compliance docs that merely describe a provider's model (e.g., "large language model")
+  // should not trigger systemic risk assessment requirements for deployers.
+  const codeFiles = ctx.files.filter((f) => f.extension !== '.md');
   let indicatorsFound = false;
-  for (const file of ctx.files) {
+  for (const file of codeFiles) {
     if (hasSystemicIndicators(file.content)) {
       indicatorsFound = true;
       break;

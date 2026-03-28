@@ -6,7 +6,7 @@ import {
   parseMarkdownHeadings,
   headingMatches,
   extractSectionContents,
-  measureSectionDepth,
+  extractGroupedSectionContent,
   measureSemanticDepth,
   hasAiReviewMarker,
 } from './layer2-parsing.js';
@@ -122,7 +122,8 @@ export const validateDocument = (
         headingMatches(h, sectionTitle),
       );
       if (matchedHeading !== undefined) {
-        const sectionContent = sectionContents.get(matchedHeading) ?? '';
+        // Use grouped extraction to include child sub-headings (### under ##)
+        const sectionContent = extractGroupedSectionContent(content, sectionTitle);
         const semantic = measureSemanticDepth(sectionContent, sectionTitle);
         if (semantic.isShallow) {
           shallowSections.push(sectionTitle);

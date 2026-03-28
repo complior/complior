@@ -54,6 +54,43 @@ export const extractSectionContents = (content: string): ReadonlyMap<string, str
   return sections;
 };
 
+/**
+ * Extract content for a target heading, including all child sub-headings
+ * until the next heading of equal or higher level.
+ * Example: for "## System Elements", aggregates ### 2.1, ### 2.2, etc.
+ */
+export const extractGroupedSectionContent = (
+  content: string,
+  targetHeading: string,
+): string => {
+  const lines = content.split('\n');
+  let capturing = false;
+  let targetLevel = 0;
+  const captured: string[] = [];
+
+  for (const line of lines) {
+    const match = /^(#{1,4})\s+(.+)$/.exec(line);
+    if (match) {
+      const level = match[1].length;
+      const heading = match[2].trim();
+      if (!capturing && headingMatches(heading, targetHeading)) {
+        capturing = true;
+        targetLevel = level;
+        continue;
+      }
+      if (capturing && level <= targetLevel) {
+        break; // next sibling or parent — stop
+      }
+      // child heading — include its content
+    }
+    if (capturing) {
+      captured.push(line);
+    }
+  }
+
+  return captured.join('\n');
+};
+
 // --- Semantic Depth (E-12 enhancement) ---
 
 export interface SemanticDepth extends SectionDepth {
