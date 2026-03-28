@@ -174,24 +174,6 @@ pub fn list_themes() -> Vec<ThemeColors> {
         .collect()
 }
 
-/// Syntect theme name for each TUI theme (for code highlighting).
-#[allow(dead_code)]
-pub fn syntect_theme_for(name: &str) -> &'static str {
-    let lower = name.to_lowercase();
-    let entries = load_theme_entries();
-    for entry in &entries {
-        if entry.name.to_lowercase() == lower {
-            return Box::leak(entry.syntect.clone().into_boxed_str());
-        }
-        for alias in &entry.aliases {
-            if alias.to_lowercase() == lower {
-                return Box::leak(entry.syntect.clone().into_boxed_str());
-            }
-        }
-    }
-    "base16-ocean.dark"
-}
-
 /// Global theme accessor — initialized once, switchable at runtime.
 static THEME: std::sync::OnceLock<std::sync::Mutex<ThemeColors>> = std::sync::OnceLock::new();
 
@@ -260,11 +242,6 @@ pub fn title_style() -> Style {
     Style::default().fg(t.accent).add_modifier(Modifier::BOLD)
 }
 
-#[allow(dead_code)]
-pub fn muted_style() -> Style {
-    Style::default().fg(theme().muted)
-}
-
 pub fn status_bar_style() -> Style {
     let t = theme();
     Style::default().bg(t.status_bar_bg).fg(t.status_bar_fg)
@@ -321,10 +298,4 @@ mod tests {
         assert_eq!(ThemeColors::from_name("unknown").name, "Complior Dark");
     }
 
-    #[test]
-    fn test_syntect_theme_mapping() {
-        assert_eq!(syntect_theme_for("dark"), "base16-ocean.dark");
-        assert_eq!(syntect_theme_for("Solarized Dark"), "Solarized (dark)");
-        assert_eq!(syntect_theme_for("light"), "base16-ocean.light");
-    }
 }
