@@ -197,6 +197,8 @@ const TABLE_ORDER = [
   'AuditPackage',
   'DeviceCode',
   'SyncHistory',
+  // Lead capture (no FK dependencies)
+  'Lead',
 ];
 
 // Migrations — idempotent ALTER TABLEs for existing databases
@@ -330,6 +332,7 @@ const INDEXES = [
     'idx_aitool_lifecycle ON "AITool"("lifecycle")',
   'CREATE INDEX IF NOT EXISTS ' +
     'idx_aitool_source ON "AITool"("source")',
+  'CREATE INDEX IF NOT EXISTS idx_lead_source ON "Lead"("source")',
 ];
 
 const loadSchemas = async () => {

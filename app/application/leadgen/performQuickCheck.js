@@ -5,17 +5,17 @@
 
       if (email && consent) {
         try {
-          await brevo.sendTransactional({
-            to: email,
-            templateId: 'quick-check-results',
-            params: {
+          await application.leadgen.captureLead.perform({
+            email,
+            source: 'quick_check',
+            metadata: {
               applies: assessment.applies,
               obligationCount: assessment.obligations.length,
               highRisk: assessment.highRiskAreas.length > 0,
             },
           });
         } catch (err) {
-          console.error('Brevo lead capture failed:', err.message);
+          console.error('Lead capture in quick check failed:', err.message);
         }
       }
 

@@ -79,7 +79,11 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
   const workos = createWorkOSClient();
 
   // Optional infra clients — lazy-load only when configured
-  let brevo = { sendTransactional: async () => ({ messageId: 'noop' }) };
+  let brevo = {
+    sendTransactional: async () => ({ messageId: 'noop' }),
+    sendTemplate: async () => ({ messageId: 'noop' }),
+    createContact: async () => ({ noop: true }),
+  };
   if (process.env.BREVO_API_KEY) {
     const createBrevoClient = require('./infrastructure/email/brevo-client.js');
     brevo = createBrevoClient();

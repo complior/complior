@@ -143,6 +143,16 @@ const QuickCheckSchema = z.object({
   consent: z.boolean().optional(),
 });
 
+// === Lead Capture Schema ===
+
+const VALID_LEAD_SOURCES = ['report_download', 'quick_check', 'scanner', 'classification'];
+
+const CaptureLeadSchema = z.object({
+  email: z.string().email().max(255),
+  source: z.enum(VALID_LEAD_SOURCES),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
 // === Platform Admin Schemas ===
 
 const AdminListSchema = z.object({
@@ -526,6 +536,8 @@ module.exports = {
   InviteTokenSchema,
   ChangeRoleSchema,
   QuickCheckSchema,
+  VALID_LEAD_SOURCES,
+  CaptureLeadSchema,
   CheckoutSchema,
   CheckoutStatusSchema,
   AccountDeleteSchema,

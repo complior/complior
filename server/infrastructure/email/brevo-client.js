@@ -56,6 +56,15 @@ const createBrevoClient = (options = config) => {
         params: params || undefined,
       });
     },
+
+    async createContact({ email, attributes, listIds }) {
+      return request('/contacts', {
+        email,
+        attributes: attributes || undefined,
+        listIds: listIds || undefined,
+        updateEnabled: true,
+      });
+    },
   };
 };
 
