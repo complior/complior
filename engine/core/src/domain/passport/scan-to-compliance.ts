@@ -14,7 +14,9 @@ const DOC_CHECK_TO_FIELD = new Map<string, DocFieldMapper>([
   ['risk-management', (p, d, q) => ({ risk_management: { documented: p, last_review: d, doc_quality: q } })],
   ['data-governance', (p, d, q) => ({ data_governance: { documented: p, last_audit: d, doc_quality: q } })],
   ['technical-documentation', (p, d, q) => ({ technical_documentation: { documented: p, last_update: d, doc_quality: q } })],
+  ['tech-documentation', (p, d, q) => ({ technical_documentation: { documented: p, last_update: d, doc_quality: q } })],
   ['declaration-of-conformity', (p, d, q) => ({ declaration_of_conformity: { documented: p, date: d, doc_quality: q } })],
+  ['declaration-conformity', (p, d, q) => ({ declaration_of_conformity: { documented: p, date: d, doc_quality: q } })],
   ['art5-screening', (p, d, q) => ({ art5_screening: { completed: p, date: d, doc_quality: q } })],
   ['instructions-for-use', (p, d, q) => ({ instructions_for_use: { documented: p, last_update: d, doc_quality: q } })],
 ]);

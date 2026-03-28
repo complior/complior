@@ -231,21 +231,21 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     const path = projectPath ?? getProjectPath();
     const passports = await listPassports(path);
 
-    // Project-level pass findings (no agentId) = shared infrastructure credit for all agents
-    const sharedPassFindings = scanResult.findings.filter(f => !f.agentId && f.type === 'pass');
+    // Global findings (no agentId) apply to ALL agents — they represent project-wide checks
+    // (doc quality, config, dependencies, etc.) that affect every agent in the project.
+    const globalFindings = scanResult.findings.filter(f => !f.agentId);
 
     for (const passport of passports) {
-      // Agent-attributed findings
-      const agentFindings = scanResult.findings.filter(f => f.agentId === passport.name);
-      const docStatus = deriveDocStatusFromFindings(agentFindings, scanResult.scannedAt);
+      // Agent-specific + global findings = full compliance picture for this agent
+      const agentSpecificFindings = scanResult.findings.filter(f => f.agentId === passport.name);
+      const allAgentFindings = [...agentSpecificFindings, ...globalFindings];
 
-      // Scan summary reflects agent-attributed findings only (what this agent specifically owns)
-      const scanSummary = buildScanSummary(agentFindings, scanResult.scannedAt);
+      const docStatus = deriveDocStatusFromFindings(allAgentFindings, scanResult.scannedAt);
+      const scanSummary = buildScanSummary(allAgentFindings, scanResult.scannedAt);
 
-      // Per-agent score: agent's own findings + project-level passes as shared credit
-      // This ensures agents benefit from project infrastructure (CI, package.json, etc.)
-      const agentPassed = agentFindings.filter(f => f.type === 'pass').length + sharedPassFindings.length;
-      const agentFailed = agentFindings.filter(f => f.type === 'fail').length;
+      // Per-agent score: agent's own + global findings (both passes and fails)
+      const agentPassed = allAgentFindings.filter(f => f.type === 'pass').length;
+      const agentFailed = allAgentFindings.filter(f => f.type === 'fail').length;
       const applicable = agentPassed + agentFailed;
       const agentScore = applicable > 0 ? Math.round((agentPassed / applicable) * 100) : 0;
 

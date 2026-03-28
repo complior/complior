@@ -24,7 +24,7 @@ be 12 months maximum. Example: "Version 1.0, effective 2025-02-01, next review
 | Next Review Date | [Date + 12 months] |
 | Applicable Regulation | EU AI Act (Regulation (EU) 2024/1689), Article 4 |
 
-### 2. Purpose and Scope
+### 2. Training Program
 <!-- GUIDANCE: Art. 4 requires literacy "taking into account their technical
 knowledge, experience, education and training, the context the AI systems are
 used in, and the persons on whom the AI systems are used." List ALL AI systems
@@ -81,7 +81,20 @@ Example: Marketing team using ChatGPT needs Level 2; ML engineers need Level 3. 
 - Assessment: Discussion-based assessment
 - Mandatory for: C-suite, board members, heads of department, legal/compliance team
 
-### 4. Training Delivery
+### 4. Assessment Methods
+<!-- GUIDANCE: Define assessment methods proportionate to each training level.
+Assessments should test practical understanding, not just theoretical knowledge.
+Example: "Level 1: 10-question multiple-choice quiz. Level 2: Practical exercise
+using AI tool + 15-question quiz. Level 3: Technical exercise with peer review." -->
+
+| Level | Assessment Type | Pass Threshold | Retake Policy |
+|-------|----------------|----------------|---------------|
+| Level 1 | Multiple-choice quiz (10 questions) | 70% | Unlimited retakes |
+| Level 2 | Practical exercise + quiz (15 questions) | 80% | 2 retakes, then instructor review |
+| Level 3 | Technical exercise + peer review | 85% | Resubmission within 14 days |
+| Level 4 | Discussion-based assessment | N/A (qualitative) | Follow-up meeting if gaps identified |
+
+### 5. Training Delivery
 <!-- GUIDANCE: Consider accessibility requirements (disability formats, multiple
 languages for multinational workforce). Platform choice should support completion
 tracking and certificate generation. Example: "LMS with SCORM tracking, available
@@ -92,7 +105,7 @@ in EN/DE/FR, WCAG 2.1 AA compliant." -->
 - **Languages:** [List languages relevant to your workforce]
 - **Accessibility:** Training materials available in accessible formats per applicable disability requirements
 
-### 5. Training Schedule
+### 6. Training Schedule
 <!-- GUIDANCE: Art. 4 does not specify a timeline, but "sufficient level" implies
 timely training. New hires should complete training before accessing AI systems.
 Annual refresh ensures staff stay current with regulatory updates.
@@ -106,7 +119,7 @@ Example: "New hire training within 30 days of start; Level 3 refresh annually." 
 | System-specific training | Before first use of new AI system |
 | Update training | Within 30 days of significant regulatory or system change |
 
-### 6. Training Record Template
+### 7. Training Record Template
 <!-- GUIDANCE: Maintain auditable records. Each record should link to a verifiable
 certificate. Scores below the pass threshold require re-training. Track "Next Due"
 to prevent lapses. Example: "Employee EMP-042 completed Level 2 on 2025-06-15,
@@ -116,7 +129,7 @@ score 85%, certificate CERT-2025-042, next due 2026-06-15." -->
 |-------------|------|------------|------|-------|----------------|-------|---------|----------------|----------|
 | EMP-001 | [Name] | [Dept] | [Role] | L2 | 2025-06-15 | 85% | [Trainer] | CERT-2025-001 | 2026-06-15 |
 
-### 7. Roles and Responsibilities
+### 8. Roles and Responsibilities
 <!-- GUIDANCE: Assign a named Program Owner with organizational authority. The
 owner is accountable to regulators. Department heads are responsible for their
 team's completion. Legal/Compliance validates content accuracy.
@@ -130,7 +143,7 @@ Example: "Program Owner: Jane Smith, Head of AI Governance." -->
 | All Staff | Complete assigned training and apply learnings |
 | Legal/Compliance | Review training content for regulatory accuracy |
 
-### 8. Non-Compliance Escalation
+### 9. Non-Compliance Escalation
 <!-- GUIDANCE: Define progressive consequences to ensure completion. Restricting
 AI system access for non-compliant staff is both a practical safeguard and a
 regulatory defense. Example: "After 30 days overdue, AI system access credentials
@@ -139,7 +152,7 @@ are suspended until training is completed." -->
 - Staff who miss training deadlines: reminder at 7 days, escalation to manager at 14 days, escalation to HR at 30 days
 - Persistent non-completion: formal performance discussion, potential access restriction to AI systems
 
-### 9. Review and Update
+### 10. Review and Update
 <!-- GUIDANCE: Trigger-based reviews ensure the policy stays current. Key triggers
 include: new AI Act implementing acts, adoption of new AI systems, audit findings,
 and incidents. Example: "Policy updated within 30 days of new Commission guidelines

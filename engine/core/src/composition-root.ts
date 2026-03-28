@@ -239,9 +239,13 @@ export const loadApplication = async (): Promise<Application> => {
   });
 
   // 5a. Create services
-  // Lazy passport service ref for scan enrichment (passportService created later)
+  // Lazy passport service ref for scan enrichment + synchronous post-scan update
   const lazyScanPassport = {
     listPassports: (path?: string) => passportService.listPassports(path),
+    updatePassportsAfterScan: (result: ScanResult, projectPath?: string) =>
+      passportService.updatePassportsAfterScan(result, projectPath),
+    initPassport: (projectPath?: string) =>
+      passportService.initPassport(projectPath),
   };
 
   // Lazy role loader — reads profile.json at scan time (wizard created later)
@@ -714,20 +718,8 @@ export const loadApplication = async (): Promise<Application> => {
     evalService,
   });
 
-  // 6b. Wire scan.completed → auto-discover new agents + update passport scores
-  events.on('scan.completed', ({ result }: { result: ScanResult }) => {
-    // 1. Auto-discover new agents (idempotent — skips existing)
-    passportService.initPassport()
-      .catch(() => ({ manifests: [], savedPaths: [], skipped: [] }))
-      .then(({ manifests }) => {
-        if (manifests.length > 0) {
-          log.info(`Auto-discovered ${manifests.length} new agent(s)`);
-        }
-        // 2. Update scores on ALL passports (including just-created)
-        return passportService.updatePassportsAfterScan(result);
-      })
-      .catch((err: unknown) => { log.warn('Failed to update passports after scan:', err); });
-  });
+  // 6b. scan.completed is now handled synchronously by scan-service (P1 fix).
+  // Event kept for external listeners (drift detection, SSE notifications).
 
   // 7. Wire Compliance Gate: file.changed → background re-scan + per-agent events
   const fileChangedHandler = ({ path: changedPath }: { path: string }) => {

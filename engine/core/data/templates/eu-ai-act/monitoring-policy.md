@@ -41,18 +41,35 @@ dates and override authority explicitly. Example: "Assigned: Jan Peters (trained
 2025-12-01, cert #HO-2025-042), authority to suspend system independently." -->
 - [Table: System name, Assigned oversight person, Training completed (Y/N), Authority to override (Y/N)]
 
-### 5. Monitoring Procedures
+### 5. Monitoring Scope
 <!-- GUIDANCE: Art. 26(5) requires monitoring for risks to health, safety, or
 fundamental rights. Define specific anomaly thresholds that trigger action —
 vague criteria are insufficient. Example: "Anomaly threshold: >2 standard
 deviations from baseline accuracy over 7-day rolling window → alert.
 >3 standard deviations → automatic suspension pending review." -->
-- Monitoring frequency: [Real-time / Daily / Weekly]
 - Metrics monitored: [Accuracy, fairness, output quality, error rate, etc.]
 - Anomaly detection thresholds: [Description]
-- Escalation procedures: [When to inform provider, when to suspend]
 
-### 6. Log Retention
+### 6. Frequency
+<!-- GUIDANCE: Art. 26(5) monitoring must be proportionate to the risk level
+and deployment context. Specify both automated and manual review frequencies.
+Example: "Real-time automated metrics; weekly dashboard review; monthly
+compliance review by AI Ethics Board." -->
+- Monitoring frequency: [Real-time / Daily / Weekly]
+- Automated alert frequency: [Continuous / Hourly / Daily]
+- Manual review frequency: [Weekly / Monthly / Quarterly]
+
+### 7. Escalation Procedures
+<!-- GUIDANCE: Define clear escalation paths with named individuals and
+response timelines. Include criteria for each escalation level.
+Example: "Level 1: SLA breach → on-call engineer within 15 min.
+Level 2: Compliance violation → AI Ethics Board within 24h.
+Level 3: Safety incident → immediate shutdown, CISO + DPO notified." -->
+- Escalation levels and criteria: [Description]
+- When to inform provider: [Criteria and timeline]
+- When to suspend the system: [Criteria and timeline]
+
+### 8. Log Retention
 <!-- GUIDANCE: Art. 26(6) requires automatic log retention for at least 6 months,
 unless longer periods are required by sector regulations (e.g., financial services
 may require 5+ years). Logs must be under the deployer's control. Example:
@@ -63,7 +80,7 @@ services requirement, access restricted to AI Operations team." -->
 - Access controls: [Who can access logs]
 - Destruction policy: [When and how logs are deleted after retention period]
 
-### 7. Incident Reporting
+### 9. Incident Reporting
 <!-- GUIDANCE: Art. 26(5) requires deployers to inform providers and relevant
 authorities of serious incidents. Define clear criteria for what constitutes a
 "serious incident" (Art. 3(49)) and the timeline for each notification step.
@@ -73,7 +90,7 @@ non-death incidents, 2 days for death/serious harm per Art. 73." -->
 - Provider notification process
 - Authority notification triggers (link to serious incident reporting)
 
-### 8. Review Schedule
+### 10. Review Schedule
 <!-- GUIDANCE: Review frequency should be proportionate to the risk level and
 rate of change. At minimum, review annually and after every significant system
 update from the provider. Document review findings and actions taken.

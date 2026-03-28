@@ -34,7 +34,7 @@ const TEMPLATE = `# Template 3: Fundamental Rights Impact Assessment (FRIA)
 | Non-discrimination | [H/M/L/N] | [Description] |
 | Privacy | [H/M/L/N] | [Description] |
 
-### 5. Human Oversight Measures
+### 5. Mitigation Measures and Human Oversight
 - Override mechanism: [Description of how human can intervene/stop the system]
 `;
 

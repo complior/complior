@@ -313,7 +313,7 @@ export const generateFria = (input: FriaGeneratorInput): FriaResult => {
     markdown = tableRows.join('\n');
   }
 
-  // 5. Human Oversight Measures
+  // 5. Mitigation Measures and Human Oversight
   const oversightDesc = deriveOversightDescription(manifest);
   markdown = markdown.replace(
     '[Description of how human can intervene/stop the system]',

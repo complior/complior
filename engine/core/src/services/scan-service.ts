@@ -27,9 +27,11 @@ export interface ScanServiceDeps {
   readonly auditStore?: AuditStore;
   /** E-11: Per-file scan cache (SHA-256 + mtime). Persisted to .complior/cache/. */
   readonly scanCache?: ScanCache;
-  /** Optional passport service for per-agent finding enrichment. */
+  /** Optional passport service for per-agent finding enrichment + post-scan update. */
   readonly passportService?: {
     readonly listPassports: (path?: string) => Promise<readonly { name: string; source_files?: readonly string[] }[]>;
+    readonly updatePassportsAfterScan?: (result: ScanResult, projectPath?: string) => Promise<void>;
+    readonly initPassport?: (projectPath?: string) => Promise<{ manifests: readonly unknown[]; savedPaths: readonly string[]; skipped: readonly string[] }>;
   };
   /** Project role from onboarding profile. Injected via composition-root. */
   readonly getProjectRole?: (projectPath: string) => Promise<Role>;
@@ -146,6 +148,19 @@ export const createScanService = (deps: ScanServiceDeps) => {
   let cachedProjectHash: string | null = null;
   let cachedResult: ScanResult | null = null;
 
+  /** Synchronous post-scan: auto-discover agents + update passports before returning result. */
+  const syncPassportUpdate = async (result: ScanResult, projectPath: string): Promise<void> => {
+    if (!deps.passportService?.updatePassportsAfterScan) return;
+    try {
+      // 1. Auto-discover new agents (idempotent — skips existing)
+      if (deps.passportService.initPassport) {
+        await deps.passportService.initPassport(projectPath).catch(() => ({ manifests: [], savedPaths: [], skipped: [] }));
+      }
+      // 2. Update scores on ALL passports
+      await deps.passportService.updatePassportsAfterScan(result, projectPath);
+    } catch { /* non-fatal */ }
+  };
+
   /** Apply role filtering to a scan result (pure, no caching side effects). */
   const applyRoleFilter = async (scanResult: ScanResult, projectPath: string): Promise<ScanResult> => {
     const projectRole = deps.getProjectRole
@@ -233,6 +248,9 @@ export const createScanService = (deps: ScanServiceDeps) => {
       }
     }
 
+    // Synchronous passport update (ensures passport is current before HTTP response)
+    await syncPassportUpdate(result, projectPath);
+
     return result;
   };
 
@@ -257,6 +275,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
+    await syncPassportUpdate(result, projectPath);
 
     return result;
   };
@@ -302,6 +321,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     setLastScanResult(result);
     events.emit('scan.completed', { result });
+    await syncPassportUpdate(result, projectPath);
 
     return result;
   };

@@ -64,7 +64,7 @@ biased training data that underrepresents minority applicants. -->
 | Workers' rights (Charter Art. 31) | [H/M/L/N] | [Description] | [Group] | [Measures] |
 | Right to good administration (Charter Art. 41) | [H/M/L/N] | [Description] | [Group] | [Measures] |
 
-### 5. Human Oversight Measures
+### 5. Mitigation Measures and Human Oversight
 <!-- GUIDANCE: Art. 14 requires human oversight proportionate to the risk. Specify
 a named individual (not just a role), describe the technical override mechanism,
 and define the escalation timeline. Example: "System pauses after 3 consecutive
@@ -74,7 +74,7 @@ low-confidence scores; oversight officer reviews within 2 hours." -->
 - Escalation process: [When and how decisions are escalated to humans]
 - Review frequency: [How often human reviews AI outputs]
 
-### 6. Measures if Risks Materialize
+### 6. Impact Analysis and Remediation
 <!-- GUIDANCE: Art. 27(3)(e) requires concrete measures, not aspirational statements.
 Include specific suspension criteria (e.g., "if bias exceeds 5% differential across
 protected groups") and remediation timelines. Example: "Affected persons notified

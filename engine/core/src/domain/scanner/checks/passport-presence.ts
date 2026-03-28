@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type { CheckResult } from '../../../types/common.types.js';
 import type { ScanContext } from '../../../ports/scanner.port.js';
 import { AI_SDK_PACKAGES } from '../rules/banned-packages-sdk.js';
@@ -24,14 +26,33 @@ const hasAiSdk = (ctx: ScanContext): boolean => {
   }
 };
 
-export const checkPassportPresence = (ctx: ScanContext): readonly CheckResult[] => {
-  const passportFiles = filterPassportManifests(ctx.files);
+/**
+ * Count passport manifests — first check ctx.files (covers tests and configs that
+ * include .complior), then fall back to disk read (production: .complior is excluded
+ * from EXCLUDED_DIRS in file-collector).
+ */
+const countPassportManifests = (ctx: ScanContext): number => {
+  // 1. Check scanned files (works in tests and when .complior is explicitly included)
+  const fromCtx = filterPassportManifests(ctx.files).length;
+  if (fromCtx > 0) return fromCtx;
 
-  if (passportFiles.length > 0) {
+  // 2. Fall back to disk read (production — .complior excluded from scanning)
+  try {
+    const agentsDir = join(ctx.projectPath, '.complior', 'agents');
+    return readdirSync(agentsDir).filter(f => f.endsWith('-manifest.json')).length;
+  } catch {
+    return 0;
+  }
+};
+
+export const checkPassportPresence = (ctx: ScanContext): readonly CheckResult[] => {
+  const manifestCount = countPassportManifests(ctx);
+
+  if (manifestCount > 0) {
     return [{
       type: 'pass',
       checkId: CHECK_ID,
-      message: `Agent Passport found (${passportFiles.length} manifest(s)) — ${ARTICLE_REF}`,
+      message: `Agent Passport found (${manifestCount} manifest(s)) — ${ARTICLE_REF}`,
     }];
   }
 
