@@ -242,6 +242,40 @@ describe('deriveDocStatusFromFindings with docQuality', () => {
   });
 });
 
+describe('N1: fria_completed false for scaffold quality', () => {
+  it('fria_completed is false when docQuality is scaffold (auto-generated)', () => {
+    const findings = [
+      makeFindingWithQuality('l2-fria', 'pass', 'scaffold'),
+    ];
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+    expect(result.fria_completed).toBe(false);
+  });
+
+  it('fria_completed is false when docQuality is none', () => {
+    const findings = [
+      makeFindingWithQuality('fria', 'pass', 'none'),
+    ];
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+    expect(result.fria_completed).toBe(false);
+  });
+
+  it('fria_completed is true when docQuality is draft', () => {
+    const findings = [
+      makeFindingWithQuality('fria', 'pass', 'draft'),
+    ];
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+    expect(result.fria_completed).toBe(true);
+  });
+
+  it('fria_completed is true when docQuality is reviewed', () => {
+    const findings = [
+      makeFindingWithQuality('fria', 'pass', 'reviewed'),
+    ];
+    const result = deriveDocStatusFromFindings(findings, SCAN_DATE);
+    expect(result.fria_completed).toBe(true);
+  });
+});
+
 describe('buildDocQualitySummary', () => {
   it('counts quality levels across all doc fields', () => {
     const compliance = {

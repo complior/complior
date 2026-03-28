@@ -1067,3 +1067,76 @@ ${richSection}
     expect(results[0].fix).toContain('Suggestions:');
   });
 });
+
+describe('N1: scaffold marker detection in docQuality', () => {
+  const friaValidator: DocumentValidator = {
+    document: 'fria',
+    obligation: 'eu-ai-act-OBL-013',
+    article: 'Art. 27',
+    file_patterns: ['fria.md'],
+    required_sections: [
+      { title: 'Risk Assessment', required: true },
+      { title: 'Impact Analysis', required: true },
+      { title: 'Mitigation Measures', required: true },
+    ],
+  };
+
+  it('returns scaffold quality for VALID document with COMPLIOR:SCAFFOLD marker', () => {
+    const content = `<!-- COMPLIOR:SCAFFOLD -->
+# FRIA
+
+## Risk Assessment
+This section covers the fundamental rights risk assessment process for AI systems under Art. 27.
+Analysis includes bias evaluation metrics, SLA compliance at 95%, and quarterly reviews per ISO 42001.
+- Risk identification methodology based on NIST AI RMF
+- Impact scoring using standardized scales (1-5)
+- Annual review cycle with 30-day SLA for updates
+
+## Impact Analysis
+Comprehensive impact analysis covering all affected stakeholders per Art. 27(3)(c).
+Charter Art. 21 non-discrimination metrics tracked monthly with 98% fairness threshold.
+| Right | Risk Level | Mitigation |
+|-------|-----------|------------|
+| Non-discrimination | Medium | Bias audit quarterly |
+- Stakeholder mapping completed 2026-01-15
+- Impact categories defined per EU AI Act Annex III
+
+## Mitigation Measures
+Mitigation strategy implements Art. 14 human oversight requirements.
+Override mechanism tested monthly, SLA response within 2 hours per incident protocol.
+- Kill switch tested on 2026-02-01 with 100% success rate
+- Escalation procedure: L1 → L2 → DPO within 4-hour window
+- Quarterly review by compliance team, next review 2026-06-01
+`;
+    const result = validateDocument(friaValidator, content);
+    expect(result.status).toBe('VALID'); // All headings present, quality >= 50
+    expect(result.docQuality).toBe('scaffold'); // But scaffold marker → scaffold quality
+  });
+
+  it('returns draft quality for VALID document without scaffold marker', () => {
+    const content = `# FRIA
+
+## Risk Assessment
+This section covers the fundamental rights risk assessment process for AI systems under Art. 27.
+Analysis includes bias evaluation metrics, SLA compliance at 95%, and quarterly reviews per ISO 42001.
+- Risk identification methodology based on NIST AI RMF
+- Impact scoring using standardized scales (1-5)
+
+## Impact Analysis
+Comprehensive impact analysis covering all affected stakeholders per Art. 27(3)(c).
+Charter Art. 21 non-discrimination metrics tracked monthly with 98% fairness threshold.
+| Right | Risk Level | Mitigation |
+|-------|-----------|------------|
+| Non-discrimination | Medium | Bias audit quarterly |
+
+## Mitigation Measures
+Mitigation strategy implements Art. 14 human oversight requirements.
+Override mechanism tested monthly, SLA response within 2 hours per incident protocol.
+- Kill switch tested on 2026-02-01 with 100% success rate
+- Escalation procedure documented and reviewed quarterly
+`;
+    const result = validateDocument(friaValidator, content);
+    expect(result.status).toBe('VALID');
+    expect(result.docQuality).toBe('draft');
+  });
+});

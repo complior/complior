@@ -237,7 +237,7 @@ fn format_fix_report(resp: &serde_json::Value, scan_path: &str) -> String {
     render_fix_header(&mut o, scan_path, applied_count, failed_count, false);
 
     // Score
-    render_score_line(&mut o, score_before, score_after);
+    render_score_line(&mut o, score_before, score_after, applied_count);
 
     // Group entries
     let (docs, code, config_deps) = group_entries(&entries);
@@ -283,11 +283,14 @@ fn render_fix_header(o: &mut String, scan_path: &str, applied: u64, failed: u64,
     o.push_str(&format!("  {}\n", separator()));
 }
 
-fn render_score_line(o: &mut String, before: f64, after: f64) {
+fn render_score_line(o: &mut String, before: f64, after: f64, applied: u64) {
     let label = "SCORE";
     let score_text = format!("{:.0} → {:.0}", before, after);
     let pad = SEP_WIDTH.saturating_sub(label.len() + score_text.len());
     o.push_str(&format!("  {}{}{}\n", bold(label), " ".repeat(pad), score_color(after, &score_text)));
+    if (before - after).abs() < 0.5 && applied > 0 {
+        o.push_str(&format!("  {}\n", dim("(category improvements below weighted rounding threshold)")));
+    }
     o.push_str(&format!("  {}\n\n", separator()));
 }
 
@@ -587,7 +590,7 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
     let change_count = changes.map(|c| c.len()).unwrap_or(0) as u64;
 
     render_fix_header(&mut o, scan_path, change_count, 0, true);
-    render_score_line(&mut o, current_score, predicted);
+    render_score_line(&mut o, current_score, predicted, change_count);
 
     if let Some(changes) = changes {
         // Group by action type

@@ -246,3 +246,36 @@ describe('FRIA template fix', () => {
     expect(plan).toBeNull();
   });
 });
+
+describe('N5: L4 logging and record-keeping strategies', () => {
+  it('generates logging fix for l4-logging (not just interaction-logging)', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'l4-logging' }), makeContext());
+    expect(plan).not.toBeNull();
+    expect(plan!.fixType).toBe('code_injection');
+    expect(plan!.actions[0].path).toContain('logger');
+  });
+
+  it('logging scaffold includes L4-recognizable patterns (auditLog, logAiCall)', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'l4-logging' }), makeContext());
+    expect(plan).not.toBeNull();
+    const content = plan!.actions[0].content ?? '';
+    expect(content).toContain('auditLog');
+    expect(content).toContain('logAiCall');
+    expect(content).toContain('aiLogger');
+  });
+
+  it('generates record-keeping fix for l4-record-keeping', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'l4-record-keeping' }), makeContext());
+    expect(plan).not.toBeNull();
+    expect(plan!.fixType).toBe('code_injection');
+    expect(plan!.actions[0].path).toContain('audit-trail');
+  });
+
+  it('record-keeping scaffold includes L4-recognizable patterns (persistAudit, complianceRecord)', () => {
+    const plan = findStrategy(makeFinding({ checkId: 'l4-record-keeping' }), makeContext());
+    expect(plan).not.toBeNull();
+    const content = plan!.actions[0].content ?? '';
+    expect(content).toContain('persistAudit');
+    expect(content).toContain('complianceRecord');
+  });
+});

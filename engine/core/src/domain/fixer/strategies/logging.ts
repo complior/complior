@@ -2,7 +2,7 @@ import type { FixStrategy, FixAction } from '../types.js';
 import { generateCreateDiff } from '../diff.js';
 
 export const loggingStrategy: FixStrategy = (finding, context) => {
-  if (finding.checkId !== 'interaction-logging') return null;
+  if (finding.checkId !== 'interaction-logging' && finding.checkId !== 'l4-logging') return null;
 
   const loggerPath = 'src/logging/ai-interaction-logger.ts';
   const content = `// AI Interaction Logger (EU AI Act, Art. 12)
@@ -19,15 +19,23 @@ export interface AIInteractionLog {
   readonly tokensUsed?: number;
 }
 
-const logs: AIInteractionLog[] = [];
+const auditLog: AIInteractionLog[] = [];
 
-export const logInteraction = (entry: Omit<AIInteractionLog, 'timestamp'>): void => {
-  logs.push({ ...entry, timestamp: new Date().toISOString() });
+/** Log an AI interaction for compliance traceability (Art. 12). */
+export const logAiCall = (entry: Omit<AIInteractionLog, 'timestamp'>): void => {
+  auditLog.push({ ...entry, timestamp: new Date().toISOString() });
 };
 
-export const getInteractionLogs = (): readonly AIInteractionLog[] => [...logs];
+export const aiLogger = {
+  log: logAiCall,
+  getAll: (): readonly AIInteractionLog[] => [...auditLog],
+  clear: (): void => { auditLog.length = 0; },
+};
 
-export const clearLogs = (): void => { logs.length = 0; };
+// Legacy aliases
+export const logInteraction = logAiCall;
+export const getInteractionLogs = aiLogger.getAll;
+export const clearLogs = aiLogger.clear;
 `;
   const action: FixAction = {
     type: 'create',

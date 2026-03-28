@@ -51,11 +51,17 @@ export interface L2CheckResult {
 
 export const loadValidators = (): readonly DocumentValidator[] => DOCUMENT_VALIDATORS;
 
-/** Derive doc quality from L2 status + AI review marker presence. */
+/** Marker injected by Complior fix into auto-generated scaffold files. */
+const SCAFFOLD_MARKER = '<!-- COMPLIOR:SCAFFOLD -->';
+const hasScaffoldMarker = (content: string): boolean => content.includes(SCAFFOLD_MARKER);
+
+/** Derive doc quality from L2 status + AI review marker presence + scaffold marker. */
 const classifyDocQuality = (status: L2Status, content: string): DocQualityLevel =>
   hasAiReviewMarker(content)
     ? 'reviewed'
-    : (status === 'SHALLOW' || status === 'EMPTY' || status === 'PARTIAL') ? 'scaffold' : 'draft';
+    : hasScaffoldMarker(content)
+      ? 'scaffold'
+      : (status === 'SHALLOW' || status === 'EMPTY' || status === 'PARTIAL') ? 'scaffold' : 'draft';
 
 // --- L2 Check Logic ---
 

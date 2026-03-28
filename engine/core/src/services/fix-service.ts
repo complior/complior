@@ -141,15 +141,17 @@ export const createFixService = (deps: FixServiceDeps) => {
                 } else {
                   content = baseResult.markdown;
                 }
+                // Mark auto-generated scaffolds so L2 classifies them as 'scaffold' quality
+                content = `<!-- COMPLIOR:SCAFFOLD -->\n${content}`;
               }
             } else {
-              content = template;
+              content = `<!-- COMPLIOR:SCAFFOLD -->\n${template}`;
             }
           } catch {
-            content = template;
+            content = `<!-- COMPLIOR:SCAFFOLD -->\n${template}`;
           }
         } else {
-          content = template;
+          content = `<!-- COMPLIOR:SCAFFOLD -->\n${template}`;
         }
       }
       // Resolve [PASSPORT:*] tokens from agent passport (for non-template content)

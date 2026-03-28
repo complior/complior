@@ -10,7 +10,7 @@ import type { ComplianceBlock, DocQualityLevel } from '../../types/passport.type
 type DocFieldMapper = (pass: boolean, date: string, docQuality?: DocQualityLevel) => Partial<ComplianceBlock>;
 
 const DOC_CHECK_TO_FIELD = new Map<string, DocFieldMapper>([
-  ['fria', (p) => ({ fria_completed: p })],
+  ['fria', (p, _d, q) => ({ fria_completed: p && q !== 'scaffold' && q !== 'none' })],
   ['risk-management', (p, d, q) => ({ risk_management: { documented: p, last_review: d, doc_quality: q } })],
   ['data-governance', (p, d, q) => ({ data_governance: { documented: p, last_audit: d, doc_quality: q } })],
   ['technical-documentation', (p, d, q) => ({ technical_documentation: { documented: p, last_update: d, doc_quality: q } })],
