@@ -1,7 +1,7 @@
 (() => {
   const REPORT_EMAIL_SUBJECT = 'Your EU AI Act Compliance Report — Complior';
 
-  const buildReportHtml = (email) => `<!DOCTYPE html>
+  const buildReportHtml = () => `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:40px 20px">
@@ -217,7 +217,7 @@ Complior AI GmbH · Berlin, Germany · <a href="https://complior.ai" style="colo
           await brevo.sendTransactional({
             to: email,
             subject: REPORT_EMAIL_SUBJECT,
-            htmlContent: buildReportHtml(email),
+            htmlContent: buildReportHtml(),
             tags: ['lead', 'report_download'],
           });
         } catch (err) {

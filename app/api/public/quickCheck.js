@@ -24,9 +24,24 @@
 
     const result = await application.leadgen.performQuickCheck.perform({
       answers: data.answers,
-      email: data.email || null,
-      consent: data.consent || false,
     });
+
+    // Capture lead if email+consent provided (non-blocking)
+    if (data.email && data.consent) {
+      try {
+        await application.leadgen.captureLead.perform({
+          email: data.email,
+          source: 'quick_check',
+          metadata: {
+            applies: result.applies,
+            obligationCount: result.obligations.length,
+            highRisk: result.highRiskAreas.length > 0,
+          },
+        });
+      } catch (err) {
+        console.error('Lead capture in quick check failed:', err.message);
+      }
+    }
 
     return { _statusCode: 200, ...result };
   },
