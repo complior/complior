@@ -115,8 +115,8 @@ export const runLayer4 = (
     results.push(result);
   }
 
-  // Check for missing positive patterns (only if AI SDK detected or bare LLM calls found)
-  const shouldCheckPositives = hasAiSdk || negativeFound.some((r) => r.category === 'bare-llm');
+  // Check for missing positive patterns (only if AI SDK detected)
+  const shouldCheckPositives = hasAiSdk;
 
   if (shouldCheckPositives) {
     const positiveCategories: PatternCategory[] = [
@@ -149,6 +149,22 @@ export const runLayer4 = (
 
 export const layer4ToCheckResults = (l4Results: readonly L4CheckResult[]): readonly CheckResult[] => {
   return l4Results.map((r): CheckResult => {
+    // Bare LLM calls are informational — not a compliance violation
+    if (r.patternType === 'negative' && r.status === 'FOUND' && r.category === 'bare-llm') {
+      const location = r.file !== undefined ? ` in ${r.file}:${r.line}` : '';
+      return {
+        type: 'info',
+        checkId: `l4-${r.category}`,
+        message: `Bare LLM API call detected${location}. Consider @complior/sdk for runtime compliance.`,
+        severity: 'info',
+        obligationId: r.obligationId,
+        articleReference: r.article,
+        fix: 'Optional: wrap with @complior/sdk for runtime Art. 50/12/14 enforcement',
+        file: r.file,
+        line: r.line,
+      };
+    }
+
     // Negative pattern found → warning (bad)
     if (r.patternType === 'negative' && r.status === 'FOUND') {
       const location = r.file !== undefined ? ` in ${r.file}:${r.line}` : '';

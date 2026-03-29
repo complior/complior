@@ -27,10 +27,10 @@ describe('deduplicateFindings', () => {
 
   it('keeps Semgrep findings even when L4 found same location', () => {
     const base = [
-      mkFinding({ checkId: 'l4-bare-llm', file: 'ai.ts', line: 42 }),
+      mkFinding({ checkId: 'l4-bare-llm', type: 'info', severity: 'info', file: 'ai.ts', line: 42 }),
     ];
     const external = [
-      mkFinding({ checkId: 'ext-semgrep-complior-bare-call', file: 'ai.ts', line: 42 }),
+      mkFinding({ checkId: 'ext-semgrep-complior-bare-call', type: 'info', severity: 'info', file: 'ai.ts', line: 42 }),
     ];
 
     const result = deduplicateFindings(base, external);
@@ -52,11 +52,11 @@ describe('deduplicateFindings', () => {
 describe('mergeFindings', () => {
   it('removes L4 findings superseded by Semgrep at same location', () => {
     const base = [
-      mkFinding({ checkId: 'l4-bare-llm', file: 'ai.ts', line: 42 }),
+      mkFinding({ checkId: 'l4-bare-llm', type: 'info', severity: 'info', file: 'ai.ts', line: 42 }),
       mkFinding({ checkId: 'l1-docs-missing', message: 'keep this' }),
     ];
     const external = [
-      mkFinding({ checkId: 'ext-semgrep-complior-bare-call', file: 'ai.ts', line: 42 }),
+      mkFinding({ checkId: 'ext-semgrep-complior-bare-call', type: 'info', severity: 'info', file: 'ai.ts', line: 42 }),
     ];
 
     const result = mergeFindings(base, external);
@@ -68,7 +68,7 @@ describe('mergeFindings', () => {
 
   it('keeps L4 findings without Semgrep equivalent', () => {
     const base = [
-      mkFinding({ checkId: 'l4-bare-llm', file: 'ai.ts', line: 42 }),
+      mkFinding({ checkId: 'l4-bare-llm', type: 'info', severity: 'info', file: 'ai.ts', line: 42 }),
     ];
     const external: Finding[] = [];
 

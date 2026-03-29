@@ -301,6 +301,75 @@ describe('fix-service', () => {
     });
   });
 
+  describe('P1: Phase 2 cascade for create actions', () => {
+    it('applies create actions discovered during Phase 2 cascade re-scan', async () => {
+      let scanCallCount = 0;
+
+      // Initial create plan (Phase 1a) + cascading create plan discovered in Phase 2
+      const initialPlan = createMockPlan({
+        checkId: 'l1-ai-disclosure',
+        actions: [{ type: 'create', path: 'ai-disclosure.md', content: '# Disclosure', description: 'Create disclosure' }],
+      });
+
+      const cascadePlan = createMockPlan({
+        checkId: 'l3-docker-compose',
+        obligationId: 'OBL-030',
+        article: 'Art. 15',
+        actions: [{ type: 'create', path: 'docker-compose.override.yml', content: 'version: "3"', description: 'Create override' }],
+      });
+
+      const events = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+      const scanService = {
+        scan: vi.fn().mockImplementation(async () => {
+          scanCallCount++;
+          return createMockScanResult({
+            score: {
+              totalScore: 60 + scanCallCount * 5,
+              zone: 'yellow',
+              categoryScores: [],
+              criticalCapApplied: false,
+              totalChecks: 10,
+              passedChecks: 6 + scanCallCount,
+              failedChecks: 4 - scanCallCount,
+              skippedChecks: 0,
+            },
+            findings: scanCallCount < 3
+              ? [createMockFinding({ checkId: 'l3-docker-compose', type: 'fail' })]
+              : [],
+          });
+        }),
+      };
+
+      let fixerCallCount = 0;
+      const fixer = {
+        previewFix: vi.fn(),
+        generateFix: vi.fn(),
+        generateFixes: vi.fn().mockImplementation(() => {
+          fixerCallCount++;
+          if (fixerCallCount === 1) return [initialPlan];
+          if (fixerCallCount === 2) return [cascadePlan]; // New create action after re-scan
+          return [];
+        }),
+      };
+
+      const service = createFixService({
+        fixer,
+        scanService,
+        events,
+        getProjectPath: () => '/tmp/test-project',
+        getLastScanResult: () => createMockScanResult(),
+        loadTemplate: vi.fn().mockResolvedValue('template'),
+      });
+
+      const results = await service.applyAll();
+
+      // Both initial create and cascading create should be applied
+      const applied = results.filter(r => r.applied);
+      expect(applied.length).toBeGreaterThanOrEqual(2);
+      expect(applied.some(r => r.plan.checkId === 'l3-docker-compose')).toBe(true);
+    });
+  });
+
   describe('P15: getUnfixedFindings', () => {
     it('returns fail findings without auto-fix', () => {
       const scanResult = createMockScanResult({

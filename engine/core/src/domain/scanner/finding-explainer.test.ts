@@ -44,13 +44,7 @@ describe('US-S05-07: Finding Explainer', () => {
       const expl = getExplanation('l4-bare-llm');
       expect(expl).toBeDefined();
       expect(expl!.article).toBe('Art. 50(1)');
-      expect(expl!.business_impact).toContain('compliance wrapper');
-    });
-
-    it('returns explanation for cross-layer check_id', () => {
-      const expl = getExplanation('cross-sdk-no-disclosure');
-      expect(expl).toBeDefined();
-      expect(expl!.article).toBe('Art. 50(1)');
+      expect(expl!.business_impact).toContain('informational');
     });
 
     it('normalizes l3-banned-{package} to generic key', () => {
@@ -126,7 +120,6 @@ describe('US-S05-07: Finding Explainer', () => {
       expect(ids).toContain('ai-disclosure');
       expect(ids).toContain('l2-fria');
       expect(ids).toContain('l4-bare-llm');
-      expect(ids).toContain('cross-sdk-no-disclosure');
     });
   });
 

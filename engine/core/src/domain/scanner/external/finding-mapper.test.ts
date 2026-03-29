@@ -14,8 +14,8 @@ describe('mapExternalFinding', () => {
 
     const finding = mapExternalFinding(raw, 'semgrep');
     expect(finding.checkId).toBe('ext-semgrep-complior-bare-call');
-    expect(finding.type).toBe('fail');
-    expect(finding.severity).toBe('high');
+    expect(finding.type).toBe('info');
+    expect(finding.severity).toBe('info');
     expect(finding.obligationId).toBe('OBL-015');
     expect(finding.articleReference).toBe('Art. 14');
     expect(finding.file).toBe('src/ai.ts');

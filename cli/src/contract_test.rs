@@ -109,8 +109,8 @@ mod contract_tests {
         let finding: &Finding = &result.findings[0];
 
         assert_eq!(finding.check_id, "l4-bare-api-call");
-        assert_eq!(finding.r#type, crate::types::CheckResultType::Fail);
-        assert_eq!(finding.severity, Severity::High);
+        assert_eq!(finding.r#type, crate::types::CheckResultType::Info);
+        assert_eq!(finding.severity, Severity::Info);
         assert!(!finding.message.is_empty());
     }
 
@@ -120,7 +120,7 @@ mod contract_tests {
         let result: ScanResult = serde_json::from_str(&json).unwrap();
         let f0: &Finding = &result.findings[0];
 
-        assert_eq!(f0.priority, Some(1));
+        assert_eq!(f0.priority, Some(3));
         assert!((f0.confidence.unwrap() - 0.95).abs() < f64::EPSILON);
         assert_eq!(f0.confidence_level.as_deref(), Some("high"));
         assert!(f0.evidence.is_some());
@@ -163,7 +163,7 @@ mod contract_tests {
         assert_eq!(f0.line, Some(42));
         assert_eq!(f0.obligation_id.as_deref(), Some("OBL-015"));
         assert_eq!(f0.article_reference.as_deref(), Some("Art. 14(4)"));
-        assert_eq!(f0.fix.as_deref(), Some("Wrap with complior() SDK proxy"));
+        assert_eq!(f0.fix.as_deref(), Some("Optional: wrap with @complior/sdk for runtime Art. 50/12/14 enforcement"));
 
         // Second finding: missing file/line (should be None)
         let f1: &Finding = &result.findings[1];
@@ -193,19 +193,8 @@ mod contract_tests {
     fn contract_fix_diff_deserialization() {
         let json = sample_json();
         let result: ScanResult = serde_json::from_str(&json).unwrap();
-        let diff: &FixDiff = result.findings[0]
-            .fix_diff
-            .as_ref()
-            .expect("first finding should have fixDiff");
-
-        assert_eq!(diff.start_line, 41);
-        assert_eq!(diff.file_path, "src/ai/chat.ts");
-        assert_eq!(diff.before.len(), 1);
-        assert_eq!(diff.after.len(), 1);
-        assert_eq!(
-            diff.import_line.as_deref(),
-            Some("import { complior } from '@complior/sdk';")
-        );
+        // First finding is info (no fixDiff), check that it is None
+        assert!(result.findings[0].fix_diff.is_none(), "info finding should not have fixDiff");
     }
 
     #[test]

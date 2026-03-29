@@ -17,63 +17,6 @@ export const buildCodeContext = (
   return { lines, startLine, highlightLine: line };
 };
 
-const COMPLIOR_IMPORT = "import { complior } from '@complior/sdk';";
-const SDK_CONSTRUCTORS = /new\s+(Anthropic|OpenAI|GoogleGenerativeAI|Groq|Ollama|BedrockRuntimeClient|Cohere|MistralClient)\s*\(/;
-const CALL_PATTERNS = /(\w+)\.(messages\.create|chat\.completions\.create|chat\.complete|chat|generateContent|invoke|images\.generate|embeddings\.create|send)\s*\(/;
-const STANDALONE_LLM_CALLS = /\b(generateText|streamText|generateObject)\s*\(\s*\{/;
-
-/** Check whether the file already imports @complior/sdk. */
-const hasCompliorImport = (fileContent: string): boolean =>
-  fileContent.includes('@complior/sdk');
-
-/**
- * Search backward from `startLine` (1-based) for a constructor assignment like
- * `const foo = new Anthropic({` matching `varName`. Returns the 1-based line
- * number of the constructor, or undefined if not found.
- */
-const findConstructorLine = (
-  allLines: readonly string[],
-  varName: string,
-  startLine: number,
-): number | undefined => {
-  // Walk backward up to 50 lines
-  const searchFrom = Math.max(0, startLine - 2); // -2 because startLine is 1-based
-  const searchTo = Math.max(0, startLine - 52);
-  for (let i = searchFrom; i >= searchTo; i--) {
-    const line = allLines[i];
-    if (line === undefined) continue;
-    // Match: const/let/var varName = new SDK(
-    if (line.includes(varName) && SDK_CONSTRUCTORS.test(line)) {
-      return i + 1; // 1-based
-    }
-  }
-  return undefined;
-};
-
-/**
- * Find the closing line of a constructor call starting at `startIdx` (0-based).
- * Tracks parenthesis depth to handle multi-line constructors like:
- * ```
- * const c = new Anthropic({
- *   apiKey: "...",
- * });
- * ```
- * Returns the 0-based index of the line containing the final `);` or `})`.
- */
-const findConstructorEnd = (allLines: readonly string[], startIdx: number): number => {
-  let depth = 0;
-  for (let i = startIdx; i < Math.min(allLines.length, startIdx + 20); i++) {
-    const line = allLines[i];
-    if (line === undefined) continue;
-    for (const ch of line) {
-      if (ch === '(' || ch === '{') depth++;
-      if (ch === ')' || ch === '}') depth--;
-    }
-    if (depth <= 0) return i;
-  }
-  return startIdx; // fallback: single line
-};
-
 /**
  * Find the end of a statement starting at `startIdx` (0-based).
  * Tracks paren/brace depth for multi-line calls like:
@@ -114,8 +57,8 @@ export const buildFixDiff = (
   const targetLine = allLines[line - 1];
   if (targetLine === undefined && !checkId.startsWith('l3-banned-')) return undefined;
 
-  // Internal L4 checks
-  if (checkId.includes('bare')) return buildBareLlmDiff(allLines, line, filePath, fileContent);
+  // Bare LLM calls are informational — no fix diff needed
+  if (checkId.includes('bare')) return undefined;
   if (checkId.startsWith('l4-nhi-') && checkId !== 'l4-nhi-clean')
     return buildNhiDiff(allLines, line, filePath, targetLine!);
   if (checkId === 'l4-security-risk') {
@@ -131,7 +74,7 @@ export const buildFixDiff = (
 
   // External tool findings — route to same fix builders
   if (checkId.startsWith('ext-semgrep-complior-bare-call'))
-    return buildBareLlmDiff(allLines, line, filePath, fileContent);
+    return undefined;
   if (checkId.startsWith('ext-semgrep-complior-unsafe-deser'))
     return buildSecurityRiskDiff(allLines, line, filePath, targetLine!) ?? buildNhiDiff(allLines, line, filePath, targetLine!);
   if (checkId.startsWith('ext-semgrep-complior-injection'))
@@ -152,128 +95,7 @@ export const buildFixDiff = (
 };
 
 // ---------------------------------------------------------------------------
-// 1a. Bare LLM diff (refactored from original buildFixDiff)
-// ---------------------------------------------------------------------------
-
-/**
- * Search forward from a finding line (which may be an import) for the actual
- * SDK constructor usage. Returns the 1-based line number, or undefined.
- */
-const findConstructorForward = (allLines: readonly string[], startLine: number): number | undefined => {
-  const limit = Math.min(allLines.length, startLine + 30);
-  for (let i = startLine; i < limit; i++) {
-    if (SDK_CONSTRUCTORS.test(allLines[i] ?? '')) return i + 1;
-  }
-  return undefined;
-};
-
-const buildBareLlmDiff = (
-  allLines: readonly string[],
-  line: number,
-  filePath: string,
-  fileContent: string,
-): FixDiff | undefined => {
-  const targetLine = allLines[line - 1];
-  if (targetLine === undefined) return undefined;
-
-  const needsImport = !hasCompliorImport(fileContent);
-  const importLine = needsImport ? COMPLIOR_IMPORT : undefined;
-
-  // 1. Direct constructor hit: new Anthropic(), new OpenAI(), etc.
-  const sdkMatch = targetLine.match(SDK_CONSTRUCTORS);
-  if (sdkMatch) {
-    // Skip if already wrapped with complior()
-    if (/complior\s*\(/.test(targetLine)) return undefined;
-    return buildConstructorDiff(allLines, line - 1, filePath, importLine);
-  }
-
-  try {
-    // 2. Method call: anthropic.messages.create(, openai.chat.completions.create(, etc.
-  } catch (err) {
-    console.error('LLM call failed:', err);
-    throw err;
-  }
-  const callMatch = targetLine.match(CALL_PATTERNS);
-  if (callMatch) {
-    const varName = callMatch[1];
-
-    // Try to find constructor and wrap THERE (idiomatic SDK usage)
-    const ctorLine = findConstructorLine(allLines, varName, line);
-    if (ctorLine !== undefined) {
-      return buildConstructorDiff(allLines, ctorLine - 1, filePath, importLine);
-    }
-
-    // Fallback: wrap at call site (when constructor is in another file)
-    const afterLine = targetLine.replace(varName + '.', `complior(${varName}).`);
-    return {
-      before: [targetLine],
-      after: [afterLine],
-      startLine: line,
-      filePath,
-      importLine,
-    };
-  }
-
-  try {
-    // 3. Standalone LLM function call: generateText({, streamText({
-  } catch (err) {
-    console.error('LLM call failed:', err);
-    throw err;
-  }
-  const standaloneMatch = targetLine.match(STANDALONE_LLM_CALLS);
-  if (standaloneMatch) {
-    const funcName = standaloneMatch[1];
-    const afterLine = targetLine.replace(funcName, `complior(${funcName})`);
-    return {
-      before: [targetLine],
-      after: [afterLine],
-      startLine: line,
-      filePath,
-      importLine,
-    };
-  }
-
-  // 4. Finding at import line — scan forward for the actual constructor
-  const fwdCtor = findConstructorForward(allLines, line - 1);
-  if (fwdCtor !== undefined) {
-    return buildConstructorDiff(allLines, fwdCtor - 1, filePath, importLine);
-  }
-
-  return undefined;
-};
-
-/** Build a before/after diff for a constructor wrapping. Handles multi-line constructors. */
-const buildConstructorDiff = (
-  allLines: readonly string[],
-  ctorIdx: number,
-  filePath: string,
-  importLine: string | undefined,
-): FixDiff => {
-  const endIdx = findConstructorEnd(allLines, ctorIdx);
-  const before: string[] = [];
-  const after: string[] = [];
-
-  for (let i = ctorIdx; i <= endIdx; i++) {
-    const original = allLines[i] ?? '';
-    before.push(original);
-
-    if (i === ctorIdx) {
-      // First line: add complior( before `new`
-      after.push(original.replace(SDK_CONSTRUCTORS, 'complior(new $1('));
-    } else if (i === endIdx) {
-      // Last line: add closing `)` before `;`
-      const closed = original.replace(/\)\s*;/, '));');
-      after.push(closed === original ? original + ')' : closed);
-    } else {
-      after.push(original);
-    }
-  }
-
-  return { before, after, startLine: ctorIdx + 1, filePath, importLine };
-};
-
-// ---------------------------------------------------------------------------
-// 1b. NHI diff — replace hardcoded secrets with env vars
+// NHI diff — replace hardcoded secrets with env vars
 // ---------------------------------------------------------------------------
 
 const PY_ASSIGN = /^(\s*)(\w+)\s*=\s*(['"`])(.+?)\3/;

@@ -69,6 +69,21 @@ const toFinding = (result: CheckResult, confidence?: CheckWithConfidence): Findi
     };
   }
 
+  if (result.type === 'info') {
+    return {
+      checkId: result.checkId,
+      type: 'info',
+      message: result.message,
+      severity: result.severity,
+      obligationId: result.obligationId,
+      articleReference: result.articleReference,
+      fix: result.fix,
+      file: result.file,
+      line: result.line,
+      ...base,
+    };
+  }
+
   // skip
   return {
     checkId: result.checkId,
@@ -103,6 +118,10 @@ const findingsToCheckResults = (findings: readonly Finding[]): readonly CheckRes
     if (f.type === 'pass') return { type: 'pass', checkId: f.checkId, message: f.message };
     if (f.type === 'fail') return {
       type: 'fail', checkId: f.checkId, message: f.message,
+      severity: f.severity, obligationId: f.obligationId, articleReference: f.articleReference, fix: f.fix,
+    };
+    if (f.type === 'info') return {
+      type: 'info', checkId: f.checkId, message: f.message,
       severity: f.severity, obligationId: f.obligationId, articleReference: f.articleReference, fix: f.fix,
     };
     return { type: 'skip', checkId: f.checkId, reason: f.message };

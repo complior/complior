@@ -30,12 +30,23 @@ export type Role = 'provider' | 'deployer' | 'both';
 
 // --- Check Results ---
 
-export type CheckResultType = 'pass' | 'fail' | 'skip';
+export type CheckResultType = 'pass' | 'fail' | 'skip' | 'info';
 
 export type CheckResult = Readonly<
   | { readonly type: 'pass'; readonly checkId: string; readonly message: string }
   | {
       readonly type: 'fail';
+      readonly checkId: string;
+      readonly message: string;
+      readonly severity: Severity;
+      readonly obligationId?: string;
+      readonly articleReference?: string;
+      readonly fix?: string;
+      readonly file?: string;
+      readonly line?: number;
+    }
+  | {
+      readonly type: 'info';
       readonly checkId: string;
       readonly message: string;
       readonly severity: Severity;

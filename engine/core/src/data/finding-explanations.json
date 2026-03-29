@@ -141,7 +141,7 @@
     "article": "Art. 50(1)",
     "penalty": "€7.5M or 1.5% of annual global turnover",
     "deadline": "2025-08-02",
-    "business_impact": "Direct LLM API calls without compliance wrapper bypass all safety hooks: prohibited content detection, PII sanitization, bias checking, and disclosure verification. Every unwrapped call is a potential violation."
+    "business_impact": "Bare LLM API calls detected. Consider @complior/sdk for runtime compliance enforcement (disclosure, logging, content marking). This is informational — bare calls are not a violation; compliance is enforced via separate disclosure, logging, and oversight checks."
   },
   "l4-disclosure": {
     "article": "Art. 50(1)",

@@ -11,98 +11,19 @@ describe('buildCodeContext', () => {
   });
 });
 
-// --- Bare LLM ---
+// --- Bare LLM (now returns undefined — info findings have no fix diff) ---
 
 describe('buildFixDiff — bare LLM', () => {
-  it('wraps constructor with complior()', () => {
+  it('returns undefined for bare-llm (info findings have no fix)', () => {
     const content = "import OpenAI from 'openai';\nconst client = new OpenAI();";
     const diff = buildFixDiff(content, 2, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(new OpenAI(');
-    expect(diff!.importLine).toBe("import { complior } from '@complior/sdk';");
+    expect(diff).toBeUndefined();
   });
 
-  it('wraps Groq constructor', () => {
-    const content = "import Groq from 'groq-sdk';\nconst client = new Groq();";
-    const diff = buildFixDiff(content, 2, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(new Groq(');
-  });
-
-  it('skips import line when already imported', () => {
-    const content = "import { complior } from '@complior/sdk';\nconst client = new OpenAI();";
-    const diff = buildFixDiff(content, 2, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.importLine).toBeUndefined();
-  });
-
-  it('wraps method call fallback', () => {
-    const content = 'const r = await ai.messages.create({ model: "claude" });';
-    const diff = buildFixDiff(content, 1, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(ai).');
-  });
-
-  it('wraps Ollama constructor', () => {
-    const content = "import { Ollama } from 'ollama';\nconst ollama = new Ollama({ host: 'http://localhost:11434' });";
-    const diff = buildFixDiff(content, 2, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(new Ollama(');
-  });
-
-  it('wraps BedrockRuntimeClient constructor', () => {
-    const content = "const client = new BedrockRuntimeClient({ region: 'us-east-1' });";
-    const diff = buildFixDiff(content, 1, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(new BedrockRuntimeClient(');
-  });
-
-  it('wraps images.generate call', () => {
-    const content = 'const r = await openai.images.generate({ prompt: "cat" });';
-    const diff = buildFixDiff(content, 1, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(openai).');
-  });
-
-  it('wraps ollama.chat call', () => {
-    const content = "const ollama = new Ollama();\nconst r = await ollama.chat({ model: 'llama3' });";
-    const diff = buildFixDiff(content, 2, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    // Should find constructor on line 1 and wrap there
-    expect(diff!.after[0]).toContain('complior(new Ollama(');
-  });
-
-  it('wraps standalone generateText call', () => {
-    const content = '  const result = await generateText({\n    model: openai("gpt-4"),\n  });';
-    const diff = buildFixDiff(content, 1, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(generateText)');
-  });
-
-  it('wraps standalone streamText call', () => {
-    const content = '  const result = await streamText({\n    model: openai("gpt-4"),\n  });';
-    const diff = buildFixDiff(content, 1, 'src/ai.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(streamText)');
-  });
-
-  it('forward-scans from import to constructor', () => {
-    const lines = [
-      "import {",
-      "  BedrockRuntimeClient,",
-      "  InvokeModelCommand,",
-      "} from '@aws-sdk/client-bedrock-runtime';",
-      "",
-      "const client = new BedrockRuntimeClient({",
-      "  region: 'us-east-1',",
-      "});",
-    ];
-    const content = lines.join('\n');
-    // Scanner finds bare-llm at line 2 (import line)
-    const diff = buildFixDiff(content, 2, 'src/bedrock.ts', 'l4-bare-llm');
-    expect(diff).toBeDefined();
-    expect(diff!.after[0]).toContain('complior(new BedrockRuntimeClient(');
-    expect(diff!.startLine).toBe(6); // Constructor is on line 6
+  it('returns undefined for ext-semgrep bare-call', () => {
+    const content = "const client = new OpenAI();";
+    const diff = buildFixDiff(content, 1, 'src/ai.ts', 'ext-semgrep-complior-bare-call');
+    expect(diff).toBeUndefined();
   });
 });
 

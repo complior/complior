@@ -1090,6 +1090,49 @@ ${richSection}
   });
 });
 
+describe('P5: scaffold VALID → always fail in layer2ToCheckResults', () => {
+  it('scaffold document with all sections fails L2 instead of passing', () => {
+    const l2Result = {
+      obligationId: 'eu-ai-act-OBL-013',
+      article: 'Art. 27',
+      document: 'fria',
+      status: 'VALID' as const,
+      foundSections: ['Risk Assessment', 'Impact Analysis', 'Mitigation Measures'],
+      missingSections: [] as string[],
+      totalRequired: 3,
+      matchedRequired: 3,
+      docQuality: 'scaffold' as const,
+    };
+
+    const results = layer2ToCheckResults([l2Result]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('fail');
+    expect(results[0].severity).toBe('low');
+    expect(results[0].message).toContain('scaffold/template quality');
+    expect(results[0].fix).toContain('replace [bracketed] placeholders');
+  });
+
+  it('non-scaffold VALID document still passes L2', () => {
+    const l2Result = {
+      obligationId: 'eu-ai-act-OBL-013',
+      article: 'Art. 27',
+      document: 'fria',
+      status: 'VALID' as const,
+      foundSections: ['Risk Assessment', 'Impact Analysis', 'Mitigation Measures'],
+      missingSections: [] as string[],
+      totalRequired: 3,
+      matchedRequired: 3,
+      docQuality: 'draft' as const,
+    };
+
+    const results = layer2ToCheckResults([l2Result]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('pass');
+  });
+});
+
 describe('N1: scaffold marker detection in docQuality', () => {
   const friaValidator: DocumentValidator = {
     document: 'fria',

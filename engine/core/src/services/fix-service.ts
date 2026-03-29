@@ -338,7 +338,7 @@ export const createFixService = (deps: FixServiceDeps) => {
     const baselineScan = await scanService.scan(projectPath);
     const scoreBefore = baselineScan.score.totalScore;
     const results: FixResult[] = [];
-    const appliedSpliceKeys = new Set<string>(); // Track path:startLine to avoid re-applying
+    const appliedActionKeys = new Set<string>(); // Track path:startLine (splice) or path (create/edit)
 
     // Separate splice-only plans (batch per file) from others (apply individually)
     const splicePlans: FixPlan[] = [];
@@ -363,6 +363,9 @@ export const createFixService = (deps: FixServiceDeps) => {
           if (mf) manualFields = mf;
         }
         const enrichedPlan = manualFields ? { ...plan, manualFields } : plan;
+        for (const action of plan.actions) {
+          appliedActionKeys.add(action.type === 'splice' ? `${action.path}:${action.startLine}` : action.path);
+        }
         results.push({ plan: enrichedPlan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: backedUp });
       } catch (err) {
         results.push({
@@ -438,7 +441,7 @@ export const createFixService = (deps: FixServiceDeps) => {
         // Splice in-memory
         lines.splice(startIdx, beforeLines.length, ...(action.afterLines ?? []));
         if (action.importLine) importLines.push(action.importLine);
-        appliedSpliceKeys.add(`${action.path}:${action.startLine}`);
+        appliedActionKeys.add(`${action.path}:${action.startLine}`);
         results.push({ plan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: [backup] });
       }
 
@@ -473,17 +476,19 @@ export const createFixService = (deps: FixServiceDeps) => {
 
       if (pass >= 2) break; // Last pass is just the final scan
 
-      // Check for new fixable inline findings
+      // Check for new fixable findings (splice + cascading create/edit)
       const newPlans = previewAll().filter((p) => {
-        if (p.actions.length !== 1 || p.actions[0]!.type !== 'splice') return false;
-        const key = `${p.actions[0]!.path}:${p.actions[0]!.startLine}`;
-        return !appliedSpliceKeys.has(key);
+        if (p.actions.length === 0) return false;
+        const a = p.actions[0]!;
+        const key = a.type === 'splice' ? `${a.path}:${a.startLine}` : a.path;
+        return !appliedActionKeys.has(key);
       });
       if (newPlans.length === 0) break;
 
-      // Apply new fixes using the same batched approach
+      // Apply new splice fixes using the same batched approach
+      const spliceCascadePlans = newPlans.filter(p => p.actions.length === 1 && p.actions[0]!.type === 'splice');
       const newFileGroups = new Map<string, FixPlan[]>();
-      for (const plan of newPlans) {
+      for (const plan of spliceCascadePlans) {
         const path = plan.actions[0]!.path;
         if (!newFileGroups.has(path)) newFileGroups.set(path, []);
         newFileGroups.get(path)!.push(plan);
@@ -513,7 +518,7 @@ export const createFixService = (deps: FixServiceDeps) => {
           if (!valid) continue;
           lines.splice(startIdx, beforeLines.length, ...(action.afterLines ?? []));
           if (action.importLine) importLines.push(action.importLine);
-          appliedSpliceKeys.add(`${action.path}:${action.startLine}`);
+          appliedActionKeys.add(`${action.path}:${action.startLine}`);
           results.push({ plan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: [bk] });
           anyApplied = true;
         }
@@ -530,6 +535,17 @@ export const createFixService = (deps: FixServiceDeps) => {
         if (content.endsWith('\n') && !output.endsWith('\n')) output += '\n';
         await writeFile(full, output, 'utf-8');
         events.emit('file.changed', { path: full, action: 'edit' });
+      }
+      // Apply non-splice cascading actions (create/edit) using existing applyAction helper
+      const nonSplicePlans = newPlans.filter(p => p.actions.length > 0 && p.actions[0]!.type !== 'splice');
+      for (const plan of nonSplicePlans) {
+        try {
+          const bk = await backupFile(plan.actions[0]!.path);
+          await applyAction(plan.actions[0]!, projectPath);
+          appliedActionKeys.add(plan.actions[0]!.path);
+          results.push({ plan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: [bk] });
+          anyApplied = true;
+        } catch { /* skip failed cascading fixes */ }
       }
       if (!anyApplied) break;
     }

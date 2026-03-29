@@ -90,13 +90,14 @@ pub enum Zone {
     Green,
 }
 
-/// Check result type from engine: pass, fail, or skip.
+/// Check result type from engine: pass, fail, skip, or info.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CheckResultType {
     Pass,
     Fail,
     Skip,
+    Info,
 }
 
 /// Finding type classification for code-first UX.

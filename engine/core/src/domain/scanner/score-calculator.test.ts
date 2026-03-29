@@ -261,19 +261,19 @@ describe('calculateScore', () => {
   });
 
   it('includes ext-* findings in category scores', () => {
-    // ext-semgrep-complior-bare-call maps to transparency
+    // ext-semgrep-complior-injection-js maps to technical_safeguards
     const checks: readonly CheckResult[] = [
-      pass('ai-disclosure'),
-      fail('ext-semgrep-complior-bare-call'),
+      pass('l4-cybersecurity'),
+      fail('ext-semgrep-complior-injection-js'),
     ];
 
     const result = calculateScore(checks, scoringData);
 
-    const transparency = result.categoryScores.find((c) => c.category === 'transparency');
-    expect(transparency).toBeDefined();
-    expect(transparency!.obligationCount).toBe(2);
-    expect(transparency!.passedCount).toBe(1);
-    expect(transparency!.score).toBe(50);
+    const techSafeguards = result.categoryScores.find((c) => c.category === 'technical_safeguards');
+    expect(techSafeguards).toBeDefined();
+    expect(techSafeguards!.obligationCount).toBe(2);
+    expect(techSafeguards!.passedCount).toBe(1);
+    expect(techSafeguards!.score).toBe(50);
   });
 
   it('skips categories with no matching checks', () => {

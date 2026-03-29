@@ -28,14 +28,14 @@
   "findings": [
     {
       "checkId": "l4-bare-api-call",
-      "type": "fail",
-      "message": "Bare OpenAI API call without complior SDK wrapper",
-      "severity": "high",
+      "type": "info",
+      "message": "Bare OpenAI API call detected in src/ai/chat.ts:42. Consider @complior/sdk for runtime compliance.",
+      "severity": "info",
       "file": "src/ai/chat.ts",
       "line": 42,
       "obligationId": "OBL-015",
       "articleReference": "Art. 14(4)",
-      "fix": "Wrap with complior() SDK proxy",
+      "fix": "Optional: wrap with @complior/sdk for runtime Art. 50/12/14 enforcement",
       "codeContext": {
         "lines": [
           { "num": 40, "content": "async function chat(prompt: string) {" },
@@ -47,14 +47,7 @@
         "startLine": 40,
         "highlightLine": 42
       },
-      "fixDiff": {
-        "before": ["  const client = new OpenAI();"],
-        "after": ["  const client = complior(new OpenAI(), { disclose: true });"],
-        "startLine": 41,
-        "filePath": "src/ai/chat.ts",
-        "importLine": "import { complior } from '@complior/sdk';"
-      },
-      "priority": 1,
+      "priority": 3,
       "confidence": 0.95,
       "confidenceLevel": "high",
       "evidence": [{ "source": "ast", "pattern": "new OpenAI()" }]

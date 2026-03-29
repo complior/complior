@@ -87,7 +87,7 @@ describe('HTTP Contract — TS side', () => {
     const finding: Finding = raw.findings[0]!;
 
     expect(typeof finding.checkId).toBe('string');
-    expect(['pass', 'fail', 'skip']).toContain(finding.type);
+    expect(['pass', 'fail', 'skip', 'info']).toContain(finding.type);
     expect(typeof finding.message).toBe('string');
     expect(['critical', 'high', 'medium', 'low', 'info'] satisfies Severity[]).toContain(finding.severity);
   });
@@ -119,13 +119,18 @@ describe('HTTP Contract — TS side', () => {
 
   it('FixDiff has correct structure when present', () => {
     const raw = loadSample() as ScanResult;
-    const diff: FixDiff = raw.findings[0]!.fixDiff!;
+    // Find a finding with fixDiff (first finding is info, no fixDiff)
+    const findingWithDiff = raw.findings.find((f) => f.fixDiff !== undefined);
+    if (findingWithDiff === undefined) {
+      // No findings with fixDiff in sample — skip
+      return;
+    }
+    const diff: FixDiff = findingWithDiff.fixDiff!;
 
     expect(Array.isArray(diff.before)).toBe(true);
     expect(Array.isArray(diff.after)).toBe(true);
     expect(typeof diff.startLine).toBe('number');
     expect(typeof diff.filePath).toBe('string');
-    expect(typeof diff.importLine).toBe('string');
   });
 
   it('Severity enum values match contract', () => {

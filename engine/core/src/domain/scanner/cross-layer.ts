@@ -54,33 +54,6 @@ const docCodeMismatch: CrossLayerRule = {
   },
 };
 
-// Rule 2: AI SDK detected but no disclosure pattern
-const sdkNoDisclosure: CrossLayerRule = {
-  id: 'cross-sdk-no-disclosure',
-  description: 'AI SDK detected in dependencies but no disclosure pattern in code',
-  check: (_l1, _l2, l3Results, l4Results) => {
-    const findings: CrossLayerFinding[] = [];
-
-    const hasAiSdk = l3Results.some((r) => r.type === 'ai-sdk-detected');
-    const hasDisclosure = l4Results.some(
-      (r) => r.category === 'disclosure' && r.status === 'FOUND',
-    );
-
-    if (hasAiSdk && !hasDisclosure) {
-      findings.push({
-        ruleId: 'cross-sdk-no-disclosure',
-        description: 'AI SDK detected in dependencies but no AI disclosure component found in code. Art. 50(1) requires informing users they are interacting with AI.',
-        severity: 'high',
-        layers: ['L3', 'L4'],
-        obligationId: 'eu-ai-act-OBL-015',
-        article: 'Art. 50(1)',
-      });
-    }
-
-    return findings;
-  },
-};
-
 // Rule 3: Banned package detected but wrapped with compliance layer → reduce severity
 const bannedWithWrapper: CrossLayerRule = {
   id: 'cross-banned-with-wrapper',
@@ -166,11 +139,11 @@ const killSwitchWithoutTest: CrossLayerRule = {
   },
 };
 
-// Rule 6: Passport permissions vs actual code patterns mismatch
+// Rule 6: AI SDK in deps but no disclosure pattern
 const passportCodeMismatch: CrossLayerRule = {
   id: 'cross-passport-code-mismatch',
-  description: 'Passport permissions do not match actual code patterns detected by L4',
-  check: (l1Results, _l2, _l3, l4Results) => {
+  description: 'AI SDK in dependencies but no disclosure pattern in code',
+  check: (l1Results, _l2, l3Results, l4Results) => {
     const findings: CrossLayerFinding[] = [];
 
     // Check if passport exists (L1 passport-presence pass)
@@ -180,22 +153,20 @@ const passportCodeMismatch: CrossLayerRule = {
 
     if (!hasPassport) return findings;
 
-    // If passport claims compliance but L4 finds bare LLM calls, flag mismatch
-    const bareLlmCalls = l4Results.filter(
-      (r) => r.category === 'bare-llm' && r.status === 'FOUND',
-    );
+    // AI SDK in dependencies (L3) but no disclosure pattern (L4)
+    const hasAiSdk = l3Results.some((r) => r.type === 'ai-sdk-detected');
     const hasDisclosure = l4Results.some(
       (r) => r.category === 'disclosure' && r.status === 'FOUND',
     );
 
-    if (bareLlmCalls.length > 0 && !hasDisclosure) {
+    if (hasAiSdk && !hasDisclosure) {
       findings.push({
         ruleId: 'cross-passport-code-mismatch',
-        description: `Agent Passport exists but ${bareLlmCalls.length} unwrapped LLM call(s) found without disclosure. Passport should reflect actual code practices.`,
-        severity: 'high',
-        layers: ['L1', 'L4'],
-        obligationId: 'eu-ai-act-OBL-011',
-        article: 'Art. 26(4)',
+        description: 'AI SDK in dependencies but no disclosure pattern found — ensure Art. 50(1) transparency requirements are met.',
+        severity: 'medium',
+        layers: ['L1', 'L3', 'L4'],
+        obligationId: 'eu-ai-act-OBL-015',
+        article: 'Art. 50(1)',
       });
     }
 
@@ -203,25 +174,22 @@ const passportCodeMismatch: CrossLayerRule = {
   },
 };
 
-// Rule 7: Undeclared permissions + bare LLM calls — compounding governance failure
+// Rule 7: Undeclared permissions — governance failure
 const permissionPassportMismatch: CrossLayerRule = {
   id: 'cross-permission-passport-mismatch',
-  description: 'Undeclared permissions combined with unwrapped LLM calls — compounding governance failure',
-  check: (l1Results, _l2, _l3, l4Results) => {
+  description: 'Undeclared permissions in passport — governance gap per Art. 26(4)',
+  check: (l1Results, _l2, _l3, _l4Results) => {
     const undeclaredCount = l1Results.filter(
       (r) => r.type === 'fail' && r.checkId === 'undeclared-permission',
     ).length;
-    const hasBareLlm = l4Results.some(
-      (r) => r.category === 'bare-llm' && r.status === 'FOUND',
-    );
 
-    if (undeclaredCount === 0 || !hasBareLlm) return [];
+    if (undeclaredCount === 0) return [];
 
     return [{
       ruleId: 'cross-permission-passport-mismatch',
-      description: `${undeclaredCount} undeclared permission(s) with unwrapped LLM calls — compounding governance failure per Art. 26(4)`,
-      severity: 'critical',
-      layers: ['L1', 'L4'],
+      description: `${undeclaredCount} undeclared permission(s) in passport — governance gap per Art. 26(4)`,
+      severity: 'high',
+      layers: ['L1'],
       obligationId: 'eu-ai-act-OBL-011',
       article: 'Art. 26(4)',
     }];
@@ -230,7 +198,6 @@ const permissionPassportMismatch: CrossLayerRule = {
 
 export const CROSS_LAYER_RULES: readonly CrossLayerRule[] = [
   docCodeMismatch,
-  sdkNoDisclosure,
   bannedWithWrapper,
   loggingNoRetention,
   killSwitchWithoutTest,

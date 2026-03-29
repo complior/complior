@@ -80,7 +80,6 @@ const CHECK_ID_TO_CATEGORY: Readonly<Record<string, string>> = {
   'git-bulk-compliance': 'organizational',
 
   // --- External tool checks ---
-  'ext-semgrep-complior-bare-call': 'transparency',
   'ext-semgrep-complior-injection-js': 'technical_safeguards',
   'ext-semgrep-complior-injection-py': 'technical_safeguards',
   'ext-detect-secrets-Secret-Keyword': 'technical_safeguards',
@@ -134,8 +133,10 @@ export const calculateScore = (
   const failedChecks = checks.filter((c) => c.type === 'fail').length;
   const skippedChecks = checks.filter((c) => c.type === 'skip').length;
 
-  // Empty checks or all skipped = fully compliant (nothing applicable)
-  if (totalChecks === 0 || totalChecks === skippedChecks) {
+  const infoChecks = checks.filter((c) => c.type === 'info').length;
+
+  // Empty checks or all skipped/info = fully compliant (nothing applicable)
+  if (totalChecks === 0 || totalChecks === skippedChecks + infoChecks) {
     return {
       totalScore: 100,
       zone: 'green',
@@ -152,7 +153,7 @@ export const calculateScore = (
   const categoryChecksMap = new Map<string, readonly CheckResult[]>();
 
   for (const check of checks) {
-    if (check.type === 'skip') continue;
+    if (check.type === 'skip' || check.type === 'info') continue;
 
     const category = findCategoryForCheck(check, scoringData.weighted_categories);
     if (category === undefined) continue;

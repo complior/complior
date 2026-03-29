@@ -24,6 +24,7 @@ const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
 // Clean up any previous E2E artifacts
 const cleanup = async () => {
   await rm(resolve(TEST_PROJECT, '.complior', 'reports'), { recursive: true, force: true });
+  await rm(resolve(TEST_PROJECT, '.complior', 'agents'), { recursive: true, force: true });
 };
 
 describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
@@ -72,11 +73,11 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
       const beforeSummary = await beforeRes.json() as Record<string, unknown>;
       const countBefore = beforeSummary['totalEntries'] as number;
 
-      // Init passport
+      // Init passport (force to handle stale/empty files from previous runs)
       const initRes = await application.app.request('/agent/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: TEST_PROJECT }),
+        body: JSON.stringify({ path: TEST_PROJECT, force: true }),
       });
       expect(initRes.status).toBe(200);
       const initBody = await initRes.json() as Record<string, unknown>;
@@ -109,23 +110,24 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
   // Gap 3: FRIA output path + Gap 4: Passport update after FRIA
   // ─────────────────────────────────────────────────────────
   describe('Gap 3+4: FRIA generation, output path, passport update', () => {
-    const AGENT_NAME = 'acme-ai-support-openai';
+    let AGENT_NAME = '';
 
     it('generates FRIA and saves to .complior/reports/fria-{name}.md', async () => {
-      // Ensure passport exists
+      // Ensure passport exists (force to handle stale files)
+      await application.app.request('/agent/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: TEST_PROJECT, force: true }),
+      });
+
+      // Get actual agent name from engine
       const listRes = await application.app.request(
         `/agent/list?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
-      const manifests = await listRes.json() as Array<Record<string, unknown>>;
-
-      // If no agent passports exist yet, init one first
-      if (manifests.length === 0) {
-        await application.app.request('/agent/init', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: TEST_PROJECT }),
-        });
-      }
+      const agents = await listRes.json() as Array<Record<string, unknown>>;
+      expect(agents.length).toBeGreaterThan(0);
+      AGENT_NAME = (agents[0] as Record<string, unknown>)['name'] as string;
+      expect(AGENT_NAME).toBeDefined();
 
       // Generate FRIA
       const friaRes = await application.app.request('/agent/fria', {

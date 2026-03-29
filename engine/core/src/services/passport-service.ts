@@ -146,7 +146,11 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       await mkdir(dirname(filePath), { recursive: true });
 
       if (!force) {
-        try { await stat(filePath); skipped.push(agent.name); continue; } catch { /* file doesn't exist — create it */ }
+        try {
+          const existing = await readFile(filePath, 'utf-8');
+          if (existing.trim().length > 0) { skipped.push(agent.name); continue; }
+          // Empty file — treat as non-existent, overwrite
+        } catch { /* file doesn't exist — create it */ }
       }
 
       await writeFile(filePath, JSON.stringify(signedManifest, null, 2));

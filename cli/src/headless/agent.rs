@@ -174,8 +174,7 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
                         let score = agent
                             .get("compliance")
                             .and_then(|c| c.get("complior_score"))
-                            .and_then(|v| v.as_f64())
-                            .unwrap_or(0.0);
+                            .and_then(|v| v.as_f64());
                         let confidence = agent
                             .get("source")
                             .and_then(|s| s.get("confidence"))
@@ -186,7 +185,10 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
                         println!("     Framework:   {framework}");
                         println!("     Autonomy:    {autonomy} ({agent_type})");
                         println!("     Risk class:  {risk_class}");
-                        println!("     Score:       {score:.0}/100");
+                        match score {
+                            Some(s) if s > 0.0 => println!("     Score:       {s:.0}/100"),
+                            _ => println!("     Score:       \u{2014} (run `complior scan` first)"),
+                        }
                         println!(
                             "     Confidence:  {:.0}%",
                             confidence * 100.0

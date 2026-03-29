@@ -51,8 +51,8 @@ const makeL4 = (overrides: Partial<L4CheckResult> = {}): L4CheckResult => ({
 });
 
 describe('CROSS_LAYER_RULES', () => {
-  it('has 7 rules defined', () => {
-    expect(CROSS_LAYER_RULES).toHaveLength(7);
+  it('has 6 rules defined', () => {
+    expect(CROSS_LAYER_RULES).toHaveLength(6);
   });
 
   it('all rules have id and description', () => {
@@ -105,40 +105,6 @@ describe('cross-doc-code-mismatch', () => {
 
     const mismatch = findings.find((f) => f.ruleId === 'cross-doc-code-mismatch');
     expect(mismatch).toBeDefined();
-  });
-});
-
-describe('cross-sdk-no-disclosure', () => {
-  it('fires when AI SDK detected but no disclosure', () => {
-    const findings = runCrossLayerChecks(
-      [],
-      [],
-      [makeL3({ type: 'ai-sdk-detected' })],
-      [], // No disclosure
-    );
-
-    const sdkNoDisc = findings.find((f) => f.ruleId === 'cross-sdk-no-disclosure');
-    expect(sdkNoDisc).toBeDefined();
-    expect(sdkNoDisc?.severity).toBe('high');
-    expect(sdkNoDisc?.article).toBe('Art. 50(1)');
-  });
-
-  it('does not fire when disclosure is present', () => {
-    const findings = runCrossLayerChecks(
-      [],
-      [],
-      [makeL3({ type: 'ai-sdk-detected' })],
-      [makeL4({ category: 'disclosure', status: 'FOUND' })],
-    );
-
-    const sdkNoDisc = findings.find((f) => f.ruleId === 'cross-sdk-no-disclosure');
-    expect(sdkNoDisc).toBeUndefined();
-  });
-
-  it('does not fire when no AI SDK', () => {
-    const findings = runCrossLayerChecks([], [], [], []);
-    const sdkNoDisc = findings.find((f) => f.ruleId === 'cross-sdk-no-disclosure');
-    expect(sdkNoDisc).toBeUndefined();
   });
 });
 
@@ -269,29 +235,26 @@ describe('cross-kill-switch-no-test', () => {
 });
 
 describe('cross-passport-code-mismatch', () => {
-  it('fires when passport exists but bare LLM calls without disclosure', () => {
+  it('fires when passport exists + AI SDK in deps but no disclosure', () => {
     const findings = runCrossLayerChecks(
       [makeL1Pass('passport-presence')],
       [],
-      [],
-      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
+      [makeL3({ type: 'ai-sdk-detected' })],
+      [], // No disclosure
     );
 
     const mismatch = findings.find((f) => f.ruleId === 'cross-passport-code-mismatch');
     expect(mismatch).toBeDefined();
-    expect(mismatch?.severity).toBe('high');
-    expect(mismatch?.article).toBe('Art. 26(4)');
+    expect(mismatch?.severity).toBe('medium');
+    expect(mismatch?.article).toBe('Art. 50(1)');
   });
 
   it('does not fire when passport exists and disclosure present', () => {
     const findings = runCrossLayerChecks(
       [makeL1Pass('passport-presence')],
       [],
-      [],
-      [
-        makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' }),
-        makeL4({ category: 'disclosure', status: 'FOUND' }),
-      ],
+      [makeL3({ type: 'ai-sdk-detected' })],
+      [makeL4({ category: 'disclosure', status: 'FOUND' })],
     );
 
     const mismatch = findings.find((f) => f.ruleId === 'cross-passport-code-mismatch');
@@ -302,8 +265,8 @@ describe('cross-passport-code-mismatch', () => {
     const findings = runCrossLayerChecks(
       [makeL1Fail('passport-presence')],
       [],
+      [makeL3({ type: 'ai-sdk-detected' })],
       [],
-      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
     );
 
     const mismatch = findings.find((f) => f.ruleId === 'cross-passport-code-mismatch');
@@ -312,7 +275,7 @@ describe('cross-passport-code-mismatch', () => {
 });
 
 describe('cross-permission-passport-mismatch', () => {
-  it('fires when undeclared-permission fail + bare-llm FOUND', () => {
+  it('fires when undeclared-permission fail exists', () => {
     const findings = runCrossLayerChecks(
       [
         makeL1Fail('undeclared-permission'),
@@ -320,33 +283,21 @@ describe('cross-permission-passport-mismatch', () => {
       ],
       [],
       [],
-      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
+      [],
     );
 
     const mismatch = findings.find((f) => f.ruleId === 'cross-permission-passport-mismatch');
     expect(mismatch).toBeDefined();
-    expect(mismatch?.severity).toBe('critical');
+    expect(mismatch?.severity).toBe('high');
     expect(mismatch?.description).toContain('2 undeclared');
   });
 
-  it('does not fire when only undeclared without bare-llm', () => {
+  it('does not fire when no undeclared permissions', () => {
     const findings = runCrossLayerChecks(
-      [makeL1Fail('undeclared-permission')],
+      [makeL1Pass('passport-presence')],
       [],
       [],
       [],
-    );
-
-    const mismatch = findings.find((f) => f.ruleId === 'cross-permission-passport-mismatch');
-    expect(mismatch).toBeUndefined();
-  });
-
-  it('does not fire when only bare-llm without undeclared', () => {
-    const findings = runCrossLayerChecks(
-      [],
-      [],
-      [],
-      [makeL4({ category: 'bare-llm', patternType: 'negative', status: 'FOUND' })],
     );
 
     const mismatch = findings.find((f) => f.ruleId === 'cross-permission-passport-mismatch');
@@ -376,13 +327,13 @@ describe('runCrossLayerChecks', () => {
 
   it('can return multiple findings', () => {
     const findings = runCrossLayerChecks(
-      [],
+      [makeL1Fail('undeclared-permission')],
       [makeL2({ document: 'monitoring-policy', status: 'VALID' })],
-      [makeL3({ type: 'ai-sdk-detected' })],
-      [], // No code patterns at all
+      [],
+      [makeL4({ category: 'logging', status: 'FOUND' })],
     );
 
-    // Should fire at least: doc-code-mismatch + sdk-no-disclosure
+    // Should fire at least: doc-code-mismatch + permission-passport-mismatch
     expect(findings.length).toBeGreaterThanOrEqual(2);
   });
 });
@@ -390,9 +341,9 @@ describe('runCrossLayerChecks', () => {
 describe('crossLayerToCheckResults', () => {
   it('converts findings to fail CheckResults', () => {
     const findings = runCrossLayerChecks(
+      [makeL1Fail('undeclared-permission')],
       [],
       [],
-      [makeL3({ type: 'ai-sdk-detected' })],
       [],
     );
 

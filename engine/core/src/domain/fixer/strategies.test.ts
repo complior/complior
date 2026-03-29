@@ -107,18 +107,9 @@ describe('findStrategy', () => {
 // --- New strategy tests (13 strategies + 2 variant tests) ---
 
 describe('new fix strategies', () => {
-  it('generates SDK wrapper fix for l4-bare-llm', () => {
+  it('returns null for l4-bare-llm (info finding, no fix strategy)', () => {
     const plan = findStrategy(makeFinding({ checkId: 'l4-bare-llm' }), makeContext());
-    expect(plan).not.toBeNull();
-    expect(plan!.fixType).toBe('code_injection');
-    expect(plan!.scoreImpact).toBe(6);
-    expect(plan!.actions[0].path).toContain('compliance-wrapper');
-  });
-
-  it('generates React hook for l4-bare-llm with Next.js framework', () => {
-    const plan = findStrategy(makeFinding({ checkId: 'l4-bare-llm' }), makeContext({ framework: 'Next.js' }));
-    expect(plan).not.toBeNull();
-    expect(plan!.actions[0].path).toContain('useCompliorAI');
+    expect(plan).toBeNull();
   });
 
   it('generates permission guard fix for l4-human-oversight', () => {

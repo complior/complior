@@ -109,61 +109,57 @@ describe('inline fix from fixDiff', () => {
 
   it('generates splice plan when finding has fixDiff', () => {
     const finding = makeFinding({
-      checkId: 'l4-bare-llm',
+      checkId: 'l4-security-risk',
       fixDiff: {
-        filePath: 'src/ai.ts',
+        filePath: 'src/handler.ts',
         startLine: 5,
-        before: ['const client = new OpenAI();'],
-        after: ['const client = complior(new OpenAI());'],
-        importLine: "import { complior } from '@complior/sdk';",
+        before: ['return eval(req.body.code);'],
+        after: ['return /* COMPLIOR: eval() disabled */ undefined;'],
+        importLine: undefined,
       },
     });
     const plan = fixer.generateFix(finding);
     expect(plan).not.toBeNull();
     expect(plan!.actions[0].type).toBe('splice');
     expect(plan!.actions[0].startLine).toBe(5);
-    expect(plan!.actions[0].beforeLines).toEqual(['const client = new OpenAI();']);
-    expect(plan!.actions[0].afterLines).toEqual(['const client = complior(new OpenAI());']);
-    expect(plan!.actions[0].importLine).toBe("import { complior } from '@complior/sdk';");
+    expect(plan!.actions[0].beforeLines).toEqual(['return eval(req.body.code);']);
+    expect(plan!.actions[0].afterLines).toEqual(['return /* COMPLIOR: eval() disabled */ undefined;']);
     expect(plan!.fixType).toBe('code_injection');
     expect(plan!.scoreImpact).toBe(6);
   });
 
   it('inline fix takes priority over scaffold strategy', () => {
     const finding = makeFinding({
-      checkId: 'l4-bare-llm',
+      checkId: 'l4-nhi-api-key',
       fixDiff: {
-        filePath: 'src/ai.ts',
+        filePath: 'src/config.ts',
         startLine: 10,
-        before: ['const c = new Anthropic();'],
-        after: ['const c = complior(new Anthropic());'],
+        before: ["const API_KEY = 'sk-1234567890abcdef';"],
+        after: ["const API_KEY = process.env.API_KEY ?? '';"],
       },
     });
     const plan = fixer.generateFix(finding);
     expect(plan).not.toBeNull();
     // Should be splice (inline), not create (scaffold)
     expect(plan!.actions[0].type).toBe('splice');
-    expect(plan!.actions[0].path).toBe('src/ai.ts');
+    expect(plan!.actions[0].path).toBe('src/config.ts');
   });
 
-  it('falls back to strategy when no fixDiff', () => {
-    const finding = makeFinding({ checkId: 'l4-bare-llm' });
+  it('returns null for info findings (no fix needed)', () => {
+    const finding = makeFinding({ checkId: 'l4-bare-llm', type: 'info', severity: 'info' });
     const plan = fixer.generateFix(finding);
-    expect(plan).not.toBeNull();
-    // No fixDiff → scaffold strategy → create action
-    expect(plan!.actions[0].type).toBe('create');
-    expect(plan!.actions[0].path).toContain('compliance-wrapper');
+    expect(plan).toBeNull();
   });
 
   it('dedup by path:startLine for splice — different lines produce 2 plans', () => {
     const findings = [
       makeFinding({
-        checkId: 'l4-bare-llm',
-        fixDiff: { filePath: 'src/ai.ts', startLine: 5, before: ['const a = new OpenAI();'], after: ['const a = complior(new OpenAI());'] },
+        checkId: 'l4-nhi-api-key',
+        fixDiff: { filePath: 'src/config.ts', startLine: 5, before: ["const A = 'sk-123';"], after: ["const A = process.env.A ?? '';"] },
       }),
       makeFinding({
-        checkId: 'l4-bare-llm',
-        fixDiff: { filePath: 'src/ai.ts', startLine: 20, before: ['const b = new OpenAI();'], after: ['const b = complior(new OpenAI());'] },
+        checkId: 'l4-nhi-api-key',
+        fixDiff: { filePath: 'src/config.ts', startLine: 20, before: ["const B = 'sk-456';"], after: ["const B = process.env.B ?? '';"] },
       }),
     ];
     const plans = fixer.generateFixes(findings);
@@ -173,12 +169,12 @@ describe('inline fix from fixDiff', () => {
   it('dedup catches identical splice — same file same line produces 1 plan', () => {
     const findings = [
       makeFinding({
-        checkId: 'l4-bare-llm',
-        fixDiff: { filePath: 'src/ai.ts', startLine: 5, before: ['const a = new OpenAI();'], after: ['const a = complior(new OpenAI());'] },
+        checkId: 'l4-nhi-api-key',
+        fixDiff: { filePath: 'src/config.ts', startLine: 5, before: ["const A = 'sk-123';"], after: ["const A = process.env.A ?? '';"] },
       }),
       makeFinding({
-        checkId: 'l4-bare-llm',
-        fixDiff: { filePath: 'src/ai.ts', startLine: 5, before: ['const a = new OpenAI();'], after: ['const a = complior(new OpenAI());'] },
+        checkId: 'l4-nhi-api-key',
+        fixDiff: { filePath: 'src/config.ts', startLine: 5, before: ["const A = 'sk-123';"], after: ["const A = process.env.A ?? '';"] },
       }),
     ];
     const plans = fixer.generateFixes(findings);

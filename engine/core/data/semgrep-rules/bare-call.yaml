@@ -19,11 +19,12 @@ rules:
       - pattern-not-inside: complior(...)
       - pattern-not-inside: compliorAgent(...)
     message: >
-      Bare LLM API call without compliance wrapper. All LLM interactions
-      must be wrapped with complior() or compliorAgent() to ensure EU AI Act
-      compliance: AI disclosure (Art. 50), interaction logging (Art. 12),
+      Bare LLM API call detected. Consider wrapping with @complior/sdk
+      (complior() or compliorAgent()) for runtime EU AI Act enforcement:
+      AI disclosure (Art. 50), interaction logging (Art. 12),
       content marking (Art. 50(2)), and human oversight (Art. 14).
-    severity: ERROR
+      This is informational — bare calls are not a compliance violation.
+    severity: INFO
     languages: [python, javascript, typescript]
     metadata:
       category: ai-compliance

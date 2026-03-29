@@ -13,9 +13,12 @@ export const mapExternalFinding = (
 ): Finding => {
   const mapping = resolveMapping(raw.ruleId, raw.severity, tool);
 
+  // Bare-call findings are informational, not compliance violations
+  const isBareCall = raw.ruleId.includes('bare-call');
+
   return {
     checkId: `ext-${tool}-${sanitizeRuleId(raw.ruleId)}`,
-    type: 'fail',
+    type: isBareCall ? 'info' : 'fail',
     message: raw.message,
     severity: mapping.severity,
     file: raw.file,

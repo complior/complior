@@ -14,7 +14,7 @@
     },
     "CheckResultType": {
       "type": "string",
-      "enum": ["pass", "fail", "skip"]
+      "enum": ["pass", "fail", "skip", "info"]
     },
     "CodeContextLine": {
       "type": "object",

@@ -210,6 +210,19 @@ export const runLayer2 = (ctx: ScanContext): readonly L2CheckResult[] => {
 export const layer2ToCheckResults = (l2Results: readonly L2CheckResult[]): readonly CheckResult[] => {
   return l2Results.map((r): CheckResult => {
     if (r.status === 'VALID') {
+      // Scaffold docs should never pass — they need manual editing
+      if (r.docQuality === 'scaffold') {
+        return {
+          type: 'fail',
+          checkId: `l2-${r.document}`,
+          message: `${r.article}: ${r.document} — document is scaffold/template quality, fill placeholder fields to upgrade`,
+          severity: 'low',
+          obligationId: r.obligationId,
+          articleReference: r.article,
+          fix: `Edit ${r.document} — replace [bracketed] placeholders with actual data`,
+          docQuality: r.docQuality,
+        };
+      }
       return {
         type: 'pass',
         checkId: `l2-${r.document}`,

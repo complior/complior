@@ -15,7 +15,7 @@ export const EXTERNAL_RULE_MAPPINGS: Record<string, ExternalFindingMapping> = {
     obligationId: 'OBL-015',
     articleReference: 'Art. 14',
     category: 'technical_safeguards',
-    defaultSeverity: 'high',
+    defaultSeverity: 'info',
   },
   'complior.unsafe-deser': {
     obligationId: 'OBL-006',

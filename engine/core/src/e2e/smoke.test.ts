@@ -94,7 +94,7 @@ describe.skipIf(!canRunE2E)('E2E Smoke Test', () => {
     // Each finding should have required fields
     for (const f of findings) {
       expect(typeof f['checkId']).toBe('string');
-      expect(['pass', 'fail', 'skip']).toContain(f['type']);
+      expect(['pass', 'fail', 'skip', 'info']).toContain(f['type']);
       expect(typeof f['message']).toBe('string');
     }
   }, 30_000);

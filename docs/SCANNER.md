@@ -1170,17 +1170,16 @@ Art. 51-52 checks for GPAI models with systemic risk:
 
 ## Cross-Layer Verification
 
-7 rules combining signals from multiple layers:
+6 rules combining signals from multiple layers:
 
 | Rule ID | Layers | Severity | What it detects |
 |---------|--------|----------|-----------------|
 | `cross-doc-code-mismatch` | L2+L4 | medium | Policy exists but code doesn't implement |
-| `cross-sdk-no-disclosure` | L3+L4 | high | AI SDK present but no disclosure |
 | `cross-banned-with-wrapper` | L3+L4 | medium | Banned package + wrapper present |
 | `cross-logging-no-retention` | L3+L4 | medium | Logging exists but no retention config |
 | `cross-kill-switch-no-test` | L1+L4 | low | Kill switch found but no tests |
-| `cross-passport-code-mismatch` | Passport+L4 | medium | Declared vs actual permissions |
-| + 1 more cross-layer rule | | | |
+| `cross-passport-code-mismatch` | L1+L3+L4 | medium | AI SDK in deps + passport but no disclosure |
+| `cross-permission-passport-mismatch` | L1 | high | Undeclared permissions in passport |
 
 ---
 
@@ -1508,7 +1507,7 @@ With Eval (dynamic testing — separate from scan accuracy):
 | Art. 43 | Conformity assessment | L4 conformity-assessment | — |
 | Art. 47 | Declaration of conformity | L2 declaration-conformity | — |
 | Art. 49 | EU Database registration | L1 passport-presence | — |
-| Art. 50(1) | AI disclosure | L1 ai-disclosure, L4 bare-llm, XL sdk-no-disclosure | CT-1: 40 transparency tests (disclosure in response, headers, self-ID) |
+| Art. 50(1) | AI disclosure | L1 ai-disclosure, L4 disclosure, L4 bare-llm (info) | CT-1: 40 transparency tests (disclosure in response, headers, self-ID) |
 | Art. 50(2) | Content marking | L1 content-marking, L4 content-marking | CT-1: deepfake/audio disclosure tests |
 | Art. 51-53 | GPAI transparency | L1 gpai-transparency, L4 gpai-transparency, GPAI systemic risk | — |
 | Art. 73 | Incident reporting | L2 incident-report | — |

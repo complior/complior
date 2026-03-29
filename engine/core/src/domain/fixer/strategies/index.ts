@@ -5,7 +5,6 @@
 import type { Finding } from '../../../types/common.types.js';
 import type { FixContext, FixPlan } from '../types.js';
 
-import { sdkWrapperStrategy } from './sdk-wrapper.js';
 import { permissionGuardStrategy } from './permission-guard.js';
 import { killSwitchStrategy } from './kill-switch.js';
 import { killSwitchTestStrategy } from './kill-switch-test.js';
@@ -29,7 +28,6 @@ import { documentationStrategy, getTemplateMap } from './documentation.js';
 
 // NOTE: friaStrategy removed — documentationStrategy handles OBL-013 via template-registry
 const STRATEGIES = [
-  sdkWrapperStrategy,
   permissionGuardStrategy,
   killSwitchStrategy,
   killSwitchTestStrategy,
