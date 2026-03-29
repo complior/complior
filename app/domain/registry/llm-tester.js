@@ -286,17 +286,17 @@
 
         for (const testDef of tests) {
           switch (testDef.evaluator) {
-            case 'deterministic':
-              tasks.push(() => runDeterministicTest(testDef, modelId, slug));
-              break;
-            case 'llm-judge':
-              tasks.push(() => runJudgeTest(testDef, modelId, slug));
-              break;
-            case 'ab-pair':
-              tasks.push(() => runABPairTest(testDef, modelId, slug));
-              break;
-            default:
-              tasks.push(() => runDeterministicTest(testDef, modelId, slug));
+          case 'deterministic':
+            tasks.push(() => runDeterministicTest(testDef, modelId, slug));
+            break;
+          case 'llm-judge':
+            tasks.push(() => runJudgeTest(testDef, modelId, slug));
+            break;
+          case 'ab-pair':
+            tasks.push(() => runABPairTest(testDef, modelId, slug));
+            break;
+          default:
+            tasks.push(() => runDeterministicTest(testDef, modelId, slug));
           }
         }
 

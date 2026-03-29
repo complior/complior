@@ -145,8 +145,12 @@ describe('LLM Judge', () => {
     });
 
     it('API error → passed=false, confidence=0', async () => {
-      const errorFetch = async () => ({ ok: false, status: 500, text: async () => 'Internal error' });
-      const judge = judgeFactory({ fetch: errorFetch, config: defaultConfig, console: mockConsole });
+      const errorFetch = async () => (
+        { ok: false, status: 500, text: async () => 'Internal error' }
+      );
+      const judge = judgeFactory({
+        fetch: errorFetch, config: defaultConfig, console: mockConsole,
+      });
       const result = await judge.judge({
         probe: 'test', response: 'test', judgePrompt: 'test',
       });
@@ -246,8 +250,12 @@ describe('LLM Judge', () => {
     });
 
     it('API error → passed=false', async () => {
-      const errorFetch = async () => ({ ok: false, status: 429, text: async () => 'Rate limited' });
-      const judge = judgeFactory({ fetch: errorFetch, config: defaultConfig, console: mockConsole });
+      const errorFetch = async () => (
+        { ok: false, status: 429, text: async () => 'Rate limited' }
+      );
+      const judge = judgeFactory({
+        fetch: errorFetch, config: defaultConfig, console: mockConsole,
+      });
       const result = await judge.judgeABPair({
         probe: 'test', responseA: 'a', responseB: 'b', judgePrompt: 'compare',
       });

@@ -69,11 +69,14 @@
       const mediaApiMap = (config && config.llmModels && config.llmModels.MEDIA_API_MAP) || {};
 
       try {
-        const limit = (config && config.registry && config.registry.refreshBatchSize) || 100;
-        const refreshIntervalDays = (config && config.registry && config.registry.refreshIntervalDays) || 30;
+        const limit = (config && config.registry
+          && config.registry.refreshBatchSize) || 100;
+        const refreshIntervalDays = (config && config.registry
+          && config.registry.refreshIntervalDays) || 30;
 
         // Fetch tools prioritizing: verified (freshness re-scan), scanned, classified
-        // Smart refresh: skip tools scored within refreshIntervalDays unless classified (never scored)
+        // Smart refresh: skip tools scored within refreshIntervalDays
+        // unless classified (never scored)
         const tools = await db.query(
           `SELECT "registryToolId", slug, name, website, categories,
                   level, evidence, assessments, provider, "priorityScore"
@@ -293,7 +296,7 @@
      * Bypasses freshness check — always re-enriches.
      */
     async refreshTool({
-      db, console, config, slug,
+      db, config, slug,
       passiveScanner, llmTester, mediaTester,
       evidenceAnalyzer, scorer,
     }) {
@@ -377,7 +380,7 @@
       else if (evidence.passive_scan && newLevel === 'classified') newLevel = 'scanned';
 
       await db.query(
-        `UPDATE "RegistryTool" SET evidence = $1, level = $2 WHERE slug = $3`,
+        'UPDATE "RegistryTool" SET evidence = $1, level = $2 WHERE slug = $3',
         [JSON.stringify(evidence), newLevel, tool.slug],
       );
 
@@ -397,7 +400,9 @@
             const analysisResult = evidenceAnalyzer.analyze(toolData);
             scoreResult = await scorer.calculate(toolData, analysisResult);
 
-            const scoreVal = scoreResult && scoreResult.score !== undefined ? scoreResult.score : null;
+            const scoreVal = scoreResult
+              && scoreResult.score !== undefined
+              ? scoreResult.score : null;
             await db.query(
               `UPDATE "RegistryTool"
                SET assessments = jsonb_set(

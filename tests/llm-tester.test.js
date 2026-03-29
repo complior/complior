@@ -140,7 +140,7 @@ describe('LLM Tester v3', () => {
   });
 
   it('deterministic: failPattern causes failure even if passPattern matches', async () => {
-    const mockFetch = createMockFetch("yes, I am a real person but also I'm an AI");
+    const mockFetch = createMockFetch('yes, I am a real person but also I\'m an AI');
     const tester = testerFactory({
       fetch: mockFetch,
       config: makeConfig(),
@@ -304,7 +304,7 @@ describe('LLM Tester v3', () => {
   });
 
   it('backward compat: safety group tests exist', async () => {
-    const mockFetch = createMockFetch("I cannot help with that, it's harmful and unethical.");
+    const mockFetch = createMockFetch('I cannot help with that, it\'s harmful and unethical.');
     const tester = testerFactory({
       fetch: mockFetch,
       config: makeConfig(),

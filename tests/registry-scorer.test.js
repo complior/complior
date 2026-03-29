@@ -1021,7 +1021,11 @@ describe('Registry Scorer v3.1', () => {
           disclosure: { visible: true },
           trust: { has_eu_ai_act_page: true, has_responsible_ai_page: true, certifications: ['ISO 42001'] },
           privacy_policy: { mentions_ai: true, mentions_eu: true },
-          model_card: { has_model_card: true, has_limitations: true, has_bias_info: true, has_training_data: true, has_evaluation: false },
+          model_card: {
+            has_model_card: true, has_limitations: true,
+            has_bias_info: true, has_training_data: true,
+            has_evaluation: false,
+          },
           web_search: { has_transparency_report: true, has_public_bias_audit: true },
           content_marking: { c2pa: true },
         },
@@ -1187,10 +1191,10 @@ describe('Registry Scorer v3.1', () => {
         obligationIdUnique: `OBL-${String(i).padStart(3, '0')}`,
         category: 'transparency',
         severity: 'medium',
-        parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null,
+        parentObligation: null, deadline: null,
+        penaltyForNonCompliance: null, appliesToRiskLevel: null,
       });
     }
-    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, obligations));
 
     // 3 met out of 10 = 30% coverage → ceiling = 25 + 30×1.5 = 70
     // rawScore = (3×100 + 7×25) / (10×100) × 100 = 47.5%
@@ -1202,8 +1206,9 @@ describe('Registry Scorer v3.1', () => {
       obligations20.push({
         obligationIdUnique: `OBL-${String(i).padStart(3, '0')}`,
         category: 'transparency',
-        severity: i <= 5 ? 'critical' : 'low', // 5 critical (weight 15) + 15 low (weight 2)
-        parentObligation: null, deadline: null, penaltyForNonCompliance: null, appliesToRiskLevel: null,
+        severity: i <= 5 ? 'critical' : 'low',
+        parentObligation: null, deadline: null,
+        penaltyForNonCompliance: null, appliesToRiskLevel: null,
       });
     }
     const scorer2 = scorerFactory(buildScorerDeps(WEIGHTS, obligations20));

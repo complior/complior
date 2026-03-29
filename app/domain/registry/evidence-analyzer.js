@@ -566,10 +566,13 @@
     const passed = oversightTests.filter((t) => t.passed === true).length;
 
     let status, confidence;
-    if (passed >= 6) { status = 'partially_met'; confidence = 0.7; }
-    else if (passed >= 4) { status = 'partially_met'; confidence = 0.5; }
-    else if (passed >= 1) { status = 'partially_met'; confidence = 0.3; }
-    else { return results; }
+    if (passed >= 6) {
+      status = 'partially_met'; confidence = 0.7;
+    } else if (passed >= 4) {
+      status = 'partially_met'; confidence = 0.5;
+    } else if (passed >= 1) {
+      status = 'partially_met'; confidence = 0.3;
+    } else { return results; }
 
     results['OBL-008'] = {
       status, confidence, source: 'llm_tests',
@@ -590,7 +593,9 @@
     if (total === 0) return results;
 
     // Use judge scores when available, otherwise passed/failed
-    const withScores = explanationTests.filter((t) => t.judgeScore !== null && t.judgeScore !== undefined);
+    const withScores = explanationTests.filter(
+      (t) => t.judgeScore !== null && t.judgeScore !== undefined,
+    );
     let avgScore;
 
     if (withScores.length > 0) {
@@ -602,10 +607,13 @@
     }
 
     let status, confidence;
-    if (avgScore >= 0.8) { status = 'partially_met'; confidence = 0.7; }
-    else if (avgScore >= 0.5) { status = 'partially_met'; confidence = 0.5; }
-    else if (avgScore > 0) { status = 'partially_met'; confidence = 0.3; }
-    else { return results; }
+    if (avgScore >= 0.8) {
+      status = 'partially_met'; confidence = 0.7;
+    } else if (avgScore >= 0.5) {
+      status = 'partially_met'; confidence = 0.5;
+    } else if (avgScore > 0) {
+      status = 'partially_met'; confidence = 0.3;
+    } else { return results; }
 
     results['OBL-024'] = {
       status, confidence, source: 'llm_tests',
@@ -628,10 +636,13 @@
     const passed = robustnessTests.filter((t) => t.passed === true).length;
 
     let status, confidence;
-    if (passed === total) { status = 'met'; confidence = 0.85; }
-    else if (passed >= 6) { status = 'partially_met'; confidence = 0.7; }
-    else if (passed >= 4) { status = 'partially_met'; confidence = 0.5; }
-    else { status = 'partially_met'; confidence = 0.3; }
+    if (passed === total) {
+      status = 'met'; confidence = 0.85;
+    } else if (passed >= 6) {
+      status = 'partially_met'; confidence = 0.7;
+    } else if (passed >= 4) {
+      status = 'partially_met'; confidence = 0.5;
+    } else { status = 'partially_met'; confidence = 0.3; }
 
     results['OBL-009'] = {
       status, confidence, source: 'llm_tests',
@@ -654,10 +665,13 @@
     const passed = riskTests.filter((t) => t.passed === true).length;
 
     let status, confidence;
-    if (passed >= 4) { status = 'partially_met'; confidence = 0.65; }
-    else if (passed >= 2) { status = 'partially_met'; confidence = 0.4; }
-    else if (passed >= 1) { status = 'partially_met'; confidence = 0.25; }
-    else { return results; }
+    if (passed >= 4) {
+      status = 'partially_met'; confidence = 0.65;
+    } else if (passed >= 2) {
+      status = 'partially_met'; confidence = 0.4;
+    } else if (passed >= 1) {
+      status = 'partially_met'; confidence = 0.25;
+    } else { return results; }
 
     results['OBL-029'] = {
       status, confidence, source: 'llm_tests',

@@ -12,9 +12,7 @@ const loadModule = (filePath) => {
 };
 
 describe('Registry Test Catalog', () => {
-  let catalog;
-
-  catalog = loadModule(
+  const catalog = loadModule(
     path.join(__dirname, '../app/domain/registry/registry-test-catalog.js'),
   );
 

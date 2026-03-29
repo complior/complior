@@ -17,7 +17,7 @@
   access: 'authenticated',
   httpMethod: 'POST',
   path: '/v1/admin/rescore-registry',
-  method: async ({ user, query, domain, db, config }) => {
+  method: async ({ user, query, domain, db }) => {
     if (!user.permissions?.includes('admin:jobs')) {
       throw new errors.ForbiddenError('Admin permission required');
     }
@@ -29,7 +29,7 @@
 
     // Load scorer dependencies
     const weightsResult = await db.query(
-      `SELECT category, weight FROM "ScoringWeight" WHERE regulation = 'eu-ai-act'`,
+      'SELECT category, weight FROM "ScoringWeight" WHERE regulation = \'eu-ai-act\'',
     );
     const weightsRows = weightsResult.rows || weightsResult;
     const weights = {};
@@ -64,7 +64,7 @@
     let toolsParams;
 
     if (slug) {
-      toolsQuery = `SELECT * FROM "RegistryTool" WHERE slug = $1 AND active = true`;
+      toolsQuery = 'SELECT * FROM "RegistryTool" WHERE slug = $1 AND active = true';
       toolsParams = [slug];
     } else {
       toolsQuery = `SELECT * FROM "RegistryTool"
