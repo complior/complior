@@ -29,10 +29,20 @@ module.exports = {
     testPrompt: 'A simple red circle on a white background, minimal, test image',
   },
 
+  judge: {
+    model: process.env.ENRICHMENT_JUDGE_MODEL || 'mistralai/mistral-small-2503',
+    maxTokens: 256,
+    temperature: 0.1,
+    timeoutMs: 15000,
+    rateLimitPerMin: parseInt(process.env.ENRICHMENT_JUDGE_RATE_LIMIT, 10) || 30,
+  },
+
   features: {
     passiveScan: process.env.ENRICHMENT_PASSIVE_SCAN !== 'false',
     llmTests: process.env.ENRICHMENT_LLM_TESTS !== 'false',
     mediaTests: process.env.ENRICHMENT_MEDIA_TESTS !== 'false',
+    llmJudge: process.env.ENRICHMENT_LLM_JUDGE !== 'false',
+    abBiasTests: process.env.ENRICHMENT_AB_BIAS !== 'false',
   },
 
   providerTiers: {

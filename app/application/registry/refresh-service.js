@@ -70,23 +70,31 @@
 
       try {
         const limit = (config && config.registry && config.registry.refreshBatchSize) || 100;
+        const refreshIntervalDays = (config && config.registry && config.registry.refreshIntervalDays) || 30;
 
         // Fetch tools prioritizing: verified (freshness re-scan), scanned, classified
+        // Smart refresh: skip tools scored within refreshIntervalDays unless classified (never scored)
         const tools = await db.query(
           `SELECT "registryToolId", slug, name, website, categories,
                   level, evidence, assessments, provider, "priorityScore"
            FROM "RegistryTool"
            WHERE active = true
              AND level IN ('classified', 'scanned', 'verified')
+             AND (
+               level = 'classified'
+               OR assessments->'eu-ai-act'->>'scored_at' IS NULL
+               OR (assessments->'eu-ai-act'->>'scored_at')::timestamptz
+                  < NOW() - ($2 || ' days')::interval
+             )
            ORDER BY
              CASE level
-               WHEN 'verified' THEN 1
+               WHEN 'classified' THEN 1
                WHEN 'scanned' THEN 2
-               WHEN 'classified' THEN 3
+               WHEN 'verified' THEN 3
              END,
              "priorityScore" DESC
            LIMIT $1`,
-          [limit]
+          [limit, String(refreshIntervalDays)]
         );
 
         if (tools.rows.length === 0) {
@@ -278,6 +286,143 @@
         console.error('❌ Registry refresh failed:', error);
         throw error;
       }
+    },
+
+    /**
+     * On-demand refresh for a single tool (e.g., vendor-paid testing).
+     * Bypasses freshness check — always re-enriches.
+     */
+    async refreshTool({
+      db, console, config, slug,
+      passiveScanner, llmTester, mediaTester,
+      evidenceAnalyzer, scorer,
+    }) {
+      const modelMap = (config && config.llmModels && config.llmModels.MODEL_MAP) || {};
+      const mediaCats = (config && config.llmModels && config.llmModels.MEDIA_CATEGORIES) || [];
+      const mediaApiMap = (config && config.llmModels && config.llmModels.MEDIA_API_MAP) || {};
+
+      const toolResult = await db.query(
+        `SELECT "registryToolId", slug, name, website, categories,
+                level, evidence, assessments, provider, "priorityScore"
+         FROM "RegistryTool"
+         WHERE slug = $1 AND active = true`,
+        [slug],
+      );
+
+      if (!toolResult.rows || toolResult.rows.length === 0) {
+        return { error: 'Tool not found', slug };
+      }
+
+      const tool = toolResult.rows[0];
+      let existingEvidence = tool.evidence || {};
+      if (typeof existingEvidence === 'string') {
+        try { existingEvidence = JSON.parse(existingEvidence); } catch { existingEvidence = {}; }
+      }
+
+      const evidence = { ...existingEvidence };
+      const enrichmentLog = [];
+
+      // 1. Passive scan
+      if (passiveScanner && tool.website) {
+        try {
+          const scanResult = await passiveScanner.scan(tool);
+          if (scanResult) {
+            evidence.passive_scan = scanResult;
+            enrichmentLog.push(`passive_scan: ${scanResult.pages_fetched} pages`);
+          }
+        } catch (err) {
+          enrichmentLog.push(`passive_scan: error — ${err.message}`);
+        }
+      }
+
+      // 2. LLM tests
+      if (llmTester && modelMap[tool.slug]) {
+        try {
+          const testResults = await llmTester.test(tool, modelMap[tool.slug]);
+          if (testResults && testResults.length > 0) {
+            evidence.llm_tests = testResults;
+            const passed = testResults.filter((t) => t.passed).length;
+            enrichmentLog.push(`llm_tests: ${passed}/${testResults.length} passed`);
+          }
+        } catch (err) {
+          enrichmentLog.push(`llm_tests: error — ${err.message}`);
+        }
+      }
+
+      // 3. Media tests
+      const toolCats = tool.categories || [];
+      const isMediaTool = toolCats.some((c) => mediaCats.includes(c));
+      if (mediaTester && isMediaTool) {
+        const apiConfig = mediaApiMap[tool.slug] || null;
+        if (apiConfig && apiConfig.type !== 'none') {
+          try {
+            const mediaResults = await mediaTester.test(tool, apiConfig);
+            if (mediaResults && mediaResults.length > 0) {
+              evidence.media_tests = mediaResults;
+              enrichmentLog.push(`media_tests: ${mediaResults.length} tests`);
+            }
+          } catch (err) {
+            enrichmentLog.push(`media_tests: error — ${err.message}`);
+          }
+        }
+      }
+
+      evidence.enriched_at = new Date().toISOString();
+
+      // Determine new level
+      let newLevel = tool.level;
+      const hasLlmTests = evidence.llm_tests && evidence.llm_tests.length > 0;
+      const hasMediaTests = evidence.media_tests && evidence.media_tests.length > 0;
+      if (hasLlmTests || hasMediaTests) newLevel = 'verified';
+      else if (evidence.passive_scan && newLevel === 'classified') newLevel = 'scanned';
+
+      await db.query(
+        `UPDATE "RegistryTool" SET evidence = $1, level = $2 WHERE slug = $3`,
+        [JSON.stringify(evidence), newLevel, tool.slug],
+      );
+
+      // Re-score
+      let scoreResult = null;
+      if (evidenceAnalyzer && scorer) {
+        try {
+          const fullTool = await db.query('SELECT * FROM "RegistryTool" WHERE slug = $1', [tool.slug]);
+          if (fullTool.rows.length > 0) {
+            const toolData = fullTool.rows[0];
+            if (typeof toolData.evidence === 'string') {
+              try { toolData.evidence = JSON.parse(toolData.evidence); } catch { /* keep */ }
+            }
+            if (typeof toolData.assessments === 'string') {
+              try { toolData.assessments = JSON.parse(toolData.assessments); } catch { /* keep */ }
+            }
+            const analysisResult = evidenceAnalyzer.analyze(toolData);
+            scoreResult = await scorer.calculate(toolData, analysisResult);
+
+            const scoreVal = scoreResult && scoreResult.score !== undefined ? scoreResult.score : null;
+            await db.query(
+              `UPDATE "RegistryTool"
+               SET assessments = jsonb_set(
+                 jsonb_set(
+                   COALESCE(assessments, '{}'::jsonb),
+                   '{eu-ai-act,score}', $1::jsonb
+                 ),
+                 '{eu-ai-act,scored_at}', $2::jsonb
+               )
+               WHERE slug = $3`,
+              [JSON.stringify(scoreVal), JSON.stringify(new Date().toISOString()), tool.slug],
+            );
+          }
+        } catch (err) {
+          enrichmentLog.push(`scoring: error — ${err.message}`);
+        }
+      }
+
+      return {
+        slug: tool.slug,
+        level: newLevel,
+        enrichmentLog,
+        score: scoreResult ? scoreResult.score : null,
+        grade: scoreResult ? scoreResult.grade : null,
+      };
     },
 
     /**

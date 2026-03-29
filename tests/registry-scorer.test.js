@@ -957,7 +957,7 @@ describe('Registry Scorer v3.1', () => {
 
   // ── 31. Mixed assessed+unknown → score based only on assessed ──
 
-  it('v3.1: mixed assessed+unknown → unknowns scored at 25/100, coverage calculated', async () => {
+  it('v3.1: mixed assessed+unknown → unknowns scored at 15/100, coverage calculated', async () => {
     const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
 
     const tool = makeTool({
@@ -1092,7 +1092,7 @@ describe('Registry Scorer v3.1', () => {
     const result = await scorer.calculate(tool);
     assert.ok(result.score !== null, 'Score should not be null with 4 obligations');
     assert.strictEqual(result.coverage, 20); // 1 assessed / max(4,5) = 20%
-    // v3.1: unknowns count as 25/100 in denominator, so score is lower than pure met
+    // v3.1: unknowns count as 15/100 in denominator, so score is lower than pure met
     assert.ok(result.score < 80, `Score ${result.score} should be < 80 due to unknowns in denominator`);
     assert.ok(result.score > 30, `Score ${result.score} should be > 30`);
   });
@@ -1123,9 +1123,9 @@ describe('Registry Scorer v3.1', () => {
     });
 
     const result = await scorer.calculate(tool);
-    // (100 + 5×25) / (6×100) = 225/600 = 37.5%, but capped by coverage ceiling
+    // (100 + 5×15) / (6×100) = 175/600 = 29.2%, but capped by coverage ceiling
     // Coverage = 1/6 = 17%, ceiling = 25 + 17×1.5 = 50.5
-    // rawScore ≈ 37.5, under ceiling, so score ≈ 38
+    // rawScore ≈ 29, under ceiling, so score ≈ 29
     assert.ok(result.score < 50, `Score ${result.score} should be < 50 (was 100 with denominator exploit)`);
     assert.ok(result.score > 20, `Score ${result.score} should be > 20`);
   });

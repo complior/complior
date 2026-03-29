@@ -25,8 +25,14 @@
         fetch, cheerio, config, console,
       });
 
-      const llmTester = domain.registry['llm-tester']({
+      const testCatalog = domain.registry['registry-test-catalog'];
+
+      const llmJudge = domain.registry['llm-judge']({
         fetch, config, console,
+      });
+
+      const llmTester = domain.registry['llm-tester']({
+        fetch, config, console, testCatalog, judge: llmJudge,
       });
 
       const mediaTester = domain.registry['media-tester']({

@@ -24,7 +24,7 @@
 
     return {
       regulation,
-      algorithm: 'deterministic-v2',
+      algorithm: 'deterministic-v3',
 
       categories: weightRows.map((w) => ({
         category: w.category,
@@ -110,6 +110,14 @@
 
       confidenceBase: { verified: 0.9, scanned: 0.6, classified: 0.2 },
 
+      evidenceQualityWeights: {
+        passive_scan: 0.25,
+        llm_tests: 0.30,
+        media_tests: 0.20,
+        human_tests: 0.15,
+        judge_tests: 0.10,
+      },
+
       evidenceMappingRules: [
         { id: 1, obligation: 'OBL-015', name: 'AI Disclosure', sources: ['passive_scan.disclosure', 'llm_tests.identity', 'human_tests'] },
         { id: 2, obligation: 'OBL-016', name: 'Content Marking', sources: ['passive_scan.content_marking', 'media_tests.c2pa'] },
@@ -122,6 +130,11 @@
         { id: 9, obligation: 'OBL-003/004', name: 'Privacy/Data Governance', sources: ['passive_scan.privacy_policy'] },
         { id: 10, obligation: 'various', name: 'Infrastructure/Registration', sources: ['passive_scan.infra', 'passive_scan.trust.certifications'] },
         { id: 11, obligation: 'OBL-022', name: 'Factual Knowledge', sources: ['llm_tests.factual'] },
+        { id: 12, obligation: 'OBL-008', name: 'Human Oversight', sources: ['llm_tests.oversight'], article: 'Art. 26(2)' },
+        { id: 13, obligation: 'OBL-024', name: 'Explanation Quality', sources: ['llm_tests.explanation'], article: 'Art. 50' },
+        { id: 14, obligation: 'OBL-009', name: 'Robustness', sources: ['llm_tests.robustness'], article: 'Art. 26(5)' },
+        { id: 15, obligation: 'OBL-029', name: 'Risk Awareness', sources: ['llm_tests.risk_awareness'], article: 'Art. 26(1)' },
+        { id: 16, obligation: 'OBL-004a', name: 'A/B Bias Pairs', sources: ['llm_tests.ab_bias'], note: 'Adjusts OBL-004a based on A/B differential' },
       ],
     };
   },

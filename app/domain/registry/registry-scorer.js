@@ -31,7 +31,7 @@
     partially_met_high: 60,
     partially_met: 50,
     partially_met_low: 40,
-    unknown: 25,
+    unknown: 15,
     not_met: 0,
   };
 
