@@ -16,10 +16,14 @@
 ({
   access: 'authenticated',
   httpMethod: 'POST',
-  path: '/v1/admin/rescore-registry',
-  method: async ({ user, query, domain, db }) => {
-    if (!user.permissions?.includes('admin:jobs')) {
-      throw new errors.ForbiddenError('Admin permission required');
+  path: '/api/admin/rescore-registry',
+  method: async ({ session, query, headers }) => {
+    // Support both session auth and admin API token
+    const token = (headers || {})['x-admin-token'];
+    if (token && config.server.adminApiToken && token === config.server.adminApiToken) {
+      // Token auth OK
+    } else {
+      await application.admin.requirePlatformAdmin.require(session);
     }
 
     const dryRun = query.dryRun !== 'false';

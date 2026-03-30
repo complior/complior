@@ -78,7 +78,9 @@
         // Smart refresh: skip tools scored within refreshIntervalDays
         // unless classified (never scored)
         const tools = await db.query(
-          `SELECT "registryToolId", slug, name, website, categories,
+          `SELECT "registryToolId", slug, name,
+                  COALESCE("websiteUrl", website) AS website,
+                  categories,
                   level, evidence, assessments, provider, "priorityScore"
            FROM "RegistryTool"
            WHERE active = true
@@ -305,7 +307,9 @@
       const mediaApiMap = (config && config.llmModels && config.llmModels.MEDIA_API_MAP) || {};
 
       const toolResult = await db.query(
-        `SELECT "registryToolId", slug, name, website, categories,
+        `SELECT "registryToolId", slug, name,
+                COALESCE("websiteUrl", website) AS website,
+                categories,
                 level, evidence, assessments, provider, "priorityScore"
          FROM "RegistryTool"
          WHERE slug = $1 AND active = true`,

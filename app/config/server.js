@@ -13,4 +13,5 @@ module.exports = {
   },
   jwtSecret: process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production',
   platformAdminEmails: (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').map((e) => e.trim()).filter(Boolean),
+  adminApiToken: process.env.ADMIN_API_TOKEN || '',
 };

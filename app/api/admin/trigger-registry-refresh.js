@@ -5,11 +5,14 @@
 ({
   access: 'authenticated',
   httpMethod: 'POST',
-  path: '/v1/admin/trigger-registry-refresh',
-  method: async ({ user, application, pgboss }) => {
-    // Check admin permission
-    if (!user.permissions?.includes('admin:jobs')) {
-      throw new errors.ForbiddenError('Admin permission required');
+  path: '/api/admin/trigger-registry-refresh',
+  method: async ({ session, headers }) => {
+    // Support both session auth and admin API token
+    const token = (headers || {})['x-admin-token'];
+    if (token && config.server.adminApiToken && token === config.server.adminApiToken) {
+      // Token auth OK
+    } else {
+      await application.admin.requirePlatformAdmin.require(session);
     }
 
     if (!pgboss) {

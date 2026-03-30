@@ -8,62 +8,63 @@
  */
 
 const MODEL_MAP = {
-  // OpenAI — verified on OpenRouter 2026-02-25
+  // ─── Chatbot-category tools (slug matches RegistryTool.slug) ───
+
+  // OpenAI
   'chatgpt': 'openai/gpt-4o',
-  'gpt-4': 'openai/gpt-4',
-  'gpt-4o': 'openai/gpt-4o',
-  'gpt-4-turbo': 'openai/gpt-4-turbo',
-  'o1': 'openai/o1',
+  'microsoft-copilot': 'openai/gpt-4o', // Copilot uses GPT-4o
 
   // Anthropic
   'claude': 'anthropic/claude-sonnet-4.5',
-  'claude-3-opus': 'anthropic/claude-opus-4',
 
   // Google
   'gemini': 'google/gemini-2.5-pro',
-  'gemini-pro': 'google/gemini-2.5-pro',
 
   // Meta
-  'llama-3': 'meta-llama/llama-3-70b-instruct',
+  'llama': 'meta-llama/llama-3.3-70b-instruct',
 
   // Mistral
-  'mistral-large': 'mistralai/mistral-large',
-  'mistral-medium': 'mistralai/mistral-medium-3',
-  'mixtral-8x22b': 'mistralai/mixtral-8x22b-instruct',
+  'le-chat-mistral': 'mistralai/mistral-large',
   'codestral': 'mistralai/codestral-2508',
-  'pixtral': 'mistralai/pixtral-large-2411',
 
   // Cohere
-  'command-r': 'cohere/command-r-08-2024',
+  'cohere-command': 'cohere/command-r-08-2024',
+  'coral-cohere': 'cohere/command-r-08-2024',
 
   // xAI
   'grok': 'x-ai/grok-4',
-  'grok-2': 'x-ai/grok-3',
-  'grok-3': 'x-ai/grok-4',
 
   // DeepSeek
   'deepseek-chat': 'deepseek/deepseek-v3.2',
-  'deepseek-r1': 'deepseek/deepseek-r1',
 
-  // Microsoft
-  'phi-3': 'microsoft/phi-4',
+  // Qwen
+  'qwen-chat': 'qwen/qwen-2.5-72b-instruct',
 
-  // Qwen — no matching slug in DB, skip for now
+  // AI21
+  'ai21-jamba': 'cohere/command-a', // fallback: AI21 removed from OpenRouter
 
-  // AI21 — removed from OpenRouter
-  'jamba': 'cohere/command-a', // fallback: test on similar model
+  // Inflection
+  'pi': 'anthropic/claude-haiku-4.5', // fallback: no Pi model on OpenRouter
 
-  // Databricks — removed from OpenRouter
-  // 'dbrx': removed
+  // Perplexity
+  'perplexity-ai': 'perplexity/sonar-pro',
 
-  // Other
-  'gemma-2': 'google/gemma-2-27b-it',
-  'openchat': 'mistralai/mistral-7b-instruct', // fallback
-  'glm-4': 'qwen/qwen-2.5-72b-instruct', // fallback: Chinese model → Qwen
-  'falcon-180b': 'meta-llama/llama-3.1-70b-instruct', // fallback
-  'solar': 'mistralai/mistral-7b-instruct', // fallback
-  'yi-large': 'qwen/qwen-2.5-72b-instruct', // fallback: Chinese model → Qwen
-  'pi': 'anthropic/claude-haiku-4.5', // fallback: conversational model
+  // Other chatbots
+  'falcon-chat': 'meta-llama/llama-3.1-70b-instruct', // fallback
+  'ernie-bot': 'qwen/qwen-2.5-72b-instruct', // fallback: Chinese model
+  'huggingchat': 'meta-llama/llama-3.3-70b-instruct', // fallback: HF default
+
+  // ─── API platform tools (test with their flagship model) ───
+
+  'openai-api': 'openai/gpt-4o',
+  'anthropic-claude-api': 'anthropic/claude-sonnet-4.5',
+  'mistral-ai-api-la-plateforme': 'mistralai/mistral-large',
+  'cohere-api': 'cohere/command-r-08-2024',
+  'groq-cloud': 'meta-llama/llama-3.3-70b-instruct',
+  'together-ai': 'meta-llama/llama-3.3-70b-instruct',
+  'deepinfra': 'meta-llama/llama-3.3-70b-instruct',
+  'fireworks-ai': 'meta-llama/llama-3.3-70b-instruct',
+  'perplexity-api-sonar': 'perplexity/sonar-pro',
 };
 
 /**
