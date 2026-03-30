@@ -5,8 +5,8 @@ members = ["cli"]
 [workspace.package]
 version = "1.0.0"
 edition = "2024"
-license = "Apache-2.0"
-repository = "https://github.com/a3ka/complior"
+license = "AGPL-3.0-only"
+repository = "https://github.com/complior/complior"
 
 [profile.release]
 lto = true

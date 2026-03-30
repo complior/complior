@@ -1,44 +1,203 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [main, dev]
+  push:
+    branches: [dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  rust-check:
-    name: Rust (check + clippy + test)
+  # ── Detect changes ──────────────────────────────────
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      ts-engine: ${{ steps.filter.outputs.ts-engine }}
+      ts-sdk: ${{ steps.filter.outputs.ts-sdk }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust:
+              - 'cli/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            ts-engine:
+              - 'engine/core/**'
+            ts-sdk:
+              - 'engine/sdk/**'
+
+  # ── Rust ──────────────────────────────────────────
+  rust-fmt:
+    name: Rust Format
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
+          components: rustfmt
       - run: cargo fmt --all -- --check
+
+  rust-clippy:
+    name: Rust Clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  rust-test:
+    name: Rust Tests
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
 
-  ts-check:
-    name: TypeScript (typecheck + test)
+  rust-security:
+    name: Rust Security Audit
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - run: cd engine/core && bun install --frozen-lockfile
-      - run: cd engine/core && bun run typecheck
-      - run: cd engine/core && bun run test
+      - uses: EmbarkStudios/cargo-deny-action@v2
 
-  sdk-check:
-    name: SDK (test)
+  # ── TypeScript Engine ────────────────────────────────
+  ts-engine-check:
+    name: Engine (typecheck + lint + test)
+    needs: changes
+    if: needs.changes.outputs.ts-engine == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      - run: cd engine/sdk && bun install --frozen-lockfile
-      - run: cd engine/sdk && bun run test
+          node-version: '22'
+      - run: cd engine/core && npm ci
+      - run: cd engine/core && npx tsc --noEmit
+      - run: cd engine/core && npx vitest run
+
+  # ── TypeScript SDK ───────────────────────────────────
+  ts-sdk-check:
+    name: SDK (typecheck + test)
+    needs: changes
+    if: needs.changes.outputs.ts-sdk == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: cd engine/sdk && npm ci
+      - run: cd engine/sdk && npx tsc --noEmit
+      - run: cd engine/sdk && npx vitest run
+
+  # ── Security ─────────────────────────────────────────
+  npm-audit:
+    name: npm Security Audit
+    needs: changes
+    if: needs.changes.outputs.ts-engine == 'true' || needs.changes.outputs.ts-sdk == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: cd engine/core && npm ci && npm audit --audit-level=critical
+      - run: cd engine/sdk && npm ci && npm audit --audit-level=critical
+
+  # ── Version consistency ──────────────────────────────
+  version-check:
+    name: Version Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check all versions match
+        run: |
+          CARGO_VER=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)"/\1/')
+          ENGINE_VER=$(node -p "require('./engine/core/package.json').version")
+          SDK_VER=$(node -p "require('./engine/sdk/package.json').version")
+          NPM_VER=$(node -p "require('./engine/npm/package.json').version")
+
+          echo "Cargo.toml:          $CARGO_VER"
+          echo "engine/core:         $ENGINE_VER"
+          echo "engine/sdk:          $SDK_VER"
+          echo "engine/npm:          $NPM_VER"
+
+          MISMATCH=0
+          if [ "$CARGO_VER" != "$ENGINE_VER" ]; then echo "❌ Cargo.toml != engine/core"; MISMATCH=1; fi
+          if [ "$CARGO_VER" != "$SDK_VER" ]; then echo "❌ Cargo.toml != engine/sdk"; MISMATCH=1; fi
+          if [ "$CARGO_VER" != "$NPM_VER" ]; then echo "❌ Cargo.toml != engine/npm"; MISMATCH=1; fi
+
+          if [ "$MISMATCH" -eq 1 ]; then
+            echo ""
+            echo "All 4 version fields must match. Update them before merging."
+            exit 1
+          fi
+          echo "✅ All versions match: $CARGO_VER"
+
+  # ── Gate ─────────────────────────────────────────────
+  all-checks:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - changes
+      - rust-fmt
+      - rust-clippy
+      - rust-test
+      - rust-security
+      - ts-engine-check
+      - ts-sdk-check
+      - npm-audit
+      - version-check
+    steps:
+      - name: Evaluate results
+        run: |
+          # Skip check for jobs that were skipped due to path filters
+          check_job() {
+            local result="$1"
+            local name="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "❌ $name: $result"
+              return 1
+            fi
+            echo "✅ $name: $result"
+            return 0
+          }
+
+          FAILED=0
+          check_job "${{ needs.rust-fmt.result }}" "rust-fmt" || FAILED=1
+          check_job "${{ needs.rust-clippy.result }}" "rust-clippy" || FAILED=1
+          check_job "${{ needs.rust-test.result }}" "rust-test" || FAILED=1
+          check_job "${{ needs.rust-security.result }}" "rust-security" || FAILED=1
+          check_job "${{ needs.ts-engine-check.result }}" "ts-engine-check" || FAILED=1
+          check_job "${{ needs.ts-sdk-check.result }}" "ts-sdk-check" || FAILED=1
+          check_job "${{ needs.npm-audit.result }}" "npm-audit" || FAILED=1
+          check_job "${{ needs.version-check.result }}" "version-check" || FAILED=1
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "One or more checks failed"
+            exit 1
+          fi
+          echo ""
+          echo "All checks passed"

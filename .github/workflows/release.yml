@@ -11,6 +11,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # ── 1. Build binaries for all platforms ──────────────
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
@@ -65,13 +66,11 @@ jobs:
 
       - name: Rename binary (Unix)
         if: runner.os != 'Windows'
-        run: |
-          cp target/${{ matrix.target }}/release/complior ${{ matrix.artifact }}
+        run: cp target/${{ matrix.target }}/release/complior ${{ matrix.artifact }}
 
       - name: Rename binary (Windows)
         if: runner.os == 'Windows'
-        run: |
-          cp target/${{ matrix.target }}/release/complior.exe ${{ matrix.artifact }}
+        run: cp target/${{ matrix.target }}/release/complior.exe ${{ matrix.artifact }}
 
       - name: Generate checksum (Unix)
         if: runner.os != 'Windows'
@@ -91,9 +90,43 @@ jobs:
             ${{ matrix.artifact }}
             ${{ matrix.artifact }}.sha256
 
+  # ── 2. Verify version consistency ────────────────────
+  verify-versions:
+    name: Verify Versions Match Tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check versions match tag
+        run: |
+          TAG_VER="${GITHUB_REF_NAME#v}"
+          CARGO_VER=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)"/\1/')
+          ENGINE_VER=$(node -p "require('./engine/core/package.json').version")
+          SDK_VER=$(node -p "require('./engine/sdk/package.json').version")
+          NPM_VER=$(node -p "require('./engine/npm/package.json').version")
+
+          echo "Tag:          $TAG_VER"
+          echo "Cargo.toml:   $CARGO_VER"
+          echo "engine/core:  $ENGINE_VER"
+          echo "engine/sdk:   $SDK_VER"
+          echo "engine/npm:   $NPM_VER"
+
+          FAIL=0
+          if [ "$CARGO_VER" != "$TAG_VER" ]; then echo "❌ Cargo.toml version mismatch"; FAIL=1; fi
+          if [ "$ENGINE_VER" != "$TAG_VER" ]; then echo "❌ engine/core version mismatch"; FAIL=1; fi
+          if [ "$SDK_VER" != "$TAG_VER" ]; then echo "❌ engine/sdk version mismatch"; FAIL=1; fi
+          if [ "$NPM_VER" != "$TAG_VER" ]; then echo "❌ engine/npm version mismatch"; FAIL=1; fi
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo ""
+            echo "Version in source files must match git tag. Aborting release."
+            exit 1
+          fi
+          echo "✅ All versions match tag: $TAG_VER"
+
+  # ── 3. GitHub Release ────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, verify-versions]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -118,11 +151,86 @@ jobs:
             artifacts/complior-macos-x86_64
             artifacts/complior-windows-x86_64.exe
             artifacts/checksums.txt
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
 
+  # ── 4. Publish to crates.io ──────────────────────────
+  cargo-publish:
+    name: Publish to crates.io
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish complior-cli
+        run: cargo publish -p complior-cli
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+
+  # ── 5. Publish npm packages ──────────────────────────
+  npm-publish:
+    name: Publish npm packages
+    needs: release    # AFTER GitHub Release (postinstall downloads binary)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Build SDK before publishing (produces dist/)
+      - name: Build @complior/sdk
+        run: cd engine/sdk && npm ci && npm run build
+
+      - name: Publish @complior/engine
+        run: cd engine/core && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @complior/sdk
+        run: cd engine/sdk && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish complior (LAST — postinstall downloads binary)
+        run: cd engine/npm && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── 6. Smoke test ────────────────────────────────────
+  smoke-test:
+    name: Smoke Test
+    needs: [cargo-publish, npm-publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Test npm install
+        run: |
+          npm install @complior/sdk@${{ steps.version.outputs.version }}
+          node -e "const { complior } = require('@complior/sdk'); console.log('✅ @complior/sdk loaded')"
+
+      - name: Test cargo install
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          cargo install complior-cli --version ${{ steps.version.outputs.version }}
+          complior --version
+          echo "✅ complior-cli installed and runs"
+
+  # ── 7. Docker (optional — only if secrets exist) ─────
   docker:
     name: Docker image
-    needs: build
+    needs: release
     runs-on: ubuntu-latest
+    if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -153,49 +261,3 @@ jobs:
           tags: |
             complior/complior:${{ steps.version.outputs.version }}
             complior/complior:latest
-
-  npm-publish:
-    name: Publish npm packages
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-
-      - name: Publish @complior/engine
-        working-directory: engine/core
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @complior/sdk
-        working-directory: engine/sdk
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish ai-comply
-        working-directory: engine/npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  cargo-publish:
-    name: Publish to crates.io
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Publish complior-cli
-        run: cargo publish -p complior-cli --token ${{ secrets.CARGO_TOKEN }}

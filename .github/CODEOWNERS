@@ -1,0 +1,23 @@
+# Complior — Code Owners
+# These users are automatically requested for review on PRs that touch their areas.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: maintainer reviews everything
+*                       @a3ka
+
+# Rust CLI
+/cli/                   @a3ka
+/Cargo.toml             @a3ka
+/Cargo.lock             @a3ka
+
+# TypeScript Engine
+/engine/core/           @a3ka
+/engine/sdk/            @a3ka
+/engine/npm/            @a3ka
+
+# CI/CD — extra caution
+/.github/               @a3ka
+
+# License & legal
+/LICENSE                @a3ka
+/CLA.md                 @a3ka
