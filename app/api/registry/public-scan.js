@@ -17,9 +17,14 @@
 
   method: async ({ body, headers }) => {
     // Validate input
-    const url = body && body.url;
+    let url = body && body.url;
     if (!url || typeof url !== 'string') {
       throw new errors.ValidationError('URL is required', { url: ['Must provide a valid URL'] });
+    }
+
+    // Auto-prepend https:// if no protocol
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
     }
 
     // Basic URL validation
