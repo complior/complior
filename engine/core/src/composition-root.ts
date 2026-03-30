@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
 import type { CoreMessage } from 'ai';
 import type { ScanResult } from './types/common.types.js';
 import { parseScanResult } from './types/common.schemas.js';
@@ -9,6 +10,7 @@ import type { RegulationData } from './data/regulation/regulation-loader.js';
 import { loadRegulationData } from './data/regulation/regulation-loader.js';
 import { createEventBus } from './infra/event-bus.js';
 import { createLogger } from './infra/logger.js';
+import { withRetry } from './infra/retry.js';
 import { createLlmAdapter } from './infra/llm-adapter.js';
 import { createScanner } from './domain/scanner/create-scanner.js';
 import { createLayer5 } from './domain/scanner/layers/layer5-llm.js';
@@ -105,7 +107,7 @@ export const loadApplication = async (): Promise<Application> => {
     const raw = await readFile(lastScanPath, 'utf-8');
     persistedScan = parseScanResult(raw);
     log.info('Loaded persisted scan result from disk');
-  } catch { /* no previous scan — expected on first run */ }
+  } catch (e) { log.debug('No persisted scan:', e); }
 
   const state: ApplicationState = {
     regulationData,
@@ -118,13 +120,14 @@ export const loadApplication = async (): Promise<Application> => {
     agentScores: new Map<string, number>(),
   };
 
-  /** Persist scan result to disk (fire-and-forget). */
+  /** Persist scan result to disk (fire-and-forget, with retry). */
   const persistScanResult = (result: ScanResult): void => {
     const dir = resolve(state.projectPath, '.complior');
     const scanPath = resolve(state.projectPath, '.complior', 'last-scan.json');
-    mkdir(dir, { recursive: true })
-      .then(() => writeFile(scanPath, JSON.stringify(result), 'utf-8'))
-      .catch((err: unknown) => { log.warn('Failed to persist scan result:', err); });
+    withRetry(async () => {
+      await mkdir(dir, { recursive: true });
+      await writeFile(scanPath, JSON.stringify(result), 'utf-8');
+    }).catch((err: unknown) => { log.warn('Failed to persist scan result:', err); });
   };
 
   // 3. Create infrastructure
@@ -255,7 +258,7 @@ export const loadApplication = async (): Promise<Application> => {
       const profile = await lazyWizard?.loadProfile();
       const role = profile?.organization?.role;
       if (role === 'provider' || role === 'deployer' || role === 'both') return role;
-    } catch { /* profile missing or invalid */ }
+    } catch (e) { log.debug('Profile load:', e); }
     return 'both';
   };
 
@@ -334,7 +337,7 @@ export const loadApplication = async (): Promise<Application> => {
   });
 
   // Restore chat history from disk
-  chatService.loadHistory().catch(() => {});
+  chatService.loadHistory().catch((e) => log.debug('History load:', e));
 
   const fileService = createFileService({ events });
 
@@ -508,13 +511,18 @@ export const loadApplication = async (): Promise<Application> => {
     loadState: async (pp: string) => {
       try {
         const raw = await readFile(resolve(pp, '.complior', 'onboarding-progress.json'), 'utf-8');
-        const data = JSON.parse(raw) as Record<string, unknown>;
-        // Basic shape validation: must have steps array and status
-        if (Array.isArray(data.steps) && typeof data.status === 'string') {
-          return data as unknown as import('./domain/onboarding/guided-onboarding.js').GuidedOnboardingState;
+        const parsed = z.object({
+          currentStep: z.number(),
+          status: z.enum(['not_started', 'in_progress', 'completed']),
+          steps: z.array(z.object({ name: z.string(), status: z.string() }).passthrough()),
+        }).passthrough().safeParse(JSON.parse(raw));
+        if (parsed.success) {
+          return parsed.data as import('./domain/onboarding/guided-onboarding.js').GuidedOnboardingState;
         }
+        log.debug('Invalid onboarding state:', parsed.error.message);
         return createOnboardingInitialState();
-      } catch {
+      } catch (e) {
+        log.debug('Onboarding state load:', e);
         return createOnboardingInitialState();
       }
     },
@@ -653,7 +661,7 @@ export const loadApplication = async (): Promise<Application> => {
       const signed = { ...updated, signature };
 
       await writeFile(manifestPath, JSON.stringify(signed, null, 2));
-    } catch { /* non-fatal — passport file may not exist */ }
+    } catch (e) { log.debug('Passport read:', e); }
   };
 
   const evalService = createEvalService({
@@ -754,7 +762,7 @@ export const loadApplication = async (): Promise<Application> => {
 
   const shutdown = (): void => {
     events.off('file.changed', fileChangedHandler);
-    fileWatcher.stop().catch(() => {});
+    fileWatcher.stop().catch((e) => log.debug('Watcher stop:', e));
     if (_externalScan) {
       _externalScan.close().catch(() => {});
     }

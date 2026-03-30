@@ -5,6 +5,7 @@
 import { writeFile, readFile, readdir, mkdir, stat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { ScanResult } from '../types/common.types.js';
@@ -57,10 +58,14 @@ export interface InitPassportResult {
 // --- Helpers ---
 
 /** Read .complior/profile.json — non-fatal if missing. */
+const ProfileSchema = z.record(z.unknown());
+
 const loadProjectProfile = async (projectPath: string): Promise<ProjectProfile | undefined> => {
   try {
     const raw = await readFile(join(projectPath, '.complior', 'profile.json'), 'utf-8');
-    const profile = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = ProfileSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) { log.warn('Invalid profile.json:', parsed.error.message); return undefined; }
+    const profile = parsed.data;
     const business = profile.business as Record<string, unknown> | undefined;
     const data = profile.data as Record<string, unknown> | undefined;
     const aiSystem = profile.aiSystem as Record<string, unknown> | undefined;

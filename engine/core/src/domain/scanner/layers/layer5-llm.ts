@@ -228,6 +228,10 @@ export const createLayer5 = (deps: L5AnalyzerDeps) => {
           : result.newConfidence >= 5 ? 'LIKELY_FAIL'
           : 'FAIL',
         severity: result.verdict === 'pass' ? 'info' : f.severity,
+        // Populate fix from L5 reasoning when verdict is fail and finding lacks a fix
+        fix: (result.verdict === 'fail' && !f.fix && result.reasoning)
+          ? result.reasoning
+          : f.fix,
       };
     });
   };

@@ -5,6 +5,7 @@
 import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { AppError } from '../types/errors.js';
 import type { AgentPassport } from '../types/passport.types.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
@@ -162,15 +163,15 @@ export const createPassportAudit = (deps: PassportServiceDeps, ops: PassportAudi
     try {
       const historyPath = join(pp, '.complior', 'agents', `${name}-history.json`);
       const raw = await readFile(historyPath, 'utf-8');
-      const history = JSON.parse(raw);
-      if (Array.isArray(history) && history.length > 0) {
-        previous = history[history.length - 1] as Record<string, unknown>;
+      const parsed = z.array(z.record(z.unknown())).safeParse(JSON.parse(raw));
+      if (parsed.success && parsed.data.length > 0) {
+        previous = parsed.data[parsed.data.length - 1]!;
       }
     } catch {
       // No history — diff against empty
     }
 
-    return computeManifestDiff(name, previous, current as unknown as Record<string, unknown>);
+    return computeManifestDiff(name, previous, current as Record<string, unknown>);
   };
 
   const importPassport = async (

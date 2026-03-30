@@ -288,7 +288,7 @@ pub async fn run_eval_command(
             // CI mode: check threshold (exit 2 = threshold violation, exit 1 = error)
             if ci {
                 if let Some(ref result) = result {
-                    print_ci_output(result, threshold);
+                    return print_ci_output(result, threshold);
                 }
             }
 

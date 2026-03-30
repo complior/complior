@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { serve } from '@hono/node-server';
 import { loadApplication } from './composition-root.js';
 import { createLogger } from './infra/logger.js';
+import { withRetry } from './infra/retry.js';
 import { ENGINE_VERSION } from './version.js';
 
 const log = createLogger('server');
@@ -67,8 +68,9 @@ const startHttp = async (): Promise<void> => {
     const { createBundleFetcher } = await import('./infra/bundle-fetcher.js');
     const cacheDir = process.env['COMPLIOR_CACHE_DIR'] ?? '/tmp/complior-cache';
     const bundleFetcher = createBundleFetcher(saasUrl, cacheDir);
-    setTimeout(() => { bundleFetcher.fetchIfUpdated().catch((err: unknown) => { log.warn('Background bundle fetch failed:', err); }); }, 5_000);
-    setInterval(() => { bundleFetcher.fetchIfUpdated().catch((err: unknown) => { log.warn('Background bundle fetch failed:', err); }); }, 300_000);
+    const fetchBundle = () => withRetry(() => bundleFetcher.fetchIfUpdated()).catch((err: unknown) => { log.warn('Background bundle fetch failed:', err); });
+    setTimeout(fetchBundle, 5_000);
+    setInterval(fetchBundle, 300_000);
   }
 
   const shutdown = (): void => {

@@ -7,6 +7,7 @@
 
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { z } from 'zod';
 import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult } from '../domain/eval/types.js';
 import type { TargetAdapter } from '../domain/eval/adapters/adapter-port.js';
 import type { EvalRunnerDeps, EvalTestSources, EvalScorer, EvalJudge } from '../domain/eval/eval-runner.js';
@@ -22,6 +23,16 @@ import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import type { RemediationAction, RemediationReport } from '../domain/eval/remediation-types.js';
 import type { EvalFinding } from '../domain/eval/eval-to-findings.js';
+import type { LoggerPort } from '../ports/logger.port.js';
+import { createLogger } from '../infra/logger.js';
+
+// ── Judge model constants ────────────────────────────────────────
+
+const JUDGE_MODELS = {
+  anthropic: { model: 'claude-sonnet-4-20250514', baseUrl: 'https://api.anthropic.com' },
+  openrouter: { model: 'anthropic/claude-sonnet-4.5', baseUrl: 'https://openrouter.ai/api' },
+  openai: { model: 'gpt-4o', baseUrl: 'https://api.openai.com' },
+} as const;
 
 // ── Service deps ─────────────────────────────────────────────────
 
@@ -32,6 +43,7 @@ export interface EvalServiceDeps {
   readonly auditStore?: AuditStore;
   /** Optional: auto-sync eval results into agent passport (US-REM-04). */
   readonly updatePassportEval?: (result: EvalResult) => Promise<void>;
+  readonly log?: LoggerPort;
 }
 
 // ── Factory ──────────────────────────────────────────────────────
@@ -42,16 +54,18 @@ export interface EvalServiceDeps {
  */
 const resolveJudgeConfig = (apiKey: string): { provider: string; model: string; baseUrl: string } => {
   if (apiKey.startsWith('sk-ant-')) {
-    return { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929', baseUrl: 'https://api.anthropic.com' };
+    return { provider: 'anthropic', ...JUDGE_MODELS.anthropic };
   }
   if (apiKey.startsWith('sk-or-v1-')) {
-    return { provider: 'openrouter', model: 'anthropic/claude-sonnet-4.5', baseUrl: 'https://openrouter.ai/api' };
+    return { provider: 'openrouter', ...JUDGE_MODELS.openrouter };
   }
   // Default: OpenAI-compatible
-  return { provider: 'openai', model: 'gpt-4o', baseUrl: 'https://api.openai.com' };
+  return { provider: 'openai', ...JUDGE_MODELS.openai };
 };
 
 export const createEvalService = (deps: EvalServiceDeps) => {
+  const log = deps.log ?? createLogger('eval');
+
   let runnerDeps: EvalRunnerDeps = {
     getProjectPath: deps.getProjectPath,
     evidenceStore: deps.evidenceStore,
@@ -139,7 +153,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         runnerDeps = { ...runnerDeps, callLlm: callJudge };
       } catch (err) {
         // Judge adapter failed — fall through to next fallback
-        console.warn(`[eval] Judge adapter probe failed (${judgeConfig.provider}/${judgeConfig.model}): ${err instanceof Error ? err.message : err}`);
+        log.warn(`Judge adapter probe failed (${judgeConfig.provider}/${judgeConfig.model}): ${err instanceof Error ? err.message : err}`);
       }
     }
     // Prefer target adapter over deps.callLlm — target is a real working API,
@@ -150,6 +164,9 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     }
     if (!judge && deps.callLlm) {
       judge = createLlmJudge({ callLlm: deps.callLlm });
+    }
+    if (!judge) {
+      log.warn('No LLM judge available. Set COMPLIOR_JUDGE_API_KEY or provide --api-key for LLM-judged tests.');
     }
 
     // Re-create runner with potentially updated callLlm
@@ -196,12 +213,28 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     return mergeEvalIntoPassport(passport, block);
   };
 
+  // Minimal schema for validating persisted eval results
+  const EvalResultSchema = z.object({
+    target: z.string(),
+    overallScore: z.number(),
+    grade: z.string(),
+    totalTests: z.number(),
+    passed: z.number(),
+    failed: z.number(),
+    results: z.array(z.object({ testId: z.string(), verdict: z.string() }).passthrough()),
+  }).passthrough();
+
   /** Get last eval result from disk. */
   const getLastResult = async (): Promise<EvalResult | null> => {
     try {
       const latestPath = resolve(deps.getProjectPath(), '.complior', 'eval', 'latest.json');
       const raw = await readFile(latestPath, 'utf-8');
-      return JSON.parse(raw) as EvalResult;
+      const parsed = EvalResultSchema.safeParse(JSON.parse(raw));
+      if (!parsed.success) {
+        log.warn('Invalid eval result on disk:', parsed.error.message);
+        return null;
+      }
+      return parsed.data as unknown as EvalResult;
     } catch {
       return null;
     }

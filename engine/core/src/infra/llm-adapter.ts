@@ -3,12 +3,15 @@ import type { LlmPort, ProviderName, ProviderInfo, ModelSelection } from '../por
 import { LLMError } from '../types/errors.js';
 import { complior } from '@complior/sdk';
 import { routeModelForProvider } from '../llm/routing/model-routing.js';
+import { createLogger } from './logger.js';
 
 const PROVIDERS: readonly ProviderInfo[] = [
   { name: 'openai', available: false, envVar: 'OPENAI_API_KEY' },
   { name: 'anthropic', available: false, envVar: 'ANTHROPIC_API_KEY' },
   { name: 'openrouter', available: false, envVar: 'OPENROUTER_API_KEY' },
 ];
+
+const log = createLogger('llm-adapter');
 
 export const createLlmAdapter = (): LlmPort => {
   const detectProviders = (): readonly ProviderInfo[] =>
@@ -58,7 +61,7 @@ export const createLlmAdapter = (): LlmPort => {
         try {
           return complior(client).chat(modelId);
         } catch (err) {
-          console.error('LLM call failed:', err);
+          log.error('LLM call failed:', err);
           throw err;
         }
       }

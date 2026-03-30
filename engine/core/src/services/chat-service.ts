@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { z } from 'zod';
+import { createLogger } from '../infra/logger.js';
 import type { CoreMessage } from 'ai';
 import type { ScanResult } from '../types/common.types.js';
 import type { PassportSummary } from '../types/passport.types.js';
@@ -30,6 +31,8 @@ export interface ChatServiceDeps {
   readonly getPassportSummary: () => Promise<PassportSummary | null>;
   readonly getChatHistoryPath: () => string;
 }
+
+const log = createLogger('chat-service');
 
 export const createChatService = (deps: ChatServiceDeps) => {
   const {
@@ -119,7 +122,7 @@ export const createChatService = (deps: ChatServiceDeps) => {
     try {
       const raw = await readFile(getChatHistoryPath(), 'utf-8');
       const parsed = ChatHistorySchema.safeParse(JSON.parse(raw));
-      if (!parsed.success) return;
+      if (!parsed.success) { log.warn('Invalid chat history on disk:', parsed.error.message); return; }
       const recent = parsed.data.slice(-MAX_HISTORY);
       for (const msg of recent) {
         appendConversationHistory(msg as CoreMessage);

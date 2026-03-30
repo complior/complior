@@ -78,7 +78,10 @@ export const scoreConformity = (
     const catResults = byCategory.get(cat) ?? [];
     const counts = countVerdicts(catResults);
     const total = catResults.length;
-    const score = calculateScore(counts.passed, total);
+    // Score = passed / (passed + failed) — errors and inconclusive excluded from denominator
+    // This ensures network errors don't penalize the score (only clear pass/fail count)
+    const definitive = counts.passed + counts.failed;
+    const score = calculateScore(counts.passed, definitive);
 
     categoryScores.push(Object.freeze({
       category: cat,

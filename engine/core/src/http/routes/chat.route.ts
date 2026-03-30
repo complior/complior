@@ -3,6 +3,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { streamText, stepCountIs, type CoreMessage } from 'ai';
 import type { ChatService } from '../../services/chat-service.js';
+import { createLogger } from '../../infra/logger.js';
 import type { LlmPort } from '../../ports/llm.port.js';
 import type { ToolExecutorDeps } from '../../llm/tool-executors.js';
 import {
@@ -59,6 +60,8 @@ const parseCommand = (msg: string): { command: string; arg: string } | null => {
   const match = msg.trim().match(/^\/(\w+)\s*(.*)/);
   return match ? { command: match[1], arg: match[2].trim() } : null;
 };
+
+const chatLog = createLogger('chat-route');
 
 export const createChatRoute = (deps: ChatRouteDeps) => {
   const { chatService, llm, toolExecutorDeps, getMode, setMode } = deps;
@@ -207,7 +210,7 @@ export const createChatRoute = (deps: ChatRouteDeps) => {
         }
 
         // Persist chat history to disk
-        chatService.saveHistory().catch(() => {});
+        chatService.saveHistory().catch((e) => chatLog.warn('History save failed:', e));
 
         const done = sseDone();
         await stream.writeSSE({ event: done.event, data: done.data });
