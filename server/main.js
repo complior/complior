@@ -144,6 +144,7 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
     registry: require('../app/config/registry.js'),
     enrichment: require('../app/config/enrichment.js'),
     llmModels: require('../app/config/llm-models.js'),
+    llmTestCatalog: require('../app/config/llm-test-catalog.js'),
     llm: require('../app/config/llm.js'),
   };
 

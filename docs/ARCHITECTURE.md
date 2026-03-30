@@ -339,17 +339,34 @@ graph LR
 - **Планы:** Free (Quick Check) → €49 (AI Literacy) → €149 (Full Compliance) → €399 (Scale) → Enterprise
 - **Ответственный:** Max (Stripe integration)
 
-### 4.9 Registry API Context (новое — v3.0.0) — IMPLEMENTED
-- **Entities:** RegistryTool (2,477+ AI tools), Obligation (108 per regulation/risk), ScoringRule, APIKey, APIUsage
-- **Публичные эндпоинты:**
-  - `GET /v1/registry/tools` — поиск/фильтрация AI tools (для TUI DataProvider)
+### 4.9 Registry API Context (v3.0.0 → v3.2.0) — IMPLEMENTED
+- **Entities:** RegistryTool (5,000+ AI tools), Obligation (108 per regulation/risk), ScoringRule, APIKey, APIUsage, VendorClaim (NEW)
+- **Trust Levels:** `auto_assessed` (0.4-0.6) < `community_reported` (0.7) < `vendor_verified` (0.85) < third_party (1.0)
+- **Публичные эндпоинты (TUI DataProvider):**
+  - `GET /v1/registry/tools` — поиск/фильтрация AI tools
   - `GET /v1/registry/tools/:id` — полная запись tool с evidence/assessments
+  - `GET /v1/registry/tools/by-slug/:slug?include=actions,procurement,fria` — по slug, с deployer value data
+  - `GET /v1/registry/compare?slugs=a,b,c` — side-by-side comparison (2-4 tools)
   - `GET /v1/registry/search` — полнотекстовый поиск (provider, capability, jurisdiction)
   - `GET /v1/regulations/obligations` — compliance obligations per regulation/risk level
   - `GET /v1/data/bundle` — offline data bundle для TUI (~530KB, ETag caching)
-- **Auth:** API Key (HMAC-SHA256), rate limits per plan:
+- **Public Scan Funnel (без API Key):**
+  - `POST /api/public/registry/scan` — free scan (URL→passive, API→det+security, API+email→full eval)
+  - `POST /api/public/registry/submit-to-registry` — 5 deployer-context questions → Registry card
+  - Rate limits: 3/day IP (unregistered), 10/day account, 1/month per endpoint
+- **Vendor Self-Report:**
+  - `POST /api/public/registry/vendor-claim` — submit claim, verify domain, check status
+  - `POST /api/public/registry/vendor-report` — verified vendor submits authoritative data
+  - `POST /api/admin/vendor-claims` — admin approve/reject pending claims
+  - Verification: DNS TXT, meta tag, `/.well-known/complior-verify.json`
+- **Deployer Value APIs:**
+  - Deployer action cards (obligations→CTAs with EU AI Act deadlines)
+  - Procurement score (compliance 40% + transparency 25% + residency 15% + verified 10% + GDPR 10%)
+  - FRIA pre-fill (7 sections auto-populated from Registry data)
+- **Scoring Engine v3:** 680 tests (176 det + 55 security + 80 judge/AB), 181 model map entries, 16 evidence rules, 11-step scoring pipeline
+- **Auth:** API Key (HMAC-SHA256) for TUI endpoints, rate limits per plan:
   - Free: 100 req/day, 200 tools (bundled offline)
-  - Starter: 1K req/day, 2,477 tools
+  - Starter: 1K req/day, 5,000+ tools
   - Growth: 10K req/day, evidence + assessments
   - Scale/Enterprise: 100K req/day, full API
 - **Кеширование:** ETag + If-None-Match для TUI DataProvider, 304 Not Modified

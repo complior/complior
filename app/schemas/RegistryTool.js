@@ -50,4 +50,16 @@
   jurisdictions: { type: 'json', required: false },
   detectionPatterns: { type: 'json', required: false },
   active: { type: 'boolean', default: true },
+
+  // v3: Trust & Vendor fields
+  trustLevel: {
+    enum: ['auto_assessed', 'community_reported', 'vendor_verified'],
+    default: 'auto_assessed',
+    required: false,
+  },
+  communityReports: { type: 'json', required: false }, // [{ answers, reportedBy, reportedAt }]
+  lastPublicScanAt: { type: 'datetime', required: false },
+  vendorReport: { type: 'json', required: false }, // vendor self-reported data
+  vendorVerified: { type: 'boolean', default: false },
+  vendorClaimedAt: { type: 'datetime', required: false },
 });

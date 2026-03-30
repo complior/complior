@@ -1,8 +1,14 @@
 /**
- * LLM Tester v3 — Catalog-driven behavioral test suite for LLM models.
+ * LLM Tester v4 — 3-mode behavioral test suite for LLM models.
  *
- * Runs ~80 tests from registry-test-catalog across 8 categories.
- * Three evaluator types: deterministic (regex), llm-judge, ab-pair.
+ * Supports three composable test modes:
+ *   deterministic: 176 regex-based tests ($0 LLM cost)
+ *   security: ~75 security probe tests ($0 regex)
+ *   llm_judged: 80 legacy + 212 LLM-as-judge tests (~$0.04-0.06)
+ *
+ * Two target types:
+ *   - OpenRouter model ID (string): for scheduled refresh pipeline
+ *   - Direct endpoint (object): for public scan funnel
  *
  * Dependencies injected: fetch, config, console, testCatalog, judge.
  *
@@ -10,7 +16,6 @@
  */
 (() => {
   // ── Rate Limiter (sliding window) ─────────────────────────────
-
   const createSlidingWindowLimiter = (maxPerMin) => {
     const timestamps = [];
     return async () => {
@@ -27,7 +32,6 @@
   };
 
   // ── Concurrency limiter ───────────────────────────────────────
-
   const createConcurrencyLimiter = (maxConcurrent) => {
     let running = 0;
     const queue = [];
@@ -55,7 +59,6 @@
   };
 
   // ── Main Factory ──────────────────────────────────────────────
-
   return ({ fetch, config, console, testCatalog, judge }) => {
     const orConfig = (config && config.enrichment && config.enrichment.openRouter) || {};
     const features = (config && config.enrichment && config.enrichment.features) || {};
@@ -71,16 +74,20 @@
     const llmJudgeEnabled = features.llmJudge !== false;
     const abBiasEnabled = features.abBiasTests !== false;
 
-    const catalog = testCatalog || { CATALOG: [], LEGACY_ID_MAP: {} };
-    const tests = catalog.CATALOG || [];
-    const legacyIdMap = catalog.LEGACY_ID_MAP || {};
+    // ── Legacy catalog (IIFE domain module, 80 tests) ─────────
+    const legacyCatalog = testCatalog || { CATALOG: [], LEGACY_ID_MAP: {} };
+    const legacyTests = legacyCatalog.CATALOG || [];
 
-    // Reverse legacy map: new ID → old ID
-    const reverseLegacyMap = {};
-    for (const [oldId, newId] of Object.entries(legacyIdMap)) {
-      reverseLegacyMap[newId] = oldId;
-    }
+    // ── Extended catalog (config-loaded, 680+ tests) ──────────
+    const extCatalog = (config && config.llmTestCatalog) || {};
+    const extDeterministic = extCatalog.deterministic || [];
+    const extSecurity = extCatalog.security || [];
 
+    // ── API Callers ───────────────────────────────────────────
+
+    /**
+     * Call OpenRouter API (for scheduled refresh pipeline).
+     */
     const callOpenRouter = async (modelId, prompt) => {
       if (!apiKey) {
         throw new Error('OPENROUTER_API_KEY not configured');
@@ -124,19 +131,88 @@
       }
     };
 
+    /**
+     * Call a direct API endpoint (OpenAI-compatible, for public scan).
+     */
+    const callDirectEndpoint = async (endpointConfig, prompt) => {
+      const { endpoint, apiKey: epKey, model: epModel } = endpointConfig;
+      if (!epKey) {
+        throw new Error('API key not provided for direct endpoint');
+      }
+
+      await rateLimiter();
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      // Normalize endpoint: ensure it ends with /chat/completions
+      let apiUrl = endpoint;
+      if (!apiUrl.endsWith('/chat/completions')) {
+        apiUrl = apiUrl.replace(/\/+$/, '') + '/chat/completions';
+      }
+
+      try {
+        const body = {
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: maxTokens,
+          temperature,
+        };
+        if (epModel) body.model = epModel;
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${epKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Endpoint ${response.status}: ${errText.slice(0, 200)}`);
+        }
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || '';
+      } catch (err) {
+        clearTimeout(timer);
+        throw err;
+      }
+    };
+
+    /**
+     * Unified LLM caller — dispatches to OpenRouter or direct endpoint.
+     */
+    const callLLM = async (target, prompt) => {
+      if (typeof target === 'string') {
+        return callOpenRouter(target, prompt);
+      }
+      if (target && typeof target === 'object' && target.endpoint) {
+        return callDirectEndpoint(target, prompt);
+      }
+      throw new Error('Invalid target: must be modelId string or endpoint config object');
+    };
+
     // ── Evaluators ──────────────────────────────────────────────
 
     const evaluateDeterministic = (response, testDef) => {
-      const passMatch = testDef.passPatterns.length === 0
-        || testDef.passPatterns.some((re) => re.test(response));
-      const failMatch = testDef.failPatterns.length > 0
-        && testDef.failPatterns.some((re) => re.test(response));
+      const patterns = testDef.passPatterns || [];
+      const failPats = testDef.failPatterns || [];
+
+      const passMatch = patterns.length === 0
+        || patterns.some((re) => re.test(response));
+      const failMatch = failPats.length > 0
+        && failPats.some((re) => re.test(response));
       return passMatch && !failMatch;
     };
 
-    const runDeterministicTest = async (testDef, modelId, slug) => {
+    const runDeterministicTest = async (testDef, target, slug) => {
       try {
-        const response = await callOpenRouter(modelId, testDef.probe);
+        const response = await callLLM(target, testDef.probe);
         const passed = evaluateDeterministic(response, testDef);
         return {
           id: testDef.id,
@@ -172,13 +248,13 @@
       }
     };
 
-    const runJudgeTest = async (testDef, modelId, slug) => {
+    const runJudgeTest = async (testDef, target, slug) => {
       if (!judge || !llmJudgeEnabled) {
-        return runDeterministicTest(testDef, modelId, slug);
+        return runDeterministicTest(testDef, target, slug);
       }
 
       try {
-        const response = await callOpenRouter(modelId, testDef.probe);
+        const response = await callLLM(target, testDef.probe);
         const judgeResult = await judge.judge({
           probe: testDef.probe,
           response,
@@ -219,17 +295,15 @@
       }
     };
 
-    const runABPairTest = async (testDef, modelId, slug) => {
+    const runABPairTest = async (testDef, target, slug) => {
       if (!judge || !abBiasEnabled) {
-        // Fallback: just run as deterministic
-        return runDeterministicTest(testDef, modelId, slug);
+        return runDeterministicTest(testDef, target, slug);
       }
 
       try {
-        // Send both probes
         const [responseA, responseB] = await Promise.all([
-          callOpenRouter(modelId, testDef.probe),
-          callOpenRouter(modelId, testDef.pairProbe),
+          callLLM(target, testDef.probe),
+          callLLM(target, testDef.pairProbe),
         ]);
 
         const judgeResult = await judge.judgeABPair({
@@ -273,30 +347,86 @@
       }
     };
 
-    // ── Main Test Runner ────────────────────────────────────────
+    // ── Test Selection ──────────────────────────────────────────
 
+    /**
+     * Select tests based on mode array.
+     *
+     * Modes:
+     *   'deterministic' — 176 regex tests from extended catalog ($0)
+     *   'security'      — ~75 security probes from extended catalog ($0)
+     *   'llm_judged'    — 80 legacy judge+ab tests (~$0.04-0.06)
+     *
+     * When no modes specified, falls back to legacy 80-test catalog.
+     */
+    const selectTests = (modes) => {
+      if (!modes || modes.length === 0) {
+        // Legacy: run all 80 tests from old catalog
+        return legacyTests;
+      }
+
+      const selected = [];
+
+      if (modes.includes('deterministic')) {
+        selected.push(...extDeterministic);
+      }
+
+      if (modes.includes('security')) {
+        selected.push(...extSecurity);
+      }
+
+      if (modes.includes('llm_judged')) {
+        // Use legacy catalog's judge + ab-pair tests
+        const judgeTests = legacyTests.filter(
+          (t) => t.evaluator === 'llm-judge' || t.evaluator === 'ab-pair',
+        );
+        selected.push(...judgeTests);
+      }
+
+      return selected;
+    };
+
+    // ── Main Test Runner ────────────────────────────────────────
     return {
-      async test(tool, modelId) {
-        if (!modelId) {
+      /**
+       * Run behavioral tests on a target LLM.
+       *
+       * @param {Object} tool - { slug, name, website }
+       * @param {string|Object} target - OpenRouter modelId (string)
+       *   OR direct endpoint config { endpoint, apiKey, model }
+       * @param {Object} [options] - { modes?: string[] }
+       *   modes: subset of ['deterministic', 'security', 'llm_judged']
+       *   If omitted, runs legacy 80-test catalog.
+       * @returns {Array|null} - Test results array, or null if no target
+       */
+      async test(tool, target, options) {
+        if (!target) {
           return null;
         }
 
         const slug = tool.slug || tool.name || 'unknown';
-        const tasks = [];
+        const modes = (options && options.modes) || null;
+        const tests = selectTests(modes);
 
+        if (tests.length === 0) {
+          console.log(`  No tests selected for ${slug} (modes: ${JSON.stringify(modes)})`);
+          return [];
+        }
+
+        console.log(`  Running ${tests.length} tests on ${slug} (modes: ${JSON.stringify(modes || 'legacy')})`);
+
+        const tasks = [];
         for (const testDef of tests) {
           switch (testDef.evaluator) {
-          case 'deterministic':
-            tasks.push(() => runDeterministicTest(testDef, modelId, slug));
-            break;
           case 'llm-judge':
-            tasks.push(() => runJudgeTest(testDef, modelId, slug));
+            tasks.push(() => runJudgeTest(testDef, target, slug));
             break;
           case 'ab-pair':
-            tasks.push(() => runABPairTest(testDef, modelId, slug));
+            tasks.push(() => runABPairTest(testDef, target, slug));
             break;
+          case 'deterministic':
           default:
-            tasks.push(() => runDeterministicTest(testDef, modelId, slug));
+            tasks.push(() => runDeterministicTest(testDef, target, slug));
           }
         }
 
@@ -305,11 +435,14 @@
           tasks.map((task) => concurrencyLimit(task)),
         );
 
-        // Filter out null results (b-variant A/B pairs)
         return rawResults.filter(Boolean);
       },
 
-      getPrompts() {
+      /**
+       * Get prompts for a specific mode (or legacy catalog).
+       */
+      getPrompts(modes) {
+        const tests = selectTests(modes);
         return tests.map((t) => ({
           id: t.id,
           group: t.group,
@@ -319,12 +452,33 @@
         }));
       },
 
-      getTestCount() {
-        return tests.length;
+      /**
+       * Get test count for mode(s).
+       */
+      getTestCount(modes) {
+        return selectTests(modes).length;
+      },
+
+      /**
+       * Get counts by mode.
+       */
+      getCounts() {
+        return {
+          legacy: legacyTests.length,
+          deterministic: extDeterministic.length,
+          security: extSecurity.length,
+          llmJudged: legacyTests.filter(
+            (t) => t.evaluator === 'llm-judge' || t.evaluator === 'ab-pair',
+          ).length,
+          total: extDeterministic.length + extSecurity.length
+            + legacyTests.filter(
+              (t) => t.evaluator === 'llm-judge' || t.evaluator === 'ab-pair',
+            ).length,
+        };
       },
 
       getLegacyIdMap() {
-        return legacyIdMap;
+        return legacyCatalog.LEGACY_ID_MAP || {};
       },
     };
   };

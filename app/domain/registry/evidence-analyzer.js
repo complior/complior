@@ -699,6 +699,41 @@
     return results;
   };
 
+  // ── Three-State Citation Helpers ──────────────────────────────────────
+
+  /**
+   * Get citation status for a signal key from passive_scan.citations.
+   * Returns 'confirmed' | 'not_found' | 'not_checked' | null (no citations).
+   */
+  const getCitationStatus = (ps, key) => {
+    if (!ps || !ps.citations || !ps.citations[key]) return null;
+    return ps.citations[key].status || null;
+  };
+
+  /**
+   * Compute scan coverage from citations — how many signals were actually checked.
+   * Returns { confirmed, notFound, notChecked, total, coverage }.
+   */
+  const computeScanCoverage = (ps) => {
+    if (!ps || !ps.citations) {
+      return { confirmed: 0, notFound: 0, notChecked: 0, total: 0, coverage: 0 };
+    }
+    const keys = Object.keys(ps.citations);
+    let confirmed = 0;
+    let notFound = 0;
+    let notChecked = 0;
+    for (const k of keys) {
+      const status = ps.citations[k].status;
+      if (status === 'confirmed') confirmed++;
+      else if (status === 'not_found') notFound++;
+      else notChecked++;
+    }
+    const total = keys.length;
+    const checked = confirmed + notFound;
+    const coverage = total > 0 ? Math.round((checked / total) * 100) / 100 : 0;
+    return { confirmed, notFound, notChecked, total, coverage };
+  };
+
   // ── Evidence Quality ──────────────────────────────────────────────────
 
   const computeEvidenceQuality = (evidence) => {
@@ -706,7 +741,13 @@
     let score = 0;
 
     const ps = evidence.passive_scan || {};
-    if (ps && (ps.pages_fetched > 0 || ps.disclosure || ps.privacy_policy)) {
+
+    // v3: Use scan_quality when available for more accurate quality scoring
+    const sq = ps.scan_quality;
+    if (sq) {
+      // Scan coverage contributes up to 0.25
+      score += 0.25 * (sq.overall_coverage || 0);
+    } else if (ps && (ps.pages_fetched > 0 || ps.disclosure || ps.privacy_policy)) {
       const pagesFetched = ps.pages_fetched || 0;
       score += 0.25 * Math.min(pagesFetched / 8, 1.0);
     }
@@ -731,6 +772,18 @@
     if (judgeTests.length > 0) {
       const judged = judgeTests.filter((t) => t.judgeScore !== null || t.scoreDiff !== null).length;
       score += 0.10 * (judged / judgeTests.length);
+    }
+
+    // v3: Vendor report bonus (if present)
+    if (evidence.vendor_report) {
+      const vr = evidence.vendor_report;
+      const fieldCount = Object.keys(vr).filter((k) => vr[k] !== null && vr[k] !== undefined).length;
+      score += 0.05 * Math.min(fieldCount / 10, 1.0);
+    }
+
+    // v3: Community reports bonus
+    if (evidence.community_reports && evidence.community_reports.length > 0) {
+      score += 0.03 * Math.min(evidence.community_reports.length / 5, 1.0);
     }
 
     return Math.round(score * 100) / 100;
@@ -953,6 +1006,10 @@
         else if (ageDays > 30) evidenceFreshness = 0.95;
       }
 
+      // v3: Scan coverage from three-state citations
+      const ps = evidence.passive_scan || {};
+      const scanCoverage = computeScanCoverage(ps);
+
       return {
         derivedObligations,
         evidenceQuality,
@@ -960,6 +1017,8 @@
         contradictions,
         infraBoosts,
         signals: [...new Set(allSignals)],
+        // v3 additions
+        scanCoverage,
       };
     };
 
@@ -1152,6 +1211,8 @@
       correlateObligations,
       computeEvidenceQuality,
       computeTransparencyScore,
+      computeScanCoverage,
+      getCitationStatus,
       // Exposed for testing
       _applyFreshnessDecay: applyFreshnessDecay,
       _detectContradictions: detectContradictions,

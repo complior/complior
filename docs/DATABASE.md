@@ -566,10 +566,10 @@ erDiagram
 | **Consultation** | Conversation, ChatMessage | 2 |
 | **Monitoring** | RegulatoryUpdate, ImpactAssessment, Notification | 3 |
 | **Billing** | Subscription, Plan | 2 |
-| **Registry API** _(v3.0)_ | RegistryTool, Obligation, ScoringRule, APIKey, APIUsage | 5 |
+| **Registry API** _(v3.2)_ | RegistryTool, Obligation, ScoringRule, APIKey, APIUsage, VendorClaim | **6** |
 | **CLI Sync & Data Collection** _(v4.0)_ | ScanResult, SyncHistory | **2** |
 | **Cross-cutting** | AuditLog | 1 |
-| **Total** | | **~39** |
+| **Total** | | **~40** |
 
 ---
 
@@ -1473,37 +1473,60 @@ erDiagram
 
 ---
 
-### 4.9 Registry API Context (NEW — v3.0.0)
+### 4.9 Registry API Context (v3.0.0 → v3.2.0)
 
 #### RegistryTool (Entity) — полная запись AI-инструмента из Engine
 
 ```javascript
-// schemas/RegistryTool.js (NEW — v3.0)
-// Source of truth для AI tool registry. Обогащённая версия AIToolCatalog (2,477+ tools).
+// schemas/RegistryTool.js (v3.0 → v3.2)
+// Source of truth для AI tool registry. 5,000+ tools.
 // TUI Engine потребляет через DataProvider API.
 ({
   Entity: {},
   name: { type: 'string', length: { max: 255 }, unique: true },
-  provider: { type: 'string', length: { max: 255 }, index: true },
-  category: {
-    enum: ['chatbot', 'coding_assistant', 'image_generator', 'video_generator',
-           'voice_assistant', 'recommendation', 'analytics', 'hr_tool',
-           'legal_tool', 'healthcare', 'education', 'api_platform',
-           'framework', 'infrastructure', 'other'],
-  },
+  slug: { type: 'string', length: { max: 255 }, unique: true, index: true },
+  provider: { type: 'json', required: false, note: '{ name, slug }' },
+  website: { type: 'string', required: false },
+  categories: { type: 'json', note: 'Array of category strings' },
   riskLevel: {
     enum: ['prohibited', 'high', 'gpai', 'limited', 'minimal'],
     required: false, index: true,
   },
+  level: {
+    enum: ['classified', 'scanned', 'verified'],
+    default: 'classified', index: true,
+    note: 'Evidence quality level: classified→scanned→verified',
+  },
   capabilities: { type: 'json', note: 'Array: text_generation, image_generation, decision_making, etc.' },
   jurisdictions: { type: 'json', note: 'Array: eu_ai_act, colorado_sb205, etc.' },
-  evidence: { type: 'json', required: false, note: 'Certification, audit reports, vendor statements' },
+  evidence: { type: 'json', required: false, note: '{ passive_scan, llm_tests, media_tests }' },
+  assessments: { type: 'json', required: false, note: '{ "eu-ai-act": { score, grade, obligations... } }' },
   detectionPatterns: { type: 'json', note: 'npm packages, imports, API endpoints for scanner' },
   description: { type: 'text' },
   vendorUrl: { type: 'string', required: false },
   lastVerifiedAt: { type: 'datetime', required: false },
+  // v3.2 — Trust & Vendor fields
+  trustLevel: {
+    enum: ['auto_assessed', 'community_reported', 'vendor_verified'],
+    default: 'auto_assessed', index: true,
+    note: 'Evidence weight hierarchy: auto 0.4-0.6, community 0.7, vendor 0.85',
+  },
+  vendorVerified: { type: 'boolean', default: false },
+  vendorClaimedAt: { type: 'datetime', required: false },
+  vendorReport: { type: 'json', required: false, note: 'Vendor self-report data (residency, compliance, certs)' },
+  vendorCountry: { type: 'string', required: false },
+  dataResidency: { type: 'string', required: false },
+  communityReports: { type: 'json', required: false, note: 'Aggregated deployer questionnaire answers' },
+  lastPublicScanAt: { type: 'datetime', required: false, note: 'Last free public scan timestamp' },
+  priorityScore: { type: 'number', default: 0, note: 'Enrichment priority (higher = sooner)' },
 });
 ```
+
+**Indexes:**
+- `idx_registry_tool_slug` ON (slug) — UNIQUE
+- `idx_registry_tool_risk_level` ON (riskLevel)
+- `idx_registry_tool_level` ON (level)
+- `idx_registry_tool_trust_level` ON (trustLevel)
 
 #### Obligation (Entity) — compliance obligation per regulation/risk level
 
@@ -1575,6 +1598,58 @@ erDiagram
   bytesTransferred: { type: 'number', default: 0 },
   naturalKey: { unique: ['apiKey', 'usageDate'] },
 });
+```
+
+#### VendorClaim (Entity) — vendor listing claim & verification (NEW — v3.2)
+
+```javascript
+// schemas/VendorClaim.js (NEW — v3.2)
+// Vendor claim flow: submit → verify domain → admin review → approved → vendor can submit self-report.
+// Three verification methods: DNS TXT, meta tag, .well-known file.
+({
+  Entity: {},
+  toolSlug: { type: 'string', index: true, note: 'Registry tool slug being claimed' },
+  vendorEmail: { type: 'string', note: 'Email on vendor domain (e.g. compliance@openai.com)' },
+  vendorDomain: { type: 'string', index: true, note: 'Extracted domain from email/website' },
+  verificationMethod: {
+    enum: ['dns_txt', 'meta_tag', 'well_known'],
+    note: 'How vendor proves domain ownership',
+  },
+  verificationToken: { type: 'string', note: 'Token: cv_<timestamp_hex><random_hex>' },
+  tokenExpiresAt: { type: 'datetime', note: '72h TTL by default' },
+  status: {
+    enum: ['pending', 'verification_sent', 'verified', 'approved', 'rejected'],
+    default: 'pending', index: true,
+  },
+  verifiedAt: { type: 'datetime', required: false },
+  reviewedBy: { type: 'string', required: false, note: 'Admin user who approved/rejected' },
+  reviewedAt: { type: 'datetime', required: false },
+  rejectionReason: { type: 'string', required: false },
+  submittedData: { type: 'json', required: false, note: 'Vendor self-report data snapshot at claim time' },
+});
+```
+
+**Indexes:**
+- `idx_vendor_claim_tool` ON (toolSlug)
+- `idx_vendor_claim_status` ON (status)
+- `idx_vendor_claim_domain` ON (vendorDomain)
+
+**Vendor Self-Report Fields** (stored in `RegistryTool.vendorReport` after approval):
+```json
+{
+  "data_residency": "EU",
+  "data_residency_details": "Frankfurt (AWS eu-central-1)",
+  "model_provider": "proprietary",
+  "autonomy_level": "L2",
+  "human_oversight": true,
+  "human_oversight_details": "All decisions reviewed by human",
+  "transparency_url": "https://vendor.com/ai-transparency",
+  "ai_act_compliance_status": "in_progress",
+  "compliance_contact": "compliance@vendor.com",
+  "technical_documentation_url": "https://vendor.com/docs/ai-act",
+  "last_audit_date": "2026-01-15",
+  "certifications": ["ISO 27001", "SOC 2 Type II"]
+}
 ```
 
 ---

@@ -32,6 +32,7 @@
     partially_met: 50,
     partially_met_low: 40,
     unknown: 15,
+    not_checked: 20,    // v3: higher than unknown — honest gap, not negative signal
     not_met: 0,
   };
 
@@ -166,7 +167,9 @@
       return STATUS_SCORES.partially_met;
     }
     if (status === 'not_met') return STATUS_SCORES.not_met;
-    return STATUS_SCORES.unknown; // Unknown = included in denominator at 25/100
+    // v3: not_checked gets higher score than unknown — honest gap, less penalty
+    if (status === 'not_checked') return STATUS_SCORES.not_checked;
+    return STATUS_SCORES.unknown; // Unknown = included in denominator at 15/100
   };
 
   return ({ weights, obligationMap }) => {
@@ -645,8 +648,18 @@
         // Provider tier bonus (providerName extracted earlier)
         bonuses.providerTier = providerTier;
 
-        // Cap: evidence bonuses max 10, provider tier max 20, total max 30
-        const cappedEvidenceBonus = Math.min(evidenceBonus, 10);
+        // v3: Vendor-verified trust level bonus
+        bonuses.vendorVerified = 0;
+        if (tool.vendorVerified || tool.trustLevel === 'vendor_verified') {
+          bonuses.vendorVerified = 5;
+          evidenceBonus += 5;
+        } else if (tool.trustLevel === 'community_reported') {
+          bonuses.vendorVerified = 2;
+          evidenceBonus += 2;
+        }
+
+        // Cap: evidence bonuses max 12, provider tier max 20, total max 32
+        const cappedEvidenceBonus = Math.min(evidenceBonus, 12);
         bonuses.total = cappedEvidenceBonus + bonuses.providerTier;
         rawScore = Math.min(100, rawScore + bonuses.total);
 
@@ -758,6 +771,10 @@
         const evidenceQuality = enrichedObligations ? enrichedObligations.evidenceQuality || 0 : 0;
         const evidenceAdj = evidenceQuality * 0.1;
 
+        // v3: Scan coverage adjustment — high coverage = higher confidence
+        const scanCoverage = enrichedObligations ? enrichedObligations.scanCoverage : null;
+        const scanCoverageAdj = scanCoverage ? (scanCoverage.coverage - 0.5) * 0.1 : 0;
+
         // Reputation score
         let reputationScore = 0;
         if (ws.has_transparency_report) reputationScore += 1;
@@ -774,7 +791,7 @@
         const reputationAdj = reputationScore * 0.05;
 
         const confidence = Math.max(
-          0.05, Math.min(1.0, baseConfidence + evidenceAdj + reputationAdj),
+          0.05, Math.min(1.0, baseConfidence + evidenceAdj + reputationAdj + scanCoverageAdj),
         );
 
         return {
@@ -808,6 +825,9 @@
             referenceToolSlug: null,
             inheritedSignals: [],
           },
+
+          // v3: Scan coverage from three-state citations
+          scanCoverage: scanCoverage || null,
 
           percentiles: null,
 

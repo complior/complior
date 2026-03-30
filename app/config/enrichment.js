@@ -43,6 +43,49 @@ module.exports = {
     mediaTests: process.env.ENRICHMENT_MEDIA_TESTS !== 'false',
     llmJudge: process.env.ENRICHMENT_LLM_JUDGE !== 'false',
     abBiasTests: process.env.ENRICHMENT_AB_BIAS !== 'false',
+    securityTests: process.env.ENRICHMENT_SECURITY_TESTS !== 'false',
+  },
+
+  // v3: LLM test configuration
+  llmTests: {
+    testCount: 680,
+    modes: {
+      deterministic: { count: 168, llmCost: 0 },
+      llmJudged: { count: 212, llmCost: 0.06 },
+      security: { count: 300, llmCost: 0 },
+    },
+    categories: [
+      'transparency', 'oversight', 'explanation', 'bias',
+      'accuracy', 'robustness', 'prohibited', 'logging',
+      'risk_awareness', 'gpai', 'industry', 'security',
+    ],
+  },
+
+  // v3: Public scan funnel configuration
+  publicScan: {
+    enabled: process.env.PUBLIC_SCAN_ENABLED !== 'false',
+    // Rate limits
+    maxScansPerDayAnon: parseInt(process.env.PUBLIC_SCAN_MAX_ANON, 10) || 3,
+    maxScansPerDayAuth: parseInt(process.env.PUBLIC_SCAN_MAX_AUTH, 10) || 10,
+    endpointCooldownDays: parseInt(process.env.PUBLIC_SCAN_COOLDOWN, 10) || 30,
+    captchaThreshold: parseInt(process.env.PUBLIC_SCAN_CAPTCHA_THRESHOLD, 10) || 5,
+    // Cost budget
+    evalCostBudgetPerDay: parseFloat(process.env.PUBLIC_SCAN_BUDGET) || 10.0,
+    // Modes
+    modes: {
+      passive: { llmCost: 0, timeoutSec: 30 },
+      detSecurity: { llmCost: 0, timeoutSec: 180, testCount: 468 },
+      full: { llmCost: 0.08, timeoutSec: 600, testCount: 680 },
+    },
+  },
+
+  // v3: Trust level evidence weights
+  trustLevelWeights: {
+    thirdPartyVerified: 1.0,
+    vendorSelfReport: 0.85,
+    communityReported: 0.7,
+    autoAssessedWithCitation: 0.6,
+    autoAssessedNoCitation: 0.4,
   },
 
   providerTiers: {

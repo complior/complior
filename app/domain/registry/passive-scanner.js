@@ -1,8 +1,14 @@
 /**
- * Passive Scanner v2 — Smart Discovery for AI Registry.
+ * Passive Scanner v3 — Three-State Evidence with Citations.
  *
- * 3-phase scan: core pages → link discovery → signal probes.
+ * 3-phase scan: core pages -> link discovery -> signal probes.
  * Budget: up to 20 pages per tool with early exit when all signals found.
+ *
+ * v3 additions:
+ *  - Three-state evidence: confirmed / not_found / not_checked
+ *  - Evidence citations: URL + snippet + pageTitle + checkedAt per signal
+ *  - Scan quality metrics: pages_attempted/succeeded/blocked/timeout,
+ *    signals_checked/confirmed/not_found/not_checked, overall_coverage
  *
  * VM sandbox compatible — IIFE returns factory function.
  */
@@ -81,6 +87,26 @@
     eu_ai_act: 'eu-ai-act',
     model_card: 'model-card',
     about: 'about',
+  };
+
+  // ── Helper: extract snippet around a regex match ────────────────────
+  const extractSnippet = (text, pattern, maxLen) => {
+    if (!text) return null;
+    const limit = maxLen || 200;
+    const match = pattern.exec(text);
+    if (!match) return null;
+    const start = Math.max(0, match.index - 40);
+    const end = Math.min(text.length, match.index + match[0].length + 40);
+    let snippet = text.slice(start, end).replace(/\s+/g, ' ').trim();
+    if (snippet.length > limit) snippet = snippet.slice(0, limit);
+    return snippet;
+  };
+
+  // ── Helper: extract <title> from HTML ──────────────────────────────
+  const extractTitle = (html) => {
+    if (!html) return null;
+    const match = /<title[^>]*>([^<]+)<\/title>/i.exec(html);
+    return match ? match[1].trim().slice(0, 200) : null;
   };
 
   // ── Link Discovery (pure, zero HTTP) ─────────────────────────────
@@ -180,6 +206,8 @@
   };
 
   // ── Parse Functions ────────────────────────────────────────────────
+  // All return same shape as v2 (backward-compatible booleans).
+  // Citation data is built separately in the assembly phase.
 
   const parseDisclosure = ($) => {
     if (!$) return { visible: false, location: null, text: null };
@@ -441,6 +469,266 @@
     };
   };
 
+  // ── Citation Builder ───────────────────────────────────────────────
+  // Builds three-state citations from parse results + page data.
+
+  const SIGNAL_DEFINITIONS = [
+    {
+      key: 'privacyPolicy',
+      label: 'Privacy Policy',
+      pageLabel: 'privacy',
+      // eslint-disable-next-line max-len
+      check: (ps) => ps.privacy_policy && (ps.privacy_policy.mentions_ai || ps.privacy_policy.mentions_eu || ps.privacy_policy.gdpr_compliant),
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:artificial intelligence|machine learning|ai\s+model|gdpr|general data protection|data protection officer|european union)[^.]{0,120}\./i,
+    },
+    {
+      key: 'aiDisclosure',
+      label: 'AI Disclosure',
+      pageLabel: 'homepage',
+      check: (ps) => ps.disclosure && ps.disclosure.visible,
+      snippet: (ps) => ps.disclosure && ps.disclosure.text,
+    },
+    {
+      key: 'termsOfService',
+      label: 'Terms of Service',
+      pageLabel: 'terms',
+      check: (_, pageMap) => Boolean(pageMap['terms']),
+      snippetPattern: /(?:terms|conditions|agreement|license)[^.]{0,80}\./i,
+    },
+    {
+      key: 'responsibleAi',
+      label: 'Responsible AI',
+      pageLabel: 'responsible-ai',
+      check: (ps) => ps.trust && ps.trust.has_responsible_ai_page,
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:responsible|fairness|bias|transparency|accountability|safety|ethics|governance)[^.]{0,100}\./i,
+    },
+    {
+      key: 'euAiAct',
+      label: 'EU AI Act Page',
+      pageLabel: 'eu-ai-act',
+      check: (ps) => ps.trust && ps.trust.has_eu_ai_act_page,
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:ai\s*act|artificial intelligence act|eu.*2024.*1689|regulation.*ai)[^.]{0,100}\./i,
+    },
+    {
+      key: 'modelCard',
+      label: 'Model Card / Technical Documentation',
+      pageLabel: 'model-card',
+      check: (ps) => ps.model_card && ps.model_card.has_model_card,
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:model\s*card|technical\s*report|system\s*card|model\s*spec|safety\s*report)[^.]{0,100}\./i,
+    },
+    {
+      key: 'contentMarking',
+      label: 'AI Content Marking (C2PA / Watermark)',
+      pageLabel: 'homepage',
+      check: (ps) => ps.content_marking && (ps.content_marking.c2pa || ps.content_marking.watermark),
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:c2pa|content credentials|content authenticity|watermark|synthid)[^.]{0,100}\./i,
+    },
+    {
+      key: 'cookieConsent',
+      label: 'Cookie Consent',
+      pageLabel: 'homepage',
+      check: (ps) => ps.infra && ps.infra.has_cookie_consent,
+      snippetPattern: /(?:cookie|consent|onetrust|cookiebot)[^.]{0,80}\./i,
+    },
+    {
+      key: 'biasAudit',
+      label: 'Public Bias Audit',
+      pageLabel: null,
+      check: (ps) => ps.web_search && ps.web_search.has_public_bias_audit,
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:bias\s*audit|algorithmic\s*audit|fairness\s*assessment)[^.]{0,100}\./i,
+    },
+    {
+      key: 'transparencyReport',
+      label: 'Transparency Report',
+      pageLabel: null,
+      check: (ps) => ps.web_search && ps.web_search.has_transparency_report,
+      snippetPattern: /(?:transparency\s*report|transparency\s*center)[^.]{0,100}\./i,
+    },
+    {
+      key: 'robotsTxtAiBlocking',
+      label: 'AI Crawler Blocking (robots.txt)',
+      pageLabel: 'robots.txt',
+      check: (ps) => ps.robots_txt && ps.robots_txt.blocks_ai_crawlers,
+      snippet: (ps) => ps.robots_txt && ps.robots_txt.blocked_bots
+        ? `Blocked bots: ${ps.robots_txt.blocked_bots.join(', ')}` : null,
+    },
+    {
+      key: 'trainingOptOut',
+      label: 'Training Opt-out',
+      pageLabel: 'privacy',
+      check: (ps) => ps.privacy_policy && ps.privacy_policy.training_opt_out,
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:opt.out.*training|training.*opt.out|do not.*train|exclude.*training)[^.]{0,80}\./i,
+    },
+    {
+      key: 'deletionRight',
+      label: 'Data Deletion Right',
+      pageLabel: 'privacy',
+      check: (ps) => ps.privacy_policy && ps.privacy_policy.deletion_right,
+      // eslint-disable-next-line max-len
+      snippetPattern: /(?:right.*delet|right.*eras|delete.*data|erase.*data|right to be forgotten)[^.]{0,80}\./i,
+    },
+    {
+      key: 'dataRetention',
+      label: 'Data Retention Policy',
+      pageLabel: 'privacy',
+      check: (ps) => ps.privacy_policy && ps.privacy_policy.retention_specified,
+      snippetPattern: /(?:retention|retain.*data|data.*kept|store.*data)[^.]{0,80}\./i,
+    },
+    {
+      key: 'certifications',
+      label: 'Security Certifications',
+      pageLabel: null,
+      check: (ps) => ps.trust && ps.trust.certifications && ps.trust.certifications.length > 0,
+      snippet: (ps) => ps.trust && ps.trust.certifications
+        ? `Certifications: ${ps.trust.certifications.join(', ')}` : null,
+    },
+  ];
+
+  // Determine whether a page was "checked" vs "not_checked"
+  // status 200 = checked (content available)
+  // status 0 (error/timeout) = not_checked
+  // status 403/401 = not_checked (blocked)
+  // status 404 = checked but not found (the page itself is missing)
+  // status 3xx = depends on redirect handling (follow → re-check)
+  const wasPageChecked = (pageEntry) => {
+    if (!pageEntry) return false;
+    const s = pageEntry.status;
+    // 200 or 404 = we did reach the server and get a definitive answer
+    return s === 200 || s === 404 || s === 410;
+  };
+
+  const buildCitations = (parsedResult, pagesData, pageTextMap, checkedAt) => {
+    const citations = {};
+
+    // Build a map: pageLabel -> best page entry (prefer 200, then any checked)
+    const pageMap = {};
+    for (const p of pagesData) {
+      if (!p.label) continue;
+      if (!pageMap[p.label] || p.status === 200) {
+        pageMap[p.label] = p;
+      }
+    }
+
+    for (const def of SIGNAL_DEFINITIONS) {
+      const isConfirmed = def.check(parsedResult, pageMap);
+
+      if (isConfirmed) {
+        // Signal confirmed
+        const sourcePageLabel = def.pageLabel;
+        const sourcePage = sourcePageLabel ? pageMap[sourcePageLabel] : null;
+        let snippet = null;
+
+        // Extract snippet from the raw page text
+        if (def.snippet) {
+          snippet = def.snippet(parsedResult);
+        } else if (def.snippetPattern && sourcePageLabel) {
+          const rawText = pageTextMap[sourcePageLabel];
+          if (rawText) {
+            snippet = extractSnippet(rawText, def.snippetPattern, 200);
+          }
+        }
+
+        citations[def.key] = {
+          status: 'confirmed',
+          url: sourcePage ? sourcePage.url : null,
+          snippet: snippet || null,
+          pageTitle: sourcePage && pageTextMap[sourcePageLabel]
+            ? extractTitle(pageTextMap[sourcePageLabel]) : null,
+          checkedAt,
+        };
+      } else {
+        // Not confirmed — was it checked or not?
+        const sourcePageLabel = def.pageLabel;
+
+        if (!sourcePageLabel) {
+          // Signal derived from multiple pages — check if any pages were loaded
+          const anyPageChecked = pagesData.some((p) => wasPageChecked(p));
+          citations[def.key] = {
+            status: anyPageChecked ? 'not_found' : 'not_checked',
+            url: null,
+            snippet: null,
+            pageTitle: null,
+            checkedAt: anyPageChecked ? checkedAt : null,
+          };
+        } else {
+          const sourcePage = pageMap[sourcePageLabel];
+          if (sourcePage && wasPageChecked(sourcePage)) {
+            // Page was loaded but signal not found
+            citations[def.key] = {
+              status: 'not_found',
+              url: sourcePage.url,
+              snippet: null,
+              pageTitle: pageTextMap[sourcePageLabel]
+                ? extractTitle(pageTextMap[sourcePageLabel]) : null,
+              checkedAt,
+            };
+          } else {
+            // Page could not be loaded
+            const errorReason = sourcePage
+              ? (sourcePage.error || `HTTP ${sourcePage.status}`)
+              : 'page_not_fetched';
+            citations[def.key] = {
+              status: 'not_checked',
+              url: sourcePage ? sourcePage.url : null,
+              snippet: null,
+              pageTitle: null,
+              checkedAt: null,
+              reason: errorReason,
+            };
+          }
+        }
+      }
+    }
+
+    return citations;
+  };
+
+  // ── Scan Quality Metrics ───────────────────────────────────────────
+
+  const buildScanQuality = (pagesData, citations) => {
+    const pagesAttempted = pagesData.length;
+    const pagesSucceeded = pagesData.filter((p) => p.status === 200).length;
+    const pagesBlocked = pagesData.filter((p) => p.status === 403 || p.status === 401).length;
+    const pagesTimeout = pagesData.filter((p) => p.status === 0 && p.error).length;
+    const pagesNotFound = pagesData.filter((p) => p.status === 404).length;
+
+    const signalKeys = Object.keys(citations);
+    const signalsChecked = signalKeys.length;
+    const signalsConfirmed = signalKeys.filter((k) => citations[k].status === 'confirmed').length;
+    const signalsNotFound = signalKeys.filter((k) => citations[k].status === 'not_found').length;
+    const signalsNotChecked = signalKeys.filter((k) => citations[k].status === 'not_checked').length;
+
+    const checkedCount = signalsConfirmed + signalsNotFound;
+    const overallCoverage = signalsChecked > 0
+      ? Math.round((checkedCount / signalsChecked) * 100) / 100
+      : 0;
+
+    let confidence = 'low';
+    if (overallCoverage >= 0.8 && pagesSucceeded >= 5) confidence = 'high';
+    else if (overallCoverage >= 0.5 && pagesSucceeded >= 3) confidence = 'medium';
+
+    return {
+      pages_attempted: pagesAttempted,
+      pages_succeeded: pagesSucceeded,
+      pages_blocked: pagesBlocked,
+      pages_timeout: pagesTimeout,
+      pages_not_found: pagesNotFound,
+      signals_checked: signalsChecked,
+      signals_confirmed: signalsConfirmed,
+      signals_not_found: signalsNotFound,
+      signals_not_checked: signalsNotChecked,
+      overall_coverage: overallCoverage,
+      confidence,
+    };
+  };
+
   // ── Main Factory ──────────────────────────────────────────────────
 
   return ({ fetch, cheerio, config }) => {
@@ -501,7 +789,7 @@
           const label = r.url === baseUrl ? 'homepage'
             : r.url.endsWith('/robots.txt') ? 'robots.txt'
               : 'sitemap.xml';
-          pagesData.push({ label, url: r.url, status: r.status, text: r.text });
+          pagesData.push({ label, url: r.url, status: r.status, text: r.text, error: r.error || null });
           if (r.text) fetchedDocs[label] = r.text;
         }
 
@@ -541,7 +829,9 @@
             budget--;
 
             const label = SIGNAL_TO_LABEL[signalType];
-            pagesData.push({ label, url, status: result.status, text: result.text });
+            pagesData.push({
+              label, url, status: result.status, text: result.text, error: result.error || null,
+            });
 
             if (result.status === 200 && result.text) {
               fetchedDocs[label] = result.text;
@@ -570,7 +860,9 @@
               budget--;
 
               const label = SIGNAL_TO_LABEL[signalType];
-              pagesData.push({ label, url, status: result.status, text: result.text });
+              pagesData.push({
+                label, url, status: result.status, text: result.text, error: result.error || null,
+              });
 
               if (result.status === 200 && result.text) {
                 fetchedDocs[label] = result.text;
@@ -583,7 +875,6 @@
 
         // ── Assemble Result ─────────────────────────────────────
         // Parse each signal using minimal cheerio loads.
-        // Use text-only analysis where possible to reduce memory.
         const privacyHtml = fetchedDocs['privacy'] || null;
         const responsibleAiHtml = fetchedDocs['responsible-ai'] || null;
         const modelCardHtml = fetchedDocs['model-card'] || null;
@@ -633,11 +924,31 @@
           error: p.error || null,
         }));
 
+        const checkedAt = new Date().toISOString();
+
+        // ── v3: Build citations (three-state evidence) ──────────
+        const parsedResult = {
+          disclosure,
+          privacy_policy: privacyPolicy,
+          trust,
+          model_card: modelCardResult,
+          content_marking: contentMarking,
+          robots_txt: robotsTxt,
+          infra,
+          web_search: webSearch,
+        };
+
+        const citations = buildCitations(parsedResult, pagesData, fetchedDocs, checkedAt);
+
+        // ── v3: Build scan quality metrics ───────────────────────
+        const scanQuality = buildScanQuality(pagesData, citations);
+
         // Clear heavy references to aid GC
         for (const p of pagesData) { p.text = null; }
         for (const k of Object.keys(fetchedDocs)) { fetchedDocs[k] = null; }
 
         return {
+          // v2 backward-compatible fields
           disclosure,
           privacy_policy: privacyPolicy,
           trust,
@@ -649,7 +960,10 @@
           web_search: webSearch,
           pages_fetched: pagesFetched,
           pages_detail: pagesDetail,
-          scanned_at: new Date().toISOString(),
+          scanned_at: checkedAt,
+          // v3 additions
+          citations,
+          scan_quality: scanQuality,
         };
       },
     };

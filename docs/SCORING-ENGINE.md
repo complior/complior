@@ -20,7 +20,7 @@ Enrichment Pipeline  → Evidence Analyzer → Provider Correlator → Obligatio
      │ Scanner   │   (8 pages, 12 parse functions)
      ├──────────┤
      │ LLM      │→ evidence.llm_tests
-     │ Tester   │   (80 tests: det + llm-judge + A/B pairs)
+     │ Tester   │   (680 tests: 176 det + 55 security + 80 judge/AB)
      ├──────────┤
      │ LLM      │→ (internal to LLM Tester)
      │ Judge    │   (binary + A/B pair evaluator via Mistral Small)
@@ -59,10 +59,11 @@ Enrichment Pipeline  → Evidence Analyzer → Provider Correlator → Obligatio
 | # | Action | File | Purpose |
 |---|--------|------|---------|
 | 9 | UPDATE | `app/config/enrichment.js` | OPENROUTER_API_KEY, rate limits, timeouts, feature flags, judge config |
-| 10 | — | `app/config/llm-models.js` | MODEL_MAP (90+ slugs→OpenRouter IDs), MEDIA_CATEGORIES, MEDIA_API_MAP (apiKeyEnv) |
-| 11 | REWRITE | `app/domain/registry/llm-tester.js` | 80 catalog-driven tests via OpenRouter (det + judge + A/B) |
-| 11a | NEW | `app/domain/registry/registry-test-catalog.js` | 80 behavioral tests across 8 EU AI Act categories |
-| 11b | NEW | `app/domain/registry/llm-judge.js` | LLM-as-judge evaluator (binary + A/B pair) via Mistral Small |
+| 10 | — | `app/config/llm-models.js` | MODEL_MAP (181 slugs→OpenRouter IDs, 16 tiers), MEDIA_CATEGORIES, MEDIA_API_MAP |
+| 10a | NEW | `app/config/llm-test-catalog.js` | 443 extended tests: 176 det + 55 security (11 CT + OWASP) |
+| 11 | REWRITE | `app/domain/registry/llm-tester.js` | 3-mode test runner (det/security/judge), direct endpoint support |
+| 11a | — | `app/domain/registry/registry-test-catalog.js` | 80 legacy behavioral tests across 8 categories |
+| 11b | — | `app/domain/registry/llm-judge.js` | LLM-as-judge evaluator (binary + A/B pair) via Mistral Small 3.1 |
 | 12 | — | `app/domain/registry/media-tester.js` | Image gen + C2PA/EXIF/watermark (uses OPENAI_API_KEY, STABILITY_API_KEY) |
 | 13 | — | `app/domain/registry/passive-scanner.js` | Website scraping: 8 pages, 12 parse functions (uses fetch+cheerio) |
 | 14 | — | `app/domain/registry/refresh-service.js` | Orchestrator: scan → test → re-score pipeline |
@@ -153,48 +154,90 @@ Fetches up to **8 pages per tool**: homepage, /privacy, /terms, /responsible-ai,
 
 **Output**: `evidence.passive_scan` — full object matching evidence-analyzer.js expectations (disclosure, privacy_policy, trust, model_card, content_marking, robots_txt, infra, social, web_search, pages_fetched, scanned_at).
 
-### 0.2 LLM Tester (v3)
+### 0.2 LLM Tester (v4)
 
 **Files**:
-- `app/domain/registry/registry-test-catalog.js` — 80 test definitions
-- `app/domain/registry/llm-judge.js` — LLM-as-judge evaluator
-- `app/domain/registry/llm-tester.js` — catalog-driven test runner
+- `app/domain/registry/registry-test-catalog.js` — 80 legacy test definitions (8 categories)
+- `app/config/llm-test-catalog.js` — 443 extended test definitions (11 CT categories + security)
+- `app/domain/registry/llm-judge.js` — LLM-as-judge evaluator (Mistral Small 3.1)
+- `app/domain/registry/llm-tester.js` — 3-mode catalog-driven test runner
 
-**80 behavioral tests** across **8 categories** via OpenRouter API. Three evaluator types: deterministic (regex), llm-judge (binary), A/B bias pairs.
+**680 behavioral tests** across **11 EU AI Act conformity test categories + security probes**. Three composable modes:
+
+| Mode | Tests | LLM Cost | Use Case |
+|------|-------|----------|----------|
+| `deterministic` | 176 | $0 (regex) | Free scan, scheduled refresh |
+| `security` | 55 | $0 (regex) | Free scan, security audit |
+| `llm_judged` | 80 | ~$0.04-0.06 | Email-gated deep eval |
+| **All combined** | **~311** | **~$0.06-0.10** | Full eval (`--full` mode) |
 
 ```
 Probe calls:  POST https://openrouter.ai/api/v1/chat/completions (model under test)
+              OR direct endpoint (user-provided API key + endpoint)
 Judge calls:  POST https://openrouter.ai/api/v1/chat/completions (mistral-small-2503)
 Rate: 50 req/min probe, 30 req/min judge. Concurrency: 5. Timeout: 30s probe, 15s judge.
 ```
 
-#### Test Distribution
+**Two target modes:**
+- **OpenRouter model ID** (string) — for scheduled weekly refresh via MODEL_MAP
+- **Direct endpoint** (object `{ endpoint, apiKey, model }`) — for public scan funnel (user-provided API)
 
-| Category | Count | Det | Judge | A/B | Article |
-|----------|-------|-----|-------|-----|---------|
-| transparency | 15 | 10 | 5 | — | Art. 50(1) |
-| prohibited | 10 | 5 | 5 | — | Art. 5 |
-| bias | 18 | 3 | 5 | 10 | Art. 10 |
-| accuracy | 10 | 5 | 5 | — | Art. 15 |
-| oversight | 8 | 5 | 3 | — | Art. 26(2) |
-| explanation | 6 | — | 6 | — | Art. 50 |
-| robustness | 8 | 8 | — | — | Art. 26(5) |
-| risk_awareness | 5 | 2 | 3 | — | Art. 26(1) |
-| **Total** | **80** | **48** | **32** | **10** | |
+#### Test Distribution — Extended Catalog (11 CT Categories)
+
+| Category | CT | Det | Security | Judge/AB | Total | Article |
+|----------|-----|-----|----------|----------|-------|---------|
+| Transparency | CT-1 | 25 | — | 5+0 | 30 | Art. 50(1) |
+| Human Oversight | CT-2 | 18 | — | 3+0 | 21 | Art. 14, 26(2) |
+| Explanation Quality | CT-3 | 8 | — | 6+0 | 14 | Art. 13, 86 |
+| Bias & Discrimination | CT-4 | 22 | — | 5+10 | 37 | Art. 10 |
+| Accuracy | CT-5 | 12 | — | 5+0 | 17 | Art. 15 |
+| Robustness | CT-6 | 20 | — | 0+0 | 20 | Art. 15 |
+| Prohibited Practices | CT-7 | 18 | — | 5+0 | 23 | Art. 5 |
+| Logging & Traceability | CT-8 | 12 | — | 0+0 | 12 | Art. 12 |
+| Risk Awareness | CT-9 | 10 | — | 3+0 | 13 | Art. 9, 26(1) |
+| GPAI Compliance | CT-10 | 15 | — | 0+0 | 15 | Art. 52 |
+| Industry-Specific | CT-11 | 16 | — | 0+0 | 16 | Art. 6 |
+| Security Probes | — | — | 55 | 0+0 | 55 | OWASP LLM Top 10 |
+| **Total** | | **176** | **55** | **32+10** | **~273** | |
+
+> Legacy catalog (80 tests, 8 categories) remains fully operational for backward compatibility. Extended catalog adds CT-8, CT-10, CT-11, and security probes.
+
+#### Security Probes (55 tests, OWASP LLM Top 10)
+
+| Category | Count | What it tests |
+|----------|-------|---------------|
+| Prompt Injection | 12 | System prompt override, ignore-instructions |
+| Jailbreak | 10 | DAN, role-play bypass, encoding tricks |
+| Data Exfiltration | 8 | PII extraction, training data leak |
+| Toxicity | 10 | Hate speech, violent content generation |
+| Content Safety | 8 | CSAM, weapons, illegal substances |
+| Indirect Injection | 7 | Tool/function call injection |
 
 #### Evaluator Types
 
-**Deterministic** (48 tests): Regex passPatterns/failPatterns. Fast, no judge cost.
+**Deterministic** (176 tests): Regex passPatterns/failPatterns. Fast, no LLM cost.
 
-**LLM Judge** (22 tests): Probe sent to model under test, response + judgePrompt sent to Mistral Small for binary scoring. Returns `{ passed, score, reasoning, confidence }`.
+**Security** (55 tests): Regex-based probes for injection, jailbreak, exfiltration, toxicity. No LLM cost.
+
+**LLM Judge** (22 tests): Probe sent to model under test, response + judgePrompt sent to Mistral Small 3.1 for binary scoring. Returns `{ passed, score, reasoning, confidence }`.
 
 **A/B Bias Pairs** (10 pairs): Two probes identical except one protected characteristic (name/ethnicity, gender, age, disability, religion). Both sent to model, responses compared by judge. Returns `{ passed, scoreDiff, reasoning }`. Threshold: scoreDiff < 0.10 = pass.
 
+#### Public Scan Funnel — Mode Selection
+
+| Scan Mode | Tests Run | LLM Cost | Registration |
+|-----------|-----------|----------|-------------|
+| Mode A: Website URL | Passive scan only | $0 | None |
+| Mode B: API endpoint | deterministic + security (231 tests) | $0 | None |
+| Mode C: Full eval | All modes (311 tests) | ~$0.08 | Email required |
+
+Rate limits: 3 scans/day per IP (unregistered), 10/day per account. Same endpoint: 1 scan/month.
+
 #### Backward Compatibility
 
-Original 12 test IDs mapped via `LEGACY_ID_MAP`: `identity-1` → `RT-1.01`, `safety-1` → `RT-7.01`, etc.
+Original 12 test IDs mapped via `LEGACY_ID_MAP`: `identity-1` → `RT-1.01`, `safety-1` → `RT-7.01`, etc. Legacy `test(tool, modelId)` call without options runs original 80-test catalog.
 
-**Output**: `evidence.llm_tests` — array of 80 objects:
+**Output**: `evidence.llm_tests` — array of test result objects:
 ```js
 { id, group, category, prompt, passed, evaluator,
   response_snippet, judgeScore, judgeReasoning, judgeConfidence,
@@ -220,13 +263,17 @@ For media-generating tools (image-generation, video-generation, audio-generation
 
 **`app/config/enrichment.js`**: OpenRouter config (apiKey, rateLimit, maxTokens, temperature, timeout), judge config (model: mistral-small-2503, temperature: 0.1, rateLimitPerMin: 30), passive scanner config (rate, timeout, userAgent), media config (enabled, timeout, testPrompt), feature flags (passiveScan, llmTests, mediaTests, llmJudge, abBiasTests).
 
-**`app/config/llm-models.js`**: `MODEL_MAP` (90+ entries), `MEDIA_CATEGORIES` (7), `MEDIA_API_MAP` (5 entries).
+**`app/config/llm-models.js`**: `MODEL_MAP` (181 entries across 16 tiers), `MEDIA_CATEGORIES` (7), `MEDIA_API_MAP` (5 entries).
+
+**`app/config/llm-test-catalog.js`**: Extended catalog — 176 deterministic + 55 security probes across 11 CT categories + OWASP LLM Top 10. Loaded via `require()` in `server/main.js`, injected as `config.llmTestCatalog`.
 
 **Scheduling**: Weekly Mondays 03:00 UTC via pg-boss. Manual: `schedule-registry-refresh.trigger()`. Batch: `REGISTRY_REFRESH_BATCH_SIZE` (default: 100).
 
 **Smart Refresh** (v3): Tools scored within `REGISTRY_REFRESH_INTERVAL_DAYS` (default: 30) are skipped in weekly batch runs. Classified tools (never scored) always included. On-demand `refreshTool(slug)` always re-enriches (bypasses freshness).
 
-**Cost**: ~$12/week (~$3.50 probes + $0.80 judge + media + passive). ~3-4h runtime for ~45 LLM-testable tools (6,390 API calls).
+**Cost (weekly refresh)**: ~$12/week (~$3.50 probes + $0.80 judge + media + passive). ~3-4h runtime for ~45 LLM-testable tools (6,390 API calls).
+
+**Cost (public scan)**: ~$0.06-0.10 per full eval (680 tests). Det+security only: $0. At 50 full evals/day: ~$3-5/day (~$100-150/month).
 
 ---
 
@@ -590,7 +637,7 @@ rawScore = Σ(categoryPercent × weight) / Σ(activeWeights)
 | Security incidents | `security_incidents.length > 0` | -2/incident (max -5) |
 | All-unknown | 100% obligations unknown | Cap at 15 |
 
-### Step 8 — Bonuses (capped at +10 total)
+### Step 8 — Bonuses (capped at +12 total)
 
 | Bonus | Signal | Points |
 |-------|--------|--------|
@@ -600,6 +647,20 @@ rawScore = Σ(categoryPercent × weight) / Σ(activeWeights)
 | Privacy excellence | opt-out + deletion + retention | +2 |
 | Transparency report | `web_search.has_transparency_report` | +1 |
 | ISO 42001 | In certifications | +2 |
+| Vendor verified | `vendorVerified === true` or `trustLevel === 'vendor_verified'` | +5 |
+| Community reported | `trustLevel === 'community_reported'` | +2 |
+
+#### Trust Level Hierarchy
+
+Evidence weight hierarchy for scoring:
+
+| Level | Weight | Description |
+|-------|--------|-------------|
+| Third-party verified | 1.0 | Audit report, certification |
+| Vendor self-report (`vendor_verified`) | 0.85 | Domain-verified vendor claim |
+| Community-reported | 0.7 | N deployers aggregated |
+| Auto-assessed (with citation) | 0.6 | Passive scan with URL + snippet |
+| Auto-assessed (no citation) | 0.4 | Passive scan, no source link |
 
 ### Step 9 — Compliance Maturity Model
 
@@ -694,17 +755,126 @@ confidence = clamp(base + evidenceQuality×0.1 + reputationScore×0.05, 0.05, 1.
 
 ---
 
-## 5. Where It Runs
+## 5. Deployer Value Layer
+
+### 5.1 Procurement Score
+
+**File**: `app/domain/registry/procurement-scorer.js`
+
+"Should I use this tool?" — weighted blend of 5 factors:
+
+| Factor | Weight | Source | Score Range |
+|--------|--------|--------|-------------|
+| EU AI Act compliance | 40% | `assessment.score` | 0-100 |
+| Vendor transparency | 25% | `assessment.transparencyGrade` → GRADE_SCORES | 15-95 |
+| Data residency | 15% | `dataResidency` → EU/EEA/US/unknown | 25-100 |
+| Vendor verified | 10% | `vendorVerified` / `trustLevel` | 0-100 |
+| GDPR indicators | 10% | `evidence.passive_scan.privacy` (6 signals) | 0-100 |
+
+**Recommendations**: `recommended` (≥75), `acceptable_with_measures` (≥50), `use_with_caution` (≥30), `not_recommended` (<30).
+
+**Output**: `{ score, recommendation, breakdown: { compliance, transparency, dataResidency, vendorVerified, gdpr } }`
+
+### 5.2 Deployer Action Cards
+
+**File**: `app/domain/registry/deployer-action-generator.js`
+
+Maps deployer obligations to actionable tasks with EU AI Act deadlines and CTA links to SaaS features.
+
+| Obligation | Action | CTA | Deadline |
+|------------|--------|-----|----------|
+| OBL-001 (Art. 4) | Ensure AI Literacy | Start AI Literacy course | 2026-08-02 |
+| OBL-015 (Art. 50) | Disclose AI usage | Generate notification template | 2026-08-02 |
+| OBL-008 (Art. 26) | Implement Human Oversight | Configure oversight policy | 2026-08-02 |
+| OBL-003 (Art. 10) | Establish Data Governance | Review data governance | 2026-08-02 |
+| OBL-009 (Art. 26) | Monitor Robustness & Accuracy | Set up monitoring | 2026-08-02 |
+| OBL-029 (Art. 27) | Conduct FRIA Assessment | Start FRIA | 2026-08-02 |
+| OBL-004 (Art. 9) | Implement Risk Management | Create risk assessment | 2026-08-02 |
+
+Actions sorted: overdue first → urgent (≤90 days) → by deadline.
+
+### 5.3 Comparison API
+
+**File**: `app/api/v1/registry/compare.js`
+
+`GET /v1/registry/compare?slugs=chatgpt,claude,gemini` — side-by-side compliance comparison (2-4 tools).
+
+Returns normalized data per tool: slug, name, riskLevel, score, grade, coverage, transparencyGrade, obligations count, evidenceQuality, plus transparency indicators (privacy, terms, AI disclosure, model card, EU AI Act page) and GDPR indicators (gdpr_mention, dpo_listed, deletion_right, training_opt_out).
+
+### 5.4 FRIA Pre-fill from Registry
+
+**File**: `app/application/compliance/prefillFRIA.js`
+
+`prefillFromRegistry(ctx, toolSlug)` → 7 pre-filled FRIA sections from Registry data:
+
+1. **systemDescription** — tool name, provider, website, categories, risk level, data residency
+2. **purposeNecessity** — intended purpose, risk classification + source
+3. **dataProcessing** — residency, GDPR mention, DPO, retention, deletion right, training opt-out
+4. **transparency** — AI disclosure, model card, EU AI Act page, documentation URLs
+5. **humanOversight** — vendor-claimed oversight, autonomy level
+6. **vendorCompliance** — vendor verified, trust level, certifications, compliance status
+7. **knownRisks** — deployer obligations, risk level, score, grade
+
+Saves deployers 30-60 minutes per FRIA assessment.
+
+---
+
+## 6. Public Scan Funnel
+
+### Three scan modes for lead generation:
+
+| Mode | Input | Tests | Cost | Registration |
+|------|-------|-------|------|-------------|
+| A: Website URL | URL | Passive scan (8 pages, 12 parsers) | $0 | None |
+| B: API endpoint | endpoint + API key | Deterministic + Security (231 tests) | $0 | None |
+| C: Full eval | endpoint + API key | All modes (311 tests) | ~$0.08 | Email required |
+
+**Rate limiting**: 3/day per IP (unregistered), 10/day per account, 1 scan/month per endpoint.
+
+**Flow**: Scan → Report → "Add to Registry" (5 deployer-context questions) → Registry card → "Monitor changes" (signup) → "Run FRIA" (€49/mo).
+
+**Files**: `app/api/registry/public-scan.js` (POST endpoint), `app/application/registry/runPublicScan.js` (orchestrator), `app/domain/registry/scan-rate-limiter.js` (rate limits).
+
+---
+
+## 7. Vendor Self-Report
+
+### Verification Methods
+
+| Method | How | Auto-verify |
+|--------|-----|-------------|
+| DNS TXT | `_complior-verify TXT cv_<token>` | Admin check |
+| Meta tag | `<meta name="complior-verify" content="<token>">` | Yes |
+| Well-known | `/.well-known/complior-verify.json` | Yes |
+
+**Files**: `app/domain/registry/vendor-verification.js` (verification logic), `app/application/registry/processVendorClaim.js` (claim workflow), `app/api/registry/vendor-claim.js` (submit/verify/status), `app/api/registry/vendor-report.js` (self-report data), `app/api/admin/vendor-claims.js` (admin approve/reject).
+
+**Scoring impact**: Vendor-verified tools get +5 bonus points. Community-reported tools get +2. Vendor self-report data weighted at 0.85 in evidence hierarchy.
+
+---
+
+## 8. Where It Runs
 
 - **Weekly enrichment**: `schedule-registry-refresh.js` → pg-boss cron (Mondays 03:00 UTC)
 - **Batch re-score**: `node scripts/rescore-registry.js [--dry-run] [--provider "OpenAI"] [--risk-level gpai] [--validate] [--compare-v1]`
 - **Refresh pipeline**: `refresh-service.js` → enrichment → re-score per tool
+- **Public scan**: `POST /api/public/registry/scan` → on-demand enrichment per user request
+- **Vendor claims**: `POST /api/public/registry/vendor-claim` → domain verification + admin review
 - **Validator**: 10 checks for anomaly detection
 
-## API Endpoint
+## API Endpoints
 
 ```
-GET /v1/regulations/scoring/weights?regulation=eu-ai-act
+GET  /v1/regulations/scoring/weights?regulation=eu-ai-act
+GET  /v1/registry/tools?q=...&category=...&risk=...
+GET  /v1/registry/tools/:id
+GET  /v1/registry/tools/by-slug/:slug?include=actions,procurement,fria
+GET  /v1/registry/compare?slugs=chatgpt,claude,gemini
+POST /api/public/registry/scan
+POST /api/public/registry/submit-to-registry
+POST /api/public/registry/vendor-claim
+POST /api/public/registry/vendor-report
+POST /api/admin/vendor-claims
 ```
 
-Returns full v3 configuration: severity points, status scores, urgency/sector/penalty multipliers, penalties, bonuses, grade scale, maturity levels, confidence bases, evidence quality weights, and 16 evidence mapping rules.
+`GET /v1/regulations/scoring/weights` returns full v3 configuration: severity points, status scores, urgency/sector/penalty multipliers, penalties, bonuses, grade scale, maturity levels, confidence bases, evidence quality weights, and 16 evidence mapping rules.
