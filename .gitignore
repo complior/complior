@@ -5,3 +5,35 @@
 *.pem
 *.p12
 */skills/metaskills
+
+# Internal docs (public docs at complior/docs repo)
+docs/
+.dev/
+
+# Build artifacts
+target/
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Lock files (managed per workspace)
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Complior runtime
+.complior/
+engine/core/engine.log
+
+# Test/temp
+tmp/
+*.tmp
+coverage/

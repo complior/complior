@@ -1,25 +1,43 @@
 {
   "name": "complior",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
-  "description": "AI Act Compliance Scanner & Fixer — EU AI Act compliance in your terminal",
-  "license": "Apache-2.0",
+  "description": "AI Act Compliance Scanner & Fixer — EU AI Act compliance for your AI systems. CLI, TUI dashboard, and background daemon.",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Complior",
+    "url": "https://complior.ai"
+  },
   "homepage": "https://complior.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/a3ka/complior"
+    "url": "https://github.com/complior/complior"
+  },
+  "bugs": {
+    "url": "https://github.com/complior/complior/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://complior.ai"
   },
   "keywords": [
     "ai",
     "compliance",
     "eu-ai-act",
+    "ai-act",
     "scanner",
     "fixer",
     "tui",
-    "terminal"
+    "terminal",
+    "cli",
+    "gdpr",
+    "audit",
+    "governance",
+    "risk-assessment",
+    "ai-safety",
+    "regulation"
   ],
   "bin": {
-    "ai-comply": "./bin/run.js",
     "complior": "./bin/run.js"
   },
   "scripts": {

@@ -4,19 +4,58 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "license": "Apache-2.0",
-  "description": "Runtime compliance SDK for AI APIs — EU AI Act middleware for OpenAI, Anthropic, Google, Vercel AI",
-  "homepage": "https://complior.ai",
+  "description": "Runtime compliance SDK for AI APIs — EU AI Act middleware for OpenAI, Anthropic, Google, Vercel AI. PII redaction, bias detection, safety filter, HITL gate, agent passport enforcement.",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Complior",
+    "url": "https://complior.ai"
+  },
+  "homepage": "https://docs.complior.ai/sdk/overview",
   "repository": {
     "type": "git",
-    "url": "https://github.com/a3ka/complior",
+    "url": "https://github.com/complior/complior",
     "directory": "engine/sdk"
   },
-  "keywords": ["ai", "compliance", "eu-ai-act", "sdk", "middleware", "openai", "anthropic"],
+  "bugs": {
+    "url": "https://github.com/complior/complior/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://complior.ai"
+  },
+  "keywords": [
+    "ai",
+    "compliance",
+    "eu-ai-act",
+    "ai-act",
+    "sdk",
+    "middleware",
+    "openai",
+    "anthropic",
+    "google",
+    "vercel-ai",
+    "pii",
+    "bias-detection",
+    "safety",
+    "gdpr",
+    "llm",
+    "agent",
+    "proxy",
+    "ai-safety",
+    "regulation",
+    "hitl"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./middleware": {
+      "import": "./dist/middleware/index.js",
+      "types": "./dist/middleware/index.d.ts"
     }
   },
   "scripts": {

@@ -3,15 +3,45 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.ts",
-  "license": "Apache-2.0",
-  "description": "AI Act Compliance Engine — scanner, fixer, reporter for EU AI Act",
+  "description": "AI Act Compliance Engine — deterministic scanner, auto-fixer, reporter, and MCP server for EU AI Act. Powers the Complior CLI daemon.",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Complior",
+    "url": "https://complior.ai"
+  },
   "homepage": "https://complior.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/a3ka/complior",
+    "url": "https://github.com/complior/complior",
     "directory": "engine/core"
   },
-  "keywords": ["ai", "compliance", "eu-ai-act", "scanner", "fixer", "hono"],
+  "bugs": {
+    "url": "https://github.com/complior/complior/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://complior.ai"
+  },
+  "keywords": [
+    "ai",
+    "compliance",
+    "eu-ai-act",
+    "ai-act",
+    "scanner",
+    "fixer",
+    "mcp",
+    "hono",
+    "gdpr",
+    "audit",
+    "governance",
+    "risk-assessment",
+    "ai-safety",
+    "regulation",
+    "agent-passport"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc --noCheck",
