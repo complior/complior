@@ -102,7 +102,7 @@
 
       /**
        * Log a scan attempt (successful or denied).
-       * @param {Object} entry - { ip, url, userId, denied, mode, userAgent, referrer, success, slug, isExistingTool, grade, score, coverage, durationMs, errorCode }
+       * @param {Object} entry - scan log fields
        */
       async log(entry) {
         const normalized = normalizeEndpoint(entry.url);

@@ -7,11 +7,11 @@ const { loadSchemas, generateDDL, TABLE_ORDER } = require('../app/setup.js');
 describe('Setup — schema loading', () => {
   it('loads all 48 schemas', async () => {
     const schemas = await loadSchemas();
-    assert.strictEqual(schemas.size, 48);
+    assert.strictEqual(schemas.size, 49);
   });
 
   it('TABLE_ORDER has 48 entries', () => {
-    assert.strictEqual(TABLE_ORDER.length, 48);
+    assert.strictEqual(TABLE_ORDER.length, 49);
   });
 
   it('TABLE_ORDER entries are unique', () => {
