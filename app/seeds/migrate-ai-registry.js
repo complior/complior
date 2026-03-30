@@ -134,7 +134,7 @@ module.exports = async ({ db }) => {
                 JSON.stringify(tool.assessments || null),
                 JSON.stringify(tool.seo || null),
                 tool.level || 'classified',
-                tool.priority_score || 0,
+                Math.round(parseFloat(tool.priority_score) || 0),
                 JSON.stringify(tool.detection_patterns || null),
               ],
             );
@@ -166,7 +166,7 @@ module.exports = async ({ db }) => {
                 tool.source || null,
                 tool.rank_on_source || null,
                 tool.level || 'classified',
-                tool.priority_score || 0,
+                Math.round(parseFloat(tool.priority_score) || 0),
                 JSON.stringify(tool.evidence || null),
                 JSON.stringify(tool.assessments || null),
                 JSON.stringify(tool.seo || null),
