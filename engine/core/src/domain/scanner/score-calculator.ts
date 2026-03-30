@@ -1,94 +1,11 @@
 import type { CheckResult, CategoryScore, ScoreBreakdown, ScoreDiff, ScoreZone } from '../../types/common.types.js';
 import type { ScoringData } from '../../data/schemas/schemas.js';
+import checkIdData from '../../../data/scanner/check-id-categories.json' with { type: 'json' };
 
 // CheckId → category mapping for findings without obligationId.
 // Pass results from L1/L2/L3/L4/git checks lack obligationId, so they
 // need explicit category routing to contribute to category scores.
-const CHECK_ID_TO_CATEGORY: Readonly<Record<string, string>> = {
-  // --- L1 presence checks ---
-  'art5-screening': 'prohibited_practices',
-  'risk-management': 'risk_management',
-  'data-governance': 'risk_management',
-  'qms': 'risk_management',
-  'technical-documentation': 'documentation',
-  'declaration-of-conformity': 'documentation',
-  'compliance-metadata': 'documentation',
-  'documentation': 'documentation',
-  'passport-presence': 'documentation',
-  'passport-completeness': 'documentation',
-  'instructions-for-use': 'transparency',
-  'ai-literacy': 'organizational',
-  'monitoring-policy': 'deployer_specific',
-  'fria': 'deployer_specific',
-  'worker-notification': 'monitoring_and_reporting',
-  'incident-report': 'monitoring_and_reporting',
-
-  // --- L2 doc-quality checks ---
-  'l2-tech-documentation': 'documentation',
-  'l2-art5-screening': 'prohibited_practices',
-  'l2-risk-management': 'risk_management',
-  'l2-data-governance': 'risk_management',
-  'l2-qms': 'risk_management',
-  'l2-instructions-for-use': 'transparency',
-  'l2-ai-literacy': 'organizational',
-  'l2-monitoring-policy': 'deployer_specific',
-  'l2-fria': 'deployer_specific',
-  'l2-declaration-conformity': 'documentation',
-  'l2-worker-notification': 'monitoring_and_reporting',
-  'l2-incident-report': 'monitoring_and_reporting',
-  'l2-critical-infra-ai-policy': 'risk_management',
-
-  // --- L3 dependency/config checks ---
-  'l3-ai-sdk-detected': 'technical_safeguards',
-  'l3-dep-scan': 'technical_safeguards',
-  'l3-missing-bias-testing': 'risk_management',
-
-  // --- L4 code-pattern checks ---
-  'ai-disclosure': 'transparency',
-  'content-marking': 'transparency',
-  'interaction-logging': 'technical_safeguards',
-  'gpai-transparency': 'documentation',
-  'gpai-systemic-risk': 'documentation',
-  'l4-disclosure': 'transparency',
-  'l4-content-marking': 'transparency',
-  'l4-human-oversight': 'organizational',
-  'l4-kill-switch': 'organizational',
-  'l4-logging': 'technical_safeguards',
-  'l4-cybersecurity': 'technical_safeguards',
-  'l4-accuracy-robustness': 'technical_safeguards',
-  'l4-nhi-clean': 'technical_safeguards',
-  'l4-data-governance': 'risk_management',
-  'l4-gpai-transparency': 'documentation',
-  'l4-conformity-assessment': 'documentation',
-  'l4-deployer-monitoring': 'deployer_specific',
-  'l4-record-keeping': 'deployer_specific',
-  'l4-ast-wrapped-call': 'transparency',
-
-  // --- Git-analysis checks ---
-  'git-freshness-risk-management': 'risk_management',
-  'git-freshness-data-governance': 'risk_management',
-  'git-freshness-qms': 'risk_management',
-  'git-freshness-technical-documentation': 'documentation',
-  'git-freshness-declaration-of-conformity': 'documentation',
-  'git-freshness-instructions-for-use': 'transparency',
-  'git-freshness-monitoring-policy': 'deployer_specific',
-  'git-freshness-fria': 'deployer_specific',
-  'git-freshness-worker-notification': 'monitoring_and_reporting',
-  'git-freshness-incident-report': 'monitoring_and_reporting',
-  'git-author-diversity-fria': 'deployer_specific',
-  'git-author-diversity-risk-management': 'risk_management',
-  'git-bulk-compliance': 'organizational',
-
-  // --- External tool checks ---
-  'ext-semgrep-complior-injection-js': 'technical_safeguards',
-  'ext-semgrep-complior-injection-py': 'technical_safeguards',
-  'ext-detect-secrets-Secret-Keyword': 'technical_safeguards',
-  'ext-detect-secrets-Base64-High-Entropy': 'technical_safeguards',
-  'ext-detect-secrets-Hex-High-Entropy': 'technical_safeguards',
-  'ext-bandit-hardcoded-password': 'technical_safeguards',
-  'ext-bandit-sql-injection': 'technical_safeguards',
-  'ext-modelscan-malicious-model': 'risk_management',
-};
+const CHECK_ID_TO_CATEGORY: Readonly<Record<string, string>> = checkIdData.mapping;
 
 export const getZone = (score: number): ScoreZone => {
   if (score < 50) return 'red';

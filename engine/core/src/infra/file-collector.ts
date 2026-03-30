@@ -6,9 +6,10 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, extname, relative } from 'node:path';
 import type { ScanContext, FileInfo } from '../ports/scanner.port.js';
 import { ALL_SCANNABLE_EXTENSIONS, EXCLUDED_DIRS } from '../data/scanner-constants.js';
+import limitsData from '../../data/scanner/limits.json' with { type: 'json' };
 
-const MAX_FILES = 500;
-const MAX_FILE_SIZE = 1_048_576; // 1MB
+const MAX_FILES = limitsData.max_files;
+const MAX_FILE_SIZE = limitsData.max_file_size_bytes;
 
 const collectFilesRecursive = async (
   dirPath: string,

@@ -1,5 +1,7 @@
 // --- 5-Tier Confidence Levels ---
 
+import confidenceData from '../../../data/scanner/confidence-params.json' with { type: 'json' };
+
 export type ConfidenceLevel = 'PASS' | 'LIKELY_PASS' | 'UNCERTAIN' | 'LIKELY_FAIL' | 'FAIL';
 
 export type ScannerLayer = 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
@@ -13,13 +15,7 @@ export interface CheckWithConfidence {
 
 // --- Layer Weights ---
 
-const LAYER_WEIGHTS: Readonly<Record<ScannerLayer, number>> = {
-  L1: 1.0,
-  L2: 0.95,
-  L3: 0.90,
-  L4: 0.75,
-  L5: 0.70,
-};
+const LAYER_WEIGHTS = confidenceData.layer_weights as Readonly<Record<ScannerLayer, number>>;
 
 // --- Confidence Level Determination ---
 
@@ -134,13 +130,7 @@ export const aggregateLevel = (checks: readonly CheckWithConfidence[]): Confiden
 
 // --- Score Impact ---
 
-const CONFIDENCE_SCORE_MULTIPLIER: Readonly<Record<ConfidenceLevel, number>> = {
-  PASS: 1.0,
-  LIKELY_PASS: 0.75,
-  UNCERTAIN: 0.5,
-  LIKELY_FAIL: 0.25,
-  FAIL: 0.0,
-};
+const CONFIDENCE_SCORE_MULTIPLIER = confidenceData.score_multipliers as Readonly<Record<ConfidenceLevel, number>>;
 
 export const confidenceScoreMultiplier = (level: ConfidenceLevel): number =>
   CONFIDENCE_SCORE_MULTIPLIER[level];

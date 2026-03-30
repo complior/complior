@@ -1,5 +1,15 @@
 import { z } from 'zod';
 import type { AutoDetectResult } from './auto-detect.js';
+import riskProfileData from '../../data/onboarding/risk-profile.json' with { type: 'json' };
+
+// ── Zod validation for obligation IDs from JSON ─────────────
+const OblIdSchema = z.string().regex(/^OBL-\d{3}$/);
+const validatedRiskProfile = z.object({
+  high_risk_domains: z.array(z.string()),
+  domain_obligations: z.record(z.array(OblIdSchema)),
+  base_obligations: z.array(OblIdSchema),
+  high_risk_extra_obligations: z.array(OblIdSchema),
+}).parse(riskProfileData);
 
 export const ProjectProfileSchema = z.object({
   version: z.literal('1.0'),
@@ -50,22 +60,11 @@ export type OnboardingProfile = z.infer<typeof ProjectProfileSchema>;
 
 export type OnboardingAnswers = Record<string, string | string[]>;
 
-const HIGH_RISK_DOMAINS = new Set(['healthcare', 'finance', 'hr', 'education', 'law_enforcement', 'justice']);
+const HIGH_RISK_DOMAINS = new Set(validatedRiskProfile.high_risk_domains);
 
-const DOMAIN_OBLIGATIONS: Record<string, readonly string[]> = {
-  healthcare: ['OBL-070', 'OBL-071', 'OBL-072'],
-  finance: ['OBL-073', 'OBL-074', 'OBL-075', 'OBL-076'],
-  hr: ['OBL-064', 'OBL-065', 'OBL-066'],
-  education: ['OBL-067', 'OBL-068', 'OBL-069'],
-  content: ['OBL-089', 'OBL-090'],
-  customer_service: ['OBL-091'],
-};
+const DOMAIN_OBLIGATIONS: Record<string, readonly string[]> = validatedRiskProfile.domain_obligations;
 
-const BASE_OBLIGATIONS = [
-  'OBL-001', 'OBL-002', 'OBL-003', 'OBL-004', 'OBL-005',
-  'OBL-006', 'OBL-007', 'OBL-008', 'OBL-009', 'OBL-010',
-  'OBL-011', 'OBL-012', 'OBL-013', 'OBL-014', 'OBL-015',
-];
+const BASE_OBLIGATIONS = validatedRiskProfile.base_obligations;
 
 export const computeRiskLevel = (
   domain: string,
@@ -88,7 +87,7 @@ export const computeApplicableObligations = (
   const domainObs = DOMAIN_OBLIGATIONS[domain];
   if (domainObs) obligations.push(...domainObs);
   if (riskLevel === 'high') {
-    obligations.push('OBL-016', 'OBL-017', 'OBL-018', 'OBL-019', 'OBL-020');
+    obligations.push(...validatedRiskProfile.high_risk_extra_obligations);
   }
   return obligations;
 };

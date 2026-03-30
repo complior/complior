@@ -1,0 +1,16 @@
+{
+  "layer_weights": {
+    "L1": 1.0,
+    "L2": 0.95,
+    "L3": 0.90,
+    "L4": 0.75,
+    "L5": 0.70
+  },
+  "score_multipliers": {
+    "PASS": 1.0,
+    "LIKELY_PASS": 0.75,
+    "UNCERTAIN": 0.5,
+    "LIKELY_FAIL": 0.25,
+    "FAIL": 0.0
+  }
+}

@@ -7,7 +7,7 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 ## Project Structure
 
 - **Rust CLI**: `cli/` — Ratatui binary + daemon management, connects to daemon via HTTP/SSE, 8 pages, themes
-- **TypeScript Engine**: `engine/core/` — Clean Architecture: ports, domain, services, infra, http, data, llm, mcp
+- **TypeScript Engine**: `engine/core/` — Clean Architecture: ports, domain, services, infra, http, data, llm, mcp. Static JSON data in `engine/core/data/` (regulations, scanner params, LLM pricing/routing, eval mappings, onboarding)
 - **TS Packages**: `engine/sdk/` (@complior/sdk), `engine/npm/` (npm wrapper). Shared types codegen planned, not yet implemented
 - **Public docs**: `docs/` — architecture, backlog, sprint specs, contributing standards
 - **Internal docs**: `.dev/` (gitignored) — legacy v1 docs, agent definitions, ADRs
@@ -22,6 +22,7 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 6. **7-step pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
 7. **DataProvider port** — Engine retains regulation JSON locally (`engine/core/src/data/`). AI Registry data from PROJECT API (5,011+ tools online). TUI: EngineDataProvider (online) ↔ MockDataProvider (12 demo, offline fallback)
 8. **Config split** — Global `~/.config/complior/settings.toml` (UX, infra) + Project `.complior/project.toml` (jurisdiction, role, industry, scan scope). Project overrides global for `llm_provider`, `llm_model`, `project_api_url`, `offline_mode`. Details: `docs/TUI-DESIGN-SPEC.md` §7
+9. **Data externalization** — Все справочные данные (цены моделей, маппинги, пороги, лимиты) хранятся в JSON-файлах в `engine/core/data/` и импортируются через `import ... from '...json' with { type: 'json' }`. Хардкод данных в TS-файлах запрещён. Типы и функции остаются в TS, данные — в JSON.
 
 ## Coding Standards
 

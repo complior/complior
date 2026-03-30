@@ -1,0 +1,33 @@
+{
+  "priority_order": {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 3
+  },
+  "category_articles": {
+    "transparency": "Art.50",
+    "oversight": "Art.14",
+    "explanation": "Art.13",
+    "bias": "Art.10",
+    "accuracy": "Art.15",
+    "robustness": "Art.15",
+    "prohibited": "Art.5",
+    "logging": "Art.12",
+    "risk-awareness": "Art.9",
+    "gpai": "Art.52",
+    "industry": "Art.6"
+  },
+  "category_fines": {
+    "transparency": "up to 35M EUR",
+    "prohibited": "up to 35M EUR or 7% worldwide turnover",
+    "bias": "up to 35M EUR",
+    "oversight": "up to 15M EUR"
+  },
+  "priority_timeline": {
+    "critical": "this week",
+    "high": "next week",
+    "medium": "this month",
+    "low": "backlog"
+  }
+}

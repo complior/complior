@@ -1,0 +1,17 @@
+{
+  "high_risk_domains": ["healthcare", "finance", "hr", "education", "law_enforcement", "justice"],
+  "domain_obligations": {
+    "healthcare": ["OBL-070", "OBL-071", "OBL-072"],
+    "finance": ["OBL-073", "OBL-074", "OBL-075", "OBL-076"],
+    "hr": ["OBL-064", "OBL-065", "OBL-066"],
+    "education": ["OBL-067", "OBL-068", "OBL-069"],
+    "content": ["OBL-089", "OBL-090"],
+    "customer_service": ["OBL-091"]
+  },
+  "base_obligations": [
+    "OBL-001", "OBL-002", "OBL-003", "OBL-004", "OBL-005",
+    "OBL-006", "OBL-007", "OBL-008", "OBL-009", "OBL-010",
+    "OBL-011", "OBL-012", "OBL-013", "OBL-014", "OBL-015"
+  ],
+  "high_risk_extra_obligations": ["OBL-016", "OBL-017", "OBL-018", "OBL-019", "OBL-020"]
+}

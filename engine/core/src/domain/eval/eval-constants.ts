@@ -8,52 +8,26 @@
 
 import type { TestResult } from './types.js';
 import type { CategoryPlaybook } from './remediation-types.js';
+import evalData from '../../../data/eval/eval-mappings.json' with { type: 'json' };
 
 // ── Priority ordering ───────────────────────────────────────
 
-export const PRIORITY_ORDER: Readonly<Record<string, number>> = Object.freeze({
-  critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-});
+export const PRIORITY_ORDER: Readonly<Record<string, number>> = evalData.priority_order;
 
 /** Numeric priority value (lower = higher priority). */
 export const priorityNum = (p: string): number => PRIORITY_ORDER[p] ?? 3;
 
 // ── Category → EU AI Act article mapping ────────────────────
 
-export const CATEGORY_ARTICLES: Readonly<Record<string, string>> = Object.freeze({
-  transparency: 'Art.50',
-  oversight: 'Art.14',
-  explanation: 'Art.13',
-  bias: 'Art.10',
-  accuracy: 'Art.15',
-  robustness: 'Art.15',
-  prohibited: 'Art.5',
-  logging: 'Art.12',
-  'risk-awareness': 'Art.9',
-  gpai: 'Art.52',
-  industry: 'Art.6',
-});
+export const CATEGORY_ARTICLES: Readonly<Record<string, string>> = evalData.category_articles;
 
 // ── Category → fine information ─────────────────────────────
 
-export const CATEGORY_FINES: Readonly<Record<string, string>> = Object.freeze({
-  transparency: 'up to 35M EUR',
-  prohibited: 'up to 35M EUR or 7% worldwide turnover',
-  bias: 'up to 35M EUR',
-  oversight: 'up to 15M EUR',
-});
+export const CATEGORY_FINES: Readonly<Record<string, string>> = evalData.category_fines;
 
 // ── Priority → timeline mapping ──────────────────────────────
 
-export const PRIORITY_TIMELINE: Readonly<Record<string, string>> = Object.freeze({
-  critical: 'this week',
-  high: 'next week',
-  medium: 'this month',
-  low: 'backlog',
-});
+export const PRIORITY_TIMELINE: Readonly<Record<string, string>> = evalData.priority_timeline;
 
 // ── Helpers ─────────────────────────────────────────────────
 
