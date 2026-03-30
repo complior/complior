@@ -226,41 +226,24 @@
                   const analysisResult = evidenceAnalyzer.analyze(toolData);
                   const scoreResult = await scorer.calculate(toolData, analysisResult);
 
-                  // v3: store score (even null), coverage, transparencyGrade, algorithm
-                  const scoreVal = scoreResult.score;
-                  const coverageVal = (
-                    scoreResult.coverage !== null
-                    && scoreResult.coverage !== undefined
-                  ) ? scoreResult.coverage : 0;
-                  const tGrade = scoreResult.transparencyGrade || null;
+                  // v3: store score, coverage, transparencyGrade
+                  const existingAssessment = (toolData.assessments && toolData.assessments['eu-ai-act']) || {};
+                  const euObj = {
+                    ...existingAssessment,
+                    score: scoreResult.score,
+                    coverage: scoreResult.coverage ?? 0,
+                    transparencyGrade: scoreResult.transparencyGrade || null,
+                    scored_at: new Date().toISOString(),
+                  };
 
                   await db.query(
                     `UPDATE "RegistryTool"
                      SET assessments = jsonb_set(
-                       jsonb_set(
-                         jsonb_set(
-                           jsonb_set(
-                             COALESCE(assessments, '{}'::jsonb),
-                             '{eu-ai-act,score}',
-                             $1::jsonb
-                           ),
-                           '{eu-ai-act,coverage}',
-                           $2::jsonb
-                         ),
-                         '{eu-ai-act,transparencyGrade}',
-                         $3::jsonb
-                       ),
-                       '{eu-ai-act,scored_at}',
-                       $4::jsonb
+                       COALESCE(assessments, '{}'::jsonb),
+                       '{eu-ai-act}', $1::jsonb
                      )
-                     WHERE slug = $5`,
-                    [
-                      JSON.stringify(scoreVal),
-                      JSON.stringify(coverageVal),
-                      JSON.stringify(tGrade),
-                      JSON.stringify(new Date().toISOString()),
-                      tool.slug,
-                    ],
+                     WHERE slug = $2`,
+                    [JSON.stringify(euObj), tool.slug],
                   );
                 }
               } catch (err) {
@@ -404,20 +387,20 @@
             const analysisResult = evidenceAnalyzer.analyze(toolData);
             scoreResult = await scorer.calculate(toolData, analysisResult);
 
-            const scoreVal = scoreResult
-              && scoreResult.score !== undefined
-              ? scoreResult.score : null;
+            const existingAssmt = (toolData.assessments && toolData.assessments['eu-ai-act']) || {};
+            const euObj = {
+              ...existingAssmt,
+              score: scoreResult && scoreResult.score !== undefined ? scoreResult.score : null,
+              scored_at: new Date().toISOString(),
+            };
             await db.query(
               `UPDATE "RegistryTool"
                SET assessments = jsonb_set(
-                 jsonb_set(
-                   COALESCE(assessments, '{}'::jsonb),
-                   '{eu-ai-act,score}', $1::jsonb
-                 ),
-                 '{eu-ai-act,scored_at}', $2::jsonb
+                 COALESCE(assessments, '{}'::jsonb),
+                 '{eu-ai-act}', $1::jsonb
                )
-               WHERE slug = $3`,
-              [JSON.stringify(scoreVal), JSON.stringify(new Date().toISOString()), tool.slug],
+               WHERE slug = $2`,
+              [JSON.stringify(euObj), tool.slug],
             );
           }
         } catch (err) {

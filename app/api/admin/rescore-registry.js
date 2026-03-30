@@ -123,27 +123,29 @@
         };
 
         if (!dryRun && scoreResult.score !== null) {
+          const euAssessmentObj = {
+            ...(tool.assessments && tool.assessments['eu-ai-act'] || {}),
+            score: scoreResult.score,
+            coverage: scoreResult.coverage || 0,
+            transparencyGrade: scoreResult.grade || null,
+            scored_at: new Date().toISOString(),
+          };
+          if (scoreResult.counts) {
+            euAssessmentObj.obligationsMet = scoreResult.counts.met;
+            euAssessmentObj.obligationsTotal = scoreResult.counts.total;
+          }
+          if (scoreResult.maturity) {
+            euAssessmentObj.maturityLabel = scoreResult.maturity.label;
+          }
           await db.query(
             `UPDATE "RegistryTool"
              SET assessments = jsonb_set(
-               jsonb_set(
-                 jsonb_set(
-                   jsonb_set(
-                     COALESCE(assessments, '{}'::jsonb),
-                     '{eu-ai-act,score}', $1::jsonb
-                   ),
-                   '{eu-ai-act,coverage}', $2::jsonb
-                 ),
-                 '{eu-ai-act,transparencyGrade}', $3::jsonb
-               ),
-               '{eu-ai-act,scored_at}', $4::jsonb
+               COALESCE(assessments, '{}'::jsonb),
+               '{eu-ai-act}', $1::jsonb
              )
-             WHERE slug = $5`,
+             WHERE slug = $2`,
             [
-              JSON.stringify(scoreResult.score),
-              JSON.stringify(scoreResult.coverage || 0),
-              JSON.stringify(scoreResult.grade || null),
-              JSON.stringify(new Date().toISOString()),
+              JSON.stringify(euAssessmentObj),
               tool.slug,
             ],
           );
