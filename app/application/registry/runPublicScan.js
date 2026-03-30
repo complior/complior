@@ -46,11 +46,11 @@
      * @returns {Object} - Scan report with evidence, citations, score
      */
     async execute({
-      db, config, console,
+      db, console,
       passiveScanner, llmTester, evidenceAnalyzer, scorer,
-      rateLimiter, obligationMap,
+      rateLimiter,
     }, input) {
-      const { url, apiKey, email, ip } = input;
+      const { url, apiKey, ip } = input;
       const userId = input.userId || null;
       const mode = detectMode(input);
 
@@ -94,7 +94,9 @@
           try { existingTool.evidence = JSON.parse(existingTool.evidence); } catch { /* ok */ }
         }
         if (typeof existingTool.assessments === 'string') {
-          try { existingTool.assessments = JSON.parse(existingTool.assessments); } catch { /* ok */ }
+          try {
+            existingTool.assessments = JSON.parse(existingTool.assessments);
+          } catch { /* ok */ }
         }
       }
 

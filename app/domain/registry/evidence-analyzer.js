@@ -777,7 +777,8 @@
     // v3: Vendor report bonus (if present)
     if (evidence.vendor_report) {
       const vr = evidence.vendor_report;
-      const fieldCount = Object.keys(vr).filter((k) => vr[k] !== null && vr[k] !== undefined).length;
+      const filled = (k) => vr[k] !== null && vr[k] !== undefined;
+      const fieldCount = Object.keys(vr).filter(filled).length;
       score += 0.05 * Math.min(fieldCount / 10, 1.0);
     }
 

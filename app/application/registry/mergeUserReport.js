@@ -223,11 +223,26 @@
     for (const report of reports) {
       const a = report.answers || {};
       if (a.category) counts.categories[a.category] = (counts.categories[a.category] || 0) + 1;
-      if (a.autonomyLevel) counts.autonomyLevels[a.autonomyLevel] = (counts.autonomyLevels[a.autonomyLevel] || 0) + 1;
-      if (a.dataType) counts.dataTypes[a.dataType] = (counts.dataTypes[a.dataType] || 0) + 1;
-      if (a.affectedPersons) counts.affectedPersons[a.affectedPersons] = (counts.affectedPersons[a.affectedPersons] || 0) + 1;
-      if (a.dataLocation) counts.dataLocations[a.dataLocation] = (counts.dataLocations[a.dataLocation] || 0) + 1;
-      if (report.riskLevel) counts.riskLevels[report.riskLevel] = (counts.riskLevels[report.riskLevel] || 0) + 1;
+      if (a.autonomyLevel) {
+        const k = a.autonomyLevel;
+        counts.autonomyLevels[k] = (counts.autonomyLevels[k] || 0) + 1;
+      }
+      if (a.dataType) {
+        const k = a.dataType;
+        counts.dataTypes[k] = (counts.dataTypes[k] || 0) + 1;
+      }
+      if (a.affectedPersons) {
+        const k = a.affectedPersons;
+        counts.affectedPersons[k] = (counts.affectedPersons[k] || 0) + 1;
+      }
+      if (a.dataLocation) {
+        const k = a.dataLocation;
+        counts.dataLocations[k] = (counts.dataLocations[k] || 0) + 1;
+      }
+      if (report.riskLevel) {
+        const k = report.riskLevel;
+        counts.riskLevels[k] = (counts.riskLevels[k] || 0) + 1;
+      }
     }
 
     const total = reports.length;

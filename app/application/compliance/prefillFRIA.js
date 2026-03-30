@@ -40,7 +40,9 @@
         try { tool.assessments = JSON.parse(tool.assessments); } catch { tool.assessments = {}; }
       }
       if (typeof tool.vendorReport === 'string') {
-        try { tool.vendorReport = JSON.parse(tool.vendorReport); } catch { tool.vendorReport = null; }
+        try {
+          tool.vendorReport = JSON.parse(tool.vendorReport);
+        } catch { tool.vendorReport = null; }
       }
       if (typeof tool.provider === 'string') {
         try { tool.provider = JSON.parse(tool.provider); } catch { tool.provider = null; }

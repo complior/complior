@@ -724,8 +724,8 @@ describe('Registry Scorer v3.1', () => {
     });
 
     const result = await scorer.calculate(tool);
-    // Evidence total would be 3+2+3+2+1+2=13, capped at 10. Provider = 0 (TestCo). Total = 10.
-    assert.strictEqual(result.bonuses.total, 10);
+    // Evidence total would be 3+2+3+2+1+2=13, capped at 12 (v3). Provider = 0 (TestCo). Total = 12.
+    assert.strictEqual(result.bonuses.total, 12);
     assert.strictEqual(result.bonuses.providerTier, 0);
   });
 

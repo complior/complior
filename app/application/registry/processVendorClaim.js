@@ -98,7 +98,7 @@
 
       // 1. Load claim
       const claimResult = await db.query(
-        `SELECT * FROM "VendorClaim" WHERE "vendorClaimId" = $1`,
+        'SELECT * FROM "VendorClaim" WHERE "vendorClaimId" = $1',
         [claimId],
       );
       if (claimResult.rows.length === 0) {
@@ -151,7 +151,7 @@
       const { claimId, reviewedBy } = input;
 
       const claimResult = await db.query(
-        `SELECT * FROM "VendorClaim" WHERE "vendorClaimId" = $1`,
+        'SELECT * FROM "VendorClaim" WHERE "vendorClaimId" = $1',
         [claimId],
       );
       if (claimResult.rows.length === 0) {

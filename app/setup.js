@@ -185,6 +185,7 @@ const TABLE_ORDER = [
   'ScoringWeight',
   'ApiKey',
   'ApiUsage',
+  'VendorClaim',
   // New regulation tables (Phase 1)
   'RegulationMeta',
   'TechnicalRequirement',

@@ -524,6 +524,7 @@
       key: 'contentMarking',
       label: 'AI Content Marking (C2PA / Watermark)',
       pageLabel: 'homepage',
+      // eslint-disable-next-line max-len
       check: (ps) => ps.content_marking && (ps.content_marking.c2pa || ps.content_marking.watermark),
       // eslint-disable-next-line max-len
       snippetPattern: /(?:c2pa|content credentials|content authenticity|watermark|synthid)[^.]{0,100}\./i,
@@ -789,7 +790,10 @@
           const label = r.url === baseUrl ? 'homepage'
             : r.url.endsWith('/robots.txt') ? 'robots.txt'
               : 'sitemap.xml';
-          pagesData.push({ label, url: r.url, status: r.status, text: r.text, error: r.error || null });
+          pagesData.push({
+            label, url: r.url, status: r.status,
+            text: r.text, error: r.error || null,
+          });
           if (r.text) fetchedDocs[label] = r.text;
         }
 

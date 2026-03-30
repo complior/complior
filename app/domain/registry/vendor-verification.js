@@ -58,7 +58,7 @@
        * @param {string} websiteUrl - Tool's website URL
        * @returns {{ token, domain, methods, expiresAt }}
        */
-      createChallenge(email, websiteUrl) {
+      createChallenge(email) {
         const domain = extractDomain(email);
         if (!domain) {
           throw new Error('Invalid email: cannot extract domain');

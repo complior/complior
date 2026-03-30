@@ -55,7 +55,9 @@
         try { tool.categories = JSON.parse(tool.categories); } catch { tool.categories = []; }
       }
       if (typeof tool.vendorReport === 'string') {
-        try { tool.vendorReport = JSON.parse(tool.vendorReport); } catch { tool.vendorReport = null; }
+        try {
+          tool.vendorReport = JSON.parse(tool.vendorReport);
+        } catch { tool.vendorReport = null; }
       }
       return tool;
     });
