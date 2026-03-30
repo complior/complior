@@ -284,6 +284,9 @@ const MIGRATIONS = [
          AND rc."method" = 'cli_import'
          AND rc."isCurrent" = true
      )`,
+  // Public scan: RegistryTool needs lastPublicScanAt
+  `ALTER TABLE "RegistryTool"
+   ADD COLUMN IF NOT EXISTS "lastPublicScanAt" timestamp with time zone`,
 ];
 
 const INDEXES = [
