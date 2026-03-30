@@ -219,6 +219,24 @@ const APPLICATION_PATH = path.join(__dirname, '..', 'app');
       }
     }
 
+    if (appSandbox.application?.jobs?.['schedule-registry-import']) {
+      try {
+        const projectRoot = path.join(__dirname, '..');
+        const seedPath = path.join(projectRoot, 'app', 'seeds', 'registry-import-data.json');
+        const importCtx = {
+          ...jobCtx,
+          readSeedFile: () => {
+            if (!fs.existsSync(seedPath)) return null;
+            return fs.readFileSync(seedPath, 'utf-8');
+          },
+        };
+        await appSandbox.application.jobs['schedule-registry-import'].init(importCtx);
+        pinoLogger.info('✅ Registry import job worker registered');
+      } catch (error) {
+        pinoLogger.error(error, 'Failed to register registry import worker');
+      }
+    }
+
     if (appSandbox.application?.jobs?.['schedule-doc-generation']) {
       try {
         await appSandbox.application.jobs['schedule-doc-generation'].init(jobCtx);
