@@ -402,6 +402,30 @@
     };
   };
 
+  // ── Known Provider Domain Mapping ──────────────────────────────────
+
+  const KNOWN_PROVIDER_DOMAINS = {
+    'chat.openai.com': 'openai.com',
+    'chatgpt.com': 'openai.com',
+    'copilot.microsoft.com': 'microsoft.com',
+    'gemini.google.com': 'google.com',
+    'bard.google.com': 'google.com',
+    'claude.ai': 'anthropic.com',
+    'chat.mistral.ai': 'mistral.ai',
+    'le-chat.mistral.ai': 'mistral.ai',
+    'github.com': 'github.com',
+    'huggingface.co': 'huggingface.co',
+  };
+
+  const getProviderDomain = (toolUrl) => {
+    try {
+      const host = new URL(toolUrl).hostname;
+      return KNOWN_PROVIDER_DOMAINS[host] || null;
+    } catch {
+      return null;
+    }
+  };
+
   // ── Rate Limiter ───────────────────────────────────────────────────
 
   const createRateLimiter = (ratePerSec) => {
@@ -446,9 +470,9 @@
           status: response.status,
           text: text && text.length > 1048576 ? text.slice(0, 1048576) : text,
         };
-      } catch {
+      } catch (err) {
         clearTimeout(timer);
-        return { status: 0, text: null };
+        return { status: 0, text: null, error: err.message || 'fetch_failed' };
       }
     };
 
@@ -530,6 +554,33 @@
           if (foundSignals.size === signalTypes.length) break;
         }
 
+        // Cross-domain fallback: if signals missing, try provider domain
+        const providerDomain = getProviderDomain(baseUrl);
+        if (providerDomain && budget > 0 && foundSignals.size < signalTypes.length) {
+          const providerBase = `https://${providerDomain}`;
+          for (const signalType of signalTypes) {
+            if (budget <= 0) break;
+            if (foundSignals.has(signalType)) continue;
+
+            const paths = SIGNAL_PROBE_PATHS[signalType] || [];
+            for (const suffix of paths) {
+              if (budget <= 0) break;
+              const url = providerBase + suffix;
+              const result = await fetchPage(url);
+              budget--;
+
+              const label = SIGNAL_TO_LABEL[signalType];
+              pagesData.push({ label, url, status: result.status, text: result.text });
+
+              if (result.status === 200 && result.text) {
+                fetchedDocs[label] = result.text;
+                foundSignals.add(signalType);
+                break;
+              }
+            }
+          }
+        }
+
         // ── Assemble Result ─────────────────────────────────────
         // Parse each signal using minimal cheerio loads.
         // Use text-only analysis where possible to reduce memory.
@@ -574,6 +625,14 @@
         // Count successful fetches
         const pagesFetched = pagesData.filter((p) => p.status === 200).length;
 
+        // Build pages_detail for diagnostics (url + status + error)
+        const pagesDetail = pagesData.map((p) => ({
+          url: p.url,
+          label: p.label,
+          status: p.status,
+          error: p.error || null,
+        }));
+
         // Clear heavy references to aid GC
         for (const p of pagesData) { p.text = null; }
         for (const k of Object.keys(fetchedDocs)) { fetchedDocs[k] = null; }
@@ -589,6 +648,7 @@
           social: { estimated_company_size: estimatedCompanySize },
           web_search: webSearch,
           pages_fetched: pagesFetched,
+          pages_detail: pagesDetail,
           scanned_at: new Date().toISOString(),
         };
       },

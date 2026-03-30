@@ -54,7 +54,7 @@
         const oblResult = await db.query(
           `SELECT "obligationIdUnique", category, severity,
                   "parentObligation", deadline, "penaltyForNonCompliance",
-                  "appliesToRiskLevel"
+                  "appliesToRiskLevel", title, "articleReference", "appliesToRole"
            FROM "Obligation"`,
         );
         const oblRows = oblResult.rows || oblResult;
@@ -67,6 +67,9 @@
             deadline: row.deadline || null,
             penaltyForNonCompliance: row.penaltyForNonCompliance || null,
             appliesToRiskLevel: row.appliesToRiskLevel || null,
+            title: row.title || null,
+            articleReference: row.articleReference || null,
+            appliesToRole: row.appliesToRole || null,
           };
         }
 
@@ -81,6 +84,8 @@
           // Load scorer data fresh each run (data may change between runs)
           const scorerData = await loadScorerData();
 
+          const docGrader = domain.registry['public-doc-grader']();
+
           const result = await application.registry['refresh-service'].refreshClassifiedTools({
             db,
             console,
@@ -90,6 +95,8 @@
             mediaTester,
             evidenceAnalyzer: domain.registry['evidence-analyzer']({ db }),
             scorer: domain.registry['registry-scorer'](scorerData),
+            docGrader,
+            obligationMap: scorerData.obligationMap,
           });
 
           console.log('✅ Registry refresh job completed:', result);

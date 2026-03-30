@@ -140,3 +140,6 @@ package-lock.json.backup
 # OpenClaw specific
 .openclaw/sandboxes/
 .openclaw/cache/
+
+# Large seed data (one-time import)
+app/seeds/registry-import-data.json

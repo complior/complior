@@ -44,7 +44,7 @@
     const oblResult = await db.query(
       `SELECT "obligationIdUnique", category, severity,
               "parentObligation", deadline, "penaltyForNonCompliance",
-              "appliesToRiskLevel"
+              "appliesToRiskLevel", title, "articleReference", "appliesToRole"
        FROM "Obligation"`,
     );
     const oblRows = oblResult.rows || oblResult;
@@ -57,11 +57,15 @@
         deadline: row.deadline || null,
         penaltyForNonCompliance: row.penaltyForNonCompliance || null,
         appliesToRiskLevel: row.appliesToRiskLevel || null,
+        title: row.title || null,
+        articleReference: row.articleReference || null,
+        appliesToRole: row.appliesToRole || null,
       };
     }
 
     const evidenceAnalyzer = domain.registry['evidence-analyzer']({ db });
     const scorer = domain.registry['registry-scorer']({ weights, obligationMap });
+    const docGrader = domain.registry['public-doc-grader']();
 
     // Fetch tools
     let toolsQuery;
@@ -137,6 +141,59 @@
           if (scoreResult.maturity) {
             euAssessmentObj.maturityLabel = scoreResult.maturity.label;
           }
+
+          // Full scoring details
+          if (scoreResult.counts || scoreResult.zone || scoreResult.maturity) {
+            euAssessmentObj.scoring = {
+              zone: scoreResult.zone || null,
+              grade: scoreResult.grade || null,
+              score: scoreResult.score,
+              counts: scoreResult.counts || null,
+              bonuses: scoreResult.bonuses || null,
+              penalties: scoreResult.penalties || null,
+              coverage: scoreResult.coverage || 0,
+              maturity: scoreResult.maturity || null,
+              confidence: scoreResult.confidenceInterval || null,
+              categoryScores: scoreResult.categoryScores || {},
+              transparencyGrade: scoreResult.transparencyGrade || scoreResult.grade || null,
+              transparencyScore: scoreResult.transparencyScore || null,
+              algorithm: scoreResult.algorithm || 'deterministic-v3',
+              scoredAt: new Date().toISOString(),
+            };
+          }
+
+          // Public documentation grade
+          try {
+            const docResult = docGrader.grade(tool);
+            if (docResult) euAssessmentObj.publicDocumentation = docResult;
+          } catch { /* skip */ }
+
+          // Deployer / provider obligations
+          if (scoreResult.obligationDetails) {
+            const deployerObls = [];
+            const providerObls = [];
+            for (const detail of scoreResult.obligationDetails) {
+              const meta = obligationMap[detail.id];
+              if (!meta) continue;
+              const oblEntry = {
+                obligation_id: detail.id,
+                title: meta.title || null,
+                article: meta.articleReference || null,
+                deadline: meta.deadline || null,
+                severity: detail.severity || meta.severity || null,
+                status: detail.derivedStatus || null,
+                evidence_summary: detail.evidenceSignals && detail.evidenceSignals.length > 0
+                  ? detail.evidenceSignals.join(', ') : null,
+              };
+              if (meta.appliesToRole === 'deployer' || meta.appliesToRole === 'both') deployerObls.push(oblEntry);
+              if (meta.appliesToRole === 'provider' || meta.appliesToRole === 'both') providerObls.push(oblEntry);
+            }
+            if (deployerObls.length > 0) euAssessmentObj.deployer_obligations = deployerObls;
+            if (providerObls.length > 0) euAssessmentObj.provider_obligations = providerObls;
+          }
+
+          if (scoreResult.risk_reasoning) euAssessmentObj.risk_reasoning = scoreResult.risk_reasoning;
+
           await db.query(
             `UPDATE "RegistryTool"
              SET assessments = jsonb_set(

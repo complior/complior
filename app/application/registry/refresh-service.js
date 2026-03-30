@@ -60,6 +60,7 @@
       db, console, config,
       passiveScanner, llmTester, mediaTester,
       evidenceAnalyzer, scorer,
+      docGrader, obligationMap,
     }) {
       console.log('🔄 Starting registry refresh (enrichment pipeline)...');
 
@@ -226,15 +227,70 @@
                   const analysisResult = evidenceAnalyzer.analyze(toolData);
                   const scoreResult = await scorer.calculate(toolData, analysisResult);
 
-                  // v3: store score, coverage, transparencyGrade
+                  // Public documentation grade
+                  let publicDocumentation = null;
+                  if (docGrader) {
+                    try {
+                      publicDocumentation = docGrader.grade(toolData);
+                    } catch { /* skip */ }
+                  }
+
+                  // Deployer / provider obligations split
+                  let deployerObligations = [];
+                  let providerObligations = [];
+                  if (scoreResult.obligationDetails && obligationMap) {
+                    for (const detail of scoreResult.obligationDetails) {
+                      const meta = obligationMap[detail.id];
+                      if (!meta) continue;
+                      const entry = {
+                        obligation_id: detail.id,
+                        title: meta.title || null,
+                        article: meta.articleReference || null,
+                        deadline: meta.deadline || null,
+                        severity: detail.severity || meta.severity || null,
+                        status: detail.derivedStatus || null,
+                        evidence_summary: detail.evidenceSignals && detail.evidenceSignals.length > 0
+                          ? detail.evidenceSignals.join(', ') : null,
+                      };
+                      if (meta.appliesToRole === 'deployer' || meta.appliesToRole === 'both') deployerObligations.push(entry);
+                      if (meta.appliesToRole === 'provider' || meta.appliesToRole === 'both') providerObligations.push(entry);
+                    }
+                  }
+
+                  // v3: store full scoring output
                   const existingAssessment = (toolData.assessments && toolData.assessments['eu-ai-act']) || {};
                   const euObj = {
                     ...existingAssessment,
                     score: scoreResult.score,
                     coverage: scoreResult.coverage ?? 0,
-                    transparencyGrade: scoreResult.transparencyGrade || null,
+                    transparencyGrade: scoreResult.transparencyGrade || scoreResult.grade || null,
                     scored_at: new Date().toISOString(),
                   };
+
+                  // Full scoring details
+                  if (scoreResult.counts || scoreResult.zone || scoreResult.maturity) {
+                    euObj.scoring = {
+                      zone: scoreResult.zone || null,
+                      grade: scoreResult.grade || null,
+                      score: scoreResult.score,
+                      counts: scoreResult.counts || null,
+                      bonuses: scoreResult.bonuses || null,
+                      penalties: scoreResult.penalties || null,
+                      coverage: scoreResult.coverage || 0,
+                      maturity: scoreResult.maturity || null,
+                      confidence: scoreResult.confidenceInterval || null,
+                      categoryScores: scoreResult.categoryScores || {},
+                      transparencyGrade: scoreResult.transparencyGrade || scoreResult.grade || null,
+                      transparencyScore: scoreResult.transparencyScore || null,
+                      algorithm: scoreResult.algorithm || 'deterministic-v3',
+                      scoredAt: new Date().toISOString(),
+                    };
+                  }
+
+                  if (publicDocumentation) euObj.publicDocumentation = publicDocumentation;
+                  if (deployerObligations.length > 0) euObj.deployer_obligations = deployerObligations;
+                  if (providerObligations.length > 0) euObj.provider_obligations = providerObligations;
+                  if (scoreResult.risk_reasoning) euObj.risk_reasoning = scoreResult.risk_reasoning;
 
                   await db.query(
                     `UPDATE "RegistryTool"
@@ -284,6 +340,7 @@
       db, config, slug,
       passiveScanner, llmTester, mediaTester,
       evidenceAnalyzer, scorer,
+      docGrader, obligationMap,
     }) {
       const modelMap = (config && config.llmModels && config.llmModels.MODEL_MAP) || {};
       const mediaCats = (config && config.llmModels && config.llmModels.MEDIA_CATEGORIES) || [];
@@ -387,12 +444,67 @@
             const analysisResult = evidenceAnalyzer.analyze(toolData);
             scoreResult = await scorer.calculate(toolData, analysisResult);
 
+            // Public documentation grade
+            let publicDocumentation = null;
+            if (docGrader) {
+              try { publicDocumentation = docGrader.grade(toolData); } catch { /* skip */ }
+            }
+
+            // Deployer / provider obligations split
+            let deployerObligations = [];
+            let providerObligations = [];
+            if (scoreResult.obligationDetails && obligationMap) {
+              for (const detail of scoreResult.obligationDetails) {
+                const meta = obligationMap[detail.id];
+                if (!meta) continue;
+                const entry = {
+                  obligation_id: detail.id,
+                  title: meta.title || null,
+                  article: meta.articleReference || null,
+                  deadline: meta.deadline || null,
+                  severity: detail.severity || meta.severity || null,
+                  status: detail.derivedStatus || null,
+                  evidence_summary: detail.evidenceSignals && detail.evidenceSignals.length > 0
+                    ? detail.evidenceSignals.join(', ') : null,
+                };
+                if (meta.appliesToRole === 'deployer' || meta.appliesToRole === 'both') deployerObligations.push(entry);
+                if (meta.appliesToRole === 'provider' || meta.appliesToRole === 'both') providerObligations.push(entry);
+              }
+            }
+
             const existingAssmt = (toolData.assessments && toolData.assessments['eu-ai-act']) || {};
             const euObj = {
               ...existingAssmt,
               score: scoreResult && scoreResult.score !== undefined ? scoreResult.score : null,
+              coverage: scoreResult.coverage ?? 0,
+              transparencyGrade: scoreResult.transparencyGrade || scoreResult.grade || null,
               scored_at: new Date().toISOString(),
             };
+
+            if (scoreResult.counts || scoreResult.zone || scoreResult.maturity) {
+              euObj.scoring = {
+                zone: scoreResult.zone || null,
+                grade: scoreResult.grade || null,
+                score: scoreResult.score,
+                counts: scoreResult.counts || null,
+                bonuses: scoreResult.bonuses || null,
+                penalties: scoreResult.penalties || null,
+                coverage: scoreResult.coverage || 0,
+                maturity: scoreResult.maturity || null,
+                confidence: scoreResult.confidenceInterval || null,
+                categoryScores: scoreResult.categoryScores || {},
+                transparencyGrade: scoreResult.transparencyGrade || scoreResult.grade || null,
+                transparencyScore: scoreResult.transparencyScore || null,
+                algorithm: scoreResult.algorithm || 'deterministic-v3',
+                scoredAt: new Date().toISOString(),
+              };
+            }
+
+            if (publicDocumentation) euObj.publicDocumentation = publicDocumentation;
+            if (deployerObligations.length > 0) euObj.deployer_obligations = deployerObligations;
+            if (providerObligations.length > 0) euObj.provider_obligations = providerObligations;
+            if (scoreResult.risk_reasoning) euObj.risk_reasoning = scoreResult.risk_reasoning;
+
             await db.query(
               `UPDATE "RegistryTool"
                SET assessments = jsonb_set(
