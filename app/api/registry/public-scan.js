@@ -27,10 +27,8 @@
       url = 'https://' + url;
     }
 
-    // Basic URL validation
-    try {
-      new URL(url);
-    } catch {
+    // Basic URL validation (URL constructor unavailable in VM sandbox)
+    if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(url)) {
       throw new errors.ValidationError('Invalid URL format', { url: ['Must be a valid URL'] });
     }
 
