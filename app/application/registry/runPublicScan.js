@@ -25,16 +25,13 @@
    * Try to find existing registry tool by URL or create a placeholder slug.
    */
   const findOrCreateSlug = (url) => {
-    try {
-      const parsed = new URL(url);
-      // Generate slug from hostname: "api.openai.com" -> "openai-com"
-      const parts = parsed.hostname.split('.');
-      // Remove common prefixes
-      const filtered = parts.filter((p) => p !== 'www' && p !== 'api' && p !== 'app');
-      return filtered.join('-').toLowerCase().replace(/[^a-z0-9-]/g, '');
-    } catch {
-      return 'unknown-tool';
-    }
+    // URL constructor unavailable in VM sandbox — use regex
+    const match = url.match(/^https?:\/\/([^/?#]+)/i);
+    if (!match) return 'unknown-tool';
+    const hostname = match[1].toLowerCase();
+    const parts = hostname.split('.');
+    const filtered = parts.filter((p) => p !== 'www' && p !== 'api' && p !== 'app');
+    return filtered.join('-').replace(/[^a-z0-9-]/g, '') || 'unknown-tool';
   };
 
   return {
@@ -221,7 +218,7 @@
             failed: evidence.llm_tests.filter((t) => !t.passed).length,
           } : null,
         },
-        score: scoreResult ? {
+        score: (scoreResult && scoreResult.score !== null) ? {
           value: scoreResult.score,
           grade: scoreResult.grade,
           zone: scoreResult.zone,
