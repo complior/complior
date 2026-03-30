@@ -270,12 +270,22 @@ describe('Registry Scorer v3.1', () => {
 
   // ── 8. No assessment ─────────────────────────────────────────────
 
-  it('returns null score for no assessment', async () => {
+  it('auto-derives applicable obligations when assessment missing', async () => {
     const scorer = scorerFactory(buildScorerDeps(WEIGHTS, OBLIGATIONS));
     const tool = makeTool({ assessments: null });
     const result = await scorer.calculate(tool);
+    // With obligationMap populated, scorer derives obligations from riskLevel
+    // and proceeds to score (insufficient_data since no evidence)
     assert.strictEqual(result.score, null);
-    assert.strictEqual(result.reason, 'no_assessment');
+    assert.strictEqual(result.reason, 'insufficient_data');
+  });
+
+  it('returns null score when obligationMap is empty', async () => {
+    const scorer = scorerFactory(buildScorerDeps(WEIGHTS, []));
+    const tool = makeTool({ assessments: null });
+    const result = await scorer.calculate(tool);
+    assert.strictEqual(result.score, null);
+    assert.strictEqual(result.reason, 'no_applicable_obligations');
   });
 
   // ── 9. Determinism ───────────────────────────────────────────────

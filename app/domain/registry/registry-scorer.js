@@ -315,14 +315,31 @@
     return {
       calculate(tool, enrichedObligations, providerCorrelation) {
 
-        const assessment = tool.assessments && tool.assessments['eu-ai-act'];
-        if (!assessment) {
-          return { score: null, reason: 'no_assessment' };
+        const assessment = (tool.assessments && tool.assessments['eu-ai-act']) || {};
+
+        // Derive applicable obligations from obligationMap + riskLevel if not pre-set
+        let applicableIds = assessment.applicable_obligation_ids;
+        if (!applicableIds || applicableIds.length === 0) {
+          const toolRisk = (assessment.risk_level || tool.riskLevel || 'limited').toLowerCase();
+          applicableIds = Object.keys(obligationMap).filter((oblId) => {
+            const obl = obligationMap[oblId];
+            if (!obl.appliesToRiskLevel) return true; // universal obligation
+            const appliesTo = obl.appliesToRiskLevel.toLowerCase();
+            if (appliesTo === 'all') return true;
+            if (toolRisk === 'high') return true; // high-risk tools get ALL obligations
+            if (toolRisk === 'limited' && (appliesTo === 'limited' || appliesTo === 'minimal')) return true;
+            if (toolRisk === 'minimal' && appliesTo === 'minimal') return true;
+            return appliesTo === toolRisk;
+          });
         }
 
-        const applicableIds = assessment.applicable_obligation_ids;
-        if (!applicableIds || applicableIds.length === 0) {
+        if (applicableIds.length === 0) {
           return { score: null, reason: 'no_applicable_obligations' };
+        }
+
+        // Ensure assessment has applicable_obligation_ids for mergeObligations
+        if (!assessment.applicable_obligation_ids) {
+          assessment.applicable_obligation_ids = applicableIds;
         }
 
         const evidence = tool.evidence || {};
