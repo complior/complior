@@ -6,15 +6,9 @@ import { createLogger } from './infra/logger.js';
 import { withRetry } from './infra/retry.js';
 import { ENGINE_VERSION } from './version.js';
 
-// ── Load API keys from .env files ────────────────────────────────
-// Only load keys that are safe for the engine (API keys, config).
-// Never load PORT, PATH, NODE_ENV etc. from project .env — those
-// belong to the project's own server, not the complior engine.
-const ENV_ALLOWLIST = new Set([
-  'OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
-  'COMPLIOR_JUDGE_API_KEY', 'COMPLIOR_CACHE_DIR', 'PROJECT_API_URL', 'OFFLINE_MODE',
-]);
-
+// ── Load user's .complior/.env (API keys for LLM judge, fix --ai, etc.) ────────
+// Users place their API keys in <project>/.complior/.env.
+// We never load the project root .env (it may contain PORT, DATABASE_URL, etc. for the user's own app).
 const loadEnvFile = (filePath: string): void => {
   try {
     const content = readFileSync(filePath, 'utf-8');
@@ -25,8 +19,7 @@ const loadEnvFile = (filePath: string): void => {
       if (eqIdx < 1) continue;
       const key = trimmed.slice(0, eqIdx).trim();
       const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
-      // Only load allowlisted keys; don't override existing env vars
-      if (ENV_ALLOWLIST.has(key) && process.env[key] === undefined) {
+      if (process.env[key] === undefined) {
         process.env[key] = val;
       }
     }
@@ -35,10 +28,8 @@ const loadEnvFile = (filePath: string): void => {
   }
 };
 
-// Load project .env, then engine-local .env (first match wins due to undefined check)
-const projectPath = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
-loadEnvFile(resolve(projectPath, '.env'));
-loadEnvFile(resolve(import.meta.dirname ?? dirname(import.meta.url.replace('file://', '')), '..', '.env'));
+const projectDir = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
+loadEnvFile(resolve(projectDir, '.complior', '.env'));
 
 const log = createLogger('server');
 const PORT = Number(process.env['PORT'] ?? 3099);
