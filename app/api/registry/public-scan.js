@@ -92,7 +92,7 @@
       rateLimiter,
       obligationMap: config.obligationMap || {},
     }, {
-      url: body.url,
+      url,
       apiKey: body.apiKey || null,
       mode,
       model: body.model || null,
@@ -100,6 +100,8 @@
       captchaToken: body.captchaToken || null,
       ip,
       userId: null, // Public endpoint, no auth
+      userAgent: headers['user-agent'] || null,
+      referrer: headers.referer || headers.referrer || null,
     });
 
     if (!result.success) {

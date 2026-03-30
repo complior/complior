@@ -179,9 +179,22 @@
 
       const durationMs = Date.now() - startTime;
 
-      // 7. Log the scan
+      // 7. Log the scan (rich entry for analytics)
       if (rateLimiter) {
-        await rateLimiter.log(ip, url, userId, false);
+        await rateLimiter.log({
+          ip, url, userId,
+          denied: false,
+          mode,
+          userAgent: input.userAgent || null,
+          referrer: input.referrer || null,
+          success: true,
+          slug,
+          isExistingTool: Boolean(existingTool),
+          grade: scoreResult ? scoreResult.grade : null,
+          score: scoreResult ? scoreResult.score : null,
+          coverage: scoreResult ? scoreResult.coverage : null,
+          durationMs: Date.now() - startTime,
+        });
       }
 
       // 8. Update lastPublicScanAt if tool exists

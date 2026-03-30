@@ -15,12 +15,11 @@
    */
   const normalizeEndpoint = (url) => {
     if (!url) return null;
-    try {
-      const parsed = new URL(url);
-      return (parsed.hostname + parsed.pathname).replace(/\/+$/, '').toLowerCase();
-    } catch {
-      return url.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
-    }
+    // URL constructor unavailable in VM sandbox — use regex
+    return url.toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/[?#].*$/, '')
+      .replace(/\/+$/, '');
   };
 
   return ({ db, config }) => {
@@ -103,13 +102,25 @@
 
       /**
        * Log a scan attempt (successful or denied).
+       * @param {Object} entry - { ip, url, userId, denied, mode, userAgent, referrer, success, slug, isExistingTool, grade, score, coverage, durationMs, errorCode }
        */
-      async log(ip, endpointUrl, userId, denied) {
-        const normalized = normalizeEndpoint(endpointUrl);
+      async log(entry) {
+        const normalized = normalizeEndpoint(entry.url);
         await db.query(
-          `INSERT INTO "PublicScanLog" (ip, "normalizedEndpoint", "userId", denied, "scannedAt")
-           VALUES ($1, $2, $3, $4, NOW())`,
-          [ip, normalized, userId || null, denied || false],
+          `INSERT INTO "PublicScanLog"
+           (ip, "normalizedEndpoint", url, "userId", denied, mode,
+            "userAgent", referrer, success, slug, "isExistingTool",
+            grade, score, coverage, "durationMs", "errorCode", "scannedAt")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())`,
+          [
+            entry.ip, normalized, entry.url, entry.userId || null,
+            entry.denied || false, entry.mode || 'passive',
+            entry.userAgent || null, entry.referrer || null,
+            entry.success ?? null, entry.slug || null,
+            entry.isExistingTool ?? null, entry.grade || null,
+            entry.score ?? null, entry.coverage ?? null,
+            entry.durationMs ?? null, entry.errorCode || null,
+          ],
         );
       },
 

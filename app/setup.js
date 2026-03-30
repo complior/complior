@@ -200,6 +200,8 @@ const TABLE_ORDER = [
   'SyncHistory',
   // Lead capture (no FK dependencies)
   'Lead',
+  // Public scan analytics (no FK dependencies)
+  'PublicScanLog',
 ];
 
 // Migrations — idempotent ALTER TABLEs for existing databases
@@ -334,6 +336,11 @@ const INDEXES = [
   'CREATE INDEX IF NOT EXISTS ' +
     'idx_aitool_source ON "AITool"("source")',
   'CREATE INDEX IF NOT EXISTS idx_lead_source ON "Lead"("source")',
+  // PublicScanLog indexes for rate limiter performance
+  'CREATE INDEX IF NOT EXISTS idx_scanlog_endpoint_time ON "PublicScanLog"("normalizedEndpoint", "scannedAt")',
+  'CREATE INDEX IF NOT EXISTS idx_scanlog_ip_time ON "PublicScanLog"("ip", "scannedAt")',
+  'CREATE INDEX IF NOT EXISTS idx_scanlog_userid_time ON "PublicScanLog"("userId", "scannedAt")',
+  'CREATE INDEX IF NOT EXISTS idx_scanlog_slug ON "PublicScanLog"("slug")',
 ];
 
 const loadSchemas = async () => {
