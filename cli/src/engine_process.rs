@@ -105,6 +105,18 @@ impl EngineManager {
             cmd.env("COMPLIOR_WATCH", "1");
         }
 
+        // Forward LLM API keys from parent env so eval --llm and fix --ai work
+        for key in [
+            "OPENROUTER_API_KEY",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "COMPLIOR_JUDGE_API_KEY",
+        ] {
+            if let Ok(val) = std::env::var(key) {
+                cmd.env(key, val);
+            }
+        }
+
         let child = cmd
             .spawn()
             .map_err(|e| format!("Failed to spawn engine: {e}"))?;

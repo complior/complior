@@ -217,7 +217,7 @@ async fn main() -> color_eyre::Result<()> {
             }
             Some(cli::Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run }) => {
                 if *last {
-                    headless::eval::run_eval_last(*json, *failures, &config).await
+                    headless::eval::run_eval_last(*json, *failures, *ci, *threshold, &config).await
                 } else if *fix {
                     // Run eval then show fix preview
                     let code = headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await;

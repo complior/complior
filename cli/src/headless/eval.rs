@@ -301,7 +301,7 @@ pub async fn run_eval_command(
     }
 }
 
-pub async fn run_eval_last(json: bool, failures_only: bool, config: &TuiConfig) -> i32 {
+pub async fn run_eval_last(json: bool, failures_only: bool, ci: bool, threshold: u32, config: &TuiConfig) -> i32 {
     let client = match ensure_engine(config).await {
         Ok(c) => c,
         Err(code) => return code,
@@ -354,6 +354,11 @@ pub async fn run_eval_last(json: bool, failures_only: bool, config: &TuiConfig) 
                 println!("  {}     {}", dim("Target"), target);
 
                 format_eval_report(&result);
+            }
+
+            // CI mode: check threshold against last result
+            if ci {
+                return print_ci_output(&result, threshold);
             }
             0
         }

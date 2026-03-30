@@ -111,7 +111,8 @@ export const createFixService = (deps: FixServiceDeps) => {
                       const selection = deps.llm.routeModel('document-generation');
                       const model = await deps.llm.getModel(selection.provider, selection.modelId);
                       const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
-                      content = enriched.markdown;
+                      // Remove scaffold marker after successful LLM enrichment — scanner upgrades to 'draft'
+                      content = enriched.markdown.replace(/^<!-- COMPLIOR:SCAFFOLD -->\n/, '');
                     } catch {
                       content = existingContent; // LLM failed — keep existing
                     }
@@ -134,15 +135,15 @@ export const createFixService = (deps: FixServiceDeps) => {
                     const selection = deps.llm.routeModel('document-generation');
                     const model = await deps.llm.getModel(selection.provider, selection.modelId);
                     const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
+                    // LLM enriched → no scaffold marker (scanner classifies as 'draft')
                     content = enriched.markdown;
                   } catch {
-                    content = baseResult.markdown; // LLM failed — use deterministic output
+                    content = `<!-- COMPLIOR:SCAFFOLD -->\n${baseResult.markdown}`;
                   }
                 } else {
-                  content = baseResult.markdown;
+                  // No LLM → mark as scaffold
+                  content = `<!-- COMPLIOR:SCAFFOLD -->\n${baseResult.markdown}`;
                 }
-                // Mark auto-generated scaffolds so L2 classifies them as 'scaffold' quality
-                content = `<!-- COMPLIOR:SCAFFOLD -->\n${content}`;
               }
             } else {
               content = `<!-- COMPLIOR:SCAFFOLD -->\n${template}`;

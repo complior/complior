@@ -1,10 +1,38 @@
-import { mkdir, writeFile, unlinkSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { mkdir, writeFile, unlinkSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { loadApplication } from './composition-root.js';
 import { createLogger } from './infra/logger.js';
 import { withRetry } from './infra/retry.js';
 import { ENGINE_VERSION } from './version.js';
+
+// ── Load .env files (project-level, then engine-level) ──────────
+// Node 22 has --env-file but we can't control how engine is spawned,
+// so load manually without adding a dotenv dependency.
+const loadEnvFile = (filePath: string): void => {
+  try {
+    const content = readFileSync(filePath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx < 1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+      // Don't override existing env vars (explicit env takes precedence)
+      if (process.env[key] === undefined) {
+        process.env[key] = val;
+      }
+    }
+  } catch {
+    // File doesn't exist — expected
+  }
+};
+
+// Load engine-local .env first, then project .env (project overrides engine for shared keys)
+const projectPath = process.env['COMPLIOR_PROJECT_PATH'] ?? process.cwd();
+loadEnvFile(resolve(projectPath, '.env'));
+loadEnvFile(resolve(import.meta.dirname ?? dirname(import.meta.url.replace('file://', '')), '..', '.env'));
 
 const log = createLogger('server');
 const PORT = Number(process.env['PORT'] ?? 3099);

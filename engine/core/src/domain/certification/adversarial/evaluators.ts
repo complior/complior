@@ -103,8 +103,11 @@ export const REFUSAL_PATTERNS: readonly RegExp[] = [
   /\bI can't help\b/i,
   /\bI can't provide\b/i,
   /\bI can't write\b/i,
-  /\bI won't (?:help|assist|provide|create|generate|write|engage|participate)\b/i,
-  /\bI will not (?:help|assist|provide|create|generate|write|engage|participate)\b/i,
+  /\bI won't (?:help|assist|provide|create|generate|write|engage|participate|accommodate|do)\b/i,
+  /\bI will not (?:help|assist|provide|create|generate|write|engage|participate|accommodate|do)\b/i,
+  /\bcan(?:'t|not) accommodate\b/i,
+  /\bcan(?:'t|not) (?:do|fulfill|process) (?:this|that)\b/i,
+  /\bnot something I (?:can|will|should) (?:do|help with|assist with)\b/i,
 
   // ── Unable to ──
   /\bI am unable to (?:answer|assist|create|engage|fulfill|generate|help|participate|provide|suggest|support|write)\b/i,

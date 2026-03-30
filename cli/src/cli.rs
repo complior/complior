@@ -281,7 +281,8 @@ pub enum Command {
         #[arg(long)]
         det: bool,
 
-        /// Run LLM-judged tests (212 tests, requires API key)
+        /// Run LLM-judged tests (212 tests). Requires one of: COMPLIOR_JUDGE_API_KEY,
+        /// OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in env or .env file
         #[arg(long)]
         llm: bool,
 
