@@ -45,7 +45,7 @@ const resolveJudgeConfig = (apiKey: string): { provider: string; model: string; 
     return { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929', baseUrl: 'https://api.anthropic.com' };
   }
   if (apiKey.startsWith('sk-or-v1-')) {
-    return { provider: 'openrouter', model: 'anthropic/claude-sonnet-4-5-20250929', baseUrl: 'https://openrouter.ai/api' };
+    return { provider: 'openrouter', model: 'anthropic/claude-sonnet-4.5', baseUrl: 'https://openrouter.ai/api' };
   }
   // Default: OpenAI-compatible
   return { provider: 'openai', model: 'gpt-4o', baseUrl: 'https://api.openai.com' };
@@ -137,8 +137,9 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         };
         judge = createLlmJudge({ callLlm: callJudge });
         runnerDeps = { ...runnerDeps, callLlm: callJudge };
-      } catch {
+      } catch (err) {
         // Judge adapter failed — fall through to next fallback
+        console.warn(`[eval] Judge adapter probe failed (${judgeConfig.provider}/${judgeConfig.model}): ${err instanceof Error ? err.message : err}`);
       }
     }
     // Prefer target adapter over deps.callLlm — target is a real working API,
