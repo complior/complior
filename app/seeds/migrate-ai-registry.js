@@ -117,8 +117,8 @@ module.exports = async ({ db }) => {
             : String(tool.provider || '{}');
 
           if (existing) {
-            // MERGE: keep DB fields (category, riskLevel, vendorCountry, capabilities, jurisdictions)
-            // RESTORE: assessments, evidence, seo, level, priorityScore, detectionPatterns from JSON
+            // MERGE: keep DB category/riskLevel/vendorCountry
+            // RESTORE: assessments, evidence, seo, level from JSON
             await db.query(
               `UPDATE "RegistryTool" SET
                 evidence = $2,

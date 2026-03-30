@@ -236,12 +236,13 @@
                   }
 
                   // Deployer / provider obligations split
-                  let deployerObligations = [];
-                  let providerObligations = [];
+                  const deployerObls = [];
+                  const providerObls = [];
                   if (scoreResult.obligationDetails && obligationMap) {
                     for (const detail of scoreResult.obligationDetails) {
                       const meta = obligationMap[detail.id];
                       if (!meta) continue;
+                      const signals = detail.evidenceSignals;
                       const entry = {
                         obligation_id: detail.id,
                         title: meta.title || null,
@@ -249,15 +250,17 @@
                         deadline: meta.deadline || null,
                         severity: detail.severity || meta.severity || null,
                         status: detail.derivedStatus || null,
-                        evidence_summary: detail.evidenceSignals && detail.evidenceSignals.length > 0
-                          ? detail.evidenceSignals.join(', ') : null,
+                        evidence_summary: signals && signals.length > 0
+                          ? signals.join(', ') : null,
                       };
-                      if (meta.appliesToRole === 'deployer' || meta.appliesToRole === 'both') deployerObligations.push(entry);
-                      if (meta.appliesToRole === 'provider' || meta.appliesToRole === 'both') providerObligations.push(entry);
+                      const role = meta.appliesToRole;
+                      if (role === 'deployer' || role === 'both') deployerObls.push(entry);
+                      if (role === 'provider' || role === 'both') providerObls.push(entry);
                     }
                   }
 
                   // v3: store full scoring output
+                  // eslint-disable-next-line max-len
                   const existingAssessment = (toolData.assessments && toolData.assessments['eu-ai-act']) || {};
                   const euObj = {
                     ...existingAssessment,
@@ -288,8 +291,8 @@
                   }
 
                   if (publicDocumentation) euObj.publicDocumentation = publicDocumentation;
-                  if (deployerObligations.length > 0) euObj.deployer_obligations = deployerObligations;
-                  if (providerObligations.length > 0) euObj.provider_obligations = providerObligations;
+                  if (deployerObls.length > 0) euObj.deployer_obligations = deployerObls;
+                  if (providerObls.length > 0) euObj.provider_obligations = providerObls;
                   if (scoreResult.risk_reasoning) euObj.risk_reasoning = scoreResult.risk_reasoning;
 
                   await db.query(
@@ -451,12 +454,13 @@
             }
 
             // Deployer / provider obligations split
-            let deployerObligations = [];
-            let providerObligations = [];
+            const deplObls = [];
+            const provObls = [];
             if (scoreResult.obligationDetails && obligationMap) {
               for (const detail of scoreResult.obligationDetails) {
                 const meta = obligationMap[detail.id];
                 if (!meta) continue;
+                const signals = detail.evidenceSignals;
                 const entry = {
                   obligation_id: detail.id,
                   title: meta.title || null,
@@ -464,18 +468,20 @@
                   deadline: meta.deadline || null,
                   severity: detail.severity || meta.severity || null,
                   status: detail.derivedStatus || null,
-                  evidence_summary: detail.evidenceSignals && detail.evidenceSignals.length > 0
-                    ? detail.evidenceSignals.join(', ') : null,
+                  evidence_summary: signals && signals.length > 0
+                    ? signals.join(', ') : null,
                 };
-                if (meta.appliesToRole === 'deployer' || meta.appliesToRole === 'both') deployerObligations.push(entry);
-                if (meta.appliesToRole === 'provider' || meta.appliesToRole === 'both') providerObligations.push(entry);
+                const role = meta.appliesToRole;
+                if (role === 'deployer' || role === 'both') deplObls.push(entry);
+                if (role === 'provider' || role === 'both') provObls.push(entry);
               }
             }
 
+            // eslint-disable-next-line max-len
             const existingAssmt = (toolData.assessments && toolData.assessments['eu-ai-act']) || {};
             const euObj = {
               ...existingAssmt,
-              score: scoreResult && scoreResult.score !== undefined ? scoreResult.score : null,
+              score: scoreResult.score !== undefined ? scoreResult.score : null,
               coverage: scoreResult.coverage ?? 0,
               transparencyGrade: scoreResult.transparencyGrade || scoreResult.grade || null,
               scored_at: new Date().toISOString(),
@@ -501,8 +507,8 @@
             }
 
             if (publicDocumentation) euObj.publicDocumentation = publicDocumentation;
-            if (deployerObligations.length > 0) euObj.deployer_obligations = deployerObligations;
-            if (providerObligations.length > 0) euObj.provider_obligations = providerObligations;
+            if (deplObls.length > 0) euObj.deployer_obligations = deplObls;
+            if (provObls.length > 0) euObj.provider_obligations = provObls;
             if (scoreResult.risk_reasoning) euObj.risk_reasoning = scoreResult.risk_reasoning;
 
             await db.query(

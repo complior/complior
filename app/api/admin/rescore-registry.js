@@ -192,7 +192,9 @@
             if (providerObls.length > 0) euAssessmentObj.provider_obligations = providerObls;
           }
 
-          if (scoreResult.risk_reasoning) euAssessmentObj.risk_reasoning = scoreResult.risk_reasoning;
+          if (scoreResult.risk_reasoning) {
+            euAssessmentObj.risk_reasoning = scoreResult.risk_reasoning;
+          }
 
           await db.query(
             `UPDATE "RegistryTool"
