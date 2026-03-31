@@ -91,7 +91,8 @@ async fn main() -> color_eyre::Result<()> {
             let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .parent()
                 .unwrap_or_else(|| std::path::Path::new("."));
-            let project_path = std::env::current_dir().unwrap_or_default();
+            let project_path = cli::explicit_project_path(&parsed_cli)
+                .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
             let mut mgr = EngineManager::new(workspace_root).with_project_path(&project_path);
             // Read-only commands (doctor) skip PID file to avoid creating .complior/
             let start_result = if cli::wants_pid_file(&parsed_cli) {

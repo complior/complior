@@ -948,6 +948,22 @@ pub fn needs_engine(cli: &Cli) -> bool {
     )
 }
 
+/// Extract the explicit project path from CLI command (if provided).
+/// Used to start the engine with the correct project context (API keys, config).
+pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
+    let raw = match &cli.command {
+        Some(Command::Scan { path, .. })
+        | Some(Command::Fix { path, .. })
+        | Some(Command::Init { path, .. })
+        | Some(Command::Report { path, .. }) => path.as_deref(),
+        _ => None,
+    };
+    raw.map(|p| {
+        let pb = std::path::PathBuf::from(p);
+        if pb.is_absolute() { pb } else { std::env::current_dir().unwrap_or_default().join(pb) }
+    })
+}
+
 /// Returns true if the ephemeral engine should write a PID file to `.complior/`.
 /// Read-only commands like `doctor` should NOT create `.complior/` as a side effect.
 pub fn wants_pid_file(cli: &Cli) -> bool {
