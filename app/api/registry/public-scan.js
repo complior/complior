@@ -90,6 +90,9 @@
         })
         : null,
       rateLimiter,
+      docGrader: domain.registry['public-doc-grader']
+        ? domain.registry['public-doc-grader']()
+        : null,
       obligationMap: config.obligationMap || {},
     }, {
       url,

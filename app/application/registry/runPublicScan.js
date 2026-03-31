@@ -24,6 +24,23 @@
   /**
    * Try to find existing registry tool by URL or create a placeholder slug.
    */
+  /**
+   * Race a promise against a timeout. Returns { result, timedOut }.
+   */
+  const withTimeout = (promise, ms) => {
+    let timer;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve({ result: null, timedOut: true }), ms);
+    });
+    const wrapped = promise
+      .then((result) => ({ result, timedOut: false }))
+      .catch((err) => ({ result: null, timedOut: false, error: err }));
+    return Promise.race([wrapped, timeout]).finally(() => clearTimeout(timer));
+  };
+
+  // Global timeout for passive scan (Caddy proxy_read_timeout is ~60s)
+  const PASSIVE_SCAN_TIMEOUT_MS = 25000;
+
   const findOrCreateSlug = (url) => {
     // URL constructor unavailable in VM sandbox — use regex
     const match = url.match(/^https?:\/\/([^/?#]+)/i);
@@ -45,7 +62,7 @@
     async execute({
       db, console,
       passiveScanner, llmTester, evidenceAnalyzer, scorer,
-      rateLimiter,
+      rateLimiter, docGrader,
     }, input) {
       const { url, apiKey, ip } = input;
       const userId = input.userId || null;
@@ -97,13 +114,20 @@
         }
       }
 
-      // 3. Mode A: Passive scan (always runs for URLs)
+      // 3. Mode A: Passive scan (always runs for URLs, with global timeout)
       if (passiveScanner) {
         try {
-          const scanResult = await passiveScanner.scan({ website: url, slug });
-          if (scanResult) {
-            evidence.passive_scan = scanResult;
-            enrichmentLog.push(`passive_scan: ${scanResult.pages_fetched} pages`);
+          const scanOutcome = await withTimeout(
+            passiveScanner.scan({ website: url, slug }),
+            PASSIVE_SCAN_TIMEOUT_MS,
+          );
+          if (scanOutcome.timedOut) {
+            enrichmentLog.push(`passive_scan: timeout after ${PASSIVE_SCAN_TIMEOUT_MS}ms`);
+          } else if (scanOutcome.error) {
+            enrichmentLog.push(`passive_scan: error - ${scanOutcome.error.message}`);
+          } else if (scanOutcome.result) {
+            evidence.passive_scan = scanOutcome.result;
+            enrichmentLog.push(`passive_scan: ${scanOutcome.result.pages_fetched} pages`);
           }
         } catch (err) {
           enrichmentLog.push(`passive_scan: error - ${err.message}`);
@@ -174,7 +198,25 @@
         }
       }
 
+      // 6b. Run doc grader (always, independent of scorer)
+      let docGradeResult = null;
+      if (docGrader) {
+        try {
+          docGradeResult = docGrader.grade(toolForScoring);
+          enrichmentLog.push(`doc_grader: grade ${docGradeResult.grade}`);
+        } catch (err) {
+          enrichmentLog.push(`doc_grader: error - ${err.message}`);
+        }
+      }
+
       const durationMs = Date.now() - startTime;
+
+      // Extract transparency from scorer (always computed, even when score=null)
+      const transparencyGrade = scoreResult ? (scoreResult.transparencyGrade || null) : null;
+      const transparencyScore = scoreResult ? (scoreResult.transparencyScore || null) : null;
+      const scoreReason = (scoreResult && scoreResult.score === null)
+        ? (scoreResult.reason || null)
+        : null;
 
       // 7. Log the scan (rich entry for analytics)
       if (rateLimiter) {
@@ -187,10 +229,10 @@
           success: true,
           slug,
           isExistingTool: Boolean(existingTool),
-          grade: scoreResult ? scoreResult.grade : null,
+          grade: scoreResult ? scoreResult.grade : (docGradeResult ? docGradeResult.grade : null),
           score: scoreResult ? scoreResult.score : null,
           coverage: scoreResult ? scoreResult.coverage : null,
-          durationMs: Date.now() - startTime,
+          durationMs,
         });
       }
 
@@ -218,15 +260,27 @@
             failed: evidence.llm_tests.filter((t) => !t.passed).length,
           } : null,
         },
+        docGrade: docGradeResult ? {
+          grade: docGradeResult.grade,
+          weightedPercent: docGradeResult.weightedPercent,
+          requiredFound: docGradeResult.requiredFound,
+          requiredTotal: docGradeResult.requiredTotal,
+          bpFound: docGradeResult.bpFound,
+          bpTotal: docGradeResult.bpTotal,
+          items: docGradeResult.items,
+          checklist: docGradeResult.checklist,
+        } : null,
+        transparencyGrade,
+        transparencyScore,
         score: (scoreResult && scoreResult.score !== null) ? {
           value: scoreResult.score,
           grade: scoreResult.grade,
           zone: scoreResult.zone,
           coverage: scoreResult.coverage,
-          transparencyGrade: scoreResult.transparencyGrade,
           confidence: scoreResult.confidence,
           scanCoverage: scoreResult.scanCoverage || null,
         } : null,
+        scoreReason,
         enrichmentLog,
         durationMs,
         scannedAt: evidence.enriched_at,

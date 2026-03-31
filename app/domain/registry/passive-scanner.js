@@ -48,26 +48,32 @@
     privacy: [
       '/privacy', '/privacy-policy', '/policies/privacy-policy',
       '/legal/privacy', '/legal/privacy-policy', '/privacypolicy',
+      '/legal', '/data-privacy', '/data-protection',
     ],
     terms: [
       '/terms', '/terms-of-service', '/tos', '/legal/terms',
       '/policies/terms-of-use', '/terms-of-use',
+      '/legal/terms-of-service', '/eula',
     ],
     responsible_ai: [
       '/responsible-ai', '/safety', '/trust', '/ai-safety',
       '/responsible-use', '/ethics', '/ai-principles',
       '/trust-center', '/responsibility',
+      '/about/ai', '/ai-ethics', '/responsible',
     ],
     eu_ai_act: [
       '/eu-ai-act', '/ai-act', '/compliance', '/compliance/eu-ai-act',
       '/legal/ai-act', '/trust/eu-ai-act',
+      '/ai-governance', '/regulation',
     ],
     model_card: [
       '/model-card', '/research', '/docs/model-card',
       '/technical-report', '/documentation', '/models',
+      '/system-card', '/safety-report', '/docs',
     ],
     about: [
       '/about', '/about-us', '/company', '/team',
+      '/about/company',
     ],
   };
 
@@ -433,16 +439,90 @@
   // ── Known Provider Domain Mapping ──────────────────────────────────
 
   const KNOWN_PROVIDER_DOMAINS = {
+    // OpenAI
     'chat.openai.com': 'openai.com',
     'chatgpt.com': 'openai.com',
+    'platform.openai.com': 'openai.com',
+    'api.openai.com': 'openai.com',
+    'open.ai': 'openai.com',
+    // Microsoft
     'copilot.microsoft.com': 'microsoft.com',
+    'bing.com': 'microsoft.com',
+    'azure.microsoft.com': 'microsoft.com',
+    // Google
     'gemini.google.com': 'google.com',
     'bard.google.com': 'google.com',
+    'ai.google': 'google.com',
+    'cloud.google.com': 'google.com',
+    'deepmind.google': 'google.com',
+    'deepmind.com': 'google.com',
+    // Anthropic
     'claude.ai': 'anthropic.com',
+    'console.anthropic.com': 'anthropic.com',
+    'api.anthropic.com': 'anthropic.com',
+    // Mistral
     'chat.mistral.ai': 'mistral.ai',
     'le-chat.mistral.ai': 'mistral.ai',
+    'console.mistral.ai': 'mistral.ai',
+    // Meta
+    'ai.meta.com': 'meta.com',
+    'llama.meta.com': 'meta.com',
+    // GitHub / Dev tools
     'github.com': 'github.com',
+    'github.copilot.com': 'github.com',
+    // Hugging Face
     'huggingface.co': 'huggingface.co',
+    // Stability AI
+    'dreamstudio.ai': 'stability.ai',
+    'clipdrop.co': 'stability.ai',
+    // Midjourney
+    'www.midjourney.com': 'midjourney.com',
+    // Cohere
+    'dashboard.cohere.com': 'cohere.com',
+    'coral.cohere.com': 'cohere.com',
+    // Perplexity
+    'www.perplexity.ai': 'perplexity.ai',
+    // Jasper
+    'app.jasper.ai': 'jasper.ai',
+    // Notion
+    'www.notion.so': 'notion.so',
+    'notion.so': 'notion.so',
+    // Grammarly
+    'app.grammarly.com': 'grammarly.com',
+    // Canva
+    'www.canva.com': 'canva.com',
+    // Salesforce
+    'einstein.ai': 'salesforce.com',
+    // Adobe
+    'firefly.adobe.com': 'adobe.com',
+    // Runway
+    'app.runwayml.com': 'runwayml.com',
+    // ElevenLabs
+    'elevenlabs.io': 'elevenlabs.io',
+    // Replicate
+    'replicate.com': 'replicate.com',
+    // Databricks
+    'www.databricks.com': 'databricks.com',
+    // DeepSeek
+    'chat.deepseek.com': 'deepseek.com',
+    // xAI
+    'grok.x.ai': 'x.ai',
+    'x.ai': 'x.ai',
+    // Inflection
+    'pi.ai': 'inflection.ai',
+    // Character AI
+    'character.ai': 'character.ai',
+    'beta.character.ai': 'character.ai',
+    // Together AI
+    'api.together.xyz': 'together.ai',
+    // Groq
+    'console.groq.com': 'groq.com',
+    // Writer
+    'app.writer.com': 'writer.com',
+    // Synthesia
+    'www.synthesia.io': 'synthesia.io',
+    // Descript
+    'www.descript.com': 'descript.com',
   };
 
   const getProviderDomain = (toolUrl) => {
