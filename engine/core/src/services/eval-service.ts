@@ -26,13 +26,9 @@ import type { EvalFinding } from '../domain/eval/eval-to-findings.js';
 import type { LoggerPort } from '../ports/logger.port.js';
 import { createLogger } from '../infra/logger.js';
 
-// ── Judge model constants ────────────────────────────────────────
+// ── Judge model config (externalized per §9 CLAUDE.md) ───────────
 
-const JUDGE_MODELS = {
-  anthropic: { model: 'claude-sonnet-4-20250514', baseUrl: 'https://api.anthropic.com' },
-  openrouter: { model: 'anthropic/claude-sonnet-4.5', baseUrl: 'https://openrouter.ai/api' },
-  openai: { model: 'gpt-4o', baseUrl: 'https://api.openai.com' },
-} as const;
+import JUDGE_MODELS from '../../data/eval/judge-models.json' with { type: 'json' };
 
 // ── Service deps ─────────────────────────────────────────────────
 
@@ -126,7 +122,10 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     // callLlm wrapper uses fail-fast: if dedicated judge fails on first call,
     // automatically falls back to target adapter for all subsequent calls.
     let judge: EvalJudge | undefined;
-    const judgeApiKey = process.env.COMPLIOR_JUDGE_API_KEY;
+    const judgeApiKey = process.env.COMPLIOR_JUDGE_API_KEY
+      ?? process.env.OPENROUTER_API_KEY
+      ?? process.env.ANTHROPIC_API_KEY
+      ?? process.env.OPENAI_API_KEY;
 
     // Build target-based callLlm (always available as fallback)
     const callLlmViaTarget = (options.apiKey && options.model)

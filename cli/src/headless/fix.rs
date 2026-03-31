@@ -112,7 +112,13 @@ pub async fn run_headless_fix(
         if use_ai && !json {
             println!("AI-enriched mode: documents will be enhanced with LLM-generated content\n");
         }
-        match client.post_json("/fix/apply-all", &body).await {
+        // LLM enrichment can take minutes for multiple documents — use long timeout
+        let fix_result = if use_ai {
+            client.post_json_long("/fix/apply-all", &body).await
+        } else {
+            client.post_json("/fix/apply-all", &body).await
+        };
+        match fix_result {
             Ok(resp) => {
                 if json {
                     println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());

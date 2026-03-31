@@ -105,16 +105,45 @@ impl EngineManager {
             cmd.env("COMPLIOR_WATCH", "1");
         }
 
-        // Forward LLM API keys from parent env so eval --llm and fix --ai work
-        for key in [
+        // Forward LLM API keys so eval --llm and fix --ai work.
+        // Source 1: project's .complior/.env (user's API keys)
+        // Source 2: parent process env (CI, terminal export, etc.)
+        // Project .complior/.env has priority — user's explicit config wins.
+        let mut forwarded_keys: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let api_key_names = [
             "OPENROUTER_API_KEY",
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
             "COMPLIOR_JUDGE_API_KEY",
-        ] {
+        ];
+
+        // Load from parent env first (lower priority)
+        for key in &api_key_names {
             if let Ok(val) = std::env::var(key) {
-                cmd.env(key, val);
+                forwarded_keys.insert(key.to_string(), val);
             }
+        }
+
+        // Load from project .complior/.env (higher priority — overwrites parent env)
+        if let Some(ref pp) = self.project_path {
+            let env_file = pp.join(".complior").join(".env");
+            if let Ok(content) = std::fs::read_to_string(&env_file) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() || trimmed.starts_with('#') { continue; }
+                    if let Some(eq_pos) = trimmed.find('=') {
+                        let key = trimmed[..eq_pos].trim();
+                        let val = trimmed[eq_pos + 1..].trim().trim_matches(|c| c == '"' || c == '\'');
+                        if api_key_names.contains(&key) {
+                            forwarded_keys.insert(key.to_string(), val.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        for (key, val) in &forwarded_keys {
+            cmd.env(key, val);
         }
 
         let child = cmd

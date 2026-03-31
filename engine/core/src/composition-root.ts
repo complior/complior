@@ -66,7 +66,7 @@ import { simulateActions } from './domain/whatif/simulate-actions.js';
 import { compareSeverity } from './types/common.types.js';
 import { autoDetect } from './onboarding/auto-detect.js';
 import { createInitialState as createOnboardingInitialState } from './domain/onboarding/guided-onboarding.js';
-import { complior } from '@complior/sdk';
+
 
 export interface ApplicationState {
   readonly regulationData: RegulationData;
@@ -142,7 +142,7 @@ export const loadApplication = async (): Promise<Application> => {
         const { generateText } = await import('ai');
         const routing = llm.routeModel('classify');
         const model = await llm.getModel(routing.provider, routing.modelId);
-        const result = await complior(generateText)({ model, prompt });
+        const result = await generateText({ model, prompt });
         return {
           text: result.text,
           inputTokens: (result.usage as Record<string, number>)?.promptTokens ?? 0,
@@ -619,7 +619,7 @@ export const loadApplication = async (): Promise<Application> => {
       const { generateText } = await import('ai');
       const routing = llm.routeModel('classify');
       const model = await llm.getModel(routing.provider, routing.modelId);
-      const result = await complior(generateText)({ model, prompt, system: systemPrompt });
+      const result = await generateText({ model, prompt, system: systemPrompt });
       return result.text;
     } catch {
       return '[ERROR] LLM unavailable';

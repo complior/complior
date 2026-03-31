@@ -1,14 +1,13 @@
 import type { LanguageModel } from 'ai';
 import type { LlmPort, ProviderName, ProviderInfo, ModelSelection } from '../ports/llm.port.js';
 import { LLMError } from '../types/errors.js';
-import { complior } from '@complior/sdk';
 import { routeModelForProvider } from '../llm/routing/model-routing.js';
 import { createLogger } from './logger.js';
 
 const PROVIDERS: readonly ProviderInfo[] = [
+  { name: 'openrouter', available: false, envVar: 'OPENROUTER_API_KEY' },
   { name: 'openai', available: false, envVar: 'OPENAI_API_KEY' },
   { name: 'anthropic', available: false, envVar: 'ANTHROPIC_API_KEY' },
-  { name: 'openrouter', available: false, envVar: 'OPENROUTER_API_KEY' },
 ];
 
 const log = createLogger('llm-adapter');
@@ -58,12 +57,7 @@ export const createLlmAdapter = (): LlmPort => {
         });
         // OpenRouter supports Chat Completions API, not OpenAI Responses API.
         // Use .chat() explicitly — default client() uses Responses API in SDK v2.
-        try {
-          return complior(client).chat(modelId);
-        } catch (err) {
-          log.error('LLM call failed:', err);
-          throw err;
-        }
+        return client.chat(modelId);
       }
       default:
         throw new LLMError(`Unknown provider: ${String(provider)}`);

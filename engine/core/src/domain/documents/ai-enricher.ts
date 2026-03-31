@@ -9,7 +9,6 @@ import type { LanguageModel } from 'ai';
 import type { AgentPassport } from '../../types/passport.types.js';
 import type { DocResult } from './document-generator.js';
 import { extractSectionContents, measureSemanticDepth } from '../scanner/layers/layer2-parsing.js';
-import { complior } from '@complior/sdk';
 
 export interface AiEnrichInput {
   readonly baseResult: DocResult;
@@ -137,7 +136,7 @@ ${baseResult.markdown}
 Return the complete improved document (full Markdown). Preserve all existing content. Strengthen the weak sections identified above with specific details, metrics, and legal references.`;
 
   try {
-    const result = await complior(generateText)({ model, system: systemPrompt, prompt });
+    const result = await generateText({ model, system: systemPrompt, prompt });
     const marker = `\n\n<!-- complior:reviewed ${new Date().toISOString()} -->`;
     const enrichedMarkdown = result.text.trim() + marker;
 
@@ -153,12 +152,8 @@ Return the complete improved document (full Markdown). Preserve all existing con
       aiEnriched: true as const,
       aiFieldsCount,
     });
-  } catch {
-    // LLM failure — return base result without enrichment
-    return Object.freeze({
-      ...baseResult,
-      aiEnriched: true as const,
-      aiFieldsCount: 0,
-    });
+  } catch (err) {
+    // Re-throw so caller (fix-service) can handle and log the error
+    throw new Error(`AI enrichment failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 };

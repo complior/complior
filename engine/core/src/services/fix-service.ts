@@ -113,7 +113,8 @@ export const createFixService = (deps: FixServiceDeps) => {
                       const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
                       // Remove scaffold marker after successful LLM enrichment — scanner upgrades to 'draft'
                       content = enriched.markdown.replace(/^<!-- COMPLIOR:SCAFFOLD -->\n/, '');
-                    } catch {
+                    } catch (err) {
+                      events.emit('log', { level: 'warn', message: `LLM enrichment failed: ${err instanceof Error ? err.message : err}` });
                       content = existingContent; // LLM failed — keep existing
                     }
                   } else {
@@ -137,7 +138,8 @@ export const createFixService = (deps: FixServiceDeps) => {
                     const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
                     // LLM enriched → no scaffold marker (scanner classifies as 'draft')
                     content = enriched.markdown;
-                  } catch {
+                  } catch (err) {
+                    events.emit('log', { level: 'warn', message: `LLM enrichment failed: ${err instanceof Error ? err.message : err}` });
                     content = `<!-- COMPLIOR:SCAFFOLD -->\n${baseResult.markdown}`;
                   }
                 } else {
