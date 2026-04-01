@@ -23,7 +23,7 @@ pub const GENERATORS: &[ReportGenerator] = &[
 ];
 
 /// Map zone to human-readable label.
-pub fn zone_label(zone: crate::types::Zone) -> &'static str {
+pub const fn zone_label(zone: crate::types::Zone) -> &'static str {
     match zone {
         crate::types::Zone::Green => "GREEN (Compliant)",
         crate::types::Zone::Yellow => "YELLOW (Partial)",

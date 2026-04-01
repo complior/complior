@@ -63,11 +63,11 @@ struct ThemeEntry {
     user_msg_bg: [u8; 3],
 }
 
-fn default_user_msg_bg() -> [u8; 3] {
+const fn default_user_msg_bg() -> [u8; 3] {
     [40, 42, 54]
 }
 
-fn rgb(c: [u8; 3]) -> Color {
+const fn rgb(c: [u8; 3]) -> Color {
     Color::Rgb(c[0], c[1], c[2])
 }
 
@@ -78,7 +78,7 @@ fn load_theme_entries() -> Vec<ThemeEntry> {
 
 impl ThemeColors {
     /// 8 palette colors for the preview bar in Theme Picker.
-    pub fn palette_colors(&self) -> [Color; 8] {
+    pub const fn palette_colors(&self) -> [Color; 8] {
         [
             self.bg, self.fg, self.accent, self.border,
             self.zone_green, self.zone_yellow, self.zone_red, self.muted,
@@ -188,9 +188,7 @@ pub fn init_theme(name: &str) {
 
 pub fn theme() -> ThemeColors {
     THEME
-        .get()
-        .map(|m| m.lock().expect("theme lock").clone())
-        .unwrap_or_else(ThemeColors::dark)
+        .get().map_or_else(ThemeColors::dark, |m| m.lock().expect("theme lock").clone())
 }
 
 pub fn current_theme_name() -> String {

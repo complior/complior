@@ -64,16 +64,16 @@ async fn run_models(json: bool, _path: Option<&str>, config: &TuiConfig) -> i32 
 fn print_supply_chain_human(value: &serde_json::Value) {
     println!("\n=== Supply Chain Audit ===\n");
 
-    if let Some(total) = value.get("totalDependencies").and_then(|v| v.as_u64()) {
+    if let Some(total) = value.get("totalDependencies").and_then(serde_json::Value::as_u64) {
         println!("Total dependencies: {total}");
     }
-    if let Some(ai) = value.get("aiSdkCount").and_then(|v| v.as_u64()) {
+    if let Some(ai) = value.get("aiSdkCount").and_then(serde_json::Value::as_u64) {
         println!("AI SDK packages:   {ai}");
     }
-    if let Some(banned) = value.get("bannedCount").and_then(|v| v.as_u64()) {
+    if let Some(banned) = value.get("bannedCount").and_then(serde_json::Value::as_u64) {
         println!("Banned packages:   {banned}");
     }
-    if let Some(score) = value.get("riskScore").and_then(|v| v.as_u64()) {
+    if let Some(score) = value.get("riskScore").and_then(serde_json::Value::as_u64) {
         let indicator = if score == 0 {
             "LOW"
         } else if score <= 20 {
@@ -108,8 +108,8 @@ fn print_supply_chain_human(value: &serde_json::Value) {
     }
 
     // Print detected models
-    if let Some(models) = value.get("detectedModels").and_then(|v| v.as_array()) {
-        if !models.is_empty() {
+    if let Some(models) = value.get("detectedModels").and_then(|v| v.as_array())
+        && !models.is_empty() {
             println!("\n--- Detected Models ---\n");
             for m in models {
                 if let Some(id) = m.as_str() {
@@ -117,11 +117,10 @@ fn print_supply_chain_human(value: &serde_json::Value) {
                 }
             }
         }
-    }
 
     // Print registry cards
-    if let Some(cards) = value.get("registryCards").and_then(|v| v.as_array()) {
-        if !cards.is_empty() {
+    if let Some(cards) = value.get("registryCards").and_then(|v| v.as_array())
+        && !cards.is_empty() {
             println!("\n--- Registry Cards ---\n");
             for card in cards {
                 let name = card.get("name").and_then(|v| v.as_str()).unwrap_or("?");
@@ -136,7 +135,6 @@ fn print_supply_chain_human(value: &serde_json::Value) {
                 println!("  {name} ({provider}) — {license}{systemic_tag}");
             }
         }
-    }
 
     println!();
 }
@@ -178,7 +176,7 @@ fn print_models_human(value: &serde_json::Value) {
         }
     }
 
-    if let Some(total) = value.get("total").and_then(|v| v.as_u64()) {
+    if let Some(total) = value.get("total").and_then(serde_json::Value::as_u64) {
         println!("Total: {total} model(s)\n");
     }
 }

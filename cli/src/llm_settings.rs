@@ -20,7 +20,7 @@ pub enum Provider {
 pub const PROVIDERS: [Provider; 3] = [Provider::Anthropic, Provider::OpenAI, Provider::OpenRouter];
 
 impl Provider {
-    pub fn name(self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::Anthropic => "anthropic",
             Self::OpenAI => "openai",
@@ -28,7 +28,7 @@ impl Provider {
         }
     }
 
-    pub fn display(self) -> &'static str {
+    pub const fn display(self) -> &'static str {
         match self {
             Self::Anthropic => "Anthropic",
             Self::OpenAI => "OpenAI",
@@ -36,7 +36,7 @@ impl Provider {
         }
     }
 
-    pub fn env_var(self) -> &'static str {
+    pub const fn env_var(self) -> &'static str {
         match self {
             Self::Anthropic => "ANTHROPIC_API_KEY",
             Self::OpenAI => "OPENAI_API_KEY",

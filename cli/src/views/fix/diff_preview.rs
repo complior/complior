@@ -125,9 +125,9 @@ pub(super) fn render_diff_preview(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     // If nothing is staged, show the currently selected item as fallback
-    if staged_items.is_empty() {
-        if let Some(item) = fix.fixable_findings.get(fix.selected_index) {
-            if let Some(finding) = scan.findings.get(item.finding_index) {
+    if staged_items.is_empty()
+        && let Some(item) = fix.fixable_findings.get(fix.selected_index)
+            && let Some(finding) = scan.findings.get(item.finding_index) {
                 lines.push(Line::from(Span::styled(
                     format!("  {}", item.message),
                     Style::default().fg(t.fg).add_modifier(Modifier::BOLD),
@@ -150,8 +150,6 @@ pub(super) fn render_diff_preview(frame: &mut Frame, area: Rect, app: &App) {
                     render_fix_text(&mut lines, fix_text, finding.finding_type(), &t);
                 }
             }
-        }
-    }
 
     frame.render_widget(
         Paragraph::new(lines).wrap(Wrap { trim: false }),

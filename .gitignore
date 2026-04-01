@@ -37,3 +37,10 @@ engine/core/engine.log
 tmp/
 *.tmp
 coverage/
+
+# Claude Code workspace (user-specific, ephemeral)
+/.claude/
+
+# Generated reports & exports (timestamp-specific)
+COMPLIANCE-REPORT-*.md
+*-passport-export.json

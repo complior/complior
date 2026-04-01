@@ -1,5 +1,5 @@
 mod detail;
-pub(crate) mod explain;
+pub mod explain;
 mod preview;
 mod progress;
 mod render;
@@ -8,7 +8,7 @@ mod shared;
 mod tests;
 
 // Re-export pub(crate) shared rendering helpers used by the fix view.
-pub(crate) use shared::{render_code_block, render_fix_diff, render_fix_text};
+pub use shared::{render_code_block, render_fix_diff, render_fix_text};
 
 // Re-export public items for external use.
 pub use explain::explain_finding;
@@ -50,7 +50,7 @@ pub enum FindingsFilter {
 }
 
 impl FindingsFilter {
-    pub fn from_key(key: char) -> Option<Self> {
+    pub const fn from_key(key: char) -> Option<Self> {
         match key {
             'a' => Some(Self::All),
             'c' => Some(Self::Critical),
@@ -61,7 +61,7 @@ impl FindingsFilter {
         }
     }
 
-    pub fn matches(self, severity: Severity) -> bool {
+    pub const fn matches(self, severity: Severity) -> bool {
         match self {
             Self::All => true,
             Self::Critical => matches!(severity, Severity::Critical),
@@ -161,8 +161,8 @@ impl ScanViewState {
 /// Sort filtered findings to match the display order used by `render_findings_list`.
 /// When passports are loaded (non-empty file→agent map), sorts by agent name then severity.
 /// Otherwise sorts by severity only.
-pub(super) fn sort_findings_for_display<'a>(
-    filtered: &mut [&'a crate::types::Finding],
+pub(super) fn sort_findings_for_display(
+    filtered: &mut [&crate::types::Finding],
     file_agent_map: &[(String, String)],
 ) {
     if file_agent_map.is_empty() {
@@ -241,7 +241,7 @@ pub fn render_scan_view(frame: &mut Frame, area: Rect, app: &App) {
 
     // Main content: horizontal split -- findings list (left) + preview panel (right)
     if app.last_scan.is_some() {
-        let left_pct = u16::from(app.scan_view.scan_split_pct.clamp(25, 75));
+        let left_pct = app.scan_view.scan_split_pct.clamp(25, 75);
         let right_pct = 100 - left_pct;
         let split = Layout::default()
             .direction(Direction::Horizontal)

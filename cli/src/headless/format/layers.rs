@@ -4,20 +4,20 @@ use crate::types::{CheckResultType, Finding, Severity};
 
 // ── Constants ────────────────────────────────────────────────────
 
-pub(crate) const SEP_WIDTH: usize = 65;
+pub const SEP_WIDTH: usize = 65;
 
-/// Dynamic separator width: terminal width capped at 80, falling back to SEP_WIDTH.
-pub(crate) fn display_width() -> usize {
+/// Dynamic separator width: terminal width capped at 80, falling back to `SEP_WIDTH`.
+pub fn display_width() -> usize {
     crossterm::terminal::size()
         .map(|(cols, _)| (cols as usize).min(80))
         .unwrap_or(SEP_WIDTH)
 }
-pub(crate) const BAR_WIDTH: usize = 20;
+pub const BAR_WIDTH: usize = 20;
 /// Maximum medium-severity findings to display.
-pub(crate) const MAX_MEDIUM: usize = 5;
+pub const MAX_MEDIUM: usize = 5;
 
 /// Base layer definitions: (tag, label). Single source of truth for scan info + layer results.
-pub(crate) const BASE_LAYERS: &[(&str, &str)] = &[
+pub const BASE_LAYERS: &[(&str, &str)] = &[
     ("L1", "File Presence"),
     ("L2", "Document Structure"),
     ("L3", "Dependencies"),
@@ -29,14 +29,14 @@ pub(crate) const BASE_LAYERS: &[(&str, &str)] = &[
 ];
 
 /// Deep layer definitions for Layer Results section.
-pub(crate) const DEEP_LAYERS: &[(&str, &str)] = &[
+pub const DEEP_LAYERS: &[(&str, &str)] = &[
     ("L4+", "Ext. Code Analysis"),
     ("L3+", "Model Security"),
     ("NHI+", "Ext. Secret Detection"),
 ];
 
 /// Deep layer definitions for scan info header: (tag, tool name).
-pub(crate) const DEEP_TOOL_NAMES: &[(&str, &str)] = &[
+pub const DEEP_TOOL_NAMES: &[(&str, &str)] = &[
     ("L4+", "Semgrep"),
     ("L4+", "Bandit"),
     ("L3+", "ModelScan"),
@@ -45,15 +45,15 @@ pub(crate) const DEEP_TOOL_NAMES: &[(&str, &str)] = &[
 
 // ── Layer Inference ──────────────────────────────────────────────
 
-pub(crate) struct LayerResult {
+pub struct LayerResult {
     pub id: String,
     pub label: String,
     pub status: &'static str,
     pub summary: String,
 }
 
-/// Infer the layer tag for a finding based on its check_id prefix.
-pub(crate) fn infer_layer_tag(check_id: &str) -> &'static str {
+/// Infer the layer tag for a finding based on its `check_id` prefix.
+pub fn infer_layer_tag(check_id: &str) -> &'static str {
     if check_id.starts_with("l4-nhi-") { return "NHI"; }
     if check_id.starts_with("ext-semgrep-") { return "L4+"; }
     if check_id.starts_with("ext-bandit-") { return "L4+"; }
@@ -72,7 +72,7 @@ pub(crate) fn infer_layer_tag(check_id: &str) -> &'static str {
 ///
 /// Uses `infer_layer_tag` as the single source of truth for layer classification,
 /// then groups findings by tag and computes status per layer.
-pub(crate) fn infer_layer_results(findings: &[Finding], tier: Option<u8>) -> Vec<LayerResult> {
+pub fn infer_layer_results(findings: &[Finding], tier: Option<u8>) -> Vec<LayerResult> {
     let all_layers = if tier == Some(2) {
         [BASE_LAYERS, DEEP_LAYERS].concat()
     } else {
@@ -130,7 +130,7 @@ fn compute_layer_status(findings: &[&Finding]) -> (&'static str, String) {
 }
 
 /// Multi-key finding sort: severity → layer order → confidence (desc).
-pub(crate) fn sort_findings_full(findings: &mut [&Finding]) {
+pub fn sort_findings_full(findings: &mut [&Finding]) {
     findings.sort_by(|a, b| {
         a.severity
             .sort_key()
@@ -162,7 +162,7 @@ fn layer_order(check_id: &str) -> u8 {
 }
 
 /// Apply display limits: all critical/high, max 5 medium, no low/info.
-pub(crate) fn apply_finding_limits<'a>(sorted: &[&'a Finding]) -> Vec<&'a Finding> {
+pub fn apply_finding_limits<'a>(sorted: &[&'a Finding]) -> Vec<&'a Finding> {
     let mut result = Vec::new();
     let mut medium_count = 0;
     for f in sorted {

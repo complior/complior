@@ -193,12 +193,11 @@ impl App {
             }
             Some("view") => {
                 let num_str = parts.get(1).unwrap_or(&"").trim();
-                if let Ok(num) = num_str.parse::<u8>() {
-                    if let Some(view) = ViewState::from_key(num) {
+                if let Ok(num) = num_str.parse::<u8>()
+                    && let Some(view) = ViewState::from_key(num) {
                         self.view_state = view;
                         return None;
                     }
-                }
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
                     "Usage: /view <1-9> (Dashboard/Scan/Fix/Passport/Oblig/Timeline/Report/Log/Chat)"
@@ -346,7 +345,7 @@ impl App {
     pub(crate) fn handle_colon_command(&mut self, input: &str) -> Option<AppCommand> {
         let parts: Vec<&str> = input.splitn(2, ' ').collect();
         match parts.first().copied() {
-            Some("scan") | Some("s") => {
+            Some("scan" | "s") => {
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
                     "Scanning project...".to_string(),
@@ -396,7 +395,7 @@ impl App {
                     None
                 }
             }
-            Some("status") | Some("st") => {
+            Some("status" | "st") => {
                 if let Some(scan) = &self.last_scan {
                     let total = scan.score.total_score;
                     let passed = scan.score.passed_checks;
@@ -418,7 +417,7 @@ impl App {
                 }
                 None
             }
-            Some("explain") | Some("ex") => {
+            Some("explain" | "ex") => {
                 if let Some(scan) = &self.last_scan {
                     if let Some(finding) = scan.findings.iter()
                         .find(|f| matches!(f.severity, crate::types::Severity::High | crate::types::Severity::Critical))
@@ -442,7 +441,7 @@ impl App {
                 }
                 None
             }
-            Some("report") | Some("r") => {
+            Some("report" | "r") => {
                 self.view_state = ViewState::Report;
                 self.toasts.push(
                     crate::components::toast::ToastKind::Info,
@@ -450,25 +449,24 @@ impl App {
                 );
                 None
             }
-            Some("watch") | Some("w") => Some(AppCommand::ToggleWatch),
-            Some("quit") | Some("q") => {
+            Some("watch" | "w") => Some(AppCommand::ToggleWatch),
+            Some("quit" | "q") => {
                 self.running = false;
                 None
             }
-            Some("help") | Some("h") => {
+            Some("help" | "h") => {
                 self.overlay = Overlay::Help;
                 self.help_scroll = 0;
                 None
             }
-            Some("undo") | Some("u") => Some(AppCommand::Undo(None)),
-            Some("view") | Some("v") => {
+            Some("undo" | "u") => Some(AppCommand::Undo(None)),
+            Some("view" | "v") => {
                 let num_str = parts.get(1).unwrap_or(&"").trim();
-                if let Ok(num) = num_str.parse::<u8>() {
-                    if let Some(view) = ViewState::from_key(num) {
+                if let Ok(num) = num_str.parse::<u8>()
+                    && let Some(view) = ViewState::from_key(num) {
                         self.view_state = view;
                         return None;
                     }
-                }
                 self.toasts.push(
                     crate::components::toast::ToastKind::Warning,
                     "Usage: :view <1-9>",
@@ -489,7 +487,7 @@ impl App {
                 None
             }
             // T905: What-If scenario (colon mode)
-            Some("whatif") | Some("wi") => {
+            Some("whatif" | "wi") => {
                 let scenario = parts[1..].join(" ");
                 if scenario.is_empty() {
                     self.toasts.push(
@@ -502,7 +500,7 @@ impl App {
                 }
             }
             // T906: Dry-run mode (colon mode)
-            Some("dry-run") | Some("dr") => {
+            Some("dry-run" | "dr") => {
                 let selected: Vec<String> = self
                     .fix_view
                     .fixable_findings
@@ -520,7 +518,7 @@ impl App {
                     Some(AppCommand::FixDryRun(selected))
                 }
             }
-            Some("llm") | Some("settings") => {
+            Some("llm" | "settings") => {
                 self.llm_settings = Some(crate::llm_settings::LlmSettingsState::new(&self.llm_config));
                 self.overlay = Overlay::LlmSettings;
                 None

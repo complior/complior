@@ -59,11 +59,11 @@ pub(super) fn render_registry_panel(frame: &mut Frame, area: Rect, app: &App) {
                         .unwrap_or("?");
                     let score = agent
                         .get("complianceScore")
-                        .and_then(|v| v.as_f64())
+                        .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0);
                     let passport_pct = agent
                         .get("passportCompleteness")
-                        .and_then(|v| v.as_f64())
+                        .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0);
                     let fria = agent
                         .get("friaStatus")

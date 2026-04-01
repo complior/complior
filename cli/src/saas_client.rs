@@ -175,7 +175,7 @@ impl SaasClient {
         })
     }
 
-    /// Fetch user profile from SaaS (email, org name).
+    /// Fetch user profile from `SaaS` (email, org name).
     pub async fn fetch_user_info(&self, token: &str) -> (Option<String>, Option<String>) {
         let url = format!("{}/api/auth/me", self.base_url);
         let resp = match self.client.get(&url).bearer_auth(token).send().await {
@@ -189,12 +189,12 @@ impl SaasClient {
         let email = body.get("email")
             .or_else(|| body.get("userEmail"))
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
         let org = body.get("orgName")
             .or_else(|| body.get("organizationName"))
             .or_else(|| body.get("org_name"))
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
         (email, org)
     }
 
@@ -235,12 +235,12 @@ fn extract_jwt_claims(token: &str) -> (Option<String>, Option<String>) {
         .or_else(|| claims.get("sub"))
         .and_then(|v| v.as_str())
         .filter(|s| s.contains('@')) // sub may be a UUID, only use if it looks like email
-        .map(|s| s.to_string());
+        .map(std::string::ToString::to_string);
     let org = claims.get("orgName")
         .or_else(|| claims.get("org_name"))
         .or_else(|| claims.get("organization"))
         .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+        .map(std::string::ToString::to_string);
     (email, org)
 }
 

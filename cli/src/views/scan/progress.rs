@@ -11,7 +11,7 @@ use crate::theme::ThemeColors;
 use super::{LayerProgress, LayerStatus, ScanViewState};
 
 /// Map a `LayerStatus` to its display icon and theme color.
-fn layer_status_display(status: LayerStatus, t: &ThemeColors) -> (&'static str, Color) {
+const fn layer_status_display(status: LayerStatus, t: &ThemeColors) -> (&'static str, Color) {
     match status {
         LayerStatus::Complete => ("[X]", t.zone_green),
         LayerStatus::Running => ("[~]", t.zone_yellow),
@@ -78,7 +78,7 @@ pub(super) fn render_puzzle_header(frame: &mut Frame, area: Rect, scan_view: &Sc
         let (ratio, label) = match layer.status {
             LayerStatus::Complete => (1.0, "100%".to_string()),
             LayerStatus::Running if layer.total > 0 => {
-                let r = layer.current as f64 / layer.total as f64;
+                let r = f64::from(layer.current) / f64::from(layer.total);
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 let pct = (r * 100.0) as u32;
                 (r, format!("{pct}%"))
@@ -261,7 +261,7 @@ pub(super) fn render_layer_progress(frame: &mut Frame, area: Rect, app: &App) {
             }
             LayerStatus::Running => {
                 let r = if layer.total > 0 {
-                    layer.current as f64 / layer.total as f64
+                    f64::from(layer.current) / f64::from(layer.total)
                 } else {
                     0.0
                 };

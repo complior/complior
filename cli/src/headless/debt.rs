@@ -25,7 +25,7 @@ pub async fn run_debt(json: bool, trend: bool, config: &TuiConfig) -> i32 {
 
             let total = result
                 .get("totalDebt")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let level = result
                 .get("level")
@@ -33,15 +33,15 @@ pub async fn run_debt(json: bool, trend: bool, config: &TuiConfig) -> i32 {
                 .unwrap_or("unknown");
             let findings = result
                 .get("findingsDebt")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let docs = result
                 .get("documentationDebt")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let freshness = result
                 .get("freshnessDebt")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
 
             let level_icon = match level {
@@ -61,8 +61,8 @@ pub async fn run_debt(json: bool, trend: bool, config: &TuiConfig) -> i32 {
             println!("  Documentation:  {docs:.1}");
             println!("  Freshness:      {freshness:.1}");
 
-            if let Some(breakdown) = result.get("breakdown").and_then(|v| v.as_array()) {
-                if !breakdown.is_empty() {
+            if let Some(breakdown) = result.get("breakdown").and_then(|v| v.as_array())
+                && !breakdown.is_empty() {
                     println!("\n  Breakdown:");
                     for item in breakdown {
                         let cat = item
@@ -75,15 +75,14 @@ pub async fn run_debt(json: bool, trend: bool, config: &TuiConfig) -> i32 {
                             .unwrap_or("?");
                         let points = item
                             .get("points")
-                            .and_then(|v| v.as_f64())
+                            .and_then(serde_json::Value::as_f64)
                             .unwrap_or(0.0);
                         println!("    [{cat:<13}] {desc:<35} {points:>5.1} pts");
                     }
                 }
-            }
 
             if trend {
-                if let Some(prev) = result.get("previousDebt").and_then(|v| v.as_f64()) {
+                if let Some(prev) = result.get("previousDebt").and_then(serde_json::Value::as_f64) {
                     let delta = total - prev;
                     let arrow = if delta < -0.5 {
                         "\u{2193}"

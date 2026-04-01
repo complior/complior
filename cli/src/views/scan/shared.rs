@@ -4,8 +4,8 @@ use ratatui::text::{Line, Span};
 use crate::theme;
 
 /// Render source code block with line numbers and highlighted line.
-pub(crate) fn render_code_block<'a>(
-    lines: &mut Vec<Line<'a>>,
+pub fn render_code_block(
+    lines: &mut Vec<Line<'_>>,
     ctx: &crate::types::CodeContext,
     t: &theme::ThemeColors,
 ) {
@@ -21,7 +21,7 @@ pub(crate) fn render_code_block<'a>(
                     Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!("{marker}"),
+                    marker.to_string(),
                     Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
@@ -32,7 +32,7 @@ pub(crate) fn render_code_block<'a>(
         } else {
             lines.push(Line::from(vec![
                 Span::styled(line_num, Style::default().fg(t.muted)),
-                Span::styled(format!("{marker}"), Style::default().fg(t.muted)),
+                Span::styled(marker.to_string(), Style::default().fg(t.muted)),
                 Span::styled(cl.content.clone(), Style::default().fg(t.fg)),
             ]));
         }
@@ -40,8 +40,8 @@ pub(crate) fn render_code_block<'a>(
 }
 
 /// Render before/after fix diff with red removed / green added lines.
-pub(crate) fn render_fix_diff<'a>(
-    lines: &mut Vec<Line<'a>>,
+pub fn render_fix_diff(
+    lines: &mut Vec<Line<'_>>,
     diff: &crate::types::FixDiff,
     t: &theme::ThemeColors,
 ) {
@@ -49,7 +49,7 @@ pub(crate) fn render_fix_diff<'a>(
         let line_num = diff.start_line + i as u32;
         lines.push(Line::from(vec![
             Span::styled(
-                format!("{:>4}", line_num),
+                format!("{line_num:>4}"),
                 Style::default().fg(t.diff_removed),
             ),
             Span::styled(" - ", Style::default().fg(t.diff_removed)),
@@ -63,7 +63,7 @@ pub(crate) fn render_fix_diff<'a>(
         let line_num = diff.start_line + i as u32;
         lines.push(Line::from(vec![
             Span::styled(
-                format!("{:>4}", line_num),
+                format!("{line_num:>4}"),
                 Style::default().fg(t.diff_added),
             ),
             Span::styled(" + ", Style::default().fg(t.diff_added)),
@@ -76,7 +76,7 @@ pub(crate) fn render_fix_diff<'a>(
 }
 
 /// Render fix text as diff lines (fallback when no structured fixDiff).
-pub(crate) fn render_fix_text<'a>(
+pub fn render_fix_text<'a>(
     lines: &mut Vec<Line<'a>>,
     fix_text: &'a str,
     ft: crate::types::FindingType,

@@ -10,7 +10,7 @@ impl Spinner {
         Self { tick: 0 }
     }
 
-    pub fn advance(&mut self) {
+    pub const fn advance(&mut self) {
         self.tick = (self.tick + 1) % FRAMES.len();
     }
 

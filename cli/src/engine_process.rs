@@ -55,7 +55,7 @@ impl EngineManager {
     }
 
     /// Create a manager for external mode (`--engine-url` provided).
-    pub fn external(port: u16) -> Self {
+    pub const fn external(port: u16) -> Self {
         Self {
             child: None,
             port,

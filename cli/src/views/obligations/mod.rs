@@ -20,7 +20,7 @@ pub enum ObligationFilter {
 
 impl ObligationFilter {
     /// Cycle to the next filter on key press.
-    pub fn cycle(self) -> Self {
+    pub const fn cycle(self) -> Self {
         match self {
             Self::All => Self::RoleProvider,
             Self::RoleProvider => Self::RoleDeployer,
@@ -33,7 +33,7 @@ impl ObligationFilter {
         }
     }
 
-    pub fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
             Self::All => "All",
             Self::RoleProvider => "Provider",
@@ -65,7 +65,7 @@ pub struct ObligationItem {
 
 impl ObligationItem {
     /// Whether this obligation is on the critical path (uncovered + has deadline).
-    pub fn is_critical_path(&self) -> bool {
+    pub const fn is_critical_path(&self) -> bool {
         !self.covered && self.deadline.is_some()
     }
 }
@@ -154,7 +154,7 @@ impl ObligationsViewState {
                         .and_then(|t| t.as_str())
                         .unwrap_or("")
                         .to_string(),
-                    covered: v.get("covered").and_then(|c| c.as_bool()).unwrap_or(false),
+                    covered: v.get("covered").and_then(serde_json::Value::as_bool).unwrap_or(false),
                     description: v
                         .get("description")
                         .and_then(|d| d.as_str())

@@ -28,18 +28,18 @@ async fn run_proxy_start(command: &str, args: &[String], config: &TuiConfig) -> 
 
     match client.post_json("/proxy/start", &body).await {
         Ok(result) => {
-            if result.get("success").and_then(|v| v.as_bool()) == Some(true) {
+            if result.get("success").and_then(serde_json::Value::as_bool) == Some(true) {
                 println!("MCP Compliance Proxy started");
                 println!("  Upstream: {} {}", command, args.join(" "));
                 println!("  Logging: enabled");
                 0
             } else {
                 let error = result.get("error").and_then(|v| v.as_str()).unwrap_or("Unknown error");
-                eprintln!("Error starting proxy: {}", error);
+                eprintln!("Error starting proxy: {error}");
                 1
             }
         }
-        Err(e) => { eprintln!("Error: {}", e); 1 }
+        Err(e) => { eprintln!("Error: {e}"); 1 }
     }
 }
 
@@ -51,7 +51,7 @@ async fn run_proxy_stop(config: &TuiConfig) -> i32 {
 
     match client.post_json("/proxy/stop", &serde_json::json!({})).await {
         Ok(result) => {
-            if result.get("success").and_then(|v| v.as_bool()) == Some(true) {
+            if result.get("success").and_then(serde_json::Value::as_bool) == Some(true) {
                 println!("MCP Compliance Proxy stopped");
                 0
             } else {
@@ -59,7 +59,7 @@ async fn run_proxy_stop(config: &TuiConfig) -> i32 {
                 1
             }
         }
-        Err(e) => { eprintln!("Error: {}", e); 1 }
+        Err(e) => { eprintln!("Error: {e}"); 1 }
     }
 }
 
@@ -71,20 +71,20 @@ async fn run_proxy_status(config: &TuiConfig) -> i32 {
 
     match client.get_json("/proxy/health").await {
         Ok(result) => {
-            let running = result.get("isRunning").and_then(|v| v.as_bool()).unwrap_or(false);
+            let running = result.get("isRunning").and_then(serde_json::Value::as_bool).unwrap_or(false);
             if running {
                 println!("MCP Compliance Proxy: RUNNING");
                 if let Some(started) = result.get("startedAt").and_then(|v| v.as_str()) {
-                    println!("  Started: {}", started);
+                    println!("  Started: {started}");
                 }
-                if let Some(total) = result.get("totalCalls").and_then(|v| v.as_u64()) {
-                    println!("  Total calls: {}", total);
+                if let Some(total) = result.get("totalCalls").and_then(serde_json::Value::as_u64) {
+                    println!("  Total calls: {total}");
                 }
-                if let Some(successful) = result.get("successfulCalls").and_then(|v| v.as_u64()) {
-                    println!("  Successful: {}", successful);
+                if let Some(successful) = result.get("successfulCalls").and_then(serde_json::Value::as_u64) {
+                    println!("  Successful: {successful}");
                 }
-                if let Some(failed) = result.get("failedCalls").and_then(|v| v.as_u64()) {
-                    println!("  Failed: {}", failed);
+                if let Some(failed) = result.get("failedCalls").and_then(serde_json::Value::as_u64) {
+                    println!("  Failed: {failed}");
                 }
                 if let Some(tools) = result.get("uniqueTools").and_then(|v| v.as_array()) {
                     let tool_names: Vec<&str> = tools.iter().filter_map(|t| t.as_str()).collect();
@@ -95,6 +95,6 @@ async fn run_proxy_status(config: &TuiConfig) -> i32 {
             }
             0
         }
-        Err(e) => { eprintln!("Error: {}", e); 1 }
+        Err(e) => { eprintln!("Error: {e}"); 1 }
     }
 }

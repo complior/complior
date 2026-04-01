@@ -97,7 +97,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
 }
 
 /// View-specific help lines.
-fn help_section_for_view<'a>(view: ViewState, t: &'a theme::ThemeColors) -> Vec<Line<'a>> {
+fn help_section_for_view(view: ViewState, t: &theme::ThemeColors) -> Vec<Line<'_>> {
     match view {
         ViewState::Dashboard => vec![
             shortcut_line("  D/S/F/P/T/R/L", "Switch view", t),

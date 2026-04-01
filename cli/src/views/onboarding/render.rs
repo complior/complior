@@ -82,7 +82,7 @@ pub(super) fn render_header(
     let gauge = Gauge::default()
         .gauge_style(Style::default().fg(t.accent).bg(t.muted))
         .percent(pct)
-        .label(format!("{}%", pct));
+        .label(format!("{pct}%"));
     frame.render_widget(gauge, chunks[1]);
 
     // Description

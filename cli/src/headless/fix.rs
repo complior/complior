@@ -1,5 +1,5 @@
 use crate::config::TuiConfig;
-use crate::headless::format::colors::*;
+use crate::headless::format::colors::{green, bold, yellow, dim, bold_red, score_color, cyan, red};
 use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
 use crate::headless::format::{plural, project_name, separator};
@@ -41,7 +41,7 @@ pub async fn run_headless_fix(
             .get_json("/status")
             .await
             .ok()
-            .and_then(|v| v.get("score").and_then(|s| s.as_f64()))
+            .and_then(|v| v.get("score").and_then(serde_json::Value::as_f64))
             .unwrap_or(0.0);
         (check_ids, score)
     } else {
@@ -74,25 +74,22 @@ pub async fn run_headless_fix(
 
     if dry_run {
         // Request dry-run from engine
-        match client.fix_dry_run().await {
-            Ok(dr_result) => {
-                if json {
-                    println!("{}", serde_json::to_string_pretty(&dr_result).unwrap_or_default());
-                } else {
-                    print!("{}", format_dry_run_report(&dr_result, current_score, &scan_path));
-                }
+        if let Ok(dr_result) = client.fix_dry_run().await {
+            if json {
+                println!("{}", serde_json::to_string_pretty(&dr_result).unwrap_or_default());
+            } else {
+                print!("{}", format_dry_run_report(&dr_result, current_score, &scan_path));
             }
-            Err(_) => {
-                // Offline estimate — rough approximation based on fix count
-                let impact = (fixable.len() as f64 * 3.0).min(60.0) as i32;
-                let predicted = (current_score + impact as f64).min(100.0);
-                if json {
-                    println!("{{\"dryRun\": true, \"fixable\": {}, \"currentScore\": {current_score:.0}, \"predictedScore\": {predicted:.0}}}", fixable.len());
-                } else {
-                    println!("Dry-Run Fix Analysis (offline estimate)");
-                    println!("Fixable: {} findings", fixable.len());
-                    println!("Predicted: {current_score:.0} -> {predicted:.0} (+{impact})");
-                }
+        } else {
+            // Offline estimate — rough approximation based on fix count
+            let impact = (fixable.len() as f64 * 3.0).min(60.0) as i32;
+            let predicted = (current_score + f64::from(impact)).min(100.0);
+            if json {
+                println!("{{\"dryRun\": true, \"fixable\": {}, \"currentScore\": {current_score:.0}, \"predictedScore\": {predicted:.0}}}", fixable.len());
+            } else {
+                println!("Dry-Run Fix Analysis (offline estimate)");
+                println!("Fixable: {} findings", fixable.len());
+                println!("Predicted: {current_score:.0} -> {predicted:.0} (+{impact})");
             }
         }
     } else {
@@ -147,22 +144,21 @@ pub async fn run_fix_single(
             if json {
                 println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());
             } else {
-                let applied = resp.get("applied").and_then(|v| v.as_bool()).unwrap_or(false);
+                let applied = resp.get("applied").and_then(serde_json::Value::as_bool).unwrap_or(false);
                 if applied {
                     println!("  {} Fix applied for {}", green("✓"), bold(check_id));
-                    if let Some(plan) = resp.get("plan") {
-                        if let Some(actions) = plan.get("actions").and_then(|v| v.as_array()) {
+                    if let Some(plan) = resp.get("plan")
+                        && let Some(actions) = plan.get("actions").and_then(|v| v.as_array()) {
                             for a in actions {
                                 let p = a.get("path").and_then(|v| v.as_str()).unwrap_or("?");
-                                println!("     → {}", p);
+                                println!("     → {p}");
                             }
                         }
-                    }
                 } else {
                     let err = resp.get("error").and_then(|v| v.as_str())
                         .or_else(|| resp.get("message").and_then(|v| v.as_str()))
                         .unwrap_or("Unknown error");
-                    eprintln!("  Fix failed for {}: {}", check_id, err);
+                    eprintln!("  Fix failed for {check_id}: {err}");
                     return 1;
                 }
             }
@@ -203,7 +199,7 @@ fn extract_entries(resp: &serde_json::Value) -> Vec<FixEntry> {
         let fix_type = plan.get("fixType").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
         let article = plan.get("article").and_then(|v| v.as_str()).unwrap_or("").to_string();
         let description = plan.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let applied = r.get("applied").and_then(|v| v.as_bool()).unwrap_or(false);
+        let applied = r.get("applied").and_then(serde_json::Value::as_bool).unwrap_or(false);
         let error = r.get("error").and_then(|v| v.as_str()).map(String::from);
 
         let files: Vec<String> = plan
@@ -226,12 +222,11 @@ fn extract_entries(resp: &serde_json::Value) -> Vec<FixEntry> {
         let is_scaffold = plan
             .get("actions")
             .and_then(|v| v.as_array())
-            .map(|actions| {
+            .is_none_or(|actions| {
                 actions.iter().all(|a| {
                     a.get("type").and_then(|v| v.as_str()) == Some("create")
                 })
-            })
-            .unwrap_or(true);
+            });
 
         FixEntry { check_id, fix_type, article, description, applied, files, manual_fields, error, is_scaffold }
     }).collect()
@@ -242,7 +237,7 @@ fn extract_entries(resp: &serde_json::Value) -> Vec<FixEntry> {
 /// Pad article to at least 9 chars so there's always a gap before the label.
 /// "Art. 4" → "Art. 4   ", "Art. 50(1)" → "Art. 50(1)", "Art. 5(1)(f)" → "Art. 5(1)(f)"
 fn pad_article(article: &str) -> String {
-    format!("{:<9}", article)
+    format!("{article:<9}")
 }
 
 fn scaffold_badge() -> String {
@@ -272,10 +267,10 @@ fn format_fix_report(resp: &serde_json::Value, scan_path: &str) -> String {
     let mut o = String::with_capacity(8192);
 
     let summary = resp.get("summary");
-    let score_before = summary.and_then(|s| s.get("scoreBefore")).and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let score_after = summary.and_then(|s| s.get("scoreAfter")).and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let applied_count = summary.and_then(|s| s.get("applied")).and_then(|v| v.as_u64()).unwrap_or(0);
-    let failed_count = summary.and_then(|s| s.get("failed")).and_then(|v| v.as_u64()).unwrap_or(0);
+    let score_before = summary.and_then(|s| s.get("scoreBefore")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+    let score_after = summary.and_then(|s| s.get("scoreAfter")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+    let applied_count = summary.and_then(|s| s.get("applied")).and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let failed_count = summary.and_then(|s| s.get("failed")).and_then(serde_json::Value::as_u64).unwrap_or(0);
 
     let entries = extract_entries(resp);
 
@@ -331,7 +326,7 @@ fn render_fix_header(o: &mut String, scan_path: &str, applied: u64, failed: u64,
 
 fn render_score_line(o: &mut String, before: f64, after: f64, applied: u64) {
     let label = "SCORE";
-    let score_text = format!("{:.0} → {:.0}", before, after);
+    let score_text = format!("{before:.0} → {after:.0}");
     let pad = SEP_WIDTH.saturating_sub(label.len() + score_text.len());
     o.push_str(&format!("  {}{}{}\n", bold(label), " ".repeat(pad), score_color(after, &score_text)));
     if (before - after).abs() < 0.5 && applied > 0 {
@@ -380,7 +375,7 @@ fn render_doc_section(o: &mut String, entries: &[&FixEntry]) {
         }
 
         if !e.manual_fields.is_empty() {
-            let shown: Vec<&str> = e.manual_fields.iter().take(3).map(|s| s.as_str()).collect();
+            let shown: Vec<&str> = e.manual_fields.iter().take(3).map(std::string::String::as_str).collect();
             let mut todo_text = shown.join(", ");
             let remaining = e.manual_fields.len().saturating_sub(3);
             if remaining > 0 {
@@ -473,7 +468,7 @@ fn render_code_section(o: &mut String, entries: &[&FixEntry]) {
                 }
                 existing.3 = existing.3 && e.is_scaffold;
             } else {
-                let files: Vec<&str> = e.files.iter().map(|f| f.as_str()).collect();
+                let files: Vec<&str> = e.files.iter().map(std::string::String::as_str).collect();
                 merged.push((&e.article, norm, files, e.is_scaffold));
             }
         }
@@ -553,7 +548,7 @@ fn render_failures(o: &mut String, failures: &[&FixEntry]) {
     for e in failures {
         let icon = red("✖");
         let label = check_label(&e.check_id);
-        o.push_str(&format!("    {}  {}\n", icon, label));
+        o.push_str(&format!("    {icon}  {label}\n"));
         if let Some(ref err) = e.error {
             o.push_str(&format!("         {}\n", dim(err)));
         }
@@ -632,8 +627,8 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
     let mut o = String::with_capacity(4096);
 
     let changes = resp.get("changes").and_then(|v| v.as_array());
-    let predicted = resp.get("predictedScore").and_then(|v| v.as_f64()).unwrap_or(current_score);
-    let change_count = changes.map(|c| c.len()).unwrap_or(0) as u64;
+    let predicted = resp.get("predictedScore").and_then(serde_json::Value::as_f64).unwrap_or(current_score);
+    let change_count = changes.map_or(0, std::vec::Vec::len) as u64;
 
     render_fix_header(&mut o, scan_path, change_count, 0, true);
     render_score_line(&mut o, current_score, predicted, change_count);
@@ -682,7 +677,7 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
 }
 
 /// "fix" → "fixes"
-fn plural_es(n: usize) -> &'static str {
+const fn plural_es(n: usize) -> &'static str {
     if n == 1 { "" } else { "es" }
 }
 

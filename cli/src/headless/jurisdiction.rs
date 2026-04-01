@@ -17,7 +17,7 @@ async fn run_jurisdiction_list(json_output: bool, config: &TuiConfig) -> i32 {
     match client.get_json("/jurisdictions").await {
         Ok(result) => {
             if let Some(err) = result.get("error") {
-                eprintln!("Error: {}", err);
+                eprintln!("Error: {err}");
                 return 1;
             }
             if json_output {
@@ -30,12 +30,12 @@ async fn run_jurisdiction_list(json_output: bool, config: &TuiConfig) -> i32 {
                     let code = j.get("country_code").and_then(|v| v.as_str()).unwrap_or("");
                     let name = j.get("country_name").and_then(|v| v.as_str()).unwrap_or("");
                     let msa = j.get("msa_name").and_then(|v| v.as_str()).unwrap_or("");
-                    println!("{:<6} {:<20} {:<50}", code, name, msa);
+                    println!("{code:<6} {name:<20} {msa:<50}");
                 }
             }
             0
         }
-        Err(e) => { eprintln!("Error: {}", e); 1 }
+        Err(e) => { eprintln!("Error: {e}"); 1 }
     }
 }
 
@@ -49,7 +49,7 @@ async fn run_jurisdiction_show(code: &str, json_output: bool, config: &TuiConfig
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err) = result.get("error") {
-                eprintln!("Error: {}", err);
+                eprintln!("Error: {err}");
                 return 1;
             }
             if json_output {
@@ -65,32 +65,31 @@ async fn run_jurisdiction_show(code: &str, json_output: bool, config: &TuiConfig
                 println!("{} ({})", name, code.to_uppercase());
                 println!();
                 println!("Market Surveillance Authority:");
-                println!("  Name:     {}", msa);
-                println!("  URL:      {}", msa_url);
-                println!("  Contact:  {}", contact);
+                println!("  Name:     {msa}");
+                println!("  URL:      {msa_url}");
+                println!("  Contact:  {contact}");
                 println!();
-                println!("Enforcement: {}", enforcement);
-                println!("Language:    {}", lang);
+                println!("Enforcement: {enforcement}");
+                println!("Language:    {lang}");
 
                 if let Some(reqs) = result.get("local_requirements").and_then(|v| v.as_array()) {
                     println!();
                     println!("Local Requirements:");
                     for req in reqs {
                         if let Some(r) = req.as_str() {
-                            println!("  - {}", r);
+                            println!("  - {r}");
                         }
                     }
                 }
 
-                if let Some(notes) = result.get("notes").and_then(|v| v.as_str()) {
-                    if !notes.is_empty() {
+                if let Some(notes) = result.get("notes").and_then(|v| v.as_str())
+                    && !notes.is_empty() {
                         println!();
-                        println!("Notes: {}", notes);
+                        println!("Notes: {notes}");
                     }
-                }
             }
             0
         }
-        Err(e) => { eprintln!("Error: {}", e); 1 }
+        Err(e) => { eprintln!("Error: {e}"); 1 }
     }
 }

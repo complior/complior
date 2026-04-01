@@ -129,12 +129,11 @@ pub(super) fn render_view_footer(frame: &mut Frame, app: &App) {
         hint_spans.push(Span::styled(&*app.input, Style::default().fg(t.fg)));
         hint_spans.push(Span::styled("\u{258c}", Style::default().fg(t.accent)));
         // Autocomplete hint
-        if let Some(hint) = crate::components::command_palette::complete_colon_command(&app.input) {
-            if hint != app.input {
+        if let Some(hint) = crate::components::command_palette::complete_colon_command(&app.input)
+            && hint != app.input {
                 let remaining = &hint[app.input.len()..];
                 hint_spans.push(Span::styled(remaining, Style::default().fg(t.muted)));
             }
-        }
         hint_spans.push(Span::styled(
             "  Tab:complete Enter:run Esc:cancel",
             Style::default().fg(t.muted),
@@ -161,7 +160,7 @@ pub(super) fn render_view_footer(frame: &mut Frame, app: &App) {
 }
 
 /// View-specific footer hints (line 2).
-pub fn footer_hints_for_view(view: ViewState) -> &'static str {
+pub const fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
         ViewState::Dashboard => "e:zoom f:focus w:watch Ctrl+S:scan Ctrl+P:palette ?:help",
         ViewState::Scan => "a:All c:Crit h:High m:Med l:Low p:passed Enter:detail f:fix x:explain d:dismiss j/k:nav",

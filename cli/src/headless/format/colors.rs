@@ -1,4 +1,4 @@
-//! ANSI terminal color utilities with NO_COLOR / TERM=dumb detection.
+//! ANSI terminal color utilities with `NO_COLOR` / TERM=dumb detection.
 
 use std::io::IsTerminal as _;
 use std::sync::OnceLock;
@@ -26,7 +26,7 @@ fn color_enabled() -> bool {
 /// Cached unicode detection — disabled for dumb terminals and piped output.
 static UNICODE_ENABLED: OnceLock<bool> = OnceLock::new();
 
-pub(crate) fn use_unicode() -> bool {
+pub fn use_unicode() -> bool {
     *UNICODE_ENABLED.get_or_init(|| {
         if std::env::var("NO_COLOR").is_ok() {
             return false;
@@ -49,31 +49,31 @@ fn ansi(code: &str, text: &str) -> String {
     }
 }
 
-pub(crate) fn red(t: &str) -> String { ansi("31", t) }
-pub(crate) fn green(t: &str) -> String { ansi("32", t) }
-pub(crate) fn yellow(t: &str) -> String { ansi("33", t) }
-pub(crate) fn cyan(t: &str) -> String { ansi("36", t) }
-pub(crate) fn bold(t: &str) -> String { ansi("1", t) }
-pub(crate) fn bold_red(t: &str) -> String { ansi("1;31", t) }
-pub(crate) fn bold_green(t: &str) -> String { ansi("1;32", t) }
-pub(crate) fn bold_yellow(t: &str) -> String { ansi("1;33", t) }
-pub(crate) fn dim(t: &str) -> String { ansi("2", t) }
+pub fn red(t: &str) -> String { ansi("31", t) }
+pub fn green(t: &str) -> String { ansi("32", t) }
+pub fn yellow(t: &str) -> String { ansi("33", t) }
+pub fn cyan(t: &str) -> String { ansi("36", t) }
+pub fn bold(t: &str) -> String { ansi("1", t) }
+pub fn bold_red(t: &str) -> String { ansi("1;31", t) }
+pub fn bold_green(t: &str) -> String { ansi("1;32", t) }
+pub fn bold_yellow(t: &str) -> String { ansi("1;33", t) }
+pub fn dim(t: &str) -> String { ansi("2", t) }
 
 // ── Unicode/ASCII fallback helpers ──────────────────────────────
 
-pub(crate) fn diamond() -> &'static str { if use_unicode() { "◆" } else { "*" } }
-pub(crate) fn bar_filled() -> &'static str { if use_unicode() { "█" } else { "#" } }
-pub(crate) fn bar_empty() -> &'static str { if use_unicode() { "░" } else { "-" } }
-pub(crate) fn h_line() -> &'static str { if use_unicode() { "─" } else { "-" } }
-pub(crate) fn check_mark() -> &'static str { if use_unicode() { "✓" } else { "+" } }
-pub(crate) fn skip_icon() -> &'static str { if use_unicode() { "⏭" } else { ">" } }
-pub(crate) fn warning_icon() -> &'static str { if use_unicode() { "⚠" } else { "!" } }
-pub(crate) fn tree_branch() -> &'static str { if use_unicode() { "├" } else { "|" } }
-pub(crate) fn tree_end() -> &'static str { if use_unicode() { "└" } else { "`" } }
+pub fn diamond() -> &'static str { if use_unicode() { "◆" } else { "*" } }
+pub fn bar_filled() -> &'static str { if use_unicode() { "█" } else { "#" } }
+pub fn bar_empty() -> &'static str { if use_unicode() { "░" } else { "-" } }
+pub fn h_line() -> &'static str { if use_unicode() { "─" } else { "-" } }
+pub fn check_mark() -> &'static str { if use_unicode() { "✓" } else { "+" } }
+pub fn skip_icon() -> &'static str { if use_unicode() { "⏭" } else { ">" } }
+pub fn warning_icon() -> &'static str { if use_unicode() { "⚠" } else { "!" } }
+pub fn tree_branch() -> &'static str { if use_unicode() { "├" } else { "|" } }
+pub fn tree_end() -> &'static str { if use_unicode() { "└" } else { "`" } }
 
 // ── Score & severity ────────────────────────────────────────────
 
-pub(crate) fn score_color(score: f64, text: &str) -> String {
+pub fn score_color(score: f64, text: &str) -> String {
     if score >= 90.0 {
         bold_green(text)
     } else if score >= 80.0 {
@@ -87,7 +87,7 @@ pub(crate) fn score_color(score: f64, text: &str) -> String {
     }
 }
 
-pub(crate) fn severity_icon(sev: &Severity) -> String {
+pub fn severity_icon(sev: &Severity) -> String {
     if use_unicode() {
         match sev {
             Severity::Critical => red("✖"),
@@ -105,7 +105,7 @@ pub(crate) fn severity_icon(sev: &Severity) -> String {
     }
 }
 
-pub(crate) fn severity_color(sev: &Severity, text: &str) -> String {
+pub fn severity_color(sev: &Severity, text: &str) -> String {
     match sev {
         Severity::Critical => bold_red(text),
         Severity::High => red(text),
@@ -115,7 +115,7 @@ pub(crate) fn severity_color(sev: &Severity, text: &str) -> String {
     }
 }
 
-pub(crate) fn layer_status_color(status: &str, text: &str) -> String {
+pub fn layer_status_color(status: &str, text: &str) -> String {
     match status {
         "PASS" => green(text),
         "WARN" => yellow(text),
@@ -127,7 +127,7 @@ pub(crate) fn layer_status_color(status: &str, text: &str) -> String {
 // ── Grade computation ───────────────────────────────────────────
 
 /// Map score to letter grade (mirrors TS engine's `resolveGrade()`).
-pub(crate) fn resolve_grade(score: f64) -> &'static str {
+pub fn resolve_grade(score: f64) -> &'static str {
     if score >= 90.0 {
         "A"
     } else if score >= 75.0 {
@@ -142,7 +142,7 @@ pub(crate) fn resolve_grade(score: f64) -> &'static str {
 }
 
 /// Color a string based on letter grade.
-pub(crate) fn grade_color(grade: &str, text: &str) -> String {
+pub fn grade_color(grade: &str, text: &str) -> String {
     match grade {
         "A" => bold_green(text),
         "B" => green(text),

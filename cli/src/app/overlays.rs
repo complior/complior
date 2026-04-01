@@ -83,20 +83,16 @@ impl App {
                         wiz.insert_char(c);
                     } else if wiz.provider_substep == 0 {
                         // Allow j/k/space navigation in substep 0
-                        match c {
-                            ' ' => wiz.toggle_selection(),
-                            _ => {}
-                        }
+                        if c == ' ' { wiz.toggle_selection() }
                     }
                 }
                 None
             }
             Action::InsertChar(' ') => {
-                if matches!(step_kind, Some(StepKind::Checkbox | StepKind::Radio | StepKind::ThemeSelect)) {
-                    if let Some(wiz) = &mut self.onboarding {
+                if matches!(step_kind, Some(StepKind::Checkbox | StepKind::Radio | StepKind::ThemeSelect))
+                    && let Some(wiz) = &mut self.onboarding {
                         wiz.toggle_selection();
                     }
-                }
                 None
             }
             Action::InsertChar('a') => {
@@ -117,15 +113,15 @@ impl App {
             }
             Action::SubmitInput => {
                 // Handle TextInput substeps
-                if matches!(step_kind, Some(StepKind::TextInput { .. })) {
-                    if let Some(wiz) = &mut self.onboarding {
+                if matches!(step_kind, Some(StepKind::TextInput { .. }))
+                    && let Some(wiz) = &mut self.onboarding {
                         match wiz.provider_substep {
                             0 => {
                                 // Provider selected → set selection
                                 let idx = wiz.cursor;
                                 wiz.steps[wiz.current_step].selected = vec![idx];
                                 match idx {
-                                    0 | 1 | 2 => {
+                                    0..=2 => {
                                         // OpenRouter/Anthropic/OpenAI — go to key input
                                         wiz.provider_substep = 1;
                                         wiz.text_cursor = 0;
@@ -174,18 +170,16 @@ impl App {
                                 if is_valid {
                                     let _completed = wiz.next_step();
                                     return None;
-                                } else {
-                                    // Retry: back to key input
-                                    wiz.provider_substep = 1;
-                                    wiz.steps[wiz.current_step].text_value.clear();
-                                    wiz.text_cursor = 0;
-                                    return None;
                                 }
+                                // Retry: back to key input
+                                wiz.provider_substep = 1;
+                                wiz.steps[wiz.current_step].text_value.clear();
+                                wiz.text_cursor = 0;
+                                return None;
                             }
                             _ => {}
                         }
                     }
-                }
 
                 // Handle post-step side effects before advancing
                 if let Some(wiz) = &mut self.onboarding {
@@ -261,8 +255,8 @@ impl App {
             }
             Action::DeleteChar => {
                 // Handle TextInput substeps first
-                if matches!(step_kind, Some(StepKind::TextInput { .. })) {
-                    if let Some(wiz) = &mut self.onboarding {
+                if matches!(step_kind, Some(StepKind::TextInput { .. }))
+                    && let Some(wiz) = &mut self.onboarding {
                         match wiz.provider_substep {
                             1 => {
                                 if wiz.text_cursor > 0 {
@@ -285,7 +279,6 @@ impl App {
                             _ => {}
                         }
                     }
-                }
 
                 // Backspace = previous step
                 if let Some(wiz) = &mut self.onboarding {
@@ -306,8 +299,8 @@ impl App {
 
         match action {
             Action::ScrollDown => {
-                if let Some(s) = &mut self.llm_settings {
-                    if !s.editing {
+                if let Some(s) = &mut self.llm_settings
+                    && !s.editing {
                         s.focused_field = match s.focused_field {
                             LlmSettingsField::Provider => LlmSettingsField::ApiKey,
                             LlmSettingsField::ApiKey => LlmSettingsField::Model,
@@ -315,12 +308,11 @@ impl App {
                             LlmSettingsField::TestConnection => LlmSettingsField::TestConnection,
                         };
                     }
-                }
                 None
             }
             Action::ScrollUp => {
-                if let Some(s) = &mut self.llm_settings {
-                    if !s.editing {
+                if let Some(s) = &mut self.llm_settings
+                    && !s.editing {
                         s.focused_field = match s.focused_field {
                             LlmSettingsField::Provider => LlmSettingsField::Provider,
                             LlmSettingsField::ApiKey => LlmSettingsField::Provider,
@@ -328,7 +320,6 @@ impl App {
                             LlmSettingsField::TestConnection => LlmSettingsField::Model,
                         };
                     }
-                }
                 None
             }
             Action::InsertChar(' ') if self.llm_settings.as_ref().is_some_and(|s| {
@@ -364,27 +355,25 @@ impl App {
                 None
             }
             Action::InsertChar(c) => {
-                if let Some(s) = &mut self.llm_settings {
-                    if s.editing {
+                if let Some(s) = &mut self.llm_settings
+                    && s.editing {
                         match s.focused_field {
                             LlmSettingsField::ApiKey => s.api_key_input.push(c),
                             LlmSettingsField::Model => s.model_input.push(c),
                             _ => {}
                         }
                     }
-                }
                 None
             }
             Action::DeleteChar => {
-                if let Some(s) = &mut self.llm_settings {
-                    if s.editing {
+                if let Some(s) = &mut self.llm_settings
+                    && s.editing {
                         match s.focused_field {
                             LlmSettingsField::ApiKey => { s.api_key_input.pop(); }
                             LlmSettingsField::Model => { s.model_input.pop(); }
                             _ => {}
                         }
                     }
-                }
                 None
             }
             Action::EnterNormalMode | Action::Quit => {

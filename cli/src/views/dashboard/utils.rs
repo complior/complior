@@ -25,10 +25,10 @@ pub(super) fn parse_epoch_days(date: &str) -> i64 {
     let d: i64 = parts[2].parse().unwrap_or(1);
     // Approximate: 365.25 * year + 30.44 * month + day from epoch
     // More accurate: days from 1970-01-01
-    let days = (y - 1970) * 365 + (y - 1969) / 4 - (y - 1901) / 100 + (y - 1601) / 400
+    
+    (y - 1970) * 365 + (y - 1969) / 4 - (y - 1901) / 100 + (y - 1601) / 400
         + (m - 1) * 30 + (m + 1) / 2 - if m > 2 { 2 } else { 0 }
-        + d - 1;
-    days
+        + d - 1
 }
 
 /// Format deadline diff into human-readable label with urgency color.
@@ -56,10 +56,10 @@ pub fn score_zone_info(score: f64, t: &theme::ThemeColors) -> (ratatui::style::C
     (color, label)
 }
 
-/// Derive category breakdown from findings when engine doesn't provide category_scores.
+/// Derive category breakdown from findings when engine doesn't provide `category_scores`.
 ///
 /// Maps obligation IDs / article references to 5 high-level categories:
-/// prohibited, risk_mgmt, documentation, transparency, technical.
+/// prohibited, `risk_mgmt`, documentation, transparency, technical.
 pub(super) fn derive_categories_from_findings(findings: &[Finding]) -> Vec<(&'static str, u32)> {
     let mut prohibited = 0u32;
     let mut risk_mgmt = 0u32;

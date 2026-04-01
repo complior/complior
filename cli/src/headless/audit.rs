@@ -56,22 +56,22 @@ fn format_audit_report(result: &serde_json::Value) {
 
     // Scan section
     if let Some(scan) = result.get("scan") {
-        let score = scan.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+        let score = scan.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
         let grade = scan.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-        let findings = scan.get("findings").and_then(|v| v.as_u64()).unwrap_or(0);
+        let findings = scan.get("findings").and_then(serde_json::Value::as_u64).unwrap_or(0);
         println!("  Static Scan:  {score}/100 ({grade}) — {findings} findings");
     }
 
     // Eval section
     if let Some(eval) = result.get("eval") {
-        let score = eval.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+        let score = eval.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
         let grade = eval.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-        let tests = eval.get("tests").and_then(|v| v.as_u64()).unwrap_or(0);
-        let passed = eval.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-        let failed = eval.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
+        let tests = eval.get("tests").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let passed = eval.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let failed = eval.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
         println!("  Dynamic Eval: {score}/100 ({grade}) — {passed}/{tests} passed, {failed} failed");
 
-        if let Some(sec_score) = eval.get("securityScore").and_then(|v| v.as_u64()) {
+        if let Some(sec_score) = eval.get("securityScore").and_then(serde_json::Value::as_u64) {
             let sec_grade = eval.get("securityGrade").and_then(|v| v.as_str()).unwrap_or("?");
             println!("  Security:     {sec_score}/100 ({sec_grade})");
         }
@@ -79,7 +79,7 @@ fn format_audit_report(result: &serde_json::Value) {
 
     // Combined
     if let Some(combined) = result.get("combined") {
-        let score = combined.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+        let score = combined.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
         println!();
         let filled = (score as f64 / 100.0 * 30.0) as usize;
         let bar = format!("[{}{}] {}/100",

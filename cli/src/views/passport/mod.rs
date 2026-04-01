@@ -193,7 +193,7 @@ impl PassportViewState {
                 "dataRetention" => passport
                     .get("logging")
                     .and_then(|l| l.get("retention_days"))
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
                     .map(|d| format!("{d} days")),
                 "workerNotification" => None, // Manual field
                 "aiLiteracy" => None,         // Manual field
@@ -201,17 +201,16 @@ impl PassportViewState {
                 _ => None,
             };
 
-            if let Some(v) = value {
-                if !v.is_empty() {
+            if let Some(v) = value
+                && !v.is_empty() {
                     field.value = v;
                 }
-            }
         }
     }
 }
 
 /// Color for completeness percentage: green (100), yellow (80-99), amber (50-79), red (<50).
-fn completeness_color(pct: u8, t: &theme::ThemeColors) -> Color {
+const fn completeness_color(pct: u8, t: &theme::ThemeColors) -> Color {
     match pct {
         100 => t.zone_green,
         80..=99 => t.zone_yellow,
@@ -352,13 +351,13 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
         let score = passport
             .get("compliance")
             .and_then(|c| c.get("complior_score"))
-            .and_then(|v| v.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .unwrap_or(0.0);
         let completeness = extract_completeness(passport);
 
         // Truncate name
         let name_w = 20usize;
-        let truncated_name = crate::views::truncate_str(&name, name_w);
+        let truncated_name = crate::views::truncate_str(name, name_w);
 
         // Status icon based on completeness
         let status_icon = match completeness {
@@ -444,7 +443,7 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     let provider = passport.get("model").and_then(|m| m.get("provider")).and_then(|v| v.as_str()).unwrap_or("?");
     let model_id = passport.get("model").and_then(|m| m.get("model_id")).and_then(|v| v.as_str()).unwrap_or("?");
     let risk_class = passport.get("compliance").and_then(|c| c.get("eu_ai_act")).and_then(|e| e.get("risk_class")).and_then(|v| v.as_str()).unwrap_or("?");
-    let score = passport.get("compliance").and_then(|c| c.get("complior_score")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let score = passport.get("compliance").and_then(|c| c.get("complior_score")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
     let agent_type = passport.get("type").and_then(|v| v.as_str()).unwrap_or("?");
     let completeness = extract_completeness(passport);
 
@@ -524,7 +523,7 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
 
     // FRIA
     let fria_done = passport.get("fria_completed")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let (fria_icon, fria_color, fria_label) = if fria_done {
         ("\u{2713}", t.zone_green, "Complete")
@@ -538,7 +537,7 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
 
     // Worker Notification
     let notify_sent = passport.get("worker_notification_sent")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let notify_date = passport.get("worker_notification_date")
         .and_then(|v| v.as_str())
@@ -556,7 +555,7 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
 
     // Evidence Chain
     let evidence_valid = passport.get("evidence_chain_valid")
-        .and_then(|v| v.as_bool());
+        .and_then(serde_json::Value::as_bool);
     let (ev_icon, ev_color, ev_label) = match evidence_valid {
         Some(true) => ("\u{2713}", t.zone_green, "Valid"),
         Some(false) => ("\u{2717}", t.zone_red, "Broken"),
@@ -897,9 +896,9 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
     lines.push(Line::raw(""));
 
     if let Some(data) = &pv.completeness_data {
-        let score = data.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
-        let total = data.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
-        let filled = data.get("filled").and_then(|v| v.as_u64()).unwrap_or(0);
+        let score = data.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let total = data.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let filled = data.get("filled").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
         lines.push(Line::from(vec![
             Span::styled("  Completeness: ", Style::default().fg(t.muted)),
@@ -916,7 +915,7 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
             for obl in obligations {
                 let id = obl.get("id").and_then(|v| v.as_str()).unwrap_or("???");
                 let title = obl.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown");
-                let covered = obl.get("covered").and_then(|v| v.as_bool()).unwrap_or(false);
+                let covered = obl.get("covered").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
                 let (icon, color) = if covered {
                     ("\u{2713}", t.zone_green)
@@ -932,8 +931,8 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
             }
         }
 
-        if let Some(missing) = data.get("missingFields").and_then(|v| v.as_array()) {
-            if !missing.is_empty() {
+        if let Some(missing) = data.get("missingFields").and_then(|v| v.as_array())
+            && !missing.is_empty() {
                 lines.push(Line::raw(""));
                 lines.push(Line::from(Span::styled(
                     "  Missing fields:",
@@ -948,7 +947,6 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
                     }
                 }
             }
-        }
     } else {
         lines.push(Line::from(Span::styled(
             "  Loading completeness data...",

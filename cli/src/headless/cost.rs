@@ -35,23 +35,23 @@ pub async fn run_cost(
             // Human-readable output
             let total = result
                 .get("totalCost")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let remediation = result
                 .get("remediationCost")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let documentation = result
                 .get("documentationCost")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let fine = result
                 .get("potentialFine")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let roi = result
                 .get("roi")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let currency = result
                 .get("currency")
@@ -69,8 +69,8 @@ pub async fn run_cost(
             println!("  ROI:              {roi:.1}x");
             println!();
 
-            if let Some(breakdown) = result.get("breakdown").and_then(|v| v.as_array()) {
-                if !breakdown.is_empty() {
+            if let Some(breakdown) = result.get("breakdown").and_then(|v| v.as_array())
+                && !breakdown.is_empty() {
                     println!("  Breakdown:");
                     for item in breakdown {
                         let cat = item
@@ -83,18 +83,17 @@ pub async fn run_cost(
                             .unwrap_or("?");
                         let hours = item
                             .get("effortHours")
-                            .and_then(|v| v.as_f64())
+                            .and_then(serde_json::Value::as_f64)
                             .unwrap_or(0.0);
                         let cost = item
                             .get("cost")
-                            .and_then(|v| v.as_f64())
+                            .and_then(serde_json::Value::as_f64)
                             .unwrap_or(0.0);
                         println!(
                             "    [{cat:<15}] {name:<30} {hours:>3.0}h  {currency} {cost:.0}"
                         );
                     }
                 }
-            }
 
             0
         }

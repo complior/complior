@@ -20,12 +20,12 @@ impl ZoomState {
         Self::default()
     }
 
-    pub fn is_zoomed(&self) -> bool {
+    pub const fn is_zoomed(&self) -> bool {
         self.zoomed.is_some()
     }
 
     /// Toggle zoom on the currently focused widget.
-    pub fn toggle(&mut self) {
+    pub const fn toggle(&mut self) {
         if self.zoomed.is_some() {
             self.zoomed = None;
         } else {
@@ -34,12 +34,12 @@ impl ZoomState {
     }
 
     /// Close zoom (Esc).
-    pub fn close(&mut self) {
+    pub const fn close(&mut self) {
         self.zoomed = None;
     }
 
     /// Map focus index to widget kind.
-    fn widget_for_index(index: usize) -> ZoomedWidget {
+    const fn widget_for_index(index: usize) -> ZoomedWidget {
         match index {
             0 => ZoomedWidget::ScoreGauge,
             1 => ZoomedWidget::DeadlineCountdown,

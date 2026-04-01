@@ -119,7 +119,7 @@ fn render_agent_strip(frame: &mut Frame, area: Rect, app: &App) {
             .unwrap_or("?");
         let score = passport.get("compliance")
             .and_then(|c| c.get("complior_score"))
-            .and_then(|s| s.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .unwrap_or(0.0);
 
         let score_color = crate::views::score_zone_color(score, &t);

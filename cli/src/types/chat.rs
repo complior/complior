@@ -19,7 +19,7 @@ impl ChatMessage {
     }
 }
 
-pub(crate) fn chrono_now() -> String {
+pub fn chrono_now() -> String {
     // Simple HH:MM format from system time
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

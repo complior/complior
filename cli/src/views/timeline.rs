@@ -50,15 +50,11 @@ pub const MILESTONES: &[Milestone] = &[
 
 /// State for the Timeline View.
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct TimelineViewState {
     pub scroll_offset: u16,
 }
 
-impl Default for TimelineViewState {
-    fn default() -> Self {
-        Self { scroll_offset: 0 }
-    }
-}
 
 /// Check if a milestone date is in the past.
 pub fn is_past(date: (u16, u8, u8)) -> bool {

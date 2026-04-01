@@ -74,7 +74,7 @@ impl App {
             })
     }
 
-    /// Cycle focus_check_id to prev/next fixable finding in single-fix mode.
+    /// Cycle `focus_check_id` to prev/next fixable finding in single-fix mode.
     pub(super) fn cycle_single_fix(&mut self, direction: i32) {
         let len = self.fix_view.fixable_findings.len();
         if len == 0 {

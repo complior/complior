@@ -28,7 +28,7 @@ pub(super) fn wrap_text(text: &str, width: usize) -> Vec<String> {
 
 /// Human-readable explanation of a check ID.
 ///
-/// Returns (short_description, what_to_do, what_document).
+/// Returns (`short_description`, `what_to_do`, `what_document`).
 pub fn explain_check(check_id: &str) -> (&'static str, &'static str, &'static str) {
     // Strip layer prefixes so engine IDs like "l2-declaration-conformity" match lookup keys.
     let (_, normalized) = crate::types::strip_layer_prefix(check_id);
@@ -152,7 +152,7 @@ pub fn explain_finding(finding: &crate::types::Finding) -> String {
     let art = finding.article_reference.as_deref().unwrap_or("N/A");
 
     let mut explanation = format!("=== Explanation: {} ===\n", finding.check_id);
-    explanation.push_str(&format!("Obligation: {}  |  Article: {}\n\n", obl, art));
+    explanation.push_str(&format!("Obligation: {obl}  |  Article: {art}\n\n"));
     explanation.push_str(&format!("What this means:\n  {desc}\n\n"));
     explanation.push_str(&format!("What to do:\n  {action}\n\n"));
     explanation.push_str(&format!("File to create/edit:\n  {file}\n"));

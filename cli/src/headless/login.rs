@@ -11,7 +11,7 @@ pub async fn run_login(config: &TuiConfig) -> Result<(), String> {
     let display_url = rewrite_verification_url(&code.verification_uri, &config.project_api_url);
 
     println!("\nTo login, visit this URL in your browser:\n");
-    println!("  {}", display_url);
+    println!("  {display_url}");
     println!("\n  Code: {}\n", code.user_code);
     print!("Waiting for confirmation... (Ctrl+C to cancel)");
 

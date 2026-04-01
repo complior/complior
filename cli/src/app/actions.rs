@@ -328,8 +328,8 @@ impl App {
                 self.push_to_history(&text);
 
                 // Handle `!` bash prefix
-                if let Some(cmd) = text.strip_prefix('!') {
-                    if !cmd.is_empty() {
+                if let Some(cmd) = text.strip_prefix('!')
+                    && !cmd.is_empty() {
                         self.terminal_visible = true;
                         self.messages.push(ChatMessage::new(
                             MessageRole::System,
@@ -337,7 +337,6 @@ impl App {
                         ));
                         return Some(AppCommand::RunCommand(cmd.to_string()));
                     }
-                }
 
                 // Colon-command mode: route to handle_colon_command
                 if self.colon_mode {
@@ -467,11 +466,10 @@ impl App {
             Action::SwitchView(view) => {
                 self.view_state = view;
                 // Populate Fix view from latest scan when switching to it
-                if view == ViewState::Fix {
-                    if let Some(scan) = &self.last_scan {
+                if view == ViewState::Fix
+                    && let Some(scan) = &self.last_scan {
                         self.fix_view = FixViewState::from_scan(&scan.findings);
                     }
-                }
                 // Auto-load obligations when switching to Obligations view
                 if view == ViewState::Obligations && self.obligations_view.obligations.is_empty() {
                     return Some(AppCommand::LoadObligations);
@@ -506,7 +504,7 @@ impl App {
                 None
             }
             Action::WatchToggle => {
-                return Some(AppCommand::ToggleWatch);
+                Some(AppCommand::ToggleWatch)
             }
             Action::ShowThemePicker => {
                 self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
@@ -547,13 +545,13 @@ impl App {
                 self.operation_start = Some(Instant::now());
                 self.scan_view.scanning = true;
                 self.scan_view.scan_error = None;
-                return Some(AppCommand::Scan);
+                Some(AppCommand::Scan)
             }
             Action::ViewKey(c) => {
-                return self.handle_view_key(c);
+                self.handle_view_key(c)
             }
             Action::ViewEnter => {
-                return self.handle_view_enter();
+                self.handle_view_enter()
             }
             Action::ViewEscape => {
                 // Cancel streaming on Esc when on Chat view
@@ -561,7 +559,7 @@ impl App {
                     return Some(AppCommand::ChatCancel);
                 }
                 self.handle_view_escape();
-                return None;
+                None
             }
             Action::GotoLine => {
                 // Parse `:N` from command input
@@ -574,11 +572,11 @@ impl App {
                 None
             }
             Action::Undo => {
-                return Some(AppCommand::Undo(None));
+                Some(AppCommand::Undo(None))
             }
             Action::ShowUndoHistory => {
                 self.overlay = Overlay::UndoHistory;
-                return Some(AppCommand::FetchUndoHistory);
+                Some(AppCommand::FetchUndoHistory)
             }
             Action::EnterColonMode => {
                 self.input_mode = InputMode::Command;
@@ -591,11 +589,10 @@ impl App {
                 match target {
                     ClickTarget::ViewTab(view) => {
                         self.view_state = view;
-                        if view == ViewState::Fix {
-                            if let Some(scan) = &self.last_scan {
+                        if view == ViewState::Fix
+                            && let Some(scan) = &self.last_scan {
                                 self.fix_view = FixViewState::from_scan(&scan.findings);
                             }
-                        }
                     }
                     ClickTarget::FindingRow(idx) => {
                         self.scan_view.selected_finding = Some(idx);
@@ -612,7 +609,7 @@ impl App {
             Action::ScrollLines(lines) => {
                 self.scroll_events.push(Instant::now());
                 // Trim old events (keep last 500ms)
-                let cutoff = Instant::now() - std::time::Duration::from_millis(500);
+                let cutoff = Instant::now().checked_sub(std::time::Duration::from_millis(500)).unwrap();
                 self.scroll_events.retain(|&t| t > cutoff);
 
                 if lines > 0 {

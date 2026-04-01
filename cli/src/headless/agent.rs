@@ -3,8 +3,8 @@ use crate::config::TuiConfig;
 
 use super::common::{ensure_engine, resolve_project_path_buf, url_encode};
 
-/// Walk up from project_path to find the complior repo root (containing engine/).
-pub(crate) fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
+/// Walk up from `project_path` to find the complior repo root (containing engine/).
+pub fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
     let mut dir = project_path.to_path_buf();
     loop {
         if dir.join("engine").join("core").join("src").join("server.ts").exists() {
@@ -101,7 +101,7 @@ async fn run_agent_rename(old_name: &str, new_name: &str, json: bool, path: Opti
             if json {
                 println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
             } else {
-                println!("Renamed passport: '{}' → '{}'", old_name, new_name);
+                println!("Renamed passport: '{old_name}' → '{new_name}'");
             }
             0
         }
@@ -141,11 +141,11 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
             let manifests = result.get("manifests").and_then(|v| v.as_array());
             let saved_paths = result.get("savedPaths").and_then(|v| v.as_array());
             let skipped = result.get("skipped").and_then(|v| v.as_array());
-            let skipped_count = skipped.map(|s| s.len()).unwrap_or(0);
+            let skipped_count = skipped.map_or(0, std::vec::Vec::len);
 
             // Show created passports
-            if let Some(agents) = manifests {
-                if !agents.is_empty() {
+            if let Some(agents) = manifests
+                && !agents.is_empty() {
                     println!("\nCreated {} passport(s):\n", agents.len());
 
                     for (i, agent) in agents.iter().enumerate() {
@@ -174,11 +174,11 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
                         let score = agent
                             .get("compliance")
                             .and_then(|c| c.get("complior_score"))
-                            .and_then(|v| v.as_f64());
+                            .and_then(serde_json::Value::as_f64);
                         let confidence = agent
                             .get("source")
                             .and_then(|s| s.get("confidence"))
-                            .and_then(|v| v.as_f64())
+                            .and_then(serde_json::Value::as_f64)
                             .unwrap_or(0.0);
 
                         println!("  {}. {}", i + 1, name);
@@ -194,19 +194,17 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
                             confidence * 100.0
                         );
 
-                        if let Some(paths) = saved_paths {
-                            if let Some(path) = paths.get(i).and_then(|v| v.as_str()) {
+                        if let Some(paths) = saved_paths
+                            && let Some(path) = paths.get(i).and_then(|v| v.as_str()) {
                                 println!("     Saved to:    {path}");
                             }
-                        }
                         println!();
                     }
                 }
-            }
 
             // Show skipped passports
-            if let Some(skip_list) = skipped {
-                if !skip_list.is_empty() {
+            if let Some(skip_list) = skipped
+                && !skip_list.is_empty() {
                     println!("\nSkipped {} existing passport(s):\n", skip_list.len());
                     for name in skip_list {
                         if let Some(n) = name.as_str() {
@@ -215,10 +213,9 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
                     }
                     println!();
                 }
-            }
 
             // Summary
-            let created_count = manifests.map(|m| m.len()).unwrap_or(0);
+            let created_count = manifests.map_or(0, std::vec::Vec::len);
             if created_count > 0 {
                 println!("Agent Passport(s) generated successfully.");
                 println!("Run `complior agent list` to view all passports.");
@@ -295,7 +292,7 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
                             .unwrap_or("?");
                         let score = agent.get("compliance")
                             .and_then(|c| c.get("complior_score"))
-                            .and_then(|v| v.as_f64())
+                            .and_then(serde_json::Value::as_f64)
                             .unwrap_or(0.0);
                         let status = agent.get("lifecycle")
                             .and_then(|l| l.get("status"))
@@ -316,8 +313,7 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
                                 .unwrap_or("-");
                             let files = agent.get("source_files")
                                 .and_then(|v| v.as_array())
-                                .map(|a| a.len())
-                                .unwrap_or(0);
+                                .map_or(0, std::vec::Vec::len);
 
                             println!(
                                 "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10} {:<12} {:<14} {:<12} {:<6}",
@@ -402,7 +398,7 @@ async fn run_agent_show(
                     .and_then(|v| v.as_str())
                     .unwrap_or("?");
                 let score = compliance.get("complior_score")
-                    .and_then(|v| v.as_f64())
+                    .and_then(serde_json::Value::as_f64)
                     .unwrap_or(0.0);
 
                 println!("\n  {}", bold("COMPLIANCE"));
@@ -418,14 +414,14 @@ async fn run_agent_show(
                 println!("    {}       {}", dim("Score:"), score_color(score, &score_str));
 
                 // Extended compliance status
-                let fria = compliance.get("fria_completed").and_then(|v| v.as_bool());
-                let notif = compliance.get("worker_notification_sent").and_then(|v| v.as_bool());
-                let policy = compliance.get("policy_generated").and_then(|v| v.as_bool());
+                let fria = compliance.get("fria_completed").and_then(serde_json::Value::as_bool);
+                let notif = compliance.get("worker_notification_sent").and_then(serde_json::Value::as_bool);
+                let policy = compliance.get("policy_generated").and_then(serde_json::Value::as_bool);
                 if fria.is_some() || notif.is_some() || policy.is_some() {
                     let status_label = |v: Option<bool>| match v {
                         Some(true) => green("completed"),
                         Some(false) => yellow("pending"),
-                        None => dim("-").to_string(),
+                        None => dim("-"),
                     };
                     println!("    {}        {}", dim("FRIA:"), status_label(fria));
                     println!("    {} {}", dim("Notification:"), status_label(notif));
@@ -467,14 +463,13 @@ async fn run_agent_show(
             if let Some(constraints) = result.get("constraints") {
                 let rpm = constraints.get("rate_limits")
                     .and_then(|r| r.get("max_actions_per_minute"))
-                    .and_then(|v| v.as_u64());
+                    .and_then(serde_json::Value::as_u64);
                 let budget = constraints.get("budget")
                     .and_then(|b| b.get("max_cost_per_session_usd"))
-                    .and_then(|v| v.as_f64());
+                    .and_then(serde_json::Value::as_f64);
                 let prohibited = constraints.get("prohibited_actions")
                     .and_then(|v| v.as_array())
-                    .map(|a| a.len())
-                    .unwrap_or(0);
+                    .map_or(0, std::vec::Vec::len);
 
                 println!("\n  {}", bold("CONSTRAINTS"));
                 println!("  {}\n", separator());
@@ -490,23 +485,21 @@ async fn run_agent_show(
             }
 
             // Permissions
-            if let Some(perms) = result.get("permissions") {
-                if let Some(tools) = perms.get("tools").and_then(|v| v.as_array()) {
-                    if !tools.is_empty() {
+            if let Some(perms) = result.get("permissions")
+                && let Some(tools) = perms.get("tools").and_then(|v| v.as_array())
+                    && !tools.is_empty() {
                         let tool_names: Vec<&str> = tools.iter().filter_map(|v| v.as_str()).collect();
                         println!("\n  {}", bold("PERMISSIONS"));
                         println!("  {}\n", separator());
                         println!("    {}       {}", dim("Tools:"), tool_names.join(", "));
                     }
-                }
-            }
 
             // Disclosure
             if let Some(disclosure) = result.get("disclosure") {
-                let user_facing = disclosure.get("user_facing").and_then(|v| v.as_bool());
+                let user_facing = disclosure.get("user_facing").and_then(serde_json::Value::as_bool);
                 let marked = disclosure.get("ai_marking")
                     .and_then(|a| a.get("responses_marked"))
-                    .and_then(|v| v.as_bool());
+                    .and_then(serde_json::Value::as_bool);
                 let text = disclosure.get("disclosure_text").and_then(|v| v.as_str()).unwrap_or("");
                 if user_facing.is_some() || marked.is_some() || !text.is_empty() {
                     println!("\n  {}", bold("DISCLOSURE"));
@@ -530,7 +523,7 @@ async fn run_agent_show(
                 let status = lifecycle.get("status").and_then(|v| v.as_str()).unwrap_or("-");
                 let deployed = lifecycle.get("deployed_since").and_then(|v| v.as_str()).unwrap_or("-");
                 let next_review = lifecycle.get("next_review").and_then(|v| v.as_str()).unwrap_or("-");
-                let freq = lifecycle.get("review_frequency_days").and_then(|v| v.as_u64());
+                let freq = lifecycle.get("review_frequency_days").and_then(serde_json::Value::as_u64);
                 if !is_empty_val(status) || !is_empty_val(deployed) || !is_empty_val(next_review) || freq.is_some() {
                     println!("\n  {}", bold("LIFECYCLE"));
                     println!("  {}\n", separator());
@@ -553,7 +546,7 @@ async fn run_agent_show(
 
             // Source
             if let Some(source) = result.get("source") {
-                let confidence = source.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let confidence = source.get("confidence").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
                 let mode = source.get("mode").and_then(|v| v.as_str()).unwrap_or("?");
                 println!("\n  {}", bold("SOURCE"));
                 println!("  {}\n", separator());
@@ -572,8 +565,8 @@ async fn run_agent_show(
             }
 
             // Source files
-            if let Some(files) = result.get("source_files").and_then(|v| v.as_array()) {
-                if !files.is_empty() {
+            if let Some(files) = result.get("source_files").and_then(|v| v.as_array())
+                && !files.is_empty() {
                     println!("\n  {}", bold("SOURCE FILES"));
                     println!("  {}\n", separator());
                     for f in files {
@@ -582,7 +575,6 @@ async fn run_agent_show(
                         }
                     }
                 }
-            }
 
             println!();
             0
@@ -624,8 +616,8 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
             }
 
             // Per-agent breakdown
-            if let Some(agents) = result.get("agents").and_then(|v| v.as_array()) {
-                if !agents.is_empty() {
+            if let Some(agents) = result.get("agents").and_then(|v| v.as_array())
+                && !agents.is_empty() {
                     println!("\nAutonomy Analysis ({} agent(s))\n", agents.len());
                     println!(
                         "  {:<25} {:<8} {:<12} {:<8} {:<8} {:<8}",
@@ -638,19 +630,17 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
                         let level = agent.get("level").and_then(|v| v.as_str()).unwrap_or("?");
                         let atype = agent.get("agentType").and_then(|v| v.as_str()).unwrap_or("?");
                         let evidence = agent.get("evidence");
-                        let gates = evidence.and_then(|e| e.get("human_approval_gates")).and_then(|v| v.as_u64()).unwrap_or(0);
-                        let unsup = evidence.and_then(|e| e.get("unsupervised_actions")).and_then(|v| v.as_u64()).unwrap_or(0);
-                        let nolog = evidence.and_then(|e| e.get("no_logging_actions")).and_then(|v| v.as_u64()).unwrap_or(0);
+                        let gates = evidence.and_then(|e| e.get("human_approval_gates")).and_then(serde_json::Value::as_u64).unwrap_or(0);
+                        let unsup = evidence.and_then(|e| e.get("unsupervised_actions")).and_then(serde_json::Value::as_u64).unwrap_or(0);
+                        let nolog = evidence.and_then(|e| e.get("no_logging_actions")).and_then(serde_json::Value::as_u64).unwrap_or(0);
 
                         println!(
-                            "  {:<25} {:<8} {:<12} {:<8} {:<8} {:<8}",
-                            name, level, atype, gates, unsup, nolog
+                            "  {name:<25} {level:<8} {atype:<12} {gates:<8} {unsup:<8} {nolog:<8}"
                         );
                     }
                     println!();
                     return 0;
                 }
-            }
 
             // Fallback: project-level summary (no passports)
             let summary = result.get("summary").unwrap_or(&result);
@@ -666,15 +656,15 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
             let evidence = summary.get("evidence");
             let human_gates = evidence
                 .and_then(|e| e.get("human_approval_gates"))
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0);
             let unsupervised = evidence
                 .and_then(|e| e.get("unsupervised_actions"))
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0);
             let no_logging = evidence
                 .and_then(|e| e.get("no_logging_actions"))
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0);
 
             println!("\nAutonomy Analysis (project-level)\n");
@@ -773,12 +763,11 @@ async fn run_agent_validate(
                     continue;
                 }
 
-                let valid = result.get("valid").and_then(|v| v.as_bool()).unwrap_or(false);
+                let valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
                 let has_warnings = result
                     .get("warnings")
                     .and_then(|v| v.as_array())
-                    .map(|arr| !arr.is_empty())
-                    .unwrap_or(false);
+                    .is_some_and(|arr| !arr.is_empty());
 
                 if !valid {
                     any_invalid = true;
@@ -801,19 +790,19 @@ async fn run_agent_validate(
         println!("{}", serde_json::to_string_pretty(&json_results).unwrap_or_default());
     } else {
         for (agent_name, result) in &all_results {
-            let valid = result.get("valid").and_then(|v| v.as_bool()).unwrap_or(false);
+            let valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
             let schema_valid = result
                 .get("schemaValid")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
             let sig_valid = result
                 .get("signatureValid")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
             let completeness_score = result
                 .get("completeness")
                 .and_then(|c| c.get("score"))
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
 
             let status_icon = if valid { "PASS" } else { "FAIL" };
@@ -844,18 +833,18 @@ async fn run_agent_validate(
             }
 
             // Per-field breakdown when --verbose
-            if verbose {
-                if let Some(completeness) = result.get("completeness") {
+            if verbose
+                && let Some(completeness) = result.get("completeness") {
                     if let Some(fields) = completeness.get("fields").and_then(|v| v.as_array()) {
                         println!("    Fields:");
                         for field in fields {
                             let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
-                            let filled = field.get("filled").and_then(|v| v.as_bool()).unwrap_or(false);
+                            let filled = field.get("filled").and_then(serde_json::Value::as_bool).unwrap_or(false);
                             let icon = if filled { "+" } else { "-" };
                             println!("      [{icon}] {fname}");
                         }
-                    } else if let Some(missing) = completeness.get("missingFields").and_then(|v| v.as_array()) {
-                        if !missing.is_empty() {
+                    } else if let Some(missing) = completeness.get("missingFields").and_then(|v| v.as_array())
+                        && !missing.is_empty() {
                             println!("    Missing fields:");
                             for field in missing {
                                 let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
@@ -863,9 +852,7 @@ async fn run_agent_validate(
                                 println!("      [-] {fname} ({obligation})");
                             }
                         }
-                    }
                 }
-            }
         }
         println!();
     }
@@ -919,15 +906,15 @@ async fn run_agent_completeness(
 
             let score = result
                 .get("score")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let filled = result
                 .get("filledCount")
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0);
             let total = result
                 .get("totalRequired")
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0);
 
             // Score bar
@@ -947,10 +934,12 @@ async fn run_agent_completeness(
 
             // Missing fields table
             if let Some(missing) = result.get("missingFields").and_then(|v| v.as_array()) {
-                if !missing.is_empty() {
+                if missing.is_empty() {
+                    println!("  All required fields are filled.");
+                } else {
                     println!(
-                        "  {:<40} {:<10} {:<12} {}",
-                        "MISSING FIELD", "OBLIG.", "ARTICLE", "DESCRIPTION"
+                        "  {:<40} {:<10} {:<12} DESCRIPTION",
+                        "MISSING FIELD", "OBLIG.", "ARTICLE"
                     );
                     println!("  {}", "-".repeat(90));
 
@@ -972,10 +961,8 @@ async fn run_agent_completeness(
                             .and_then(|v| v.as_str())
                             .unwrap_or("?");
 
-                        println!("  {:<40} {:<10} {:<12} {}", fname, obligation, article, desc);
+                        println!("  {fname:<40} {obligation:<10} {article:<12} {desc}");
                     }
-                } else {
-                    println!("  All required fields are filled.");
                 }
             }
             println!();
@@ -1049,8 +1036,7 @@ async fn run_agent_fria(
             let prefilled_count = result
                 .get("prefilledFields")
                 .and_then(|v| v.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, std::vec::Vec::len);
             let empty_vec = vec![];
             let manual_fields = result
                 .get("manualFields")
@@ -1150,8 +1136,7 @@ async fn run_agent_notify(
             let prefilled_count = result
                 .get("prefilledFields")
                 .and_then(|v| v.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, std::vec::Vec::len);
             let empty_vec = vec![];
             let manual_fields = result
                 .get("manualFields")
@@ -1222,7 +1207,7 @@ async fn run_agent_export(
                 .unwrap_or("?");
             let valid = result
                 .get("valid")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
             let export_format = result
                 .get("format")
@@ -1282,18 +1267,18 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
                     for agent in agents {
                         let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                         let risk = agent.get("riskClass").and_then(|v| v.as_str()).unwrap_or("?");
-                        let score = agent.get("complianceScore").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let passport = agent.get("passportCompleteness").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let score = agent.get("complianceScore").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                        let passport = agent.get("passportCompleteness").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
                         let fria = agent.get("friaStatus").and_then(|v| v.as_str()).unwrap_or("?");
                         let ev_valid = agent
                             .get("evidenceChain")
                             .and_then(|e| e.get("valid"))
-                            .and_then(|v| v.as_bool())
+                            .and_then(serde_json::Value::as_bool)
                             .unwrap_or(false);
                         let ev_entries = agent
                             .get("evidenceChain")
                             .and_then(|e| e.get("entries"))
-                            .and_then(|v| v.as_u64())
+                            .and_then(serde_json::Value::as_u64)
                             .unwrap_or(0);
                         let evidence_str = if ev_entries == 0 {
                             "none".to_string()
@@ -1306,8 +1291,7 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
                         let passport_str = format!("{passport:.0}%");
 
                         println!(
-                            "  {:<20} {:<10} {:<7.0} {:<10} {:<7} {:<10} {:<6}",
-                            name, risk, score, passport_str, fria, evidence_str, grade
+                            "  {name:<20} {risk:<10} {score:<7.0} {passport_str:<10} {fria:<7} {evidence_str:<10} {grade:<6}"
                         );
                     }
 
@@ -1319,8 +1303,8 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
                             continue;
                         }
                         let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                        if let Some(issues) = agent.get("issues").and_then(|v| v.as_array()) {
-                            if !issues.is_empty() {
+                        if let Some(issues) = agent.get("issues").and_then(|v| v.as_array())
+                            && !issues.is_empty() {
                                 if !has_issues {
                                     println!("\nIssues:\n");
                                     has_issues = true;
@@ -1332,7 +1316,6 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
                                     }
                                 }
                             }
-                        }
                     }
                     println!();
                 }
@@ -1427,8 +1410,8 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
             }
 
             // Show conflicts
-            if let Some(conflicts) = result.get("conflicts").and_then(|v| v.as_array()) {
-                if !conflicts.is_empty() {
+            if let Some(conflicts) = result.get("conflicts").and_then(|v| v.as_array())
+                && !conflicts.is_empty() {
                     println!("\nConflicts ({}):\n", conflicts.len());
                     for conflict in conflicts {
                         let ctype = conflict.get("type").and_then(|v| v.as_str()).unwrap_or("?");
@@ -1436,7 +1419,6 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
                         println!("  [{ctype}] {desc}");
                     }
                 }
-            }
             println!();
             0
         }
@@ -1512,8 +1494,7 @@ async fn run_agent_policy(
             let prefilled_count = result
                 .get("prefilledFields")
                 .and_then(|v| v.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, std::vec::Vec::len);
             let empty_vec = vec![];
             let manual_fields = result
                 .get("manualFields")
@@ -1637,13 +1618,13 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
                     return 0;
                 }
 
-                let valid = result.get("valid").and_then(|v| v.as_bool()).unwrap_or(false);
+                let valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
                 if valid {
                     println!("Chain integrity: VALID");
                 } else {
                     let broken_at = result
                         .get("brokenAt")
-                        .and_then(|v| v.as_u64())
+                        .and_then(serde_json::Value::as_u64)
                         .unwrap_or(0);
                     println!("Chain integrity: BROKEN at entry {broken_at}");
                     return 1;
@@ -1666,19 +1647,19 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
 
                 let total = result
                     .get("totalEntries")
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
                     .unwrap_or(0);
                 let scans = result
                     .get("scanCount")
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
                     .unwrap_or(0);
                 let findings = result
                     .get("uniqueFindings")
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
                     .unwrap_or(0);
                 let valid = result
                     .get("chainValid")
-                    .and_then(|v| v.as_bool())
+                    .and_then(serde_json::Value::as_bool)
                     .unwrap_or(false);
                 let first = result
                     .get("firstEntry")
@@ -1739,7 +1720,7 @@ async fn run_agent_test_gen(
             }
 
             let filename = result.get("filename").and_then(|v| v.as_str()).unwrap_or("?");
-            let test_count = result.get("testCount").and_then(|v| v.as_u64()).unwrap_or(0);
+            let test_count = result.get("testCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
             println!("\nGenerated compliance test suite for: {name}\n");
             println!("  Tests:    {test_count}");
@@ -1787,11 +1768,11 @@ async fn run_agent_diff(
                 return 0;
             }
 
-            let total = result.get("totalChanges").and_then(|v| v.as_u64()).unwrap_or(0);
-            let added = result.get("added").and_then(|v| v.as_u64()).unwrap_or(0);
-            let removed = result.get("removed").and_then(|v| v.as_u64()).unwrap_or(0);
-            let modified = result.get("modified").and_then(|v| v.as_u64()).unwrap_or(0);
-            let breaking = result.get("hasBreakingChanges").and_then(|v| v.as_bool()).unwrap_or(false);
+            let total = result.get("totalChanges").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let added = result.get("added").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let removed = result.get("removed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let modified = result.get("modified").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let breaking = result.get("hasBreakingChanges").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
             println!("\nPassport Diff: {name}\n");
             println!("  Total changes:    {total}");
@@ -1802,8 +1783,8 @@ async fn run_agent_diff(
                 println!("  WARNING: BREAKING CHANGES detected");
             }
 
-            if let Some(changes) = result.get("changes").and_then(|v| v.as_array()) {
-                if !changes.is_empty() {
+            if let Some(changes) = result.get("changes").and_then(|v| v.as_array())
+                && !changes.is_empty() {
                     println!();
                     for change in changes {
                         let path = change.get("path").and_then(|v| v.as_str()).unwrap_or("?");
@@ -1818,7 +1799,6 @@ async fn run_agent_diff(
                         println!("  {icon} {path} [{severity}]");
                     }
                 }
-            }
 
             0
         }
@@ -1849,7 +1829,7 @@ async fn run_agent_import(
     let file_content = match std::fs::read_to_string(file) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error reading file {}: {}", file, e);
+            eprintln!("Error reading file {file}: {e}");
             return 1;
         }
     };
@@ -1857,7 +1837,7 @@ async fn run_agent_import(
     let data: serde_json::Value = match serde_json::from_str(&file_content) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("Error parsing JSON from {}: {}", file, e);
+            eprintln!("Error parsing JSON from {file}: {e}");
             return 1;
         }
     };
@@ -1874,19 +1854,19 @@ async fn run_agent_import(
         Ok(result) => {
             if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
                 let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
-                eprintln!("Error: {}", msg);
+                eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
                 println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
             } else {
-                println!("Passport imported successfully from {} format", from);
+                println!("Passport imported successfully from {from} format");
                 if let Some(imported) = result.get("fieldsImported").and_then(|v| v.as_array()) {
                     println!("  Fields imported: {}", imported.len());
                     for field in imported {
                         if let Some(f) = field.as_str() {
-                            println!("    + {}", f);
+                            println!("    + {f}");
                         }
                     }
                 }
@@ -1894,20 +1874,20 @@ async fn run_agent_import(
                     println!("  Fields missing: {}", missing.len());
                     for field in missing {
                         if let Some(f) = field.as_str() {
-                            println!("    - {}", f);
+                            println!("    - {f}");
                         }
                     }
                 }
                 if let Some(passport) = result.get("passport") {
                     let name = passport.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                    println!("\n  Passport name: {}", name);
-                    println!("  Run `complior agent show {}` to view details.", name);
+                    println!("\n  Passport name: {name}");
+                    println!("  Run `complior agent show {name}` to view details.");
                 }
             }
             0
         }
         Err(e) => {
-            eprintln!("Error importing passport: {}", e);
+            eprintln!("Error importing passport: {e}");
             1
         }
     }
@@ -1938,14 +1918,14 @@ async fn run_agent_audit_package(
             Ok(result) => {
                 if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
                     let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
-                    eprintln!("Error: {}", msg);
+                    eprintln!("Error: {msg}");
                     return 1;
                 }
                 println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
                 0
             }
             Err(e) => {
-                eprintln!("Error: {}", e);
+                eprintln!("Error: {e}");
                 1
             }
         }
@@ -1960,21 +1940,21 @@ async fn run_agent_audit_package(
         match client.get_bytes(&url).await {
             Ok(bytes) => {
                 match std::fs::write(output_path, &bytes) {
-                    Ok(_) => {
+                    Ok(()) => {
                         let size_kb = bytes.len() as f64 / 1024.0;
-                        println!("Audit package saved to: {}", output_path);
+                        println!("Audit package saved to: {output_path}");
                         println!("  Size: {:.1} KB ({} bytes)", size_kb, bytes.len());
-                        println!("\nExtract with: tar xzf {}", output_path);
+                        println!("\nExtract with: tar xzf {output_path}");
                         0
                     }
                     Err(e) => {
-                        eprintln!("Error writing file {}: {}", output_path, e);
+                        eprintln!("Error writing file {output_path}: {e}");
                         1
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Error downloading audit package: {}", e);
+                eprintln!("Error downloading audit package: {e}");
                 1
             }
         }

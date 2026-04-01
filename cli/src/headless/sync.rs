@@ -16,12 +16,9 @@ pub async fn run_sync(
     config: &TuiConfig,
 ) -> i32 {
     // Check authentication
-    let tokens = match config::load_tokens() {
-        Some(t) => t,
-        None => {
-            eprintln!("Error: Not authenticated. Run `complior login` first.");
-            return 1;
-        }
+    let tokens = if let Some(t) = config::load_tokens() { t } else {
+        eprintln!("Error: Not authenticated. Run `complior login` first.");
+        return 1;
     };
 
     if !config::is_authenticated() {
@@ -57,10 +54,10 @@ pub async fn run_sync(
             "saasUrl": config.project_api_url,
         })).await {
             Ok(result) => {
-                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
-                let created = result.get("created").and_then(|v| v.as_i64()).unwrap_or(0);
-                let updated = result.get("updated").and_then(|v| v.as_i64()).unwrap_or(0);
-                let conflicts = result.get("conflicts").and_then(|v| v.as_i64()).unwrap_or(0);
+                let synced = result.get("synced").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let created = result.get("created").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let updated = result.get("updated").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let conflicts = result.get("conflicts").and_then(serde_json::Value::as_i64).unwrap_or(0);
 
                 if synced > 0 {
                     println!("\u{2705} {synced} synced ({created} created, {updated} updated, {conflicts} conflicts)");
@@ -97,9 +94,9 @@ pub async fn run_sync(
             "saasUrl": config.project_api_url,
         })).await {
             Ok(result) => {
-                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
-                let created = result.get("created").and_then(|v| v.as_i64()).unwrap_or(0);
-                let updated = result.get("updated").and_then(|v| v.as_i64()).unwrap_or(0);
+                let synced = result.get("synced").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let created = result.get("created").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let updated = result.get("updated").and_then(serde_json::Value::as_i64).unwrap_or(0);
 
                 if synced > 0 {
                     println!("\u{2705} {synced} synced ({created} created, {updated} updated)");
@@ -134,7 +131,7 @@ pub async fn run_sync(
             "saasUrl": config.project_api_url,
         })).await {
             Ok(result) => {
-                let processed = result.get("processed").and_then(|v| v.as_i64()).unwrap_or(0);
+                let processed = result.get("processed").and_then(serde_json::Value::as_i64).unwrap_or(0);
                 println!("\u{2705} {processed} tools processed");
             }
             Err(e) => {
@@ -152,9 +149,9 @@ pub async fn run_sync(
             "saasUrl": config.project_api_url,
         })).await {
             Ok(result) => {
-                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
-                let created = result.get("created").and_then(|v| v.as_i64()).unwrap_or(0);
-                let updated = result.get("updated").and_then(|v| v.as_i64()).unwrap_or(0);
+                let synced = result.get("synced").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let created = result.get("created").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let updated = result.get("updated").and_then(serde_json::Value::as_i64).unwrap_or(0);
                 println!("\u{2705} {synced} synced ({created} created, {updated} updated)");
             }
             Err(e) => {
@@ -172,7 +169,7 @@ pub async fn run_sync(
             "saasUrl": config.project_api_url,
         })).await {
             Ok(result) => {
-                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
+                let synced = result.get("synced").and_then(serde_json::Value::as_i64).unwrap_or(0);
                 if synced > 0 {
                     println!("\u{2705} {synced} entries synced");
                 } else {
@@ -211,7 +208,7 @@ pub async fn run_sync(
             "saasUrl": config.project_api_url,
         })).await {
             Ok(result) => {
-                let synced = result.get("synced").and_then(|v| v.as_i64()).unwrap_or(0);
+                let synced = result.get("synced").and_then(serde_json::Value::as_i64).unwrap_or(0);
                 if synced > 0 {
                     println!("\u{2705} {synced} entries synced");
                 } else {

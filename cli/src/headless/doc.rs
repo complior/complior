@@ -61,13 +61,12 @@ async fn run_doc_generate(
     }
 
     // Validate doc type if provided
-    if let Some(dt) = doc_type {
-        if !VALID_DOC_TYPES.contains(&dt) {
+    if let Some(dt) = doc_type
+        && !VALID_DOC_TYPES.contains(&dt) {
             eprintln!("Error: Invalid document type: {dt}");
             eprintln!("Valid types: {}", VALID_DOC_TYPES.join(", "));
             return 1;
         }
-    }
 
     let project_path = resolve_project_path_buf(path);
 
@@ -105,8 +104,8 @@ async fn run_doc_generate(
                     .and_then(|v| v.as_array());
                 let errors = result.get("errors").and_then(|v| v.as_array());
 
-                if let Some(docs) = generated {
-                    if !docs.is_empty() {
+                if let Some(docs) = generated
+                    && !docs.is_empty() {
                         println!("\nGenerated {} document(s):\n", docs.len());
                         for doc in docs {
                             let dt = doc
@@ -120,10 +119,9 @@ async fn run_doc_generate(
                             println!("  {dt:<30} -> {sp}");
                         }
                     }
-                }
 
-                if let Some(errs) = errors {
-                    if !errs.is_empty() {
+                if let Some(errs) = errors
+                    && !errs.is_empty() {
                         eprintln!("\nErrors ({}):", errs.len());
                         for err in errs {
                             if let Some(e) = err.as_str() {
@@ -131,15 +129,14 @@ async fn run_doc_generate(
                             }
                         }
                     }
-                }
 
-                let gen_count = generated.map(|g| g.len()).unwrap_or(0);
-                let err_count = errors.map(|e| e.len()).unwrap_or(0);
+                let gen_count = generated.map_or(0, std::vec::Vec::len);
+                let err_count = errors.map_or(0, std::vec::Vec::len);
                 println!(
                     "\nComplete: {gen_count} generated, {err_count} error(s)."
                 );
 
-                if err_count > 0 { 1 } else { 0 }
+                i32::from(err_count > 0)
             }
             Err(e) => {
                 eprintln!("Error: Failed to generate documents: {e}");
@@ -148,7 +145,10 @@ async fn run_doc_generate(
         }
     } else {
         // Generate single document
-        let dt = doc_type.unwrap();
+        let Some(dt) = doc_type else {
+            eprintln!("  Error: document type is required when --all is not set");
+            return 1;
+        };
 
         if !json {
             println!(
@@ -180,13 +180,11 @@ async fn run_doc_generate(
                 let prefilled = result
                     .get("prefilledFields")
                     .and_then(|v| v.as_array())
-                    .map(|a| a.len())
-                    .unwrap_or(0);
+                    .map_or(0, std::vec::Vec::len);
                 let manual = result
                     .get("manualFields")
                     .and_then(|v| v.as_array())
-                    .map(|a| a.len())
-                    .unwrap_or(0);
+                    .map_or(0, std::vec::Vec::len);
 
                 println!("\nDocument generated:");
                 println!("  Type:        {dt}");
@@ -195,8 +193,8 @@ async fn run_doc_generate(
                 println!("  Manual:      {manual} field(s) remaining");
 
                 // List manual fields
-                if let Some(fields) = result.get("manualFields").and_then(|v| v.as_array()) {
-                    if !fields.is_empty() {
+                if let Some(fields) = result.get("manualFields").and_then(|v| v.as_array())
+                    && !fields.is_empty() {
                         println!("\n  Fields to complete manually:");
                         for field in fields {
                             if let Some(f) = field.as_str() {
@@ -204,7 +202,6 @@ async fn run_doc_generate(
                             }
                         }
                     }
-                }
 
                 0
             }

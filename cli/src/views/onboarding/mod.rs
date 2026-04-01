@@ -49,7 +49,7 @@ impl StepOption {
         self
     }
 
-    pub(super) fn with_tag(mut self, tag: &'static str) -> Self {
+    pub(super) const fn with_tag(mut self, tag: &'static str) -> Self {
         self.tag = Some(tag);
         self
     }
@@ -76,9 +76,9 @@ pub struct OnboardingWizard {
     pub completed: bool,
     pub result_summary: Option<String>,
 
-    /// Set after project_type step, drives conditional skipping.
+    /// Set after `project_type` step, drives conditional skipping.
     pub project_type: Option<String>,
-    /// Indices of visible steps (recalculated on project_type change).
+    /// Indices of visible steps (recalculated on `project_type` change).
     pub active_steps: Vec<usize>,
 
     /// AI provider substep: 0=select, 1=key input, 2=validating, 3=result
@@ -119,7 +119,7 @@ impl OnboardingWizard {
     }
 
     /// Total number of *visible* steps.
-    pub fn total_visible_steps(&self) -> usize {
+    pub const fn total_visible_steps(&self) -> usize {
         self.active_steps.len()
     }
 
@@ -128,8 +128,7 @@ impl OnboardingWizard {
         self.active_steps
             .iter()
             .position(|&i| i == self.current_step)
-            .map(|p| p + 1)
-            .unwrap_or(1)
+            .map_or(1, |p| p + 1)
     }
 
     pub fn current(&self) -> Option<&OnboardingStep> {
@@ -140,18 +139,17 @@ impl OnboardingWizard {
         self.steps.get_mut(self.current_step)
     }
 
-    pub fn move_cursor_up(&mut self) {
+    pub const fn move_cursor_up(&mut self) {
         if self.cursor > 0 {
             self.cursor -= 1;
         }
     }
 
     pub fn move_cursor_down(&mut self) {
-        if let Some(step) = self.current() {
-            if self.cursor + 1 < step.options.len() {
+        if let Some(step) = self.current()
+            && self.cursor + 1 < step.options.len() {
                 self.cursor += 1;
             }
-        }
     }
 
     /// Toggle selection at cursor (Radio = single, Checkbox = multi).
@@ -180,20 +178,18 @@ impl OnboardingWizard {
 
     /// Select all options (for Checkbox steps).
     pub fn select_all(&mut self) {
-        if let Some(step) = self.current_mut() {
-            if step.kind == StepKind::Checkbox {
+        if let Some(step) = self.current_mut()
+            && step.kind == StepKind::Checkbox {
                 step.selected = (0..step.options.len()).collect();
             }
-        }
     }
 
     /// Select minimum options (for Checkbox steps: first item only).
     pub fn select_minimum(&mut self) {
-        if let Some(step) = self.current_mut() {
-            if step.kind == StepKind::Checkbox {
+        if let Some(step) = self.current_mut()
+            && step.kind == StepKind::Checkbox {
                 step.selected = vec![0];
             }
-        }
     }
 
     /// Advance to next visible step. Returns true if wizard completed.
@@ -226,22 +222,20 @@ impl OnboardingWizard {
             .active_steps
             .iter()
             .position(|&i| i == self.current_step);
-        if let Some(pos) = current_pos {
-            if pos > 0 {
+        if let Some(pos) = current_pos
+            && pos > 0 {
                 self.current_step = self.active_steps[pos - 1];
                 self.cursor = 0;
             }
-        }
     }
 
     /// Insert a character at the current text cursor position.
     pub fn insert_char(&mut self, c: char) {
-        if let Some(step) = self.steps.get_mut(self.current_step) {
-            if self.text_cursor <= step.text_value.len() {
+        if let Some(step) = self.steps.get_mut(self.current_step)
+            && self.text_cursor <= step.text_value.len() {
                 step.text_value.insert(self.text_cursor, c);
                 self.text_cursor += c.len_utf8();
             }
-        }
     }
 
     /// Delete the character before the text cursor (backspace).
@@ -249,21 +243,19 @@ impl OnboardingWizard {
         if self.text_cursor == 0 {
             return;
         }
-        if let Some(step) = self.steps.get_mut(self.current_step) {
-            if self.text_cursor <= step.text_value.len() {
+        if let Some(step) = self.steps.get_mut(self.current_step)
+            && self.text_cursor <= step.text_value.len() {
                 // Find the previous char boundary
                 let prev = step.text_value[..self.text_cursor]
                     .char_indices()
                     .next_back()
-                    .map(|(i, _)| i)
-                    .unwrap_or(0);
+                    .map_or(0, |(i, _)| i);
                 step.text_value.remove(prev);
                 self.text_cursor = prev;
             }
-        }
     }
 
-    /// Get the text_value of a step by id.
+    /// Get the `text_value` of a step by id.
     pub fn step_text_value(&self, id: &str) -> String {
         self.steps
             .iter()
@@ -272,7 +264,7 @@ impl OnboardingWizard {
             .unwrap_or_default()
     }
 
-    /// Recalculate active_steps based on project_type.
+    /// Recalculate `active_steps` based on `project_type`.
     pub fn recalculate_active_steps(&mut self) {
         let pt = self.project_type.as_deref().unwrap_or("existing");
 

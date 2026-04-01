@@ -250,7 +250,7 @@ fn handle_overlay_keys(key: KeyEvent, app: &App) -> Action {
     }
 }
 
-fn handle_insert_mode(key: KeyEvent) -> Action {
+const fn handle_insert_mode(key: KeyEvent) -> Action {
     match key.code {
         // Shift+Enter = newline (requires modifyOtherKeys protocol, works in tmux 3.2+)
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => Action::InsertChar('\n'),
@@ -287,7 +287,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
         KeyCode::Char('g') if app.view_state != ViewState::Passport => Action::ScrollToTop,
         KeyCode::Char('G') => Action::ScrollToBottom,
-        KeyCode::Char('v') | KeyCode::Char('V') => Action::EnterVisualMode,
+        KeyCode::Char('v' | 'V') => Action::EnterVisualMode,
         KeyCode::Char(':') => Action::EnterColonMode,
         KeyCode::Char('U') => Action::ShowUndoHistory,
         KeyCode::Char('w') => Action::WatchToggle,
@@ -334,7 +334,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
     }
 }
 
-fn handle_command_mode(key: KeyEvent) -> Action {
+const fn handle_command_mode(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Enter => Action::SubmitInput,
         KeyCode::Char(c) => Action::InsertChar(c),
@@ -345,7 +345,7 @@ fn handle_command_mode(key: KeyEvent) -> Action {
     }
 }
 
-fn handle_visual_mode(key: KeyEvent) -> Action {
+const fn handle_visual_mode(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Esc => Action::EnterNormalMode,
         KeyCode::Char('j') | KeyCode::Down => Action::SelectionDown,

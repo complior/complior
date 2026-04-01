@@ -1,9 +1,9 @@
 //! Scan output formatting: JSON, SARIF, and human-readable.
 
-pub(crate) mod colors;
+pub mod colors;
 mod human;
-pub(crate) mod labels;
-pub(crate) mod layers;
+pub mod labels;
+pub mod layers;
 
 use std::io::IsTerminal as _;
 use std::io::Write as _;
@@ -27,17 +27,17 @@ pub use human::format_human;
 // ── Shared helpers (used by both scan + fix formatters) ─────────
 
 /// Full-width separator line using dynamic terminal width.
-pub(crate) fn separator() -> String {
+pub fn separator() -> String {
     colors::dim(&colors::h_line().repeat(layers::display_width()))
 }
 
 /// Extract project name from the last non-empty path segment.
-pub(crate) fn project_name(path: &str) -> &str {
+pub fn project_name(path: &str) -> &str {
     path.rsplit('/').find(|s| !s.is_empty()).unwrap_or(path)
 }
 
 /// Pluralization suffix: "s" for n != 1, "" for n == 1.
-pub(crate) fn plural(n: usize) -> &'static str {
+pub const fn plural(n: usize) -> &'static str {
     if n == 1 { "" } else { "s" }
 }
 
@@ -75,11 +75,10 @@ pub fn format_json(result: &ScanResult) -> String {
                 obj.insert("id".to_string(), serde_json::json!(format!("F-{:03}", i + 1)));
 
                 // Map obligationId → obligationIds array
-                if let Some(oblig_id) = obj.get("obligationId").and_then(|v| v.as_str()).map(String::from) {
-                    if !oblig_id.is_empty() {
+                if let Some(oblig_id) = obj.get("obligationId").and_then(|v| v.as_str()).map(String::from)
+                    && !oblig_id.is_empty() {
                         obj.insert("obligationIds".to_string(), serde_json::json!([oblig_id]));
                     }
-                }
             }
         }
     }
@@ -161,7 +160,7 @@ pub fn format_sarif(result: &ScanResult) -> String {
 }
 
 /// Map Severity to SARIF level string.
-pub(super) fn sarif_level(severity: &Severity) -> &'static str {
+pub(super) const fn sarif_level(severity: &Severity) -> &'static str {
     match severity {
         Severity::Critical | Severity::High => "error",
         Severity::Medium => "warning",

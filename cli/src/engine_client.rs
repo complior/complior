@@ -154,8 +154,7 @@ impl EngineClient {
 
         // Sum up predicted score impact from individual plans
         let total_impact: f64 = fixes
-            .map(|f| f.iter().filter_map(|p| p.get("scoreImpact").and_then(|v| v.as_f64())).sum())
-            .unwrap_or(0.0);
+            .map_or(0.0, |f| f.iter().filter_map(|p| p.get("scoreImpact").and_then(serde_json::Value::as_f64)).sum());
 
         let changes: Vec<serde_json::Value> = fixes
             .map(|f| f.iter().map(|plan| {
@@ -173,7 +172,7 @@ impl EngineClient {
                     "path": path,
                     "action": if action_type == "create" { "CREATE" } else { "MODIFY" },
                     "checkId": plan.get("checkId").and_then(|v| v.as_str()).unwrap_or("?"),
-                    "scoreImpact": plan.get("scoreImpact").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                    "scoreImpact": plan.get("scoreImpact").and_then(serde_json::Value::as_f64).unwrap_or(0.0),
                 })
             }).collect())
             .unwrap_or_default();
@@ -181,7 +180,7 @@ impl EngineClient {
         // Get current score from status endpoint
         let current_score = self.get_json("/status").await
             .ok()
-            .and_then(|v| v.get("score").and_then(|s| s.as_f64()))
+            .and_then(|v| v.get("score").and_then(serde_json::Value::as_f64))
             .unwrap_or(0.0);
 
         let predicted = (current_score + total_impact).min(100.0);

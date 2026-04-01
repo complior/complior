@@ -14,7 +14,7 @@ pub enum ViewState {
 
 impl ViewState {
     /// Map key digit to view (1-based) — used by `/view N` command.
-    pub fn from_key(digit: u8) -> Option<Self> {
+    pub const fn from_key(digit: u8) -> Option<Self> {
         match digit {
             1 => Some(Self::Dashboard),
             2 => Some(Self::Scan),
@@ -32,7 +32,7 @@ impl ViewState {
     /// Map an uppercase letter to a view for letter-key navigation.
     ///
     /// Lowercase letters are reserved for view-specific actions.
-    pub fn from_letter(c: char) -> Option<Self> {
+    pub const fn from_letter(c: char) -> Option<Self> {
         match c {
             'D' => Some(Self::Dashboard),
             'S' => Some(Self::Scan),
@@ -48,7 +48,7 @@ impl ViewState {
     }
 
     /// 0-based index for tab highlighting.
-    pub fn index(self) -> usize {
+    pub const fn index(self) -> usize {
         match self {
             Self::Dashboard => 0,
             Self::Scan => 1,
@@ -63,7 +63,7 @@ impl ViewState {
     }
 
     /// Short display name for footer tabs.
-    pub fn short_name(self) -> &'static str {
+    pub const fn short_name(self) -> &'static str {
         match self {
             Self::Dashboard => "Dashboard",
             Self::Scan => "Scan",
@@ -77,7 +77,7 @@ impl ViewState {
         }
     }
 
-    pub const ALL: [ViewState; 9] = [
+    pub const ALL: [Self; 9] = [
         Self::Dashboard,
         Self::Scan,
         Self::Fix,
@@ -99,7 +99,7 @@ pub enum Mode {
 }
 
 impl Mode {
-    pub fn next(self) -> Self {
+    pub const fn next(self) -> Self {
         match self {
             Self::Scan => Self::Fix,
             Self::Fix => Self::Watch,

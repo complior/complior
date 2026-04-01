@@ -312,7 +312,7 @@ fn render_detail_legal_column(
     let impact = finding.predicted_impact();
     let current_score = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
     #[allow(clippy::cast_precision_loss)]
-    let projected = (current_score + impact as f64).min(100.0);
+    let projected = (current_score + f64::from(impact)).min(100.0);
     lines.push(Line::raw(""));
     lines.push(Line::from(vec![
         Span::styled("  Impact:     ", Style::default().fg(t.muted)),
@@ -335,8 +335,7 @@ fn render_detail_legal_column(
         .explanation
         .as_ref()
         .filter(|e| !e.business_impact.is_empty())
-        .map(|e| e.business_impact.as_str())
-        .unwrap_or(desc);
+        .map_or(desc, |e| e.business_impact.as_str());
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(
         "  Why This Matters",

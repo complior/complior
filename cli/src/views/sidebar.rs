@@ -62,9 +62,7 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
 fn render_project_section(frame: &mut Frame, area: Rect, app: &App, t: &theme::ThemeColors) {
     let project_name = app
         .project_path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "project".to_string());
+        .file_name().map_or_else(|| "project".to_string(), |n| n.to_string_lossy().to_string());
 
     let mut lines = vec![
         Line::from(Span::styled(

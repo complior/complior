@@ -21,7 +21,7 @@ pub enum ToastKind {
 }
 
 impl ToastKind {
-    pub fn marker(self) -> &'static str {
+    pub const fn marker(self) -> &'static str {
         match self {
             Self::Success => "[OK]",
             Self::Info => "[i]",

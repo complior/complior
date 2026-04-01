@@ -23,13 +23,13 @@ impl ThemePickerState {
         Self { selected, themes }
     }
 
-    pub fn move_up(&mut self) {
+    pub const fn move_up(&mut self) {
         if self.selected > 0 {
             self.selected -= 1;
         }
     }
 
-    pub fn move_down(&mut self) {
+    pub const fn move_down(&mut self) {
         if self.selected + 1 < self.themes.len() {
             self.selected += 1;
         }

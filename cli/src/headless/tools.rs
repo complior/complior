@@ -20,7 +20,7 @@ async fn run_tools_status(client: &EngineClient) -> i32 {
         Ok(result) => {
             let uv_available = result
                 .get("uvAvailable")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
 
             println!();
@@ -41,7 +41,7 @@ async fn run_tools_status(client: &EngineClient) -> i32 {
                     let name = tool.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                     let installed = tool
                         .get("installed")
-                        .and_then(|v| v.as_bool())
+                        .and_then(serde_json::Value::as_bool)
                         .unwrap_or(false);
                     let expected = tool
                         .get("expectedVersion")
@@ -88,7 +88,7 @@ async fn run_tools_update(client: &EngineClient) -> i32 {
                     let name = tool.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                     let installed = tool
                         .get("installed")
-                        .and_then(|v| v.as_bool())
+                        .and_then(serde_json::Value::as_bool)
                         .unwrap_or(false);
                     let version = tool.get("version").and_then(|v| v.as_str());
                     let error = tool.get("error").and_then(|v| v.as_str());
@@ -107,7 +107,7 @@ async fn run_tools_update(client: &EngineClient) -> i32 {
                     .iter()
                     .filter(|t| {
                         t.get("installed")
-                            .and_then(|v| v.as_bool())
+                            .and_then(serde_json::Value::as_bool)
                             .unwrap_or(false)
                     })
                     .count();

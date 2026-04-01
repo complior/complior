@@ -15,7 +15,7 @@ pub enum ActivityKind {
 }
 
 impl ActivityKind {
-    pub fn icon(self) -> char {
+    pub const fn icon(self) -> char {
         match self {
             Self::Scan => 'S',
             Self::Fix => 'F',

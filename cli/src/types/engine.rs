@@ -35,7 +35,7 @@ impl Severity {
         }
     }
 
-    /// Lowercase string for serialization (matches serde rename_all = "lowercase").
+    /// Lowercase string for serialization (matches serde `rename_all` = "lowercase").
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Critical => "critical",
@@ -47,7 +47,7 @@ impl Severity {
     }
 }
 
-/// Strip layer prefix from a check_id, returning (layer_tag, remainder).
+/// Strip layer prefix from a `check_id`, returning (`layer_tag`, remainder).
 ///
 /// Single source of truth for prefix stripping across CLI.
 /// Example: `"l2-fria"` → `("l2", "fria")`, `"cross-doc-mismatch"` → `("cross", "doc-mismatch")`.
@@ -114,7 +114,7 @@ pub enum FindingType {
 
 impl FindingType {
     /// Short badge text for list display.
-    pub fn badge(self) -> &'static str {
+    pub const fn badge(self) -> &'static str {
         match self {
             Self::A => "[A]",
             Self::B => "[B]",
@@ -123,7 +123,7 @@ impl FindingType {
     }
 
     /// Human-readable label.
-    pub fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
             Self::A => "Code Fix",
             Self::B => "Missing File",
@@ -163,6 +163,7 @@ pub struct FixDiff {
 /// US-S05-07: Finding explanation with article, penalty, deadline, business impact.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct FindingExplanation {
     pub article: String,
     pub penalty: String,
@@ -170,16 +171,6 @@ pub struct FindingExplanation {
     pub business_impact: String,
 }
 
-impl Default for FindingExplanation {
-    fn default() -> Self {
-        Self {
-            article: String::new(),
-            penalty: String::new(),
-            deadline: String::new(),
-            business_impact: String::new(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -212,7 +203,7 @@ pub struct Finding {
     pub evidence: Option<Vec<serde_json::Value>>,
     #[serde(default)]
     pub explanation: Option<FindingExplanation>,
-    /// Agent passport name (enriched post-scan from passport source_files).
+    /// Agent passport name (enriched post-scan from passport `source_files`).
     #[serde(default)]
     pub agent_id: Option<String>,
     /// Document quality assessment from L2 scanner (e.g. "COMPREHENSIVE", "SHALLOW").
@@ -221,7 +212,7 @@ pub struct Finding {
 }
 
 impl Finding {
-    /// Classify finding into A/B/C type based on check_id prefix.
+    /// Classify finding into A/B/C type based on `check_id` prefix.
     ///
     /// - l4-/l5-/cross- → Type A (code-level)
     /// - l1-/l2-/missing → Type B (missing file/document)
@@ -241,7 +232,7 @@ impl Finding {
     }
 
     /// Predicted score impact if this finding is fixed.
-    pub fn predicted_impact(&self) -> i32 {
+    pub const fn predicted_impact(&self) -> i32 {
         match self.severity {
             Severity::Critical => 8,
             Severity::High => 5,
@@ -251,7 +242,7 @@ impl Finding {
         }
     }
 
-    /// Short file:line label for display.
+    /// Short <file:line> label for display.
     pub fn file_line_label(&self) -> Option<String> {
         match (&self.file, self.line) {
             (Some(f), Some(l)) => Some(format!("{f}:{l}")),
@@ -286,7 +277,7 @@ pub struct ScoreBreakdown {
     pub confidence_summary: Option<serde_json::Value>,
 }
 
-/// Per-agent finding summary (enriched post-scan from passport source_files).
+/// Per-agent finding summary (enriched post-scan from passport `source_files`).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSummary {

@@ -96,7 +96,32 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
 
         if let Some(scan) = &app.last_scan {
             // Use category_scores from engine if available
-            if !scan.score.category_scores.is_empty() {
+            if scan.score.category_scores.is_empty() {
+                // Derive categories from findings
+                let cats = derive_categories_from_findings(&scan.findings);
+                let cat_lines: Vec<Line<'_>> = cats.iter()
+                    .take(inner.height as usize)
+                    .map(|(name, count)| {
+                        let (icon, icon_color) = if *count > 0 {
+                            ("\u{2717}", t.zone_red)
+                        } else {
+                            ("\u{2713}", t.zone_green)
+                        };
+                        Line::from(vec![
+                            Span::styled(format!(" {icon} "), Style::default().fg(icon_color)),
+                            Span::styled(
+                                format!("{name:<14}"),
+                                Style::default().fg(t.fg),
+                            ),
+                            Span::styled(
+                                format!("{count:>2}"),
+                                Style::default().fg(if *count > 0 { t.zone_red } else { t.muted }),
+                            ),
+                        ])
+                    })
+                    .collect();
+                frame.render_widget(Paragraph::new(cat_lines), inner);
+            } else {
                 let cat_lines: Vec<Line<'_>> = scan.score.category_scores.iter()
                     .take(inner.height as usize)
                     .map(|cat| {
@@ -121,31 +146,6 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
                             Span::styled(
                                 format!("{failed:>2}"),
                                 Style::default().fg(if failed > 0 { t.zone_red } else { t.muted }),
-                            ),
-                        ])
-                    })
-                    .collect();
-                frame.render_widget(Paragraph::new(cat_lines), inner);
-            } else {
-                // Derive categories from findings
-                let cats = derive_categories_from_findings(&scan.findings);
-                let cat_lines: Vec<Line<'_>> = cats.iter()
-                    .take(inner.height as usize)
-                    .map(|(name, count)| {
-                        let (icon, icon_color) = if *count > 0 {
-                            ("\u{2717}", t.zone_red)
-                        } else {
-                            ("\u{2713}", t.zone_green)
-                        };
-                        Line::from(vec![
-                            Span::styled(format!(" {icon} "), Style::default().fg(icon_color)),
-                            Span::styled(
-                                format!("{:<14}", name),
-                                Style::default().fg(t.fg),
-                            ),
-                            Span::styled(
-                                format!("{count:>2}"),
-                                Style::default().fg(if *count > 0 { t.zone_red } else { t.muted }),
                             ),
                         ])
                     })
@@ -382,7 +382,7 @@ pub(super) fn render_score_gauge(frame: &mut Frame, area: Rect, app: &App) {
     let display_score = app
         .animation
         .counter_value()
-        .map(|v| v as f64)
+        .map(f64::from)
         .or(real_score)
         .unwrap_or(0.0);
 

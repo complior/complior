@@ -106,7 +106,7 @@ impl FixViewState {
         }
     }
 
-    pub fn is_single_fix(&self) -> bool {
+    pub const fn is_single_fix(&self) -> bool {
         self.focus_check_id.is_some()
     }
 
@@ -146,7 +146,7 @@ impl FixViewState {
         }
     }
 
-    pub fn navigate_up(&mut self) {
+    pub const fn navigate_up(&mut self) {
         self.selected_index = self.selected_index.saturating_sub(1);
     }
 
@@ -184,7 +184,7 @@ pub fn render_fix_view(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     if app.fix_view.diff_visible {
-        let left_pct = u16::from(app.fix_split_pct.clamp(25, 75));
+        let left_pct = app.fix_split_pct.clamp(25, 75);
         let right_pct = 100 - left_pct;
         let layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -297,7 +297,7 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
     lines.push(Line::from(vec![
         Span::styled("  Change: ", Style::default().fg(t.muted)),
         Span::styled(
-            format!("{:+.0} points", delta),
+            format!("{delta:+.0} points"),
             Style::default().fg(delta_color).add_modifier(Modifier::BOLD),
         ),
         Span::styled(

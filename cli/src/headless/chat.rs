@@ -56,8 +56,8 @@ async fn handle_json_response(resp: reqwest::Response, raw_json: bool) -> i32 {
                     println!("Mode: {label}");
                 }
                 "cost" => {
-                    let cost = val.get("totalCost").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                    let tokens = val.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let cost = val.get("totalCost").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                    let tokens = val.get("totalTokens").and_then(serde_json::Value::as_u64).unwrap_or(0);
                     println!("Session cost: ${cost:.4}  ({tokens} tokens)");
                 }
                 "model" => {
@@ -123,15 +123,14 @@ async fn parse_sse_stream(resp: reqwest::Response, json: bool) -> i32 {
                 // Streaming text mode
                 match current_event.as_str() {
                     "text" => {
-                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                            if let Some(content) =
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data)
+                            && let Some(content) =
                                 parsed.get("content").and_then(|v| v.as_str())
                             {
                                 print!("{content}");
                                 use std::io::Write;
                                 let _ = std::io::stdout().flush();
                             }
-                        }
                     }
                     "error" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {

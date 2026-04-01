@@ -8,7 +8,7 @@ use crate::engine_client::EngineClient;
 use crate::engine_process::EngineManager;
 
 /// Percent-encode a string for use in URL query parameters.
-pub(crate) fn url_encode(s: &str) -> String {
+pub fn url_encode(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     for b in s.bytes() {
         match b {
@@ -24,7 +24,7 @@ pub(crate) fn url_encode(s: &str) -> String {
 }
 
 /// Resolve engine client: walk up from CWD to find daemon PID file, fall back to config default.
-pub(crate) fn resolve_client(config: &TuiConfig) -> EngineClient {
+pub fn resolve_client(config: &TuiConfig) -> EngineClient {
     let mut dir = std::env::current_dir().unwrap_or_default();
     loop {
         if let Some(info) = daemon::find_running_daemon(&dir) {
@@ -41,13 +41,13 @@ pub(crate) fn resolve_client(config: &TuiConfig) -> EngineClient {
 /// Daemon-aware retry with exponential backoff: if a daemon PID is found,
 /// retries up to 25 times (~6.4s) to allow cold start.
 /// Without a PID, retries only 5 times (~3.1s) before auto-launching.
-pub(crate) async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
+pub async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
     ensure_engine_for(config, &std::env::current_dir().unwrap_or_default()).await
 }
 
 /// Like `ensure_engine` but with an explicit project path (used by commands
 /// that accept a `[path]` argument, so the engine writes files to the correct directory).
-pub(crate) async fn ensure_engine_for(config: &TuiConfig, project_path: &std::path::Path) -> Result<EngineClient, i32> {
+pub async fn ensure_engine_for(config: &TuiConfig, project_path: &std::path::Path) -> Result<EngineClient, i32> {
     let project_path = project_path.to_path_buf();
     let daemon_exists = daemon::find_running_daemon(&project_path).is_some();
 
@@ -115,13 +115,13 @@ pub(crate) async fn ensure_engine_for(config: &TuiConfig, project_path: &std::pa
 
 /// Resolve project path from an optional CLI flag, falling back to CWD.
 /// Always returns an absolute path (relative paths resolved against CWD).
-pub(crate) fn resolve_project_path(path: Option<&str>) -> String {
+pub fn resolve_project_path(path: Option<&str>) -> String {
     resolve_project_path_buf(path).to_string_lossy().to_string()
 }
 
 /// Resolve project path as `PathBuf` from an optional CLI flag, falling back to CWD.
 /// Always returns an absolute path (relative paths resolved against CWD).
-pub(crate) fn resolve_project_path_buf(path: Option<&str>) -> std::path::PathBuf {
+pub fn resolve_project_path_buf(path: Option<&str>) -> std::path::PathBuf {
     let cwd = std::env::current_dir().unwrap_or_default();
     match path {
         Some(p) => {

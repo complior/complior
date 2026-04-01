@@ -213,8 +213,7 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
         let elapsed = app
             .streaming
             .stream_start
-            .map(|s| s.elapsed().as_secs_f64())
-            .unwrap_or(0.0);
+            .map_or(0.0, |s| s.elapsed().as_secs_f64());
 
         // Spinner animation
         const SPINNER: &[&str] = &[
@@ -300,8 +299,7 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
         let elapsed = app
             .streaming
             .stream_start
-            .map(|s| s.elapsed().as_secs_f64())
-            .unwrap_or(0.0);
+            .map_or(0.0, |s| s.elapsed().as_secs_f64());
         let streaming_hint = Line::from(vec![
             Span::styled(
                 format!("Streaming ({elapsed:.1}s)... "),

@@ -217,7 +217,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
     // Create .env template with LLM provider examples
     let env_file_path = complior_dir.join(".env");
     if !env_file_path.exists() {
-        let env_template = r#"# Complior LLM Configuration
+        let env_template = r"# Complior LLM Configuration
 # Uncomment ONE provider and set your API key.
 # The key will be used for all LLM commands: eval --llm, fix --ai, scan --deep
 
@@ -229,7 +229,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
 
 # ── Anthropic ──
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
-"#;
+";
         let _ = std::fs::write(&env_file_path, env_template);
     }
 
@@ -237,20 +237,16 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
     let gitignore_path = complior_dir.join(".gitignore");
     if !gitignore_path.exists() {
         let _ = std::fs::write(&gitignore_path, ".env\n");
-    } else if let Ok(content) = std::fs::read_to_string(&gitignore_path) {
-        if !content.lines().any(|l| l.trim() == ".env") {
+    } else if let Ok(content) = std::fs::read_to_string(&gitignore_path)
+        && !content.lines().any(|l| l.trim() == ".env") {
             let _ = std::fs::write(&gitignore_path, format!("{content}\n.env\n"));
         }
-    }
 
     // Start engine for onboarding + agent discovery
-    let client = match ensure_engine_for(config, &base).await {
-        Ok(c) => c,
-        Err(_) => {
-            eprintln!("Warning: Could not start engine.");
-            eprintln!("Run `complior init` again when engine is available.");
-            return 0;
-        }
+    let client = if let Ok(c) = ensure_engine_for(config, &base).await { c } else {
+        eprintln!("Warning: Could not start engine.");
+        eprintln!("Run `complior init` again when engine is available.");
+        return 0;
     };
 
     // Interactive onboarding: fetch questions, ask user, submit answers
@@ -265,79 +261,75 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
     let mut profile_storage = String::from("eu");
     let mut profile_created = false;
 
-    if !profile_exists {
-        println!("\n  {}", bold(&format!("{} Complior Setup", diamond())));
-        println!("  {}", separator());
-
-        match client.get_json("/onboarding/questions").await {
-            Ok(questions_json) => {
-                let answers = if is_interactive {
-                    interactive::run_interactive_onboarding(&questions_json)
-                } else {
-                    if yes {
-                        println!("\n  {} Using defaults (--yes)", dim("*"));
-                    }
-                    interactive::build_default_answers(&questions_json)
-                };
-
-                let body = serde_json::json!({ "answers": answers });
-                match client.post_json("/onboarding/complete", &body).await {
-                    Ok(result) => {
-                        profile_created = true;
-                        if let Some(profile) = result.get("profile") {
-                            profile_role = profile.pointer("/organization/role")
-                                .and_then(|v| v.as_str()).unwrap_or("deployer").to_string();
-                            profile_risk = profile.pointer("/computed/riskLevel")
-                                .and_then(|v| v.as_str()).unwrap_or("limited").to_string();
-                            profile_obligations = profile.pointer("/computed/applicableObligations")
-                                .and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(15);
-                            profile_storage = profile.pointer("/data/storage")
-                                .and_then(|v| v.as_str()).unwrap_or("eu").to_string();
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("  Warning: Could not save profile: {e}");
-                        let default = serde_json::json!({
-                            "jurisdiction": "EU",
-                            "regulation": "eu-ai-act",
-                            "scanLevels": ["L1", "L2", "L3", "L4"]
-                        });
-                        let _ = std::fs::write(
-                            &profile_path,
-                            serde_json::to_string_pretty(&default).unwrap_or_default(),
-                        );
-                    }
-                }
-            }
-            Err(_) => {
-                let default = serde_json::json!({
-                    "jurisdiction": "EU",
-                    "regulation": "eu-ai-act",
-                    "scanLevels": ["L1", "L2", "L3", "L4"]
-                });
-                let _ = std::fs::write(
-                    &profile_path,
-                    serde_json::to_string_pretty(&default).unwrap_or_default(),
-                );
-                profile_created = true;
-            }
-        }
-    } else {
+    if profile_exists {
         println!("  .complior/ already initialized at {}", complior_dir.display());
         // Try to read existing profile for summary
-        if let Ok(content) = std::fs::read_to_string(&profile_path) {
-            if let Ok(profile) = serde_json::from_str::<serde_json::Value>(&content) {
+        if let Ok(content) = std::fs::read_to_string(&profile_path)
+            && let Ok(profile) = serde_json::from_str::<serde_json::Value>(&content) {
                 profile_role = profile.pointer("/organization/role")
                     .and_then(|v| v.as_str()).unwrap_or("deployer").to_string();
                 profile_risk = profile.pointer("/computed/riskLevel")
                     .and_then(|v| v.as_str()).unwrap_or("limited").to_string();
                 profile_obligations = profile.pointer("/computed/applicableObligations")
-                    .and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(15);
+                    .and_then(|v| v.as_array()).map_or(15, std::vec::Vec::len);
                 profile_storage = profile.pointer("/data/storage")
                     .and_then(|v| v.as_str()).unwrap_or("eu").to_string();
             }
-        }
         profile_created = true;
+    } else {
+        println!("\n  {}", bold(&format!("{} Complior Setup", diamond())));
+        println!("  {}", separator());
+
+        if let Ok(questions_json) = client.get_json("/onboarding/questions").await {
+            let answers = if is_interactive {
+                interactive::run_interactive_onboarding(&questions_json)
+            } else {
+                if yes {
+                    println!("\n  {} Using defaults (--yes)", dim("*"));
+                }
+                interactive::build_default_answers(&questions_json)
+            };
+
+            let body = serde_json::json!({ "answers": answers });
+            match client.post_json("/onboarding/complete", &body).await {
+                Ok(result) => {
+                    profile_created = true;
+                    if let Some(profile) = result.get("profile") {
+                        profile_role = profile.pointer("/organization/role")
+                            .and_then(|v| v.as_str()).unwrap_or("deployer").to_string();
+                        profile_risk = profile.pointer("/computed/riskLevel")
+                            .and_then(|v| v.as_str()).unwrap_or("limited").to_string();
+                        profile_obligations = profile.pointer("/computed/applicableObligations")
+                            .and_then(|v| v.as_array()).map_or(15, std::vec::Vec::len);
+                        profile_storage = profile.pointer("/data/storage")
+                            .and_then(|v| v.as_str()).unwrap_or("eu").to_string();
+                    }
+                }
+                Err(e) => {
+                    eprintln!("  Warning: Could not save profile: {e}");
+                    let default = serde_json::json!({
+                        "jurisdiction": "EU",
+                        "regulation": "eu-ai-act",
+                        "scanLevels": ["L1", "L2", "L3", "L4"]
+                    });
+                    let _ = std::fs::write(
+                        &profile_path,
+                        serde_json::to_string_pretty(&default).unwrap_or_default(),
+                    );
+                }
+            }
+        } else {
+            let default = serde_json::json!({
+                "jurisdiction": "EU",
+                "regulation": "eu-ai-act",
+                "scanLevels": ["L1", "L2", "L3", "L4"]
+            });
+            let _ = std::fs::write(
+                &profile_path,
+                serde_json::to_string_pretty(&default).unwrap_or_default(),
+            );
+            profile_created = true;
+        }
     }
 
     // Auto-discover AI agents and create passports (non-fatal on error)
@@ -352,7 +344,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
         Ok(result) => {
             let manifests = result.get("manifests").and_then(|v| v.as_array());
             let skipped = result.get("skipped").and_then(|v| v.as_array());
-            skipped_count = skipped.map(|s| s.len()).unwrap_or(0);
+            skipped_count = skipped.map_or(0, std::vec::Vec::len);
 
             if let Some(agents) = manifests {
                 for agent in agents {
@@ -361,7 +353,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
                     let autonomy = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?").to_string();
                     let confidence = agent.get("source")
                         .and_then(|s| s.get("confidence"))
-                        .and_then(|c| c.as_f64())
+                        .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0);
                     agent_list.push((name, framework, autonomy, confidence));
                 }
@@ -407,11 +399,11 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
         for (i, (name, framework, autonomy, confidence)) in agent_list.iter().enumerate() {
             let conf_pct = (confidence * 100.0) as u32;
             let conf_colored = if conf_pct >= 80 {
-                green(&format!("{}%", conf_pct))
+                green(&format!("{conf_pct}%"))
             } else if conf_pct >= 50 {
-                bold_yellow(&format!("{}%", conf_pct))
+                bold_yellow(&format!("{conf_pct}%"))
             } else {
-                red(&format!("{}%", conf_pct))
+                red(&format!("{conf_pct}%"))
             };
             println!("    {}  {:<24} {:<12} {} confidence: {}",
                 dim(&format!("{}.", i + 1)), name, framework, autonomy, conf_colored);
@@ -442,29 +434,23 @@ pub async fn run_update() {
 
     // Check GitHub API for latest release
     let client = reqwest::Client::new();
-    match client
+    if let Ok(resp) = client
         .get("https://api.github.com/repos/a3ka/complior/releases/latest")
         .header("User-Agent", "complior-update-check")
         .send()
         .await
-    {
-        Ok(resp) => {
-            if let Ok(body) = resp.json::<serde_json::Value>().await {
-                if let Some(tag) = body.get("tag_name").and_then(|v| v.as_str()) {
-                    let latest = tag.trim_start_matches('v');
-                    if latest == current {
-                        println!("Already up to date: v{current}");
-                    } else {
-                        println!("New version available: v{latest} (current: v{current})");
-                        println!("\nUpdate with:");
-                        println!("  curl -fsSL https://complior.ai/install.sh | sh");
-                        println!("  cargo install complior");
-                    }
-                    return;
+        && let Ok(body) = resp.json::<serde_json::Value>().await
+            && let Some(tag) = body.get("tag_name").and_then(|v| v.as_str()) {
+                let latest = tag.trim_start_matches('v');
+                if latest == current {
+                    println!("Already up to date: v{current}");
+                } else {
+                    println!("New version available: v{latest} (current: v{current})");
+                    println!("\nUpdate with:");
+                    println!("  curl -fsSL https://complior.ai/install.sh | sh");
+                    println!("  cargo install complior");
                 }
+                return;
             }
-        }
-        Err(_) => {}
-    }
     println!("Could not check for updates. Current version: v{current}");
 }

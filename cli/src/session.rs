@@ -51,11 +51,10 @@ pub async fn list_sessions() -> Vec<String> {
     let mut names = Vec::new();
     while let Ok(Some(entry)) = entries.next_entry().await {
         let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "json") {
-            if let Some(stem) = path.file_stem() {
+        if path.extension().is_some_and(|ext| ext == "json")
+            && let Some(stem) = path.file_stem() {
                 names.push(stem.to_string_lossy().to_string());
             }
-        }
     }
 
     names.sort();

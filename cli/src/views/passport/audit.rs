@@ -90,7 +90,7 @@ pub(super) fn render_audit_panel(frame: &mut Frame, area: Rect, app: &App) {
                 let icon = event_icon(event_type);
 
                 // Format event type for display
-                let event_display = event_type.replace('.', " ").replace('_', " ");
+                let event_display = event_type.replace(['.', '_'], " ");
                 let truncated =
                     crate::views::truncate_str(&event_display, w.saturating_sub(22));
 

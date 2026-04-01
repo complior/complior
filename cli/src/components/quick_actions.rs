@@ -9,7 +9,7 @@ pub enum DismissReason {
 }
 
 impl DismissReason {
-    pub fn label(&self) -> &str {
+    pub const fn label(&self) -> &str {
         match self {
             Self::FalsePositive => "False positive",
             Self::AcceptedRisk => "Accepted risk",
@@ -20,7 +20,7 @@ impl DismissReason {
     }
 
     /// Human-readable description of what this dismiss reason means.
-    pub fn description(&self) -> &str {
+    pub const fn description(&self) -> &str {
         match self {
             Self::FalsePositive => "The scanner flagged this incorrectly — the requirement is already satisfied.",
             Self::AcceptedRisk => "You acknowledge this issue but accept the risk (document the justification).",
@@ -31,7 +31,7 @@ impl DismissReason {
     }
 
     /// The 5 standard dismiss reasons (for modal selection).
-    pub fn all() -> [Self; 5] {
+    pub const fn all() -> [Self; 5] {
         [
             Self::FalsePositive,
             Self::AcceptedRisk,
@@ -57,11 +57,11 @@ impl DismissModal {
         }
     }
 
-    pub fn move_up(&mut self) {
+    pub const fn move_up(&mut self) {
         self.cursor = self.cursor.saturating_sub(1);
     }
 
-    pub fn move_down(&mut self) {
+    pub const fn move_down(&mut self) {
         if self.cursor + 1 < self.reasons.len() {
             self.cursor += 1;
         }

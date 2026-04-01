@@ -96,15 +96,15 @@ async fn run_redteam_last(json: bool, config: &TuiConfig) -> i32 {
 
 fn format_redteam_report(report: &serde_json::Value) {
     let agent = report.get("agentName").and_then(|v| v.as_str()).unwrap_or("?");
-    let total = report.get("totalProbes").and_then(|v| v.as_u64()).unwrap_or(0);
-    let passed = report.get("passCount").and_then(|v| v.as_u64()).unwrap_or(0);
-    let failed = report.get("failCount").and_then(|v| v.as_u64()).unwrap_or(0);
-    let inconclusive = report.get("inconclusiveCount").and_then(|v| v.as_u64()).unwrap_or(0);
-    let duration = report.get("duration").and_then(|v| v.as_u64()).unwrap_or(0);
+    let total = report.get("totalProbes").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let passed = report.get("passCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let failed = report.get("failCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let inconclusive = report.get("inconclusiveCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let duration = report.get("duration").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
-    let score = report.get("securityScore").and_then(|s| s.get("score")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let score = report.get("securityScore").and_then(|s| s.get("score")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
     let grade = report.get("securityScore").and_then(|s| s.get("grade")).and_then(|v| v.as_str()).unwrap_or("?");
-    let capped = report.get("securityScore").and_then(|s| s.get("criticalCapped")).and_then(|v| v.as_bool()).unwrap_or(false);
+    let capped = report.get("securityScore").and_then(|s| s.get("criticalCapped")).and_then(serde_json::Value::as_bool).unwrap_or(false);
 
     println!();
     println!("  Red-Team Security Report: {agent}");
@@ -136,19 +136,19 @@ fn format_redteam_report(report: &serde_json::Value) {
         println!("  {}", "-".repeat(68));
 
         let mut entries: Vec<_> = mapping.iter().collect();
-        entries.sort_by_key(|(k, _)| k.to_string());
+        entries.sort_by_key(|(k, _)| (*k).clone());
 
         for (_, cat) in entries {
             let cat_id = cat.get("categoryId").and_then(|v| v.as_str()).unwrap_or("?");
             let cat_name = cat.get("categoryName").and_then(|v| v.as_str()).unwrap_or("?");
-            let cat_score = cat.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let cat_pass = cat.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-            let cat_fail = cat.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
-            let cat_total = cat.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
+            let cat_score = cat.get("score").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+            let cat_pass = cat.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let cat_fail = cat.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let cat_total = cat.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
             // Truncate long names
             let name = if cat_name.len() > 26 { &cat_name[..26] } else { cat_name };
-            println!("  {:<8} {:<28} {:>5.0}% {:>7} {:>7} {:>7}", cat_id, name, cat_score, cat_pass, cat_fail, cat_total);
+            println!("  {cat_id:<8} {name:<28} {cat_score:>5.0}% {cat_pass:>7} {cat_fail:>7} {cat_total:>7}");
         }
     }
 

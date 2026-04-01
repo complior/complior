@@ -28,7 +28,7 @@ impl Default for ConfirmationsConfig {
 }
 
 const DEFAULT_TICK_RATE_MS: u64 = 250;
-/// No hardcoded SaaS URL default.  Users set it via:
+/// No hardcoded `SaaS` URL default.  Users set it via:
 ///   1. `PROJECT_API_URL` env var, or
 ///   2. `complior login` (persists to settings.toml), or
 ///   3. Direct edit of `~/.config/complior/settings.toml` → `project_api_url`
@@ -37,7 +37,7 @@ const DEFAULT_PROJECT_API_URL: &str = "";
 // ── Storage types (internal) ────────────────────────────────────────────────
 
 /// Global user preferences — `~/.config/complior/settings.toml`.
-/// Fields that stay the same across all projects (UX, infra, SaaS).
+/// Fields that stay the same across all projects (UX, infra, `SaaS`).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 struct GlobalConfig {
@@ -121,7 +121,7 @@ impl Default for ProjectConfig {
     }
 }
 
-/// Default project config for `complior init`. Public so headless::commands can use it.
+/// Default project config for `complior init`. Public so `headless::commands` can use it.
 pub fn default_project_toml() -> impl serde::Serialize {
     ProjectConfig::default()
 }
@@ -363,11 +363,10 @@ pub fn load_config() -> TuiConfig {
     let mut config = merge_config(global, project);
 
     // Override project_api_url from env (useful for local PROJECT dev)
-    if let Ok(url) = std::env::var("PROJECT_API_URL") {
-        if !url.is_empty() {
+    if let Ok(url) = std::env::var("PROJECT_API_URL")
+        && !url.is_empty() {
             config.project_api_url = url;
         }
-    }
 
     // Force offline mode when env OFFLINE_MODE=1
     if std::env::var("OFFLINE_MODE").as_deref() == Ok("1") {
@@ -394,12 +393,11 @@ async fn save_global_config(config: &GlobalConfig) {
 
 async fn save_project_config(config: &ProjectConfig) {
     let path = project_config_path();
-    if let Some(parent) = path.parent() {
-        if let Err(e) = tokio::fs::create_dir_all(parent).await {
+    if let Some(parent) = path.parent()
+        && let Err(e) = tokio::fs::create_dir_all(parent).await {
             tracing::warn!("cannot create {}: {e}", parent.display());
             return;
         }
-    }
     match toml::to_string_pretty(config) {
         Ok(content) => {
             if let Err(e) = tokio::fs::write(&path, content).await {
@@ -410,7 +408,7 @@ async fn save_project_config(config: &ProjectConfig) {
     }
 }
 
-/// Persist the SaaS URL after successful login (global).
+/// Persist the `SaaS` URL after successful login (global).
 pub async fn save_project_api_url(url: &str) {
     let mut global = load_global_config();
     global.project_api_url = url.to_string();
@@ -501,12 +499,11 @@ pub async fn save_llm_config(
     save_global_config(&global).await;
 
     // Save API key to credentials file (never in TOML)
-    if let Some(key) = api_key {
-        if !key.is_empty() {
+    if let Some(key) = api_key
+        && !key.is_empty() {
             let provider_name = provider.unwrap_or("LLM");
             save_llm_api_key(provider_name, key);
         }
-    }
 }
 
 // ── Legacy migration ────────────────────────────────────────────────────────
@@ -597,14 +594,13 @@ pub fn load_api_key() -> Option<String> {
         if trimmed.starts_with('#') || trimmed.is_empty() {
             continue;
         }
-        if let Some((key, value)) = trimmed.split_once('=') {
-            if key.trim() == "COMPLIOR_API_KEY" {
+        if let Some((key, value)) = trimmed.split_once('=')
+            && key.trim() == "COMPLIOR_API_KEY" {
                 let v = value.trim().to_string();
                 if !v.is_empty() {
                     return Some(v);
                 }
             }
-        }
     }
     None
 }
@@ -703,11 +699,10 @@ pub fn load_llm_api_key(provider: &str) -> Option<String> {
     let env_key = provider_env_key(provider)?;
 
     // Check env var first
-    if let Ok(val) = std::env::var(env_key) {
-        if !val.is_empty() {
+    if let Ok(val) = std::env::var(env_key)
+        && !val.is_empty() {
             return Some(val);
         }
-    }
 
     // Check credentials file
     let path = credentials_path()?;
@@ -717,14 +712,13 @@ pub fn load_llm_api_key(provider: &str) -> Option<String> {
         if trimmed.starts_with('#') || trimmed.is_empty() {
             continue;
         }
-        if let Some((key, value)) = trimmed.split_once('=') {
-            if key.trim() == env_key {
+        if let Some((key, value)) = trimmed.split_once('=')
+            && key.trim() == env_key {
                 let v = value.trim().to_string();
                 if !v.is_empty() {
                     return Some(v);
                 }
             }
-        }
     }
     None
 }

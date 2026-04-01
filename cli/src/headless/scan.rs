@@ -194,7 +194,7 @@ pub async fn run_headless_scan(
             super::common::url_encode(&scan_path)
         );
         if let Ok(list) = client.get_json(&hint_url).await {
-            let count = list.as_array().map(|a| a.len()).unwrap_or(0);
+            let count = list.as_array().map_or(0, std::vec::Vec::len);
             if count == 0 {
                 eprintln!();
                 eprintln!(
@@ -303,15 +303,14 @@ pub async fn run_scan_diff(
             }
 
             // Post PR comment if requested
-            if comment {
-                if let Some(md) = result.get("markdown").and_then(|v| v.as_str()) {
+            if comment
+                && let Some(md) = result.get("markdown").and_then(|v| v.as_str()) {
                     post_pr_comment(md);
                 }
-            }
 
             // Check regression
             if fail_on_regression {
-                let regression = result.get("hasRegression").and_then(|v| v.as_bool()).unwrap_or(false);
+                let regression = result.get("hasRegression").and_then(serde_json::Value::as_bool).unwrap_or(false);
                 if regression {
                     eprintln!("CI FAIL: Compliance regression detected");
                     return 2;
@@ -397,7 +396,7 @@ fn show_deep_scan_tools() {
         let status = if cached {
             format!("{}  cached", green(check_mark()))
         } else {
-            dim("pending").to_string()
+            dim("pending").clone()
         };
         let bar = if cached {
             super::format::colors::bar_filled().repeat(20)
@@ -460,13 +459,13 @@ fn get_changed_files(base_branch: &str, project_path: &str) -> Vec<String> {
 }
 
 fn print_diff_human(value: &serde_json::Value) {
-    let before = value.get("scoreBefore").and_then(|v| v.as_u64()).unwrap_or(0);
-    let after = value.get("scoreAfter").and_then(|v| v.as_u64()).unwrap_or(0);
-    let delta = value.get("scoreDelta").and_then(|v| v.as_i64()).unwrap_or(0);
-    let new_count = value.get("newFindings").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
-    let resolved_count = value.get("resolvedFindings").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
-    let unchanged = value.get("unchangedCount").and_then(|v| v.as_u64()).unwrap_or(0);
-    let regression = value.get("hasRegression").and_then(|v| v.as_bool()).unwrap_or(false);
+    let before = value.get("scoreBefore").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let after = value.get("scoreAfter").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let delta = value.get("scoreDelta").and_then(serde_json::Value::as_i64).unwrap_or(0);
+    let new_count = value.get("newFindings").and_then(|v| v.as_array()).map_or(0, std::vec::Vec::len);
+    let resolved_count = value.get("resolvedFindings").and_then(|v| v.as_array()).map_or(0, std::vec::Vec::len);
+    let unchanged = value.get("unchangedCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let regression = value.get("hasRegression").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
     let delta_str = if delta > 0 { format!("+{delta}") } else { format!("{delta}") };
 
@@ -484,8 +483,8 @@ fn print_diff_human(value: &serde_json::Value) {
     }
     println!();
 
-    if let Some(findings) = value.get("newFindings").and_then(|v| v.as_array()) {
-        if !findings.is_empty() {
+    if let Some(findings) = value.get("newFindings").and_then(|v| v.as_array())
+        && !findings.is_empty() {
             println!("  New Findings:");
             for f in findings {
                 let sev = f.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
@@ -495,10 +494,9 @@ fn print_diff_human(value: &serde_json::Value) {
             }
             println!();
         }
-    }
 
-    if let Some(findings) = value.get("resolvedFindings").and_then(|v| v.as_array()) {
-        if !findings.is_empty() {
+    if let Some(findings) = value.get("resolvedFindings").and_then(|v| v.as_array())
+        && !findings.is_empty() {
             println!("  Resolved Findings:");
             for f in findings {
                 let sev = f.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
@@ -507,7 +505,6 @@ fn print_diff_human(value: &serde_json::Value) {
             }
             println!();
         }
-    }
 }
 
 fn post_pr_comment(markdown: &str) {

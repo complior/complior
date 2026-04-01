@@ -1,4 +1,4 @@
-//! SSE stream parser for TUI chat — routes engine events to AppCommand channel.
+//! SSE stream parser for TUI chat — routes engine events to `AppCommand` channel.
 
 use std::sync::Arc;
 
@@ -30,7 +30,7 @@ pub fn spawn_stream_reader(
 
         loop {
             tokio::select! {
-                _ = cancel.notified() => {
+                () = cancel.notified() => {
                     break;
                 }
                 chunk = stream.next() => {
@@ -79,7 +79,7 @@ pub fn spawn_stream_reader(
     });
 }
 
-/// Map an SSE event+data pair to an AppCommand.
+/// Map an SSE event+data pair to an `AppCommand`.
 fn parse_sse_event(event: &str, data: &str) -> Option<AppCommand> {
     match event {
         "text" => {
@@ -103,7 +103,7 @@ fn parse_sse_event(event: &str, data: &str) -> Option<AppCommand> {
                 .to_string();
             let args = parsed
                 .get("args")
-                .map(|v| v.to_string())
+                .map(std::string::ToString::to_string)
                 .unwrap_or_default();
             Some(AppCommand::ChatStreamBlock(ChatBlock::ToolCall {
                 tool_name: name,
@@ -124,7 +124,7 @@ fn parse_sse_event(event: &str, data: &str) -> Option<AppCommand> {
                 .to_string();
             let is_error = parsed
                 .get("isError")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
             Some(AppCommand::ChatStreamBlock(ChatBlock::ToolResult {
                 tool_name: name,

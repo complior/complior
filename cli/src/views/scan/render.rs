@@ -52,7 +52,7 @@ pub(super) fn render_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }
 
-/// Build a map of source_file → agent_name from loaded passports.
+/// Build a map of `source_file` → `agent_name` from loaded passports.
 /// Called once before rendering to avoid O(n²) lookups.
 pub(super) fn build_file_agent_map(passports: &[serde_json::Value]) -> Vec<(String, String)> {
     let mut entries = Vec::new();

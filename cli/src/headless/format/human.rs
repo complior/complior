@@ -2,9 +2,9 @@
 
 use crate::types::{CheckResultType, Finding, ScanResult, Severity};
 
-use super::colors::*;
+use super::colors::{diamond, bold, dim, yellow, resolve_grade, grade_color, score_color, bold_red, bar_filled, bar_empty, layer_status_color, green, check_mark, severity_icon, severity_color};
 use super::labels::{check_label, ext_check_label};
-use super::layers::*;
+use super::layers::{BASE_LAYERS, DEEP_TOOL_NAMES, display_width, BAR_WIDTH, infer_layer_results, sort_findings_full, apply_finding_limits, MAX_MEDIUM, DEEP_LAYERS, infer_layer_tag};
 use super::{plural, project_name, separator, FormatOptions};
 
 /// Format scan result as structured human-readable text.
@@ -54,11 +54,10 @@ fn render_scan_info(o: &mut String, result: &ScanResult) {
 
     // Files line with optional excluded count
     let mut files_info = format!("{} collected", result.files_scanned);
-    if let Some(excl) = result.files_excluded {
-        if excl > 0 {
+    if let Some(excl) = result.files_excluded
+        && excl > 0 {
             files_info.push_str(&format!(", {excl} excluded"));
         }
-    }
     o.push_str(&format!("  {}     {}\n", dim("Files"), files_info));
 
     // >500 files warning
@@ -108,19 +107,19 @@ fn render_score_block(o: &mut String, result: &ScanResult, opts: &FormatOptions)
     // Compliance score with grade
     let compliance = result.score.total_score;
     let grade = resolve_grade(compliance);
-    let cscore_text = format!("{:.0} / 100", compliance);
+    let cscore_text = format!("{compliance:.0} / 100");
     let grade_text = format!("  {}", grade_color(grade, grade));
     let clabel = "COMPLIANCE SCORE";
 
     // Build score + delta + grade
     let mut score_suffix = cscore_text.clone();
     if let Some(prev) = opts.prev_score {
-        score_suffix.push_str(&format!("  {}", dim(&format!("(was {:.0})", prev))));
+        score_suffix.push_str(&format!("  {}", dim(&format!("(was {prev:.0})"))));
     }
     score_suffix.push_str(&grade_text);
 
     // Pad (use raw text len without ANSI for alignment)
-    let raw_score_len = format!("{:.0} / 100", compliance).len() + 2 + grade.len();
+    let raw_score_len = format!("{compliance:.0} / 100").len() + 2 + grade.len();
     let extra = if opts.prev_score.is_some() {
         let prev_str = format!("(was {:.0})", opts.prev_score.unwrap_or(0.0));
         prev_str.len() + 2
@@ -210,7 +209,7 @@ fn render_framework_breakdown(o: &mut String, opts: &FormatOptions) {
     let name_width = 28;
     for fw in frameworks {
         let score_text = format!("{:.0} / 100", fw.score);
-        let padded_score = format!("{:>8}", score_text);
+        let padded_score = format!("{score_text:>8}");
         let filled = ((fw.score / 100.0) * BAR_WIDTH as f64).round() as usize;
         let empty = BAR_WIDTH.saturating_sub(filled);
         let bar = format!("{}{}", bar_filled().repeat(filled), bar_empty().repeat(empty));
@@ -410,7 +409,7 @@ fn render_findings_by_layer(o: &mut String, findings: &[&Finding], finding_num: 
 }
 
 fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
-    let fid = format!("F-{:03}", finding_num);
+    let fid = format!("F-{finding_num:03}");
     let icon = severity_icon(&f.severity);
     let sev = severity_color(&f.severity, f.severity.label());
     let layer_tag = infer_layer_tag(&f.check_id);
@@ -450,11 +449,10 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
     }
 
     // Docs command hint (if article reference exists)
-    if let Some(art) = article {
-        if let Some(art_num) = extract_article_number(art) {
+    if let Some(art) = article
+        && let Some(art_num) = extract_article_number(art) {
             o.push_str(&format!("         {}  {}\n", dim("Docs:"), dim(&format!("complior docs --article {art_num}"))));
         }
-    }
 
     o.push('\n');
 }
@@ -563,13 +561,11 @@ fn render_agent_summaries(o: &mut String, result: &ScanResult) {
 
 /// Strip engine prefix patterns from fix messages (e.g. "Fix complior.injection: ...").
 fn clean_fix_message(fix: &str) -> &str {
-    if let Some(rest) = fix.strip_prefix("Fix ") {
-        if let Some(idx) = rest.find(": ") {
-            if rest[..idx].starts_with("complior.") {
+    if let Some(rest) = fix.strip_prefix("Fix ")
+        && let Some(idx) = rest.find(": ")
+            && rest[..idx].starts_with("complior.") {
                 return rest[idx + 2..].trim();
             }
-        }
-    }
     fix
 }
 

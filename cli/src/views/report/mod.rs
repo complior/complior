@@ -1,8 +1,8 @@
-pub(crate) mod generators;
+pub mod generators;
 mod tests;
 
 pub use generators::export_report;
-pub(crate) use generators::{zone_label, GENERATORS};
+pub use generators::{zone_label, GENERATORS};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
@@ -184,7 +184,7 @@ pub fn render_report_view(frame: &mut Frame, area: Rect, app: &App) {
     }
 }
 
-/// Render the Report detail view — scrollable report content (invoked when viewing_report is true).
+/// Render the Report detail view — scrollable report content (invoked when `viewing_report` is true).
 fn render_report_detail_view(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
     let block = Block::default()
@@ -301,7 +301,7 @@ fn render_report_detail_view(frame: &mut Frame, area: Rect, app: &App) {
             lines.push(Line::from(vec![
                 Span::styled(format!("  {:<3}", i + 1), Style::default().fg(t.muted)),
                 Span::styled(format!("{:<14}", f.check_id), Style::default().fg(t.fg)),
-                Span::styled(format!("{:<10}", sev_label), Style::default().fg(sev_color)),
+                Span::styled(format!("{sev_label:<10}"), Style::default().fg(sev_color)),
                 Span::styled(f.message.clone(), Style::default().fg(t.fg)),
             ]));
         }

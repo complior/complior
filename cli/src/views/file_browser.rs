@@ -12,7 +12,7 @@ fn collect_entries(dir: &std::path::Path, depth: usize, entries: &mut Vec<FileEn
     };
 
     let mut items: Vec<_> = read_dir
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| {
             let name = e.file_name().to_string_lossy().to_string();
             !name.starts_with('.')

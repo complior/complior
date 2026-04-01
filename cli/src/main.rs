@@ -523,7 +523,7 @@ async fn run_event_loop(
                 tick_count += 1;
 
                 // Periodic engine health check
-                if tick_count % health_check_interval == 0
+                if tick_count.is_multiple_of(health_check_interval)
                     && !engine_mgr.is_alive()
                     && engine_mgr.status == engine_process::EngineProcessStatus::Stopped
                 {

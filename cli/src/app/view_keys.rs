@@ -16,9 +16,9 @@ impl App {
                     self.scan_view.preview_scroll = 0;
                 } else if c == 'f' {
                     // Apply fix: go to Fix view with finding pre-selected
-                    if let Some(idx) = self.scan_view.selected_finding {
-                        if let Some(scan) = &self.last_scan {
-                            if let Some(finding) = crate::views::scan::resolve_selected_finding(
+                    if let Some(idx) = self.scan_view.selected_finding
+                        && let Some(scan) = &self.last_scan
+                            && let Some(finding) = crate::views::scan::resolve_selected_finding(
                                 &scan.findings,
                                 self.scan_view.findings_filter,
                                 idx,
@@ -46,8 +46,6 @@ impl App {
                                     );
                                 }
                             }
-                        }
-                    }
                 } else if c == 'n' && self.scan_view.detail_open {
                     // Next finding (within detail view)
                     let count = self.filtered_findings_count();
@@ -59,9 +57,9 @@ impl App {
                     self.scan_view.preview_scroll = 0;
                 } else if c == 'x' {
                     // Quick action: Explain selected finding (static explanation)
-                    if let Some(idx) = self.scan_view.selected_finding {
-                        if let Some(scan) = &self.last_scan {
-                            if let Some(finding) = crate::views::scan::resolve_selected_finding(
+                    if let Some(idx) = self.scan_view.selected_finding
+                        && let Some(scan) = &self.last_scan
+                            && let Some(finding) = crate::views::scan::resolve_selected_finding(
                                 &scan.findings,
                                 self.scan_view.findings_filter,
                                 idx,
@@ -77,13 +75,11 @@ impl App {
                                     "Explanation added to Status Log (L)",
                                 );
                             }
-                        }
-                    }
                 } else if c == 'o' {
                     // Quick action: Open related file in code viewer
-                    if let Some(idx) = self.scan_view.selected_finding {
-                        if let Some(scan) = &self.last_scan {
-                            if let Some(finding) = crate::views::scan::resolve_selected_finding(
+                    if let Some(idx) = self.scan_view.selected_finding
+                        && let Some(scan) = &self.last_scan
+                            && let Some(finding) = crate::views::scan::resolve_selected_finding(
                                 &scan.findings,
                                 self.scan_view.findings_filter,
                                 idx,
@@ -91,15 +87,12 @@ impl App {
                             ) {
                                 if let Some(ref file_path) = finding.file {
                                     return Some(AppCommand::OpenFile(file_path.clone()));
-                                } else {
-                                    self.toasts.push(
-                                        crate::components::toast::ToastKind::Info,
-                                        "No file associated with this finding",
-                                    );
                                 }
+                                self.toasts.push(
+                                    crate::components::toast::ToastKind::Info,
+                                    "No file associated with this finding",
+                                );
                             }
-                        }
-                    }
                 } else if c == 'd' {
                     // Quick action: Dismiss finding (open dismiss modal)
                     if let Some(idx) = self.scan_view.selected_finding {
@@ -274,11 +267,10 @@ impl App {
                     self.fix_view.results = None;
                 } else if self.fix_view.is_single_fix() {
                     // Single-fix mode: auto-select focused item and apply
-                    if let Some(cid) = self.fix_view.focus_check_id.clone() {
-                        if let Some(item) = self.fix_view.fixable_findings.iter_mut().find(|f| f.check_id == cid) {
+                    if let Some(cid) = self.fix_view.focus_check_id.clone()
+                        && let Some(item) = self.fix_view.fixable_findings.iter_mut().find(|f| f.check_id == cid) {
                             item.selected = true;
                         }
-                    }
                     self.fix_view.applying = true;
                     return Some(AppCommand::ApplyFixes);
                 } else if self.fix_view.selected_count() > 0 {

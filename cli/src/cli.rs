@@ -11,7 +11,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,
 
-    /// Engine URL override (e.g. http://127.0.0.1:3099)
+    /// Engine URL override (e.g. <http://127.0.0.1:3099>)
     #[arg(long = "engine-url", global = true)]
     pub engine_url: Option<String>,
 
@@ -27,7 +27,7 @@ pub struct Cli {
     #[arg(long, short = 'y', global = true)]
     pub yes: bool,
 
-    /// Disable colored output (same as NO_COLOR=1)
+    /// Disable colored output (same as `NO_COLOR=1`)
     #[arg(long, global = true)]
     pub no_color: bool,
 }
@@ -89,7 +89,7 @@ pub enum Command {
         #[arg(long)]
         comment: bool,
 
-        /// Tier 2: Run external security tools (Semgrep, Bandit, ModelScan, detect-secrets) via uv
+        /// Tier 2: Run external security tools (Semgrep, Bandit, `ModelScan`, detect-secrets) via uv
         #[arg(long)]
         deep: bool,
 
@@ -97,7 +97,7 @@ pub enum Command {
         #[arg(long)]
         llm: bool,
 
-        /// [planned] Cloud scan via SaaS API (Tier 3, planned for Month 3-4)
+        /// [planned] Cloud scan via `SaaS` API (Tier 3, planned for Month 3-4)
         #[arg(long)]
         cloud: bool,
 
@@ -105,7 +105,7 @@ pub enum Command {
         #[arg(long, short = 'q')]
         quiet: bool,
 
-        /// Filter by agent name (passport source_files)
+        /// Filter by agent name (passport `source_files`)
         #[arg(long)]
         agent: Option<String>,
 
@@ -295,15 +295,15 @@ pub enum Command {
 
     /// Run dynamic AI system evaluation (probes + LLM judge + security)
     Eval {
-        /// Target AI endpoint URL (e.g. http://localhost:4000/api/chat)
+        /// Target AI endpoint URL (e.g. <http://localhost:4000/api/chat>)
         target: Option<String>,
 
         /// Run deterministic tests (168 tests, default when no flags)
         #[arg(long)]
         det: bool,
 
-        /// Run LLM-judged tests (212 tests). Requires one of: OPENROUTER_API_KEY,
-        /// ANTHROPIC_API_KEY, or OPENAI_API_KEY in .complior/.env or env
+        /// Run LLM-judged tests (212 tests). Requires one of: `OPENROUTER_API_KEY`,
+        /// `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` in .complior/.env or env
         #[arg(long)]
         llm: bool,
 
@@ -405,13 +405,13 @@ pub enum Command {
         path: Option<String>,
     },
 
-    /// Authenticate with SaaS dashboard via browser
+    /// Authenticate with `SaaS` dashboard via browser
     Login,
 
-    /// Clear SaaS authentication tokens
+    /// Clear `SaaS` authentication tokens
     Logout,
 
-    /// Sync data with SaaS (passports, scans, documents)
+    /// Sync data with `SaaS` (passports, scans, documents)
     Sync {
         /// Sync only passports
         #[arg(long)]
@@ -789,7 +789,7 @@ pub enum CertAction {
         #[arg(long)]
         adversarial: bool,
 
-        /// Filter categories (comma-separated: prompt_injection,bias_detection,safety_boundary)
+        /// Filter categories (comma-separated: `prompt_injection,bias_detection,safety_boundary`)
         #[arg(long)]
         categories: Option<String>,
 
@@ -956,7 +956,7 @@ pub enum JurisdictionAction {
 
 /// Returns true if the command requires a running engine to function.
 /// Commands like version, init, update, daemon, login, logout work without the engine.
-pub fn needs_engine(cli: &Cli) -> bool {
+pub const fn needs_engine(cli: &Cli) -> bool {
     !matches!(
         &cli.command,
         Some(
@@ -973,12 +973,9 @@ pub fn needs_engine(cli: &Cli) -> bool {
 /// Used to start the engine with the correct project context (API keys, config).
 pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
     let raw = match &cli.command {
-        Some(Command::Scan { path, .. })
-        | Some(Command::Fix { path, .. })
-        | Some(Command::Init { path, .. })
-        | Some(Command::Report { path, .. })
-        | Some(Command::Audit { path, .. })
-        | Some(Command::SupplyChain { path, .. }) => path.as_deref(),
+        Some(Command::Scan { path, .. } | Command::Fix { path, .. } | Command::Init {
+path, .. } | Command::Report { path, .. } | Command::Audit { path, .. } |
+Command::SupplyChain { path, .. }) => path.as_deref(),
         Some(Command::Eval { .. }) => {
             // Eval has no path arg — uses CWD
             None
@@ -1021,12 +1018,12 @@ pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
 
 /// Returns true if the ephemeral engine should write a PID file to `.complior/`.
 /// Read-only commands like `doctor` should NOT create `.complior/` as a side effect.
-pub fn wants_pid_file(cli: &Cli) -> bool {
+pub const fn wants_pid_file(cli: &Cli) -> bool {
     !matches!(&cli.command, Some(Command::Doctor))
 }
 
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
-pub fn is_headless(cli: &Cli) -> bool {
+pub const fn is_headless(cli: &Cli) -> bool {
     match &cli.command {
         Some(Command::Scan { .. }) => true,
         Some(Command::Fix { .. }) => true,

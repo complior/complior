@@ -26,7 +26,7 @@ pub(super) fn render_checklist(frame: &mut Frame, area: Rect, app: &App) {
         .map_or(0.0, |s| s.score.total_score);
 
     #[allow(clippy::cast_precision_loss)]
-    let predicted_score = (current_score + fix.total_predicted_impact() as f64).min(100.0);
+    let predicted_score = (current_score + f64::from(fix.total_predicted_impact())).min(100.0);
 
     // Score color for predicted
     let pred_color = if predicted_score < 50.0 { t.zone_red }
@@ -183,7 +183,7 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
     let impact = item.predicted_impact;
 
     #[allow(clippy::cast_precision_loss)]
-    let predicted_score = (current_score + impact as f64).min(100.0);
+    let predicted_score = (current_score + f64::from(impact)).min(100.0);
 
     let pred_color = if predicted_score < 50.0 { t.zone_red }
         else if predicted_score < 80.0 { t.zone_yellow }

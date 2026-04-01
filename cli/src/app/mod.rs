@@ -1,6 +1,6 @@
 mod actions;
 mod commands;
-pub(crate) mod executor;
+pub mod executor;
 mod overlays;
 mod scan;
 mod tests;
@@ -219,9 +219,7 @@ impl App {
         };
         let project_path = config
             .project_path
-            .as_deref()
-            .map(PathBuf::from)
-            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+            .as_deref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
 
         let mut app = Self {
             running: true,
@@ -320,7 +318,7 @@ impl App {
     }
 
     /// Take the background command receiver (call once from event loop).
-    pub fn take_bg_rx(&mut self) -> tokio::sync::mpsc::UnboundedReceiver<AppCommand> {
+    pub const fn take_bg_rx(&mut self) -> tokio::sync::mpsc::UnboundedReceiver<AppCommand> {
         self.bg_rx.take().expect("bg_rx already taken")
     }
 
@@ -402,7 +400,7 @@ impl App {
         }
     }
 
-    pub fn next_panel(&mut self) {
+    pub const fn next_panel(&mut self) {
         self.active_panel = match self.active_panel {
             Panel::Chat => Panel::Score,
             Panel::Score => {
@@ -622,7 +620,7 @@ pub enum AppCommand {
     ChatSend(String),
     /// Streaming text chunk arrived from LLM.
     ChatStreamDelta(String),
-    /// Structured block (thinking/tool_call/tool_result) from stream.
+    /// Structured block (`thinking/tool_call/tool_result`) from stream.
     ChatStreamBlock(ChatBlock),
     /// LLM stream completed.
     ChatStreamDone,

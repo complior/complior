@@ -28,14 +28,13 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
             };
         }
         // Ensure parent dir exists
-        if let Some(parent) = abs.parent() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
+        if let Some(parent) = abs.parent()
+            && let Err(e) = std::fs::create_dir_all(parent) {
                 return ApplyResult {
                     success: false,
                     detail: format!("mkdir failed: {e}"),
                 };
             }
-        }
         let content = finding.fix.as_deref().unwrap_or("");
         match std::fs::write(&abs, content) {
             Ok(()) => ApplyResult {
@@ -81,7 +80,7 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
         }
 
         // Replace lines
-        let after: Vec<String> = diff.after.iter().cloned().collect();
+        let after: Vec<String> = diff.after.clone();
         lines.splice(start..end, after);
 
         // Add import line if needed
@@ -124,7 +123,7 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
     }
 }
 
-/// Infer a target document path from a check_id for Type B findings.
+/// Infer a target document path from a `check_id` for Type B findings.
 pub(super) fn infer_doc_path(check_id: &str) -> String {
     match check_id {
         "l2-fria" => "docs/fria.md".to_string(),

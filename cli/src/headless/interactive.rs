@@ -57,11 +57,10 @@ pub fn ask_single(
         if trimmed.is_empty() {
             return options[default_idx].0.clone();
         }
-        if let Ok(n) = trimmed.parse::<usize>() {
-            if n >= 1 && n <= options.len() {
+        if let Ok(n) = trimmed.parse::<usize>()
+            && n >= 1 && n <= options.len() {
                 return options[n - 1].0.clone();
             }
-        }
         println!("    Please enter a number between 1 and {}.", options.len());
     }
 }
@@ -78,7 +77,7 @@ pub fn ask_multi(
     for (i, (value, label)) in options.iter().enumerate() {
         let suffix = if let Some(desc) = descriptions.get(value).and_then(|v| v.as_str()) {
             if desc.contains("HIGH RISK") {
-                format!("   {}", yellow(&format!("\u{26a0} HIGH RISK")))
+                format!("   {}", yellow("\u{26a0} HIGH RISK"))
             } else {
                 String::new()
             }

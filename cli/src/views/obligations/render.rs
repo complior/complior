@@ -132,10 +132,10 @@ fn render_obligation_list(
 
         // Deadline indicator
         let deadline_indicator = if let Some(ref dl) = obl.deadline {
-            if !obl.covered {
-                format!(" [{dl}]")
-            } else {
+            if obl.covered {
                 String::new()
+            } else {
+                format!(" [{dl}]")
             }
         } else {
             String::new()

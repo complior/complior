@@ -50,15 +50,15 @@ pub async fn run_simulate(
 
             let current = result
                 .get("currentScore")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let projected = result
                 .get("projectedScore")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
             let delta = result
                 .get("delta")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
 
             println!("\nCompliance Simulation\n");
@@ -76,7 +76,7 @@ pub async fn run_simulate(
                         .unwrap_or("?");
                     let impact = action
                         .get("scoreImpact")
-                        .and_then(|v| v.as_f64())
+                        .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0);
                     let icon = if impact > 0.0 { "\u{2713}" } else { "\u{2022}" };
                     println!("  {icon} {desc}");

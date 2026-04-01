@@ -272,11 +272,11 @@ pub async fn run_eval_command(
             // Print full summary report after stream
             if let Some(ref result) = result {
                 // Fetch remediation data for inline recommendations
-                if !no_remediation {
+                if no_remediation {
+                    format_eval_report(result);
+                } else {
                     let remediation = fetch_remediation(&client, result).await;
                     format_eval_report_with_remediation(result, &remediation);
-                } else {
-                    format_eval_report(result);
                 }
 
                 // Full remediation report export
@@ -286,11 +286,10 @@ pub async fn run_eval_command(
             }
 
             // CI mode: check threshold (exit 2 = threshold violation, exit 1 = error)
-            if ci {
-                if let Some(ref result) = result {
+            if ci
+                && let Some(ref result) = result {
                     return print_ci_output(result, threshold);
                 }
-            }
 
             exit_code
         }
@@ -332,9 +331,9 @@ pub async fn run_eval_last(json: bool, failures_only: bool, ci: bool, threshold:
                 )));
                 println!("  {}", separator());
 
-                let failed = result.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
-                let errors = result.get("errors").and_then(|v| v.as_u64()).unwrap_or(0);
-                let inconclusive = result.get("inconclusive").and_then(|v| v.as_u64()).unwrap_or(0);
+                let failed = result.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                let errors = result.get("errors").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                let inconclusive = result.get("inconclusive").and_then(serde_json::Value::as_u64).unwrap_or(0);
                 let results_arr = result.get("results").and_then(|v| v.as_array());
                 print_failures(results_arr, failed, errors, inconclusive);
                 println!("  {}", separator());
@@ -388,8 +387,8 @@ async fn run_eval_json(
             }
 
             // US-REM-08: Include remediationPlan in JSON when --remediation
-            if remediation_report {
-                if let Ok(report) = client.post_json("/eval/remediation-report", &serde_json::json!({})).await {
+            if remediation_report
+                && let Ok(report) = client.post_json("/eval/remediation-report", &serde_json::json!({})).await {
                     if let Some(actions) = report.get("actions") {
                         result.as_object_mut().map(|obj| obj.insert("remediationPlan".to_string(), actions.clone()));
                     }
@@ -400,7 +399,6 @@ async fn run_eval_json(
                         result.as_object_mut().map(|obj| obj.insert("apiConfigPatch".to_string(), api_config.clone()));
                     }
                 }
-            }
 
             println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
 
@@ -419,7 +417,7 @@ async fn run_eval_json(
 
 // ── SSE streaming ────────────────────────────────────────────
 
-/// Parse SSE eval stream, printing live progress. Returns (exit_code, final_result).
+/// Parse SSE eval stream, printing live progress. Returns (`exit_code`, `final_result`).
 async fn parse_eval_stream(
     resp: reqwest::Response,
     concurrency: u32,
@@ -483,7 +481,7 @@ async fn parse_eval_stream(
                     }
                     "eval:health" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                            let ok = parsed.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+                            let ok = parsed.get("ok").and_then(serde_json::Value::as_bool).unwrap_or(false);
                             // Phase 3b: health check with latency
                             let latency_ms = start_time.elapsed().as_millis();
                             if ok {
@@ -500,14 +498,14 @@ async fn parse_eval_stream(
                     "eval:test" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
                             let phase = parsed.get("phase").and_then(|v| v.as_str()).unwrap_or("");
-                            let completed = parsed.get("completed").and_then(|v| v.as_u64()).unwrap_or(0);
-                            let total = parsed.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
+                            let completed = parsed.get("completed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                            let total = parsed.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
                             let verdict = parsed.get("verdict").and_then(|v| v.as_str()).unwrap_or("?");
                             let method = parsed.get("method").and_then(|v| v.as_str()).unwrap_or("deterministic");
                             let category = parsed.get("category").and_then(|v| v.as_str()).unwrap_or("");
                             let test_id = parsed.get("testId").and_then(|v| v.as_str()).unwrap_or("?");
                             let name = parsed.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                            let latency_ms = parsed.get("latencyMs").and_then(|v| v.as_u64()).unwrap_or(0);
+                            let latency_ms = parsed.get("latencyMs").and_then(serde_json::Value::as_u64).unwrap_or(0);
                             let severity = parsed.get("severity").and_then(|v| v.as_str());
 
                             // Phase change: print completion summary for previous phase
@@ -554,21 +552,18 @@ async fn parse_eval_stream(
 
                             // Verbose: show probe, response, reasoning
                             if verbose {
-                                if let Some(probe) = parsed.get("probe").and_then(|v| v.as_str()) {
-                                    if !probe.is_empty() {
+                                if let Some(probe) = parsed.get("probe").and_then(|v| v.as_str())
+                                    && !probe.is_empty() {
                                         println!("         {} {}", dim("Probe:"), truncate_str(probe, 80));
                                     }
-                                }
-                                if let Some(response) = parsed.get("response").and_then(|v| v.as_str()) {
-                                    if !response.is_empty() {
+                                if let Some(response) = parsed.get("response").and_then(|v| v.as_str())
+                                    && !response.is_empty() {
                                         println!("         {} {}", dim("Response:"), truncate_str(response, 80));
                                     }
-                                }
-                                if let Some(reasoning) = parsed.get("reasoning").and_then(|v| v.as_str()) {
-                                    if !reasoning.is_empty() {
+                                if let Some(reasoning) = parsed.get("reasoning").and_then(|v| v.as_str())
+                                    && !reasoning.is_empty() {
                                         println!("         {} {}", dim("Reasoning:"), truncate_str(reasoning, 80));
                                     }
-                                }
                             }
 
                             // Always print progress bar (as a full line, will be erased on next update)
@@ -633,12 +628,11 @@ fn print_eval_header(target: &str, model: &str, mode: &str, judge_model: Option<
     println!("  {}    {} (auto-detected)", dim("Adapter"), adapter);
 
     // Phase 3c: LLM judge block
-    if let Some(jm) = judge_model {
-        if jm != "default" {
+    if let Some(jm) = judge_model
+        && jm != "default" {
             let provider = judge_provider_label(jm);
             println!("  {}  {} ({})", dim("LLM Judge"), jm, provider);
         }
-    }
 }
 
 /// Print concurrency info line (only if > 1). Phase 3d: consistent alignment.
@@ -777,26 +771,26 @@ fn phase_label(phase: &str) -> &str {
 fn format_eval_report(result: &serde_json::Value) {
     let target = result.get("target").and_then(|v| v.as_str()).unwrap_or("?");
     let tier = result.get("tier").and_then(|v| v.as_str()).unwrap_or("basic");
-    let overall = result.get("overallScore").and_then(|v| v.as_u64()).unwrap_or(0);
+    let overall = result.get("overallScore").and_then(serde_json::Value::as_u64).unwrap_or(0);
     let grade = result.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-    let total_tests = result.get("totalTests").and_then(|v| v.as_u64()).unwrap_or(0);
-    let passed = result.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let failed = result.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let errors = result.get("errors").and_then(|v| v.as_u64()).unwrap_or(0);
-    let inconclusive = result.get("inconclusive").and_then(|v| v.as_u64()).unwrap_or(0);
-    let skipped = result.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
-    let duration = result.get("duration").and_then(|v| v.as_u64()).unwrap_or(0);
-    let capped = result.get("criticalCapped").and_then(|v| v.as_bool()).unwrap_or(false);
-    let sec_score = result.get("securityScore").and_then(|v| v.as_u64());
+    let total_tests = result.get("totalTests").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let passed = result.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let failed = result.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let errors = result.get("errors").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let inconclusive = result.get("inconclusive").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let skipped = result.get("skipped").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let duration = result.get("duration").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let capped = result.get("criticalCapped").and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let sec_score = result.get("securityScore").and_then(serde_json::Value::as_u64);
     let sec_grade = result.get("securityGrade").and_then(|v| v.as_str());
     let adapter_name = result.get("adapterName").and_then(|v| v.as_str());
     let results_arr = result.get("results").and_then(|v| v.as_array());
     let categories_arr = result.get("categories").and_then(|v| v.as_array());
 
     // Count LLM-judged tests
-    let llm_count = results_arr.map(|r| r.iter().filter(|t|
+    let llm_count = results_arr.map_or(0, |r| r.iter().filter(|t|
         t.get("method").and_then(|v| v.as_str()) == Some("llm-judge")
-    ).count() as u64).unwrap_or(0);
+    ).count() as u64);
 
     // 1. Completion line
     println!();
@@ -838,7 +832,7 @@ fn format_eval_report(result: &serde_json::Value) {
 fn print_completion_line(total: u64, duration_ms: u64, llm_count: u64) {
     let dur = format_duration(duration_ms);
     let llm_suffix = if llm_count > 0 {
-        format!("  (LLM judge: {} calls)", llm_count)
+        format!("  (LLM judge: {llm_count} calls)")
     } else {
         String::new()
     };
@@ -880,7 +874,7 @@ fn print_summary(
 
     // Grade (overall or single)
     let display_grade = if tier == "full" {
-        let min_score = sec_score.map(|s| s.min(overall)).unwrap_or(overall);
+        let min_score = sec_score.map_or(overall, |s| s.min(overall));
         let g = resolve_grade(min_score as f64).to_string();
         let label = "OVERALL GRADE";
         let pad = w.saturating_sub(label.len() + g.len());
@@ -918,7 +912,7 @@ fn print_summary(
         println!("  {}  {} passed · {} failed",
             dim(&format!("{:<10}", "Conformity")), conf_passed, conf_failed);
         let sec_inconc_part = if sec_inconc > 0 {
-            format!(" · {} inconclusive", sec_inconc)
+            format!(" · {sec_inconc} inconclusive")
         } else {
             String::new()
         };
@@ -930,17 +924,17 @@ fn print_summary(
     let label = if tier == "security" { "Probes" } else { "Tests" };
     let pad = if tier == "security" { "     " } else { "      " };
     let inc_part = if inconclusive > 0 {
-        format!(" · {} warnings", inconclusive)
+        format!(" · {inconclusive} warnings")
     } else {
         String::new()
     };
     let skip_part = if skipped > 0 {
-        format!(" · {} skipped", skipped)
+        format!(" · {skipped} skipped")
     } else {
         String::new()
     };
     let err_part = if errors > 0 {
-        format!(" · {} errors", errors)
+        format!(" · {errors} errors")
     } else {
         String::new()
     };
@@ -963,8 +957,7 @@ fn print_summary(
 
     // Mode description — count security probes from results (not hardcoded)
     let security_count = results_arr
-        .map(|r| r.iter().filter(|t| t.get("owaspCategory").and_then(|v| v.as_str()).is_some()).count() as u64)
-        .unwrap_or(0);
+        .map_or(0, |r| r.iter().filter(|t| t.get("owaspCategory").and_then(|v| v.as_str()).is_some()).count() as u64);
     let mode_desc = mode_description(tier, total, llm_count, security_count);
     println!("  {}       {}", dim("Mode"), mode_desc);
 
@@ -1018,9 +1011,9 @@ fn print_critical_gaps(categories: Option<&Vec<serde_json::Value>>) {
 
     for cat in categories {
         let cat_name = cat.get("category").and_then(|v| v.as_str()).unwrap_or("");
-        let cat_passed = cat.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-        let cat_total = cat.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
-        let cat_failed = cat.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
+        let cat_passed = cat.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let cat_total = cat.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let cat_failed = cat.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
         if cat_total == 0 || cat_failed == 0 { continue; }
 
@@ -1055,7 +1048,7 @@ fn print_critical_gaps(categories: Option<&Vec<serde_json::Value>>) {
             println!();
             println!("  {}  {} · {} — {}/{} tests passed",
                 red(if use_unicode() { "✖" } else { "X" }), article, label, cat_passed, cat_total);
-            println!("     {}", desc);
+            println!("     {desc}");
         }
     }
 }
@@ -1084,56 +1077,52 @@ fn print_category_breakdown(categories: Option<&Vec<serde_json::Value>>, tier: &
                 c.get("category").and_then(|v| v.as_str()) == Some(cat_key)
             );
 
-            match cat_data {
-                Some(cat) => {
-                    let cat_passed = cat.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-                    let cat_total = cat.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
-                    let cat_grade = cat.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-                    let cat_score = cat.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
-                    let cat_skipped = cat.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
+            if let Some(cat) = cat_data {
+                let cat_passed = cat.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                let cat_total = cat.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                let cat_grade = cat.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
+                let cat_score = cat.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                let cat_skipped = cat.get("skipped").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
-                    if cat_total == 0 {
-                        // Phase 6a: skip icon for categories with no tests
-                        println!("    {:<6}{:<24}  {}      (no tests)", ct_id, label, skip_icon());
+                if cat_total == 0 {
+                    // Phase 6a: skip icon for categories with no tests
+                    println!("    {:<6}{:<24}  {}      (no tests)", ct_id, label, skip_icon());
+                } else {
+                    let bar = format_bar(cat_passed, cat_total, 15);
+                    let ratio = format!("{cat_passed:>2}/{cat_total:>2}");
+                    let grade_str = eval_grade_color(cat_grade);
+
+                    // Phase 6c: warning indicator for 0% pass categories
+                    let warn = if cat_score == 0 && cat_total > 0 {
+                        format!("  {}", red(warning_icon()))
+                    } else if cat_score < 20 {
+                        format!("  {}", red(warning_icon()))
                     } else {
-                        let bar = format_bar(cat_passed, cat_total, 15);
-                        let ratio = format!("{:>2}/{:>2}", cat_passed, cat_total);
-                        let grade_str = eval_grade_color(cat_grade);
-
-                        // Phase 6c: warning indicator for 0% pass categories
-                        let warn = if cat_score == 0 && cat_total > 0 {
-                            format!("  {}", red(warning_icon()))
-                        } else if cat_score < 20 {
-                            format!("  {}", red(warning_icon()))
-                        } else {
-                            String::new()
-                        };
-
-                        // Phase 6d: skipped count per category
-                        let skip_note = if cat_skipped > 0 {
-                            format!("    ({})", dim(&format!("{} skipped", cat_skipped)))
-                        } else {
-                            String::new()
-                        };
-
-                        println!("    {:<6}{:<24} {}   {}  {}{}{}",
-                            ct_id, label, ratio, bar, grade_str, warn, skip_note);
-                    }
-                }
-                None => {
-                    // Phase 6b: specific skip reasons
-                    let skip_reason = match cat_key {
-                        "explanation" if tier == "basic" => "(requires --llm)",
-                        "bias" if tier == "basic" => "(requires --llm)",
-                        "gpai" if tier == "basic" => "(requires --llm)",
-                        "robustness" if tier == "basic" || tier == "standard" => "(requires --security)",
-                        _ if tier == "basic" => "(not tested)",
-                        _ if tier == "security" => "(not in scope)",
-                        _ => "(not tested)",
+                        String::new()
                     };
-                    // Phase 6a: skip icon instead of —
-                    println!("    {:<6}{:<24}  {}      {}", ct_id, label, skip_icon(), dim(skip_reason));
+
+                    // Phase 6d: skipped count per category
+                    let skip_note = if cat_skipped > 0 {
+                        format!("    ({})", dim(&format!("{cat_skipped} skipped")))
+                    } else {
+                        String::new()
+                    };
+
+                    println!("    {ct_id:<6}{label:<24} {ratio}   {bar}  {grade_str}{warn}{skip_note}");
                 }
+            } else {
+                // Phase 6b: specific skip reasons
+                let skip_reason = match cat_key {
+                    "explanation" if tier == "basic" => "(requires --llm)",
+                    "bias" if tier == "basic" => "(requires --llm)",
+                    "gpai" if tier == "basic" => "(requires --llm)",
+                    "robustness" if tier == "basic" || tier == "standard" => "(requires --security)",
+                    _ if tier == "basic" => "(not tested)",
+                    _ if tier == "security" => "(not in scope)",
+                    _ => "(not tested)",
+                };
+                // Phase 6a: skip icon instead of —
+                println!("    {:<6}{:<24}  {}      {}", ct_id, label, skip_icon(), dim(skip_reason));
             }
         }
     }
@@ -1166,7 +1155,7 @@ fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors:
 
     // Phase 7c: Warning count in failures header
     let warn_part = if inconclusive > 0 {
-        format!(" · {} warnings", inconclusive)
+        format!(" · {inconclusive} warnings")
     } else {
         String::new()
     };
@@ -1194,7 +1183,7 @@ fn print_failures(results: Option<&Vec<serde_json::Value>>, failed: u64, errors:
         // Category sub-header
         println!();
         println!("  {}  {}  ({} failed)", bold(ct_id), bold(label), count);
-        let header_text = format!("{}  {}", ct_id, label);
+        let header_text = format!("{ct_id}  {label}");
         println!("  {}", dim(&h_line().repeat(header_text.len())));
         println!();
 
@@ -1357,16 +1346,13 @@ fn print_quick_actions(
 
     // Conditional actions
     if has_transparency_failures {
-        println!("  {}  {}", dim(&format!("{:<22}", "Fix transparency")),
-            "complior scan (check disclosure patterns)");
+        println!("  {}  complior scan (check disclosure patterns)", dim(&format!("{:<22}", "Fix transparency")));
     }
     if has_prohibited_failures {
-        println!("  {}  {}", dim(&format!("{:<22}", "Fix prohibited")),
-            "complior docs --article 5");
+        println!("  {}  complior docs --article 5", dim(&format!("{:<22}", "Fix prohibited")));
     }
     if has_bias_failures {
-        println!("  {}  {}", dim(&format!("{:<22}", "Review bias findings")),
-            "complior docs --article 10");
+        println!("  {}  complior docs --article 10", dim(&format!("{:<22}", "Review bias findings")));
     }
 
     // Phase 8a: Log testing suggestion
@@ -1379,12 +1365,10 @@ fn print_quick_actions(
     if let Some(results) = results {
         let owasp_failures = collect_owasp_failure_categories(results);
         if owasp_failures.contains(&"LLM01") {
-            println!("  {}  {}", dim(&format!("{:<22}", "Fix prompt injection")),
-                "Review input sanitization (OWASP LLM01)");
+            println!("  {}  Review input sanitization (OWASP LLM01)", dim(&format!("{:<22}", "Fix prompt injection")));
         }
         if owasp_failures.contains(&"LLM02") {
-            println!("  {}  {}", dim(&format!("{:<22}", "Fix data leakage")),
-                "Review output filtering (OWASP LLM02)");
+            println!("  {}  Review output filtering (OWASP LLM02)", dim(&format!("{:<22}", "Fix data leakage")));
         }
     }
 
@@ -1403,23 +1387,20 @@ fn print_quick_actions(
     }
 
     // Phase 8c: Guard Service suggestion
-    if let Some(ss) = sec_score {
-        if ss < 60 {
+    if let Some(ss) = sec_score
+        && ss < 60 {
             println!("  {}  {}", dim(&format!("{:<22}", "Enable Guard Service")),
                 format!("complior guard --target {}", truncate_str(target, 40)));
         }
-    }
 
     // Always show
-    println!("  {}  {}", dim(&format!("{:<22}", "Export report")),
-        "complior eval --json > eval-report.json");
-    println!("  {}  {}", dim(&format!("{:<22}", "View in dashboard")),
-        "complior tui");
+    println!("  {}  complior eval --json > eval-report.json", dim(&format!("{:<22}", "Export report")));
+    println!("  {}  complior tui", dim(&format!("{:<22}", "View in dashboard")));
 
     // Next step line
     println!();
     let next_step = resolve_next_step(overall, sec_score, failed, has_transparency_failures, has_prohibited_failures);
-    println!("  {}", next_step);
+    println!("  {next_step}");
 
     println!("  {}", separator());
 }
@@ -1435,7 +1416,7 @@ fn format_bar(passed: u64, total: u64, width: usize) -> String {
     format!("{}{}", bar_filled().repeat(filled), bar_empty().repeat(empty))
 }
 
-/// Truncate string to max_chars, adding … if needed.
+/// Truncate string to `max_chars`, adding … if needed.
 fn truncate_str(s: &str, max_chars: usize) -> String {
     // Trim leading/trailing whitespace and collapse internal newlines
     let cleaned: String = s.split_whitespace().collect::<Vec<&str>>().join(" ");
@@ -1477,7 +1458,7 @@ fn wrap_aligned(label_prefix: &str, text: &str, term_width: usize) -> String {
     }
 
     if lines.is_empty() {
-        return format!("{label_prefix}");
+        return label_prefix.to_string();
     }
 
     let pad: String = " ".repeat(indent);
@@ -1553,10 +1534,10 @@ fn mode_description(tier: &str, total: u64, llm_count: u64, security_count: u64)
 
 /// Check if a category has any failures.
 fn has_category_failures(categories: Option<&Vec<serde_json::Value>>, cat: &str) -> bool {
-    categories.map(|cats| cats.iter().any(|c| {
+    categories.is_some_and(|cats| cats.iter().any(|c| {
         c.get("category").and_then(|v| v.as_str()) == Some(cat)
-            && c.get("failed").and_then(|v| v.as_u64()).unwrap_or(0) > 0
-    })).unwrap_or(false)
+            && c.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0) > 0
+    }))
 }
 
 /// Collect OWASP categories that have failures (for security-specific quick actions).
@@ -1565,11 +1546,10 @@ fn collect_owasp_failure_categories(results: &[serde_json::Value]) -> Vec<&str> 
     for r in results {
         let verdict = r.get("verdict").and_then(|v| v.as_str()).unwrap_or("");
         if verdict != "fail" && verdict != "error" { continue; }
-        if let Some(cat) = r.get("owaspCategory").and_then(|v| v.as_str()) {
-            if !cats.contains(&cat) {
+        if let Some(cat) = r.get("owaspCategory").and_then(|v| v.as_str())
+            && !cats.contains(&cat) {
                 cats.push(cat);
             }
-        }
     }
     cats
 }
@@ -1588,7 +1568,7 @@ fn print_owasp_breakdown(results: Option<&Vec<serde_json::Value>>) {
             let entry = owasp_stats.entry(cat.to_string()).or_insert((0, 0, 0));
             match r.get("verdict").and_then(|v| v.as_str()) {
                 Some("pass") => entry.0 += 1,
-                Some("fail") | Some("error") => entry.1 += 1,
+                Some("fail" | "error") => entry.1 += 1,
                 _ => entry.2 += 1,  // inconclusive
             }
         }
@@ -1626,7 +1606,7 @@ fn print_owasp_breakdown(results: Option<&Vec<serde_json::Value>>) {
         // Score = pass / (pass + fail) — inconclusive excluded
         let score = if definitive > 0 { (*passed * 100) / definitive } else { 0 };
         let bar = format_bar(*passed, definitive, 10);
-        let ratio = format!("{:>3}/{:>3}", passed, total);
+        let ratio = format!("{passed:>3}/{total:>3}");
         let score_str = format!("{score}%");
         let inconc_str = if *inconc > 0 { format!("  {}", dim(&format!("{inconc} {}", warning_icon()))) } else { String::new() };
         println!("    {:<7}{:<28} {}   {}  {}{}", cat, label, ratio, bar, score_color(score as f64, &score_str), inconc_str);
@@ -1647,12 +1627,12 @@ fn print_cost_estimate(llm_count: u64) {
 
 /// Print CI-mode parseable output line. Returns exit code: 0 = pass, 2 = threshold fail.
 fn print_ci_output(result: &serde_json::Value, threshold: u32) -> i32 {
-    let score = result.get("overallScore").and_then(|v| v.as_u64()).unwrap_or(0);
-    let sec_score = result.get("securityScore").and_then(|v| v.as_u64());
+    let score = result.get("overallScore").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let sec_score = result.get("securityScore").and_then(serde_json::Value::as_u64);
     let grade = result.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-    let total = result.get("totalTests").and_then(|v| v.as_u64()).unwrap_or(0);
-    let passed = result.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let failed = result.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
+    let total = result.get("totalTests").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let passed = result.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let failed = result.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
     // Parseable output line (always emitted in CI mode)
     let sec_part = sec_score.map(|s| format!(" COMPLIOR_SECURITY={s}")).unwrap_or_default();
@@ -1660,7 +1640,7 @@ fn print_ci_output(result: &serde_json::Value, threshold: u32) -> i32 {
         "COMPLIOR_CONFORMITY={score}{sec_part} COMPLIOR_GRADE={grade} COMPLIOR_TOTAL={total} COMPLIOR_PASSED={passed} COMPLIOR_FAILED={failed}"
     );
 
-    if score < threshold as u64 {
+    if score < u64::from(threshold) {
         eprintln!("CI FAIL: Score {score} < threshold {threshold}");
         2 // exit code 2 = threshold violation (distinct from 1 = error)
     } else {
@@ -1707,7 +1687,7 @@ async fn fetch_remediation(
     }
 
     let ids_csv = failed_ids.join(",");
-    let url = format!("/eval/remediation?testIds={}", ids_csv);
+    let url = format!("/eval/remediation?testIds={ids_csv}");
 
     match client.get_json(&url).await {
         Ok(data) => data,
@@ -1715,29 +1695,29 @@ async fn fetch_remediation(
     }
 }
 
-/// Enhanced format_eval_report with inline remediation recommendations.
+/// Enhanced `format_eval_report` with inline remediation recommendations.
 fn format_eval_report_with_remediation(result: &serde_json::Value, remediation: &serde_json::Value) {
     let target = result.get("target").and_then(|v| v.as_str()).unwrap_or("?");
     let tier = result.get("tier").and_then(|v| v.as_str()).unwrap_or("basic");
-    let overall = result.get("overallScore").and_then(|v| v.as_u64()).unwrap_or(0);
+    let overall = result.get("overallScore").and_then(serde_json::Value::as_u64).unwrap_or(0);
     let grade = result.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-    let total_tests = result.get("totalTests").and_then(|v| v.as_u64()).unwrap_or(0);
-    let passed = result.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let failed = result.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let errors = result.get("errors").and_then(|v| v.as_u64()).unwrap_or(0);
-    let inconclusive = result.get("inconclusive").and_then(|v| v.as_u64()).unwrap_or(0);
-    let skipped = result.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
-    let duration = result.get("duration").and_then(|v| v.as_u64()).unwrap_or(0);
-    let capped = result.get("criticalCapped").and_then(|v| v.as_bool()).unwrap_or(false);
-    let sec_score = result.get("securityScore").and_then(|v| v.as_u64());
+    let total_tests = result.get("totalTests").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let passed = result.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let failed = result.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let errors = result.get("errors").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let inconclusive = result.get("inconclusive").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let skipped = result.get("skipped").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let duration = result.get("duration").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let capped = result.get("criticalCapped").and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let sec_score = result.get("securityScore").and_then(serde_json::Value::as_u64);
     let sec_grade = result.get("securityGrade").and_then(|v| v.as_str());
     let adapter_name = result.get("adapterName").and_then(|v| v.as_str());
     let results_arr = result.get("results").and_then(|v| v.as_array());
     let categories_arr = result.get("categories").and_then(|v| v.as_array());
 
-    let llm_count = results_arr.map(|r| r.iter().filter(|t|
+    let llm_count = results_arr.map_or(0, |r| r.iter().filter(|t|
         t.get("method").and_then(|v| v.as_str()) == Some("llm-judge")
-    ).count() as u64).unwrap_or(0);
+    ).count() as u64);
 
     // 1. Completion line
     println!();
@@ -1805,7 +1785,7 @@ fn print_failures_with_remediation(
     }
 
     let warn_part = if inconclusive > 0 {
-        format!(" · {} warnings", inconclusive)
+        format!(" · {inconclusive} warnings")
     } else {
         String::new()
     };
@@ -1830,7 +1810,7 @@ fn print_failures_with_remediation(
 
         println!();
         println!("  {}  {}  ({} failed)", bold(ct_id), bold(label), count);
-        let header_text = format!("{}  {}", ct_id, label);
+        let header_text = format!("{ct_id}  {label}");
         println!("  {}", dim(&h_line().repeat(header_text.len())));
         println!();
 
@@ -1907,21 +1887,18 @@ fn print_failures_with_remediation(
             }
 
             // Inline remediation: Fix: and Why: lines
-            if let Some(actions) = remediation.get(test_id).and_then(|v| v.as_array()) {
-                if let Some(first_action) = actions.first() {
-                    if let Some(guidance) = first_action.get("user_guidance") {
-                        if let Some(what_to_do) = guidance.get("what_to_do").and_then(|v| v.as_array()) {
-                            if let Some(first_step) = what_to_do.first().and_then(|v| v.as_str()) {
+            if let Some(actions) = remediation.get(test_id).and_then(|v| v.as_array())
+                && let Some(first_action) = actions.first()
+                    && let Some(guidance) = first_action.get("user_guidance") {
+                        if let Some(what_to_do) = guidance.get("what_to_do").and_then(|v| v.as_array())
+                            && let Some(first_step) = what_to_do.first().and_then(|v| v.as_str()) {
                                 println!("{}", wrap_aligned("     Fix:      ", first_step, tw));
                             }
-                        }
                         if let Some(why) = guidance.get("why").and_then(|v| v.as_str()) {
                             let first_sentence = why.split(". ").next().unwrap_or(why);
                             println!("{}", wrap_aligned("     Why:      ", first_sentence, tw));
                         }
                     }
-                }
-            }
 
             println!();
         }
@@ -1976,9 +1953,9 @@ fn print_failures_with_remediation(
 async fn print_remediation_report(client: &crate::engine_client::EngineClient) {
     match client.post_json("/eval/remediation-report", &serde_json::json!({})).await {
         Ok(report) => {
-            let score = report.get("score").and_then(|v| v.as_u64()).unwrap_or(0);
+            let score = report.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
             let grade = report.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-            let total = report.get("total_failures").and_then(|v| v.as_u64()).unwrap_or(0);
+            let total = report.get("total_failures").and_then(serde_json::Value::as_u64).unwrap_or(0);
             let gaps = report.get("critical_gaps").and_then(|v| v.as_array());
 
             println!();
@@ -1986,15 +1963,14 @@ async fn print_remediation_report(client: &crate::engine_client::EngineClient) {
             println!("  {}", bold("REMEDIATION REPORT"));
             println!("  {}", separator());
             println!();
-            println!("  Score: {}/100 (Grade {})", score, grade);
-            println!("  Total failures: {}", total);
+            println!("  Score: {score}/100 (Grade {grade})");
+            println!("  Total failures: {total}");
 
-            if let Some(gaps) = gaps {
-                if !gaps.is_empty() {
+            if let Some(gaps) = gaps
+                && !gaps.is_empty() {
                     let gap_strs: Vec<&str> = gaps.iter().filter_map(|v| v.as_str()).collect();
                     println!("  Critical gaps: {}", red(&gap_strs.join(", ")));
                 }
-            }
 
             // Show system prompt patch path hint
             if report.get("system_prompt_patch").and_then(|v| v.as_str()).is_some() {
@@ -2024,22 +2000,20 @@ async fn print_remediation_report(client: &crate::engine_client::EngineClient) {
                 // Save API config patch
                 if let Some(api_config) = report.get("api_config_patch") {
                     let ac_path = fixes_dir.join("api-config.json");
-                    if let Ok(json_str) = serde_json::to_string_pretty(api_config) {
-                        if std::fs::write(&ac_path, &json_str).is_ok() {
+                    if let Ok(json_str) = serde_json::to_string_pretty(api_config)
+                        && std::fs::write(&ac_path, &json_str).is_ok() {
                             println!("  {}  Saved: {}", green(check_mark()), ac_path.display());
                         }
-                    }
                     // Save guardrails.json from input/output validation
                     let guardrails = serde_json::json!({
                         "inputValidation": api_config.get("inputValidation"),
                         "outputValidation": api_config.get("outputValidation"),
                     });
                     let gr_path = fixes_dir.join("guardrails.json");
-                    if let Ok(json_str) = serde_json::to_string_pretty(&guardrails) {
-                        if std::fs::write(&gr_path, &json_str).is_ok() {
+                    if let Ok(json_str) = serde_json::to_string_pretty(&guardrails)
+                        && std::fs::write(&gr_path, &json_str).is_ok() {
                             println!("  {}  Saved: {}", green(check_mark()), gr_path.display());
                         }
-                    }
                 }
             }
 
@@ -2117,8 +2091,8 @@ pub async fn run_eval_fix(dry_run: bool, json: bool, path: Option<&str>, config:
                                     println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
                                     return 0;
                                 }
-                                let applied_count = result.get("appliedCount").and_then(|v| v.as_u64()).unwrap_or(0);
-                                let manual_count = result.get("manualCount").and_then(|v| v.as_u64()).unwrap_or(0);
+                                let applied_count = result.get("appliedCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                                let manual_count = result.get("manualCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
                                 if applied_count > 0 {
                                     println!("  {}  {} config fixes applied", green(check_mark()), applied_count);

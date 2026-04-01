@@ -102,16 +102,14 @@ pub async fn execute_command(
                                 app.messages.push(types::ChatMessage::new(
                                     types::MessageRole::System,
                                     format!(
-                                        "REGRESSION: Score dropped {:.0} → {:.0} ({diff:+.0})",
-                                        old, new_score
+                                        "REGRESSION: Score dropped {old:.0} → {new_score:.0} ({diff:+.0})"
                                     ),
                                 ));
                             } else if diff > 0.0 {
                                 app.messages.push(types::ChatMessage::new(
                                     types::MessageRole::System,
                                     format!(
-                                        "IMPROVED: Score {:.0} → {:.0} ({diff:+.0})",
-                                        old, new_score
+                                        "IMPROVED: Score {old:.0} → {new_score:.0} ({diff:+.0})"
                                     ),
                                 ));
                             }
@@ -294,7 +292,7 @@ pub async fn execute_command(
                                 },
                                 score_delta: v
                                     .get("scoreDelta")
-                                    .and_then(|d| d.as_f64()),
+                                    .and_then(serde_json::Value::as_f64),
                             })
                         })
                         .collect();
@@ -357,127 +355,121 @@ pub async fn execute_command(
                 .as_ref()
                 .map_or(50.0, |s| s.score.total_score);
 
-            match app.engine_client.whatif(&scenario).await {
-                Ok(result) => {
-                    // Parse engine response
-                    let projected = result
-                        .get("projectedScore")
-                        .and_then(|v| v.as_f64())
-                        .unwrap_or(current_score - 5.0);
-                    let obligations: Vec<String> = result
-                        .get("newObligations")
-                        .and_then(|v| v.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(String::from))
-                                .collect()
-                        })
-                        .unwrap_or_default();
-                    let effort = result
-                        .get("effortDays")
-                        .and_then(|v| v.as_u64())
-                        .map(|d| d as u32);
+            if let Ok(result) = app.engine_client.whatif(&scenario).await {
+                // Parse engine response
+                let projected = result
+                    .get("projectedScore")
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(current_score - 5.0);
+                let obligations: Vec<String> = result
+                    .get("newObligations")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let effort = result
+                    .get("effortDays")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(|d| d as u32);
 
-                    let whatif_result = components::whatif::WhatIfResult {
-                        scenario: scenario.clone(),
-                        current_score,
-                        projected_score: projected,
-                        new_obligations: obligations,
-                        effort_days: effort,
-                    };
-                    let msg = components::whatif::format_whatif_message(&whatif_result);
-                    app.whatif.result = Some(whatif_result);
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::Assistant,
-                        msg,
-                    ));
-                }
-                Err(_) => {
-                    app.toasts.push(
-                        components::toast::ToastKind::Warning,
-                        "What-if requires engine connection",
-                    );
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::System,
-                        "What-if analysis unavailable — engine not connected.".to_string(),
-                    ));
-                }
+                let whatif_result = components::whatif::WhatIfResult {
+                    scenario: scenario.clone(),
+                    current_score,
+                    projected_score: projected,
+                    new_obligations: obligations,
+                    effort_days: effort,
+                };
+                let msg = components::whatif::format_whatif_message(&whatif_result);
+                app.whatif.result = Some(whatif_result);
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::Assistant,
+                    msg,
+                ));
+            } else {
+                app.toasts.push(
+                    components::toast::ToastKind::Warning,
+                    "What-if requires engine connection",
+                );
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    "What-if analysis unavailable — engine not connected.".to_string(),
+                ));
             }
             app.whatif.pending = false;
         }
         // T906: Dry-run mode
         AppCommand::FixDryRun(selected) => {
-            match app.engine_client.fix_dry_run().await {
-                Ok(result) => {
-                    // Parse dry-run response
-                    let changes: Vec<String> = result
-                        .get("changes")
-                        .and_then(|v| v.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| {
-                                    let path = v.get("path")?.as_str()?;
-                                    let action = v.get("action")?.as_str().unwrap_or("MODIFY");
-                                    let delta = v.get("scoreDelta")?.as_f64().unwrap_or(0.0);
-                                    Some(format!("  {path:<40} [{action}]  +{delta:.0} score"))
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_default();
-                    let predicted = result
-                        .get("predictedScore")
-                        .and_then(|v| v.as_f64())
-                        .unwrap_or(0.0);
+            if let Ok(result) = app.engine_client.fix_dry_run().await {
+                // Parse dry-run response
+                let changes: Vec<String> = result
+                    .get("changes")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| {
+                                let path = v.get("path")?.as_str()?;
+                                let action = v.get("action")?.as_str().unwrap_or("MODIFY");
+                                let delta = v.get("scoreDelta")?.as_f64().unwrap_or(0.0);
+                                Some(format!("  {path:<40} [{action}]  +{delta:.0} score"))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let predicted = result
+                    .get("predictedScore")
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
 
-                    let current = app
-                        .last_scan
-                        .as_ref()
-                        .map_or(0.0, |s| s.score.total_score);
-                    let delta = predicted - current;
-                    let mut msg = format!(
-                        "Dry-Run Fix Analysis (no files modified)\n\
-                         Would modify {} files:\n",
-                        changes.len()
-                    );
-                    for change in &changes {
-                        msg.push_str(change);
-                        msg.push('\n');
-                    }
-                    msg.push_str(&format!(
-                        "\nPredicted score: {current:.0} -> {predicted:.0} ({delta:+.0})\n\
-                         Run /fix to apply."
-                    ));
+                let current = app
+                    .last_scan
+                    .as_ref()
+                    .map_or(0.0, |s| s.score.total_score);
+                let delta = predicted - current;
+                let mut msg = format!(
+                    "Dry-Run Fix Analysis (no files modified)\n\
+                     Would modify {} files:\n",
+                    changes.len()
+                );
+                for change in &changes {
+                    msg.push_str(change);
+                    msg.push('\n');
+                }
+                msg.push_str(&format!(
+                    "\nPredicted score: {current:.0} -> {predicted:.0} ({delta:+.0})\n\
+                     Run /fix to apply."
+                ));
 
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::Assistant,
-                        msg,
-                    ));
-                }
-                Err(_) => {
-                    // Offline: simulate from predicted impact
-                    let current = app
-                        .last_scan
-                        .as_ref()
-                        .map_or(0.0, |s| s.score.total_score);
-                    let impact = app.fix_view.total_predicted_impact() as f64;
-                    let predicted = (current + impact).min(100.0);
-                    let msg = format!(
-                        "Dry-Run Fix Analysis (offline estimate)\n\
-                         Selected fixes: {}\n\
-                         Predicted score: {current:.0} -> {predicted:.0} (+{impact:.0})\n\n\
-                         Note: Detailed file changes unavailable offline.\n\
-                         Run /fix to apply.",
-                        selected.len()
-                    );
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::Assistant,
-                        msg,
-                    ));
-                    app.toasts.push(
-                        components::toast::ToastKind::Info,
-                        "Dry-run estimate (offline)",
-                    );
-                }
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::Assistant,
+                    msg,
+                ));
+            } else {
+                // Offline: simulate from predicted impact
+                let current = app
+                    .last_scan
+                    .as_ref()
+                    .map_or(0.0, |s| s.score.total_score);
+                let impact = f64::from(app.fix_view.total_predicted_impact());
+                let predicted = (current + impact).min(100.0);
+                let msg = format!(
+                    "Dry-Run Fix Analysis (offline estimate)\n\
+                     Selected fixes: {}\n\
+                     Predicted score: {current:.0} -> {predicted:.0} (+{impact:.0})\n\n\
+                     Note: Detailed file changes unavailable offline.\n\
+                     Run /fix to apply.",
+                    selected.len()
+                );
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::Assistant,
+                    msg,
+                ));
+                app.toasts.push(
+                    components::toast::ToastKind::Info,
+                    "Dry-run estimate (offline)",
+                );
             }
         }
         AppCommand::ApplyFixes => {
@@ -535,7 +527,7 @@ pub async fn execute_command(
             }
 
             // Show results (predicted score — will be updated by AutoScan)
-            let impact = app.fix_view.total_predicted_impact() as f64;
+            let impact = f64::from(app.fix_view.total_predicted_impact());
             app.fix_view.results = Some(views::fix::FixResults {
                 applied,
                 failed,
@@ -784,7 +776,7 @@ pub async fn execute_command(
                     Ok(result) => {
                         let valid = result
                             .get("valid")
-                            .and_then(|v| v.as_bool())
+                            .and_then(serde_json::Value::as_bool)
                             .unwrap_or(false);
                         let msg = if valid {
                             format!("Passport '{name}' is valid.")
@@ -1254,8 +1246,8 @@ fn format_slash_command_response(val: &serde_json::Value) -> String {
                 format!("Mode: {label}")
             }
             "cost" => {
-                let cost = val.get("totalCost").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let tokens = val.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                let cost = val.get("totalCost").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                let tokens = val.get("totalTokens").and_then(serde_json::Value::as_u64).unwrap_or(0);
                 format!("Session cost: ${cost:.4}  ({tokens} tokens)")
             }
             "model" => val
