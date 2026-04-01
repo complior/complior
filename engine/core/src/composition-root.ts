@@ -679,6 +679,9 @@ export const loadApplication = async (): Promise<Application> => {
     evidenceStore,
     auditStore,
     updatePassportEval,
+    undoService,
+    events,
+    scanService: { scan: scanService.scan },
   });
 
   // 6. Create router

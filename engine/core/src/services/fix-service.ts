@@ -1,6 +1,7 @@
 import { resolve, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { mkdir, copyFile, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { backupFile } from './shared/backup.js';
 import type { Finding, ScanResult } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { Fixer } from '../domain/fixer/create-fixer.js';
@@ -53,19 +54,8 @@ export const createFixService = (deps: FixServiceDeps) => {
 
   const getProjectPath = () => _getProjectPath();
 
-  const backupFile = async (filePath: string): Promise<string> => {
-    const projectPath = getProjectPath();
-    const backupDir = resolve(projectPath, '.complior', 'backups');
-    await mkdir(backupDir, { recursive: true });
-    const timestamp = Date.now();
-    const backupPath = resolve(backupDir, `${timestamp}-${filePath.replace(/[\\/]/g, '_')}`);
-    try {
-      await copyFile(resolve(projectPath, filePath), backupPath);
-    } catch {
-      // File doesn't exist yet (create action) — no backup needed
-    }
-    return backupPath;
-  };
+  const createBackup = (filePath: string): Promise<string> =>
+    backupFile(filePath, getProjectPath());
 
   const applyAction = async (action: FixPlan['actions'][number], projectPath: string, useAi = false): Promise<readonly string[] | undefined> => {
     const fullPath = resolve(projectPath, action.path);
@@ -233,8 +223,8 @@ export const createFixService = (deps: FixServiceDeps) => {
     try {
       let manualFields: readonly string[] | undefined;
       for (const action of plan.actions) {
-        const backup = await backupFile(action.path);
-        backedUp.push(backup);
+        const bk = await createBackup(action.path);
+        backedUp.push(bk);
         const mf = await applyAction(action, projectPath, useAi);
         if (mf) manualFields = mf;
       }
@@ -362,8 +352,8 @@ export const createFixService = (deps: FixServiceDeps) => {
       try {
         let manualFields: readonly string[] | undefined;
         for (const action of plan.actions) {
-          const backup = await backupFile(action.path);
-          backedUp.push(backup);
+          const bk = await createBackup(action.path);
+          backedUp.push(bk);
           const mf = await applyAction(action, projectPath, useAi);
           if (mf) manualFields = mf;
         }
@@ -396,7 +386,7 @@ export const createFixService = (deps: FixServiceDeps) => {
       // Sort bottom-up by startLine so splicing doesn't shift indices for remaining ops
       group.sort((a, b) => (b.actions[0]!.startLine ?? 0) - (a.actions[0]!.startLine ?? 0));
 
-      const backup = await backupFile(filePath);
+      const bk = await createBackup(filePath);
       const fullPath = resolve(projectPath, filePath);
 
       let content: string;
@@ -406,7 +396,7 @@ export const createFixService = (deps: FixServiceDeps) => {
         for (const plan of group) {
           results.push({
             plan, applied: false, scoreBefore, scoreAfter: scoreBefore,
-            backedUpFiles: [backup], error: `File not found: ${filePath}`,
+            backedUpFiles: [bk], error: `File not found: ${filePath}`,
           });
         }
         continue;
@@ -426,7 +416,7 @@ export const createFixService = (deps: FixServiceDeps) => {
         if (startIdx + beforeLines.length > lines.length) {
           results.push({
             plan, applied: false, scoreBefore, scoreAfter: scoreBefore,
-            backedUpFiles: [backup], error: `Stale diff: line range exceeds file length — re-scan first`,
+            backedUpFiles: [bk], error: `Stale diff: line range exceeds file length — re-scan first`,
           });
           valid = false;
         } else {
@@ -434,7 +424,7 @@ export const createFixService = (deps: FixServiceDeps) => {
             if ((lines[startIdx + i] ?? '').trim() !== (beforeLines[i] ?? '').trim()) {
               results.push({
                 plan, applied: false, scoreBefore, scoreAfter: scoreBefore,
-                backedUpFiles: [backup], error: `Stale diff at line ${(action.startLine ?? 1) + i} — re-scan first`,
+                backedUpFiles: [bk], error: `Stale diff at line ${(action.startLine ?? 1) + i} — re-scan first`,
               });
               valid = false;
               break;
@@ -447,7 +437,7 @@ export const createFixService = (deps: FixServiceDeps) => {
         lines.splice(startIdx, beforeLines.length, ...(action.afterLines ?? []));
         if (action.importLine) importLines.push(action.importLine);
         appliedActionKeys.add(`${action.path}:${action.startLine}`);
-        results.push({ plan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: [backup] });
+        results.push({ plan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: [bk] });
       }
 
       // Inject unique imports after all splices (after last import/from line)
@@ -502,7 +492,7 @@ export const createFixService = (deps: FixServiceDeps) => {
       let anyApplied = false;
       for (const [fp, group] of newFileGroups) {
         group.sort((a, b) => (b.actions[0]!.startLine ?? 0) - (a.actions[0]!.startLine ?? 0));
-        const bk = await backupFile(fp);
+        const bk = await createBackup(fp);
         const full = resolve(projectPath, fp);
         let content: string;
         try { content = await readFile(full, 'utf-8'); } catch { continue; }
@@ -545,7 +535,7 @@ export const createFixService = (deps: FixServiceDeps) => {
       const nonSplicePlans = newPlans.filter(p => p.actions.length > 0 && p.actions[0]!.type !== 'splice');
       for (const plan of nonSplicePlans) {
         try {
-          const bk = await backupFile(plan.actions[0]!.path);
+          const bk = await createBackup(plan.actions[0]!.path);
           await applyAction(plan.actions[0]!, projectPath);
           appliedActionKeys.add(plan.actions[0]!.path);
           results.push({ plan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: [bk] });

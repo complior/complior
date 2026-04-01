@@ -139,17 +139,22 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
             Some(cli::Command::Fix { dry_run, json, ai, source, check_id, path }) => {
-                if source == "eval" {
-                    headless::eval::run_eval_fix(*dry_run, *json, &config).await
-                } else if source == "all" {
-                    // Combined: scan + eval findings
-                    let scan_code = headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await;
-                    let eval_code = headless::eval::run_eval_fix(*dry_run, *json, &config).await;
-                    if scan_code != 0 { scan_code } else { eval_code }
-                } else if let Some(cid) = check_id {
-                    headless::fix::run_fix_single(cid, *json, path.as_deref(), &config, *ai).await
-                } else {
-                    headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await
+                match source {
+                    cli::FixSource::Eval => {
+                        headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await
+                    }
+                    cli::FixSource::All => {
+                        let scan_code = headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await;
+                        let eval_code = headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await;
+                        if scan_code != 0 { scan_code } else { eval_code }
+                    }
+                    cli::FixSource::Scan => {
+                        if let Some(cid) = check_id {
+                            headless::fix::run_fix_single(cid, *json, path.as_deref(), &config, *ai).await
+                        } else {
+                            headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await
+                        }
+                    }
                 }
             }
             Some(cli::Command::Version) => { headless::run_version(); 0 }
@@ -226,7 +231,7 @@ async fn main() -> color_eyre::Result<()> {
                         // Run eval then apply fixes
                         let code = headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await;
                         if code == 0 {
-                            headless::eval::run_eval_fix(*dry_run, *json, &config).await
+                            headless::eval::run_eval_fix(*dry_run, *json, None, &config).await
                         } else {
                             code
                         }

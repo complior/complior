@@ -13,10 +13,9 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import type { EvalService } from '../../services/eval-service.js';
-import { EvalOptionsSchema } from '../../domain/eval/types.js';
+import { EvalOptionsSchema, resolveIncludes } from '../../domain/eval/types.js';
 import type { EvalProgress } from '../../domain/eval/types.js';
 import { sseEvalStart, sseEvalHealth, sseEvalTest, sseEvalDone, sseError } from '../../llm/sse-protocol.js';
-import { resolveIncludes } from '../../domain/eval/types.js';
 import { parseBody, requireQuery } from '../utils/validation.js';
 
 export interface EvalRouteDeps {
@@ -108,7 +107,7 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
   // GET /eval/list — list eval result files
   app.get('/eval/list', async (c) => {
     const results = await deps.evalService.listResults();
-    const judgeConfigured = !!(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+    const judgeConfigured = deps.evalService.isJudgeConfigured();
     return c.json({ results, judgeConfigured });
   });
 
@@ -135,9 +134,8 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
 
     const report = await deps.evalService.generateRemediationReport(result);
 
-    // Include markdown rendering for CLI disk persistence
-    const { renderRemediationMarkdown } = await import('../../domain/eval/eval-remediation-report.js');
-    const markdown_report = renderRemediationMarkdown(report);
+    // R4: Render markdown via service (route should not import domain)
+    const markdown_report = await deps.evalService.getRemediationReportMarkdown();
 
     return c.json({ ...report, markdown_report });
   });

@@ -148,7 +148,7 @@ impl EngineClient {
 
     /// T906: Dry-run fix — preview fixes without writing files.
     /// Uses GET /fix/preview to get planned fixes and their score impact.
-    pub async fn fix_dry_run(&self, _selected: &[String]) -> Result<serde_json::Value> {
+    pub async fn fix_dry_run(&self) -> Result<serde_json::Value> {
         let preview = self.get_json("/fix/preview").await?;
         let fixes = preview.get("fixes").and_then(|v| v.as_array());
 

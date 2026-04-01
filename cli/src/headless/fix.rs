@@ -1,5 +1,4 @@
 use crate::config::TuiConfig;
-use crate::engine_client::EngineClient;
 use crate::headless::format::colors::*;
 use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
@@ -13,20 +12,10 @@ pub async fn run_headless_fix(
     config: &TuiConfig,
     use_ai: bool,
 ) -> i32 {
-    let engine_url = config
-        .engine_url_override
-        .clone()
-        .unwrap_or_else(|| config.engine_url());
-    let client = EngineClient::from_url(&engine_url);
-
-    // Check engine
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Cannot connect to engine at {engine_url}");
-            return 1;
-        }
-    }
+    let client = match super::common::ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     let scan_path = super::common::resolve_project_path(path);
 
@@ -85,7 +74,7 @@ pub async fn run_headless_fix(
 
     if dry_run {
         // Request dry-run from engine
-        match client.fix_dry_run(&fixable).await {
+        match client.fix_dry_run().await {
             Ok(dr_result) => {
                 if json {
                     println!("{}", serde_json::to_string_pretty(&dr_result).unwrap_or_default());
@@ -144,19 +133,10 @@ pub async fn run_fix_single(
     config: &TuiConfig,
     use_ai: bool,
 ) -> i32 {
-    let engine_url = config
-        .engine_url_override
-        .clone()
-        .unwrap_or_else(|| config.engine_url());
-    let client = EngineClient::from_url(&engine_url);
-
-    match client.status().await {
-        Ok(status) if status.ready => {}
-        _ => {
-            eprintln!("Error: Cannot connect to engine at {engine_url}");
-            return 1;
-        }
-    }
+    let client = match super::common::ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
 
     let _scan_path = super::common::resolve_project_path(path);
 

@@ -407,7 +407,7 @@ pub async fn execute_command(
         }
         // T906: Dry-run mode
         AppCommand::FixDryRun(selected) => {
-            match app.engine_client.fix_dry_run(&selected).await {
+            match app.engine_client.fix_dry_run().await {
                 Ok(result) => {
                     // Parse dry-run response
                     let changes: Vec<String> = result

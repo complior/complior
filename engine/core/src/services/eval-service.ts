@@ -5,7 +5,8 @@
  * into a single entry point for HTTP routes and CLI.
  */
 
-import { readFile, readdir, writeFile, mkdir, copyFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { z } from 'zod';
 import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult } from '../domain/eval/types.js';
@@ -25,7 +26,12 @@ import type { RemediationAction, RemediationReport } from '../domain/eval/remedi
 import type { EvalFinding } from '../domain/eval/eval-to-findings.js';
 import type { LlmPort } from '../ports/llm.port.js';
 import type { LoggerPort } from '../ports/logger.port.js';
+import type { EventBusPort } from '../ports/events.port.js';
+import type { UndoService } from './undo-service.js';
+import type { ScanResult } from '../types/common.types.js';
+import { createEvidence } from '../domain/scanner/evidence.js';
 import { createLogger } from '../infra/logger.js';
+import { backupFile } from './shared/backup.js';
 
 // ── Service deps ─────────────────────────────────────────────────
 
@@ -38,20 +44,23 @@ export interface EvalServiceDeps {
   /** Optional: auto-sync eval results into agent passport (US-REM-04). */
   readonly updatePassportEval?: (result: EvalResult) => Promise<void>;
   readonly log?: LoggerPort;
+  readonly undoService?: UndoService;
+  readonly events?: EventBusPort;
+  readonly scanService?: { scan: (path: string) => Promise<ScanResult> };
 }
 
 export const createEvalService = (deps: EvalServiceDeps) => {
   const log = deps.log ?? createLogger('eval');
 
-  let runnerDeps: EvalRunnerDeps = {
+  // R9: Immutable base runner deps — callLlm resolved per-invocation inside runEval()
+  const baseRunnerDeps: Omit<EvalRunnerDeps, 'callLlm'> = {
     getProjectPath: deps.getProjectPath,
     evidenceStore: deps.evidenceStore,
     auditStore: deps.auditStore,
-    callLlm: deps.callLlm,
     getSecurityRubric,
   };
 
-  const runner = createEvalRunner(runnerDeps);
+  const baseRunner = createEvalRunner({ ...baseRunnerDeps, callLlm: deps.callLlm });
   const scorer: EvalScorer = createConformityScorer();
 
   // Lazy-load test sources (avoids importing large data at boot)
@@ -100,6 +109,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     //   2. Target adapter (same API/key as target)
     //   3. deps.callLlm (composition-root closure)
     let judge: EvalJudge | undefined;
+    let effectiveCallLlm = deps.callLlm;
 
     // 1. Try llm-adapter — user's own model from .complior/.env
     if (deps.llm) {
@@ -113,7 +123,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         };
         await callJudge('Say "ok"');
         judge = createLlmJudge({ callLlm: callJudge });
-        runnerDeps = { ...runnerDeps, callLlm: callJudge };
+        effectiveCallLlm = callJudge;
       } catch (error) {
         log.warn(`LLM judge probe failed: ${error instanceof Error ? error.message : error}`);
       }
@@ -129,7 +139,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
 
     if (!judge && callLlmViaTarget) {
       judge = createLlmJudge({ callLlm: callLlmViaTarget });
-      runnerDeps = { ...runnerDeps, callLlm: callLlmViaTarget };
+      effectiveCallLlm = callLlmViaTarget;
     }
 
     // 3. Fallback: deps.callLlm (composition-root closure)
@@ -141,10 +151,11 @@ export const createEvalService = (deps: EvalServiceDeps) => {
       log.warn('No LLM judge available. Set an API key in .complior/.env for LLM-judged tests.');
     }
 
-    // Re-create runner with potentially updated callLlm
-    const effectiveRunner = runnerDeps.callLlm !== deps.callLlm
+    // R9: Build immutable runner deps per invocation (no mutable closure state)
+    const runnerDeps: EvalRunnerDeps = Object.freeze({ ...baseRunnerDeps, callLlm: effectiveCallLlm });
+    const effectiveRunner = effectiveCallLlm !== deps.callLlm
       ? createEvalRunner(runnerDeps)
-      : runner;
+      : baseRunner;
 
     const result = await effectiveRunner.runEval(adapter, options, testSources, scorer, judge, onProgress);
 
@@ -278,9 +289,24 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     return evalToFindings(evalResult, ALL_PLAYBOOKS);
   };
 
+  // R4: Render remediation report markdown via service (route should not import domain).
+  const getRemediationReportMarkdown = async (): Promise<string> => {
+    const { renderRemediationMarkdown } = await import('../domain/eval/eval-remediation-report.js');
+    const result = await getLastResult();
+    if (!result) return '# No eval results found';
+    const report = await generateRemediationReport(result);
+    return renderRemediationMarkdown(report);
+  };
+
+  // R5: Check if an LLM judge API key is configured (service reads env, not route).
+  const isJudgeConfigured = (): boolean => {
+    return !!(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+  };
+
   /**
    * Apply eval fixes: only Type B (config/file creation) findings.
    * Type A (system-prompt) findings are returned as manual guidance.
+   * R1: Records undo history, evidence chain, and emits score.updated event.
    */
   const applyEvalFixes = async (): Promise<{
     applied: readonly { checkId: string; file: string; type: 'B' }[];
@@ -297,6 +323,15 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     const manual: { checkId: string; title: string; fixDescription: string; type: 'A' }[] = [];
     const projectPath = deps.getProjectPath();
 
+    // Capture score before applying fixes
+    let scoreBefore = 0;
+    if (deps.scanService) {
+      try {
+        const scan = await deps.scanService.scan(projectPath);
+        scoreBefore = scan.score.totalScore;
+      } catch { /* non-fatal */ }
+    }
+
     for (const finding of findings) {
       if (finding.type === 'A') {
         // System prompt patches — can't auto-apply, return as guidance
@@ -312,12 +347,8 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         try {
           await mkdir(dirname(fullPath), { recursive: true });
 
-          // Backup existing file if present
-          const backupDir = resolve(projectPath, '.complior', 'backups');
-          await mkdir(backupDir, { recursive: true });
-          try {
-            await copyFile(fullPath, resolve(backupDir, `${Date.now()}-${finding.file.replace(/[\\/]/g, '_')}`));
-          } catch { /* file doesn't exist yet */ }
+          // R3: Use shared backup utility
+          await backupFile(finding.file, projectPath);
 
           // Write the fix content
           const content = JSON.stringify({
@@ -341,6 +372,52 @@ export const createEvalService = (deps: EvalServiceDeps) => {
       }
     }
 
+    // R1: Post-apply — re-scan, record undo history, append evidence, emit event
+    let scoreAfter = scoreBefore;
+    if (applied.length > 0 && deps.scanService) {
+      try {
+        const scan = await deps.scanService.scan(projectPath);
+        scoreAfter = scan.score.totalScore;
+      } catch { /* non-fatal */ }
+    }
+
+    for (const fix of applied) {
+      // Record undo history
+      if (deps.undoService) {
+        try {
+          const plan = {
+            checkId: fix.checkId,
+            obligationId: '',
+            fixType: 'config_fix' as const,
+            article: '',
+            description: 'Eval fix',
+            framework: '',
+            actions: [{ type: 'create' as const, path: fix.file }],
+            diff: '',
+            scoreImpact: 0,
+            commitMessage: '',
+          };
+          await deps.undoService.recordFix(
+            { plan, applied: true, scoreBefore, scoreAfter, backedUpFiles: [] },
+            plan,
+          );
+        } catch { /* non-fatal */ }
+      }
+
+      // Append evidence
+      if (deps.evidenceStore) {
+        try {
+          const evidence = createEvidence(fix.checkId, 'eval-fix', 'fix', { file: fix.file });
+          await deps.evidenceStore.append([evidence], randomUUID());
+        } catch { /* non-fatal */ }
+      }
+    }
+
+    // Emit score update event
+    if (applied.length > 0 && deps.events) {
+      deps.events.emit('score.updated', { before: scoreBefore, after: scoreAfter });
+    }
+
     return { applied, manual };
   };
 
@@ -355,6 +432,8 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     generateRemediationReport,
     getEvalFindings,
     applyEvalFixes,
+    getRemediationReportMarkdown,
+    isJudgeConfigured,
   });
 };
 

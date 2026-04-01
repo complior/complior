@@ -32,6 +32,23 @@ pub struct Cli {
     pub no_color: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum FixSource {
+    Scan,
+    Eval,
+    All,
+}
+
+impl std::fmt::Display for FixSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Scan => write!(f, "scan"),
+            Self::Eval => write!(f, "eval"),
+            Self::All => write!(f, "all"),
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Command {
     /// Scan project for AI Act compliance
@@ -111,8 +128,8 @@ pub enum Command {
         ai: bool,
 
         /// Fix source: scan (default), eval, or all
-        #[arg(long, default_value = "scan")]
-        source: String,
+        #[arg(long, default_value_t = FixSource::Scan, value_enum)]
+        source: FixSource,
 
         /// Apply fix for a specific check ID only (e.g. l1-fria)
         #[arg(long)]

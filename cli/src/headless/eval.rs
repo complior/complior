@@ -2053,11 +2053,13 @@ async fn print_remediation_report(client: &crate::engine_client::EngineClient) {
 }
 
 /// Run eval --fix: show eval findings as fix preview (US-REM-09).
-pub async fn run_eval_fix(dry_run: bool, json: bool, config: &TuiConfig) -> i32 {
+pub async fn run_eval_fix(dry_run: bool, json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let client = match ensure_engine(config).await {
         Ok(c) => c,
         Err(code) => return code,
     };
+
+    let project_path = super::common::resolve_project_path(path);
 
     match client.get_json("/eval/findings").await {
         Ok(data) => {
@@ -2100,8 +2102,8 @@ pub async fn run_eval_fix(dry_run: bool, json: bool, config: &TuiConfig) -> i32 
 
                     if dry_run {
                         // Save fix previews to .complior/eval-fixes/
-                        let fixes_dir = std::path::Path::new(".complior/eval-fixes");
-                        if std::fs::create_dir_all(fixes_dir).is_ok() {
+                        let fixes_dir = std::path::Path::new(&project_path).join(".complior/eval-fixes");
+                        if std::fs::create_dir_all(&fixes_dir).is_ok() {
                             let fixes_json = serde_json::to_string_pretty(&data).unwrap_or_default();
                             let _ = std::fs::write(fixes_dir.join("eval-findings.json"), &fixes_json);
                         }
