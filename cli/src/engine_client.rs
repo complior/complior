@@ -146,20 +146,51 @@ impl EngineClient {
         Ok(result)
     }
 
-    /// T906: Dry-run fix — simulate without writing files.
-    pub async fn fix_dry_run(&self, selected: &[String]) -> Result<serde_json::Value> {
-        let resp = self
-            .client
-            .post(format!("{}/fix", self.base_url))
-            .json(&serde_json::json!({
-                "checks": selected,
-                "dry_run": true
-            }))
-            .timeout(std::time::Duration::from_secs(10))
-            .send()
-            .await?;
-        let result = resp.json::<serde_json::Value>().await?;
-        Ok(result)
+    /// T906: Dry-run fix — preview fixes without writing files.
+    /// Uses GET /fix/preview to get planned fixes and their score impact.
+    pub async fn fix_dry_run(&self, _selected: &[String]) -> Result<serde_json::Value> {
+        let preview = self.get_json("/fix/preview").await?;
+        let fixes = preview.get("fixes").and_then(|v| v.as_array());
+
+        // Sum up predicted score impact from individual plans
+        let total_impact: f64 = fixes
+            .map(|f| f.iter().filter_map(|p| p.get("scoreImpact").and_then(|v| v.as_f64())).sum())
+            .unwrap_or(0.0);
+
+        let changes: Vec<serde_json::Value> = fixes
+            .map(|f| f.iter().map(|plan| {
+                let actions = plan.get("actions").and_then(|v| v.as_array());
+                let first_action = actions.and_then(|a| a.first());
+                let action_type = first_action
+                    .and_then(|a| a.get("type"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("MODIFY");
+                let path = first_action
+                    .and_then(|a| a.get("path"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("?");
+                serde_json::json!({
+                    "path": path,
+                    "action": if action_type == "create" { "CREATE" } else { "MODIFY" },
+                    "checkId": plan.get("checkId").and_then(|v| v.as_str()).unwrap_or("?"),
+                    "scoreImpact": plan.get("scoreImpact").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                })
+            }).collect())
+            .unwrap_or_default();
+
+        // Get current score from status endpoint
+        let current_score = self.get_json("/status").await
+            .ok()
+            .and_then(|v| v.get("score").and_then(|s| s.as_f64()))
+            .unwrap_or(0.0);
+
+        let predicted = (current_score + total_impact).min(100.0);
+
+        Ok(serde_json::json!({
+            "changes": changes,
+            "predictedScore": predicted,
+            "totalImpact": total_impact,
+        }))
     }
 
     /// Retry an async operation on connection errors with exponential backoff.

@@ -1,6 +1,6 @@
 import type { CheckResultType, Finding } from '../../types/common.types.js';
 
-export type FixType = 'code_injection' | 'template_generation' | 'config_fix' | 'metadata_generation' | 'dependency_fix';
+export type FixType = 'code_injection' | 'template_generation' | 'config_fix' | 'metadata_generation' | 'dependency_fix' | 'ai_enrichment';
 
 export interface FixAction {
   readonly type: 'create' | 'edit' | 'splice';
@@ -42,6 +42,7 @@ export interface FixContext {
   readonly projectPath: string;
   readonly framework: string;
   readonly existingFiles: readonly string[];
+  readonly useAi?: boolean;
 }
 
 export interface FixValidation {

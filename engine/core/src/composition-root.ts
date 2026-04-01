@@ -621,8 +621,16 @@ export const loadApplication = async (): Promise<Application> => {
       const model = await llm.getModel(routing.provider, routing.modelId);
       const result = await generateText({ model, prompt, system: systemPrompt });
       return result.text;
-    } catch {
-      return '[ERROR] LLM unavailable';
+    } catch (error) {
+      const { LLMError } = await import('./types/errors.js');
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('credit balance') || msg.includes('insufficient') || msg.includes('quota')) {
+        throw new LLMError(`LLM provider: insufficient funds. ${msg}`);
+      }
+      if (msg.includes('401') || msg.includes('403') || msg.includes('Invalid API')) {
+        throw new LLMError(`LLM provider: invalid API key. ${msg}`);
+      }
+      throw new LLMError(`LLM unavailable: ${msg}`);
     }
   };
 
@@ -666,6 +674,7 @@ export const loadApplication = async (): Promise<Application> => {
 
   const evalService = createEvalService({
     getProjectPath: () => state.projectPath,
+    llm,
     callLlm,
     evidenceStore,
     auditStore,

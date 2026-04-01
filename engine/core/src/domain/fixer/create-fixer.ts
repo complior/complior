@@ -59,25 +59,26 @@ const buildInlineFixPlan = (finding: Finding): FixPlan => {
 export const createFixer = (deps: FixerDeps) => {
   const { getFramework, getProjectPath, getExistingFiles } = deps;
 
-  const buildContext = (): FixContext => ({
+  const buildContext = (options?: { useAi?: boolean }): FixContext => ({
     projectPath: getProjectPath(),
     framework: getFramework(),
     existingFiles: getExistingFiles(),
+    useAi: options?.useAi,
   });
 
-  const generateFix = (finding: Finding): FixPlan | null => {
+  const generateFix = (finding: Finding, options?: { useAi?: boolean }): FixPlan | null => {
     if (finding.type !== 'fail') return null;
     // Priority 1: Inline fix from scanner fixDiff
     if (finding.fixDiff) return buildInlineFixPlan(finding);
     // Priority 2: Strategy-based scaffold
-    return findStrategy(finding, buildContext());
+    return findStrategy(finding, buildContext(options));
   };
 
-  const generateFixes = (findings: readonly Finding[]): readonly FixPlan[] => {
+  const generateFixes = (findings: readonly Finding[], options?: { useAi?: boolean }): readonly FixPlan[] => {
     const plans: FixPlan[] = [];
     const seen = new Set<string>();
     for (const finding of findings) {
-      const plan = generateFix(finding);
+      const plan = generateFix(finding, options);
       if (plan === null) continue;
       // Deduplicate: splice by path:startLine, others by output path
       const key = plan.actions[0]?.type === 'splice'

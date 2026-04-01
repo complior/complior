@@ -370,6 +370,23 @@ describe('fix-service', () => {
     });
   });
 
+  describe('getCurrentScore', () => {
+    it('returns current score from last scan result', () => {
+      const { deps } = createTestDeps();
+      const service = createFixService(deps);
+      expect(service.getCurrentScore()).toBe(60);
+    });
+
+    it('returns 0 when no scan result', () => {
+      const { deps } = createTestDeps();
+      const service = createFixService({
+        ...deps,
+        getLastScanResult: () => null,
+      });
+      expect(service.getCurrentScore()).toBe(0);
+    });
+  });
+
   describe('P15: getUnfixedFindings', () => {
     it('returns fail findings without auto-fix', () => {
       const scanResult = createMockScanResult({

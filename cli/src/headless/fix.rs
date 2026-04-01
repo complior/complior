@@ -136,6 +136,65 @@ pub async fn run_headless_fix(
     0
 }
 
+/// Apply fix for a specific check ID only.
+pub async fn run_fix_single(
+    check_id: &str,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+    use_ai: bool,
+) -> i32 {
+    let engine_url = config
+        .engine_url_override
+        .clone()
+        .unwrap_or_else(|| config.engine_url());
+    let client = EngineClient::from_url(&engine_url);
+
+    match client.status().await {
+        Ok(status) if status.ready => {}
+        _ => {
+            eprintln!("Error: Cannot connect to engine at {engine_url}");
+            return 1;
+        }
+    }
+
+    let _scan_path = super::common::resolve_project_path(path);
+
+    // POST /fix/apply with { checkId, useAi }
+    let body = serde_json::json!({ "checkId": check_id, "useAi": use_ai });
+    match client.post_json("/fix/apply", &body).await {
+        Ok(resp) => {
+            if json {
+                println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());
+            } else {
+                let applied = resp.get("applied").and_then(|v| v.as_bool()).unwrap_or(false);
+                if applied {
+                    println!("  {} Fix applied for {}", green("✓"), bold(check_id));
+                    if let Some(plan) = resp.get("plan") {
+                        if let Some(actions) = plan.get("actions").and_then(|v| v.as_array()) {
+                            for a in actions {
+                                let p = a.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+                                println!("     → {}", p);
+                            }
+                        }
+                    }
+                } else {
+                    let err = resp.get("error").and_then(|v| v.as_str())
+                        .or_else(|| resp.get("message").and_then(|v| v.as_str()))
+                        .unwrap_or("Unknown error");
+                    eprintln!("  Fix failed for {}: {}", check_id, err);
+                    return 1;
+                }
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("Fix failed: {e}");
+            1
+        }
+    }
+}
+
 // ── Report formatting ────────────────────────────────────────────
 
 /// Parsed fix result entry for grouping and rendering.
@@ -212,6 +271,7 @@ fn scaffold_badge() -> String {
 
 fn scaffold_hint(check_id: &str, fix_type: &str) -> &'static str {
     match fix_type {
+        "ai_enrichment" => "Review AI-enriched sections and approve with your compliance team",
         "template_generation" => "Fill placeholders and review with your compliance team",
         "metadata_generation" => "Populate [TO BE SET] fields with actual system metadata",
         "dependency_fix" => "Follow the upgrade plan and run dependency audit",
@@ -309,7 +369,7 @@ fn group_entries(entries: &[FixEntry]) -> (Vec<&FixEntry>, Vec<&FixEntry>, Vec<&
     for e in entries {
         if !e.applied { continue; }
         match e.fix_type.as_str() {
-            "template_generation" | "metadata_generation" => docs.push(e),
+            "template_generation" | "metadata_generation" | "ai_enrichment" => docs.push(e),
             "code_injection" => code.push(e),
             "config_fix" | "dependency_fix" => config_deps.push(e),
             _ => code.push(e),
@@ -706,6 +766,7 @@ mod tests {
         assert_eq!(scaffold_hint("l3-other", "config_fix"), "Review generated config and customize for your project");
         assert_eq!(scaffold_hint("x", "code_injection"), "Import this module into your codebase and wire into your pipeline");
         assert_eq!(scaffold_hint("x", "unknown_type"), "Review and customize for your project");
+        assert_eq!(scaffold_hint("l2-fria", "ai_enrichment"), "Review AI-enriched sections and approve with your compliance team");
     }
 
     #[test]

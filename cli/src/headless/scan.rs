@@ -83,7 +83,7 @@ pub async fn run_headless_scan(
             Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("Tier 2 scan failed: {e}"); return 1; }
         };
         // Then LLM
-        let llm_result = match client.post_json("/scan/llm", &body).await {
+        let llm_result = match client.post_json_long("/scan/llm", &body).await {
             Ok(r) => r,
             Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("LLM scan failed: {e}"); return 1; }
         };
@@ -107,7 +107,7 @@ pub async fn run_headless_scan(
     } else if llm {
         // L5 LLM only
         let body = serde_json::json!({ "path": scan_path });
-        match client.post_json("/scan/llm", &body).await {
+        match client.post_json_long("/scan/llm", &body).await {
             Ok(r) => {
                 stop_spinner(&spinner_active, spinner_handle);
                 match serde_json::from_value::<crate::types::ScanResult>(r) {

@@ -10,6 +10,11 @@ const FixApplySchema = z.object({
   useAi: z.boolean().optional(),
 });
 
+const FixApplyAllSchema = z.object({
+  useAi: z.boolean().optional(),
+  projectPath: z.string().optional(),
+});
+
 const FixUndoSchema = z.object({
   id: z.number().optional(),
 });
@@ -91,17 +96,14 @@ export const createFixRoute = (deps: FixRouteDeps) => {
 
   // Apply all available fixes (batch mode)
   app.post('/fix/apply-all', async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    const useAi = typeof body === 'object' && body !== null && 'useAi' in body ? Boolean(body.useAi) : false;
-    // Allow CLI to override project path for file writes
-    if (typeof body === 'object' && body !== null && typeof body.projectPath === 'string' && body.projectPath) {
-      fixService.overrideProjectPath(body.projectPath);
-    }
-    const results = await fixService.applyAll(useAi);
+    const data = await parseBody(c, FixApplyAllSchema);
+    const useAi = data.useAi ?? false;
+    const results = await fixService.applyAll(useAi, data.projectPath);
     const applied = results.filter((r) => r.applied).length;
     const failed = results.filter((r) => !r.applied).length;
-    const scoreBefore = results[0]?.scoreBefore ?? 0;
-    const scoreAfter = results.at(-1)?.scoreAfter ?? scoreBefore;
+    const currentScore = fixService.getCurrentScore();
+    const scoreBefore = results[0]?.scoreBefore ?? currentScore;
+    const scoreAfter = results.at(-1)?.scoreAfter ?? currentScore;
 
     const unfixedFindings = fixService.getUnfixedFindings();
 

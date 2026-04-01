@@ -5,8 +5,8 @@
  * into a single entry point for HTTP routes and CLI.
  */
 
-import { readFile, readdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { readFile, readdir, writeFile, mkdir, copyFile } from 'node:fs/promises';
+import { resolve, dirname } from 'node:path';
 import { z } from 'zod';
 import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult } from '../domain/eval/types.js';
 import type { TargetAdapter } from '../domain/eval/adapters/adapter-port.js';
@@ -23,17 +23,15 @@ import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import type { RemediationAction, RemediationReport } from '../domain/eval/remediation-types.js';
 import type { EvalFinding } from '../domain/eval/eval-to-findings.js';
+import type { LlmPort } from '../ports/llm.port.js';
 import type { LoggerPort } from '../ports/logger.port.js';
 import { createLogger } from '../infra/logger.js';
-
-// ── Judge model config (externalized per §9 CLAUDE.md) ───────────
-
-import JUDGE_MODELS from '../../data/eval/judge-models.json' with { type: 'json' };
 
 // ── Service deps ─────────────────────────────────────────────────
 
 export interface EvalServiceDeps {
   readonly getProjectPath: () => string;
+  readonly llm?: LlmPort;
   readonly callLlm?: (prompt: string, systemPrompt?: string) => Promise<string>;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
@@ -41,23 +39,6 @@ export interface EvalServiceDeps {
   readonly updatePassportEval?: (result: EvalResult) => Promise<void>;
   readonly log?: LoggerPort;
 }
-
-// ── Factory ──────────────────────────────────────────────────────
-
-/**
- * Auto-detect judge provider from API key format.
- * Returns { provider, model, baseUrl } for adapter creation.
- */
-const resolveJudgeConfig = (apiKey: string): { provider: string; model: string; baseUrl: string } => {
-  if (apiKey.startsWith('sk-ant-')) {
-    return { provider: 'anthropic', ...JUDGE_MODELS.anthropic };
-  }
-  if (apiKey.startsWith('sk-or-v1-')) {
-    return { provider: 'openrouter', ...JUDGE_MODELS.openrouter };
-  }
-  // Default: OpenAI-compatible
-  return { provider: 'openai', ...JUDGE_MODELS.openai };
-};
 
 export const createEvalService = (deps: EvalServiceDeps) => {
   const log = deps.log ?? createLogger('eval');
@@ -115,19 +96,30 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     const testSources = await getTestSources();
 
     // Create LLM judge — priority order:
-    //   1. COMPLIOR_JUDGE_API_KEY (dedicated judge, avoids circular grading)
-    //   2. deps.callLlm (engine's configured LLM)
-    //   3. Target adapter (same API/key as target — circular but functional)
-    //
-    // callLlm wrapper uses fail-fast: if dedicated judge fails on first call,
-    // automatically falls back to target adapter for all subsequent calls.
+    //   1. llm-adapter (user's configured model from .complior/.env)
+    //   2. Target adapter (same API/key as target)
+    //   3. deps.callLlm (composition-root closure)
     let judge: EvalJudge | undefined;
-    const judgeApiKey = process.env.COMPLIOR_JUDGE_API_KEY
-      ?? process.env.OPENROUTER_API_KEY
-      ?? process.env.ANTHROPIC_API_KEY
-      ?? process.env.OPENAI_API_KEY;
 
-    // Build target-based callLlm (always available as fallback)
+    // 1. Try llm-adapter — user's own model from .complior/.env
+    if (deps.llm) {
+      try {
+        const routing = deps.llm.routeModel('classify');
+        const model = await deps.llm.getModel(routing.provider, routing.modelId);
+        const { generateText } = await import('ai');
+        const callJudge = async (prompt: string, systemPrompt?: string): Promise<string> => {
+          const result = await generateText({ model, prompt, system: systemPrompt, maxTokens: 2048 });
+          return result.text;
+        };
+        await callJudge('Say "ok"');
+        judge = createLlmJudge({ callLlm: callJudge });
+        runnerDeps = { ...runnerDeps, callLlm: callJudge };
+      } catch (error) {
+        log.warn(`LLM judge probe failed: ${error instanceof Error ? error.message : error}`);
+      }
+    }
+
+    // 2. Fallback: target adapter (same API as eval target)
     const callLlmViaTarget = (options.apiKey && options.model)
       ? async (prompt: string, systemPrompt?: string): Promise<string> => {
           const resp = await adapter.send(prompt, { systemPrompt, temperature: 0, maxTokens: 2048 });
@@ -135,37 +127,18 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         }
       : undefined;
 
-    if (judgeApiKey) {
-      const judgeConfig = resolveJudgeConfig(judgeApiKey);
-      try {
-        const judgeAdapter = await autoDetectAdapter(judgeConfig.baseUrl, {
-          model: judgeConfig.model,
-          apiKey: judgeApiKey,
-        });
-        // Verify judge works with a probe call before committing
-        await judgeAdapter.send('Say "ok"', { temperature: 0, maxTokens: 16 });
-        const callJudge = async (prompt: string, systemPrompt?: string): Promise<string> => {
-          const resp = await judgeAdapter.send(prompt, { systemPrompt, temperature: 0, maxTokens: 2048 });
-          return resp.text;
-        };
-        judge = createLlmJudge({ callLlm: callJudge });
-        runnerDeps = { ...runnerDeps, callLlm: callJudge };
-      } catch (err) {
-        // Judge adapter failed — fall through to next fallback
-        log.warn(`Judge adapter probe failed (${judgeConfig.provider}/${judgeConfig.model}): ${err instanceof Error ? err.message : err}`);
-      }
-    }
-    // Prefer target adapter over deps.callLlm — target is a real working API,
-    // while deps.callLlm may be an engine stub that returns "[ERROR] LLM unavailable"
     if (!judge && callLlmViaTarget) {
       judge = createLlmJudge({ callLlm: callLlmViaTarget });
       runnerDeps = { ...runnerDeps, callLlm: callLlmViaTarget };
     }
+
+    // 3. Fallback: deps.callLlm (composition-root closure)
     if (!judge && deps.callLlm) {
       judge = createLlmJudge({ callLlm: deps.callLlm });
     }
+
     if (!judge) {
-      log.warn('No LLM judge available. Set COMPLIOR_JUDGE_API_KEY or provide --api-key for LLM-judged tests.');
+      log.warn('No LLM judge available. Set an API key in .complior/.env for LLM-judged tests.');
     }
 
     // Re-create runner with potentially updated callLlm
@@ -305,6 +278,72 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     return evalToFindings(evalResult, ALL_PLAYBOOKS);
   };
 
+  /**
+   * Apply eval fixes: only Type B (config/file creation) findings.
+   * Type A (system-prompt) findings are returned as manual guidance.
+   */
+  const applyEvalFixes = async (): Promise<{
+    applied: readonly { checkId: string; file: string; type: 'B' }[];
+    manual: readonly { checkId: string; title: string; fixDescription: string; type: 'A' }[];
+  }> => {
+    const evalResult = await getLastResult();
+    if (!evalResult) {
+      return { applied: [], manual: [] };
+    }
+
+    const findings = await getEvalFindings(evalResult);
+
+    const applied: { checkId: string; file: string; type: 'B' }[] = [];
+    const manual: { checkId: string; title: string; fixDescription: string; type: 'A' }[] = [];
+    const projectPath = deps.getProjectPath();
+
+    for (const finding of findings) {
+      if (finding.type === 'A') {
+        // System prompt patches — can't auto-apply, return as guidance
+        manual.push({
+          checkId: finding.checkId,
+          title: finding.title,
+          fixDescription: finding.fixDescription,
+          type: 'A',
+        });
+      } else {
+        // Type B — create config/fix files
+        const fullPath = resolve(projectPath, finding.file);
+        try {
+          await mkdir(dirname(fullPath), { recursive: true });
+
+          // Backup existing file if present
+          const backupDir = resolve(projectPath, '.complior', 'backups');
+          await mkdir(backupDir, { recursive: true });
+          try {
+            await copyFile(fullPath, resolve(backupDir, `${Date.now()}-${finding.file.replace(/[\\/]/g, '_')}`));
+          } catch { /* file doesn't exist yet */ }
+
+          // Write the fix content
+          const content = JSON.stringify({
+            checkId: finding.checkId,
+            article: finding.article,
+            description: finding.description,
+            fixDescription: finding.fixDescription,
+            fixExample: finding.fixExample,
+            generatedAt: new Date().toISOString(),
+          }, null, 2);
+          await writeFile(fullPath, content, 'utf-8');
+
+          applied.push({
+            checkId: finding.checkId,
+            file: finding.file,
+            type: 'B',
+          });
+        } catch (err) {
+          log.warn(`Failed to apply eval fix for ${finding.checkId}: ${err instanceof Error ? err.message : err}`);
+        }
+      }
+    }
+
+    return { applied, manual };
+  };
+
   return Object.freeze({
     runEval,
     runEvalWithReport,
@@ -315,6 +354,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     getRemediationForTests,
     generateRemediationReport,
     getEvalFindings,
+    applyEvalFixes,
   });
 };
 

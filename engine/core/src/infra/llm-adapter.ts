@@ -25,7 +25,7 @@ export const createLlmAdapter = (): LlmPort => {
   const getDefaultProvider = (): ProviderName => {
     const available = getAvailableProviders();
     if (available.length === 0) {
-      throw new LLMError('No LLM provider configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.');
+      throw new LLMError('No LLM provider configured. Set OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY in .complior/.env');
     }
     return available[0]!.name;
   };

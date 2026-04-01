@@ -17,7 +17,7 @@ const FixHistoryEntrySchema = z.object({
   id: z.number(),
   checkId: z.string(),
   obligationId: z.string(),
-  fixType: z.enum(['code_injection', 'template_generation', 'config_fix', 'metadata_generation', 'dependency_fix']),
+  fixType: z.enum(['code_injection', 'template_generation', 'config_fix', 'metadata_generation', 'dependency_fix', 'ai_enrichment']),
   status: z.enum(['applied', 'undone']),
   timestamp: z.string(),
   files: z.array(FixHistoryFileSchema),

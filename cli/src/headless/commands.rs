@@ -214,6 +214,35 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
         let _ = std::fs::write(&project_toml_path, toml_content);
     }
 
+    // Create .env template with LLM provider examples
+    let env_file_path = complior_dir.join(".env");
+    if !env_file_path.exists() {
+        let env_template = r#"# Complior LLM Configuration
+# Uncomment ONE provider and set your API key.
+# The key will be used for all LLM commands: eval --llm, fix --ai, scan --deep
+
+# ── OpenRouter (recommended — access to all models via single key) ──
+# OPENROUTER_API_KEY=sk-or-v1-your-key-here
+
+# ── OpenAI ──
+# OPENAI_API_KEY=sk-your-key-here
+
+# ── Anthropic ──
+# ANTHROPIC_API_KEY=sk-ant-your-key-here
+"#;
+        let _ = std::fs::write(&env_file_path, env_template);
+    }
+
+    // Ensure .env is in .gitignore
+    let gitignore_path = complior_dir.join(".gitignore");
+    if !gitignore_path.exists() {
+        let _ = std::fs::write(&gitignore_path, ".env\n");
+    } else if let Ok(content) = std::fs::read_to_string(&gitignore_path) {
+        if !content.lines().any(|l| l.trim() == ".env") {
+            let _ = std::fs::write(&gitignore_path, format!("{content}\n.env\n"));
+        }
+    }
+
     // Start engine for onboarding + agent discovery
     let client = match ensure_engine_for(config, &base).await {
         Ok(c) => c,

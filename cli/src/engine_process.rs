@@ -114,7 +114,6 @@ impl EngineManager {
             "OPENROUTER_API_KEY",
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "COMPLIOR_JUDGE_API_KEY",
         ];
 
         // Load from parent env first (lower priority)

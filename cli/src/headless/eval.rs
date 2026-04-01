@@ -161,7 +161,7 @@ pub async fn run_eval_command(
     request_template: Option<&str>,
     response_path: Option<&str>,
     headers: Option<&str>,
-    _verbose: bool,
+    verbose: bool,
     concurrency: u32,
     no_remediation: bool,
     remediation_report: bool,
@@ -267,7 +267,7 @@ pub async fn run_eval_command(
     // Streaming mode: use SSE endpoint for live progress
     match client.post_stream_long("/eval/run/stream", &body).await {
         Ok(resp) => {
-            let (exit_code, result) = parse_eval_stream(resp, concurrency).await;
+            let (exit_code, result) = parse_eval_stream(resp, concurrency, verbose).await;
 
             // Print full summary report after stream
             if let Some(ref result) = result {
@@ -423,6 +423,7 @@ async fn run_eval_json(
 async fn parse_eval_stream(
     resp: reqwest::Response,
     concurrency: u32,
+    verbose: bool,
 ) -> (i32, Option<serde_json::Value>) {
     let mut stream = resp.bytes_stream();
     let mut buffer = String::new();
@@ -550,6 +551,25 @@ async fn parse_eval_stream(
 
                             // Show every test result line
                             print_test_line(test_id, name, verdict, latency_ms, severity, method);
+
+                            // Verbose: show probe, response, reasoning
+                            if verbose {
+                                if let Some(probe) = parsed.get("probe").and_then(|v| v.as_str()) {
+                                    if !probe.is_empty() {
+                                        println!("         {} {}", dim("Probe:"), truncate_str(probe, 80));
+                                    }
+                                }
+                                if let Some(response) = parsed.get("response").and_then(|v| v.as_str()) {
+                                    if !response.is_empty() {
+                                        println!("         {} {}", dim("Response:"), truncate_str(response, 80));
+                                    }
+                                }
+                                if let Some(reasoning) = parsed.get("reasoning").and_then(|v| v.as_str()) {
+                                    if !reasoning.is_empty() {
+                                        println!("         {} {}", dim("Reasoning:"), truncate_str(reasoning, 80));
+                                    }
+                                }
+                            }
 
                             // Always print progress bar (as a full line, will be erased on next update)
                             print_progress_bar(completed, total, test_id, category, name, method == "llm-judge");
@@ -2043,7 +2063,7 @@ pub async fn run_eval_fix(dry_run: bool, json: bool, config: &TuiConfig) -> i32 
         Ok(data) => {
             let findings = data.get("findings").and_then(|v| v.as_array());
 
-            if json {
+            if json && dry_run {
                 println!("{}", serde_json::to_string_pretty(&data).unwrap_or_default());
                 return 0;
             }
@@ -2078,20 +2098,63 @@ pub async fn run_eval_fix(dry_run: bool, json: bool, config: &TuiConfig) -> i32 
                         println!();
                     }
 
-                    // Save fix previews to .complior/eval-fixes/
-                    let fixes_dir = std::path::Path::new(".complior/eval-fixes");
-                    if std::fs::create_dir_all(fixes_dir).is_ok() {
-                        let fixes_json = serde_json::to_string_pretty(&data).unwrap_or_default();
-                        let _ = std::fs::write(fixes_dir.join("eval-findings.json"), &fixes_json);
-                    }
-
                     if dry_run {
+                        // Save fix previews to .complior/eval-fixes/
+                        let fixes_dir = std::path::Path::new(".complior/eval-fixes");
+                        if std::fs::create_dir_all(fixes_dir).is_ok() {
+                            let fixes_json = serde_json::to_string_pretty(&data).unwrap_or_default();
+                            let _ = std::fs::write(fixes_dir.join("eval-findings.json"), &fixes_json);
+                        }
                         println!("  {} Dry-run mode — no changes applied.", dim("ℹ"));
                         println!("  {} Preview saved to .complior/eval-fixes/eval-findings.json", dim("ℹ"));
                     } else {
-                        println!("  {} To apply these fixes, edit your system prompt with the changes above.", dim("ℹ"));
-                        println!("  {} Full patch: complior eval --remediation", dim("ℹ"));
-                        println!("  {} After applying: Re-run complior eval --target <url>", dim("ℹ"));
+                        // Apply Type B fixes via engine
+                        match client.post_json("/eval/apply-fixes", &serde_json::json!({})).await {
+                            Ok(result) => {
+                                if json {
+                                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                                    return 0;
+                                }
+                                let applied_count = result.get("appliedCount").and_then(|v| v.as_u64()).unwrap_or(0);
+                                let manual_count = result.get("manualCount").and_then(|v| v.as_u64()).unwrap_or(0);
+
+                                if applied_count > 0 {
+                                    println!("  {}  {} config fixes applied", green(check_mark()), applied_count);
+                                    if let Some(applied) = result.get("applied").and_then(|v| v.as_array()) {
+                                        for item in applied {
+                                            let file = item.get("file").and_then(|v| v.as_str()).unwrap_or("?");
+                                            println!("     {} {}", green("→"), cyan(file));
+                                        }
+                                    }
+                                }
+
+                                if manual_count > 0 {
+                                    println!();
+                                    println!("  {}  {} system-prompt fixes require manual action:", yellow(warning_icon()), manual_count);
+                                    if let Some(manual) = result.get("manual").and_then(|v| v.as_array()) {
+                                        for item in manual {
+                                            let title = item.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+                                            let desc = item.get("fixDescription").and_then(|v| v.as_str()).unwrap_or("");
+                                            println!("     {} {}", yellow("▸"), title);
+                                            if !desc.is_empty() {
+                                                println!("       {}", dim(&truncate_str(desc, 70)));
+                                            }
+                                        }
+                                    }
+                                    println!();
+                                    println!("  {} Full patch: complior eval --remediation", dim("ℹ"));
+                                }
+
+                                if applied_count > 0 {
+                                    println!();
+                                    println!("  {} Re-run complior eval to verify improvements", dim("ℹ"));
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Error applying eval fixes: {e}");
+                                return 1;
+                            }
+                        }
                     }
 
                     println!();
@@ -2099,7 +2162,11 @@ pub async fn run_eval_fix(dry_run: bool, json: bool, config: &TuiConfig) -> i32 
                     0
                 }
                 _ => {
-                    println!("  {}  No eval findings to fix. Run `complior eval` first.", dim(skip_icon()));
+                    if json {
+                        println!("{{\"applied\": [], \"manual\": [], \"message\": \"No eval findings to fix\"}}");
+                    } else {
+                        println!("  {}  No eval findings to fix. Run `complior eval` first.", dim(skip_icon()));
+                    }
                     0
                 }
             }

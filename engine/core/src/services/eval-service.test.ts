@@ -133,14 +133,12 @@ describe('createEvalService', () => {
     expect(results).toEqual([]);
   });
 
-  it('uses Anthropic model ID for sk-ant- keys', () => {
-    // Verify resolveJudgeConfig indirectly: createEvalService with log should accept Anthropic keys
+  it('creates service with llm dependency', () => {
+    // Judge model is resolved via llm-adapter (user's configured provider) — no hardcoded models
     const service = createEvalService({
       getProjectPath: () => '/tmp/test',
       log: mockLog,
     });
-    // The service creates successfully — model ID correctness is verified by the
-    // JUDGE_MODELS constant using claude-sonnet-4-20250514 (not the old invalid ID)
     expect(service).toBeDefined();
   });
 });

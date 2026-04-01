@@ -63,6 +63,9 @@ export const sseEvalTest = (payload: {
   total: number;
   owaspCategory?: string;
   severity?: string;
+  probe?: string;
+  response?: string;
+  reasoning?: string;
 }): SseEventPayload => ({
   event: 'eval:test',
   data: JSON.stringify(payload),

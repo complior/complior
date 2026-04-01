@@ -32,7 +32,7 @@ export const documentationStrategy: FixStrategy = (finding, context) => {
   // For L1 (presence) findings: skip if file already exists
   // For L2 (structure/quality) findings: only fix scaffold/none — never overwrite draft/reviewed docs
   const isL2 = finding.checkId.startsWith('l2-');
-  if (isL2 && (finding.docQuality === 'draft' || finding.docQuality === 'reviewed')) return null;
+  if (isL2 && !context.useAi && (finding.docQuality === 'draft' || finding.docQuality === 'reviewed')) return null;
   if (!isL2 && context.existingFiles.some((f) => f.endsWith(mapping.outputFile))) return null;
 
   const action: FixAction = {
@@ -46,7 +46,7 @@ export const documentationStrategy: FixStrategy = (finding, context) => {
     obligationId: oblId,
     checkId: finding.checkId,
     article: mapping.article,
-    fixType: 'template_generation',
+    fixType: isL2 && context.useAi ? 'ai_enrichment' : 'template_generation',
     framework: context.framework,
     actions: [action],
     diff: generateCreateDiff(mapping.outputFile, `# ${mapping.description}\n\n[Generated from template: ${mapping.templateFile}]`),

@@ -80,7 +80,7 @@ pub enum Command {
         #[arg(long)]
         llm: bool,
 
-        /// Tier 3: Cloud-based analysis (stub — planned for Month 3-4)
+        /// [planned] Cloud scan via SaaS API (Tier 3, planned for Month 3-4)
         #[arg(long)]
         cloud: bool,
 
@@ -110,9 +110,13 @@ pub enum Command {
         #[arg(long)]
         ai: bool,
 
-        /// Source for fixes: scan (default) or eval
+        /// Fix source: scan (default), eval, or all
         #[arg(long, default_value = "scan")]
         source: String,
+
+        /// Apply fix for a specific check ID only (e.g. l1-fria)
+        #[arg(long)]
+        check_id: Option<String>,
 
         /// Project path (default: current directory)
         path: Option<String>,
@@ -275,14 +279,14 @@ pub enum Command {
     /// Run dynamic AI system evaluation (probes + LLM judge + security)
     Eval {
         /// Target AI endpoint URL (e.g. http://localhost:4000/api/chat)
-        target: String,
+        target: Option<String>,
 
         /// Run deterministic tests (168 tests, default when no flags)
         #[arg(long)]
         det: bool,
 
-        /// Run LLM-judged tests (212 tests). Requires one of: COMPLIOR_JUDGE_API_KEY,
-        /// OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in env or .env file
+        /// Run LLM-judged tests (212 tests). Requires one of: OPENROUTER_API_KEY,
+        /// ANTHROPIC_API_KEY, or OPENAI_API_KEY in .complior/.env or env
         #[arg(long)]
         llm: bool,
 
@@ -955,7 +959,41 @@ pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
         Some(Command::Scan { path, .. })
         | Some(Command::Fix { path, .. })
         | Some(Command::Init { path, .. })
-        | Some(Command::Report { path, .. }) => path.as_deref(),
+        | Some(Command::Report { path, .. })
+        | Some(Command::Audit { path, .. })
+        | Some(Command::SupplyChain { path, .. }) => path.as_deref(),
+        Some(Command::Eval { .. }) => {
+            // Eval has no path arg — uses CWD
+            None
+        }
+        Some(Command::Agent { action }) => match action {
+            AgentAction::Init { path, .. }
+            | AgentAction::List { path, .. }
+            | AgentAction::Show { path, .. }
+            | AgentAction::Autonomy { path, .. }
+            | AgentAction::Validate { path, .. }
+            | AgentAction::Completeness { path, .. }
+            | AgentAction::Fria { path, .. }
+            | AgentAction::Notify { path, .. }
+            | AgentAction::Export { path, .. }
+            | AgentAction::Registry { path, .. }
+            | AgentAction::Evidence { path, .. }
+            | AgentAction::Permissions { path, .. }
+            | AgentAction::Policy { path, .. }
+            | AgentAction::TestGen { path, .. }
+            | AgentAction::Diff { path, .. }
+            | AgentAction::Import { path, .. }
+            | AgentAction::AuditPackage { path, .. }
+            | AgentAction::Audit { path, .. }
+            | AgentAction::Rename { path, .. } => path.as_deref(),
+        },
+        Some(Command::Cert { action }) => match action {
+            CertAction::Readiness { path, .. }
+            | CertAction::Test { path, .. } => path.as_deref(),
+        },
+        Some(Command::Doc { action }) => match action {
+            DocAction::Generate { path, .. } => path.as_deref(),
+        },
         _ => None,
     };
     raw.map(|p| {
@@ -1066,9 +1104,10 @@ mod tests {
     fn cli_parse_fix_dry_run() {
         let cli = Cli::parse_from(["complior", "fix", "--dry-run"]);
         match cli.command {
-            Some(Command::Fix { dry_run, json, .. }) => {
+            Some(Command::Fix { dry_run, json, ref check_id, .. }) => {
                 assert!(dry_run);
                 assert!(!json);
+                assert!(check_id.is_none());
             }
             _ => panic!("Expected Fix command"),
         }
@@ -1082,6 +1121,18 @@ mod tests {
             Some(Command::Fix { dry_run, json, .. }) => {
                 assert!(dry_run);
                 assert!(json);
+            }
+            _ => panic!("Expected Fix command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_fix_check_id() {
+        let cli = Cli::parse_from(["complior", "fix", "--check-id", "l1-fria"]);
+        match cli.command {
+            Some(Command::Fix { check_id, dry_run, .. }) => {
+                assert_eq!(check_id.as_deref(), Some("l1-fria"));
+                assert!(!dry_run);
             }
             _ => panic!("Expected Fix command"),
         }
@@ -2186,7 +2237,7 @@ mod tests {
         let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000/api/chat"]);
         match &cli.command {
             Some(Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run }) => {
-                assert_eq!(target, "http://localhost:4000/api/chat");
+                assert_eq!(target.as_deref(), Some("http://localhost:4000/api/chat"));
                 assert!(!det);
                 assert!(!llm);
                 assert!(!security);
@@ -2256,7 +2307,7 @@ mod tests {
         ]);
         match &cli.command {
             Some(Command::Eval { target, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, .. }) => {
-                assert_eq!(target, "http://localhost:4000");
+                assert_eq!(target.as_deref(), Some("http://localhost:4000"));
                 assert!(!llm);
                 assert!(!security);
                 assert!(*full);
@@ -2305,9 +2356,10 @@ mod tests {
 
     #[test]
     fn cli_parse_eval_last() {
-        let cli = Cli::parse_from(["complior", "eval", "dummy", "--last"]);
+        let cli = Cli::parse_from(["complior", "eval", "--last"]);
         match &cli.command {
-            Some(Command::Eval { last, failures, .. }) => {
+            Some(Command::Eval { target, last, failures, .. }) => {
+                assert!(target.is_none());
                 assert!(*last);
                 assert!(!failures);
             }
@@ -2318,7 +2370,7 @@ mod tests {
 
     #[test]
     fn cli_parse_eval_last_failures() {
-        let cli = Cli::parse_from(["complior", "eval", "dummy", "--last", "--failures"]);
+        let cli = Cli::parse_from(["complior", "eval", "--last", "--failures"]);
         match &cli.command {
             Some(Command::Eval { last, failures, .. }) => {
                 assert!(*last);
@@ -2383,7 +2435,7 @@ mod tests {
         ]);
         match &cli.command {
             Some(Command::Eval { target, request_template, response_path, headers, .. }) => {
-                assert_eq!(target, "http://api.company.com/predict");
+                assert_eq!(target.as_deref(), Some("http://api.company.com/predict"));
                 assert_eq!(request_template.as_deref(), Some(r#"{"prompt":"{{probe}}"}"#));
                 assert_eq!(response_path.as_deref(), Some("result.text"));
                 assert_eq!(headers.as_deref(), Some(r#"{"Authorization":"Bearer xxx"}"#));

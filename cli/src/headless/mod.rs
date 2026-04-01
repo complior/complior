@@ -16,7 +16,7 @@ pub mod debt;
 pub mod daemon;
 pub mod doc;
 pub mod jurisdiction;
-mod fix;
+pub(crate) mod fix;
 pub(crate) mod format;
 pub mod login;
 pub mod proxy;

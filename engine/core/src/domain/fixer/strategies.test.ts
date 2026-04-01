@@ -275,6 +275,38 @@ describe('N2: log-retention strategy', () => {
   });
 });
 
+describe('BUG-2b: L2 draft/reviewed with useAi', () => {
+  it('returns null for L2 reviewed docs without useAi', () => {
+    const finding = makeFinding({ checkId: 'l2-fria', obligationId: 'eu-ai-act-OBL-013', docQuality: 'reviewed' });
+    const plan = findStrategy(finding, makeContext());
+    expect(plan).toBeNull();
+  });
+
+  it('generates plan for L2 reviewed docs when useAi is true', () => {
+    const finding = makeFinding({ checkId: 'l2-fria', obligationId: 'eu-ai-act-OBL-013', docQuality: 'reviewed' });
+    const ctx = makeContext({ useAi: true });
+    const plan = findStrategy(finding, ctx);
+    expect(plan).not.toBeNull();
+    expect(plan!.fixType).toBe('ai_enrichment');
+  });
+
+  it('generates plan for L2 draft docs when useAi is true', () => {
+    const finding = makeFinding({ checkId: 'l2-fria', obligationId: 'eu-ai-act-OBL-013', docQuality: 'draft' });
+    const ctx = makeContext({ useAi: true });
+    const plan = findStrategy(finding, ctx);
+    expect(plan).not.toBeNull();
+    expect(plan!.fixType).toBe('ai_enrichment');
+  });
+
+  it('still returns template_generation for L1 findings with useAi', () => {
+    const finding = makeFinding({ checkId: 'fria', obligationId: 'eu-ai-act-OBL-013' });
+    const ctx = makeContext({ useAi: true });
+    const plan = findStrategy(finding, ctx);
+    expect(plan).not.toBeNull();
+    expect(plan!.fixType).toBe('template_generation');
+  });
+});
+
 describe('N5: L4 logging and record-keeping strategies', () => {
   it('generates logging fix for l4-logging (not just interaction-logging)', () => {
     const plan = findStrategy(makeFinding({ checkId: 'l4-logging' }), makeContext());

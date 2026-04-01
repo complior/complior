@@ -76,6 +76,9 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
               total: progress.total,
               ...(r.owaspCategory ? { owaspCategory: r.owaspCategory } : {}),
               ...(r.severity ? { severity: r.severity } : {}),
+              ...(r.probe ? { probe: r.probe } : {}),
+              ...(r.response ? { response: r.response } : {}),
+              ...(r.reasoning ? { reasoning: r.reasoning } : {}),
             });
             await stream.writeSSE({ event: testPayload.event, data: testPayload.data });
           }
@@ -105,7 +108,7 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
   // GET /eval/list — list eval result files
   app.get('/eval/list', async (c) => {
     const results = await deps.evalService.listResults();
-    const judgeConfigured = !!process.env.COMPLIOR_JUDGE_API_KEY;
+    const judgeConfigured = !!(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
     return c.json({ results, judgeConfigured });
   });
 
@@ -137,6 +140,12 @@ export const createEvalRoute = (deps: EvalRouteDeps) => {
     const markdown_report = renderRemediationMarkdown(report);
 
     return c.json({ ...report, markdown_report });
+  });
+
+  // POST /eval/apply-fixes — apply Type B eval fixes, return Type A as manual guidance
+  app.post('/eval/apply-fixes', async (c) => {
+    const { applied, manual } = await deps.evalService.applyEvalFixes();
+    return c.json({ applied, manual, appliedCount: applied.length, manualCount: manual.length });
   });
 
   // GET /eval/findings — eval failures as scanner findings (US-REM-09)

@@ -138,7 +138,7 @@ async fn main() -> color_eyre::Result<()> {
                     ).await
                 }
             }
-            Some(cli::Command::Fix { dry_run, json, ai, source, path }) => {
+            Some(cli::Command::Fix { dry_run, json, ai, source, check_id, path }) => {
                 if source == "eval" {
                     headless::eval::run_eval_fix(*dry_run, *json, &config).await
                 } else if source == "all" {
@@ -146,6 +146,8 @@ async fn main() -> color_eyre::Result<()> {
                     let scan_code = headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await;
                     let eval_code = headless::eval::run_eval_fix(*dry_run, *json, &config).await;
                     if scan_code != 0 { scan_code } else { eval_code }
+                } else if let Some(cid) = check_id {
+                    headless::fix::run_fix_single(cid, *json, path.as_deref(), &config, *ai).await
                 } else {
                     headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await
                 }
@@ -219,16 +221,22 @@ async fn main() -> color_eyre::Result<()> {
             Some(cli::Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run }) => {
                 if *last {
                     headless::eval::run_eval_last(*json, *failures, *ci, *threshold, &config).await
-                } else if *fix {
-                    // Run eval then show fix preview
-                    let code = headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await;
-                    if code == 0 {
-                        headless::eval::run_eval_fix(*dry_run, *json, &config).await
+                } else if let Some(target) = target {
+                    if *fix {
+                        // Run eval then apply fixes
+                        let code = headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await;
+                        if code == 0 {
+                            headless::eval::run_eval_fix(*dry_run, *json, &config).await
+                        } else {
+                            code
+                        }
                     } else {
-                        code
+                        headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await
                     }
                 } else {
-                    headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, &config).await
+                    eprintln!("Error: <target> is required unless --last is used");
+                    eprintln!("Usage: complior eval <url> [--det] [--llm] [--security]");
+                    1
                 }
             }
             Some(cli::Command::Audit { target, agent, json, path }) => {

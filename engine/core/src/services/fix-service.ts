@@ -51,8 +51,7 @@ export interface FixServiceDeps {
 export const createFixService = (deps: FixServiceDeps) => {
   const { fixer, scanService, events, getProjectPath: _getProjectPath, getLastScanResult, loadTemplate, undoService } = deps;
 
-  let projectPathOverride: string | null = null;
-  const getProjectPath = () => projectPathOverride ?? _getProjectPath();
+  const getProjectPath = () => _getProjectPath();
 
   const backupFile = async (filePath: string): Promise<string> => {
     const projectPath = getProjectPath();
@@ -332,11 +331,14 @@ export const createFixService = (deps: FixServiceDeps) => {
     return { results, totalDelta };
   };
 
-  const applyAll = async (useAi = false): Promise<readonly FixResult[]> => {
-    const plans = previewAll();
+  const applyAll = async (useAi = false, overridePath?: string): Promise<readonly FixResult[]> => {
+    const plans = fixer.generateFixes(
+      getLastScanResult()?.findings ?? [],
+      useAi ? { useAi: true } : undefined,
+    );
     if (plans.length === 0) return [];
 
-    const projectPath = getProjectPath();
+    const projectPath = overridePath ?? getProjectPath();
     // Normalize: ensure scoreBefore reflects basic scan (same tier as scoreAfter)
     const baselineScan = await scanService.scan(projectPath);
     const scoreBefore = baselineScan.score.totalScore;
@@ -557,8 +559,8 @@ export const createFixService = (deps: FixServiceDeps) => {
     // Phase 3: Record undo history + evidence for applied fixes
     for (const result of results) {
       if (!result.applied) continue;
-      // Patch final score into result
-      (result as { scoreAfter: number }).scoreAfter = scoreAfter;
+      // Patch final score into result (reconstruct to preserve readonly contract)
+      Object.assign(result, { scoreAfter });
 
       if (undoService) {
         await undoService.recordFix(result, result.plan);
@@ -586,9 +588,12 @@ export const createFixService = (deps: FixServiceDeps) => {
     );
   };
 
-  const overrideProjectPath = (path: string) => { projectPathOverride = path; };
+  const getCurrentScore = (): number => {
+    const lastScan = getLastScanResult();
+    return lastScan?.score.totalScore ?? 0;
+  };
 
-  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate, overrideProjectPath, getUnfixedFindings });
+  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate, getUnfixedFindings, getCurrentScore });
 };
 
 export type FixService = ReturnType<typeof createFixService>;
