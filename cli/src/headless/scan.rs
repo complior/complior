@@ -87,6 +87,9 @@ pub async fn run_headless_scan(
                 String::new()
             };
             eprintln!("  LLM: {} via {}{}", bold(model), provider, dim(&source_label));
+            if source != "env" {
+                eprintln!("  {}", dim("Override: set COMPLIOR_MODEL_CLASSIFY in .complior/.env"));
+            }
         }
     }
 

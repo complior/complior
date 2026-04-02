@@ -217,19 +217,42 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
     // Create .env template with LLM provider examples
     let env_file_path = complior_dir.join(".env");
     if !env_file_path.exists() {
-        let env_template = r"# Complior LLM Configuration
+        let env_template = r#"# Complior LLM Configuration
 # Uncomment ONE provider and set your API key.
 # The key will be used for all LLM commands: eval --llm, fix --ai, scan --deep
 
-# ── OpenRouter (recommended — access to all models via single key) ──
+# ── Provider API Keys ─────────────────────────────────
+# Uncomment ONE provider and paste your key:
+
 # OPENROUTER_API_KEY=sk-or-v1-your-key-here
-
-# ── OpenAI ──
 # OPENAI_API_KEY=sk-your-key-here
-
-# ── Anthropic ──
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
-";
+
+# ── Provider Priority (optional) ─────────────────────
+# Force a specific provider (default: first available key)
+# COMPLIOR_LLM_PROVIDER=openrouter
+
+# ── Model Overrides (optional) ───────────────────────
+# Override the default model for each task type.
+# Format depends on provider:
+#   OpenRouter:  anthropic/claude-sonnet-4.5, google/gemini-2.0-flash, etc.
+#   OpenAI:      gpt-4o, gpt-4o-mini, etc.
+#   Anthropic:   claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001, etc.
+
+# scan --llm  (L5 document quality analysis)
+# COMPLIOR_MODEL_CLASSIFY=anthropic/claude-haiku-4.5
+
+# fix --ai  (document generation, enrichment)
+# COMPLIOR_MODEL_DOCUMENT_GENERATION=anthropic/claude-sonnet-4.5
+
+# eval --llm  (LLM judge for compliance tests)
+# COMPLIOR_MODEL_QA=anthropic/claude-haiku-4.5
+
+# Other tasks (chat, code generation, reports)
+# COMPLIOR_MODEL_CHAT=anthropic/claude-sonnet-4.5
+# COMPLIOR_MODEL_CODE=anthropic/claude-sonnet-4.5
+# COMPLIOR_MODEL_REPORT=anthropic/claude-sonnet-4.5
+"#;
         let _ = std::fs::write(&env_file_path, env_template);
     }
 

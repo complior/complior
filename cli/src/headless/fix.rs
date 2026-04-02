@@ -117,6 +117,7 @@ pub async fn run_headless_fix(
                         let env_var = task.get("envVar").and_then(|v| v.as_str()).unwrap_or("env");
                         format!(" ({env_var})")
                     } else {
+                        eprintln!("  {}", dim("Override: set COMPLIOR_MODEL_DOCUMENT_GENERATION in .complior/.env"));
                         String::new()
                     };
                     Some(format!("{model} via {provider}{source_label}"))

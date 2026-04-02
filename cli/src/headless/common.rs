@@ -176,12 +176,36 @@ fn check_env_file(path: &std::path::Path) -> bool {
 
 /// Print a clear error when no LLM API key is found.
 pub fn print_llm_key_error() {
-    eprintln!(
-        "Error: This command requires an LLM API key.\n\
-         Set one of: OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY\n\
-         \x20 in .complior/.env or as environment variable.\n\n\
-         Get a free key: https://openrouter.ai (free tier available)"
-    );
+    use super::format::colors::{bold, bold_yellow, cyan, dim, yellow};
+    use super::format::separator;
+
+    eprintln!();
+    eprintln!("  {}", separator());
+    eprintln!("  {}  LLM API key not configured", bold_yellow("!"));
+    eprintln!("  {}", separator());
+    eprintln!();
+    eprintln!("  This flag uses an LLM model to perform deeper analysis —");
+    eprintln!("  document quality scoring, semantic gap detection, and");
+    eprintln!("  AI-enriched compliance content generation.");
+    eprintln!();
+    eprintln!("  {}  Add your key to {}:", bold("Setup"), cyan(".complior/.env"));
+    eprintln!();
+    eprintln!("     {}", dim("# pick one provider, uncomment and paste your key:"));
+    eprintln!("     {}", yellow("OPENROUTER_API_KEY=sk-or-v1-..."));
+    eprintln!("     {}", dim("# OPENAI_API_KEY=sk-..."));
+    eprintln!("     {}", dim("# ANTHROPIC_API_KEY=sk-ant-..."));
+    eprintln!();
+    eprintln!("  {}  Get a free key:", bold("Keys"));
+    eprintln!("     OpenRouter  {}  {}", dim("(recommended)"), cyan("https://openrouter.ai"));
+    eprintln!("     OpenAI      {}               {}", dim("(paid)"), cyan("https://platform.openai.com"));
+    eprintln!("     Anthropic   {}               {}", dim("(paid)"), cyan("https://console.anthropic.com"));
+    eprintln!();
+    eprintln!("  {}", separator());
+    eprintln!("  {}  You can continue without LLM — the base scan (L1-L4)", dim("Tip:"));
+    eprintln!("  {}  and deterministic fixes work fully offline.", dim("     "));
+    eprintln!("  {}  Just run: {}", dim("     "), bold("complior scan"));
+    eprintln!("  {}", separator());
+    eprintln!();
 }
 
 /// Resolve project path from an optional CLI flag, falling back to CWD.
