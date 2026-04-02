@@ -161,6 +161,10 @@ pub enum Command {
 
     /// Initialize .complior/ configuration in project
     Init {
+        /// Overwrite existing passports (default: skip)
+        #[arg(long)]
+        force: bool,
+
         /// Project path (default: current directory)
         path: Option<String>,
     },

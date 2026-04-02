@@ -191,7 +191,7 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
 /// `project.toml` (TUI config), and `profile.json` (engine config).
 /// If interactive (TTY + no --yes), asks onboarding questions via stdin.
 /// Then starts the engine and runs agent discovery to auto-create passports.
-pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 {
+pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiConfig) -> i32 {
     use super::common::{ensure_engine_for, resolve_project_path_buf};
     use super::format::colors::{bold, bold_red, bold_yellow, check_mark, cyan, dim, diamond, green, red};
     use super::format::separator;
@@ -356,9 +356,12 @@ pub async fn run_init(path: Option<&str>, yes: bool, config: &TuiConfig) -> i32 
     }
 
     // Auto-discover AI agents and create passports (non-fatal on error)
-    let body = serde_json::json!({
+    let mut body = serde_json::json!({
         "path": base.to_string_lossy(),
     });
+    if force {
+        body["force"] = serde_json::json!(true);
+    }
 
     let mut agent_list: Vec<(String, String, String, f64)> = Vec::new();
     let mut skipped_count: usize = 0;
