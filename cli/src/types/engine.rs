@@ -209,6 +209,9 @@ pub struct Finding {
     /// Document quality assessment from L2 scanner (e.g. "COMPREHENSIVE", "SHALLOW").
     #[serde(default)]
     pub doc_quality: Option<String>,
+    /// True when this finding was analyzed/modified by L5 LLM.
+    #[serde(default)]
+    pub l5_analyzed: Option<bool>,
 }
 
 impl Finding {
@@ -361,7 +364,7 @@ impl Serialize for CategoryScore {
 impl Serialize for Finding {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = s.serialize_struct("Finding", 18)?;
+        let mut state = s.serialize_struct("Finding", 19)?;
         state.serialize_field("checkId", &self.check_id)?;
         state.serialize_field("type", &self.r#type)?;
         state.serialize_field("message", &self.message)?;
@@ -380,6 +383,7 @@ impl Serialize for Finding {
         state.serialize_field("explanation", &self.explanation)?;
         state.serialize_field("agentId", &self.agent_id)?;
         state.serialize_field("docQuality", &self.doc_quality)?;
+        state.serialize_field("l5Analyzed", &self.l5_analyzed)?;
         state.end()
     }
 }

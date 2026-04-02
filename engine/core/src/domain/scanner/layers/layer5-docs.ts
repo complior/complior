@@ -142,6 +142,7 @@ export const docValidationToFindings = (
         severity: 'info',
         confidence: 85,
         confidenceLevel: 'LIKELY_PASS',
+        l5Analyzed: true,
       });
     } else {
       const missing = result.missingElements.join(', ');
@@ -155,6 +156,7 @@ export const docValidationToFindings = (
         file: result.file,
         confidence: 85,
         confidenceLevel: 'LIKELY_FAIL',
+        l5Analyzed: true,
       });
     }
   }

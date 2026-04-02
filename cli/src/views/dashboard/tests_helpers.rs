@@ -53,6 +53,7 @@ pub(super) fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::t
             explanation: None,
             agent_id: None,
             doc_quality: None,
+            l5_analyzed: None,
         }],
         project_path: ".".to_string(),
         scanned_at: "2026-02-19".to_string(),

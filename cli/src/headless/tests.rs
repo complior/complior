@@ -49,6 +49,7 @@ mod tests {
                     explanation: None,
                     agent_id: None,
                     doc_quality: None,
+                    l5_analyzed: None,
                 },
                 Finding {
                     check_id: "l4-bare-llm".into(),
@@ -69,6 +70,7 @@ mod tests {
                     explanation: None,
                     agent_id: None,
                     doc_quality: None,
+                    l5_analyzed: None,
                 },
             ],
             project_path: "/tmp/test-project".into(),
@@ -105,6 +107,7 @@ mod tests {
             explanation: None,
             agent_id: None,
             doc_quality: None,
+            l5_analyzed: None,
         }
     }
 
@@ -437,6 +440,7 @@ mod tests {
             explanation: None,
             agent_id: None,
             doc_quality: None,
+            l5_analyzed: None,
         }];
         let text = format_human(&result, &default_opts());
         // Engine prefix should be stripped
@@ -639,6 +643,7 @@ mod tests {
             explanation: None,
             agent_id: None,
             doc_quality: None,
+            l5_analyzed: None,
         }];
         let text = format_human(&result, &default_opts());
         // Article and label combined on same line
@@ -673,6 +678,7 @@ mod tests {
             }),
             agent_id: None,
             doc_quality: None,
+            l5_analyzed: None,
         }];
         let text = format_human(&result, &default_opts());
         // Article from explanation fallback

@@ -43,6 +43,10 @@ fn render_header(o: &mut String, result: &ScanResult) {
     if result.tier == Some(2) {
         title.push_str("  ·  Deep Mode");
     }
+    let is_llm = result.deep_analysis == Some(true) && result.tier != Some(2);
+    if is_llm {
+        title.push_str("  ·  LLM Mode");
+    }
     o.push('\n');
     o.push_str(&format!("  {}\n", bold(&title)));
     o.push_str(&format!("  {}\n", separator()));
@@ -83,7 +87,7 @@ fn render_scan_info(o: &mut String, result: &ScanResult) {
         .filter(|(tag, _)| {
             match *tag {
                 "GPAI" => result.findings.iter().any(|f| f.check_id.starts_with("gpai-")),
-                "L5" => result.findings.iter().any(|f| f.check_id.starts_with("l5-")),
+                "L5" => result.findings.iter().any(|f| f.check_id.starts_with("l5-") || f.l5_analyzed == Some(true)),
                 "CROSS" => false, // cross-layer is implicit, not shown in header
                 _ => true,
             }
@@ -96,6 +100,12 @@ fn render_scan_info(o: &mut String, result: &ScanResult) {
         }
     }
     o.push_str(&format!("  {}    {}\n", dim("Layers"), layers.join(" · ")));
+
+    // L5 cost (when --llm was used)
+    if let Some(cost) = result.l5_cost {
+        o.push_str(&format!("  {}  ${:.2} (estimated)\n", dim("LLM Cost"), cost));
+    }
+
     o.push('\n');
 }
 
@@ -237,6 +247,27 @@ fn render_layer_results_section(o: &mut String, result: &ScanResult) {
             lr.id, lr.label, status_colored, dim(&lr.summary),
         ));
     }
+
+    // L5 LLM Analysis summary (when --llm was used)
+    let is_llm = result.deep_analysis == Some(true) && result.tier != Some(2);
+    if is_llm {
+        let l5_count = result.findings.iter().filter(|f| f.l5_analyzed == Some(true)).count();
+        let l5_changed = result.findings.iter().filter(|f| {
+            f.l5_analyzed == Some(true) && f.r#type == CheckResultType::Fail
+        }).count();
+        let status = if l5_count > 0 { "DONE" } else { "SKIP" };
+        let summary = if l5_count > 0 {
+            format!("{l5_count} analyzed, {l5_changed} flagged")
+        } else {
+            "no uncertain findings".to_string()
+        };
+        let status_colored = layer_status_color(status, status);
+        o.push_str(&format!(
+            "    {:<6}{:<25}{}   {}\n",
+            "L5", "LLM Analysis", status_colored, dim(&summary),
+        ));
+    }
+
     o.push('\n');
 }
 
@@ -266,6 +297,7 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
     sort_findings_full(&mut sorted);
 
     let is_deep = result.tier == Some(2);
+    let is_llm = result.deep_analysis == Some(true) && result.tier != Some(2);
 
     o.push('\n');
     let has_agents = result.agent_summaries.as_ref().is_some_and(|s| !s.is_empty());
@@ -303,6 +335,37 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
             o.push_str(&format!(
                 "  {} ({n} finding{})\n",
                 bold("FROM BASE SCAN"),
+                plural(n),
+            ));
+            render_findings_by_layer(o, &base_findings, &mut finding_num);
+        }
+    } else if is_llm {
+        let visible = apply_finding_limits(&sorted);
+        let l5_findings: Vec<&Finding> = visible
+            .iter()
+            .filter(|f| f.l5_analyzed == Some(true))
+            .copied()
+            .collect();
+        let base_findings: Vec<&Finding> = visible
+            .iter()
+            .filter(|f| f.l5_analyzed != Some(true))
+            .copied()
+            .collect();
+
+        if !l5_findings.is_empty() {
+            let n = l5_findings.len();
+            o.push_str(&format!(
+                "  {} ({n} finding{})\n",
+                bold("LLM ANALYSIS (--llm)"),
+                plural(n),
+            ));
+            render_findings_by_layer(o, &l5_findings, &mut finding_num);
+        }
+        if !base_findings.is_empty() {
+            let n = base_findings.len();
+            o.push_str(&format!(
+                "  {} ({n} finding{})\n",
+                bold("BASE SCAN (L1-L4)"),
                 plural(n),
             ));
             render_findings_by_layer(o, &base_findings, &mut finding_num);
@@ -435,9 +498,10 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
         None => label,
     };
     let _fid = fid; // retained for JSON/SARIF; hidden from human output
+    let llm_badge = if f.l5_analyzed == Some(true) { format!(" {}", yellow("[LLM]")) } else { String::new() };
     o.push_str(&format!(
-        "      {}  {}  {}  {}\n",
-        icon, sev, dim(&format!("[{layer_tag}]")), header_detail,
+        "      {}  {}  {}{}  {}\n",
+        icon, sev, dim(&format!("[{layer_tag}]")), llm_badge, header_detail,
     ));
     o.push_str(&format!("         {}\n", f.message));
 
@@ -446,6 +510,25 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
     }
     if let Some(ref fix) = f.fix {
         o.push_str(&format!("         {}  {}\n", dim("Fix:"), clean_fix_message(fix)));
+    }
+
+    // L5 LLM verdict line
+    if f.l5_analyzed == Some(true) {
+        if let Some(conf) = f.confidence {
+            let level = f.confidence_level.as_deref().unwrap_or("?");
+            let verdict = match level {
+                "PASS" => "confirmed",
+                "LIKELY_PASS" => "likely valid",
+                "UNCERTAIN" => "uncertain",
+                "LIKELY_FAIL" => "likely issue",
+                "FAIL" => "confirmed issue",
+                _ => level,
+            };
+            o.push_str(&format!(
+                "         {}  {} (confidence {:.0}%)\n",
+                yellow("LLM:"), verdict, conf,
+            ));
+        }
     }
 
     // Docs command hint (if article reference exists)

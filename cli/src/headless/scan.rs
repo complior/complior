@@ -191,11 +191,27 @@ pub async fn run_headless_scan(
             .filter(|f| f.r#type == crate::types::CheckResultType::Fail)
             .count();
         let layers = if deep && llm { "L1-L5" } else if deep { "L1-L4 + external" } else if llm { "L1-L4 + L5" } else { "L1-L4" };
+
+        // Split LLM-enhanced count when --llm was used
+        let findings_label = if llm {
+            let llm_count = result.findings.iter()
+                .filter(|f| f.r#type == crate::types::CheckResultType::Fail && f.l5_analyzed == Some(true))
+                .count();
+            let base_count = finding_count.saturating_sub(llm_count);
+            if llm_count > 0 {
+                format!("{base_count} findings + {llm_count} LLM")
+            } else {
+                format!("{finding_count} findings")
+            }
+        } else {
+            format!("{finding_count} findings")
+        };
+
         eprintln!(
             "  {} Scan complete ({})  {}  {}  {}",
             green(check_mark()),
             layers,
-            dim(&format!("{} findings", finding_count)),
+            dim(&findings_label),
             dim(&format!("Score: {:.0}/100", result.score.total_score)),
             dim(&format!("{:.0}s", scan_elapsed.elapsed().as_secs_f64())),
         );

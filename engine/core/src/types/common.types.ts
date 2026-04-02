@@ -119,6 +119,8 @@ export interface Finding {
   readonly agentId?: string;
   /** Document quality level (none → scaffold → draft → reviewed). */
   readonly docQuality?: DocQualityLevel;
+  /** True when this finding was analyzed/modified by L5 LLM. */
+  readonly l5Analyzed?: boolean;
 }
 
 // --- Score ---

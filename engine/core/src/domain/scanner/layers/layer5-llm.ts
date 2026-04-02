@@ -232,6 +232,7 @@ export const createLayer5 = (deps: L5AnalyzerDeps) => {
         fix: (result.verdict === 'fail' && !f.fix && result.reasoning)
           ? result.reasoning
           : f.fix,
+        l5Analyzed: true,
       };
     });
   };

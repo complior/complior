@@ -178,6 +178,7 @@ mod tests {
                 explanation: None,
                 agent_id: None,
                 doc_quality: None,
+                l5_analyzed: None,
             },
             // Type B: Missing file (no code_context)
             Finding {
@@ -199,6 +200,7 @@ mod tests {
                 explanation: None,
                 agent_id: None,
                 doc_quality: None,
+                l5_analyzed: None,
             },
             // Type C: Config change
             Finding {
@@ -220,6 +222,7 @@ mod tests {
                 explanation: None,
                 agent_id: None,
                 doc_quality: None,
+                l5_analyzed: None,
             },
             // Type B: Missing file, no fix
             Finding {
@@ -241,6 +244,7 @@ mod tests {
                 explanation: None,
                 agent_id: None,
                 doc_quality: None,
+                l5_analyzed: None,
             },
         ]
     }
