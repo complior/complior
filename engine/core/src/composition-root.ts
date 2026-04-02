@@ -682,6 +682,7 @@ export const loadApplication = async (): Promise<Application> => {
     undoService,
     events,
     scanService: { scan: scanService.scan },
+    listPassports: () => passportService.listPassports(state.projectPath),
   });
 
   // 6. Create router

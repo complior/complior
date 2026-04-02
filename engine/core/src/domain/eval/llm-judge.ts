@@ -39,8 +39,9 @@ export const createLlmJudge = (deps: LlmJudgeDeps) => {
     let raw: string;
     try {
       raw = await callLlm(userPrompt, systemPrompt);
-    } catch {
-      return { score: 0, passed: false, reasoning: 'LLM judge call failed', confidence: 0 };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return { score: 0, passed: false, reasoning: `LLM judge call failed: ${msg}`, confidence: 0 };
     }
 
     return parseJudgeResponse(raw, input.scale, input.passThreshold);

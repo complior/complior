@@ -226,6 +226,7 @@ export const AgentPassportSchema = z.object({
   interop: InteropBlockSchema,
   upstream_registry: z.array(z.record(z.unknown())).optional(),
   source_files: z.array(z.string()).optional(),
+  endpoints: z.array(z.string().url()).optional(),
   source: SourceBlockSchema,
   signature: SignatureBlockSchema,
 });

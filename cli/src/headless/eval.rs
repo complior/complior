@@ -248,14 +248,7 @@ pub async fn run_eval_command(
                 }
             }
         } else {
-            eprintln!(
-                "{}  No --agent specified. Eval results won't be linked to any passport.",
-                dim("hint:")
-            );
-            eprintln!(
-                "{}  Use: complior eval --target <url> --agent <passport-name>",
-                dim("     ")
-            );
+            // Engine auto-resolves: endpoint match or single-passport fallback
         }
     }
 
@@ -282,6 +275,13 @@ pub async fn run_eval_command(
                 // Full remediation report export
                 if remediation_report {
                     print_remediation_report(&client).await;
+                }
+
+                // Show auto-link result if engine resolved agent
+                if agent.is_none() {
+                    if let Some(linked) = result.get("agent").and_then(|v| v.as_str()) {
+                        eprintln!("\n  {} Linked to passport: {}", check_mark(), bold(linked));
+                    }
                 }
             }
 

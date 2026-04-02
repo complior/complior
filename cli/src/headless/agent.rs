@@ -22,6 +22,16 @@ fn is_empty_val(s: &str) -> bool {
     matches!(s.trim(), "" | "-" | "unknown")
 }
 
+/// Color a letter grade: A/B = green, C = yellow, D/F = red.
+fn grade_color(grade: &str) -> String {
+    use super::format::colors::{green, yellow, red};
+    match grade {
+        "A" | "A+" | "B" | "B+" => green(grade),
+        "C" | "C+" => yellow(grade),
+        _ => red(grade),
+    }
+}
+
 pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
     match action {
         AgentAction::Rename { old_name, new_name, json, path } => run_agent_rename(old_name, new_name, *json, path.as_deref(), config).await,
@@ -426,6 +436,66 @@ async fn run_agent_show(
                     println!("    {}        {}", dim("FRIA:"), status_label(fria));
                     println!("    {} {}", dim("Notification:"), status_label(notif));
                     println!("    {}      {}", dim("Policy:"), status_label(policy));
+                }
+
+                // Eval results
+                if let Some(eval) = compliance.get("eval") {
+                    let eval_score = eval.get("eval_score").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                    let eval_grade = eval.get("eval_grade").and_then(|v| v.as_str()).unwrap_or("?");
+                    let eval_tier = eval.get("eval_tier").and_then(|v| v.as_str()).unwrap_or("?");
+                    let eval_target = eval.get("eval_target").and_then(|v| v.as_str()).unwrap_or("?");
+                    let eval_date = eval.get("eval_date").and_then(|v| v.as_str()).unwrap_or("?");
+                    let total = eval.get("eval_tests_total").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                    let passed = eval.get("eval_tests_passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                    let failed = eval.get("eval_tests_failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                    let errors = total.saturating_sub(passed).saturating_sub(failed);
+
+                    println!("\n  {}", bold("EVAL RESULTS"));
+                    println!("  {}\n", separator());
+
+                    let score_str = format!("{eval_score:.0}/100");
+                    println!("    {}       {} ({})", dim("Grade:"), grade_color(eval_grade), score_color(eval_score, &score_str));
+                    println!("    {}        {}", dim("Tier:"), eval_tier);
+                    println!("    {}      {}", dim("Target:"), eval_target);
+                    let date_display = &eval_date[..10.min(eval_date.len())];
+                    println!("    {}        {}", dim("Date:"), date_display);
+
+                    // Tests line
+                    let tests_str = format!("{passed}/{total} passed");
+                    let pct = if total > 0 { passed as f64 / total as f64 * 100.0 } else { 0.0 };
+                    let details = if errors > 0 {
+                        format!("  ({failed} failed, {errors} errors)")
+                    } else {
+                        format!("  ({failed} failed)")
+                    };
+                    println!("    {}       {}{}", dim("Tests:"), score_color(pct, &tests_str), dim(&details));
+
+                    // Security (optional)
+                    if let Some(sec_score) = eval.get("eval_security_score").and_then(serde_json::Value::as_f64) {
+                        let sec_grade = eval.get("eval_security_grade").and_then(|v| v.as_str()).unwrap_or("?");
+                        let sec_str = format!("{sec_score:.0}/100");
+                        println!("    {}    {} ({})", dim("Security:"), grade_color(sec_grade), score_color(sec_score, &sec_str));
+                    }
+
+                    // Categories
+                    if let Some(cats) = eval.get("eval_categories").and_then(serde_json::Value::as_array)
+                        && !cats.is_empty() {
+                            println!("\n    {}", dim("Categories:"));
+                            for cat in cats {
+                                let name = cat.get("category").and_then(|v| v.as_str()).unwrap_or("?");
+                                let sc = cat.get("score").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                                let gr = cat.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
+                                let sc_str = format!("{sc:.0}/100");
+                                println!("      {:<20}  {}  {}", dim(name), score_color(sc, &sc_str), grade_color(gr));
+                            }
+                        }
+
+                    // Critical gaps
+                    if let Some(gaps) = eval.get("eval_critical_gaps").and_then(serde_json::Value::as_array)
+                        && !gaps.is_empty() {
+                            let gap_names: Vec<&str> = gaps.iter().filter_map(serde_json::Value::as_str).collect();
+                            println!("\n    {} {}", dim("Critical gaps:"), red(&gap_names.join(", ")));
+                        }
                 }
             }
 

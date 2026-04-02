@@ -29,6 +29,7 @@ import type { LoggerPort } from '../ports/logger.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { UndoService } from './undo-service.js';
 import type { ScanResult } from '../types/common.types.js';
+import type { AgentPassport } from '../types/passport.types.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
 import { createLogger } from '../infra/logger.js';
 import { backupFile } from './shared/backup.js';
@@ -47,6 +48,7 @@ export interface EvalServiceDeps {
   readonly undoService?: UndoService;
   readonly events?: EventBusPort;
   readonly scanService?: { scan: (path: string) => Promise<ScanResult> };
+  readonly listPassports?: () => Promise<readonly AgentPassport[]>;
 }
 
 export const createEvalService = (deps: EvalServiceDeps) => {
@@ -90,6 +92,27 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     options: EvalOptions,
     onProgress?: EvalProgressCallback,
   ): Promise<EvalResult> => {
+    // Auto-resolve agent if not specified (endpoint match → single-passport fallback)
+    let resolvedOptions = options;
+    if (!options.agent && deps.listPassports) {
+      try {
+        const passports = await deps.listPassports();
+        // Strategy A: endpoint match (most specific)
+        const endpointMatch = passports.find(p =>
+          p.endpoints?.some(ep => options.target.startsWith(ep))
+        );
+        if (endpointMatch) {
+          resolvedOptions = { ...options, agent: endpointMatch.name };
+          log.info(`Auto-linked to passport: ${endpointMatch.name} (endpoint match)`);
+        }
+        // Strategy B: single passport fallback
+        else if (passports.length === 1) {
+          resolvedOptions = { ...options, agent: passports[0]!.name };
+          log.info(`Auto-linked to passport: ${passports[0]!.name} (single passport)`);
+        }
+      } catch { /* non-fatal — proceed without agent */ }
+    }
+
     // Detect adapter from target URL
     const adapter: TargetAdapter = await autoDetectAdapter(
       options.target,
@@ -157,7 +180,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
       ? createEvalRunner(runnerDeps)
       : baseRunner;
 
-    const result = await effectiveRunner.runEval(adapter, options, testSources, scorer, judge, onProgress);
+    const result = await effectiveRunner.runEval(adapter, resolvedOptions, testSources, scorer, judge, onProgress);
 
     // US-REM-04: Auto-sync eval results into agent passport (non-fatal)
     if (deps.updatePassportEval) {

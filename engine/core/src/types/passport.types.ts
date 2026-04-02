@@ -269,6 +269,9 @@ export interface AgentPassport {
   // Source files (file paths belonging to this agent)
   readonly source_files?: readonly string[];
 
+  // API endpoints served by this agent (for eval auto-linking)
+  readonly endpoints?: readonly string[];
+
   // Source tracking
   readonly source: SourceBlock;
 
