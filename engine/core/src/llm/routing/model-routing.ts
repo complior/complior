@@ -14,12 +14,25 @@ const TASK_REASONS = routingData.task_reasons as Readonly<Record<TaskType, strin
 
 const isTaskType = (s: string): s is TaskType => s in TASK_REASONS;
 
+/** Build the env-variable name for a given task type: COMPLIOR_MODEL_{TASK_TYPE}. */
+export const envKeyForTaskType = (taskType: TaskType): string =>
+  `COMPLIOR_MODEL_${taskType.toUpperCase().replace(/-/g, '_')}`;
+
 /** Route a task type to a concrete model selection for a given provider. */
 export const routeModelForProvider = (taskType: string, provider: ProviderName): ModelSelection => {
   const validType = isTaskType(taskType) ? taskType : 'chat';
+
+  // Env override: COMPLIOR_MODEL_CLASSIFY, COMPLIOR_MODEL_DOCUMENT_GENERATION, etc.
+  const envKey = envKeyForTaskType(validType);
+  const envModel = process.env[envKey];
+
+  const modelId = envModel || MODEL_MAP[provider][validType];
+
   return {
     provider,
-    modelId: MODEL_MAP[provider][validType],
-    reason: TASK_REASONS[validType],
+    modelId,
+    reason: envModel
+      ? `Custom model (${envKey})`
+      : TASK_REASONS[validType],
   };
 };

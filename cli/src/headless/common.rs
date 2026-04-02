@@ -113,6 +113,77 @@ pub async fn ensure_engine_for(config: &TuiConfig, project_path: &std::path::Pat
     Err(1)
 }
 
+/// LLM API key environment variable names checked in priority order.
+const LLM_KEY_VARS: &[&str] = &[
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+];
+
+/// Check if any LLM API key is available in environment or .env files.
+/// Checks process env vars, then `{project_path}/.complior/.env`, then `~/.config/complior/.env`.
+pub fn check_llm_key(project_path: &str) -> bool {
+    // 1. Process environment variables
+    for var in LLM_KEY_VARS {
+        if let Ok(val) = std::env::var(var) {
+            if !val.is_empty() {
+                return true;
+            }
+        }
+    }
+
+    // 2. Project-level .env
+    let project_env = std::path::Path::new(project_path).join(".complior/.env");
+    if check_env_file(&project_env) {
+        return true;
+    }
+
+    // 3. Global .env
+    if let Some(home) = dirs::home_dir() {
+        let global_env = home.join(".config/complior/.env");
+        if check_env_file(&global_env) {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Parse a .env file looking for any LLM API key.
+fn check_env_file(path: &std::path::Path) -> bool {
+    let content = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        for var in LLM_KEY_VARS {
+            if let Some(rest) = line.strip_prefix(var) {
+                if let Some(val) = rest.strip_prefix('=') {
+                    let val = val.trim().trim_matches('"').trim_matches('\'');
+                    if !val.is_empty() {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Print a clear error when no LLM API key is found.
+pub fn print_llm_key_error() {
+    eprintln!(
+        "Error: This command requires an LLM API key.\n\
+         Set one of: OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY\n\
+         \x20 in .complior/.env or as environment variable.\n\n\
+         Get a free key: https://openrouter.ai (free tier available)"
+    );
+}
+
 /// Resolve project path from an optional CLI flag, falling back to CWD.
 /// Always returns an absolute path (relative paths resolved against CWD).
 pub fn resolve_project_path(path: Option<&str>) -> String {

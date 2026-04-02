@@ -321,7 +321,16 @@ export const createFixService = (deps: FixServiceDeps) => {
     return { results, totalDelta };
   };
 
-  const applyAll = async (useAi = false, overridePath?: string): Promise<readonly FixResult[]> => {
+  type FixProgressCallback = (event: {
+    type: 'applying' | 'applied' | 'failed';
+    checkId: string;
+    path: string;
+    action?: string;
+    scoreAfter?: number;
+    error?: string;
+  }) => Promise<void>;
+
+  const applyAll = async (useAi = false, overridePath?: string, onProgress?: FixProgressCallback): Promise<readonly FixResult[]> => {
     const plans = fixer.generateFixes(
       getLastScanResult()?.findings ?? [],
       useAi ? { useAi: true } : undefined,
@@ -349,6 +358,11 @@ export const createFixService = (deps: FixServiceDeps) => {
     // Phase 1a: Apply non-splice plans individually
     for (const plan of otherPlans) {
       const backedUp: string[] = [];
+      const actionPath = plan.actions[0]?.path ?? '?';
+      const actionType = plan.actions[0]?.type === 'create' ? 'CREATE' : 'MODIFY';
+      if (onProgress) {
+        await onProgress({ type: 'applying', checkId: plan.checkId, path: actionPath, action: actionType });
+      }
       try {
         let manualFields: readonly string[] | undefined;
         for (const action of plan.actions) {
@@ -362,15 +376,22 @@ export const createFixService = (deps: FixServiceDeps) => {
           appliedActionKeys.add(action.type === 'splice' ? `${action.path}:${action.startLine}` : action.path);
         }
         results.push({ plan: enrichedPlan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: backedUp });
+        if (onProgress) {
+          await onProgress({ type: 'applied', checkId: plan.checkId, path: actionPath });
+        }
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
         results.push({
           plan,
           applied: false,
           scoreBefore,
           scoreAfter: scoreBefore,
           backedUpFiles: backedUp,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMsg,
         });
+        if (onProgress) {
+          await onProgress({ type: 'failed', checkId: plan.checkId, path: actionPath, error: errorMsg });
+        }
       }
     }
 
@@ -433,11 +454,19 @@ export const createFixService = (deps: FixServiceDeps) => {
         }
         if (!valid) continue;
 
+        if (onProgress) {
+          await onProgress({ type: 'applying', checkId: plan.checkId, path: action.path, action: 'MODIFY' });
+        }
+
         // Splice in-memory
         lines.splice(startIdx, beforeLines.length, ...(action.afterLines ?? []));
         if (action.importLine) importLines.push(action.importLine);
         appliedActionKeys.add(`${action.path}:${action.startLine}`);
         results.push({ plan, applied: true, scoreBefore, scoreAfter: 0, backedUpFiles: [bk] });
+
+        if (onProgress) {
+          await onProgress({ type: 'applied', checkId: plan.checkId, path: action.path });
+        }
       }
 
       // Inject unique imports after all splices (after last import/from line)

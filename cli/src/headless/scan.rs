@@ -47,6 +47,8 @@ pub async fn run_headless_scan(
         }
     }
 
+    let scan_elapsed = std::time::Instant::now();
+
     // Tier 3 stub
     if cloud {
         eprintln!("Error: --cloud (Tier 3) is not yet available. Planned for Month 3-4.");
@@ -56,6 +58,12 @@ pub async fn run_headless_scan(
     // Determine project path
     let scan_path = super::common::resolve_project_path(path);
 
+    // LLM key validation — fail early before starting scan
+    if llm && !super::common::check_llm_key(&scan_path) {
+        super::common::print_llm_key_error();
+        return 1;
+    }
+
     // Deep scan: check uv availability and show tool display
     if deep {
         if !check_uv_available() {
@@ -63,6 +71,22 @@ pub async fn run_headless_scan(
         }
         if !json && !sarif {
             show_deep_scan_tools();
+        }
+    }
+
+    // Show LLM model info when --llm is used
+    if llm && !json && !sarif {
+        if let Ok(info) = client.get_json("/llm/info").await {
+            let model = info.get("classify").and_then(|v| v.get("modelId")).and_then(|v| v.as_str()).unwrap_or("unknown");
+            let provider = info.get("classify").and_then(|v| v.get("provider")).and_then(|v| v.as_str()).unwrap_or("unknown");
+            let source = info.get("classify").and_then(|v| v.get("source")).and_then(|v| v.as_str()).unwrap_or("default");
+            let source_label = if source == "env" {
+                let env_var = info.get("classify").and_then(|v| v.get("envVar")).and_then(|v| v.as_str()).unwrap_or("env");
+                format!(" ({})", env_var)
+            } else {
+                String::new()
+            };
+            eprintln!("  LLM: {} via {}{}", bold(model), provider, dim(&source_label));
         }
     }
 
@@ -159,6 +183,21 @@ pub async fn run_headless_scan(
             None
         };
 
+        // Completion summary before detailed report
+        let finding_count = result.findings.iter()
+            .filter(|f| f.r#type == crate::types::CheckResultType::Fail)
+            .count();
+        let layers = if deep && llm { "L1-L5" } else if deep { "L1-L4 + external" } else if llm { "L1-L4 + L5" } else { "L1-L4" };
+        eprintln!(
+            "  {} Scan complete ({})  {}  {}  {}",
+            green(check_mark()),
+            layers,
+            dim(&format!("{} findings", finding_count)),
+            dim(&format!("Score: {:.0}/100", result.score.total_score)),
+            dim(&format!("{:.0}s", scan_elapsed.elapsed().as_secs_f64())),
+        );
+        eprintln!();
+
         let opts = FormatOptions {
             framework_scores: framework_scores.as_ref().map(|mf| mf.frameworks.clone()),
             quiet,
@@ -166,15 +205,6 @@ pub async fn run_headless_scan(
         };
         let text = format_human(&result, &opts);
         print_paged(&text);
-
-        // Deep scan: cache hint footer
-        if deep {
-            eprintln!();
-            eprintln!(
-                "  {}",
-                dim("Deep tools cached at ~/.complior/tools/  (next run: faster)"),
-            );
-        }
     }
 
     // CI env-var output line
@@ -372,6 +402,8 @@ fn check_uv_available() -> bool {
 }
 
 /// Show deep scan tool download/cache display.
+/// First run: show 3 progress bars with pending status.
+/// Cached: single compact line.
 fn show_deep_scan_tools() {
     let tools_dir = dirs::home_dir()
         .map(|h| h.join(".complior/tools"))
@@ -383,30 +415,37 @@ fn show_deep_scan_tools() {
         ("ModelScan", "modelscan"),
     ];
 
-    eprintln!();
-    let first_run = !tools_dir.exists();
-    if first_run {
-        eprintln!("  {}", bold("First run — downloading deep scan tools (~150MB)"));
-    } else {
-        eprintln!("  {}", bold("Deep scan tools"));
-    }
+    let all_cached = tools_dir.exists()
+        && tools.iter().all(|(_, dir_name)| tools_dir.join(dir_name).exists());
 
-    for (i, (name, dir_name)) in tools.iter().enumerate() {
-        let cached = tools_dir.join(dir_name).exists();
-        let status = if cached {
-            format!("{}  cached", green(check_mark()))
-        } else {
-            dim("pending").clone()
-        };
-        let bar = if cached {
-            super::format::colors::bar_filled().repeat(20)
-        } else {
-            super::format::colors::bar_empty().repeat(20)
-        };
-        let prefix = if i < tools.len() - 1 { tree_branch() } else { tree_end() };
-        eprintln!("  {}  {:<20}{}  {}", prefix, name, dim(&bar), status);
+    if all_cached {
+        // Compact single line for repeat runs
+        eprintln!(
+            "  Deep scan tools: Semgrep, Bandit, ModelScan  {}",
+            green(&format!("{} ready", check_mark()))
+        );
+    } else {
+        // First run or partial install — show individual tool status
+        eprintln!();
+        eprintln!("  {}", bold("First run — downloading deep scan tools (~150MB)"));
+
+        for (i, (name, dir_name)) in tools.iter().enumerate() {
+            let cached = tools_dir.join(dir_name).exists();
+            let status = if cached {
+                format!("{}  cached", green(check_mark()))
+            } else {
+                dim("pending").clone()
+            };
+            let bar = if cached {
+                super::format::colors::bar_filled().repeat(20)
+            } else {
+                super::format::colors::bar_empty().repeat(20)
+            };
+            let prefix = if i < tools.len() - 1 { tree_branch() } else { tree_end() };
+            eprintln!("  {}  {:<20}{}  {}", prefix, name, dim(&bar), status);
+        }
+        eprintln!();
     }
-    eprintln!();
 }
 
 /// Read previous scan score from `.complior/last-scan.json` for delta display.

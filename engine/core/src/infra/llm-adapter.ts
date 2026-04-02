@@ -12,7 +12,12 @@ const PROVIDERS: readonly ProviderInfo[] = [
 
 const log = createLogger('llm-adapter');
 
+const isProviderName = (s: string): s is ProviderName =>
+  s === 'openai' || s === 'anthropic' || s === 'openrouter';
+
 export const createLlmAdapter = (): LlmPort => {
+  let providerFallbackWarned = false;
+
   const detectProviders = (): readonly ProviderInfo[] =>
     PROVIDERS.map((p) => ({
       ...p,
@@ -23,6 +28,17 @@ export const createLlmAdapter = (): LlmPort => {
     detectProviders().filter((p) => p.available);
 
   const getDefaultProvider = (): ProviderName => {
+    // Env override: explicit provider preference
+    const envProvider = process.env['COMPLIOR_LLM_PROVIDER'];
+    if (envProvider && isProviderName(envProvider)) {
+      const info = detectProviders().find((p) => p.name === envProvider);
+      if (info?.available) return envProvider;
+      if (!providerFallbackWarned) {
+        log.warn(`COMPLIOR_LLM_PROVIDER=${envProvider} but no API key found — falling back to auto-detect`);
+        providerFallbackWarned = true;
+      }
+    }
+
     const available = getAvailableProviders();
     if (available.length === 0) {
       throw new LLMError('No LLM provider configured. Set OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY in .complior/.env');

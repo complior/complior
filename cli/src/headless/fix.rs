@@ -1,5 +1,7 @@
+use futures_util::StreamExt;
+
 use crate::config::TuiConfig;
-use crate::headless::format::colors::{green, bold, yellow, dim, bold_red, score_color, cyan, red};
+use crate::headless::format::colors::{green, bold, yellow, dim, bold_red, score_color, cyan, red, check_mark, bar_filled, bar_empty, diamond};
 use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
 use crate::headless::format::{plural, project_name, separator};
@@ -18,6 +20,12 @@ pub async fn run_headless_fix(
     };
 
     let scan_path = super::common::resolve_project_path(path);
+
+    // LLM key validation — fail early before starting AI-enriched fix
+    if use_ai && !super::common::check_llm_key(&scan_path) {
+        super::common::print_llm_key_error();
+        return 1;
+    }
 
     // Check if engine already has a scan result (may be from deep/tier2 scan).
     // If yes — reuse it to avoid overwriting deep scan findings with a regular scan.
@@ -95,10 +103,35 @@ pub async fn run_headless_fix(
     } else {
         // Apply all fixes via engine
         let body = serde_json::json!({ "useAi": use_ai, "projectPath": scan_path });
+
+        // Show model info for AI-enriched mode
+        let model_label = if use_ai && !json {
+            let model_info = client.get_json("/llm/info").await.ok();
+            model_info.as_ref()
+                .and_then(|info| {
+                    let task = info.get("document-generation")?;
+                    let model = task.get("modelId").and_then(|v| v.as_str())?;
+                    let provider = task.get("provider").and_then(|v| v.as_str())?;
+                    let source = task.get("source").and_then(|v| v.as_str()).unwrap_or("default");
+                    let source_label = if source == "env" {
+                        let env_var = task.get("envVar").and_then(|v| v.as_str()).unwrap_or("env");
+                        format!(" ({env_var})")
+                    } else {
+                        String::new()
+                    };
+                    Some(format!("{model} via {provider}{source_label}"))
+                })
+        } else {
+            None
+        };
+
+        // AI-enriched: use SSE streaming for live progress
         if use_ai && !json {
-            println!("AI-enriched mode: documents will be enhanced with LLM-generated content\n");
+            let stream_result = run_fix_stream(&client, &body, &scan_path, model_label.as_deref()).await;
+            return stream_result;
         }
-        // LLM enrichment can take minutes for multiple documents — use long timeout
+
+        // Non-AI or JSON: use blocking endpoint
         let fix_result = if use_ai {
             client.post_json_long("/fix/apply-all", &body).await
         } else {
@@ -325,8 +358,20 @@ fn render_fix_header(o: &mut String, scan_path: &str, applied: u64, failed: u64,
 }
 
 fn render_score_line(o: &mut String, before: f64, after: f64, applied: u64) {
-    let label = "SCORE";
-    let score_text = format!("{before:.0} → {after:.0}");
+    render_score_line_inner(o, before, after, applied, false);
+}
+
+fn render_score_line_estimated(o: &mut String, before: f64, after: f64, applied: u64) {
+    render_score_line_inner(o, before, after, applied, true);
+}
+
+fn render_score_line_inner(o: &mut String, before: f64, after: f64, applied: u64, estimated: bool) {
+    let label = if estimated { "SCORE (estimated)" } else { "SCORE" };
+    let score_text = if estimated {
+        format!("{before:.0} → ~{after:.0}")
+    } else {
+        format!("{before:.0} → {after:.0}")
+    };
     let pad = SEP_WIDTH.saturating_sub(label.len() + score_text.len());
     o.push_str(&format!("  {}{}{}\n", bold(label), " ".repeat(pad), score_color(after, &score_text)));
     if (before - after).abs() < 0.5 && applied > 0 {
@@ -631,7 +676,7 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
     let change_count = changes.map_or(0, std::vec::Vec::len) as u64;
 
     render_fix_header(&mut o, scan_path, change_count, 0, true);
-    render_score_line(&mut o, current_score, predicted, change_count);
+    render_score_line_estimated(&mut o, current_score, predicted, change_count);
 
     if let Some(changes) = changes {
         // Group by action type
@@ -679,6 +724,260 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
 /// "fix" → "fixes"
 const fn plural_es(n: usize) -> &'static str {
     if n == 1 { "" } else { "es" }
+}
+
+// ── Live fix streaming (Bug 5b) ─────────────────────────────
+
+/// Erase the previous line on stderr (same pattern as eval.rs).
+fn erase_prev_line() {
+    eprint!("\x1b[1A\x1b[2K");
+}
+
+/// Render a compact progress bar.
+fn render_progress_bar(completed: u64, total: u64) -> String {
+    let bar_width = 20usize;
+    let filled = if total > 0 { (completed * bar_width as u64 / total) as usize } else { 0 };
+    let empty = bar_width.saturating_sub(filled);
+    format!(
+        "[{}{}]  {}/{}",
+        bar_filled().repeat(filled),
+        bar_empty().repeat(empty),
+        completed,
+        total,
+    )
+}
+
+/// SSE-streaming fix apply with live progress display.
+async fn run_fix_stream(
+    client: &crate::engine_client::EngineClient,
+    body: &serde_json::Value,
+    _scan_path: &str,
+    model_label: Option<&str>,
+) -> i32 {
+    // Print header
+    let mode_str = model_label.unwrap_or("LLM");
+    eprintln!();
+    eprintln!(
+        "  {} {}",
+        bold(&format!("{} Complior Fix", diamond())),
+        bold(&format!("·  AI-enriched  ·  {mode_str}")),
+    );
+    eprintln!("  {}", separator());
+    eprintln!();
+
+    // Try SSE stream endpoint
+    let resp = match client.post_stream_long("/fix/apply-all/stream", body).await {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Fix streaming failed: {e}");
+            return 1;
+        }
+    };
+
+    let mut stream = resp.bytes_stream();
+    let mut buffer = String::new();
+    let mut current_event = String::new();
+    let mut total: u64 = 0;
+    let mut completed: u64 = 0;
+    let mut applied: u64 = 0;
+    let mut failed: u64 = 0;
+    let mut current_check: Option<String> = None;
+    let mut done_data: Option<serde_json::Value> = None;
+    let mut progress_line_shown = false;
+
+    // Completed fix entries for final report
+    let mut fix_lines: Vec<(String, String, String, bool)> = Vec::new(); // (check_id, path, action, success)
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = match chunk {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("\nStream error: {e}");
+                return 1;
+            }
+        };
+
+        buffer.push_str(&String::from_utf8_lossy(&chunk));
+
+        while let Some(newline_pos) = buffer.find('\n') {
+            let line = buffer[..newline_pos].trim_end_matches('\r').to_string();
+            buffer = buffer[newline_pos + 1..].to_string();
+
+            if line.is_empty() {
+                continue;
+            }
+
+            if let Some(event) = line.strip_prefix("event:") {
+                current_event = event.trim().to_string();
+                continue;
+            }
+
+            if let Some(data) = line.strip_prefix("data:") {
+                let data = data.trim();
+
+                match current_event.as_str() {
+                    "fix:start" => {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
+                            total = parsed.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                            eprintln!("  {} fixes to apply\n", total);
+                            // Print initial progress bar
+                            eprintln!("  {}", render_progress_bar(0, total));
+                            progress_line_shown = true;
+                        }
+                    }
+                    "fix:progress" => {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
+                            let check_id = parsed.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+                            let path = parsed.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+                            let action = parsed.get("action").and_then(|v| v.as_str()).unwrap_or("MODIFY");
+                            current_check = Some(check_id.to_string());
+
+                            // Erase progress bar and show current item
+                            if progress_line_shown {
+                                erase_prev_line();
+                            }
+                            let label = check_label(check_id);
+                            let short_path = shorten_path(path);
+                            eprintln!(
+                                "  {}  {:<16} {:<36} [{}]  {}",
+                                dim("◓"),
+                                label,
+                                short_path,
+                                action,
+                                dim("generating..."),
+                            );
+                            progress_line_shown = true;
+                        }
+                    }
+                    "fix:applied" => {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
+                            let check_id = parsed.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+                            let path = parsed.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+                            completed += 1;
+                            applied += 1;
+                            current_check = None;
+
+                            // Erase "generating..." line, show completed line + progress bar
+                            if progress_line_shown {
+                                erase_prev_line();
+                            }
+                            let label = check_label(check_id);
+                            let short_path = shorten_path(path);
+                            let action_str = if path.contains("docs/") || path.ends_with(".md") { "CREATE" } else { "MODIFY" };
+                            eprintln!(
+                                "  {}  {:<16} {:<36} [{}]",
+                                green(check_mark()),
+                                label,
+                                short_path,
+                                action_str,
+                            );
+                            fix_lines.push((check_id.to_string(), path.to_string(), action_str.to_string(), true));
+
+                            // Show updated progress bar
+                            eprintln!("  {}", render_progress_bar(completed, total));
+                            progress_line_shown = true;
+                        }
+                    }
+                    "fix:failed" => {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
+                            let check_id = parsed.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+                            let error = parsed.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                            completed += 1;
+                            failed += 1;
+                            current_check = None;
+
+                            if progress_line_shown {
+                                erase_prev_line();
+                            }
+                            let label = check_label(check_id);
+                            eprintln!(
+                                "  {}  {:<16} {}",
+                                red("✖"),
+                                label,
+                                dim(error),
+                            );
+                            fix_lines.push((check_id.to_string(), String::new(), String::new(), false));
+
+                            eprintln!("  {}", render_progress_bar(completed, total));
+                            progress_line_shown = true;
+                        }
+                    }
+                    "fix:done" => {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
+                            // Erase last progress bar
+                            if progress_line_shown {
+                                erase_prev_line();
+                            }
+                            done_data = Some(parsed);
+                        }
+                    }
+                    "fix:error" => {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
+                            let error = parsed.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                            eprintln!("\n  Fix error: {error}");
+                            return 1;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    // Print summary
+    if let Some(done) = done_data {
+        let summary = done.get("summary");
+        let score_before = summary.and_then(|s| s.get("scoreBefore")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+        let score_after = summary.and_then(|s| s.get("scoreAfter")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+
+        eprintln!();
+        eprintln!("  {}", separator());
+        let score_text = format!("{score_before:.0} → {score_after:.0}");
+        let pad = SEP_WIDTH.saturating_sub("SCORE".len() + score_text.len());
+        eprintln!("  {}{}{}", bold("SCORE"), " ".repeat(pad), score_color(score_after, &score_text));
+        eprintln!("  {}", separator());
+        eprintln!(
+            "  {} applied · {} failed",
+            green(&applied.to_string()),
+            if failed > 0 { bold_red(&failed.to_string()) } else { dim("0") },
+        );
+        eprintln!("  {}", separator());
+
+        // Show unfixed findings if any
+        if let Some(unfixed) = done.get("unfixedFindings").and_then(|v| v.as_array()) {
+            if !unfixed.is_empty() {
+                eprintln!();
+                eprintln!("  {}  ({} finding{})", bold("MANUAL ACTION NEEDED"), unfixed.len(), plural(unfixed.len()));
+                for item in unfixed {
+                    let check_id = item.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+                    let message = item.get("message").and_then(|v| v.as_str()).unwrap_or("");
+                    let label = check_label(check_id);
+                    eprintln!("    {}  {}", yellow("▸"), label);
+                    if !message.is_empty() {
+                        eprintln!("         {}", dim(message));
+                    }
+                }
+            }
+        }
+
+        eprintln!();
+    } else if let Some(check) = current_check {
+        eprintln!("\nStream ended unexpectedly while processing: {check}");
+        return 1;
+    }
+
+    0
+}
+
+/// Shorten a file path for display (keep last 2-3 components).
+fn shorten_path(path: &str) -> &str {
+    // Find a reasonable cutoff — show at most 40 chars from the end
+    if path.len() <= 40 {
+        return path;
+    }
+    // Find a '/' near the 40-char-from-end mark
+    let start = path.len().saturating_sub(40);
+    path[start..].find('/').map_or(path, |pos| &path[start + pos + 1..])
 }
 
 #[cfg(test)]

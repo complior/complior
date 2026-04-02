@@ -148,13 +148,24 @@ impl EngineClient {
 
     /// T906: Dry-run fix — preview fixes without writing files.
     /// Uses GET /fix/preview to get planned fixes and their score impact.
+    /// Applies diminishing returns (15% per fix) to avoid over-predicting score.
     pub async fn fix_dry_run(&self) -> Result<serde_json::Value> {
         let preview = self.get_json("/fix/preview").await?;
         let fixes = preview.get("fixes").and_then(|v| v.as_array());
 
-        // Sum up predicted score impact from individual plans
-        let total_impact: f64 = fixes
-            .map_or(0.0, |f| f.iter().filter_map(|p| p.get("scoreImpact").and_then(serde_json::Value::as_f64)).sum());
+        // Collect individual score impacts, sorted descending for diminishing returns
+        let mut impacts: Vec<f64> = fixes
+            .map_or(Vec::new(), |f| {
+                f.iter()
+                    .filter_map(|p| p.get("scoreImpact").and_then(serde_json::Value::as_f64))
+                    .collect()
+            });
+        impacts.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Apply 15% diminishing returns per subsequent fix
+        let adjusted_impact: f64 = impacts.iter().enumerate()
+            .map(|(i, &imp)| imp * 0.85_f64.powi(i as i32))
+            .sum();
 
         let changes: Vec<serde_json::Value> = fixes
             .map(|f| f.iter().map(|plan| {
@@ -183,12 +194,12 @@ impl EngineClient {
             .and_then(|v| v.get("score").and_then(serde_json::Value::as_f64))
             .unwrap_or(0.0);
 
-        let predicted = (current_score + total_impact).min(100.0);
+        let predicted = (current_score + adjusted_impact).min(100.0);
 
         Ok(serde_json::json!({
             "changes": changes,
             "predictedScore": predicted,
-            "totalImpact": total_impact,
+            "totalImpact": adjusted_impact,
         }))
     }
 

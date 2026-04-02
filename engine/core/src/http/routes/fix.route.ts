@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import type { FixService } from '../../services/fix-service.js';
 import type { UndoService } from '../../services/undo-service.js';
@@ -116,6 +117,84 @@ export const createFixRoute = (deps: FixRouteDeps) => {
         severity: f.severity,
         fix: f.fix,
       })),
+    });
+  });
+
+  // Apply all fixes with SSE streaming progress
+  app.post('/fix/apply-all/stream', async (c) => {
+    const data = await parseBody(c, FixApplyAllSchema);
+    const useAi = data.useAi ?? false;
+
+    return streamSSE(c, async (stream) => {
+      try {
+        const plans = fixService.previewAll();
+        const currentScore = fixService.getCurrentScore();
+
+        // Emit start event
+        await stream.writeSSE({
+          event: 'fix:start',
+          data: JSON.stringify({ total: plans.length, useAi, scoreBefore: currentScore }),
+        });
+
+        // Apply fixes with progress callback
+        let index = 0;
+        const onProgress = async (event: {
+          type: 'applying' | 'applied' | 'failed';
+          checkId: string;
+          path: string;
+          action?: string;
+          scoreAfter?: number;
+          error?: string;
+        }): Promise<void> => {
+          if (event.type === 'applying') {
+            await stream.writeSSE({
+              event: 'fix:progress',
+              data: JSON.stringify({
+                index, checkId: event.checkId, path: event.path,
+                action: event.action ?? 'MODIFY', status: 'applying',
+              }),
+            });
+          } else if (event.type === 'applied') {
+            await stream.writeSSE({
+              event: 'fix:applied',
+              data: JSON.stringify({
+                index, checkId: event.checkId, path: event.path,
+                scoreAfter: event.scoreAfter,
+              }),
+            });
+            index++;
+          } else {
+            await stream.writeSSE({
+              event: 'fix:failed',
+              data: JSON.stringify({ index, checkId: event.checkId, error: event.error }),
+            });
+            index++;
+          }
+        };
+
+        const results = await fixService.applyAll(useAi, data.projectPath, onProgress);
+        const applied = results.filter((r) => r.applied).length;
+        const failed = results.filter((r) => !r.applied).length;
+        const scoreBefore = results[0]?.scoreBefore ?? currentScore;
+        const scoreAfter = results.at(-1)?.scoreAfter ?? currentScore;
+
+        const unfixedFindings = fixService.getUnfixedFindings();
+
+        await stream.writeSSE({
+          event: 'fix:done',
+          data: JSON.stringify({
+            summary: { total: results.length, applied, failed, scoreBefore, scoreAfter },
+            unfixedFindings: unfixedFindings.map((f) => ({
+              checkId: f.checkId, message: f.message, severity: f.severity, fix: f.fix,
+            })),
+          }),
+        });
+      } catch (err) {
+        await stream.writeSSE({
+          event: 'fix:error',
+          data: JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
+        });
+      }
     });
   });
 
