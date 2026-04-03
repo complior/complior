@@ -188,13 +188,17 @@ pub enum Command {
         action: AgentAction,
     },
 
+    // === EXTRAS (behind feature flag) ===
+
     /// AIUC-1 certification readiness assessment
+    #[cfg(feature = "extras")]
     Cert {
         #[command(subcommand)]
         action: CertAction,
     },
 
     /// Chat with the compliance assistant (LLM-powered)
+    #[cfg(feature = "extras")]
     Chat {
         /// The question or message to send
         message: String,
@@ -209,6 +213,7 @@ pub enum Command {
     },
 
     /// Audit AI supply chain dependencies and model compliance cards
+    #[cfg(feature = "extras")]
     SupplyChain {
         /// Output as JSON
         #[arg(long)]
@@ -223,6 +228,7 @@ pub enum Command {
     },
 
     /// Compliance cost estimator (remediation, documentation, ROI)
+    #[cfg(feature = "extras")]
     Cost {
         /// Hourly rate in EUR (default: 150)
         #[arg(long, default_value = "150")]
@@ -236,6 +242,7 @@ pub enum Command {
     },
 
     /// Compliance debt score
+    #[cfg(feature = "extras")]
     Debt {
         /// Output as JSON
         #[arg(long)]
@@ -246,6 +253,7 @@ pub enum Command {
     },
 
     /// Simulate compliance actions (what-if score projection)
+    #[cfg(feature = "extras")]
     Simulate {
         /// Fix a specific finding (by check ID)
         #[arg(long)]
@@ -262,36 +270,42 @@ pub enum Command {
     },
 
     /// Query EU AI Act jurisdiction data (MSA, requirements)
+    #[cfg(feature = "extras")]
     Jurisdiction {
         #[command(subcommand)]
         action: JurisdictionAction,
     },
 
     /// MCP Compliance Proxy (intercept, log, enforce tool calls)
+    #[cfg(feature = "extras")]
     Proxy {
         #[command(subcommand)]
         action: ProxyAction,
     },
 
     /// Generate compliance documents from EU AI Act templates
+    #[cfg(feature = "extras")]
     Doc {
         #[command(subcommand)]
         action: DocAction,
     },
 
     /// Import external tool results (e.g. Promptfoo red-team output)
+    #[cfg(feature = "extras")]
     Import {
         #[command(subcommand)]
         action: ImportAction,
     },
 
     /// Run security red-team probes against your AI system
+    #[cfg(feature = "extras")]
     Redteam {
         #[command(subcommand)]
         action: RedteamAction,
     },
 
     /// Manage external security tools (install, update, status)
+    #[cfg(feature = "extras")]
     Tools {
         #[command(subcommand)]
         action: ToolsAction,
@@ -396,6 +410,7 @@ pub enum Command {
     },
 
     /// Run comprehensive audit (static scan + dynamic eval + security)
+    #[cfg(feature = "extras")]
     Audit {
         /// Target AI endpoint URL
         target: String,
@@ -413,12 +428,15 @@ pub enum Command {
     },
 
     /// Authenticate with `SaaS` dashboard via browser
+    #[cfg(feature = "extras")]
     Login,
 
     /// Clear `SaaS` authentication tokens
+    #[cfg(feature = "extras")]
     Logout,
 
     /// Sync data with `SaaS` (passports, scans, documents)
+    #[cfg(feature = "extras")]
     Sync {
         /// Sync only passports
         #[arg(long)]
@@ -773,6 +791,7 @@ pub enum AgentAction {
     },
 }
 
+#[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum CertAction {
     /// Compute AIUC-1 readiness score for an agent
@@ -827,6 +846,7 @@ pub enum DaemonAction {
     Stop,
 }
 
+#[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum ProxyAction {
     /// Start MCP proxy bridge to upstream server
@@ -844,6 +864,7 @@ pub enum ProxyAction {
     Status,
 }
 
+#[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum DocAction {
     /// Generate compliance documents (single type or all)
@@ -873,6 +894,7 @@ pub enum DocAction {
     },
 }
 
+#[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum ImportAction {
     /// Import Promptfoo red-team results (JSON)
@@ -887,6 +909,7 @@ pub enum ImportAction {
     },
 }
 
+#[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum RedteamAction {
     /// Run red-team security probes against your AI system
@@ -934,6 +957,7 @@ pub enum RedteamAction {
     },
 }
 
+#[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum ToolsAction {
     /// Show status of external security tools
@@ -942,6 +966,7 @@ pub enum ToolsAction {
     Update,
 }
 
+#[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum JurisdictionAction {
     /// List all 30 EU/EEA jurisdictions
@@ -962,18 +987,15 @@ pub enum JurisdictionAction {
 }
 
 /// Returns true if the command requires a running engine to function.
-/// Commands like version, init, update, daemon, login, logout work without the engine.
-pub const fn needs_engine(cli: &Cli) -> bool {
-    !matches!(
-        &cli.command,
-        Some(
-            Command::Version
-                | Command::Update
-                | Command::Daemon { .. }
-                | Command::Login
-                | Command::Logout
-        ) | None
-    )
+/// Commands like version, init, update, daemon work without the engine.
+pub fn needs_engine(cli: &Cli) -> bool {
+    match &cli.command {
+        None => false,
+        Some(Command::Version | Command::Update | Command::Daemon { .. }) => false,
+        #[cfg(feature = "extras")]
+        Some(Command::Login | Command::Logout) => false,
+        _ => true,
+    }
 }
 
 /// Extract the explicit project path from CLI command (if provided).
@@ -981,8 +1003,7 @@ pub const fn needs_engine(cli: &Cli) -> bool {
 pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
     let raw = match &cli.command {
         Some(Command::Scan { path, .. } | Command::Fix { path, .. } | Command::Init {
-path, .. } | Command::Report { path, .. } | Command::Audit { path, .. } |
-Command::SupplyChain { path, .. }) => path.as_deref(),
+path, .. } | Command::Report { path, .. }) => path.as_deref(),
         Some(Command::Eval { path, .. }) => path.as_deref(),
         Some(Command::Agent { action }) => match action {
             AgentAction::Init { path, .. }
@@ -1005,10 +1026,14 @@ Command::SupplyChain { path, .. }) => path.as_deref(),
             | AgentAction::Audit { path, .. }
             | AgentAction::Rename { path, .. } => path.as_deref(),
         },
+        #[cfg(feature = "extras")]
+        Some(Command::Audit { path, .. } | Command::SupplyChain { path, .. }) => path.as_deref(),
+        #[cfg(feature = "extras")]
         Some(Command::Cert { action }) => match action {
             CertAction::Readiness { path, .. }
             | CertAction::Test { path, .. } => path.as_deref(),
         },
+        #[cfg(feature = "extras")]
         Some(Command::Doc { action }) => match action {
             DocAction::Generate { path, .. } => path.as_deref(),
         },
@@ -1027,19 +1052,23 @@ pub const fn wants_pid_file(cli: &Cli) -> bool {
 }
 
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
-pub const fn is_headless(cli: &Cli) -> bool {
+pub fn is_headless(cli: &Cli) -> bool {
     match &cli.command {
-        Some(Command::Scan { .. }) => true,
-        Some(Command::Fix { .. }) => true,
         Some(
-            Command::Version
+            Command::Scan { .. }
+            | Command::Fix { .. }
+            | Command::Version
             | Command::Doctor
             | Command::Report { .. }
             | Command::Init { .. }
             | Command::Update
             | Command::Daemon { .. }
             | Command::Agent { .. }
-            | Command::Cert { .. }
+            | Command::Eval { .. },
+        ) => true,
+        #[cfg(feature = "extras")]
+        Some(
+            Command::Cert { .. }
             | Command::Chat { .. }
             | Command::SupplyChain { .. }
             | Command::Cost { .. }
@@ -1051,13 +1080,14 @@ pub const fn is_headless(cli: &Cli) -> bool {
             | Command::Import { .. }
             | Command::Redteam { .. }
             | Command::Tools { .. }
-            | Command::Eval { .. }
             | Command::Audit { .. }
             | Command::Login
             | Command::Logout
             | Command::Sync { .. },
         ) => true,
         None => false,
+        #[allow(unreachable_patterns)]
+        _ => true,
     }
 }
 
@@ -1817,6 +1847,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_chat() {
         let cli = Cli::parse_from(["complior", "chat", "What is Article 5?"]);
@@ -1831,6 +1862,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_chat_json() {
         let cli = Cli::parse_from(["complior", "chat", "test", "--json"]);
@@ -1843,6 +1875,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_chat_model() {
         let cli = Cli::parse_from(["complior", "chat", "test", "--model", "gpt-4o"]);
@@ -1897,6 +1930,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_cert_readiness() {
         let cli = Cli::parse_from(["complior", "cert", "readiness", "my-bot"]);
@@ -1911,6 +1945,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_cert_readiness_json_path() {
         let cli = Cli::parse_from(["complior", "cert", "readiness", "my-bot", "--json", "/tmp/project"]);
@@ -1924,6 +1959,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_sync_audit() {
         let cli = Cli::parse_from(["complior", "sync", "--audit"]);
@@ -1937,6 +1973,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_sync_all_new_flags() {
         let cli = Cli::parse_from(["complior", "sync", "--audit", "--evidence", "--registry"]);
@@ -1950,6 +1987,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_simulate_fix() {
         let cli = Cli::parse_from(["complior", "simulate", "--fix", "l1-risk"]);
@@ -1965,6 +2003,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_simulate_add_doc() {
         let cli = Cli::parse_from(["complior", "simulate", "--add-doc", "fria"]);
@@ -1977,6 +2016,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_simulate_complete_passport() {
         let cli = Cli::parse_from(["complior", "simulate", "--complete-passport", "description"]);
@@ -1988,6 +2028,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_simulate_multiple_actions() {
         let cli = Cli::parse_from([
@@ -2010,6 +2051,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_simulate_json() {
         let cli = Cli::parse_from(["complior", "simulate", "--fix", "l1-risk", "--json"]);
@@ -2087,6 +2129,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_proxy_start() {
         let cli = Cli::parse_from(["complior", "proxy", "start", "npx", "@modelcontextprotocol/server-filesystem"]);
@@ -2100,6 +2143,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_proxy_stop() {
         let cli = Cli::parse_from(["complior", "proxy", "stop"]);
@@ -2110,6 +2154,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_proxy_status() {
         let cli = Cli::parse_from(["complior", "proxy", "status"]);
@@ -2120,6 +2165,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_proxy_start_multiple_args() {
         let cli = Cli::parse_from(["complior", "proxy", "start", "node", "server.js", "--port", "3000"]);
@@ -2132,6 +2178,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_doc_generate_type() {
         let cli = Cli::parse_from(["complior", "doc", "generate", "my-bot", "--type", "ai-literacy"]);
@@ -2149,6 +2196,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_doc_generate_all() {
         let cli = Cli::parse_from(["complior", "doc", "generate", "my-bot", "--all"]);
@@ -2163,6 +2211,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_doc_generate_all_with_options() {
         let cli = Cli::parse_from([
@@ -2230,6 +2279,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_tools_status() {
         let cli = Cli::parse_from(["complior", "tools", "status"]);
@@ -2240,6 +2290,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_tools_update() {
         let cli = Cli::parse_from(["complior", "tools", "update"]);
@@ -2463,6 +2514,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_redteam_target_alias() {
         let cli = Cli::parse_from(["complior", "redteam", "target", "http://localhost:4000"]);
@@ -2482,6 +2534,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_audit_basic() {
         let cli = Cli::parse_from(["complior", "audit", "http://localhost:4000/api/chat"]);
@@ -2497,6 +2550,7 @@ mod tests {
         assert!(is_headless(&cli));
     }
 
+    #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_audit_full_flags() {
         let cli = Cli::parse_from([
@@ -2517,7 +2571,7 @@ mod tests {
     }
 
     #[test]
-    fn cli_headless_detection() {
+    fn cli_headless_detection_core() {
         let json_cli = Cli::parse_from(["complior", "scan", "--json"]);
         assert!(is_headless(&json_cli));
 
@@ -2541,7 +2595,11 @@ mod tests {
 
         let eval_cli = Cli::parse_from(["complior", "eval", "http://localhost:4000"]);
         assert!(is_headless(&eval_cli));
+    }
 
+    #[cfg(feature = "extras")]
+    #[test]
+    fn cli_headless_detection_extras() {
         let audit_cli = Cli::parse_from(["complior", "audit", "http://localhost:4000"]);
         assert!(is_headless(&audit_cli));
     }

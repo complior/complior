@@ -1,6 +1,6 @@
 {
   "name": "@complior/engine",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "type": "module",
   "main": "src/index.ts",
   "description": "AI Act Compliance Engine — deterministic scanner, auto-fixer, reporter, and MCP server for EU AI Act. Powers the Complior CLI daemon.",

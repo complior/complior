@@ -5,35 +5,57 @@
 //! logging. The output goes directly to stdout/stderr for consumption by CI
 //! runners, shell scripts, and human operators.
 
+// Core
 pub mod agent;
-pub mod cert;
-pub mod chat;
 mod commands;
-pub mod cost;
-pub mod interactive;
 pub mod common;
-pub mod debt;
 pub mod daemon;
-pub mod doc;
-pub mod jurisdiction;
+pub mod eval;
 pub mod fix;
 pub mod format;
-pub mod login;
-pub mod proxy;
+pub mod interactive;
 pub mod scan;
-pub mod simulate;
-pub mod import;
-pub mod redteam;
-pub mod tools;
-pub mod supply_chain;
-pub mod eval;
+
+// Extras
+#[cfg(feature = "extras")]
 pub mod audit;
+#[cfg(feature = "extras")]
+pub mod cert;
+#[cfg(feature = "extras")]
+pub mod chat;
+#[cfg(feature = "extras")]
+pub mod cost;
+#[cfg(feature = "extras")]
+pub mod debt;
+#[cfg(feature = "extras")]
+pub mod doc;
+#[cfg(feature = "extras")]
+pub mod import;
+#[cfg(feature = "extras")]
+pub mod jurisdiction;
+#[cfg(feature = "extras")]
+pub mod login;
+#[cfg(feature = "extras")]
+pub mod proxy;
+#[cfg(feature = "extras")]
+pub mod redteam;
+#[cfg(feature = "extras")]
+pub mod simulate;
+#[cfg(feature = "extras")]
+pub mod supply_chain;
+#[cfg(feature = "extras")]
 pub mod sync;
+#[cfg(feature = "extras")]
+pub mod tools;
+
 #[cfg(test)]
 mod tests;
 
 pub use commands::{run_doctor, run_init, run_report, run_update, run_version};
 pub use fix::run_headless_fix;
-pub use login::{run_login, run_logout};
 pub use scan::run_headless_scan;
+
+#[cfg(feature = "extras")]
+pub use login::{run_login, run_logout};
+#[cfg(feature = "extras")]
 pub use sync::run_sync;

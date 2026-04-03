@@ -1,50 +1,82 @@
+// TUI-only modules
+#[cfg(feature = "tui")]
 mod animation;
+#[cfg(feature = "tui")]
 mod app;
+#[cfg(feature = "tui")]
 mod chat_stream;
+#[cfg(feature = "tui")]
+mod components;
+#[cfg(feature = "tui")]
+mod input;
+#[cfg(feature = "tui")]
+mod layout;
+#[cfg(feature = "tui")]
+mod obligations;
+#[cfg(feature = "tui")]
+mod session;
+#[cfg(feature = "tui")]
+mod theme;
+#[cfg(feature = "tui")]
+mod theme_picker;
+#[cfg(feature = "tui")]
+mod views;
+#[cfg(feature = "tui")]
+mod watcher;
+#[cfg(feature = "tui")]
+mod widgets;
+
+// Extras-only modules
+#[cfg(feature = "extras")]
+mod saas_client;
+
+// Core modules (always available)
 mod contract_test;
 mod cli;
-mod components;
 mod config;
 mod daemon;
 mod engine_client;
 mod engine_process;
-mod llm_settings;
-mod saas_client;
 mod error;
 mod headless;
-mod input;
-mod layout;
-mod obligations;
-
-mod session;
-mod theme;
-mod theme_picker;
 mod types;
-mod views;
-mod watcher;
-mod widgets;
+
+// LLM settings (TUI overlay + types)
+#[cfg(feature = "tui")]
+mod llm_settings;
 
 use std::io::{self, Write as _};
-use std::time::Duration;
-
-use crossterm::event::{
-    DisableMouseCapture, EnableMouseCapture, Event, EventStream,
-};
-use crossterm::execute;
-use crossterm::terminal::{
-    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
-};
-use futures_util::StreamExt;
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
-use tokio::sync::mpsc;
 
 use clap::Parser;
 
-use app::executor::execute_command;
-use app::{App, AppCommand};
 use config::load_config;
 use engine_process::EngineManager;
+
+#[cfg(feature = "tui")]
+use std::time::Duration;
+#[cfg(feature = "tui")]
+use crossterm::event::{
+    DisableMouseCapture, EnableMouseCapture, Event, EventStream,
+};
+#[cfg(feature = "tui")]
+use crossterm::execute;
+#[cfg(feature = "tui")]
+use crossterm::terminal::{
+    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+};
+#[cfg(feature = "tui")]
+use futures_util::StreamExt;
+#[cfg(feature = "tui")]
+use ratatui::backend::CrosstermBackend;
+#[cfg(feature = "tui")]
+use ratatui::Terminal;
+#[cfg(feature = "tui")]
+use tokio::sync::mpsc;
+#[cfg(feature = "tui")]
+use app::executor::execute_command;
+#[cfg(feature = "tui")]
+use app::{App, AppCommand};
+#[cfg(feature = "tui")]
 use views::dashboard::render_dashboard;
 
 #[tokio::main]
@@ -60,6 +92,7 @@ async fn main() -> color_eyre::Result<()> {
 
     // Parse CLI args with clap
     let parsed_cli = cli::Cli::parse();
+    #[cfg(feature = "tui")]
     let resume = parsed_cli.resume;
     config.engine_url_override = parsed_cli.engine_url.clone();
 
@@ -169,59 +202,8 @@ async fn main() -> color_eyre::Result<()> {
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
                 0
             }
-            Some(cli::Command::Chat { message, json, model }) => {
-                headless::chat::run_chat(message, *json, model.as_deref(), &config).await
-            }
             Some(cli::Command::Agent { action }) => {
                 headless::agent::run_agent_command(action, &config).await
-            }
-            Some(cli::Command::Cert { action }) => {
-                headless::cert::run_cert_command(action, &config).await
-            }
-            Some(cli::Command::SupplyChain { json, models, path }) => {
-                headless::supply_chain::run_supply_chain(*json, *models, path.as_deref(), &config).await
-            }
-            Some(cli::Command::Cost { hourly_rate, agent, json }) => {
-                headless::cost::run_cost(*hourly_rate, agent.as_deref(), *json, &config).await
-            }
-            Some(cli::Command::Debt { json, trend }) => {
-                headless::debt::run_debt(*json, *trend, &config).await
-            }
-            Some(cli::Command::Simulate { fix, add_doc, complete_passport, json }) => {
-                headless::simulate::run_simulate(fix, add_doc, complete_passport, *json, &config).await
-            }
-            Some(cli::Command::Login) => {
-                match headless::run_login(&config).await {
-                    Ok(()) => 0,
-                    Err(e) => { eprintln!("Login failed: {e}"); 1 }
-                }
-            }
-            Some(cli::Command::Logout) => {
-                match headless::run_logout(&config).await {
-                    Ok(()) => 0,
-                    Err(e) => { eprintln!("Logout failed: {e}"); 1 }
-                }
-            }
-            Some(cli::Command::Sync { passport, scan, docs, audit, evidence, registry, .. }) => {
-                headless::run_sync(*passport, *scan, *docs, *audit, *evidence, *registry, &config).await
-            }
-            Some(cli::Command::Doc { action }) => {
-                headless::doc::run_doc_command(action, &config).await
-            }
-            Some(cli::Command::Jurisdiction { action }) => {
-                headless::jurisdiction::run_jurisdiction_command(action, &config).await
-            }
-            Some(cli::Command::Proxy { action }) => {
-                headless::proxy::run_proxy_command(action, &config).await
-            }
-            Some(cli::Command::Import { action }) => {
-                headless::import::run_import_command(action, &config).await
-            }
-            Some(cli::Command::Redteam { action }) => {
-                headless::redteam::run_redteam_command(action, &config).await
-            }
-            Some(cli::Command::Tools { action }) => {
-                headless::tools::run_tools_command(action, &config).await
             }
             Some(cli::Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run, path }) => {
                 if *last {
@@ -244,6 +226,73 @@ async fn main() -> color_eyre::Result<()> {
                     1
                 }
             }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Chat { message, json, model }) => {
+                headless::chat::run_chat(message, *json, model.as_deref(), &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Cert { action }) => {
+                headless::cert::run_cert_command(action, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::SupplyChain { json, models, path }) => {
+                headless::supply_chain::run_supply_chain(*json, *models, path.as_deref(), &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Cost { hourly_rate, agent, json }) => {
+                headless::cost::run_cost(*hourly_rate, agent.as_deref(), *json, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Debt { json, trend }) => {
+                headless::debt::run_debt(*json, *trend, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Simulate { fix, add_doc, complete_passport, json }) => {
+                headless::simulate::run_simulate(fix, add_doc, complete_passport, *json, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Login) => {
+                match headless::run_login(&config).await {
+                    Ok(()) => 0,
+                    Err(e) => { eprintln!("Login failed: {e}"); 1 }
+                }
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Logout) => {
+                match headless::run_logout(&config).await {
+                    Ok(()) => 0,
+                    Err(e) => { eprintln!("Logout failed: {e}"); 1 }
+                }
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Sync { passport, scan, docs, audit, evidence, registry, .. }) => {
+                headless::run_sync(*passport, *scan, *docs, *audit, *evidence, *registry, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Doc { action }) => {
+                headless::doc::run_doc_command(action, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Jurisdiction { action }) => {
+                headless::jurisdiction::run_jurisdiction_command(action, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Proxy { action }) => {
+                headless::proxy::run_proxy_command(action, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Import { action }) => {
+                headless::import::run_import_command(action, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Redteam { action }) => {
+                headless::redteam::run_redteam_command(action, &config).await
+            }
+            #[cfg(feature = "extras")]
+            Some(cli::Command::Tools { action }) => {
+                headless::tools::run_tools_command(action, &config).await
+            }
+            #[cfg(feature = "extras")]
             Some(cli::Command::Audit { target, agent, json, path }) => {
                 headless::audit::run_audit_command(target, agent.as_deref(), *json, path.as_deref(), &config).await
             }
@@ -254,161 +303,176 @@ async fn main() -> color_eyre::Result<()> {
         std::process::exit(code);
     }
 
-    // Initialize theme from config
-    theme::init_theme(&config.theme);
-
-    // Engine manager: auto-launch or external
-    // Workspace root is parent of cli/ (CARGO_MANIFEST_DIR at compile time)
-    let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap_or_else(|| std::path::Path::new("."));
-
-    #[allow(clippy::option_if_let_else)]
-    let mut engine_mgr = if let Some(ref url) = config.engine_url_override {
-        // External mode — extract port for display
-        let port = url
-            .rsplit(':')
-            .next()
-            .and_then(|p| p.trim_end_matches('/').parse::<u16>().ok())
-            .unwrap_or(3099);
-        EngineManager::external(port)
-    } else {
-        // Check for existing daemon before auto-launching
-        let project_path = std::env::current_dir().unwrap_or_default();
-        if let Some(info) = daemon::find_running_daemon(&project_path) {
-            // Reuse existing daemon (External mode — won't be killed on TUI exit)
-            tracing::info!("Found daemon on port {} (PID {})", info.port, info.pid);
-            EngineManager::external(info.port)
-        } else {
-            // Auto-launch with PID file so other instances can discover it
-            let mut mgr = EngineManager::new(workspace_root).with_project_path(&project_path);
-            let pid_path = daemon::pid_file_path(&project_path);
-            match mgr.start_with_pid(&pid_path, config.watch_on_start) {
-                Ok(port) => {
-                    tracing::info!("Engine auto-launched on port {port}");
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to auto-launch engine: {e}");
-                    // Fall through — will use default port from config
-                }
-            }
-            mgr
-        }
-    };
-
-    // Create app with engine URL (either auto-launched or override)
-    let effective_url = config
-        .engine_url_override
-        .clone()
-        .unwrap_or_else(|| {
-            if engine_mgr.port > 0 {
-                engine_mgr.engine_url()
-            } else {
-                config.engine_url()
-            }
-        });
-
-    let mut app = App::new(config.clone());
-    // Override engine client with the effective URL
-    app.engine_client = engine_client::EngineClient::from_url(&effective_url);
-    // Start splash animation (only in production, not in tests)
-    app.animation.start_splash();
-
-    // Check for --resume flag
-    if resume
-        && let Ok(data) = session::load_session("latest").await
+    // Without TUI feature, no-subcommand = show help
+    #[cfg(not(feature = "tui"))]
     {
-        app.load_session_data(data);
-        tracing::info!("Resumed session 'latest'");
+        eprintln!("Complior v{}", env!("CARGO_PKG_VERSION"));
+        eprintln!("Run 'complior --help' for available commands");
+        eprintln!("Core pipeline: complior init -> scan -> eval -> fix");
+        std::process::exit(0);
     }
 
-    // Parse --yes flag for non-interactive onboarding
-    let skip_onboarding = parsed_cli.yes
-        || std::env::var("CI").is_ok();
+    // === TUI startup (only compiled with `tui` feature) ===
+    #[cfg(feature = "tui")]
+    {
+        // Initialize theme from config
+        theme::init_theme(&config.theme);
 
-    // Show onboarding on first run, or provider setup if no providers
-    if !config.onboarding_completed && !skip_onboarding {
-        // Check for partial resume
-        let wiz = if let Some(last_step) = config.onboarding_last_step {
-            crate::views::onboarding::OnboardingWizard::resume(last_step)
+        // Engine manager: auto-launch or external
+        // Workspace root is parent of cli/ (CARGO_MANIFEST_DIR at compile time)
+        let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."));
+
+        #[allow(clippy::option_if_let_else)]
+        let mut engine_mgr = if let Some(ref url) = config.engine_url_override {
+            // External mode — extract port for display
+            let port = url
+                .rsplit(':')
+                .next()
+                .and_then(|p| p.trim_end_matches('/').parse::<u16>().ok())
+                .unwrap_or(3099);
+            EngineManager::external(port)
         } else {
-            crate::views::onboarding::OnboardingWizard::new()
+            // Check for existing daemon before auto-launching
+            let project_path = std::env::current_dir().unwrap_or_default();
+            if let Some(info) = daemon::find_running_daemon(&project_path) {
+                // Reuse existing daemon (External mode — won't be killed on TUI exit)
+                tracing::info!("Found daemon on port {} (PID {})", info.port, info.pid);
+                EngineManager::external(info.port)
+            } else {
+                // Auto-launch with PID file so other instances can discover it
+                let mut mgr = EngineManager::new(workspace_root).with_project_path(&project_path);
+                let pid_path = daemon::pid_file_path(&project_path);
+                match mgr.start_with_pid(&pid_path, config.watch_on_start) {
+                    Ok(port) => {
+                        tracing::info!("Engine auto-launched on port {port}");
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to auto-launch engine: {e}");
+                        // Fall through — will use default port from config
+                    }
+                }
+                mgr
+            }
         };
-        app.onboarding = Some(wiz);
-        app.overlay = types::Overlay::Onboarding;
-    } else if !config.onboarding_completed && skip_onboarding {
-        // --yes or CI: apply defaults and mark complete
-        config::mark_onboarding_complete().await;
-        app.config.onboarding_completed = true;
-    }
 
-    // Build initial file tree
-    app.load_file_tree().await;
+        // Create app with engine URL (either auto-launched or override)
+        let effective_url = config
+            .engine_url_override
+            .clone()
+            .unwrap_or_else(|| {
+                if engine_mgr.port > 0 {
+                    engine_mgr.engine_url()
+                } else {
+                    config.engine_url()
+                }
+            });
 
-    // Setup terminal
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    // Enable xterm modifyOtherKeys mode 2 — makes Shift+Enter distinguishable
-    // Works in tmux 3.2+ (unlike Kitty CSI u protocol)
-    let _ = stdout.write_all(b"\x1b[>4;2m");
-    let _ = stdout.flush();
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
+        let mut app = App::new(config.clone());
+        // Override engine client with the effective URL
+        app.engine_client = engine_client::EngineClient::from_url(&effective_url);
+        // Start splash animation (only in production, not in tests)
+        app.animation.start_splash();
 
-    // Wait for engine if we auto-launched it
-    if engine_mgr.status == engine_process::EngineProcessStatus::Starting {
-        app.engine_status = types::EngineConnectionStatus::Connecting;
-        app.messages.push(types::ChatMessage::new(
-            types::MessageRole::System,
-            "Starting engine...".to_string(),
-        ));
-
-        // Render once to show "Starting engine..."
-        terminal.draw(|frame| render_dashboard(frame, &app))?;
-
-        if engine_mgr.wait_for_ready(&app.engine_client).await {
-            app.engine_status = types::EngineConnectionStatus::Connected;
-            app.messages.push(types::ChatMessage::new(
-                types::MessageRole::System,
-                format!("Engine ready on port {}.", engine_mgr.port),
-            ));
-        } else {
-            app.engine_status = types::EngineConnectionStatus::Disconnected;
-            app.messages.push(types::ChatMessage::new(
-                types::MessageRole::System,
-                "Engine failed to start. Use /reconnect or restart.".to_string(),
-            ));
+        // Check for --resume flag
+        if resume
+            && let Ok(data) = session::load_session("latest").await
+        {
+            app.load_session_data(data);
+            tracing::info!("Resumed session 'latest'");
         }
+
+        // Parse --yes flag for non-interactive onboarding
+        let skip_onboarding = parsed_cli.yes
+            || std::env::var("CI").is_ok();
+
+        // Show onboarding on first run, or provider setup if no providers
+        if !config.onboarding_completed && !skip_onboarding {
+            // Check for partial resume
+            let wiz = if let Some(last_step) = config.onboarding_last_step {
+                crate::views::onboarding::OnboardingWizard::resume(last_step)
+            } else {
+                crate::views::onboarding::OnboardingWizard::new()
+            };
+            app.onboarding = Some(wiz);
+            app.overlay = types::Overlay::Onboarding;
+        } else if !config.onboarding_completed && skip_onboarding {
+            // --yes or CI: apply defaults and mark complete
+            config::mark_onboarding_complete().await;
+            app.config.onboarding_completed = true;
+        }
+
+        // Build initial file tree
+        app.load_file_tree().await;
+
+        // Setup terminal
+        enable_raw_mode()?;
+        let mut stdout = io::stdout();
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+        // Enable xterm modifyOtherKeys mode 2 — makes Shift+Enter distinguishable
+        // Works in tmux 3.2+ (unlike Kitty CSI u protocol)
+        let _ = stdout.write_all(b"\x1b[>4;2m");
+        let _ = stdout.flush();
+        let backend = CrosstermBackend::new(stdout);
+        let mut terminal = Terminal::new(backend)?;
+        terminal.clear()?;
+
+        // Wait for engine if we auto-launched it
+        if engine_mgr.status == engine_process::EngineProcessStatus::Starting {
+            app.engine_status = types::EngineConnectionStatus::Connecting;
+            app.messages.push(types::ChatMessage::new(
+                types::MessageRole::System,
+                "Starting engine...".to_string(),
+            ));
+
+            // Render once to show "Starting engine..."
+            terminal.draw(|frame| render_dashboard(frame, &app))?;
+
+            if engine_mgr.wait_for_ready(&app.engine_client).await {
+                app.engine_status = types::EngineConnectionStatus::Connected;
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    format!("Engine ready on port {}.", engine_mgr.port),
+                ));
+            } else {
+                app.engine_status = types::EngineConnectionStatus::Disconnected;
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    "Engine failed to start. Use /reconnect or restart.".to_string(),
+                ));
+            }
+        }
+
+        // Run the event loop
+        let result = run_event_loop(&mut terminal, &mut app, &mut engine_mgr).await;
+
+        // Shutdown engine
+        engine_mgr.shutdown();
+
+        // Auto-save session on exit
+        if let Err(e) = session::save_session(&app.to_session_data(), "latest").await {
+            tracing::warn!("Failed to save session: {e}");
+        }
+
+        // Restore terminal
+        disable_raw_mode()?;
+        // Disable modifyOtherKeys
+        let _ = execute!(terminal.backend_mut(), crossterm::style::Print("\x1b[>4;0m"));
+        execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        )?;
+        terminal.show_cursor()?;
+
+        result?;
     }
 
-    // Run the event loop
-    let result = run_event_loop(&mut terminal, &mut app, &mut engine_mgr).await;
-
-    // Shutdown engine
-    engine_mgr.shutdown();
-
-    // Auto-save session on exit
-    if let Err(e) = session::save_session(&app.to_session_data(), "latest").await {
-        tracing::warn!("Failed to save session: {e}");
-    }
-
-    // Restore terminal
-    disable_raw_mode()?;
-    // Disable modifyOtherKeys
-    let _ = execute!(terminal.backend_mut(), crossterm::style::Print("\x1b[>4;0m"));
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-
-    result?;
     Ok(())
 }
 
+#[cfg(feature = "tui")]
 async fn run_event_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
@@ -564,4 +628,3 @@ async fn run_event_loop(
 
     Ok(())
 }
-

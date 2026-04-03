@@ -439,6 +439,7 @@ pub async fn save_onboarding_partial(last_step: usize) {
 
 /// Save all onboarding results from the wizard — split across both files.
 /// Global: theme. Project: requirements, role, industry, ai provider, etc.
+#[cfg(feature = "tui")]
 pub async fn save_onboarding_results(
     wizard: &crate::views::onboarding::OnboardingWizard,
 ) {
@@ -648,11 +649,12 @@ pub fn validate_api_key(provider: &str, key: &str) -> Result<(), String> {
 
 /// Resolve provider name to its environment variable key.
 fn provider_env_key(provider: &str) -> Option<&'static str> {
-    use crate::llm_settings::PROVIDERS;
-    PROVIDERS
-        .iter()
-        .find(|p| p.name() == provider)
-        .map(|p| p.env_var())
+    match provider {
+        "anthropic" => Some("ANTHROPIC_API_KEY"),
+        "openai" => Some("OPENAI_API_KEY"),
+        "openrouter" => Some("OPENROUTER_API_KEY"),
+        _ => None,
+    }
 }
 
 /// Save an LLM API key to `~/.config/complior/credentials`.

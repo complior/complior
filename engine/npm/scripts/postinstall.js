@@ -8,7 +8,7 @@ import { execSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BIN_DIR = join(__dirname, "..", "bin");
-const REPO = "a3ka/complior";
+const REPO = "complior/complior";
 
 function getPlatformArtifact() {
   const platform = process.platform;

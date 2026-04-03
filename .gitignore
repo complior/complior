@@ -43,4 +43,5 @@ coverage/
 
 # Generated reports & exports (timestamp-specific)
 COMPLIANCE-REPORT-*.md
+E2E-REPORT-*.md
 *-passport-export.json
