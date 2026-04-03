@@ -3,8 +3,18 @@ use crate::config::TuiConfig;
 
 use super::common::{ensure_engine, resolve_project_path_buf, url_encode};
 
-/// Walk up from `project_path` to find the complior repo root (containing engine/).
+/// Find the engine root directory.
+/// Priority: COMPLIOR_ENGINE_DIR env var → walk up from project_path.
 pub fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
+    // 1. Check env var (set by npm wrapper's bin/run.js)
+    if let Ok(dir) = std::env::var("COMPLIOR_ENGINE_DIR") {
+        let p = std::path::PathBuf::from(&dir);
+        if p.join("src").join("server.ts").exists() {
+            return Some(p);
+        }
+    }
+
+    // 2. Walk up from project_path to find repo root
     let mut dir = project_path.to_path_buf();
     loop {
         if dir.join("engine").join("core").join("src").join("server.ts").exists() {
