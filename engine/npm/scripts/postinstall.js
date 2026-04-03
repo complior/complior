@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 // Downloads the platform-specific Complior binary after npm install
-import { createWriteStream, chmodSync, existsSync, mkdirSync } from "node:fs";
+import { createWriteStream, chmodSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { get } from "node:https";
-import { execSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BIN_DIR = join(__dirname, "..", "bin");
 const REPO = "complior/complior";
+
+function getPackageVersion() {
+  const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf8"));
+  return `v${pkg.version}`;
+}
 
 function getPlatformArtifact() {
   const platform = process.platform;
@@ -30,26 +34,6 @@ function getPlatformArtifact() {
     process.exit(1);
   }
   return artifact;
-}
-
-function getLatestVersion() {
-  return new Promise((resolve, reject) => {
-    get(
-      `https://api.github.com/repos/${REPO}/releases/latest`,
-      { headers: { "User-Agent": "ai-comply-npm" } },
-      (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(data).tag_name);
-          } catch {
-            reject(new Error("Failed to parse GitHub release info"));
-          }
-        });
-      }
-    ).on("error", reject);
-  });
 }
 
 function download(url, dest) {
@@ -85,7 +69,7 @@ async function main() {
   console.log(`Downloading Complior binary for ${process.platform}-${process.arch}...`);
 
   try {
-    const version = await getLatestVersion();
+    const version = getPackageVersion();
     const url = `https://github.com/${REPO}/releases/download/${version}/${artifact}`;
 
     if (!existsSync(BIN_DIR)) {
