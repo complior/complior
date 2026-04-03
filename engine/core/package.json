@@ -52,22 +52,15 @@
     "@ai-sdk/anthropic": "^2.0.65",
     "@ai-sdk/openai": "^2.0.91",
     "@hono/node-server": "^1.19.10",
-    "@modelcontextprotocol/sdk": "^1.26.0",
     "ai": "^5.0.135",
-    "better-sqlite3": "^11.0.0",
     "chokidar": "^4.0.0",
-    "cosmiconfig": "^9.0.0",
     "hono": "^4.12.7",
-    "p-queue": "^8.0.0",
-    "pdfkit": "^0.17.2",
     "simple-git": "^3.27.0",
-    "tsx": "^4.21.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
-    "@types/pdfkit": "^0.17.5",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   }
