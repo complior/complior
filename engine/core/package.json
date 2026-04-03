@@ -39,6 +39,11 @@
     "regulation",
     "agent-passport"
   ],
+  "files": [
+    "src/",
+    "data/",
+    "tsconfig.json"
+  ],
   "engines": {
     "node": ">=22"
   },
