@@ -290,6 +290,7 @@ export interface DiscoveredAgent {
   readonly language: string;
   readonly detectedSdks: readonly string[];
   readonly detectedModels: readonly string[];
+  readonly detectedEndpoints?: readonly string[];
   readonly confidence: number;
   readonly sourceFiles: readonly string[];
 }

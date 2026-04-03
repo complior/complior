@@ -121,6 +121,63 @@ const detectLanguage = (
   return langMap[maxExt] ?? 'unknown';
 };
 
+// --- Endpoint detection ---
+
+interface DetectedEndpoint {
+  readonly port: number;
+  readonly routes: readonly string[];
+}
+
+const PORT_ENV_PATTERN = /^PORT\s*=\s*(\d+)/m;
+const PORT_CODE_PATTERNS: readonly RegExp[] = [
+  /port:\s*(\d{4,5})/,
+  /\.listen\(\s*(\d{4,5})/,
+  /Number\(.*?PORT.*?\?\?\s*(\d{4,5})\)/,
+];
+const ROUTE_PATTERN = /\.(?:post|get|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g;
+
+const detectEndpoints = (
+  ctx: ScanContext,
+  sourceFiles: readonly { readonly relativePath: string; readonly content: string }[],
+): DetectedEndpoint | undefined => {
+  let port: number | undefined;
+
+  // 1. Try .env / .env.example for PORT
+  const envFiles = ctx.files.filter(f =>
+    f.relativePath === '.env' || f.relativePath === '.env.example',
+  );
+  for (const envFile of envFiles) {
+    const match = PORT_ENV_PATTERN.exec(envFile.content);
+    if (match) { port = Number(match[1]); break; }
+  }
+
+  // 2. Fallback: scan source files for port in code
+  if (!port) {
+    for (const file of sourceFiles) {
+      for (const pattern of PORT_CODE_PATTERNS) {
+        pattern.lastIndex = 0;
+        const match = pattern.exec(file.content);
+        if (match) { port = Number(match[1]); break; }
+      }
+      if (port) break;
+    }
+  }
+
+  if (!port) return undefined;
+
+  // 3. Extract routes from source files
+  const routes = new Set<string>();
+  for (const file of sourceFiles) {
+    ROUTE_PATTERN.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = ROUTE_PATTERN.exec(file.content)) !== null) {
+      routes.add(match[1]);
+    }
+  }
+
+  return { port, routes: [...routes] };
+};
+
 // --- Agent name inference ---
 
 const inferAgentName = (ctx: ScanContext): string => {
@@ -180,7 +237,15 @@ export const discoverAgents = (
     byFramework.set(match.framework, group);
   }
 
-  // 5. If no frameworks detected from code patterns, fall back to single agent from SDK deps
+  // 5. Detect endpoints (port + routes) from .env and source files
+  const endpointInfo = detectEndpoints(ctx, sourceFiles);
+  const detectedEndpoints = endpointInfo
+    ? endpointInfo.routes.length > 0
+      ? endpointInfo.routes.map(r => `http://localhost:${endpointInfo.port}${r}`)
+      : [`http://localhost:${endpointInfo.port}`]
+    : undefined;
+
+  // 6. If no frameworks detected from code patterns, fall back to single agent from SDK deps
   if (byFramework.size === 0) {
     const sdkLabel = AI_SDK_PACKAGES.get(detectedSdks[0]) ?? 'unknown';
     const name = inferAgentName(ctx);
@@ -192,12 +257,13 @@ export const discoverAgents = (
       language,
       detectedSdks,
       detectedModels: detectModels(sourceFiles),
+      ...(detectedEndpoints ? { detectedEndpoints } : {}),
       confidence: 0.5 + (detectedSdks.length > 0 ? 0.2 : 0),
       sourceFiles: sourceFiles[0] ? [sourceFiles[0].relativePath] : [],
     }];
   }
 
-  // 6. Build one DiscoveredAgent per framework
+  // 7. Build one DiscoveredAgent per framework
   const projectName = inferAgentName(ctx);
   const agents: DiscoveredAgent[] = [];
 
@@ -227,6 +293,7 @@ export const discoverAgents = (
       language,
       detectedSdks,
       detectedModels: models,
+      ...(detectedEndpoints ? { detectedEndpoints } : {}),
       confidence,
       sourceFiles: files.map(f => f.relativePath),
     });

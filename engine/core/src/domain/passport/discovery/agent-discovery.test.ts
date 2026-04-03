@@ -144,4 +144,117 @@ const model = 'gpt-4o-mini';`,
     // base 0.5 + sdk detected 0.2 + framework found 0.2 + model found 0.1 = 1.0
     expect(result[0].confidence).toBeCloseTo(1.0);
   });
+
+  describe('endpoint detection', () => {
+    it('detects port from .env file', () => {
+      const ctx = createMockContext([
+        createFile('.env', 'PORT=4000\nNODE_ENV=production', '.env'),
+        createFile(
+          'src/index.ts',
+          'import OpenAI from "openai"; openai.chat.completions.create({})',
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toEqual(['http://localhost:4000']);
+    });
+
+    it('detects port from code (serve pattern)', () => {
+      const ctx = createMockContext([
+        createFile(
+          'src/server.ts',
+          `import { Hono } from 'hono';
+import OpenAI from 'openai';
+const app = new Hono();
+app.post('/api/chat', async (c) => { openai.chat.completions.create({}); });
+export default { port: 3000, fetch: app.fetch };`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toEqual(['http://localhost:3000/api/chat']);
+    });
+
+    it('detects port from .listen() pattern', () => {
+      const ctx = createMockContext([
+        createFile(
+          'src/app.ts',
+          `import OpenAI from 'openai';
+const app = express();
+app.listen(8080);
+openai.chat.completions.create({});`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toEqual(['http://localhost:8080']);
+    });
+
+    it('detects multiple routes and builds full URLs', () => {
+      const ctx = createMockContext([
+        createFile('.env', 'PORT=4000', '.env'),
+        createFile(
+          'src/routes.ts',
+          `import OpenAI from 'openai';
+app.post('/api/chat', handler);
+app.post('/v1/chat/completions', handler);
+app.get('/health', handler);
+openai.chat.completions.create({});`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toContain('http://localhost:4000/api/chat');
+      expect(result[0].detectedEndpoints).toContain('http://localhost:4000/v1/chat/completions');
+      expect(result[0].detectedEndpoints).toContain('http://localhost:4000/health');
+    });
+
+    it('returns no endpoints when no port detected', () => {
+      const ctx = createMockContext([
+        createFile(
+          'src/agent.ts',
+          `import OpenAI from 'openai';
+const client = new OpenAI();
+openai.chat.completions.create({});`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toBeUndefined();
+    });
+
+    it('prefers .env PORT over code-detected port', () => {
+      const ctx = createMockContext([
+        createFile('.env', 'PORT=5000', '.env'),
+        createFile(
+          'src/server.ts',
+          `import OpenAI from 'openai';
+app.post('/api/chat', handler);
+export default { port: 3000, fetch: app.fetch };
+openai.chat.completions.create({});`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toEqual(['http://localhost:5000/api/chat']);
+    });
+  });
 });

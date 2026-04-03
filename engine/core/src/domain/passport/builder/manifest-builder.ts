@@ -83,6 +83,7 @@ export const ALL_PASSPORT_FIELDS: readonly string[] = [
   'description',
   'permissions.data_boundaries.geographic_restrictions',
   'permissions.data_boundaries.prohibited_data_types',
+  'endpoints',
   // Default-filled (always present, no user input needed)
   'model.deployment', 'model.data_residency',
   'logging.actions_logged', 'logging.retention_days', 'logging.includes_decision_rationale',
@@ -407,6 +408,7 @@ export const buildPassport = (
   if (displayName) autoFilledFields.push('display_name');
   if (agent.framework) autoFilledFields.push('framework');
   if (agent.sourceFiles.length > 0) autoFilledFields.push('source_files');
+  if (agent.detectedEndpoints && agent.detectedEndpoints.length > 0) autoFilledFields.push('endpoints');
   if (model.provider !== 'unknown') autoFilledFields.push('model.provider');
   if (model.model_id !== 'unknown') autoFilledFields.push('model.model_id');
 
@@ -500,6 +502,7 @@ export const buildPassport = (
     interop,
     ...(upstreamRegistry.length > 0 ? { upstream_registry: upstreamRegistry } : {}),
     source_files: [...agent.sourceFiles],
+    ...(agent.detectedEndpoints ? { endpoints: [...agent.detectedEndpoints] } : {}),
     source,
   };
 
