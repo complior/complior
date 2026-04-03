@@ -91,7 +91,14 @@ pub async fn ensure_engine_for(config: &TuiConfig, project_path: &std::path::Pat
     if let Some(root) = engine_root {
         eprintln!("Engine not responding. Starting engine...");
         let pid_path = daemon::pid_file_path(&project_path);
-        let mut mgr = EngineManager::new(&root).with_project_path(&project_path);
+        // If root has src/server.ts directly, it's an engine dir (from COMPLIOR_ENGINE_DIR).
+        // Otherwise it's a workspace root (repo checkout).
+        let mut mgr = if root.join("src").join("server.ts").exists() {
+            EngineManager::from_engine_dir(&root)
+        } else {
+            EngineManager::new(&root)
+        }
+        .with_project_path(&project_path);
         match mgr.start_with_pid(&pid_path, false) {
             Ok(port) => {
                 let new_client = EngineClient::from_url(&format!("http://127.0.0.1:{port}"));

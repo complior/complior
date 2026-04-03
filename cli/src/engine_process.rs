@@ -49,6 +49,18 @@ impl EngineManager {
         }
     }
 
+    /// Create a manager pointing directly at an engine directory (e.g. from COMPLIOR_ENGINE_DIR).
+    pub fn from_engine_dir(engine_dir: &std::path::Path) -> Self {
+        Self {
+            child: None,
+            port: 0,
+            status: EngineProcessStatus::NotStarted,
+            restart_count: 0,
+            engine_dir: engine_dir.to_path_buf(),
+            project_path: None,
+        }
+    }
+
     /// Set the project path that the engine should operate on.
     pub fn with_project_path(mut self, path: &Path) -> Self {
         self.project_path = Some(path.to_path_buf());

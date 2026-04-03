@@ -121,12 +121,17 @@ async fn main() -> color_eyre::Result<()> {
         // Auto-launch engine for commands that need it (skip for version/update/daemon/login/logout)
         let mut engine_guard: Option<EngineManager> = None;
         if config.engine_url_override.is_none() && cli::needs_engine(&parsed_cli) {
-            let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .unwrap_or_else(|| std::path::Path::new("."));
             let project_path = cli::explicit_project_path(&parsed_cli)
                 .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-            let mut mgr = EngineManager::new(workspace_root).with_project_path(&project_path);
+            let mut mgr = if let Ok(dir) = std::env::var("COMPLIOR_ENGINE_DIR") {
+                EngineManager::from_engine_dir(std::path::Path::new(&dir))
+            } else {
+                let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap_or_else(|| std::path::Path::new("."));
+                EngineManager::new(workspace_root)
+            }
+            .with_project_path(&project_path);
             // Read-only commands (doctor) skip PID file to avoid creating .complior/
             let start_result = if cli::wants_pid_file(&parsed_cli) {
                 let pid_path = daemon::pid_file_path(&project_path);
