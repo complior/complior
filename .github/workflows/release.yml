@@ -188,7 +188,7 @@ jobs:
 
       # Build SDK before publishing (produces dist/)
       - name: Build @complior/sdk
-        run: cd engine/sdk && npm ci && npm run build
+        run: cd engine/sdk && npm install && npm run build
 
       - name: Publish @complior/engine
         run: cd engine/core && npm publish --access public
