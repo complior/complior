@@ -106,19 +106,16 @@ jobs:
           TAG_VER="${GITHUB_REF_NAME#v}"
           CARGO_VER=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)"/\1/')
           ENGINE_VER=$(node -p "require('./engine/core/package.json').version")
-          SDK_VER=$(node -p "require('./engine/sdk/package.json').version")
           NPM_VER=$(node -p "require('./engine/npm/package.json').version")
 
           echo "Tag:          $TAG_VER"
           echo "Cargo.toml:   $CARGO_VER"
           echo "engine/core:  $ENGINE_VER"
-          echo "engine/sdk:   $SDK_VER"
           echo "engine/npm:   $NPM_VER"
 
           FAIL=0
           if [ "$CARGO_VER" != "$TAG_VER" ]; then echo "❌ Cargo.toml version mismatch"; FAIL=1; fi
           if [ "$ENGINE_VER" != "$TAG_VER" ]; then echo "❌ engine/core version mismatch"; FAIL=1; fi
-          if [ "$SDK_VER" != "$TAG_VER" ]; then echo "❌ engine/sdk version mismatch"; FAIL=1; fi
           if [ "$NPM_VER" != "$TAG_VER" ]; then echo "❌ engine/npm version mismatch"; FAIL=1; fi
 
           if [ "$FAIL" -eq 1 ]; then
@@ -186,17 +183,8 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      # Build SDK before publishing (produces dist/)
-      - name: Build @complior/sdk
-        run: cd engine/sdk && npm install && npm run build
-
       - name: Publish @complior/engine
         run: cd engine/core && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @complior/sdk
-        run: cd engine/sdk && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -221,8 +209,8 @@ jobs:
 
       - name: Test npm install
         run: |
-          npm install @complior/sdk@${{ steps.version.outputs.version }}
-          node -e "const { complior } = require('@complior/sdk'); console.log('✅ @complior/sdk loaded')"
+          npm install complior@${{ steps.version.outputs.version }}
+          echo "✅ complior npm package installed"
 
       - name: Test cargo install
         run: |
