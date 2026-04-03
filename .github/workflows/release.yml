@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -230,7 +231,7 @@ jobs:
     name: Docker image
     needs: release
     runs-on: ubuntu-latest
-    if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+    if: ${{ vars.DOCKERHUB_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@v4
 
