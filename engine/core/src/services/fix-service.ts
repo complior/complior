@@ -100,8 +100,23 @@ export const createFixService = (deps: FixServiceDeps) => {
                       const selection = deps.llm.routeModel('document-generation');
                       const model = await deps.llm.getModel(selection.provider, selection.modelId);
                       const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
+                      // Second pass: re-check for remaining weak sections and enrich again
+                      let finalMarkdown = enriched.markdown;
+                      const remainingWeak = detectWeakSections(finalMarkdown);
+                      if (remainingWeak.length > 0) {
+                        try {
+                          const secondPass = await enrichDocumentWithAI({
+                            baseResult: { markdown: finalMarkdown, docType: docTypeEntry[0], prefilledFields: [], manualFields: [...remainingWeak] },
+                            manifest: passport,
+                            model,
+                          });
+                          finalMarkdown = secondPass.markdown;
+                        } catch {
+                          // Keep first-pass result on second-pass failure
+                        }
+                      }
                       // Remove scaffold marker after successful LLM enrichment — scanner upgrades to 'draft'
-                      content = enriched.markdown.replace(/^<!-- COMPLIOR:SCAFFOLD -->\n/, '');
+                      content = finalMarkdown.replace(/^<!-- COMPLIOR:SCAFFOLD -->\n/, '');
                     } catch (err) {
                       events.emit('log', { level: 'warn', message: `LLM enrichment failed: ${err instanceof Error ? err.message : err}` });
                       content = existingContent; // LLM failed — keep existing
@@ -125,8 +140,23 @@ export const createFixService = (deps: FixServiceDeps) => {
                     const selection = deps.llm.routeModel('document-generation');
                     const model = await deps.llm.getModel(selection.provider, selection.modelId);
                     const enriched = await enrichDocumentWithAI({ baseResult, manifest: passport, model });
+                    // Second pass: re-check for remaining weak sections and enrich again
+                    let finalMarkdown = enriched.markdown;
+                    const remainingWeak = detectWeakSections(finalMarkdown);
+                    if (remainingWeak.length > 0) {
+                      try {
+                        const secondPass = await enrichDocumentWithAI({
+                          baseResult: { markdown: finalMarkdown, docType: docTypeEntry[0], prefilledFields: [], manualFields: [...remainingWeak] },
+                          manifest: passport,
+                          model,
+                        });
+                        finalMarkdown = secondPass.markdown;
+                      } catch {
+                        // Keep first-pass result on second-pass failure
+                      }
+                    }
                     // LLM enriched → no scaffold marker (scanner classifies as 'draft')
-                    content = enriched.markdown;
+                    content = finalMarkdown;
                   } catch (err) {
                     events.emit('log', { level: 'warn', message: `LLM enrichment failed: ${err instanceof Error ? err.message : err}` });
                     content = `<!-- COMPLIOR:SCAFFOLD -->\n${baseResult.markdown}`;

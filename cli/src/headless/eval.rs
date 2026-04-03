@@ -5,7 +5,7 @@ use std::time::Instant;
 use futures_util::StreamExt;
 
 use crate::config::TuiConfig;
-use super::common::{ensure_engine, url_encode};
+use super::common::{ensure_engine, ensure_engine_for, url_encode};
 use super::format::colors::{
     bold, bar_filled, bar_empty, cyan,
     check_mark, diamond, dim, green, h_line, red, resolve_grade,
@@ -165,15 +165,26 @@ pub async fn run_eval_command(
     concurrency: u32,
     no_remediation: bool,
     remediation_report: bool,
+    path: Option<&str>,
     config: &TuiConfig,
 ) -> i32 {
-    let client = match ensure_engine(config).await {
+    let project_path = super::common::resolve_project_path(path);
+    let project_path_buf = super::common::resolve_project_path_buf(path);
+
+    let client = match ensure_engine_for(config, &project_path_buf).await {
         Ok(c) => c,
         Err(code) => return code,
     };
 
+    // LLM key validation — fail early before starting LLM-judged eval
+    if (llm || full) && !super::common::check_llm_key(&project_path) {
+        super::common::print_llm_key_error();
+        return 1;
+    }
+
     let mut body = serde_json::json!({
         "target": target,
+        "path": project_path,
     });
     if det { body["det"] = serde_json::json!(true); }
     if llm { body["llm"] = serde_json::json!(true); }
@@ -207,7 +218,6 @@ pub async fn run_eval_command(
     // Validate --agent passport exists before eval (skip in CI/JSON modes)
     if !ci && !json {
         if let Some(agent_name) = agent {
-            let project_path = config.project_path.clone().unwrap_or_else(|| ".".to_string());
             let show_url = format!(
                 "/agent/show?path={}&name={}",
                 url_encode(&project_path),

@@ -151,6 +151,28 @@ const detectEndpoints = (
     if (match) { port = Number(match[1]); break; }
   }
 
+  // 1.5. Try Dockerfile for EXPOSE
+  if (!port) {
+    const dockerfile = ctx.files.find(f =>
+      f.relativePath === 'Dockerfile' || f.relativePath === 'dockerfile',
+    );
+    if (dockerfile) {
+      const match = /^EXPOSE\s+(\d{4,5})/m.exec(dockerfile.content);
+      if (match) port = Number(match[1]);
+    }
+  }
+
+  // 1.6. Try docker-compose.yml for ports mapping
+  if (!port) {
+    const compose = ctx.files.find(f =>
+      f.relativePath === 'docker-compose.yml' || f.relativePath === 'docker-compose.yaml',
+    );
+    if (compose) {
+      const match = /ports:\s*\n\s*-\s*['"]?(\d{4,5}):/m.exec(compose.content);
+      if (match) port = Number(match[1]);
+    }
+  }
+
   // 2. Fallback: scan source files for port in code
   if (!port) {
     for (const file of sourceFiles) {

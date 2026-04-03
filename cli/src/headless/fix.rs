@@ -192,7 +192,15 @@ pub async fn run_fix_single(
                     let err = resp.get("error").and_then(|v| v.as_str())
                         .or_else(|| resp.get("message").and_then(|v| v.as_str()))
                         .unwrap_or("Unknown error");
-                    eprintln!("  Fix failed for {check_id}: {err}");
+                    if err == "NO_FIX" {
+                        let msg = resp.get("message").and_then(|v| v.as_str()).unwrap_or("No auto-fix available");
+                        let rec = resp.get("recommendation").and_then(|v| v.as_str());
+                        eprintln!("  {} {}: {}", yellow("!"), bold(check_id), msg);
+                        if let Some(r) = rec { eprintln!("     {r}"); }
+                        eprintln!("     Tip: use {} for LLM-enriched documents", bold("complior fix --ai"));
+                    } else {
+                        eprintln!("  Fix failed for {check_id}: {err}");
+                    }
                     return 1;
                 }
             }

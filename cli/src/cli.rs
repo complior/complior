@@ -390,6 +390,9 @@ pub enum Command {
         /// Dry-run mode for --fix (preview without applying)
         #[arg(long)]
         dry_run: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
     },
 
     /// Run comprehensive audit (static scan + dynamic eval + security)
@@ -980,10 +983,7 @@ pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
         Some(Command::Scan { path, .. } | Command::Fix { path, .. } | Command::Init {
 path, .. } | Command::Report { path, .. } | Command::Audit { path, .. } |
 Command::SupplyChain { path, .. }) => path.as_deref(),
-        Some(Command::Eval { .. }) => {
-            // Eval has no path arg — uses CWD
-            None
-        }
+        Some(Command::Eval { path, .. }) => path.as_deref(),
         Some(Command::Agent { action }) => match action {
             AgentAction::Init { path, .. }
             | AgentAction::List { path, .. }
@@ -2254,7 +2254,7 @@ mod tests {
     fn cli_parse_eval_default() {
         let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000/api/chat"]);
         match &cli.command {
-            Some(Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run }) => {
+            Some(Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run, path }) => {
                 assert_eq!(target.as_deref(), Some("http://localhost:4000/api/chat"));
                 assert!(!det);
                 assert!(!llm);
@@ -2278,6 +2278,7 @@ mod tests {
                 assert!(!remediation);
                 assert!(!fix);
                 assert!(!dry_run);
+                assert!(path.is_none());
             }
             _ => panic!("Expected Eval command"),
         }

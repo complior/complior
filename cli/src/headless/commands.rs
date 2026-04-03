@@ -443,13 +443,16 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
         }
 
         println!("\n  {} Passports saved to .complior/agents/", check_mark());
+
+        println!("\n  {}  Passports created with score 0/100", bold_yellow("!"));
+        println!("     Run {} to populate compliance data", bold("complior scan"));
     } else if skipped_count > 0 {
         println!("\n  {}       {} already have passports", dim("Agents"), bold(&skipped_count.to_string()));
+        println!("\n  Next: {}", bold("complior scan"));
     } else {
         println!("\n  {}       {}", dim("Agents"), dim("none detected"));
+        println!("\n  Next: {}", bold("complior scan"));
     }
-
-    println!("\n  Next: {}", bold("complior scan"));
     0
 }
 

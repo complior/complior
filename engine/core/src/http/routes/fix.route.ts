@@ -49,7 +49,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     });
 
     if (!plan) {
-      return c.json({ error: 'NO_FIX', message: 'No fix available for this finding' }, 404);
+      return c.json({ error: 'NO_FIX', message: 'No auto-fix available for this finding', recommendation: 'Review and enrich document sections manually, or use --ai flag' }, 404);
     }
 
     return c.json(plan);
@@ -68,7 +68,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     });
 
     if (!plan) {
-      return c.json({ error: 'NO_FIX', message: 'No fix available for this finding' }, 404);
+      return c.json({ error: 'NO_FIX', message: 'No auto-fix available for this finding', recommendation: 'Review and enrich document sections manually, or use --ai flag' }, 404);
     }
 
     const result = await fixService.applyFix(plan, data.useAi);
@@ -88,7 +88,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     });
 
     if (!plan) {
-      return c.json({ error: 'NO_FIX', message: 'No fix available for this finding' }, 404);
+      return c.json({ error: 'NO_FIX', message: 'No auto-fix available for this finding', recommendation: 'Review and enrich document sections manually, or use --ai flag' }, 404);
     }
 
     const result = await fixService.applyAndValidate(plan, data.useAi);

@@ -238,6 +238,42 @@ openai.chat.completions.create({});`,
       expect(result[0].detectedEndpoints).toBeUndefined();
     });
 
+    it('detects port from Dockerfile EXPOSE', () => {
+      const ctx = createMockContext([
+        createFile('Dockerfile', 'FROM node:20\nEXPOSE 3000\nCMD ["node", "server.js"]', 'Dockerfile'),
+        createFile(
+          'src/agent.ts',
+          `import OpenAI from 'openai';
+app.post('/api/chat', handler);
+openai.chat.completions.create({});`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toContain('http://localhost:3000/api/chat');
+    });
+
+    it('detects port from docker-compose.yml ports mapping', () => {
+      const ctx = createMockContext([
+        createFile('docker-compose.yml', "services:\n  app:\n    ports:\n      - '8080:8080'", 'docker-compose.yml'),
+        createFile(
+          'src/agent.ts',
+          `import OpenAI from 'openai';
+app.post('/api/chat', handler);
+openai.chat.completions.create({});`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].detectedEndpoints).toContain('http://localhost:8080/api/chat');
+    });
+
     it('prefers .env PORT over code-detected port', () => {
       const ctx = createMockContext([
         createFile('.env', 'PORT=5000', '.env'),
