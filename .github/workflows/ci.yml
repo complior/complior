@@ -28,8 +28,10 @@ jobs:
               - 'cli/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'deny.toml'
             ts-engine:
               - 'engine/core/**'
+              - 'package.json'
 
   # ── Rust ──────────────────────────────────────────
   rust-fmt:
