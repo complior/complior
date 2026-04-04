@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { generateText } from 'ai';
 import type { LlmPort } from '../../ports/llm.port.js';
-import { complior } from '@complior/sdk';
 import { parseBody } from '../utils/validation.js';
 
 const VerifySchema = z.object({
@@ -25,7 +24,7 @@ export const createProviderRoute = (llm: LlmPort) => {
 
       const model = await llm.getModel(provider, testModelId, apiKey);
 
-      await complior(generateText)({
+      await generateText({
         model,
         prompt: 'Say "ok"',
         maxOutputTokens: 1,
