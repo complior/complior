@@ -1,5 +1,5 @@
+use super::tests_helpers::{make_scan_result, render_to_string};
 use super::*;
-use super::tests_helpers::{render_to_string, make_scan_result};
 
 // --- T501: Enhanced Dashboard 2x2 Grid ---
 
@@ -15,7 +15,10 @@ fn e2e_t501_score_gauge_shows_zone_label() {
     assert!(
         buf.contains("GREEN") && buf.contains("Compliant"),
         "Score gauge should show 'GREEN \u{2014} Compliant', got:\n{}",
-        buf.lines().filter(|l| l.contains("GREEN") || l.contains("Compliance Score")).collect::<Vec<_>>().join("\n")
+        buf.lines()
+            .filter(|l| l.contains("GREEN") || l.contains("Compliance Score"))
+            .collect::<Vec<_>>()
+            .join("\n")
     );
 
     // YELLOW zone
@@ -46,12 +49,24 @@ fn e2e_t501_dashboard_shows_panel_titles() {
 
     let buf = render_to_string(&app, 120, 40);
 
-    assert!(buf.contains("Status Log"), "Missing: Status Log panel title");
-    assert!(buf.contains("EU AI Act Deadlines"), "Missing: Deadlines panel title");
+    assert!(
+        buf.contains("Status Log"),
+        "Missing: Status Log panel title"
+    );
+    assert!(
+        buf.contains("EU AI Act Deadlines"),
+        "Missing: Deadlines panel title"
+    );
     assert!(buf.contains("Info"), "Missing: Info panel title");
     assert!(buf.contains("Quick Fix"), "Missing: Quick Fix panel title");
-    assert!(buf.contains("Score History"), "Missing: Score History panel title");
-    assert!(buf.contains("By Category"), "Missing: By Category panel title");
+    assert!(
+        buf.contains("Score History"),
+        "Missing: Score History panel title"
+    );
+    assert!(
+        buf.contains("By Category"),
+        "Missing: By Category panel title"
+    );
     assert!(buf.contains("Metrics"), "Missing: Metrics panel title");
 }
 
@@ -65,7 +80,10 @@ fn e2e_t501_deadline_countdown_shows_articles() {
     let buf = render_to_string(&app, 120, 40);
 
     assert!(buf.contains("Art. 5"), "Deadline widget should show Art. 5");
-    assert!(buf.contains("Art. 50"), "Deadline widget should show Art. 50");
+    assert!(
+        buf.contains("Art. 50"),
+        "Deadline widget should show Art. 50"
+    );
     assert!(buf.contains("Art. 6"), "Deadline widget should show Art. 6");
     // Should show urgency (overdue/left)
     assert!(
@@ -100,11 +118,23 @@ fn e2e_t501_score_sparkline_renders_block_chars() {
     let buf = render_to_string(&app, 120, 40);
 
     // Sparkline characters should be present
-    let sparkline_chars = ['\u{2581}', '\u{2582}', '\u{2583}', '\u{2584}', '\u{2585}', '\u{2586}', '\u{2587}', '\u{2588}'];
+    let sparkline_chars = [
+        '\u{2581}', '\u{2582}', '\u{2583}', '\u{2584}', '\u{2585}', '\u{2586}', '\u{2587}',
+        '\u{2588}',
+    ];
     let has_sparkline = sparkline_chars.iter().any(|c| buf.contains(*c));
-    assert!(has_sparkline, "Score History should contain sparkline block characters");
-    assert!(buf.contains("Latest:"), "Score History should show 'Latest: N/100'");
-    assert!(buf.contains("5 scans"), "Score History should show scan count");
+    assert!(
+        has_sparkline,
+        "Score History should contain sparkline block characters"
+    );
+    assert!(
+        buf.contains("Latest:"),
+        "Score History should show 'Latest: N/100'"
+    );
+    assert!(
+        buf.contains("5 scans"),
+        "Score History should show scan count"
+    );
 }
 
 #[test]
@@ -115,7 +145,10 @@ fn e2e_t501_dashboard_metrics_panel() {
     app.last_scan = Some(make_scan_result(70.0, crate::types::Zone::Yellow));
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Metrics"), "Dashboard should show Metrics panel");
+    assert!(
+        buf.contains("Metrics"),
+        "Dashboard should show Metrics panel"
+    );
     // Without metrics data loaded, shows placeholder
     assert!(
         buf.contains("Loading") || buf.contains("Run /scan"),

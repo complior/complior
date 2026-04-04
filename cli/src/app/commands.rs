@@ -21,9 +21,7 @@ impl App {
 
         if self.input.starts_with('/') {
             let partial = &self.input[1..];
-            if let Some(completed) =
-                crate::components::command_palette::complete_command(partial)
-            {
+            if let Some(completed) = crate::components::command_palette::complete_command(partial) {
                 self.input = completed.to_string();
                 self.input_cursor = self.input.len();
             }
@@ -124,8 +122,7 @@ impl App {
                 let name = parts.get(1).unwrap_or(&"").to_string();
                 if name.is_empty() {
                     // Open theme picker overlay
-                    self.theme_picker =
-                        Some(crate::theme_picker::ThemePickerState::new());
+                    self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
                     self.overlay = Overlay::ThemePicker;
                     None
                 } else {
@@ -194,10 +191,11 @@ impl App {
             Some("view") => {
                 let num_str = parts.get(1).unwrap_or(&"").trim();
                 if let Ok(num) = num_str.parse::<u8>()
-                    && let Some(view) = ViewState::from_key(num) {
-                        self.view_state = view;
-                        return None;
-                    }
+                    && let Some(view) = ViewState::from_key(num)
+                {
+                    self.view_state = view;
+                    return None;
+                }
                 self.messages.push(ChatMessage::new(
                     MessageRole::System,
                     "Usage: /view <1-9> (Dashboard/Scan/Fix/Passport/Oblig/Timeline/Report/Log/Chat)"
@@ -216,8 +214,7 @@ impl App {
                 if scenario.is_empty() {
                     self.messages.push(ChatMessage::new(
                         MessageRole::System,
-                        "Usage: /whatif <scenario> (e.g. /whatif expand to UK)"
-                            .to_string(),
+                        "Usage: /whatif <scenario> (e.g. /whatif expand to UK)".to_string(),
                     ));
                     None
                 } else {
@@ -253,8 +250,7 @@ impl App {
                     }
                     self.messages.push(ChatMessage::new(
                         MessageRole::System,
-                        "Switched to Fix view. Select fixes and press Enter to apply."
-                            .to_string(),
+                        "Switched to Fix view. Select fixes and press Enter to apply.".to_string(),
                     ));
                     None
                 }
@@ -285,8 +281,15 @@ impl App {
             }
             Some("explain") => {
                 if let Some(scan) = &self.last_scan {
-                    if let Some(finding) = scan.findings.iter()
-                        .find(|f| matches!(f.severity, crate::types::Severity::High | crate::types::Severity::Critical))
+                    if let Some(finding) = scan
+                        .findings
+                        .iter()
+                        .find(|f| {
+                            matches!(
+                                f.severity,
+                                crate::types::Severity::High | crate::types::Severity::Critical
+                            )
+                        })
                         .or_else(|| scan.findings.first())
                     {
                         self.messages.push(ChatMessage::new(
@@ -360,10 +363,8 @@ impl App {
                     if let Some(scan) = &self.last_scan {
                         self.fix_view = FixViewState::from_scan(&scan.findings);
                     }
-                    self.toasts.push(
-                        crate::components::toast::ToastKind::Info,
-                        "Fix view opened",
-                    );
+                    self.toasts
+                        .push(crate::components::toast::ToastKind::Info, "Fix view opened");
                 } else {
                     self.toasts.push(
                         crate::components::toast::ToastKind::Info,
@@ -375,8 +376,7 @@ impl App {
             Some("theme") => {
                 let name = parts.get(1).unwrap_or(&"").to_string();
                 if name.is_empty() {
-                    self.theme_picker =
-                        Some(crate::theme_picker::ThemePickerState::new());
+                    self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
                     self.overlay = Overlay::ThemePicker;
                     None
                 } else {
@@ -419,8 +419,15 @@ impl App {
             }
             Some("explain" | "ex") => {
                 if let Some(scan) = &self.last_scan {
-                    if let Some(finding) = scan.findings.iter()
-                        .find(|f| matches!(f.severity, crate::types::Severity::High | crate::types::Severity::Critical))
+                    if let Some(finding) = scan
+                        .findings
+                        .iter()
+                        .find(|f| {
+                            matches!(
+                                f.severity,
+                                crate::types::Severity::High | crate::types::Severity::Critical
+                            )
+                        })
                         .or_else(|| scan.findings.first())
                     {
                         self.toasts.push(
@@ -463,10 +470,11 @@ impl App {
             Some("view" | "v") => {
                 let num_str = parts.get(1).unwrap_or(&"").trim();
                 if let Ok(num) = num_str.parse::<u8>()
-                    && let Some(view) = ViewState::from_key(num) {
-                        self.view_state = view;
-                        return None;
-                    }
+                    && let Some(view) = ViewState::from_key(num)
+                {
+                    self.view_state = view;
+                    return None;
+                }
                 self.toasts.push(
                     crate::components::toast::ToastKind::Warning,
                     "Usage: :view <1-9>",
@@ -475,11 +483,7 @@ impl App {
             }
             Some("animations") => {
                 self.animation.enabled = !self.animation.enabled;
-                let status = if self.animation.enabled {
-                    "on"
-                } else {
-                    "off"
-                };
+                let status = if self.animation.enabled { "on" } else { "off" };
                 self.toasts.push(
                     crate::components::toast::ToastKind::Info,
                     format!("Animations: {status}"),
@@ -519,7 +523,8 @@ impl App {
                 }
             }
             Some("llm" | "settings") => {
-                self.llm_settings = Some(crate::llm_settings::LlmSettingsState::new(&self.llm_config));
+                self.llm_settings =
+                    Some(crate::llm_settings::LlmSettingsState::new(&self.llm_config));
                 self.overlay = Overlay::LlmSettings;
                 None
             }
@@ -554,8 +559,10 @@ mod tests {
         let cmd = app.handle_command("status");
         assert!(cmd.is_none());
         let last = app.messages.last().expect("message pushed");
-        assert!(last.content.contains("/scan") || last.content.contains("No scan"),
-            "status without scan should prompt for /scan");
+        assert!(
+            last.content.contains("/scan") || last.content.contains("No scan"),
+            "status without scan should prompt for /scan"
+        );
     }
 
     /// `/explain` with no scan pushes an informative message.
@@ -565,8 +572,10 @@ mod tests {
         let cmd = app.handle_command("explain");
         assert!(cmd.is_none());
         let last = app.messages.last().expect("message pushed");
-        assert!(last.content.contains("scan") || last.content.contains("No scan"),
-            "explain without scan should ask for scan first");
+        assert!(
+            last.content.contains("scan") || last.content.contains("No scan"),
+            "explain without scan should ask for scan first"
+        );
     }
 
     /// `/report` switches view to Report.
@@ -575,7 +584,10 @@ mod tests {
         let mut app = make_app();
         let cmd = app.handle_command("report");
         assert!(cmd.is_none());
-        assert_eq!(app.view_state, ViewState::Report,
-            "/report should switch to Report view");
+        assert_eq!(
+            app.view_state,
+            ViewState::Report,
+            "/report should switch to Report view"
+        );
     }
 }

@@ -2,9 +2,8 @@
 pub(super) fn penalty_for_article(article: &str) -> &'static str {
     match article {
         "Art. 5" => "Up to \u{20ac}35M / 7% turnover",
-        "Art. 6" | "Art. 9" | "Art. 10" | "Art. 12" | "Art. 13" | "Art. 14" | "Art. 15" | "Art. 49" => {
-            "Up to \u{20ac}15M / 3% turnover"
-        }
+        "Art. 6" | "Art. 9" | "Art. 10" | "Art. 12" | "Art. 13" | "Art. 14" | "Art. 15"
+        | "Art. 49" => "Up to \u{20ac}15M / 3% turnover",
         "Art. 50" | "Art. 53" | "Art. 72" | "Art. 73" => "Up to \u{20ac}7.5M / 1.5% turnover",
         _ => "See EU AI Act penalty schedule",
     }

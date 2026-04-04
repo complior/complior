@@ -1,7 +1,10 @@
 use futures_util::StreamExt;
 
 use crate::config::TuiConfig;
-use crate::headless::format::colors::{green, bold, yellow, dim, bold_red, score_color, cyan, red, check_mark, bar_filled, bar_empty, diamond};
+use crate::headless::format::colors::{
+    bar_empty, bar_filled, bold, bold_red, check_mark, cyan, diamond, dim, green, red, score_color,
+    yellow,
+};
 use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
 use crate::headless::format::{plural, project_name, separator};
@@ -73,7 +76,9 @@ pub async fn run_headless_fix(
 
     if fixable.is_empty() {
         if json {
-            println!("{{\"dryRun\": {dry_run}, \"changes\": [], \"message\": \"No fixable findings\"}}");
+            println!(
+                "{{\"dryRun\": {dry_run}, \"changes\": [], \"message\": \"No fixable findings\"}}"
+            );
         } else {
             println!("No fixable findings. Score: {current_score:.0}/100");
         }
@@ -84,16 +89,25 @@ pub async fn run_headless_fix(
         // Request dry-run from engine
         if let Ok(dr_result) = client.fix_dry_run().await {
             if json {
-                println!("{}", serde_json::to_string_pretty(&dr_result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&dr_result).unwrap_or_default()
+                );
             } else {
-                print!("{}", format_dry_run_report(&dr_result, current_score, &scan_path));
+                print!(
+                    "{}",
+                    format_dry_run_report(&dr_result, current_score, &scan_path)
+                );
             }
         } else {
             // Offline estimate — rough approximation based on fix count
             let impact = (fixable.len() as f64 * 3.0).min(60.0) as i32;
             let predicted = (current_score + f64::from(impact)).min(100.0);
             if json {
-                println!("{{\"dryRun\": true, \"fixable\": {}, \"currentScore\": {current_score:.0}, \"predictedScore\": {predicted:.0}}}", fixable.len());
+                println!(
+                    "{{\"dryRun\": true, \"fixable\": {}, \"currentScore\": {current_score:.0}, \"predictedScore\": {predicted:.0}}}",
+                    fixable.len()
+                );
             } else {
                 println!("Dry-Run Fix Analysis (offline estimate)");
                 println!("Fixable: {} findings", fixable.len());
@@ -107,28 +121,34 @@ pub async fn run_headless_fix(
         // Show model info for AI-enriched mode
         let model_label = if use_ai && !json {
             let model_info = client.get_json("/llm/info").await.ok();
-            model_info.as_ref()
-                .and_then(|info| {
-                    let task = info.get("document-generation")?;
-                    let model = task.get("modelId").and_then(|v| v.as_str())?;
-                    let provider = task.get("provider").and_then(|v| v.as_str())?;
-                    let source = task.get("source").and_then(|v| v.as_str()).unwrap_or("default");
-                    let source_label = if source == "env" {
-                        let env_var = task.get("envVar").and_then(|v| v.as_str()).unwrap_or("env");
-                        format!(" ({env_var})")
-                    } else {
-                        eprintln!("  {}", dim("Override: set COMPLIOR_MODEL_DOCUMENT_GENERATION in .complior/.env"));
-                        String::new()
-                    };
-                    Some(format!("{model} via {provider}{source_label}"))
-                })
+            model_info.as_ref().and_then(|info| {
+                let task = info.get("document-generation")?;
+                let model = task.get("modelId").and_then(|v| v.as_str())?;
+                let provider = task.get("provider").and_then(|v| v.as_str())?;
+                let source = task
+                    .get("source")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("default");
+                let source_label = if source == "env" {
+                    let env_var = task.get("envVar").and_then(|v| v.as_str()).unwrap_or("env");
+                    format!(" ({env_var})")
+                } else {
+                    eprintln!(
+                        "  {}",
+                        dim("Override: set COMPLIOR_MODEL_DOCUMENT_GENERATION in .complior/.env")
+                    );
+                    String::new()
+                };
+                Some(format!("{model} via {provider}{source_label}"))
+            })
         } else {
             None
         };
 
         // AI-enriched: use SSE streaming for live progress
         if use_ai && !json {
-            let stream_result = run_fix_stream(&client, &body, &scan_path, model_label.as_deref()).await;
+            let stream_result =
+                run_fix_stream(&client, &body, &scan_path, model_label.as_deref()).await;
             return stream_result;
         }
 
@@ -141,7 +161,10 @@ pub async fn run_headless_fix(
         match fix_result {
             Ok(resp) => {
                 if json {
-                    println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&resp).unwrap_or_default()
+                    );
                 } else {
                     print!("{}", format_fix_report(&resp, &scan_path));
                 }
@@ -176,28 +199,45 @@ pub async fn run_fix_single(
     match client.post_json("/fix/apply", &body).await {
         Ok(resp) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&resp).unwrap_or_default()
+                );
             } else {
-                let applied = resp.get("applied").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let applied = resp
+                    .get("applied")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
                 if applied {
                     println!("  {} Fix applied for {}", green("✓"), bold(check_id));
                     if let Some(plan) = resp.get("plan")
-                        && let Some(actions) = plan.get("actions").and_then(|v| v.as_array()) {
-                            for a in actions {
-                                let p = a.get("path").and_then(|v| v.as_str()).unwrap_or("?");
-                                println!("     → {p}");
-                            }
+                        && let Some(actions) = plan.get("actions").and_then(|v| v.as_array())
+                    {
+                        for a in actions {
+                            let p = a.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+                            println!("     → {p}");
                         }
+                    }
                 } else {
-                    let err = resp.get("error").and_then(|v| v.as_str())
+                    let err = resp
+                        .get("error")
+                        .and_then(|v| v.as_str())
                         .or_else(|| resp.get("message").and_then(|v| v.as_str()))
                         .unwrap_or("Unknown error");
                     if err == "NO_FIX" {
-                        let msg = resp.get("message").and_then(|v| v.as_str()).unwrap_or("No auto-fix available");
+                        let msg = resp
+                            .get("message")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("No auto-fix available");
                         let rec = resp.get("recommendation").and_then(|v| v.as_str());
                         eprintln!("  {} {}: {}", yellow("!"), bold(check_id), msg);
-                        if let Some(r) = rec { eprintln!("     {r}"); }
-                        eprintln!("     Tip: use {} for LLM-enriched documents", bold("complior fix --ai"));
+                        if let Some(r) = rec {
+                            eprintln!("     {r}");
+                        }
+                        eprintln!(
+                            "     Tip: use {} for LLM-enriched documents",
+                            bold("complior fix --ai")
+                        );
                     } else {
                         eprintln!("  Fix failed for {check_id}: {err}");
                     }
@@ -235,43 +275,80 @@ fn extract_entries(resp: &serde_json::Value) -> Vec<FixEntry> {
         None => return Vec::new(),
     };
 
-    results.iter().map(|r| {
-        let plan = r.get("plan").unwrap_or(r);
-        let check_id = plan.get("checkId").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-        let fix_type = plan.get("fixType").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-        let article = plan.get("article").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let description = plan.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let applied = r.get("applied").and_then(serde_json::Value::as_bool).unwrap_or(false);
-        let error = r.get("error").and_then(|v| v.as_str()).map(String::from);
+    results
+        .iter()
+        .map(|r| {
+            let plan = r.get("plan").unwrap_or(r);
+            let check_id = plan
+                .get("checkId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let fix_type = plan
+                .get("fixType")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let article = plan
+                .get("article")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let description = plan
+                .get("description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let applied = r
+                .get("applied")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+            let error = r.get("error").and_then(|v| v.as_str()).map(String::from);
 
-        let files: Vec<String> = plan
-            .get("actions")
-            .and_then(|v| v.as_array())
-            .map(|actions| {
-                actions.iter()
-                    .filter_map(|a| a.get("path").and_then(|v| v.as_str()).map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let manual_fields: Vec<String> = plan
-            .get("manualFields")
-            .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-            .unwrap_or_default();
-
-        // Scaffold detection: all actions are type "create" → boilerplate, not inline
-        let is_scaffold = plan
-            .get("actions")
-            .and_then(|v| v.as_array())
-            .is_none_or(|actions| {
-                actions.iter().all(|a| {
-                    a.get("type").and_then(|v| v.as_str()) == Some("create")
+            let files: Vec<String> = plan
+                .get("actions")
+                .and_then(|v| v.as_array())
+                .map(|actions| {
+                    actions
+                        .iter()
+                        .filter_map(|a| a.get("path").and_then(|v| v.as_str()).map(String::from))
+                        .collect()
                 })
-            });
+                .unwrap_or_default();
 
-        FixEntry { check_id, fix_type, article, description, applied, files, manual_fields, error, is_scaffold }
-    }).collect()
+            let manual_fields: Vec<String> = plan
+                .get("manualFields")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            // Scaffold detection: all actions are type "create" → boilerplate, not inline
+            let is_scaffold =
+                plan.get("actions")
+                    .and_then(|v| v.as_array())
+                    .is_none_or(|actions| {
+                        actions
+                            .iter()
+                            .all(|a| a.get("type").and_then(|v| v.as_str()) == Some("create"))
+                    });
+
+            FixEntry {
+                check_id,
+                fix_type,
+                article,
+                description,
+                applied,
+                files,
+                manual_fields,
+                error,
+                is_scaffold,
+            }
+        })
+        .collect()
 }
 
 // ── Scaffold helpers ─────────────────────────────────────────────
@@ -309,10 +386,22 @@ fn format_fix_report(resp: &serde_json::Value, scan_path: &str) -> String {
     let mut o = String::with_capacity(8192);
 
     let summary = resp.get("summary");
-    let score_before = summary.and_then(|s| s.get("scoreBefore")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-    let score_after = summary.and_then(|s| s.get("scoreAfter")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-    let applied_count = summary.and_then(|s| s.get("applied")).and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let failed_count = summary.and_then(|s| s.get("failed")).and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let score_before = summary
+        .and_then(|s| s.get("scoreBefore"))
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(0.0);
+    let score_after = summary
+        .and_then(|s| s.get("scoreAfter"))
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(0.0);
+    let applied_count = summary
+        .and_then(|s| s.get("applied"))
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let failed_count = summary
+        .and_then(|s| s.get("failed"))
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
 
     let entries = extract_entries(resp);
 
@@ -325,9 +414,15 @@ fn format_fix_report(resp: &serde_json::Value, scan_path: &str) -> String {
     // Group entries
     let (docs, code, config_deps) = group_entries(&entries);
 
-    if !docs.is_empty()       { render_doc_section(&mut o, &docs); }
-    if !code.is_empty()        { render_code_section(&mut o, &code); }
-    if !config_deps.is_empty() { render_config_dep_section(&mut o, &config_deps); }
+    if !docs.is_empty() {
+        render_doc_section(&mut o, &docs);
+    }
+    if !code.is_empty() {
+        render_code_section(&mut o, &code);
+    }
+    if !config_deps.is_empty() {
+        render_config_dep_section(&mut o, &config_deps);
+    }
 
     // Failures
     let failures: Vec<&FixEntry> = entries.iter().filter(|e| !e.applied).collect();
@@ -347,21 +442,47 @@ fn format_fix_report(resp: &serde_json::Value, scan_path: &str) -> String {
 }
 
 fn render_fix_header(o: &mut String, scan_path: &str, applied: u64, failed: u64, is_preview: bool) {
-    let mode = if is_preview { "Fix Preview" } else { "Fix Report" };
-    let subtitle = if is_preview { "Dry Run · No Files Modified" } else { "EU AI Act Auto-Remediation" };
+    let mode = if is_preview {
+        "Fix Preview"
+    } else {
+        "Fix Report"
+    };
+    let subtitle = if is_preview {
+        "Dry Run · No Files Modified"
+    } else {
+        "EU AI Act Auto-Remediation"
+    };
     o.push('\n');
-    o.push_str(&format!("  {}\n", bold(&format!("◆ Complior {mode}  ·  {subtitle}"))));
+    o.push_str(&format!(
+        "  {}\n",
+        bold(&format!("◆ Complior {mode}  ·  {subtitle}"))
+    ));
     o.push_str(&format!("  {}\n", separator()));
-    o.push_str(&format!("  {}{}\n", dim(&format!("{:<10}", "Project")), project_name(scan_path)));
+    o.push_str(&format!(
+        "  {}{}\n",
+        dim(&format!("{:<10}", "Project")),
+        project_name(scan_path)
+    ));
     if is_preview {
-        o.push_str(&format!("  {}{}\n", dim(&format!("{:<10}", "Fixes")), format!("{applied} planned")));
+        o.push_str(&format!(
+            "  {}{}\n",
+            dim(&format!("{:<10}", "Fixes")),
+            format!("{applied} planned")
+        ));
     } else {
         let fix_summary = if failed > 0 {
-            format!("{applied} applied · {}", bold_red(&format!("{failed} failed")))
+            format!(
+                "{applied} applied · {}",
+                bold_red(&format!("{failed} failed"))
+            )
         } else {
             format!("{applied} applied · 0 failed")
         };
-        o.push_str(&format!("  {}{}\n", dim(&format!("{:<10}", "Fixes")), fix_summary));
+        o.push_str(&format!(
+            "  {}{}\n",
+            dim(&format!("{:<10}", "Fixes")),
+            fix_summary
+        ));
     }
     o.push_str(&format!("  {}\n", separator()));
 }
@@ -375,16 +496,28 @@ fn render_score_line_estimated(o: &mut String, before: f64, after: f64, applied:
 }
 
 fn render_score_line_inner(o: &mut String, before: f64, after: f64, applied: u64, estimated: bool) {
-    let label = if estimated { "SCORE (estimated)" } else { "SCORE" };
+    let label = if estimated {
+        "SCORE (estimated)"
+    } else {
+        "SCORE"
+    };
     let score_text = if estimated {
         format!("{before:.0} → ~{after:.0}")
     } else {
         format!("{before:.0} → {after:.0}")
     };
     let pad = SEP_WIDTH.saturating_sub(label.len() + score_text.len());
-    o.push_str(&format!("  {}{}{}\n", bold(label), " ".repeat(pad), score_color(after, &score_text)));
+    o.push_str(&format!(
+        "  {}{}{}\n",
+        bold(label),
+        " ".repeat(pad),
+        score_color(after, &score_text)
+    ));
     if (before - after).abs() < 0.5 && applied > 0 {
-        o.push_str(&format!("  {}\n", dim("(category improvements below weighted rounding threshold)")));
+        o.push_str(&format!(
+            "  {}\n",
+            dim("(category improvements below weighted rounding threshold)")
+        ));
     }
     o.push_str(&format!("  {}\n\n", separator()));
 }
@@ -396,7 +529,9 @@ fn group_entries(entries: &[FixEntry]) -> (Vec<&FixEntry>, Vec<&FixEntry>, Vec<&
     let mut config_deps = Vec::new();
 
     for e in entries {
-        if !e.applied { continue; }
+        if !e.applied {
+            continue;
+        }
         match e.fix_type.as_str() {
             "template_generation" | "metadata_generation" | "ai_enrichment" => docs.push(e),
             "code_injection" => code.push(e),
@@ -411,7 +546,8 @@ fn group_entries(entries: &[FixEntry]) -> (Vec<&FixEntry>, Vec<&FixEntry>, Vec<&
 // ── Document section ─────────────────────────────────────────────
 
 fn render_doc_section(o: &mut String, entries: &[&FixEntry]) {
-    o.push_str(&format!("  {}  ({} fix{})\n\n",
+    o.push_str(&format!(
+        "  {}  ({} fix{})\n\n",
         bold("DOCUMENTS CREATED"),
         entries.len(),
         plural_es(entries.len()),
@@ -419,23 +555,45 @@ fn render_doc_section(o: &mut String, entries: &[&FixEntry]) {
 
     for e in entries {
         let icon = green("✓");
-        let article = if e.article.is_empty() { String::new() } else { format!("{} ", pad_article(&e.article)) };
+        let article = if e.article.is_empty() {
+            String::new()
+        } else {
+            format!("{} ", pad_article(&e.article))
+        };
         let label = check_label(&e.check_id);
-        let badge = if e.is_scaffold { format!("  {}", scaffold_badge()) } else { String::new() };
-        o.push_str(&format!("    {}  {}{}{}\n", icon, bold(&article), label, badge));
+        let badge = if e.is_scaffold {
+            format!("  {}", scaffold_badge())
+        } else {
+            String::new()
+        };
+        o.push_str(&format!(
+            "    {}  {}{}{}\n",
+            icon,
+            bold(&article),
+            label,
+            badge
+        ));
 
         for file in &e.files {
             o.push_str(&format!("                 → {}\n", cyan(file)));
         }
 
         if !e.manual_fields.is_empty() {
-            let shown: Vec<&str> = e.manual_fields.iter().take(3).map(std::string::String::as_str).collect();
+            let shown: Vec<&str> = e
+                .manual_fields
+                .iter()
+                .take(3)
+                .map(std::string::String::as_str)
+                .collect();
             let mut todo_text = shown.join(", ");
             let remaining = e.manual_fields.len().saturating_sub(3);
             if remaining > 0 {
                 todo_text.push_str(&format!(" (+ {remaining} more)"));
             }
-            o.push_str(&format!("                 {}\n", yellow(&format!("TODO: {todo_text}"))));
+            o.push_str(&format!(
+                "                 {}\n",
+                yellow(&format!("TODO: {todo_text}"))
+            ));
         }
 
         if e.is_scaffold {
@@ -453,9 +611,7 @@ fn render_doc_section(o: &mut String, entries: &[&FixEntry]) {
 /// "Inline fix: wrap bare LLM call at src/chat/anthropic.ts:3" → "Wrap bare LLM call"
 fn normalize_code_desc(desc: &str) -> String {
     // Strip "Inline fix: " prefix
-    let base = desc
-        .strip_prefix("Inline fix: ")
-        .unwrap_or(desc);
+    let base = desc.strip_prefix("Inline fix: ").unwrap_or(desc);
     // Strip " at <path>" suffix (everything after last " at ")
     let core = if let Some(pos) = base.rfind(" at ") {
         &base[..pos]
@@ -474,17 +630,30 @@ fn normalize_code_desc(desc: &str) -> String {
 
 /// Classify a code fix entry into a sub-group name.
 fn code_subgroup(check_id: &str) -> &'static str {
-    if check_id.contains("bare-llm") || check_id.contains("bare-call") { return "SDK Wrapper"; }
-    if check_id.contains("security-risk") || check_id.contains("unsafe-deser") { return "Security Fixes"; }
-    if check_id.contains("error-handling") { return "Error Handling"; }
-    if check_id.contains("nhi") || check_id.contains("detect-secrets") { return "Secret Externalization"; }
-    if check_id.contains("banned") { return "Prohibited Dependencies"; }
-    if check_id.contains("bandit") { return "Python Security"; }
+    if check_id.contains("bare-llm") || check_id.contains("bare-call") {
+        return "SDK Wrapper";
+    }
+    if check_id.contains("security-risk") || check_id.contains("unsafe-deser") {
+        return "Security Fixes";
+    }
+    if check_id.contains("error-handling") {
+        return "Error Handling";
+    }
+    if check_id.contains("nhi") || check_id.contains("detect-secrets") {
+        return "Secret Externalization";
+    }
+    if check_id.contains("banned") {
+        return "Prohibited Dependencies";
+    }
+    if check_id.contains("bandit") {
+        return "Python Security";
+    }
     "Other Code Fixes"
 }
 
 fn render_code_section(o: &mut String, entries: &[&FixEntry]) {
-    o.push_str(&format!("  {}  ({} fix{})\n\n",
+    o.push_str(&format!(
+        "  {}  ({} fix{})\n\n",
         bold("CODE FIXES — INLINE"),
         entries.len(),
         plural_es(entries.len()),
@@ -492,20 +661,32 @@ fn render_code_section(o: &mut String, entries: &[&FixEntry]) {
 
     // Sub-group by category
     let group_order = [
-        "SDK Wrapper", "Security Fixes", "Error Handling",
-        "Secret Externalization", "Prohibited Dependencies",
-        "Python Security", "Other Code Fixes",
+        "SDK Wrapper",
+        "Security Fixes",
+        "Error Handling",
+        "Secret Externalization",
+        "Prohibited Dependencies",
+        "Python Security",
+        "Other Code Fixes",
     ];
     for group_name in &group_order {
-        let group: Vec<&&FixEntry> = entries.iter()
+        let group: Vec<&&FixEntry> = entries
+            .iter()
             .filter(|e| code_subgroup(&e.check_id) == *group_name)
             .collect();
-        if group.is_empty() { continue; }
+        if group.is_empty() {
+            continue;
+        }
 
         let count = group.len();
         let all_scaffold = group.iter().all(|e| e.is_scaffold);
-        let group_badge = if all_scaffold { format!("  {}", scaffold_badge()) } else { String::new() };
-        o.push_str(&format!("    {} ({count} fix{}){}\n",
+        let group_badge = if all_scaffold {
+            format!("  {}", scaffold_badge())
+        } else {
+            String::new()
+        };
+        o.push_str(&format!(
+            "    {} ({count} fix{}){}\n",
             bold(group_name),
             plural_es(count),
             group_badge,
@@ -529,9 +710,23 @@ fn render_code_section(o: &mut String, entries: &[&FixEntry]) {
 
         for (article, description, files, is_scaffold) in &merged {
             let icon = green("✓");
-            let art_display = if article.is_empty() { String::new() } else { format!("{} ", pad_article(article)) };
-            let badge = if *is_scaffold && !all_scaffold { format!("  {}", scaffold_badge()) } else { String::new() };
-            o.push_str(&format!("      {}  {}{}{}\n", icon, bold(&art_display), description, badge));
+            let art_display = if article.is_empty() {
+                String::new()
+            } else {
+                format!("{} ", pad_article(article))
+            };
+            let badge = if *is_scaffold && !all_scaffold {
+                format!("  {}", scaffold_badge())
+            } else {
+                String::new()
+            };
+            o.push_str(&format!(
+                "      {}  {}{}{}\n",
+                icon,
+                bold(&art_display),
+                description,
+                badge
+            ));
 
             // Dedup file paths, then show first 2 + collapse
             let mut unique_files: Vec<&str> = Vec::new();
@@ -550,12 +745,20 @@ fn render_code_section(o: &mut String, entries: &[&FixEntry]) {
             o.push_str(&format!("                     {}\n", dim(&file_text)));
 
             if *is_scaffold && !all_scaffold {
-                o.push_str(&format!("                     {} {}\n", dim("↳"), dim("Integrate into your request pipeline and customize for your project")));
+                o.push_str(&format!(
+                    "                     {} {}\n",
+                    dim("↳"),
+                    dim("Integrate into your request pipeline and customize for your project")
+                ));
             }
         }
 
         if all_scaffold {
-            o.push_str(&format!("      {} {}\n", dim("↳"), dim("Integrate into your request pipeline and customize for your project")));
+            o.push_str(&format!(
+                "      {} {}\n",
+                dim("↳"),
+                dim("Integrate into your request pipeline and customize for your project")
+            ));
         }
         o.push('\n');
     }
@@ -564,7 +767,8 @@ fn render_code_section(o: &mut String, entries: &[&FixEntry]) {
 // ── Config & dependencies section ────────────────────────────────
 
 fn render_config_dep_section(o: &mut String, entries: &[&FixEntry]) {
-    o.push_str(&format!("  {}  ({} fix{})\n\n",
+    o.push_str(&format!(
+        "  {}  ({} fix{})\n\n",
         bold("CONFIG & DEPENDENCIES"),
         entries.len(),
         plural_es(entries.len()),
@@ -572,15 +776,30 @@ fn render_config_dep_section(o: &mut String, entries: &[&FixEntry]) {
 
     for e in entries {
         let icon = green("✓");
-        let article = if e.article.is_empty() { String::new() } else { format!("{} ", pad_article(&e.article)) };
+        let article = if e.article.is_empty() {
+            String::new()
+        } else {
+            format!("{} ", pad_article(&e.article))
+        };
         let label = check_label(&e.check_id);
         let file_text = if e.files.is_empty() {
             String::new()
         } else {
             format!(" → {}", e.files[0])
         };
-        let badge = if e.is_scaffold { format!("  {}", scaffold_badge()) } else { String::new() };
-        o.push_str(&format!("    {}  {}{}{}{}\n", icon, bold(&article), label, dim(&file_text), badge));
+        let badge = if e.is_scaffold {
+            format!("  {}", scaffold_badge())
+        } else {
+            String::new()
+        };
+        o.push_str(&format!(
+            "    {}  {}{}{}{}\n",
+            icon,
+            bold(&article),
+            label,
+            dim(&file_text),
+            badge
+        ));
 
         if e.is_scaffold {
             let hint = scaffold_hint(&e.check_id, &e.fix_type);
@@ -593,7 +812,8 @@ fn render_config_dep_section(o: &mut String, entries: &[&FixEntry]) {
 // ── Failures section ─────────────────────────────────────────────
 
 fn render_failures(o: &mut String, failures: &[&FixEntry]) {
-    o.push_str(&format!("  {}  ({} fix{})\n\n",
+    o.push_str(&format!(
+        "  {}  ({} fix{})\n\n",
         bold_red("FAILED"),
         failures.len(),
         plural_es(failures.len()),
@@ -619,7 +839,8 @@ fn render_unfixed_findings(o: &mut String, resp: &serde_json::Value) {
     };
 
     o.push_str(&format!("  {}\n", separator()));
-    o.push_str(&format!("  {}  ({} finding{})\n",
+    o.push_str(&format!(
+        "  {}  ({} finding{})\n",
         bold("MANUAL ACTION NEEDED"),
         unfixed.len(),
         plural(unfixed.len()),
@@ -628,7 +849,10 @@ fn render_unfixed_findings(o: &mut String, resp: &serde_json::Value) {
 
     for item in unfixed {
         let check_id = item.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
-        let severity = item.get("severity").and_then(|v| v.as_str()).unwrap_or("medium");
+        let severity = item
+            .get("severity")
+            .and_then(|v| v.as_str())
+            .unwrap_or("medium");
         let message = item.get("message").and_then(|v| v.as_str()).unwrap_or("");
         let fix_hint = item.get("fix").and_then(|v| v.as_str());
 
@@ -638,7 +862,12 @@ fn render_unfixed_findings(o: &mut String, resp: &serde_json::Value) {
             _ => dim(severity),
         };
 
-        o.push_str(&format!("    {} [{}]  {}\n", yellow("▸"), sev_colored, check_label(check_id)));
+        o.push_str(&format!(
+            "    {} [{}]  {}\n",
+            yellow("▸"),
+            sev_colored,
+            check_label(check_id)
+        ));
         if !message.is_empty() {
             o.push_str(&format!("         {}\n", dim(message)));
         }
@@ -657,18 +886,42 @@ fn render_next_steps(o: &mut String, has_todos: bool, has_scaffold: bool) {
     o.push_str(&format!("  {}\n", separator()));
 
     if has_todos {
-        o.push_str(&format!("  {:<26}{}\n", "Fill TODO fields", dim("Review generated documents and complete manual sections")));
+        o.push_str(&format!(
+            "  {:<26}{}\n",
+            "Fill TODO fields",
+            dim("Review generated documents and complete manual sections")
+        ));
     }
-    o.push_str(&format!("  {:<26}{}\n", "Review code changes", dim("Verify inline fixes don't break functionality")));
+    o.push_str(&format!(
+        "  {:<26}{}\n",
+        "Review code changes",
+        dim("Verify inline fixes don't break functionality")
+    ));
     o.push_str(&format!("  {:<26}{}\n", "Re-scan", dim("complior scan")));
     o.push_str(&format!("  {}\n", separator()));
 
     if has_scaffold {
-        o.push_str(&format!("  {} → {}\n", bold("UPGRADE [SCAFFOLD]"), bold("PRODUCTION")));
+        o.push_str(&format!(
+            "  {} → {}\n",
+            bold("UPGRADE [SCAFFOLD]"),
+            bold("PRODUCTION")
+        ));
         o.push_str(&format!("  {}\n", separator()));
-        o.push_str(&format!("  {:<26}{}\n", "LLM-enhanced docs", dim("complior fix --ai")));
-        o.push_str(&format!("  {:<26}{}\n", "Coding agent via MCP", dim("Connect your coding agent to Complior MCP server")));
-        o.push_str(&format!("  {:<26}{}\n", "", dim("See: complior mcp --help")));
+        o.push_str(&format!(
+            "  {:<26}{}\n",
+            "LLM-enhanced docs",
+            dim("complior fix --ai")
+        ));
+        o.push_str(&format!(
+            "  {:<26}{}\n",
+            "Coding agent via MCP",
+            dim("Connect your coding agent to Complior MCP server")
+        ));
+        o.push_str(&format!(
+            "  {:<26}{}\n",
+            "",
+            dim("See: complior mcp --help")
+        ));
         o.push_str(&format!("  {}\n", separator()));
     }
 
@@ -681,7 +934,10 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
     let mut o = String::with_capacity(4096);
 
     let changes = resp.get("changes").and_then(|v| v.as_array());
-    let predicted = resp.get("predictedScore").and_then(serde_json::Value::as_f64).unwrap_or(current_score);
+    let predicted = resp
+        .get("predictedScore")
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(current_score);
     let change_count = changes.map_or(0, std::vec::Vec::len) as u64;
 
     render_fix_header(&mut o, scan_path, change_count, 0, true);
@@ -689,15 +945,18 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
 
     if let Some(changes) = changes {
         // Group by action type
-        let creates: Vec<&serde_json::Value> = changes.iter()
+        let creates: Vec<&serde_json::Value> = changes
+            .iter()
             .filter(|c| c.get("action").and_then(|v| v.as_str()) == Some("CREATE"))
             .collect();
-        let modifies: Vec<&serde_json::Value> = changes.iter()
+        let modifies: Vec<&serde_json::Value> = changes
+            .iter()
             .filter(|c| c.get("action").and_then(|v| v.as_str()) != Some("CREATE"))
             .collect();
 
         if !creates.is_empty() {
-            o.push_str(&format!("  {}  ({} file{})\n\n",
+            o.push_str(&format!(
+                "  {}  ({} file{})\n\n",
                 bold("FILES TO CREATE"),
                 creates.len(),
                 plural(creates.len()),
@@ -709,7 +968,8 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
             o.push('\n');
         }
         if !modifies.is_empty() {
-            o.push_str(&format!("  {}  ({} file{})\n\n",
+            o.push_str(&format!(
+                "  {}  ({} file{})\n\n",
                 bold("FILES TO MODIFY"),
                 modifies.len(),
                 plural(modifies.len()),
@@ -717,14 +977,22 @@ fn format_dry_run_report(resp: &serde_json::Value, current_score: f64, scan_path
             for c in &modifies {
                 let path = c.get("path").and_then(|v| v.as_str()).unwrap_or("?");
                 let action = c.get("action").and_then(|v| v.as_str()).unwrap_or("MODIFY");
-                o.push_str(&format!("    {}  {:<40} [{}]\n", yellow("[PREVIEW]"), path, action));
+                o.push_str(&format!(
+                    "    {}  {:<40} [{}]\n",
+                    yellow("[PREVIEW]"),
+                    path,
+                    action
+                ));
             }
             o.push('\n');
         }
     }
 
     o.push_str(&format!("  {}\n", separator()));
-    o.push_str(&format!("  Run {} to apply these changes\n", bold("complior fix")));
+    o.push_str(&format!(
+        "  Run {} to apply these changes\n",
+        bold("complior fix")
+    ));
     o.push_str(&format!("  {}\n\n", separator()));
 
     o
@@ -745,7 +1013,11 @@ fn erase_prev_line() {
 /// Render a compact progress bar.
 fn render_progress_bar(completed: u64, total: u64) -> String {
     let bar_width = 20usize;
-    let filled = if total > 0 { (completed * bar_width as u64 / total) as usize } else { 0 };
+    let filled = if total > 0 {
+        (completed * bar_width as u64 / total) as usize
+    } else {
+        0
+    };
     let empty = bar_width.saturating_sub(filled);
     format!(
         "[{}{}]  {}/{}",
@@ -825,9 +1097,16 @@ async fn run_fix_stream(
                 let data = data.trim();
 
                 match current_event.as_str() {
+                    "heartbeat" => {
+                        // Keep-alive from engine during long LLM calls — skip silently
+                        continue;
+                    }
                     "fix:start" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                            total = parsed.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                            total = parsed
+                                .get("total")
+                                .and_then(serde_json::Value::as_u64)
+                                .unwrap_or(0);
                             eprintln!("  {} fixes to apply\n", total);
                             // Print initial progress bar
                             eprintln!("  {}", render_progress_bar(0, total));
@@ -836,9 +1115,15 @@ async fn run_fix_stream(
                     }
                     "fix:progress" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                            let check_id = parsed.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+                            let check_id = parsed
+                                .get("checkId")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("?");
                             let path = parsed.get("path").and_then(|v| v.as_str()).unwrap_or("?");
-                            let action = parsed.get("action").and_then(|v| v.as_str()).unwrap_or("MODIFY");
+                            let action = parsed
+                                .get("action")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("MODIFY");
                             current_check = Some(check_id.to_string());
 
                             // Erase progress bar and show current item
@@ -860,7 +1145,10 @@ async fn run_fix_stream(
                     }
                     "fix:applied" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                            let check_id = parsed.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
+                            let check_id = parsed
+                                .get("checkId")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("?");
                             let path = parsed.get("path").and_then(|v| v.as_str()).unwrap_or("?");
                             completed += 1;
                             applied += 1;
@@ -872,7 +1160,11 @@ async fn run_fix_stream(
                             }
                             let label = check_label(check_id);
                             let short_path = shorten_path(path);
-                            let action_str = if path.contains("docs/") || path.ends_with(".md") { "CREATE" } else { "MODIFY" };
+                            let action_str = if path.contains("docs/") || path.ends_with(".md") {
+                                "CREATE"
+                            } else {
+                                "MODIFY"
+                            };
                             eprintln!(
                                 "  {}  {:<16} {:<36} [{}]",
                                 green(check_mark()),
@@ -880,7 +1172,12 @@ async fn run_fix_stream(
                                 short_path,
                                 action_str,
                             );
-                            fix_lines.push((check_id.to_string(), path.to_string(), action_str.to_string(), true));
+                            fix_lines.push((
+                                check_id.to_string(),
+                                path.to_string(),
+                                action_str.to_string(),
+                                true,
+                            ));
 
                             // Show updated progress bar
                             eprintln!("  {}", render_progress_bar(completed, total));
@@ -889,8 +1186,14 @@ async fn run_fix_stream(
                     }
                     "fix:failed" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                            let check_id = parsed.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
-                            let error = parsed.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                            let check_id = parsed
+                                .get("checkId")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("?");
+                            let error = parsed
+                                .get("error")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown error");
                             completed += 1;
                             failed += 1;
                             current_check = None;
@@ -899,13 +1202,13 @@ async fn run_fix_stream(
                                 erase_prev_line();
                             }
                             let label = check_label(check_id);
-                            eprintln!(
-                                "  {}  {:<16} {}",
-                                red("✖"),
-                                label,
-                                dim(error),
-                            );
-                            fix_lines.push((check_id.to_string(), String::new(), String::new(), false));
+                            eprintln!("  {}  {:<16} {}", red("✖"), label, dim(error),);
+                            fix_lines.push((
+                                check_id.to_string(),
+                                String::new(),
+                                String::new(),
+                                false,
+                            ));
 
                             eprintln!("  {}", render_progress_bar(completed, total));
                             progress_line_shown = true;
@@ -922,7 +1225,10 @@ async fn run_fix_stream(
                     }
                     "fix:error" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                            let error = parsed.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                            let error = parsed
+                                .get("error")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown error");
                             eprintln!("\n  Fix error: {error}");
                             return 1;
                         }
@@ -936,19 +1242,34 @@ async fn run_fix_stream(
     // Print summary
     if let Some(done) = done_data {
         let summary = done.get("summary");
-        let score_before = summary.and_then(|s| s.get("scoreBefore")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-        let score_after = summary.and_then(|s| s.get("scoreAfter")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+        let score_before = summary
+            .and_then(|s| s.get("scoreBefore"))
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or(0.0);
+        let score_after = summary
+            .and_then(|s| s.get("scoreAfter"))
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or(0.0);
 
         eprintln!();
         eprintln!("  {}", separator());
         let score_text = format!("{score_before:.0} → {score_after:.0}");
         let pad = SEP_WIDTH.saturating_sub("SCORE".len() + score_text.len());
-        eprintln!("  {}{}{}", bold("SCORE"), " ".repeat(pad), score_color(score_after, &score_text));
+        eprintln!(
+            "  {}{}{}",
+            bold("SCORE"),
+            " ".repeat(pad),
+            score_color(score_after, &score_text)
+        );
         eprintln!("  {}", separator());
         eprintln!(
             "  {} applied · {} failed",
             green(&applied.to_string()),
-            if failed > 0 { bold_red(&failed.to_string()) } else { dim("0") },
+            if failed > 0 {
+                bold_red(&failed.to_string())
+            } else {
+                dim("0")
+            },
         );
         eprintln!("  {}", separator());
 
@@ -956,7 +1277,12 @@ async fn run_fix_stream(
         if let Some(unfixed) = done.get("unfixedFindings").and_then(|v| v.as_array()) {
             if !unfixed.is_empty() {
                 eprintln!();
-                eprintln!("  {}  ({} finding{})", bold("MANUAL ACTION NEEDED"), unfixed.len(), plural(unfixed.len()));
+                eprintln!(
+                    "  {}  ({} finding{})",
+                    bold("MANUAL ACTION NEEDED"),
+                    unfixed.len(),
+                    plural(unfixed.len())
+                );
                 for item in unfixed {
                     let check_id = item.get("checkId").and_then(|v| v.as_str()).unwrap_or("?");
                     let message = item.get("message").and_then(|v| v.as_str()).unwrap_or("");
@@ -986,7 +1312,9 @@ fn shorten_path(path: &str) -> &str {
     }
     // Find a '/' near the 40-char-from-end mark
     let start = path.len().saturating_sub(40);
-    path[start..].find('/').map_or(path, |pos| &path[start + pos + 1..])
+    path[start..]
+        .find('/')
+        .map_or(path, |pos| &path[start + pos + 1..])
 }
 
 #[cfg(test)]
@@ -1042,14 +1370,38 @@ mod tests {
 
     #[test]
     fn test_scaffold_hint_by_fix_type() {
-        assert_eq!(scaffold_hint("l1-fria", "template_generation"), "Fill placeholders and review with your compliance team");
-        assert_eq!(scaffold_hint("l3-bias", "config_fix"), "Populate test data paths and adjust fairness thresholds");
-        assert_eq!(scaffold_hint("l3-ci", "config_fix"), "Adjust workflow triggers and scan thresholds for your CI");
-        assert_eq!(scaffold_hint("l3-nhi", "config_fix"), "Move actual secrets to vault or environment variables");
-        assert_eq!(scaffold_hint("l3-other", "config_fix"), "Review generated config and customize for your project");
-        assert_eq!(scaffold_hint("x", "code_injection"), "Import this module into your codebase and wire into your pipeline");
-        assert_eq!(scaffold_hint("x", "unknown_type"), "Review and customize for your project");
-        assert_eq!(scaffold_hint("l2-fria", "ai_enrichment"), "Review AI-enriched sections and approve with your compliance team");
+        assert_eq!(
+            scaffold_hint("l1-fria", "template_generation"),
+            "Fill placeholders and review with your compliance team"
+        );
+        assert_eq!(
+            scaffold_hint("l3-bias", "config_fix"),
+            "Populate test data paths and adjust fairness thresholds"
+        );
+        assert_eq!(
+            scaffold_hint("l3-ci", "config_fix"),
+            "Adjust workflow triggers and scan thresholds for your CI"
+        );
+        assert_eq!(
+            scaffold_hint("l3-nhi", "config_fix"),
+            "Move actual secrets to vault or environment variables"
+        );
+        assert_eq!(
+            scaffold_hint("l3-other", "config_fix"),
+            "Review generated config and customize for your project"
+        );
+        assert_eq!(
+            scaffold_hint("x", "code_injection"),
+            "Import this module into your codebase and wire into your pipeline"
+        );
+        assert_eq!(
+            scaffold_hint("x", "unknown_type"),
+            "Review and customize for your project"
+        );
+        assert_eq!(
+            scaffold_hint("l2-fria", "ai_enrichment"),
+            "Review AI-enriched sections and approve with your compliance team"
+        );
     }
 
     #[test]
@@ -1090,16 +1442,27 @@ mod tests {
         });
         let entries = extract_entries(&resp);
         assert_eq!(entries.len(), 3);
-        assert!(!entries[0].is_scaffold, "splice action should not be scaffold");
-        assert!(entries[1].is_scaffold, "create-only action should be scaffold");
-        assert!(entries[2].is_scaffold, "create-only code_injection should be scaffold");
+        assert!(
+            !entries[0].is_scaffold,
+            "splice action should not be scaffold"
+        );
+        assert!(
+            entries[1].is_scaffold,
+            "create-only action should be scaffold"
+        );
+        assert!(
+            entries[2].is_scaffold,
+            "create-only code_injection should be scaffold"
+        );
     }
 
     #[test]
     fn test_render_unfixed_findings_present() {
         // Force NO_COLOR for deterministic output
         // SAFETY: single-threaded test context
-        unsafe { std::env::set_var("NO_COLOR", "1"); }
+        unsafe {
+            std::env::set_var("NO_COLOR", "1");
+        }
 
         let resp = serde_json::json!({
             "results": [],
@@ -1125,8 +1488,14 @@ mod tests {
 
         assert!(o.contains("MANUAL ACTION NEEDED"), "should contain header");
         assert!(o.contains("2 findings"), "should show count");
-        assert!(o.contains("Logging"), "should contain check label for l4-logging");
-        assert!(o.contains("Record Keeping"), "should contain check label for l4-record-keeping");
+        assert!(
+            o.contains("Logging"),
+            "should contain check label for l4-logging"
+        );
+        assert!(
+            o.contains("Record Keeping"),
+            "should contain check label for l4-record-keeping"
+        );
         assert!(o.contains("Fix"), "should show fix hints");
     }
 
@@ -1141,6 +1510,9 @@ mod tests {
         let mut o = String::new();
         render_unfixed_findings(&mut o, &resp);
 
-        assert!(o.is_empty(), "should produce no output for empty unfixed findings");
+        assert!(
+            o.is_empty(),
+            "should produce no output for empty unfixed findings"
+        );
     }
 }

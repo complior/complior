@@ -11,8 +11,8 @@
 #[cfg(test)]
 mod contract_tests {
     use crate::types::{
-        CategoryScore, CodeContext, CodeContextLine, Finding, FixDiff, ScanResult, ScoreBreakdown,
-        Severity, Zone,
+        CategoryScore, CodeContext, CodeContextLine, Finding, ScanResult, ScoreBreakdown, Severity,
+        Zone,
     };
 
     /// Path to the shared contract sample (relative to workspace root).
@@ -22,19 +22,15 @@ mod contract_tests {
             .parent()
             .expect("cli/ should have a parent directory");
         let path = workspace_root.join("engine/core/data/schemas/http-contract-sample.json");
-        std::fs::read_to_string(&path).unwrap_or_else(|e| {
-            panic!(
-                "Failed to read contract sample at {}: {e}",
-                path.display()
-            )
-        })
+        std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("Failed to read contract sample at {}: {e}", path.display()))
     }
 
     #[test]
     fn contract_sample_deserializes_as_scan_result() {
         let json = sample_json();
-        let result: ScanResult =
-            serde_json::from_str(&json).expect("ScanResult should deserialize from contract sample");
+        let result: ScanResult = serde_json::from_str(&json)
+            .expect("ScanResult should deserialize from contract sample");
 
         assert_eq!(result.project_path, "/home/user/my-ai-project");
         assert_eq!(result.scanned_at, "2026-03-01T14:30:00Z");
@@ -163,7 +159,10 @@ mod contract_tests {
         assert_eq!(f0.line, Some(42));
         assert_eq!(f0.obligation_id.as_deref(), Some("OBL-015"));
         assert_eq!(f0.article_reference.as_deref(), Some("Art. 14(4)"));
-        assert_eq!(f0.fix.as_deref(), Some("Optional: wrap with @complior/sdk for runtime Art. 50/12/14 enforcement"));
+        assert_eq!(
+            f0.fix.as_deref(),
+            Some("Optional: wrap with @complior/sdk for runtime Art. 50/12/14 enforcement")
+        );
 
         // Second finding: missing file/line (should be None)
         let f1: &Finding = &result.findings[1];
@@ -194,7 +193,10 @@ mod contract_tests {
         let json = sample_json();
         let result: ScanResult = serde_json::from_str(&json).unwrap();
         // First finding is info (no fixDiff), check that it is None
-        assert!(result.findings[0].fix_diff.is_none(), "info finding should not have fixDiff");
+        assert!(
+            result.findings[0].fix_diff.is_none(),
+            "info finding should not have fixDiff"
+        );
     }
 
     #[test]

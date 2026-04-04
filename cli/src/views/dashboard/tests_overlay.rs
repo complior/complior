@@ -1,8 +1,8 @@
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
-use super::*;
 use super::tests_helpers::render_to_string;
+use super::*;
 
 #[test]
 fn test_theme_picker_overlay_renders() {
@@ -70,18 +70,30 @@ fn e2e_t505_help_overlay_shows_view_specific_section() {
     // Dashboard view -- help should show "Dashboard View"
     app.view_state = ViewState::Dashboard;
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Dashboard View"), "Help overlay should show 'Dashboard View' section");
-    assert!(buf.contains("Keyboard Shortcuts"), "Help overlay should have title");
+    assert!(
+        buf.contains("Dashboard View"),
+        "Help overlay should show 'Dashboard View' section"
+    );
+    assert!(
+        buf.contains("Keyboard Shortcuts"),
+        "Help overlay should have title"
+    );
 
     // Scan view -- help should show "Scan View"
     app.view_state = ViewState::Scan;
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Scan View"), "Help overlay should show 'Scan View' section");
+    assert!(
+        buf.contains("Scan View"),
+        "Help overlay should show 'Scan View' section"
+    );
 
     // Chat (Log) view -- help should show "Log View"
     app.view_state = ViewState::Log;
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Log View"), "Help overlay should show 'Log View' section");
+    assert!(
+        buf.contains("Log View"),
+        "Help overlay should show 'Log View' section"
+    );
 }
 
 #[test]
@@ -93,10 +105,19 @@ fn e2e_t505_help_overlay_shows_global_shortcuts() {
 
     let buf = render_to_string(&app, 120, 40);
     assert!(buf.contains("General"), "Help should have General section");
-    assert!(buf.contains("Navigation"), "Help should have Navigation section");
-    assert!(buf.contains("Features"), "Help should have Features section");
+    assert!(
+        buf.contains("Navigation"),
+        "Help should have Navigation section"
+    );
+    assert!(
+        buf.contains("Features"),
+        "Help should have Features section"
+    );
     assert!(buf.contains("Ctrl+C"), "Help should show Ctrl+C shortcut");
-    assert!(buf.contains("Command palette"), "Help should show Command palette");
+    assert!(
+        buf.contains("Command palette"),
+        "Help should show Command palette"
+    );
 }
 
 #[test]
@@ -114,7 +135,10 @@ fn e2e_t505_help_overlay_scroll_changes_visible_content() {
     let buf10 = render_to_string(&app, 120, 40);
 
     // The content should differ (scrolled down)
-    assert_ne!(buf0, buf10, "Help overlay should show different content after scrolling");
+    assert_ne!(
+        buf0, buf10,
+        "Help overlay should show different content after scrolling"
+    );
 }
 
 // --- T704: Confirm Dialog ---
@@ -133,7 +157,11 @@ fn e2e_t704_confirm_dialog_y_closes() {
 
     // Press 'y' to confirm
     app.apply_action(crate::input::Action::InsertChar('y'));
-    assert_eq!(app.overlay, Overlay::None, "ConfirmDialog should close on 'y'");
+    assert_eq!(
+        app.overlay,
+        Overlay::None,
+        "ConfirmDialog should close on 'y'"
+    );
     assert!(app.confirm_dialog.is_none());
 }
 
@@ -149,7 +177,11 @@ fn e2e_t704_confirm_dialog_n_cancels() {
     app.overlay = Overlay::ConfirmDialog;
 
     app.apply_action(crate::input::Action::InsertChar('n'));
-    assert_eq!(app.overlay, Overlay::None, "ConfirmDialog should close on 'n'");
+    assert_eq!(
+        app.overlay,
+        Overlay::None,
+        "ConfirmDialog should close on 'n'"
+    );
 }
 
 // --- T705: Dismiss Modal ---
@@ -158,12 +190,19 @@ fn e2e_t704_confirm_dialog_n_cancels() {
 fn e2e_t705_quick_action_d_opens_dismiss_modal() {
     let mut app = App::new(crate::config::TuiConfig::default());
     app.view_state = ViewState::Scan;
-    app.last_scan = Some(super::tests_helpers::make_scan_result(75.0, crate::types::Zone::Yellow));
+    app.last_scan = Some(super::tests_helpers::make_scan_result(
+        75.0,
+        crate::types::Zone::Yellow,
+    ));
     app.scan_view.selected_finding = Some(0);
 
     // Press 'd' for dismiss
     app.handle_view_key('d');
-    assert_eq!(app.overlay, Overlay::DismissModal, "'d' should open dismiss modal");
+    assert_eq!(
+        app.overlay,
+        Overlay::DismissModal,
+        "'d' should open dismiss modal"
+    );
     assert!(app.dismiss_modal.is_some());
 }
 
@@ -174,7 +213,11 @@ fn e2e_t705_dismiss_modal_close_on_esc() {
     app.overlay = Overlay::DismissModal;
 
     app.apply_action(crate::input::Action::EnterNormalMode);
-    assert_eq!(app.overlay, Overlay::None, "Dismiss modal should close on Esc");
+    assert_eq!(
+        app.overlay,
+        Overlay::None,
+        "Dismiss modal should close on Esc"
+    );
     assert!(app.dismiss_modal.is_none());
 }
 
@@ -187,7 +230,10 @@ fn e2e_t08_undo_overlay_renders() {
     app.overlay = Overlay::UndoHistory;
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Undo History"), "Undo History overlay should render");
+    assert!(
+        buf.contains("Undo History"),
+        "Undo History overlay should render"
+    );
 }
 
 // --- Multiple overlays on different views ---

@@ -171,7 +171,7 @@ export const createPassportAudit = (deps: PassportServiceDeps, ops: PassportAudi
       // No history — diff against empty
     }
 
-    return computeManifestDiff(name, previous, current as Record<string, unknown>);
+    return computeManifestDiff(name, previous, current as unknown as Record<string, unknown>);
   };
 
   const importPassport = async (

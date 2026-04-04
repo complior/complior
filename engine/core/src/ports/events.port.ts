@@ -17,6 +17,7 @@ export interface EventMap {
   readonly 'agent.scan.completed': { readonly agentName: string; readonly result: ScanResult };
   readonly 'agent.score.updated': { readonly agentName: string; readonly before: number; readonly after: number };
   readonly 'passport.imported': { readonly name: string; readonly format: string; readonly fieldsImported: number };
+  readonly 'log': { readonly level: string; readonly message: string };
 }
 
 export type EventHandler<T> = (payload: T) => void;

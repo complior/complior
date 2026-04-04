@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -91,18 +91,11 @@ pub(super) fn render_audit_panel(frame: &mut Frame, area: Rect, app: &App) {
 
                 // Format event type for display
                 let event_display = event_type.replace(['.', '_'], " ");
-                let truncated =
-                    crate::views::truncate_str(&event_display, w.saturating_sub(22));
+                let truncated = crate::views::truncate_str(&event_display, w.saturating_sub(22));
 
                 let mut spans = vec![
-                    Span::styled(
-                        format!("  {icon} "),
-                        Style::default().fg(t.fg),
-                    ),
-                    Span::styled(
-                        format!("{time_display} "),
-                        Style::default().fg(t.muted),
-                    ),
+                    Span::styled(format!("  {icon} "), Style::default().fg(t.fg)),
+                    Span::styled(format!("{time_display} "), Style::default().fg(t.muted)),
                     Span::styled(truncated, Style::default().fg(t.fg)),
                 ];
 
@@ -139,8 +132,5 @@ pub(super) fn render_audit_panel(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("Back", Style::default().fg(t.fg)),
     ]));
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }

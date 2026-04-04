@@ -84,9 +84,7 @@ impl App {
             Action::MoveCursorRight => {
                 if self.input_cursor < self.input.len() {
                     let mut boundary = self.input_cursor + 1;
-                    while boundary < self.input.len()
-                        && !self.input.is_char_boundary(boundary)
-                    {
+                    while boundary < self.input.len() && !self.input.is_char_boundary(boundary) {
                         boundary += 1;
                     }
                     self.input_cursor = boundary;
@@ -133,7 +131,9 @@ impl App {
                             if self.passport_view.selected_passport > 0 {
                                 self.passport_view.selected_passport -= 1;
                             }
-                        } else if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
+                        } else if self.passport_view.detail_mode
+                            == PassportDetailMode::ObligationChecklist
+                        {
                             self.passport_view.obligation_scroll =
                                 self.passport_view.obligation_scroll.saturating_sub(1);
                         } else if self.passport_view.selected_index > 0 {
@@ -144,8 +144,11 @@ impl App {
                         let filtered_len = self.obligations_view.filtered_obligations().len();
                         if filtered_len > 0 && self.obligations_view.selected_index > 0 {
                             self.obligations_view.selected_index -= 1;
-                            if self.obligations_view.selected_index < self.obligations_view.scroll_offset {
-                                self.obligations_view.scroll_offset = self.obligations_view.selected_index;
+                            if self.obligations_view.selected_index
+                                < self.obligations_view.scroll_offset
+                            {
+                                self.obligations_view.scroll_offset =
+                                    self.obligations_view.selected_index;
                             }
                         }
                     }
@@ -154,12 +157,10 @@ impl App {
                             self.code_scroll = self.code_scroll.saturating_sub(1);
                         }
                         Panel::FileBrowser => {
-                            self.file_browser_index =
-                                self.file_browser_index.saturating_sub(1);
+                            self.file_browser_index = self.file_browser_index.saturating_sub(1);
                         }
                         Panel::Terminal => {
-                            self.terminal_scroll =
-                                self.terminal_scroll.saturating_sub(1);
+                            self.terminal_scroll = self.terminal_scroll.saturating_sub(1);
                             self.terminal_auto_scroll = false;
                         }
                         Panel::Chat => {
@@ -197,7 +198,9 @@ impl App {
                             if self.passport_view.selected_passport < max {
                                 self.passport_view.selected_passport += 1;
                             }
-                        } else if self.passport_view.detail_mode == PassportDetailMode::ObligationChecklist {
+                        } else if self.passport_view.detail_mode
+                            == PassportDetailMode::ObligationChecklist
+                        {
                             self.passport_view.obligation_scroll += 1;
                         } else {
                             let max = self.passport_view.fields.len().saturating_sub(1);
@@ -214,8 +217,13 @@ impl App {
                             self.obligations_view.selected_index += 1;
                             // Keep selected item visible (assume ~30 visible lines)
                             let visible_lines = 30usize;
-                            if self.obligations_view.selected_index >= self.obligations_view.scroll_offset + visible_lines {
-                                self.obligations_view.scroll_offset = self.obligations_view.selected_index.saturating_sub(visible_lines - 1);
+                            if self.obligations_view.selected_index
+                                >= self.obligations_view.scroll_offset + visible_lines
+                            {
+                                self.obligations_view.scroll_offset = self
+                                    .obligations_view
+                                    .selected_index
+                                    .saturating_sub(visible_lines - 1);
                             }
                         }
                     }
@@ -329,14 +337,13 @@ impl App {
 
                 // Handle `!` bash prefix
                 if let Some(cmd) = text.strip_prefix('!')
-                    && !cmd.is_empty() {
-                        self.terminal_visible = true;
-                        self.messages.push(ChatMessage::new(
-                            MessageRole::System,
-                            format!("$ {cmd}"),
-                        ));
-                        return Some(AppCommand::RunCommand(cmd.to_string()));
-                    }
+                    && !cmd.is_empty()
+                {
+                    self.terminal_visible = true;
+                    self.messages
+                        .push(ChatMessage::new(MessageRole::System, format!("$ {cmd}")));
+                    return Some(AppCommand::RunCommand(cmd.to_string()));
+                }
 
                 // Colon-command mode: route to handle_colon_command
                 if self.colon_mode {
@@ -348,7 +355,11 @@ impl App {
                 if self.input_mode == InputMode::Command || text.starts_with('/') {
                     // On Log view, route LLM-specific slash commands to engine chat
                     if self.view_state == ViewState::Chat && !self.streaming.active {
-                        let cmd_word = text.trim_start_matches('/').split_whitespace().next().unwrap_or("");
+                        let cmd_word = text
+                            .trim_start_matches('/')
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("");
                         if matches!(cmd_word, "cost" | "mode" | "model") {
                             self.chat_auto_scroll = true;
                             return Some(AppCommand::ChatSend(text));
@@ -359,7 +370,8 @@ impl App {
                     if self.active_panel == Panel::CodeViewer && !text.starts_with('/') {
                         // Treat as code search query
                         if let Some(content) = &self.code_content {
-                            let matches = crate::views::code_viewer::find_search_matches(content, &text);
+                            let matches =
+                                crate::views::code_viewer::find_search_matches(content, &text);
                             self.code_search_current = 0;
                             if !matches.is_empty() {
                                 self.code_scroll = matches[0];
@@ -434,10 +446,7 @@ impl App {
             Action::OpenFile => {
                 if let Some(entry) = self.file_tree.get(self.file_browser_index) {
                     if entry.is_dir {
-                        file_browser::toggle_expand(
-                            &mut self.file_tree,
-                            self.file_browser_index,
-                        );
+                        file_browser::toggle_expand(&mut self.file_tree, self.file_browser_index);
                         None
                     } else {
                         let path = entry.path.to_string_lossy().to_string();
@@ -467,9 +476,10 @@ impl App {
                 self.view_state = view;
                 // Populate Fix view from latest scan when switching to it
                 if view == ViewState::Fix
-                    && let Some(scan) = &self.last_scan {
-                        self.fix_view = FixViewState::from_scan(&scan.findings);
-                    }
+                    && let Some(scan) = &self.last_scan
+                {
+                    self.fix_view = FixViewState::from_scan(&scan.findings);
+                }
                 // Auto-load obligations when switching to Obligations view
                 if view == ViewState::Obligations && self.obligations_view.obligations.is_empty() {
                     return Some(AppCommand::LoadObligations);
@@ -503,9 +513,7 @@ impl App {
                 self.active_panel = panel;
                 None
             }
-            Action::WatchToggle => {
-                Some(AppCommand::ToggleWatch)
-            }
+            Action::WatchToggle => Some(AppCommand::ToggleWatch),
             Action::ShowThemePicker => {
                 self.theme_picker = Some(crate::theme_picker::ThemePickerState::new());
                 self.overlay = Overlay::ThemePicker;
@@ -547,12 +555,8 @@ impl App {
                 self.scan_view.scan_error = None;
                 Some(AppCommand::Scan)
             }
-            Action::ViewKey(c) => {
-                self.handle_view_key(c)
-            }
-            Action::ViewEnter => {
-                self.handle_view_enter()
-            }
+            Action::ViewKey(c) => self.handle_view_key(c),
+            Action::ViewEnter => self.handle_view_enter(),
             Action::ViewEscape => {
                 // Cancel streaming on Esc when on Chat view
                 if self.view_state == ViewState::Chat && self.streaming.active {
@@ -571,9 +575,7 @@ impl App {
                 }
                 None
             }
-            Action::Undo => {
-                Some(AppCommand::Undo(None))
-            }
+            Action::Undo => Some(AppCommand::Undo(None)),
             Action::ShowUndoHistory => {
                 self.overlay = Overlay::UndoHistory;
                 Some(AppCommand::FetchUndoHistory)
@@ -590,9 +592,10 @@ impl App {
                     ClickTarget::ViewTab(view) => {
                         self.view_state = view;
                         if view == ViewState::Fix
-                            && let Some(scan) = &self.last_scan {
-                                self.fix_view = FixViewState::from_scan(&scan.findings);
-                            }
+                            && let Some(scan) = &self.last_scan
+                        {
+                            self.fix_view = FixViewState::from_scan(&scan.findings);
+                        }
                     }
                     ClickTarget::FindingRow(idx) => {
                         self.scan_view.selected_finding = Some(idx);
@@ -609,7 +612,9 @@ impl App {
             Action::ScrollLines(lines) => {
                 self.scroll_events.push(Instant::now());
                 // Trim old events (keep last 500ms)
-                let cutoff = Instant::now().checked_sub(std::time::Duration::from_millis(500)).unwrap();
+                let cutoff = Instant::now()
+                    .checked_sub(std::time::Duration::from_millis(500))
+                    .unwrap();
                 self.scroll_events.retain(|&t| t > cutoff);
 
                 if lines > 0 {

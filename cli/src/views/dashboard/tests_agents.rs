@@ -1,5 +1,5 @@
-use super::*;
 use super::tests_helpers::render_to_string;
+use super::*;
 
 #[test]
 fn dashboard_renders_agent_strip_when_passports_loaded() {
@@ -20,9 +20,18 @@ fn dashboard_renders_agent_strip_when_passports_loaded() {
     ];
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Agents (2)"), "Agent strip title should show count");
-    assert!(buf.contains("core-engine"), "Agent strip should show agent name");
-    assert!(buf.contains("chat-bot"), "Agent strip should show second agent");
+    assert!(
+        buf.contains("Agents (2)"),
+        "Agent strip title should show count"
+    );
+    assert!(
+        buf.contains("core-engine"),
+        "Agent strip should show agent name"
+    );
+    assert!(
+        buf.contains("chat-bot"),
+        "Agent strip should show second agent"
+    );
 }
 
 #[test]
@@ -32,7 +41,10 @@ fn dashboard_hides_agent_strip_when_no_passports() {
     app.view_state = ViewState::Dashboard;
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(!buf.contains("Agents ("), "Agent strip should not appear with no passports");
+    assert!(
+        !buf.contains("Agents ("),
+        "Agent strip should not appear with no passports"
+    );
 }
 
 #[test]
@@ -40,17 +52,18 @@ fn dashboard_agent_strip_shows_score_and_level() {
     crate::theme::init_theme("dark");
     let mut app = App::new(crate::config::TuiConfig::default());
     app.view_state = ViewState::Dashboard;
-    app.passport_view.loaded_passports = vec![
-        serde_json::json!({
-            "name": "recruiter",
-            "autonomy_level": "L4",
-            "compliance": { "complior_score": 45.5 }
-        }),
-    ];
+    app.passport_view.loaded_passports = vec![serde_json::json!({
+        "name": "recruiter",
+        "autonomy_level": "L4",
+        "compliance": { "complior_score": 45.5 }
+    })];
 
     let buf = render_to_string(&app, 120, 40);
     assert!(buf.contains("L4"), "Agent strip should show autonomy level");
-    assert!(buf.contains("46") || buf.contains("45"), "Agent strip should show compliance score");
+    assert!(
+        buf.contains("46") || buf.contains("45"),
+        "Agent strip should show compliance score"
+    );
 }
 
 #[test]
@@ -58,14 +71,18 @@ fn dashboard_agent_strip_handles_missing_fields() {
     crate::theme::init_theme("dark");
     let mut app = App::new(crate::config::TuiConfig::default());
     app.view_state = ViewState::Dashboard;
-    app.passport_view.loaded_passports = vec![
-        serde_json::json!({"name": "minimal-agent"}),
-    ];
+    app.passport_view.loaded_passports = vec![serde_json::json!({"name": "minimal-agent"})];
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Agents (1)"), "Should render with minimal passport");
+    assert!(
+        buf.contains("Agents (1)"),
+        "Should render with minimal passport"
+    );
     assert!(buf.contains("minimal-agent"), "Should show agent name");
-    assert!(buf.contains("?"), "Missing autonomy should show fallback '?'");
+    assert!(
+        buf.contains("?"),
+        "Missing autonomy should show fallback '?'"
+    );
 }
 
 #[test]
@@ -89,7 +106,10 @@ fn passport_jk_navigation_bounds_checking() {
 
     // j → still 2 (bounds)
     app.apply_action(crate::input::Action::ScrollDown);
-    assert_eq!(app.passport_view.selected_passport, 2, "Should not exceed max index");
+    assert_eq!(
+        app.passport_view.selected_passport, 2,
+        "Should not exceed max index"
+    );
 
     // k (ScrollUp) → 1 → 0
     app.apply_action(crate::input::Action::ScrollUp);
@@ -99,7 +119,10 @@ fn passport_jk_navigation_bounds_checking() {
 
     // k → still 0 (bounds)
     app.apply_action(crate::input::Action::ScrollUp);
-    assert_eq!(app.passport_view.selected_passport, 0, "Should not go below 0");
+    assert_eq!(
+        app.passport_view.selected_passport, 0,
+        "Should not go below 0"
+    );
 }
 
 #[test]
@@ -125,7 +148,8 @@ fn passport_source_files_field_parsed() {
         "source_files": ["src/agent.ts", "src/tools.ts", "src/config.ts"]
     });
 
-    let source_files = passport.get("source_files")
+    let source_files = passport
+        .get("source_files")
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
         .unwrap_or_default();
@@ -145,10 +169,14 @@ fn passport_without_source_files_returns_empty() {
         "compliance": { "complior_score": 50 }
     });
 
-    let source_files = passport.get("source_files")
+    let source_files = passport
+        .get("source_files")
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
         .unwrap_or_default();
 
-    assert!(source_files.is_empty(), "Missing source_files should yield empty vec");
+    assert!(
+        source_files.is_empty(),
+        "Missing source_files should yield empty vec"
+    );
 }

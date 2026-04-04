@@ -15,13 +15,13 @@ mod tests {
     #[test]
     fn test_step_kinds() {
         let wiz = OnboardingWizard::new();
-        assert_eq!(wiz.steps[0].kind, StepKind::ThemeSelect);   // welcome_theme
-        assert_eq!(wiz.steps[1].kind, StepKind::Radio);          // project_type
-        assert_eq!(wiz.steps[2].kind, StepKind::Radio);          // workspace_trust
-        assert_eq!(wiz.steps[3].kind, StepKind::Radio);          // role
-        assert_eq!(wiz.steps[4].kind, StepKind::Radio);          // industry
+        assert_eq!(wiz.steps[0].kind, StepKind::ThemeSelect); // welcome_theme
+        assert_eq!(wiz.steps[1].kind, StepKind::Radio); // project_type
+        assert_eq!(wiz.steps[2].kind, StepKind::Radio); // workspace_trust
+        assert_eq!(wiz.steps[3].kind, StepKind::Radio); // role
+        assert_eq!(wiz.steps[4].kind, StepKind::Radio); // industry
         assert_eq!(wiz.steps[5].kind, StepKind::TextInput { masked: true }); // ai_provider
-        assert_eq!(wiz.steps[6].kind, StepKind::Summary);        // summary
+        assert_eq!(wiz.steps[6].kind, StepKind::Summary); // summary
     }
 
     #[test]
@@ -148,7 +148,10 @@ mod tests {
     fn test_resume_out_of_bounds_restarts() {
         // Saved step from old config with more steps — should restart from 0
         let wiz = OnboardingWizard::resume(99);
-        assert_eq!(wiz.current_step, 0, "out-of-bounds resume should restart from step 0");
+        assert_eq!(
+            wiz.current_step, 0,
+            "out-of-bounds resume should restart from step 0"
+        );
     }
 
     #[test]
@@ -198,8 +201,8 @@ mod tests {
 
     #[test]
     fn snapshot_ai_provider_substep0() {
-        use ratatui::backend::TestBackend;
         use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
 
         crate::theme::init_theme("dark");
         let mut wiz = OnboardingWizard::new();
@@ -226,17 +229,26 @@ mod tests {
             output.push('\n');
         }
         // Verify key content is rendered
-        assert!(output.contains("AI Connection"), "Should show AI Connection title");
-        assert!(output.contains("OpenRouter"), "Should show OpenRouter option");
+        assert!(
+            output.contains("AI Connection"),
+            "Should show AI Connection title"
+        );
+        assert!(
+            output.contains("OpenRouter"),
+            "Should show OpenRouter option"
+        );
         assert!(output.contains("Anthropic"), "Should show Anthropic option");
-        assert!(output.contains("RECOMMENDED"), "Should show RECOMMENDED tag");
+        assert!(
+            output.contains("RECOMMENDED"),
+            "Should show RECOMMENDED tag"
+        );
         assert!(output.contains("Offline"), "Should show Offline option");
     }
 
     #[test]
     fn snapshot_ai_provider_substep1_key_input() {
-        use ratatui::backend::TestBackend;
         use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
 
         crate::theme::init_theme("dark");
         let mut wiz = OnboardingWizard::new();
@@ -271,13 +283,16 @@ mod tests {
         }
         // First 4 chars visible, rest masked
         assert!(output.contains("sk-o"), "Should show first 4 chars of key");
-        assert!(output.contains("credentials"), "Should show credentials path hint");
+        assert!(
+            output.contains("credentials"),
+            "Should show credentials path hint"
+        );
     }
 
     #[test]
     fn snapshot_ai_provider_substep3_valid() {
-        use ratatui::backend::TestBackend;
         use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
 
         crate::theme::init_theme("dark");
         let mut wiz = OnboardingWizard::new();
@@ -302,14 +317,17 @@ mod tests {
             }
             output.push('\n');
         }
-        assert!(output.contains("Key accepted"), "Should show success message");
+        assert!(
+            output.contains("Key accepted"),
+            "Should show success message"
+        );
         assert!(output.contains("\u{2713}"), "Should show checkmark");
     }
 
     #[test]
     fn snapshot_ai_provider_substep3_invalid() {
-        use ratatui::backend::TestBackend;
         use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
 
         crate::theme::init_theme("dark");
         let mut wiz = OnboardingWizard::new();

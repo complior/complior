@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -20,21 +20,26 @@ pub(super) fn render_checklist(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     let total = fix.fixable_findings.len();
-    let current_score = app
-        .last_scan
-        .as_ref()
-        .map_or(0.0, |s| s.score.total_score);
+    let current_score = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
 
     #[allow(clippy::cast_precision_loss)]
     let predicted_score = (current_score + f64::from(fix.total_predicted_impact())).min(100.0);
 
     // Score color for predicted
-    let pred_color = if predicted_score < 50.0 { t.zone_red }
-        else if predicted_score < 80.0 { t.zone_yellow }
-        else { t.zone_green };
-    let curr_color = if current_score < 50.0 { t.zone_red }
-        else if current_score < 80.0 { t.zone_yellow }
-        else { t.zone_green };
+    let pred_color = if predicted_score < 50.0 {
+        t.zone_red
+    } else if predicted_score < 80.0 {
+        t.zone_yellow
+    } else {
+        t.zone_green
+    };
+    let curr_color = if current_score < 50.0 {
+        t.zone_red
+    } else if current_score < 80.0 {
+        t.zone_yellow
+    } else {
+        t.zone_green
+    };
 
     let block = Block::default()
         .title(format!(" Fix — {total} fixable items "))
@@ -60,10 +65,7 @@ pub(super) fn render_checklist(frame: &mut Frame, area: Rect, app: &App) {
             format!("{predicted_score:.0}"),
             Style::default().fg(pred_color).add_modifier(Modifier::BOLD),
         ),
-        Span::styled(
-            format!("  (+{impact})"),
-            Style::default().fg(t.zone_green),
-        ),
+        Span::styled(format!("  (+{impact})"), Style::default().fg(t.zone_green)),
         Span::styled(
             format!("  |  {selected_count}/{total} selected"),
             Style::default().fg(t.muted),
@@ -95,7 +97,9 @@ pub(super) fn render_checklist(frame: &mut Frame, area: Rect, app: &App) {
         lines.push(Line::from(vec![
             Span::styled(
                 format!(" STAGED ({}) ", staged.len()),
-                Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(t.zone_green)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 "─".repeat(w.saturating_sub(staged.len().to_string().len() + 12)),
@@ -165,9 +169,10 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
     let t = theme::theme();
     let fix = &app.fix_view;
 
-    let focused_item = fix.focus_check_id.as_ref().and_then(|cid| {
-        fix.fixable_findings.iter().find(|f| &f.check_id == cid)
-    });
+    let focused_item = fix
+        .focus_check_id
+        .as_ref()
+        .and_then(|cid| fix.fixable_findings.iter().find(|f| &f.check_id == cid));
 
     let Some(item) = focused_item else {
         super::render_no_fix_data(frame, area, "Focused finding not found.");
@@ -176,25 +181,32 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
 
     let obl = item.obligation_id.as_deref().unwrap_or("—");
     let art = item.article_reference.as_deref().unwrap_or("");
-    let current_score = app
-        .last_scan
-        .as_ref()
-        .map_or(0.0, |s| s.score.total_score);
+    let current_score = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
     let impact = item.predicted_impact;
 
     #[allow(clippy::cast_precision_loss)]
     let predicted_score = (current_score + f64::from(impact)).min(100.0);
 
-    let pred_color = if predicted_score < 50.0 { t.zone_red }
-        else if predicted_score < 80.0 { t.zone_yellow }
-        else { t.zone_green };
-    let curr_color = if current_score < 50.0 { t.zone_red }
-        else if current_score < 80.0 { t.zone_yellow }
-        else { t.zone_green };
+    let pred_color = if predicted_score < 50.0 {
+        t.zone_red
+    } else if predicted_score < 80.0 {
+        t.zone_yellow
+    } else {
+        t.zone_green
+    };
+    let curr_color = if current_score < 50.0 {
+        t.zone_red
+    } else if current_score < 80.0 {
+        t.zone_yellow
+    } else {
+        t.zone_green
+    };
 
     // Position indicator: "1/3 fixable"
     let total_fixable = fix.fixable_findings.len();
-    let fix_pos = fix.fixable_findings.iter()
+    let fix_pos = fix
+        .fixable_findings
+        .iter()
         .position(|f| f.check_id == item.check_id)
         .map_or(1, |p| p + 1);
 
@@ -221,10 +233,7 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
             format!("{predicted_score:.0}"),
             Style::default().fg(pred_color).add_modifier(Modifier::BOLD),
         ),
-        Span::styled(
-            format!("  (+{impact})"),
-            Style::default().fg(t.zone_green),
-        ),
+        Span::styled(format!("  (+{impact})"), Style::default().fg(t.zone_green)),
         Span::styled(
             format!("  |  {fix_pos}/{total_fixable}"),
             Style::default().fg(t.muted),
@@ -242,7 +251,9 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
     lines.push(Line::from(vec![
         Span::styled(
             format!("  {} ", item.finding_type.badge()),
-            Style::default().fg(badge_color).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(badge_color)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             item.check_id.clone(),
@@ -253,10 +264,7 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
     // Message
     lines.push(Line::from(vec![
         Span::styled("  ", Style::default()),
-        Span::styled(
-            item.message.clone(),
-            Style::default().fg(t.fg),
-        ),
+        Span::styled(item.message.clone(), Style::default().fg(t.fg)),
     ]));
 
     // Article reference + file path
@@ -279,7 +287,9 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
         Span::styled("  Impact: ", Style::default().fg(t.muted)),
         Span::styled(
             format!("+{impact} points"),
-            Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(t.zone_green)
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
 
@@ -300,10 +310,7 @@ pub(super) fn render_checklist_single(frame: &mut Frame, area: Rect, app: &App) 
         Span::styled(":apply", Style::default().fg(t.muted)),
     ]));
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }
 
 /// Render a single fix item line (used by both staged and not-staged sections).
@@ -355,7 +362,9 @@ pub(super) fn render_fix_item<'a>(
         Span::styled(prefix, Style::default().fg(t.accent)),
         Span::styled(
             format!(" {} ", item.finding_type.badge()),
-            Style::default().fg(badge_color).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(badge_color)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(format!("{checkbox} "), Style::default().fg(cb_color)),
         Span::styled(format!("{obl:<10} "), sel_style),
@@ -411,4 +420,3 @@ pub(super) fn not_staged_reason(item: &FixableItem) -> String {
         _ => "Press Space to stage".to_string(),
     }
 }
-

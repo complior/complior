@@ -49,8 +49,12 @@ pub async fn run_doctor(config: &TuiConfig) {
         Ok(output) if output.status.success() => {
             let ver = String::from_utf8_lossy(&output.stdout).trim().to_string();
             // Check >= 18
-            let major: u32 = ver.trim_start_matches('v').split('.').next()
-                .and_then(|s| s.parse().ok()).unwrap_or(0);
+            let major: u32 = ver
+                .trim_start_matches('v')
+                .split('.')
+                .next()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
             if major >= 18 {
                 println!("{ver} (required: >=18)              OK");
                 passed += 1;
@@ -137,7 +141,12 @@ pub async fn run_doctor(config: &TuiConfig) {
 }
 
 /// Run headless report generation.
-pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, config: &TuiConfig) -> i32 {
+pub async fn run_report(
+    format: &str,
+    output: Option<&str>,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let engine_url = config
         .engine_url_override
         .clone()
@@ -170,7 +179,10 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
 
     match client.post_json(endpoint, &serde_json::json!({})).await {
         Ok(resp) => {
-            let out_path = resp.get("path").and_then(|v| v.as_str()).unwrap_or("report");
+            let out_path = resp
+                .get("path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("report");
             if let Some(dest) = output {
                 println!("Report saved to: {dest}");
             } else {
@@ -193,7 +205,9 @@ pub async fn run_report(format: &str, output: Option<&str>, path: Option<&str>, 
 /// Then starts the engine and runs agent discovery to auto-create passports.
 pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiConfig) -> i32 {
     use super::common::{ensure_engine_for, resolve_project_path_buf};
-    use super::format::colors::{bold, bold_red, bold_yellow, check_mark, cyan, dim, diamond, green, red};
+    use super::format::colors::{
+        bold, bold_red, bold_yellow, check_mark, cyan, diamond, dim, green, red,
+    };
     use super::format::separator;
     use super::interactive;
 
@@ -209,8 +223,8 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
 
     // Create project.toml if missing
     if !project_toml_path.exists() {
-        let toml_content = toml::to_string_pretty(&crate::config::default_project_toml())
-            .unwrap_or_default();
+        let toml_content =
+            toml::to_string_pretty(&crate::config::default_project_toml()).unwrap_or_default();
         let _ = std::fs::write(&project_toml_path, toml_content);
     }
 
@@ -261,12 +275,15 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
     if !gitignore_path.exists() {
         let _ = std::fs::write(&gitignore_path, ".env\n");
     } else if let Ok(content) = std::fs::read_to_string(&gitignore_path)
-        && !content.lines().any(|l| l.trim() == ".env") {
-            let _ = std::fs::write(&gitignore_path, format!("{content}\n.env\n"));
-        }
+        && !content.lines().any(|l| l.trim() == ".env")
+    {
+        let _ = std::fs::write(&gitignore_path, format!("{content}\n.env\n"));
+    }
 
     // Start engine for onboarding + agent discovery
-    let client = if let Ok(c) = ensure_engine_for(config, &base).await { c } else {
+    let client = if let Ok(c) = ensure_engine_for(config, &base).await {
+        c
+    } else {
         eprintln!("Warning: Could not start engine.");
         eprintln!("Run `complior init` again when engine is available.");
         return 0;
@@ -285,19 +302,34 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
     let mut profile_created = false;
 
     if profile_exists {
-        println!("  .complior/ already initialized at {}", complior_dir.display());
+        println!(
+            "  .complior/ already initialized at {}",
+            complior_dir.display()
+        );
         // Try to read existing profile for summary
         if let Ok(content) = std::fs::read_to_string(&profile_path)
-            && let Ok(profile) = serde_json::from_str::<serde_json::Value>(&content) {
-                profile_role = profile.pointer("/organization/role")
-                    .and_then(|v| v.as_str()).unwrap_or("deployer").to_string();
-                profile_risk = profile.pointer("/computed/riskLevel")
-                    .and_then(|v| v.as_str()).unwrap_or("limited").to_string();
-                profile_obligations = profile.pointer("/computed/applicableObligations")
-                    .and_then(|v| v.as_array()).map_or(15, std::vec::Vec::len);
-                profile_storage = profile.pointer("/data/storage")
-                    .and_then(|v| v.as_str()).unwrap_or("eu").to_string();
-            }
+            && let Ok(profile) = serde_json::from_str::<serde_json::Value>(&content)
+        {
+            profile_role = profile
+                .pointer("/organization/role")
+                .and_then(|v| v.as_str())
+                .unwrap_or("deployer")
+                .to_string();
+            profile_risk = profile
+                .pointer("/computed/riskLevel")
+                .and_then(|v| v.as_str())
+                .unwrap_or("limited")
+                .to_string();
+            profile_obligations = profile
+                .pointer("/computed/applicableObligations")
+                .and_then(|v| v.as_array())
+                .map_or(15, std::vec::Vec::len);
+            profile_storage = profile
+                .pointer("/data/storage")
+                .and_then(|v| v.as_str())
+                .unwrap_or("eu")
+                .to_string();
+        }
         profile_created = true;
     } else {
         println!("\n  {}", bold(&format!("{} Complior Setup", diamond())));
@@ -318,14 +350,25 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
                 Ok(result) => {
                     profile_created = true;
                     if let Some(profile) = result.get("profile") {
-                        profile_role = profile.pointer("/organization/role")
-                            .and_then(|v| v.as_str()).unwrap_or("deployer").to_string();
-                        profile_risk = profile.pointer("/computed/riskLevel")
-                            .and_then(|v| v.as_str()).unwrap_or("limited").to_string();
-                        profile_obligations = profile.pointer("/computed/applicableObligations")
-                            .and_then(|v| v.as_array()).map_or(15, std::vec::Vec::len);
-                        profile_storage = profile.pointer("/data/storage")
-                            .and_then(|v| v.as_str()).unwrap_or("eu").to_string();
+                        profile_role = profile
+                            .pointer("/organization/role")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("deployer")
+                            .to_string();
+                        profile_risk = profile
+                            .pointer("/computed/riskLevel")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("limited")
+                            .to_string();
+                        profile_obligations = profile
+                            .pointer("/computed/applicableObligations")
+                            .and_then(|v| v.as_array())
+                            .map_or(15, std::vec::Vec::len);
+                        profile_storage = profile
+                            .pointer("/data/storage")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("eu")
+                            .to_string();
                     }
                 }
                 Err(e) => {
@@ -374,10 +417,23 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
 
             if let Some(agents) = manifests {
                 for agent in agents {
-                    let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-                    let framework = agent.get("framework").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-                    let autonomy = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?").to_string();
-                    let confidence = agent.get("source")
+                    let name = agent
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    let framework = agent
+                        .get("framework")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    let autonomy = agent
+                        .get("autonomy_level")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?")
+                        .to_string();
+                    let confidence = agent
+                        .get("source")
                         .and_then(|s| s.get("confidence"))
                         .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0);
@@ -413,14 +469,22 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
         println!("  {}      .complior/profile.json", dim("Profile"));
         println!("  {}         {}", dim("Role"), cyan(&profile_role));
         println!("  {}   {}", dim("Risk Level"), risk_colored);
-        println!("  {}  {} applicable", dim("Obligations"), bold(&profile_obligations.to_string()));
+        println!(
+            "  {}  {} applicable",
+            dim("Obligations"),
+            bold(&profile_obligations.to_string())
+        );
         println!("  {}         {}", dim("Data"), storage_display);
     }
 
     // Agents section
     let created_count = agent_list.len();
     if created_count > 0 {
-        println!("\n  {}       {} discovered", dim("Agents"), bold(&created_count.to_string()));
+        println!(
+            "\n  {}       {} discovered",
+            dim("Agents"),
+            bold(&created_count.to_string())
+        );
         println!("  {}", separator());
         for (i, (name, framework, autonomy, confidence)) in agent_list.iter().enumerate() {
             let conf_pct = (confidence * 100.0) as u32;
@@ -431,23 +495,48 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
             } else {
                 red(&format!("{conf_pct}%"))
             };
-            println!("    {}  {:<24} {:<12} {} confidence: {}",
-                dim(&format!("{}.", i + 1)), name, framework, autonomy, conf_colored);
+            println!(
+                "    {}  {:<24} {:<12} {} confidence: {}",
+                dim(&format!("{}.", i + 1)),
+                name,
+                framework,
+                autonomy,
+                conf_colored
+            );
         }
         println!("  {}", separator());
 
         if agent_list.iter().any(|(_, _, _, c)| *c < 0.5) {
-            println!("\n  {} Low confidence — fill owner, disclosure, and lifecycle fields:", bold_yellow("⚠"));
-            println!("      {}", dim("complior agent show <name>  — view missing fields"));
-            println!("      {}", dim("Edit .complior/agents/<name>-manifest.json manually"));
+            println!(
+                "\n  {} Low confidence — fill owner, disclosure, and lifecycle fields:",
+                bold_yellow("⚠")
+            );
+            println!(
+                "      {}",
+                dim("complior agent show <name>  — view missing fields")
+            );
+            println!(
+                "      {}",
+                dim("Edit .complior/agents/<name>-manifest.json manually")
+            );
         }
 
         println!("\n  {} Passports saved to .complior/agents/", check_mark());
 
-        println!("\n  {}  Passports created with score 0/100", bold_yellow("!"));
-        println!("     Run {} to populate compliance data", bold("complior scan"));
+        println!(
+            "\n  {}  Passports created with score 0/100",
+            bold_yellow("!")
+        );
+        println!(
+            "     Run {} to populate compliance data",
+            bold("complior scan")
+        );
     } else if skipped_count > 0 {
-        println!("\n  {}       {} already have passports", dim("Agents"), bold(&skipped_count.to_string()));
+        println!(
+            "\n  {}       {} already have passports",
+            dim("Agents"),
+            bold(&skipped_count.to_string())
+        );
         println!("\n  Next: {}", bold("complior scan"));
     } else {
         println!("\n  {}       {}", dim("Agents"), dim("none detected"));
@@ -469,17 +558,18 @@ pub async fn run_update() {
         .send()
         .await
         && let Ok(body) = resp.json::<serde_json::Value>().await
-            && let Some(tag) = body.get("tag_name").and_then(|v| v.as_str()) {
-                let latest = tag.trim_start_matches('v');
-                if latest == current {
-                    println!("Already up to date: v{current}");
-                } else {
-                    println!("New version available: v{latest} (current: v{current})");
-                    println!("\nUpdate with:");
-                    println!("  curl -fsSL https://complior.ai/install.sh | sh");
-                    println!("  cargo install complior");
-                }
-                return;
-            }
+        && let Some(tag) = body.get("tag_name").and_then(|v| v.as_str())
+    {
+        let latest = tag.trim_start_matches('v');
+        if latest == current {
+            println!("Already up to date: v{current}");
+        } else {
+            println!("New version available: v{latest} (current: v{current})");
+            println!("\nUpdate with:");
+            println!("  curl -fsSL https://complior.ai/install.sh | sh");
+            println!("  cargo install complior");
+        }
+        return;
+    }
     println!("Could not check for updates. Current version: v{current}");
 }

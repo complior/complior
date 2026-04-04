@@ -54,8 +54,18 @@ impl Severity {
 pub fn strip_layer_prefix(check_id: &str) -> (&str, &str) {
     // Order matters: longer prefixes first to avoid false matches (e.g. "l4-nhi-" before "l4-")
     const PREFIXES: &[&str] = &[
-        "l1-", "l2-", "l3-", "l4-", "l5-", "cross-", "gpai-",
-        "ext-semgrep-", "ext-bandit-", "ext-modelscan-", "ext-detect-secrets-", "ext-",
+        "l1-",
+        "l2-",
+        "l3-",
+        "l4-",
+        "l5-",
+        "cross-",
+        "gpai-",
+        "ext-semgrep-",
+        "ext-bandit-",
+        "ext-modelscan-",
+        "ext-detect-secrets-",
+        "ext-",
     ];
     for prefix in PREFIXES {
         if let Some(rest) = check_id.strip_prefix(prefix) {
@@ -170,7 +180,6 @@ pub struct FindingExplanation {
     pub deadline: String,
     pub business_impact: String,
 }
-
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

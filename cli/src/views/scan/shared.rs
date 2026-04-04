@@ -53,24 +53,15 @@ pub fn render_fix_diff(
                 Style::default().fg(t.diff_removed),
             ),
             Span::styled(" - ", Style::default().fg(t.diff_removed)),
-            Span::styled(
-                before_line.clone(),
-                Style::default().fg(t.diff_removed),
-            ),
+            Span::styled(before_line.clone(), Style::default().fg(t.diff_removed)),
         ]));
     }
     for (i, after_line) in diff.after.iter().enumerate() {
         let line_num = diff.start_line + i as u32;
         lines.push(Line::from(vec![
-            Span::styled(
-                format!("{line_num:>4}"),
-                Style::default().fg(t.diff_added),
-            ),
+            Span::styled(format!("{line_num:>4}"), Style::default().fg(t.diff_added)),
             Span::styled(" + ", Style::default().fg(t.diff_added)),
-            Span::styled(
-                after_line.clone(),
-                Style::default().fg(t.diff_added),
-            ),
+            Span::styled(after_line.clone(), Style::default().fg(t.diff_added)),
         ]));
     }
 }

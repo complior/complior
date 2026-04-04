@@ -1,13 +1,19 @@
 #[cfg(test)]
 mod tests {
-    use crate::headless::format::{format_human, format_json, format_sarif, sarif_level, FormatOptions};
+    use crate::headless::format::{
+        FormatOptions, format_human, format_json, format_sarif, sarif_level,
+    };
     use crate::types::{
         CategoryScore, CheckResultType, ExternalToolResult, Finding, FindingExplanation,
         FrameworkScoreResult, ScanResult, ScoreBreakdown, Severity, Zone,
     };
 
     fn default_opts() -> FormatOptions {
-        FormatOptions { framework_scores: None, quiet: false, prev_score: None }
+        FormatOptions {
+            framework_scores: None,
+            quiet: false,
+            prev_score: None,
+        }
     }
 
     fn mock_scan_result() -> ScanResult {
@@ -87,7 +93,12 @@ mod tests {
         }
     }
 
-    fn make_finding(check_id: &str, typ: CheckResultType, message: &str, severity: Severity) -> Finding {
+    fn make_finding(
+        check_id: &str,
+        typ: CheckResultType,
+        message: &str,
+        severity: Severity,
+    ) -> Finding {
         Finding {
             check_id: check_id.into(),
             r#type: typ,
@@ -309,19 +320,52 @@ mod tests {
     fn format_human_critical_cap_warning() {
         let mut result = mock_scan_result();
         result.score.critical_cap_applied = true;
+        result.score.total_score = 40.0; // Cap only shows when score <= 50
         let text = format_human(&result, &default_opts());
         assert!(text.contains("Score capped"));
         assert!(text.contains("critical violations"));
     }
 
     #[test]
+    fn format_human_critical_cap_hidden_when_score_high() {
+        let mut result = mock_scan_result();
+        result.score.critical_cap_applied = true;
+        result.score.total_score = 78.0; // Flag set but score high — cap not limiting
+        let text = format_human(&result, &default_opts());
+        assert!(
+            !text.contains("Score capped"),
+            "cap message should be hidden when score > 50"
+        );
+    }
+
+    #[test]
     fn format_human_severity_counts() {
         let mut result = mock_scan_result();
         result.findings = vec![
-            make_finding("fria", CheckResultType::Fail, "Missing FRIA", Severity::Critical),
-            make_finding("risk-management", CheckResultType::Fail, "Missing risk mgmt", Severity::High),
-            make_finding("risk-management", CheckResultType::Fail, "Missing risk mgmt 2", Severity::High),
-            make_finding("l4-bare-llm", CheckResultType::Fail, "Bare LLM", Severity::Medium),
+            make_finding(
+                "fria",
+                CheckResultType::Fail,
+                "Missing FRIA",
+                Severity::Critical,
+            ),
+            make_finding(
+                "risk-management",
+                CheckResultType::Fail,
+                "Missing risk mgmt",
+                Severity::High,
+            ),
+            make_finding(
+                "risk-management",
+                CheckResultType::Fail,
+                "Missing risk mgmt 2",
+                Severity::High,
+            ),
+            make_finding(
+                "l4-bare-llm",
+                CheckResultType::Fail,
+                "Bare LLM",
+                Severity::Medium,
+            ),
         ];
         let text = format_human(&result, &default_opts());
         assert!(text.contains("4 total"));
@@ -359,8 +403,18 @@ mod tests {
     fn format_human_low_findings_hidden() {
         let mut result = mock_scan_result();
         result.findings = vec![
-            make_finding("fria", CheckResultType::Fail, "Missing FRIA", Severity::High),
-            make_finding("l4-bare-llm", CheckResultType::Fail, "Bare LLM", Severity::Low),
+            make_finding(
+                "fria",
+                CheckResultType::Fail,
+                "Missing FRIA",
+                Severity::High,
+            ),
+            make_finding(
+                "l4-bare-llm",
+                CheckResultType::Fail,
+                "Bare LLM",
+                Severity::Low,
+            ),
         ];
         let text = format_human(&result, &default_opts());
         // Low findings are not displayed
@@ -397,9 +451,24 @@ mod tests {
     fn format_human_layer_subgrouping() {
         let mut result = mock_scan_result();
         result.findings = vec![
-            make_finding("fria", CheckResultType::Fail, "L1 issue A", Severity::Critical),
-            make_finding("documentation", CheckResultType::Fail, "L1 issue B", Severity::High),
-            make_finding("l4-bare-llm", CheckResultType::Fail, "L4 issue", Severity::Medium),
+            make_finding(
+                "fria",
+                CheckResultType::Fail,
+                "L1 issue A",
+                Severity::Critical,
+            ),
+            make_finding(
+                "documentation",
+                CheckResultType::Fail,
+                "L1 issue B",
+                Severity::High,
+            ),
+            make_finding(
+                "l4-bare-llm",
+                CheckResultType::Fail,
+                "L4 issue",
+                Severity::Medium,
+            ),
             make_finding("l2-fria", CheckResultType::Fail, "L2 issue", Severity::High),
         ];
         let text = format_human(&result, &default_opts());
@@ -454,11 +523,36 @@ mod tests {
         let mut result = mock_scan_result();
         result.findings = vec![
             make_finding("fria", CheckResultType::Fail, "L1 finding", Severity::High),
-            make_finding("l2-fria", CheckResultType::Fail, "L2 finding", Severity::High),
-            make_finding("l3-missing-bias-testing", CheckResultType::Fail, "L3 finding", Severity::High),
-            make_finding("l4-bare-llm", CheckResultType::Fail, "L4 finding", Severity::High),
-            make_finding("l4-nhi-api-key", CheckResultType::Fail, "NHI finding", Severity::High),
-            make_finding("cross-doc-code-mismatch", CheckResultType::Fail, "Cross finding", Severity::High),
+            make_finding(
+                "l2-fria",
+                CheckResultType::Fail,
+                "L2 finding",
+                Severity::High,
+            ),
+            make_finding(
+                "l3-missing-bias-testing",
+                CheckResultType::Fail,
+                "L3 finding",
+                Severity::High,
+            ),
+            make_finding(
+                "l4-bare-llm",
+                CheckResultType::Fail,
+                "L4 finding",
+                Severity::High,
+            ),
+            make_finding(
+                "l4-nhi-api-key",
+                CheckResultType::Fail,
+                "NHI finding",
+                Severity::High,
+            ),
+            make_finding(
+                "cross-doc-code-mismatch",
+                CheckResultType::Fail,
+                "Cross finding",
+                Severity::High,
+            ),
         ];
         let text = format_human(&result, &default_opts());
         // Layer group headers with labels
@@ -483,8 +577,18 @@ mod tests {
             error: None,
         }]);
         result.findings = vec![
-            make_finding("fria", CheckResultType::Fail, "Base scan finding", Severity::High),
-            make_finding("ext-semgrep-unsafe-deser", CheckResultType::Fail, "Deep finding", Severity::High),
+            make_finding(
+                "fria",
+                CheckResultType::Fail,
+                "Base scan finding",
+                Severity::High,
+            ),
+            make_finding(
+                "ext-semgrep-unsafe-deser",
+                CheckResultType::Fail,
+                "Deep finding",
+                Severity::High,
+            ),
         ];
         let text = format_human(&result, &default_opts());
         // Deep mode grouping (uppercase)
@@ -500,8 +604,18 @@ mod tests {
         result.tier = Some(2);
         result.findings = vec![
             make_finding("fria", CheckResultType::Fail, "Base", Severity::High),
-            make_finding("ext-semgrep-unsafe-deser", CheckResultType::Fail, "Semgrep finding", Severity::High),
-            make_finding("ext-bandit-B301", CheckResultType::Fail, "Bandit finding", Severity::High),
+            make_finding(
+                "ext-semgrep-unsafe-deser",
+                CheckResultType::Fail,
+                "Semgrep finding",
+                Severity::High,
+            ),
+            make_finding(
+                "ext-bandit-B301",
+                CheckResultType::Fail,
+                "Bandit finding",
+                Severity::High,
+            ),
         ];
         let text = format_human(&result, &default_opts());
         // Header shows tool names for deep layers
@@ -518,9 +632,12 @@ mod tests {
     #[test]
     fn format_human_pass_findings_layer_status() {
         let mut result = mock_scan_result();
-        result.findings = vec![
-            make_finding("l4-disclosure", CheckResultType::Pass, "Disclosure found", Severity::Info),
-        ];
+        result.findings = vec![make_finding(
+            "l4-disclosure",
+            CheckResultType::Pass,
+            "Disclosure found",
+            Severity::Info,
+        )];
         result.score.failed_checks = 0;
         result.score.total_score = 100.0;
         let text = format_human(&result, &default_opts());
@@ -534,8 +651,18 @@ mod tests {
     fn format_human_next_hint_critical() {
         let mut result = mock_scan_result();
         result.findings = vec![
-            make_finding("fria", CheckResultType::Fail, "Critical", Severity::Critical),
-            make_finding("risk-management", CheckResultType::Fail, "Also critical", Severity::Critical),
+            make_finding(
+                "fria",
+                CheckResultType::Fail,
+                "Critical",
+                Severity::Critical,
+            ),
+            make_finding(
+                "risk-management",
+                CheckResultType::Fail,
+                "Also critical",
+                Severity::Critical,
+            ),
         ];
         let text = format_human(&result, &default_opts());
         assert!(text.contains("fix 2 critical issues"));
@@ -544,9 +671,12 @@ mod tests {
     #[test]
     fn format_human_next_hint_high() {
         let mut result = mock_scan_result();
-        result.findings = vec![
-            make_finding("fria", CheckResultType::Fail, "High", Severity::High),
-        ];
+        result.findings = vec![make_finding(
+            "fria",
+            CheckResultType::Fail,
+            "High",
+            Severity::High,
+        )];
         let text = format_human(&result, &default_opts());
         assert!(text.contains("fix 1 high-severity issue"));
     }
@@ -585,7 +715,7 @@ mod tests {
         assert!(text.contains("EU AI Act 2024/1689"));
         assert!(text.contains("60 / 100"));
         // Bar chart characters (uses ASCII fallback in test/CI environment)
-        use crate::headless::format::colors::{bar_filled, bar_empty};
+        use crate::headless::format::colors::{bar_empty, bar_filled};
         assert!(text.contains(bar_filled()));
         assert!(text.contains(bar_empty()));
     }
@@ -603,7 +733,12 @@ mod tests {
         let mut result = mock_scan_result();
         result.findings = vec![
             // L1 finding (missing doc) triggers "Generate docs" action
-            make_finding("fria", CheckResultType::Fail, "Missing FRIA", Severity::High),
+            make_finding(
+                "fria",
+                CheckResultType::Fail,
+                "Missing FRIA",
+                Severity::High,
+            ),
         ];
         let text = format_human(&result, &default_opts());
         assert!(text.contains("Generate docs"));
@@ -689,9 +824,12 @@ mod tests {
     fn format_human_ext_finding_label() {
         let mut result = mock_scan_result();
         result.tier = Some(2);
-        result.findings = vec![
-            make_finding("ext-bandit-B301", CheckResultType::Fail, "Pickle issue", Severity::High),
-        ];
+        result.findings = vec![make_finding(
+            "ext-bandit-B301",
+            CheckResultType::Fail,
+            "Pickle issue",
+            Severity::High,
+        )];
         let text = format_human(&result, &default_opts());
         // ext_check_label should provide nice label
         assert!(text.contains("Unsafe Pickle Usage"));
@@ -737,10 +875,24 @@ mod tests {
     fn format_human_quiet_mode() {
         let mut result = mock_scan_result();
         result.findings = vec![
-            make_finding("l1-crit", CheckResultType::Fail, "Critical issue", Severity::Critical),
-            make_finding("l4-med", CheckResultType::Fail, "Medium issue", Severity::Medium),
+            make_finding(
+                "l1-crit",
+                CheckResultType::Fail,
+                "Critical issue",
+                Severity::Critical,
+            ),
+            make_finding(
+                "l4-med",
+                CheckResultType::Fail,
+                "Medium issue",
+                Severity::Medium,
+            ),
         ];
-        let opts = FormatOptions { framework_scores: None, quiet: true, prev_score: None };
+        let opts = FormatOptions {
+            framework_scores: None,
+            quiet: true,
+            prev_score: None,
+        };
         let text = format_human(&result, &opts);
         // Quiet mode: shows critical findings
         assert!(text.contains("CRITICAL FINDINGS"));
@@ -765,13 +917,20 @@ mod tests {
         let result = mock_scan_result();
         let text = format_human(&result, &default_opts());
         // Docs command hint for findings with article reference
-        assert!(text.contains("complior docs --article 27") || text.contains("complior docs --article 50"));
+        assert!(
+            text.contains("complior docs --article 27")
+                || text.contains("complior docs --article 50")
+        );
     }
 
     #[test]
     fn format_human_prev_score_delta() {
         let result = mock_scan_result();
-        let opts = FormatOptions { framework_scores: None, quiet: false, prev_score: Some(85.0) };
+        let opts = FormatOptions {
+            framework_scores: None,
+            quiet: false,
+            prev_score: Some(85.0),
+        };
         let text = format_human(&result, &opts);
         // Previous score delta displayed
         assert!(text.contains("was 85"));
@@ -802,7 +961,8 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&json_text).unwrap();
         let findings = v.get("findings").unwrap().as_array().unwrap();
         // All fail findings should have IDs
-        let ids: Vec<&str> = findings.iter()
+        let ids: Vec<&str> = findings
+            .iter()
             .filter_map(|f| f.get("id").and_then(|v| v.as_str()))
             .collect();
         assert!(!ids.is_empty());
@@ -816,10 +976,13 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&json_text).unwrap();
         let findings = v.get("findings").unwrap().as_array().unwrap();
         // Finding with obligationId should also have obligationIds array
-        let has_ids = findings.iter().any(|f|
-            f.get("obligationIds").and_then(|v| v.as_array()).is_some()
+        let has_ids = findings
+            .iter()
+            .any(|f| f.get("obligationIds").and_then(|v| v.as_array()).is_some());
+        assert!(
+            has_ids,
+            "At least one finding should have obligationIds array"
         );
-        assert!(has_ids, "At least one finding should have obligationIds array");
     }
 
     #[test]
@@ -839,8 +1002,8 @@ mod tests {
 
     #[test]
     fn cli_parse_quiet_flag() {
-        use clap::Parser;
         use crate::cli::Cli;
+        use clap::Parser;
         let cli = Cli::parse_from(["complior", "scan", "--quiet"]);
         match cli.command {
             Some(crate::cli::Command::Scan { quiet, .. }) => assert!(quiet),
@@ -850,8 +1013,8 @@ mod tests {
 
     #[test]
     fn cli_parse_quiet_short() {
-        use clap::Parser;
         use crate::cli::Cli;
+        use clap::Parser;
         let cli = Cli::parse_from(["complior", "scan", "-q"]);
         match cli.command {
             Some(crate::cli::Command::Scan { quiet, .. }) => assert!(quiet),
@@ -861,8 +1024,8 @@ mod tests {
 
     #[test]
     fn cli_parse_no_color_flag() {
-        use clap::Parser;
         use crate::cli::Cli;
+        use clap::Parser;
         let cli = Cli::parse_from(["complior", "--no-color", "scan"]);
         assert!(cli.no_color);
     }

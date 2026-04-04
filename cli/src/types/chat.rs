@@ -42,8 +42,15 @@ pub enum MessageRole {
 pub enum ChatBlock {
     Text(String),
     Thinking(String),
-    ToolCall { tool_name: String, args: String },
-    ToolResult { tool_name: String, result: String, is_error: bool },
+    ToolCall {
+        tool_name: String,
+        args: String,
+    },
+    ToolResult {
+        tool_name: String,
+        result: String,
+        is_error: bool,
+    },
 }
 
 /// State of an in-progress SSE stream from the LLM.

@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::views::report::*;
-    use crate::views::report::generators::generate_report_markdown;
     use crate::types::{ScoreBreakdown, Zone};
+    use crate::views::report::generators::generate_report_markdown;
+    use crate::views::report::*;
 
     fn make_scan() -> crate::types::ScanResult {
         crate::types::ScanResult {
@@ -103,9 +103,18 @@ mod tests {
         }
 
         assert!(buf_str.contains("Generate"), "Should show Generate section");
-        assert!(buf_str.contains("Audit Package"), "Should list Audit Package generator");
-        assert!(buf_str.contains("FRIA Draft"), "Should list FRIA Draft generator");
-        assert!(buf_str.contains("Regulator"), "Should show Regulator section");
+        assert!(
+            buf_str.contains("Audit Package"),
+            "Should list Audit Package generator"
+        );
+        assert!(
+            buf_str.contains("FRIA Draft"),
+            "Should list FRIA Draft generator"
+        );
+        assert!(
+            buf_str.contains("Regulator"),
+            "Should show Regulator section"
+        );
     }
 
     #[test]

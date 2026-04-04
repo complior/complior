@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -25,9 +25,7 @@ pub fn render_obligations_view(frame: &mut Frame, area: Rect, app: &App) {
     let mut title_spans = vec![
         Span::styled(
             " Obligations \u{2014} ",
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             format!("{covered}/{total} covered ({coverage_pct}%)  "),
@@ -37,9 +35,7 @@ pub fn render_obligations_view(frame: &mut Frame, area: Rect, app: &App) {
     if critical > 0 {
         title_spans.push(Span::styled(
             format!("{critical} critical  "),
-            Style::default()
-                .fg(t.zone_red)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD),
         ));
     }
     title_spans.push(Span::styled(
@@ -73,10 +69,7 @@ pub fn render_obligations_view(frame: &mut Frame, area: Rect, app: &App) {
             " No obligations match current filter. Press [f] to change filter."
         };
         frame.render_widget(
-            Paragraph::new(Line::from(Span::styled(
-                msg,
-                Style::default().fg(t.muted),
-            ))),
+            Paragraph::new(Line::from(Span::styled(msg, Style::default().fg(t.muted)))),
             inner,
         );
         return;
@@ -121,9 +114,7 @@ fn render_obligation_list(
 
         let is_critical = obl.is_critical_path();
         let name_style = if is_critical {
-            Style::default()
-                .fg(t.zone_red)
-                .add_modifier(Modifier::BOLD)
+            Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD)
         } else if is_selected {
             Style::default().fg(t.fg).add_modifier(Modifier::BOLD)
         } else {
@@ -160,8 +151,7 @@ fn render_obligation_list(
     }
 
     let scroll = ov.scroll_offset;
-    let paragraph =
-        Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(0), 0));
+    let paragraph = Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(0), 0));
     frame.render_widget(paragraph, area);
 }
 
@@ -191,9 +181,7 @@ fn render_obligation_detail(
     // Header
     lines.push(Line::from(Span::styled(
         format!("  {} — {}", obl.id, obl.article),
-        Style::default()
-            .fg(t.accent)
-            .add_modifier(Modifier::BOLD),
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
     )));
     lines.push(Line::from(Span::styled(
         format!("  {}", "\u{2500}".repeat(w)),
@@ -305,15 +293,16 @@ fn render_obligation_detail(
         Span::styled("Navigate", Style::default().fg(t.fg)),
     ]));
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }
 
 /// Format a scanner checkId into a human-readable name.
 fn format_check_name(check_id: &str) -> String {
     let (tag, name) = crate::types::strip_layer_prefix(check_id);
     let layer = if tag.is_empty() { "L1" } else { tag };
-    format!("{}: {}", layer.to_uppercase(), crate::types::humanize_kebab(name))
+    format!(
+        "{}: {}",
+        layer.to_uppercase(),
+        crate::types::humanize_kebab(name)
+    )
 }

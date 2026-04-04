@@ -1,10 +1,10 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
-use ratatui::Frame;
 
-use crate::theme::{self, list_themes, ThemeColors};
+use crate::theme::{self, ThemeColors, list_themes};
 
 /// State for the Theme Picker overlay.
 pub struct ThemePickerState {
@@ -16,10 +16,7 @@ impl ThemePickerState {
     pub fn new() -> Self {
         let themes = list_themes();
         let current = theme::current_theme_name();
-        let selected = themes
-            .iter()
-            .position(|t| t.name == current)
-            .unwrap_or(0);
+        let selected = themes.iter().position(|t| t.name == current).unwrap_or(0);
         Self { selected, themes }
     }
 
@@ -60,9 +57,9 @@ pub fn render_theme_picker(frame: &mut Frame, state: &ThemePickerState) {
 
     // Split: theme list (top) + preview (bottom) + footer
     let chunks = Layout::vertical([
-        Constraint::Min(10),     // theme list
-        Constraint::Length(6),   // preview
-        Constraint::Length(1),   // footer hints
+        Constraint::Min(10),   // theme list
+        Constraint::Length(6), // preview
+        Constraint::Length(1), // footer hints
     ])
     .split(inner);
 
@@ -84,9 +81,7 @@ pub fn render_theme_picker(frame: &mut Frame, state: &ThemePickerState) {
                 Span::styled(
                     format!("{:<20}", theme.name),
                     if is_sel {
-                        Style::default()
-                            .fg(t.accent)
-                            .add_modifier(Modifier::BOLD)
+                        Style::default().fg(t.accent).add_modifier(Modifier::BOLD)
                     } else {
                         Style::default().fg(t.fg)
                     },
@@ -131,7 +126,10 @@ pub fn render_theme_picker(frame: &mut Frame, state: &ThemePickerState) {
         ]),
         Line::from(vec![
             Span::styled("Deadline: ", Style::default().fg(preview_theme.fg)),
-            Span::styled("Art. 6 — 167 days", Style::default().fg(preview_theme.zone_green)),
+            Span::styled(
+                "Art. 6 — 167 days",
+                Style::default().fg(preview_theme.zone_green),
+            ),
         ]),
         Line::from(vec![
             Span::styled("> OBL-015 Art.50.1 ", Style::default().fg(preview_theme.fg)),

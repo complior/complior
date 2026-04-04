@@ -7,11 +7,11 @@ mod tests;
 
 pub use fields::PassportField;
 
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use ratatui::style::Color;
 
@@ -119,9 +119,18 @@ impl PassportViewState {
 
         for field in &mut self.fields {
             let value = match field.name {
-                "name" => passport.get("name").and_then(|v| v.as_str()).map(String::from),
-                "version" => passport.get("version").and_then(|v| v.as_str()).map(String::from),
-                "description" => passport.get("description").and_then(|v| v.as_str()).map(String::from),
+                "name" => passport
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "version" => passport
+                    .get("version")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                "description" => passport
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
                 "provider" => passport
                     .get("model")
                     .and_then(|m| m.get("provider"))
@@ -172,11 +181,25 @@ impl PassportViewState {
                     .get("permissions")
                     .and_then(|p| p.get("data_access"))
                     .map(|da| {
-                        let read = da.get("read").and_then(|v| v.as_array())
-                            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                        let read = da
+                            .get("read")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            })
                             .unwrap_or_default();
-                        let write = da.get("write").and_then(|v| v.as_array())
-                            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                        let write = da
+                            .get("write")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            })
                             .unwrap_or_default();
                         format!("read: {read}; write: {write}")
                     }),
@@ -202,9 +225,10 @@ impl PassportViewState {
             };
 
             if let Some(v) = value
-                && !v.is_empty() {
-                    field.value = v;
-                }
+                && !v.is_empty()
+            {
+                field.value = v;
+            }
         }
     }
 }
@@ -233,12 +257,10 @@ fn render_agent_list_view(frame: &mut Frame, area: Rect, app: &App) {
     let pv = &app.passport_view;
     let count = pv.loaded_passports.len();
 
-    let title = Line::from(vec![
-        Span::styled(
-            format!(" Agent Passport \u{2014} {count} agent(s) "),
-            theme::title_style(),
-        ),
-    ]);
+    let title = Line::from(vec![Span::styled(
+        format!(" Agent Passport \u{2014} {count} agent(s) "),
+        theme::title_style(),
+    )]);
 
     let block = Block::default()
         .title(title)
@@ -325,14 +347,15 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
     let mut lines: Vec<Line<'_>> = Vec::new();
 
     // Header
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!("  {:<20} {:>3} {:>5} {:>5}", "Name", "L", "Score", "Compl"),
-            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
-        ),
-    ]));
+    lines.push(Line::from(vec![Span::styled(
+        format!("  {:<20} {:>3} {:>5} {:>5}", "Name", "L", "Score", "Compl"),
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+    )]));
     lines.push(Line::from(Span::styled(
-        format!("  {}", "\u{2500}".repeat(area.width.saturating_sub(4) as usize)),
+        format!(
+            "  {}",
+            "\u{2500}".repeat(area.width.saturating_sub(4) as usize)
+        ),
         Style::default().fg(t.border),
     )));
 
@@ -403,8 +426,7 @@ fn render_agent_table(frame: &mut Frame, area: Rect, app: &App) {
     ]));
 
     let scroll = pv.scroll_offset;
-    let paragraph =
-        Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(0), 0));
+    let paragraph = Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(0), 0));
     frame.render_widget(paragraph, area);
 }
 
@@ -437,13 +459,39 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     let w = inner.width.saturating_sub(4) as usize;
     let mut lines: Vec<Line<'_>> = Vec::new();
 
-    let name = passport.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
-    let autonomy = passport.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
-    let framework = passport.get("framework").and_then(|v| v.as_str()).unwrap_or("?");
-    let provider = passport.get("model").and_then(|m| m.get("provider")).and_then(|v| v.as_str()).unwrap_or("?");
-    let model_id = passport.get("model").and_then(|m| m.get("model_id")).and_then(|v| v.as_str()).unwrap_or("?");
-    let risk_class = passport.get("compliance").and_then(|c| c.get("eu_ai_act")).and_then(|e| e.get("risk_class")).and_then(|v| v.as_str()).unwrap_or("?");
-    let score = passport.get("compliance").and_then(|c| c.get("complior_score")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+    let name = passport
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let autonomy = passport
+        .get("autonomy_level")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let framework = passport
+        .get("framework")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let provider = passport
+        .get("model")
+        .and_then(|m| m.get("provider"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let model_id = passport
+        .get("model")
+        .and_then(|m| m.get("model_id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let risk_class = passport
+        .get("compliance")
+        .and_then(|c| c.get("eu_ai_act"))
+        .and_then(|e| e.get("risk_class"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let score = passport
+        .get("compliance")
+        .and_then(|c| c.get("complior_score"))
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(0.0);
     let agent_type = passport.get("type").and_then(|v| v.as_str()).unwrap_or("?");
     let completeness = extract_completeness(passport);
 
@@ -479,7 +527,10 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     };
     lines.push(Line::from(vec![
         Span::styled("  Risk: ", Style::default().fg(t.muted)),
-        Span::styled(risk_class.to_uppercase(), Style::default().fg(risk_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            risk_class.to_uppercase(),
+            Style::default().fg(risk_color).add_modifier(Modifier::BOLD),
+        ),
     ]));
 
     // Score with color
@@ -487,7 +538,9 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("  Score: ", Style::default().fg(t.muted)),
         Span::styled(
             format!("{score:.0}"),
-            Style::default().fg(crate::views::score_zone_color(score, &t)).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(crate::views::score_zone_color(score, &t))
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
 
@@ -502,10 +555,15 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     );
     lines.push(Line::from(vec![
         Span::styled("  Compl: ", Style::default().fg(t.muted)),
-        Span::styled(compl_bar, Style::default().fg(completeness_color(completeness, &t))),
+        Span::styled(
+            compl_bar,
+            Style::default().fg(completeness_color(completeness, &t)),
+        ),
         Span::styled(
             format!(" {completeness}%"),
-            Style::default().fg(completeness_color(completeness, &t)).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(completeness_color(completeness, &t))
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
 
@@ -522,7 +580,8 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     )));
 
     // FRIA
-    let fria_done = passport.get("fria_completed")
+    let fria_done = passport
+        .get("fria_completed")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let (fria_icon, fria_color, fria_label) = if fria_done {
@@ -532,29 +591,42 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     };
     lines.push(Line::from(vec![
         Span::styled("  FRIA:     ", Style::default().fg(t.muted)),
-        Span::styled(format!("{fria_icon} {fria_label}"), Style::default().fg(fria_color)),
+        Span::styled(
+            format!("{fria_icon} {fria_label}"),
+            Style::default().fg(fria_color),
+        ),
     ]));
 
     // Worker Notification
-    let notify_sent = passport.get("worker_notification_sent")
+    let notify_sent = passport
+        .get("worker_notification_sent")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
-    let notify_date = passport.get("worker_notification_date")
+    let notify_date = passport
+        .get("worker_notification_date")
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let (notify_icon, notify_color, notify_label) = if notify_sent {
-        let date_display = if notify_date.len() >= 10 { &notify_date[..10] } else { notify_date };
+        let date_display = if notify_date.len() >= 10 {
+            &notify_date[..10]
+        } else {
+            notify_date
+        };
         ("\u{2713}", t.zone_green, format!("Sent {date_display}"))
     } else {
         ("\u{2717}", t.zone_red, "Not sent".to_string())
     };
     lines.push(Line::from(vec![
         Span::styled("  Notify:   ", Style::default().fg(t.muted)),
-        Span::styled(format!("{notify_icon} {notify_label}"), Style::default().fg(notify_color)),
+        Span::styled(
+            format!("{notify_icon} {notify_label}"),
+            Style::default().fg(notify_color),
+        ),
     ]));
 
     // Evidence Chain
-    let evidence_valid = passport.get("evidence_chain_valid")
+    let evidence_valid = passport
+        .get("evidence_chain_valid")
         .and_then(serde_json::Value::as_bool);
     let (ev_icon, ev_color, ev_label) = match evidence_valid {
         Some(true) => ("\u{2713}", t.zone_green, "Valid"),
@@ -563,7 +635,10 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
     };
     lines.push(Line::from(vec![
         Span::styled("  Evidence: ", Style::default().fg(t.muted)),
-        Span::styled(format!("{ev_icon} {ev_label}"), Style::default().fg(ev_color)),
+        Span::styled(
+            format!("{ev_icon} {ev_label}"),
+            Style::default().fg(ev_color),
+        ),
     ]));
 
     lines.push(Line::raw(""));
@@ -590,32 +665,53 @@ fn render_agent_detail(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("Registry", Style::default().fg(t.fg)),
     ]));
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }
 
 /// Extract completeness percentage from passport JSON (clamped to 0–100).
 fn extract_completeness(passport: &serde_json::Value) -> u8 {
     // Count non-empty top-level fields as a heuristic
     let required_fields = [
-        "name", "version", "description", "autonomy_level", "framework", "type",
+        "name",
+        "version",
+        "description",
+        "autonomy_level",
+        "framework",
+        "type",
     ];
     let mut filled = 0u64;
     for field in &required_fields {
-        if passport.get(*field).and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty()) {
+        if passport
+            .get(*field)
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.is_empty())
+        {
             filled += 1;
         }
     }
     // Also check nested fields
-    if passport.get("model").and_then(|m| m.get("provider")).and_then(|v| v.as_str()).is_some() {
+    if passport
+        .get("model")
+        .and_then(|m| m.get("provider"))
+        .and_then(|v| v.as_str())
+        .is_some()
+    {
         filled += 1;
     }
-    if passport.get("owner").and_then(|o| o.get("team")).and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty()) {
+    if passport
+        .get("owner")
+        .and_then(|o| o.get("team"))
+        .and_then(|v| v.as_str())
+        .is_some_and(|s| !s.is_empty())
+    {
         filled += 1;
     }
-    if passport.get("compliance").and_then(|c| c.get("eu_ai_act")).and_then(|e| e.get("risk_class")).is_some() {
+    if passport
+        .get("compliance")
+        .and_then(|c| c.get("eu_ai_act"))
+        .and_then(|e| e.get("risk_class"))
+        .is_some()
+    {
         filled += 1;
     }
     let total = 9u64;
@@ -646,7 +742,10 @@ fn render_field_editor_view(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled(" Agent Passport \u{2014} ", theme::title_style()),
         Span::styled(format!("{filled}/{total} fields  "), theme::title_style()),
         Span::styled(completeness_bar, Style::default().fg(pct_color)),
-        Span::styled(format!(" {pct}% "), Style::default().fg(pct_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            format!(" {pct}% "),
+            Style::default().fg(pct_color).add_modifier(Modifier::BOLD),
+        ),
     ]);
 
     let block = Block::default()
@@ -701,7 +800,10 @@ fn render_field_list(frame: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
             )));
             lines.push(Line::from(Span::styled(
-                format!(" {}", "\u{2500}".repeat(area.width.saturating_sub(3) as usize)),
+                format!(
+                    " {}",
+                    "\u{2500}".repeat(area.width.saturating_sub(3) as usize)
+                ),
                 Style::default().fg(t.border),
             )));
             current_category = field.category;
@@ -736,10 +838,7 @@ fn render_field_list(frame: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(if is_selected { t.accent } else { t.fg }),
             ),
             Span::styled(format!("{status_icon} "), Style::default().fg(status_color)),
-            Span::styled(
-                format!("{:<16}", field.name),
-                name_style,
-            ),
+            Span::styled(format!("{:<16}", field.name), name_style),
             Span::styled(
                 value_preview,
                 Style::default().fg(if has_value { t.muted } else { t.zone_red }),
@@ -750,8 +849,7 @@ fn render_field_list(frame: &mut Frame, area: Rect, app: &App) {
     // Apply scroll offset
     let scroll = pv.scroll_offset;
 
-    let paragraph = Paragraph::new(lines)
-        .scroll((u16::try_from(scroll).unwrap_or(0), 0));
+    let paragraph = Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(0), 0));
     frame.render_widget(paragraph, area);
 }
 
@@ -840,7 +938,10 @@ fn render_field_detail(frame: &mut Frame, area: Rect, app: &App) {
         ),
     ]));
     lines.push(Line::from(Span::styled(
-        format!("  \"information about the {} of the AI system\"", field.name),
+        format!(
+            "  \"information about the {} of the AI system\"",
+            field.name
+        ),
         Style::default().fg(t.muted),
     )));
     lines.push(Line::raw(""));
@@ -865,10 +966,7 @@ fn render_field_detail(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("FRIA", Style::default().fg(t.fg)),
     ]));
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }
 
 /// Render the right column — obligation checklist from completeness data.
@@ -896,9 +994,18 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
     lines.push(Line::raw(""));
 
     if let Some(data) = &pv.completeness_data {
-        let score = data.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
-        let total = data.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
-        let filled = data.get("filled").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let score = data
+            .get("score")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        let total = data
+            .get("total")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        let filled = data
+            .get("filled")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
 
         lines.push(Line::from(vec![
             Span::styled("  Completeness: ", Style::default().fg(t.muted)),
@@ -914,8 +1021,14 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
         if let Some(obligations) = data.get("obligations").and_then(|v| v.as_array()) {
             for obl in obligations {
                 let id = obl.get("id").and_then(|v| v.as_str()).unwrap_or("???");
-                let title = obl.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown");
-                let covered = obl.get("covered").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let title = obl
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown");
+                let covered = obl
+                    .get("covered")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
 
                 let (icon, color) = if covered {
                     ("\u{2713}", t.zone_green)
@@ -932,21 +1045,22 @@ fn render_obligation_checklist(frame: &mut Frame, area: Rect, app: &App) {
         }
 
         if let Some(missing) = data.get("missingFields").and_then(|v| v.as_array())
-            && !missing.is_empty() {
-                lines.push(Line::raw(""));
-                lines.push(Line::from(Span::styled(
-                    "  Missing fields:",
-                    Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD),
-                )));
-                for field in missing {
-                    if let Some(name) = field.as_str() {
-                        lines.push(Line::from(Span::styled(
-                            format!("    \u{2022} {name}"),
-                            Style::default().fg(t.zone_red),
-                        )));
-                    }
+            && !missing.is_empty()
+        {
+            lines.push(Line::raw(""));
+            lines.push(Line::from(Span::styled(
+                "  Missing fields:",
+                Style::default().fg(t.zone_red).add_modifier(Modifier::BOLD),
+            )));
+            for field in missing {
+                if let Some(name) = field.as_str() {
+                    lines.push(Line::from(Span::styled(
+                        format!("    \u{2022} {name}"),
+                        Style::default().fg(t.zone_red),
+                    )));
                 }
             }
+        }
     } else {
         lines.push(Line::from(Span::styled(
             "  Loading completeness data...",

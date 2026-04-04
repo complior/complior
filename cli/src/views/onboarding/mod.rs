@@ -147,9 +147,10 @@ impl OnboardingWizard {
 
     pub fn move_cursor_down(&mut self) {
         if let Some(step) = self.current()
-            && self.cursor + 1 < step.options.len() {
-                self.cursor += 1;
-            }
+            && self.cursor + 1 < step.options.len()
+        {
+            self.cursor += 1;
+        }
     }
 
     /// Toggle selection at cursor (Radio = single, Checkbox = multi).
@@ -179,17 +180,19 @@ impl OnboardingWizard {
     /// Select all options (for Checkbox steps).
     pub fn select_all(&mut self) {
         if let Some(step) = self.current_mut()
-            && step.kind == StepKind::Checkbox {
-                step.selected = (0..step.options.len()).collect();
-            }
+            && step.kind == StepKind::Checkbox
+        {
+            step.selected = (0..step.options.len()).collect();
+        }
     }
 
     /// Select minimum options (for Checkbox steps: first item only).
     pub fn select_minimum(&mut self) {
         if let Some(step) = self.current_mut()
-            && step.kind == StepKind::Checkbox {
-                step.selected = vec![0];
-            }
+            && step.kind == StepKind::Checkbox
+        {
+            step.selected = vec![0];
+        }
     }
 
     /// Advance to next visible step. Returns true if wizard completed.
@@ -223,19 +226,21 @@ impl OnboardingWizard {
             .iter()
             .position(|&i| i == self.current_step);
         if let Some(pos) = current_pos
-            && pos > 0 {
-                self.current_step = self.active_steps[pos - 1];
-                self.cursor = 0;
-            }
+            && pos > 0
+        {
+            self.current_step = self.active_steps[pos - 1];
+            self.cursor = 0;
+        }
     }
 
     /// Insert a character at the current text cursor position.
     pub fn insert_char(&mut self, c: char) {
         if let Some(step) = self.steps.get_mut(self.current_step)
-            && self.text_cursor <= step.text_value.len() {
-                step.text_value.insert(self.text_cursor, c);
-                self.text_cursor += c.len_utf8();
-            }
+            && self.text_cursor <= step.text_value.len()
+        {
+            step.text_value.insert(self.text_cursor, c);
+            self.text_cursor += c.len_utf8();
+        }
     }
 
     /// Delete the character before the text cursor (backspace).
@@ -244,15 +249,16 @@ impl OnboardingWizard {
             return;
         }
         if let Some(step) = self.steps.get_mut(self.current_step)
-            && self.text_cursor <= step.text_value.len() {
-                // Find the previous char boundary
-                let prev = step.text_value[..self.text_cursor]
-                    .char_indices()
-                    .next_back()
-                    .map_or(0, |(i, _)| i);
-                step.text_value.remove(prev);
-                self.text_cursor = prev;
-            }
+            && self.text_cursor <= step.text_value.len()
+        {
+            // Find the previous char boundary
+            let prev = step.text_value[..self.text_cursor]
+                .char_indices()
+                .next_back()
+                .map_or(0, |(i, _)| i);
+            step.text_value.remove(prev);
+            self.text_cursor = prev;
+        }
     }
 
     /// Get the `text_value` of a step by id.
@@ -319,8 +325,16 @@ impl OnboardingWizard {
         let idx = step.selected.first().copied().unwrap_or(0);
         match step_id {
             "welcome_theme" => {
-                let names = ["dark", "light", "solarized-dark", "solarized-light",
-                             "dracula", "nord", "monokai", "gruvbox"];
+                let names = [
+                    "dark",
+                    "light",
+                    "solarized-dark",
+                    "solarized-light",
+                    "dracula",
+                    "nord",
+                    "monokai",
+                    "gruvbox",
+                ];
                 names.get(idx).unwrap_or(&"dark").to_string()
             }
             "project_type" => match idx {

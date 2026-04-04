@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -22,11 +22,11 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
     let sections = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(6),   // Score + summary
-            Constraint::Length(8),   // By Category breakdown
-            Constraint::Length(7),   // Deadlines
-            Constraint::Length(7),   // Quick Fix
-            Constraint::Min(3),     // Metrics (Cost/Debt/Readiness)
+            Constraint::Length(6), // Score + summary
+            Constraint::Length(8), // By Category breakdown
+            Constraint::Length(7), // Deadlines
+            Constraint::Length(7), // Quick Fix
+            Constraint::Min(3),    // Metrics (Cost/Debt/Readiness)
         ])
         .split(area);
 
@@ -71,10 +71,7 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
             ]
         } else {
             vec![
-                Line::from(Span::styled(
-                    " --/100",
-                    Style::default().fg(t.muted),
-                )),
+                Line::from(Span::styled(" --/100", Style::default().fg(t.muted))),
                 Line::from(Span::styled(
                     " Run /scan to check compliance",
                     Style::default().fg(t.muted),
@@ -99,7 +96,8 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
             if scan.score.category_scores.is_empty() {
                 // Derive categories from findings
                 let cats = derive_categories_from_findings(&scan.findings);
-                let cat_lines: Vec<Line<'_>> = cats.iter()
+                let cat_lines: Vec<Line<'_>> = cats
+                    .iter()
                     .take(inner.height as usize)
                     .map(|(name, count)| {
                         let (icon, icon_color) = if *count > 0 {
@@ -109,10 +107,7 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
                         };
                         Line::from(vec![
                             Span::styled(format!(" {icon} "), Style::default().fg(icon_color)),
-                            Span::styled(
-                                format!("{name:<14}"),
-                                Style::default().fg(t.fg),
-                            ),
+                            Span::styled(format!("{name:<14}"), Style::default().fg(t.fg)),
                             Span::styled(
                                 format!("{count:>2}"),
                                 Style::default().fg(if *count > 0 { t.zone_red } else { t.muted }),
@@ -122,7 +117,10 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
                     .collect();
                 frame.render_widget(Paragraph::new(cat_lines), inner);
             } else {
-                let cat_lines: Vec<Line<'_>> = scan.score.category_scores.iter()
+                let cat_lines: Vec<Line<'_>> = scan
+                    .score
+                    .category_scores
+                    .iter()
                     .take(inner.height as usize)
                     .map(|cat| {
                         let failed = cat.obligation_count.saturating_sub(cat.passed_count);
@@ -170,14 +168,17 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
     {
         // Compute top 3 quick wins from fixable findings
         let (quick_wins, total_impact, fix_count) = if let Some(scan) = &app.last_scan {
-            let mut fixable: Vec<_> = scan.findings.iter()
-                .filter(|f| f.fix.is_some())
-                .collect();
+            let mut fixable: Vec<_> = scan.findings.iter().filter(|f| f.fix.is_some()).collect();
             fixable.sort_by(|a, b| b.predicted_impact().cmp(&a.predicted_impact()));
             let top3: Vec<_> = fixable.iter().take(3).collect();
             let total: i32 = top3.iter().map(|f| f.predicted_impact()).sum();
-            (top3.iter().map(|f| (f.message.clone(), f.predicted_impact())).collect::<Vec<_>>(),
-             total, fixable.len())
+            (
+                top3.iter()
+                    .map(|f| (f.message.clone(), f.predicted_impact()))
+                    .collect::<Vec<_>>(),
+                total,
+                fixable.len(),
+            )
         } else {
             (Vec::new(), 0, 0)
         };
@@ -213,21 +214,18 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
             for (i, (msg, impact)) in quick_wins.iter().enumerate() {
                 let short_msg = crate::views::truncate_str(msg, w.saturating_sub(12));
                 lines.push(Line::from(vec![
-                    Span::styled(
-                        format!(" {}. ", i + 1),
-                        Style::default().fg(t.accent),
-                    ),
+                    Span::styled(format!(" {}. ", i + 1), Style::default().fg(t.accent)),
                     Span::styled(short_msg, Style::default().fg(t.fg)),
-                    Span::styled(
-                        format!(" +{impact}"),
-                        Style::default().fg(t.zone_green),
-                    ),
+                    Span::styled(format!(" +{impact}"), Style::default().fg(t.zone_green)),
                 ]));
             }
 
             lines.push(Line::raw(""));
             lines.push(Line::from(vec![
-                Span::styled(" [F] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    " [F] ",
+                    Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(
                     format!("Apply all ({fix_count} fixes)"),
                     Style::default().fg(t.fg),
@@ -236,7 +234,10 @@ pub(super) fn render_info_panel(frame: &mut Frame, area: Rect, app: &App) {
         }
 
         lines.push(Line::from(vec![
-            Span::styled(" [S] ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [S] ",
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Rescan project", Style::default().fg(t.fg)),
         ]));
 
@@ -259,9 +260,8 @@ fn render_metrics_panel(frame: &mut Frame, area: Rect, app: &App) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let has_any = app.cost_estimate.is_some()
-        || app.debt_score.is_some()
-        || app.readiness_score.is_some();
+    let has_any =
+        app.cost_estimate.is_some() || app.debt_score.is_some() || app.readiness_score.is_some();
 
     if !has_any {
         let placeholder = if app.last_scan.is_some() {
@@ -284,7 +284,10 @@ fn render_metrics_panel(frame: &mut Frame, area: Rect, app: &App) {
     // Cost row
     if let Some(cost) = &app.cost_estimate {
         lines.push(Line::from(vec![
-            Span::styled(" Cost: ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " Cost: ",
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 format!("\u{20ac}{:.0} remediation", cost.total_cost),
                 Style::default().fg(t.fg),
@@ -308,7 +311,10 @@ fn render_metrics_panel(frame: &mut Frame, area: Rect, app: &App) {
         let debt_color = debt_level_color(debt.total_debt, &t);
         let level_upper = debt.level.to_uppercase();
         lines.push(Line::from(vec![
-            Span::styled(" Debt: ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " Debt: ",
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 format!("{:.1} pts", debt.total_debt),
                 Style::default().fg(debt_color),
@@ -325,10 +331,15 @@ fn render_metrics_panel(frame: &mut Frame, area: Rect, app: &App) {
         let ready_color = readiness_level_color(ready.overall_score, &t);
         let level_display = ready.readiness_level.replace('_', " ");
         lines.push(Line::from(vec![
-            Span::styled(" Ready: ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " Ready: ",
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 format!("{:.0}%", ready.overall_score),
-                Style::default().fg(ready_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(ready_color)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(" \u{25cf} {level_display}"),
@@ -531,7 +542,11 @@ fn framework_gauge_data(
         let now = current_epoch_days();
         let dl = parse_epoch_days(d);
         let diff = dl - now;
-        if diff > 0 { format!(" ({diff}d)") } else { " (overdue)".to_string() }
+        if diff > 0 {
+            format!(" ({diff}d)")
+        } else {
+            " (overdue)".to_string()
+        }
     });
 
     let gaps_text = if fw.gaps > 0 {
@@ -592,7 +607,8 @@ pub(super) fn render_framework_cards(frame: &mut Frame, area: Rect, app: &App) {
 
 /// Focused single-framework gauge — full-width gauge for one framework (press 'f' to cycle).
 pub(super) fn render_focused_framework_gauge(
-    frame: &mut Frame, area: Rect,
+    frame: &mut Frame,
+    area: Rect,
     fw: &crate::types::FrameworkScoreResult,
 ) {
     let t = theme::theme();
@@ -628,7 +644,10 @@ pub(super) fn render_detail_panel(frame: &mut Frame, area: Rect, app: &App) {
     let lines = if let Some(scan) = &app.last_scan {
         let mut l = vec![
             Line::from(Span::styled(
-                format!(" Checks: {}/{}", scan.score.passed_checks, scan.score.total_checks),
+                format!(
+                    " Checks: {}/{}",
+                    scan.score.passed_checks, scan.score.total_checks
+                ),
                 Style::default().fg(t.fg),
             )),
             Line::from(Span::styled(

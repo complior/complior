@@ -68,7 +68,11 @@ fn test_filter_provider() {
     let filtered = state.filtered_obligations();
     // "both" + "provider" = 2
     assert_eq!(filtered.len(), 2);
-    assert!(filtered.iter().all(|o| o.role == "provider" || o.role == "both"));
+    assert!(
+        filtered
+            .iter()
+            .all(|o| o.role == "provider" || o.role == "both")
+    );
 }
 
 #[test]
@@ -124,11 +128,33 @@ fn test_filter_cycle() {
     assert_eq!(f.cycle(), ObligationFilter::RoleProvider);
     assert_eq!(f.cycle().cycle(), ObligationFilter::RoleDeployer);
     assert_eq!(f.cycle().cycle().cycle(), ObligationFilter::RiskHigh);
-    assert_eq!(f.cycle().cycle().cycle().cycle(), ObligationFilter::RiskLimited);
-    assert_eq!(f.cycle().cycle().cycle().cycle().cycle(), ObligationFilter::CoveredOnly);
-    assert_eq!(f.cycle().cycle().cycle().cycle().cycle().cycle(), ObligationFilter::UncoveredOnly);
-    assert_eq!(f.cycle().cycle().cycle().cycle().cycle().cycle().cycle(), ObligationFilter::SeverityCritical);
-    assert_eq!(f.cycle().cycle().cycle().cycle().cycle().cycle().cycle().cycle(), ObligationFilter::All);
+    assert_eq!(
+        f.cycle().cycle().cycle().cycle(),
+        ObligationFilter::RiskLimited
+    );
+    assert_eq!(
+        f.cycle().cycle().cycle().cycle().cycle(),
+        ObligationFilter::CoveredOnly
+    );
+    assert_eq!(
+        f.cycle().cycle().cycle().cycle().cycle().cycle(),
+        ObligationFilter::UncoveredOnly
+    );
+    assert_eq!(
+        f.cycle().cycle().cycle().cycle().cycle().cycle().cycle(),
+        ObligationFilter::SeverityCritical
+    );
+    assert_eq!(
+        f.cycle()
+            .cycle()
+            .cycle()
+            .cycle()
+            .cycle()
+            .cycle()
+            .cycle()
+            .cycle(),
+        ObligationFilter::All
+    );
 }
 
 #[test]
@@ -163,7 +189,7 @@ fn test_critical_path_count() {
 fn test_is_critical_path() {
     let obls = sample_obligations();
     assert!(!obls[0].is_critical_path()); // covered
-    assert!(obls[1].is_critical_path());  // uncovered + deadline
+    assert!(obls[1].is_critical_path()); // uncovered + deadline
     assert!(!obls[2].is_critical_path()); // covered
 }
 

@@ -48,16 +48,32 @@ struct ThemeEntry {
     name: String,
     aliases: Vec<String>,
     syntect: String,
-    bg: [u8; 3], fg: [u8; 3],
-    border: [u8; 3], border_focused: [u8; 3],
-    accent: [u8; 3], muted: [u8; 3],
-    zone_green: [u8; 3], zone_yellow: [u8; 3], zone_red: [u8; 3],
-    severity_critical: [u8; 3], severity_high: [u8; 3],
-    severity_medium: [u8; 3], severity_low: [u8; 3], severity_info: [u8; 3],
-    diff_added: [u8; 3], diff_removed: [u8; 3], diff_header: [u8; 3],
-    user_msg: [u8; 3], assistant_msg: [u8; 3], system_msg: [u8; 3],
-    selection_bg: [u8; 3], status_bar_bg: [u8; 3], status_bar_fg: [u8; 3],
-    tool_call_border: [u8; 3], tool_result_ok: [u8; 3], tool_result_err: [u8; 3],
+    bg: [u8; 3],
+    fg: [u8; 3],
+    border: [u8; 3],
+    border_focused: [u8; 3],
+    accent: [u8; 3],
+    muted: [u8; 3],
+    zone_green: [u8; 3],
+    zone_yellow: [u8; 3],
+    zone_red: [u8; 3],
+    severity_critical: [u8; 3],
+    severity_high: [u8; 3],
+    severity_medium: [u8; 3],
+    severity_low: [u8; 3],
+    severity_info: [u8; 3],
+    diff_added: [u8; 3],
+    diff_removed: [u8; 3],
+    diff_header: [u8; 3],
+    user_msg: [u8; 3],
+    assistant_msg: [u8; 3],
+    system_msg: [u8; 3],
+    selection_bg: [u8; 3],
+    status_bar_bg: [u8; 3],
+    status_bar_fg: [u8; 3],
+    tool_call_border: [u8; 3],
+    tool_result_ok: [u8; 3],
+    tool_result_err: [u8; 3],
     thinking_fg: [u8; 3],
     #[serde(default = "default_user_msg_bg")]
     user_msg_bg: [u8; 3],
@@ -80,8 +96,14 @@ impl ThemeColors {
     /// 8 palette colors for the preview bar in Theme Picker.
     pub const fn palette_colors(&self) -> [Color; 8] {
         [
-            self.bg, self.fg, self.accent, self.border,
-            self.zone_green, self.zone_yellow, self.zone_red, self.muted,
+            self.bg,
+            self.fg,
+            self.accent,
+            self.border,
+            self.zone_green,
+            self.zone_yellow,
+            self.zone_red,
+            self.muted,
         ]
     }
 
@@ -89,16 +111,32 @@ impl ThemeColors {
         Self {
             // Leak the name string to get a &'static str — themes are loaded once
             name: Box::leak(entry.name.clone().into_boxed_str()),
-            bg: rgb(entry.bg), fg: rgb(entry.fg),
-            border: rgb(entry.border), border_focused: rgb(entry.border_focused),
-            accent: rgb(entry.accent), muted: rgb(entry.muted),
-            zone_green: rgb(entry.zone_green), zone_yellow: rgb(entry.zone_yellow), zone_red: rgb(entry.zone_red),
-            severity_critical: rgb(entry.severity_critical), severity_high: rgb(entry.severity_high),
-            severity_medium: rgb(entry.severity_medium), severity_low: rgb(entry.severity_low), severity_info: rgb(entry.severity_info),
-            diff_added: rgb(entry.diff_added), diff_removed: rgb(entry.diff_removed), diff_header: rgb(entry.diff_header),
-            user_msg: rgb(entry.user_msg), assistant_msg: rgb(entry.assistant_msg), system_msg: rgb(entry.system_msg),
-            selection_bg: rgb(entry.selection_bg), status_bar_bg: rgb(entry.status_bar_bg), status_bar_fg: rgb(entry.status_bar_fg),
-            tool_call_border: rgb(entry.tool_call_border), tool_result_ok: rgb(entry.tool_result_ok), tool_result_err: rgb(entry.tool_result_err),
+            bg: rgb(entry.bg),
+            fg: rgb(entry.fg),
+            border: rgb(entry.border),
+            border_focused: rgb(entry.border_focused),
+            accent: rgb(entry.accent),
+            muted: rgb(entry.muted),
+            zone_green: rgb(entry.zone_green),
+            zone_yellow: rgb(entry.zone_yellow),
+            zone_red: rgb(entry.zone_red),
+            severity_critical: rgb(entry.severity_critical),
+            severity_high: rgb(entry.severity_high),
+            severity_medium: rgb(entry.severity_medium),
+            severity_low: rgb(entry.severity_low),
+            severity_info: rgb(entry.severity_info),
+            diff_added: rgb(entry.diff_added),
+            diff_removed: rgb(entry.diff_removed),
+            diff_header: rgb(entry.diff_header),
+            user_msg: rgb(entry.user_msg),
+            assistant_msg: rgb(entry.assistant_msg),
+            system_msg: rgb(entry.system_msg),
+            selection_bg: rgb(entry.selection_bg),
+            status_bar_bg: rgb(entry.status_bar_bg),
+            status_bar_fg: rgb(entry.status_bar_fg),
+            tool_call_border: rgb(entry.tool_call_border),
+            tool_result_ok: rgb(entry.tool_result_ok),
+            tool_result_err: rgb(entry.tool_result_err),
             thinking_fg: rgb(entry.thinking_fg),
             user_msg_bg: rgb(entry.user_msg_bg),
         }
@@ -188,7 +226,8 @@ pub fn init_theme(name: &str) {
 
 pub fn theme() -> ThemeColors {
     THEME
-        .get().map_or_else(ThemeColors::dark, |m| m.lock().expect("theme lock").clone())
+        .get()
+        .map_or_else(ThemeColors::dark, |m| m.lock().expect("theme lock").clone())
 }
 
 pub fn current_theme_name() -> String {
@@ -220,9 +259,9 @@ pub fn severity_color(severity: Severity) -> Color {
 pub fn finding_type_color(ft: FindingType) -> Color {
     let t = theme();
     match ft {
-        FindingType::A => t.accent,       // blue — code fix
-        FindingType::B => t.zone_green,   // green — missing file
-        FindingType::C => t.zone_yellow,  // yellow — config change
+        FindingType::A => t.accent,      // blue — code fix
+        FindingType::B => t.zone_green,  // green — missing file
+        FindingType::C => t.zone_yellow, // yellow — config change
     }
 }
 
@@ -295,5 +334,4 @@ mod tests {
         assert_eq!(ThemeColors::from_name("nord").name, "Nord");
         assert_eq!(ThemeColors::from_name("unknown").name, "Complior Dark");
     }
-
 }

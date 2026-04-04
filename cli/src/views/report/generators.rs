@@ -11,15 +11,60 @@ pub struct ReportGenerator {
 
 /// All 9 report generators per spec Section 7.2.
 pub const GENERATORS: &[ReportGenerator] = &[
-    ReportGenerator { key: '1', name: "Audit Package", description: "ZIP with all compliance docs", duration: "~60 sec" },
-    ReportGenerator { key: '2', name: "FRIA Draft", description: "Impact assessment (per-system)", duration: "~30 sec" },
-    ReportGenerator { key: '3', name: "Risk Management Plan", description: "Risk register (per-system)", duration: "~20 sec" },
-    ReportGenerator { key: '4', name: "QMS Template", description: "Quality management system", duration: "~15 sec" },
-    ReportGenerator { key: '5', name: "Monitoring Plan", description: "Post-market monitoring", duration: "~10 sec" },
-    ReportGenerator { key: '6', name: "Worker Notification", description: "Employee notice", duration: "~10 sec" },
-    ReportGenerator { key: '7', name: "Incident Report", description: "Incident template", duration: "~10 sec" },
-    ReportGenerator { key: '8', name: "EU DB Pre-fill", description: "Database registration fields", duration: "~5 sec" },
-    ReportGenerator { key: '9', name: "AESIA Excel Export", description: "12 Spanish regulator checklists", duration: "~30 sec" },
+    ReportGenerator {
+        key: '1',
+        name: "Audit Package",
+        description: "ZIP with all compliance docs",
+        duration: "~60 sec",
+    },
+    ReportGenerator {
+        key: '2',
+        name: "FRIA Draft",
+        description: "Impact assessment (per-system)",
+        duration: "~30 sec",
+    },
+    ReportGenerator {
+        key: '3',
+        name: "Risk Management Plan",
+        description: "Risk register (per-system)",
+        duration: "~20 sec",
+    },
+    ReportGenerator {
+        key: '4',
+        name: "QMS Template",
+        description: "Quality management system",
+        duration: "~15 sec",
+    },
+    ReportGenerator {
+        key: '5',
+        name: "Monitoring Plan",
+        description: "Post-market monitoring",
+        duration: "~10 sec",
+    },
+    ReportGenerator {
+        key: '6',
+        name: "Worker Notification",
+        description: "Employee notice",
+        duration: "~10 sec",
+    },
+    ReportGenerator {
+        key: '7',
+        name: "Incident Report",
+        description: "Incident template",
+        duration: "~10 sec",
+    },
+    ReportGenerator {
+        key: '8',
+        name: "EU DB Pre-fill",
+        description: "Database registration fields",
+        duration: "~5 sec",
+    },
+    ReportGenerator {
+        key: '9',
+        name: "AESIA Excel Export",
+        description: "12 Spanish regulator checklists",
+        duration: "~30 sec",
+    },
 ];
 
 /// Map zone to human-readable label.
@@ -40,10 +85,7 @@ pub fn generate_report_markdown(scan: &ScanResult) -> String {
 
     // Executive Summary
     md.push_str("## Executive Summary\n\n");
-    md.push_str(&format!(
-        "- **Score:** {:.0}/100\n",
-        scan.score.total_score
-    ));
+    md.push_str(&format!("- **Score:** {:.0}/100\n", scan.score.total_score));
     md.push_str(&format!("- **Zone:** {zone}\n"));
     md.push_str(&format!("- **Project:** {}\n", scan.project_path));
     md.push_str(&format!("- **Scanned:** {}\n", scan.scanned_at));

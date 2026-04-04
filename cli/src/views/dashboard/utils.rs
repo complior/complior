@@ -25,10 +25,14 @@ pub(super) fn parse_epoch_days(date: &str) -> i64 {
     let d: i64 = parts[2].parse().unwrap_or(1);
     // Approximate: 365.25 * year + 30.44 * month + day from epoch
     // More accurate: days from 1970-01-01
-    
-    (y - 1970) * 365 + (y - 1969) / 4 - (y - 1901) / 100 + (y - 1601) / 400
-        + (m - 1) * 30 + (m + 1) / 2 - if m > 2 { 2 } else { 0 }
-        + d - 1
+
+    (y - 1970) * 365 + (y - 1969) / 4 - (y - 1901) / 100
+        + (y - 1601) / 400
+        + (m - 1) * 30
+        + (m + 1) / 2
+        - if m > 2 { 2 } else { 0 }
+        + d
+        - 1
 }
 
 /// Format deadline diff into human-readable label with urgency color.
@@ -44,7 +48,10 @@ pub fn deadline_label(days_diff: i64, t: &theme::ThemeColors) -> (String, ratatu
 }
 
 /// Score -> (color, zone label).
-pub fn score_zone_info(score: f64, t: &theme::ThemeColors) -> (ratatui::style::Color, &'static str) {
+pub fn score_zone_info(
+    score: f64,
+    t: &theme::ThemeColors,
+) -> (ratatui::style::Color, &'static str) {
     let color = crate::views::score_zone_color(score, t);
     let label = if score < 50.0 {
         "RED \u{2014} Non-Compliant"
@@ -74,11 +81,16 @@ pub(super) fn derive_categories_from_findings(findings: &[Finding]) -> Vec<(&'st
             prohibited += 1;
         } else if art.contains("Art. 9") || art.contains("Art. 27") || obl.contains("risk") {
             risk_mgmt += 1;
-        } else if art.contains("Art. 11") || art.contains("Art. 12") || art.contains("Art. 18")
-            || obl.contains("doc") || f.finding_type() == crate::types::FindingType::B
+        } else if art.contains("Art. 11")
+            || art.contains("Art. 12")
+            || art.contains("Art. 18")
+            || obl.contains("doc")
+            || f.finding_type() == crate::types::FindingType::B
         {
             documentation += 1;
-        } else if art.contains("Art. 50") || art.contains("Art. 13") || art.contains("Art. 52")
+        } else if art.contains("Art. 50")
+            || art.contains("Art. 13")
+            || art.contains("Art. 52")
             || obl.contains("transp")
         {
             transparency += 1;

@@ -13,7 +13,10 @@ impl App {
     /// Extract the project path and name from the first loaded passport.
     /// Returns `None` if no passport is loaded.
     fn passport_path_name(&self) -> Option<(String, String)> {
-        let passport = self.passport_view.loaded_passports.get(self.passport_view.selected_passport)?;
+        let passport = self
+            .passport_view
+            .loaded_passports
+            .get(self.passport_view.selected_passport)?;
         let name = passport
             .get("name")
             .and_then(|v| v.as_str())
@@ -77,22 +80,16 @@ pub async fn execute_command(
                         // T904: Fix validation — show delta toast
                         if let Some(old) = fix_old_score {
                             let diff = new_score - old;
-                            let msg = format!("Fix verified: Score {old:.0} → {new_score:.0} ({diff:+.0})");
+                            let msg = format!(
+                                "Fix verified: Score {old:.0} → {new_score:.0} ({diff:+.0})"
+                            );
                             if diff > 0.0 {
-                                app.toasts.push(
-                                    components::toast::ToastKind::Success,
-                                    &msg,
-                                );
+                                app.toasts.push(components::toast::ToastKind::Success, &msg);
                             } else {
-                                app.toasts.push(
-                                    components::toast::ToastKind::Warning,
-                                    &msg,
-                                );
+                                app.toasts.push(components::toast::ToastKind::Warning, &msg);
                             }
-                            app.messages.push(types::ChatMessage::new(
-                                types::MessageRole::System,
-                                msg,
-                            ));
+                            app.messages
+                                .push(types::ChatMessage::new(types::MessageRole::System, msg));
                         }
                     } else {
                         // Regular watch-mode regression detection
@@ -235,109 +232,83 @@ pub async fn execute_command(
                 ));
             }
         },
-        AppCommand::Undo(id) => {
-            match app.engine_client.undo(id).await {
-                Ok(result) => {
-                    let msg = result
-                        .get("message")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Undo applied");
-                    app.toasts.push(
-                        components::toast::ToastKind::Success,
-                        msg.to_string(),
-                    );
-                    app.push_activity(types::ActivityKind::Fix, "Undo");
-                    app.animation.start_checkmark();
-                }
-                Err(_) => {
-                    app.toasts.push(
-                        components::toast::ToastKind::Warning,
-                        "Nothing to undo",
-                    );
-                }
+        AppCommand::Undo(id) => match app.engine_client.undo(id).await {
+            Ok(result) => {
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Undo applied");
+                app.toasts
+                    .push(components::toast::ToastKind::Success, msg.to_string());
+                app.push_activity(types::ActivityKind::Fix, "Undo");
+                app.animation.start_checkmark();
             }
-        }
-        AppCommand::FetchUndoHistory => {
-            match app.engine_client.undo_history().await {
-                Ok(entries) => {
-                    app.undo_history.entries = entries
-                        .iter()
-                        .filter_map(|v| {
-                            Some(components::undo_history::UndoEntry {
-                                id: v.get("id")?.as_u64()? as u32,
-                                timestamp: v
-                                    .get("timestamp")
-                                    .and_then(|t| t.as_str())
-                                    .unwrap_or("")
-                                    .to_string(),
-                                action: v
-                                    .get("action")
-                                    .and_then(|a| a.as_str())
-                                    .unwrap_or("")
-                                    .to_string(),
-                                status: match v
-                                    .get("status")
-                                    .and_then(|s| s.as_str())
-                                    .unwrap_or("applied")
-                                {
-                                    "undone" => {
-                                        components::undo_history::UndoStatus::Undone
-                                    }
-                                    "baseline" => {
-                                        components::undo_history::UndoStatus::Baseline
-                                    }
-                                    _ => {
-                                        components::undo_history::UndoStatus::Applied
-                                    }
-                                },
-                                score_delta: v
-                                    .get("scoreDelta")
-                                    .and_then(serde_json::Value::as_f64),
-                            })
+            Err(_) => {
+                app.toasts
+                    .push(components::toast::ToastKind::Warning, "Nothing to undo");
+            }
+        },
+        AppCommand::FetchUndoHistory => match app.engine_client.undo_history().await {
+            Ok(entries) => {
+                app.undo_history.entries = entries
+                    .iter()
+                    .filter_map(|v| {
+                        Some(components::undo_history::UndoEntry {
+                            id: v.get("id")?.as_u64()? as u32,
+                            timestamp: v
+                                .get("timestamp")
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            action: v
+                                .get("action")
+                                .and_then(|a| a.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            status: match v
+                                .get("status")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("applied")
+                            {
+                                "undone" => components::undo_history::UndoStatus::Undone,
+                                "baseline" => components::undo_history::UndoStatus::Baseline,
+                                _ => components::undo_history::UndoStatus::Applied,
+                            },
+                            score_delta: v.get("scoreDelta").and_then(serde_json::Value::as_f64),
                         })
-                        .collect();
-                    app.undo_history.selected = 0;
-                }
-                Err(_) => {
-                    app.undo_history.entries.clear();
-                }
+                    })
+                    .collect();
+                app.undo_history.selected = 0;
             }
-        }
+            Err(_) => {
+                app.undo_history.entries.clear();
+            }
+        },
         AppCommand::FetchSuggestions => {
             app.idle_suggestions.fetch_pending = false;
             match app.engine_client.suggestions().await {
                 Ok(items) if !items.is_empty() => {
                     if let Some(first) = items.first() {
-                        let kind_str = first
-                            .get("kind")
-                            .and_then(|k| k.as_str())
-                            .unwrap_or("tip");
+                        let kind_str = first.get("kind").and_then(|k| k.as_str()).unwrap_or("tip");
                         let kind = match kind_str {
                             "fix" => components::suggestions::SuggestionKind::Fix,
-                            "deadline" => {
-                                components::suggestions::SuggestionKind::DeadlineWarning
-                            }
-                            "score" => {
-                                components::suggestions::SuggestionKind::ScoreImprovement
-                            }
-                            "new" => {
-                                components::suggestions::SuggestionKind::NewFeature
-                            }
+                            "deadline" => components::suggestions::SuggestionKind::DeadlineWarning,
+                            "score" => components::suggestions::SuggestionKind::ScoreImprovement,
+                            "new" => components::suggestions::SuggestionKind::NewFeature,
                             _ => components::suggestions::SuggestionKind::Tip,
                         };
-                        app.idle_suggestions.current =
-                            Some(components::suggestions::Suggestion {
-                                kind,
-                                text: first
-                                    .get("text")
-                                    .and_then(|t| t.as_str())
-                                    .unwrap_or("")
-                                    .to_string(),
-                                detail: first
-                                    .get("detail")
-                                    .and_then(|d| d.as_str())
-                                    .map(String::from),
-                            });
+                        app.idle_suggestions.current = Some(components::suggestions::Suggestion {
+                            kind,
+                            text: first
+                                .get("text")
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            detail: first
+                                .get("detail")
+                                .and_then(|d| d.as_str())
+                                .map(String::from),
+                        });
                     }
                 }
                 _ => {
@@ -350,10 +321,7 @@ pub async fn execute_command(
         // T905: What-If scenario analysis
         AppCommand::WhatIf(scenario) => {
             app.whatif.pending = true;
-            let current_score = app
-                .last_scan
-                .as_ref()
-                .map_or(50.0, |s| s.score.total_score);
+            let current_score = app.last_scan.as_ref().map_or(50.0, |s| s.score.total_score);
 
             if let Ok(result) = app.engine_client.whatif(&scenario).await {
                 // Parse engine response
@@ -384,10 +352,8 @@ pub async fn execute_command(
                 };
                 let msg = components::whatif::format_whatif_message(&whatif_result);
                 app.whatif.result = Some(whatif_result);
-                app.messages.push(types::ChatMessage::new(
-                    types::MessageRole::Assistant,
-                    msg,
-                ));
+                app.messages
+                    .push(types::ChatMessage::new(types::MessageRole::Assistant, msg));
             } else {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
@@ -423,10 +389,7 @@ pub async fn execute_command(
                     .and_then(serde_json::Value::as_f64)
                     .unwrap_or(0.0);
 
-                let current = app
-                    .last_scan
-                    .as_ref()
-                    .map_or(0.0, |s| s.score.total_score);
+                let current = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
                 let delta = predicted - current;
                 let mut msg = format!(
                     "Dry-Run Fix Analysis (no files modified)\n\
@@ -442,16 +405,11 @@ pub async fn execute_command(
                      Run /fix to apply."
                 ));
 
-                app.messages.push(types::ChatMessage::new(
-                    types::MessageRole::Assistant,
-                    msg,
-                ));
+                app.messages
+                    .push(types::ChatMessage::new(types::MessageRole::Assistant, msg));
             } else {
                 // Offline: simulate from predicted impact
-                let current = app
-                    .last_scan
-                    .as_ref()
-                    .map_or(0.0, |s| s.score.total_score);
+                let current = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
                 let impact = f64::from(app.fix_view.total_predicted_impact());
                 let predicted = (current + impact).min(100.0);
                 let msg = format!(
@@ -462,10 +420,8 @@ pub async fn execute_command(
                      Run /fix to apply.",
                     selected.len()
                 );
-                app.messages.push(types::ChatMessage::new(
-                    types::MessageRole::Assistant,
-                    msg,
-                ));
+                app.messages
+                    .push(types::ChatMessage::new(types::MessageRole::Assistant, msg));
                 app.toasts.push(
                     components::toast::ToastKind::Info,
                     "Dry-run estimate (offline)",
@@ -473,7 +429,7 @@ pub async fn execute_command(
             }
         }
         AppCommand::ApplyFixes => {
-            use views::fix::{apply_fix_to_file, FixItemStatus};
+            use views::fix::{FixItemStatus, apply_fix_to_file};
 
             let old_score = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
             app.pre_fix_score = Some(old_score);
@@ -562,10 +518,15 @@ pub async fn execute_command(
                         }
                         if let Some(old) = fix_old_score {
                             let diff = new_score - old;
-                            let msg = format!("Fix verified: Score {old:.0} → {new_score:.0} ({diff:+.0})");
+                            let msg = format!(
+                                "Fix verified: Score {old:.0} → {new_score:.0} ({diff:+.0})"
+                            );
                             app.toasts.push(
-                                if diff > 0.0 { components::toast::ToastKind::Success }
-                                else { components::toast::ToastKind::Warning },
+                                if diff > 0.0 {
+                                    components::toast::ToastKind::Success
+                                } else {
+                                    components::toast::ToastKind::Warning
+                                },
                                 &msg,
                             );
                         }
@@ -657,7 +618,9 @@ pub async fn execute_command(
             app.llm_config = types::LlmSessionConfig {
                 provider: fresh.llm_provider.clone(),
                 model: fresh.llm_model.clone(),
-                api_key: fresh.llm_provider.as_deref()
+                api_key: fresh
+                    .llm_provider
+                    .as_deref()
                     .and_then(config::load_llm_api_key),
             };
             app.config = fresh;
@@ -715,11 +678,9 @@ pub async fn execute_command(
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
             tokio::spawn(async move {
-                let result = tokio::time::timeout(
-                    std::time::Duration::from_secs(15),
-                    client.get_json(&url),
-                )
-                .await;
+                let result =
+                    tokio::time::timeout(std::time::Duration::from_secs(15), client.get_json(&url))
+                        .await;
                 let mapped = match result {
                     Ok(inner) => inner.map_err(|e| e.to_string()),
                     Err(_) => Err("Loading timed out after 15s".to_string()),
@@ -746,16 +707,18 @@ pub async fn execute_command(
                 Err(e) => {
                     let msg = format!("Failed to load passports: {e}");
                     app.passport_view.passport_error = Some(msg.clone());
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::System,
-                        msg,
-                    ));
+                    app.messages
+                        .push(types::ChatMessage::new(types::MessageRole::System, msg));
                 }
             }
         }
         AppCommand::LoadPassportCompleteness => {
             if let Some((path, name)) = app.passport_path_name() {
-                let url = format!("/agent/completeness?path={}&name={}", url_encode(&path), url_encode(&name));
+                let url = format!(
+                    "/agent/completeness?path={}&name={}",
+                    url_encode(&path),
+                    url_encode(&name)
+                );
                 match app.engine_client.get_json(&url).await {
                     Ok(result) => {
                         app.passport_view.completeness_data = Some(result);
@@ -771,7 +734,11 @@ pub async fn execute_command(
         }
         AppCommand::ValidatePassport => {
             if let Some((path, name)) = app.passport_path_name() {
-                let url = format!("/agent/validate?path={}&name={}", url_encode(&path), url_encode(&name));
+                let url = format!(
+                    "/agent/validate?path={}&name={}",
+                    url_encode(&path),
+                    url_encode(&name)
+                );
                 match app.engine_client.get_json(&url).await {
                     Ok(result) => {
                         let valid = result
@@ -801,10 +768,8 @@ pub async fn execute_command(
                             },
                             &msg,
                         );
-                        app.messages.push(types::ChatMessage::new(
-                            types::MessageRole::System,
-                            msg,
-                        ));
+                        app.messages
+                            .push(types::ChatMessage::new(types::MessageRole::System, msg));
                     }
                     Err(e) => {
                         app.toasts.push(
@@ -830,12 +795,9 @@ pub async fn execute_command(
                             .and_then(|v| v.as_str())
                             .unwrap_or("(unknown)");
                         let msg = format!("FRIA report generated: {output_path}");
-                        app.toasts
-                            .push(components::toast::ToastKind::Success, &msg);
-                        app.messages.push(types::ChatMessage::new(
-                            types::MessageRole::System,
-                            msg,
-                        ));
+                        app.toasts.push(components::toast::ToastKind::Success, &msg);
+                        app.messages
+                            .push(types::ChatMessage::new(types::MessageRole::System, msg));
                     }
                     Err(e) => {
                         app.toasts.push(
@@ -853,23 +815,21 @@ pub async fn execute_command(
         }
         AppCommand::ExportPassport => {
             if let Some((path, name)) = app.passport_path_name() {
-                let url = format!("/agent/show?path={}&name={}", url_encode(&path), url_encode(&name));
+                let url = format!(
+                    "/agent/show?path={}&name={}",
+                    url_encode(&path),
+                    url_encode(&name)
+                );
                 match app.engine_client.get_json(&url).await {
                     Ok(result) => {
-                        let json_str =
-                            serde_json::to_string_pretty(&result).unwrap_or_default();
+                        let json_str = serde_json::to_string_pretty(&result).unwrap_or_default();
                         let export_path = format!("{name}-passport-export.json");
                         match tokio::fs::write(&export_path, &json_str).await {
                             Ok(()) => {
                                 let msg = format!("Passport exported: {export_path}");
-                                app.toasts.push(
-                                    components::toast::ToastKind::Success,
-                                    &msg,
-                                );
-                                app.messages.push(types::ChatMessage::new(
-                                    types::MessageRole::System,
-                                    msg,
-                                ));
+                                app.toasts.push(components::toast::ToastKind::Success, &msg);
+                                app.messages
+                                    .push(types::ChatMessage::new(types::MessageRole::System, msg));
                             }
                             Err(e) => {
                                 app.toasts.push(
@@ -893,31 +853,27 @@ pub async fn execute_command(
                 );
             }
         }
-        AppCommand::LoadObligations => {
-            match app.engine_client.get_json("/obligations").await {
-                Ok(result) => {
-                    if let Some(arr) = result.as_array() {
-                        app.obligations_view.load_from_json(arr);
-                        let count = arr.len();
-                        let covered = app.obligations_view.covered_count();
-                        if count > 0 {
-                            app.messages.push(types::ChatMessage::new(
-                                types::MessageRole::System,
-                                format!(
-                                    "Loaded {count} obligations ({covered} covered)."
-                                ),
-                            ));
-                        }
+        AppCommand::LoadObligations => match app.engine_client.get_json("/obligations").await {
+            Ok(result) => {
+                if let Some(arr) = result.as_array() {
+                    app.obligations_view.load_from_json(arr);
+                    let count = arr.len();
+                    let covered = app.obligations_view.covered_count();
+                    if count > 0 {
+                        app.messages.push(types::ChatMessage::new(
+                            types::MessageRole::System,
+                            format!("Loaded {count} obligations ({covered} covered)."),
+                        ));
                     }
                 }
-                Err(e) => {
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::System,
-                        format!("Failed to load obligations: {e}"),
-                    ));
-                }
             }
-        }
+            Err(e) => {
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    format!("Failed to load obligations: {e}"),
+                ));
+            }
+        },
         AppCommand::LoadRegistry => {
             if app.passport_view.registry_loading {
                 return; // Already loading, skip duplicate request
@@ -928,11 +884,9 @@ pub async fn execute_command(
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
             tokio::spawn(async move {
-                let result = tokio::time::timeout(
-                    std::time::Duration::from_secs(15),
-                    client.get_json(&url),
-                )
-                .await;
+                let result =
+                    tokio::time::timeout(std::time::Duration::from_secs(15), client.get_json(&url))
+                        .await;
                 let mapped = match result {
                     Ok(inner) => inner.map_err(|e| e.to_string()),
                     Err(_) => Err("Registry load timed out".to_string()),
@@ -964,11 +918,9 @@ pub async fn execute_command(
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
             tokio::spawn(async move {
-                let result = tokio::time::timeout(
-                    std::time::Duration::from_secs(15),
-                    client.get_json(&url),
-                )
-                .await;
+                let result =
+                    tokio::time::timeout(std::time::Duration::from_secs(15), client.get_json(&url))
+                        .await;
                 let mapped = match result {
                     Ok(Ok(val)) => {
                         if let Some(arr) = val.as_array() {
@@ -1013,20 +965,18 @@ pub async fn execute_command(
                 let _ = tx.send(AppCommand::FrameworkScoresLoaded(mapped));
             });
         }
-        AppCommand::FrameworkScoresLoaded(result) => {
-            match result {
-                Ok(scores) => {
-                    app.focused_framework = None;
-                    app.framework_scores = Some(scores);
-                }
-                Err(e) => {
-                    app.messages.push(types::ChatMessage::new(
-                        types::MessageRole::System,
-                        format!("Failed to load framework scores: {e}"),
-                    ));
-                }
+        AppCommand::FrameworkScoresLoaded(result) => match result {
+            Ok(scores) => {
+                app.focused_framework = None;
+                app.framework_scores = Some(scores);
             }
-        }
+            Err(e) => {
+                app.messages.push(types::ChatMessage::new(
+                    types::MessageRole::System,
+                    format!("Failed to load framework scores: {e}"),
+                ));
+            }
+        },
         AppCommand::LoadDashboardMetrics => {
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
@@ -1053,7 +1003,11 @@ pub async fn execute_command(
                 });
             });
         }
-        AppCommand::DashboardMetricsLoaded { cost, debt, readiness } => {
+        AppCommand::DashboardMetricsLoaded {
+            cost,
+            debt,
+            readiness,
+        } => {
             match cost {
                 Ok(c) => app.cost_estimate = Some(c),
                 Err(e) => {
@@ -1165,7 +1119,10 @@ pub async fn execute_command(
                     "LLM provider: insufficient balance. Top up your account.",
                 );
                 "Insufficient balance on your LLM provider account. Please add credits and try again.".to_string()
-            } else if err_lower.contains("401") || err_lower.contains("unauthorized") || err_lower.contains("invalid.*key") {
+            } else if err_lower.contains("401")
+                || err_lower.contains("unauthorized")
+                || err_lower.contains("invalid.*key")
+            {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
                     "LLM provider: invalid API key.",
@@ -1246,8 +1203,14 @@ fn format_slash_command_response(val: &serde_json::Value) -> String {
                 format!("Mode: {label}")
             }
             "cost" => {
-                let cost = val.get("totalCost").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-                let tokens = val.get("totalTokens").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                let cost = val
+                    .get("totalCost")
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
+                let tokens = val
+                    .get("totalTokens")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
                 format!("Session cost: ${cost:.4}  ({tokens} tokens)")
             }
             "model" => val
@@ -1275,7 +1238,10 @@ pub fn build_local_suggestion(app: &App) -> components::suggestions::Suggestion 
         };
     }
 
-    let scan = app.last_scan.as_ref().expect("last_scan: guarded by is_none check above");
+    let scan = app
+        .last_scan
+        .as_ref()
+        .expect("last_scan: guarded by is_none check above");
     let score = scan.score.total_score;
 
     // Priority 2: Findings present — suggest fix
@@ -1283,7 +1249,9 @@ pub fn build_local_suggestion(app: &App) -> components::suggestions::Suggestion 
     if finding_count > 0 {
         return Suggestion {
             kind: SuggestionKind::Fix,
-            text: format!("Score {score:.0}/100. {finding_count} findings to fix — press 3 for Fix view"),
+            text: format!(
+                "Score {score:.0}/100. {finding_count} findings to fix — press 3 for Fix view"
+            ),
             detail: Some("Quick wins can boost your score significantly".into()),
         };
     }

@@ -64,14 +64,12 @@ impl App {
 
     /// Count findings matching the current scan view filter.
     pub(super) fn filtered_findings_count(&self) -> usize {
-        self.last_scan
-            .as_ref()
-            .map_or(0, |s| {
-                s.findings
-                    .iter()
-                    .filter(|f| self.scan_view.findings_filter.matches(f.severity))
-                    .count()
-            })
+        self.last_scan.as_ref().map_or(0, |s| {
+            s.findings
+                .iter()
+                .filter(|f| self.scan_view.findings_filter.matches(f.severity))
+                .count()
+        })
     }
 
     /// Cycle `focus_check_id` to prev/next fixable finding in single-fix mode.
@@ -81,9 +79,17 @@ impl App {
             return;
         }
 
-        let current_idx = self.fix_view.focus_check_id.as_ref().and_then(|cid| {
-            self.fix_view.fixable_findings.iter().position(|f| &f.check_id == cid)
-        }).unwrap_or(0);
+        let current_idx = self
+            .fix_view
+            .focus_check_id
+            .as_ref()
+            .and_then(|cid| {
+                self.fix_view
+                    .fixable_findings
+                    .iter()
+                    .position(|f| &f.check_id == cid)
+            })
+            .unwrap_or(0);
 
         // Deselect old item
         if let Some(item) = self.fix_view.fixable_findings.get_mut(current_idx) {
@@ -99,9 +105,8 @@ impl App {
 
         // Update focus and auto-stage
         self.fix_view.selected_index = new_idx;
-        self.fix_view.focus_check_id = Some(
-            self.fix_view.fixable_findings[new_idx].check_id.clone(),
-        );
+        self.fix_view.focus_check_id =
+            Some(self.fix_view.fixable_findings[new_idx].check_id.clone());
         self.fix_view.fixable_findings[new_idx].selected = true;
     }
 }

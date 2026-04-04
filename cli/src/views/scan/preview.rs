@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -54,7 +54,11 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
 
     let block = Block::default()
         .title(format!(" {} {} \u{2014} {obl} ", ft.badge(), ft.label()))
-        .title_style(Style::default().fg(badge_color).add_modifier(Modifier::BOLD))
+        .title_style(
+            Style::default()
+                .fg(badge_color)
+                .add_modifier(Modifier::BOLD),
+        )
         .borders(Borders::ALL)
         .border_style(Style::default().fg(t.border));
     let inner = block.inner(area);
@@ -67,7 +71,10 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
     if let Some(fl) = finding.file_line_label() {
         lines.push(Line::from(vec![
             Span::styled(" ", Style::default()),
-            Span::styled(fl, Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                fl,
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
         ]));
         lines.push(Line::from(Span::styled(
             format!(" {}", "\u{2500}".repeat(w)),
@@ -109,7 +116,9 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
             };
             lines.push(Line::from(Span::styled(
                 header,
-                Style::default().fg(header_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(header_color)
+                    .add_modifier(Modifier::BOLD),
             )));
             if ft == crate::types::FindingType::B {
                 let (_, _, file_hint) = explain_check(&finding.check_id);
@@ -133,10 +142,7 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
                 lines.push(Line::from(vec![
                     Span::styled("  ", Style::default()),
                     Span::styled(art.to_string(), Style::default().fg(t.muted)),
-                    Span::styled(
-                        format!("  |  {sev_label}"),
-                        Style::default().fg(sev_color),
-                    ),
+                    Span::styled(format!("  |  {sev_label}"), Style::default().fg(sev_color)),
                 ]));
             }
             lines.push(Line::from(Span::styled(
@@ -163,10 +169,7 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
                 lines.push(Line::from(vec![
                     Span::styled("  ", Style::default()),
                     Span::styled(art.to_string(), Style::default().fg(t.muted)),
-                    Span::styled(
-                        format!("  |  {sev_label}"),
-                        Style::default().fg(sev_color),
-                    ),
+                    Span::styled(format!("  |  {sev_label}"), Style::default().fg(sev_color)),
                 ]));
             }
             lines.push(Line::from(Span::styled(
@@ -188,7 +191,9 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
         lines.push(Line::raw(""));
         lines.push(Line::from(Span::styled(
             "  What To Do:",
-            Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(t.zone_green)
+                .add_modifier(Modifier::BOLD),
         )));
         for chunk in wrap_text(action, w.saturating_sub(2)) {
             lines.push(Line::from(Span::styled(
@@ -205,12 +210,10 @@ pub(super) fn render_scan_preview(frame: &mut Frame, area: Rect, app: &App) {
     // Impact line
     if finding.fix.is_some() || finding.fix_diff.is_some() {
         lines.push(Line::raw(""));
-        lines.push(Line::from(vec![
-            Span::styled(
-                format!("  Impact: +{} points", finding.predicted_impact()),
-                Style::default().fg(t.zone_green),
-            ),
-        ]));
+        lines.push(Line::from(vec![Span::styled(
+            format!("  Impact: +{} points", finding.predicted_impact()),
+            Style::default().fg(t.zone_green),
+        )]));
     }
 
     lines.push(Line::from(Span::styled(

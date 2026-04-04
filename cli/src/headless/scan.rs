@@ -1,13 +1,13 @@
 use std::io::IsTerminal as _;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 use crate::types::Severity;
 
 use super::format::colors::{bold, check_mark, dim, green, red, tree_branch, tree_end};
-use super::format::{format_human, format_json, format_sarif, print_paged, FormatOptions};
+use super::format::{FormatOptions, format_human, format_json, format_sarif, print_paged};
 
 /// Run a headless (non-TUI) scan and print results to stdout.
 /// Returns the exit code: 0 = pass, 1 = fail/error.
@@ -77,18 +77,42 @@ pub async fn run_headless_scan(
     // Show LLM model info when --llm is used
     if llm && !json && !sarif {
         if let Ok(info) = client.get_json("/llm/info").await {
-            let model = info.get("classify").and_then(|v| v.get("modelId")).and_then(|v| v.as_str()).unwrap_or("unknown");
-            let provider = info.get("classify").and_then(|v| v.get("provider")).and_then(|v| v.as_str()).unwrap_or("unknown");
-            let source = info.get("classify").and_then(|v| v.get("source")).and_then(|v| v.as_str()).unwrap_or("default");
+            let model = info
+                .get("classify")
+                .and_then(|v| v.get("modelId"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let provider = info
+                .get("classify")
+                .and_then(|v| v.get("provider"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let source = info
+                .get("classify")
+                .and_then(|v| v.get("source"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("default");
             let source_label = if source == "env" {
-                let env_var = info.get("classify").and_then(|v| v.get("envVar")).and_then(|v| v.as_str()).unwrap_or("env");
+                let env_var = info
+                    .get("classify")
+                    .and_then(|v| v.get("envVar"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("env");
                 format!(" ({})", env_var)
             } else {
                 String::new()
             };
-            eprintln!("  LLM: {} via {}{}", bold(model), provider, dim(&source_label));
+            eprintln!(
+                "  LLM: {} via {}{}",
+                bold(model),
+                provider,
+                dim(&source_label)
+            );
             if source != "env" {
-                eprintln!("  {}", dim("Override: set COMPLIOR_MODEL_CLASSIFY in .complior/.env"));
+                eprintln!(
+                    "  {}",
+                    dim("Override: set COMPLIOR_MODEL_CLASSIFY in .complior/.env")
+                );
             }
         }
     }
@@ -107,16 +131,31 @@ pub async fn run_headless_scan(
         let body = serde_json::json!({ "path": scan_path });
         let _tier2_result = match client.post_json("/scan/tier2", &body).await {
             Ok(r) => r,
-            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("Tier 2 scan failed: {e}"); return 1; }
+            Err(e) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                eprintln!("Tier 2 scan failed: {e}");
+                return 1;
+            }
         };
         // Then LLM
         let llm_result = match client.post_json_long("/scan/llm", &body).await {
             Ok(r) => r,
-            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("LLM scan failed: {e}"); return 1; }
+            Err(e) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                eprintln!("LLM scan failed: {e}");
+                return 1;
+            }
         };
         match serde_json::from_value::<crate::types::ScanResult>(llm_result) {
-            Ok(r) => { stop_spinner(&spinner_active, spinner_handle); r },
-            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("Failed to parse scan result: {e}"); return 1; }
+            Ok(r) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                r
+            }
+            Err(e) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                eprintln!("Failed to parse scan result: {e}");
+                return 1;
+            }
         }
     } else if deep {
         // Tier 2 only
@@ -126,10 +165,17 @@ pub async fn run_headless_scan(
                 stop_spinner(&spinner_active, spinner_handle);
                 match serde_json::from_value::<crate::types::ScanResult>(r) {
                     Ok(result) => result,
-                    Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+                    Err(e) => {
+                        eprintln!("Failed to parse scan result: {e}");
+                        return 1;
+                    }
                 }
-            },
-            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("Tier 2 scan failed: {e}"); return 1; }
+            }
+            Err(e) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                eprintln!("Tier 2 scan failed: {e}");
+                return 1;
+            }
         }
     } else if llm {
         // L5 LLM only
@@ -139,15 +185,25 @@ pub async fn run_headless_scan(
                 stop_spinner(&spinner_active, spinner_handle);
                 match serde_json::from_value::<crate::types::ScanResult>(r) {
                     Ok(result) => result,
-                    Err(e) => { eprintln!("Failed to parse scan result: {e}"); return 1; }
+                    Err(e) => {
+                        eprintln!("Failed to parse scan result: {e}");
+                        return 1;
+                    }
                 }
-            },
-            Err(e) => { stop_spinner(&spinner_active, spinner_handle); eprintln!("LLM scan failed: {e}"); return 1; }
+            }
+            Err(e) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                eprintln!("LLM scan failed: {e}");
+                return 1;
+            }
         }
     } else {
         // Default: Tier 1 (L1-L4)
         match client.scan(&scan_path).await {
-            Ok(r) => { stop_spinner(&spinner_active, spinner_handle); r },
+            Ok(r) => {
+                stop_spinner(&spinner_active, spinner_handle);
+                r
+            }
             Err(e) => {
                 stop_spinner(&spinner_active, spinner_handle);
                 eprintln!("Scan failed: {e}");
@@ -158,7 +214,8 @@ pub async fn run_headless_scan(
 
     // Filter by agent name if --agent is set
     let result = if let Some(agent_name) = agent {
-        let filtered_findings: Vec<_> = result.findings
+        let filtered_findings: Vec<_> = result
+            .findings
             .into_iter()
             .filter(|f| f.agent_id.as_deref() == Some(agent_name))
             .collect();
@@ -187,15 +244,29 @@ pub async fn run_headless_scan(
         };
 
         // Completion summary before detailed report
-        let finding_count = result.findings.iter()
+        let finding_count = result
+            .findings
+            .iter()
             .filter(|f| f.r#type == crate::types::CheckResultType::Fail)
             .count();
-        let layers = if deep && llm { "L1-L5" } else if deep { "L1-L4 + external" } else if llm { "L1-L4 + L5" } else { "L1-L4" };
+        let layers = if deep && llm {
+            "L1-L5"
+        } else if deep {
+            "L1-L4 + external"
+        } else if llm {
+            "L1-L4 + L5"
+        } else {
+            "L1-L4"
+        };
 
         // Split LLM-enhanced count when --llm was used
         let findings_label = if llm {
-            let llm_count = result.findings.iter()
-                .filter(|f| f.r#type == crate::types::CheckResultType::Fail && f.l5_analyzed == Some(true))
+            let llm_count = result
+                .findings
+                .iter()
+                .filter(|f| {
+                    f.r#type == crate::types::CheckResultType::Fail && f.l5_analyzed == Some(true)
+                })
                 .count();
             let base_count = finding_count.saturating_sub(llm_count);
             if llm_count > 0 {
@@ -230,18 +301,19 @@ pub async fn run_headless_scan(
     if ci {
         let score = result.score.total_score.round() as u32;
         let grade = super::format::colors::resolve_grade(result.score.total_score);
-        let finding_count = result.findings.iter()
+        let finding_count = result
+            .findings
+            .iter()
             .filter(|f| f.r#type == crate::types::CheckResultType::Fail)
             .count();
-        eprintln!("COMPLIOR_SCORE={score} COMPLIOR_GRADE={grade} COMPLIOR_FINDINGS={finding_count}");
+        eprintln!(
+            "COMPLIOR_SCORE={score} COMPLIOR_GRADE={grade} COMPLIOR_FINDINGS={finding_count}"
+        );
     }
 
     // Hint: suggest agent init if no passports found (non-CI, non-JSON, non-SARIF)
     if !ci && !json && !sarif {
-        let hint_url = format!(
-            "/agent/list?path={}",
-            super::common::url_encode(&scan_path)
-        );
+        let hint_url = format!("/agent/list?path={}", super::common::url_encode(&scan_path));
         if let Ok(list) = client.get_json(&hint_url).await {
             let count = list.as_array().map_or(0, std::vec::Vec::len);
             if count == 0 {
@@ -261,9 +333,7 @@ pub async fn run_headless_scan(
     if ci {
         let score = result.score.total_score.round() as u32;
         if score < threshold {
-            eprintln!(
-                "CI FAIL: Score {score} is below threshold {threshold}"
-            );
+            eprintln!("CI FAIL: Score {score} is below threshold {threshold}");
             return 2;
         }
 
@@ -274,14 +344,18 @@ pub async fn run_headless_scan(
                     (level, &f.severity),
                     ("critical", Severity::Critical)
                         | ("high", Severity::Critical | Severity::High)
-                        | ("medium", Severity::Critical | Severity::High | Severity::Medium)
-                        | ("low", Severity::Critical | Severity::High | Severity::Medium | Severity::Low)
+                        | (
+                            "medium",
+                            Severity::Critical | Severity::High | Severity::Medium
+                        )
+                        | (
+                            "low",
+                            Severity::Critical | Severity::High | Severity::Medium | Severity::Low
+                        )
                 )
             });
             if has_severity {
-                eprintln!(
-                    "CI FAIL: Found findings at severity '{level}' or above"
-                );
+                eprintln!("CI FAIL: Found findings at severity '{level}' or above");
                 return 2;
             }
         }
@@ -308,7 +382,10 @@ pub async fn run_scan_diff(
     // Check engine
     match client.status().await {
         Ok(status) if status.ready => {}
-        Ok(_) => { eprintln!("Error: Engine is not ready"); return 1; }
+        Ok(_) => {
+            eprintln!("Error: Engine is not ready");
+            return 1;
+        }
         Err(e) => {
             eprintln!("Error: Cannot connect to engine at {engine_url}: {e}");
             return 1;
@@ -327,7 +404,10 @@ pub async fn run_scan_diff(
     }
 
     if !json {
-        eprintln!("Scanning diff against {base_branch} ({} files changed)...", changed_files.len());
+        eprintln!(
+            "Scanning diff against {base_branch} ({} files changed)...",
+            changed_files.len()
+        );
     }
 
     // POST /scan/diff with changed files
@@ -340,26 +420,34 @@ pub async fn run_scan_diff(
     match client.post_json("/scan/diff", &body).await {
         Ok(result) => {
             if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
             } else {
                 print_diff_human(&result);
             }
 
             // Post PR comment if requested
-            if comment
-                && let Some(md) = result.get("markdown").and_then(|v| v.as_str()) {
-                    post_pr_comment(md);
-                }
+            if comment && let Some(md) = result.get("markdown").and_then(|v| v.as_str()) {
+                post_pr_comment(md);
+            }
 
             // Check regression
             if fail_on_regression {
-                let regression = result.get("hasRegression").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let regression = result
+                    .get("hasRegression")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
                 if regression {
                     eprintln!("CI FAIL: Compliance regression detected");
                     return 2;
@@ -386,7 +474,11 @@ fn start_spinner(active: Arc<AtomicBool>) -> tokio::task::JoinHandle<()> {
         let start = std::time::Instant::now();
         while active.load(Ordering::SeqCst) {
             let elapsed = start.elapsed().as_secs();
-            eprint!("\r  {} Scanning... ({}s)", frames[i % frames.len()], elapsed);
+            eprint!(
+                "\r  {} Scanning... ({}s)",
+                frames[i % frames.len()],
+                elapsed
+            );
             i += 1;
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
@@ -413,7 +505,11 @@ fn check_uv_available() -> bool {
     {
         Ok(s) if s.success() => true,
         _ => {
-            eprintln!("  {}  {}", red("X"), bold("Error: uv not found. Deep scan requires uv for tool management."));
+            eprintln!(
+                "  {}  {}",
+                red("X"),
+                bold("Error: uv not found. Deep scan requires uv for tool management.")
+            );
             eprintln!("     Install: curl -LsSf https://astral.sh/uv/install.sh | sh");
             false
         }
@@ -435,7 +531,9 @@ fn show_deep_scan_tools() {
     ];
 
     let all_cached = tools_dir.exists()
-        && tools.iter().all(|(_, dir_name)| tools_dir.join(dir_name).exists());
+        && tools
+            .iter()
+            .all(|(_, dir_name)| tools_dir.join(dir_name).exists());
 
     if all_cached {
         // Compact single line for repeat runs
@@ -446,7 +544,10 @@ fn show_deep_scan_tools() {
     } else {
         // First run or partial install — show individual tool status
         eprintln!();
-        eprintln!("  {}", bold("First run — downloading deep scan tools (~150MB)"));
+        eprintln!(
+            "  {}",
+            bold("First run — downloading deep scan tools (~150MB)")
+        );
 
         for (i, (name, dir_name)) in tools.iter().enumerate() {
             let cached = tools_dir.join(dir_name).exists();
@@ -460,7 +561,11 @@ fn show_deep_scan_tools() {
             } else {
                 super::format::colors::bar_empty().repeat(20)
             };
-            let prefix = if i < tools.len() - 1 { tree_branch() } else { tree_end() };
+            let prefix = if i < tools.len() - 1 {
+                tree_branch()
+            } else {
+                tree_end()
+            };
             eprintln!("  {}  {:<20}{}  {}", prefix, name, dim(&bar), status);
         }
         eprintln!();
@@ -482,13 +587,11 @@ fn get_changed_files(base_branch: &str, project_path: &str) -> Vec<String> {
         .output();
 
     match output {
-        Ok(o) if o.status.success() => {
-            String::from_utf8_lossy(&o.stdout)
-                .lines()
-                .filter(|l| !l.is_empty())
-                .map(String::from)
-                .collect()
-        }
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(String::from)
+            .collect(),
         Ok(o) => {
             // Fallback: try without merge-base syntax
             let fallback = std::process::Command::new("git")
@@ -496,15 +599,16 @@ fn get_changed_files(base_branch: &str, project_path: &str) -> Vec<String> {
                 .current_dir(project_path)
                 .output();
             match fallback {
-                Ok(f) if f.status.success() => {
-                    String::from_utf8_lossy(&f.stdout)
-                        .lines()
-                        .filter(|l| !l.is_empty())
-                        .map(String::from)
-                        .collect()
-                }
+                Ok(f) if f.status.success() => String::from_utf8_lossy(&f.stdout)
+                    .lines()
+                    .filter(|l| !l.is_empty())
+                    .map(String::from)
+                    .collect(),
                 _ => {
-                    eprintln!("Warning: git diff failed: {}", String::from_utf8_lossy(&o.stderr).trim());
+                    eprintln!(
+                        "Warning: git diff failed: {}",
+                        String::from_utf8_lossy(&o.stderr).trim()
+                    );
                     vec![]
                 }
             }
@@ -517,15 +621,40 @@ fn get_changed_files(base_branch: &str, project_path: &str) -> Vec<String> {
 }
 
 fn print_diff_human(value: &serde_json::Value) {
-    let before = value.get("scoreBefore").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let after = value.get("scoreAfter").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let delta = value.get("scoreDelta").and_then(serde_json::Value::as_i64).unwrap_or(0);
-    let new_count = value.get("newFindings").and_then(|v| v.as_array()).map_or(0, std::vec::Vec::len);
-    let resolved_count = value.get("resolvedFindings").and_then(|v| v.as_array()).map_or(0, std::vec::Vec::len);
-    let unchanged = value.get("unchangedCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let regression = value.get("hasRegression").and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let before = value
+        .get("scoreBefore")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let after = value
+        .get("scoreAfter")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let delta = value
+        .get("scoreDelta")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(0);
+    let new_count = value
+        .get("newFindings")
+        .and_then(|v| v.as_array())
+        .map_or(0, std::vec::Vec::len);
+    let resolved_count = value
+        .get("resolvedFindings")
+        .and_then(|v| v.as_array())
+        .map_or(0, std::vec::Vec::len);
+    let unchanged = value
+        .get("unchangedCount")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let regression = value
+        .get("hasRegression")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
 
-    let delta_str = if delta > 0 { format!("+{delta}") } else { format!("{delta}") };
+    let delta_str = if delta > 0 {
+        format!("+{delta}")
+    } else {
+        format!("{delta}")
+    };
 
     println!();
     println!("  Compliance Diff");
@@ -542,27 +671,29 @@ fn print_diff_human(value: &serde_json::Value) {
     println!();
 
     if let Some(findings) = value.get("newFindings").and_then(|v| v.as_array())
-        && !findings.is_empty() {
-            println!("  New Findings:");
-            for f in findings {
-                let sev = f.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
-                let msg = f.get("message").and_then(|v| v.as_str()).unwrap_or("?");
-                let file = f.get("file").and_then(|v| v.as_str()).unwrap_or("-");
-                println!("    [{sev}] {msg} ({file})");
-            }
-            println!();
+        && !findings.is_empty()
+    {
+        println!("  New Findings:");
+        for f in findings {
+            let sev = f.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
+            let msg = f.get("message").and_then(|v| v.as_str()).unwrap_or("?");
+            let file = f.get("file").and_then(|v| v.as_str()).unwrap_or("-");
+            println!("    [{sev}] {msg} ({file})");
         }
+        println!();
+    }
 
     if let Some(findings) = value.get("resolvedFindings").and_then(|v| v.as_array())
-        && !findings.is_empty() {
-            println!("  Resolved Findings:");
-            for f in findings {
-                let sev = f.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
-                let msg = f.get("message").and_then(|v| v.as_str()).unwrap_or("?");
-                println!("    [{sev}] {msg}");
-            }
-            println!();
+        && !findings.is_empty()
+    {
+        println!("  Resolved Findings:");
+        for f in findings {
+            let sev = f.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
+            let msg = f.get("message").and_then(|v| v.as_str()).unwrap_or("?");
+            println!("    [{sev}] {msg}");
         }
+        println!();
+    }
 }
 
 fn post_pr_comment(markdown: &str) {
@@ -575,7 +706,10 @@ fn post_pr_comment(markdown: &str) {
             eprintln!("PR comment posted successfully.");
         }
         Ok(o) => {
-            eprintln!("Warning: Failed to post PR comment: {}", String::from_utf8_lossy(&o.stderr).trim());
+            eprintln!(
+                "Warning: Failed to post PR comment: {}",
+                String::from_utf8_lossy(&o.stderr).trim()
+            );
         }
         Err(_) => {
             eprintln!("Warning: `gh` CLI not found. Install GitHub CLI to post PR comments.");

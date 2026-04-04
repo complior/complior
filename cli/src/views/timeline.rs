@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -49,12 +49,10 @@ pub const MILESTONES: &[Milestone] = &[
 ];
 
 /// State for the Timeline View.
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct TimelineViewState {
     pub scroll_offset: u16,
 }
-
 
 /// Check if a milestone date is in the past.
 pub fn is_past(date: (u16, u8, u8)) -> bool {
@@ -90,8 +88,7 @@ fn days_from_date(date: (u16, u8, u8)) -> i64 {
 
 fn format_date(date: (u16, u8, u8)) -> String {
     const MONTHS: [&str; 13] = [
-        "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
     let m = date.1 as usize;
     let month = if m < MONTHS.len() { MONTHS[m] } else { "???" };
@@ -138,9 +135,7 @@ pub fn render_timeline_view(frame: &mut Frame, area: Rect, app: &App) {
             you_are_here_placed = true;
             lines.push(Line::from(Span::styled(
                 "  *=== YOU ARE HERE ===*",
-                Style::default()
-                    .fg(t.accent)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
             )));
             lines.push(Line::from(vec![
                 Span::styled("  |    ", Style::default().fg(t.muted)),
@@ -214,9 +209,7 @@ pub fn render_timeline_view(frame: &mut Frame, area: Rect, app: &App) {
     if !you_are_here_placed {
         lines.push(Line::from(Span::styled(
             "  *=== YOU ARE HERE (all deadlines passed) ===*",
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         )));
     }
 
@@ -251,7 +244,10 @@ mod tests {
     #[test]
     fn test_days_until_future() {
         let days = days_until((2030, 8, 2));
-        assert!(days > 0, "2030 milestone should be in the future, got {days}");
+        assert!(
+            days > 0,
+            "2030 milestone should be in the future, got {days}"
+        );
     }
 
     #[test]

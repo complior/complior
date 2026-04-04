@@ -107,11 +107,7 @@ impl Default for ProjectConfig {
             requirements: vec!["eu-ai-act".to_string()],
             role: "deployer".to_string(),
             industry: "general".to_string(),
-            scan_scope: vec![
-                "deps".to_string(),
-                "env".to_string(),
-                "source".to_string(),
-            ],
+            scan_scope: vec!["deps".to_string(), "env".to_string(), "source".to_string()],
             watch_on_start: false,
             llm_provider: None,
             llm_model: None,
@@ -206,11 +202,7 @@ impl Default for TuiConfig {
             requirements: vec!["eu-ai-act".to_string()],
             role: "deployer".to_string(),
             industry: "general".to_string(),
-            scan_scope: vec![
-                "deps".to_string(),
-                "env".to_string(),
-                "source".to_string(),
-            ],
+            scan_scope: vec!["deps".to_string(), "env".to_string(), "source".to_string()],
             onboarding_last_step: None,
             engine_url_override: None,
             llm_provider: None,
@@ -364,9 +356,10 @@ pub fn load_config() -> TuiConfig {
 
     // Override project_api_url from env (useful for local PROJECT dev)
     if let Ok(url) = std::env::var("PROJECT_API_URL")
-        && !url.is_empty() {
-            config.project_api_url = url;
-        }
+        && !url.is_empty()
+    {
+        config.project_api_url = url;
+    }
 
     // Force offline mode when env OFFLINE_MODE=1
     if std::env::var("OFFLINE_MODE").as_deref() == Ok("1") {
@@ -394,10 +387,11 @@ async fn save_global_config(config: &GlobalConfig) {
 async fn save_project_config(config: &ProjectConfig) {
     let path = project_config_path();
     if let Some(parent) = path.parent()
-        && let Err(e) = tokio::fs::create_dir_all(parent).await {
-            tracing::warn!("cannot create {}: {e}", parent.display());
-            return;
-        }
+        && let Err(e) = tokio::fs::create_dir_all(parent).await
+    {
+        tracing::warn!("cannot create {}: {e}", parent.display());
+        return;
+    }
     match toml::to_string_pretty(config) {
         Ok(content) => {
             if let Err(e) = tokio::fs::write(&path, content).await {
@@ -440,9 +434,7 @@ pub async fn save_onboarding_partial(last_step: usize) {
 /// Save all onboarding results from the wizard — split across both files.
 /// Global: theme. Project: requirements, role, industry, ai provider, etc.
 #[cfg(feature = "tui")]
-pub async fn save_onboarding_results(
-    wizard: &crate::views::onboarding::OnboardingWizard,
-) {
+pub async fn save_onboarding_results(wizard: &crate::views::onboarding::OnboardingWizard) {
     // ── Global fields ──
     let mut global = load_global_config();
     global.theme = wizard.selected_config_value("welcome_theme");
@@ -489,11 +481,7 @@ pub async fn save_onboarding_results(
 }
 
 /// Save LLM config (provider + model to global TOML, API key to credentials file).
-pub async fn save_llm_config(
-    provider: Option<&str>,
-    model: Option<&str>,
-    api_key: Option<&str>,
-) {
+pub async fn save_llm_config(provider: Option<&str>, model: Option<&str>, api_key: Option<&str>) {
     let mut global = load_global_config();
     global.llm_provider = provider.map(String::from);
     global.llm_model = model.map(String::from);
@@ -501,10 +489,11 @@ pub async fn save_llm_config(
 
     // Save API key to credentials file (never in TOML)
     if let Some(key) = api_key
-        && !key.is_empty() {
-            let provider_name = provider.unwrap_or("LLM");
-            save_llm_api_key(provider_name, key);
-        }
+        && !key.is_empty()
+    {
+        let provider_name = provider.unwrap_or("LLM");
+        save_llm_api_key(provider_name, key);
+    }
 }
 
 // ── Legacy migration ────────────────────────────────────────────────────────
@@ -596,16 +585,16 @@ pub fn load_api_key() -> Option<String> {
             continue;
         }
         if let Some((key, value)) = trimmed.split_once('=')
-            && key.trim() == "COMPLIOR_API_KEY" {
-                let v = value.trim().to_string();
-                if !v.is_empty() {
-                    return Some(v);
-                }
+            && key.trim() == "COMPLIOR_API_KEY"
+        {
+            let v = value.trim().to_string();
+            if !v.is_empty() {
+                return Some(v);
             }
+        }
     }
     None
 }
-
 
 /// Validate an API key for a given provider.
 /// Returns `Ok(())` if plausible, or `Err(reason)` if clearly invalid.
@@ -702,9 +691,10 @@ pub fn load_llm_api_key(provider: &str) -> Option<String> {
 
     // Check env var first
     if let Ok(val) = std::env::var(env_key)
-        && !val.is_empty() {
-            return Some(val);
-        }
+        && !val.is_empty()
+    {
+        return Some(val);
+    }
 
     // Check credentials file
     let path = credentials_path()?;
@@ -715,12 +705,13 @@ pub fn load_llm_api_key(provider: &str) -> Option<String> {
             continue;
         }
         if let Some((key, value)) = trimmed.split_once('=')
-            && key.trim() == env_key {
-                let v = value.trim().to_string();
-                if !v.is_empty() {
-                    return Some(v);
-                }
+            && key.trim() == env_key
+        {
+            let v = value.trim().to_string();
+            if !v.is_empty() {
+                return Some(v);
             }
+        }
     }
     None
 }
@@ -757,8 +748,11 @@ pub fn save_tokens(
     let existing = std::fs::read_to_string(&path).unwrap_or_default();
     let mut lines: Vec<String> = Vec::new();
     let token_keys = [
-        "COMPLIOR_ACCESS_TOKEN", "COMPLIOR_REFRESH_TOKEN",
-        "COMPLIOR_TOKEN_EXPIRES_AT", "COMPLIOR_USER_EMAIL", "COMPLIOR_ORG_NAME",
+        "COMPLIOR_ACCESS_TOKEN",
+        "COMPLIOR_REFRESH_TOKEN",
+        "COMPLIOR_TOKEN_EXPIRES_AT",
+        "COMPLIOR_USER_EMAIL",
+        "COMPLIOR_ORG_NAME",
     ];
 
     for line in existing.lines() {
@@ -849,18 +843,24 @@ pub fn clear_tokens() -> Result<(), String> {
 
     let content = std::fs::read_to_string(&path).unwrap_or_default();
     let token_keys = [
-        "COMPLIOR_ACCESS_TOKEN", "COMPLIOR_REFRESH_TOKEN",
-        "COMPLIOR_TOKEN_EXPIRES_AT", "COMPLIOR_USER_EMAIL", "COMPLIOR_ORG_NAME",
+        "COMPLIOR_ACCESS_TOKEN",
+        "COMPLIOR_REFRESH_TOKEN",
+        "COMPLIOR_TOKEN_EXPIRES_AT",
+        "COMPLIOR_USER_EMAIL",
+        "COMPLIOR_ORG_NAME",
     ];
 
-    let lines: Vec<&str> = content.lines().filter(|line| {
-        let trimmed = line.trim();
-        if let Some((key, _)) = trimmed.split_once('=') {
-            !token_keys.contains(&key.trim())
-        } else {
-            true
-        }
-    }).collect();
+    let lines: Vec<&str> = content
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            if let Some((key, _)) = trimmed.split_once('=') {
+                !token_keys.contains(&key.trim())
+            } else {
+                true
+            }
+        })
+        .collect();
 
     std::fs::write(&path, lines.join("\n") + "\n")
         .map_err(|e| format!("Cannot write credentials: {e}"))
@@ -954,9 +954,18 @@ mod tests {
     fn test_confirm_default_no() {
         let conf = ConfirmationsConfig::default();
         // "No" = false for overwrite_docs (least destructive path is default)
-        assert!(!conf.overwrite_docs, "overwrite_docs should default to false (safe)");
-        assert!(conf.batch_fix, "batch_fix should require confirmation by default");
-        assert!(conf.undo_multiple, "undo_multiple should require confirmation by default");
+        assert!(
+            !conf.overwrite_docs,
+            "overwrite_docs should default to false (safe)"
+        );
+        assert!(
+            conf.batch_fix,
+            "batch_fix should require confirmation by default"
+        );
+        assert!(
+            conf.undo_multiple,
+            "undo_multiple should require confirmation by default"
+        );
     }
 
     /// When batch_fix confirmation is disabled, no dialog should be shown.
@@ -967,7 +976,10 @@ mod tests {
             ..ConfirmationsConfig::default()
         };
         // batch_fix=false means auto-proceed without dialog
-        assert!(!conf.batch_fix, "batch_fix=false means proceed without confirmation");
+        assert!(
+            !conf.batch_fix,
+            "batch_fix=false means proceed without confirmation"
+        );
     }
 
     // ── Split config tests ──────────────────────────────────────────────────

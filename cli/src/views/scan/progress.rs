@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Gauge, Paragraph, Block, Borders, Wrap};
-use ratatui::Frame;
+use ratatui::widgets::{Block, Borders, Gauge, Paragraph, Wrap};
 
 use crate::app::App;
 use crate::theme;
@@ -23,16 +23,20 @@ const fn layer_status_display(status: LayerStatus, t: &ThemeColors) -> (&'static
 /// Collapsed progress summary -- single line after scan complete.
 pub(super) fn render_progress_summary(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
-    let complete_count = app.scan_view.layer_progress.iter()
+    let complete_count = app
+        .scan_view
+        .layer_progress
+        .iter()
         .filter(|l| l.status == LayerStatus::Complete)
         .count();
-    let skipped_count = app.scan_view.layer_progress.iter()
+    let skipped_count = app
+        .scan_view
+        .layer_progress
+        .iter()
         .filter(|l| l.status == LayerStatus::Skipped)
         .count();
 
-    let mut spans = vec![
-        Span::styled(" Layers: ", Style::default().fg(t.muted)),
-    ];
+    let mut spans = vec![Span::styled(" Layers: ", Style::default().fg(t.muted))];
     for layer in &app.scan_view.layer_progress {
         let (icon, color) = layer_status_display(layer.status, &t);
         spans.push(Span::styled(icon, Style::default().fg(color)));
@@ -126,12 +130,10 @@ pub(super) fn render_puzzle_header(frame: &mut Frame, area: Rect, scan_view: &Sc
     }
 
     // Line 4: Legend tooltip
-    let legend_spans = vec![
-        Span::styled(
-            " L1=Files  L2=Docs  L3=Config  L4=Patterns  L5=LLM",
-            Style::default().fg(t.muted),
-        ),
-    ];
+    let legend_spans = vec![Span::styled(
+        " L1=Files  L2=Docs  L3=Config  L4=Patterns  L5=LLM",
+        Style::default().fg(t.muted),
+    )];
 
     let lines = vec![
         Line::from(lock_spans),
@@ -160,9 +162,7 @@ pub(super) fn render_no_scan(frame: &mut Frame, area: Rect, scan_error: Option<&
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let mut lines = vec![
-        Line::raw(""),
-    ];
+    let mut lines = vec![Line::raw("")];
 
     if let Some(err) = scan_error {
         lines.push(Line::from(Span::styled(

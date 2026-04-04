@@ -1,6 +1,6 @@
-use super::*;
 use super::footer::footer_hints_for_view;
 use super::tests_helpers::render_to_string;
+use super::*;
 
 // -- T505 tests --
 
@@ -40,7 +40,10 @@ fn e2e_t505_footer_shows_insert_mode_badge() {
     app.input_mode = crate::types::InputMode::Insert;
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("INSERT"), "Footer should show INSERT mode badge");
+    assert!(
+        buf.contains("INSERT"),
+        "Footer should show INSERT mode badge"
+    );
 }
 
 #[test]
@@ -50,7 +53,10 @@ fn e2e_t505_footer_shows_normal_mode_badge() {
     app.input_mode = crate::types::InputMode::Normal;
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("NORMAL"), "Footer should show NORMAL mode badge");
+    assert!(
+        buf.contains("NORMAL"),
+        "Footer should show NORMAL mode badge"
+    );
 }
 
 #[test]
@@ -63,15 +69,27 @@ fn e2e_t505_footer_hints_change_per_view() {
     app.view_state = ViewState::Dashboard;
     let buf = render_to_string(&app, 120, 40);
     let last_line = buf.lines().last().unwrap_or("");
-    assert!(last_line.contains("help"), "Dashboard footer should mention help");
-    assert!(last_line.contains("scan"), "Dashboard footer should mention scan");
+    assert!(
+        last_line.contains("help"),
+        "Dashboard footer should mention help"
+    );
+    assert!(
+        last_line.contains("scan"),
+        "Dashboard footer should mention scan"
+    );
 
     // Chat view -- should show chat-specific hints
     app.view_state = ViewState::Chat;
     let buf = render_to_string(&app, 120, 40);
     let last_line = buf.lines().last().unwrap_or("");
-    assert!(last_line.contains("type"), "Chat footer should mention type");
-    assert!(last_line.contains("command"), "Chat footer should mention command");
+    assert!(
+        last_line.contains("type"),
+        "Chat footer should mention type"
+    );
+    assert!(
+        last_line.contains("command"),
+        "Chat footer should mention command"
+    );
 }
 
 // --- T08: Colon mode footer ---
@@ -86,5 +104,8 @@ fn e2e_t08_colon_mode_footer() {
 
     let buf = render_to_string(&app, 120, 40);
     let last_line = buf.lines().last().unwrap_or("");
-    assert!(last_line.contains("COLON"), "Footer should show COLON mode badge");
+    assert!(
+        last_line.contains("COLON"),
+        "Footer should show COLON mode badge"
+    );
 }

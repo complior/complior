@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -46,7 +46,11 @@ pub(super) fn render_view_footer(frame: &mut Frame, app: &App) {
 
     // Indicator 3: View [N Name]
     spans.push(Span::styled(
-        format!("[{} {}]", app.view_state.index() + 1, app.view_state.short_name()),
+        format!(
+            "[{} {}]",
+            app.view_state.index() + 1,
+            app.view_state.short_name()
+        ),
         Style::default().fg(t.fg),
     ));
 
@@ -130,10 +134,11 @@ pub(super) fn render_view_footer(frame: &mut Frame, app: &App) {
         hint_spans.push(Span::styled("\u{258c}", Style::default().fg(t.accent)));
         // Autocomplete hint
         if let Some(hint) = crate::components::command_palette::complete_colon_command(&app.input)
-            && hint != app.input {
-                let remaining = &hint[app.input.len()..];
-                hint_spans.push(Span::styled(remaining, Style::default().fg(t.muted)));
-            }
+            && hint != app.input
+        {
+            let remaining = &hint[app.input.len()..];
+            hint_spans.push(Span::styled(remaining, Style::default().fg(t.muted)));
+        }
         hint_spans.push(Span::styled(
             "  Tab:complete Enter:run Esc:cancel",
             Style::default().fg(t.muted),
@@ -163,7 +168,9 @@ pub(super) fn render_view_footer(frame: &mut Frame, app: &App) {
 pub const fn footer_hints_for_view(view: ViewState) -> &'static str {
     match view {
         ViewState::Dashboard => "e:zoom f:focus w:watch Ctrl+S:scan Ctrl+P:palette ?:help",
-        ViewState::Scan => "a:All c:Crit h:High m:Med l:Low p:passed Enter:detail f:fix x:explain d:dismiss j/k:nav",
+        ViewState::Scan => {
+            "a:All c:Crit h:High m:Med l:Low p:passed Enter:detail f:fix x:explain d:dismiss j/k:nav"
+        }
         ViewState::Fix => "Space:toggle a:all n:none d:diff </>:resize Enter:apply j/k:nav",
         ViewState::Log => "j/k:scroll ?:help",
         ViewState::Chat => "i:type /:command Esc:cancel j/k:scroll :llm:settings",

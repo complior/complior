@@ -8,9 +8,7 @@ impl App {
     pub fn handle_view_key(&mut self, c: char) -> Option<AppCommand> {
         match self.view_state {
             ViewState::Scan => {
-                if let Some(filter) =
-                    crate::views::scan::FindingsFilter::from_key(c)
-                {
+                if let Some(filter) = crate::views::scan::FindingsFilter::from_key(c) {
                     self.scan_view.findings_filter = filter;
                     self.scan_view.selected_finding = Some(0);
                     self.scan_view.preview_scroll = 0;
@@ -18,34 +16,38 @@ impl App {
                     // Apply fix: go to Fix view with finding pre-selected
                     if let Some(idx) = self.scan_view.selected_finding
                         && let Some(scan) = &self.last_scan
-                            && let Some(finding) = crate::views::scan::resolve_selected_finding(
-                                &scan.findings,
-                                self.scan_view.findings_filter,
-                                idx,
-                                &self.passport_view.loaded_passports,
-                            ) {
-                                if finding.fix.is_some() {
-                                    let target_check_id = finding.check_id.clone();
-                                    // Navigate to fix view in single-fix mode
-                                    self.scan_view.detail_open = false;
-                                    self.view_state = ViewState::Fix;
-                                    self.fix_view = FixViewState::from_scan(&scan.findings);
-                                    self.fix_view.focus_check_id = Some(target_check_id.clone());
+                        && let Some(finding) = crate::views::scan::resolve_selected_finding(
+                            &scan.findings,
+                            self.scan_view.findings_filter,
+                            idx,
+                            &self.passport_view.loaded_passports,
+                        )
+                    {
+                        if finding.fix.is_some() {
+                            let target_check_id = finding.check_id.clone();
+                            // Navigate to fix view in single-fix mode
+                            self.scan_view.detail_open = false;
+                            self.view_state = ViewState::Fix;
+                            self.fix_view = FixViewState::from_scan(&scan.findings);
+                            self.fix_view.focus_check_id = Some(target_check_id.clone());
 
-                                    // Pre-select this finding in fix list
-                                    if let Some(fix_idx) = self.fix_view.fixable_findings.iter()
-                                        .position(|f| f.check_id == target_check_id)
-                                    {
-                                        self.fix_view.selected_index = fix_idx;
-                                        self.fix_view.fixable_findings[fix_idx].selected = true;
-                                    }
-                                } else {
-                                    self.toasts.push(
-                                        crate::components::toast::ToastKind::Info,
-                                        "No auto-fix available for this finding",
-                                    );
-                                }
+                            // Pre-select this finding in fix list
+                            if let Some(fix_idx) = self
+                                .fix_view
+                                .fixable_findings
+                                .iter()
+                                .position(|f| f.check_id == target_check_id)
+                            {
+                                self.fix_view.selected_index = fix_idx;
+                                self.fix_view.fixable_findings[fix_idx].selected = true;
                             }
+                        } else {
+                            self.toasts.push(
+                                crate::components::toast::ToastKind::Info,
+                                "No auto-fix available for this finding",
+                            );
+                        }
+                    }
                 } else if c == 'n' && self.scan_view.detail_open {
                     // Next finding (within detail view)
                     let count = self.filtered_findings_count();
@@ -59,46 +61,45 @@ impl App {
                     // Quick action: Explain selected finding (static explanation)
                     if let Some(idx) = self.scan_view.selected_finding
                         && let Some(scan) = &self.last_scan
-                            && let Some(finding) = crate::views::scan::resolve_selected_finding(
-                                &scan.findings,
-                                self.scan_view.findings_filter,
-                                idx,
-                                &self.passport_view.loaded_passports,
-                            ) {
-                                let explanation = crate::views::scan::explain_finding(finding);
-                                self.messages.push(ChatMessage::new(
-                                    MessageRole::System,
-                                    explanation,
-                                ));
-                                self.toasts.push(
-                                    crate::components::toast::ToastKind::Info,
-                                    "Explanation added to Status Log (L)",
-                                );
-                            }
+                        && let Some(finding) = crate::views::scan::resolve_selected_finding(
+                            &scan.findings,
+                            self.scan_view.findings_filter,
+                            idx,
+                            &self.passport_view.loaded_passports,
+                        )
+                    {
+                        let explanation = crate::views::scan::explain_finding(finding);
+                        self.messages
+                            .push(ChatMessage::new(MessageRole::System, explanation));
+                        self.toasts.push(
+                            crate::components::toast::ToastKind::Info,
+                            "Explanation added to Status Log (L)",
+                        );
+                    }
                 } else if c == 'o' {
                     // Quick action: Open related file in code viewer
                     if let Some(idx) = self.scan_view.selected_finding
                         && let Some(scan) = &self.last_scan
-                            && let Some(finding) = crate::views::scan::resolve_selected_finding(
-                                &scan.findings,
-                                self.scan_view.findings_filter,
-                                idx,
-                                &self.passport_view.loaded_passports,
-                            ) {
-                                if let Some(ref file_path) = finding.file {
-                                    return Some(AppCommand::OpenFile(file_path.clone()));
-                                }
-                                self.toasts.push(
-                                    crate::components::toast::ToastKind::Info,
-                                    "No file associated with this finding",
-                                );
-                            }
+                        && let Some(finding) = crate::views::scan::resolve_selected_finding(
+                            &scan.findings,
+                            self.scan_view.findings_filter,
+                            idx,
+                            &self.passport_view.loaded_passports,
+                        )
+                    {
+                        if let Some(ref file_path) = finding.file {
+                            return Some(AppCommand::OpenFile(file_path.clone()));
+                        }
+                        self.toasts.push(
+                            crate::components::toast::ToastKind::Info,
+                            "No file associated with this finding",
+                        );
+                    }
                 } else if c == 'd' {
                     // Quick action: Dismiss finding (open dismiss modal)
                     if let Some(idx) = self.scan_view.selected_finding {
-                        self.dismiss_modal = Some(
-                            crate::components::quick_actions::DismissModal::new(idx),
-                        );
+                        self.dismiss_modal =
+                            Some(crate::components::quick_actions::DismissModal::new(idx));
                         self.overlay = Overlay::DismissModal;
                     }
                 } else if c == 'p' {
@@ -110,8 +111,7 @@ impl App {
                         self.scan_view.scan_split_pct.saturating_sub(5).max(25);
                 } else if c == '>' {
                     // Resize scan split — grow left panel
-                    self.scan_view.scan_split_pct =
-                        (self.scan_view.scan_split_pct + 5).min(75);
+                    self.scan_view.scan_split_pct = (self.scan_view.scan_split_pct + 5).min(75);
                 }
             }
             ViewState::Fix => match c {
@@ -120,8 +120,7 @@ impl App {
                 'n' => self.fix_view.deselect_all(),
                 'd' => self.fix_view.diff_visible = !self.fix_view.diff_visible,
                 '<' => {
-                    self.fix_split_pct =
-                        self.fix_split_pct.saturating_sub(5).max(25);
+                    self.fix_split_pct = self.fix_split_pct.saturating_sub(5).max(25);
                 }
                 '>' => {
                     self.fix_split_pct = (self.fix_split_pct + 5).min(75);
@@ -160,7 +159,7 @@ impl App {
                     }
                 }
                 _ => {}
-            }
+            },
             ViewState::Obligations => {
                 use crate::views::obligations::ObligationFilter;
                 match c {
@@ -268,9 +267,14 @@ impl App {
                 } else if self.fix_view.is_single_fix() {
                     // Single-fix mode: auto-select focused item and apply
                     if let Some(cid) = self.fix_view.focus_check_id.clone()
-                        && let Some(item) = self.fix_view.fixable_findings.iter_mut().find(|f| f.check_id == cid) {
-                            item.selected = true;
-                        }
+                        && let Some(item) = self
+                            .fix_view
+                            .fixable_findings
+                            .iter_mut()
+                            .find(|f| f.check_id == cid)
+                    {
+                        item.selected = true;
+                    }
                     self.fix_view.applying = true;
                     return Some(AppCommand::ApplyFixes);
                 } else if self.fix_view.selected_count() > 0 {
@@ -351,7 +355,9 @@ impl App {
             ViewState::Obligations => {
                 if self.obligations_view.detail_open {
                     self.obligations_view.detail_open = false;
-                } else if self.obligations_view.filter != crate::views::obligations::ObligationFilter::All {
+                } else if self.obligations_view.filter
+                    != crate::views::obligations::ObligationFilter::All
+                {
                     self.obligations_view.filter = crate::views::obligations::ObligationFilter::All;
                     self.obligations_view.selected_index = 0;
                     self.obligations_view.scroll_offset = 0;

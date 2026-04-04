@@ -33,7 +33,10 @@ impl App {
                         MessageRole::System,
                         format!("Theme: {name}"),
                     ));
-                    self.toasts.push(crate::components::toast::ToastKind::Info, format!("Theme: {name}"));
+                    self.toasts.push(
+                        crate::components::toast::ToastKind::Info,
+                        format!("Theme: {name}"),
+                    );
                     return Some(AppCommand::SaveTheme(name));
                 }
                 None
@@ -83,16 +86,21 @@ impl App {
                         wiz.insert_char(c);
                     } else if wiz.provider_substep == 0 {
                         // Allow j/k/space navigation in substep 0
-                        if c == ' ' { wiz.toggle_selection() }
+                        if c == ' ' {
+                            wiz.toggle_selection()
+                        }
                     }
                 }
                 None
             }
             Action::InsertChar(' ') => {
-                if matches!(step_kind, Some(StepKind::Checkbox | StepKind::Radio | StepKind::ThemeSelect))
-                    && let Some(wiz) = &mut self.onboarding {
-                        wiz.toggle_selection();
-                    }
+                if matches!(
+                    step_kind,
+                    Some(StepKind::Checkbox | StepKind::Radio | StepKind::ThemeSelect)
+                ) && let Some(wiz) = &mut self.onboarding
+                {
+                    wiz.toggle_selection();
+                }
                 None
             }
             Action::InsertChar('a') => {
@@ -114,72 +122,74 @@ impl App {
             Action::SubmitInput => {
                 // Handle TextInput substeps
                 if matches!(step_kind, Some(StepKind::TextInput { .. }))
-                    && let Some(wiz) = &mut self.onboarding {
-                        match wiz.provider_substep {
-                            0 => {
-                                // Provider selected → set selection
-                                let idx = wiz.cursor;
-                                wiz.steps[wiz.current_step].selected = vec![idx];
-                                match idx {
-                                    0..=2 => {
-                                        // OpenRouter/Anthropic/OpenAI — go to key input
-                                        wiz.provider_substep = 1;
-                                        wiz.text_cursor = 0;
-                                    }
-                                    3 | 4 => {
-                                        // Guard API or Offline — no key needed, advance
-                                        let _completed = wiz.next_step();
-                                    }
-                                    _ => {}
+                    && let Some(wiz) = &mut self.onboarding
+                {
+                    match wiz.provider_substep {
+                        0 => {
+                            // Provider selected → set selection
+                            let idx = wiz.cursor;
+                            wiz.steps[wiz.current_step].selected = vec![idx];
+                            match idx {
+                                0..=2 => {
+                                    // OpenRouter/Anthropic/OpenAI — go to key input
+                                    wiz.provider_substep = 1;
+                                    wiz.text_cursor = 0;
                                 }
-                                return None;
-                            }
-                            1 => {
-                                // Key submitted → validate for selected provider
-                                let key = wiz.steps[wiz.current_step].text_value.clone();
-                                let provider = wiz.selected_config_value("ai_provider");
-                                if key.is_empty() {
-                                    wiz.validation_message = Some("Invalid — Key cannot be empty.".to_string());
-                                } else {
-                                    match crate::config::validate_api_key(&provider, &key) {
-                                        Ok(()) => {
-                                            let label = match provider.as_str() {
-                                                "openrouter" => "OpenRouter",
-                                                "anthropic" => "Anthropic",
-                                                "openai" => "OpenAI",
-                                                _ => "API",
-                                            };
-                                            wiz.validation_message =
-                                                Some(format!("Key accepted ({label})."));
-                                        }
-                                        Err(reason) => {
-                                            wiz.validation_message =
-                                                Some(format!("Invalid — {reason}"));
-                                        }
-                                    }
-                                }
-                                wiz.provider_substep = 3;
-                                return None;
-                            }
-                            3 => {
-                                // Result screen → continue or retry
-                                let is_valid = wiz
-                                    .validation_message
-                                    .as_ref()
-                                    .is_some_and(|m| !m.starts_with("Invalid"));
-                                if is_valid {
+                                3 | 4 => {
+                                    // Guard API or Offline — no key needed, advance
                                     let _completed = wiz.next_step();
-                                    return None;
                                 }
-                                // Retry: back to key input
-                                wiz.provider_substep = 1;
-                                wiz.steps[wiz.current_step].text_value.clear();
-                                wiz.text_cursor = 0;
+                                _ => {}
+                            }
+                            return None;
+                        }
+                        1 => {
+                            // Key submitted → validate for selected provider
+                            let key = wiz.steps[wiz.current_step].text_value.clone();
+                            let provider = wiz.selected_config_value("ai_provider");
+                            if key.is_empty() {
+                                wiz.validation_message =
+                                    Some("Invalid — Key cannot be empty.".to_string());
+                            } else {
+                                match crate::config::validate_api_key(&provider, &key) {
+                                    Ok(()) => {
+                                        let label = match provider.as_str() {
+                                            "openrouter" => "OpenRouter",
+                                            "anthropic" => "Anthropic",
+                                            "openai" => "OpenAI",
+                                            _ => "API",
+                                        };
+                                        wiz.validation_message =
+                                            Some(format!("Key accepted ({label})."));
+                                    }
+                                    Err(reason) => {
+                                        wiz.validation_message =
+                                            Some(format!("Invalid — {reason}"));
+                                    }
+                                }
+                            }
+                            wiz.provider_substep = 3;
+                            return None;
+                        }
+                        3 => {
+                            // Result screen → continue or retry
+                            let is_valid = wiz
+                                .validation_message
+                                .as_ref()
+                                .is_some_and(|m| !m.starts_with("Invalid"));
+                            if is_valid {
+                                let _completed = wiz.next_step();
                                 return None;
                             }
-                            _ => {}
+                            // Retry: back to key input
+                            wiz.provider_substep = 1;
+                            wiz.steps[wiz.current_step].text_value.clear();
+                            wiz.text_cursor = 0;
+                            return None;
                         }
+                        _ => {}
                     }
+                }
 
                 // Handle post-step side effects before advancing
                 if let Some(wiz) = &mut self.onboarding {
@@ -234,14 +244,18 @@ impl App {
                         .and_then(|pos| pos.checked_sub(1).map(|p| wiz.active_steps[p]));
 
                     // After Step 4 (project_type): update project_type and recalculate skips
-                    if prev_step.and_then(|ps| wiz.steps.get(ps)).map(|s| s.id) == Some("project_type") {
+                    if prev_step.and_then(|ps| wiz.steps.get(ps)).map(|s| s.id)
+                        == Some("project_type")
+                    {
                         let pt = wiz.selected_config_value("project_type");
                         wiz.project_type = Some(pt);
                         wiz.recalculate_active_steps();
                     }
 
                     // After Step 1 (welcome_theme): apply selected theme
-                    if prev_step.and_then(|ps| wiz.steps.get(ps)).map(|s| s.id) == Some("welcome_theme") {
+                    if prev_step.and_then(|ps| wiz.steps.get(ps)).map(|s| s.id)
+                        == Some("welcome_theme")
+                    {
                         let theme_name = wiz.selected_config_value("welcome_theme");
                         crate::theme::init_theme(&theme_name);
                     }
@@ -256,29 +270,30 @@ impl App {
             Action::DeleteChar => {
                 // Handle TextInput substeps first
                 if matches!(step_kind, Some(StepKind::TextInput { .. }))
-                    && let Some(wiz) = &mut self.onboarding {
-                        match wiz.provider_substep {
-                            1 => {
-                                if wiz.text_cursor > 0 {
-                                    wiz.delete_char_before();
-                                } else {
-                                    // Empty input → back to provider select
-                                    wiz.provider_substep = 0;
-                                }
-                                return None;
+                    && let Some(wiz) = &mut self.onboarding
+                {
+                    match wiz.provider_substep {
+                        1 => {
+                            if wiz.text_cursor > 0 {
+                                wiz.delete_char_before();
+                            } else {
+                                // Empty input → back to provider select
+                                wiz.provider_substep = 0;
                             }
-                            0 => {
-                                wiz.prev_step();
-                                return None;
-                            }
-                            3 => {
-                                // Back to key input from result
-                                wiz.provider_substep = 1;
-                                return None;
-                            }
-                            _ => {}
+                            return None;
                         }
+                        0 => {
+                            wiz.prev_step();
+                            return None;
+                        }
+                        3 => {
+                            // Back to key input from result
+                            wiz.provider_substep = 1;
+                            return None;
+                        }
+                        _ => {}
                     }
+                }
 
                 // Backspace = previous step
                 if let Some(wiz) = &mut self.onboarding {
@@ -300,31 +315,35 @@ impl App {
         match action {
             Action::ScrollDown => {
                 if let Some(s) = &mut self.llm_settings
-                    && !s.editing {
-                        s.focused_field = match s.focused_field {
-                            LlmSettingsField::Provider => LlmSettingsField::ApiKey,
-                            LlmSettingsField::ApiKey => LlmSettingsField::Model,
-                            LlmSettingsField::Model => LlmSettingsField::TestConnection,
-                            LlmSettingsField::TestConnection => LlmSettingsField::TestConnection,
-                        };
-                    }
+                    && !s.editing
+                {
+                    s.focused_field = match s.focused_field {
+                        LlmSettingsField::Provider => LlmSettingsField::ApiKey,
+                        LlmSettingsField::ApiKey => LlmSettingsField::Model,
+                        LlmSettingsField::Model => LlmSettingsField::TestConnection,
+                        LlmSettingsField::TestConnection => LlmSettingsField::TestConnection,
+                    };
+                }
                 None
             }
             Action::ScrollUp => {
                 if let Some(s) = &mut self.llm_settings
-                    && !s.editing {
-                        s.focused_field = match s.focused_field {
-                            LlmSettingsField::Provider => LlmSettingsField::Provider,
-                            LlmSettingsField::ApiKey => LlmSettingsField::Provider,
-                            LlmSettingsField::Model => LlmSettingsField::ApiKey,
-                            LlmSettingsField::TestConnection => LlmSettingsField::Model,
-                        };
-                    }
+                    && !s.editing
+                {
+                    s.focused_field = match s.focused_field {
+                        LlmSettingsField::Provider => LlmSettingsField::Provider,
+                        LlmSettingsField::ApiKey => LlmSettingsField::Provider,
+                        LlmSettingsField::Model => LlmSettingsField::ApiKey,
+                        LlmSettingsField::TestConnection => LlmSettingsField::Model,
+                    };
+                }
                 None
             }
-            Action::InsertChar(' ') if self.llm_settings.as_ref().is_some_and(|s| {
-                !s.editing && s.focused_field == LlmSettingsField::Provider
-            }) => {
+            Action::InsertChar(' ')
+                if self.llm_settings.as_ref().is_some_and(|s| {
+                    !s.editing && s.focused_field == LlmSettingsField::Provider
+                }) =>
+            {
                 if let Some(s) = &mut self.llm_settings {
                     s.selected_provider = (s.selected_provider + 1) % 3;
                 }
@@ -356,24 +375,30 @@ impl App {
             }
             Action::InsertChar(c) => {
                 if let Some(s) = &mut self.llm_settings
-                    && s.editing {
-                        match s.focused_field {
-                            LlmSettingsField::ApiKey => s.api_key_input.push(c),
-                            LlmSettingsField::Model => s.model_input.push(c),
-                            _ => {}
-                        }
+                    && s.editing
+                {
+                    match s.focused_field {
+                        LlmSettingsField::ApiKey => s.api_key_input.push(c),
+                        LlmSettingsField::Model => s.model_input.push(c),
+                        _ => {}
                     }
+                }
                 None
             }
             Action::DeleteChar => {
                 if let Some(s) = &mut self.llm_settings
-                    && s.editing {
-                        match s.focused_field {
-                            LlmSettingsField::ApiKey => { s.api_key_input.pop(); }
-                            LlmSettingsField::Model => { s.model_input.pop(); }
-                            _ => {}
+                    && s.editing
+                {
+                    match s.focused_field {
+                        LlmSettingsField::ApiKey => {
+                            s.api_key_input.pop();
                         }
+                        LlmSettingsField::Model => {
+                            s.model_input.pop();
+                        }
+                        _ => {}
                     }
+                }
                 None
             }
             Action::EnterNormalMode | Action::Quit => {
@@ -423,10 +448,10 @@ impl App {
                 Action::InsertChar('y' | 'Y') => {
                     self.confirm_dialog = None;
                     self.overlay = Overlay::None;
-                    self.toasts.push(crate::components::toast::ToastKind::Success, "Confirmed");
+                    self.toasts
+                        .push(crate::components::toast::ToastKind::Success, "Confirmed");
                 }
-                Action::EnterNormalMode | Action::Quit
-                | Action::InsertChar('n' | 'N') => {
+                Action::EnterNormalMode | Action::Quit | Action::InsertChar('n' | 'N') => {
                     self.confirm_dialog = None;
                     self.overlay = Overlay::None;
                 }
@@ -500,7 +525,8 @@ impl App {
                 None
             }
             Action::ScrollDown if self.overlay == Overlay::CommandPalette => {
-                let count = crate::components::command_palette::filtered_count(&self.overlay_filter);
+                let count =
+                    crate::components::command_palette::filtered_count(&self.overlay_filter);
                 if count > 0 {
                     self.palette_index = (self.palette_index + 1).min(count - 1);
                 }
@@ -525,7 +551,10 @@ impl App {
                 match self.overlay {
                     Overlay::CommandPalette => {
                         self.overlay = Overlay::None;
-                        if let Some(cmd) = crate::components::command_palette::filtered_command(&filter, self.palette_index) {
+                        if let Some(cmd) = crate::components::command_palette::filtered_command(
+                            &filter,
+                            self.palette_index,
+                        ) {
                             let cmd = cmd.trim_start_matches('/');
                             return self.handle_command(cmd);
                         }
@@ -558,9 +587,11 @@ impl App {
                         self.dismiss_modal = None;
                         self.overlay = Overlay::None;
                     }
-                    Overlay::None | Overlay::ThemePicker | Overlay::Onboarding
-                    | Overlay::UndoHistory | Overlay::LlmSettings => {}
-
+                    Overlay::None
+                    | Overlay::ThemePicker
+                    | Overlay::Onboarding
+                    | Overlay::UndoHistory
+                    | Overlay::LlmSettings => {}
                 }
                 None
             }
@@ -574,8 +605,11 @@ impl App {
                 None
             }
             // Ignore no-op keys
-            Action::None | Action::ScrollUp | Action::ScrollDown
-            | Action::HistoryUp | Action::HistoryDown => None,
+            Action::None
+            | Action::ScrollUp
+            | Action::ScrollDown
+            | Action::HistoryUp
+            | Action::HistoryDown => None,
             _ => {
                 if self.overlay == Overlay::GettingStarted {
                     self.overlay = Overlay::None;

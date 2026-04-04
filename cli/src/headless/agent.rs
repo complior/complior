@@ -17,7 +17,13 @@ pub fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::Pat
     // 2. Walk up from project_path to find repo root
     let mut dir = project_path.to_path_buf();
     loop {
-        if dir.join("engine").join("core").join("src").join("server.ts").exists() {
+        if dir
+            .join("engine")
+            .join("core")
+            .join("src")
+            .join("server.ts")
+            .exists()
+        {
             return Some(dir);
         }
         if !dir.pop() {
@@ -34,7 +40,7 @@ fn is_empty_val(s: &str) -> bool {
 
 /// Color a letter grade: A/B = green, C = yellow, D/F = red.
 fn grade_color(grade: &str) -> String {
-    use super::format::colors::{green, yellow, red};
+    use super::format::colors::{green, red, yellow};
     match grade {
         "A" | "A+" | "B" | "B+" => green(grade),
         "C" | "C+" => yellow(grade),
@@ -44,30 +50,102 @@ fn grade_color(grade: &str) -> String {
 
 pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
     match action {
-        AgentAction::Rename { old_name, new_name, json, path } => run_agent_rename(old_name, new_name, *json, path.as_deref(), config).await,
-        AgentAction::Init { json, force, path } => run_agent_init(*json, *force, path.as_deref(), config).await,
-        AgentAction::List { json, verbose, path } => run_agent_list(*json, *verbose, path.as_deref(), config).await,
+        AgentAction::Rename {
+            old_name,
+            new_name,
+            json,
+            path,
+        } => run_agent_rename(old_name, new_name, *json, path.as_deref(), config).await,
+        AgentAction::Init { json, force, path } => {
+            run_agent_init(*json, *force, path.as_deref(), config).await
+        }
+        AgentAction::List {
+            json,
+            verbose,
+            path,
+        } => run_agent_list(*json, *verbose, path.as_deref(), config).await,
         AgentAction::Show { name, json, path } => {
             run_agent_show(name, *json, path.as_deref(), config).await
         }
         AgentAction::Autonomy { json, path } => {
             run_agent_autonomy(*json, path.as_deref(), config).await
         }
-        AgentAction::Validate { name, json, ci, strict, verbose, path } => {
-            run_agent_validate(name.as_deref(), *json, *ci, *strict, *verbose, path.as_deref(), config).await
+        AgentAction::Validate {
+            name,
+            json,
+            ci,
+            strict,
+            verbose,
+            path,
+        } => {
+            run_agent_validate(
+                name.as_deref(),
+                *json,
+                *ci,
+                *strict,
+                *verbose,
+                path.as_deref(),
+                config,
+            )
+            .await
         }
         AgentAction::Completeness { name, json, path } => {
             run_agent_completeness(name, *json, path.as_deref(), config).await
         }
-        AgentAction::Fria { name, json, organization, impact, mitigation, approval, path } => {
-            run_agent_fria(name, *json, organization.as_deref(), impact.as_deref(), mitigation.as_deref(), approval.as_deref(), path.as_deref(), config).await
+        AgentAction::Fria {
+            name,
+            json,
+            organization,
+            impact,
+            mitigation,
+            approval,
+            path,
+        } => {
+            run_agent_fria(
+                name,
+                *json,
+                organization.as_deref(),
+                impact.as_deref(),
+                mitigation.as_deref(),
+                approval.as_deref(),
+                path.as_deref(),
+                config,
+            )
+            .await
         }
-        AgentAction::Notify { name, json, company_name, contact_name, contact_email, contact_phone, deployment_date, affected_roles, impact_description, path } => {
-            run_agent_notify(name, *json, company_name.as_deref(), contact_name.as_deref(), contact_email.as_deref(), contact_phone.as_deref(), deployment_date.as_deref(), affected_roles.as_deref(), impact_description.as_deref(), path.as_deref(), config).await
+        AgentAction::Notify {
+            name,
+            json,
+            company_name,
+            contact_name,
+            contact_email,
+            contact_phone,
+            deployment_date,
+            affected_roles,
+            impact_description,
+            path,
+        } => {
+            run_agent_notify(
+                name,
+                *json,
+                company_name.as_deref(),
+                contact_name.as_deref(),
+                contact_email.as_deref(),
+                contact_phone.as_deref(),
+                deployment_date.as_deref(),
+                affected_roles.as_deref(),
+                impact_description.as_deref(),
+                path.as_deref(),
+                config,
+            )
+            .await
         }
-        AgentAction::Export { name, format, json, path } => {
-            run_agent_export(name, format, *json, path.as_deref(), config).await
-        }
+        AgentAction::Export {
+            name,
+            format,
+            json,
+            path,
+        } => run_agent_export(name, format, *json, path.as_deref(), config).await,
         AgentAction::Registry { json, path } => {
             run_agent_registry(*json, path.as_deref(), config).await
         }
@@ -77,8 +155,24 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Permissions { json, path } => {
             run_agent_permissions(*json, path.as_deref(), config).await
         }
-        AgentAction::Policy { name, industry, json, organization, approver, path } => {
-            run_agent_policy(name, industry, *json, organization.as_deref(), approver.as_deref(), path.as_deref(), config).await
+        AgentAction::Policy {
+            name,
+            industry,
+            json,
+            organization,
+            approver,
+            path,
+        } => {
+            run_agent_policy(
+                name,
+                industry,
+                *json,
+                organization.as_deref(),
+                approver.as_deref(),
+                path.as_deref(),
+                config,
+            )
+            .await
         }
         AgentAction::TestGen { name, path, json } => {
             run_agent_test_gen(name, path.as_deref(), *json, config).await
@@ -86,19 +180,44 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
         AgentAction::Diff { name, path, json } => {
             run_agent_diff(name, path.as_deref(), *json, config).await
         }
-        AgentAction::Audit { agent, since, event_type, limit, json, path } => {
-            run_agent_audit(agent.as_deref(), since.as_deref(), event_type.as_deref(), *limit, *json, path.as_deref(), config).await
+        AgentAction::Audit {
+            agent,
+            since,
+            event_type,
+            limit,
+            json,
+            path,
+        } => {
+            run_agent_audit(
+                agent.as_deref(),
+                since.as_deref(),
+                event_type.as_deref(),
+                *limit,
+                *json,
+                path.as_deref(),
+                config,
+            )
+            .await
         }
-        AgentAction::Import { from, file, json, path } => {
-            run_agent_import(from, file, *json, path, config).await
-        }
+        AgentAction::Import {
+            from,
+            file,
+            json,
+            path,
+        } => run_agent_import(from, file, *json, path, config).await,
         AgentAction::AuditPackage { output, json, path } => {
             run_agent_audit_package(output.as_deref(), *json, path.as_deref(), config).await
         }
     }
 }
 
-async fn run_agent_rename(old_name: &str, new_name: &str, json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_agent_rename(
+    old_name: &str,
+    new_name: &str,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
     let client = match ensure_engine(config).await {
         Ok(c) => c,
@@ -114,12 +233,18 @@ async fn run_agent_rename(old_name: &str, new_name: &str, json: bool, path: Opti
     match client.post_json("/agent/rename", &body).await {
         Ok(result) => {
             if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err);
                 eprintln!("Error: {msg}");
                 return 1;
             }
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
             } else {
                 println!("Renamed passport: '{old_name}' → '{new_name}'");
             }
@@ -153,7 +278,10 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
     match client.post_json("/agent/init", &body).await {
         Ok(result) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -165,74 +293,71 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
 
             // Show created passports
             if let Some(agents) = manifests
-                && !agents.is_empty() {
-                    println!("\nCreated {} passport(s):\n", agents.len());
+                && !agents.is_empty()
+            {
+                println!("\nCreated {} passport(s):\n", agents.len());
 
-                    for (i, agent) in agents.iter().enumerate() {
-                        let name = agent
-                            .get("name")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-                        let autonomy = agent
-                            .get("autonomy_level")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
-                        let agent_type = agent
-                            .get("type")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
-                        let framework = agent
-                            .get("framework")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-                        let risk_class = agent
-                            .get("compliance")
-                            .and_then(|c| c.get("eu_ai_act"))
-                            .and_then(|e| e.get("risk_class"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
-                        let score = agent
-                            .get("compliance")
-                            .and_then(|c| c.get("complior_score"))
-                            .and_then(serde_json::Value::as_f64);
-                        let confidence = agent
-                            .get("source")
-                            .and_then(|s| s.get("confidence"))
-                            .and_then(serde_json::Value::as_f64)
-                            .unwrap_or(0.0);
+                for (i, agent) in agents.iter().enumerate() {
+                    let name = agent
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    let autonomy = agent
+                        .get("autonomy_level")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let agent_type = agent.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                    let framework = agent
+                        .get("framework")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    let risk_class = agent
+                        .get("compliance")
+                        .and_then(|c| c.get("eu_ai_act"))
+                        .and_then(|e| e.get("risk_class"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let score = agent
+                        .get("compliance")
+                        .and_then(|c| c.get("complior_score"))
+                        .and_then(serde_json::Value::as_f64);
+                    let confidence = agent
+                        .get("source")
+                        .and_then(|s| s.get("confidence"))
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0);
 
-                        println!("  {}. {}", i + 1, name);
-                        println!("     Framework:   {framework}");
-                        println!("     Autonomy:    {autonomy} ({agent_type})");
-                        println!("     Risk class:  {risk_class}");
-                        match score {
-                            Some(s) if s > 0.0 => println!("     Score:       {s:.0}/100"),
-                            _ => println!("     Score:       \u{2014} (run `complior scan` first)"),
-                        }
-                        println!(
-                            "     Confidence:  {:.0}%",
-                            confidence * 100.0
-                        );
-
-                        if let Some(paths) = saved_paths
-                            && let Some(path) = paths.get(i).and_then(|v| v.as_str()) {
-                                println!("     Saved to:    {path}");
-                            }
-                        println!();
+                    println!("  {}. {}", i + 1, name);
+                    println!("     Framework:   {framework}");
+                    println!("     Autonomy:    {autonomy} ({agent_type})");
+                    println!("     Risk class:  {risk_class}");
+                    match score {
+                        Some(s) if s > 0.0 => println!("     Score:       {s:.0}/100"),
+                        _ => println!("     Score:       \u{2014} (run `complior scan` first)"),
                     }
-                }
+                    println!("     Confidence:  {:.0}%", confidence * 100.0);
 
-            // Show skipped passports
-            if let Some(skip_list) = skipped
-                && !skip_list.is_empty() {
-                    println!("\nSkipped {} existing passport(s):\n", skip_list.len());
-                    for name in skip_list {
-                        if let Some(n) = name.as_str() {
-                            println!("  {n} (already exists, use --force to overwrite)");
-                        }
+                    if let Some(paths) = saved_paths
+                        && let Some(path) = paths.get(i).and_then(|v| v.as_str())
+                    {
+                        println!("     Saved to:    {path}");
                     }
                     println!();
                 }
+            }
+
+            // Show skipped passports
+            if let Some(skip_list) = skipped
+                && !skip_list.is_empty()
+            {
+                println!("\nSkipped {} existing passport(s):\n", skip_list.len());
+                for name in skip_list {
+                    if let Some(n) = name.as_str() {
+                        println!("  {n} (already exists, use --force to overwrite)");
+                    }
+                }
+                println!();
+            }
 
             // Summary
             let created_count = manifests.map_or(0, std::vec::Vec::len);
@@ -244,7 +369,9 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
                 println!("Run `complior agent init --force` to regenerate.");
             } else {
                 println!("No AI agents detected in project.");
-                println!("Ensure your project uses an AI SDK (OpenAI, Anthropic, LangChain, etc.).");
+                println!(
+                    "Ensure your project uses an AI SDK (OpenAI, Anthropic, LangChain, etc.)."
+                );
             }
             0
         }
@@ -257,7 +384,7 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
 
 async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     use super::format::colors::{bold, dim, score_color};
-    use super::format::{separator, plural};
+    use super::format::{plural, separator};
 
     let project_path = resolve_project_path_buf(path);
 
@@ -266,31 +393,46 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
         Err(code) => return code,
     };
 
-    let url = format!("/agent/list?path={}", url_encode(&project_path.to_string_lossy()));
-    match client
-        .get_json(&url)
-        .await
-    {
+    let url = format!(
+        "/agent/list?path={}",
+        url_encode(&project_path.to_string_lossy())
+    );
+    match client.get_json(&url).await {
         Ok(result) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
             let manifests = result.as_array();
             match manifests {
                 Some(agents) if !agents.is_empty() => {
-                    println!("\n  {}\n", bold(&format!(
-                        "◆ Agent Passports  ·  {} agent{}",
-                        agents.len(), plural(agents.len()),
-                    )));
+                    println!(
+                        "\n  {}\n",
+                        bold(&format!(
+                            "◆ Agent Passports  ·  {} agent{}",
+                            agents.len(),
+                            plural(agents.len()),
+                        ))
+                    );
                     println!("  {}", separator());
 
                     if verbose {
                         println!(
                             "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10} {:<12} {:<14} {:<12} {:<6}",
-                            "NAME", "LEVEL", "TYPE", "RISK", "SCORE", "STATUS",
-                            "FRAMEWORK", "MODEL", "OWNER", "FILES",
+                            "NAME",
+                            "LEVEL",
+                            "TYPE",
+                            "RISK",
+                            "SCORE",
+                            "STATUS",
+                            "FRAMEWORK",
+                            "MODEL",
+                            "OWNER",
+                            "FILES",
                         );
                         println!("  {}", "-".repeat(112));
                     } else {
@@ -303,18 +445,24 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
 
                     for agent in agents {
                         let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                        let level = agent.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
+                        let level = agent
+                            .get("autonomy_level")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("?");
                         let agent_type = agent.get("type").and_then(|v| v.as_str()).unwrap_or("?");
-                        let risk = agent.get("compliance")
+                        let risk = agent
+                            .get("compliance")
                             .and_then(|c| c.get("eu_ai_act"))
                             .and_then(|e| e.get("risk_class"))
                             .and_then(|v| v.as_str())
                             .unwrap_or("?");
-                        let score = agent.get("compliance")
+                        let score = agent
+                            .get("compliance")
                             .and_then(|c| c.get("complior_score"))
                             .and_then(serde_json::Value::as_f64)
                             .unwrap_or(0.0);
-                        let status = agent.get("lifecycle")
+                        let status = agent
+                            .get("lifecycle")
                             .and_then(|l| l.get("status"))
                             .and_then(|v| v.as_str())
                             .unwrap_or("?");
@@ -322,29 +470,45 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
                         let score_str = format!("{score:.0}");
 
                         if verbose {
-                            let framework = agent.get("framework").and_then(|v| v.as_str()).unwrap_or("-");
-                            let model_id = agent.get("model")
+                            let framework = agent
+                                .get("framework")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("-");
+                            let model_id = agent
+                                .get("model")
                                 .and_then(|m| m.get("model_id"))
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("-");
-                            let owner = agent.get("owner")
+                            let owner = agent
+                                .get("owner")
                                 .and_then(|o| o.get("team"))
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("-");
-                            let files = agent.get("source_files")
+                            let files = agent
+                                .get("source_files")
                                 .and_then(|v| v.as_array())
                                 .map_or(0, std::vec::Vec::len);
 
                             println!(
                                 "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10} {:<12} {:<14} {:<12} {:<6}",
-                                name, level, agent_type, risk,
+                                name,
+                                level,
+                                agent_type,
+                                risk,
                                 score_color(score, &score_str),
-                                status, framework, model_id, owner, files,
+                                status,
+                                framework,
+                                model_id,
+                                owner,
+                                files,
                             );
                         } else {
                             println!(
                                 "  {:<20} {:<8} {:<12} {:<10} {:<8} {:<10}",
-                                name, level, agent_type, risk,
+                                name,
+                                level,
+                                agent_type,
+                                risk,
                                 score_color(score, &score_str),
                                 status,
                             );
@@ -367,13 +531,8 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
     }
 }
 
-async fn run_agent_show(
-    name: &str,
-    json: bool,
-    path: Option<&str>,
-    config: &TuiConfig,
-) -> i32 {
-    use super::format::colors::{bold, dim, green, yellow, red, score_color, cyan};
+async fn run_agent_show(name: &str, json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+    use super::format::colors::{bold, cyan, dim, green, red, score_color, yellow};
     use super::format::separator;
 
     let project_path = resolve_project_path_buf(path);
@@ -391,17 +550,35 @@ async fn run_agent_show(
     match client.get_json(&url).await {
         Ok(result) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
             // Human-readable output
             let agent_name = result.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-            let display = result.get("display_name").and_then(|v| v.as_str()).unwrap_or(agent_name);
-            let agent_id = result.get("agent_id").and_then(|v| v.as_str()).unwrap_or("?");
-            let version = result.get("version").and_then(|v| v.as_str()).unwrap_or("?");
-            let framework = result.get("framework").and_then(|v| v.as_str()).unwrap_or("?");
-            let level = result.get("autonomy_level").and_then(|v| v.as_str()).unwrap_or("?");
+            let display = result
+                .get("display_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or(agent_name);
+            let agent_id = result
+                .get("agent_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let version = result
+                .get("version")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let framework = result
+                .get("framework")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let level = result
+                .get("autonomy_level")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
             let agent_type = result.get("type").and_then(|v| v.as_str()).unwrap_or("?");
 
             println!("\n  {}", bold(&format!("◆ Agent Passport  ·  {display}")));
@@ -413,11 +590,13 @@ async fn run_agent_show(
 
             // Compliance
             if let Some(compliance) = result.get("compliance") {
-                let risk = compliance.get("eu_ai_act")
+                let risk = compliance
+                    .get("eu_ai_act")
                     .and_then(|e| e.get("risk_class"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("?");
-                let score = compliance.get("complior_score")
+                let score = compliance
+                    .get("complior_score")
                     .and_then(serde_json::Value::as_f64)
                     .unwrap_or(0.0);
 
@@ -431,12 +610,22 @@ async fn run_agent_show(
                 };
                 let score_str = format!("{score:.0}/100");
                 println!("    {}   {}", dim("Risk class:"), risk_colored);
-                println!("    {}       {}", dim("Score:"), score_color(score, &score_str));
+                println!(
+                    "    {}       {}",
+                    dim("Score:"),
+                    score_color(score, &score_str)
+                );
 
                 // Extended compliance status
-                let fria = compliance.get("fria_completed").and_then(serde_json::Value::as_bool);
-                let notif = compliance.get("worker_notification_sent").and_then(serde_json::Value::as_bool);
-                let policy = compliance.get("policy_generated").and_then(serde_json::Value::as_bool);
+                let fria = compliance
+                    .get("fria_completed")
+                    .and_then(serde_json::Value::as_bool);
+                let notif = compliance
+                    .get("worker_notification_sent")
+                    .and_then(serde_json::Value::as_bool);
+                let policy = compliance
+                    .get("policy_generated")
+                    .and_then(serde_json::Value::as_bool);
                 if fria.is_some() || notif.is_some() || policy.is_some() {
                     let status_label = |v: Option<bool>| match v {
                         Some(true) => green("completed"),
@@ -450,21 +639,50 @@ async fn run_agent_show(
 
                 // Eval results
                 if let Some(eval) = compliance.get("eval") {
-                    let eval_score = eval.get("eval_score").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-                    let eval_grade = eval.get("eval_grade").and_then(|v| v.as_str()).unwrap_or("?");
-                    let eval_tier = eval.get("eval_tier").and_then(|v| v.as_str()).unwrap_or("?");
-                    let eval_target = eval.get("eval_target").and_then(|v| v.as_str()).unwrap_or("?");
-                    let eval_date = eval.get("eval_date").and_then(|v| v.as_str()).unwrap_or("?");
-                    let total = eval.get("eval_tests_total").and_then(serde_json::Value::as_u64).unwrap_or(0);
-                    let passed = eval.get("eval_tests_passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
-                    let failed = eval.get("eval_tests_failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                    let eval_score = eval
+                        .get("eval_score")
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0);
+                    let eval_grade = eval
+                        .get("eval_grade")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let eval_tier = eval
+                        .get("eval_tier")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let eval_target = eval
+                        .get("eval_target")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let eval_date = eval
+                        .get("eval_date")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let total = eval
+                        .get("eval_tests_total")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+                    let passed = eval
+                        .get("eval_tests_passed")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+                    let failed = eval
+                        .get("eval_tests_failed")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
                     let errors = total.saturating_sub(passed).saturating_sub(failed);
 
                     println!("\n  {}", bold("EVAL RESULTS"));
                     println!("  {}\n", separator());
 
                     let score_str = format!("{eval_score:.0}/100");
-                    println!("    {}       {} ({})", dim("Grade:"), grade_color(eval_grade), score_color(eval_score, &score_str));
+                    println!(
+                        "    {}       {} ({})",
+                        dim("Grade:"),
+                        grade_color(eval_grade),
+                        score_color(eval_score, &score_str)
+                    );
                     println!("    {}        {}", dim("Tier:"), eval_tier);
                     println!("    {}      {}", dim("Target:"), eval_target);
                     let date_display = &eval_date[..10.min(eval_date.len())];
@@ -472,40 +690,79 @@ async fn run_agent_show(
 
                     // Tests line
                     let tests_str = format!("{passed}/{total} passed");
-                    let pct = if total > 0 { passed as f64 / total as f64 * 100.0 } else { 0.0 };
+                    let pct = if total > 0 {
+                        passed as f64 / total as f64 * 100.0
+                    } else {
+                        0.0
+                    };
                     let details = if errors > 0 {
                         format!("  ({failed} failed, {errors} errors)")
                     } else {
                         format!("  ({failed} failed)")
                     };
-                    println!("    {}       {}{}", dim("Tests:"), score_color(pct, &tests_str), dim(&details));
+                    println!(
+                        "    {}       {}{}",
+                        dim("Tests:"),
+                        score_color(pct, &tests_str),
+                        dim(&details)
+                    );
 
                     // Security (optional)
-                    if let Some(sec_score) = eval.get("eval_security_score").and_then(serde_json::Value::as_f64) {
-                        let sec_grade = eval.get("eval_security_grade").and_then(|v| v.as_str()).unwrap_or("?");
+                    if let Some(sec_score) = eval
+                        .get("eval_security_score")
+                        .and_then(serde_json::Value::as_f64)
+                    {
+                        let sec_grade = eval
+                            .get("eval_security_grade")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("?");
                         let sec_str = format!("{sec_score:.0}/100");
-                        println!("    {}    {} ({})", dim("Security:"), grade_color(sec_grade), score_color(sec_score, &sec_str));
+                        println!(
+                            "    {}    {} ({})",
+                            dim("Security:"),
+                            grade_color(sec_grade),
+                            score_color(sec_score, &sec_str)
+                        );
                     }
 
                     // Categories
-                    if let Some(cats) = eval.get("eval_categories").and_then(serde_json::Value::as_array)
-                        && !cats.is_empty() {
-                            println!("\n    {}", dim("Categories:"));
-                            for cat in cats {
-                                let name = cat.get("category").and_then(|v| v.as_str()).unwrap_or("?");
-                                let sc = cat.get("score").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-                                let gr = cat.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
-                                let sc_str = format!("{sc:.0}/100");
-                                println!("      {:<20}  {}  {}", dim(name), score_color(sc, &sc_str), grade_color(gr));
-                            }
+                    if let Some(cats) = eval
+                        .get("eval_categories")
+                        .and_then(serde_json::Value::as_array)
+                        && !cats.is_empty()
+                    {
+                        println!("\n    {}", dim("Categories:"));
+                        for cat in cats {
+                            let name = cat.get("category").and_then(|v| v.as_str()).unwrap_or("?");
+                            let sc = cat
+                                .get("score")
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(0.0);
+                            let gr = cat.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
+                            let sc_str = format!("{sc:.0}/100");
+                            println!(
+                                "      {:<20}  {}  {}",
+                                dim(name),
+                                score_color(sc, &sc_str),
+                                grade_color(gr)
+                            );
                         }
+                    }
 
                     // Critical gaps
-                    if let Some(gaps) = eval.get("eval_critical_gaps").and_then(serde_json::Value::as_array)
-                        && !gaps.is_empty() {
-                            let gap_names: Vec<&str> = gaps.iter().filter_map(serde_json::Value::as_str).collect();
-                            println!("\n    {} {}", dim("Critical gaps:"), red(&gap_names.join(", ")));
-                        }
+                    if let Some(gaps) = eval
+                        .get("eval_critical_gaps")
+                        .and_then(serde_json::Value::as_array)
+                        && !gaps.is_empty()
+                    {
+                        let gap_names: Vec<&str> =
+                            gaps.iter().filter_map(serde_json::Value::as_str).collect();
+                        println!(
+                            "\n    {} {}",
+                            dim("Critical gaps:"),
+                            red(&gap_names.join(", "))
+                        );
+                    }
                 }
             }
 
@@ -513,41 +770,77 @@ async fn run_agent_show(
             if let Some(owner) = result.get("owner") {
                 let team = owner.get("team").and_then(|v| v.as_str()).unwrap_or("-");
                 let contact = owner.get("contact").and_then(|v| v.as_str()).unwrap_or("-");
-                let person = owner.get("responsible_person").and_then(|v| v.as_str()).unwrap_or("-");
+                let person = owner
+                    .get("responsible_person")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
                 if !is_empty_val(team) || !is_empty_val(contact) || !is_empty_val(person) {
                     println!("\n  {}", bold("OWNER"));
                     println!("  {}\n", separator());
-                    if !is_empty_val(team) { println!("    {}        {}", dim("Team:"), team); }
-                    if !is_empty_val(contact) { println!("    {}     {}", dim("Contact:"), contact); }
-                    if !is_empty_val(person) { println!("    {}  {}", dim("Responsible:"), person); }
+                    if !is_empty_val(team) {
+                        println!("    {}        {}", dim("Team:"), team);
+                    }
+                    if !is_empty_val(contact) {
+                        println!("    {}     {}", dim("Contact:"), contact);
+                    }
+                    if !is_empty_val(person) {
+                        println!("    {}  {}", dim("Responsible:"), person);
+                    }
                 }
             }
 
             // Model
             if let Some(model) = result.get("model") {
-                let provider = model.get("provider").and_then(|v| v.as_str()).unwrap_or("-");
-                let model_id = model.get("model_id").and_then(|v| v.as_str()).unwrap_or("-");
-                let deployment = model.get("deployment").and_then(|v| v.as_str()).unwrap_or("-");
-                let residency = model.get("data_residency").and_then(|v| v.as_str()).unwrap_or("-");
-                if !is_empty_val(provider) || !is_empty_val(model_id) || !is_empty_val(deployment) || !is_empty_val(residency) {
+                let provider = model
+                    .get("provider")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let model_id = model
+                    .get("model_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let deployment = model
+                    .get("deployment")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let residency = model
+                    .get("data_residency")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                if !is_empty_val(provider)
+                    || !is_empty_val(model_id)
+                    || !is_empty_val(deployment)
+                    || !is_empty_val(residency)
+                {
                     println!("\n  {}", bold("MODEL"));
                     println!("  {}\n", separator());
-                    if !is_empty_val(provider) { println!("    {}    {}", dim("Provider:"), provider); }
-                    if !is_empty_val(model_id) { println!("    {}    {}", dim("Model ID:"), model_id); }
-                    if !is_empty_val(deployment) { println!("    {}  {}", dim("Deployment:"), deployment); }
-                    if !is_empty_val(residency) { println!("    {}   {}", dim("Residency:"), residency); }
+                    if !is_empty_val(provider) {
+                        println!("    {}    {}", dim("Provider:"), provider);
+                    }
+                    if !is_empty_val(model_id) {
+                        println!("    {}    {}", dim("Model ID:"), model_id);
+                    }
+                    if !is_empty_val(deployment) {
+                        println!("    {}  {}", dim("Deployment:"), deployment);
+                    }
+                    if !is_empty_val(residency) {
+                        println!("    {}   {}", dim("Residency:"), residency);
+                    }
                 }
             }
 
             // Constraints
             if let Some(constraints) = result.get("constraints") {
-                let rpm = constraints.get("rate_limits")
+                let rpm = constraints
+                    .get("rate_limits")
                     .and_then(|r| r.get("max_actions_per_minute"))
                     .and_then(serde_json::Value::as_u64);
-                let budget = constraints.get("budget")
+                let budget = constraints
+                    .get("budget")
                     .and_then(|b| b.get("max_cost_per_session_usd"))
                     .and_then(serde_json::Value::as_f64);
-                let prohibited = constraints.get("prohibited_actions")
+                let prohibited = constraints
+                    .get("prohibited_actions")
                     .and_then(|v| v.as_array())
                     .map_or(0, std::vec::Vec::len);
 
@@ -567,28 +860,43 @@ async fn run_agent_show(
             // Permissions
             if let Some(perms) = result.get("permissions")
                 && let Some(tools) = perms.get("tools").and_then(|v| v.as_array())
-                    && !tools.is_empty() {
-                        let tool_names: Vec<&str> = tools.iter().filter_map(|v| v.as_str()).collect();
-                        println!("\n  {}", bold("PERMISSIONS"));
-                        println!("  {}\n", separator());
-                        println!("    {}       {}", dim("Tools:"), tool_names.join(", "));
-                    }
+                && !tools.is_empty()
+            {
+                let tool_names: Vec<&str> = tools.iter().filter_map(|v| v.as_str()).collect();
+                println!("\n  {}", bold("PERMISSIONS"));
+                println!("  {}\n", separator());
+                println!("    {}       {}", dim("Tools:"), tool_names.join(", "));
+            }
 
             // Disclosure
             if let Some(disclosure) = result.get("disclosure") {
-                let user_facing = disclosure.get("user_facing").and_then(serde_json::Value::as_bool);
-                let marked = disclosure.get("ai_marking")
+                let user_facing = disclosure
+                    .get("user_facing")
+                    .and_then(serde_json::Value::as_bool);
+                let marked = disclosure
+                    .get("ai_marking")
                     .and_then(|a| a.get("responses_marked"))
                     .and_then(serde_json::Value::as_bool);
-                let text = disclosure.get("disclosure_text").and_then(|v| v.as_str()).unwrap_or("");
+                let text = disclosure
+                    .get("disclosure_text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 if user_facing.is_some() || marked.is_some() || !text.is_empty() {
                     println!("\n  {}", bold("DISCLOSURE"));
                     println!("  {}\n", separator());
                     if let Some(uf) = user_facing {
-                        println!("    {} {}", dim("User-facing:"), if uf { green("yes") } else { yellow("no") });
+                        println!(
+                            "    {} {}",
+                            dim("User-facing:"),
+                            if uf { green("yes") } else { yellow("no") }
+                        );
                     }
                     if let Some(m) = marked {
-                        println!("    {}  {}", dim("AI marking:"), if m { green("yes") } else { yellow("no") });
+                        println!(
+                            "    {}  {}",
+                            dim("AI marking:"),
+                            if m { green("yes") } else { yellow("no") }
+                        );
                     }
                     if !text.is_empty() {
                         let truncated = if text.len() > 60 { &text[..57] } else { text };
@@ -600,11 +908,26 @@ async fn run_agent_show(
 
             // Lifecycle
             if let Some(lifecycle) = result.get("lifecycle") {
-                let status = lifecycle.get("status").and_then(|v| v.as_str()).unwrap_or("-");
-                let deployed = lifecycle.get("deployed_since").and_then(|v| v.as_str()).unwrap_or("-");
-                let next_review = lifecycle.get("next_review").and_then(|v| v.as_str()).unwrap_or("-");
-                let freq = lifecycle.get("review_frequency_days").and_then(serde_json::Value::as_u64);
-                if !is_empty_val(status) || !is_empty_val(deployed) || !is_empty_val(next_review) || freq.is_some() {
+                let status = lifecycle
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let deployed = lifecycle
+                    .get("deployed_since")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let next_review = lifecycle
+                    .get("next_review")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let freq = lifecycle
+                    .get("review_frequency_days")
+                    .and_then(serde_json::Value::as_u64);
+                if !is_empty_val(status)
+                    || !is_empty_val(deployed)
+                    || !is_empty_val(next_review)
+                    || freq.is_some()
+                {
                     println!("\n  {}", bold("LIFECYCLE"));
                     println!("  {}\n", separator());
                     if !is_empty_val(status) {
@@ -616,8 +939,12 @@ async fn run_agent_show(
                         };
                         println!("    {}      {}", dim("Status:"), status_colored);
                     }
-                    if !is_empty_val(deployed) { println!("    {}    {}", dim("Deployed:"), deployed); }
-                    if !is_empty_val(next_review) { println!("    {} {}", dim("Next review:"), next_review); }
+                    if !is_empty_val(deployed) {
+                        println!("    {}    {}", dim("Deployed:"), deployed);
+                    }
+                    if !is_empty_val(next_review) {
+                        println!("    {} {}", dim("Next review:"), next_review);
+                    }
                     if let Some(f) = freq {
                         println!("    {}   every {f}d", dim("Frequency:"));
                     }
@@ -626,7 +953,10 @@ async fn run_agent_show(
 
             // Source
             if let Some(source) = result.get("source") {
-                let confidence = source.get("confidence").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                let confidence = source
+                    .get("confidence")
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
                 let mode = source.get("mode").and_then(|v| v.as_str()).unwrap_or("?");
                 println!("\n  {}", bold("SOURCE"));
                 println!("  {}\n", separator());
@@ -646,15 +976,16 @@ async fn run_agent_show(
 
             // Source files
             if let Some(files) = result.get("source_files").and_then(|v| v.as_array())
-                && !files.is_empty() {
-                    println!("\n  {}", bold("SOURCE FILES"));
-                    println!("  {}\n", separator());
-                    for f in files {
-                        if let Some(p) = f.as_str() {
-                            println!("    {}", cyan(p));
-                        }
+                && !files.is_empty()
+            {
+                println!("\n  {}", bold("SOURCE FILES"));
+                println!("  {}\n", separator());
+                for f in files {
+                    if let Some(p) = f.as_str() {
+                        println!("    {}", cyan(p));
                     }
                 }
+            }
 
             println!();
             0
@@ -680,47 +1011,69 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
         Err(code) => return code,
     };
 
-    let url = format!("/agent/autonomy?path={}", url_encode(&project_path.to_string_lossy()));
+    let url = format!(
+        "/agent/autonomy?path={}",
+        url_encode(&project_path.to_string_lossy())
+    );
     match client.get_json(&url).await {
         Ok(result) => {
             // Check for engine error response
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
             // Per-agent breakdown
             if let Some(agents) = result.get("agents").and_then(|v| v.as_array())
-                && !agents.is_empty() {
-                    println!("\nAutonomy Analysis ({} agent(s))\n", agents.len());
+                && !agents.is_empty()
+            {
+                println!("\nAutonomy Analysis ({} agent(s))\n", agents.len());
+                println!(
+                    "  {:<25} {:<8} {:<12} {:<8} {:<8} {:<8}",
+                    "AGENT", "LEVEL", "TYPE", "GATES", "UNSUP.", "NO-LOG"
+                );
+                println!("  {}", "-".repeat(69));
+
+                for agent in agents {
+                    let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                    let level = agent.get("level").and_then(|v| v.as_str()).unwrap_or("?");
+                    let atype = agent
+                        .get("agentType")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let evidence = agent.get("evidence");
+                    let gates = evidence
+                        .and_then(|e| e.get("human_approval_gates"))
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+                    let unsup = evidence
+                        .and_then(|e| e.get("unsupervised_actions"))
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+                    let nolog = evidence
+                        .and_then(|e| e.get("no_logging_actions"))
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+
                     println!(
-                        "  {:<25} {:<8} {:<12} {:<8} {:<8} {:<8}",
-                        "AGENT", "LEVEL", "TYPE", "GATES", "UNSUP.", "NO-LOG"
+                        "  {name:<25} {level:<8} {atype:<12} {gates:<8} {unsup:<8} {nolog:<8}"
                     );
-                    println!("  {}", "-".repeat(69));
-
-                    for agent in agents {
-                        let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                        let level = agent.get("level").and_then(|v| v.as_str()).unwrap_or("?");
-                        let atype = agent.get("agentType").and_then(|v| v.as_str()).unwrap_or("?");
-                        let evidence = agent.get("evidence");
-                        let gates = evidence.and_then(|e| e.get("human_approval_gates")).and_then(serde_json::Value::as_u64).unwrap_or(0);
-                        let unsup = evidence.and_then(|e| e.get("unsupervised_actions")).and_then(serde_json::Value::as_u64).unwrap_or(0);
-                        let nolog = evidence.and_then(|e| e.get("no_logging_actions")).and_then(serde_json::Value::as_u64).unwrap_or(0);
-
-                        println!(
-                            "  {name:<25} {level:<8} {atype:<12} {gates:<8} {unsup:<8} {nolog:<8}"
-                        );
-                    }
-                    println!();
-                    return 0;
                 }
+                println!();
+                return 0;
+            }
 
             // Fallback: project-level summary (no passports)
             let summary = result.get("summary").unwrap_or(&result);
@@ -790,18 +1143,26 @@ async fn run_agent_validate(
         vec![n.to_string()]
     } else {
         // List all passports first
-        let list_url = format!("/agent/list?path={}", url_encode(&project_path.to_string_lossy()));
+        let list_url = format!(
+            "/agent/list?path={}",
+            url_encode(&project_path.to_string_lossy())
+        );
         match client.get_json(&list_url).await {
             Ok(list) => {
                 if let Some(err_msg) = list.get("error").and_then(|v| v.as_str()) {
-                    let msg = list.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                    let msg = list
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(err_msg);
                     eprintln!("Error: {msg}");
                     return 1;
                 }
                 list.as_array()
                     .map(|arr| {
                         arr.iter()
-                            .filter_map(|v| v.get("name").and_then(|n| n.as_str()).map(String::from))
+                            .filter_map(|v| {
+                                v.get("name").and_then(|n| n.as_str()).map(String::from)
+                            })
                             .collect()
                     })
                     .unwrap_or_default()
@@ -837,13 +1198,19 @@ async fn run_agent_validate(
             Ok(result) => {
                 // Check for engine error response
                 if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                    let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                    let msg = result
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(err_msg);
                     eprintln!("Error: {msg}");
                     any_invalid = true;
                     continue;
                 }
 
-                let valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let valid = result
+                    .get("valid")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
                 let has_warnings = result
                     .get("warnings")
                     .and_then(|v| v.as_array())
@@ -865,12 +1232,17 @@ async fn run_agent_validate(
     }
 
     if json {
-        let json_results: Vec<&serde_json::Value> =
-            all_results.iter().map(|(_, r)| r).collect();
-        println!("{}", serde_json::to_string_pretty(&json_results).unwrap_or_default());
+        let json_results: Vec<&serde_json::Value> = all_results.iter().map(|(_, r)| r).collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json_results).unwrap_or_default()
+        );
     } else {
         for (agent_name, result) in &all_results {
-            let valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
+            let valid = result
+                .get("valid")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
             let schema_valid = result
                 .get("schemaValid")
                 .and_then(serde_json::Value::as_bool)
@@ -913,26 +1285,33 @@ async fn run_agent_validate(
             }
 
             // Per-field breakdown when --verbose
-            if verbose
-                && let Some(completeness) = result.get("completeness") {
-                    if let Some(fields) = completeness.get("fields").and_then(|v| v.as_array()) {
-                        println!("    Fields:");
-                        for field in fields {
-                            let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
-                            let filled = field.get("filled").and_then(serde_json::Value::as_bool).unwrap_or(false);
-                            let icon = if filled { "+" } else { "-" };
-                            println!("      [{icon}] {fname}");
-                        }
-                    } else if let Some(missing) = completeness.get("missingFields").and_then(|v| v.as_array())
-                        && !missing.is_empty() {
-                            println!("    Missing fields:");
-                            for field in missing {
-                                let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
-                                let obligation = field.get("obligation").and_then(|v| v.as_str()).unwrap_or("");
-                                println!("      [-] {fname} ({obligation})");
-                            }
-                        }
+            if verbose && let Some(completeness) = result.get("completeness") {
+                if let Some(fields) = completeness.get("fields").and_then(|v| v.as_array()) {
+                    println!("    Fields:");
+                    for field in fields {
+                        let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
+                        let filled = field
+                            .get("filled")
+                            .and_then(serde_json::Value::as_bool)
+                            .unwrap_or(false);
+                        let icon = if filled { "+" } else { "-" };
+                        println!("      [{icon}] {fname}");
+                    }
+                } else if let Some(missing) =
+                    completeness.get("missingFields").and_then(|v| v.as_array())
+                    && !missing.is_empty()
+                {
+                    println!("    Missing fields:");
+                    for field in missing {
+                        let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
+                        let obligation = field
+                            .get("obligation")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        println!("      [-] {fname} ({obligation})");
+                    }
                 }
+            }
         }
         println!();
     }
@@ -974,13 +1353,19 @@ async fn run_agent_completeness(
         Ok(result) => {
             // Check for engine error response
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1024,18 +1409,12 @@ async fn run_agent_completeness(
                     println!("  {}", "-".repeat(90));
 
                     for field in missing {
-                        let fname = field
-                            .get("field")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
+                        let fname = field.get("field").and_then(|v| v.as_str()).unwrap_or("?");
                         let obligation = field
                             .get("obligation")
                             .and_then(|v| v.as_str())
                             .unwrap_or("?");
-                        let article = field
-                            .get("article")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
+                        let article = field.get("article").and_then(|v| v.as_str()).unwrap_or("?");
                         let desc = field
                             .get("description")
                             .and_then(|v| v.as_str())
@@ -1099,13 +1478,19 @@ async fn run_agent_fria(
     match client.post_json("/agent/fria", &body).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1199,13 +1584,19 @@ async fn run_agent_notify(
     match client.post_json("/agent/notify", &body).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1232,7 +1623,9 @@ async fn run_agent_notify(
                     println!("    - {f}");
                 }
             }
-            println!("\nReview and distribute the notification to affected workers before deployment.");
+            println!(
+                "\nReview and distribute the notification to affected workers before deployment."
+            );
             0
         }
         Err(e) => {
@@ -1271,13 +1664,19 @@ async fn run_agent_export(
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1324,13 +1723,19 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1346,10 +1751,22 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
 
                     for agent in agents {
                         let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                        let risk = agent.get("riskClass").and_then(|v| v.as_str()).unwrap_or("?");
-                        let score = agent.get("complianceScore").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-                        let passport = agent.get("passportCompleteness").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-                        let fria = agent.get("friaStatus").and_then(|v| v.as_str()).unwrap_or("?");
+                        let risk = agent
+                            .get("riskClass")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("?");
+                        let score = agent
+                            .get("complianceScore")
+                            .and_then(serde_json::Value::as_f64)
+                            .unwrap_or(0.0);
+                        let passport = agent
+                            .get("passportCompleteness")
+                            .and_then(serde_json::Value::as_f64)
+                            .unwrap_or(0.0);
+                        let fria = agent
+                            .get("friaStatus")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("?");
                         let ev_valid = agent
                             .get("evidenceChain")
                             .and_then(|e| e.get("valid"))
@@ -1384,18 +1801,19 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
                         }
                         let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                         if let Some(issues) = agent.get("issues").and_then(|v| v.as_array())
-                            && !issues.is_empty() {
-                                if !has_issues {
-                                    println!("\nIssues:\n");
-                                    has_issues = true;
-                                }
-                                println!("  {name} (grade {grade}):");
-                                for issue in issues {
-                                    if let Some(msg) = issue.as_str() {
-                                        println!("    - {msg}");
-                                    }
+                            && !issues.is_empty()
+                        {
+                            if !has_issues {
+                                println!("\nIssues:\n");
+                                has_issues = true;
+                            }
+                            println!("  {name} (grade {grade}):");
+                            for issue in issues {
+                                if let Some(msg) = issue.as_str() {
+                                    println!("    - {msg}");
                                 }
                             }
+                        }
                     }
                     println!();
                 }
@@ -1430,13 +1848,19 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1476,10 +1900,18 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
                             println!(
                                 "  {:<20} {:<30} {:<20} {:<20} {:<20}",
                                 agent_name,
-                                if granted.is_empty() { "-".to_string() } else { granted.join(", ") },
+                                if granted.is_empty() {
+                                    "-".to_string()
+                                } else {
+                                    granted.join(", ")
+                                },
                                 "-",
                                 "-",
-                                if denied.is_empty() { "-".to_string() } else { denied.join(", ") },
+                                if denied.is_empty() {
+                                    "-".to_string()
+                                } else {
+                                    denied.join(", ")
+                                },
                             );
                         }
                     }
@@ -1491,14 +1923,18 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
 
             // Show conflicts
             if let Some(conflicts) = result.get("conflicts").and_then(|v| v.as_array())
-                && !conflicts.is_empty() {
-                    println!("\nConflicts ({}):\n", conflicts.len());
-                    for conflict in conflicts {
-                        let ctype = conflict.get("type").and_then(|v| v.as_str()).unwrap_or("?");
-                        let desc = conflict.get("description").and_then(|v| v.as_str()).unwrap_or("?");
-                        println!("  [{ctype}] {desc}");
-                    }
+                && !conflicts.is_empty()
+            {
+                println!("\nConflicts ({}):\n", conflicts.len());
+                for conflict in conflicts {
+                    let ctype = conflict.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                    let desc = conflict
+                        .get("description")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    println!("  [{ctype}] {desc}");
                 }
+            }
             println!();
             0
         }
@@ -1557,13 +1993,19 @@ async fn run_agent_policy(
     match client.post_json("/agent/policy", &body).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1632,13 +2074,19 @@ async fn run_agent_audit(
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -1647,14 +2095,21 @@ async fn run_agent_audit(
                 Some(list) if !list.is_empty() => {
                     println!("\nAudit Trail ({} entries)\n", list.len());
                     for entry in list {
-                        let ts = entry.get("timestamp").and_then(|v| v.as_str()).unwrap_or("?");
-                        let event = entry.get("eventType").and_then(|v| v.as_str()).unwrap_or("?");
-                        let name = entry.get("agentName").and_then(|v| v.as_str()).unwrap_or("-");
+                        let ts = entry
+                            .get("timestamp")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("?");
+                        let event = entry
+                            .get("eventType")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("?");
+                        let name = entry
+                            .get("agentName")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("-");
                         let payload = entry.get("payload");
                         let payload_summary = payload
-                            .map(|p| {
-                                serde_json::to_string(p).unwrap_or_default()
-                            })
+                            .map(|p| serde_json::to_string(p).unwrap_or_default())
                             .unwrap_or_default();
                         let short_payload = if payload_summary.len() > 60 {
                             format!("{}...", &payload_summary[..57])
@@ -1681,7 +2136,12 @@ async fn run_agent_audit(
 
 // --- C.R20: Evidence chain ---
 
-async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_agent_evidence(
+    json: bool,
+    verify: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine(config).await {
@@ -1690,15 +2150,24 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
     };
 
     if verify {
-        let url = format!("/agent/evidence/verify?path={}", url_encode(&project_path.to_string_lossy()));
+        let url = format!(
+            "/agent/evidence/verify?path={}",
+            url_encode(&project_path.to_string_lossy())
+        );
         match client.get_json(&url).await {
             Ok(result) => {
                 if json {
-                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&result).unwrap_or_default()
+                    );
                     return 0;
                 }
 
-                let valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let valid = result
+                    .get("valid")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
                 if valid {
                     println!("Chain integrity: VALID");
                 } else {
@@ -1717,11 +2186,17 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
             }
         }
     } else {
-        let url = format!("/agent/evidence?path={}", url_encode(&project_path.to_string_lossy()));
+        let url = format!(
+            "/agent/evidence?path={}",
+            url_encode(&project_path.to_string_lossy())
+        );
         match client.get_json(&url).await {
             Ok(result) => {
                 if json {
-                    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&result).unwrap_or_default()
+                    );
                     return 0;
                 }
 
@@ -1769,12 +2244,7 @@ async fn run_agent_evidence(json: bool, verify: bool, path: Option<&str>, config
 
 // --- US-S05-24: Test suite generation ---
 
-async fn run_agent_test_gen(
-    name: &str,
-    path: Option<&str>,
-    json: bool,
-    config: &TuiConfig,
-) -> i32 {
+async fn run_agent_test_gen(name: &str, path: Option<&str>, json: bool, config: &TuiConfig) -> i32 {
     let client = match ensure_engine(config).await {
         Ok(c) => c,
         Err(code) => return code,
@@ -1789,18 +2259,30 @@ async fn run_agent_test_gen(
     match client.post_json("/agent/test-gen", &body).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
-            let filename = result.get("filename").and_then(|v| v.as_str()).unwrap_or("?");
-            let test_count = result.get("testCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let filename = result
+                .get("filename")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let test_count = result
+                .get("testCount")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
 
             println!("\nGenerated compliance test suite for: {name}\n");
             println!("  Tests:    {test_count}");
@@ -1817,12 +2299,7 @@ async fn run_agent_test_gen(
 
 // --- US-S05-24: Passport diff ---
 
-async fn run_agent_diff(
-    name: &str,
-    path: Option<&str>,
-    json: bool,
-    config: &TuiConfig,
-) -> i32 {
+async fn run_agent_diff(name: &str, path: Option<&str>, json: bool, config: &TuiConfig) -> i32 {
     let client = match ensure_engine(config).await {
         Ok(c) => c,
         Err(code) => return code,
@@ -1838,21 +2315,42 @@ async fn run_agent_diff(
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
-            let total = result.get("totalChanges").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let added = result.get("added").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let removed = result.get("removed").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let modified = result.get("modified").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let breaking = result.get("hasBreakingChanges").and_then(serde_json::Value::as_bool).unwrap_or(false);
+            let total = result
+                .get("totalChanges")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let added = result
+                .get("added")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let removed = result
+                .get("removed")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let modified = result
+                .get("modified")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let breaking = result
+                .get("hasBreakingChanges")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
 
             println!("\nPassport Diff: {name}\n");
             println!("  Total changes:    {total}");
@@ -1864,21 +2362,28 @@ async fn run_agent_diff(
             }
 
             if let Some(changes) = result.get("changes").and_then(|v| v.as_array())
-                && !changes.is_empty() {
-                    println!();
-                    for change in changes {
-                        let path = change.get("path").and_then(|v| v.as_str()).unwrap_or("?");
-                        let change_type = change.get("changeType").and_then(|v| v.as_str()).unwrap_or("?");
-                        let severity = change.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
-                        let icon = match change_type {
-                            "added" => "+",
-                            "removed" => "-",
-                            "modified" => "~",
-                            _ => "?",
-                        };
-                        println!("  {icon} {path} [{severity}]");
-                    }
+                && !changes.is_empty()
+            {
+                println!();
+                for change in changes {
+                    let path = change.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+                    let change_type = change
+                        .get("changeType")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let severity = change
+                        .get("severity")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let icon = match change_type {
+                        "added" => "+",
+                        "removed" => "-",
+                        "modified" => "~",
+                        _ => "?",
+                    };
+                    println!("  {icon} {path} [{severity}]");
                 }
+            }
 
             0
         }
@@ -1933,13 +2438,19 @@ async fn run_agent_import(
     match client.post_json("/agent/import", &body).await {
         Ok(result) => {
             if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
             } else {
                 println!("Passport imported successfully from {from} format");
                 if let Some(imported) = result.get("fieldsImported").and_then(|v| v.as_array()) {
@@ -1997,11 +2508,17 @@ async fn run_agent_audit_package(
         match client.get_json(&url).await {
             Ok(result) => {
                 if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
-                    let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+                    let msg = result
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(err);
                     eprintln!("Error: {msg}");
                     return 1;
                 }
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 0
             }
             Err(e) => {
@@ -2018,21 +2535,19 @@ async fn run_agent_audit_package(
         let output_path = output.unwrap_or("complior-audit.tar.gz");
 
         match client.get_bytes(&url).await {
-            Ok(bytes) => {
-                match std::fs::write(output_path, &bytes) {
-                    Ok(()) => {
-                        let size_kb = bytes.len() as f64 / 1024.0;
-                        println!("Audit package saved to: {output_path}");
-                        println!("  Size: {:.1} KB ({} bytes)", size_kb, bytes.len());
-                        println!("\nExtract with: tar xzf {output_path}");
-                        0
-                    }
-                    Err(e) => {
-                        eprintln!("Error writing file {output_path}: {e}");
-                        1
-                    }
+            Ok(bytes) => match std::fs::write(output_path, &bytes) {
+                Ok(()) => {
+                    let size_kb = bytes.len() as f64 / 1024.0;
+                    println!("Audit package saved to: {output_path}");
+                    println!("  Size: {:.1} KB ({} bytes)", size_kb, bytes.len());
+                    println!("\nExtract with: tar xzf {output_path}");
+                    0
                 }
-            }
+                Err(e) => {
+                    eprintln!("Error writing file {output_path}: {e}");
+                    1
+                }
+            },
             Err(e) => {
                 eprintln!("Error downloading audit package: {e}");
                 1
@@ -2040,4 +2555,3 @@ async fn run_agent_audit_package(
         }
     }
 }
-

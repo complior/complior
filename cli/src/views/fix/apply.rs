@@ -29,12 +29,13 @@ pub fn apply_fix_to_file(project_path: &Path, finding: &Finding) -> ApplyResult 
         }
         // Ensure parent dir exists
         if let Some(parent) = abs.parent()
-            && let Err(e) = std::fs::create_dir_all(parent) {
-                return ApplyResult {
-                    success: false,
-                    detail: format!("mkdir failed: {e}"),
-                };
-            }
+            && let Err(e) = std::fs::create_dir_all(parent)
+        {
+            return ApplyResult {
+                success: false,
+                detail: format!("mkdir failed: {e}"),
+            };
+        }
         let content = finding.fix.as_deref().unwrap_or("");
         match std::fs::write(&abs, content) {
             Ok(()) => ApplyResult {

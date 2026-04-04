@@ -1,15 +1,15 @@
 /// Top-level view (screen).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewState {
-    Dashboard,    // D, index 0
-    Scan,         // S, index 1
-    Fix,          // F, index 2
-    Passport,     // P, index 3
-    Obligations,  // O, index 4
-    Timeline,     // T, index 5
-    Report,       // R, index 6
-    Log,          // L, index 7
-    Chat,         // C, index 8
+    Dashboard,   // D, index 0
+    Scan,        // S, index 1
+    Fix,         // F, index 2
+    Passport,    // P, index 3
+    Obligations, // O, index 4
+    Timeline,    // T, index 5
+    Report,      // R, index 6
+    Log,         // L, index 7
+    Chat,        // C, index 8
 }
 
 impl ViewState {

@@ -5,11 +5,11 @@ mod render;
 #[path = "tests.rs"]
 mod tests;
 
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -152,8 +152,7 @@ impl FixViewState {
 
     pub fn navigate_down(&mut self) {
         if !self.fixable_findings.is_empty() {
-            self.selected_index =
-                (self.selected_index + 1).min(self.fixable_findings.len() - 1);
+            self.selected_index = (self.selected_index + 1).min(self.fixable_findings.len() - 1);
         }
     }
 }
@@ -166,11 +165,7 @@ pub fn render_fix_view(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     if app.last_scan.is_none() {
-        render_no_fix_data(
-            frame,
-            area,
-            "No scan data. Run a scan first (Ctrl+S).",
-        );
+        render_no_fix_data(frame, area, "No scan data. Run a scan first (Ctrl+S).");
         return;
     }
 
@@ -188,7 +183,10 @@ pub fn render_fix_view(frame: &mut Frame, area: Rect, app: &App) {
         let right_pct = 100 - left_pct;
         let layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(left_pct), Constraint::Percentage(right_pct)])
+            .constraints([
+                Constraint::Percentage(left_pct),
+                Constraint::Percentage(right_pct),
+            ])
             .split(area);
         render::render_checklist(frame, layout[0], app);
         diff_preview::render_diff_preview(frame, layout[1], app);
@@ -228,13 +226,25 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
     frame.render_widget(block, area);
 
     let delta = results.new_score - results.old_score;
-    let delta_color = if delta > 0.0 { t.zone_green } else { t.zone_red };
-    let new_color = if results.new_score < 50.0 { t.zone_red }
-        else if results.new_score < 80.0 { t.zone_yellow }
-        else { t.zone_green };
-    let old_color = if results.old_score < 50.0 { t.zone_red }
-        else if results.old_score < 80.0 { t.zone_yellow }
-        else { t.zone_green };
+    let delta_color = if delta > 0.0 {
+        t.zone_green
+    } else {
+        t.zone_red
+    };
+    let new_color = if results.new_score < 50.0 {
+        t.zone_red
+    } else if results.new_score < 80.0 {
+        t.zone_yellow
+    } else {
+        t.zone_green
+    };
+    let old_color = if results.old_score < 50.0 {
+        t.zone_red
+    } else if results.old_score < 80.0 {
+        t.zone_yellow
+    } else {
+        t.zone_green
+    };
 
     let w = inner.width.saturating_sub(4) as usize;
 
@@ -244,12 +254,19 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
     if results.failed == 0 {
         lines.push(Line::from(Span::styled(
             "  All fixes applied successfully!",
-            Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(t.zone_green)
+                .add_modifier(Modifier::BOLD),
         )));
     } else {
         lines.push(Line::from(Span::styled(
-            format!("  {} fixes applied, {} failed", results.applied, results.failed),
-            Style::default().fg(t.zone_yellow).add_modifier(Modifier::BOLD),
+            format!(
+                "  {} fixes applied, {} failed",
+                results.applied, results.failed
+            ),
+            Style::default()
+                .fg(t.zone_yellow)
+                .add_modifier(Modifier::BOLD),
         )));
     }
     lines.push(Line::raw(""));
@@ -270,7 +287,10 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
     let old_empty = w.min(40).saturating_sub(old_filled);
     lines.push(Line::from(vec![
         Span::styled("  Before: ", Style::default().fg(t.muted)),
-        Span::styled("\u{2588}".repeat(old_filled), Style::default().fg(old_color)),
+        Span::styled(
+            "\u{2588}".repeat(old_filled),
+            Style::default().fg(old_color),
+        ),
         Span::styled("\u{2591}".repeat(old_empty), Style::default().fg(t.muted)),
         Span::styled(
             format!(" {:.0}/100", results.old_score),
@@ -284,7 +304,10 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
     let new_empty = w.min(40).saturating_sub(new_filled);
     lines.push(Line::from(vec![
         Span::styled("  After:  ", Style::default().fg(t.muted)),
-        Span::styled("\u{2588}".repeat(new_filled), Style::default().fg(new_color)),
+        Span::styled(
+            "\u{2588}".repeat(new_filled),
+            Style::default().fg(new_color),
+        ),
         Span::styled("\u{2591}".repeat(new_empty), Style::default().fg(t.muted)),
         Span::styled(
             format!(" {:.0}/100", results.new_score),
@@ -298,7 +321,9 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
         Span::styled("  Change: ", Style::default().fg(t.muted)),
         Span::styled(
             format!("{delta:+.0} points"),
-            Style::default().fg(delta_color).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(delta_color)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             format!("  ({} fixes applied)", results.applied),
@@ -320,7 +345,9 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
         Span::styled("  Status: ", Style::default().fg(t.muted)),
         Span::styled(
             zone_label.0,
-            Style::default().fg(zone_label.1).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(zone_label.1)
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
 
@@ -339,41 +366,68 @@ fn render_fix_results(frame: &mut Frame, area: Rect, results: &FixResults) {
     if results.new_score < 50.0 {
         lines.push(Line::from(vec![
             Span::styled("  1. ", Style::default().fg(t.accent)),
-            Span::styled("Run scan (S) to find remaining critical issues", Style::default().fg(t.fg)),
+            Span::styled(
+                "Run scan (S) to find remaining critical issues",
+                Style::default().fg(t.fg),
+            ),
         ]));
         lines.push(Line::from(vec![
             Span::styled("  2. ", Style::default().fg(t.accent)),
-            Span::styled("Focus on CRITICAL and HIGH severity findings", Style::default().fg(t.fg)),
+            Span::styled(
+                "Focus on CRITICAL and HIGH severity findings",
+                Style::default().fg(t.fg),
+            ),
         ]));
         lines.push(Line::from(vec![
             Span::styled("  3. ", Style::default().fg(t.accent)),
-            Span::styled("Create required documentation (FRIA, transparency)", Style::default().fg(t.fg)),
+            Span::styled(
+                "Create required documentation (FRIA, transparency)",
+                Style::default().fg(t.fg),
+            ),
         ]));
     } else if results.new_score < 80.0 {
         lines.push(Line::from(vec![
             Span::styled("  1. ", Style::default().fg(t.accent)),
-            Span::styled("Run scan (S) to verify improvements", Style::default().fg(t.fg)),
+            Span::styled(
+                "Run scan (S) to verify improvements",
+                Style::default().fg(t.fg),
+            ),
         ]));
         lines.push(Line::from(vec![
             Span::styled("  2. ", Style::default().fg(t.accent)),
-            Span::styled("Address remaining HIGH severity findings", Style::default().fg(t.fg)),
+            Span::styled(
+                "Address remaining HIGH severity findings",
+                Style::default().fg(t.fg),
+            ),
         ]));
         lines.push(Line::from(vec![
             Span::styled("  3. ", Style::default().fg(t.accent)),
-            Span::styled("Export compliance report (R, then e)", Style::default().fg(t.fg)),
+            Span::styled(
+                "Export compliance report (R, then e)",
+                Style::default().fg(t.fg),
+            ),
         ]));
     } else {
         lines.push(Line::from(vec![
             Span::styled("  1. ", Style::default().fg(t.accent)),
-            Span::styled("Export compliance report (R, then e)", Style::default().fg(t.fg)),
+            Span::styled(
+                "Export compliance report (R, then e)",
+                Style::default().fg(t.fg),
+            ),
         ]));
         lines.push(Line::from(vec![
             Span::styled("  2. ", Style::default().fg(t.accent)),
-            Span::styled("Enable watch mode (w) for continuous monitoring", Style::default().fg(t.fg)),
+            Span::styled(
+                "Enable watch mode (w) for continuous monitoring",
+                Style::default().fg(t.fg),
+            ),
         ]));
         lines.push(Line::from(vec![
             Span::styled("  3. ", Style::default().fg(t.accent)),
-            Span::styled("Set up Agent Passport (P) for AI system identity", Style::default().fg(t.fg)),
+            Span::styled(
+                "Set up Agent Passport (P) for AI system identity",
+                Style::default().fg(t.fg),
+            ),
         ]));
     }
 

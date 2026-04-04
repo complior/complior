@@ -2,7 +2,12 @@ use crate::config::TuiConfig;
 
 use super::common::{ensure_engine, resolve_project_path};
 
-pub async fn run_supply_chain(json: bool, models: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+pub async fn run_supply_chain(
+    json: bool,
+    models: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     if models {
         return run_models(json, path, config).await;
     }
@@ -26,7 +31,10 @@ async fn run_audit(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     match client.post_json("/supply-chain", &body).await {
         Ok(value) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&value).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&value).unwrap_or_default()
+                );
             } else {
                 print_supply_chain_human(&value);
             }
@@ -48,7 +56,10 @@ async fn run_models(json: bool, _path: Option<&str>, config: &TuiConfig) -> i32 
     match client.get_json("/supply-chain/models").await {
         Ok(value) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&value).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&value).unwrap_or_default()
+                );
             } else {
                 print_models_human(&value);
             }
@@ -64,7 +75,10 @@ async fn run_models(json: bool, _path: Option<&str>, config: &TuiConfig) -> i32 
 fn print_supply_chain_human(value: &serde_json::Value) {
     println!("\n=== Supply Chain Audit ===\n");
 
-    if let Some(total) = value.get("totalDependencies").and_then(serde_json::Value::as_u64) {
+    if let Some(total) = value
+        .get("totalDependencies")
+        .and_then(serde_json::Value::as_u64)
+    {
         println!("Total dependencies: {total}");
     }
     if let Some(ai) = value.get("aiSdkCount").and_then(serde_json::Value::as_u64) {
@@ -94,8 +108,14 @@ fn print_supply_chain_human(value: &serde_json::Value) {
             println!("\n--- Risks ({}) ---\n", risks.len());
             for risk in risks {
                 let severity = risk.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
-                let desc = risk.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                let article = risk.get("articleRef").and_then(|v| v.as_str()).unwrap_or("");
+                let desc = risk
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let article = risk
+                    .get("articleRef")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 let sev_tag = match severity {
                     "critical" => "CRITICAL",
                     "high" => "HIGH",
@@ -109,32 +129,39 @@ fn print_supply_chain_human(value: &serde_json::Value) {
 
     // Print detected models
     if let Some(models) = value.get("detectedModels").and_then(|v| v.as_array())
-        && !models.is_empty() {
-            println!("\n--- Detected Models ---\n");
-            for m in models {
-                if let Some(id) = m.as_str() {
-                    println!("  - {id}");
-                }
+        && !models.is_empty()
+    {
+        println!("\n--- Detected Models ---\n");
+        for m in models {
+            if let Some(id) = m.as_str() {
+                println!("  - {id}");
             }
         }
+    }
 
     // Print registry cards
     if let Some(cards) = value.get("registryCards").and_then(|v| v.as_array())
-        && !cards.is_empty() {
-            println!("\n--- Registry Cards ---\n");
-            for card in cards {
-                let name = card.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                let provider = card.get("provider").and_then(|p| p.get("name")).and_then(|v| v.as_str()).unwrap_or("?");
-                let systemic = card.get("riskLevel").and_then(|v| v.as_str()) == Some("gpai_systemic");
-                let license = card.get("assessments")
-                    .and_then(|a| a.get("eu-ai-act"))
-                    .and_then(|e| e.get("license"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("?");
-                let systemic_tag = if systemic { " [SYSTEMIC]" } else { "" };
-                println!("  {name} ({provider}) — {license}{systemic_tag}");
-            }
+        && !cards.is_empty()
+    {
+        println!("\n--- Registry Cards ---\n");
+        for card in cards {
+            let name = card.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+            let provider = card
+                .get("provider")
+                .and_then(|p| p.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let systemic = card.get("riskLevel").and_then(|v| v.as_str()) == Some("gpai_systemic");
+            let license = card
+                .get("assessments")
+                .and_then(|a| a.get("eu-ai-act"))
+                .and_then(|e| e.get("license"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let systemic_tag = if systemic { " [SYSTEMIC]" } else { "" };
+            println!("  {name} ({provider}) — {license}{systemic_tag}");
         }
+    }
 
     println!();
 }
@@ -149,12 +176,22 @@ fn print_models_human(value: &serde_json::Value) {
         }
         for card in models {
             let name = card.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-            let provider = card.get("provider").and_then(|p| p.get("name")).and_then(|v| v.as_str()).unwrap_or("?");
+            let provider = card
+                .get("provider")
+                .and_then(|p| p.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
             let slug = card.get("slug").and_then(|v| v.as_str()).unwrap_or("?");
             let systemic = card.get("riskLevel").and_then(|v| v.as_str()) == Some("gpai_systemic");
             let assessment = card.get("assessments").and_then(|a| a.get("eu-ai-act"));
-            let license = assessment.and_then(|e| e.get("license")).and_then(|v| v.as_str()).unwrap_or("?");
-            let cutoff = assessment.and_then(|e| e.get("training_cutoff")).and_then(|v| v.as_str()).unwrap_or("unknown");
+            let license = assessment
+                .and_then(|e| e.get("license"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let cutoff = assessment
+                .and_then(|e| e.get("training_cutoff"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
 
             let systemic_tag = if systemic { " [SYSTEMIC RISK]" } else { "" };
             println!("  {name} ({slug})");
@@ -169,7 +206,10 @@ fn print_models_human(value: &serde_json::Value) {
                 }
             }
 
-            if let Some(risk_reasoning) = assessment.and_then(|e| e.get("risk_reasoning")).and_then(|v| v.as_str()) {
+            if let Some(risk_reasoning) = assessment
+                .and_then(|e| e.get("risk_reasoning"))
+                .and_then(|v| v.as_str())
+            {
                 println!("    - {risk_reasoning}");
             }
             println!();

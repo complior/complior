@@ -1,8 +1,7 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind, MouseButton};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 
 use crate::app::App;
 use crate::types::{ClickTarget, InputMode, Overlay, Panel, ViewState};
-
 
 /// User actions produced by keyboard/mouse input mapping.
 ///
@@ -279,10 +278,16 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         // '/' opens code search when in CodeViewer, command mode otherwise
         KeyCode::Char('/') if app.active_panel == Panel::CodeViewer => Action::CodeSearch,
         KeyCode::Char('/') => Action::EnterCommandMode,
-        KeyCode::Char('n') if app.active_panel == Panel::CodeViewer
-            && app.code_search_query.is_some() => Action::CodeSearchNext,
-        KeyCode::Char('N') if app.active_panel == Panel::CodeViewer
-            && app.code_search_query.is_some() => Action::CodeSearchPrev,
+        KeyCode::Char('n')
+            if app.active_panel == Panel::CodeViewer && app.code_search_query.is_some() =>
+        {
+            Action::CodeSearchNext
+        }
+        KeyCode::Char('N')
+            if app.active_panel == Panel::CodeViewer && app.code_search_query.is_some() =>
+        {
+            Action::CodeSearchPrev
+        }
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
         KeyCode::Char('g') if app.view_state != ViewState::Passport => Action::ScrollToTop,
@@ -294,8 +299,7 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char('@') => Action::ShowFilePicker,
         // Uppercase letter-key view switching (avoids conflict with lowercase ViewKey chars)
-        KeyCode::Char(c @ ('C' | 'D' | 'F' | 'L' | 'O' | 'P' | 'R' | 'S' | 'T')) =>
-        {
+        KeyCode::Char(c @ ('C' | 'D' | 'F' | 'L' | 'O' | 'P' | 'R' | 'S' | 'T')) => {
             if let Some(view) = ViewState::from_letter(c) {
                 Action::SwitchView(view)
             } else {
@@ -304,7 +308,17 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         }
         KeyCode::Enter => match app.active_panel {
             Panel::FileBrowser => Action::OpenFile,
-            _ if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Passport | ViewState::Obligations | ViewState::Report) => Action::ViewEnter,
+            _ if matches!(
+                app.view_state,
+                ViewState::Scan
+                    | ViewState::Fix
+                    | ViewState::Passport
+                    | ViewState::Obligations
+                    | ViewState::Report
+            ) =>
+            {
+                Action::ViewEnter
+            }
             _ => Action::SubmitInput,
         },
         KeyCode::Char(' ') if app.view_state == ViewState::Fix => Action::ViewKey(' '),
@@ -313,23 +327,44 @@ fn handle_normal_mode(key: KeyEvent, app: &App) -> Action {
         KeyCode::Char('n') if app.active_panel == Panel::DiffPreview => Action::RejectDiff,
         KeyCode::Backspace if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific Esc
-        KeyCode::Esc if matches!(app.view_state, ViewState::Scan | ViewState::Fix | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Report | ViewState::Timeline | ViewState::Log | ViewState::Chat) => {
+        KeyCode::Esc
+            if matches!(
+                app.view_state,
+                ViewState::Scan
+                    | ViewState::Fix
+                    | ViewState::Dashboard
+                    | ViewState::Passport
+                    | ViewState::Obligations
+                    | ViewState::Report
+                    | ViewState::Timeline
+                    | ViewState::Log
+                    | ViewState::Chat
+            ) =>
+        {
             Action::ViewEscape
         }
         KeyCode::Esc if app.active_panel == Panel::CodeViewer => Action::CloseFile,
         // View-specific char keys — all interactive views
-        KeyCode::Char(c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'g' | 'n' | 'p' | 'x' | 'o' | '<' | '>'))
-            if matches!(
-                app.view_state,
-                ViewState::Scan | ViewState::Fix | ViewState::Report | ViewState::Dashboard | ViewState::Passport | ViewState::Obligations | ViewState::Timeline | ViewState::Log | ViewState::Chat
-            ) =>
+        KeyCode::Char(
+            c @ ('a' | 'c' | 'h' | 'm' | 'l' | 'f' | 'd' | 'e' | 'g' | 'n' | 'p' | 'x' | 'o' | '<'
+            | '>'),
+        ) if matches!(
+            app.view_state,
+            ViewState::Scan
+                | ViewState::Fix
+                | ViewState::Report
+                | ViewState::Dashboard
+                | ViewState::Passport
+                | ViewState::Obligations
+                | ViewState::Timeline
+                | ViewState::Log
+                | ViewState::Chat
+        ) =>
         {
             Action::ViewKey(c)
         }
         // Number keys for Report view generator selection
-        KeyCode::Char(c @ ('1'..='9')) if app.view_state == ViewState::Report => {
-            Action::ViewKey(c)
-        }
+        KeyCode::Char(c @ ('1'..='9')) if app.view_state == ViewState::Report => Action::ViewKey(c),
         _ => Action::None,
     }
 }

@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Gauge, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::theme;
 
@@ -60,7 +60,7 @@ pub(super) fn render_header(
         Constraint::Length(1), // progress gauge
         Constraint::Length(1), // spacer
         Constraint::Length(3), // description
-        Constraint::Min(1),   // remaining content
+        Constraint::Min(1),    // remaining content
     ])
     .split(area);
 
@@ -396,7 +396,10 @@ pub(super) fn render_text_input(
             };
 
             lines.push(Line::from(vec![
-                Span::styled("  > ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "  > ",
+                    Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(display, Style::default().fg(t.fg)),
                 Span::styled("_", Style::default().fg(t.accent)),
             ]));
@@ -426,7 +429,10 @@ pub(super) fn render_text_input(
                     ("\u{2717} ", t.zone_red) // ✗
                 };
                 lines.push(Line::from(vec![
-                    Span::styled(format!("  {icon}"), Style::default().fg(color).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        format!("  {icon}"),
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(msg.as_str(), Style::default().fg(color)),
                 ]));
                 lines.push(Line::default());
@@ -550,8 +556,8 @@ pub(super) fn render_summary_complete(
         .result_summary
         .as_deref()
         .unwrap_or("Default profile applied.");
-    let body = Paragraph::new(Span::styled(summary, Style::default().fg(t.fg)))
-        .wrap(Wrap { trim: true });
+    let body =
+        Paragraph::new(Span::styled(summary, Style::default().fg(t.fg))).wrap(Wrap { trim: true });
     frame.render_widget(body, chunks[1]);
 
     let footer = Paragraph::new(Span::styled(

@@ -1,8 +1,8 @@
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
-use super::*;
 use super::tests_helpers::render_to_string;
+use super::*;
 
 #[test]
 fn snapshot_dashboard_default() {
@@ -42,9 +42,7 @@ fn test_stub_pages_render_without_panic() {
 
     // Passport stub page
     terminal
-        .draw(|frame| {
-            super::super::passport::render_passport_view(frame, frame.area(), &app)
-        })
+        .draw(|frame| super::super::passport::render_passport_view(frame, frame.area(), &app))
         .expect("passport render");
 }
 

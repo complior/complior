@@ -1,10 +1,10 @@
 use std::time::Instant;
 
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
-use ratatui::Frame;
 
 use crate::theme;
 
@@ -83,7 +83,6 @@ impl ToastStack {
         let start = self.toasts.len().saturating_sub(MAX_VISIBLE);
         &self.toasts[start..]
     }
-
 }
 
 /// Render toast stack as overlay in upper-right corner.
@@ -196,10 +195,14 @@ mod tests {
         }
         // Oldest "msg0" evicted; "msg5" is newest
         assert_eq!(stack.toasts.len(), MAX_VISIBLE);
-        assert!(!stack.toasts.iter().any(|t| t.message == "msg0"),
-            "oldest toast should be evicted");
-        assert!(stack.toasts.iter().any(|t| t.message == "msg5"),
-            "newest toast should be present");
+        assert!(
+            !stack.toasts.iter().any(|t| t.message == "msg0"),
+            "oldest toast should be evicted"
+        );
+        assert!(
+            stack.toasts.iter().any(|t| t.message == "msg5"),
+            "newest toast should be present"
+        );
     }
 
     /// All 4 toast kinds have distinct markers.
@@ -207,9 +210,9 @@ mod tests {
     fn test_toast_4_kinds() {
         let kinds = [
             (ToastKind::Success, "[OK]"),
-            (ToastKind::Info,    "[i]"),
+            (ToastKind::Info, "[i]"),
             (ToastKind::Warning, "[!]"),
-            (ToastKind::Error,   "[X]"),
+            (ToastKind::Error, "[X]"),
         ];
         for (kind, expected_marker) in kinds {
             assert_eq!(kind.marker(), expected_marker);

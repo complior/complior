@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
-use ratatui::Frame;
 
 use crate::theme;
 
@@ -30,9 +30,20 @@ const COMMANDS: &[(&str, &str)] = &[
 
 /// Colon commands — used for tab completion in colon mode.
 pub const COLON_COMMANDS: &[&str] = &[
-    "agent", "scan", "fix", "status", "explain", "report",
-    "theme", "export", "watch", "quit", "help",
-    "undo", "view", "animations",
+    "agent",
+    "scan",
+    "fix",
+    "status",
+    "explain",
+    "report",
+    "theme",
+    "export",
+    "watch",
+    "quit",
+    "help",
+    "undo",
+    "view",
+    "animations",
 ];
 
 /// Complete a partial colon-mode command against known commands.
@@ -110,7 +121,10 @@ pub fn render_command_palette(frame: &mut Frame, filter: &str, selected: usize) 
         .map(|(i, (cmd, desc))| {
             let (cmd_style, desc_style) = if i == selected {
                 (
-                    Style::default().fg(t.bg).bg(t.accent).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(t.bg)
+                        .bg(t.accent)
+                        .add_modifier(Modifier::BOLD),
                     Style::default().fg(t.bg).bg(t.accent),
                 )
             } else {

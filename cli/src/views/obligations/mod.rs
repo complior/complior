@@ -102,12 +102,14 @@ impl ObligationsViewState {
                 ObligationFilter::All => true,
                 ObligationFilter::RoleProvider => o.role == "provider" || o.role == "both",
                 ObligationFilter::RoleDeployer => o.role == "deployer" || o.role == "both",
-                ObligationFilter::RiskHigh => {
-                    o.risk_levels.iter().any(|r| r == "high" || r == "unacceptable")
-                }
-                ObligationFilter::RiskLimited => {
-                    o.risk_levels.iter().any(|r| r == "limited" || r == "minimal")
-                }
+                ObligationFilter::RiskHigh => o
+                    .risk_levels
+                    .iter()
+                    .any(|r| r == "high" || r == "unacceptable"),
+                ObligationFilter::RiskLimited => o
+                    .risk_levels
+                    .iter()
+                    .any(|r| r == "limited" || r == "minimal"),
                 ObligationFilter::CoveredOnly => o.covered,
                 ObligationFilter::UncoveredOnly => !o.covered,
                 ObligationFilter::SeverityCritical => o.severity == "critical",
@@ -154,7 +156,10 @@ impl ObligationsViewState {
                         .and_then(|t| t.as_str())
                         .unwrap_or("")
                         .to_string(),
-                    covered: v.get("covered").and_then(serde_json::Value::as_bool).unwrap_or(false),
+                    covered: v
+                        .get("covered")
+                        .and_then(serde_json::Value::as_bool)
+                        .unwrap_or(false),
                     description: v
                         .get("description")
                         .and_then(|d| d.as_str())

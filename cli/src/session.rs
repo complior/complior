@@ -52,9 +52,10 @@ pub async fn list_sessions() -> Vec<String> {
     while let Ok(Some(entry)) = entries.next_entry().await {
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "json")
-            && let Some(stem) = path.file_stem() {
-                names.push(stem.to_string_lossy().to_string());
-            }
+            && let Some(stem) = path.file_stem()
+        {
+            names.push(stem.to_string_lossy().to_string());
+        }
     }
 
     names.sort();
@@ -76,10 +77,7 @@ mod tests {
     #[test]
     fn test_session_roundtrip() {
         let data = SessionData {
-            messages: vec![ChatMessage::new(
-                MessageRole::System,
-                "test".to_string(),
-            )],
+            messages: vec![ChatMessage::new(MessageRole::System, "test".to_string())],
             score_history: vec![42.0, 65.0],
             open_file_path: Some("src/main.rs".to_string()),
             terminal_output: vec!["$ ls".to_string()],

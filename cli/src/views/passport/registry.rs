@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -53,10 +53,7 @@ pub(super) fn render_registry_panel(frame: &mut Frame, area: Rect, app: &App) {
                 )));
 
                 for agent in agents {
-                    let name = agent
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("?");
+                    let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                     let score = agent
                         .get("complianceScore")
                         .and_then(serde_json::Value::as_f64)
@@ -69,10 +66,7 @@ pub(super) fn render_registry_panel(frame: &mut Frame, area: Rect, app: &App) {
                         .get("friaStatus")
                         .and_then(|v| v.as_str())
                         .unwrap_or("?");
-                    let grade = agent
-                        .get("grade")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("?");
+                    let grade = agent.get("grade").and_then(|v| v.as_str()).unwrap_or("?");
 
                     let truncated_name = crate::views::truncate_str(name, 16);
                     let score_color = crate::views::score_zone_color(score, &t);
@@ -89,22 +83,10 @@ pub(super) fn render_registry_panel(frame: &mut Frame, area: Rect, app: &App) {
                     };
 
                     lines.push(Line::from(vec![
-                        Span::styled(
-                            format!("  {truncated_name:<16}"),
-                            Style::default().fg(t.fg),
-                        ),
-                        Span::styled(
-                            format!(" {score:>5.0}"),
-                            Style::default().fg(score_color),
-                        ),
-                        Span::styled(
-                            format!(" {passport_pct:>5.0}"),
-                            Style::default().fg(t.fg),
-                        ),
-                        Span::styled(
-                            format!("   {fria_short:>2}"),
-                            Style::default().fg(t.fg),
-                        ),
+                        Span::styled(format!("  {truncated_name:<16}"), Style::default().fg(t.fg)),
+                        Span::styled(format!(" {score:>5.0}"), Style::default().fg(score_color)),
+                        Span::styled(format!(" {passport_pct:>5.0}"), Style::default().fg(t.fg)),
+                        Span::styled(format!("   {fria_short:>2}"), Style::default().fg(t.fg)),
                         Span::styled(
                             format!("     {grade}"),
                             Style::default()
@@ -152,8 +134,5 @@ pub(super) fn render_registry_panel(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("Back", Style::default().fg(t.fg)),
     ]));
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
 }

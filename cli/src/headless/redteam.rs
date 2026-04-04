@@ -1,21 +1,47 @@
+use super::common::ensure_engine;
 use crate::cli::RedteamAction;
 use crate::config::TuiConfig;
-use super::common::ensure_engine;
 
 pub async fn run_redteam_command(action: &RedteamAction, config: &TuiConfig) -> i32 {
     match action {
-        RedteamAction::Run { agent, categories, max_probes, json } => {
-            run_redteam_run(agent, categories, *max_probes, *json, config).await
-        }
-        RedteamAction::Last { json } => {
-            run_redteam_last(*json, config).await
-        }
-        RedteamAction::Target { url, json, ci, threshold } => {
+        RedteamAction::Run {
+            agent,
+            categories,
+            max_probes,
+            json,
+        } => run_redteam_run(agent, categories, *max_probes, *json, config).await,
+        RedteamAction::Last { json } => run_redteam_last(*json, config).await,
+        RedteamAction::Target {
+            url,
+            json,
+            ci,
+            threshold,
+        } => {
             // Alias: complior redteam target <url> → eval --security
             super::eval::run_eval_command(
-                url, false, false, true, false, None, &[], *json, *ci, *threshold,
-                None, None, None, None, None, false, 5, false, false, None, config,
-            ).await
+                url,
+                false,
+                false,
+                true,
+                false,
+                None,
+                &[],
+                *json,
+                *ci,
+                *threshold,
+                None,
+                None,
+                None,
+                None,
+                None,
+                false,
+                5,
+                false,
+                false,
+                None,
+                config,
+            )
+            .await
         }
     }
 }
@@ -45,13 +71,19 @@ async fn run_redteam_run(
     match client.post_json("/redteam/run", &body).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -74,13 +106,19 @@ async fn run_redteam_last(json: bool, config: &TuiConfig) -> i32 {
     match client.get_json("/redteam/last").await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err_msg);
+                let msg = result
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(err_msg);
                 eprintln!("Error: {msg}");
                 return 1;
             }
 
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 
@@ -95,16 +133,46 @@ async fn run_redteam_last(json: bool, config: &TuiConfig) -> i32 {
 }
 
 fn format_redteam_report(report: &serde_json::Value) {
-    let agent = report.get("agentName").and_then(|v| v.as_str()).unwrap_or("?");
-    let total = report.get("totalProbes").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let passed = report.get("passCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let failed = report.get("failCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let inconclusive = report.get("inconclusiveCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let duration = report.get("duration").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let agent = report
+        .get("agentName")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let total = report
+        .get("totalProbes")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let passed = report
+        .get("passCount")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let failed = report
+        .get("failCount")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let inconclusive = report
+        .get("inconclusiveCount")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let duration = report
+        .get("duration")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
 
-    let score = report.get("securityScore").and_then(|s| s.get("score")).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-    let grade = report.get("securityScore").and_then(|s| s.get("grade")).and_then(|v| v.as_str()).unwrap_or("?");
-    let capped = report.get("securityScore").and_then(|s| s.get("criticalCapped")).and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let score = report
+        .get("securityScore")
+        .and_then(|s| s.get("score"))
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(0.0);
+    let grade = report
+        .get("securityScore")
+        .and_then(|s| s.get("grade"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let capped = report
+        .get("securityScore")
+        .and_then(|s| s.get("criticalCapped"))
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
 
     println!();
     println!("  Red-Team Security Report: {agent}");
@@ -113,7 +181,8 @@ fn format_redteam_report(report: &serde_json::Value) {
 
     // Score bar
     let filled = (score / 100.0 * 30.0) as usize;
-    let bar: String = format!("[{}{}] {:.0}/100 ({})",
+    let bar: String = format!(
+        "[{}{}] {:.0}/100 ({})",
         "#".repeat(filled),
         "-".repeat(30 - filled),
         score,
@@ -126,29 +195,58 @@ fn format_redteam_report(report: &serde_json::Value) {
     }
 
     println!();
-    println!("  Probes: {total} total | {passed} passed | {failed} failed | {inconclusive} inconclusive");
+    println!(
+        "  Probes: {total} total | {passed} passed | {failed} failed | {inconclusive} inconclusive"
+    );
     println!("  Duration: {:.1}s", duration as f64 / 1000.0);
 
     // OWASP category breakdown
     if let Some(mapping) = report.get("owaspMapping").and_then(|v| v.as_object()) {
         println!();
-        println!("  {:<8} {:<28} {:>6} {:>7} {:>7} {:>7}", "ID", "CATEGORY", "SCORE", "PASS", "FAIL", "TOTAL");
+        println!(
+            "  {:<8} {:<28} {:>6} {:>7} {:>7} {:>7}",
+            "ID", "CATEGORY", "SCORE", "PASS", "FAIL", "TOTAL"
+        );
         println!("  {}", "-".repeat(68));
 
         let mut entries: Vec<_> = mapping.iter().collect();
         entries.sort_by_key(|(k, _)| (*k).clone());
 
         for (_, cat) in entries {
-            let cat_id = cat.get("categoryId").and_then(|v| v.as_str()).unwrap_or("?");
-            let cat_name = cat.get("categoryName").and_then(|v| v.as_str()).unwrap_or("?");
-            let cat_score = cat.get("score").and_then(serde_json::Value::as_f64).unwrap_or(0.0);
-            let cat_pass = cat.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let cat_fail = cat.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let cat_total = cat.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let cat_id = cat
+                .get("categoryId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let cat_name = cat
+                .get("categoryName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let cat_score = cat
+                .get("score")
+                .and_then(serde_json::Value::as_f64)
+                .unwrap_or(0.0);
+            let cat_pass = cat
+                .get("passed")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let cat_fail = cat
+                .get("failed")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let cat_total = cat
+                .get("total")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
 
             // Truncate long names
-            let name = if cat_name.len() > 26 { &cat_name[..26] } else { cat_name };
-            println!("  {cat_id:<8} {name:<28} {cat_score:>5.0}% {cat_pass:>7} {cat_fail:>7} {cat_total:>7}");
+            let name = if cat_name.len() > 26 {
+                &cat_name[..26]
+            } else {
+                cat_name
+            };
+            println!(
+                "  {cat_id:<8} {name:<28} {cat_score:>5.0}% {cat_pass:>7} {cat_fail:>7} {cat_total:>7}"
+            );
         }
     }
 

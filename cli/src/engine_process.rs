@@ -124,12 +124,9 @@ impl EngineManager {
         // Source 1: project's .complior/.env (user's API keys)
         // Source 2: parent process env (CI, terminal export, etc.)
         // Project .complior/.env has priority — user's explicit config wins.
-        let mut forwarded_keys: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-        let api_key_names = [
-            "OPENROUTER_API_KEY",
-            "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY",
-        ];
+        let mut forwarded_keys: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+        let api_key_names = ["OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"];
 
         // Load from parent env first (lower priority)
         for key in &api_key_names {
@@ -144,10 +141,14 @@ impl EngineManager {
             if let Ok(content) = std::fs::read_to_string(&env_file) {
                 for line in content.lines() {
                     let trimmed = line.trim();
-                    if trimmed.is_empty() || trimmed.starts_with('#') { continue; }
+                    if trimmed.is_empty() || trimmed.starts_with('#') {
+                        continue;
+                    }
                     if let Some(eq_pos) = trimmed.find('=') {
                         let key = trimmed[..eq_pos].trim();
-                        let val = trimmed[eq_pos + 1..].trim().trim_matches(|c| c == '"' || c == '\'');
+                        let val = trimmed[eq_pos + 1..]
+                            .trim()
+                            .trim_matches(|c| c == '"' || c == '\'');
                         if api_key_names.contains(&key) {
                             forwarded_keys.insert(key.to_string(), val.to_string());
                         }
@@ -224,11 +225,15 @@ impl EngineManager {
             {
                 // Kill the entire process group (npx + tsx + node) via negative PID
                 let pid = child.id() as i32;
-                unsafe { libc::kill(-pid, libc::SIGTERM); }
+                unsafe {
+                    libc::kill(-pid, libc::SIGTERM);
+                }
                 // Give processes a moment to exit gracefully
                 std::thread::sleep(std::time::Duration::from_millis(200));
                 // Force kill if still alive
-                unsafe { libc::kill(-pid, libc::SIGKILL); }
+                unsafe {
+                    libc::kill(-pid, libc::SIGKILL);
+                }
             }
             #[cfg(not(unix))]
             {

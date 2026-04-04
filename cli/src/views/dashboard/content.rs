@@ -1,14 +1,17 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
 use crate::types::Panel;
 
-use super::panels::{render_activity_log, render_focused_framework_gauge, render_framework_cards, render_info_panel, render_score_gauge};
+use super::panels::{
+    render_activity_log, render_focused_framework_gauge, render_framework_cards, render_info_panel,
+    render_score_gauge,
+};
 
 /// Dashboard content area -- two-column layout.
 ///
@@ -44,7 +47,11 @@ pub(super) fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App)
     let top_split = if has_agents {
         Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Length(3), Constraint::Min(8)])
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Length(3),
+                Constraint::Min(8),
+            ])
             .split(area)
     } else {
         Layout::default()
@@ -76,7 +83,11 @@ pub(super) fn render_dashboard_content(frame: &mut Frame, area: Rect, app: &App)
     }
 
     // Two-column: Left 60% | Right 40%
-    let content_area = if has_agents { top_split[2] } else { top_split[1] };
+    let content_area = if has_agents {
+        top_split[2]
+    } else {
+        top_split[1]
+    };
     let h_split = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
@@ -111,13 +122,16 @@ fn render_agent_strip(frame: &mut Frame, area: Rect, app: &App) {
 
     let mut spans: Vec<Span> = Vec::new();
     for (i, passport) in app.passport_view.loaded_passports.iter().enumerate() {
-        let name = passport.get("name")
+        let name = passport
+            .get("name")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
-        let autonomy = passport.get("autonomy_level")
+        let autonomy = passport
+            .get("autonomy_level")
             .and_then(|v| v.as_str())
             .unwrap_or("?");
-        let score = passport.get("compliance")
+        let score = passport
+            .get("compliance")
             .and_then(|c| c.get("complior_score"))
             .and_then(serde_json::Value::as_f64)
             .unwrap_or(0.0);
@@ -165,7 +179,10 @@ pub(super) fn render_score_history_line(frame: &mut Frame, area: Rect, app: &App
     }
 
     // Text sparkline using block characters
-    let sparkline_chars = ['\u{2581}', '\u{2582}', '\u{2583}', '\u{2584}', '\u{2585}', '\u{2586}', '\u{2587}', '\u{2588}'];
+    let sparkline_chars = [
+        '\u{2581}', '\u{2582}', '\u{2583}', '\u{2584}', '\u{2585}', '\u{2586}', '\u{2587}',
+        '\u{2588}',
+    ];
     let sparkline: String = app
         .score_history
         .iter()

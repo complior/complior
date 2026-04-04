@@ -26,7 +26,6 @@ impl WhatIfState {
             pending: false,
         }
     }
-
 }
 
 /// Render what-if result as a chat message block.
