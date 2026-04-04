@@ -143,7 +143,10 @@ pub enum Command {
     Version,
 
     /// Diagnose system health (engine connection, config, etc.)
-    Doctor,
+    Doctor {
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
 
     /// Generate compliance report (markdown or PDF)
     Report {
@@ -1003,7 +1006,7 @@ pub fn needs_engine(cli: &Cli) -> bool {
 pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
     let raw = match &cli.command {
         Some(Command::Scan { path, .. } | Command::Fix { path, .. } | Command::Init {
-path, .. } | Command::Report { path, .. }) => path.as_deref(),
+path, .. } | Command::Report { path, .. } | Command::Doctor { path, .. }) => path.as_deref(),
         Some(Command::Eval { path, .. }) => path.as_deref(),
         Some(Command::Agent { action }) => match action {
             AgentAction::Init { path, .. }
@@ -1045,10 +1048,24 @@ path, .. } | Command::Report { path, .. }) => path.as_deref(),
     })
 }
 
+/// Returns true if the command produces machine-readable output (JSON/SARIF)
+/// and startup messages should be suppressed on stderr.
+pub fn wants_quiet_startup(cli: &Cli) -> bool {
+    matches!(
+        &cli.command,
+        Some(
+            Command::Scan { json: true, .. }
+                | Command::Scan { sarif: true, .. }
+                | Command::Fix { json: true, .. }
+                | Command::Eval { json: true, .. }
+        )
+    )
+}
+
 /// Returns true if the ephemeral engine should write a PID file to `.complior/`.
 /// Read-only commands like `doctor` should NOT create `.complior/` as a side effect.
 pub const fn wants_pid_file(cli: &Cli) -> bool {
-    !matches!(&cli.command, Some(Command::Doctor))
+    !matches!(&cli.command, Some(Command::Doctor { .. }))
 }
 
 /// Returns true if the CLI indicates a headless (non-TUI) invocation.
@@ -1058,7 +1075,7 @@ pub fn is_headless(cli: &Cli) -> bool {
             Command::Scan { .. }
             | Command::Fix { .. }
             | Command::Version
-            | Command::Doctor
+            | Command::Doctor { .. }
             | Command::Report { .. }
             | Command::Init { .. }
             | Command::Update
@@ -2602,5 +2619,55 @@ mod tests {
     fn cli_headless_detection_extras() {
         let audit_cli = Cli::parse_from(["complior", "audit", "http://localhost:4000"]);
         assert!(is_headless(&audit_cli));
+    }
+
+    #[test]
+    fn cli_wants_quiet_startup_json() {
+        let cli = Cli::parse_from(["complior", "scan", "--json"]);
+        assert!(wants_quiet_startup(&cli));
+
+        let cli = Cli::parse_from(["complior", "scan", "--sarif"]);
+        assert!(wants_quiet_startup(&cli));
+
+        let cli = Cli::parse_from(["complior", "fix", "--json"]);
+        assert!(wants_quiet_startup(&cli));
+
+        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--json"]);
+        assert!(wants_quiet_startup(&cli));
+    }
+
+    #[test]
+    fn cli_wants_quiet_startup_normal() {
+        let cli = Cli::parse_from(["complior", "scan"]);
+        assert!(!wants_quiet_startup(&cli));
+
+        let cli = Cli::parse_from(["complior", "fix"]);
+        assert!(!wants_quiet_startup(&cli));
+
+        let cli = Cli::parse_from(["complior"]);
+        assert!(!wants_quiet_startup(&cli));
+    }
+
+    #[test]
+    fn cli_parse_doctor_with_path() {
+        let cli = Cli::parse_from(["complior", "doctor", "/project"]);
+        match &cli.command {
+            Some(Command::Doctor { path }) => {
+                assert_eq!(path.as_deref(), Some("/project"));
+            }
+            _ => panic!("Expected Doctor command"),
+        }
+        assert!(is_headless(&cli));
+    }
+
+    #[test]
+    fn cli_parse_doctor_without_path() {
+        let cli = Cli::parse_from(["complior", "doctor"]);
+        match &cli.command {
+            Some(Command::Doctor { path }) => {
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Doctor command"),
+        }
     }
 }

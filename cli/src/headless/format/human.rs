@@ -199,7 +199,9 @@ fn render_score_block(o: &mut String, result: &ScanResult, opts: &FormatOptions)
 
     o.push_str(&format!("  {}\n", separator()));
 
-    if result.score.critical_cap_applied {
+    // Only show cap message if score is actually at/near the cap (40)
+    // If score > 50, the cap isn't limiting anything
+    if result.score.critical_cap_applied && result.score.total_score <= 50.0 {
         o.push_str(&format!(
             "  {}\n",
             bold_red("!! Score capped — critical violations limit maximum achievable score")

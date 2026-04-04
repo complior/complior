@@ -143,7 +143,9 @@ async fn main() -> color_eyre::Result<()> {
                 Ok(port) => {
                     config.engine_url_override = Some(format!("http://127.0.0.1:{port}"));
                     let client = engine_client::EngineClient::from_url(&format!("http://127.0.0.1:{port}"));
-                    eprintln!("Starting engine on port {port}...");
+                    if !cli::wants_quiet_startup(&parsed_cli) {
+                        eprintln!("Starting engine on port {port}...");
+                    }
                     if mgr.wait_for_ready(&client).await {
                         engine_guard = Some(mgr);
                     } else {
@@ -196,7 +198,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
             Some(cli::Command::Version) => { headless::run_version(); 0 }
-            Some(cli::Command::Doctor) => { headless::run_doctor(&config).await; 0 }
+            Some(cli::Command::Doctor { .. }) => { headless::run_doctor(&config).await; 0 }
             Some(cli::Command::Report { format, output, path }) => {
                 headless::run_report(format, output.as_deref(), path.as_deref(), &config).await
             }
@@ -214,7 +216,16 @@ async fn main() -> color_eyre::Result<()> {
                 if *last {
                     headless::eval::run_eval_last(*json, *failures, *ci, *threshold, &config).await
                 } else if let Some(target) = target {
-                    if *fix {
+                    if !target.starts_with("http://") && !target.starts_with("https://") {
+                        eprintln!("Error: eval target must be an HTTP(S) URL, got: {target}");
+                        eprintln!();
+                        eprintln!("Usage: complior eval <url> [--det] [--llm] [--security]");
+                        eprintln!("Example: complior eval http://localhost:4000/api/chat");
+                        eprintln!();
+                        eprintln!("Eval tests a running AI endpoint dynamically.");
+                        eprintln!("To scan local source code, use: complior scan {target}");
+                        1
+                    } else if *fix {
                         // Run eval then apply fixes
                         let code = headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, path.as_deref(), &config).await;
                         if code == 0 {

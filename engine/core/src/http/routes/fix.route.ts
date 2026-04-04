@@ -172,7 +172,20 @@ export const createFixRoute = (deps: FixRouteDeps) => {
           }
         };
 
-        const results = await fixService.applyAll(useAi, data.projectPath, onProgress);
+        // Send heartbeat every 15s to prevent idle timeout during long LLM calls
+        const heartbeat = setInterval(async () => {
+          try {
+            await stream.writeSSE({ event: 'heartbeat', data: JSON.stringify({ ts: Date.now() }) });
+          } catch { /* stream may be closed */ }
+        }, 15_000);
+
+        let results;
+        try {
+          results = await fixService.applyAll(useAi, data.projectPath, onProgress);
+        } finally {
+          clearInterval(heartbeat);
+        }
+
         const applied = results.filter((r) => r.applied).length;
         const failed = results.filter((r) => !r.applied).length;
         const scoreBefore = results[0]?.scoreBefore ?? currentScore;

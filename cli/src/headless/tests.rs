@@ -309,9 +309,19 @@ mod tests {
     fn format_human_critical_cap_warning() {
         let mut result = mock_scan_result();
         result.score.critical_cap_applied = true;
+        result.score.total_score = 40.0; // Cap only shows when score <= 50
         let text = format_human(&result, &default_opts());
         assert!(text.contains("Score capped"));
         assert!(text.contains("critical violations"));
+    }
+
+    #[test]
+    fn format_human_critical_cap_hidden_when_score_high() {
+        let mut result = mock_scan_result();
+        result.score.critical_cap_applied = true;
+        result.score.total_score = 78.0; // Flag set but score high — cap not limiting
+        let text = format_human(&result, &default_opts());
+        assert!(!text.contains("Score capped"), "cap message should be hidden when score > 50");
     }
 
     #[test]

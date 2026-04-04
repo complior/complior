@@ -825,6 +825,10 @@ async fn run_fix_stream(
                 let data = data.trim();
 
                 match current_event.as_str() {
+                    "heartbeat" => {
+                        // Keep-alive from engine during long LLM calls — skip silently
+                        continue;
+                    }
                     "fix:start" => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
                             total = parsed.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
