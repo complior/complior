@@ -111,7 +111,9 @@ impl SaasClient {
 
     pub async fn request_device_code(&self) -> Result<DeviceCodeResponse, String> {
         let url = format!("{}/api/auth/device", self.base_url);
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .header("Content-Type", "application/json")
             .body("{}")
             .send()
@@ -122,12 +124,16 @@ impl SaasClient {
             let body = resp.text().await.unwrap_or_default();
             return Err(format!("Device code request failed ({status}): {body}"));
         }
-        resp.json().await.map_err(|e| format!("Failed to parse device code response: {e}"))
+        resp.json()
+            .await
+            .map_err(|e| format!("Failed to parse device code response: {e}"))
     }
 
     pub async fn poll_token(&self, device_code: &str) -> Result<TokenPollResult, String> {
         let url = format!("{}/api/auth/token", self.base_url);
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .json(&serde_json::json!({ "deviceCode": device_code }))
             .send()
             .await
@@ -137,7 +143,9 @@ impl SaasClient {
             let body = resp.text().await.unwrap_or_default();
             return Err(format!("Token poll failed ({status}): {body}"));
         }
-        let body: serde_json::Value = resp.json().await
+        let body: serde_json::Value = resp
+            .json()
+            .await
             .map_err(|e| format!("Failed to parse token response: {e}"))?;
 
         // Check for error field (pending/expired)
@@ -186,11 +194,13 @@ impl SaasClient {
             Ok(v) => v,
             Err(_) => return (None, None),
         };
-        let email = body.get("email")
+        let email = body
+            .get("email")
             .or_else(|| body.get("userEmail"))
             .and_then(|v| v.as_str())
             .map(std::string::ToString::to_string);
-        let org = body.get("orgName")
+        let org = body
+            .get("orgName")
             .or_else(|| body.get("organizationName"))
             .or_else(|| body.get("org_name"))
             .and_then(|v| v.as_str())
@@ -201,7 +211,9 @@ impl SaasClient {
     #[allow(dead_code)]
     pub async fn sync_status(&self, token: &str) -> Result<SyncStatusResult, String> {
         let url = format!("{}/api/sync/status", self.base_url);
-        let resp = self.client.get(&url)
+        let resp = self
+            .client
+            .get(&url)
             .bearer_auth(token)
             .send()
             .await
@@ -211,7 +223,9 @@ impl SaasClient {
             let body = resp.text().await.unwrap_or_default();
             return Err(format!("Sync status failed ({status}): {body}"));
         }
-        resp.json().await.map_err(|e| format!("Failed to parse sync status: {e}"))
+        resp.json()
+            .await
+            .map_err(|e| format!("Failed to parse sync status: {e}"))
     }
 }
 
@@ -236,7 +250,8 @@ fn extract_jwt_claims(token: &str) -> (Option<String>, Option<String>) {
         .and_then(|v| v.as_str())
         .filter(|s| s.contains('@')) // sub may be a UUID, only use if it looks like email
         .map(std::string::ToString::to_string);
-    let org = claims.get("orgName")
+    let org = claims
+        .get("orgName")
         .or_else(|| claims.get("org_name"))
         .or_else(|| claims.get("organization"))
         .and_then(|v| v.as_str())
@@ -246,6 +261,6 @@ fn extract_jwt_claims(token: &str) -> (Option<String>, Option<String>) {
 
 /// Decode base64url (no padding) to bytes.
 fn base64url_decode(input: &str) -> Option<Vec<u8>> {
-    use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
+    use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
     URL_SAFE_NO_PAD.decode(input).ok()
 }

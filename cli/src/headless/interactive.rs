@@ -58,9 +58,11 @@ pub fn ask_single(
             return options[default_idx].0.clone();
         }
         if let Ok(n) = trimmed.parse::<usize>()
-            && n >= 1 && n <= options.len() {
-                return options[n - 1].0.clone();
-            }
+            && n >= 1
+            && n <= options.len()
+        {
+            return options[n - 1].0.clone();
+        }
         println!("    Please enter a number between 1 and {}.", options.len());
     }
 }
@@ -118,7 +120,10 @@ pub fn ask_multi(
         if valid && !selected.is_empty() {
             return selected;
         }
-        println!("    Please enter valid numbers between 1 and {}.", options.len());
+        println!(
+            "    Please enter valid numbers between 1 and {}.",
+            options.len()
+        );
     }
 }
 
@@ -170,7 +175,10 @@ pub fn run_interactive_onboarding(questions_json: &serde_json::Value) -> serde_j
         for question in questions {
             let id = question.get("id").and_then(|v| v.as_str()).unwrap_or("");
             let text = question.get("text").and_then(|v| v.as_str()).unwrap_or("");
-            let qtype = question.get("type").and_then(|v| v.as_str()).unwrap_or("single");
+            let qtype = question
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("single");
             let default = question.get("default").and_then(|v| v.as_str());
             let descriptions = question
                 .get("descriptions")
@@ -234,7 +242,10 @@ pub fn build_default_answers(questions_json: &serde_json::Value) -> serde_json::
 
         for question in questions {
             let id = question.get("id").and_then(|v| v.as_str()).unwrap_or("");
-            let qtype = question.get("type").and_then(|v| v.as_str()).unwrap_or("single");
+            let qtype = question
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("single");
             let default = question.get("default").and_then(|v| v.as_str());
 
             match qtype {
@@ -264,7 +275,9 @@ pub fn build_default_answers(questions_json: &serde_json::Value) -> serde_json::
                         .unwrap_or("");
                     answers.insert(
                         id.to_string(),
-                        serde_json::Value::Array(vec![serde_json::Value::String(value.to_string())]),
+                        serde_json::Value::Array(vec![serde_json::Value::String(
+                            value.to_string(),
+                        )]),
                     );
                 }
                 _ => {}

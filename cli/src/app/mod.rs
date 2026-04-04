@@ -212,14 +212,17 @@ impl App {
         let sidebar_visible = config.sidebar_visible;
         let animations_enabled = config.animations_enabled;
         let llm_config = LlmSessionConfig {
-            api_key: config.llm_provider.as_deref()
+            api_key: config
+                .llm_provider
+                .as_deref()
                 .and_then(crate::config::load_llm_api_key),
             provider: config.llm_provider.clone(),
             model: config.llm_model.clone(),
         };
-        let project_path = config
-            .project_path
-            .as_deref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
+        let project_path = config.project_path.as_deref().map_or_else(
+            || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            PathBuf::from,
+        );
 
         let mut app = Self {
             running: true,
@@ -502,10 +505,8 @@ impl App {
 
     pub async fn load_file_tree(&mut self) {
         let path = self.project_path.clone();
-        if let Ok(tree) = tokio::task::spawn_blocking(move || {
-            file_browser::build_file_tree(&path)
-        })
-        .await
+        if let Ok(tree) =
+            tokio::task::spawn_blocking(move || file_browser::build_file_tree(&path)).await
         {
             self.file_tree = tree;
         }

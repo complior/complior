@@ -5,37 +5,37 @@ mod panels;
 mod utils;
 
 #[cfg(test)]
-mod tests_helpers;
-#[cfg(test)]
-mod tests_state;
-#[cfg(test)]
-mod tests_rendering;
-#[cfg(test)]
-mod tests_score;
-#[cfg(test)]
-mod tests_footer;
-#[cfg(test)]
-mod tests_overlay;
-#[cfg(test)]
-mod tests_input;
-#[cfg(test)]
-mod tests_watch;
-#[cfg(test)]
-mod tests_status_bar;
+mod tests_agents;
 #[cfg(test)]
 mod tests_e2e_panels;
 #[cfg(test)]
 mod tests_e2e_views;
 #[cfg(test)]
-mod tests_widgets;
+mod tests_footer;
 #[cfg(test)]
-mod tests_agents;
+mod tests_helpers;
+#[cfg(test)]
+mod tests_input;
+#[cfg(test)]
+mod tests_overlay;
+#[cfg(test)]
+mod tests_rendering;
+#[cfg(test)]
+mod tests_score;
+#[cfg(test)]
+mod tests_state;
+#[cfg(test)]
+mod tests_status_bar;
+#[cfg(test)]
+mod tests_watch;
+#[cfg(test)]
+mod tests_widgets;
 
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::layout::{Breakpoint, compute_layout};
@@ -89,7 +89,11 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     render_nav_tab_bar(frame, tab_area, app.view_state);
 
     // Reserve: owl (2) + tab bar (1) + footer (2) + optional suggestion (2)
-    let suggestion_height: u16 = if app.idle_suggestions.current.is_some() { 2 } else { 0 };
+    let suggestion_height: u16 = if app.idle_suggestions.current.is_some() {
+        2
+    } else {
+        0
+    };
     let footer_height: u16 = 2;
     let overhead = owl_height + tab_height + footer_height + suggestion_height;
     let body_area = Rect {
@@ -103,11 +107,15 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     match app.view_state {
         ViewState::Dashboard => render_dashboard_view(frame, body_area, app),
         ViewState::Log => render_with_sidebar(frame, body_area, app, super::chat::render_log_view),
-        ViewState::Chat => render_with_sidebar(frame, body_area, app, super::chat::render_chat_view),
+        ViewState::Chat => {
+            render_with_sidebar(frame, body_area, app, super::chat::render_chat_view)
+        }
         ViewState::Scan => super::scan::render_scan_view(frame, body_area, app),
         ViewState::Fix => super::fix::render_fix_view(frame, body_area, app),
         ViewState::Passport => super::passport::render_passport_view(frame, body_area, app),
-        ViewState::Obligations => super::obligations::render_obligations_view(frame, body_area, app),
+        ViewState::Obligations => {
+            super::obligations::render_obligations_view(frame, body_area, app)
+        }
         ViewState::Timeline => super::timeline::render_timeline_view(frame, body_area, app),
         ViewState::Report => super::report::render_report_view(frame, body_area, app),
     }
@@ -116,7 +124,10 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     if let Some(ref suggestion) = app.idle_suggestions.current {
         let suggestion_area = Rect {
             x: area.x,
-            y: area.y + area.height.saturating_sub(footer_height + suggestion_height),
+            y: area.y
+                + area
+                    .height
+                    .saturating_sub(footer_height + suggestion_height),
             width: area.width,
             height: suggestion_height,
         };
@@ -159,8 +170,16 @@ fn render_splash_screen(frame: &mut Frame, area: Rect, _opacity: f64) {
             Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         ));
         let y = area.y + area.height / 2;
-        let splash_area = Rect { x: area.x, y, width: area.width, height: 1 };
-        frame.render_widget(Paragraph::new(line).alignment(ratatui::layout::Alignment::Center), splash_area);
+        let splash_area = Rect {
+            x: area.x,
+            y,
+            width: area.width,
+            height: 1,
+        };
+        frame.render_widget(
+            Paragraph::new(line).alignment(ratatui::layout::Alignment::Center),
+            splash_area,
+        );
         return;
     }
 
@@ -170,7 +189,12 @@ fn render_splash_screen(frame: &mut Frame, area: Rect, _opacity: f64) {
     for (i, line_str) in owl_lines.iter().enumerate() {
         let line = Line::from(Span::styled(*line_str, Style::default().fg(t.accent)));
         let y = start_y + i as u16;
-        let line_area = Rect { x: area.x, y, width: area.width, height: 1 };
+        let line_area = Rect {
+            x: area.x,
+            y,
+            width: area.width,
+            height: 1,
+        };
         frame.render_widget(
             Paragraph::new(line).alignment(ratatui::layout::Alignment::Center),
             line_area,
@@ -183,7 +207,12 @@ fn render_splash_screen(frame: &mut Frame, area: Rect, _opacity: f64) {
         "c o m p l i o r",
         Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
     ));
-    let title_area = Rect { x: area.x, y: title_y, width: area.width, height: 1 };
+    let title_area = Rect {
+        x: area.x,
+        y: title_y,
+        width: area.width,
+        height: 1,
+    };
     frame.render_widget(
         Paragraph::new(title).alignment(ratatui::layout::Alignment::Center),
         title_area,
@@ -195,7 +224,12 @@ fn render_splash_screen(frame: &mut Frame, area: Rect, _opacity: f64) {
         "AI Compliance \u{00b7} Made Simple",
         Style::default().fg(t.muted),
     ));
-    let sub_area = Rect { x: area.x, y: sub_y, width: area.width, height: 1 };
+    let sub_area = Rect {
+        x: area.x,
+        y: sub_y,
+        width: area.width,
+        height: 1,
+    };
     frame.render_widget(
         Paragraph::new(subtitle).alignment(ratatui::layout::Alignment::Center),
         sub_area,
@@ -247,7 +281,10 @@ fn render_nav_tab_bar(frame: &mut Frame, area: Rect, current: ViewState) {
         if is_active {
             spans.push(Span::styled(
                 format!(" {key}"),
-                Style::default().fg(t.bg).bg(t.accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(t.bg)
+                    .bg(t.accent)
+                    .add_modifier(Modifier::BOLD),
             ));
             spans.push(Span::styled(
                 format!(":{label} "),
@@ -316,14 +353,19 @@ fn render_tiny_dashboard(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
     let score_text = if let Some(scan) = &app.last_scan {
         let s = scan.score.total_score;
-        format!("Score: {s:.0}/100 | {} findings | {} files", scan.findings.len(), scan.files_scanned)
+        format!(
+            "Score: {s:.0}/100 | {} findings | {} files",
+            scan.findings.len(),
+            scan.files_scanned
+        )
     } else {
         "No scan data. Press Ctrl+S or :scan".to_string()
     };
 
-    let lines = vec![
-        Line::from(Span::styled(score_text, Style::default().fg(t.fg))),
-    ];
+    let lines = vec![Line::from(Span::styled(
+        score_text,
+        Style::default().fg(t.fg),
+    ))];
     frame.render_widget(Paragraph::new(lines), area);
 }
 

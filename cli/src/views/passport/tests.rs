@@ -69,7 +69,11 @@ fn test_load_from_passports_populates_fields() {
     assert_eq!(provider_field.value, "openai");
 
     // Manual fields should remain empty
-    let worker_field = state.fields.iter().find(|f| f.name == "workerNotification").unwrap();
+    let worker_field = state
+        .fields
+        .iter()
+        .find(|f| f.name == "workerNotification")
+        .unwrap();
     assert!(worker_field.value.is_empty());
 
     // Completeness should be > 0 now

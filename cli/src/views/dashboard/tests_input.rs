@@ -47,7 +47,10 @@ fn e2e_t503_plain_input_shows_unknown_command_message() {
     let cmd = app.apply_action(crate::input::Action::SubmitInput);
 
     // LLM chat removed: plain text returns None + System message
-    assert!(cmd.is_none(), "Plain text submit should return None (no LLM)");
+    assert!(
+        cmd.is_none(),
+        "Plain text submit should return None (no LLM)"
+    );
     let last_msg = app.messages.last().unwrap();
     assert_eq!(last_msg.role, crate::types::MessageRole::System);
     assert!(last_msg.content.contains("Unknown input"));
@@ -63,7 +66,10 @@ fn e2e_t503_plain_message_no_llm_dispatch() {
     let cmd = app.apply_action(crate::input::Action::SubmitInput);
 
     // LLM chat removed: plain text returns None
-    assert!(cmd.is_none(), "Plain text submit should return None (no LLM)");
+    assert!(
+        cmd.is_none(),
+        "Plain text submit should return None (no LLM)"
+    );
 }
 
 #[test]
@@ -78,8 +84,14 @@ fn e2e_t503_status_log_renders_system_messages() {
     ));
 
     let buf = super::tests_helpers::render_to_string(&app, 120, 40);
-    assert!(buf.contains("@OBL-001"), "Status Log should render @OBL-001 in system events");
-    assert!(buf.contains("Compliance"), "Status Log should render the message text");
+    assert!(
+        buf.contains("@OBL-001"),
+        "Status Log should render @OBL-001 in system events"
+    );
+    assert!(
+        buf.contains("Compliance"),
+        "Status Log should render the message text"
+    );
 }
 
 // --- T804: Colon-Command Mode ---
@@ -104,7 +116,10 @@ fn t804_colon_cmd_scan() {
     app.input_cursor = 4;
 
     let cmd = app.apply_action(crate::input::Action::SubmitInput);
-    assert!(matches!(cmd, Some(crate::app::AppCommand::Scan)), "`:scan` should return Scan command");
+    assert!(
+        matches!(cmd, Some(crate::app::AppCommand::Scan)),
+        "`:scan` should return Scan command"
+    );
     assert!(!app.colon_mode, "colon_mode should be cleared after submit");
 }
 

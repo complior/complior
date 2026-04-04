@@ -13,12 +13,11 @@ pub use shared::{render_code_block, render_fix_diff, render_fix_text};
 // Re-export public items for external use.
 pub use explain::explain_finding;
 
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::Frame;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 use crate::app::App;
 use crate::types::Severity;
-
 
 /// Per-layer scanning progress.
 #[derive(Debug, Clone)]
@@ -95,11 +94,41 @@ impl Default for ScanViewState {
     fn default() -> Self {
         Self {
             layer_progress: [
-                LayerProgress { name: "Files", short: "L1", current: 0, total: 0, status: LayerStatus::Waiting },
-                LayerProgress { name: "Docs", short: "L2", current: 0, total: 0, status: LayerStatus::Waiting },
-                LayerProgress { name: "Config", short: "L3", current: 0, total: 0, status: LayerStatus::Waiting },
-                LayerProgress { name: "Patterns", short: "L4", current: 0, total: 0, status: LayerStatus::Waiting },
-                LayerProgress { name: "LLM", short: "L5", current: 0, total: 0, status: LayerStatus::Waiting },
+                LayerProgress {
+                    name: "Files",
+                    short: "L1",
+                    current: 0,
+                    total: 0,
+                    status: LayerStatus::Waiting,
+                },
+                LayerProgress {
+                    name: "Docs",
+                    short: "L2",
+                    current: 0,
+                    total: 0,
+                    status: LayerStatus::Waiting,
+                },
+                LayerProgress {
+                    name: "Config",
+                    short: "L3",
+                    current: 0,
+                    total: 0,
+                    status: LayerStatus::Waiting,
+                },
+                LayerProgress {
+                    name: "Patterns",
+                    short: "L4",
+                    current: 0,
+                    total: 0,
+                    status: LayerStatus::Waiting,
+                },
+                LayerProgress {
+                    name: "LLM",
+                    short: "L5",
+                    current: 0,
+                    total: 0,
+                    status: LayerStatus::Waiting,
+                },
             ],
             findings_filter: FindingsFilter::All,
             selected_finding: None,
@@ -133,24 +162,39 @@ impl ScanViewState {
     /// Populate layer progress from completed scan.
     pub fn set_complete(&mut self, files_scanned: u32) {
         self.layer_progress[0] = LayerProgress {
-            name: "Files", short: "L1",
-            current: files_scanned, total: files_scanned, status: LayerStatus::Complete,
+            name: "Files",
+            short: "L1",
+            current: files_scanned,
+            total: files_scanned,
+            status: LayerStatus::Complete,
         };
         self.layer_progress[1] = LayerProgress {
-            name: "Docs", short: "L2",
-            current: files_scanned / 3, total: files_scanned / 3, status: LayerStatus::Complete,
+            name: "Docs",
+            short: "L2",
+            current: files_scanned / 3,
+            total: files_scanned / 3,
+            status: LayerStatus::Complete,
         };
         self.layer_progress[2] = LayerProgress {
-            name: "Config", short: "L3",
-            current: 5, total: 5, status: LayerStatus::Complete,
+            name: "Config",
+            short: "L3",
+            current: 5,
+            total: 5,
+            status: LayerStatus::Complete,
         };
         self.layer_progress[3] = LayerProgress {
-            name: "Patterns", short: "L4",
-            current: files_scanned, total: files_scanned, status: LayerStatus::Complete,
+            name: "Patterns",
+            short: "L4",
+            current: files_scanned,
+            total: files_scanned,
+            status: LayerStatus::Complete,
         };
         self.layer_progress[4] = LayerProgress {
-            name: "LLM", short: "L5",
-            current: 0, total: 0, status: LayerStatus::Skipped,
+            name: "LLM",
+            short: "L5",
+            current: 0,
+            total: 0,
+            status: LayerStatus::Skipped,
         };
         self.scanning = false;
         self.scan_error = None;
@@ -171,7 +215,9 @@ pub(super) fn sort_findings_for_display(
         filtered.sort_by(|a, b| {
             let agent_a = render::resolve_agent_name(a.file.as_deref(), file_agent_map);
             let agent_b = render::resolve_agent_name(b.file.as_deref(), file_agent_map);
-            agent_a.cmp(agent_b).then_with(|| a.severity.sort_key().cmp(&b.severity.sort_key()))
+            agent_a
+                .cmp(agent_b)
+                .then_with(|| a.severity.sort_key().cmp(&b.severity.sort_key()))
         });
     }
 }
@@ -227,10 +273,7 @@ pub fn render_scan_view(frame: &mut Frame, area: Rect, app: &App) {
         // Split progress area into puzzle header (3) + gauges (7)
         let progress_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3),
-                Constraint::Min(5),
-            ])
+            .constraints([Constraint::Length(3), Constraint::Min(5)])
             .split(top[0]);
         progress::render_puzzle_header(frame, progress_chunks[0], &app.scan_view);
         progress::render_layer_progress(frame, progress_chunks[1], app);

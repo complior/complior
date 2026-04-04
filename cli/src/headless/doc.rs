@@ -62,11 +62,12 @@ async fn run_doc_generate(
 
     // Validate doc type if provided
     if let Some(dt) = doc_type
-        && !VALID_DOC_TYPES.contains(&dt) {
-            eprintln!("Error: Invalid document type: {dt}");
-            eprintln!("Valid types: {}", VALID_DOC_TYPES.join(", "));
-            return 1;
-        }
+        && !VALID_DOC_TYPES.contains(&dt)
+    {
+        eprintln!("Error: Invalid document type: {dt}");
+        eprintln!("Valid types: {}", VALID_DOC_TYPES.join(", "));
+        return 1;
+    }
 
     let project_path = resolve_project_path_buf(path);
 
@@ -78,9 +79,7 @@ async fn run_doc_generate(
     if all {
         // Generate all documents
         if !json {
-            println!(
-                "Generating all compliance documents for '{name}'..."
-            );
+            println!("Generating all compliance documents for '{name}'...");
         }
 
         let body = serde_json::json!({
@@ -99,42 +98,34 @@ async fn run_doc_generate(
                     return 0;
                 }
 
-                let generated = result
-                    .get("generated")
-                    .and_then(|v| v.as_array());
+                let generated = result.get("generated").and_then(|v| v.as_array());
                 let errors = result.get("errors").and_then(|v| v.as_array());
 
                 if let Some(docs) = generated
-                    && !docs.is_empty() {
-                        println!("\nGenerated {} document(s):\n", docs.len());
-                        for doc in docs {
-                            let dt = doc
-                                .get("docType")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("?");
-                            let sp = doc
-                                .get("savedPath")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("?");
-                            println!("  {dt:<30} -> {sp}");
-                        }
+                    && !docs.is_empty()
+                {
+                    println!("\nGenerated {} document(s):\n", docs.len());
+                    for doc in docs {
+                        let dt = doc.get("docType").and_then(|v| v.as_str()).unwrap_or("?");
+                        let sp = doc.get("savedPath").and_then(|v| v.as_str()).unwrap_or("?");
+                        println!("  {dt:<30} -> {sp}");
                     }
+                }
 
                 if let Some(errs) = errors
-                    && !errs.is_empty() {
-                        eprintln!("\nErrors ({}):", errs.len());
-                        for err in errs {
-                            if let Some(e) = err.as_str() {
-                                eprintln!("  {e}");
-                            }
+                    && !errs.is_empty()
+                {
+                    eprintln!("\nErrors ({}):", errs.len());
+                    for err in errs {
+                        if let Some(e) = err.as_str() {
+                            eprintln!("  {e}");
                         }
                     }
+                }
 
                 let gen_count = generated.map_or(0, std::vec::Vec::len);
                 let err_count = errors.map_or(0, std::vec::Vec::len);
-                println!(
-                    "\nComplete: {gen_count} generated, {err_count} error(s)."
-                );
+                println!("\nComplete: {gen_count} generated, {err_count} error(s).");
 
                 i32::from(err_count > 0)
             }
@@ -151,9 +142,7 @@ async fn run_doc_generate(
         };
 
         if !json {
-            println!(
-                "Generating '{dt}' document for '{name}'..."
-            );
+            println!("Generating '{dt}' document for '{name}'...");
         }
 
         let body = serde_json::json!({
@@ -194,14 +183,15 @@ async fn run_doc_generate(
 
                 // List manual fields
                 if let Some(fields) = result.get("manualFields").and_then(|v| v.as_array())
-                    && !fields.is_empty() {
-                        println!("\n  Fields to complete manually:");
-                        for field in fields {
-                            if let Some(f) = field.as_str() {
-                                println!("    - {f}");
-                            }
+                    && !fields.is_empty()
+                {
+                    println!("\n  Fields to complete manually:");
+                    for field in fields {
+                        if let Some(f) = field.as_str() {
+                            println!("    - {f}");
                         }
                     }
+                }
 
                 0
             }

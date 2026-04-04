@@ -7,7 +7,7 @@ import type { UndoService } from '../../services/undo-service.js';
 const createMockFixService = (overrides: Partial<FixService> = {}): FixService =>
   ({
     preview: vi.fn().mockReturnValue(null),
-    previewAll: vi.fn().mockReturnValue([{ checkId: 'l1-fria', actions: [{ type: 'create', path: 'docs/fria.md' }] }]),
+    previewAll: vi.fn().mockReturnValue([{ checkId: 'l1-fria', actions: [{ type: 'create', path: 'docs/fria.md', description: 'Create FRIA doc' }] }]),
     applyFix: vi.fn().mockResolvedValue({ applied: true }),
     applyAll: vi.fn().mockResolvedValue([{ applied: true, scoreBefore: 40, scoreAfter: 60 }]),
     applyAndValidate: vi.fn().mockResolvedValue({ applied: true, validation: {} }),

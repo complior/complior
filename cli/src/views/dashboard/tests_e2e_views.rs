@@ -1,5 +1,5 @@
+use super::tests_helpers::{make_scan_result, render_to_string};
 use super::*;
-use super::tests_helpers::{render_to_string, make_scan_result};
 
 // --- Cross-cutting: All views render without panic ---
 
@@ -117,7 +117,11 @@ fn t806_click_target_view_tab() {
     app.apply_action(crate::input::Action::ClickAt(
         crate::types::ClickTarget::ViewTab(ViewState::Scan),
     ));
-    assert_eq!(app.view_state, ViewState::Scan, "Click on Scan tab should switch view");
+    assert_eq!(
+        app.view_state,
+        ViewState::Scan,
+        "Click on Scan tab should switch view"
+    );
 }
 
 #[test]

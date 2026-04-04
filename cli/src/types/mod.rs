@@ -1,4 +1,4 @@
-pub mod engine;         // Core — contract types
+pub mod engine; // Core — contract types
 
 #[cfg(feature = "tui")]
 mod activity;

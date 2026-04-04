@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -74,14 +74,8 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                 // System: ◦ prefix, muted text
                 let first_content_line = msg.content.lines().next().unwrap_or("");
                 lines.push(Line::from(vec![
-                    Span::styled(
-                        "\u{25E6} ",
-                        Style::default().fg(t.system_msg),
-                    ),
-                    Span::styled(
-                        first_content_line.to_string(),
-                        Style::default().fg(t.muted),
-                    ),
+                    Span::styled("\u{25E6} ", Style::default().fg(t.system_msg)),
+                    Span::styled(first_content_line.to_string(), Style::default().fg(t.muted)),
                 ]));
                 for content_line in msg.content.lines().skip(1) {
                     lines.push(Line::from(vec![
@@ -108,10 +102,7 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                 ]));
                 for content_line in msg.content.lines().skip(1) {
                     lines.push(Line::from(vec![
-                        Span::styled(
-                            INDENT,
-                            Style::default().bg(t.user_msg_bg),
-                        ),
+                        Span::styled(INDENT, Style::default().bg(t.user_msg_bg)),
                         Span::styled(
                             content_line.to_string(),
                             Style::default().fg(t.fg).bg(t.user_msg_bg),
@@ -129,10 +120,7 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                             .fg(t.assistant_msg)
                             .add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(
-                        first_content_line.to_string(),
-                        Style::default().fg(t.fg),
-                    ),
+                    Span::styled(first_content_line.to_string(), Style::default().fg(t.fg)),
                 ]));
                 for content_line in msg.content.lines().skip(1) {
                     lines.push(Line::from(vec![
@@ -151,10 +139,7 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                     let suffix = if text.len() > 80 { "..." } else { "" };
                     lines.push(Line::from(vec![
                         Span::raw(INDENT),
-                        Span::styled(
-                            "\u{25CC} ",
-                            Style::default().fg(t.thinking_fg),
-                        ),
+                        Span::styled("\u{25CC} ", Style::default().fg(t.thinking_fg)),
                         Span::styled(
                             format!("{preview}{suffix}"),
                             Style::default()
@@ -167,24 +152,26 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                     let args_preview = if args.len() > 60 { &args[..60] } else { args };
                     lines.push(Line::from(vec![
                         Span::raw(INDENT),
-                        Span::styled(
-                            "\u{2699} ",
-                            Style::default().fg(t.tool_call_border),
-                        ),
+                        Span::styled("\u{2699} ", Style::default().fg(t.tool_call_border)),
                         Span::styled(
                             tool_name.as_str(),
                             Style::default()
                                 .fg(t.tool_call_border)
                                 .add_modifier(Modifier::BOLD),
                         ),
-                        Span::styled(
-                            format!("({args_preview})"),
-                            Style::default().fg(t.muted),
-                        ),
+                        Span::styled(format!("({args_preview})"), Style::default().fg(t.muted)),
                     ]));
                 }
-                ChatBlock::ToolResult { tool_name, result, is_error } => {
-                    let result_preview = if result.len() > 200 { &result[..200] } else { result };
+                ChatBlock::ToolResult {
+                    tool_name,
+                    result,
+                    is_error,
+                } => {
+                    let result_preview = if result.len() > 200 {
+                        &result[..200]
+                    } else {
+                        result
+                    };
                     let (icon, color) = if *is_error {
                         ("\u{2717} ", t.tool_result_err) // ✗
                     } else {
@@ -197,10 +184,7 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                             format!("{tool_name}: "),
                             Style::default().fg(color).add_modifier(Modifier::BOLD),
                         ),
-                        Span::styled(
-                            result_preview.to_string(),
-                            Style::default().fg(t.muted),
-                        ),
+                        Span::styled(result_preview.to_string(), Style::default().fg(t.muted)),
                     ]));
                 }
                 ChatBlock::Text(_) => {}
@@ -217,9 +201,8 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
 
         // Spinner animation
         const SPINNER: &[&str] = &[
-            "\u{280B}", "\u{2819}", "\u{2839}", "\u{2838}",
-            "\u{283C}", "\u{2834}", "\u{2826}", "\u{2827}",
-            "\u{2807}", "\u{280F}",
+            "\u{280B}", "\u{2819}", "\u{2839}", "\u{2838}", "\u{283C}", "\u{2834}", "\u{2826}",
+            "\u{2827}", "\u{2807}", "\u{280F}",
         ];
         let tick = (elapsed * 10.0) as usize % SPINNER.len();
         let spinner = SPINNER[tick];
@@ -230,16 +213,12 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                 Span::raw(INDENT),
                 Span::styled(
                     "\u{25CF} ",
-                    Style::default().fg(t.assistant_msg).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(t.assistant_msg)
+                        .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    partial.as_str(),
-                    Style::default().fg(t.fg),
-                ),
-                Span::styled(
-                    "|",
-                    Style::default().fg(t.accent),
-                ),
+                Span::styled(partial.as_str(), Style::default().fg(t.fg)),
+                Span::styled("|", Style::default().fg(t.accent)),
             ]));
         }
 
@@ -268,12 +247,10 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
 
     // ── "Unread above" indicator ──────────────────────────────────────────
     if scroll > 0 && !app.chat_auto_scroll && msg_area.height > 0 {
-        let indicator = Paragraph::new(Line::from(vec![
-            Span::styled(
-                " \u{2191} more messages above ",
-                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
-            ),
-        ]));
+        let indicator = Paragraph::new(Line::from(vec![Span::styled(
+            " \u{2191} more messages above ",
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+        )]));
         let indicator_area = Rect {
             x: msg_area.x,
             y: msg_area.y,
@@ -305,7 +282,10 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
                 format!("Streaming ({elapsed:.1}s)... "),
                 Style::default().fg(t.assistant_msg),
             ),
-            Span::styled("Esc", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Esc",
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(" to cancel", Style::default().fg(t.muted)),
         ]);
         frame.render_widget(Paragraph::new(streaming_hint), input_inner);
@@ -316,11 +296,15 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
         for (i, line_text) in input_lines.iter().enumerate() {
             let prefix = if i == 0 { "> " } else { "  " };
             let is_last = i == input_lines.len() - 1;
-            let mut spans = vec![
-                Span::styled(prefix, Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
-            ];
+            let mut spans = vec![Span::styled(
+                prefix,
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+            )];
             if app.input.is_empty() && i == 0 && app.input_mode != InputMode::Insert {
-                spans.push(Span::styled("i to type, Shift+Enter newline, :llm settings", Style::default().fg(t.muted)));
+                spans.push(Span::styled(
+                    "i to type, Shift+Enter newline, :llm settings",
+                    Style::default().fg(t.muted),
+                ));
             } else {
                 spans.push(Span::raw(line_text.to_string()));
             }
@@ -332,8 +316,8 @@ pub fn render_chat_view(frame: &mut Frame, area: Rect, app: &App) {
         // Auto-scroll input to show last lines if they exceed visible area
         let visible_input_lines = input_inner.height as usize;
         let input_scroll = prompt_lines.len().saturating_sub(visible_input_lines);
-        let prompt_paragraph = Paragraph::new(prompt_lines)
-            .scroll((u16::try_from(input_scroll).unwrap_or(0), 0));
+        let prompt_paragraph =
+            Paragraph::new(prompt_lines).scroll((u16::try_from(input_scroll).unwrap_or(0), 0));
         frame.render_widget(prompt_paragraph, input_inner);
     }
 }
@@ -412,25 +396,31 @@ fn render_empty_state(frame: &mut Frame, area: Rect) {
 
     // ── Input box ────────────────────────────────────────────────────────
     let prompt_text = Line::from(vec![
-        Span::styled("> ", Style::default().fg(t.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "> ",
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
+        ),
         Span::styled(":scan", Style::default().fg(t.fg)),
         Span::styled("  or  :help", Style::default().fg(t.muted)),
     ]);
     let input_block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(t.accent));
-    frame.render_widget(
-        Paragraph::new(prompt_text).block(input_block),
-        chunks[0],
-    );
+    frame.render_widget(Paragraph::new(prompt_text).block(input_block), chunks[0]);
 
     // ── Quick Start tips ─────────────────────────────────────────────────
     let tips: Vec<Line<'_>> = vec![
-        Line::from(Span::styled(" Quick Start:", Style::default().fg(t.muted).add_modifier(Modifier::BOLD))),
+        Line::from(Span::styled(
+            " Quick Start:",
+            Style::default().fg(t.muted).add_modifier(Modifier::BOLD),
+        )),
         Line::from(vec![
             Span::styled("  • ", Style::default().fg(t.accent)),
             Span::styled(":scan     ", Style::default().fg(t.fg)),
-            Span::styled("— scan your project for compliance issues", Style::default().fg(t.muted)),
+            Span::styled(
+                "— scan your project for compliance issues",
+                Style::default().fg(t.muted),
+            ),
         ]),
         Line::from(vec![
             Span::styled("  • ", Style::default().fg(t.accent)),
@@ -445,7 +435,10 @@ fn render_empty_state(frame: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("  • ", Style::default().fg(t.accent)),
             Span::styled(":watch    ", Style::default().fg(t.fg)),
-            Span::styled("— watch mode (auto-rescan on file change)", Style::default().fg(t.muted)),
+            Span::styled(
+                "— watch mode (auto-rescan on file change)",
+                Style::default().fg(t.muted),
+            ),
         ]),
     ];
 
@@ -454,8 +447,8 @@ fn render_empty_state(frame: &mut Frame, area: Rect) {
 
 #[cfg(test)]
 mod tests {
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
 
     use super::*;
     use crate::types::ChatMessage;
@@ -510,8 +503,15 @@ mod tests {
             .expect("render");
 
         let buffer = terminal.backend().buffer().clone();
-        let content: String = buffer.content().iter().map(|cell| cell.symbol().to_string()).collect();
-        assert!(content.contains("Status Log"), "Should show 'Status Log' title");
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol().to_string())
+            .collect();
+        assert!(
+            content.contains("Status Log"),
+            "Should show 'Status Log' title"
+        );
     }
 
     #[test]
@@ -532,10 +532,17 @@ mod tests {
             .expect("render");
 
         let buffer = terminal.backend().buffer().clone();
-        let content: String = buffer.content().iter().map(|cell| cell.symbol().to_string()).collect();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol().to_string())
+            .collect();
         // Panel is now Status Log, not Chat
         assert!(!content.contains("Chat"), "Should not show 'Chat' title");
-        assert!(content.contains("Status Log"), "Should show 'Status Log' title");
+        assert!(
+            content.contains("Status Log"),
+            "Should show 'Status Log' title"
+        );
     }
 
     #[test]
@@ -578,13 +585,29 @@ mod tests {
             .expect("render");
 
         let buffer = terminal.backend().buffer().clone();
-        let content: String = buffer.content().iter().map(|c| c.symbol().to_string()).collect();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol().to_string())
+            .collect();
 
         // Quick Start section should appear in empty state
-        assert!(content.contains("Quick Start"), "Empty state must show Quick Start section");
-        assert!(content.contains(":scan"), "Empty state must mention :scan command");
-        assert!(content.contains(":help"), "Empty state must mention :help command");
-        assert!(content.contains("Ctrl+P"), "Empty state must mention Ctrl+P");
+        assert!(
+            content.contains("Quick Start"),
+            "Empty state must show Quick Start section"
+        );
+        assert!(
+            content.contains(":scan"),
+            "Empty state must mention :scan command"
+        );
+        assert!(
+            content.contains(":help"),
+            "Empty state must mention :help command"
+        );
+        assert!(
+            content.contains("Ctrl+P"),
+            "Empty state must mention Ctrl+P"
+        );
     }
 
     /// US-S0211: After a system message, normal log layout is shown (no Quick Start).
@@ -605,10 +628,20 @@ mod tests {
             .expect("render");
 
         let buffer = terminal.backend().buffer().clone();
-        let content: String = buffer.content().iter().map(|c| c.symbol().to_string()).collect();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol().to_string())
+            .collect();
 
         // Normal log should show the message, not the Quick Start tips
-        assert!(content.contains("Scan complete"), "Should show system message content");
-        assert!(!content.contains("Quick Start"), "Non-empty log must not show Quick Start");
+        assert!(
+            content.contains("Scan complete"),
+            "Should show system message content"
+        );
+        assert!(
+            !content.contains("Quick Start"),
+            "Non-empty log must not show Quick Start"
+        );
     }
 }

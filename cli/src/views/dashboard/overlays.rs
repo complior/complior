@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -33,9 +33,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
     if !view_section.is_empty() {
         lines.push(Line::from(Span::styled(
             format!(" {} View", app.view_state.short_name()),
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         )));
         lines.extend(view_section);
         lines.push(Line::raw(""));
@@ -44,9 +42,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
     // Global section
     lines.push(Line::from(Span::styled(
         " General",
-        Style::default()
-            .fg(t.accent)
-            .add_modifier(Modifier::BOLD),
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
     )));
     lines.push(shortcut_line("  Ctrl+C", "Quit", &t));
     lines.push(shortcut_line("  D/S/F/P/T/R/L", "Switch view", &t));
@@ -59,9 +55,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(
         " Navigation",
-        Style::default()
-            .fg(t.accent)
-            .add_modifier(Modifier::BOLD),
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
     )));
     lines.push(shortcut_line("  j/k", "Scroll up/down", &t));
     lines.push(shortcut_line("  Ctrl+D/U", "Half-page down/up", &t));
@@ -70,9 +64,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(
         " Features",
-        Style::default()
-            .fg(t.accent)
-            .add_modifier(Modifier::BOLD),
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
     )));
     lines.push(shortcut_line("  Ctrl+P", "Command palette", &t));
     lines.push(shortcut_line("  Ctrl+B", "Toggle sidebar", &t));
@@ -91,8 +83,7 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App) {
 
     // Apply scroll
     let scroll = app.help_scroll.min(lines.len().saturating_sub(1));
-    let paragraph = Paragraph::new(lines)
-        .scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
+    let paragraph = Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
     frame.render_widget(paragraph, inner);
 }
 
@@ -127,9 +118,7 @@ fn help_section_for_view(view: ViewState, t: &theme::ThemeColors) -> Vec<Line<'_
             shortcut_line("  </> ", "Resize split panel", t),
             shortcut_line("  Enter", "Apply selected fixes", t),
         ],
-        ViewState::Log => vec![
-            shortcut_line("  j/k", "Scroll log", t),
-        ],
+        ViewState::Log => vec![shortcut_line("  j/k", "Scroll log", t)],
         ViewState::Chat => vec![
             shortcut_line("  Tab", "Autocomplete (@OBL-, /cmd)", t),
             shortcut_line("  @OBL-xxx", "Reference obligation", t),
@@ -149,9 +138,7 @@ fn help_section_for_view(view: ViewState, t: &theme::ThemeColors) -> Vec<Line<'_
             shortcut_line("  l", "Reload obligations", t),
             shortcut_line("  j/k", "Navigate obligations", t),
         ],
-        ViewState::Timeline => vec![
-            shortcut_line("  j/k", "Scroll timeline", t),
-        ],
+        ViewState::Timeline => vec![shortcut_line("  j/k", "Scroll timeline", t)],
         ViewState::Report => vec![
             shortcut_line("  e", "Export report", t),
             shortcut_line("  j/k", "Scroll report", t),
@@ -180,9 +167,7 @@ pub(super) fn render_getting_started_overlay(frame: &mut Frame) {
         Line::raw(""),
         Line::from(Span::styled(
             "  Getting Started",
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         )),
         Line::raw(""),
         Line::from(vec![
@@ -214,10 +199,7 @@ pub(super) fn render_getting_started_overlay(frame: &mut Frame) {
 
 pub(super) fn shortcut_line<'a>(key: &'a str, desc: &'a str, t: &theme::ThemeColors) -> Line<'a> {
     Line::from(vec![
-        Span::styled(
-            format!("{key:<16}"),
-            Style::default().fg(t.accent),
-        ),
+        Span::styled(format!("{key:<16}"), Style::default().fg(t.accent)),
         Span::styled(desc, Style::default().fg(t.fg)),
     ])
 }
@@ -242,7 +224,10 @@ pub(super) fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect 
 }
 
 /// Render dismiss reason picker modal.
-pub(super) fn render_dismiss_modal(frame: &mut Frame, modal: &crate::components::quick_actions::DismissModal) {
+pub(super) fn render_dismiss_modal(
+    frame: &mut Frame,
+    modal: &crate::components::quick_actions::DismissModal,
+) {
     use ratatui::widgets::Clear;
 
     let t = theme::theme();
@@ -276,7 +261,11 @@ pub(super) fn render_dismiss_modal(frame: &mut Frame, modal: &crate::components:
 
         all_lines.push(Line::from(Span::styled(
             format!("{marker}{}", reason.label()),
-            Style::default().fg(color).add_modifier(if is_selected { Modifier::BOLD } else { Modifier::empty() }),
+            Style::default().fg(color).add_modifier(if is_selected {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            }),
         )));
         // Show description for selected reason
         if is_selected {

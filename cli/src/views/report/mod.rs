@@ -2,13 +2,13 @@ pub mod generators;
 mod tests;
 
 pub use generators::export_report;
-pub use generators::{zone_label, GENERATORS};
+pub use generators::{GENERATORS, zone_label};
 
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -66,9 +66,9 @@ pub fn render_report_view(frame: &mut Frame, area: Rect, app: &App) {
     let sections = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(14),    // Generate (9 generators + headers)
-            Constraint::Length(5),  // Recent reports
-            Constraint::Length(6),  // Regulator info
+            Constraint::Min(14),   // Generate (9 generators + headers)
+            Constraint::Length(5), // Recent reports
+            Constraint::Length(6), // Regulator info
         ])
         .split(inner);
 
@@ -81,7 +81,10 @@ pub fn render_report_view(frame: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         )));
         lines.push(Line::from(Span::styled(
-            format!("  {}", "─".repeat(sections[0].width.saturating_sub(4) as usize)),
+            format!(
+                "  {}",
+                "─".repeat(sections[0].width.saturating_sub(4) as usize)
+            ),
             Style::default().fg(t.border),
         )));
         lines.push(Line::raw(""));
@@ -101,17 +104,14 @@ pub fn render_report_view(frame: &mut Frame, area: Rect, app: &App) {
             };
 
             lines.push(Line::from(vec![
-                Span::styled(prefix, Style::default().fg(if is_selected { t.accent } else { t.fg })),
+                Span::styled(
+                    prefix,
+                    Style::default().fg(if is_selected { t.accent } else { t.fg }),
+                ),
                 Span::styled(format!("[{}] ", rg.key), key_style),
-                Span::styled(
-                    format!("{:<22}", rg.name),
-                    name_style,
-                ),
+                Span::styled(format!("{:<22}", rg.name), name_style),
                 Span::styled(rg.description, Style::default().fg(t.muted)),
-                Span::styled(
-                    format!("  {}", rg.duration),
-                    Style::default().fg(t.muted),
-                ),
+                Span::styled(format!("  {}", rg.duration), Style::default().fg(t.muted)),
             ]));
         }
 
@@ -127,7 +127,10 @@ pub fn render_report_view(frame: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         )));
         lines.push(Line::from(Span::styled(
-            format!("  {}", "─".repeat(sections[1].width.saturating_sub(4) as usize)),
+            format!(
+                "  {}",
+                "─".repeat(sections[1].width.saturating_sub(4) as usize)
+            ),
             Style::default().fg(t.border),
         )));
 
@@ -165,7 +168,10 @@ pub fn render_report_view(frame: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
         )));
         lines.push(Line::from(Span::styled(
-            format!("  {}", "─".repeat(sections[2].width.saturating_sub(4) as usize)),
+            format!(
+                "  {}",
+                "─".repeat(sections[2].width.saturating_sub(4) as usize)
+            ),
             Style::default().fg(t.border),
         )));
 
@@ -238,12 +244,19 @@ fn render_report_detail_view(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("░".repeat(empty), Style::default().fg(t.muted)),
         Span::styled(
             format!("  {:.0}/100", scan.score.total_score),
-            Style::default().fg(score_color).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(score_color)
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
     lines.push(Line::from(vec![
         Span::styled("  Status: ", Style::default().fg(t.muted)),
-        Span::styled(zone, Style::default().fg(score_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            zone,
+            Style::default()
+                .fg(score_color)
+                .add_modifier(Modifier::BOLD),
+        ),
     ]));
     lines.push(Line::raw(""));
 
@@ -269,11 +282,20 @@ fn render_report_detail_view(frame: &mut Frame, area: Rect, app: &App) {
     ]));
     lines.push(Line::from(vec![
         Span::styled("  Checks:     ", Style::default().fg(t.muted)),
-        Span::styled(format!("{}", scan.score.passed_checks), Style::default().fg(t.zone_green)),
+        Span::styled(
+            format!("{}", scan.score.passed_checks),
+            Style::default().fg(t.zone_green),
+        ),
         Span::styled(" passed  ", Style::default().fg(t.muted)),
-        Span::styled(format!("{}", scan.score.failed_checks), Style::default().fg(t.zone_red)),
+        Span::styled(
+            format!("{}", scan.score.failed_checks),
+            Style::default().fg(t.zone_red),
+        ),
         Span::styled(" failed  ", Style::default().fg(t.muted)),
-        Span::styled(format!("{}", scan.score.skipped_checks), Style::default().fg(t.muted)),
+        Span::styled(
+            format!("{}", scan.score.skipped_checks),
+            Style::default().fg(t.muted),
+        ),
         Span::styled(" skipped", Style::default().fg(t.muted)),
     ]));
     lines.push(Line::raw(""));

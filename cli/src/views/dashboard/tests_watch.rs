@@ -1,5 +1,5 @@
+use super::tests_helpers::{make_scan_result, render_to_string};
 use super::*;
-use super::tests_helpers::{render_to_string, make_scan_result};
 
 // --- T502: Watch Mode ---
 
@@ -45,11 +45,17 @@ fn e2e_t502_watcher_is_relevant_rejects_hidden_and_node_modules() {
     assert!(crate::watcher::is_relevant(Path::new("Cargo.toml")));
     assert!(!crate::watcher::is_relevant(Path::new(".git/HEAD")));
     assert!(!crate::watcher::is_relevant(Path::new(".env")));
-    assert!(!crate::watcher::is_relevant(Path::new("node_modules/express/index.js")));
-    assert!(!crate::watcher::is_relevant(Path::new("target/debug/complior")));
+    assert!(!crate::watcher::is_relevant(Path::new(
+        "node_modules/express/index.js"
+    )));
+    assert!(!crate::watcher::is_relevant(Path::new(
+        "target/debug/complior"
+    )));
     assert!(!crate::watcher::is_relevant(Path::new("dist/bundle.js")));
     assert!(!crate::watcher::is_relevant(Path::new("build/output.js")));
-    assert!(!crate::watcher::is_relevant(Path::new("__pycache__/mod.pyc")));
+    assert!(!crate::watcher::is_relevant(Path::new(
+        "__pycache__/mod.pyc"
+    )));
 }
 
 #[test]

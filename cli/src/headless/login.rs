@@ -33,11 +33,18 @@ pub async fn run_login(config: &TuiConfig) -> Result<(), String> {
                 use std::io::Write;
                 let _ = std::io::stdout().flush();
             }
-            TokenPollResult::Success { access_token, refresh_token, expires_in, user_email, org_name } => {
+            TokenPollResult::Success {
+                access_token,
+                refresh_token,
+                expires_in,
+                user_email,
+                org_name,
+            } => {
                 let expires_at = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs() + expires_in;
+                    .as_secs()
+                    + expires_in;
 
                 config::save_tokens(
                     &access_token,

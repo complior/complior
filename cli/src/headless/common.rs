@@ -47,7 +47,10 @@ pub async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
 
 /// Like `ensure_engine` but with an explicit project path (used by commands
 /// that accept a `[path]` argument, so the engine writes files to the correct directory).
-pub async fn ensure_engine_for(config: &TuiConfig, project_path: &std::path::Path) -> Result<EngineClient, i32> {
+pub async fn ensure_engine_for(
+    config: &TuiConfig,
+    project_path: &std::path::Path,
+) -> Result<EngineClient, i32> {
     let project_path = project_path.to_path_buf();
     let daemon_exists = daemon::find_running_daemon(&project_path).is_some();
 
@@ -121,11 +124,7 @@ pub async fn ensure_engine_for(config: &TuiConfig, project_path: &std::path::Pat
 }
 
 /// LLM API key environment variable names checked in priority order.
-const LLM_KEY_VARS: &[&str] = &[
-    "OPENROUTER_API_KEY",
-    "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY",
-];
+const LLM_KEY_VARS: &[&str] = &["OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"];
 
 /// Check if any LLM API key is available in environment or .env files.
 /// Checks process env vars, then `{project_path}/.complior/.env`, then `~/.config/complior/.env`.
@@ -195,21 +194,46 @@ pub fn print_llm_key_error() {
     eprintln!("  document quality scoring, semantic gap detection, and");
     eprintln!("  AI-enriched compliance content generation.");
     eprintln!();
-    eprintln!("  {}  Add your key to {}:", bold("Setup"), cyan(".complior/.env"));
+    eprintln!(
+        "  {}  Add your key to {}:",
+        bold("Setup"),
+        cyan(".complior/.env")
+    );
     eprintln!();
-    eprintln!("     {}", dim("# pick one provider, uncomment and paste your key:"));
+    eprintln!(
+        "     {}",
+        dim("# pick one provider, uncomment and paste your key:")
+    );
     eprintln!("     {}", yellow("OPENROUTER_API_KEY=sk-or-v1-..."));
     eprintln!("     {}", dim("# OPENAI_API_KEY=sk-..."));
     eprintln!("     {}", dim("# ANTHROPIC_API_KEY=sk-ant-..."));
     eprintln!();
     eprintln!("  {}  Get a free key:", bold("Keys"));
-    eprintln!("     OpenRouter  {}  {}", dim("(recommended)"), cyan("https://openrouter.ai"));
-    eprintln!("     OpenAI      {}               {}", dim("(paid)"), cyan("https://platform.openai.com"));
-    eprintln!("     Anthropic   {}               {}", dim("(paid)"), cyan("https://console.anthropic.com"));
+    eprintln!(
+        "     OpenRouter  {}  {}",
+        dim("(recommended)"),
+        cyan("https://openrouter.ai")
+    );
+    eprintln!(
+        "     OpenAI      {}               {}",
+        dim("(paid)"),
+        cyan("https://platform.openai.com")
+    );
+    eprintln!(
+        "     Anthropic   {}               {}",
+        dim("(paid)"),
+        cyan("https://console.anthropic.com")
+    );
     eprintln!();
     eprintln!("  {}", separator());
-    eprintln!("  {}  You can continue without LLM — the base scan (L1-L4)", dim("Tip:"));
-    eprintln!("  {}  and deterministic fixes work fully offline.", dim("     "));
+    eprintln!(
+        "  {}  You can continue without LLM — the base scan (L1-L4)",
+        dim("Tip:")
+    );
+    eprintln!(
+        "  {}  and deterministic fixes work fully offline.",
+        dim("     ")
+    );
     eprintln!("  {}  Just run: {}", dim("     "), bold("complior scan"));
     eprintln!("  {}", separator());
     eprintln!();
@@ -233,4 +257,3 @@ pub fn resolve_project_path_buf(path: Option<&str>) -> std::path::PathBuf {
         None => cwd,
     }
 }
-

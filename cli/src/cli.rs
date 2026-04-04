@@ -192,7 +192,6 @@ pub enum Command {
     },
 
     // === EXTRAS (behind feature flag) ===
-
     /// AIUC-1 certification readiness assessment
     #[cfg(feature = "extras")]
     Cert {
@@ -1005,8 +1004,13 @@ pub fn needs_engine(cli: &Cli) -> bool {
 /// Used to start the engine with the correct project context (API keys, config).
 pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
     let raw = match &cli.command {
-        Some(Command::Scan { path, .. } | Command::Fix { path, .. } | Command::Init {
-path, .. } | Command::Report { path, .. } | Command::Doctor { path, .. }) => path.as_deref(),
+        Some(
+            Command::Scan { path, .. }
+            | Command::Fix { path, .. }
+            | Command::Init { path, .. }
+            | Command::Report { path, .. }
+            | Command::Doctor { path, .. },
+        ) => path.as_deref(),
         Some(Command::Eval { path, .. }) => path.as_deref(),
         Some(Command::Agent { action }) => match action {
             AgentAction::Init { path, .. }
@@ -1033,8 +1037,7 @@ path, .. } | Command::Report { path, .. } | Command::Doctor { path, .. }) => pat
         Some(Command::Audit { path, .. } | Command::SupplyChain { path, .. }) => path.as_deref(),
         #[cfg(feature = "extras")]
         Some(Command::Cert { action }) => match action {
-            CertAction::Readiness { path, .. }
-            | CertAction::Test { path, .. } => path.as_deref(),
+            CertAction::Readiness { path, .. } | CertAction::Test { path, .. } => path.as_deref(),
         },
         #[cfg(feature = "extras")]
         Some(Command::Doc { action }) => match action {
@@ -1044,7 +1047,11 @@ path, .. } | Command::Report { path, .. } | Command::Doctor { path, .. }) => pat
     };
     raw.map(|p| {
         let pb = std::path::PathBuf::from(p);
-        if pb.is_absolute() { pb } else { std::env::current_dir().unwrap_or_default().join(pb) }
+        if pb.is_absolute() {
+            pb
+        } else {
+            std::env::current_dir().unwrap_or_default().join(pb)
+        }
     })
 }
 
@@ -1116,7 +1123,10 @@ mod tests {
     #[test]
     fn cli_parse_scan_json() {
         let cli = Cli::parse_from(["complior", "scan", "--json"]);
-        assert!(matches!(cli.command, Some(Command::Scan { json: true, .. })));
+        assert!(matches!(
+            cli.command,
+            Some(Command::Scan { json: true, .. })
+        ));
     }
 
     #[test]
@@ -1147,7 +1157,12 @@ mod tests {
 
     #[test]
     fn cli_parse_global_flags() {
-        let cli = Cli::parse_from(["complior", "--engine-url", "http://localhost:4000", "--resume"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "--engine-url",
+            "http://localhost:4000",
+            "--resume",
+        ]);
         assert_eq!(cli.engine_url.as_deref(), Some("http://localhost:4000"));
         assert!(cli.resume);
     }
@@ -1169,7 +1184,12 @@ mod tests {
     fn cli_parse_fix_dry_run() {
         let cli = Cli::parse_from(["complior", "fix", "--dry-run"]);
         match cli.command {
-            Some(Command::Fix { dry_run, json, ref check_id, .. }) => {
+            Some(Command::Fix {
+                dry_run,
+                json,
+                ref check_id,
+                ..
+            }) => {
                 assert!(dry_run);
                 assert!(!json);
                 assert!(check_id.is_none());
@@ -1195,7 +1215,9 @@ mod tests {
     fn cli_parse_fix_check_id() {
         let cli = Cli::parse_from(["complior", "fix", "--check-id", "l1-fria"]);
         match cli.command {
-            Some(Command::Fix { check_id, dry_run, .. }) => {
+            Some(Command::Fix {
+                check_id, dry_run, ..
+            }) => {
                 assert_eq!(check_id.as_deref(), Some("l1-fria"));
                 assert!(!dry_run);
             }
@@ -1220,7 +1242,10 @@ mod tests {
     fn cli_parse_daemon_start_watch_port() {
         let cli = Cli::parse_from(["complior", "daemon", "start", "--watch", "--port", "4000"]);
         match cli.command {
-            Some(Command::Daemon { action: Some(DaemonAction::Start { watch, port }), .. }) => {
+            Some(Command::Daemon {
+                action: Some(DaemonAction::Start { watch, port }),
+                ..
+            }) => {
                 assert!(watch);
                 assert_eq!(port, Some(4000));
             }
@@ -1245,7 +1270,10 @@ mod tests {
         let cli = Cli::parse_from(["complior", "daemon", "status"]);
         assert!(matches!(
             cli.command,
-            Some(Command::Daemon { action: Some(DaemonAction::Status), .. })
+            Some(Command::Daemon {
+                action: Some(DaemonAction::Status),
+                ..
+            })
         ));
     }
 
@@ -1254,7 +1282,10 @@ mod tests {
         let cli = Cli::parse_from(["complior", "daemon", "stop"]);
         assert!(matches!(
             cli.command,
-            Some(Command::Daemon { action: Some(DaemonAction::Stop), .. })
+            Some(Command::Daemon {
+                action: Some(DaemonAction::Stop),
+                ..
+            })
         ));
     }
 
@@ -1262,7 +1293,9 @@ mod tests {
     fn cli_parse_agent_init() {
         let cli = Cli::parse_from(["complior", "agent", "init"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Init { json, path, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Init { json, path, .. },
+            }) => {
                 assert!(!json);
                 assert!(path.is_none());
             }
@@ -1275,7 +1308,9 @@ mod tests {
     fn cli_parse_agent_init_json() {
         let cli = Cli::parse_from(["complior", "agent", "init", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Init { json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Init { json, .. },
+            }) => {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Init command"),
@@ -1286,7 +1321,9 @@ mod tests {
     fn cli_parse_agent_init_path() {
         let cli = Cli::parse_from(["complior", "agent", "init", "/tmp/project"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Init { path, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Init { path, .. },
+            }) => {
                 assert_eq!(path.as_deref(), Some("/tmp/project"));
             }
             _ => panic!("Expected Agent Init command"),
@@ -1298,7 +1335,13 @@ mod tests {
         let cli = Cli::parse_from(["complior", "agent", "list"]);
         assert!(matches!(
             &cli.command,
-            Some(Command::Agent { action: AgentAction::List { json: false, verbose: false, path: None } })
+            Some(Command::Agent {
+                action: AgentAction::List {
+                    json: false,
+                    verbose: false,
+                    path: None
+                }
+            })
         ));
         assert!(is_headless(&cli));
     }
@@ -1307,7 +1350,14 @@ mod tests {
     fn cli_parse_agent_list_verbose() {
         let cli = Cli::parse_from(["complior", "agent", "list", "--verbose"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::List { json, verbose, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::List {
+                        json,
+                        verbose,
+                        path,
+                    },
+            }) => {
                 assert!(!json);
                 assert!(*verbose);
                 assert!(path.is_none());
@@ -1320,7 +1370,9 @@ mod tests {
     fn cli_parse_agent_show() {
         let cli = Cli::parse_from(["complior", "agent", "show", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Show { name, json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Show { name, json, path },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(path.is_none());
@@ -1334,7 +1386,9 @@ mod tests {
     fn cli_parse_agent_show_json() {
         let cli = Cli::parse_from(["complior", "agent", "show", "my-bot", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Show { name, json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Show { name, json, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*json);
             }
@@ -1346,7 +1400,9 @@ mod tests {
     fn cli_parse_agent_autonomy() {
         let cli = Cli::parse_from(["complior", "agent", "autonomy"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Autonomy { json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Autonomy { json, path },
+            }) => {
                 assert!(!json);
                 assert!(path.is_none());
             }
@@ -1359,7 +1415,9 @@ mod tests {
     fn cli_parse_agent_autonomy_json() {
         let cli = Cli::parse_from(["complior", "agent", "autonomy", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Autonomy { json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Autonomy { json, .. },
+            }) => {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Autonomy command"),
@@ -1370,7 +1428,9 @@ mod tests {
     fn cli_parse_agent_autonomy_path() {
         let cli = Cli::parse_from(["complior", "agent", "autonomy", "/tmp/proj"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Autonomy { path, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Autonomy { path, .. },
+            }) => {
                 assert_eq!(path.as_deref(), Some("/tmp/proj"));
             }
             _ => panic!("Expected Agent Autonomy command"),
@@ -1381,7 +1441,17 @@ mod tests {
     fn cli_parse_agent_validate() {
         let cli = Cli::parse_from(["complior", "agent", "validate"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Validate { name, json, ci, strict, verbose, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Validate {
+                        name,
+                        json,
+                        ci,
+                        strict,
+                        verbose,
+                        path,
+                    },
+            }) => {
                 assert!(name.is_none());
                 assert!(!json);
                 assert!(!ci);
@@ -1398,7 +1468,9 @@ mod tests {
     fn cli_parse_agent_validate_name() {
         let cli = Cli::parse_from(["complior", "agent", "validate", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Validate { name, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Validate { name, .. },
+            }) => {
                 assert_eq!(name.as_deref(), Some("my-bot"));
             }
             _ => panic!("Expected Agent Validate command"),
@@ -1409,7 +1481,9 @@ mod tests {
     fn cli_parse_agent_validate_ci_strict() {
         let cli = Cli::parse_from(["complior", "agent", "validate", "--ci", "--strict"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Validate { ci, strict, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Validate { ci, strict, .. },
+            }) => {
                 assert!(*ci);
                 assert!(*strict);
             }
@@ -1421,7 +1495,9 @@ mod tests {
     fn cli_parse_agent_validate_verbose() {
         let cli = Cli::parse_from(["complior", "agent", "validate", "--verbose"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Validate { verbose, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Validate { verbose, .. },
+            }) => {
                 assert!(*verbose);
             }
             _ => panic!("Expected Agent Validate command"),
@@ -1432,7 +1508,9 @@ mod tests {
     fn cli_parse_agent_completeness() {
         let cli = Cli::parse_from(["complior", "agent", "completeness", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Completeness { name, json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Completeness { name, json, path },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(path.is_none());
@@ -1446,7 +1524,9 @@ mod tests {
     fn cli_parse_agent_completeness_json() {
         let cli = Cli::parse_from(["complior", "agent", "completeness", "my-bot", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Completeness { name, json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Completeness { name, json, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*json);
             }
@@ -1458,7 +1538,18 @@ mod tests {
     fn cli_parse_agent_fria() {
         let cli = Cli::parse_from(["complior", "agent", "fria", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Fria { name, json, organization, impact, mitigation, approval, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Fria {
+                        name,
+                        json,
+                        organization,
+                        impact,
+                        mitigation,
+                        approval,
+                        path,
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(organization.is_none());
@@ -1476,7 +1567,9 @@ mod tests {
     fn cli_parse_agent_fria_json() {
         let cli = Cli::parse_from(["complior", "agent", "fria", "my-bot", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Fria { name, json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Fria { name, json, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*json);
             }
@@ -1486,9 +1579,21 @@ mod tests {
 
     #[test]
     fn cli_parse_agent_fria_organization() {
-        let cli = Cli::parse_from(["complior", "agent", "fria", "my-bot", "--organization", "Acme"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "agent",
+            "fria",
+            "my-bot",
+            "--organization",
+            "Acme",
+        ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Fria { name, organization, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Fria {
+                        name, organization, ..
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(organization.as_deref(), Some("Acme"));
             }
@@ -1499,13 +1604,28 @@ mod tests {
     #[test]
     fn cli_parse_agent_fria_manual_fields() {
         let cli = Cli::parse_from([
-            "complior", "agent", "fria", "my-bot",
-            "--impact", "Credit scoring bias",
-            "--mitigation", "Quarterly audits",
-            "--approval", "Jane Doe, CTO",
+            "complior",
+            "agent",
+            "fria",
+            "my-bot",
+            "--impact",
+            "Credit scoring bias",
+            "--mitigation",
+            "Quarterly audits",
+            "--approval",
+            "Jane Doe, CTO",
         ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Fria { name, impact, mitigation, approval, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Fria {
+                        name,
+                        impact,
+                        mitigation,
+                        approval,
+                        ..
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(impact.as_deref(), Some("Credit scoring bias"));
                 assert_eq!(mitigation.as_deref(), Some("Quarterly audits"));
@@ -1519,7 +1639,21 @@ mod tests {
     fn cli_parse_agent_notify() {
         let cli = Cli::parse_from(["complior", "agent", "notify", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Notify { name, json, company_name, contact_name, contact_email, contact_phone, deployment_date, affected_roles, impact_description, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Notify {
+                        name,
+                        json,
+                        company_name,
+                        contact_name,
+                        contact_email,
+                        contact_phone,
+                        deployment_date,
+                        affected_roles,
+                        impact_description,
+                        path,
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(company_name.is_none());
@@ -1540,7 +1674,9 @@ mod tests {
     fn cli_parse_agent_notify_json() {
         let cli = Cli::parse_from(["complior", "agent", "notify", "my-bot", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Notify { name, json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Notify { name, json, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*json);
             }
@@ -1551,17 +1687,40 @@ mod tests {
     #[test]
     fn cli_parse_agent_notify_all_flags() {
         let cli = Cli::parse_from([
-            "complior", "agent", "notify", "my-bot",
-            "--company-name", "Acme Corp",
-            "--contact-name", "Jane Doe",
-            "--contact-email", "jane@acme.com",
-            "--contact-phone", "+1-555-0100",
-            "--deployment-date", "2026-04-01",
-            "--affected-roles", "Customer Support",
-            "--impact-description", "Assists with ticket triage",
+            "complior",
+            "agent",
+            "notify",
+            "my-bot",
+            "--company-name",
+            "Acme Corp",
+            "--contact-name",
+            "Jane Doe",
+            "--contact-email",
+            "jane@acme.com",
+            "--contact-phone",
+            "+1-555-0100",
+            "--deployment-date",
+            "2026-04-01",
+            "--affected-roles",
+            "Customer Support",
+            "--impact-description",
+            "Assists with ticket triage",
         ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Notify { name, company_name, contact_name, contact_email, contact_phone, deployment_date, affected_roles, impact_description, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Notify {
+                        name,
+                        company_name,
+                        contact_name,
+                        contact_email,
+                        contact_phone,
+                        deployment_date,
+                        affected_roles,
+                        impact_description,
+                        ..
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(company_name.as_deref(), Some("Acme Corp"));
                 assert_eq!(contact_name.as_deref(), Some("Jane Doe"));
@@ -1569,7 +1728,10 @@ mod tests {
                 assert_eq!(contact_phone.as_deref(), Some("+1-555-0100"));
                 assert_eq!(deployment_date.as_deref(), Some("2026-04-01"));
                 assert_eq!(affected_roles.as_deref(), Some("Customer Support"));
-                assert_eq!(impact_description.as_deref(), Some("Assists with ticket triage"));
+                assert_eq!(
+                    impact_description.as_deref(),
+                    Some("Assists with ticket triage")
+                );
             }
             _ => panic!("Expected Agent Notify command"),
         }
@@ -1579,7 +1741,15 @@ mod tests {
     fn cli_parse_agent_export() {
         let cli = Cli::parse_from(["complior", "agent", "export", "my-bot", "--format", "a2a"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Export { name, format, json, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Export {
+                        name,
+                        format,
+                        json,
+                        path,
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(format, "a2a");
                 assert!(!json);
@@ -1592,9 +1762,16 @@ mod tests {
 
     #[test]
     fn cli_parse_agent_export_json() {
-        let cli = Cli::parse_from(["complior", "agent", "export", "my-bot", "--format", "aiuc-1", "--json"]);
+        let cli = Cli::parse_from([
+            "complior", "agent", "export", "my-bot", "--format", "aiuc-1", "--json",
+        ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Export { name, format, json, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Export {
+                        name, format, json, ..
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(format, "aiuc-1");
                 assert!(*json);
@@ -1605,9 +1782,22 @@ mod tests {
 
     #[test]
     fn cli_parse_agent_export_nist() {
-        let cli = Cli::parse_from(["complior", "agent", "export", "my-bot", "--format", "nist", "/tmp/project"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "agent",
+            "export",
+            "my-bot",
+            "--format",
+            "nist",
+            "/tmp/project",
+        ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Export { name, format, path, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Export {
+                        name, format, path, ..
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(format, "nist");
                 assert_eq!(path.as_deref(), Some("/tmp/project"));
@@ -1620,7 +1810,9 @@ mod tests {
     fn cli_parse_agent_registry() {
         let cli = Cli::parse_from(["complior", "agent", "registry"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Registry { json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Registry { json, path },
+            }) => {
                 assert!(!json);
                 assert!(path.is_none());
             }
@@ -1633,7 +1825,9 @@ mod tests {
     fn cli_parse_agent_registry_json() {
         let cli = Cli::parse_from(["complior", "agent", "registry", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Registry { json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Registry { json, .. },
+            }) => {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Registry command"),
@@ -1644,7 +1838,9 @@ mod tests {
     fn cli_parse_agent_registry_path() {
         let cli = Cli::parse_from(["complior", "agent", "registry", "/tmp/proj"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Registry { path, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Registry { path, .. },
+            }) => {
                 assert_eq!(path.as_deref(), Some("/tmp/proj"));
             }
             _ => panic!("Expected Agent Registry command"),
@@ -1655,7 +1851,9 @@ mod tests {
     fn cli_parse_agent_evidence() {
         let cli = Cli::parse_from(["complior", "agent", "evidence"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Evidence { json, verify, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Evidence { json, verify, path },
+            }) => {
                 assert!(!json);
                 assert!(!verify);
                 assert!(path.is_none());
@@ -1669,7 +1867,9 @@ mod tests {
     fn cli_parse_agent_evidence_verify() {
         let cli = Cli::parse_from(["complior", "agent", "evidence", "--verify"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Evidence { verify, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Evidence { verify, .. },
+            }) => {
                 assert!(*verify);
             }
             _ => panic!("Expected Agent Evidence command"),
@@ -1680,7 +1880,9 @@ mod tests {
     fn cli_parse_agent_evidence_json() {
         let cli = Cli::parse_from(["complior", "agent", "evidence", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Evidence { json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Evidence { json, .. },
+            }) => {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Evidence command"),
@@ -1691,7 +1893,9 @@ mod tests {
     fn cli_parse_agent_permissions() {
         let cli = Cli::parse_from(["complior", "agent", "permissions"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Permissions { json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Permissions { json, path },
+            }) => {
                 assert!(!json);
                 assert!(path.is_none());
             }
@@ -1704,7 +1908,9 @@ mod tests {
     fn cli_parse_agent_permissions_json() {
         let cli = Cli::parse_from(["complior", "agent", "permissions", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Permissions { json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Permissions { json, .. },
+            }) => {
                 assert!(*json);
             }
             _ => panic!("Expected Agent Permissions command"),
@@ -1715,7 +1921,17 @@ mod tests {
     fn cli_parse_agent_policy() {
         let cli = Cli::parse_from(["complior", "agent", "policy", "my-bot", "--industry", "hr"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Policy { name, industry, json, organization, approver, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Policy {
+                        name,
+                        industry,
+                        json,
+                        organization,
+                        approver,
+                        path,
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(industry, "hr");
                 assert!(!json);
@@ -1731,15 +1947,31 @@ mod tests {
     #[test]
     fn cli_parse_agent_policy_all_flags() {
         let cli = Cli::parse_from([
-            "complior", "agent", "policy", "my-bot",
-            "--industry", "finance",
+            "complior",
+            "agent",
+            "policy",
+            "my-bot",
+            "--industry",
+            "finance",
             "--json",
-            "--organization", "Acme Corp",
-            "--approver", "Jane Doe, CTO",
+            "--organization",
+            "Acme Corp",
+            "--approver",
+            "Jane Doe, CTO",
             "/tmp/project",
         ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Policy { name, industry, json, organization, approver, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Policy {
+                        name,
+                        industry,
+                        json,
+                        organization,
+                        approver,
+                        path,
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(industry, "finance");
                 assert!(*json);
@@ -1755,7 +1987,17 @@ mod tests {
     fn cli_parse_agent_audit() {
         let cli = Cli::parse_from(["complior", "agent", "audit"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Audit { agent, since, event_type, limit, json, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Audit {
+                        agent,
+                        since,
+                        event_type,
+                        limit,
+                        json,
+                        path,
+                    },
+            }) => {
                 assert!(agent.is_none());
                 assert!(since.is_none());
                 assert!(event_type.is_none());
@@ -1771,14 +2013,29 @@ mod tests {
     #[test]
     fn cli_parse_agent_audit_with_filters() {
         let cli = Cli::parse_from([
-            "complior", "agent", "audit",
-            "--agent", "my-bot",
-            "--since", "2026-01-01",
-            "--type", "scan.completed",
-            "--limit", "10",
+            "complior",
+            "agent",
+            "audit",
+            "--agent",
+            "my-bot",
+            "--since",
+            "2026-01-01",
+            "--type",
+            "scan.completed",
+            "--limit",
+            "10",
         ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Audit { agent, since, event_type, limit, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Audit {
+                        agent,
+                        since,
+                        event_type,
+                        limit,
+                        ..
+                    },
+            }) => {
                 assert_eq!(agent.as_deref(), Some("my-bot"));
                 assert_eq!(since.as_deref(), Some("2026-01-01"));
                 assert_eq!(event_type.as_deref(), Some("scan.completed"));
@@ -1792,7 +2049,9 @@ mod tests {
     fn cli_parse_agent_test_gen() {
         let cli = Cli::parse_from(["complior", "agent", "test-gen", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::TestGen { name, json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::TestGen { name, json, path },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(path.is_none());
@@ -1806,7 +2065,9 @@ mod tests {
     fn cli_parse_agent_test_gen_json() {
         let cli = Cli::parse_from(["complior", "agent", "test-gen", "my-bot", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::TestGen { name, json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::TestGen { name, json, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*json);
             }
@@ -1816,9 +2077,18 @@ mod tests {
 
     #[test]
     fn cli_parse_agent_test_gen_path() {
-        let cli = Cli::parse_from(["complior", "agent", "test-gen", "my-bot", "--path", "/tmp/proj"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "agent",
+            "test-gen",
+            "my-bot",
+            "--path",
+            "/tmp/proj",
+        ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::TestGen { name, path, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::TestGen { name, path, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(path.as_deref(), Some("/tmp/proj"));
             }
@@ -1830,7 +2100,9 @@ mod tests {
     fn cli_parse_agent_diff() {
         let cli = Cli::parse_from(["complior", "agent", "diff", "my-bot"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Diff { name, json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Diff { name, json, path },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(path.is_none());
@@ -1844,7 +2116,9 @@ mod tests {
     fn cli_parse_agent_diff_json() {
         let cli = Cli::parse_from(["complior", "agent", "diff", "my-bot", "--json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Diff { name, json, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Diff { name, json, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*json);
             }
@@ -1856,7 +2130,9 @@ mod tests {
     fn cli_parse_agent_diff_path() {
         let cli = Cli::parse_from(["complior", "agent", "diff", "my-bot", "--path", "/tmp/proj"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Diff { name, path, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::Diff { name, path, .. },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(path.as_deref(), Some("/tmp/proj"));
             }
@@ -1869,7 +2145,11 @@ mod tests {
     fn cli_parse_chat() {
         let cli = Cli::parse_from(["complior", "chat", "What is Article 5?"]);
         match &cli.command {
-            Some(Command::Chat { message, json, model }) => {
+            Some(Command::Chat {
+                message,
+                json,
+                model,
+            }) => {
                 assert_eq!(message, "What is Article 5?");
                 assert!(!json);
                 assert!(model.is_none());
@@ -1920,7 +2200,12 @@ mod tests {
     fn cli_parse_scan_diff() {
         let cli = Cli::parse_from(["complior", "scan", "--diff", "main"]);
         match &cli.command {
-            Some(Command::Scan { diff, fail_on_regression, comment, .. }) => {
+            Some(Command::Scan {
+                diff,
+                fail_on_regression,
+                comment,
+                ..
+            }) => {
                 assert_eq!(diff.as_deref(), Some("main"));
                 assert!(!fail_on_regression);
                 assert!(!comment);
@@ -1933,11 +2218,22 @@ mod tests {
     #[test]
     fn cli_parse_scan_diff_full() {
         let cli = Cli::parse_from([
-            "complior", "scan", "--diff", "develop",
-            "--fail-on-regression", "--comment", "--json",
+            "complior",
+            "scan",
+            "--diff",
+            "develop",
+            "--fail-on-regression",
+            "--comment",
+            "--json",
         ]);
         match &cli.command {
-            Some(Command::Scan { diff, fail_on_regression, comment, json, .. }) => {
+            Some(Command::Scan {
+                diff,
+                fail_on_regression,
+                comment,
+                json,
+                ..
+            }) => {
                 assert_eq!(diff.as_deref(), Some("develop"));
                 assert!(*fail_on_regression);
                 assert!(*comment);
@@ -1952,7 +2248,9 @@ mod tests {
     fn cli_parse_cert_readiness() {
         let cli = Cli::parse_from(["complior", "cert", "readiness", "my-bot"]);
         match &cli.command {
-            Some(Command::Cert { action: CertAction::Readiness { name, json, path } }) => {
+            Some(Command::Cert {
+                action: CertAction::Readiness { name, json, path },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(!json);
                 assert!(path.is_none());
@@ -1965,9 +2263,18 @@ mod tests {
     #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_cert_readiness_json_path() {
-        let cli = Cli::parse_from(["complior", "cert", "readiness", "my-bot", "--json", "/tmp/project"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "cert",
+            "readiness",
+            "my-bot",
+            "--json",
+            "/tmp/project",
+        ]);
         match &cli.command {
-            Some(Command::Cert { action: CertAction::Readiness { name, json, path } }) => {
+            Some(Command::Cert {
+                action: CertAction::Readiness { name, json, path },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*json);
                 assert_eq!(path.as_deref(), Some("/tmp/project"));
@@ -1981,7 +2288,12 @@ mod tests {
     fn cli_parse_sync_audit() {
         let cli = Cli::parse_from(["complior", "sync", "--audit"]);
         match &cli.command {
-            Some(Command::Sync { audit, evidence, registry, .. }) => {
+            Some(Command::Sync {
+                audit,
+                evidence,
+                registry,
+                ..
+            }) => {
                 assert!(*audit);
                 assert!(!evidence);
                 assert!(!registry);
@@ -1995,7 +2307,12 @@ mod tests {
     fn cli_parse_sync_all_new_flags() {
         let cli = Cli::parse_from(["complior", "sync", "--audit", "--evidence", "--registry"]);
         match &cli.command {
-            Some(Command::Sync { audit, evidence, registry, .. }) => {
+            Some(Command::Sync {
+                audit,
+                evidence,
+                registry,
+                ..
+            }) => {
                 assert!(*audit);
                 assert!(*evidence);
                 assert!(*registry);
@@ -2009,7 +2326,12 @@ mod tests {
     fn cli_parse_simulate_fix() {
         let cli = Cli::parse_from(["complior", "simulate", "--fix", "l1-risk"]);
         match &cli.command {
-            Some(Command::Simulate { fix, add_doc, complete_passport, json }) => {
+            Some(Command::Simulate {
+                fix,
+                add_doc,
+                complete_passport,
+                json,
+            }) => {
                 assert_eq!(fix, &["l1-risk"]);
                 assert!(add_doc.is_empty());
                 assert!(complete_passport.is_empty());
@@ -2038,7 +2360,9 @@ mod tests {
     fn cli_parse_simulate_complete_passport() {
         let cli = Cli::parse_from(["complior", "simulate", "--complete-passport", "description"]);
         match &cli.command {
-            Some(Command::Simulate { complete_passport, .. }) => {
+            Some(Command::Simulate {
+                complete_passport, ..
+            }) => {
                 assert_eq!(complete_passport, &["description"]);
             }
             _ => panic!("Expected Simulate command"),
@@ -2049,15 +2373,25 @@ mod tests {
     #[test]
     fn cli_parse_simulate_multiple_actions() {
         let cli = Cli::parse_from([
-            "complior", "simulate",
-            "--fix", "l1-risk",
-            "--fix", "l2-fria",
-            "--add-doc", "fria",
-            "--complete-passport", "description",
+            "complior",
+            "simulate",
+            "--fix",
+            "l1-risk",
+            "--fix",
+            "l2-fria",
+            "--add-doc",
+            "fria",
+            "--complete-passport",
+            "description",
             "--json",
         ]);
         match &cli.command {
-            Some(Command::Simulate { fix, add_doc, complete_passport, json }) => {
+            Some(Command::Simulate {
+                fix,
+                add_doc,
+                complete_passport,
+                json,
+            }) => {
                 assert_eq!(fix, &["l1-risk", "l2-fria"]);
                 assert_eq!(add_doc, &["fria"]);
                 assert_eq!(complete_passport, &["description"]);
@@ -2084,7 +2418,15 @@ mod tests {
     fn cli_parse_agent_import() {
         let cli = Cli::parse_from(["complior", "agent", "import", "--from", "a2a", "card.json"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Import { from, file, json, path } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Import {
+                        from,
+                        file,
+                        json,
+                        path,
+                    },
+            }) => {
                 assert_eq!(from, "a2a");
                 assert_eq!(file, "card.json");
                 assert!(!json);
@@ -2097,9 +2439,22 @@ mod tests {
 
     #[test]
     fn cli_parse_agent_import_json() {
-        let cli = Cli::parse_from(["complior", "agent", "import", "--from", "a2a", "card.json", "--json"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "agent",
+            "import",
+            "--from",
+            "a2a",
+            "card.json",
+            "--json",
+        ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Import { from, file, json, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Import {
+                        from, file, json, ..
+                    },
+            }) => {
                 assert_eq!(from, "a2a");
                 assert_eq!(file, "card.json");
                 assert!(*json);
@@ -2110,9 +2465,23 @@ mod tests {
 
     #[test]
     fn cli_parse_agent_import_path() {
-        let cli = Cli::parse_from(["complior", "agent", "import", "--from", "a2a", "card.json", "--path", "/tmp/proj"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "agent",
+            "import",
+            "--from",
+            "a2a",
+            "card.json",
+            "--path",
+            "/tmp/proj",
+        ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::Import { from, file, path, .. } }) => {
+            Some(Command::Agent {
+                action:
+                    AgentAction::Import {
+                        from, file, path, ..
+                    },
+            }) => {
                 assert_eq!(from, "a2a");
                 assert_eq!(file, "card.json");
                 assert_eq!(path.as_deref(), Some("/tmp/proj"));
@@ -2125,7 +2494,9 @@ mod tests {
     fn cli_parse_agent_audit_package() {
         let cli = Cli::parse_from(["complior", "agent", "audit-package"]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::AuditPackage { output, json, path } }) => {
+            Some(Command::Agent {
+                action: AgentAction::AuditPackage { output, json, path },
+            }) => {
                 assert!(output.is_none());
                 assert!(!json);
                 assert!(path.is_none());
@@ -2137,9 +2508,17 @@ mod tests {
 
     #[test]
     fn cli_parse_agent_audit_package_output() {
-        let cli = Cli::parse_from(["complior", "agent", "audit-package", "--output", "audit.tar.gz"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "agent",
+            "audit-package",
+            "--output",
+            "audit.tar.gz",
+        ]);
         match &cli.command {
-            Some(Command::Agent { action: AgentAction::AuditPackage { output, .. } }) => {
+            Some(Command::Agent {
+                action: AgentAction::AuditPackage { output, .. },
+            }) => {
                 assert_eq!(output.as_deref(), Some("audit.tar.gz"));
             }
             _ => panic!("Expected Agent AuditPackage command"),
@@ -2149,9 +2528,17 @@ mod tests {
     #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_proxy_start() {
-        let cli = Cli::parse_from(["complior", "proxy", "start", "npx", "@modelcontextprotocol/server-filesystem"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "proxy",
+            "start",
+            "npx",
+            "@modelcontextprotocol/server-filesystem",
+        ]);
         match &cli.command {
-            Some(Command::Proxy { action: ProxyAction::Start { command, args } }) => {
+            Some(Command::Proxy {
+                action: ProxyAction::Start { command, args },
+            }) => {
                 assert_eq!(command, "npx");
                 assert_eq!(args, &["@modelcontextprotocol/server-filesystem"]);
             }
@@ -2166,7 +2553,9 @@ mod tests {
         let cli = Cli::parse_from(["complior", "proxy", "stop"]);
         assert!(matches!(
             &cli.command,
-            Some(Command::Proxy { action: ProxyAction::Stop })
+            Some(Command::Proxy {
+                action: ProxyAction::Stop
+            })
         ));
         assert!(is_headless(&cli));
     }
@@ -2177,7 +2566,9 @@ mod tests {
         let cli = Cli::parse_from(["complior", "proxy", "status"]);
         assert!(matches!(
             &cli.command,
-            Some(Command::Proxy { action: ProxyAction::Status })
+            Some(Command::Proxy {
+                action: ProxyAction::Status
+            })
         ));
         assert!(is_headless(&cli));
     }
@@ -2185,9 +2576,19 @@ mod tests {
     #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_proxy_start_multiple_args() {
-        let cli = Cli::parse_from(["complior", "proxy", "start", "node", "server.js", "--port", "3000"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "proxy",
+            "start",
+            "node",
+            "server.js",
+            "--port",
+            "3000",
+        ]);
         match &cli.command {
-            Some(Command::Proxy { action: ProxyAction::Start { command, args } }) => {
+            Some(Command::Proxy {
+                action: ProxyAction::Start { command, args },
+            }) => {
                 assert_eq!(command, "node");
                 assert_eq!(args, &["server.js", "--port", "3000"]);
             }
@@ -2198,9 +2599,26 @@ mod tests {
     #[cfg(feature = "extras")]
     #[test]
     fn cli_parse_doc_generate_type() {
-        let cli = Cli::parse_from(["complior", "doc", "generate", "my-bot", "--type", "ai-literacy"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "doc",
+            "generate",
+            "my-bot",
+            "--type",
+            "ai-literacy",
+        ]);
         match &cli.command {
-            Some(Command::Doc { action: DocAction::Generate { name, doc_type, all, organization, json, path } }) => {
+            Some(Command::Doc {
+                action:
+                    DocAction::Generate {
+                        name,
+                        doc_type,
+                        all,
+                        organization,
+                        json,
+                        path,
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert_eq!(doc_type.as_deref(), Some("ai-literacy"));
                 assert!(!all);
@@ -2218,7 +2636,15 @@ mod tests {
     fn cli_parse_doc_generate_all() {
         let cli = Cli::parse_from(["complior", "doc", "generate", "my-bot", "--all"]);
         match &cli.command {
-            Some(Command::Doc { action: DocAction::Generate { name, all, doc_type, .. } }) => {
+            Some(Command::Doc {
+                action:
+                    DocAction::Generate {
+                        name,
+                        all,
+                        doc_type,
+                        ..
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*all);
                 assert!(doc_type.is_none());
@@ -2232,11 +2658,28 @@ mod tests {
     #[test]
     fn cli_parse_doc_generate_all_with_options() {
         let cli = Cli::parse_from([
-            "complior", "doc", "generate", "my-bot",
-            "--all", "--organization", "Acme Corp", "--json", "/tmp/project",
+            "complior",
+            "doc",
+            "generate",
+            "my-bot",
+            "--all",
+            "--organization",
+            "Acme Corp",
+            "--json",
+            "/tmp/project",
         ]);
         match &cli.command {
-            Some(Command::Doc { action: DocAction::Generate { name, all, organization, json, path, .. } }) => {
+            Some(Command::Doc {
+                action:
+                    DocAction::Generate {
+                        name,
+                        all,
+                        organization,
+                        json,
+                        path,
+                        ..
+                    },
+            }) => {
                 assert_eq!(name, "my-bot");
                 assert!(*all);
                 assert_eq!(organization.as_deref(), Some("Acme Corp"));
@@ -2251,7 +2694,9 @@ mod tests {
     fn cli_parse_scan_deep() {
         let cli = Cli::parse_from(["complior", "scan", "--deep"]);
         match cli.command {
-            Some(Command::Scan { deep, llm, cloud, .. }) => {
+            Some(Command::Scan {
+                deep, llm, cloud, ..
+            }) => {
                 assert!(deep);
                 assert!(!llm);
                 assert!(!cloud);
@@ -2264,7 +2709,9 @@ mod tests {
     fn cli_parse_scan_llm() {
         let cli = Cli::parse_from(["complior", "scan", "--llm"]);
         match cli.command {
-            Some(Command::Scan { deep, llm, cloud, .. }) => {
+            Some(Command::Scan {
+                deep, llm, cloud, ..
+            }) => {
                 assert!(!deep);
                 assert!(llm);
                 assert!(!cloud);
@@ -2302,7 +2749,9 @@ mod tests {
         let cli = Cli::parse_from(["complior", "tools", "status"]);
         assert!(matches!(
             cli.command,
-            Some(Command::Tools { action: ToolsAction::Status })
+            Some(Command::Tools {
+                action: ToolsAction::Status
+            })
         ));
         assert!(is_headless(&cli));
     }
@@ -2313,7 +2762,9 @@ mod tests {
         let cli = Cli::parse_from(["complior", "tools", "update"]);
         assert!(matches!(
             cli.command,
-            Some(Command::Tools { action: ToolsAction::Update })
+            Some(Command::Tools {
+                action: ToolsAction::Update
+            })
         ));
         assert!(is_headless(&cli));
     }
@@ -2322,7 +2773,32 @@ mod tests {
     fn cli_parse_eval_default() {
         let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000/api/chat"]);
         match &cli.command {
-            Some(Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run, path }) => {
+            Some(Command::Eval {
+                target,
+                det,
+                llm,
+                security,
+                full,
+                agent,
+                categories,
+                json,
+                ci,
+                threshold,
+                model,
+                api_key,
+                request_template,
+                response_path,
+                headers,
+                last,
+                failures,
+                verbose,
+                concurrency,
+                no_remediation,
+                remediation,
+                fix,
+                dry_run,
+                path,
+            }) => {
                 assert_eq!(target.as_deref(), Some("http://localhost:4000/api/chat"));
                 assert!(!det);
                 assert!(!llm);
@@ -2357,7 +2833,12 @@ mod tests {
     fn cli_parse_eval_llm_flag() {
         let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--llm"]);
         match &cli.command {
-            Some(Command::Eval { llm, security, full, .. }) => {
+            Some(Command::Eval {
+                llm,
+                security,
+                full,
+                ..
+            }) => {
                 assert!(*llm);
                 assert!(!security);
                 assert!(!full);
@@ -2370,7 +2851,12 @@ mod tests {
     fn cli_parse_eval_security_flag() {
         let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--security"]);
         match &cli.command {
-            Some(Command::Eval { llm, security, full, .. }) => {
+            Some(Command::Eval {
+                llm,
+                security,
+                full,
+                ..
+            }) => {
                 assert!(!llm);
                 assert!(*security);
                 assert!(!full);
@@ -2382,18 +2868,42 @@ mod tests {
     #[test]
     fn cli_parse_eval_full_flag() {
         let cli = Cli::parse_from([
-            "complior", "eval", "http://localhost:4000",
+            "complior",
+            "eval",
+            "http://localhost:4000",
             "--full",
-            "--agent", "my-bot",
-            "--categories", "transparency,bias,prohibited",
+            "--agent",
+            "my-bot",
+            "--categories",
+            "transparency,bias,prohibited",
             "--json",
             "--ci",
-            "--threshold", "80",
-            "--model", "gpt-4o",
-            "--api-key", "sk-test",
+            "--threshold",
+            "80",
+            "--model",
+            "gpt-4o",
+            "--api-key",
+            "sk-test",
         ]);
         match &cli.command {
-            Some(Command::Eval { target, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, .. }) => {
+            Some(Command::Eval {
+                target,
+                llm,
+                security,
+                full,
+                agent,
+                categories,
+                json,
+                ci,
+                threshold,
+                model,
+                api_key,
+                request_template,
+                response_path,
+                headers,
+                last,
+                ..
+            }) => {
                 assert_eq!(target.as_deref(), Some("http://localhost:4000"));
                 assert!(!llm);
                 assert!(!security);
@@ -2416,9 +2926,21 @@ mod tests {
 
     #[test]
     fn cli_parse_eval_det_llm_combo() {
-        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--det", "--llm"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "eval",
+            "http://localhost:4000",
+            "--det",
+            "--llm",
+        ]);
         match &cli.command {
-            Some(Command::Eval { det, llm, security, full, .. }) => {
+            Some(Command::Eval {
+                det,
+                llm,
+                security,
+                full,
+                ..
+            }) => {
                 assert!(*det);
                 assert!(*llm);
                 assert!(!security);
@@ -2430,9 +2952,20 @@ mod tests {
 
     #[test]
     fn cli_parse_eval_llm_security_combo() {
-        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--llm", "--security"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "eval",
+            "http://localhost:4000",
+            "--llm",
+            "--security",
+        ]);
         match &cli.command {
-            Some(Command::Eval { llm, security, full, .. }) => {
+            Some(Command::Eval {
+                llm,
+                security,
+                full,
+                ..
+            }) => {
                 assert!(*llm);
                 assert!(*security);
                 assert!(!full);
@@ -2445,7 +2978,12 @@ mod tests {
     fn cli_parse_eval_last() {
         let cli = Cli::parse_from(["complior", "eval", "--last"]);
         match &cli.command {
-            Some(Command::Eval { target, last, failures, .. }) => {
+            Some(Command::Eval {
+                target,
+                last,
+                failures,
+                ..
+            }) => {
                 assert!(target.is_none());
                 assert!(*last);
                 assert!(!failures);
@@ -2491,7 +3029,13 @@ mod tests {
 
     #[test]
     fn cli_parse_eval_concurrency_long() {
-        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--concurrency", "1"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "eval",
+            "http://localhost:4000",
+            "--concurrency",
+            "1",
+        ]);
         match &cli.command {
             Some(Command::Eval { concurrency, .. }) => {
                 assert_eq!(*concurrency, 1);
@@ -2502,7 +3046,14 @@ mod tests {
 
     #[test]
     fn cli_parse_eval_ci_mode() {
-        let cli = Cli::parse_from(["complior", "eval", "http://localhost:4000", "--ci", "--threshold", "75"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "eval",
+            "http://localhost:4000",
+            "--ci",
+            "--threshold",
+            "75",
+        ]);
         match &cli.command {
             Some(Command::Eval { ci, threshold, .. }) => {
                 assert!(*ci);
@@ -2515,17 +3066,34 @@ mod tests {
     #[test]
     fn cli_parse_eval_custom_adapter() {
         let cli = Cli::parse_from([
-            "complior", "eval", "http://api.company.com/predict",
-            "--request-template", r#"{"prompt":"{{probe}}"}"#,
-            "--response-path", "result.text",
-            "--headers", r#"{"Authorization":"Bearer xxx"}"#,
+            "complior",
+            "eval",
+            "http://api.company.com/predict",
+            "--request-template",
+            r#"{"prompt":"{{probe}}"}"#,
+            "--response-path",
+            "result.text",
+            "--headers",
+            r#"{"Authorization":"Bearer xxx"}"#,
         ]);
         match &cli.command {
-            Some(Command::Eval { target, request_template, response_path, headers, .. }) => {
+            Some(Command::Eval {
+                target,
+                request_template,
+                response_path,
+                headers,
+                ..
+            }) => {
                 assert_eq!(target.as_deref(), Some("http://api.company.com/predict"));
-                assert_eq!(request_template.as_deref(), Some(r#"{"prompt":"{{probe}}"}"#));
+                assert_eq!(
+                    request_template.as_deref(),
+                    Some(r#"{"prompt":"{{probe}}"}"#)
+                );
                 assert_eq!(response_path.as_deref(), Some("result.text"));
-                assert_eq!(headers.as_deref(), Some(r#"{"Authorization":"Bearer xxx"}"#));
+                assert_eq!(
+                    headers.as_deref(),
+                    Some(r#"{"Authorization":"Bearer xxx"}"#)
+                );
             }
             _ => panic!("Expected Eval command"),
         }
@@ -2536,17 +3104,20 @@ mod tests {
     fn cli_parse_redteam_target_alias() {
         let cli = Cli::parse_from(["complior", "redteam", "target", "http://localhost:4000"]);
         match &cli.command {
-            Some(Command::Redteam { action }) => {
-                match action {
-                    RedteamAction::Target { url, json, ci, threshold } => {
-                        assert_eq!(url, "http://localhost:4000");
-                        assert!(!json);
-                        assert!(!ci);
-                        assert_eq!(*threshold, 60);
-                    }
-                    _ => panic!("Expected Target subcommand"),
+            Some(Command::Redteam { action }) => match action {
+                RedteamAction::Target {
+                    url,
+                    json,
+                    ci,
+                    threshold,
+                } => {
+                    assert_eq!(url, "http://localhost:4000");
+                    assert!(!json);
+                    assert!(!ci);
+                    assert_eq!(*threshold, 60);
                 }
-            }
+                _ => panic!("Expected Target subcommand"),
+            },
             _ => panic!("Expected Redteam command"),
         }
     }
@@ -2556,7 +3127,12 @@ mod tests {
     fn cli_parse_audit_basic() {
         let cli = Cli::parse_from(["complior", "audit", "http://localhost:4000/api/chat"]);
         match &cli.command {
-            Some(Command::Audit { target, agent, json, path }) => {
+            Some(Command::Audit {
+                target,
+                agent,
+                json,
+                path,
+            }) => {
                 assert_eq!(target, "http://localhost:4000/api/chat");
                 assert!(agent.is_none());
                 assert!(!json);
@@ -2571,13 +3147,21 @@ mod tests {
     #[test]
     fn cli_parse_audit_full_flags() {
         let cli = Cli::parse_from([
-            "complior", "audit", "http://localhost:4000",
-            "--agent", "my-bot",
+            "complior",
+            "audit",
+            "http://localhost:4000",
+            "--agent",
+            "my-bot",
             "--json",
             "/tmp/project",
         ]);
         match &cli.command {
-            Some(Command::Audit { target, agent, json, path }) => {
+            Some(Command::Audit {
+                target,
+                agent,
+                json,
+                path,
+            }) => {
                 assert_eq!(target, "http://localhost:4000");
                 assert_eq!(agent.as_deref(), Some("my-bot"));
                 assert!(*json);

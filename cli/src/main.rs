@@ -31,9 +31,9 @@ mod widgets;
 mod saas_client;
 
 // Core modules (always available)
-mod contract_test;
 mod cli;
 mod config;
+mod contract_test;
 mod daemon;
 mod engine_client;
 mod engine_process;
@@ -45,7 +45,9 @@ mod types;
 #[cfg(feature = "tui")]
 mod llm_settings;
 
-use std::io::{self, Write as _};
+use std::io;
+#[cfg(feature = "tui")]
+use std::io::Write as _;
 
 use clap::Parser;
 
@@ -53,11 +55,11 @@ use config::load_config;
 use engine_process::EngineManager;
 
 #[cfg(feature = "tui")]
-use std::time::Duration;
+use app::executor::execute_command;
 #[cfg(feature = "tui")]
-use crossterm::event::{
-    DisableMouseCapture, EnableMouseCapture, Event, EventStream,
-};
+use app::{App, AppCommand};
+#[cfg(feature = "tui")]
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream};
 #[cfg(feature = "tui")]
 use crossterm::execute;
 #[cfg(feature = "tui")]
@@ -67,15 +69,13 @@ use crossterm::terminal::{
 #[cfg(feature = "tui")]
 use futures_util::StreamExt;
 #[cfg(feature = "tui")]
-use ratatui::backend::CrosstermBackend;
-#[cfg(feature = "tui")]
 use ratatui::Terminal;
 #[cfg(feature = "tui")]
+use ratatui::backend::CrosstermBackend;
+#[cfg(feature = "tui")]
+use std::time::Duration;
+#[cfg(feature = "tui")]
 use tokio::sync::mpsc;
-#[cfg(feature = "tui")]
-use app::executor::execute_command;
-#[cfg(feature = "tui")]
-use app::{App, AppCommand};
 #[cfg(feature = "tui")]
 use views::dashboard::render_dashboard;
 
@@ -100,7 +100,9 @@ async fn main() -> color_eyre::Result<()> {
     if parsed_cli.no_color {
         // SAFETY: This runs single-threaded before any other threads start,
         // and before the OnceLock for color/unicode detection is initialized.
-        unsafe { std::env::set_var("NO_COLOR", "1"); }
+        unsafe {
+            std::env::set_var("NO_COLOR", "1");
+        }
     }
 
     // Apply theme from CLI if provided
@@ -142,7 +144,8 @@ async fn main() -> color_eyre::Result<()> {
             match start_result {
                 Ok(port) => {
                     config.engine_url_override = Some(format!("http://127.0.0.1:{port}"));
-                    let client = engine_client::EngineClient::from_url(&format!("http://127.0.0.1:{port}"));
+                    let client =
+                        engine_client::EngineClient::from_url(&format!("http://127.0.0.1:{port}"));
                     if !cli::wants_quiet_startup(&parsed_cli) {
                         eprintln!("Starting engine on port {port}...");
                     }
@@ -163,47 +166,102 @@ async fn main() -> color_eyre::Result<()> {
         }
 
         let code: i32 = match &parsed_cli.command {
-            Some(cli::Command::Scan { ci, json, sarif, no_tui, threshold, fail_on, diff, fail_on_regression, comment, deep, llm, cloud, quiet, agent, path }) => {
+            Some(cli::Command::Scan {
+                ci,
+                json,
+                sarif,
+                no_tui,
+                threshold,
+                fail_on,
+                diff,
+                fail_on_regression,
+                comment,
+                deep,
+                llm,
+                cloud,
+                quiet,
+                agent,
+                path,
+            }) => {
                 if let Some(base_branch) = diff {
                     headless::scan::run_scan_diff(
-                        base_branch, *json, *fail_on_regression, *comment,
-                        path.as_deref(), &config,
-                    ).await
+                        base_branch,
+                        *json,
+                        *fail_on_regression,
+                        *comment,
+                        path.as_deref(),
+                        &config,
+                    )
+                    .await
                 } else {
                     headless::run_headless_scan(
-                        *ci, *json, *sarif, *no_tui, *threshold,
-                        fail_on.as_deref(), *deep, *llm, *cloud, *quiet,
+                        *ci,
+                        *json,
+                        *sarif,
+                        *no_tui,
+                        *threshold,
+                        fail_on.as_deref(),
+                        *deep,
+                        *llm,
+                        *cloud,
+                        *quiet,
                         agent.as_deref(),
-                        path.as_deref(), &config,
-                    ).await
+                        path.as_deref(),
+                        &config,
+                    )
+                    .await
                 }
             }
-            Some(cli::Command::Fix { dry_run, json, ai, source, check_id, path }) => {
-                match source {
-                    cli::FixSource::Eval => {
-                        headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await
-                    }
-                    cli::FixSource::All => {
-                        let scan_code = headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await;
-                        let eval_code = headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await;
-                        if scan_code != 0 { scan_code } else { eval_code }
-                    }
-                    cli::FixSource::Scan => {
-                        if let Some(cid) = check_id {
-                            headless::fix::run_fix_single(cid, *json, path.as_deref(), &config, *ai).await
-                        } else {
-                            headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai).await
-                        }
+            Some(cli::Command::Fix {
+                dry_run,
+                json,
+                ai,
+                source,
+                check_id,
+                path,
+            }) => match source {
+                cli::FixSource::Eval => {
+                    headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await
+                }
+                cli::FixSource::All => {
+                    let scan_code =
+                        headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai)
+                            .await;
+                    let eval_code =
+                        headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config)
+                            .await;
+                    if scan_code != 0 { scan_code } else { eval_code }
+                }
+                cli::FixSource::Scan => {
+                    if let Some(cid) = check_id {
+                        headless::fix::run_fix_single(cid, *json, path.as_deref(), &config, *ai)
+                            .await
+                    } else {
+                        headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai)
+                            .await
                     }
                 }
+            },
+            Some(cli::Command::Version) => {
+                headless::run_version();
+                0
             }
-            Some(cli::Command::Version) => { headless::run_version(); 0 }
-            Some(cli::Command::Doctor { .. }) => { headless::run_doctor(&config).await; 0 }
-            Some(cli::Command::Report { format, output, path }) => {
-                headless::run_report(format, output.as_deref(), path.as_deref(), &config).await
+            Some(cli::Command::Doctor { .. }) => {
+                headless::run_doctor(&config).await;
+                0
             }
-            Some(cli::Command::Init { force, path }) => headless::run_init(path.as_deref(), parsed_cli.yes, *force, &config).await,
-            Some(cli::Command::Update) => { headless::run_update().await; 0 }
+            Some(cli::Command::Report {
+                format,
+                output,
+                path,
+            }) => headless::run_report(format, output.as_deref(), path.as_deref(), &config).await,
+            Some(cli::Command::Init { force, path }) => {
+                headless::run_init(path.as_deref(), parsed_cli.yes, *force, &config).await
+            }
+            Some(cli::Command::Update) => {
+                headless::run_update().await;
+                0
+            }
             Some(cli::Command::Daemon { action, watch }) => {
                 let project_path = std::env::current_dir().unwrap_or_default();
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
@@ -212,7 +270,32 @@ async fn main() -> color_eyre::Result<()> {
             Some(cli::Command::Agent { action }) => {
                 headless::agent::run_agent_command(action, &config).await
             }
-            Some(cli::Command::Eval { target, det, llm, security, full, agent, categories, json, ci, threshold, model, api_key, request_template, response_path, headers, last, failures, verbose, concurrency, no_remediation, remediation, fix, dry_run, path }) => {
+            Some(cli::Command::Eval {
+                target,
+                det,
+                llm,
+                security,
+                full,
+                agent,
+                categories,
+                json,
+                ci,
+                threshold,
+                model,
+                api_key,
+                request_template,
+                response_path,
+                headers,
+                last,
+                failures,
+                verbose,
+                concurrency,
+                no_remediation,
+                remediation,
+                fix,
+                dry_run,
+                path,
+            }) => {
                 if *last {
                     headless::eval::run_eval_last(*json, *failures, *ci, *threshold, &config).await
                 } else if let Some(target) = target {
@@ -227,14 +310,61 @@ async fn main() -> color_eyre::Result<()> {
                         1
                     } else if *fix {
                         // Run eval then apply fixes
-                        let code = headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, path.as_deref(), &config).await;
+                        let code = headless::eval::run_eval_command(
+                            target,
+                            *det,
+                            *llm,
+                            *security,
+                            *full,
+                            agent.as_deref(),
+                            categories,
+                            *json,
+                            *ci,
+                            *threshold,
+                            model.as_deref(),
+                            api_key.as_deref(),
+                            request_template.as_deref(),
+                            response_path.as_deref(),
+                            headers.as_deref(),
+                            *verbose,
+                            *concurrency,
+                            *no_remediation,
+                            *remediation,
+                            path.as_deref(),
+                            &config,
+                        )
+                        .await;
                         if code == 0 {
-                            headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await
+                            headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config)
+                                .await
                         } else {
                             code
                         }
                     } else {
-                        headless::eval::run_eval_command(target, *det, *llm, *security, *full, agent.as_deref(), categories, *json, *ci, *threshold, model.as_deref(), api_key.as_deref(), request_template.as_deref(), response_path.as_deref(), headers.as_deref(), *verbose, *concurrency, *no_remediation, *remediation, path.as_deref(), &config).await
+                        headless::eval::run_eval_command(
+                            target,
+                            *det,
+                            *llm,
+                            *security,
+                            *full,
+                            agent.as_deref(),
+                            categories,
+                            *json,
+                            *ci,
+                            *threshold,
+                            model.as_deref(),
+                            api_key.as_deref(),
+                            request_template.as_deref(),
+                            response_path.as_deref(),
+                            headers.as_deref(),
+                            *verbose,
+                            *concurrency,
+                            *no_remediation,
+                            *remediation,
+                            path.as_deref(),
+                            &config,
+                        )
+                        .await
                     }
                 } else {
                     eprintln!("Error: <target> is required unless --last is used");
@@ -243,46 +373,70 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
             #[cfg(feature = "extras")]
-            Some(cli::Command::Chat { message, json, model }) => {
-                headless::chat::run_chat(message, *json, model.as_deref(), &config).await
-            }
+            Some(cli::Command::Chat {
+                message,
+                json,
+                model,
+            }) => headless::chat::run_chat(message, *json, model.as_deref(), &config).await,
             #[cfg(feature = "extras")]
             Some(cli::Command::Cert { action }) => {
                 headless::cert::run_cert_command(action, &config).await
             }
             #[cfg(feature = "extras")]
             Some(cli::Command::SupplyChain { json, models, path }) => {
-                headless::supply_chain::run_supply_chain(*json, *models, path.as_deref(), &config).await
+                headless::supply_chain::run_supply_chain(*json, *models, path.as_deref(), &config)
+                    .await
             }
             #[cfg(feature = "extras")]
-            Some(cli::Command::Cost { hourly_rate, agent, json }) => {
-                headless::cost::run_cost(*hourly_rate, agent.as_deref(), *json, &config).await
-            }
+            Some(cli::Command::Cost {
+                hourly_rate,
+                agent,
+                json,
+            }) => headless::cost::run_cost(*hourly_rate, agent.as_deref(), *json, &config).await,
             #[cfg(feature = "extras")]
             Some(cli::Command::Debt { json, trend }) => {
                 headless::debt::run_debt(*json, *trend, &config).await
             }
             #[cfg(feature = "extras")]
-            Some(cli::Command::Simulate { fix, add_doc, complete_passport, json }) => {
-                headless::simulate::run_simulate(fix, add_doc, complete_passport, *json, &config).await
+            Some(cli::Command::Simulate {
+                fix,
+                add_doc,
+                complete_passport,
+                json,
+            }) => {
+                headless::simulate::run_simulate(fix, add_doc, complete_passport, *json, &config)
+                    .await
             }
             #[cfg(feature = "extras")]
-            Some(cli::Command::Login) => {
-                match headless::run_login(&config).await {
-                    Ok(()) => 0,
-                    Err(e) => { eprintln!("Login failed: {e}"); 1 }
+            Some(cli::Command::Login) => match headless::run_login(&config).await {
+                Ok(()) => 0,
+                Err(e) => {
+                    eprintln!("Login failed: {e}");
+                    1
                 }
-            }
+            },
             #[cfg(feature = "extras")]
-            Some(cli::Command::Logout) => {
-                match headless::run_logout(&config).await {
-                    Ok(()) => 0,
-                    Err(e) => { eprintln!("Logout failed: {e}"); 1 }
+            Some(cli::Command::Logout) => match headless::run_logout(&config).await {
+                Ok(()) => 0,
+                Err(e) => {
+                    eprintln!("Logout failed: {e}");
+                    1
                 }
-            }
+            },
             #[cfg(feature = "extras")]
-            Some(cli::Command::Sync { passport, scan, docs, audit, evidence, registry, .. }) => {
-                headless::run_sync(*passport, *scan, *docs, *audit, *evidence, *registry, &config).await
+            Some(cli::Command::Sync {
+                passport,
+                scan,
+                docs,
+                audit,
+                evidence,
+                registry,
+                ..
+            }) => {
+                headless::run_sync(
+                    *passport, *scan, *docs, *audit, *evidence, *registry, &config,
+                )
+                .await
             }
             #[cfg(feature = "extras")]
             Some(cli::Command::Doc { action }) => {
@@ -309,8 +463,20 @@ async fn main() -> color_eyre::Result<()> {
                 headless::tools::run_tools_command(action, &config).await
             }
             #[cfg(feature = "extras")]
-            Some(cli::Command::Audit { target, agent, json, path }) => {
-                headless::audit::run_audit_command(target, agent.as_deref(), *json, path.as_deref(), &config).await
+            Some(cli::Command::Audit {
+                target,
+                agent,
+                json,
+                path,
+            }) => {
+                headless::audit::run_audit_command(
+                    target,
+                    agent.as_deref(),
+                    *json,
+                    path.as_deref(),
+                    &config,
+                )
+                .await
             }
             None => unreachable!(),
         };
@@ -374,16 +540,13 @@ async fn main() -> color_eyre::Result<()> {
         };
 
         // Create app with engine URL (either auto-launched or override)
-        let effective_url = config
-            .engine_url_override
-            .clone()
-            .unwrap_or_else(|| {
-                if engine_mgr.port > 0 {
-                    engine_mgr.engine_url()
-                } else {
-                    config.engine_url()
-                }
-            });
+        let effective_url = config.engine_url_override.clone().unwrap_or_else(|| {
+            if engine_mgr.port > 0 {
+                engine_mgr.engine_url()
+            } else {
+                config.engine_url()
+            }
+        });
 
         let mut app = App::new(config.clone());
         // Override engine client with the effective URL
@@ -392,16 +555,13 @@ async fn main() -> color_eyre::Result<()> {
         app.animation.start_splash();
 
         // Check for --resume flag
-        if resume
-            && let Ok(data) = session::load_session("latest").await
-        {
+        if resume && let Ok(data) = session::load_session("latest").await {
             app.load_session_data(data);
             tracing::info!("Resumed session 'latest'");
         }
 
         // Parse --yes flag for non-interactive onboarding
-        let skip_onboarding = parsed_cli.yes
-            || std::env::var("CI").is_ok();
+        let skip_onboarding = parsed_cli.yes || std::env::var("CI").is_ok();
 
         // Show onboarding on first run, or provider setup if no providers
         if !config.onboarding_completed && !skip_onboarding {
@@ -474,7 +634,10 @@ async fn main() -> color_eyre::Result<()> {
         // Restore terminal
         disable_raw_mode()?;
         // Disable modifyOtherKeys
-        let _ = execute!(terminal.backend_mut(), crossterm::style::Print("\x1b[>4;0m"));
+        let _ = execute!(
+            terminal.backend_mut(),
+            crossterm::style::Print("\x1b[>4;0m")
+        );
         execute!(
             terminal.backend_mut(),
             LeaveAlternateScreen,
@@ -485,6 +648,7 @@ async fn main() -> color_eyre::Result<()> {
         result?;
     }
 
+    #[allow(unreachable_code)]
     Ok(())
 }
 
@@ -530,7 +694,10 @@ async fn run_event_loop(
 
     // Auto-start watch if configured
     if app.config.watch_on_start {
-        watch_handle = Some(watcher::spawn_watcher(app.project_path.clone(), watch_tx.clone()));
+        watch_handle = Some(watcher::spawn_watcher(
+            app.project_path.clone(),
+            watch_tx.clone(),
+        ));
         app.watch_active = true;
         app.messages.push(types::ChatMessage::new(
             types::MessageRole::System,
@@ -540,8 +707,20 @@ async fn run_event_loop(
 
     // Load framework scores + dashboard metrics on startup if connected
     if app.engine_status == types::EngineConnectionStatus::Connected {
-        execute_command(app, AppCommand::LoadFrameworkScores, &watch_tx, &mut watch_handle).await;
-        execute_command(app, AppCommand::LoadDashboardMetrics, &watch_tx, &mut watch_handle).await;
+        execute_command(
+            app,
+            AppCommand::LoadFrameworkScores,
+            &watch_tx,
+            &mut watch_handle,
+        )
+        .await;
+        execute_command(
+            app,
+            AppCommand::LoadDashboardMetrics,
+            &watch_tx,
+            &mut watch_handle,
+        )
+        .await;
     }
 
     // Tick counter for periodic health checks (~5s at 250ms tick)

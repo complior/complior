@@ -1,5 +1,5 @@
-use super::*;
 use super::utils::{deadline_label, score_zone_info};
+use super::*;
 
 #[test]
 fn test_score_color_thresholds() {

@@ -164,7 +164,12 @@ fn t904_fix_items_marked_applied() {
             item.status = FixItemStatus::Applied;
         }
     }
-    assert!(state.fixable_findings.iter().all(|f| f.status == FixItemStatus::Applied));
+    assert!(
+        state
+            .fixable_findings
+            .iter()
+            .all(|f| f.status == FixItemStatus::Applied)
+    );
 }
 
 #[test]
@@ -189,19 +194,45 @@ fn make_enriched_findings() -> Vec<Finding> {
             severity: Severity::Critical,
             obligation_id: Some("OBL-015".to_string()),
             article_reference: Some("Art. 50(1)".to_string()),
-            fix: Some("- const c = new Anthropic();\n+ const c = complior(new Anthropic());".to_string()),
+            fix: Some(
+                "- const c = new Anthropic();\n+ const c = complior(new Anthropic());".to_string(),
+            ),
             file: Some("src/chat/anthropic.ts".to_string()),
             line: Some(8),
             code_context: Some(CodeContext {
                 lines: vec![
-                    CodeContextLine { num: 1, content: "import Anthropic from 'anthropic';".to_string() },
-                    CodeContextLine { num: 2, content: "".to_string() },
-                    CodeContextLine { num: 3, content: "const anthropic = new Anthropic({".to_string() },
-                    CodeContextLine { num: 4, content: "  apiKey: process.env.ANTHROPIC_API_KEY,".to_string() },
-                    CodeContextLine { num: 5, content: "});".to_string() },
-                    CodeContextLine { num: 6, content: "".to_string() },
-                    CodeContextLine { num: 7, content: "export async function chat(msg: string) {".to_string() },
-                    CodeContextLine { num: 8, content: "  const resp = await anthropic.messages.create({".to_string() },
+                    CodeContextLine {
+                        num: 1,
+                        content: "import Anthropic from 'anthropic';".to_string(),
+                    },
+                    CodeContextLine {
+                        num: 2,
+                        content: "".to_string(),
+                    },
+                    CodeContextLine {
+                        num: 3,
+                        content: "const anthropic = new Anthropic({".to_string(),
+                    },
+                    CodeContextLine {
+                        num: 4,
+                        content: "  apiKey: process.env.ANTHROPIC_API_KEY,".to_string(),
+                    },
+                    CodeContextLine {
+                        num: 5,
+                        content: "});".to_string(),
+                    },
+                    CodeContextLine {
+                        num: 6,
+                        content: "".to_string(),
+                    },
+                    CodeContextLine {
+                        num: 7,
+                        content: "export async function chat(msg: string) {".to_string(),
+                    },
+                    CodeContextLine {
+                        num: 8,
+                        content: "  const resp = await anthropic.messages.create({".to_string(),
+                    },
                 ],
                 start_line: 1,
                 highlight_line: Some(8),
@@ -334,18 +365,33 @@ fn snapshot_fix_diff_preview() {
 fn test_fix_item_finding_type() {
     let findings = make_enriched_findings();
     let state = FixViewState::from_scan(&findings);
-    assert_eq!(state.fixable_findings[0].finding_type, crate::types::FindingType::A);
-    assert_eq!(state.fixable_findings[1].finding_type, crate::types::FindingType::B);
-    assert_eq!(state.fixable_findings[2].finding_type, crate::types::FindingType::C);
+    assert_eq!(
+        state.fixable_findings[0].finding_type,
+        crate::types::FindingType::A
+    );
+    assert_eq!(
+        state.fixable_findings[1].finding_type,
+        crate::types::FindingType::B
+    );
+    assert_eq!(
+        state.fixable_findings[2].finding_type,
+        crate::types::FindingType::C
+    );
 }
 
 #[test]
 fn test_fix_item_file_path() {
     let findings = make_enriched_findings();
     let state = FixViewState::from_scan(&findings);
-    assert_eq!(state.fixable_findings[0].file_path, Some("src/chat/anthropic.ts".to_string()));
+    assert_eq!(
+        state.fixable_findings[0].file_path,
+        Some("src/chat/anthropic.ts".to_string())
+    );
     assert_eq!(state.fixable_findings[1].file_path, None);
-    assert_eq!(state.fixable_findings[2].file_path, Some("package.json".to_string()));
+    assert_eq!(
+        state.fixable_findings[2].file_path,
+        Some("package.json".to_string())
+    );
 }
 
 #[test]
@@ -478,8 +524,14 @@ fn test_apply_fix_diff_writes_file() {
     assert!(result.success, "apply failed: {}", result.detail);
 
     let content = std::fs::read_to_string(dir.join("test.ts")).unwrap();
-    assert!(content.contains("complior(new Anthropic())"), "missing wrap");
-    assert!(content.contains("import { complior } from '@complior/sdk'"), "missing import");
+    assert!(
+        content.contains("complior(new Anthropic())"),
+        "missing wrap"
+    );
+    assert!(
+        content.contains("import { complior } from '@complior/sdk'"),
+        "missing import"
+    );
     // Import should be after existing imports
     let lines: Vec<&str> = content.lines().collect();
     assert_eq!(lines[0], "import Anthropic from 'anthropic';");

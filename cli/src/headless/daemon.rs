@@ -29,7 +29,12 @@ pub async fn run_daemon(
 }
 
 /// Start the daemon (foreground). If already running, print info and exit.
-async fn run_daemon_start(watch: bool, port: Option<u16>, project_path: &Path, _config: &TuiConfig) {
+async fn run_daemon_start(
+    watch: bool,
+    port: Option<u16>,
+    project_path: &Path,
+    _config: &TuiConfig,
+) {
     // Check for existing daemon
     if let Some(info) = daemon::find_running_daemon(project_path) {
         println!(
@@ -46,10 +51,7 @@ async fn run_daemon_start(watch: bool, port: Option<u16>, project_path: &Path, _
 
     let entry = engine_dir.join("src").join("server.ts");
     if !entry.exists() {
-        eprintln!(
-            "Error: Engine not found at {}",
-            entry.display()
-        );
+        eprintln!("Error: Engine not found at {}", entry.display());
         std::process::exit(1);
     }
 
@@ -102,7 +104,10 @@ async fn run_daemon_start(watch: bool, port: Option<u16>, project_path: &Path, _
     let ready = wait_for_engine(&client).await;
 
     if ready {
-        println!("Complior daemon running on port {target_port} (PID {})", child.id());
+        println!(
+            "Complior daemon running on port {target_port} (PID {})",
+            child.id()
+        );
     } else {
         eprintln!("Warning: Engine started but health check timed out. It may still be loading.");
     }
@@ -239,4 +244,3 @@ async fn wait_for_engine(client: &EngineClient) -> bool {
     }
     false
 }
-

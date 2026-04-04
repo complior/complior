@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::views::scan::*;
     use crate::views::scan::explain::explain_check;
     use crate::views::scan::progress::owl_position;
+    use crate::views::scan::*;
 
     #[test]
     fn test_findings_filter_all() {
@@ -28,7 +28,10 @@ mod tests {
 
     #[test]
     fn test_findings_filter_from_key() {
-        assert_eq!(FindingsFilter::from_key('c'), Some(FindingsFilter::Critical));
+        assert_eq!(
+            FindingsFilter::from_key('c'),
+            Some(FindingsFilter::Critical)
+        );
         assert_eq!(FindingsFilter::from_key('a'), Some(FindingsFilter::All));
         assert_eq!(FindingsFilter::from_key('h'), Some(FindingsFilter::High));
         assert_eq!(FindingsFilter::from_key('m'), Some(FindingsFilter::Medium));
@@ -82,23 +85,38 @@ mod tests {
     fn test_explain_check_strips_layer_prefix() {
         // Bare key works
         let (desc, _, _) = explain_check("declaration-conformity");
-        assert!(desc.contains("Declaration of Conformity"), "bare key should match");
+        assert!(
+            desc.contains("Declaration of Conformity"),
+            "bare key should match"
+        );
 
         // With l2- prefix works
         let (desc2, _, _) = explain_check("l2-declaration-conformity");
-        assert!(desc2.contains("Declaration of Conformity"), "l2- prefix should be stripped");
+        assert!(
+            desc2.contains("Declaration of Conformity"),
+            "l2- prefix should be stripped"
+        );
 
         // With l4- prefix works for pattern-based
         let (desc3, _, _) = explain_check("l4-bare-openai");
-        assert!(desc3.contains("Bare API Call"), "l4- prefix should be stripped");
+        assert!(
+            desc3.contains("Bare API Call"),
+            "l4- prefix should be stripped"
+        );
 
         // cross- prefix
         let (desc4, _, _) = explain_check("cross-doc-code-mismatch");
-        assert!(desc4.contains("Documentation claims"), "cross- prefix should be stripped");
+        assert!(
+            desc4.contains("Documentation claims"),
+            "cross- prefix should be stripped"
+        );
 
         // Unknown falls to default
         let (desc5, _, _) = explain_check("l2-unknown-check-xyz");
-        assert!(desc5.contains("Compliance check"), "unknown should get default");
+        assert!(
+            desc5.contains("Compliance check"),
+            "unknown should get default"
+        );
     }
 
     fn render_scan_to_string(app: &crate::app::App, width: u16, height: u16) -> String {
@@ -150,16 +168,34 @@ mod tests {
                 severity: Severity::Critical,
                 obligation_id: Some("OBL-015".to_string()),
                 article_reference: Some("Art. 50(1)".to_string()),
-                fix: Some("- const c = new Anthropic();\n+ const c = complior(new Anthropic());".to_string()),
+                fix: Some(
+                    "- const c = new Anthropic();\n+ const c = complior(new Anthropic());"
+                        .to_string(),
+                ),
                 file: Some("src/chat/anthropic.ts".to_string()),
                 line: Some(8),
                 code_context: Some(CodeContext {
                     lines: vec![
-                        CodeContextLine { num: 6, content: "import Anthropic from 'anthropic';".to_string() },
-                        CodeContextLine { num: 7, content: "".to_string() },
-                        CodeContextLine { num: 8, content: "const c = new Anthropic();".to_string() },
-                        CodeContextLine { num: 9, content: "const resp = await c.messages.create({".to_string() },
-                        CodeContextLine { num: 10, content: "  model: 'claude-3',".to_string() },
+                        CodeContextLine {
+                            num: 6,
+                            content: "import Anthropic from 'anthropic';".to_string(),
+                        },
+                        CodeContextLine {
+                            num: 7,
+                            content: "".to_string(),
+                        },
+                        CodeContextLine {
+                            num: 8,
+                            content: "const c = new Anthropic();".to_string(),
+                        },
+                        CodeContextLine {
+                            num: 9,
+                            content: "const resp = await c.messages.create({".to_string(),
+                        },
+                        CodeContextLine {
+                            num: 10,
+                            content: "  model: 'claude-3',".to_string(),
+                        },
                     ],
                     start_line: 6,
                     highlight_line: Some(8),
@@ -188,7 +224,9 @@ mod tests {
                 severity: Severity::High,
                 obligation_id: Some("OBL-006".to_string()),
                 article_reference: Some("Art. 27(1)".to_string()),
-                fix: Some("# Fundamental Rights Impact Assessment\n\n## 1. Purpose\n...".to_string()),
+                fix: Some(
+                    "# Fundamental Rights Impact Assessment\n\n## 1. Purpose\n...".to_string(),
+                ),
                 file: None,
                 line: None,
                 code_context: None,
@@ -321,9 +359,15 @@ mod tests {
     #[test]
     fn test_finding_file_line_label() {
         let findings = make_scan_findings();
-        assert_eq!(findings[0].file_line_label(), Some("src/chat/anthropic.ts:8".to_string()));
+        assert_eq!(
+            findings[0].file_line_label(),
+            Some("src/chat/anthropic.ts:8".to_string())
+        );
         assert_eq!(findings[1].file_line_label(), None); // no file
-        assert_eq!(findings[2].file_line_label(), Some("package.json".to_string())); // file but no line
+        assert_eq!(
+            findings[2].file_line_label(),
+            Some("package.json".to_string())
+        ); // file but no line
     }
 
     #[test]
@@ -373,9 +417,18 @@ mod tests {
         ];
 
         let buf = render_scan_to_string(&app, 120, 40);
-        assert!(buf.contains("chat-agent"), "Should show chat-agent group header");
-        assert!(buf.contains("config-agent"), "Should show config-agent group header");
-        assert!(buf.contains("Project"), "Findings without agent match should be in Project group");
+        assert!(
+            buf.contains("chat-agent"),
+            "Should show chat-agent group header"
+        );
+        assert!(
+            buf.contains("config-agent"),
+            "Should show config-agent group header"
+        );
+        assert!(
+            buf.contains("Project"),
+            "Findings without agent match should be in Project group"
+        );
     }
 
     #[test]
@@ -390,6 +443,9 @@ mod tests {
         let buf = render_scan_to_string(&app, 120, 40);
         assert!(buf.contains("CRITICAL"), "Should show severity headers");
         assert!(buf.contains("HIGH"), "Should show severity headers");
-        assert!(!buf.contains("Project"), "Should not show agent group when no passports");
+        assert!(
+            !buf.contains("Project"),
+            "Should not show agent group when no passports"
+        );
     }
 }

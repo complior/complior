@@ -13,10 +13,7 @@ fn color_enabled() -> bool {
         if std::env::var("NO_COLOR").is_ok() {
             return false;
         }
-        if std::env::var("TERM")
-            .map(|t| t == "dumb")
-            .unwrap_or(false)
-        {
+        if std::env::var("TERM").map(|t| t == "dumb").unwrap_or(false) {
             return false;
         }
         std::io::stdout().is_terminal()
@@ -31,10 +28,7 @@ pub fn use_unicode() -> bool {
         if std::env::var("NO_COLOR").is_ok() {
             return false;
         }
-        if std::env::var("TERM")
-            .map(|t| t == "dumb")
-            .unwrap_or(false)
-        {
+        if std::env::var("TERM").map(|t| t == "dumb").unwrap_or(false) {
             return false;
         }
         std::io::stdout().is_terminal()
@@ -49,27 +43,63 @@ fn ansi(code: &str, text: &str) -> String {
     }
 }
 
-pub fn red(t: &str) -> String { ansi("31", t) }
-pub fn green(t: &str) -> String { ansi("32", t) }
-pub fn yellow(t: &str) -> String { ansi("33", t) }
-pub fn cyan(t: &str) -> String { ansi("36", t) }
-pub fn bold(t: &str) -> String { ansi("1", t) }
-pub fn bold_red(t: &str) -> String { ansi("1;31", t) }
-pub fn bold_green(t: &str) -> String { ansi("1;32", t) }
-pub fn bold_yellow(t: &str) -> String { ansi("1;33", t) }
-pub fn dim(t: &str) -> String { ansi("2", t) }
+pub fn red(t: &str) -> String {
+    ansi("31", t)
+}
+pub fn green(t: &str) -> String {
+    ansi("32", t)
+}
+pub fn yellow(t: &str) -> String {
+    ansi("33", t)
+}
+pub fn cyan(t: &str) -> String {
+    ansi("36", t)
+}
+pub fn bold(t: &str) -> String {
+    ansi("1", t)
+}
+pub fn bold_red(t: &str) -> String {
+    ansi("1;31", t)
+}
+pub fn bold_green(t: &str) -> String {
+    ansi("1;32", t)
+}
+pub fn bold_yellow(t: &str) -> String {
+    ansi("1;33", t)
+}
+pub fn dim(t: &str) -> String {
+    ansi("2", t)
+}
 
 // ── Unicode/ASCII fallback helpers ──────────────────────────────
 
-pub fn diamond() -> &'static str { if use_unicode() { "◆" } else { "*" } }
-pub fn bar_filled() -> &'static str { if use_unicode() { "█" } else { "#" } }
-pub fn bar_empty() -> &'static str { if use_unicode() { "░" } else { "-" } }
-pub fn h_line() -> &'static str { if use_unicode() { "─" } else { "-" } }
-pub fn check_mark() -> &'static str { if use_unicode() { "✓" } else { "+" } }
-pub fn skip_icon() -> &'static str { if use_unicode() { "⏭" } else { ">" } }
-pub fn warning_icon() -> &'static str { if use_unicode() { "⚠" } else { "!" } }
-pub fn tree_branch() -> &'static str { if use_unicode() { "├" } else { "|" } }
-pub fn tree_end() -> &'static str { if use_unicode() { "└" } else { "`" } }
+pub fn diamond() -> &'static str {
+    if use_unicode() { "◆" } else { "*" }
+}
+pub fn bar_filled() -> &'static str {
+    if use_unicode() { "█" } else { "#" }
+}
+pub fn bar_empty() -> &'static str {
+    if use_unicode() { "░" } else { "-" }
+}
+pub fn h_line() -> &'static str {
+    if use_unicode() { "─" } else { "-" }
+}
+pub fn check_mark() -> &'static str {
+    if use_unicode() { "✓" } else { "+" }
+}
+pub fn skip_icon() -> &'static str {
+    if use_unicode() { "⏭" } else { ">" }
+}
+pub fn warning_icon() -> &'static str {
+    if use_unicode() { "⚠" } else { "!" }
+}
+pub fn tree_branch() -> &'static str {
+    if use_unicode() { "├" } else { "|" }
+}
+pub fn tree_end() -> &'static str {
+    if use_unicode() { "└" } else { "`" }
+}
 
 // ── Score & severity ────────────────────────────────────────────
 

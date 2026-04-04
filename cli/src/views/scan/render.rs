@@ -1,13 +1,12 @@
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
 use crate::types::Severity;
-
 
 pub(super) fn render_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
     let t = theme::theme();
@@ -31,9 +30,7 @@ pub(super) fn render_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
         if *filter == active {
             spans.push(Span::styled(
                 format!("[{label}]"),
-                Style::default()
-                    .fg(t.accent)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
             ));
         } else {
             spans.push(Span::styled(
@@ -57,7 +54,11 @@ pub(super) fn render_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
 pub(super) fn build_file_agent_map(passports: &[serde_json::Value]) -> Vec<(String, String)> {
     let mut entries = Vec::new();
     for p in passports {
-        let name = p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let name = p
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         if let Some(sf) = p.get("source_files").and_then(|v| v.as_array()) {
             for s in sf {
                 if let Some(src) = s.as_str() {
@@ -70,7 +71,10 @@ pub(super) fn build_file_agent_map(passports: &[serde_json::Value]) -> Vec<(Stri
 }
 
 /// Determine agent name for a finding using pre-built file→agent map.
-pub(super) fn resolve_agent_name<'a>(file: Option<&str>, file_agent_map: &'a [(String, String)]) -> &'a str {
+pub(super) fn resolve_agent_name<'a>(
+    file: Option<&str>,
+    file_agent_map: &'a [(String, String)],
+) -> &'a str {
     if let Some(f) = file {
         for (src, name) in file_agent_map {
             if f == src || f.starts_with(&format!("{src}/")) {
@@ -117,10 +121,22 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     // Global severity counts for summary line
-    let crit_count = filtered.iter().filter(|f| matches!(f.severity, Severity::Critical)).count();
-    let high_count = filtered.iter().filter(|f| matches!(f.severity, Severity::High)).count();
-    let med_count = filtered.iter().filter(|f| matches!(f.severity, Severity::Medium)).count();
-    let low_count = filtered.iter().filter(|f| f.severity == Severity::Low || f.severity == Severity::Info).count();
+    let crit_count = filtered
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::Critical))
+        .count();
+    let high_count = filtered
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::High))
+        .count();
+    let med_count = filtered
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::Medium))
+        .count();
+    let low_count = filtered
+        .iter()
+        .filter(|f| f.severity == Severity::Low || f.severity == Severity::Info)
+        .count();
 
     // Summary line
     let mut lines: Vec<Line<'_>> = Vec::new();
@@ -128,7 +144,9 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
     if crit_count > 0 {
         summary_spans.push(Span::styled(
             format!("{crit_count} critical"),
-            Style::default().fg(theme::severity_color(Severity::Critical)).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme::severity_color(Severity::Critical))
+                .add_modifier(Modifier::BOLD),
         ));
         summary_spans.push(Span::styled("  ", Style::default()));
     }
@@ -156,12 +174,15 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
 
     // Pre-compute per-agent counts: total + per-severity (O(n))
     let mut agent_counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
-    let mut agent_sev_counts: std::collections::HashMap<(&str, u8), usize> = std::collections::HashMap::new();
+    let mut agent_sev_counts: std::collections::HashMap<(&str, u8), usize> =
+        std::collections::HashMap::new();
     if has_passports {
         for f in &filtered {
             let agent = resolve_agent_name(f.file.as_deref(), &file_agent_map);
             *agent_counts.entry(agent).or_insert(0) += 1;
-            *agent_sev_counts.entry((agent, f.severity.sort_key())).or_insert(0) += 1;
+            *agent_sev_counts
+                .entry((agent, f.severity.sort_key()))
+                .or_insert(0) += 1;
         }
     }
 
@@ -185,18 +206,12 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
                 let header_text = format!(" {agent} ({agent_count} findings) ");
                 let dash_len = w.saturating_sub(header_text.len() + 4);
                 lines.push(Line::from(vec![
-                    Span::styled(
-                        "\u{2500}\u{2500} ",
-                        Style::default().fg(t.accent),
-                    ),
+                    Span::styled("\u{2500}\u{2500} ", Style::default().fg(t.accent)),
                     Span::styled(
                         header_text,
                         Style::default().fg(t.accent).add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(
-                        "\u{2500}".repeat(dash_len),
-                        Style::default().fg(t.accent),
-                    ),
+                    Span::styled("\u{2500}".repeat(dash_len), Style::default().fg(t.accent)),
                 ]));
             }
         }
@@ -214,7 +229,10 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
             // Use per-agent severity count when grouped, global count otherwise
             let group_count = if has_passports {
                 let agent = current_agent.as_deref().unwrap_or("Project");
-                agent_sev_counts.get(&(agent, sev_ord)).copied().unwrap_or(0)
+                agent_sev_counts
+                    .get(&(agent, sev_ord))
+                    .copied()
+                    .unwrap_or(0)
             } else {
                 match f.severity {
                     Severity::Critical => crit_count,
@@ -233,10 +251,7 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
                     header_text,
                     Style::default().fg(sev_color).add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    "\u{2500}".repeat(dash_len),
-                    Style::default().fg(sev_color),
-                ),
+                Span::styled("\u{2500}".repeat(dash_len), Style::default().fg(sev_color)),
             ]));
         }
 
@@ -269,7 +284,9 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
             Span::styled(prefix, Style::default().fg(t.accent)),
             Span::styled(
                 format!(" {} ", ft.badge()),
-                Style::default().fg(badge_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(badge_color)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!("{sev_label} "),
@@ -287,9 +304,7 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
         lines.push(Line::from(line1));
 
         // Line 2 (indented): article + impact + fixable badge
-        let mut detail_spans = vec![
-            Span::styled("              ", Style::default()),
-        ];
+        let mut detail_spans = vec![Span::styled("              ", Style::default())];
         if !art.is_empty() {
             detail_spans.push(Span::styled(
                 format!("{art}  "),
@@ -301,10 +316,7 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
                 format!("Impact: +{}  ", f.predicted_impact()),
                 Style::default().fg(t.zone_green),
             ));
-            detail_spans.push(Span::styled(
-                "[fixable]",
-                Style::default().fg(t.zone_green),
-            ));
+            detail_spans.push(Span::styled("[fixable]", Style::default().fg(t.zone_green)));
         }
         if !detail_spans.is_empty() {
             lines.push(Line::from(detail_spans));
@@ -316,7 +328,6 @@ pub(super) fn render_findings_list(frame: &mut Frame, area: Rect, app: &App) {
     let approx_line = (selected as f64 * 2.5) as usize + 1;
     let scroll = approx_line.saturating_sub(visible_height / 2);
 
-    let paragraph =
-        Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
+    let paragraph = Paragraph::new(lines).scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
     frame.render_widget(paragraph, inner);
 }

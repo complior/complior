@@ -103,23 +103,18 @@ impl AnimationState {
 
     /// Get the latest counter animation value, or None if no counter active.
     pub fn counter_value(&self) -> Option<u32> {
-        self.active
-            .iter()
-            .rev()
-            .find_map(|a| match &a.kind {
-                AnimKind::Counter { .. } => Some(a.current_value_u32()),
-                _ => None,
-            })
+        self.active.iter().rev().find_map(|a| match &a.kind {
+            AnimKind::Counter { .. } => Some(a.current_value_u32()),
+            _ => None,
+        })
     }
 
     /// Splash fade-in opacity (0.0-1.0), or None if no splash active.
     pub fn splash_opacity(&self) -> Option<f64> {
-        self.active
-            .iter()
-            .find_map(|a| match &a.kind {
-                AnimKind::Splash => Some(a.progress()),
-                _ => None,
-            })
+        self.active.iter().find_map(|a| match &a.kind {
+            AnimKind::Splash => Some(a.progress()),
+            _ => None,
+        })
     }
 
     /// Start splash animation (500ms fade-in).
@@ -172,17 +167,20 @@ mod tests {
 
         std::thread::sleep(std::time::Duration::from_millis(5));
         state.step();
-        assert!(state.active.is_empty(), "Completed animations should be GC'd");
+        assert!(
+            state.active.is_empty(),
+            "Completed animations should be GC'd"
+        );
     }
 
     #[test]
     fn anim_disabled_noop() {
         let mut state = AnimationState::new(false);
-        state.push(Animation::new(
-            AnimKind::Counter { from: 0, to: 100 },
-            500,
-        ));
-        assert!(state.active.is_empty(), "Disabled state should not accept animations");
+        state.push(Animation::new(AnimKind::Counter { from: 0, to: 100 }, 500));
+        assert!(
+            state.active.is_empty(),
+            "Disabled state should not accept animations"
+        );
         assert!(!state.active(), "Disabled state should report inactive");
     }
 
@@ -204,7 +202,9 @@ mod tests {
 
         std::thread::sleep(std::time::Duration::from_millis(600)); // > 500ms splash duration
         state.step();
-        assert!(state.splash_opacity().is_none(), "Splash should be GC'd after completion");
+        assert!(
+            state.splash_opacity().is_none(),
+            "Splash should be GC'd after completion"
+        );
     }
-
 }

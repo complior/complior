@@ -1,10 +1,10 @@
 use std::time::Instant;
 
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
-use ratatui::Frame;
 
 use crate::theme;
 
@@ -49,7 +49,6 @@ impl IdleSuggestionState {
         self.last_input.elapsed().as_secs() >= seconds
     }
 
-
     #[allow(dead_code)] // TODO(T10): use in render loop to conditionally show suggestions
     pub const fn should_show(&self, app_busy: bool) -> bool {
         self.current.is_some() && !app_busy
@@ -80,10 +79,7 @@ pub fn render_suggestion(frame: &mut Frame, area: Rect, suggestion: &Suggestion)
     };
 
     let mut lines = vec![Line::from(vec![
-        Span::styled(
-            format!(" [{kind_label}] "),
-            Style::default().fg(t.accent),
-        ),
+        Span::styled(format!(" [{kind_label}] "), Style::default().fg(t.accent)),
         Span::styled(&*suggestion.text, Style::default().fg(t.muted)),
     ])];
 

@@ -64,28 +64,35 @@ pub fn format_json(result: &ScanResult) -> String {
     if let Some(findings_arr) = value.get_mut("findings").and_then(|v| v.as_array_mut()) {
         // Sort by severity key
         findings_arr.sort_by(|a, b| {
-            let sa = severity_sort_key(a.get("severity").and_then(|v| v.as_str()).unwrap_or("info"));
-            let sb = severity_sort_key(b.get("severity").and_then(|v| v.as_str()).unwrap_or("info"));
+            let sa =
+                severity_sort_key(a.get("severity").and_then(|v| v.as_str()).unwrap_or("info"));
+            let sb =
+                severity_sort_key(b.get("severity").and_then(|v| v.as_str()).unwrap_or("info"));
             sa.cmp(&sb)
         });
 
         for (i, finding) in findings_arr.iter_mut().enumerate() {
             if let Some(obj) = finding.as_object_mut() {
                 // Add finding ID
-                obj.insert("id".to_string(), serde_json::json!(format!("F-{:03}", i + 1)));
+                obj.insert(
+                    "id".to_string(),
+                    serde_json::json!(format!("F-{:03}", i + 1)),
+                );
 
                 // Map obligationId → obligationIds array
-                if let Some(oblig_id) = obj.get("obligationId").and_then(|v| v.as_str()).map(String::from)
-                    && !oblig_id.is_empty() {
-                        obj.insert("obligationIds".to_string(), serde_json::json!([oblig_id]));
-                    }
+                if let Some(oblig_id) = obj
+                    .get("obligationId")
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+                    && !oblig_id.is_empty()
+                {
+                    obj.insert("obligationIds".to_string(), serde_json::json!([oblig_id]));
+                }
             }
         }
     }
 
-    serde_json::to_string_pretty(&value).unwrap_or_else(|e| {
-        format!("{{\"error\": \"{e}\"}}")
-    })
+    serde_json::to_string_pretty(&value).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
 }
 
 /// Map severity string to sort key for JSON output.
@@ -178,7 +185,9 @@ pub fn print_paged(text: &str) {
         return;
     }
 
-    let term_height = crossterm::terminal::size().map(|(_, h)| h as usize).unwrap_or(24);
+    let term_height = crossterm::terminal::size()
+        .map(|(_, h)| h as usize)
+        .unwrap_or(24);
     let line_count = text.lines().count();
     if line_count <= term_height.saturating_sub(2) {
         print!("{text}");
@@ -187,7 +196,11 @@ pub fn print_paged(text: &str) {
 
     let pager = std::env::var("PAGER").unwrap_or_else(|_| "less".into());
     match std::process::Command::new(&pager)
-        .args(if pager.contains("less") { vec!["-R"] } else { vec![] })
+        .args(if pager.contains("less") {
+            vec!["-R"]
+        } else {
+            vec![]
+        })
         .stdin(std::process::Stdio::piped())
         .spawn()
     {

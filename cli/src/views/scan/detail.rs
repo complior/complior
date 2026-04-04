@@ -1,16 +1,14 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
 use crate::types::Severity;
 
-use super::explain::{
-    deadline_for_article, explain_check, penalty_for_article, wrap_text,
-};
+use super::explain::{deadline_for_article, explain_check, penalty_for_article, wrap_text};
 use super::render::build_file_agent_map;
 use super::shared::{render_code_block, render_fix_diff, render_fix_text};
 
@@ -48,7 +46,11 @@ pub(super) fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
             " {} Detail \u{2014} {obl} ({finding_num}/{total}) ",
             ft.badge()
         ))
-        .title_style(Style::default().fg(badge_color).add_modifier(Modifier::BOLD))
+        .title_style(
+            Style::default()
+                .fg(badge_color)
+                .add_modifier(Modifier::BOLD),
+        )
         .borders(Borders::ALL)
         .border_style(Style::default().fg(sev_color));
     let inner = block.inner(area);
@@ -59,7 +61,7 @@ pub(super) fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(2), // Header: message + article
-            Constraint::Min(5),   // Two-column content
+            Constraint::Min(5),    // Two-column content
             Constraint::Length(2), // Action bar
         ])
         .split(inner);
@@ -90,10 +92,7 @@ pub(super) fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
     // --- Two-column content: code (left) + legal context (right) ---
     let cols = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(55),
-            Constraint::Percentage(45),
-        ])
+        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
         .split(header_layout[1]);
 
     // LEFT COLUMN: Code diff / file content
@@ -105,11 +104,13 @@ pub(super) fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
     // --- Action bar ---
     let impact = finding.predicted_impact();
     let action_line = Line::from(vec![
-        Span::styled(" [f] ", Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD)),
         Span::styled(
-            format!("Fix (+{impact})  "),
-            Style::default().fg(t.fg),
+            " [f] ",
+            Style::default()
+                .fg(t.zone_green)
+                .add_modifier(Modifier::BOLD),
         ),
+        Span::styled(format!("Fix (+{impact})  "), Style::default().fg(t.fg)),
         Span::styled("[d] ", Style::default().fg(t.zone_yellow)),
         Span::styled("Dismiss  ", Style::default().fg(t.fg)),
         Span::styled("[x] ", Style::default().fg(t.accent)),
@@ -119,7 +120,10 @@ pub(super) fn render_finding_detail(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("[Esc] ", Style::default().fg(t.muted)),
         Span::styled("Back", Style::default().fg(t.muted)),
     ]);
-    frame.render_widget(Paragraph::new(vec![Line::raw(""), action_line]), header_layout[2]);
+    frame.render_widget(
+        Paragraph::new(vec![Line::raw(""), action_line]),
+        header_layout[2],
+    );
 }
 
 /// Left column of detail view: code diff or file content.
@@ -174,7 +178,9 @@ fn render_detail_code_column(
         if finding.code_context.is_none() {
             lines.push(Line::from(Span::styled(
                 header,
-                Style::default().fg(header_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(header_color)
+                    .add_modifier(Modifier::BOLD),
             )));
             if ft == crate::types::FindingType::B {
                 let (_, _, file_hint) = explain_check(&finding.check_id);
@@ -224,10 +230,7 @@ fn render_detail_code_column(
         }
     }
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        area,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), area);
 }
 
 /// Right column of detail view: legal context, penalty, impact.
@@ -276,19 +279,13 @@ fn render_detail_legal_column(
         if !expl.deadline.is_empty() {
             lines.push(Line::from(vec![
                 Span::styled("  Deadline:   ", Style::default().fg(t.muted)),
-                Span::styled(
-                    expl.deadline.clone(),
-                    Style::default().fg(t.zone_yellow),
-                ),
+                Span::styled(expl.deadline.clone(), Style::default().fg(t.zone_yellow)),
             ]));
         }
         if !expl.penalty.is_empty() {
             lines.push(Line::from(vec![
                 Span::styled("  Penalty:    ", Style::default().fg(t.muted)),
-                Span::styled(
-                    expl.penalty.clone(),
-                    Style::default().fg(t.zone_red),
-                ),
+                Span::styled(expl.penalty.clone(), Style::default().fg(t.zone_red)),
             ]));
         }
     } else if let Some(ref art_ref) = finding.article_reference {
@@ -318,7 +315,9 @@ fn render_detail_legal_column(
         Span::styled("  Impact:     ", Style::default().fg(t.muted)),
         Span::styled(
             format!("+{impact} points"),
-            Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(t.zone_green)
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
     lines.push(Line::from(vec![
@@ -365,8 +364,5 @@ fn render_detail_legal_column(
         Span::styled(file_hint, Style::default().fg(t.accent)),
     ]));
 
-    frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        area,
-    );
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), area);
 }

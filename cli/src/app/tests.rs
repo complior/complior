@@ -280,7 +280,9 @@ mod tests {
         app.view_state = ViewState::Dashboard;
         app.rebuild_click_areas(120, 40);
         // Should have 9 view tabs in footer
-        let tab_count = app.click_areas.iter()
+        let tab_count = app
+            .click_areas
+            .iter()
             .filter(|(_, t)| matches!(t, crate::types::ClickTarget::ViewTab(_)))
             .count();
         assert_eq!(tab_count, 9);
@@ -291,9 +293,14 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         app.sidebar_visible = true;
         app.rebuild_click_areas(120, 40); // Medium breakpoint, sidebar visible
-        let has_sidebar = app.click_areas.iter()
+        let has_sidebar = app
+            .click_areas
+            .iter()
             .any(|(_, t)| matches!(t, crate::types::ClickTarget::SidebarToggle));
-        assert!(has_sidebar, "Medium width with sidebar visible should have SidebarToggle");
+        assert!(
+            has_sidebar,
+            "Medium width with sidebar visible should have SidebarToggle"
+        );
     }
 
     #[test]
@@ -301,7 +308,9 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         app.sidebar_visible = true;
         app.rebuild_click_areas(80, 30); // Small breakpoint
-        let has_sidebar = app.click_areas.iter()
+        let has_sidebar = app
+            .click_areas
+            .iter()
             .any(|(_, t)| matches!(t, crate::types::ClickTarget::SidebarToggle));
         assert!(!has_sidebar, "Small terminal should not have SidebarToggle");
     }
@@ -311,7 +320,8 @@ mod tests {
         let mut app = App::new(TuiConfig::default());
         app.input_mode = InputMode::Normal;
         // Simulate 15s idle
-        app.idle_suggestions.last_input = std::time::Instant::now() - std::time::Duration::from_secs(15);
+        app.idle_suggestions.last_input =
+            std::time::Instant::now() - std::time::Duration::from_secs(15);
         let cmd = app.tick();
         assert!(matches!(cmd, Some(AppCommand::FetchSuggestions)));
         assert!(app.idle_suggestions.fetch_pending);
@@ -321,7 +331,8 @@ mod tests {
     fn test_idle_no_fetch_when_insert_mode() {
         let mut app = App::new(TuiConfig::default());
         app.input_mode = InputMode::Insert;
-        app.idle_suggestions.last_input = std::time::Instant::now() - std::time::Duration::from_secs(15);
+        app.idle_suggestions.last_input =
+            std::time::Instant::now() - std::time::Duration::from_secs(15);
         let cmd = app.tick();
         assert!(cmd.is_none(), "Should not trigger fetch in insert mode");
     }

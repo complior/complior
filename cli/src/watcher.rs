@@ -8,18 +8,15 @@ use tokio::task::JoinHandle;
 
 /// Spawn a blocking watcher that sends changed file paths through `tx`.
 /// Uses notify crate's recommended watcher with 500ms debounce.
-pub fn spawn_watcher(
-    project_path: PathBuf,
-    tx: mpsc::UnboundedSender<PathBuf>,
-) -> JoinHandle<()> {
+pub fn spawn_watcher(project_path: PathBuf, tx: mpsc::UnboundedSender<PathBuf>) -> JoinHandle<()> {
     tokio::task::spawn_blocking(move || {
         use notify::{RecursiveMode, Watcher};
 
         let tx_clone = tx;
         let mut last_sent = Instant::now();
 
-        let mut watcher = match notify::recommended_watcher(
-            move |res: Result<notify::Event, notify::Error>| {
+        let mut watcher =
+            match notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
                 if let Ok(event) = res {
                     // Only care about Create and Modify events
                     match event.kind {
@@ -40,14 +37,13 @@ pub fn spawn_watcher(
                         let _ = tx_clone.send(path);
                     }
                 }
-            },
-        ) {
-            Ok(w) => w,
-            Err(e) => {
-                tracing::error!("Failed to create watcher: {e}");
-                return;
-            }
-        };
+            }) {
+                Ok(w) => w,
+                Err(e) => {
+                    tracing::error!("Failed to create watcher: {e}");
+                    return;
+                }
+            };
 
         if let Err(e) = watcher.watch(&project_path, RecursiveMode::Recursive) {
             tracing::error!("Failed to watch {}: {e}", project_path.display());
@@ -66,13 +62,7 @@ pub fn spawn_watcher(
 /// Filter: skip hidden files/dirs, `node_modules`, `target`, `.git`, etc.
 pub fn is_relevant(path: &Path) -> bool {
     // Check each path component
-    let skip_dirs = [
-        "node_modules",
-        "target",
-        "dist",
-        "build",
-        "__pycache__",
-    ];
+    let skip_dirs = ["node_modules", "target", "dist", "build", "__pycache__"];
 
     for component in path.components() {
         if let std::path::Component::Normal(name) = component {
@@ -115,7 +105,10 @@ mod tests {
     fn test_debounce_skips_fast_events() {
         // Debounce logic is internal to the watcher callback.
         // We test the timing contract: two events within 500ms should produce at most one send.
-        use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
 
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();

@@ -8,12 +8,19 @@ pub async fn run_cert_command(action: &CertAction, config: &TuiConfig) -> i32 {
         CertAction::Readiness { name, json, path } => {
             run_cert_readiness(name, *json, path.as_deref(), config).await
         }
-        CertAction::Test { name, adversarial, categories, json, path } => {
+        CertAction::Test {
+            name,
+            adversarial,
+            categories,
+            json,
+            path,
+        } => {
             if !adversarial {
                 eprintln!("Error: --adversarial flag is required for cert test");
                 return 1;
             }
-            run_cert_test_adversarial(name, categories.as_deref(), *json, path.as_deref(), config).await
+            run_cert_test_adversarial(name, categories.as_deref(), *json, path.as_deref(), config)
+                .await
         }
     }
 }
@@ -35,7 +42,10 @@ async fn run_cert_readiness(name: &str, json: bool, path: Option<&str>, config: 
     match client.get_json(&url).await {
         Ok(value) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&value).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&value).unwrap_or_default()
+                );
             } else {
                 print_readiness_human(&value, name);
             }
@@ -75,7 +85,10 @@ async fn run_cert_test_adversarial(
     match client.post_json_long("/cert/test/adversarial", &body).await {
         Ok(value) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&value).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&value).unwrap_or_default()
+                );
             } else {
                 print_adversarial_human(&value, name);
             }
@@ -89,15 +102,30 @@ async fn run_cert_test_adversarial(
 }
 
 fn print_readiness_human(value: &serde_json::Value, name: &str) {
-    let score = value.get("overallScore").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let score = value
+        .get("overallScore")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
     let level = value
         .get("readinessLevel")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
-    let met = value.get("metRequirements").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let partial = value.get("partialRequirements").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let unmet = value.get("unmetRequirements").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let total = value.get("totalRequirements").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let met = value
+        .get("metRequirements")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let partial = value
+        .get("partialRequirements")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let unmet = value
+        .get("unmetRequirements")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let total = value
+        .get("totalRequirements")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
 
     let level_icon = match level {
         "certified" => "V",
@@ -118,7 +146,10 @@ fn print_readiness_human(value: &serde_json::Value, name: &str) {
         println!("  Category Scores:");
         for cat in categories {
             let label = cat.get("label").and_then(|v| v.as_str()).unwrap_or("?");
-            let cat_score = cat.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let cat_score = cat
+                .get("score")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
             let bar_len = (cat_score as usize) / 5;
             let bar = "#".repeat(bar_len);
             let empty = ".".repeat(20 - bar_len);
@@ -129,32 +160,59 @@ fn print_readiness_human(value: &serde_json::Value, name: &str) {
 
     // Gaps
     if let Some(gaps) = value.get("gaps").and_then(|v| v.as_array())
-        && !gaps.is_empty() {
-            println!("  Gaps ({} items):", gaps.len());
-            for gap in gaps {
-                if let Some(g) = gap.as_str() {
-                    println!("    - {g}");
-                }
+        && !gaps.is_empty()
+    {
+        println!("  Gaps ({} items):", gaps.len());
+        for gap in gaps {
+            if let Some(g) = gap.as_str() {
+                println!("    - {g}");
             }
-            println!();
         }
+        println!();
+    }
 }
 
 fn print_adversarial_human(value: &serde_json::Value, name: &str) {
-    let overall = value.get("overallScore").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let total = value.get("totalTests").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let passed = value.get("passCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let failed = value.get("failCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let inconclusive = value.get("inconclusiveCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-    let duration = value.get("duration").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let overall = value
+        .get("overallScore")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let total = value
+        .get("totalTests")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let passed = value
+        .get("passCount")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let failed = value
+        .get("failCount")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let inconclusive = value
+        .get("inconclusiveCount")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let duration = value
+        .get("duration")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
 
-    let icon = if overall >= 80 { "V" } else if overall >= 50 { "~" } else { "!" };
+    let icon = if overall >= 80 {
+        "V"
+    } else if overall >= 50 {
+        "~"
+    } else {
+        "!"
+    };
 
     println!();
     println!("  Adversarial Test Results: {name}");
     println!("  ----------------------------------");
     println!("  [{icon}] Overall Score: {overall}%");
-    println!("  Tests: {total} total, {passed} passed, {failed} failed, {inconclusive} inconclusive");
+    println!(
+        "  Tests: {total} total, {passed} passed, {failed} failed, {inconclusive} inconclusive"
+    );
     println!("  Duration: {:.1}s", duration as f64 / 1000.0);
     println!();
 
@@ -162,22 +220,37 @@ fn print_adversarial_human(value: &serde_json::Value, name: &str) {
     if let Some(cats) = value.get("categories").and_then(|v| v.as_object()) {
         println!("  Category Results:");
         for (cat_name, cat_data) in cats {
-            let cat_score = cat_data.get("score").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let cat_total = cat_data.get("total").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let cat_passed = cat_data.get("passed").and_then(serde_json::Value::as_u64).unwrap_or(0);
-            let cat_failed = cat_data.get("failed").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let cat_score = cat_data
+                .get("score")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let cat_total = cat_data
+                .get("total")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let cat_passed = cat_data
+                .get("passed")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let cat_failed = cat_data
+                .get("failed")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
             let label = cat_name.replace('_', " ");
             let bar_len = (cat_score as usize) / 5;
             let bar = "#".repeat(bar_len);
             let empty = ".".repeat(20 - bar_len);
-            println!("    {label:<20} [{bar}{empty}] {cat_score}% ({cat_passed}/{cat_total} pass, {cat_failed} fail)");
+            println!(
+                "    {label:<20} [{bar}{empty}] {cat_score}% ({cat_passed}/{cat_total} pass, {cat_failed} fail)"
+            );
         }
         println!();
     }
 
     // Per-test results
     if let Some(results) = value.get("results").and_then(|v| v.as_array()) {
-        let failures: Vec<_> = results.iter()
+        let failures: Vec<_> = results
+            .iter()
             .filter(|r| r.get("verdict").and_then(|v| v.as_str()) == Some("fail"))
             .collect();
         if !failures.is_empty() {

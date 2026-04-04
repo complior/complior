@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::theme;
 
@@ -24,7 +24,11 @@ pub fn render_confirm_dialog(frame: &mut Frame, dialog: &ConfirmDialog) {
 
     let block = Block::default()
         .title(format!(" {} ", dialog.title))
-        .title_style(Style::default().fg(t.zone_yellow).add_modifier(Modifier::BOLD))
+        .title_style(
+            Style::default()
+                .fg(t.zone_yellow)
+                .add_modifier(Modifier::BOLD),
+        )
         .borders(Borders::ALL)
         .border_style(Style::default().fg(t.zone_yellow))
         .style(Style::default().bg(t.bg));
@@ -32,11 +36,7 @@ pub fn render_confirm_dialog(frame: &mut Frame, dialog: &ConfirmDialog) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let chunks = Layout::vertical([
-        Constraint::Min(4),
-        Constraint::Length(1),
-    ])
-    .split(inner);
+    let chunks = Layout::vertical([Constraint::Min(4), Constraint::Length(1)]).split(inner);
 
     let mut lines = vec![
         Line::raw(""),
@@ -51,7 +51,9 @@ pub fn render_confirm_dialog(frame: &mut Frame, dialog: &ConfirmDialog) {
             Span::styled("  Score impact: ", Style::default().fg(t.muted)),
             Span::styled(
                 format!("+{impact:.0} points"),
-                Style::default().fg(t.zone_green).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(t.zone_green)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]));
     }

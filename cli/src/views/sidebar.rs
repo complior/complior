@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::theme;
@@ -24,18 +24,18 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
     let has_scan = app.last_scan.is_some();
     let constraints = if has_scan {
         vec![
-            Constraint::Length(5),  // Project
-            Constraint::Length(6),  // Scan Summary
-            Constraint::Length(3),  // Context + Zen
-            Constraint::Length(3),  // Deadlines
+            Constraint::Length(5), // Project
+            Constraint::Length(6), // Scan Summary
+            Constraint::Length(3), // Context + Zen
+            Constraint::Length(3), // Deadlines
             Constraint::Min(3),    // Quick Actions
         ]
     } else {
         vec![
             Constraint::Length(5), // Project
-            Constraint::Length(3),  // Context + Zen
-            Constraint::Length(3),  // Deadlines
-            Constraint::Min(3),   // Quick Actions
+            Constraint::Length(3), // Context + Zen
+            Constraint::Length(3), // Deadlines
+            Constraint::Min(3),    // Quick Actions
         ]
     };
 
@@ -60,18 +60,15 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn render_project_section(frame: &mut Frame, area: Rect, app: &App, t: &theme::ThemeColors) {
-    let project_name = app
-        .project_path
-        .file_name().map_or_else(|| "project".to_string(), |n| n.to_string_lossy().to_string());
+    let project_name = app.project_path.file_name().map_or_else(
+        || "project".to_string(),
+        |n| n.to_string_lossy().to_string(),
+    );
 
-    let mut lines = vec![
-        Line::from(Span::styled(
-            format!(" {project_name}/"),
-            Style::default()
-                .fg(t.fg)
-                .add_modifier(Modifier::BOLD),
-        )),
-    ];
+    let mut lines = vec![Line::from(Span::styled(
+        format!(" {project_name}/"),
+        Style::default().fg(t.fg).add_modifier(Modifier::BOLD),
+    ))];
 
     // Show score if available
     if let Some(scan) = &app.last_scan {
@@ -98,10 +95,7 @@ fn render_project_section(frame: &mut Frame, area: Rect, app: &App, t: &theme::T
                 format!("{}✗", scan.score.failed_checks),
                 Style::default().fg(t.zone_red),
             ),
-            Span::raw(format!(
-                " {} files",
-                scan.files_scanned
-            )),
+            Span::raw(format!(" {} files", scan.files_scanned)),
         ]));
     } else {
         lines.push(Line::from(Span::styled(
@@ -158,19 +152,18 @@ fn render_context_zen_section(frame: &mut Frame, area: Rect, app: &App, t: &them
         "Zen: off".to_string()
     };
 
-    let lines = vec![
-        Line::from(vec![
-            Span::styled(" Ctx: ", Style::default().fg(t.muted)),
-            Span::styled(
-                format!("{ctx_pct}%"),
-                Style::default().fg(ctx_color),
-            ),
-            Span::styled(
-                format!("  {zen_status}"),
-                Style::default().fg(if app.zen_active { t.zone_green } else { t.muted }),
-            ),
-        ]),
-    ];
+    let lines = vec![Line::from(vec![
+        Span::styled(" Ctx: ", Style::default().fg(t.muted)),
+        Span::styled(format!("{ctx_pct}%"), Style::default().fg(ctx_color)),
+        Span::styled(
+            format!("  {zen_status}"),
+            Style::default().fg(if app.zen_active {
+                t.zone_green
+            } else {
+                t.muted
+            }),
+        ),
+    ])];
 
     let p = Paragraph::new(lines).block(
         Block::default()
@@ -203,15 +196,13 @@ fn render_deadlines(frame: &mut Frame, area: Rect, t: &theme::ThemeColors) {
         ("⚠", t.accent)
     };
 
-    let lines = vec![
-        Line::from(vec![
-            Span::styled(
-                format!(" {icon} {days_remaining}d "),
-                Style::default().fg(color).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("EU AI Act", Style::default().fg(t.muted)),
-        ]),
-    ];
+    let lines = vec![Line::from(vec![
+        Span::styled(
+            format!(" {icon} {days_remaining}d "),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("EU AI Act", Style::default().fg(t.muted)),
+    ])];
 
     let p = Paragraph::new(lines).block(
         Block::default()
@@ -251,8 +242,8 @@ fn render_quick_actions(frame: &mut Frame, area: Rect, t: &theme::ThemeColors) {
 
 #[cfg(test)]
 mod tests {
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
 
     use super::*;
 

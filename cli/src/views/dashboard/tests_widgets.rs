@@ -1,5 +1,5 @@
+use super::tests_helpers::{make_scan_result, render_to_string};
 use super::*;
-use super::tests_helpers::{render_to_string, make_scan_result};
 
 // --- T704: Toast Notifications ---
 
@@ -10,7 +10,10 @@ fn e2e_t704_toast_appears_after_scan() {
     assert!(app.toasts.toasts.is_empty());
 
     app.set_scan_result(make_scan_result(85.0, crate::types::Zone::Green));
-    assert!(!app.toasts.toasts.is_empty(), "Toast should appear after scan");
+    assert!(
+        !app.toasts.toasts.is_empty(),
+        "Toast should appear after scan"
+    );
     let toast = &app.toasts.toasts[0];
     assert!(toast.message.contains("85"), "Toast should contain score");
 }
@@ -19,10 +22,14 @@ fn e2e_t704_toast_appears_after_scan() {
 fn e2e_t704_toast_overlay_renders() {
     crate::theme::init_theme("dark");
     let mut app = App::new(crate::config::TuiConfig::default());
-    app.toasts.push(crate::components::toast::ToastKind::Info, "Test toast");
+    app.toasts
+        .push(crate::components::toast::ToastKind::Info, "Test toast");
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("[i]"), "Toast [i] marker should render in overlay");
+    assert!(
+        buf.contains("[i]"),
+        "Toast [i] marker should render in overlay"
+    );
     assert!(buf.contains("Test toast"), "Toast message should render");
 }
 
@@ -59,7 +66,10 @@ fn e2e_t703_fix_split_resize() {
     // Resize right '>'
     app.handle_view_key('>');
     app.handle_view_key('>');
-    assert_eq!(app.fix_split_pct, 45, "'>' twice should increase split to 45");
+    assert_eq!(
+        app.fix_split_pct, 45,
+        "'>' twice should increase split to 45"
+    );
 
     // Clamp at bounds
     for _ in 0..20 {
@@ -79,9 +89,8 @@ fn e2e_t703_fix_view_uses_split_pct() {
     let mut app = App::new(crate::config::TuiConfig::default());
     app.view_state = ViewState::Fix;
     app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
-    app.fix_view = crate::views::fix::FixViewState::from_scan(
-        &app.last_scan.as_ref().unwrap().findings,
-    );
+    app.fix_view =
+        crate::views::fix::FixViewState::from_scan(&app.last_scan.as_ref().unwrap().findings);
     app.fix_split_pct = 30;
 
     // Should render without panic with custom split
@@ -140,7 +149,10 @@ fn e2e_framework_focus_noop_single() {
     assert_eq!(app.focused_framework, None);
 
     app.handle_view_key('f');
-    assert_eq!(app.focused_framework, None, "'f' should be no-op with single framework");
+    assert_eq!(
+        app.focused_framework, None,
+        "'f' should be no-op with single framework"
+    );
 }
 
 #[test]
@@ -153,7 +165,10 @@ fn e2e_framework_focus_esc_resets() {
     assert_eq!(app.focused_framework, Some(0));
 
     app.handle_view_escape();
-    assert_eq!(app.focused_framework, None, "Esc should reset focus to None");
+    assert_eq!(
+        app.focused_framework, None,
+        "Esc should reset focus to None"
+    );
 }
 
 #[test]
@@ -203,7 +218,10 @@ fn e2e_framework_focus_noop_no_data() {
     assert_eq!(app.focused_framework, None);
 
     app.handle_view_key('f');
-    assert_eq!(app.focused_framework, None, "'f' should be no-op without framework data");
+    assert_eq!(
+        app.focused_framework, None,
+        "'f' should be no-op without framework data"
+    );
 }
 
 // --- T705: Context Meter + Quick Actions ---
@@ -321,8 +339,14 @@ fn e2e_dashboard_metrics_empty_renders() {
     assert!(app.readiness_score.is_none());
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("Metrics"), "Metrics panel title should render even without data");
-    assert!(buf.contains("Run /scan first"), "Should show placeholder when no scan");
+    assert!(
+        buf.contains("Metrics"),
+        "Metrics panel title should render even without data"
+    );
+    assert!(
+        buf.contains("Run /scan first"),
+        "Should show placeholder when no scan"
+    );
 }
 
 #[test]
@@ -369,4 +393,3 @@ fn e2e_readiness_level_colors() {
     // Boundary: 39.9 → red
     assert_eq!(readiness_level_color(39.9, &t), t.zone_red);
 }
-

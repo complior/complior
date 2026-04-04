@@ -54,17 +54,39 @@ pub struct LayerResult {
 
 /// Infer the layer tag for a finding based on its `check_id` prefix.
 pub fn infer_layer_tag(check_id: &str) -> &'static str {
-    if check_id.starts_with("l4-nhi-") { return "NHI"; }
-    if check_id.starts_with("ext-semgrep-") { return "L4+"; }
-    if check_id.starts_with("ext-bandit-") { return "L4+"; }
-    if check_id.starts_with("ext-modelscan-") { return "L3+"; }
-    if check_id.starts_with("ext-detect-secrets-") { return "NHI+"; }
-    if check_id.starts_with("l5-") { return "L5"; }
-    if check_id.starts_with("l4-") { return "L4"; }
-    if check_id.starts_with("l3-") { return "L3"; }
-    if check_id.starts_with("l2-") { return "L2"; }
-    if check_id.starts_with("cross-") { return "CROSS"; }
-    if check_id.starts_with("gpai-") { return "GPAI"; }
+    if check_id.starts_with("l4-nhi-") {
+        return "NHI";
+    }
+    if check_id.starts_with("ext-semgrep-") {
+        return "L4+";
+    }
+    if check_id.starts_with("ext-bandit-") {
+        return "L4+";
+    }
+    if check_id.starts_with("ext-modelscan-") {
+        return "L3+";
+    }
+    if check_id.starts_with("ext-detect-secrets-") {
+        return "NHI+";
+    }
+    if check_id.starts_with("l5-") {
+        return "L5";
+    }
+    if check_id.starts_with("l4-") {
+        return "L4";
+    }
+    if check_id.starts_with("l3-") {
+        return "L3";
+    }
+    if check_id.starts_with("l2-") {
+        return "L2";
+    }
+    if check_id.starts_with("cross-") {
+        return "CROSS";
+    }
+    if check_id.starts_with("gpai-") {
+        return "GPAI";
+    }
     "L1"
 }
 

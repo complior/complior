@@ -1,10 +1,10 @@
 //! LLM Settings overlay — provider/API key/model configuration.
 
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
-use ratatui::Frame;
 
 use crate::theme;
 use crate::types::LlmSessionConfig;
@@ -113,7 +113,7 @@ pub fn render_llm_settings(frame: &mut Frame, state: &LlmSettingsState) {
             Constraint::Length(3), // API Key
             Constraint::Length(3), // Model
             Constraint::Length(2), // Test Connection
-            Constraint::Min(1),   // Footer
+            Constraint::Min(1),    // Footer
         ])
         .split(inner);
 
@@ -152,18 +152,13 @@ fn render_provider_field(
     let focused = state.focused_field == LlmSettingsField::Provider;
     let border_color = if focused { t.accent } else { t.muted };
 
-    let mut spans: Vec<Span<'_>> = vec![Span::styled(
-        " Provider: ",
-        Style::default().fg(t.fg),
-    )];
+    let mut spans: Vec<Span<'_>> = vec![Span::styled(" Provider: ", Style::default().fg(t.fg))];
 
     for (i, provider) in PROVIDERS.iter().enumerate() {
         let is_selected = i == state.selected_provider;
         let marker = if is_selected { "(x) " } else { "( ) " };
         let style = if is_selected {
-            Style::default()
-                .fg(t.accent)
-                .add_modifier(Modifier::BOLD)
+            Style::default().fg(t.accent).add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(t.fg)
         };
@@ -176,10 +171,7 @@ fn render_provider_field(
         .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color));
 
-    frame.render_widget(
-        Paragraph::new(Line::from(spans)).block(block),
-        area,
-    );
+    frame.render_widget(Paragraph::new(Line::from(spans)).block(block), area);
 }
 
 fn render_api_key_field(
@@ -199,10 +191,7 @@ fn render_api_key_field(
     };
 
     let provider = PROVIDERS[state.selected_provider];
-    let env_configured = state
-        .env_keys
-        .iter()
-        .any(|(p, has)| *p == provider && *has);
+    let env_configured = state.env_keys.iter().any(|(p, has)| *p == provider && *has);
 
     let value_display = if editing {
         format!("{}\u{258c}", state.api_key_input) // cursor
@@ -290,9 +279,7 @@ fn render_test_button(
     };
 
     let btn_style = if focused {
-        Style::default()
-            .fg(t.accent)
-            .add_modifier(Modifier::BOLD)
+        Style::default().fg(t.accent).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(t.fg)
     };

@@ -154,16 +154,17 @@ impl EngineClient {
         let fixes = preview.get("fixes").and_then(|v| v.as_array());
 
         // Collect individual score impacts, sorted descending for diminishing returns
-        let mut impacts: Vec<f64> = fixes
-            .map_or(Vec::new(), |f| {
-                f.iter()
-                    .filter_map(|p| p.get("scoreImpact").and_then(serde_json::Value::as_f64))
-                    .collect()
-            });
+        let mut impacts: Vec<f64> = fixes.map_or(Vec::new(), |f| {
+            f.iter()
+                .filter_map(|p| p.get("scoreImpact").and_then(serde_json::Value::as_f64))
+                .collect()
+        });
         impacts.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         // Apply 15% diminishing returns per subsequent fix
-        let adjusted_impact: f64 = impacts.iter().enumerate()
+        let adjusted_impact: f64 = impacts
+            .iter()
+            .enumerate()
             .map(|(i, &imp)| imp * 0.85_f64.powi(i as i32))
             .sum();
 
@@ -189,7 +190,9 @@ impl EngineClient {
             .unwrap_or_default();
 
         // Get current score from status endpoint
-        let current_score = self.get_json("/status").await
+        let current_score = self
+            .get_json("/status")
+            .await
             .ok()
             .and_then(|v| v.get("score").and_then(serde_json::Value::as_f64))
             .unwrap_or(0.0);
@@ -428,7 +431,11 @@ impl EngineClient {
     }
 
     /// POST with long timeout (1800s) — for eval/adversarial endpoints (hundreds of LLM calls).
-    pub async fn post_json_long(&self, endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
+    pub async fn post_json_long(
+        &self,
+        endpoint: &str,
+        body: &serde_json::Value,
+    ) -> Result<serde_json::Value> {
         let resp = self
             .client
             .post(format!("{}{endpoint}", self.base_url))
@@ -449,6 +456,4 @@ impl EngineClient {
         let result: serde_json::Value = serde_json::from_str(&text)?;
         Ok(result)
     }
-
 }
-

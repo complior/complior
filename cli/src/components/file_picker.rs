@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
-use ratatui::Frame;
 
 use crate::theme;
 use crate::types::FileEntry;
@@ -83,7 +83,10 @@ pub fn fuzzy_match_files<'a>(files: &'a [FileEntry], filter: &str) -> Vec<&'a Fi
         .filter(|f| {
             filter_lower.is_empty()
                 || f.name.to_lowercase().contains(&filter_lower)
-                || f.path.to_string_lossy().to_lowercase().contains(&filter_lower)
+                || f.path
+                    .to_string_lossy()
+                    .to_lowercase()
+                    .contains(&filter_lower)
         })
         .collect()
 }
@@ -115,9 +118,27 @@ mod tests {
     #[test]
     fn test_fuzzy_match_files() {
         let files = vec![
-            FileEntry { path: PathBuf::from("src/app.rs"), name: "app.rs".into(), is_dir: false, depth: 1, expanded: false },
-            FileEntry { path: PathBuf::from("src/main.rs"), name: "main.rs".into(), is_dir: false, depth: 1, expanded: false },
-            FileEntry { path: PathBuf::from("src"), name: "src".into(), is_dir: true, depth: 0, expanded: true },
+            FileEntry {
+                path: PathBuf::from("src/app.rs"),
+                name: "app.rs".into(),
+                is_dir: false,
+                depth: 1,
+                expanded: false,
+            },
+            FileEntry {
+                path: PathBuf::from("src/main.rs"),
+                name: "main.rs".into(),
+                is_dir: false,
+                depth: 1,
+                expanded: false,
+            },
+            FileEntry {
+                path: PathBuf::from("src"),
+                name: "src".into(),
+                is_dir: true,
+                depth: 0,
+                expanded: true,
+            },
         ];
 
         let matched = fuzzy_match_files(&files, "app");

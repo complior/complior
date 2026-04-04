@@ -1,5 +1,5 @@
+use super::tests_helpers::{make_scan_result, render_to_string};
 use super::*;
-use super::tests_helpers::{render_to_string, make_scan_result};
 
 // --- T504: Status Bar 6 Indicators ---
 
@@ -10,7 +10,10 @@ fn e2e_t504_status_bar_shows_daemon_indicator() {
 
     let buf = render_to_string(&app, 120, 40);
     // Footer shows engine connection indicator
-    assert!(buf.contains("\u{25cb}") || buf.contains("\u{25cf}"), "Status bar should show daemon indicator");
+    assert!(
+        buf.contains("\u{25cb}") || buf.contains("\u{25cf}"),
+        "Status bar should show daemon indicator"
+    );
 }
 
 #[test]
@@ -20,7 +23,10 @@ fn e2e_t504_status_bar_shows_view_indicator() {
 
     // Dashboard view
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("[1 Dashboard]"), "Status bar should show [1 Dashboard]");
+    assert!(
+        buf.contains("[1 Dashboard]"),
+        "Status bar should show [1 Dashboard]"
+    );
 
     // Switch to Log view
     app.view_state = ViewState::Log;
@@ -40,7 +46,10 @@ fn e2e_t504_status_bar_shows_score_badge() {
     app.last_scan = Some(make_scan_result(75.0, crate::types::Zone::Yellow));
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("[75]"), "Status bar should show score badge [75]");
+    assert!(
+        buf.contains("[75]"),
+        "Status bar should show score badge [75]"
+    );
 }
 
 #[test]
@@ -62,7 +71,10 @@ fn e2e_t504_status_bar_context_indicator() {
     let app = App::new(crate::config::TuiConfig::default());
 
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains("[ctx:"), "Status bar should show context usage [ctx:N%]");
+    assert!(
+        buf.contains("[ctx:"),
+        "Status bar should show context usage [ctx:N%]"
+    );
 }
 
 #[test]
@@ -86,15 +98,24 @@ fn e2e_t504_status_bar_engine_indicator() {
     // Connected
     app.engine_status = crate::types::EngineConnectionStatus::Connected;
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains('\u{25cf}'), "Connected engine should show filled circle");
+    assert!(
+        buf.contains('\u{25cf}'),
+        "Connected engine should show filled circle"
+    );
 
     // Connecting
     app.engine_status = crate::types::EngineConnectionStatus::Connecting;
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains('\u{25cb}'), "Connecting engine should show hollow circle");
+    assert!(
+        buf.contains('\u{25cb}'),
+        "Connecting engine should show hollow circle"
+    );
 
     // Error
     app.engine_status = crate::types::EngineConnectionStatus::Error;
     let buf = render_to_string(&app, 120, 40);
-    assert!(buf.contains('\u{2717}'), "Error engine should show cross mark");
+    assert!(
+        buf.contains('\u{2717}'),
+        "Error engine should show cross mark"
+    );
 }

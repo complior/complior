@@ -2,10 +2,16 @@
 
 use crate::types::{CheckResultType, Finding, ScanResult, Severity};
 
-use super::colors::{diamond, bold, dim, yellow, resolve_grade, grade_color, score_color, bold_red, bar_filled, bar_empty, layer_status_color, green, check_mark, severity_icon, severity_color};
+use super::colors::{
+    bar_empty, bar_filled, bold, bold_red, check_mark, diamond, dim, grade_color, green,
+    layer_status_color, resolve_grade, score_color, severity_color, severity_icon, yellow,
+};
 use super::labels::{check_label, ext_check_label};
-use super::layers::{BASE_LAYERS, DEEP_TOOL_NAMES, display_width, BAR_WIDTH, infer_layer_results, sort_findings_full, apply_finding_limits, MAX_MEDIUM, DEEP_LAYERS, infer_layer_tag};
-use super::{plural, project_name, separator, FormatOptions};
+use super::layers::{
+    BAR_WIDTH, BASE_LAYERS, DEEP_LAYERS, DEEP_TOOL_NAMES, MAX_MEDIUM, apply_finding_limits,
+    display_width, infer_layer_results, infer_layer_tag, sort_findings_full,
+};
+use super::{FormatOptions, plural, project_name, separator};
 
 /// Format scan result as structured human-readable text.
 #[allow(clippy::cast_precision_loss)]
@@ -39,7 +45,10 @@ pub fn format_human(result: &ScanResult, opts: &FormatOptions) -> String {
 
 fn render_header(o: &mut String, result: &ScanResult) {
     let version = env!("CARGO_PKG_VERSION");
-    let mut title = format!("{} Complior v{version}  ·  EU AI Act Compliance Scanner", diamond());
+    let mut title = format!(
+        "{} Complior v{version}  ·  EU AI Act Compliance Scanner",
+        diamond()
+    );
     if result.tier == Some(2) {
         title.push_str("  ·  Deep Mode");
     }
@@ -59,9 +68,10 @@ fn render_scan_info(o: &mut String, result: &ScanResult) {
     // Files line with optional excluded count
     let mut files_info = format!("{} collected", result.files_scanned);
     if let Some(excl) = result.files_excluded
-        && excl > 0 {
-            files_info.push_str(&format!(", {excl} excluded"));
-        }
+        && excl > 0
+    {
+        files_info.push_str(&format!(", {excl} excluded"));
+    }
     o.push_str(&format!("  {}     {}\n", dim("Files"), files_info));
 
     // >500 files warning
@@ -86,8 +96,14 @@ fn render_scan_info(o: &mut String, result: &ScanResult) {
         .iter()
         .filter(|(tag, _)| {
             match *tag {
-                "GPAI" => result.findings.iter().any(|f| f.check_id.starts_with("gpai-")),
-                "L5" => result.findings.iter().any(|f| f.check_id.starts_with("l5-") || f.l5_analyzed == Some(true)),
+                "GPAI" => result
+                    .findings
+                    .iter()
+                    .any(|f| f.check_id.starts_with("gpai-")),
+                "L5" => result
+                    .findings
+                    .iter()
+                    .any(|f| f.check_id.starts_with("l5-") || f.l5_analyzed == Some(true)),
                 "CROSS" => false, // cross-layer is implicit, not shown in header
                 _ => true,
             }
@@ -103,7 +119,11 @@ fn render_scan_info(o: &mut String, result: &ScanResult) {
 
     // L5 cost (when --llm was used)
     if let Some(cost) = result.l5_cost {
-        o.push_str(&format!("  {}  ${:.2} (estimated)\n", dim("LLM Cost"), cost));
+        o.push_str(&format!(
+            "  {}  ${:.2} (estimated)\n",
+            dim("LLM Cost"),
+            cost
+        ));
     }
 
     o.push('\n');
@@ -141,10 +161,14 @@ fn render_score_block(o: &mut String, result: &ScanResult, opts: &FormatOptions)
         "  {}{}{}\n",
         bold(clabel),
         " ".repeat(cpad),
-        format!("{}{}",
+        format!(
+            "{}{}",
             score_color(compliance, &cscore_text),
             if opts.prev_score.is_some() {
-                format!("  {}", dim(&format!("(was {:.0})", opts.prev_score.unwrap_or(0.0))))
+                format!(
+                    "  {}",
+                    dim(&format!("(was {:.0})", opts.prev_score.unwrap_or(0.0)))
+                )
             } else {
                 String::new()
             },
@@ -156,9 +180,9 @@ fn render_score_block(o: &mut String, result: &ScanResult, opts: &FormatOptions)
 
     // Security score: infer from OWASP/MITRE frameworks
     let has_security = if let Some(ref frameworks) = opts.framework_scores {
-        let security_fw = frameworks.iter().find(|fw| {
-            fw.framework_id.contains("owasp") || fw.framework_id.contains("mitre")
-        });
+        let security_fw = frameworks
+            .iter()
+            .find(|fw| fw.framework_id.contains("owasp") || fw.framework_id.contains("mitre"));
         if let Some(sec) = security_fw {
             let sgrade = resolve_grade(sec.score);
             let sscore_text = format!("{:.0} / 100", sec.score);
@@ -224,7 +248,11 @@ fn render_framework_breakdown(o: &mut String, opts: &FormatOptions) {
         let padded_score = format!("{score_text:>8}");
         let filled = ((fw.score / 100.0) * BAR_WIDTH as f64).round() as usize;
         let empty = BAR_WIDTH.saturating_sub(filled);
-        let bar = format!("{}{}", bar_filled().repeat(filled), bar_empty().repeat(empty));
+        let bar = format!(
+            "{}{}",
+            bar_filled().repeat(filled),
+            bar_empty().repeat(empty)
+        );
         o.push_str(&format!(
             "    {:<name_width$}{}   {}\n",
             fw.framework_name,
@@ -246,17 +274,26 @@ fn render_layer_results_section(o: &mut String, result: &ScanResult) {
         let status_colored = layer_status_color(lr.status, lr.status);
         o.push_str(&format!(
             "    {:<6}{:<25}{}   {}\n",
-            lr.id, lr.label, status_colored, dim(&lr.summary),
+            lr.id,
+            lr.label,
+            status_colored,
+            dim(&lr.summary),
         ));
     }
 
     // L5 LLM Analysis summary (when --llm was used)
     let is_llm = result.deep_analysis == Some(true) && result.tier != Some(2);
     if is_llm {
-        let l5_count = result.findings.iter().filter(|f| f.l5_analyzed == Some(true)).count();
-        let l5_changed = result.findings.iter().filter(|f| {
-            f.l5_analyzed == Some(true) && f.r#type == CheckResultType::Fail
-        }).count();
+        let l5_count = result
+            .findings
+            .iter()
+            .filter(|f| f.l5_analyzed == Some(true))
+            .count();
+        let l5_changed = result
+            .findings
+            .iter()
+            .filter(|f| f.l5_analyzed == Some(true) && f.r#type == CheckResultType::Fail)
+            .count();
         let status = if l5_count > 0 { "DONE" } else { "SKIP" };
         let summary = if l5_count > 0 {
             format!("{l5_count} analyzed, {l5_changed} flagged")
@@ -266,7 +303,10 @@ fn render_layer_results_section(o: &mut String, result: &ScanResult) {
         let status_colored = layer_status_color(status, status);
         o.push_str(&format!(
             "    {:<6}{:<25}{}   {}\n",
-            "L5", "LLM Analysis", status_colored, dim(&summary),
+            "L5",
+            "LLM Analysis",
+            status_colored,
+            dim(&summary),
         ));
     }
 
@@ -275,22 +315,45 @@ fn render_layer_results_section(o: &mut String, result: &ScanResult) {
 
 fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Finding]) {
     let total = all_fails.len();
-    let critical = all_fails.iter().filter(|f| f.severity == Severity::Critical).count();
-    let high = all_fails.iter().filter(|f| f.severity == Severity::High).count();
-    let medium = all_fails.iter().filter(|f| f.severity == Severity::Medium).count();
+    let critical = all_fails
+        .iter()
+        .filter(|f| f.severity == Severity::Critical)
+        .count();
+    let high = all_fails
+        .iter()
+        .filter(|f| f.severity == Severity::High)
+        .count();
+    let medium = all_fails
+        .iter()
+        .filter(|f| f.severity == Severity::Medium)
+        .count();
 
     o.push_str(&format!("  {}\n", separator()));
 
     let mut stats_parts = vec![format!("{total} total")];
-    if critical > 0 { stats_parts.push(format!("{critical} critical")); }
-    if high > 0 { stats_parts.push(format!("{high} high")); }
-    if medium > 0 { stats_parts.push(format!("{medium} medium")); }
+    if critical > 0 {
+        stats_parts.push(format!("{critical} critical"));
+    }
+    if high > 0 {
+        stats_parts.push(format!("{high} high"));
+    }
+    if medium > 0 {
+        stats_parts.push(format!("{medium} medium"));
+    }
 
-    o.push_str(&format!("  {}  ({})\n", bold("FINDINGS"), stats_parts.join(" · ")));
+    o.push_str(&format!(
+        "  {}  ({})\n",
+        bold("FINDINGS"),
+        stats_parts.join(" · ")
+    ));
     o.push_str(&format!("  {}\n", separator()));
 
     if all_fails.is_empty() {
-        o.push_str(&format!("\n  {}  {}\n\n", green(check_mark()), "No compliance issues found"));
+        o.push_str(&format!(
+            "\n  {}  {}\n\n",
+            green(check_mark()),
+            "No compliance issues found"
+        ));
         return;
     }
 
@@ -302,7 +365,10 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
     let is_llm = result.deep_analysis == Some(true) && result.tier != Some(2);
 
     o.push('\n');
-    let has_agents = result.agent_summaries.as_ref().is_some_and(|s| !s.is_empty());
+    let has_agents = result
+        .agent_summaries
+        .as_ref()
+        .is_some_and(|s| !s.is_empty());
 
     // Global finding counter for F-001 IDs
     let mut finding_num: usize = 1;
@@ -379,30 +445,35 @@ fn render_findings_section(o: &mut String, result: &ScanResult, all_fails: &[&Fi
 
     // Note about hidden findings (only when limits applied — not in agent mode)
     if !has_agents {
-    let low_count = all_fails
-        .iter()
-        .filter(|f| matches!(f.severity, Severity::Low | Severity::Info))
-        .count();
-    let med_hidden = medium.saturating_sub(MAX_MEDIUM);
-    if low_count > 0 || med_hidden > 0 {
-        let mut skip_parts = Vec::new();
-        if med_hidden > 0 {
-            skip_parts.push(format!("{med_hidden} medium"));
+        let low_count = all_fails
+            .iter()
+            .filter(|f| matches!(f.severity, Severity::Low | Severity::Info))
+            .count();
+        let med_hidden = medium.saturating_sub(MAX_MEDIUM);
+        if low_count > 0 || med_hidden > 0 {
+            let mut skip_parts = Vec::new();
+            if med_hidden > 0 {
+                skip_parts.push(format!("{med_hidden} medium"));
+            }
+            if low_count > 0 {
+                skip_parts.push(format!("{low_count} low"));
+            }
+            o.push_str(&format!(
+                "  {} {} not shown (use --json for full report)\n\n",
+                dim("..."),
+                skip_parts.join(", "),
+            ));
         }
-        if low_count > 0 {
-            skip_parts.push(format!("{low_count} low"));
-        }
-        o.push_str(&format!(
-            "  {} {} not shown (use --json for full report)\n\n",
-            dim("..."),
-            skip_parts.join(", "),
-        ));
-    }
     } // !has_agents
 }
 
 /// Render findings grouped first by agent, then by layer within each agent.
-fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &ScanResult, finding_num: &mut usize) {
+fn render_findings_by_agent(
+    o: &mut String,
+    findings: &[&Finding],
+    result: &ScanResult,
+    finding_num: &mut usize,
+) {
     let summaries = match &result.agent_summaries {
         Some(s) => s,
         None => return,
@@ -418,14 +489,25 @@ fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &Scan
             continue;
         }
 
-        let crit = agent_findings.iter().filter(|f| f.severity == Severity::Critical).count();
-        let high = agent_findings.iter().filter(|f| f.severity == Severity::High).count();
+        let crit = agent_findings
+            .iter()
+            .filter(|f| f.severity == Severity::Critical)
+            .count();
+        let high = agent_findings
+            .iter()
+            .filter(|f| f.severity == Severity::High)
+            .count();
         let n = agent_findings.len();
         let mut parts = vec![format!("{n} finding{}", plural(n))];
-        if crit > 0 { parts.push(format!("{crit} critical")); }
-        if high > 0 { parts.push(format!("{high} high")); }
+        if crit > 0 {
+            parts.push(format!("{crit} critical"));
+        }
+        if high > 0 {
+            parts.push(format!("{high} high"));
+        }
 
-        o.push_str(&format!("  {} · {}  ({})\n",
+        o.push_str(&format!(
+            "  {} · {}  ({})\n",
             bold(&summary.agent_name),
             dim("AI System"),
             parts.join(" · "),
@@ -443,7 +525,8 @@ fn render_findings_by_agent(o: &mut String, findings: &[&Finding], result: &Scan
         .collect();
     if !unattributed.is_empty() {
         let n = unattributed.len();
-        o.push_str(&format!("  {} ({n} finding{})\n",
+        o.push_str(&format!(
+            "  {} ({n} finding{})\n",
             bold("PROJECT-LEVEL"),
             plural(n),
         ));
@@ -485,25 +568,30 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
         check_label(&f.check_id)
     };
 
-    let article = f
-        .article_reference
-        .as_deref()
-        .or_else(|| {
-            f.explanation
-                .as_ref()
-                .map(|e| e.article.as_str())
-                .filter(|a| !a.is_empty())
-        });
+    let article = f.article_reference.as_deref().or_else(|| {
+        f.explanation
+            .as_ref()
+            .map(|e| e.article.as_str())
+            .filter(|a| !a.is_empty())
+    });
 
     let header_detail = match article {
         Some(art) => format!("{art} · {label}"),
         None => label,
     };
     let _fid = fid; // retained for JSON/SARIF; hidden from human output
-    let llm_badge = if f.l5_analyzed == Some(true) { format!(" {}", yellow("[LLM]")) } else { String::new() };
+    let llm_badge = if f.l5_analyzed == Some(true) {
+        format!(" {}", yellow("[LLM]"))
+    } else {
+        String::new()
+    };
     o.push_str(&format!(
         "      {}  {}  {}{}  {}\n",
-        icon, sev, dim(&format!("[{layer_tag}]")), llm_badge, header_detail,
+        icon,
+        sev,
+        dim(&format!("[{layer_tag}]")),
+        llm_badge,
+        header_detail,
     ));
     o.push_str(&format!("         {}\n", f.message));
 
@@ -511,7 +599,11 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
         o.push_str(&format!("         {}  {}\n", dim("File:"), loc));
     }
     if let Some(ref fix) = f.fix {
-        o.push_str(&format!("         {}  {}\n", dim("Fix:"), clean_fix_message(fix)));
+        o.push_str(&format!(
+            "         {}  {}\n",
+            dim("Fix:"),
+            clean_fix_message(fix)
+        ));
     }
 
     // L5 LLM verdict line
@@ -528,16 +620,23 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
             };
             o.push_str(&format!(
                 "         {}  {} (confidence {:.0}%)\n",
-                yellow("LLM:"), verdict, conf,
+                yellow("LLM:"),
+                verdict,
+                conf,
             ));
         }
     }
 
     // Docs command hint (if article reference exists)
     if let Some(art) = article
-        && let Some(art_num) = extract_article_number(art) {
-            o.push_str(&format!("         {}  {}\n", dim("Docs:"), dim(&format!("complior docs --article {art_num}"))));
-        }
+        && let Some(art_num) = extract_article_number(art)
+    {
+        o.push_str(&format!(
+            "         {}  {}\n",
+            dim("Docs:"),
+            dim(&format!("complior docs --article {art_num}"))
+        ));
+    }
 
     o.push('\n');
 }
@@ -554,7 +653,11 @@ fn render_quiet_findings(o: &mut String, all_fails: &[&Finding]) {
         return;
     }
 
-    o.push_str(&format!("  {}  ({} critical)\n", bold("CRITICAL FINDINGS"), critical.len()));
+    o.push_str(&format!(
+        "  {}  ({} critical)\n",
+        bold("CRITICAL FINDINGS"),
+        critical.len()
+    ));
     o.push_str(&format!("  {}\n\n", separator()));
 
     let mut finding_num: usize = 1;
@@ -579,35 +682,69 @@ fn render_quick_actions(o: &mut String, result: &ScanResult, fail_findings: &[&F
     let is_tier1 = result.tier.is_none() || result.tier == Some(1);
 
     if has_fixable {
-        o.push_str(&format!("  {:<26}{}\n", "Auto-fix available", dim("complior fix")));
+        o.push_str(&format!(
+            "  {:<26}{}\n",
+            "Auto-fix available",
+            dim("complior fix")
+        ));
     }
     if has_missing_docs {
-        o.push_str(&format!("  {:<26}{}\n", "Generate docs", dim("complior docs generate --missing")));
+        o.push_str(&format!(
+            "  {:<26}{}\n",
+            "Generate docs",
+            dim("complior docs generate --missing")
+        ));
     }
     if is_tier1 {
-        o.push_str(&format!("  {:<26}{}\n", "Deep scan", dim("complior scan --deep")));
+        o.push_str(&format!(
+            "  {:<26}{}\n",
+            "Deep scan",
+            dim("complior scan --deep")
+        ));
     }
-    o.push_str(&format!("  {:<26}{}\n", "Full interactive view", dim("complior tui")));
-    o.push_str(&format!("  {:<26}{}\n", "Export JSON", dim("complior scan --json > report.json")));
+    o.push_str(&format!(
+        "  {:<26}{}\n",
+        "Full interactive view",
+        dim("complior tui")
+    ));
+    o.push_str(&format!(
+        "  {:<26}{}\n",
+        "Export JSON",
+        dim("complior scan --json > report.json")
+    ));
 
     o.push('\n');
-    let critical_count = fail_findings.iter().filter(|f| f.severity == Severity::Critical).count();
-    let high_count = fail_findings.iter().filter(|f| f.severity == Severity::High).count();
+    let critical_count = fail_findings
+        .iter()
+        .filter(|f| f.severity == Severity::Critical)
+        .count();
+    let high_count = fail_findings
+        .iter()
+        .filter(|f| f.severity == Severity::High)
+        .count();
 
     if critical_count > 0 {
         o.push_str(&format!(
             "  {}: fix {critical_count} critical issue{} to improve your score\n",
-            bold("Next"), plural(critical_count),
+            bold("Next"),
+            plural(critical_count),
         ));
     } else if high_count > 0 {
         o.push_str(&format!(
             "  {}: fix {high_count} high-severity issue{} to improve your score\n",
-            bold("Next"), plural(high_count),
+            bold("Next"),
+            plural(high_count),
         ));
     } else if result.score.total_score < 80.0 {
-        o.push_str(&format!("  {}: resolve remaining findings to reach 80+\n", bold("Next")));
+        o.push_str(&format!(
+            "  {}: resolve remaining findings to reach 80+\n",
+            bold("Next")
+        ));
     } else {
-        o.push_str(&format!("  {}: your project is on track for EU AI Act compliance\n", bold("Next")));
+        o.push_str(&format!(
+            "  {}: your project is on track for EU AI Act compliance\n",
+            bold("Next")
+        ));
     }
     o.push_str(&format!("  {}\n", separator()));
 }
@@ -648,15 +785,18 @@ fn render_agent_summaries(o: &mut String, result: &ScanResult) {
 fn clean_fix_message(fix: &str) -> &str {
     if let Some(rest) = fix.strip_prefix("Fix ")
         && let Some(idx) = rest.find(": ")
-            && rest[..idx].starts_with("complior.") {
-                return rest[idx + 2..].trim();
-            }
+        && rest[..idx].starts_with("complior.")
+    {
+        return rest[idx + 2..].trim();
+    }
     fix
 }
 
 /// Extract article number from reference like "Art. 50(1)" → "50", "Art.6" → "6".
 fn extract_article_number(art_ref: &str) -> Option<&str> {
-    let s = art_ref.strip_prefix("Art.").or_else(|| art_ref.strip_prefix("Art "))?;
+    let s = art_ref
+        .strip_prefix("Art.")
+        .or_else(|| art_ref.strip_prefix("Art "))?;
     let s = s.trim_start();
     // Take digits (stop at parenthesis, space, etc.)
     let end = s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
