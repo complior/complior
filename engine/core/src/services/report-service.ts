@@ -1,15 +1,24 @@
 import { resolve } from 'node:path';
 import type { ScanResult } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
+import type { EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
+import type { ComplianceReport } from '../domain/reporter/types.js';
+import type { PassportData } from '../domain/reporter/passport-status.js';
+import type { ObligationRecord } from '../domain/reporter/obligation-coverage.js';
 import { buildAuditReportData } from '../domain/reporter/audit-report.js';
 import { renderPdfReport } from '../domain/reporter/pdf-renderer.js';
 import { generateComplianceMd } from '../domain/reporter/compliance-md.js';
+import { buildComplianceReport } from '../domain/reporter/report-builder.js';
 
 export interface ReportServiceDeps {
   readonly events: EventBusPort;
   readonly getProjectPath: () => string;
   readonly getLastScanResult: () => ScanResult | null;
   readonly getVersion: () => string;
+  readonly getEvalScore?: () => Promise<number | null>;
+  readonly getPassports?: () => Promise<readonly PassportData[]>;
+  readonly getObligations?: () => readonly ObligationRecord[];
+  readonly getEvidenceSummary?: () => Promise<EvidenceChainSummary | null>;
 }
 
 export const createReportService = (deps: ReportServiceDeps) => {
@@ -66,7 +75,45 @@ export const createReportService = (deps: ReportServiceDeps) => {
     return { path: outputPath, content };
   };
 
-  return Object.freeze({ generatePdf, generateMarkdown });
+  const generateReport = async (): Promise<ComplianceReport> => {
+    const scanResult = getLastScanResult();
+    const evalScore = (await deps.getEvalScore?.()) ?? null;
+    const passports = (await deps.getPassports?.()) ?? [];
+    const obligations = deps.getObligations?.() ?? [];
+    const evidenceSummary = (await deps.getEvidenceSummary?.()) ?? null;
+
+    return buildComplianceReport({
+      scanResult,
+      evalScore,
+      passports,
+      obligations,
+      evidenceSummary,
+      version: getVersion(),
+    });
+  };
+
+  const generateOfflineHtml = async (options?: {
+    readonly outputPath?: string;
+  }): Promise<{ path: string }> => {
+    const report = await generateReport();
+
+    const { generateReportHtml } = await import('../domain/reporter/html-renderer.js');
+    const html = generateReportHtml(report);
+
+    const outputPath = options?.outputPath ?? resolve(
+      getProjectPath(), '.complior', 'reports', `compliance-report-${Date.now()}.html`,
+    );
+
+    const { writeFile, mkdir } = await import('node:fs/promises');
+    const { dirname } = await import('node:path');
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, html);
+
+    events.emit('report.generated', { path: outputPath, format: 'html' });
+    return { path: outputPath };
+  };
+
+  return Object.freeze({ generatePdf, generateMarkdown, generateReport, generateOfflineHtml });
 };
 
 export type ReportService = ReturnType<typeof createReportService>;

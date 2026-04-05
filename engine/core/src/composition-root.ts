@@ -360,6 +360,34 @@ export const loadApplication = async (): Promise<Application> => {
     getProjectPath: () => state.projectPath,
     getLastScanResult: () => state.lastScanResult,
     getVersion: () => state.version,
+    getEvalScore: async () => {
+      try {
+        const latestPath = resolve(state.projectPath, '.complior', 'eval', 'latest.json');
+        const raw = await readFile(latestPath, 'utf-8');
+        const data = JSON.parse(raw) as { overallScore?: number };
+        return typeof data.overallScore === 'number' ? data.overallScore : null;
+      } catch {
+        return null;
+      }
+    },
+    getPassports: async () => {
+      try {
+        const passports = await passportService.listPassports(state.projectPath);
+        return passports.map((p) => ({
+          name: p.name ?? 'unknown',
+          completeness: undefined, // computed by buildPassportStatus
+          fria_completed: p.compliance?.fria_completed ?? false,
+          signature: p.signature ?? null,
+          updated_at: p.updated ?? p.created ?? undefined,
+          ...p,
+        }));
+      } catch {
+        return [];
+      }
+    },
+    getObligations: () =>
+      regulationData.obligations.obligations as unknown as import('./domain/reporter/obligation-coverage.js').ObligationRecord[],
+    getEvidenceSummary: () => evidenceStore.getSummary(),
   });
 
   let _externalScan: ExternalScanService | null = null;

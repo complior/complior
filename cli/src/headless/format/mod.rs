@@ -4,6 +4,7 @@ pub mod colors;
 mod human;
 pub mod labels;
 pub mod layers;
+pub mod report;
 
 use std::io::IsTerminal as _;
 use std::io::Write as _;

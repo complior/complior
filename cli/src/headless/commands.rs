@@ -172,8 +172,37 @@ pub async fn run_report(
         }
     }
 
+    // Human / JSON: GET /report/status → render or dump
+    if format == "human" || format == "json" {
+        match client.get_json("/report/status").await {
+            Ok(resp) => {
+                let text = if format == "human" {
+                    super::format::report::format_report_human(&resp)
+                } else {
+                    serde_json::to_string_pretty(&resp).unwrap_or_default()
+                };
+                if let Some(dest) = output {
+                    match std::fs::write(dest, &text) {
+                        Ok(()) => { eprintln!("Report saved to: {dest}"); }
+                        Err(e) => { eprintln!("Failed to write: {e}"); return 1; }
+                    }
+                } else if format == "human" {
+                    super::format::print_paged(&text);
+                } else {
+                    println!("{text}");
+                }
+                return 0;
+            }
+            Err(e) => {
+                eprintln!("Report generation failed: {e}");
+                return 1;
+            }
+        }
+    }
+
     let endpoint = match format {
         "pdf" => "/report/pdf",
+        "html" => "/report/html",
         _ => "/report/markdown",
     };
 
