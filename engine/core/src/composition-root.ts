@@ -130,6 +130,25 @@ export const loadApplication = async (): Promise<Application> => {
     }).catch((err: unknown) => { log.warn('Failed to persist scan result:', err); });
   };
 
+  /** Per-mode scan score persistence (.complior/scan-scores.json). */
+  type ScanModeEntry = { score: number; zone: string; scannedAt: string };
+  type ScanModeScores = Partial<Record<'basic' | 'security' | 'llm', ScanModeEntry>>;
+
+  const scanScoresPath = resolve(state.projectPath, '.complior', 'scan-scores.json');
+
+  const saveScanModeScore = async (mode: string, score: number, zone: string): Promise<void> => {
+    const dir = resolve(state.projectPath, '.complior');
+    let existing: ScanModeScores = {};
+    try { existing = JSON.parse(await readFile(scanScoresPath, 'utf-8')); } catch { /* first save */ }
+    existing[mode as keyof ScanModeScores] = { score, zone, scannedAt: new Date().toISOString() };
+    await mkdir(dir, { recursive: true });
+    await writeFile(scanScoresPath, JSON.stringify(existing), 'utf-8');
+  };
+
+  const loadScanModeScores = async (): Promise<ScanModeScores> => {
+    try { return JSON.parse(await readFile(scanScoresPath, 'utf-8')); } catch { return {}; }
+  };
+
   // 3. Create infrastructure
   const events = createEventBus();
   const llm = createLlmAdapter();
@@ -273,6 +292,7 @@ export const loadApplication = async (): Promise<Application> => {
     scanCache,
     passportService: lazyScanPassport,
     getProjectRole,
+    saveScanModeScore,
   });
 
   // Template loader for fixer
@@ -388,6 +408,8 @@ export const loadApplication = async (): Promise<Application> => {
     getObligations: () =>
       regulationData.obligations.obligations as unknown as import('./domain/reporter/obligation-coverage.js').ObligationRecord[],
     getEvidenceSummary: () => evidenceStore.getSummary(),
+    getProjectRole: () => getProjectRole(state.projectPath),
+    getScanModeScores: loadScanModeScores,
   });
 
   let _externalScan: ExternalScanService | null = null;

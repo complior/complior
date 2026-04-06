@@ -49,6 +49,8 @@ const renderDimensions = (report: ComplianceReport): string => {
   const dims = report.readiness.dimensions;
   const entries = [
     { label: 'Scan', ...dims.scan },
+    { label: 'Scan (security)', ...dims.scanSecurity },
+    { label: 'Scan (LLM)', ...dims.scanLlm },
     { label: 'Documents', ...dims.documents },
     { label: 'Passports', ...dims.passports },
     { label: 'Eval', ...dims.eval },

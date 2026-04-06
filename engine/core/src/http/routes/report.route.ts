@@ -16,7 +16,7 @@ export const createReportRoute = (reportService: ReportService) => {
   const app = new Hono();
 
   // Existing: generate audit PDF
-  app.post('/report/pdf', async (c) => {
+  app.post('/report/status/pdf', async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = PdfReportSchema.safeParse(body);
     const options = parsed.success ? parsed.data : {};
@@ -26,7 +26,7 @@ export const createReportRoute = (reportService: ReportService) => {
   });
 
   // Existing: generate compliance markdown
-  app.post('/report/markdown', async (c) => {
+  app.post('/report/status/markdown', async (c) => {
     const result = await reportService.generateMarkdown();
     return c.json({ path: result.path, format: 'markdown' });
   });
@@ -37,8 +37,8 @@ export const createReportRoute = (reportService: ReportService) => {
     return c.json(report);
   });
 
-  // New: generate offline HTML report
-  app.post('/report/html', async (c) => {
+  // New: generate offline HTML report (--share)
+  app.post('/report/share', async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = HtmlReportSchema.safeParse(body);
     const options = parsed.success ? parsed.data : {};

@@ -150,7 +150,7 @@ pub enum Command {
 
     /// Generate compliance readiness report
     Report {
-        /// Output format: human, json, md, pdf, html (default: human)
+        /// Output format: human, json, md, markdown, pdf, html (default: human)
         #[arg(long, default_value = "human")]
         format: String,
 
@@ -161,6 +161,10 @@ pub enum Command {
         /// Output JSON to stdout (shorthand for --format json)
         #[arg(long)]
         json: bool,
+
+        /// Generate offline HTML report for sharing
+        #[arg(long)]
+        share: bool,
 
         /// Project path (default: current directory)
         path: Option<String>,

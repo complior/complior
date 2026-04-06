@@ -1,13 +1,10 @@
 import type { Finding } from '../../types/common.types.js';
 import type { DocumentInventory, DocumentStatus, DocumentStatusLevel } from './types.js';
 import { TEMPLATE_REGISTRY } from '../../data/template-registry.js';
+import reporterConfig from '../../../data/reporter-config.json' with { type: 'json' };
 
-const STATUS_SCORE: Record<DocumentStatusLevel, number> = {
-  reviewed: 1.0,
-  draft: 0.7,
-  scaffold: 0.3,
-  missing: 0.0,
-};
+const STATUS_SCORE = reporterConfig.documents.statusScore as Record<DocumentStatusLevel, number>;
+const DOC_SCORE_IMPACT = reporterConfig.documents.scoreImpact;
 
 /**
  * Determine document status from scan findings.
@@ -55,8 +52,10 @@ export const buildDocumentInventory = (findings: readonly Finding[]): DocumentIn
     description: entry.description,
     outputFile: entry.outputFile,
     status: resolveStatus(entry.docType, findings),
-    scoreImpact: 8,
+    scoreImpact: DOC_SCORE_IMPACT,
+    prefilledPercent: null,
     lastModified: findLastModified(entry.docType, findings),
+    templateFile: entry.templateFile ?? null,
   }));
 
   const byStatus = {

@@ -254,10 +254,11 @@ async fn main() -> color_eyre::Result<()> {
                 format,
                 output,
                 json,
+                share,
                 path,
             }) => {
                 let effective_format = if *json { "json" } else { format.as_str() };
-                headless::run_report(effective_format, output.as_deref(), path.as_deref(), &config).await
+                headless::run_report(effective_format, output.as_deref(), path.as_deref(), *share, &config).await
             }
             Some(cli::Command::Init { force, path }) => {
                 headless::run_init(path.as_deref(), parsed_cli.yes, *force, &config).await

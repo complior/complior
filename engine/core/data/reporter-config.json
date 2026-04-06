@@ -1,0 +1,56 @@
+{
+  "readiness": {
+    "weights": {
+      "scan": 0.35,
+      "documents": 0.25,
+      "passports": 0.20,
+      "eval": 0.15,
+      "evidence": 0.05
+    },
+    "zoneThresholds": {
+      "green": 90,
+      "yellow": 70,
+      "orange": 50
+    },
+    "criticalCaps": {
+      "scanZero": 29,
+      "noDocuments": 49,
+      "noPassports": 59,
+      "noEvidence": 79,
+      "art5Violation": 29
+    }
+  },
+  "documents": {
+    "statusScore": {
+      "reviewed": 1.0,
+      "draft": 0.7,
+      "scaffold": 0.3,
+      "missing": 0.0
+    },
+    "scoreImpact": 8
+  },
+  "passports": {
+    "totalFields": 36,
+    "completenessThresholds": {
+      "green": 100,
+      "yellow": 80,
+      "amber": 50
+    }
+  },
+  "priorityActions": {
+    "maxActions": 20,
+    "severityWeight": {
+      "critical": 4.0,
+      "high": 3.0,
+      "medium": 2.0,
+      "low": 1.0,
+      "info": 0.5
+    },
+    "urgencyMultiplier": [
+      { "daysThreshold": 30, "multiplier": 3.0 },
+      { "daysThreshold": 60, "multiplier": 2.0 },
+      { "daysThreshold": 90, "multiplier": 1.5 }
+    ],
+    "evalLowThreshold": 50
+  }
+}

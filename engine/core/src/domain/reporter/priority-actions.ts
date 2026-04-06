@@ -1,21 +1,19 @@
 import type { Finding } from '../../types/common.types.js';
 import type { PriorityActionPlan, PriorityAction, ActionSource, DocumentInventory, ObligationCoverage, PassportStatusSection } from './types.js';
+import { EU_AI_ACT_DEADLINE_ISO } from '../shared/compliance-constants.js';
+import reporterConfig from '../../../data/reporter-config.json' with { type: 'json' };
 
-const MAX_ACTIONS = 20;
+const DEADLINE = EU_AI_ACT_DEADLINE_ISO;
 
-const SEVERITY_WEIGHT: Record<string, number> = {
-  critical: 4.0,
-  high: 3.0,
-  medium: 2.0,
-  low: 1.0,
-  info: 0.5,
-};
+const MAX_ACTIONS = reporterConfig.priorityActions.maxActions;
+const SEVERITY_WEIGHT: Record<string, number> = reporterConfig.priorityActions.severityWeight;
+const URGENCY_TIERS = reporterConfig.priorityActions.urgencyMultiplier;
 
 const urgencyMultiplier = (daysLeft: number | null): number => {
   if (daysLeft === null) return 1.0;
-  if (daysLeft <= 30) return 3.0;
-  if (daysLeft <= 60) return 2.0;
-  if (daysLeft <= 90) return 1.5;
+  for (const tier of URGENCY_TIERS) {
+    if (daysLeft <= tier.daysThreshold) return tier.multiplier;
+  }
   return 1.0;
 };
 
@@ -39,7 +37,7 @@ const fromScanFindings = (findings: readonly Finding[]): Omit<PriorityAction, 'r
   findings
     .filter((f) => f.type === 'fail')
     .map((f) => {
-      const dl = f.articleReference?.includes('Art.') ? '2026-08-02' : null;
+      const dl = f.articleReference?.includes('Art.') ? DEADLINE : null;
       const days = daysUntil(dl);
       return {
         source: 'scan' as ActionSource,
@@ -61,7 +59,7 @@ const fromDocuments = (docs: DocumentInventory): Omit<PriorityAction, 'rank'>[] 
   docs.documents
     .filter((d) => d.status === 'missing' || d.status === 'scaffold')
     .map((d) => {
-      const days = daysUntil('2026-08-02');
+      const days = daysUntil(DEADLINE);
       const isMissing = d.status === 'missing';
       return {
         source: 'document' as ActionSource,
@@ -71,7 +69,7 @@ const fromDocuments = (docs: DocumentInventory): Omit<PriorityAction, 'rank'>[] 
           : `Fill scaffold ${d.description} (${d.article})`,
         article: d.article,
         severity: isMissing ? 'high' : 'medium',
-        deadline: '2026-08-02',
+        deadline: DEADLINE,
         daysLeft: days,
         scoreImpact: d.scoreImpact,
         fixAvailable: isMissing,
@@ -106,14 +104,14 @@ const fromPassports = (passports: PassportStatusSection): Omit<PriorityAction, '
   passports.passports
     .filter((p) => p.completeness < 80)
     .map((p) => {
-      const days = daysUntil('2026-08-02');
+      const days = daysUntil(DEADLINE);
       return {
         source: 'passport' as ActionSource,
         id: p.name,
         title: `Complete passport for ${p.name} (${p.completeness}% → 100%)`,
         article: 'Art. 49',
         severity: p.completeness < 50 ? 'high' : 'medium',
-        deadline: '2026-08-02',
+        deadline: DEADLINE,
         daysLeft: days,
         scoreImpact: 0,
         fixAvailable: false,
@@ -122,17 +120,40 @@ const fromPassports = (passports: PassportStatusSection): Omit<PriorityAction, '
       };
     });
 
+const EVAL_LOW_THRESHOLD = reporterConfig.priorityActions.evalLowThreshold;
+
+/** Collect actions when eval score is low. */
+const fromEvalFindings = (evalScore: number | null): Omit<PriorityAction, 'rank'>[] => {
+  if (evalScore === null || evalScore >= EVAL_LOW_THRESHOLD) return [];
+  const days = daysUntil(DEADLINE);
+  return [{
+    source: 'eval' as ActionSource,
+    id: 'eval-low-score',
+    title: `Improve eval score (${evalScore}/100 → run complior eval to identify gaps)`,
+    article: '',
+    severity: evalScore < 30 ? 'high' : 'medium',
+    deadline: DEADLINE,
+    daysLeft: days,
+    scoreImpact: 10,
+    fixAvailable: false,
+    command: 'complior eval',
+    priorityScore: calcPriority(evalScore < 30 ? 'high' : 'medium', days, 10),
+  }];
+};
+
 export const buildPriorityActions = (
   findings: readonly Finding[],
   documents: DocumentInventory,
   obligations: ObligationCoverage,
   passports: PassportStatusSection,
+  evalScore?: number | null,
 ): PriorityActionPlan => {
   const all = [
     ...fromScanFindings(findings),
     ...fromDocuments(documents),
     ...fromObligations(obligations),
     ...fromPassports(passports),
+    ...fromEvalFindings(evalScore ?? null),
   ];
 
   // Deduplicate: scan findings may overlap with document actions (same checkId/docType)
@@ -152,7 +173,7 @@ export const buildPriorityActions = (
   const usedKeys = new Set<string>();
 
   // Phase 1: top action from each source (guaranteed representation)
-  for (const source of ['scan', 'document', 'passport', 'obligation'] as const) {
+  for (const source of ['scan', 'document', 'passport', 'obligation', 'eval'] as const) {
     const top = sorted.find((a) => a.source === source && !usedKeys.has(`${a.source}:${a.id}`));
     if (top) {
       result.push(top);

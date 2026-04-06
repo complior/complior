@@ -1,4 +1,4 @@
-import type { Finding } from '../../types/common.types.js';
+import type { Finding, Role } from '../../types/common.types.js';
 import type { ObligationCoverage, ObligationDetail, ArticleCoverage } from './types.js';
 import { CHECK_TO_OBLIGATIONS, buildOblToChecks } from '../../data/check-to-obligations.js';
 
@@ -12,11 +12,23 @@ export interface ObligationRecord {
   readonly [key: string]: unknown;
 }
 
+/** Check if an obligation applies to the given project role. */
+const roleApplies = (oblRole: string, projectRole: Role): boolean => {
+  if (projectRole === 'both') return true;
+  return oblRole === 'both' || oblRole === projectRole;
+};
+
 export const buildObligationCoverage = (
   obligations: readonly ObligationRecord[],
   findings: readonly Finding[],
+  projectRole: Role = 'both',
 ): ObligationCoverage => {
   const oblToChecks = buildOblToChecks();
+
+  // Filter obligations by project role
+  const applicable = obligations.filter((obl) =>
+    roleApplies(String(obl.applies_to_role ?? 'both'), projectRole),
+  );
 
   // Build set of covered obligation IDs from passing checks
   const coveredIds = new Set<string>();
@@ -30,15 +42,15 @@ export const buildObligationCoverage = (
   }
 
   // Map obligations to detail objects
-  const details: ObligationDetail[] = obligations.map((obl) => {
+  const details: ObligationDetail[] = applicable.map((obl) => {
     const rawId = obl.obligation_id ?? '';
     const shortId = rawId.replace(/^eu-ai-act-/i, '').toUpperCase();
     return {
       id: shortId,
-      article: (obl.article_reference as string) ?? '',
-      title: (obl.title as string) ?? '',
-      role: (obl.applies_to_role as string) ?? 'both',
-      severity: (obl.severity as string) ?? 'medium',
+      article: String(obl.article_reference ?? ''),
+      title: String(obl.title ?? ''),
+      role: String(obl.applies_to_role ?? 'both'),
+      severity: String(obl.severity ?? 'medium'),
       deadline: (obl.deadline as string) ?? null,
       covered: coveredIds.has(shortId),
       linkedChecks: oblToChecks.get(shortId) ?? [],

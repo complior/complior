@@ -15,11 +15,14 @@ export interface ReadinessDashboard {
   readonly zone: ReadinessZone;
   readonly dimensions: {
     readonly scan: ReadinessDimension;
+    readonly scanSecurity: ReadinessDimension;
+    readonly scanLlm: ReadinessDimension;
     readonly documents: ReadinessDimension;
     readonly passports: ReadinessDimension;
     readonly eval: ReadinessDimension;
     readonly evidence: ReadinessDimension;
   };
+  readonly trend: number | null;
   readonly criticalCaps: readonly string[];
   readonly daysUntilEnforcement: number;
 }
@@ -35,7 +38,9 @@ export interface DocumentStatus {
   readonly outputFile: string;
   readonly status: DocumentStatusLevel;
   readonly scoreImpact: number;
+  readonly prefilledPercent: number | null;
   readonly lastModified: string | null;
+  readonly templateFile: string | null;
 }
 
 export interface DocumentInventory {
@@ -103,7 +108,7 @@ export interface PassportStatusSection {
 
 // --- Priority Action Plan ---
 
-export type ActionSource = 'scan' | 'document' | 'obligation' | 'passport';
+export type ActionSource = 'scan' | 'document' | 'obligation' | 'passport' | 'eval';
 
 export interface PriorityAction {
   readonly rank: number;
@@ -171,6 +176,8 @@ export interface SharePayloadV2 extends SharePayload {
   readonly readinessZone?: string;
   readonly dimensions?: {
     readonly scan: number | null;
+    readonly scanSecurity?: number | null;
+    readonly scanLlm?: number | null;
     readonly documents: number | null;
     readonly passports: number | null;
     readonly eval: number | null;

@@ -1,81 +1,89 @@
 import type { ReadinessDashboard, ReadinessDimension, ReadinessZone } from './types.js';
+import { EU_AI_ACT_DEADLINE } from '../shared/compliance-constants.js';
+import reporterConfig from '../../../data/reporter-config.json' with { type: 'json' };
 
 export interface ReadinessInput {
   readonly scanScore: number | null;
+  readonly scanSecurityScore?: number | null;
+  readonly scanLlmScore?: number | null;
   readonly documentScore: number | null;
   readonly passportScore: number | null;
   readonly evalScore: number | null;
   readonly evidenceScore: number | null;
+  readonly hasArt5Violation?: boolean;
 }
 
-const BASE_WEIGHTS = {
-  scan: 0.35,
-  documents: 0.25,
-  passports: 0.20,
-  eval: 0.15,
-  evidence: 0.05,
-} as const;
-
-const ENFORCEMENT_DATE = new Date('2026-08-02T00:00:00Z');
+const ZONE_THRESHOLDS = reporterConfig.readiness.zoneThresholds;
+const CRITICAL_CAPS = reporterConfig.readiness.criticalCaps;
 
 const toZone = (score: number): ReadinessZone => {
-  if (score >= 90) return 'green';
-  if (score >= 70) return 'yellow';
-  if (score >= 50) return 'orange';
+  if (score >= ZONE_THRESHOLDS.green) return 'green';
+  if (score >= ZONE_THRESHOLDS.yellow) return 'yellow';
+  if (score >= ZONE_THRESHOLDS.orange) return 'orange';
   return 'red';
 };
 
 export const daysUntilEnforcement = (now: Date = new Date()): number => {
-  const diff = ENFORCEMENT_DATE.getTime() - now.getTime();
+  const diff = EU_AI_ACT_DEADLINE.getTime() - now.getTime();
   return Math.max(0, Math.ceil(diff / (24 * 60 * 60 * 1000)));
 };
 
+/**
+ * Simple average of all available dimension scores.
+ * Each available dimension contributes equally (1/N weight).
+ * Critical caps still apply as regulatory safety rails.
+ */
 export const calculateReadinessScore = (input: ReadinessInput, now?: Date): ReadinessDashboard => {
-  const dimensions: [string, number | null, number][] = [
-    ['scan', input.scanScore, BASE_WEIGHTS.scan],
-    ['documents', input.documentScore, BASE_WEIGHTS.documents],
-    ['passports', input.passportScore, BASE_WEIGHTS.passports],
-    ['eval', input.evalScore, BASE_WEIGHTS.eval],
-    ['evidence', input.evidenceScore, BASE_WEIGHTS.evidence],
+  const dimensions: [string, number | null][] = [
+    ['scan', input.scanScore],
+    ['scanSecurity', input.scanSecurityScore ?? null],
+    ['scanLlm', input.scanLlmScore ?? null],
+    ['documents', input.documentScore],
+    ['passports', input.passportScore],
+    ['eval', input.evalScore],
+    ['evidence', input.evidenceScore],
   ];
 
   const available = dimensions.filter(([, v]) => v !== null);
-  const totalWeight = available.reduce((sum, [, , w]) => sum + w, 0);
+  const count = available.length;
 
-  let score = 0;
-  if (totalWeight > 0) {
-    for (const [, value, weight] of available) {
-      score += (value ?? 0) * (weight / totalWeight);
-    }
-  }
+  // Simple average — each available score contributes equally
+  let score = count > 0
+    ? available.reduce((sum, [, v]) => sum + (v ?? 0), 0) / count
+    : 0;
 
-  // Critical caps
+  // Critical caps (regulatory safety rails)
   const caps: string[] = [];
   if (input.scanScore === 0) {
-    score = Math.min(score, 29);
+    score = Math.min(score, CRITICAL_CAPS.scanZero);
     caps.push('Scan score is 0 — no checks passed');
   }
   if (input.documentScore !== null && input.documentScore === 0) {
-    score = Math.min(score, 49);
+    score = Math.min(score, CRITICAL_CAPS.noDocuments);
     caps.push('No documents reviewed');
   }
   if (input.passportScore !== null && input.passportScore === 0) {
-    score = Math.min(score, 59);
+    score = Math.min(score, CRITICAL_CAPS.noPassports);
     caps.push('No agent passports created');
   }
   if (input.evidenceScore !== null && input.evidenceScore === 0) {
-    score = Math.min(score, 79);
+    score = Math.min(score, CRITICAL_CAPS.noEvidence);
     caps.push('Evidence chain missing or invalid');
+  }
+  if (input.hasArt5Violation) {
+    score = Math.min(score, CRITICAL_CAPS.art5Violation);
+    caps.push('Art. 5 prohibited practice detected');
   }
 
   const rounded = Math.round(score);
+  const equalWeight = count > 0 ? 1 / count : 0;
 
   const buildDim = (key: string): ReadinessDimension => {
     const entry = dimensions.find(([k]) => k === key)!;
     const isAvailable = entry[1] !== null;
     return {
       score: entry[1],
-      weight: isAvailable && totalWeight > 0 ? entry[2] / totalWeight : 0,
+      weight: isAvailable ? equalWeight : 0,
       available: isAvailable,
     };
   };
@@ -85,11 +93,14 @@ export const calculateReadinessScore = (input: ReadinessInput, now?: Date): Read
     zone: toZone(rounded),
     dimensions: {
       scan: buildDim('scan'),
+      scanSecurity: buildDim('scanSecurity'),
+      scanLlm: buildDim('scanLlm'),
       documents: buildDim('documents'),
       passports: buildDim('passports'),
       eval: buildDim('eval'),
       evidence: buildDim('evidence'),
     },
+    trend: null,
     criticalCaps: caps,
     daysUntilEnforcement: daysUntilEnforcement(now),
   };

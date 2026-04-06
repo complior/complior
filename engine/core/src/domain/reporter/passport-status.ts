@@ -1,4 +1,5 @@
 import type { PassportStatusSection, PassportDetail, CompletenessZone } from './types.js';
+import reporterConfig from '../../../data/reporter-config.json' with { type: 'json' };
 
 /** Passport data as returned by PassportService.listPassports(). */
 export interface PassportData {
@@ -10,12 +11,13 @@ export interface PassportData {
   readonly [key: string]: unknown;
 }
 
-const PASSPORT_TOTAL_FIELDS = 36;
+const PASSPORT_TOTAL_FIELDS = reporterConfig.passports.totalFields;
+const COMPLETENESS_THRESHOLDS = reporterConfig.passports.completenessThresholds;
 
 const toZone = (pct: number): CompletenessZone => {
-  if (pct >= 100) return 'green';
-  if (pct >= 80) return 'yellow';
-  if (pct >= 50) return 'amber';
+  if (pct >= COMPLETENESS_THRESHOLDS.green) return 'green';
+  if (pct >= COMPLETENESS_THRESHOLDS.yellow) return 'yellow';
+  if (pct >= COMPLETENESS_THRESHOLDS.amber) return 'amber';
   return 'red';
 };
 
@@ -54,7 +56,7 @@ export const buildPassportStatus = (passports: readonly PassportData[]): Passpor
       missingFields: missing,
       friaCompleted: p.fria_completed === true,
       signed: !!(p.signature && typeof p.signature === 'object' && p.signature.value),
-      lastUpdated: (p.updated_at as string) ?? null,
+      lastUpdated: typeof p.updated_at === 'string' ? p.updated_at : null,
     };
   });
 

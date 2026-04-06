@@ -35,6 +35,8 @@ export interface ScanServiceDeps {
   };
   /** Project role from onboarding profile. Injected via composition-root. */
   readonly getProjectRole?: (projectPath: string) => Promise<Role>;
+  /** Persist per-mode scan score to .complior/scan-scores.json. */
+  readonly saveScanModeScore?: (mode: string, score: number, zone: string) => Promise<void>;
 }
 
 /** E-11: Compute a fast project-level hash from all file contents. */
@@ -209,6 +211,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     }
 
     setLastScanResult(result);
+    await deps.saveScanModeScore?.('basic', result.score.totalScore, result.score.zone);
     events.emit('scan.completed', { result });
 
     // US-S05-14: Record scan completion in audit trail
@@ -274,6 +277,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     const result = await applyRoleFilter(enriched, projectPath);
 
     setLastScanResult(result);
+    await deps.saveScanModeScore?.('llm', result.score.totalScore, result.score.zone);
     events.emit('scan.completed', { result });
     await syncPassportUpdate(result, projectPath);
 
@@ -320,6 +324,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     const result = await applyRoleFilter(enriched, projectPath);
 
     setLastScanResult(result);
+    await deps.saveScanModeScore?.('security', result.score.totalScore, result.score.zone);
     events.emit('scan.completed', { result });
     await syncPassportUpdate(result, projectPath);
 

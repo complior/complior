@@ -145,6 +145,7 @@ pub async fn run_report(
     format: &str,
     output: Option<&str>,
     path: Option<&str>,
+    share: bool,
     config: &TuiConfig,
 ) -> i32 {
     let engine_url = config
@@ -169,6 +170,24 @@ pub async fn run_report(
         Err(e) => {
             eprintln!("Scan failed: {e}");
             return 1;
+        }
+    }
+
+    // --share: generate offline HTML for sharing
+    if share {
+        match client.post_json("/report/share", &serde_json::json!({})).await {
+            Ok(resp) => {
+                let out_path = resp
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("report.html");
+                println!("Offline HTML report: {out_path}");
+                return 0;
+            }
+            Err(e) => {
+                eprintln!("HTML report generation failed: {e}");
+                return 1;
+            }
         }
     }
 
@@ -200,10 +219,15 @@ pub async fn run_report(
         }
     }
 
+    let format = match format {
+        "markdown" => "md",
+        other => other,
+    };
+
     let endpoint = match format {
-        "pdf" => "/report/pdf",
-        "html" => "/report/html",
-        _ => "/report/markdown",
+        "pdf" => "/report/status/pdf",
+        "html" => "/report/share",
+        _ => "/report/status/markdown",
     };
 
     match client.post_json(endpoint, &serde_json::json!({})).await {

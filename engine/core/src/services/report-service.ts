@@ -1,12 +1,13 @@
-import { resolve } from 'node:path';
-import type { ScanResult } from '../types/common.types.js';
+import { resolve, dirname } from 'node:path';
+import type { ScanResult, Role } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
 import type { ComplianceReport } from '../domain/reporter/types.js';
 import type { PassportData } from '../domain/reporter/passport-status.js';
 import type { ObligationRecord } from '../domain/reporter/obligation-coverage.js';
+import { ValidationError } from '../types/errors.js';
 import { buildAuditReportData } from '../domain/reporter/audit-report.js';
-import { renderPdfReport } from '../domain/reporter/pdf-renderer.js';
+import { renderPdfToBuffer } from '../domain/reporter/pdf-renderer.js';
 import { generateComplianceMd } from '../domain/reporter/compliance-md.js';
 import { buildComplianceReport } from '../domain/reporter/report-builder.js';
 
@@ -19,6 +20,8 @@ export interface ReportServiceDeps {
   readonly getPassports?: () => Promise<readonly PassportData[]>;
   readonly getObligations?: () => readonly ObligationRecord[];
   readonly getEvidenceSummary?: () => Promise<EvidenceChainSummary | null>;
+  readonly getProjectRole?: () => Promise<Role>;
+  readonly getScanModeScores?: () => Promise<Partial<Record<string, { score: number; zone: string; scannedAt: string }>>>;
 }
 
 export const createReportService = (deps: ReportServiceDeps) => {
@@ -32,7 +35,7 @@ export const createReportService = (deps: ReportServiceDeps) => {
   }): Promise<{ path: string; pages: number }> => {
     const scanResult = getLastScanResult();
     if (!scanResult) {
-      throw new Error('No scan result available. Run a scan first.');
+      throw new ValidationError('No scan result available. Run a scan first.');
     }
 
     const data = buildAuditReportData(scanResult, {
@@ -45,7 +48,10 @@ export const createReportService = (deps: ReportServiceDeps) => {
       getProjectPath(), '.complior', 'reports', `audit-report-${Date.now()}.pdf`,
     );
 
-    await renderPdfReport(data, outputPath, { isFree: options?.isFree });
+    const buffer = await renderPdfToBuffer(data, { isFree: options?.isFree });
+    const { writeFile, mkdir } = await import('node:fs/promises');
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, buffer);
 
     events.emit('report.generated', { path: outputPath, format: 'pdf' });
 
@@ -59,7 +65,7 @@ export const createReportService = (deps: ReportServiceDeps) => {
   }): Promise<{ path: string; content: string }> => {
     const scanResult = getLastScanResult();
     if (!scanResult) {
-      throw new Error('No scan result available. Run a scan first.');
+      throw new ValidationError('No scan result available. Run a scan first.');
     }
 
     const content = generateComplianceMd(scanResult, getVersion());
@@ -81,6 +87,8 @@ export const createReportService = (deps: ReportServiceDeps) => {
     const passports = (await deps.getPassports?.()) ?? [];
     const obligations = deps.getObligations?.() ?? [];
     const evidenceSummary = (await deps.getEvidenceSummary?.()) ?? null;
+    const projectRole = (await deps.getProjectRole?.()) ?? 'both';
+    const scanModeScores = (await deps.getScanModeScores?.()) ?? {};
 
     return buildComplianceReport({
       scanResult,
@@ -89,6 +97,8 @@ export const createReportService = (deps: ReportServiceDeps) => {
       obligations,
       evidenceSummary,
       version: getVersion(),
+      projectRole,
+      scanModeScores,
     });
   };
 
