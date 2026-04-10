@@ -304,7 +304,7 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
       const secCounts = countVerdicts(securityResults);
       const definitive = secCounts.passed + secCounts.failed;
       // Score = pass / (pass + fail) — exclude inconclusive from denominator
-      securityScore = calculateScore(secCounts.passed, definitive);
+      securityScore = calculateScore(secCounts.passed, definitive) ?? 0;
       securityGrade = resolveGrade(securityScore);
     }
 

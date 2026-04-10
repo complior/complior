@@ -16,6 +16,8 @@ export type ComplianceStatus = 'fully_met' | 'partially_met' | 'not_met' | 'not_
 
 export type ScoreZone = 'red' | 'yellow' | 'green';
 
+export type ScanMode = 'basic' | 'security' | 'llm';
+
 export type ObligationType =
   | 'training'
   | 'documentation'

@@ -11,7 +11,6 @@ export interface PassportData {
   readonly [key: string]: unknown;
 }
 
-const PASSPORT_TOTAL_FIELDS = reporterConfig.passports.totalFields;
 const COMPLETENESS_THRESHOLDS = reporterConfig.passports.completenessThresholds;
 
 const toZone = (pct: number): CompletenessZone => {
@@ -34,6 +33,8 @@ const KNOWN_FIELDS = [
   'incident_response_plan', 'conformity_assessment', 'declaration_of_conformity',
   'source_files', 'permissions', 'constraints', 'signature', 'created_at',
 ];
+
+const PASSPORT_TOTAL_FIELDS = KNOWN_FIELDS.length;
 
 const findMissingFields = (passport: PassportData): string[] =>
   KNOWN_FIELDS.filter((field) => {

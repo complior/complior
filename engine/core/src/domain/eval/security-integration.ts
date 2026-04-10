@@ -126,11 +126,11 @@ export const calculateEvalSecurityScore = (
 
   for (const cat of Object.keys(byCategory)) {
     const c = byCategory[cat]!;
-    c.score = calculateScore(c.passed, c.total);
+    c.score = calculateScore(c.passed, c.total) ?? 0;
   }
 
   return Object.freeze({
-    overall: calculateScore(totalPassed, results.length),
+    overall: calculateScore(totalPassed, results.length) ?? 0,
     byCategory: Object.freeze(byCategory),
   });
 };

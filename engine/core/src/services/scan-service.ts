@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { ScanResult, Finding, AgentSummary, Role } from '../types/common.types.js';
+import type { ScanResult, Finding, AgentSummary, Role, ScanMode } from '../types/common.types.js';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { Scanner } from '../domain/scanner/create-scanner.js';
@@ -36,7 +36,7 @@ export interface ScanServiceDeps {
   /** Project role from onboarding profile. Injected via composition-root. */
   readonly getProjectRole?: (projectPath: string) => Promise<Role>;
   /** Persist per-mode scan score to .complior/scan-scores.json. */
-  readonly saveScanModeScore?: (mode: string, score: number, zone: string) => Promise<void>;
+  readonly saveScanModeScore?: (mode: ScanMode, score: number, zone: string) => Promise<void>;
 }
 
 /** E-11: Compute a fast project-level hash from all file contents. */

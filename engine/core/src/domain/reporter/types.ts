@@ -155,6 +155,86 @@ export interface ReportSummary {
   readonly compliorVersion: string;
 }
 
+// --- Findings Summary (for HTML Tab 3) ---
+
+export interface FindingSummary {
+  readonly checkId: string;
+  readonly type: string;
+  readonly message: string;
+  readonly severity: string;
+  readonly file?: string;
+  readonly line?: number;
+  readonly articleReference?: string;
+  readonly fix?: string;
+  readonly fixAvailable: boolean;
+  readonly layer: string;
+  readonly confidence?: number;
+}
+
+// --- Eval Results (for HTML Tab 2) ---
+
+export interface EvalTestSummary {
+  readonly testId: string;
+  readonly category: string;
+  readonly name: string;
+  readonly method: string;
+  readonly verdict: string;
+  readonly score: number;
+  readonly confidence: number;
+  readonly reasoning: string;
+  readonly probe: string;
+  readonly response: string;
+  readonly latencyMs: number;
+  readonly owaspCategory?: string;
+  readonly severity?: string;
+}
+
+export interface EvalCategorySummary {
+  readonly category: string;
+  readonly score: number;
+  readonly grade: string;
+  readonly passed: number;
+  readonly failed: number;
+  readonly total: number;
+}
+
+export interface EvalResultsSummary {
+  readonly overallScore: number;
+  readonly grade: string;
+  readonly totalTests: number;
+  readonly passed: number;
+  readonly failed: number;
+  readonly errors: number;
+  readonly inconclusive: number;
+  readonly skipped: number;
+  readonly duration: number;
+  readonly categories: readonly EvalCategorySummary[];
+  readonly tests: readonly EvalTestSummary[];
+  readonly securityScore?: number;
+  readonly securityGrade?: string;
+}
+
+// --- Fix History (for HTML Tab 6) ---
+
+export interface FixHistoryEntry {
+  readonly id: number;
+  readonly checkId: string;
+  readonly fixType: string;
+  readonly status: string;
+  readonly timestamp: string;
+  readonly files: readonly { readonly path: string; readonly action: string }[];
+  readonly scoreBefore: number;
+  readonly scoreAfter: number;
+}
+
+// --- Document Content (for HTML Tab 5 inline preview) ---
+
+export interface DocumentContent {
+  readonly docType: string;
+  readonly path: string;
+  readonly content: string;
+}
+
 // --- Root Report ---
 
 export interface ComplianceReport {
@@ -166,6 +246,10 @@ export interface ComplianceReport {
   readonly passports: PassportStatusSection;
   readonly actionPlan: PriorityActionPlan;
   readonly summary: ReportSummary;
+  readonly findings: readonly FindingSummary[];
+  readonly evalResults: EvalResultsSummary | null;
+  readonly fixHistory: readonly FixHistoryEntry[];
+  readonly documentContents: readonly DocumentContent[];
 }
 
 // --- Share V2 ---

@@ -86,7 +86,7 @@ fn render_title_box(
     let zone = readiness["zone"].as_str().unwrap_or("red");
     let zone_upper = zone.to_uppercase();
     let score_line = format!("{score}/100  {zone_upper}");
-    let bar = render_bar(score as f64, 30);
+    let bar = render_bar(f64::from(score), 30);
     let raw_len = 30 + 2 + score_line.len(); // bar chars + 2 spaces + score text
     let pad_l = inner.saturating_sub(raw_len) / 2;
     let pad_r = inner.saturating_sub(raw_len + pad_l);
@@ -99,7 +99,7 @@ fn render_title_box(
         bold("║"),
         " ".repeat(pad_l),
         zone_color(zone, &bar),
-        " ".repeat(2 - 2), // already accounted
+        "", // spacing already accounted for in pad_l/pad_r
         zone_color(zone, &score_line),
         " ".repeat(pad_r),
         bold("║\n"),
@@ -148,12 +148,12 @@ fn render_readiness_section(o: &mut String, readiness: &serde_json::Value, _w: u
         let available = dim_obj["available"].as_bool().unwrap_or(false);
         if available {
             let score = dim_obj["score"].as_f64().unwrap_or(0.0) as u32;
-            let bar = render_bar(score as f64, 10);
+            let bar = render_bar(f64::from(score), 10);
             o.push_str(&format!(
                 "    {:<17} {:>3}  {}\n",
                 label,
                 score,
-                score_bar_color(score as f64, &bar),
+                score_bar_color(f64::from(score), &bar),
             ));
         } else {
             o.push_str(&format!(
@@ -168,13 +168,13 @@ fn render_readiness_section(o: &mut String, readiness: &serde_json::Value, _w: u
     // Average line
     let readiness_score = readiness["readinessScore"].as_f64().unwrap_or(0.0) as u32;
     let zone = readiness["zone"].as_str().unwrap_or("red");
-    let avg_bar = render_bar(readiness_score as f64, 10);
+    let avg_bar = render_bar(f64::from(readiness_score), 10);
     o.push_str(&format!("    {:<17} {}\n", "", dim("──")));
     o.push_str(&format!(
         "    {:<17} {:>3}  {}  {}\n",
         bold("Average"),
         readiness_score,
-        score_bar_color(readiness_score as f64, &avg_bar),
+        score_bar_color(f64::from(readiness_score), &avg_bar),
         zone_color(zone, &zone.to_uppercase()),
     ));
 
@@ -279,8 +279,8 @@ fn render_two_column(
     ));
 
     // R7: Centered progress bar
-    let bar_raw = render_bar(pct as f64, 20);
-    let bar_colored = score_bar_color(pct as f64, &bar_raw);
+    let bar_raw = render_bar(f64::from(pct), 20);
+    let bar_colored = score_bar_color(f64::from(pct), &bar_raw);
     let pct_label = format!("{pct}%");
     // Visual: " Progress: " (11) + bar (20) + " " (1) + pct_label + " " (1)
     let middle_visual = 11 + 20 + 1 + pct_label.len() + 1;
@@ -308,13 +308,13 @@ fn render_two_column(
         for (label, art_covered, art_total, _title) in &covered_arts {
             let art_total = (*art_total).max(1);
             let art_pct = (*art_covered as f64 / art_total as f64 * 100.0) as u32;
-            let bar = render_bar(art_pct as f64, 10);
+            let bar = render_bar(f64::from(art_pct), 10);
             let ratio = format!("{art_covered}/{art_total}");
             o.push_str(&format!(
                 "  {:<14} {:>5}  {art_pct:>3}%  {}\n",
                 label,
                 ratio,
-                score_bar_color(art_pct as f64, &bar),
+                score_bar_color(f64::from(art_pct), &bar),
             ));
         }
 
@@ -412,16 +412,15 @@ fn render_passports_evidence(
             } else {
                 red("✗")
             };
-            let bar = render_bar(completeness as f64, 10);
+            let bar = render_bar(f64::from(completeness), 10);
             let missing_fields = p["missingFields"]
                 .as_array()
-                .map(|arr| arr.len())
-                .unwrap_or(0);
+                .map_or(0, Vec::len);
 
             o.push_str(&format!(
                 "  {:<22} {} {completeness:>3}%  FRIA:{fria}  Signed:{signed}",
                 name,
-                score_bar_color(completeness as f64, &bar),
+                score_bar_color(f64::from(completeness), &bar),
             ));
             if missing_fields > 0 {
                 o.push_str(&format!("  {}", dim(&format!("({missing_fields} missing)"))));
@@ -564,7 +563,7 @@ fn render_quick_wins(o: &mut String, actions: &serde_json::Value, _w: usize) {
         let impact = action["scoreImpact"].as_f64().unwrap_or(0.0) as i64;
         let title = action["title"]
             .as_str()
-            .unwrap_or(action["id"].as_str().unwrap_or("?"));
+            .unwrap_or_else(|| action["id"].as_str().unwrap_or("?"));
         let article = action["article"].as_str().unwrap_or("");
         let source = action["source"].as_str().unwrap_or("?");
         let (tag, _) = source_tag(source);
@@ -631,7 +630,7 @@ fn render_actions_section(o: &mut String, actions: &serde_json::Value, w: usize)
             let source = action["source"].as_str().unwrap_or("?");
             let title = action["title"]
                 .as_str()
-                .unwrap_or(action["id"].as_str().unwrap_or("?"));
+                .unwrap_or_else(|| action["id"].as_str().unwrap_or("?"));
             let command = action["command"].as_str().unwrap_or("");
             let severity = action["severity"].as_str().unwrap_or("low");
             let days_left = action["daysLeft"].as_u64();
@@ -771,12 +770,10 @@ fn render_summary_section(
     let zone = summary["zone"].as_str().unwrap_or("red");
     let scan = summary["scanScore"]
         .as_f64()
-        .map(|s| format!("{:.0}", s))
-        .unwrap_or_else(|| "—".to_string());
+        .map_or_else(|| "—".to_string(), |s| format!("{s:.0}"));
     let eval = summary["evalScore"]
         .as_f64()
-        .map(|s| format!("{:.0}", s))
-        .unwrap_or_else(|| "—".to_string());
+        .map_or_else(|| "—".to_string(), |s| format!("{s:.0}"));
     let obl_total = summary["obligationsTotal"].as_u64().unwrap_or(0);
     let obl_covered = summary["obligationsCovered"].as_u64().unwrap_or(0);
     let total_findings = summary["totalFindings"].as_u64().unwrap_or(0);
@@ -1026,12 +1023,12 @@ fn group_by_major_article(
             .as_array()
             .and_then(|obls| obls.first())
             .and_then(|o| o["title"].as_str())
-            .map(|s| s.to_string());
+            .map(str::to_string);
 
         // Extract numeric sort key
         let sort_key = label
             .chars()
-            .filter(|c| c.is_ascii_digit())
+            .filter(char::is_ascii_digit)
             .collect::<String>()
             .parse::<u32>()
             .unwrap_or(999);

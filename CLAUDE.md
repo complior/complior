@@ -4,6 +4,26 @@
 
 Complior v8 = background compliance daemon для AI compliance. Background daemon (file watcher, engine, MCP server, HTTP API) + TUI dashboard + CLI commands. Compliance gate поверх каждого изменения файла.
 
+## Workflow: Vision → Feature Area → Milestone → Test Specs → Code
+
+```
+docs/PRODUCT-VISION.md           → Product Vision (ЧТО строим, ЗАЧЕМ, приоритеты)
+docs/STRATEGY.md                 → Roadmap (КАКИЕ фичи, В КАКОМ порядке, фазы)
+docs/feature-areas/*.md          → Feature Area (КАК УСТРОЕНА подсистема)  ← ПРОМЕЖУТОЧНЫЙ СЛОЙ
+docs/sprints/M0X-*.md           → Milestones (ЧТО делаем, test specs, acceptance)
+engine/core/src/types/           → КОНТРАКТ (типы + Zod schemas — source of truth)
+engine/core/src/types/sync.types.ts → SYNC CONTRACT (API между complior CLI ↔ PROJECT SaaS)
+engine/core/src/interfaces/      → Интерфейсы компонентов
+tests/*.test.ts                  → Тесты-спецификации (RED — architect пишет ДО реализации)
+cli/, engine/                    → Код (GREEN — dev-агенты реализуют)
+docs/project-state.md           → Живой статус (результаты, tech debt)
+```
+
+**Промежуточный слой Feature Area нужен для:**
+- Architect глубоко понимает подсистему перед созданием milestone
+- Dev-агенты читают Feature Area чтобы понимать контекст своего кода
+- Если меняется архитектура подсистемы — Feature Area обновляется, milestone пересматривается
+
 ## Project Structure
 
 - **Rust CLI**: `cli/` — Ratatui binary + daemon management, connects to daemon via HTTP/SSE, 8 pages, themes
@@ -28,10 +48,28 @@ Complior v8 = background compliance daemon для AI compliance. Background daem
 
 - **Rust**: edition 2024, `clippy` strict, `rustfmt`, async with tokio, ratatui for TUI
 - **TypeScript**: strict mode, Bun (primary) / Node 22 (fallback), Zod validation, ESM only
-- **HTTP Server**: Hono (typed routes, SSE support)
-- **Tests**: Rust (`cargo test` + `insta` snapshots), TS (`vitest`)
-- **Error handling**: Rust `Result<T, E>`, TS custom `AppError` hierarchy
-- **Full standards**: `docs/contributing/CODING-STANDARDS.md` (+ TS and Rust variants)
+- **Full standards** (читать ОБЯЗАТЕЛЬНО):
+  - `docs/contributing/CODING-STANDARDS.md` — общие правила (HTTP/SSE, Agent Passport, Security, Git)
+  - `docs/contributing/CODING-STANDARDS-TS.md` — TypeScript Engine (FP-first, V8 optimization, Hono routes, Zod)
+  - `docs/contributing/CODING-STANDARDS-RUST.md` — Rust CLI/TUI (cargo, thiserror, tokio)
+
+## Rules (auto-loaded)
+
+Железные правила в `.claude/rules/` загружаются автоматически при каждом сеансе:
+
+| Файл | Назначение |
+|------|------------|
+| `architect-protocol.md` | Scan protocol, milestone creation, Feature Area |
+| `code-style.md` | Naming conventions (Rust + TS), error handling, data externalization |
+| `safety.md` | Input validation (Zod/custom), no secrets, async/concurrency safety |
+| `architecture.md` | Layer separation (types → interfaces → components) |
+| `scope-guard.md` | File ownership per agent — ЗАПРЕТ чужих файлов |
+| `startup-protocol.md` | Startup checklist для каждого агента |
+| `testing.md` | TEST-FIRST workflow: RED → GREEN → review |
+
+**metaskills** в `.claude/skills/metaskills` содержат базовые конвенции:
+- Rust: `rust-async`, `rust-conventions`, `rust-patterns`, `rust-error-handling`
+- JS/TS: `error-handling`, `js-conventions`, `js-gof`, `js-data-structures`, `typescript-patterns`
 
 ## Git Conventions
 

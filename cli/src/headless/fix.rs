@@ -87,7 +87,7 @@ pub async fn run_headless_fix(
 
     if dry_run {
         // Request dry-run from engine
-        if let Ok(dr_result) = client.fix_dry_run().await {
+        if let Ok(dr_result) = client.fix_dry_run(current_score).await {
             if json {
                 println!(
                     "{}",

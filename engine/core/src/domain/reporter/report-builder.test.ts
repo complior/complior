@@ -10,6 +10,8 @@ import { buildPriorityActions } from './priority-actions.js';
 import { generateReportHtml } from './html-renderer.js';
 import type { Finding } from '../../types/common.types.js';
 import type { EvidenceChainSummary } from '../scanner/evidence-store.js';
+import type { EvalResult } from '../eval/types.js';
+import type { FixHistoryEntry, DocumentContent } from './types.js';
 
 // ── Test helpers ──────────────────────────────────────────────────
 
@@ -429,6 +431,136 @@ describe('buildComplianceReport', () => {
     });
     expect(report.readiness.dimensions.evidence.score).toBe(0);
   });
+
+  it('excludes stale scan mode scores from readiness', () => {
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+      scanModeScores: {
+        security: { score: 80, scannedAt: eightDaysAgo },
+      },
+    });
+    expect(report.readiness.dimensions.scanSecurity.available).toBe(false);
+  });
+
+  it('includes fresh scan mode scores', () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+      scanModeScores: {
+        security: { score: 75, scannedAt: oneHourAgo },
+      },
+    });
+    expect(report.readiness.dimensions.scanSecurity.available).toBe(true);
+    expect(report.readiness.dimensions.scanSecurity.score).toBe(75);
+  });
+
+  it('transforms scan findings to FindingSummary[]', () => {
+    const report = buildComplianceReport({
+      scanResult: {
+        score: { totalScore: 60, zone: 'orange', categoryScores: [], criticalCapApplied: false, totalChecks: 3, passedChecks: 1, failedChecks: 2, skippedChecks: 0 },
+        findings: [
+          mkFinding({ checkId: 'l1-risk-management', type: 'pass' }),
+          mkFinding({ checkId: 'l3-banned-emotion-recognition', type: 'fail', severity: 'critical', fix: 'Remove package' }),
+          mkFinding({ checkId: 'cross-doc-code-mismatch', type: 'fail', severity: 'high' }),
+        ],
+        projectPath: '/test',
+        scannedAt: new Date().toISOString(),
+        duration: 100,
+        filesScanned: 5,
+      },
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+    });
+    expect(report.findings).toHaveLength(3);
+    expect(report.findings[0].layer).toBe('L1');
+    expect(report.findings[1].layer).toBe('L3');
+    expect(report.findings[1].fixAvailable).toBe(true);
+    expect(report.findings[2].layer).toBe('cross');
+  });
+
+  it('transforms evalResult to EvalResultsSummary', () => {
+    const evalResult: EvalResult = {
+      target: 'http://localhost:3000',
+      tier: 'basic',
+      overallScore: 80,
+      grade: 'B',
+      categories: [{ category: 'transparency', score: 90, grade: 'A', passed: 9, failed: 1, errors: 0, inconclusive: 0, skipped: 0, total: 10 }],
+      results: [{
+        testId: 'CT-1-001', category: 'transparency', name: 'Disclosure', method: 'deterministic',
+        verdict: 'pass', score: 95, confidence: 90, reasoning: 'OK', probe: 'test', response: 'yes',
+        latencyMs: 50, timestamp: new Date().toISOString(),
+      }],
+      totalTests: 10, passed: 9, failed: 1, errors: 0, inconclusive: 0, skipped: 0,
+      duration: 500, timestamp: new Date().toISOString(), criticalCapped: false,
+    };
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: 80,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+      evalResult,
+    });
+    expect(report.evalResults).not.toBeNull();
+    expect(report.evalResults!.overallScore).toBe(80);
+    expect(report.evalResults!.grade).toBe('B');
+    expect(report.evalResults!.categories).toHaveLength(1);
+    expect(report.evalResults!.tests).toHaveLength(1);
+    expect(report.evalResults!.tests[0].testId).toBe('CT-1-001');
+  });
+
+  it('returns null evalResults when no evalResult provided', () => {
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+    });
+    expect(report.evalResults).toBeNull();
+    expect(report.findings).toHaveLength(0);
+    expect(report.fixHistory).toHaveLength(0);
+    expect(report.documentContents).toHaveLength(0);
+  });
+
+  it('passes through fixHistory and documentContents', () => {
+    const fixHistory: FixHistoryEntry[] = [
+      { id: 1, checkId: 'l1-rm', fixType: 'template_generation', status: 'applied', timestamp: '2026-04-07', files: [{ path: 'a.md', action: 'create' }], scoreBefore: 40, scoreAfter: 50 },
+    ];
+    const documentContents: DocumentContent[] = [
+      { docType: 'risk-management', path: 'docs/risk.md', content: '# Risk Management' },
+    ];
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+      fixHistory,
+      documentContents,
+    });
+    expect(report.fixHistory).toHaveLength(1);
+    expect(report.fixHistory[0].checkId).toBe('l1-rm');
+    expect(report.documentContents).toHaveLength(1);
+    expect(report.documentContents[0].content).toBe('# Risk Management');
+  });
 });
 
 // ── html-renderer ──────────────────────────────────────���─────────
@@ -446,7 +578,7 @@ describe('generateReportHtml', () => {
     const html = generateReportHtml(report);
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('</html>');
-    expect(html).toContain('Complior Compliance Report');
+    expect(html).toContain('Complior Report');
     expect(html).toContain('v0.9.4');
   });
 
@@ -461,7 +593,7 @@ describe('generateReportHtml', () => {
     });
     const html = generateReportHtml(report);
     expect(html).toContain('<svg');
-    expect(html).toContain('gauge-container');
+    expect(html).toContain('ov-donut');
   });
 
   it('escapes HTML entities in strings', () => {
@@ -485,7 +617,7 @@ describe('generateReportHtml', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('renders all 6 sections', () => {
+  it('renders all 9 tabs', () => {
     const report = buildComplianceReport({
       scanResult: null,
       evalScore: null,
@@ -495,11 +627,91 @@ describe('generateReportHtml', () => {
       version: '0.9.4',
     });
     const html = generateReportHtml(report);
-    expect(html).toContain('Readiness Dashboard');
-    expect(html).toContain('Document Inventory');
-    expect(html).toContain('Obligation Coverage');
-    expect(html).toContain('Passport Status');
-    expect(html).toContain('Priority Action Plan');
-    expect(html).toContain('Summary');
+    expect(html).toContain('tab-overview');
+    expect(html).toContain('tab-tests');
+    expect(html).toContain('tab-findings');
+    expect(html).toContain('tab-laws');
+    expect(html).toContain('tab-documents');
+    expect(html).toContain('tab-fixes');
+    expect(html).toContain('tab-passports');
+    expect(html).toContain('tab-actions');
+    expect(html).toContain('tab-timeline');
+  });
+
+  it('shows eval empty state when no eval results', () => {
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+    });
+    const html = generateReportHtml(report);
+    expect(html).toContain('No eval results available');
+  });
+
+  it('renders eval results when provided', () => {
+    const evalResult: EvalResult = {
+      target: 'http://localhost:3000',
+      tier: 'basic',
+      overallScore: 72,
+      grade: 'C',
+      categories: [{ category: 'transparency', score: 89, grade: 'A', passed: 8, failed: 1, errors: 0, inconclusive: 0, skipped: 0, total: 9 }],
+      results: [{
+        testId: 'CT-1-001', category: 'transparency', name: 'AI Disclosure', method: 'deterministic',
+        verdict: 'pass', score: 95, confidence: 92, reasoning: 'System disclosed AI nature',
+        probe: 'Are you an AI?', response: 'Yes, I am an AI assistant.', latencyMs: 120, timestamp: new Date().toISOString(),
+      }],
+      totalTests: 1, passed: 1, failed: 0, errors: 0, inconclusive: 0, skipped: 0,
+      duration: 120, timestamp: new Date().toISOString(), criticalCapped: false,
+    };
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: 72,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+      evalResult,
+    });
+    const html = generateReportHtml(report);
+    expect(html).toContain('AI Disclosure');
+    expect(html).toContain('transparency');
+    expect(html).not.toContain('No eval results available');
+  });
+
+  it('renders fix history when provided', () => {
+    const fixHistory: FixHistoryEntry[] = [{
+      id: 1, checkId: 'l1-risk-management', fixType: 'template_generation',
+      status: 'applied', timestamp: new Date().toISOString(),
+      files: [{ path: 'docs/risk.md', action: 'create' }],
+      scoreBefore: 45, scoreAfter: 52,
+    }];
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+      fixHistory,
+    });
+    const html = generateReportHtml(report);
+    expect(html).toContain('l1-risk-management');
+    expect(html).toContain('template_generation');
+  });
+
+  it('shows fix empty state when no fixes', () => {
+    const report = buildComplianceReport({
+      scanResult: null,
+      evalScore: null,
+      passports: [],
+      obligations: [],
+      evidenceSummary: null,
+      version: '0.9.4',
+    });
+    const html = generateReportHtml(report);
+    expect(html).toContain('No fixes applied yet');
   });
 });

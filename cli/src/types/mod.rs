@@ -1,4 +1,5 @@
 pub mod engine; // Core — contract types
+pub mod sync; // Sync contract — mirrors engine/core/src/types/sync.types.ts
 
 #[cfg(feature = "tui")]
 mod activity;

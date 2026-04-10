@@ -1,8 +1,9 @@
 import { resolve, dirname } from 'node:path';
-import type { ScanResult, Role } from '../types/common.types.js';
+import type { ScanResult, Role, ScanMode } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
-import type { ComplianceReport } from '../domain/reporter/types.js';
+import type { EvalResult } from '../domain/eval/types.js';
+import type { ComplianceReport, FixHistoryEntry, DocumentContent } from '../domain/reporter/types.js';
 import type { PassportData } from '../domain/reporter/passport-status.js';
 import type { ObligationRecord } from '../domain/reporter/obligation-coverage.js';
 import { ValidationError } from '../types/errors.js';
@@ -21,7 +22,10 @@ export interface ReportServiceDeps {
   readonly getObligations?: () => readonly ObligationRecord[];
   readonly getEvidenceSummary?: () => Promise<EvidenceChainSummary | null>;
   readonly getProjectRole?: () => Promise<Role>;
-  readonly getScanModeScores?: () => Promise<Partial<Record<string, { score: number; zone: string; scannedAt: string }>>>;
+  readonly getScanModeScores?: () => Promise<Partial<Record<ScanMode, { score: number; zone: string; scannedAt: string }>>>;
+  readonly getEvalResult?: () => Promise<EvalResult | null>;
+  readonly getFixHistory?: () => Promise<readonly FixHistoryEntry[]>;
+  readonly getDocumentContents?: () => Promise<readonly DocumentContent[]>;
 }
 
 export const createReportService = (deps: ReportServiceDeps) => {
@@ -89,6 +93,9 @@ export const createReportService = (deps: ReportServiceDeps) => {
     const evidenceSummary = (await deps.getEvidenceSummary?.()) ?? null;
     const projectRole = (await deps.getProjectRole?.()) ?? 'both';
     const scanModeScores = (await deps.getScanModeScores?.()) ?? {};
+    const evalResult = (await deps.getEvalResult?.()) ?? null;
+    const fixHistory = (await deps.getFixHistory?.()) ?? [];
+    const documentContents = (await deps.getDocumentContents?.()) ?? [];
 
     return buildComplianceReport({
       scanResult,
@@ -99,6 +106,9 @@ export const createReportService = (deps: ReportServiceDeps) => {
       version: getVersion(),
       projectRole,
       scanModeScores,
+      evalResult,
+      fixHistory,
+      documentContents,
     });
   };
 

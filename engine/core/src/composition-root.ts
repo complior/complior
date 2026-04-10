@@ -1,9 +1,9 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import type { CoreMessage } from 'ai';
-import type { ScanResult } from './types/common.types.js';
+import type { ScanResult, ScanMode } from './types/common.types.js';
 import { parseScanResult } from './types/common.schemas.js';
 import type { AgentMode } from './llm/tools/types.js';
 import type { RegulationData } from './data/regulation/regulation-loader.js';
@@ -132,15 +132,15 @@ export const loadApplication = async (): Promise<Application> => {
 
   /** Per-mode scan score persistence (.complior/scan-scores.json). */
   type ScanModeEntry = { score: number; zone: string; scannedAt: string };
-  type ScanModeScores = Partial<Record<'basic' | 'security' | 'llm', ScanModeEntry>>;
+  type ScanModeScores = Partial<Record<ScanMode, ScanModeEntry>>;
 
   const scanScoresPath = resolve(state.projectPath, '.complior', 'scan-scores.json');
 
-  const saveScanModeScore = async (mode: string, score: number, zone: string): Promise<void> => {
+  const saveScanModeScore = async (mode: ScanMode, score: number, zone: string): Promise<void> => {
     const dir = resolve(state.projectPath, '.complior');
     let existing: ScanModeScores = {};
     try { existing = JSON.parse(await readFile(scanScoresPath, 'utf-8')); } catch { /* first save */ }
-    existing[mode as keyof ScanModeScores] = { score, zone, scannedAt: new Date().toISOString() };
+    existing[mode] = { score, zone, scannedAt: new Date().toISOString() };
     await mkdir(dir, { recursive: true });
     await writeFile(scanScoresPath, JSON.stringify(existing), 'utf-8');
   };
@@ -410,6 +410,67 @@ export const loadApplication = async (): Promise<Application> => {
     getEvidenceSummary: () => evidenceStore.getSummary(),
     getProjectRole: () => getProjectRole(state.projectPath),
     getScanModeScores: loadScanModeScores,
+    getEvalResult: async () => {
+      try {
+        const evalDir = resolve(state.projectPath, '.complior', 'eval');
+        const files = await readdir(evalDir);
+        const evalFiles = files.filter(f => f.startsWith('eval-') && f.endsWith('.json'));
+
+        if (evalFiles.length === 0) {
+          const raw = await readFile(resolve(evalDir, 'latest.json'), 'utf-8');
+          return JSON.parse(raw) as import('./domain/eval/types.js').EvalResult;
+        }
+
+        let best: import('./domain/eval/types.js').EvalResult | null = null;
+        for (const file of evalFiles) {
+          try {
+            const raw = await readFile(resolve(evalDir, file), 'utf-8');
+            const result = JSON.parse(raw) as import('./domain/eval/types.js').EvalResult;
+            if (!best || result.totalTests > best.totalTests) {
+              best = result;
+            }
+          } catch { /* skip malformed files */ }
+        }
+        return best;
+      } catch {
+        return null;
+      }
+    },
+    getFixHistory: async () => {
+      try {
+        const history = await undoService.getHistory();
+        return history.fixes;
+      } catch {
+        return [];
+      }
+    },
+    getDocumentContents: async () => {
+      try {
+        const scanResult = state.lastScanResult;
+        if (!scanResult) return [];
+        const docFindings = scanResult.findings.filter(
+          (f) => f.checkId.startsWith('l1-') && f.type === 'pass' && f.file,
+        );
+        const contents: import('./domain/reporter/types.js').DocumentContent[] = [];
+        for (const f of docFindings) {
+          if (!f.file) continue;
+          try {
+            const fullPath = resolve(state.projectPath, f.file);
+            const raw = await readFile(fullPath, 'utf-8');
+            // Truncate large docs to 5000 chars for report size
+            const content = raw.length > 5000 ? raw.slice(0, 5000) + '\n\n...(truncated)' : raw;
+            contents.push({
+              docType: f.checkId.replace('l1-', ''),
+              path: f.file,
+              content,
+            });
+          } catch { /* file not readable */ }
+        }
+        return contents;
+      } catch {
+        return [];
+      }
+    },
   });
 
   let _externalScan: ExternalScanService | null = null;

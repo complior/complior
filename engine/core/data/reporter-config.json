@@ -30,12 +30,14 @@
     "scoreImpact": 8
   },
   "passports": {
-    "totalFields": 36,
     "completenessThresholds": {
       "green": 100,
       "yellow": 80,
       "amber": 50
     }
+  },
+  "scanModeScores": {
+    "stalenessThresholdHours": 168
   },
   "priorityActions": {
     "maxActions": 20,
