@@ -20,8 +20,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { ((PASS++)); echo -e "  ${GREEN}✓${NC} $1"; }
-fail() { ((FAIL++)); echo -e "  ${RED}✗${NC} $1"; }
+pass() { ((PASS++)) || true; echo -e "  ${GREEN}✓${NC} $1"; }
+fail() { ((FAIL++)) || true; echo -e "  ${RED}✗${NC} $1"; }
 info() { echo -e "  ${YELLOW}→${NC} $1"; }
 
 echo "═══════════════════════════════════════════════════"
@@ -39,25 +39,31 @@ fi
 unset OPENROUTER_API_KEY 2>/dev/null || true
 unset OPENAI_API_KEY 2>/dev/null || true
 
-# Remove .env from test project if it has a key
+# Kill any lingering engines FIRST
+pkill -f "tsx.*server.ts" 2>/dev/null || true
+sleep 2
+
+# Temporarily RENAME .env so engine cannot read API keys
 ENV_FILE="$TEST_PROJECT/.env"
+ENV_BACKUP=""
 if [[ -f "$ENV_FILE" ]]; then
   ENV_BACKUP="$ENV_FILE.bak.$$"
-  cp "$ENV_FILE" "$ENV_BACKUP"
-  # Comment out API keys
-  sed -i 's/^OPENROUTER_API_KEY/# OPENROUTER_API_KEY/' "$ENV_FILE" 2>/dev/null || true
-  sed -i 's/^OPENAI_API_KEY/# OPENAI_API_KEY/' "$ENV_FILE" 2>/dev/null || true
+  mv "$ENV_FILE" "$ENV_BACKUP"
+  info "Temporarily moved .env aside"
 fi
 
 # Ensure project is initialized
 if [[ ! -d "$TEST_PROJECT/.complior" ]]; then
-  cd "$TEST_PROJECT" && $COMPLIOR init --yes 2>&1 >/dev/null || true
+  $COMPLIOR init --yes "$TEST_PROJECT" >/dev/null 2>&1 || true
 fi
 
 # ── Test 1: Basic scan works without key ──────────────────────────────────
 echo "Test 1: complior scan (no key, basic) — should WORK"
-if $COMPLIOR scan "$TEST_PROJECT" 2>&1 | grep -qiE "score|finding|compliance"; then
+SCAN_OUTPUT=$(timeout 60 $COMPLIOR scan "$TEST_PROJECT" 2>&1 || true)
+if echo "$SCAN_OUTPUT" | grep -qiE "score|finding|compliance"; then
   pass "Basic scan works without API key"
+elif echo "$SCAN_OUTPUT" | grep -qiE "panic|segfault|SIGSEGV|Aborted"; then
+  fail "Basic scan crashed without API key"
 else
   fail "Basic scan failed without API key"
 fi
@@ -122,7 +128,8 @@ fi
 # ── Test 6: report works without key ──────────────────────────────────────
 echo ""
 echo "Test 6: complior report (no key) — should WORK"
-if $COMPLIOR report "$TEST_PROJECT" 2>&1 | grep -qiE "score|section|compliance|report"; then
+REPORT_OUTPUT=$(timeout 60 $COMPLIOR report "$TEST_PROJECT" 2>&1 || true)
+if echo "$REPORT_OUTPUT" | grep -qiE "score|section|compliance|report|readiness"; then
   pass "Report works without API key"
 else
   fail "Report failed without API key"

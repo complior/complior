@@ -20,8 +20,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { ((PASS++)); echo -e "  ${GREEN}✓${NC} $1"; }
-fail() { ((FAIL++)); echo -e "  ${RED}✗${NC} $1"; }
+pass() { ((PASS++)) || true; echo -e "  ${GREEN}✓${NC} $1"; }
+fail() { ((FAIL++)) || true; echo -e "  ${RED}✗${NC} $1"; }
 info() { echo -e "  ${YELLOW}→${NC} $1"; }
 
 echo "═══════════════════════════════════════════════════"
@@ -54,9 +54,13 @@ fi
 export OPENROUTER_API_KEY="$API_KEY"
 info "API key found (${#API_KEY} chars)"
 
+# Kill any lingering engines
+pkill -f "tsx.*server.ts" 2>/dev/null || true
+sleep 1
+
 # Ensure project initialized
 if [[ ! -d "$TEST_PROJECT/.complior" ]]; then
-  cd "$TEST_PROJECT" && $COMPLIOR init --yes 2>&1 >/dev/null || true
+  $COMPLIOR init --yes "$TEST_PROJECT" >/dev/null 2>&1 || true
 fi
 
 # ── Test 1: scan --llm (L5 deep analysis) ────────────────────────────────

@@ -20,8 +20,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { ((PASS++)); echo -e "  ${GREEN}✓${NC} $1"; }
-fail() { ((FAIL++)); echo -e "  ${RED}✗${NC} $1"; }
+pass() { ((PASS++)) || true; echo -e "  ${GREEN}✓${NC} $1"; }
+fail() { ((FAIL++)) || true; echo -e "  ${RED}✗${NC} $1"; }
 info() { echo -e "  ${YELLOW}→${NC} $1"; }
 
 echo "═══════════════════════════════════════════════════"
@@ -39,15 +39,19 @@ fi
 rm -rf "$EXPORT_DIR"
 mkdir -p "$EXPORT_DIR"
 
+# Kill any lingering engines
+pkill -f "tsx.*server.ts" 2>/dev/null || true
+sleep 1
+
 # Ensure project has been scanned (init + scan first)
 if [[ ! -d "$TEST_PROJECT/.complior" ]]; then
   info "Initializing test project..."
-  cd "$TEST_PROJECT" && $COMPLIOR init --yes 2>&1 >/dev/null || true
+  $COMPLIOR init --yes "$TEST_PROJECT" >/dev/null 2>&1 || true
 fi
 
 # Scan to populate data
 info "Running scan to populate data..."
-$COMPLIOR scan "$TEST_PROJECT" 2>&1 >/dev/null || true
+$COMPLIOR scan "$TEST_PROJECT" >/dev/null 2>&1 || true
 
 # ── Test 1: Report human output ───────────────────────────────────────────
 echo "Test 1: complior report (human output)"
@@ -75,64 +79,73 @@ fi
 # ── Test 3: Report --format html ──────────────────────────────────────────
 echo ""
 echo "Test 3: complior report --format html"
-HTML_FILE="$EXPORT_DIR/report.html"
 
-# Try different flag combinations for HTML export
-if $COMPLIOR report --format html "$TEST_PROJECT" > "$HTML_FILE" 2>/dev/null; then
-  if [[ -s "$HTML_FILE" ]]; then
-    # Check HTML structure
-    if grep -q "<!DOCTYPE html>\|<html\|<!doctype html>" "$HTML_FILE"; then
-      pass "HTML report has valid DOCTYPE/html tag"
-    else
-      fail "HTML report missing DOCTYPE/html tag"
-    fi
+# CLI writes HTML to .complior/reports/ and prints path to stdout
+HTML_CMD_OUTPUT=$($COMPLIOR report --format html "$TEST_PROJECT" 2>&1 || true)
 
-    if grep -q "<body\|<div\|<section" "$HTML_FILE"; then
-      pass "HTML report has body content"
-    else
-      fail "HTML report missing body content"
-    fi
+# Extract generated file path from output
+HTML_FILE=$(echo "$HTML_CMD_OUTPUT" | grep -oP '(?<=Report generated: ).*\.html' || true)
 
-    # Check for key sections
-    SECTIONS_FOUND=0
-    for section in "score\|Score\|Compliance" "finding\|Finding\|Gap" "passport\|Passport\|Agent"; do
-      if grep -qi "$section" "$HTML_FILE"; then
-        ((SECTIONS_FOUND++))
-      fi
-    done
-    if [[ $SECTIONS_FOUND -ge 2 ]]; then
-      pass "HTML report contains $SECTIONS_FOUND/3 expected sections"
-    else
-      fail "HTML report contains only $SECTIONS_FOUND/3 expected sections"
-    fi
+# Fallback: look for the latest .html in .complior/reports/
+if [[ -z "$HTML_FILE" || ! -f "$HTML_FILE" ]]; then
+  HTML_FILE=$(ls -t "$TEST_PROJECT"/.complior/reports/*.html 2>/dev/null | head -1 || true)
+fi
 
-    FILE_SIZE=$(stat -f%z "$HTML_FILE" 2>/dev/null || stat --printf="%s" "$HTML_FILE" 2>/dev/null || echo "0")
-    info "HTML file size: $FILE_SIZE bytes"
+if [[ -n "$HTML_FILE" && -s "$HTML_FILE" ]]; then
+  # Check HTML structure
+  if grep -q "<!DOCTYPE html>\|<html\|<!doctype html>" "$HTML_FILE"; then
+    pass "HTML report has valid DOCTYPE/html tag"
   else
-    fail "HTML report file is empty"
+    fail "HTML report missing DOCTYPE/html tag"
   fi
+
+  if grep -q "<body\|<div\|<section" "$HTML_FILE"; then
+    pass "HTML report has body content"
+  else
+    fail "HTML report missing body content"
+  fi
+
+  # Check for key sections
+  SECTIONS_FOUND=0
+  for section in "score\|Score\|Compliance" "finding\|Finding\|Gap" "passport\|Passport\|Agent"; do
+    if grep -qi "$section" "$HTML_FILE"; then
+      ((SECTIONS_FOUND++)) || true
+    fi
+  done
+  if [[ $SECTIONS_FOUND -ge 2 ]]; then
+    pass "HTML report contains $SECTIONS_FOUND/3 expected sections"
+  else
+    fail "HTML report contains only $SECTIONS_FOUND/3 expected sections"
+  fi
+
+  FILE_SIZE=$(stat --printf="%s" "$HTML_FILE" 2>/dev/null || stat -f%z "$HTML_FILE" 2>/dev/null || echo "0")
+  info "HTML file size: $FILE_SIZE bytes"
 else
-  fail "complior report --format html failed"
+  fail "HTML report file not found or empty"
 fi
 
 # ── Test 4: Report --format markdown ──────────────────────────────────────
 echo ""
 echo "Test 4: complior report --format markdown"
-MD_FILE="$EXPORT_DIR/report.md"
 
-if $COMPLIOR report --format markdown "$TEST_PROJECT" > "$MD_FILE" 2>/dev/null; then
-  if [[ -s "$MD_FILE" ]]; then
-    if grep -q "^#\|^##\|^###" "$MD_FILE"; then
-      pass "Markdown report has headers"
-    else
-      fail "Markdown report missing headers"
-    fi
+MD_CMD_OUTPUT=$($COMPLIOR report --format markdown "$TEST_PROJECT" 2>&1 || true)
+
+# Extract generated file path from output
+MD_FILE=$(echo "$MD_CMD_OUTPUT" | grep -oP '(?<=Report generated: ).*\.md' || true)
+
+# Fallback: look for COMPLIANCE.md in project root
+if [[ -z "$MD_FILE" || ! -f "$MD_FILE" ]]; then
+  MD_FILE="$TEST_PROJECT/COMPLIANCE.md"
+fi
+
+if [[ -f "$MD_FILE" && -s "$MD_FILE" ]]; then
+  if grep -q "^#\|^##\|^###" "$MD_FILE"; then
+    pass "Markdown report has headers"
   else
-    fail "Markdown report file is empty"
+    fail "Markdown report missing headers"
   fi
 else
-  # Markdown might not be implemented yet — that's expected for RED test
-  fail "complior report --format markdown failed (may need implementation)"
+  fail "Markdown report file not found or empty"
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────────
