@@ -24,6 +24,10 @@ pass() { ((PASS++)) || true; echo -e "  ${GREEN}✓${NC} $1"; }
 fail() { ((FAIL++)) || true; echo -e "  ${RED}✗${NC} $1"; }
 info() { echo -e "  ${YELLOW}→${NC} $1"; }
 
+# Helper: run CLI command and capture ONLY stdout (stderr goes to /dev/null)
+# This ensures --json output is clean JSON without engine startup messages.
+run_json() { "$COMPLIOR" "$@" 2>/dev/null || true; }
+
 echo "═══════════════════════════════════════════════════"
 echo " Complior Agent Passport CLI Test"
 echo "═══════════════════════════════════════════════════"
@@ -41,7 +45,7 @@ rm -rf "$TEST_PROJECT/.complior"
 
 # ── Test 1: agent init ────────────────────────────────────────────────
 echo "Test 1: agent init"
-INIT_OUT=$($COMPLIOR init --yes "$TEST_PROJECT" 2>&1 || true)
+$COMPLIOR init --yes "$TEST_PROJECT" >/dev/null 2>&1 || true
 if [[ -d "$TEST_PROJECT/.complior/agents" ]]; then
   pass "agent init created .complior/agents/"
 else
@@ -51,7 +55,7 @@ fi
 # ── Test 2: agent list ────────────────────────────────────────────────
 echo ""
 echo "Test 2: agent list"
-LIST_OUT=$($COMPLIOR agent list --json "$TEST_PROJECT" 2>&1 || true)
+LIST_OUT=$(run_json agent list --json "$TEST_PROJECT")
 AGENT_COUNT=$(echo "$LIST_OUT" | python3 -c "
 import sys, json
 try:
@@ -104,7 +108,7 @@ info "Using agent: $AGENT_NAME"
 # ── Test 3: agent show ────────────────────────────────────────────────
 echo ""
 echo "Test 3: agent show"
-SHOW_OUT=$($COMPLIOR agent show "$AGENT_NAME" --json "$TEST_PROJECT" 2>&1 || true)
+SHOW_OUT=$(run_json agent show "$AGENT_NAME" --json "$TEST_PROJECT")
 HAS_NAME=$(echo "$SHOW_OUT" | python3 -c "
 import sys, json
 try:
@@ -123,12 +127,18 @@ fi
 # ── Test 4: agent validate ────────────────────────────────────────────
 echo ""
 echo "Test 4: agent validate"
-VALIDATE_OUT=$($COMPLIOR agent validate "$AGENT_NAME" --json "$TEST_PROJECT" 2>&1 || true)
+VALIDATE_OUT=$(run_json agent validate "$AGENT_NAME" --json "$TEST_PROJECT")
 IS_VALID=$(echo "$VALIDATE_OUT" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
-    print('yes' if data.get('valid') is not None else 'no')
+    # validate returns array of results (one per agent)
+    if isinstance(data, list) and len(data) > 0:
+        print('yes' if data[0].get('valid') is not None else 'no')
+    elif isinstance(data, dict):
+        print('yes' if data.get('valid') is not None else 'no')
+    else:
+        print('no')
 except:
     print('no')
 " 2>/dev/null || echo "no")
@@ -142,7 +152,7 @@ fi
 # ── Test 5: agent completeness ────────────────────────────────────────
 echo ""
 echo "Test 5: agent completeness"
-COMP_OUT=$($COMPLIOR agent completeness "$AGENT_NAME" --json "$TEST_PROJECT" 2>&1 || true)
+COMP_OUT=$(run_json agent completeness "$AGENT_NAME" --json "$TEST_PROJECT")
 COMP_SCORE=$(echo "$COMP_OUT" | python3 -c "
 import sys, json
 try:
@@ -162,12 +172,13 @@ fi
 # ── Test 6: agent fria ────────────────────────────────────────────────
 echo ""
 echo "Test 6: agent fria"
-FRIA_OUT=$($COMPLIOR agent fria "$AGENT_NAME" --json --organization "TestCorp" "$TEST_PROJECT" 2>&1 || true)
+FRIA_OUT=$(run_json agent fria "$AGENT_NAME" --json --organization "TestCorp" "$TEST_PROJECT")
 FRIA_OK=$(echo "$FRIA_OUT" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
-    print('yes' if data.get('path') or data.get('content') else 'no')
+    # fria returns {savedPath, markdown, ...}
+    print('yes' if data.get('savedPath') or data.get('markdown') or data.get('path') or data.get('content') else 'no')
 except:
     print('no')
 " 2>/dev/null || echo "no")
@@ -181,7 +192,7 @@ fi
 # ── Test 7: agent evidence ────────────────────────────────────────────
 echo ""
 echo "Test 7: agent evidence"
-EVIDENCE_OUT=$($COMPLIOR agent evidence --json "$TEST_PROJECT" 2>&1 || true)
+EVIDENCE_OUT=$(run_json agent evidence --json "$TEST_PROJECT")
 EVIDENCE_OK=$(echo "$EVIDENCE_OUT" | python3 -c "
 import sys, json
 try:
@@ -200,7 +211,7 @@ fi
 # ── Test 8: agent evidence --verify ───────────────────────────────────
 echo ""
 echo "Test 8: agent evidence --verify"
-VERIFY_OUT=$($COMPLIOR agent evidence --verify --json "$TEST_PROJECT" 2>&1 || true)
+VERIFY_OUT=$(run_json agent evidence --verify --json "$TEST_PROJECT")
 VERIFY_OK=$(echo "$VERIFY_OUT" | python3 -c "
 import sys, json
 try:
@@ -219,7 +230,7 @@ fi
 # ── Test 9: agent export ──────────────────────────────────────────────
 echo ""
 echo "Test 9: agent export --format a2a"
-EXPORT_OUT=$($COMPLIOR agent export "$AGENT_NAME" --format a2a --json "$TEST_PROJECT" 2>&1 || true)
+EXPORT_OUT=$(run_json agent export "$AGENT_NAME" --format a2a --json "$TEST_PROJECT")
 EXPORT_OK=$(echo "$EXPORT_OUT" | python3 -c "
 import sys, json
 try:
@@ -238,7 +249,7 @@ fi
 # ── Test 10: agent autonomy ───────────────────────────────────────────
 echo ""
 echo "Test 10: agent autonomy"
-AUTONOMY_OUT=$($COMPLIOR agent autonomy --json "$TEST_PROJECT" 2>&1 || true)
+AUTONOMY_OUT=$(run_json agent autonomy --json "$TEST_PROJECT")
 AUTONOMY_OK=$(echo "$AUTONOMY_OUT" | python3 -c "
 import sys, json
 try:
