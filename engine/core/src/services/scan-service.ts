@@ -204,10 +204,12 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     // E-11: Persist file-level cache to disk (survives daemon restarts)
     if (deps.scanCache) {
-      for (const file of ctx.files) {
-        deps.scanCache.set(file.relativePath, file.content, 0, [], 'L4');
-      }
-      deps.scanCache.save();
+      try {
+        for (const file of ctx.files) {
+          deps.scanCache.set(file.relativePath, file.content, 0, [], 'L4');
+        }
+        deps.scanCache.save();
+      } catch { /* non-fatal — cache write failure doesn't affect scan result */ }
     }
 
     setLastScanResult(result);

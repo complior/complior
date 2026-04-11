@@ -121,7 +121,10 @@ export const createEvidenceStore = (
       lastHash,
     };
 
-    await saveChain(updated);
+    // Non-fatal: evidence write failure doesn't block scan completion
+    try {
+      await saveChain(updated);
+    } catch { /* skip */ }
   };
 
   const getChain = async (): Promise<EvidenceChain> => {

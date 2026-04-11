@@ -126,8 +126,20 @@ export const createReportService = (deps: ReportServiceDeps) => {
 
     const { writeFile, mkdir } = await import('node:fs/promises');
     const { dirname } = await import('node:path');
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, html);
+    try {
+      await mkdir(dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, html);
+    } catch (err) {
+      // Fallback: write to system temp dir if project dir is not writable
+      if (err instanceof Error && 'code' in err && err.code === 'EACCES') {
+        const { tmpdir } = await import('node:os');
+        const fallbackPath = resolve(tmpdir(), `complior-report-${Date.now()}.html`);
+        await writeFile(fallbackPath, html);
+        events.emit('report.generated', { path: fallbackPath, format: 'html' });
+        return { path: fallbackPath };
+      }
+      throw err;
+    }
 
     events.emit('report.generated', { path: outputPath, format: 'html' });
     return { path: outputPath };

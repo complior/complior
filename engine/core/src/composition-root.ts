@@ -137,12 +137,16 @@ export const loadApplication = async (): Promise<Application> => {
   const scanScoresPath = resolve(state.projectPath, '.complior', 'scan-scores.json');
 
   const saveScanModeScore = async (mode: ScanMode, score: number, zone: string): Promise<void> => {
-    const dir = resolve(state.projectPath, '.complior');
-    let existing: ScanModeScores = {};
-    try { existing = JSON.parse(await readFile(scanScoresPath, 'utf-8')); } catch { /* first save */ }
-    existing[mode] = { score, zone, scannedAt: new Date().toISOString() };
-    await mkdir(dir, { recursive: true });
-    await writeFile(scanScoresPath, JSON.stringify(existing), 'utf-8');
+    try {
+      const dir = resolve(state.projectPath, '.complior');
+      let existing: ScanModeScores = {};
+      try { existing = JSON.parse(await readFile(scanScoresPath, 'utf-8')); } catch { /* first save */ }
+      existing[mode] = { score, zone, scannedAt: new Date().toISOString() };
+      await mkdir(dir, { recursive: true });
+      await writeFile(scanScoresPath, JSON.stringify(existing), 'utf-8');
+    } catch (err: unknown) {
+      log.warn('Failed to persist scan mode score (non-fatal):', err);
+    }
   };
 
   const loadScanModeScores = async (): Promise<ScanModeScores> => {

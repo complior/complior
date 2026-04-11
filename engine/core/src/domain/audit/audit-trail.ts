@@ -97,7 +97,11 @@ export const createAuditStore = (
       // File doesn't exist yet — no rotation needed
     }
 
-    await appendFile(trailPath, JSON.stringify(entry) + '\n');
+    try {
+      await appendFile(trailPath, JSON.stringify(entry) + '\n');
+    } catch {
+      // Audit write failure is non-fatal — audit trail is supplementary
+    }
 
     return entry;
   };

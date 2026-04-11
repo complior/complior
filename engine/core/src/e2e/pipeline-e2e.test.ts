@@ -24,9 +24,11 @@ const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
 
 const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
 
-// Clean up generated artifacts before/after
+// Clean up generated artifacts before/after (non-fatal on permission errors)
 const cleanup = async () => {
-  await rm(resolve(TEST_PROJECT, '.complior', 'reports'), { recursive: true, force: true });
+  try {
+    await rm(resolve(TEST_PROJECT, '.complior', 'reports'), { recursive: true, force: true });
+  } catch { /* non-fatal */ }
 };
 
 describe.skipIf(!canRunE2E)('Pipeline E2E', () => {
