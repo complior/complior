@@ -48,7 +48,7 @@
     "scripts/"
   ],
   "dependencies": {
-    "@complior/engine": "0.9.4"
+    "@complior/engine": "*"
   },
   "engines": {
     "node": ">=22"

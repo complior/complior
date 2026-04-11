@@ -16,6 +16,6 @@
     "metaskills": "^1.0.4"
   },
   "scripts": {
-    "test": "COMPLIOR_TEST_PROJECT=/home/openclaw/test-projects/eval-target npm test --workspace=engine/core"
+    "test": "npm test --workspace=engine/core"
   }
 }
