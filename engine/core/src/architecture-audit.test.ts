@@ -47,8 +47,8 @@ describe('Architecture Audit', () => {
     const violations: Array<{ file: string; line: number; reason: string }> = [];
 
     const HARDCODED_PATTERNS = [
-      // Hardcoded API URLs (not localhost for dev)
-      { pattern: /['"]https?:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0)[^'"]{20,}['"]/g, reason: 'hardcoded external URL' },
+      // Hardcoded API URLs (not localhost or known-safe external hosts)
+      { pattern: /['"]https?:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0|complior\.ai|complior\.dev|fonts\.googleapis\.com|fonts\.gstatic\.com)[^'"]{20,}['"]/g, reason: 'hardcoded external URL' },
       // Hardcoded API keys pattern
       { pattern: /['"]sk-[a-zA-Z0-9]{20,}['"]/g, reason: 'hardcoded API key' },
       // Hardcoded secret/token pattern

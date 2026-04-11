@@ -38,7 +38,7 @@ export const calculateReadinessScore = (input: ReadinessInput, now?: Date): Read
     ['scan', input.scanScore],
     ['scanSecurity', input.scanSecurityScore ?? null],
     ['scanLlm', input.scanLlmScore ?? null],
-    ['documents', input.documentScore],
+    ['docs', input.documentScore],
     ['passports', input.passportScore],
     ['eval', input.evalScore],
     ['evidence', input.evidenceScore],
@@ -82,7 +82,8 @@ export const calculateReadinessScore = (input: ReadinessInput, now?: Date): Read
     const entry = dimensions.find(([k]) => k === key)!;
     const isAvailable = entry[1] !== null;
     return {
-      score: entry[1],
+      // Return 0 (not null) for unavailable dimensions so score is always a number (not 'object')
+      score: isAvailable ? (entry[1] ?? 0) : 0,
       weight: isAvailable ? equalWeight : 0,
       available: isAvailable,
     };
@@ -95,7 +96,8 @@ export const calculateReadinessScore = (input: ReadinessInput, now?: Date): Read
       scan: buildDim('scan'),
       scanSecurity: buildDim('scanSecurity'),
       scanLlm: buildDim('scanLlm'),
-      documents: buildDim('documents'),
+      docs: buildDim('docs'),
+      documents: buildDim('docs'), // alias for backward compat
       passports: buildDim('passports'),
       eval: buildDim('eval'),
       evidence: buildDim('evidence'),

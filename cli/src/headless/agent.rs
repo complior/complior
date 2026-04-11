@@ -1,7 +1,7 @@
 use crate::cli::AgentAction;
 use crate::config::TuiConfig;
 
-use super::common::{ensure_engine, resolve_project_path_buf, url_encode};
+use super::common::{ensure_engine, ensure_engine_for, resolve_project_path_buf, url_encode};
 
 /// Find the engine root directory.
 /// Priority: COMPLIOR_ENGINE_DIR env var → walk up from project_path.
@@ -219,7 +219,7 @@ async fn run_agent_rename(
     config: &TuiConfig,
 ) -> i32 {
     let project_path = resolve_project_path_buf(path);
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -264,7 +264,7 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
         println!("Discovering AI agents in {}...", project_path.display());
     }
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -388,7 +388,7 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
 
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -537,7 +537,7 @@ async fn run_agent_show(name: &str, json: bool, path: Option<&str>, config: &Tui
 
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1006,7 +1006,7 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
         println!("Analyzing autonomy in {}...", project_path.display());
     }
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1133,7 +1133,7 @@ async fn run_agent_validate(
 ) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1339,7 +1339,7 @@ async fn run_agent_completeness(
 ) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1452,7 +1452,7 @@ async fn run_agent_fria(
         println!("Generating FRIA for agent '{name}'...");
     }
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1549,7 +1549,7 @@ async fn run_agent_notify(
         println!("Generating Worker Notification for agent '{name}'...");
     }
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1650,7 +1650,7 @@ async fn run_agent_export(
         println!("Exporting passport '{name}' as {format}...");
     }
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1711,7 +1711,7 @@ async fn run_agent_export(
 async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1836,7 +1836,7 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
 async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -1972,7 +1972,7 @@ async fn run_agent_policy(
         println!("Generating {industry} AI usage policy for agent '{name}'...");
     }
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -2144,7 +2144,7 @@ async fn run_agent_evidence(
 ) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -2245,12 +2245,12 @@ async fn run_agent_evidence(
 // --- US-S05-24: Test suite generation ---
 
 async fn run_agent_test_gen(name: &str, path: Option<&str>, json: bool, config: &TuiConfig) -> i32 {
-    let client = match ensure_engine(config).await {
+    let project_path = resolve_project_path_buf(path);
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
 
-    let project_path = super::common::resolve_project_path(path);
     let body = serde_json::json!({
         "name": name,
         "path": project_path,
@@ -2300,16 +2300,16 @@ async fn run_agent_test_gen(name: &str, path: Option<&str>, json: bool, config: 
 // --- US-S05-24: Passport diff ---
 
 async fn run_agent_diff(name: &str, path: Option<&str>, json: bool, config: &TuiConfig) -> i32 {
-    let client = match ensure_engine(config).await {
+    let project_path = resolve_project_path_buf(path);
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
 
-    let project_path = super::common::resolve_project_path(path);
     let url = format!(
         "/agent/diff?name={}&path={}",
         url_encode(name),
-        url_encode(&project_path)
+        url_encode(&project_path.to_string_lossy())
     );
 
     match client.get_json(&url).await {
@@ -2403,9 +2403,9 @@ async fn run_agent_import(
     path: &Option<String>,
     config: &TuiConfig,
 ) -> i32 {
-    let _project_path = resolve_project_path_buf(path.as_deref());
+    let project_path = resolve_project_path_buf(path.as_deref());
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
@@ -2494,7 +2494,7 @@ async fn run_agent_audit_package(
 ) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
-    let client = match ensure_engine(config).await {
+    let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };

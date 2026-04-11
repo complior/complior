@@ -23,8 +23,15 @@ pub fn url_encode(s: &str) -> String {
     result
 }
 
-/// Resolve engine client: walk up from CWD to find daemon PID file, fall back to config default.
-pub fn resolve_client(config: &TuiConfig) -> EngineClient {
+/// Resolve engine client: look for daemon PID file in the given project path first,
+/// then fall back to walking up from CWD. This ensures agent commands with an explicit
+/// `--path` argument find the right daemon (e.g. from `complior init --yes /project`).
+pub fn resolve_client_with(config: &TuiConfig, project_path: &std::path::Path) -> EngineClient {
+    // 1. Check project path
+    if let Some(info) = daemon::find_running_daemon(project_path) {
+        return EngineClient::from_url(&format!("http://127.0.0.1:{}", info.port));
+    }
+    // 2. Walk up from CWD
     let mut dir = std::env::current_dir().unwrap_or_default();
     loop {
         if let Some(info) = daemon::find_running_daemon(&dir) {
@@ -37,12 +44,18 @@ pub fn resolve_client(config: &TuiConfig) -> EngineClient {
     EngineClient::new(config)
 }
 
+/// Resolve engine client: walk up from CWD to find daemon PID file, fall back to config default.
+pub fn resolve_client(config: &TuiConfig) -> EngineClient {
+    resolve_client_with(config, &std::env::current_dir().unwrap_or_default())
+}
+
 /// Create an engine client and verify the engine is running.
 /// Daemon-aware retry with exponential backoff: if a daemon PID is found,
 /// retries up to 25 times (~6.4s) to allow cold start.
 /// Without a PID, retries only 5 times (~3.1s) before auto-launching.
 pub async fn ensure_engine(config: &TuiConfig) -> Result<EngineClient, i32> {
-    ensure_engine_for(config, &std::env::current_dir().unwrap_or_default()).await
+    let project_path = std::env::current_dir().unwrap_or_default();
+    ensure_engine_for(config, &project_path).await
 }
 
 /// Like `ensure_engine` but with an explicit project path (used by commands
@@ -52,10 +65,17 @@ pub async fn ensure_engine_for(
     project_path: &std::path::Path,
 ) -> Result<EngineClient, i32> {
     let project_path = project_path.to_path_buf();
-    let daemon_exists = daemon::find_running_daemon(&project_path).is_some();
+    // Only check the project path for daemon — do NOT fall back to CWD daemons,
+    // which may be serving a completely different project.
+    let daemon_info = daemon::find_running_daemon(&project_path);
+    let daemon_exists = daemon_info.is_some();
 
-    // First try: check for existing daemon
-    let client = resolve_client(config);
+    // Create client: use project-path daemon port if found, otherwise default port.
+    let client = if let Some(info) = &daemon_info {
+        EngineClient::from_url(&format!("http://127.0.0.1:{}", info.port))
+    } else {
+        EngineClient::new(config)
+    };
 
     // Daemon PID found → longer retry (engine cold start takes 2-5s)
     // No daemon PID → short retry before falling through to auto-launch
@@ -74,25 +94,19 @@ pub async fn ensure_engine_for(
         }
     }
 
+    // Daemon found but unresponsive — fall through to auto-start.
+    // Either the daemon is truly dead (PID stale) or port is held by an old process.
+    // Auto-start will bind to a free port and write a fresh PID file.
     if daemon_exists {
-        // Daemon PID exists but engine is still unresponsive — do NOT
-        // auto-launch a second engine (prevents PID conflict / competing instances).
-        let total_wait: u64 = (0..max_retries)
-            .map(|a| initial_delay_ms * 2u64.pow(a.min(4)))
-            .sum();
         eprintln!(
-            "Error: Daemon process found but engine not responding after ~{}s.",
-            total_wait / 1000
+            "Note: Daemon PID found but engine not responding. Starting fresh engine..."
         );
-        eprintln!("Try: complior daemon stop && complior daemon start");
-        return Err(1);
     }
 
-    // No running daemon found — try to auto-start engine
+    // No running daemon found (or the existing one is unresponsive) — try to auto-start engine
     let engine_root = super::agent::find_engine_root(&project_path);
 
     if let Some(root) = engine_root {
-        eprintln!("Engine not responding. Starting engine...");
         let pid_path = daemon::pid_file_path(&project_path);
         // If root has src/server.ts directly, it's an engine dir (from COMPLIOR_ENGINE_DIR).
         // Otherwise it's a workspace root (repo checkout).

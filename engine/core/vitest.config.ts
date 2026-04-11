@@ -37,13 +37,19 @@ if (envVars['COMPLIOR_TEST_PROJECT']) {
 // Uses SYNC operations so the chain is cleared BEFORE vitest starts running tests
 const testProject = process.env['COMPLIOR_TEST_PROJECT'] ?? '';
 if (testProject) {
-  const chainPath = resolve(testProject, '.complior', 'evidence', 'chain.json');
+  const compliorDir = resolve(testProject, '.complior');
+  // Reset entire .complior dir for full test isolation
   try {
-    if (existsSync(chainPath)) {
-      rmSync(chainPath, { force: true });
+    if (existsSync(compliorDir)) {
+      rmSync(compliorDir, { recursive: true, force: true });
     }
   } catch { /* non-fatal */ }
   try {
+    // Recreate essential dirs
+    mkdirSync(resolve(compliorDir, 'evidence'), { recursive: true });
+    mkdirSync(resolve(compliorDir, 'agents'), { recursive: true });
+    // Write empty chain
+    const chainPath = resolve(compliorDir, 'evidence', 'chain.json');
     writeFileSync(chainPath, JSON.stringify({
       version: '1.0.0',
       projectPath: testProject,

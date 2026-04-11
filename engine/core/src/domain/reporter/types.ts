@@ -17,7 +17,8 @@ export interface ReadinessDashboard {
     readonly scan: ReadinessDimension;
     readonly scanSecurity: ReadinessDimension;
     readonly scanLlm: ReadinessDimension;
-    readonly documents: ReadinessDimension;
+    readonly docs: ReadinessDimension;
+    readonly documents: ReadinessDimension; // alias for 'docs' (backward compat)
     readonly passports: ReadinessDimension;
     readonly eval: ReadinessDimension;
     readonly evidence: ReadinessDimension;

@@ -73,7 +73,7 @@ export const createReportService = (deps: ReportServiceDeps) => {
     }
 
     const content = generateComplianceMd(scanResult, getVersion());
-    const outputPath = options?.outputPath ?? resolve(getProjectPath(), 'COMPLIANCE.md');
+    const outputPath = options?.outputPath ?? resolve(getProjectPath(), '.complior', 'reports', 'compliance.md');
 
     const { writeFile, mkdir } = await import('node:fs/promises');
     const { dirname } = await import('node:path');

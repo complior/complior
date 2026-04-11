@@ -47,8 +47,8 @@ export const createPassportAudit = (deps: PassportServiceDeps, ops: PassportAudi
 
   const verifyEvidenceChain = async (
     _projectPath?: string,
-  ): Promise<{ valid: boolean; brokenAt?: number }> => {
-    if (!deps.evidenceStore) return { valid: true };
+  ): Promise<{ valid: boolean; brokenAt?: number; issues: readonly string[] }> => {
+    if (!deps.evidenceStore) return { valid: true, issues: [] };
     return deps.evidenceStore.verify();
   };
 
@@ -108,6 +108,13 @@ export const createPassportAudit = (deps: PassportServiceDeps, ops: PassportAudi
   const getAuditSummary = async (): Promise<AuditTrailSummary> => {
     if (!deps.auditStore) return { totalEntries: 0, eventCounts: {}, agentNames: [], firstEntry: '', lastEntry: '' };
     return deps.auditStore.getSummary();
+  };
+
+  /** Returns the full evidence chain with all entries (for detailed inspection). */
+  const getEvidenceChain = async (): Promise<{ totalEntries: number; entries: readonly unknown[] }> => {
+    if (!deps.evidenceStore) return { totalEntries: 0, entries: [] };
+    const chain = await deps.evidenceStore.getChain();
+    return { totalEntries: chain.entries.length, entries: chain.entries as readonly unknown[] };
   };
 
   const generateTestSuite = async (
@@ -231,6 +238,7 @@ export const createPassportAudit = (deps: PassportServiceDeps, ops: PassportAudi
   return Object.freeze({
     getAgentRegistry,
     getEvidenceChainSummary,
+    getEvidenceChain,
     verifyEvidenceChain,
     getPermissionsMatrix,
     getReadiness,
