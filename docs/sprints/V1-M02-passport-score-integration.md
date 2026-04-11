@@ -1,10 +1,10 @@
 # Milestone V1-M02: Full CLI Flag Coverage (E2E)
 
-> **Status:** ⏳ PLANNED
+> **Status:** ✅ DONE
 > **Feature Areas:** All (FA-01..FA-08) — каждая CLI команда со всеми флагами
-> **Created:** 2026-04-10, **Updated:** 2026-04-11
+> **Created:** 2026-04-10, **Updated:** 2026-04-11, **Completed:** 2026-04-11
 > **Target:** Доказать что ВСЕ флаги каждой v1.0 CLI команды работают E2E
-> **Blocked by:** V1-M01
+> **Blocked by:** V1-M01 ✅
 > **Blocks:** V1-M03
 
 ---
