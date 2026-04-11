@@ -12,6 +12,10 @@ const HtmlReportSchema = z.object({
   outputPath: z.string().optional(),
 });
 
+const MarkdownReportSchema = z.object({
+  outputPath: z.string().optional(),
+});
+
 export const createReportRoute = (reportService: ReportService) => {
   const app = new Hono();
 
@@ -27,7 +31,11 @@ export const createReportRoute = (reportService: ReportService) => {
 
   // Existing: generate compliance markdown
   app.post('/report/status/markdown', async (c) => {
-    const result = await reportService.generateMarkdown();
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = MarkdownReportSchema.safeParse(body);
+    const options = parsed.success ? parsed.data : {};
+
+    const result = await reportService.generateMarkdown(options);
     return c.json({ path: result.path, format: 'markdown' });
   });
 
