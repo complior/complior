@@ -342,9 +342,11 @@ export const createEvalRunner = (deps: EvalRunnerDeps) => {
       try {
         await evidenceStore.append(
           allTestResults.map((r) => ({
-            type: 'eval' as const,
-            checkId: r.testId,
-            data: { verdict: r.verdict, score: r.score, category: r.category },
+            findingId: r.testId,
+            layer: 'eval',
+            timestamp: new Date().toISOString(),
+            source: 'llm-analysis' as const,
+            snippet: r.verdict,
           })),
           `eval-${fileTimestamp()}`,
         );

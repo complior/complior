@@ -1,4 +1,4 @@
-import type { ComplianceReport, ReadinessZone, CompletenessZone, DocumentStatusLevel, PriorityAction, FindingSummary, EvalResultsSummary, EvalTestSummary, FixHistoryEntry, DocumentContent } from './types.js';
+import type { ComplianceReport, ReadinessZone, CompletenessZone, DocumentStatusLevel, FindingSummary, EvalTestSummary, DocumentContent } from './types.js';
 
 // --- Color constants (CSS variable references) ---
 
@@ -161,7 +161,7 @@ const buildOwaspBars = (tests: readonly EvalTestSummary[]): string => {
   }).join('');
 };
 
-const renderTestSection = (sectionId: string, title: string, subtitle: string, tests: readonly EvalTestSummary[], isSecurity: boolean): string => {
+const renderTestSection = (sectionId: string, title: string, _subtitle: string, tests: readonly EvalTestSummary[], isSecurity: boolean): string => {
   if (tests.length === 0) return '';
   const stats = sectionStats(tests);
   const bars = isSecurity ? buildOwaspBars(tests) : buildCategoryBars(tests);

@@ -15,7 +15,8 @@ export type AuditEventType =
   | 'policy.generated' | 'document.generated' | 'test_suite.generated'
   | 'readiness.computed'
   | 'adversarial.completed'
-  | 'supply-chain.audited';
+  | 'supply-chain.audited'
+  | 'redteam.run';
 
 export interface AuditEntry {
   readonly id: string;

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { mkdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import type { ProcessRunner } from '../ports/process.port.js';
 
 // Load pinned tool versions at module level
 const TOOL_VERSIONS_PATH = resolve(

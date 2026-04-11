@@ -49,10 +49,10 @@ export const createAiuc1Framework = (): ComplianceFramework => {
     version: '1.0',
     checks,
     categories,
-    gradeMapping: {
-      type: 'level',
+    gradeMapping: Object.freeze({
+      type: 'level' as const,
       thresholds: LEVEL_THRESHOLDS,
-    },
+    }),
   });
 };
 

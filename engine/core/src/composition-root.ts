@@ -398,12 +398,12 @@ export const loadApplication = async (): Promise<Application> => {
       try {
         const passports = await passportService.listPassports(state.projectPath);
         return passports.map((p) => ({
+          ...p,
           name: p.name ?? 'unknown',
           completeness: undefined, // computed by buildPassportStatus
           fria_completed: p.compliance?.fria_completed ?? false,
           signature: p.signature ?? null,
           updated_at: p.updated ?? p.created ?? undefined,
-          ...p,
         }));
       } catch {
         return [];
@@ -632,7 +632,16 @@ export const loadApplication = async (): Promise<Application> => {
           steps: z.array(z.object({ name: z.string(), status: z.string() }).passthrough()),
         }).passthrough().safeParse(JSON.parse(raw));
         if (parsed.success) {
-          return parsed.data as import('./domain/onboarding/guided-onboarding.js').GuidedOnboardingState;
+          const rawSteps = parsed.data.steps as { name: string; status: string }[];
+          return {
+            ...parsed.data,
+            steps: rawSteps.map((s, i) => ({
+              step: i + 1,
+              name: s.name as import('./domain/onboarding/guided-onboarding.js').GuidedStepName,
+              label: s.name,
+              status: (s.status === 'completed' ? 'completed' : s.status === 'skipped' ? 'skipped' : 'pending') as import('./domain/onboarding/guided-onboarding.js').GuidedStepStatus,
+            })),
+          } as import('./domain/onboarding/guided-onboarding.js').GuidedOnboardingState;
         }
         log.debug('Invalid onboarding state:', parsed.error.message);
         return createOnboardingInitialState();
@@ -762,7 +771,7 @@ export const loadApplication = async (): Promise<Application> => {
       const currentPassport = parsePassport(raw);
       if (!currentPassport) return; // invalid passport — skip
 
-      const compliance = (currentPassport.compliance ?? {}) as Record<string, unknown>;
+      const compliance = (currentPassport.compliance ?? {}) as unknown as Record<string, unknown>;
       const prevEval = compliance.eval as Record<string, unknown> | undefined;
 
       // Merge strategy: preserve previous security_score if new eval doesn't include one

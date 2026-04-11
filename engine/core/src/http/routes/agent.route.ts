@@ -64,7 +64,7 @@ export const createAgentRoute = (passportService: PassportService) => {
       newName: z.string().min(1),
     }));
 
-    const result = await passportService.renamePassport(
+    await passportService.renamePassport(
       data.oldName,
       data.newName,
       data.path,
@@ -388,7 +388,7 @@ export const createAgentRoute = (passportService: PassportService) => {
   app.get('/agent/audit-package', async (c) => {
     const path = c.req.query('path');
     const result = await passportService.generateAuditPackage(path || undefined);
-    return new Response(result.buffer, {
+    return new Response(result.buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/gzip',
         'Content-Disposition': `attachment; filename="complior-audit-${Date.now()}.tar.gz"`,
@@ -420,7 +420,7 @@ export const createAgentRoute = (passportService: PassportService) => {
     const data = await parseBody(c, z.object({
       path: z.string().min(1),
       name: z.string().min(1),
-      docType: z.enum(ALL_DOC_TYPES),
+      docType: z.enum(ALL_DOC_TYPES as readonly [string, ...string[]]),
       organization: z.string().optional(),
     }));
 

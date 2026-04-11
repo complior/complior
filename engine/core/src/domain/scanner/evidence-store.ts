@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { Evidence } from './evidence.js';
-import type { EvidenceEntry, EvidenceChain } from '../../types/common.types.js';
+import type { EvidenceChain } from '../../types/common.types.js';
 import { parseEvidenceChain } from '../../types/common.schemas.js';
 
 export interface EvidenceChainSummary {

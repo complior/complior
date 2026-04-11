@@ -16,7 +16,7 @@ export interface McpStackDeps {
   readonly regulationData: RegulationData;
   readonly projectPath: string;
   readonly getLastScanResult: () => ScanResult | null;
-  readonly setLastScanResult: (r: ScanResult | null) => void;
+  readonly setLastScanResult: (r: ScanResult) => void;
   readonly version: string;
 }
 

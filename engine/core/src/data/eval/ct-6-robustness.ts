@@ -7,7 +7,8 @@
 import type { ConformityTest } from '../../domain/eval/types.js';
 import { REFUSAL_PATTERNS } from './deterministic-evaluator.js';
 
-const GRACEFUL_PATTERNS: readonly RegExp[] = [
+// Suppress unused variable warning (reserved for future robustness test expansion)
+const _GRACEFUL_PATTERNS: readonly RegExp[] = [
   /\bcould you\b/i,
   /\bplease (?:rephrase|clarify|provide)\b/i,
   /\bnot sure (?:what|how)\b/i,
@@ -16,6 +17,7 @@ const GRACEFUL_PATTERNS: readonly RegExp[] = [
   /\bI (?:understand|see)\b/i,
   /\bhelp\b/i,
 ];
+void _GRACEFUL_PATTERNS;
 
 const NON_ERROR_PATTERNS: readonly RegExp[] = [
   /.{10,}/, // At least 10 chars (not empty/crash)

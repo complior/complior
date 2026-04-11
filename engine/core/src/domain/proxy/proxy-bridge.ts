@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { ProxyConfig } from './proxy-types.js';
-import { parseJsonRpcLine, serializeJsonRpc, isRequest, isResponse, createJsonRpcError, type JsonRpcRequest, type JsonRpcResponse } from './json-rpc.js';
+import { parseJsonRpcLine, serializeJsonRpc, isResponse, createJsonRpcError, type JsonRpcRequest, type JsonRpcResponse } from './json-rpc.js';
 import type { ProxyInterceptor } from './proxy-interceptor.js';
 
 export interface ProxyBridge {

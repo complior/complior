@@ -68,7 +68,7 @@ export const simulateActions = (input: SimulationInput): SimulationResult => {
           (f) => f.checkId === action.target && f.status === 'fail',
         );
         if (finding) {
-          impact = SEVERITY_IMPACT[finding.severity] ?? 1.5;
+          impact = SEVERITY_IMPACT[finding.severity as SeverityLevel] ?? 1.5;
           description = `Fix ${action.target} (${finding.severity}) → +${impact.toFixed(1)} points`;
         } else {
           description = `Finding ${action.target} not found or already passing`;
@@ -76,7 +76,7 @@ export const simulateActions = (input: SimulationInput): SimulationResult => {
         break;
       }
       case 'add-doc': {
-        impact = DOC_IMPACT[action.target] ?? 2.0;
+        impact = DOC_IMPACT[action.target as ComplianceDocType] ?? 2.0;
         description = `Add ${action.target} document → +${impact.toFixed(1)} points`;
         break;
       }

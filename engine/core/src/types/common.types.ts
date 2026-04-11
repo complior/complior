@@ -1,4 +1,5 @@
 import type { DocQualityLevel } from './passport.types.js';
+import type { Evidence as _ScannerEvidence } from '../domain/scanner/evidence.js';
 
 // --- Risk & Severity ---
 
@@ -279,7 +280,7 @@ export interface EngineStatus {
 // --- Evidence Chain (used by evidence-store, read from disk) ---
 
 export interface EvidenceEntry {
-  readonly evidence: Evidence;
+  readonly evidence: _ScannerEvidence;
   readonly scanId: string;
   readonly chainPrev: string | null;
   readonly hash: string;

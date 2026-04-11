@@ -331,7 +331,7 @@ export const createScanner = (
       allResults.push(...historyChecks);
       for (const check of historyChecks) {
         if (check.type !== 'skip') {
-          evidenceCollector.add(createEvidence(check.checkId, 'git-history', 'git-analysis', {
+          evidenceCollector.add(createEvidence(check.checkId, 'git-history', 'git-analysis' as import('./evidence.js').EvidenceSource, {
             snippet: check.type === 'pass' ? check.message : `${check.message}`,
             file: check.type === 'fail' ? check.file : undefined,
           }));

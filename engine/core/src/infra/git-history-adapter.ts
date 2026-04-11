@@ -8,7 +8,7 @@ import { execSync } from 'node:child_process';
 import type { GitHistoryPort } from '../domain/scanner/checks/git-history.js';
 
 export const createGitHistoryAdapter = (): GitHistoryPort => Object.freeze({
-  isGitRepo: (projectPath) => {
+  isGitRepo: (projectPath: string): boolean => {
     try {
       execSync('git rev-parse --is-inside-work-tree', { cwd: projectPath, stdio: 'pipe' });
       return true;
@@ -16,7 +16,7 @@ export const createGitHistoryAdapter = (): GitHistoryPort => Object.freeze({
       return false;
     }
   },
-  listTrackedFiles: (projectPath) => {
+  listTrackedFiles: (projectPath: string): readonly string[] => {
     try {
       const output = execSync('git ls-files', { cwd: projectPath, encoding: 'utf-8' });
       return output.trim().split('\n').filter(Boolean);
@@ -24,7 +24,7 @@ export const createGitHistoryAdapter = (): GitHistoryPort => Object.freeze({
       return [];
     }
   },
-  getFileLog: (projectPath, filePath) => {
+  getFileLog: (projectPath: string, filePath: string): readonly { hash: string; date: string; author: string }[] => {
     try {
       const output = execSync(
         `git log --follow --format="%H|%aI|%an" -- "${filePath}"`,

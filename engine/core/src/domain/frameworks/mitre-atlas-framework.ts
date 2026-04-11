@@ -33,10 +33,10 @@ export const createMitreAtlasFramework = (): ComplianceFramework => {
     version: '4.0',
     checks,
     categories,
-    gradeMapping: {
-      type: 'letter',
+    gradeMapping: Object.freeze({
+      type: 'letter' as const,
       thresholds: [...LETTER_GRADE_THRESHOLDS],
-    },
+    }),
   });
 };
 

@@ -101,7 +101,7 @@ const buildIssues = (ctx: IssueContext): readonly string[] => {
     issues.push('No evidence chain entries — run a scan to start collecting evidence');
   }
 
-  const highRiskIndustry = ctx.detectedIndustries.find((ind) => HIGH_RISK_INDUSTRY_IDS.has(ind));
+  const highRiskIndustry = ctx.detectedIndustries.find((ind) => HIGH_RISK_INDUSTRY_IDS.has(ind as import('../../data/industry-patterns.js').IndustryId));
   if (highRiskIndustry && ctx.riskClass !== 'high' && ctx.riskClass !== 'prohibited') {
     issues.push(`High-risk industry detected (${highRiskIndustry}) but risk_class is '${ctx.riskClass}'`);
   }
