@@ -50,7 +50,7 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc --noCheck",
-    "test": "vitest run",
+    "test": "COMPLIOR_TEST_PROJECT=/home/openclaw/test-projects/eval-target vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
