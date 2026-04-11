@@ -74,8 +74,10 @@ docs/project-state.md           → Живой статус (результат�
 ## Git Conventions
 
 - Conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
-- Feature branches from `develop`, PRs to `develop`
-- Run `cargo test` and `bun test` before committing
+- Feature branches from `develop`, PRs to `main`
+- **Merge в main — ТОЛЬКО user.** Ни один агент не мержит. PR создаёт architect, мержит user.
+- Run `cargo test` and `npx vitest run` before committing
+- CI: `.github/workflows/ci.yml` (fmt, clippy, test, audit) + `release.yml` (build, publish)
 
 ## Key References
 

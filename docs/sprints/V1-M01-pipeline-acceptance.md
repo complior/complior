@@ -1,6 +1,6 @@
 # Milestone V1-M01: Pipeline Acceptance
 
-> **Status:** ⏳ IN PROGRESS
+> **Status:** ✅ DONE (2026-04-11)
 > **Feature Areas:** FA-01 (Scanner), FA-02 (Eval), FA-03 (Fix), FA-05 (Report)
 > **Created:** 2026-04-10
 > **Target:** Доказать что полный пайплайн `init → scan → eval → fix → report` работает E2E
