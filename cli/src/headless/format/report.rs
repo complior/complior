@@ -60,7 +60,12 @@ fn render_title_box(
 
     o.push('\n');
     // Top border
-    o.push_str(&format!("  {}{}{}\n", bold("╔"), bold(&"═".repeat(inner)), bold("╗")));
+    o.push_str(&format!(
+        "  {}{}{}\n",
+        bold("╔"),
+        bold(&"═".repeat(inner)),
+        bold("╗")
+    ));
 
     // Title lines
     let title = "COMPLIOR READINESS REPORT";
@@ -75,7 +80,11 @@ fn render_title_box(
             "  {}{}{}{}{}",
             bold("║"),
             " ".repeat(left),
-            if line == title { bold(line) } else { line.to_string() },
+            if line == title {
+                bold(line)
+            } else {
+                line.to_string()
+            },
             " ".repeat(right),
             bold("║\n"),
         ));
@@ -92,7 +101,12 @@ fn render_title_box(
     let pad_r = inner.saturating_sub(raw_len + pad_l);
 
     // Empty line
-    o.push_str(&format!("  {}{}{}\n", bold("║"), " ".repeat(inner), bold("║")));
+    o.push_str(&format!(
+        "  {}{}{}\n",
+        bold("║"),
+        " ".repeat(inner),
+        bold("║")
+    ));
 
     o.push_str(&format!(
         "  {}{}{}{}  {}{}{}",
@@ -119,10 +133,20 @@ fn render_title_box(
         bold("║\n"),
     ));
 
-    o.push_str(&format!("  {}{}{}\n", bold("║"), " ".repeat(inner), bold("║")));
+    o.push_str(&format!(
+        "  {}{}{}\n",
+        bold("║"),
+        " ".repeat(inner),
+        bold("║")
+    ));
 
     // Middle border
-    o.push_str(&format!("  {}{}{}\n", bold("╠"), bold(&"═".repeat(inner)), bold("╣")));
+    o.push_str(&format!(
+        "  {}{}{}\n",
+        bold("╠"),
+        bold(&"═".repeat(inner)),
+        bold("╣")
+    ));
 }
 
 // ── Readiness breakdown ────────────────────────────────────────────
@@ -365,10 +389,7 @@ fn render_two_column(
     // Critical uncovered
     if let Some(critical) = obligations["critical"].as_array() {
         if !critical.is_empty() {
-            o.push_str(&format!(
-                "\n  {} CRITICAL UNCOVERED:\n",
-                bold_red("⚠"),
-            ));
+            o.push_str(&format!("\n  {} CRITICAL UNCOVERED:\n", bold_red("⚠"),));
             for obl in critical.iter().take(5) {
                 let id = obl["id"].as_str().unwrap_or("?");
                 let art = obl["article"].as_str().unwrap_or("");
@@ -413,9 +434,7 @@ fn render_passports_evidence(
                 red("✗")
             };
             let bar = render_bar(f64::from(completeness), 10);
-            let missing_fields = p["missingFields"]
-                .as_array()
-                .map_or(0, Vec::len);
+            let missing_fields = p["missingFields"].as_array().map_or(0, Vec::len);
 
             o.push_str(&format!(
                 "  {:<22} {} {completeness:>3}%  FRIA:{fria}  Signed:{signed}",
@@ -423,7 +442,10 @@ fn render_passports_evidence(
                 score_bar_color(f64::from(completeness), &bar),
             ));
             if missing_fields > 0 {
-                o.push_str(&format!("  {}", dim(&format!("({missing_fields} missing)"))));
+                o.push_str(&format!(
+                    "  {}",
+                    dim(&format!("({missing_fields} missing)"))
+                ));
             }
             o.push('\n');
         }
@@ -579,7 +601,10 @@ fn render_quick_wins(o: &mut String, actions: &serde_json::Value, _w: usize) {
             let max = 48usize.saturating_sub(art_suffix.chars().count());
             format!(
                 "{}…{}",
-                title.chars().take(max.saturating_sub(1)).collect::<String>(),
+                title
+                    .chars()
+                    .take(max.saturating_sub(1))
+                    .collect::<String>(),
                 art_suffix
             )
         } else {
@@ -704,11 +729,7 @@ fn render_actions_section(o: &mut String, actions: &serde_json::Value, w: usize)
             // R2: Second row with command
             if !command.is_empty() {
                 let cmd_indent = " ".repeat(action_col_start - 2);
-                o.push_str(&format!(
-                    "  {cmd_indent}{} {}\n",
-                    dim("->"),
-                    dim(command),
-                ));
+                o.push_str(&format!("  {cmd_indent}{} {}\n", dim("->"), dim(command),));
             }
         }
     }
@@ -764,7 +785,12 @@ fn render_summary_section(
     let inner = w.saturating_sub(4);
 
     // Border
-    o.push_str(&format!("  {}{}{}\n", bold("╠"), bold(&"═".repeat(inner)), bold("╣")));
+    o.push_str(&format!(
+        "  {}{}{}\n",
+        bold("╠"),
+        bold(&"═".repeat(inner)),
+        bold("╣")
+    ));
 
     let score = summary["readinessScore"].as_f64().unwrap_or(0.0) as u32;
     let zone = summary["zone"].as_str().unwrap_or("red");
@@ -780,7 +806,9 @@ fn render_summary_section(
     let critical_findings = summary["criticalFindings"].as_u64().unwrap_or(0);
     let auto_fixable = summary["autoFixable"].as_u64().unwrap_or(0);
     let days = summary["daysUntilEnforcement"].as_u64().unwrap_or(0);
-    let version = summary["compliorVersion"].as_str().unwrap_or(env!("CARGO_PKG_VERSION"));
+    let version = summary["compliorVersion"]
+        .as_str()
+        .unwrap_or(env!("CARGO_PKG_VERSION"));
 
     // Docs: compute created from documents section (total - missing)
     let docs_total = documents["total"].as_u64().unwrap_or(0);
@@ -820,13 +848,15 @@ fn render_summary_section(
         bold("⏰"),
     ));
 
-    o.push_str(&format!(
-        "  {}  Complior v{version}\n",
-        " ".repeat(7),
-    ));
+    o.push_str(&format!("  {}  Complior v{version}\n", " ".repeat(7),));
 
     // Bottom border
-    o.push_str(&format!("  {}{}{}\n", bold("╚"), bold(&"═".repeat(inner)), bold("╝")));
+    o.push_str(&format!(
+        "  {}{}{}\n",
+        bold("╚"),
+        bold(&"═".repeat(inner)),
+        bold("╝")
+    ));
     o.push('\n');
 }
 
@@ -992,9 +1022,7 @@ fn extract_major_article(raw: &str) -> String {
         .or_else(|| raw.strip_prefix("Art."))
         .unwrap_or(raw)
         .trim_start();
-    let end = s
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(s.len());
+    let end = s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
     if end == 0 {
         return raw.to_string();
     }

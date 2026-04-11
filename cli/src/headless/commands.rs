@@ -175,7 +175,10 @@ pub async fn run_report(
 
     // --share: generate offline HTML for sharing
     if share {
-        match client.post_json("/report/share", &serde_json::json!({})).await {
+        match client
+            .post_json("/report/share", &serde_json::json!({}))
+            .await
+        {
             Ok(resp) => {
                 let out_path = resp
                     .get("path")
@@ -202,8 +205,13 @@ pub async fn run_report(
                 };
                 if let Some(dest) = output {
                     match std::fs::write(dest, &text) {
-                        Ok(()) => { eprintln!("Report saved to: {dest}"); }
-                        Err(e) => { eprintln!("Failed to write: {e}"); return 1; }
+                        Ok(()) => {
+                            eprintln!("Report saved to: {dest}");
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to write: {e}");
+                            return 1;
+                        }
                     }
                 } else if format == "human" {
                     super::format::print_paged(&text);

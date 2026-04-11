@@ -98,9 +98,7 @@ pub async fn ensure_engine_for(
     // Either the daemon is truly dead (PID stale) or port is held by an old process.
     // Auto-start will bind to a free port and write a fresh PID file.
     if daemon_exists {
-        eprintln!(
-            "Note: Daemon PID found but engine not responding. Starting fresh engine..."
-        );
+        eprintln!("Note: Daemon PID found but engine not responding. Starting fresh engine...");
     }
 
     // No running daemon found (or the existing one is unresponsive) — try to auto-start engine
