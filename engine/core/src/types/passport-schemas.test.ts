@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AgentPassportSchema } from './passport-schemas.js';
 
 const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT'] ?? '/home/openclaw/test-projects/eval-target';
+const AGENTS_DIR = resolve(TEST_PROJECT, '.complior/agents');
+const hasPassports = existsSync(resolve(AGENTS_DIR, 'eval-target-anthropic-manifest.json'));
 
-describe('parsePassport schema validation', () => {
+describe.skipIf(!hasPassports)('parsePassport schema validation', () => {
   it('validates eval-target anthropic manifest', () => {
     const content = readFileSync(
-      resolve(TEST_PROJECT, '.complior/agents/eval-target-anthropic-manifest.json'),
+      resolve(AGENTS_DIR, 'eval-target-anthropic-manifest.json'),
       'utf-8'
     );
     const manifest = JSON.parse(content);
@@ -21,7 +23,7 @@ describe('parsePassport schema validation', () => {
 
   it('validates eval-target openai manifest', () => {
     const content = readFileSync(
-      resolve(TEST_PROJECT, '.complior/agents/eval-target-openai-manifest.json'),
+      resolve(AGENTS_DIR, 'eval-target-openai-manifest.json'),
       'utf-8'
     );
     const manifest = JSON.parse(content);

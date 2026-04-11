@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { rmSync, writeFileSync, existsSync } from 'node:fs';
+import { rmSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 
 // __dirname equivalent for ESM: resolve workspace root from this config file
 // vitest.config.ts is at: /home/openclaw/complior/engine/core/vitest.config.ts
@@ -64,5 +64,8 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     globals: false,
     testTimeout: 10_000,
+    // E2E tests share .complior/ state on disk — run files sequentially
+    // to avoid cross-contamination. Total suite is ~20s so no perf impact.
+    fileParallelism: false,
   },
 });
