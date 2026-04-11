@@ -63,7 +63,6 @@ echo ""
 echo "Step 2: complior init"
 
 INIT_OUTPUT=$($COMPLIOR init --yes "$TEST_PROJECT" 2>&1 || true)
-echo "$INIT_OUTPUT" > /tmp/complior_init.log
 echo "$INIT_OUTPUT" | tail -3
 if [[ -d "$TEST_PROJECT/.complior" ]]; then
   pass "complior init created .complior/ directory"
@@ -101,7 +100,6 @@ echo ""
 echo "Step 4: complior fix --dry-run"
 
 FIX_DRY_OUTPUT=$($COMPLIOR fix --dry-run "$TEST_PROJECT" 2>&1 || true)
-echo "$FIX_DRY_OUTPUT" > /tmp/complior_fix.log
 echo "$FIX_DRY_OUTPUT" | tail -5
 if [[ -n "$FIX_DRY_OUTPUT" ]]; then
   pass "complior fix --dry-run completed"
@@ -114,7 +112,6 @@ echo ""
 echo "Step 5: complior fix (apply)"
 
 FIX_OUTPUT=$($COMPLIOR fix "$TEST_PROJECT" 2>&1 || true)
-echo "$FIX_OUTPUT" > /tmp/complior_fix_apply.log
 echo "$FIX_OUTPUT" | tail -5
 if [[ -n "$FIX_OUTPUT" ]]; then
   pass "complior fix completed"
@@ -139,7 +136,6 @@ echo ""
 echo "Step 7: complior report"
 
 REPORT_OUTPUT=$($COMPLIOR report "$TEST_PROJECT" 2>&1 || true)
-echo "$REPORT_OUTPUT" > /tmp/complior_report.log
 echo "$REPORT_OUTPUT" | tail -5
 if [[ -n "$REPORT_OUTPUT" ]]; then
   pass "complior report produced output"
