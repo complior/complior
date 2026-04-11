@@ -11,6 +11,9 @@
 # =============================================================================
 set -euo pipefail
 
+# Disable pager — CI/acceptance scripts pipe output, not interact with less
+export PAGER=cat
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPLIOR="$PROJECT_ROOT/target/release/complior"
@@ -91,8 +94,10 @@ fi
 # ── Test 3: scan --ci --threshold 0 → exit 0 ───────────────────────
 echo ""
 echo "Test 3: scan --ci --threshold 0"
+set +e  # temporarily disable errexit — we capture the exit code explicitly
 "$COMPLIOR" scan --ci --threshold 0 "$TEST_PROJECT" >/dev/null 2>&1
 EXIT_CODE=$?
+set -e
 if [[ $EXIT_CODE -eq 0 ]]; then
   pass "scan --ci --threshold 0 exits 0 (threshold always passes)"
 else
@@ -102,8 +107,10 @@ fi
 # ── Test 4: scan --ci --threshold 999 → exit non-zero ──────────────
 echo ""
 echo "Test 4: scan --ci --threshold 999"
-"$COMPLIOR" scan --ci --threshold 999 "$TEST_PROJECT" >/dev/null 2>&1 || true
+set +e  # temporarily disable errexit — we capture the exit code explicitly
+"$COMPLIOR" scan --ci --threshold 999 "$TEST_PROJECT" >/dev/null 2>&1
 EXIT_CODE_HIGH=$?
+set -e
 if [[ $EXIT_CODE_HIGH -ne 0 ]]; then
   pass "scan --ci --threshold 999 exits non-zero (threshold too high)"
 else
