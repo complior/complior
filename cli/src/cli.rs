@@ -97,8 +97,8 @@ pub enum Command {
         #[arg(long)]
         llm: bool,
 
-        /// [planned] Cloud scan via `SaaS` API (Tier 3, planned for Month 3-4)
-        #[arg(long)]
+        /// [planned] Cloud scan via `SaaS` API
+        #[arg(long, hide = true)]
         cloud: bool,
 
         /// Show only critical findings and score
