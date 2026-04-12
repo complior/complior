@@ -7,9 +7,14 @@ export interface FileInfo {
   readonly relativePath: string;
 }
 
+export interface PassportManifest {
+  readonly content: string;
+}
+
 export interface ScanContext {
   readonly files: readonly FileInfo[];
   readonly projectPath: string;
+  readonly passportManifests?: readonly PassportManifest[];
 }
 
 export type CheckFunction = (ctx: ScanContext) => readonly CheckResult[];

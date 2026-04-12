@@ -191,10 +191,11 @@ export const createRedteamRunner = (deps: RedteamRunnerDeps) => {
 
     // Audit (fire-and-forget)
     if (deps.auditStore) {
-      deps.auditStore.append({
-        action: 'redteam.run',
-        actor: 'system',
-        details: { agentName, probes: probeResults.length, score: securityScore.score, grade: securityScore.grade },
+      deps.auditStore.append('redteam.run', {
+        agentName,
+        probes: probeResults.length,
+        score: securityScore.score,
+        grade: securityScore.grade,
       }).catch(() => {});
     }
 

@@ -39,14 +39,16 @@ export const createFixRoute = (deps: FixRouteDeps) => {
   app.post('/fix/preview', async (c) => {
     const data = await parseBody(c, FixApplySchema);
 
-    // Build a minimal finding to preview
-    const plan = fixService.preview({
-      checkId: data.checkId,
-      type: 'fail',
-      message: '',
-      severity: 'high',
-      obligationId: data.obligationId,
-    });
+    // Look up the actual finding from the last scan so we preserve fixDiff / strategy context
+    const allPlans = fixService.previewAll();
+    const plan = allPlans.find((p) => p.checkId === data.checkId)
+      ?? fixService.preview({
+        checkId: data.checkId,
+        type: 'fail',
+        message: '',
+        severity: 'high',
+        obligationId: data.obligationId,
+      });
 
     if (!plan) {
       return c.json({ error: 'NO_FIX', message: 'No auto-fix available for this finding', recommendation: 'Review and enrich document sections manually, or use --ai flag' }, 404);
@@ -59,13 +61,15 @@ export const createFixRoute = (deps: FixRouteDeps) => {
   app.post('/fix/apply', async (c) => {
     const data = await parseBody(c, FixApplySchema);
 
-    const plan = fixService.preview({
-      checkId: data.checkId,
-      type: 'fail',
-      message: '',
-      severity: 'high',
-      obligationId: data.obligationId,
-    });
+    const allPlans = fixService.previewAll();
+    const plan = allPlans.find((p) => p.checkId === data.checkId)
+      ?? fixService.preview({
+        checkId: data.checkId,
+        type: 'fail',
+        message: '',
+        severity: 'high',
+        obligationId: data.obligationId,
+      });
 
     if (!plan) {
       return c.json({ error: 'NO_FIX', message: 'No auto-fix available for this finding', recommendation: 'Review and enrich document sections manually, or use --ai flag' }, 404);

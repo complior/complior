@@ -81,12 +81,12 @@ export const scoreConformity = (
     // Score = passed / (passed + failed) — errors and inconclusive excluded from denominator
     // This ensures network errors don't penalize the score (only clear pass/fail count)
     const definitive = counts.passed + counts.failed;
-    const score = calculateScore(counts.passed, definitive);
+    const rawScore = calculateScore(counts.passed, definitive);
 
     categoryScores.push(Object.freeze({
       category: cat,
-      score,
-      grade: resolveGrade(score),
+      score: rawScore ?? 0,
+      grade: rawScore !== null ? resolveGrade(rawScore) : 'N/A',
       passed: counts.passed,
       failed: counts.failed,
       errors: counts.errors,
@@ -100,7 +100,7 @@ export const scoreConformity = (
   let weightedSum = 0;
   let weightTotal = 0;
   for (const cs of categoryScores) {
-    if (cs.total > 0) {
+    if (cs.total > 0 && cs.grade !== 'N/A') {
       const weight = CATEGORY_WEIGHTS[cs.category];
       weightedSum += cs.score * weight;
       weightTotal += weight;

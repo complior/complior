@@ -507,6 +507,7 @@ async fn parse_eval_stream(
 ) -> (i32, Option<serde_json::Value>) {
     let mut stream = resp.bytes_stream();
     let mut buffer = String::new();
+    let mut byte_buf: Vec<u8> = Vec::new();
     let mut current_event = String::new();
     let mut current_phase = String::new();
     let mut result: Option<serde_json::Value> = None;
@@ -528,7 +529,27 @@ async fn parse_eval_stream(
             }
         };
 
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        // Accumulate bytes and decode only complete UTF-8 sequences.
+        // bytes_stream() can split chunks mid-codepoint; from_utf8_lossy would corrupt data.
+        byte_buf.extend_from_slice(&chunk);
+        match std::str::from_utf8(&byte_buf) {
+            Ok(s) => {
+                buffer.push_str(s);
+                byte_buf.clear();
+            }
+            Err(e) => {
+                let valid_up_to = e.valid_up_to();
+                if valid_up_to > 0 {
+                    // Append the valid prefix, keep incomplete trailing bytes
+                    buffer.push_str(
+                        std::str::from_utf8(&byte_buf[..valid_up_to])
+                            .expect("valid_up_to guarantees valid UTF-8"),
+                    );
+                    byte_buf = byte_buf[valid_up_to..].to_vec();
+                }
+                // else: entire chunk is incomplete UTF-8, wait for more bytes
+            }
+        }
 
         while let Some(newline_pos) = buffer.find('\n') {
             let line = buffer[..newline_pos].trim_end_matches('\r').to_string();

@@ -145,6 +145,7 @@ pub async fn run_report(
     format: &str,
     output: Option<&str>,
     path: Option<&str>,
+    share: bool,
     config: &TuiConfig,
 ) -> i32 {
     let engine_url = config
@@ -172,9 +173,69 @@ pub async fn run_report(
         }
     }
 
+    // --share: generate offline HTML for sharing
+    if share {
+        match client
+            .post_json("/report/share", &serde_json::json!({}))
+            .await
+        {
+            Ok(resp) => {
+                let out_path = resp
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("report.html");
+                println!("Offline HTML report: {out_path}");
+                return 0;
+            }
+            Err(e) => {
+                eprintln!("HTML report generation failed: {e}");
+                return 1;
+            }
+        }
+    }
+
+    // Human / JSON: GET /report/status → render or dump
+    if format == "human" || format == "json" {
+        match client.get_json("/report/status").await {
+            Ok(resp) => {
+                let text = if format == "human" {
+                    super::format::report::format_report_human(&resp)
+                } else {
+                    serde_json::to_string_pretty(&resp).unwrap_or_default()
+                };
+                if let Some(dest) = output {
+                    match std::fs::write(dest, &text) {
+                        Ok(()) => {
+                            eprintln!("Report saved to: {dest}");
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to write: {e}");
+                            return 1;
+                        }
+                    }
+                } else if format == "human" {
+                    super::format::print_paged(&text);
+                } else {
+                    println!("{text}");
+                }
+                return 0;
+            }
+            Err(e) => {
+                eprintln!("Report generation failed: {e}");
+                return 1;
+            }
+        }
+    }
+
+    let format = match format {
+        "markdown" => "md",
+        other => other,
+    };
+
     let endpoint = match format {
-        "pdf" => "/report/pdf",
-        _ => "/report/markdown",
+        "pdf" => "/report/status/pdf",
+        "html" => "/report/share",
+        _ => "/report/status/markdown",
     };
 
     match client.post_json(endpoint, &serde_json::json!({})).await {

@@ -1,4 +1,5 @@
 import type { DocQualityLevel } from './passport.types.js';
+import type { Evidence as _ScannerEvidence } from '../domain/scanner/evidence.js';
 
 // --- Risk & Severity ---
 
@@ -15,6 +16,8 @@ export const compareSeverity = (a: Severity, b: Severity): number =>
 export type ComplianceStatus = 'fully_met' | 'partially_met' | 'not_met' | 'not_applicable';
 
 export type ScoreZone = 'red' | 'yellow' | 'green';
+
+export type ScanMode = 'basic' | 'security' | 'llm';
 
 export type ObligationType =
   | 'training'
@@ -277,7 +280,7 @@ export interface EngineStatus {
 // --- Evidence Chain (used by evidence-store, read from disk) ---
 
 export interface EvidenceEntry {
-  readonly evidence: Evidence;
+  readonly evidence: _ScannerEvidence;
   readonly scanId: string;
   readonly chainPrev: string | null;
   readonly hash: string;

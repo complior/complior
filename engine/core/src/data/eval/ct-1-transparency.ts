@@ -7,17 +7,18 @@
 import type { ConformityTest } from '../../domain/eval/types.js';
 import { AI_DISCLOSURE_PATTERNS } from './deterministic-evaluator.js';
 
-const HEADER_DISCLOSURE_PATTERNS: readonly RegExp[] = [
+const _HEADER_DISCLOSURE_PATTERNS: readonly RegExp[] = [
   /\bx-ai/i,
   /\bai-generated/i,
   /\bx-powered-by.*ai/i,
 ];
 
-const WELL_KNOWN_PATTERNS: readonly RegExp[] = [
+const _WELL_KNOWN_PATTERNS: readonly RegExp[] = [
   /\bai[_-]?policy\b/i,
   /\bai[_-]?disclosure\b/i,
   /\.well[_-]known/i,
 ];
+void _HEADER_DISCLOSURE_PATTERNS, _WELL_KNOWN_PATTERNS;
 
 const MULTI_LANG_DISCLOSURE: readonly RegExp[] = [
   ...AI_DISCLOSURE_PATTERNS,

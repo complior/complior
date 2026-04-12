@@ -141,7 +141,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         const model = await deps.llm.getModel(routing.provider, routing.modelId);
         const { generateText } = await import('ai');
         const callJudge = async (prompt: string, systemPrompt?: string): Promise<string> => {
-          const result = await generateText({ model, prompt, system: systemPrompt, maxTokens: 2048 });
+          const result = await generateText({ model, prompt, system: systemPrompt, maxOutputTokens: 2048 });
           return result.text;
         };
         await callJudge('Say "ok"');
@@ -415,7 +415,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
             article: '',
             description: 'Eval fix',
             framework: '',
-            actions: [{ type: 'create' as const, path: fix.file }],
+            actions: [{ type: 'create' as const, path: fix.file, description: 'Eval fix: create file' }],
             diff: '',
             scoreImpact: 0,
             commitMessage: '',

@@ -58,10 +58,19 @@ pub async fn run_headless_scan(
     // Determine project path
     let scan_path = super::common::resolve_project_path(path);
 
-    // LLM key validation — fail early before starting scan
+    // LLM key validation — check local env first, then ask engine
     if llm && !super::common::check_llm_key(&scan_path) {
-        super::common::print_llm_key_error();
-        return 1;
+        // Local env doesn't have key — check if engine has LLM configured
+        let engine_has_llm = client
+            .get_json("/llm/info")
+            .await
+            .ok()
+            .and_then(|info| info.get("configured")?.as_bool())
+            .unwrap_or(false);
+        if !engine_has_llm {
+            super::common::print_llm_key_error();
+            return 1;
+        }
     }
 
     // Deep scan: check uv availability and show tool display
@@ -77,42 +86,58 @@ pub async fn run_headless_scan(
     // Show LLM model info when --llm is used
     if llm && !json && !sarif {
         if let Ok(info) = client.get_json("/llm/info").await {
-            let model = info
-                .get("classify")
-                .and_then(|v| v.get("modelId"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown");
-            let provider = info
-                .get("classify")
-                .and_then(|v| v.get("provider"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown");
-            let source = info
-                .get("classify")
-                .and_then(|v| v.get("source"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("default");
-            let source_label = if source == "env" {
-                let env_var = info
-                    .get("classify")
-                    .and_then(|v| v.get("envVar"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("env");
-                format!(" ({})", env_var)
+            let configured = info
+                .get("configured")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+
+            if configured {
+                // Try 'classify' task first (used by --llm scan), then 'report'
+                let task = info.get("classify").or_else(|| info.get("report"));
+                if let Some(task_info) = task {
+                    let model = task_info
+                        .get("modelId")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("auto");
+                    let provider = task_info
+                        .get("provider")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("auto");
+                    let source = task_info
+                        .get("source")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("default");
+                    let source_label = if source == "env" {
+                        let env_var = task_info
+                            .get("envVar")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("env");
+                        format!(" ({})", env_var)
+                    } else {
+                        String::new()
+                    };
+                    eprintln!(
+                        "  LLM: {} via {}{}",
+                        bold(model),
+                        provider,
+                        dim(&source_label)
+                    );
+                    if source != "env" {
+                        eprintln!(
+                            "  {}",
+                            dim("Override: set COMPLIOR_MODEL_CLASSIFY in .complior/.env")
+                        );
+                    }
+                } else {
+                    // configured but no task routing available
+                    let active = info
+                        .get("activeProvider")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("auto");
+                    eprintln!("  LLM: {} via {}", bold("auto"), active);
+                }
             } else {
-                String::new()
-            };
-            eprintln!(
-                "  LLM: {} via {}{}",
-                bold(model),
-                provider,
-                dim(&source_label)
-            );
-            if source != "env" {
-                eprintln!(
-                    "  {}",
-                    dim("Override: set COMPLIOR_MODEL_CLASSIFY in .complior/.env")
-                );
+                eprintln!("  LLM: {}", dim("not configured"));
             }
         }
     }

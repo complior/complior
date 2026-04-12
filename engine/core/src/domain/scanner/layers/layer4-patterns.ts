@@ -149,14 +149,14 @@ export const runLayer4 = (
 
 export const layer4ToCheckResults = (l4Results: readonly L4CheckResult[]): readonly CheckResult[] => {
   return l4Results.map((r): CheckResult => {
-    // Bare LLM calls are informational — not a compliance violation
+    // Negative pattern found → compliance failure
     if (r.patternType === 'negative' && r.status === 'FOUND' && r.category === 'bare-llm') {
       const location = r.file !== undefined ? ` in ${r.file}:${r.line}` : '';
       return {
-        type: 'info',
+        type: 'fail',
         checkId: `l4-${r.category}`,
         message: `Bare LLM API call detected${location}. Consider @complior/sdk for runtime compliance.`,
-        severity: 'info',
+        severity: 'medium',
         obligationId: r.obligationId,
         articleReference: r.article,
         fix: 'Optional: wrap with @complior/sdk for runtime Art. 50/12/14 enforcement',

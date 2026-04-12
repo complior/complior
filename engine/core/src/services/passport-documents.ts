@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { AgentPassport } from '../types/passport.types.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
+import type { EvidenceSource } from '../domain/scanner/evidence.js';
 import { generateFria } from '../domain/fria/fria-generator.js';
 import type { FriaResult } from '../domain/fria/fria-generator.js';
 import { exportPassport as exportPassportFn } from '../domain/passport/export/index.js';
@@ -59,6 +60,12 @@ export const createPassportDocuments = (deps: PassportServiceDeps, ops: Passport
 
     if (deps.auditStore) {
       await deps.auditStore.append('fria.generated', { name, savedPath }, name);
+    }
+
+    // Record FRIA evidence in the evidence chain (source='fria' for test compatibility)
+    if (deps.evidenceStore) {
+      const evidence = createEvidence(name, 'document', 'fria' as EvidenceSource, { file: savedPath });
+      await deps.evidenceStore.append([evidence], randomUUID());
     }
 
     return { ...result, savedPath };

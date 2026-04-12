@@ -368,7 +368,8 @@ pub async fn execute_command(
         }
         // T906: Dry-run mode
         AppCommand::FixDryRun(selected) => {
-            if let Ok(result) = app.engine_client.fix_dry_run().await {
+            let known_score = app.last_scan.as_ref().map_or(0.0, |s| s.score.total_score);
+            if let Ok(result) = app.engine_client.fix_dry_run(known_score).await {
                 // Parse dry-run response
                 let changes: Vec<String> = result
                     .get("changes")

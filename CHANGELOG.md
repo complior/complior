@@ -5,6 +5,48 @@ All notable changes to Complior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.5] - 2026-04-11
+
+### Added
+
+**Full CLI Flag Coverage (v1.0 pipeline commands)**
+- `complior scan` — all 12 flags wired and E2E tested: `--json`, `--sarif`, `--ci`, `--threshold`, `--fail-on`, `--diff`, `--fail-on-regression`, `--comment`, `--deep`, `--llm`, `--quiet`, `--agent`
+- `complior eval` — all 22 flags wired and E2E tested: `--det`, `--llm`, `--security`, `--full`, `--json`, `--ci`, `--threshold`, `--categories`, `--last`, `--failures`, `--verbose`, `--remediation`, `--fix`, `--dry-run`, `--model`, `--api-key`, `--request-template`, `--response-path`, `--headers`, `--concurrency`, `--no-remediation`, `--agent`
+- `complior fix` — all 5 flags: `--dry-run`, `--json`, `--ai`, `--source scan/eval/all`, `--check-id`
+- `complior report` — all 4 flags: `--format human/json/md/html/pdf`, `--json`, `--share`, `--output`
+- `complior agent` — all 14 subcommands: `init`, `list`, `show`, `validate`, `completeness`, `fria`, `evidence`, `export`, `rename`, `autonomy`, `notify`, `registry`, `permissions`
+
+**E2E Test Suite**
+- 46 engine-level E2E tests via Hono in-memory HTTP (scan, eval, fix, report, agent flags)
+- 13 acceptance scripts (bash) covering full pipeline, report export, CLI flags, agent CLI, FRIA flow, score growth, self-scan, API key handling, CI validation
+
+**Report HTML**
+- 9-tab interactive HTML compliance report (`complior report --format html`)
+- Eval conformity scoring with A-F grades per category
+- Per-mode score tracking (deterministic / LLM / security / full)
+
+**Sync Contract**
+- `SyncPassportSchema`, `SyncScanSchema`, `SyncDocumentsSchema`, `SyncFriaSchema` — types for CLI ↔ SaaS data exchange
+
+### Fixed
+
+- 57 TypeScript type errors resolved across 29 files
+- CI typecheck (`npx tsc --noEmit`) re-enabled in GitHub Actions
+- npm security vulnerabilities fixed (hono, vite upgraded)
+- Flaky E2E test failures eliminated (evidence chain reset, env loading, EACCES writes)
+- `POST /report/status/markdown` now correctly forwards `outputPath`
+
+### Changed
+
+- `--cloud` flag hidden from `--help` (planned feature, not yet available)
+- Acceptance scripts hardened: `set +e` around exit-code tests, `PAGER=cat` for non-interactive, `/tmp` log writes removed
+
+### Notes
+
+- 2360 total tests: 2165 TS (vitest) + 195 Rust (cargo test) — all GREEN
+- Reviewer approved: 113 files, +11,391 lines, 23 commits on `feature/reporter`
+- EU AI Act enforcement: August 2, 2026 (~4 months)
+
 ## [0.9.0] - 2026-04-03
 
 ### Added

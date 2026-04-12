@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { ScanResult, Finding, AgentSummary, Role } from '../types/common.types.js';
+import type { ScanResult, Finding, AgentSummary, Role, ScanMode } from '../types/common.types.js';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { Scanner } from '../domain/scanner/create-scanner.js';
@@ -35,6 +35,8 @@ export interface ScanServiceDeps {
   };
   /** Project role from onboarding profile. Injected via composition-root. */
   readonly getProjectRole?: (projectPath: string) => Promise<Role>;
+  /** Persist per-mode scan score to .complior/scan-scores.json. */
+  readonly saveScanModeScore?: (mode: ScanMode, score: number, zone: string) => Promise<void>;
 }
 
 /** E-11: Compute a fast project-level hash from all file contents. */
@@ -202,13 +204,16 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     // E-11: Persist file-level cache to disk (survives daemon restarts)
     if (deps.scanCache) {
-      for (const file of ctx.files) {
-        deps.scanCache.set(file.relativePath, file.content, 0, [], 'L4');
-      }
-      deps.scanCache.save();
+      try {
+        for (const file of ctx.files) {
+          deps.scanCache.set(file.relativePath, file.content, 0, [], 'L4');
+        }
+        deps.scanCache.save();
+      } catch { /* non-fatal — cache write failure doesn't affect scan result */ }
     }
 
     setLastScanResult(result);
+    await deps.saveScanModeScore?.('basic', result.score.totalScore, result.score.zone);
     events.emit('scan.completed', { result });
 
     // US-S05-14: Record scan completion in audit trail
@@ -274,6 +279,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     const result = await applyRoleFilter(enriched, projectPath);
 
     setLastScanResult(result);
+    await deps.saveScanModeScore?.('llm', result.score.totalScore, result.score.zone);
     events.emit('scan.completed', { result });
     await syncPassportUpdate(result, projectPath);
 
@@ -320,6 +326,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     const result = await applyRoleFilter(enriched, projectPath);
 
     setLastScanResult(result);
+    await deps.saveScanModeScore?.('security', result.score.totalScore, result.score.zone);
     events.emit('scan.completed', { result });
     await syncPassportUpdate(result, projectPath);
 

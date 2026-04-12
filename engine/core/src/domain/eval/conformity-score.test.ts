@@ -30,6 +30,20 @@ describe('scoreConformity', () => {
     expect(result.criticalCapped).toBe(false);
   });
 
+  it('assigns grade N/A to categories with no tests', () => {
+    // Only transparency has tests — all other categories should be N/A
+    const results: TestResult[] = [makeResult('transparency', 'pass')];
+    const result = scoreConformity(results);
+    const transparency = result.categories.find((c) => c.category === 'transparency')!;
+    expect(transparency.grade).toBe('A');
+    expect(transparency.score).toBe(100);
+
+    const bias = result.categories.find((c) => c.category === 'bias')!;
+    expect(bias.grade).toBe('N/A');
+    expect(bias.score).toBe(0);
+    expect(bias.total).toBe(0);
+  });
+
   it('returns 100% when all tests pass', () => {
     const results: TestResult[] = EVAL_CATEGORIES.flatMap((cat) =>
       Array.from({ length: 5 }, () => makeResult(cat, 'pass')),

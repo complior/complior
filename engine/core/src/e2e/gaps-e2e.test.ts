@@ -23,8 +23,15 @@ const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
 
 // Clean up any previous E2E artifacts
 const cleanup = async () => {
-  await rm(resolve(TEST_PROJECT, '.complior', 'reports'), { recursive: true, force: true });
-  await rm(resolve(TEST_PROJECT, '.complior', 'agents'), { recursive: true, force: true });
+  const dirs = [
+    resolve(TEST_PROJECT, '.complior', 'reports'),
+    resolve(TEST_PROJECT, '.complior', 'agents'),
+  ];
+  for (const dir of dirs) {
+    try {
+      await rm(dir, { recursive: true, force: true });
+    } catch { /* non-fatal — some dirs may not be writable */ }
+  }
 };
 
 describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
@@ -39,7 +46,9 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
   afterAll(async () => {
     application?.shutdown();
     delete process.env['COMPLIOR_PROJECT_PATH'];
-    await rm(resolve(TEST_PROJECT, '.complior', 'reports'), { recursive: true, force: true });
+    try {
+      await rm(resolve(TEST_PROJECT, '.complior', 'reports'), { recursive: true, force: true });
+    } catch { /* non-fatal */ }
   });
 
   // ─────────────────────────────────────────────────────────

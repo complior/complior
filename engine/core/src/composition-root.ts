@@ -1,9 +1,9 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import type { CoreMessage } from 'ai';
-import type { ScanResult } from './types/common.types.js';
+import type { ScanResult, ScanMode } from './types/common.types.js';
 import { parseScanResult } from './types/common.schemas.js';
 import type { AgentMode } from './llm/tools/types.js';
 import type { RegulationData } from './data/regulation/regulation-loader.js';
@@ -128,6 +128,29 @@ export const loadApplication = async (): Promise<Application> => {
       await mkdir(dir, { recursive: true });
       await writeFile(scanPath, JSON.stringify(result), 'utf-8');
     }).catch((err: unknown) => { log.warn('Failed to persist scan result:', err); });
+  };
+
+  /** Per-mode scan score persistence (.complior/scan-scores.json). */
+  type ScanModeEntry = { score: number; zone: string; scannedAt: string };
+  type ScanModeScores = Partial<Record<ScanMode, ScanModeEntry>>;
+
+  const scanScoresPath = resolve(state.projectPath, '.complior', 'scan-scores.json');
+
+  const saveScanModeScore = async (mode: ScanMode, score: number, zone: string): Promise<void> => {
+    try {
+      const dir = resolve(state.projectPath, '.complior');
+      let existing: ScanModeScores = {};
+      try { existing = JSON.parse(await readFile(scanScoresPath, 'utf-8')); } catch { /* first save */ }
+      existing[mode] = { score, zone, scannedAt: new Date().toISOString() };
+      await mkdir(dir, { recursive: true });
+      await writeFile(scanScoresPath, JSON.stringify(existing), 'utf-8');
+    } catch (err: unknown) {
+      log.warn('Failed to persist scan mode score (non-fatal):', err);
+    }
+  };
+
+  const loadScanModeScores = async (): Promise<ScanModeScores> => {
+    try { return JSON.parse(await readFile(scanScoresPath, 'utf-8')); } catch { return {}; }
   };
 
   // 3. Create infrastructure
@@ -273,6 +296,7 @@ export const loadApplication = async (): Promise<Application> => {
     scanCache,
     passportService: lazyScanPassport,
     getProjectRole,
+    saveScanModeScore,
   });
 
   // Template loader for fixer
@@ -360,6 +384,97 @@ export const loadApplication = async (): Promise<Application> => {
     getProjectPath: () => state.projectPath,
     getLastScanResult: () => state.lastScanResult,
     getVersion: () => state.version,
+    getEvalScore: async () => {
+      try {
+        const latestPath = resolve(state.projectPath, '.complior', 'eval', 'latest.json');
+        const raw = await readFile(latestPath, 'utf-8');
+        const data = JSON.parse(raw) as { overallScore?: number };
+        return typeof data.overallScore === 'number' ? data.overallScore : null;
+      } catch {
+        return null;
+      }
+    },
+    getPassports: async () => {
+      try {
+        const passports = await passportService.listPassports(state.projectPath);
+        return passports.map((p) => ({
+          ...p,
+          name: p.name ?? 'unknown',
+          completeness: undefined, // computed by buildPassportStatus
+          fria_completed: p.compliance?.fria_completed ?? false,
+          signature: p.signature ?? null,
+          updated_at: p.updated ?? p.created ?? undefined,
+        }));
+      } catch {
+        return [];
+      }
+    },
+    getObligations: () =>
+      regulationData.obligations.obligations as unknown as import('./domain/reporter/obligation-coverage.js').ObligationRecord[],
+    getEvidenceSummary: () => evidenceStore.getSummary(),
+    getProjectRole: () => getProjectRole(state.projectPath),
+    getScanModeScores: loadScanModeScores,
+    getEvalResult: async () => {
+      try {
+        const evalDir = resolve(state.projectPath, '.complior', 'eval');
+        const files = await readdir(evalDir);
+        const evalFiles = files.filter(f => f.startsWith('eval-') && f.endsWith('.json'));
+
+        if (evalFiles.length === 0) {
+          const raw = await readFile(resolve(evalDir, 'latest.json'), 'utf-8');
+          return JSON.parse(raw) as import('./domain/eval/types.js').EvalResult;
+        }
+
+        let best: import('./domain/eval/types.js').EvalResult | null = null;
+        for (const file of evalFiles) {
+          try {
+            const raw = await readFile(resolve(evalDir, file), 'utf-8');
+            const result = JSON.parse(raw) as import('./domain/eval/types.js').EvalResult;
+            if (!best || result.totalTests > best.totalTests) {
+              best = result;
+            }
+          } catch { /* skip malformed files */ }
+        }
+        return best;
+      } catch {
+        return null;
+      }
+    },
+    getFixHistory: async () => {
+      try {
+        const history = await undoService.getHistory();
+        return history.fixes;
+      } catch {
+        return [];
+      }
+    },
+    getDocumentContents: async () => {
+      try {
+        const scanResult = state.lastScanResult;
+        if (!scanResult) return [];
+        const docFindings = scanResult.findings.filter(
+          (f) => f.checkId.startsWith('l1-') && f.type === 'pass' && f.file,
+        );
+        const contents: import('./domain/reporter/types.js').DocumentContent[] = [];
+        for (const f of docFindings) {
+          if (!f.file) continue;
+          try {
+            const fullPath = resolve(state.projectPath, f.file);
+            const raw = await readFile(fullPath, 'utf-8');
+            // Truncate large docs to 5000 chars for report size
+            const content = raw.length > 5000 ? raw.slice(0, 5000) + '\n\n...(truncated)' : raw;
+            contents.push({
+              docType: f.checkId.replace('l1-', ''),
+              path: f.file,
+              content,
+            });
+          } catch { /* file not readable */ }
+        }
+        return contents;
+      } catch {
+        return [];
+      }
+    },
   });
 
   let _externalScan: ExternalScanService | null = null;
@@ -517,7 +632,16 @@ export const loadApplication = async (): Promise<Application> => {
           steps: z.array(z.object({ name: z.string(), status: z.string() }).passthrough()),
         }).passthrough().safeParse(JSON.parse(raw));
         if (parsed.success) {
-          return parsed.data as import('./domain/onboarding/guided-onboarding.js').GuidedOnboardingState;
+          const rawSteps = parsed.data.steps as { name: string; status: string }[];
+          return {
+            ...parsed.data,
+            steps: rawSteps.map((s, i) => ({
+              step: i + 1,
+              name: s.name as import('./domain/onboarding/guided-onboarding.js').GuidedStepName,
+              label: s.name,
+              status: (s.status === 'completed' ? 'completed' : s.status === 'skipped' ? 'skipped' : 'pending') as import('./domain/onboarding/guided-onboarding.js').GuidedStepStatus,
+            })),
+          } as import('./domain/onboarding/guided-onboarding.js').GuidedOnboardingState;
         }
         log.debug('Invalid onboarding state:', parsed.error.message);
         return createOnboardingInitialState();
@@ -647,7 +771,7 @@ export const loadApplication = async (): Promise<Application> => {
       const currentPassport = parsePassport(raw);
       if (!currentPassport) return; // invalid passport — skip
 
-      const compliance = (currentPassport.compliance ?? {}) as Record<string, unknown>;
+      const compliance = (currentPassport.compliance ?? {}) as unknown as Record<string, unknown>;
       const prevEval = compliance.eval as Record<string, unknown> | undefined;
 
       // Merge strategy: preserve previous security_score if new eval doesn't include one
