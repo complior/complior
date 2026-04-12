@@ -10,6 +10,7 @@ import type { ScanService } from './scan-service.js';
 import type { UndoService } from './undo-service.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
+import { computeCompleteness } from '../domain/passport/passport-validator.js';
 import type { AgentPassport } from '../types/passport.types.js';
 import { generateDocument, TEMPLATE_FILE_MAP, type DocType, type DocResult } from '../domain/documents/document-generator.js';
 import { enrichDocumentWithAI, detectWeakSections } from '../domain/documents/ai-enricher.js';
@@ -241,6 +242,58 @@ export const createFixService = (deps: FixServiceDeps) => {
     const lastScan = getLastScanResult();
     if (!lastScan) return [];
     return fixer.generateFixes(lastScan.findings);
+  };
+
+  /** Like previewAll but renders [TEMPLATE:xxx] markers to actual markdown content. */
+  const previewAllRendered = async (): Promise<readonly FixPlan[]> => {
+    const plans = previewAll();
+    if (plans.length === 0) return [];
+
+    // Load all passports for placeholder resolution (once)
+    let passports: readonly AgentPassport[] = [];
+    if (deps.passportService) {
+      try { passports = await deps.passportService.listPassports(getProjectPath()); } catch { /* ignore */ }
+    }
+    const passport = passports[0] ?? null;
+
+    const renderedPlans: FixPlan[] = [];
+
+    for (const plan of plans) {
+      const renderedActions = await Promise.all(
+        plan.actions.map(async (action) => {
+          if (action.type !== 'create' || !action.content) return action;
+
+          let content = action.content;
+          const templateMatch = content.match(/^\[TEMPLATE:(.+)]$/);
+          if (templateMatch) {
+            const templateFile = templateMatch[1]!;
+            try {
+              const template = await loadTemplate(templateFile);
+              const docTypeEntry = (Object.entries(TEMPLATE_FILE_MAP) as [DocType, string][])
+                .find(([, file]) => file === templateFile);
+              if (docTypeEntry) {
+                const baseResult = generateDocument({ manifest: passport, template, docType: docTypeEntry[0] });
+                content = baseResult.markdown;
+              } else {
+                content = template;
+              }
+            } catch {
+              content = action.content; // keep original on error
+            }
+          }
+
+          // Resolve [PASSPORT:*] tokens
+          if (passport && content.includes('[PASSPORT:')) {
+            content = resolvePassportPlaceholders(content, passport);
+          }
+
+          return { ...action, content };
+        }),
+      );
+      renderedPlans.push({ ...plan, actions: renderedActions });
+    }
+
+    return renderedPlans;
   };
 
   const applyFix = async (plan: FixPlan, useAi = false): Promise<FixResult> => {
@@ -642,7 +695,20 @@ export const createFixService = (deps: FixServiceDeps) => {
     return lastScan?.score.totalScore ?? 0;
   };
 
-  return Object.freeze({ preview, previewAll, applyFix, applyAll, applyAndValidate, applyAllAndValidate, getUnfixedFindings, getCurrentScore });
+  /** Returns passport completeness (0–100) or 50 as fallback if no passports. */
+  const getPassportCompleteness = async (): Promise<number> => {
+    if (!deps.passportService) return 50;
+    try {
+      const passports = await deps.passportService.listPassports(getProjectPath());
+      if (passports.length === 0) return 50;
+      const completions = passports.map((p) => computeCompleteness(p).score);
+      return Math.round(completions.reduce((a, b) => a + b, 0) / completions.length);
+    } catch {
+      return 50;
+    }
+  };
+
+  return Object.freeze({ preview, previewAll, previewAllRendered, applyFix, applyAll, applyAndValidate, applyAllAndValidate, getUnfixedFindings, getCurrentScore, getLastScanResult, getPassportCompleteness });
 };
 
 export type FixService = ReturnType<typeof createFixService>;

@@ -450,26 +450,81 @@ export const loadApplication = async (): Promise<Application> => {
     },
     getDocumentContents: async () => {
       try {
-        const scanResult = state.lastScanResult;
-        if (!scanResult) return [];
-        const docFindings = scanResult.findings.filter(
-          (f) => f.checkId.startsWith('l1-') && f.type === 'pass' && f.file,
-        );
         const contents: import('./domain/reporter/types.js').DocumentContent[] = [];
-        for (const f of docFindings) {
-          if (!f.file) continue;
-          try {
-            const fullPath = resolve(state.projectPath, f.file);
-            const raw = await readFile(fullPath, 'utf-8');
-            // Truncate large docs to 5000 chars for report size
-            const content = raw.length > 5000 ? raw.slice(0, 5000) + '\n\n...(truncated)' : raw;
-            contents.push({
-              docType: f.checkId.replace('l1-', ''),
-              path: f.file,
-              content,
-            });
-          } catch { /* file not readable */ }
+
+        // Approach 1: Find documents referenced in scan results (l1-pass findings)
+        const scanResult = state.lastScanResult;
+        if (scanResult) {
+          const docFindings = scanResult.findings.filter(
+            (f) => f.checkId.startsWith('l1-') && f.type === 'pass' && f.file,
+          );
+          for (const f of docFindings) {
+            if (!f.file) continue;
+            try {
+              const fullPath = resolve(state.projectPath, f.file);
+              const raw = await readFile(fullPath, 'utf-8');
+              const content = raw.length > 500 ? raw.slice(0, 500) + '\n\n...(truncated)' : raw;
+              contents.push({
+                docType: f.checkId.replace('l1-', ''),
+                path: f.file,
+                content,
+              });
+            } catch { /* file not readable */ }
+          }
         }
+
+        // Approach 2: Scan .complior/docs/ directory for generated compliance documents
+        const docsDir = resolve(state.projectPath, '.complior', 'docs');
+        try {
+          const { readdir, stat } = await import('node:fs/promises');
+          const entries = await readdir(docsDir);
+          for (const entry of entries) {
+            if (!entry.endsWith('.md')) continue;
+            const fullPath = resolve(docsDir, entry);
+            try {
+              const statResult = await stat(fullPath);
+              if (!statResult.isFile()) continue;
+              const raw = await readFile(fullPath, 'utf-8');
+              const content = raw.length > 500 ? raw.slice(0, 500) + '\n\n...(truncated)' : raw;
+              // Derive docType from filename (e.g., fria.md → fria)
+              const docType = entry.replace(/\.md$/, '').replace(/-/g, '-');
+              // Avoid duplicate entries (same path may already be added from scan findings)
+              if (!contents.some((c) => c.path === `.complior/docs/${entry}`)) {
+                contents.push({
+                  docType,
+                  path: `.complior/docs/${entry}`,
+                  content,
+                });
+              }
+            } catch { /* skip unreadable files */ }
+          }
+        } catch { /* .complior/docs/ may not exist yet */ }
+
+        // Approach 3: Scan docs/compliance/ directory
+        const complianceDir = resolve(state.projectPath, 'docs', 'compliance');
+        try {
+          const { readdir, stat } = await import('node:fs/promises');
+          const entries = await readdir(complianceDir);
+          for (const entry of entries) {
+            if (!entry.endsWith('.md')) continue;
+            const fullPath = resolve(complianceDir, entry);
+            try {
+              const statResult = await stat(fullPath);
+              if (!statResult.isFile()) continue;
+              const raw = await readFile(fullPath, 'utf-8');
+              const content = raw.length > 500 ? raw.slice(0, 500) + '\n\n...(truncated)' : raw;
+              const docType = entry.replace(/\.md$/, '').replace(/-/g, '-');
+              if (!contents.some((c) => c.path === `docs/compliance/${entry}`)) {
+                contents.push({
+                  docType,
+                  path: `docs/compliance/${entry}`,
+                  content,
+                });
+              }
+            } catch { /* skip unreadable files */ }
+          }
+        } catch { /* docs/compliance/ may not exist yet */ }
+
         return contents;
       } catch {
         return [];

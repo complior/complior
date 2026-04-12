@@ -47,6 +47,8 @@ export type CheckResult = Readonly<
       readonly fix?: string;
       readonly file?: string;
       readonly line?: number;
+      readonly count?: number;
+      readonly affectedFiles?: readonly string[];
     }
   | {
       readonly type: 'info';

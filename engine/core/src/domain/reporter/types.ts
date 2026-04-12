@@ -124,6 +124,8 @@ export interface PriorityAction {
   readonly fixAvailable: boolean;
   readonly command: string;
   readonly priorityScore: number;
+  readonly effort?: string;
+  readonly projectedScore?: number;
 }
 
 export interface PriorityActionPlan {

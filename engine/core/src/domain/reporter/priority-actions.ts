@@ -2,6 +2,7 @@ import type { Finding } from '../../types/common.types.js';
 import type { PriorityActionPlan, PriorityAction, ActionSource, DocumentInventory, ObligationCoverage, PassportStatusSection } from './types.js';
 import { EU_AI_ACT_DEADLINE_ISO } from '../shared/compliance-constants.js';
 import reporterConfig from '../../../data/reporter-config.json' with { type: 'json' };
+import { simulateActions } from '../whatif/simulate-actions.js';
 
 const DEADLINE = EU_AI_ACT_DEADLINE_ISO;
 
@@ -32,8 +33,17 @@ const daysUntil = (deadline: string | null): number | null => {
   return Math.max(0, Math.ceil(diff / (24 * 60 * 60 * 1000)));
 };
 
+/** Effort estimate (human-readable) per action source. */
+const EFFORT_ESTIMATE: Record<ActionSource, string> = {
+  scan: '10 min',
+  document: '30 min',
+  obligation: '1 hour',
+  passport: '15 min',
+  eval: '1 hour',
+};
+
 /** Collect actions from scan fail findings. */
-const fromScanFindings = (findings: readonly Finding[]): Omit<PriorityAction, 'rank'>[] =>
+const fromScanFindings = (findings: readonly Finding[]): Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>[] =>
   findings
     .filter((f) => f.type === 'fail')
     .map((f) => {
@@ -55,7 +65,7 @@ const fromScanFindings = (findings: readonly Finding[]): Omit<PriorityAction, 'r
     });
 
 /** Collect actions from missing or scaffold documents. */
-const fromDocuments = (docs: DocumentInventory): Omit<PriorityAction, 'rank'>[] =>
+const fromDocuments = (docs: DocumentInventory): Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>[] =>
   docs.documents
     .filter((d) => d.status === 'missing' || d.status === 'scaffold')
     .map((d) => {
@@ -79,7 +89,7 @@ const fromDocuments = (docs: DocumentInventory): Omit<PriorityAction, 'rank'>[] 
     });
 
 /** Collect actions from uncovered critical obligations. */
-const fromObligations = (coverage: ObligationCoverage): Omit<PriorityAction, 'rank'>[] =>
+const fromObligations = (coverage: ObligationCoverage): Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>[] =>
   coverage.critical
     .filter((o) => o.linkedChecks.length === 0) // no scanner check exists — manual only
     .map((o) => {
@@ -100,7 +110,7 @@ const fromObligations = (coverage: ObligationCoverage): Omit<PriorityAction, 'ra
     });
 
 /** Collect actions from incomplete passports. */
-const fromPassports = (passports: PassportStatusSection): Omit<PriorityAction, 'rank'>[] =>
+const fromPassports = (passports: PassportStatusSection): Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>[] =>
   passports.passports
     .filter((p) => p.completeness < 80)
     .map((p) => {
@@ -123,7 +133,7 @@ const fromPassports = (passports: PassportStatusSection): Omit<PriorityAction, '
 const EVAL_LOW_THRESHOLD = reporterConfig.priorityActions.evalLowThreshold;
 
 /** Collect actions when eval score is low. */
-const fromEvalFindings = (evalScore: number | null): Omit<PriorityAction, 'rank'>[] => {
+const fromEvalFindings = (evalScore: number | null): Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>[] => {
   if (evalScore === null || evalScore >= EVAL_LOW_THRESHOLD) return [];
   const days = daysUntil(DEADLINE);
   return [{
@@ -141,12 +151,42 @@ const fromEvalFindings = (evalScore: number | null): Omit<PriorityAction, 'rank'
   }];
 };
 
+/** Compute projectedScore for an action by simulating a single fix/add-doc/complete-passport. */
+const computeProjectedScore = (
+  action: Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>,
+  currentScore: number,
+  findings: readonly Finding[],
+  passportCompleteness: number,
+): number => {
+  let simAction: { type: 'fix' | 'add-doc' | 'complete-passport'; target: string } | null = null;
+
+  if (action.source === 'scan') {
+    simAction = { type: 'fix', target: action.id };
+  } else if (action.source === 'document') {
+    simAction = { type: 'add-doc', target: action.id };
+  } else if (action.source === 'passport') {
+    simAction = { type: 'complete-passport', target: action.id };
+  }
+
+  if (!simAction) return currentScore;
+
+  const simulation = simulateActions({
+    actions: [simAction],
+    currentScore,
+    findings: findings.map((f) => ({ checkId: f.checkId, severity: f.severity, status: f.type })),
+    passportCompleteness,
+  });
+
+  return simulation.projectedScore;
+};
+
 export const buildPriorityActions = (
   findings: readonly Finding[],
   documents: DocumentInventory,
   obligations: ObligationCoverage,
   passports: PassportStatusSection,
   evalScore?: number | null,
+  maxOverride?: number | null,
 ): PriorityActionPlan => {
   const all = [
     ...fromScanFindings(findings),
@@ -169,6 +209,7 @@ export const buildPriorityActions = (
   // so scan, document, and passport actions appear even when obligations dominate.
   const sorted = deduped.sort((a, b) => b.priorityScore - a.priorityScore);
 
+  const effectiveLimit = maxOverride ?? MAX_ACTIONS;
   const result: Omit<PriorityAction, 'rank'>[] = [];
   const usedKeys = new Set<string>();
 
@@ -183,7 +224,7 @@ export const buildPriorityActions = (
 
   // Phase 2: fill remaining slots by global priority
   for (const a of sorted) {
-    if (result.length >= MAX_ACTIONS) break;
+    if (result.length >= effectiveLimit) break;
     const key = `${a.source}:${a.id}`;
     if (!usedKeys.has(key)) {
       result.push(a);
@@ -191,10 +232,19 @@ export const buildPriorityActions = (
     }
   }
 
-  // Re-sort by priority and assign ranks
+  // Compute current score for projectedScore (average of passport completeness as proxy)
+  const currentScore = Math.round(passports.averageCompleteness) || 50;
+  const passportCompleteness = passports.averageCompleteness;
+
+  // Re-sort by priority and assign ranks + effort + projectedScore
   const ranked = result
     .sort((a, b) => b.priorityScore - a.priorityScore)
-    .map((a, i) => ({ ...a, rank: i + 1 }));
+    .map((a, i) => ({
+      ...a,
+      rank: i + 1,
+      effort: EFFORT_ESTIMATE[a.source],
+      projectedScore: computeProjectedScore(a, currentScore, findings, passportCompleteness),
+    }));
 
   return {
     actions: ranked,
