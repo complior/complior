@@ -149,10 +149,10 @@ describe('daysUntilEnforcement', () => {
 // ── document-inventory ─────────────��─────────────────────────────
 
 describe('buildDocumentInventory', () => {
-  it('returns 14 documents with all missing when no findings', () => {
+  it('returns 17 documents with all missing when no findings', () => {
     const inv = buildDocumentInventory([]);
-    expect(inv.total).toBe(14);
-    expect(inv.byStatus.missing).toBe(14);
+    expect(inv.total).toBe(17);
+    expect(inv.byStatus.missing).toBe(17);
     expect(inv.score).toBe(0);
   });
 
@@ -372,7 +372,7 @@ describe('buildComplianceReport', () => {
     });
     expect(report.compliorVersion).toBe('0.9.4');
     expect(report.readiness.readinessScore).toBe(0);
-    expect(report.documents.total).toBe(14);
+    expect(report.documents.total).toBe(17);
     expect(report.obligations.total).toBe(0);
     expect(report.passports.totalAgents).toBe(0);
     expect(report.summary).toBeDefined();
