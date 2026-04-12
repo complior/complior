@@ -24,6 +24,67 @@ gets actionable, prioritized, filtered, prefilled results -- not raw dumps.
 
 ---
 
+## ОБЯЗАТЕЛЬНО: Design Consistency (Output Styling)
+
+Все пользовательские выводы, сообщения и HTTP-ответы ДОЛЖНЫ сохранять единый
+дизайнерский стиль, уже реализованный в scan (`cli/src/headless/format/human.rs`)
+и report (`cli/src/headless/format/report.rs`). Эти файлы — эталон визуального
+языка проекта.
+
+### Дизайн-система Complior (источник: `docs/SCANNER.md`, `docs/EVAL.md`, `docs/REPORT.md`)
+
+**Визуальные элементы:**
+- Box-drawing символы: `╔═╗ ║ ╠═╣ ╚═╝ ─ ├ └` для заголовков и секций
+- Progress bars: `render_bar(percent, width)` — заполненные/пустые символы, цвет по %
+- Score coloring: 0-50 bold_red, 50-70 bold_yellow, 70-80 green, 80-90 green, 90-100 bold_green
+- Severity icons: Critical=✖ red, High=▲ yellow, Medium=● cyan, Low/Info=· dim
+- Zone colors: green/yellow/orange(bold)/red(bold) по readiness zone
+
+**Информационная иерархия:**
+- Заголовок с версией и mode (scan/eval/report)
+- Score block с визуальным баром и delta
+- Findings сгруппированы по agent > layer > severity
+- Quick actions с impact score и командой
+- Priority actions таблица с severity color, days-left urgency, command hints
+- Summary footer с ключевыми метриками
+
+**Адаптивность:**
+- Определение ширины терминала (`display_width()`)
+- Unicode fallback: ◆→\*, █→#, ✓→+, ⚠→!
+- NO_COLOR / TERM=dumb поддержка
+- Word wrapping по ширине минус margin
+
+**Стиль сообщений (применять к КАЖДОЙ задаче V1-M06):**
+- T-1 (Fix preview): rendered шаблоны в preview ДОЛЖНЫ сохранять markdown formatting
+  с тем же уровнем качества, что и в `format_report_human()` rendered sections
+- T-2 (Action plan): top-5 actions ДОЛЖНЫ использовать severity coloring, impact scores,
+  effort badges и command hints как в `render_actions_section()` / `render_quick_wins()`
+- T-3 (Obligations filter): отфильтрованный список ДОЛЖЕН сохранять role tags,
+  coverage bars и critical highlighting как в `render_two_column()` obligations column
+- T-4 (Finding aggregation): grouped findings ДОЛЖНЫ иметь count badge и affected files
+  list в стиле `render_findings_section()` с severity icons
+- T-5 (Report documentContents): document excerpts ДОЛЖНЫ показывать docType badge,
+  status indicator (✓/~/□/✗) и completeness как в documents column
+- T-6/T-7 (Passport discovery): исправленные данные будут отображаться в passport view
+  с теми же completeness bars и field labels
+- T-8 (projectedScore): projected score ДОЛЖЕН отображаться с delta arrow (↑N.N) и
+  score_bar_color() как в existing score displays
+
+**Эталонные файлы (обязательное чтение для nodejs-dev):**
+- `cli/src/headless/format/human.rs` — scan output design (808 строк)
+- `cli/src/headless/format/report.rs` — report output design (1084 строки)
+- `cli/src/headless/format/colors.rs` — color system (184 строки)
+- `docs/SCANNER.md` — scanner output specification
+- `docs/EVAL.md` — eval output specification
+- `docs/REPORT.md` — report output specification
+
+**Правило:** если HTTP endpoint возвращает данные, которые Rust CLI потом форматирует —
+JSON структура ДОЛЖНА содержать все поля, необходимые для полноценного rendering.
+Не должно быть ситуации, когда CLI получает данные, но не может красиво их показать
+из-за отсутствующих полей.
+
+---
+
 ## Предусловия среды (architect обеспечивает):
 
 - [x] npm install в engine/core
