@@ -44,19 +44,46 @@ globs: ["cli/**/*.rs", "engine/**/*.ts", "tests/**/*.{ts,js}", "docs/**/*.md", "
 
 ## GIT & MERGE — АБСОЛЮТНЫЕ ПРАВИЛА
 
-### Merge в main — ТОЛЬКО user
-- **НИКАКОЙ агент НЕ мержит в main.** Ни architect, ни dev, ни reviewer.
-- Merge в main = deploy новой версии. Решение принимает ТОЛЬКО user.
-- Агенты работают на feature branches. PR в main создаёт architect, мержит user.
+### Merge — ТОЛЬКО user
+- **НИКАКОЙ агент НЕ мержит в main или dev.** Ни architect, ни dev, ни reviewer.
+- Merge = решение user'а. Агенты ТОЛЬКО создают PR.
 - `git push --force` к main/dev — ЗАПРЕЩЕНО для всех агентов.
 
+### Branch model: feature/* → dev → main
+
+```
+feature/xxx  ──PR──►  dev  (рабочая интеграционная ветка)
+                        │
+                       PR
+                        ▼
+                      main  (релиз, tagged v*)
+```
+
+- **dev** — рабочая ветка. Сюда мержатся завершённые feature-ветки.
+- **main** — релизная ветка. Merge в main = новая версия (tag + release).
+- **feature/\*** — одна фича или milestone. Живёт до merge в dev.
+
 ### Branch workflow
-1. **architect** создаёт feature branch, коммитит milestones + RED тесты
+1. **architect** создаёт `feature/*` branch от `dev`, коммитит milestones + RED тесты
 2. **dev-агенты** коммитят реализацию на тот же feature branch
 3. **test-runner** запускает тесты, даёт отчёт (НЕ коммитит)
 4. **reviewer** проверяет, обновляет project-state.md
-5. **architect** создаёт PR в main
-6. **user** мержит PR когда готов к deploy
+5. **architect** создаёт PR: `feature/*` → `dev`
+6. **user** мержит PR в `dev` когда фича approved
+7. Когда `dev` стабильна (несколько фич, version bump) → **user** мержит `dev` → `main` + tag
+
+### Когда мержить feature → dev
+- Все тесты GREEN (unit + E2E)
+- Reviewer APPROVED
+- project-state.md обновлён
+- Нет blocker'ов в tech-debt
+
+### Когда мержить dev → main
+- Все фичи текущей фазы готовы (или осознанный partial release)
+- CI зелёный на dev
+- Version bump (Cargo.toml + package.json)
+- CHANGELOG обновлён
+- User принимает решение о релизе
 
 ### CI/CD pipeline (.github/workflows/)
 - `ci.yml` — автозапуск на каждый PR и push в main/dev:
