@@ -1,6 +1,6 @@
 # Milestone V1-M05: Release v0.9.5
 
-> **Status:** ⏳ IN PROGRESS
+> **Status:** ✅ DONE (pending: user tags v0.9.5 + verifies release pipeline)
 > **Created:** 2026-04-11
 > **Target:** Ship v0.9.5 to production (merge to main → auto-deploy)
 > **Blocked by:** V1-M04 ✅ (engine E2E done, acceptance pending binary run)
