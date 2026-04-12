@@ -193,6 +193,69 @@ describe('T-2: Action plan top-5 with priority + projectedScore', () => {
   });
 });
 
+// --- T-2 E2E: action plan via HTTP ---
+
+describe.skipIf(!canRunE2E)('T-2 E2E: Action plan via /report/status', () => {
+  let application: Application;
+
+  beforeAll(async () => {
+    process.env['COMPLIOR_PROJECT_PATH'] = TEST_PROJECT;
+    application = await loadApplication();
+    await application.app.request('/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: TEST_PROJECT }),
+    });
+  }, 60_000);
+
+  afterAll(() => {
+    application?.shutdown();
+    delete process.env['COMPLIOR_PROJECT_PATH'];
+  });
+
+  it('GET /report/status returns actionPlan with max 5 items', async () => {
+    const res = await application.app.request('/report/status');
+    expect(res.status).toBe(200);
+
+    const body = await res.json() as Record<string, unknown>;
+    const actionPlan = body['actionPlan'] as Record<string, unknown>;
+    expect(actionPlan).toBeDefined();
+
+    const actions = actionPlan['actions'] as Array<Record<string, unknown>>;
+    expect(Array.isArray(actions)).toBe(true);
+    // T-2 spec: HTTP response limited to top-5
+    expect(actions.length).toBeLessThanOrEqual(5);
+
+    if (actions.length > 0) {
+      const first = actions[0]!;
+      // Each action must have rank, source, severity, priorityScore
+      expect(typeof first['rank']).toBe('number');
+      expect(typeof first['source']).toBe('string');
+      expect(typeof first['severity']).toBe('string');
+      expect(typeof first['priorityScore']).toBe('number');
+
+      // T-2 spec: effort and projectedScore fields present
+      expect(first).toHaveProperty('effort');
+      expect(typeof first['effort']).toBe('string');
+      expect(first).toHaveProperty('projectedScore');
+      expect(typeof first['projectedScore']).toBe('number');
+    }
+  }, 30_000);
+
+  it('action plan actions sorted by priorityScore descending', async () => {
+    const res = await application.app.request('/report/status');
+    const body = await res.json() as Record<string, unknown>;
+    const actionPlan = body['actionPlan'] as Record<string, unknown>;
+    const actions = actionPlan['actions'] as Array<Record<string, unknown>>;
+
+    for (let i = 1; i < actions.length; i++) {
+      const prev = actions[i - 1]!['priorityScore'] as number;
+      const curr = actions[i]!['priorityScore'] as number;
+      expect(curr).toBeLessThanOrEqual(prev);
+    }
+  }, 30_000);
+});
+
 // ═══════════════════════════════════════════════════════════════════
 //  T-3: Obligations filter by project role + risk_class
 // ═══════════════════════════════════════════════════════════════════
@@ -340,6 +403,53 @@ describe('T-4: L4 findings grouped by checkId', () => {
       expect(pf).not.toHaveProperty('affectedFiles');
     }
   });
+});
+
+// --- T-4 E2E: grouped findings via HTTP scan ---
+
+describe.skipIf(!canRunE2E)('T-4 E2E: Scan returns grouped L4 findings', () => {
+  let application: Application;
+
+  beforeAll(async () => {
+    process.env['COMPLIOR_PROJECT_PATH'] = TEST_PROJECT;
+    application = await loadApplication();
+  }, 60_000);
+
+  afterAll(() => {
+    application?.shutdown();
+    delete process.env['COMPLIOR_PROJECT_PATH'];
+  });
+
+  it('POST /scan groups identical L4 findings by checkId', async () => {
+    const res = await application.app.request('/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: TEST_PROJECT }),
+    });
+    expect(res.status).toBe(200);
+
+    const body = await res.json() as Record<string, unknown>;
+    const findings = body['findings'] as Array<Record<string, unknown>>;
+
+    // Find all l4-bare-llm fail findings
+    const bareLlm = findings.filter(
+      (f) => f['type'] === 'fail' && f['checkId'] === 'l4-bare-llm',
+    );
+
+    // T-4 spec: there should be at most 1 bare-llm finding (grouped)
+    // If test project has bare LLM calls, they should be aggregated
+    if (bareLlm.length > 0) {
+      expect(bareLlm.length).toBe(1);
+
+      const finding = bareLlm[0]!;
+      // Grouped finding should have count showing total occurrences
+      if ((finding['count'] as number) > 1) {
+        expect(finding).toHaveProperty('affectedFiles');
+        expect(Array.isArray(finding['affectedFiles'])).toBe(true);
+        expect((finding['affectedFiles'] as string[]).length).toBe(finding['count']);
+      }
+    }
+  }, 30_000);
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -598,6 +708,74 @@ describe('T-7: Passport discovery endpoint URL construction', () => {
       }
     }
   });
+});
+
+// --- T-6/T-7 E2E: passport discovery via HTTP ---
+
+describe.skipIf(!canRunE2E)('T-6/T-7 E2E: Passport discovery via /agent/init', () => {
+  let application: Application;
+
+  beforeAll(async () => {
+    process.env['COMPLIOR_PROJECT_PATH'] = TEST_PROJECT;
+    application = await loadApplication();
+  }, 60_000);
+
+  afterAll(() => {
+    application?.shutdown();
+    delete process.env['COMPLIOR_PROJECT_PATH'];
+  });
+
+  it('POST /agent/init discovers agents with clean model names (no comment matches)', async () => {
+    const res = await application.app.request('/agent/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: TEST_PROJECT }),
+    });
+    expect(res.status).toBe(200);
+
+    const body = await res.json() as Record<string, unknown>;
+    // agent/init returns the created passport or discovery result
+    // Check detectedModels if present in the response
+    const agents = (body['agents'] ?? body['discoveredAgents'] ?? [body]) as Array<Record<string, unknown>>;
+
+    for (const agent of agents) {
+      const models = agent['detectedModels'] as string[] | undefined;
+      if (models && models.length > 0) {
+        for (const model of models) {
+          // T-6 spec: model names should not be env var keys or garbage
+          expect(model).not.toMatch(/API_KEY/i);
+          expect(model).not.toMatch(/^OPENAI_/);
+          // Should be a valid model name pattern
+          expect(model).toMatch(/^(claude|gpt|gemini|llama|mistral|command)-/);
+        }
+      }
+    }
+  }, 30_000);
+
+  it('POST /agent/init produces valid endpoint URLs (no garbage concatenation)', async () => {
+    const res = await application.app.request('/agent/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: TEST_PROJECT }),
+    });
+    const body = await res.json() as Record<string, unknown>;
+    const agents = (body['agents'] ?? body['discoveredAgents'] ?? [body]) as Array<Record<string, unknown>>;
+
+    for (const agent of agents) {
+      const endpoints = agent['detectedEndpoints'] as string[] | undefined;
+      if (endpoints) {
+        for (const ep of endpoints) {
+          // T-7 spec: all endpoints must be parseable URLs
+          expect(() => new URL(ep)).not.toThrow();
+          const url = new URL(ep);
+          // Path must start with /
+          expect(url.pathname).toMatch(/^\//);
+          // Must not contain env var names or secret values
+          expect(ep).not.toMatch(/API_KEY|sk-|SECRET/i);
+        }
+      }
+    }
+  }, 30_000);
 });
 
 // ═══════════════════════════════════════════════════════════════════
