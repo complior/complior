@@ -3,6 +3,7 @@
 **Status:** IN PROGRESS
 **Branch:** `feature/V1-M08-context-scan`
 **Created:** 2026-04-13
+**Updated:** 2026-04-13
 
 ## Problem
 
@@ -14,6 +15,70 @@ User runs `complior scan` and gets 100+ findings from all 108 EU AI Act obligati
 - `obligations.route.ts` filters by role AND risk_level
 - `priority-actions.ts` computes top-5 actions with projected score
 - **GAP:** risk_level filtering of findings doesn't exist. Score counts everything. CLI shows no context. Fix gives no feedback.
+
+---
+
+## Текущее состояние (2026-04-13)
+
+Nodejs-dev реализовал T-2, T-3, T-5, T-7, T-8 — код работает, **не закоммичен**.
+Один блокер: **T-4** — `getProjectProfile` не подключен в `composition-root.ts`.
+
+```
+Unit тесты:  22/23 GREEN (1 RED = T-3 skip counts, blocked by T-4)
+E2E тесты:   1/5 GREEN  (4 RED, все blocked by T-4)
+Rust тесты:  199/199 GREEN (типы готовы, рендеринг T-6 ожидает)
+Contract:    19/19 TS + 18/18 Rust GREEN
+```
+
+### Незакоммиченные файлы nodejs-dev:
+
+```
+NEW  engine/core/src/domain/scanner/risk-level-filter.ts    (T-2)
+MOD  engine/core/src/services/scan-service.ts               (T-3)
+MOD  engine/core/src/http/routes/scan.route.ts              (T-5)
+MOD  engine/core/src/domain/reporter/obligation-coverage.ts (T-7)
+MOD  engine/core/src/http/routes/fix.route.ts               (T-8)
+```
+
+---
+
+## Следующие действия
+
+### 1. nodejs-dev: Wire T-4 + commit (блокер)
+
+**Файл:** `engine/core/src/composition-root.ts`
+
+Добавить closure `getProjectProfile` рядом с `getProjectRole` (~строка 278):
+```typescript
+const getProjectProfile = async (_projectPath: string) => {
+  try {
+    const profile = await lazyWizard?.loadProfile();
+    if (!profile) return null;
+    return {
+      role: (profile.organization?.role ?? 'both') as Role,
+      riskLevel: profile.computed?.riskLevel ?? null,
+      domain: profile.business?.domain ?? null,
+      applicableObligations: profile.computed?.applicableObligations ?? [],
+    };
+  } catch (e) { log.debug('Profile load for filtering:', e); return null; }
+};
+```
+
+Передать в scanService deps (~строка 298):
+```typescript
+getProjectProfile,  // ← ADD
+getProjectRole,     // keep for legacy
+```
+
+Потом прогнать тесты и закоммитить все 6 файлов.
+
+### 2. rust-dev: T-6 рендеринг (после коммита nodejs-dev)
+
+Типы в `cli/src/types/engine.rs` готовы. Рендеринг в `cli/src/headless/scan.rs`.
+
+### 3. architect: Review + PR → dev
+
+---
 
 ## Tasks
 
@@ -30,79 +95,47 @@ Added:
 
 **Verification:** `npx vitest run src/types/contract.test.ts` — 19/19 GREEN
 
-### T-2: `risk-level-filter.ts` — filter findings by risk level
-**Agent:** nodejs-dev
+### T-2: `risk-level-filter.ts` ✅ DONE (nodejs-dev, не закоммичен)
 **Files:** `engine/core/src/domain/scanner/risk-level-filter.ts` (NEW)
 
-Pattern = mirror of `role-filter.ts`:
-1. Build reverse map: `checkId → obligationId[]` → `obligationId → applies_to_risk_level[]`
-2. If ALL obligations for a checkId require risk levels that don't include the project's → skip
-3. If `riskLevel === null` → no filtering (like `role === 'both'` in role-filter)
+Реализовано: зеркало `role-filter.ts`. Строит map `checkId → obligationId[] → applies_to_risk_level[]`. Если ВСЕ obligations для checkId требуют другой risk level → `type: 'skip'`. Если `riskLevel === null` → без фильтрации.
 
-**Verification:** `npx vitest run src/domain/scanner/risk-level-filter.test.ts` — 8 tests RED
-**Dependencies:** T-1
+**Verification:** `npx vitest run src/domain/scanner/risk-level-filter.test.ts` — **8/8 GREEN** ✅
 
-### T-3: Integrate risk-level filter + context in `scan-service.ts`
-**Agent:** nodejs-dev
+### T-3: Integrate risk-level filter + context in `scan-service.ts` ✅ DONE (nodejs-dev, не закоммичен)
 **Files:** `engine/core/src/services/scan-service.ts`
 
-1. Add `getProjectProfile?: (path) => Promise<{ role, riskLevel, domain, applicableObligations } | null>` to deps
-2. Replace `applyRoleFilter` with `applyProfileFilters`:
-   - Call existing `filterFindingsByRole()`
-   - Call new `filterFindingsByRiskLevel()` (T-2)
-   - Count `skippedByRole`, `skippedByRiskLevel`
-   - Build `ScanFilterContext`
-   - Return scan result with `filterContext`
-3. If no profile → `filterContext.profileFound = false`, no filtering
-4. Recalculate score only by applicable findings
+Реализовано:
+- `getProjectProfile` option в `ScanServiceDeps` + legacy fallback к `getProjectRole`
+- `applyProfileFilters()` заменяет `applyRoleFilter()`: role filter → risk filter → count skips → build ScanFilterContext → recalc score
+- Если no profile → `filterContext.profileFound = false`
 
-**Verification:** `npx vitest run src/services/scan-service-context.test.ts` — 4 tests RED
-**Dependencies:** T-1, T-2
+**Verification:** `npx vitest run src/services/scan-service-context.test.ts` — **3/4 GREEN, 1 RED** (blocked by T-4)
+- ❌ `filterContext shows correct skip counts` — `skippedByRiskLevel = 0` потому что `getProjectProfile` не подключен в composition-root
 
-### T-4: Wire `getProjectProfile` in `composition-root.ts`
+### T-4: Wire `getProjectProfile` in `composition-root.ts` ❌ НЕ СДЕЛАНО (блокер)
 **Agent:** nodejs-dev
 **Files:** `engine/core/src/composition-root.ts`
 
-Replace `getProjectRole` closure with `getProjectProfile`:
-```typescript
-const getProjectProfile = async (_projectPath: string) => {
-  const profile = await lazyWizard?.loadProfile();
-  if (!profile) return null;
-  return {
-    role: (profile.organization?.role ?? 'both') as Role,
-    riskLevel: profile.computed?.riskLevel ?? null,
-    domain: profile.business?.domain ?? null,
-    applicableObligations: profile.computed?.applicableObligations ?? [],
-  };
-};
-```
+Closure `getProjectProfile` нужно создать и передать в scanService deps. Без этого scan-service fallbacks к `getProjectRole` (только role, без riskLevel/domain).
 
-**Verification:** POST /scan returns `filterContext` in response
+**Verification:** После wire → T-3 тест 4/4 GREEN, E2E 4-5/5 GREEN
 **Dependencies:** T-3
 
-### T-5: `topActions` in scan response
-**Agent:** nodejs-dev
+### T-5: `topActions` in scan response ✅ DONE (nodejs-dev, не закоммичен)
 **Files:** `engine/core/src/http/routes/scan.route.ts`
 
-After scan result, compute top-3 priority actions from fail findings and include in response:
-```typescript
-return c.json({ ...result, topActions });
-```
+Реализовано: `computeTopActions()` — top-3 fail findings по severity → `{ id, title, severity, command, fixAvailable, scoreImpact }`. Включается в `c.json({ ...result, topActions })`.
 
-**Verification:** `npx vitest run src/http/routes/scan-filter-context.test.ts` — 3 tests RED (topActions)
-**Dependencies:** T-4
+**Verification:** `npx vitest run src/http/routes/scan-filter-context.test.ts` — **4/4 GREEN** ✅
 
-### T-6: Rust CLI renders filterContext + topActions
+### T-6: Rust CLI renders filterContext + topActions ⏳ ОЖИДАЕТ
 **Agent:** rust-dev
 **Files:** `cli/src/types/engine.rs` (types DONE), `cli/src/headless/scan.rs` (rendering)
 
-Types added by architect:
-- `ScanFilterContext` struct with `#[serde(default)]`
-- `TopAction` struct
-- `filter_context: Option<ScanFilterContext>` on `ScanResult`
-- `top_actions: Option<Vec<TopAction>>` on `ScanResult`
+Типы готовы (architect). Рендеринг ожидает T-4 wire.
 
-Rust-dev renders in human output:
+Output с профилем:
 ```
 Filtered for: deployer, limited risk, healthcare
 22/57 obligations apply · 4 role-filtered · 8 risk-filtered
@@ -113,7 +146,7 @@ FIX FIRST:
 1. Create FRIA document (high) · complior fix · score 68→75 · ~30 min
 ```
 
-If `profileFound == false`:
+Output без профиля:
 ```
 Hint: run `complior init` to filter findings to your role and risk level.
 ```
@@ -121,86 +154,60 @@ Hint: run `complior init` to filter findings to your role and risk level.
 **Verification:** `cargo test contract` — 4 new tests GREEN (deserialization), rendering tests TBD
 **Dependencies:** T-4, T-5
 
-### T-7: Report obligation coverage filters by risk_level
-**Agent:** nodejs-dev
-**Files:** `engine/core/src/domain/reporter/obligation-coverage.ts`, `report-builder.ts`, `report-service.ts`
+### T-7: Report obligation coverage filters by risk_level ✅ DONE (nodejs-dev, не закоммичен)
+**Files:** `engine/core/src/domain/reporter/obligation-coverage.ts`
 
-1. Add `riskLevel?: string | null` parameter to `buildObligationCoverage()`
-2. Filter obligations by `applies_to_risk_level` (pattern from `obligations.route.ts`)
-3. Thread riskLevel through `ReportBuildInput` → `buildComplianceReport()` → `buildObligationCoverage()`
+Реализовано: `riskApplies()` helper + параметр `projectRisk: string | null` в `buildObligationCoverage()`. Фильтрует obligations по role AND risk level.
 
-**Verification:** `npx vitest run src/domain/reporter/obligation-coverage-risk.test.ts` — 2 tests RED
-**Dependencies:** T-1
+**Verification:** `npx vitest run src/domain/reporter/obligation-coverage-risk.test.ts` — **5/5 GREEN** ✅
 
-### T-8: Fix apply-all includes filterContext + score delta
-**Agent:** nodejs-dev
+### T-8: Fix apply-all includes filterContext ✅ DONE (nodejs-dev, не закоммичен)
 **Files:** `engine/core/src/http/routes/fix.route.ts`
 
-In `POST /fix/apply-all` response — include `filterContext` from last scan result:
-```typescript
-const lastScan = fixService.getLastScanResult?.();
-return c.json({ results, summary, unfixedFindings, filterContext: lastScan?.filterContext ?? null });
-```
+Реализовано: `filterContext: lastScan?.filterContext ?? null` в response `/fix/apply-all`.
 
-**Verification:** `npx vitest run src/http/routes/fix-filter-context.test.ts` — 1 test RED
-**Dependencies:** T-3, T-4
+**Verification:** `npx vitest run src/http/routes/fix-filter-context.test.ts` — **2/2 GREEN** ✅
 
-## Dependency Graph
-
-```
-T-1 (types) ───────┬─────────────────────────┐
-                    │                         │
-                    v                         v
-T-2 (risk-filter) → T-3 (scan-service) → T-4 (composition-root) → T-5 (topActions)
-                                              │                         │
-                                              v                         v
-                                         T-6 (Rust CLI)           T-8 (fix response)
-                    │
-                    v
-               T-7 (report filter)
-```
-
-## Execution Order
-
-1. **architect** ✅: T-1 (types + schemas + RED tests + Rust types)
-2. **nodejs-dev**: T-2, T-7 (parallel — both depend only on T-1)
-3. **nodejs-dev**: T-3 → T-4 → T-5, T-8 (sequential chain)
-4. **rust-dev**: T-6 (after T-4 + T-5)
+---
 
 ## Verification Table
 
-| # | Task | Agent | Verification | Key Files | Status |
-|---|------|-------|-------------|-----------|--------|
-| T-1 | `ScanFilterContext` type + Zod | architect | contract test GREEN | `common.types.ts`, `common.schemas.ts` | ✅ DONE |
-| T-2 | `risk-level-filter.ts` | nodejs-dev | 8 unit tests RED | `risk-level-filter.ts` (NEW) | ⏳ |
-| T-3 | Integrate filter in scan-service | nodejs-dev | 4 unit tests RED | `scan-service.ts` | ⏳ |
-| T-4 | Wire `getProjectProfile` | nodejs-dev | filterContext in /scan response | `composition-root.ts` | ⏳ |
-| T-5 | `topActions` in scan response | nodejs-dev | 3 tests RED (topActions) | `scan.route.ts` | ⏳ |
-| T-6 | Rust CLI renders context | rust-dev | 4 contract tests GREEN | `engine.rs`, `scan.rs` | ⏳ |
-| T-7 | Report obligation + risk_level | nodejs-dev | 2 tests RED | `obligation-coverage.ts` | ⏳ |
-| T-8 | Fix response + filterContext | nodejs-dev | 1 test RED | `fix.route.ts` | ⏳ |
+| # | Task | Agent | Verification | Status |
+|---|------|-------|-------------|--------|
+| T-1 | `ScanFilterContext` type + Zod | architect | 19/19 contract GREEN | ✅ DONE (committed) |
+| T-2 | `risk-level-filter.ts` | nodejs-dev | 8/8 GREEN | ✅ DONE (uncommitted) |
+| T-3 | Integrate filter in scan-service | nodejs-dev | 3/4 GREEN, 1 RED (T-4 blocker) | ✅ DONE (uncommitted, blocked) |
+| T-4 | Wire `getProjectProfile` | nodejs-dev | T-3 4/4 + E2E 4-5/5 after wire | ❌ БЛОКЕР |
+| T-5 | `topActions` in scan response | nodejs-dev | 4/4 GREEN | ✅ DONE (uncommitted) |
+| T-6 | Rust CLI renders context | rust-dev | types GREEN, rendering TBD | ⏳ ОЖИДАЕТ |
+| T-7 | Report obligation + risk_level | nodejs-dev | 5/5 GREEN | ✅ DONE (uncommitted) |
+| T-8 | Fix response + filterContext | nodejs-dev | 2/2 GREEN | ✅ DONE (uncommitted) |
+
+---
 
 ## Test Summary
 
-**RED unit tests committed (23 total):**
-- `risk-level-filter.test.ts` — 8 tests (T-2)
-- `scan-service-context.test.ts` — 4 tests (T-3)
-- `scan-filter-context.test.ts` — 4 tests (T-4/T-5, 1 trivially passes)
-- `obligation-coverage-risk.test.ts` — 5 tests (T-7, 3 trivially pass)
-- `fix-filter-context.test.ts` — 2 tests (T-8, 1 trivially passes)
+**Unit tests (23 spec):**
+- `risk-level-filter.test.ts` — 8/8 GREEN (T-2) ✅
+- `scan-service-context.test.ts` — 3/4 GREEN, 1 RED (T-3, blocked by T-4) 🔴
+- `scan-filter-context.test.ts` — 4/4 GREEN (T-4/T-5) ✅
+- `obligation-coverage-risk.test.ts` — 5/5 GREEN (T-7) ✅
+- `fix-filter-context.test.ts` — 2/2 GREEN (T-8) ✅
 
-**RED E2E tests committed (5 total):**
-- `e2e/context-scan-e2e.test.ts` — 5 tests (T-4/T-5/T-8)
-  - `POST /scan response includes filterContext with profile data` — RED (T-4)
-  - `POST /scan filterContext counts are consistent` — RED (T-4)
-  - `POST /scan response includes topActions array (0-3 items)` — RED (T-5)
-  - `POST /fix/apply-all response includes filterContext from last scan` — RED (T-8)
-  - `POST /scan without profile returns profileFound=false` — trivially passes (T-3 done)
+**E2E tests (5 spec):**
+- `context-scan-e2e.test.ts`:
+  - `filterContext with profile data` — RED (T-4 blocker) 🔴
+  - `filterContext counts consistent` — RED (T-4 blocker) 🔴
+  - `topActions array` — GREEN ✅
+  - `fix/apply-all filterContext` — RED (T-4 blocker) 🔴
+  - `no profile profileFound=false` — RED (T-4 blocker) 🔴
 
-**GREEN tests (contract):**
-- `contract.test.ts` — 19/19 GREEN (TS, includes 3 new ScanFilterContext tests)
-- `contract_test.rs` — 18/18 GREEN (Rust, includes 4 new ScanFilterContext/TopAction tests)
-- Rust full suite: 199/199 GREEN
+**Contract tests:**
+- `contract.test.ts` — 19/19 GREEN ✅
+- `contract_test.rs` — 18/18 GREEN ✅
+- Rust full suite: 199/199 GREEN ✅
+
+---
 
 ## Предусловия среды (architect обеспечивает)
 
