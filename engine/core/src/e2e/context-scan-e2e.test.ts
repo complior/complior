@@ -19,6 +19,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { writeFile, mkdir, rm, readFile } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { loadApplication, type Application } from '../composition-root.js';
 import type { ScanFilterContext } from '../types/common.types.js';
 
@@ -203,36 +205,55 @@ describe.skipIf(!canRunE2E)('Context-Scan E2E — with profile (V1-M08)', () => 
 
 describe.skipIf(!canRunE2E)('Context-Scan E2E — no profile (V1-M08)', () => {
   let application: Application;
+  /** Isolated temp dir — bypasses vitest worker module-state leakage from "with profile" suite. */
+  let tempProjectPath: string;
   const compliorDir = resolve(TEST_PROJECT, '.complior');
   const profilePath = resolve(compliorDir, 'profile.json');
   let savedProfile: string | null = null;
 
   beforeAll(async () => {
-    // Back up and remove profile.json so no profile is found
+    // Back up and remove profile.json from TEST_PROJECT so "with profile" suite cleanup is complete
     if (existsSync(profilePath)) {
       savedProfile = await readFile(profilePath, 'utf-8');
       await rm(profilePath);
     }
 
-    process.env['COMPLIOR_PROJECT_PATH'] = TEST_PROJECT;
+    // Create a fresh isolated temp project — guaranteed no profile.json,
+    // and bypasses any module-level wizard state from the "with profile" application.
+    tempProjectPath = await mkdtemp(resolve(tmpdir(), 'complior-no-profile-'));
+    // Copy essential dirs so scan doesn't fail on missing .complior structure
+    if (existsSync(compliorDir)) {
+      await mkdir(resolve(tempProjectPath, '.complior'), { recursive: true });
+      // Copy agents dir so passport listing doesn't fail
+      const agentsSrc = resolve(compliorDir, 'agents');
+      if (existsSync(agentsSrc)) {
+        await mkdir(resolve(tempProjectPath, '.complior', 'agents'), { recursive: true });
+      }
+    }
+    // Ensure package.json so scan can read it
+    await writeFile(resolve(tempProjectPath, 'package.json'), JSON.stringify({ name: 'temp-no-profile' }), 'utf-8');
+
+    process.env['COMPLIOR_PROJECT_PATH'] = tempProjectPath;
     application = await loadApplication();
   }, 30_000);
 
   afterAll(async () => {
     application?.shutdown();
     delete process.env['COMPLIOR_PROJECT_PATH'];
-    // Restore profile if we backed it up
+    // Restore profile to original TEST_PROJECT
     if (savedProfile) {
       await mkdir(compliorDir, { recursive: true });
       await writeFile(profilePath, savedProfile, 'utf-8');
     }
+    // Clean up temp dir
+    await rm(tempProjectPath, { recursive: true, force: true });
   });
 
   it('POST /scan without profile returns profileFound=false in filterContext', async () => {
     const res = await application.app.request('/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: TEST_PROJECT }),
+      body: JSON.stringify({ path: tempProjectPath }),
     });
 
     expect(res.status).toBe(200);

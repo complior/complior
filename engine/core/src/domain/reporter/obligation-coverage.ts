@@ -18,16 +18,26 @@ const roleApplies = (oblRole: string, projectRole: Role): boolean => {
   return oblRole === 'both' || oblRole === projectRole;
 };
 
+/** Check if an obligation applies to the given risk level (V1-M08 T-7). */
+const riskApplies = (riskLevels: readonly string[], projectRisk: string | null): boolean => {
+  if (!projectRisk) return true; // no profile → all apply
+  if (riskLevels.includes('all')) return true;
+  return riskLevels.includes(projectRisk);
+};
+
 export const buildObligationCoverage = (
   obligations: readonly ObligationRecord[],
   findings: readonly Finding[],
   projectRole: Role = 'both',
+  /** V1-M08 T-7: filter obligations by risk level (from profile). */
+  projectRisk: string | null = null,
 ): ObligationCoverage => {
   const oblToChecks = buildOblToChecks();
 
-  // Filter obligations by project role
+  // Filter obligations by project role AND risk level
   const applicable = obligations.filter((obl) =>
-    roleApplies(String(obl.applies_to_role ?? 'both'), projectRole),
+    roleApplies(String(obl.applies_to_role ?? 'both'), projectRole) &&
+    riskApplies(obl.applies_to_risk_level as readonly string[] ?? [], projectRisk),
   );
 
   // Build set of covered obligation IDs from passing checks

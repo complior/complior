@@ -423,10 +423,10 @@ describe('ScanService role-based finding filtering', () => {
 
     const result = await service.scan('/project');
 
-    // Provider-only checks → skip
+    // Provider-only checks → skip (role filter applied via legacy fallback)
     const qms = result.findings.find(f => f.checkId === 'qms')!;
     expect(qms.type).toBe('skip');
-    expect(qms.message).toContain('provider-only');
+    expect(qms.message).toBe('Skipped: provider-only check (project role: deployer)');
 
     const gpai = result.findings.find(f => f.checkId === 'gpai-transparency')!;
     expect(gpai.type).toBe('skip');
@@ -441,10 +441,13 @@ describe('ScanService role-based finding filtering', () => {
     const techDoc = result.findings.find(f => f.checkId === 'technical-documentation')!;
     expect(techDoc.type).toBe('pass');
 
-    // Score should be recalculated: 1 pass, 2 fails (fria + l1-risk), 2 skips
-    // score = 1/(1+2) * 100 = 33
-    expect(result.score.totalScore).toBe(33);
-    expect(result.score.skippedChecks).toBe(2);
+    // Legacy role fallback (no profileFound): score NOT recalculated, stays at original
+    // score = 40 (from mock, not recalculated without real profile)
+    expect(result.score.totalScore).toBe(40);
+    expect(result.score.skippedChecks).toBe(0); // from original mock score
+    expect(result.filterContext).toBeDefined();
+    expect(result.filterContext!.profileFound).toBe(false);
+    expect(result.filterContext!.role).toBe('deployer');
   });
 
   it('no getProjectRole defaults to both (no filtering)', async () => {

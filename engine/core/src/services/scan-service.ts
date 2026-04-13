@@ -15,6 +15,8 @@ import type { AuditStore } from '../domain/audit/audit-trail.js';
 import { computeComplianceDiff, formatDiffMarkdown, type ComplianceDiff } from '../domain/scanner/compliance-diff.js';
 import { loadCustomBannedPackages } from '../domain/scanner/rules/banned-packages.js';
 import { filterFindingsByRole } from '../domain/scanner/role-filter.js';
+import { filterFindingsByRiskLevel } from '../domain/scanner/risk-level-filter.js';
+import type { RiskLevel, ScanFilterContext } from '../types/common.types.js';
 import type { ScanCache } from '../domain/scanner/scan-cache.js';
 
 export interface ScanServiceDeps {
@@ -33,7 +35,14 @@ export interface ScanServiceDeps {
     readonly updatePassportsAfterScan?: (result: ScanResult, projectPath?: string) => Promise<void>;
     readonly initPassport?: (projectPath?: string) => Promise<{ manifests: readonly unknown[]; savedPaths: readonly string[]; skipped: readonly string[] }>;
   };
-  /** Project role from onboarding profile. Injected via composition-root. */
+  /** Project profile from onboarding. Injected via composition-root. */
+  readonly getProjectProfile?: (projectPath: string) => Promise<{
+    role: Role;
+    riskLevel: RiskLevel | null;
+    domain: string | null;
+    applicableObligations: readonly string[];
+  } | null>;
+  /** Legacy: project role only (V1-M07 compatibility). Falls back if getProjectProfile absent. */
   readonly getProjectRole?: (projectPath: string) => Promise<Role>;
   /** Persist per-mode scan score to .complior/scan-scores.json. */
   readonly saveScanModeScore?: (mode: ScanMode, score: number, zone: string) => Promise<void>;
@@ -163,14 +172,73 @@ export const createScanService = (deps: ScanServiceDeps) => {
     } catch { /* non-fatal */ }
   };
 
-  /** Apply role filtering to a scan result (pure, no caching side effects). */
-  const applyRoleFilter = async (scanResult: ScanResult, projectPath: string): Promise<ScanResult> => {
-    const projectRole = deps.getProjectRole
-      ? await deps.getProjectRole(projectPath)
-      : 'both' as Role;
-    const filtered = filterFindingsByRole(scanResult.findings, projectRole);
-    if (filtered === scanResult.findings) return scanResult;
-    return { ...scanResult, findings: filtered, score: recalcScore(filtered, scanResult.score) };
+  /** Apply role + risk-level profile filters and build filterContext. Returns updated result with filterContext. */
+  const applyProfileFilters = async (scanResult: ScanResult, projectPath: string): Promise<ScanResult> => {
+    // V1-M08 T-4: getProjectProfile returns a real profile (preferred)
+    // Legacy fallback: getProjectRole for V1-M07 compatibility (no real profile, only role)
+    let profileFound = false;
+    let role: Role = 'both';
+    let riskLevel: RiskLevel | null = null;
+    let domain: string | null = null;
+
+    const realProfile = deps.getProjectProfile ? await deps.getProjectProfile(projectPath) : null;
+
+    if (realProfile) {
+      profileFound = true;
+      role = realProfile.role;
+      riskLevel = realProfile.riskLevel;
+      domain = realProfile.domain;
+    } else if (deps.getProjectRole) {
+      // Legacy fallback: derive role from old mechanism (no real profile → profileFound=false)
+      role = await deps.getProjectRole(projectPath);
+      // riskLevel stays null, domain stays null
+    }
+
+    // Build effective profile for filtering
+    const effectiveProfile = realProfile ?? { role, riskLevel: null, domain: null, applicableObligations: [] as readonly string[] };
+
+    let findings = scanResult.findings;
+    let skippedByRole = 0;
+    let skippedByRiskLevel = 0;
+
+    // Step 1: Role filter — count skips
+    const afterRole = filterFindingsByRole(findings, effectiveProfile.role);
+    for (let i = 0; i < findings.length; i++) {
+      if (findings[i]!.type !== 'skip' && afterRole.find(f => f.checkId === findings[i]!.checkId)?.type === 'skip') {
+        skippedByRole++;
+      }
+    }
+
+    // Step 2: Risk-level filter — count new skips (not already role-skipped)
+    // Only apply risk filter when real profile exists (profileFound=true)
+    const afterRisk = realProfile ? filterFindingsByRiskLevel(afterRole, effectiveProfile.riskLevel) : afterRole;
+    for (let i = 0; i < afterRole.length; i++) {
+      if (afterRole[i]!.type !== 'skip' && afterRisk.find(f => f.checkId === afterRole[i]!.checkId)?.type === 'skip') {
+        skippedByRiskLevel++;
+      }
+    }
+
+    findings = afterRisk;
+
+    const filterContext: ScanFilterContext = {
+      role,
+      riskLevel,
+      domain,
+      profileFound,
+      totalObligations: scanResult.findings.length,
+      applicableObligations: findings.filter(f => f.type !== 'skip').length,
+      skippedByRole,
+      skippedByRiskLevel,
+    };
+
+    if (profileFound) {
+      // Only recalculate score when real profile is available
+      const filteredScore = recalcScore(findings, scanResult.score);
+      return { ...scanResult, findings, score: filteredScore, filterContext };
+    }
+
+    // No real profile — return scan result with filtered findings + filterContext (no score recalculation)
+    return { ...scanResult, findings, filterContext };
   };
 
   const scan = async (projectPath: string): Promise<ScanResult> => {
@@ -184,7 +252,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     const projectHash = computeProjectHash(ctx);
     if (cachedProjectHash === projectHash && cachedResult !== null) {
       // Content identical — apply role filter (role may have changed) and return
-      const result = await applyRoleFilter({
+      const result = await applyProfileFilters({
         ...cachedResult,
         scannedAt: new Date().toISOString(),
       }, projectPath);
@@ -200,7 +268,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     cachedResult = enriched;
 
     // Apply role-based filtering after caching
-    const result = await applyRoleFilter(enriched, projectPath);
+    const result = await applyProfileFilters(enriched, projectPath);
 
     // E-11: Persist file-level cache to disk (survives daemon restarts)
     if (deps.scanCache) {
@@ -276,7 +344,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     const rawResult = await scanner.scanDeep(ctx, fileContents);
     const enriched = await enrichWithAgentIds(rawResult, projectPath, deps.passportService, ctx);
-    const result = await applyRoleFilter(enriched, projectPath);
+    const result = await applyProfileFilters(enriched, projectPath);
 
     setLastScanResult(result);
     await deps.saveScanModeScore?.('llm', result.score.totalScore, result.score.zone);
@@ -323,7 +391,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
     const ctx = await collectFiles(projectPath);
     const rawResult = await scanner.scanTier2(ctx);
     const enriched = await enrichWithAgentIds(rawResult, projectPath, deps.passportService, ctx);
-    const result = await applyRoleFilter(enriched, projectPath);
+    const result = await applyProfileFilters(enriched, projectPath);
 
     setLastScanResult(result);
     await deps.saveScanModeScore?.('security', result.score.totalScore, result.score.zone);

@@ -284,6 +284,20 @@ export const loadApplication = async (): Promise<Application> => {
     } catch (e) { log.debug('Profile load:', e); }
     return 'both';
   };
+  /** V1-M08 T-4: Full profile loader for context-aware scan (role + riskLevel + domain). */
+  const getProjectProfile = async (_projectPath: string) => {
+    try {
+      const profile = await lazyWizard?.loadProfile();
+      if (!profile) return null;
+      return {
+        role: (profile.organization?.role ?? 'both') as import('./types/common.types.js').Role,
+        riskLevel: (profile.computed?.riskLevel ?? null) as import('./types/common.types.js').RiskLevel | null,
+        domain: profile.business?.domain ?? null,
+        applicableObligations: profile.computed?.applicableObligations ?? [],
+      };
+    } catch (e) { log.debug('Profile load:', e); }
+    return null;
+  };
 
   const scanService = createScanService({
     scanner,
@@ -295,7 +309,8 @@ export const loadApplication = async (): Promise<Application> => {
     auditStore,
     scanCache,
     passportService: lazyScanPassport,
-    getProjectRole,
+    getProjectProfile,
+    getProjectRole, // kept for legacy tests (V1-M07)
     saveScanModeScore,
   });
 

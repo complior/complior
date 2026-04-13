@@ -146,6 +146,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     const scoreAfter = results.at(-1)?.scoreAfter ?? currentScore;
 
     const unfixedFindings = fixService.getUnfixedFindings();
+    const lastScan = fixService.getLastScanResult?.() ?? null;
 
     return c.json({
       results,
@@ -156,6 +157,8 @@ export const createFixRoute = (deps: FixRouteDeps) => {
         severity: f.severity,
         fix: f.fix,
       })),
+      /** V1-M08 T-8: filterContext from last scan — helps caller understand applied filter scope */
+      filterContext: lastScan?.filterContext ?? null,
     });
   });
 
