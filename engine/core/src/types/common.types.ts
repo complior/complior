@@ -412,3 +412,42 @@ export interface RiskRegisterResult {
   readonly highCount: number;
   readonly averageRiskScore: number;
 }
+
+// --- Score Transparency (V1-M10) ---
+
+/** V1-M10: Explains what the compliance score covers and doesn't cover. */
+export interface ScoreDisclaimer {
+  readonly summary: string;
+  readonly coveredObligations: number;
+  readonly totalApplicableObligations: number;
+  readonly coveragePercent: number;
+  readonly uncoveredCount: number;
+  readonly limitations: readonly string[];
+  readonly criticalCapExplanation: string | null;
+}
+
+/** V1-M10: Category breakdown with human-readable explanation. */
+export interface CategoryBreakdown {
+  readonly category: string;
+  readonly score: number;
+  readonly weight: number;
+  readonly passed: number;
+  readonly failed: number;
+  readonly impact: 'high' | 'medium' | 'low';
+  readonly topFailures: readonly string[];
+  readonly explanation: string;
+}
+
+/** V1-M10: Aggregated compliance posture for `complior status`. */
+export interface CompliancePosture {
+  readonly score: ScoreBreakdown;
+  readonly disclaimer: ScoreDisclaimer;
+  readonly categories: readonly CategoryBreakdown[];
+  readonly topActions: readonly PriorityAction[];
+  readonly profile: ScanFilterContext | null;
+  readonly lastScanAt: string | null;
+  readonly passportCount: number;
+  readonly documentCount: number;
+  readonly evidenceVerified: boolean | null;
+}
+
