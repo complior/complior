@@ -1,7 +1,7 @@
 # Project State
 
 > Last updated: 2026-04-13
-> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE (context-scan) · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M08** — awaiting user merge to main
+> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE · V1-M09 DONE (onboarding enrichment) · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M09** — awaiting architect ratify TD-5/6, resolve TD-7, then user merge
 
 ## Overview
 
@@ -51,6 +51,7 @@ cli/, engine/                → Code (GREEN)
 | V1-M06 | ✅ DONE | FA-07 (TUI) — UX quality sprint, 11 RED→GREEN | `feature/V1-M06-ux-quality` | — |
 | V1-M07 | 🔴 RED | FA-04 (Passport), FA-05 (Report) — ISO 42001 Document Generators. Specs ready, awaiting dev. | `feature/V1-M07-iso42001` | — |
 | V1-M08 | ✅ DONE | FA-01 (Scanner) — Context-Aware Scan: profile filters, risk-level, filterContext | `feature/V1-M08-context-scan` | — |
+| V1-M09 | ✅ DONE | Onboarding Enrichment — 9 questions, dynamic obligation filtering, reconfigure, GPAI auto-detect | `feature/V1-M09-onboarding-enrichment` | — |
 
 > Old milestones (M01-M04, S01-S12) archived to `docs/old/sprints/`
 
@@ -101,9 +102,9 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| Engine TS (vitest) | 2225 passed, 10 skipped | ✅ GREEN (163 files) |
+| Engine TS (vitest) | 2261 passed, 10 skipped | ✅ GREEN (166 files) |
 | CLI Rust (cargo test) | 199 | ✅ GREEN |
-| **Total** | **2424** | ✅ **ALL GREEN** |
+| **Total** | **2460** | ✅ **ALL GREEN** |
 | Acceptance: verify_pipeline.sh | 9/9 checks | ✅ PASS |
 | Acceptance: verify_report_export.sh | 6/6 checks | ✅ PASS |
 | E2E: pipeline-e2e.test.ts | 5 passed, 1 skipped (LLM — no key) | ✅ GREEN |
@@ -111,6 +112,7 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | E2E: report-html.test.ts | 11 passed | ✅ GREEN |
 | E2E: ci-flags-e2e.test.ts | 7 passed, 3 skipped (eval target — no env) | ✅ GREEN |
 | E2E: context-scan-e2e.test.ts | 5 passed (V1-M08) | ✅ GREEN |
+| E2E: onboarding-enrichment-e2e.test.ts | 6 passed (V1-M09) | ✅ GREEN |
 
 ---
 
@@ -213,6 +215,35 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 ---
 
+## V1-M09 Delivery (feature/V1-M09-onboarding-enrichment)
+
+**Completed:** 2026-04-13 | **Status:** ✅ DONE — REVIEWER APPROVED (conditions: architect ratify TD-17/18, resolve TD-19)
+
+**Branch:** `feature/V1-M09-onboarding-enrichment` (7 commits on top of dev: 23af11b..c7ccff2)
+
+### What was delivered:
+
+| Component | Description |
+|-----------|-------------|
+| 5 question blocks (9 Qs) | `onboarding/questions.ts` — role, business, data + NEW system, deployment |
+| Dynamic obligations | `onboarding/profile.ts` — `computeApplicableObligationsDynamic()` filters 108 obligations by role/risk/GPAI |
+| ProfileSchema fields | `onboarding/profile.ts` + `common.types.ts` — gpaiModel, autonomousDecisions, biometricData, userFacing |
+| `--reconfigure` flag | `wizard.ts` + `onboarding.route.ts` — re-run init to update profile |
+| GPAI auto-detect | `auto-detect.ts` — detect GPAI model SDKs (openai, anthropic, google, mistral, cohere) |
+| E2E tests | `onboarding-enrichment-e2e.test.ts` (6 tests) |
+| Unit tests | `onboarding.test.ts` (+14), `wizard-reconfigure.test.ts` (4), `auto-detect-gpai.test.ts` (10) |
+
+### Test specs delivered (architect):
+
+| File | Tests | Scope |
+|------|-------|-------|
+| `onboarding.test.ts` | +14 | T-6: question blocks, dynamic obligations, profile schema |
+| `wizard-reconfigure.test.ts` | 4 | T-4: reconfigure mode |
+| `auto-detect-gpai.test.ts` | 10 | T-5: GPAI detection from package.json |
+| `onboarding-enrichment-e2e.test.ts` | 6 | E2E: onboarding + scan integration |
+
+---
+
 ## Tech Debt
 
 | # | Description | File | Status |
@@ -233,3 +264,6 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | TD-14 | 🔴 OPEN: agent-discovery Express route parsing | `agent-discovery.ts` — `app.get('env')` parsed as route. RED test written (V1-M07). | dev fix |
 | TD-15 | 🔴 SCOPE VIOLATION: Dev changed existing test spec | V1-M08 `scan-service.test.ts` — dev changed score assertion 33→40, skippedChecks 2→0 in role-filter test. Legacy fallback no longer recalculates score. Original spec: score recalculated after role filtering. | architect ratify or revert |
 | TD-16 | 🟡 OPEN: Dev modified E2E test setup | V1-M08 `context-scan-e2e.test.ts` — dev added temp dir isolation (mkdtemp) to fix vitest module-state leakage. Assertions unchanged. Infra fix, not spec change. | architect ratify |
+| TD-17 | 🟡 OPEN: V1-M09 dev modified M08 E2E test data+assertions | `context-scan-e2e.test.ts` — TEST_PROFILE changed from 3 fake OBL-IDs → 19 real `eu-ai-act-OBL-*`. Assertions range→exact (applicableObligations=19). Stricter but scope violation. | architect ratify |
+| TD-18 | 🟡 OPEN: V1-M09 dev fixed field name in E2E test | `onboarding-enrichment-e2e.test.ts` — `applicableObligationCount`→`applicableObligations`. Architect spec naming mismatch. | architect ratify |
+| TD-19 | 🔴 OPEN: V1-M07 files duplicated on M09 branch | `iso-42001-controls.json`, `soa-generator.ts`, `risk-register-generator.ts`, `passport-documents.ts` — copied from M07 branch for typecheck. Merge conflict risk when M07 merges to dev. | architect resolve before merge |
