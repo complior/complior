@@ -182,6 +182,20 @@ export interface ExternalToolResult {
   readonly error?: string;
 }
 
+// --- Scan Filter Context ---
+
+/** Context about how scan findings were filtered based on project profile. */
+export interface ScanFilterContext {
+  readonly role: Role;
+  readonly riskLevel: string | null;
+  readonly domain: string | null;
+  readonly profileFound: boolean;
+  readonly totalObligations: number;
+  readonly applicableObligations: number;
+  readonly skippedByRole: number;
+  readonly skippedByRiskLevel: number;
+}
+
 // --- Scan ---
 
 export interface RegulationVersion {
@@ -214,6 +228,8 @@ export interface ScanResult {
   readonly tier?: ScanTier;
   readonly externalToolResults?: readonly ExternalToolResult[];
   readonly agentSummaries?: readonly AgentSummary[];
+  /** V1-M08: Context about profile-based filtering applied to scan findings. */
+  readonly filterContext?: ScanFilterContext;
 }
 
 // --- Project Profile ---

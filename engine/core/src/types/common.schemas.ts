@@ -41,7 +41,7 @@ const FindingExplanationSchema = z.object({
 
 const FindingSchema = z.object({
   checkId: z.string(),
-  type: z.enum(['pass', 'fail', 'skip']),
+  type: z.enum(['pass', 'fail', 'skip', 'info']),
   message: z.string(),
   severity: z.enum(['critical', 'high', 'medium', 'low', 'info']),
   file: z.string().optional(),
@@ -97,6 +97,19 @@ const RegulationVersionSchema = z.object({
   lastUpdated: z.string(),
 });
 
+// --- Filter context schema (V1-M08) ---
+
+const ScanFilterContextSchema = z.object({
+  role: z.enum(['provider', 'deployer', 'both']),
+  riskLevel: z.string().nullable(),
+  domain: z.string().nullable(),
+  profileFound: z.boolean(),
+  totalObligations: z.number(),
+  applicableObligations: z.number(),
+  skippedByRole: z.number(),
+  skippedByRiskLevel: z.number(),
+});
+
 // --- Top-level I/O schemas ---
 
 const ScanResultSchema = z.object({
@@ -109,6 +122,7 @@ const ScanResultSchema = z.object({
   deepAnalysis: z.boolean().optional(),
   l5Cost: z.number().optional(),
   regulationVersion: RegulationVersionSchema.optional(),
+  filterContext: ScanFilterContextSchema.optional(),
 });
 
 const EvidenceEntrySchema = z.object({

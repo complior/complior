@@ -11,8 +11,8 @@
 #[cfg(test)]
 mod contract_tests {
     use crate::types::{
-        CategoryScore, CodeContext, CodeContextLine, Finding, ScanResult, ScoreBreakdown, Severity,
-        Zone,
+        CategoryScore, CodeContext, CodeContextLine, Finding, ScanFilterContext, ScanResult,
+        ScoreBreakdown, Severity, TopAction, Zone,
     };
 
     /// Path to the shared contract sample (relative to workspace root).
@@ -136,7 +136,8 @@ mod contract_tests {
         let result: ScanResult = serde_json::from_str(&json).unwrap();
         assert!(result.score.confidence_summary.is_some());
         let cs = result.score.confidence_summary.as_ref().unwrap();
-        assert_eq!(cs["average"], 0.82);
+        assert_eq!(cs["pass"], 10);
+        assert_eq!(cs["total"], 14);
     }
 
     #[test]
@@ -223,5 +224,88 @@ mod contract_tests {
         assert!((result.score.total_score - result2.score.total_score).abs() < f64::EPSILON);
         assert_eq!(result.findings.len(), result2.findings.len());
         assert_eq!(result.project_path, result2.project_path);
+    }
+
+    // --- V1-M08: ScanFilterContext deserialization (T-6) ---
+
+    #[test]
+    fn contract_filter_context_deserialization() {
+        let json = sample_json();
+        let result: ScanResult = serde_json::from_str(&json).unwrap();
+
+        let ctx: &ScanFilterContext = result
+            .filter_context
+            .as_ref()
+            .expect("sample should have filterContext");
+
+        assert_eq!(ctx.role, "deployer");
+        assert_eq!(ctx.risk_level.as_deref(), Some("limited"));
+        assert_eq!(ctx.domain.as_deref(), Some("healthcare"));
+        assert!(ctx.profile_found);
+        assert_eq!(ctx.total_obligations, 57);
+        assert_eq!(ctx.applicable_obligations, 22);
+        assert_eq!(ctx.skipped_by_role, 4);
+        assert_eq!(ctx.skipped_by_risk_level, 8);
+    }
+
+    #[test]
+    fn contract_filter_context_absent() {
+        // Verify ScanResult deserializes correctly without filterContext
+        let json = r#"{
+            "score": {
+                "totalScore": 50, "zone": "yellow", "categoryScores": [],
+                "criticalCapApplied": false, "totalChecks": 5,
+                "passedChecks": 3, "failedChecks": 2, "skippedChecks": 0
+            },
+            "findings": [],
+            "projectPath": "/test",
+            "scannedAt": "2026-01-01T00:00:00Z",
+            "duration": 100,
+            "filesScanned": 5
+        }"#;
+        let result: ScanResult = serde_json::from_str(json).unwrap();
+        assert!(result.filter_context.is_none());
+        assert!(result.top_actions.is_none());
+    }
+
+    #[test]
+    fn contract_top_action_deserialization() {
+        let json = r#"{
+            "id": "l1-missing-fria",
+            "title": "Create FRIA document",
+            "severity": "high",
+            "command": "complior fix",
+            "projectedScore": 75.0,
+            "effort": "30 min",
+            "scoreImpact": 7.0
+        }"#;
+        let action: TopAction = serde_json::from_str(json).unwrap();
+        assert_eq!(action.id, "l1-missing-fria");
+        assert_eq!(action.title, "Create FRIA document");
+        assert_eq!(action.severity, "high");
+        assert_eq!(action.command, "complior fix");
+        assert!((action.projected_score.unwrap() - 75.0).abs() < f64::EPSILON);
+        assert_eq!(action.effort.as_deref(), Some("30 min"));
+    }
+
+    #[test]
+    fn contract_filter_context_roundtrip() {
+        let json = sample_json();
+        let result: ScanResult = serde_json::from_str(&json).unwrap();
+
+        // Serialize and deserialize the filter context
+        let serialized = serde_json::to_string(&result).expect("should serialize");
+        let result2: ScanResult = serde_json::from_str(&serialized).unwrap();
+
+        let ctx1 = result.filter_context.as_ref().unwrap();
+        let ctx2 = result2.filter_context.as_ref().unwrap();
+        assert_eq!(ctx1.role, ctx2.role);
+        assert_eq!(ctx1.risk_level, ctx2.risk_level);
+        assert_eq!(ctx1.domain, ctx2.domain);
+        assert_eq!(ctx1.profile_found, ctx2.profile_found);
+        assert_eq!(ctx1.total_obligations, ctx2.total_obligations);
+        assert_eq!(ctx1.applicable_obligations, ctx2.applicable_obligations);
+        assert_eq!(ctx1.skipped_by_role, ctx2.skipped_by_role);
+        assert_eq!(ctx1.skipped_by_risk_level, ctx2.skipped_by_risk_level);
     }
 }

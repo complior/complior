@@ -19,7 +19,7 @@
       }
     ],
     "criticalCapApplied": false,
-    "confidenceSummary": { "average": 0.82, "low_confidence_count": 2 },
+    "confidenceSummary": { "pass": 10, "likelyPass": 2, "uncertain": 1, "likelyFail": 0, "fail": 1, "total": 14 },
     "totalChecks": 20,
     "passedChecks": 14,
     "failedChecks": 4,
@@ -50,7 +50,7 @@
       "priority": 3,
       "confidence": 0.95,
       "confidenceLevel": "high",
-      "evidence": [{ "source": "ast", "pattern": "new OpenAI()" }]
+      "evidence": [{ "findingId": "l4-bare-api-call-0", "layer": "L4", "timestamp": "2026-03-01T14:30:00Z", "source": "ast", "snippet": "new OpenAI()" }]
     },
     {
       "checkId": "l1-missing-fria",
@@ -75,5 +75,15 @@
   "filesScanned": 47,
   "deepAnalysis": false,
   "l5Cost": 0.0,
-  "regulationVersion": { "version": "1.0.0", "framework": "eu-ai-act" }
+  "regulationVersion": { "regulation": "eu-ai-act", "version": "2024/1689", "rulesVersion": "1.0.0", "checkCount": 33, "lastUpdated": "2026-03-01" },
+  "filterContext": {
+    "role": "deployer",
+    "riskLevel": "limited",
+    "domain": "healthcare",
+    "profileFound": true,
+    "totalObligations": 57,
+    "applicableObligations": 22,
+    "skippedByRole": 4,
+    "skippedByRiskLevel": 8
+  }
 }
