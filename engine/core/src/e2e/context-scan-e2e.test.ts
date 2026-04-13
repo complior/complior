@@ -173,7 +173,8 @@ describe.skipIf(!canRunE2E)('Context-Scan E2E — with profile (V1-M08)', () => 
     expect(Array.isArray(body['topActions'])).toBe(true);
 
     const actions = body['topActions'] as Array<Record<string, unknown>>;
-    expect(actions.length).toBeLessThanOrEqual(3);
+    // V1-M10 raised topActions limit from 3 → 5 for better score transparency
+    expect(actions.length).toBeLessThanOrEqual(5);
 
     // Each action has required TopAction fields
     for (const action of actions) {
