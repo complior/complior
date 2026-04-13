@@ -18,6 +18,10 @@ import { generatePolicy as generatePolicyDoc } from '../domain/documents/policy-
 import type { PolicyResult } from '../domain/documents/policy-generator.js';
 import { generateDocument, ALL_DOC_TYPES, TEMPLATE_FILE_MAP } from '../domain/documents/document-generator.js';
 import type { DocType, DocResult } from '../domain/documents/document-generator.js';
+import { generateSoA } from '../domain/documents/soa-generator.js';
+import type { SoAResult } from '../types/common.types.js';
+import { generateRiskRegister } from '../domain/documents/risk-register-generator.js';
+import type { RiskRegisterResult } from '../types/common.types.js';
 import type { IndustryId } from '../data/industry-patterns.js';
 import { INDUSTRY_TEMPLATE_MAP } from '../data/industry-patterns.js';
 import type { PassportServiceDeps } from './passport-service.js';

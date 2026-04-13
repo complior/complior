@@ -64,6 +64,8 @@ import { analyzeScenario } from './domain/whatif/scenario-engine.js';
 import { generateAllConfigs } from './domain/whatif/config-fixer.js';
 import { simulateActions } from './domain/whatif/simulate-actions.js';
 import { compareSeverity } from './types/common.types.js';
+import type { Iso42001Control } from './types/common.types.js';
+import iso42001ControlsData from '../data/iso-42001-controls.json' with { type: 'json' };
 import { autoDetect } from './onboarding/auto-detect.js';
 import { createInitialState as createOnboardingInitialState } from './domain/onboarding/guided-onboarding.js';
 
@@ -315,11 +317,18 @@ export const loadApplication = async (): Promise<Application> => {
   });
 
   // Template loader for fixer
-  const templatesDir = resolve(
-    fileURLToPath(import.meta.url), '..', '..', 'data', 'templates', 'eu-ai-act',
+  const templatesBaseDir = resolve(
+    fileURLToPath(import.meta.url), '..', '..', 'data', 'templates',
   );
+  const euAiActTemplatesDir = resolve(templatesBaseDir, 'eu-ai-act');
+  const iso42001TemplatesDir = resolve(templatesBaseDir, 'iso-42001');
   const loadTemplate = async (templateFile: string): Promise<string> => {
-    return readFile(resolve(templatesDir, templateFile), 'utf-8');
+    // Try eu-ai-act first, then iso-42001
+    try {
+      return await readFile(resolve(euAiActTemplatesDir, templateFile), 'utf-8');
+    } catch {
+      return readFile(resolve(iso42001TemplatesDir, templateFile), 'utf-8');
+    }
   };
 
   const undoService = createUndoService({
@@ -575,19 +584,6 @@ export const loadApplication = async (): Promise<Application> => {
     return readFile(resolve(policyTemplatesDir, templateFile), 'utf-8');
   };
 
-  // V1-M07: load ISO 42001 Annex A controls
-  const iso42001Controls: readonly import('./types/common.types.js').Iso42001Control[] = await (async () => {
-    try {
-      const raw = await readFile(
-        resolve(fileURLToPath(import.meta.url), '..', '..', 'data', 'iso-42001-controls.json'), 'utf-8',
-      );
-      const parsed = JSON.parse(raw) as unknown[];
-      return parsed as readonly import('./types/common.types.js').Iso42001Control[];
-    } catch {
-      return [] as readonly import('./types/common.types.js').Iso42001Control[];
-    }
-  })();
-
   const passportService = createPassportService({
     collectFiles,
     scanner,
@@ -598,7 +594,7 @@ export const loadApplication = async (): Promise<Application> => {
     loadPolicyTemplate,
     evidenceStore,
     auditStore,
-    iso42001Controls,
+    iso42001Controls: iso42001ControlsData as unknown as readonly Iso42001Control[],
   });
 
   // Shared helper: passport completeness lookup (used by cost + debt services)

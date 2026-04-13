@@ -5,9 +5,19 @@ All notable changes to Complior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.5] - 2026-04-11
+## [0.9.5] - 2026-04-12
 
 ### Added
+
+**UX Quality Polish (V1-M06)**
+- Fix preview renders full template content (not `[TEMPLATE:xxx]` markers)
+- Action plan returns top-5 prioritized actions with `effort` + `projectedScore`
+- Obligations endpoint filters by project role + risk level
+- L4 findings grouped by checkId (aggregated: `count` + `affectedFiles`)
+- Report builder populates `documentContents` from project docs
+- Passport model detection strips comments, filters env var keys
+- Fix preview includes `projectedScore` (what-if simulation)
+- 29 new UX quality tests (11 unit + 18 E2E-gated)
 
 **Full CLI Flag Coverage (v1.0 pipeline commands)**
 - `complior scan` — all 12 flags wired and E2E tested: `--json`, `--sarif`, `--ci`, `--threshold`, `--fail-on`, `--diff`, `--fail-on-regression`, `--comment`, `--deep`, `--llm`, `--quiet`, `--agent`
@@ -43,8 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- 2360 total tests: 2165 TS (vitest) + 195 Rust (cargo test) — all GREEN
-- Reviewer approved: 113 files, +11,391 lines, 23 commits on `feature/reporter`
+- 2389 total tests: 2194 TS (vitest, 157 files) + 195 Rust (cargo test) — all GREEN
+- TypeScript typecheck clean: `tsc --noEmit` → 0 errors
+- Reviewer approved: V1-M01..M06 complete
 - EU AI Act enforcement: August 2, 2026 (~4 months)
 
 ## [0.9.0] - 2026-04-03
