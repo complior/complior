@@ -1,73 +1,60 @@
 import { Hono } from 'hono';
-import type { ScanResult } from '../../types/common.types.js';
+import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import type { ScanResult, Role } from '../../types/common.types.js';
+import { CHECK_TO_OBLIGATIONS, buildOblToChecks } from '../../data/check-to-obligations.js';
 
 export interface ObligationsRouteDeps {
   readonly obligations: readonly Record<string, unknown>[];
   readonly getLastScan: () => ScanResult | null;
 }
 
+/** Check if an obligation applies to the given project role. */
+const roleApplies = (oblRole: string, projectRole: Role): boolean => {
+  if (projectRole === 'both') return true;
+  return oblRole === 'both' || oblRole === projectRole;
+};
+
+/** Check if an obligation applies to the given risk class.
+ *  Fallback: if no risk_class is configured, all risk levels apply. */
+const riskLevelApplies = (oblRiskLevels: readonly unknown[], projectRiskClass: string | null): boolean => {
+  if (!projectRiskClass) return true;
+  return (oblRiskLevels as string[]).length === 0
+    || (oblRiskLevels as string[]).includes(projectRiskClass);
+};
+
+/** Load project role and risk class from .complior/profile.json if available. */
+const loadProjectProfile = async (projectPath: string): Promise<{ role: Role; riskClass: string | null }> => {
+  try {
+    const profilePath = resolve(projectPath, '.complior', 'profile.json');
+    const raw = await readFile(profilePath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    const role = parsed?.answers?.org_role ?? parsed?.role;
+    const validRole: Role =
+      role === 'provider' || role === 'deployer' || role === 'both'
+        ? role as Role
+        : 'both';
+    const riskClass = parsed?.answers?.risk_class ?? parsed?.risk_class ?? null;
+    return { role: validRole, riskClass: typeof riskClass === 'string' ? riskClass : null };
+  } catch {
+    return { role: 'both', riskClass: null };
+  }
+};
+
 export const createObligationsRoute = (deps: ObligationsRouteDeps) => {
   const app = new Hono();
 
-  // Map scanner checkIds → obligation IDs they cover
-  // Keys match actual checkId values emitted by the 5-layer scanner
-  const checkToObls: Readonly<Record<string, readonly string[]>> = {
-    // L1 file-presence checks
-    'ai-disclosure': ['OBL-013', 'OBL-052'],
-    'content-marking': ['OBL-050', 'OBL-051'],
-    'interaction-logging': ['OBL-006', 'OBL-006A'],
-    'ai-literacy': ['OBL-001', 'OBL-001A'],
-    'gpai-transparency': ['OBL-022', 'OBL-024'],
-    'compliance-metadata': ['OBL-005'],
-    'documentation': ['OBL-005', 'OBL-005A'],
-    'passport-presence': ['OBL-049'],
-    'passport-completeness': ['OBL-034'],
-    // L2 document-structure checks
-    'l2-tech-documentation': ['OBL-005', 'OBL-005A'],
-    'l2-monitoring-policy': ['OBL-011', 'OBL-009'],
-    'l2-fria': ['OBL-013'],
-    'l2-ai-literacy': ['OBL-001'],
-    'l2-art5-screening': ['OBL-002'],
-    'l2-worker-notification': ['OBL-010A'],
-    // L3 config/dependency checks
-    'l3-ai-sdk-detected': ['OBL-005'],
-    'l3-log-retention': ['OBL-006A'],
-    'l3-ci-compliance': ['OBL-017'],
-    'l3-missing-bias-testing': ['OBL-004A'],
-    'l3-banned-emotion-recognition': ['OBL-002F'],
-    // L4 AST pattern checks
-    'l4-human-oversight': ['OBL-008', 'OBL-014'],
-    'l4-kill-switch': ['OBL-008'],
-    'l4-logging': ['OBL-006', 'OBL-012'],
-    'l4-disclosure': ['OBL-013', 'OBL-052'],
-    'l4-content-marking': ['OBL-050', 'OBL-051'],
-    'l4-data-governance': ['OBL-004', 'OBL-010'],
-    'l4-accuracy-robustness': ['OBL-007'],
-    'l4-gpai-transparency': ['OBL-022', 'OBL-024'],
-    'l4-deployer-monitoring': ['OBL-011'],
-    'l4-record-keeping': ['OBL-012'],
-    'l4-cybersecurity': ['OBL-015'],
-    'l4-conformity-assessment': ['OBL-019'],
-    'l4-security-risk': ['OBL-015'],
-    'l4-bare-llm': ['OBL-052'],
-    // Cross-layer checks
-    'cross-banned-with-wrapper': ['OBL-002'],
-    'cross-logging-no-retention': ['OBL-006A'],
-    'cross-kill-switch-no-test': ['OBL-008'],
-  };
+  const checkToObls = CHECK_TO_OBLIGATIONS;
+  const oblToChecks = buildOblToChecks();
 
-  // Build reverse mapping: obligation ID → check IDs that cover it
-  const oblToChecks = new Map<string, string[]>();
-  for (const [checkId, oblIds] of Object.entries(checkToObls)) {
-    for (const oblId of oblIds) {
-      const existing = oblToChecks.get(oblId) ?? [];
-      existing.push(checkId);
-      oblToChecks.set(oblId, existing);
-    }
-  }
-
-  app.get('/obligations', (c) => {
+  app.get('/obligations', async (c) => {
+    const pathParam = c.req.query('path');
     const scan = deps.getLastScan();
+
+    // Load project role + risk class for filtering
+    const { role: projectRole, riskClass } = pathParam
+      ? await loadProjectProfile(pathParam)
+      : { role: 'both' as Role, riskClass: null };
 
     // Build a set of covered obligation IDs from scan findings
     const coveredIds = new Set<string>();
@@ -82,26 +69,34 @@ export const createObligationsRoute = (deps: ObligationsRouteDeps) => {
       }
     }
 
-    const result = deps.obligations.map((obl) => {
-      const oblId = (obl['obligation_id'] as string) ?? '';
-      const shortId = oblId.replace(/^eu-ai-act-/, '').toUpperCase();
-      const covered = coveredIds.has(shortId);
-      const linkedChecks = oblToChecks.get(shortId) ?? [];
+    const oblRiskLevels = (obl: Record<string, unknown>): readonly unknown[] =>
+      obl['applies_to_risk_level'] as readonly unknown[] ?? [];
 
-      return {
-        id: shortId,
-        article: obl['article_reference'] ?? '',
-        title: obl['title'] ?? '',
-        description: obl['description'] ?? '',
-        role: obl['applies_to_role'] ?? 'both',
-        risk_levels: obl['applies_to_risk_level'] ?? [],
-        severity: obl['severity'] ?? 'medium',
-        deadline: obl['deadline'] ?? null,
-        obligation_type: obl['obligation_type'] ?? '',
-        covered,
-        linked_checks: linkedChecks,
-      };
-    });
+    const result = deps.obligations
+      .filter((obl) =>
+        roleApplies(String(obl['applies_to_role'] ?? 'both'), projectRole)
+        && riskLevelApplies(oblRiskLevels(obl), riskClass),
+      )
+      .map((obl) => {
+        const oblId = (obl['obligation_id'] as string) ?? '';
+        const shortId = oblId.replace(/^eu-ai-act-/, '').toUpperCase();
+        const covered = coveredIds.has(shortId);
+        const linkedChecks = oblToChecks.get(shortId) ?? [];
+
+        return {
+          id: shortId,
+          article: obl['article_reference'] ?? '',
+          title: obl['title'] ?? '',
+          description: obl['description'] ?? '',
+          role: obl['applies_to_role'] ?? 'both',
+          risk_levels: obl['applies_to_risk_level'] ?? [],
+          severity: obl['severity'] ?? 'medium',
+          deadline: obl['deadline'] ?? null,
+          obligation_type: obl['obligation_type'] ?? '',
+          covered,
+          linked_checks: linkedChecks,
+        };
+      });
 
     return c.json(result);
   });

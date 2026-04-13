@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ScanService } from '../../services/scan-service.js';
 import type { ScanResult } from '../../types/common.types.js';
 import { parseBody, requireQuery } from '../utils/validation.js';
+import type { PriorityAction } from '../../domain/reporter/types.js';
 
 const ScanRequestSchema = z.object({
   path: z.string().min(1),
@@ -21,14 +22,39 @@ export interface ScanRouteDeps {
   readonly getLastScan: () => ScanResult | null;
 }
 
+/** V1-M08 T-5: Build topActions from scan result (top-3 priority actions from fail findings). */
+const computeTopActions = (result: ScanResult): Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>[] =>
+  result.findings
+    .filter((f) => f.type === 'fail')
+    .sort((a, b) => {
+      const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+      return (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5);
+    })
+    .slice(0, 3)
+    .map((f) => ({
+      source: 'scan' as const,
+      id: f.checkId,
+      title: f.fix ?? f.message,
+      article: f.articleReference ?? '',
+      severity: f.severity,
+      deadline: null,
+      daysLeft: null,
+      scoreImpact: f.priority ?? 5,
+      fixAvailable: !!f.fixDiff || !!f.fix,
+      command: 'complior fix',
+      priorityScore: f.priority ?? 5,
+    }));
+
 export const createScanRoute = (deps: ScanRouteDeps) => {
   const app = new Hono();
   const { scanService } = deps;
 
   app.post('/scan', async (c) => {
     const data = await parseBody(c, ScanRequestSchema);
-
     const result = await scanService.scan(data.path);
+
+    /** V1-M08 T-5: include top-3 priority actions in scan response */
+    const topActions = computeTopActions(result);
 
     // Auto-sync: if saasToken provided, push scan to SaaS
     const saasToken = data.saasToken;
@@ -54,7 +80,7 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
       }
     }
 
-    return c.json(result);
+    return c.json({ ...result, topActions });
   });
 
   app.post('/scan/deep', async (c) => {

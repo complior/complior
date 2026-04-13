@@ -8,10 +8,19 @@ const PdfReportSchema = z.object({
   isFree: z.boolean().optional(),
 });
 
+const HtmlReportSchema = z.object({
+  outputPath: z.string().optional(),
+});
+
+const MarkdownReportSchema = z.object({
+  outputPath: z.string().optional(),
+});
+
 export const createReportRoute = (reportService: ReportService) => {
   const app = new Hono();
 
-  app.post('/report/pdf', async (c) => {
+  // Existing: generate audit PDF
+  app.post('/report/status/pdf', async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = PdfReportSchema.safeParse(body);
     const options = parsed.success ? parsed.data : {};
@@ -20,9 +29,30 @@ export const createReportRoute = (reportService: ReportService) => {
     return c.json({ path: result.path, pages: result.pages, format: 'pdf' });
   });
 
-  app.post('/report/markdown', async (c) => {
-    const result = await reportService.generateMarkdown();
+  // Existing: generate compliance markdown
+  app.post('/report/status/markdown', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = MarkdownReportSchema.safeParse(body);
+    const options = parsed.success ? parsed.data : {};
+
+    const result = await reportService.generateMarkdown(options);
     return c.json({ path: result.path, format: 'markdown' });
+  });
+
+  // New: full compliance report (JSON)
+  app.get('/report/status', async (c) => {
+    const report = await reportService.generateReport();
+    return c.json(report);
+  });
+
+  // New: generate offline HTML report (--share)
+  app.post('/report/share', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = HtmlReportSchema.safeParse(body);
+    const options = parsed.success ? parsed.data : {};
+
+    const result = await reportService.generateOfflineHtml(options);
+    return c.json({ path: result.path, format: 'html' });
   });
 
   return app;

@@ -1,6 +1,6 @@
 {
   "name": "@complior/engine",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "type": "module",
   "main": "src/index.ts",
   "description": "AI Act Compliance Engine — deterministic scanner, auto-fixer, reporter, and MCP server for EU AI Act. Powers the Complior CLI daemon.",
@@ -57,15 +57,18 @@
     "@ai-sdk/anthropic": "^2.0.65",
     "@ai-sdk/openai": "^2.0.91",
     "@hono/node-server": "^1.19.10",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "ai": "^5.0.135",
     "chokidar": "^4.0.0",
     "hono": "^4.12.7",
+    "pdfkit": "^0.18.0",
     "simple-git": "^3.27.0",
     "tsx": "^4.21.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pdfkit": "^0.13.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   }

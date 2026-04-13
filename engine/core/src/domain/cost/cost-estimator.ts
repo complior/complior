@@ -63,7 +63,7 @@ export const computeCostEstimate = (input: CostEstimateInput): CostEstimateResul
   // 1. Remediation cost per finding (only failed checks)
   const failFindings = findings.filter(f => f.status === 'fail');
   for (const finding of failFindings) {
-    const hours = SEVERITY_HOURS[finding.severity] ?? 2;
+    const hours = SEVERITY_HOURS[finding.severity as SeverityLevel] ?? 2;
     breakdown.push({
       category: 'remediation',
       item: finding.checkId,

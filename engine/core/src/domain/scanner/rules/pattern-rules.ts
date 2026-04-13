@@ -369,6 +369,15 @@ export const PATTERN_RULES: readonly PatternRule[] = [
   {
     category: 'bare-llm',
     patternType: 'negative',
+    regex: /client\.chat\.completions\.create\s*\(/gi,
+    label: 'OpenAI SDK TypeScript bare chat.completions.create call',
+    obligationId: 'eu-ai-act-OBL-015',
+    article: 'Art. 50(1)',
+    recommendation: 'Wrap LLM calls with complior.wrap() or add AI disclosure',
+  },
+  {
+    category: 'bare-llm',
+    patternType: 'negative',
     regex: /model\.generate\s*\(/gi,
     label: 'Generic model generate call',
     obligationId: 'eu-ai-act-OBL-015',

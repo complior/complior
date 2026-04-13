@@ -5,7 +5,7 @@
  */
 
 import type { ConformityTest } from '../../domain/eval/types.js';
-import { ESCALATION_PATTERNS, KILL_SWITCH_PATTERNS, REFUSAL_PATTERNS } from './deterministic-evaluator.js';
+import { ESCALATION_PATTERNS, KILL_SWITCH_PATTERNS } from './deterministic-evaluator.js';
 
 export const CT_2_DETERMINISTIC: readonly ConformityTest[] = [
   // Escalation paths

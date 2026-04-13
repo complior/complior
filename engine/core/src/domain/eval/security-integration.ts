@@ -47,21 +47,23 @@ export const OWASP_LLM_LABELS: Readonly<Record<OwaspLlmCategory, string>> = Obje
 export const adaptProbesForEval = (
   probes: readonly AttackProbe[],
 ): readonly SecurityProbe[] =>
-  probes.map((p): SecurityProbe => Object.freeze({
-    id: p.id,
-    name: p.name,
-    prompt: p.prompt,
-    owaspCategory: p.owaspCategory,
-    severity: p.severity,
-    evaluate: (response: string) => {
-      const result = p.evaluate(response);
-      return {
-        verdict: result.verdict,
-        confidence: result.confidence,
-        reasoning: result.reasoning,
-      };
-    },
-  }));
+  probes
+    .filter((p): p is AttackProbe & { severity: SecurityProbe['severity'] } => p.severity !== 'info')
+    .map((p): SecurityProbe => Object.freeze({
+      id: p.id,
+      name: p.name,
+      prompt: p.prompt,
+      owaspCategory: p.owaspCategory,
+      severity: p.severity,
+      evaluate: (response: string) => {
+        const result = p.evaluate(response);
+        return {
+          verdict: result.verdict,
+          confidence: result.confidence,
+          reasoning: result.reasoning,
+        };
+      },
+    }));
 
 /**
  * Create an EvalTestSources.getSecurityProbes loader from AttackProbe[].
@@ -126,11 +128,11 @@ export const calculateEvalSecurityScore = (
 
   for (const cat of Object.keys(byCategory)) {
     const c = byCategory[cat]!;
-    c.score = calculateScore(c.passed, c.total);
+    c.score = calculateScore(c.passed, c.total) ?? 0;
   }
 
   return Object.freeze({
-    overall: calculateScore(totalPassed, results.length),
+    overall: calculateScore(totalPassed, results.length) ?? 0,
     byCategory: Object.freeze(byCategory),
   });
 };

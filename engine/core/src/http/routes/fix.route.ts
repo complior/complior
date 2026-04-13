@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { FixService } from '../../services/fix-service.js';
 import type { UndoService } from '../../services/undo-service.js';
 import { parseBody } from '../utils/validation.js';
+import { simulateActions } from '../../domain/whatif/simulate-actions.js';
 
 const FixApplySchema = z.object({
   checkId: z.string().min(1),
@@ -29,43 +30,81 @@ export const createFixRoute = (deps: FixRouteDeps) => {
   const { fixService, undoService } = deps;
   const app = new Hono();
 
-  // Preview all available fixes
-  app.get('/fix/preview', (c) => {
-    const plans = fixService.previewAll();
-    return c.json({ fixes: plans, count: plans.length });
+  // Preview all available fixes (rendered — [TEMPLATE:xxx] replaced with actual markdown)
+  app.get('/fix/preview', async (c) => {
+    // Use rendered preview if available (full feature), fallback to plain preview
+    const renderedPlans = fixService.previewAllRendered !== undefined
+      ? await fixService.previewAllRendered()
+      : fixService.previewAll();
+    const currentScore = fixService.getCurrentScore();
+    const lastScan = fixService.getLastScanResult?.() ?? null;
+    const findings = lastScan?.findings ?? [];
+    const passportCompleteness = fixService.getPassportCompleteness !== undefined
+      ? await fixService.getPassportCompleteness()
+      : 50;
+
+    const enriched = renderedPlans.map((plan) => {
+      const simulation = simulateActions({
+        actions: [{ type: 'fix', target: plan.checkId }],
+        currentScore,
+        findings: findings.map((f) => ({ checkId: f.checkId, severity: f.severity, status: f.type })),
+        passportCompleteness,
+      });
+      return { ...plan, projectedScore: simulation.projectedScore };
+    });
+
+    return c.json({ fixes: enriched, count: enriched.length });
   });
 
   // Preview fix for a specific finding
   app.post('/fix/preview', async (c) => {
     const data = await parseBody(c, FixApplySchema);
 
-    // Build a minimal finding to preview
-    const plan = fixService.preview({
-      checkId: data.checkId,
-      type: 'fail',
-      message: '',
-      severity: 'high',
-      obligationId: data.obligationId,
-    });
+    // Look up the actual finding from the last scan so we preserve fixDiff / strategy context
+    const allPlans = fixService.previewAll();
+    const plan = allPlans.find((p) => p.checkId === data.checkId)
+      ?? fixService.preview({
+        checkId: data.checkId,
+        type: 'fail',
+        message: '',
+        severity: 'high',
+        obligationId: data.obligationId,
+      });
 
     if (!plan) {
       return c.json({ error: 'NO_FIX', message: 'No auto-fix available for this finding', recommendation: 'Review and enrich document sections manually, or use --ai flag' }, 404);
     }
 
-    return c.json(plan);
+    // Add projectedScore for the single fix
+    const currentScore = fixService.getCurrentScore();
+    const lastScan = fixService.getLastScanResult?.() ?? null;
+    const findings = lastScan?.findings ?? [];
+    const passportCompleteness = fixService.getPassportCompleteness !== undefined
+      ? await fixService.getPassportCompleteness()
+      : 50;
+    const simulation = simulateActions({
+      actions: [{ type: 'fix', target: plan.checkId }],
+      currentScore,
+      findings: findings.map((f) => ({ checkId: f.checkId, severity: f.severity, status: f.type })),
+      passportCompleteness,
+    });
+
+    return c.json({ ...plan, projectedScore: simulation.projectedScore });
   });
 
   // Apply a specific fix
   app.post('/fix/apply', async (c) => {
     const data = await parseBody(c, FixApplySchema);
 
-    const plan = fixService.preview({
-      checkId: data.checkId,
-      type: 'fail',
-      message: '',
-      severity: 'high',
-      obligationId: data.obligationId,
-    });
+    const allPlans = fixService.previewAll();
+    const plan = allPlans.find((p) => p.checkId === data.checkId)
+      ?? fixService.preview({
+        checkId: data.checkId,
+        type: 'fail',
+        message: '',
+        severity: 'high',
+        obligationId: data.obligationId,
+      });
 
     if (!plan) {
       return c.json({ error: 'NO_FIX', message: 'No auto-fix available for this finding', recommendation: 'Review and enrich document sections manually, or use --ai flag' }, 404);
@@ -107,6 +146,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     const scoreAfter = results.at(-1)?.scoreAfter ?? currentScore;
 
     const unfixedFindings = fixService.getUnfixedFindings();
+    const lastScan = fixService.getLastScanResult?.() ?? null;
 
     return c.json({
       results,
@@ -117,6 +157,8 @@ export const createFixRoute = (deps: FixRouteDeps) => {
         severity: f.severity,
         fix: f.fix,
       })),
+      /** V1-M08 T-8: filterContext from last scan — helps caller understand applied filter scope */
+      filterContext: lastScan?.filterContext ?? null,
     });
   });
 

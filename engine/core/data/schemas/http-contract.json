@@ -116,6 +116,28 @@
       },
       "additionalProperties": false
     },
+    "ScanFilterContext": {
+      "type": "object",
+      "required": [
+        "role", "riskLevel", "domain", "profileFound",
+        "totalObligations", "applicableObligations",
+        "skippedByRole", "skippedByRiskLevel"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["provider", "deployer", "both"]
+        },
+        "riskLevel": { "type": ["string", "null"] },
+        "domain": { "type": ["string", "null"] },
+        "profileFound": { "type": "boolean" },
+        "totalObligations": { "type": "integer" },
+        "applicableObligations": { "type": "integer" },
+        "skippedByRole": { "type": "integer" },
+        "skippedByRiskLevel": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
     "ScanResult": {
       "type": "object",
       "required": [
@@ -134,7 +156,8 @@
         "filesScanned": { "type": "integer" },
         "deepAnalysis": { "type": "boolean" },
         "l5Cost": { "type": "number" },
-        "regulationVersion": { "type": "object" }
+        "regulationVersion": { "type": "object" },
+        "filterContext": { "$ref": "#/$defs/ScanFilterContext" }
       },
       "additionalProperties": false
     }

@@ -301,6 +301,38 @@ pub struct AgentSummary {
     pub file_count: u32,
 }
 
+/// V1-M08: Context about profile-based filtering applied to scan findings.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanFilterContext {
+    pub role: String,
+    #[serde(default)]
+    pub risk_level: Option<String>,
+    #[serde(default)]
+    pub domain: Option<String>,
+    pub profile_found: bool,
+    pub total_obligations: u32,
+    pub applicable_obligations: u32,
+    pub skipped_by_role: u32,
+    pub skipped_by_risk_level: u32,
+}
+
+/// V1-M08: Priority action from scan for "FIX FIRST" CLI display.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TopAction {
+    pub id: String,
+    pub title: String,
+    pub severity: String,
+    pub command: String,
+    #[serde(default)]
+    pub projected_score: Option<f64>,
+    #[serde(default)]
+    pub effort: Option<String>,
+    #[serde(default)]
+    pub score_impact: Option<f64>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanResult {
@@ -324,6 +356,12 @@ pub struct ScanResult {
     pub external_tool_results: Option<Vec<ExternalToolResult>>,
     #[serde(default)]
     pub agent_summaries: Option<Vec<AgentSummary>>,
+    /// V1-M08: Profile-based filter context (role + risk level).
+    #[serde(default)]
+    pub filter_context: Option<ScanFilterContext>,
+    /// V1-M08: Top priority actions for CLI "FIX FIRST" section.
+    #[serde(default)]
+    pub top_actions: Option<Vec<TopAction>>,
 }
 
 /// Result from a single external security tool (Semgrep, Bandit, etc.)

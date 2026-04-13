@@ -13,7 +13,7 @@ export interface EventMap {
   readonly 'badge.generated': { readonly path: string; readonly score: number; readonly zone: ScoreZone };
   readonly 'share.created': { readonly id: string; readonly score: number };
   readonly 'external-scan.completed': { readonly url: string; readonly score: number };
-  readonly 'report.generated': { readonly path: string; readonly format: 'pdf' | 'markdown' };
+  readonly 'report.generated': { readonly path: string; readonly format: 'pdf' | 'markdown' | 'html' };
   readonly 'agent.scan.completed': { readonly agentName: string; readonly result: ScanResult };
   readonly 'agent.score.updated': { readonly agentName: string; readonly before: number; readonly after: number };
   readonly 'passport.imported': { readonly name: string; readonly format: string; readonly fieldsImported: number };

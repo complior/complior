@@ -39,7 +39,7 @@ export const createAuditRoute = (deps: AuditRouteDeps) => {
     const auditResult = {
       scan: {
         score: scanResult.score.totalScore,
-        grade: scanResult.score.grade,
+        grade: scanResult.score.zone,
         findings: scanResult.findings.length,
       },
       eval: {

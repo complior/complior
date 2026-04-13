@@ -1,6 +1,6 @@
 {
   "name": "complior",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "private": true,
   "workspaces": [
     "engine/core",
@@ -11,5 +11,11 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/complior/complior"
+  },
+  "devDependencies": {
+    "metaskills": "^1.0.4"
+  },
+  "scripts": {
+    "test": "npm test --workspace=engine/core"
   }
 }

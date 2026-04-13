@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { Evidence } from './evidence.js';
-import type { EvidenceEntry, EvidenceChain } from '../../types/common.types.js';
+import type { EvidenceChain } from '../../types/common.types.js';
 import { parseEvidenceChain } from '../../types/common.schemas.js';
 
 export interface EvidenceChainSummary {
@@ -17,7 +17,7 @@ export interface EvidenceChainSummary {
 export interface EvidenceStore {
   readonly append: (evidence: readonly Evidence[], scanId: string) => Promise<void>;
   readonly getChain: () => Promise<EvidenceChain>;
-  readonly verify: () => Promise<{ valid: boolean; brokenAt?: number }>;
+  readonly verify: () => Promise<{ valid: boolean; brokenAt?: number; issues: readonly string[] }>;
   readonly getSummary: () => Promise<EvidenceChainSummary>;
 }
 
@@ -121,20 +121,24 @@ export const createEvidenceStore = (
       lastHash,
     };
 
-    await saveChain(updated);
+    // Non-fatal: evidence write failure doesn't block scan completion
+    try {
+      await saveChain(updated);
+    } catch { /* skip */ }
   };
 
   const getChain = async (): Promise<EvidenceChain> => {
     return loadChain();
   };
 
-  const verify = async (): Promise<{ valid: boolean; brokenAt?: number }> => {
+  const verify = async (): Promise<{ valid: boolean; brokenAt?: number; issues: readonly string[] }> => {
     const chain = await loadChain();
 
     if (chain.entries.length === 0) {
-      return { valid: true };
+      return { valid: true, issues: [] };
     }
 
+    const issues: string[] = [];
     let expectedPrev: string | null = null;
 
     for (let i = 0; i < chain.entries.length; i++) {
@@ -142,24 +146,27 @@ export const createEvidenceStore = (
 
       // Verify chain link
       if (entry.chainPrev !== (expectedPrev || null)) {
-        return { valid: false, brokenAt: i };
+        issues.push(`Entry ${i}: broken chain link (expected previous hash '${expectedPrev ?? 'null'}', got '${entry.chainPrev}')`);
+        return { valid: false, brokenAt: i, issues };
       }
 
       // Verify hash
       const recomputedHash = computeHash(entry.evidence, entry.scanId, entry.chainPrev);
       if (entry.hash !== recomputedHash) {
-        return { valid: false, brokenAt: i };
+        issues.push(`Entry ${i}: hash mismatch — evidence content may have been modified after recording`);
+        return { valid: false, brokenAt: i, issues };
       }
 
       // Verify signature
       if (!verifyHash(entry.hash, entry.signature)) {
-        return { valid: false, brokenAt: i };
+        issues.push(`Entry ${i}: signature verification failed — entry may have been tampered with`);
+        return { valid: false, brokenAt: i, issues };
       }
 
       expectedPrev = entry.hash;
     }
 
-    return { valid: true };
+    return { valid: true, issues: [] };
   };
 
   const getSummary = async (): Promise<EvidenceChainSummary> => {

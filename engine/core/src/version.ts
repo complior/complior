@@ -1,1 +1,2 @@
-export const ENGINE_VERSION = '1.0.0';
+import pkg from '../package.json' with { type: 'json' };
+export const ENGINE_VERSION = pkg.version;

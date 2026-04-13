@@ -66,5 +66,7 @@ pub(super) fn make_scan_result(score: f64, zone: crate::types::Zone) -> crate::t
         tier: None,
         external_tool_results: None,
         agent_summaries: None,
+        filter_context: None,
+        top_actions: None,
     }
 }

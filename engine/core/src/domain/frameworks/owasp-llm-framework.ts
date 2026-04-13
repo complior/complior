@@ -33,10 +33,10 @@ export const createOwaspLlmFramework = (): ComplianceFramework => {
     version: '2025',
     checks,
     categories,
-    gradeMapping: {
-      type: 'letter',
+    gradeMapping: Object.freeze({
+      type: 'letter' as const,
       thresholds: [...LETTER_GRADE_THRESHOLDS],
-    },
+    }),
   });
 };
 

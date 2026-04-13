@@ -45,7 +45,7 @@ export const computeDebt = (input: DebtInput): DebtResult => {
   let findingsDebt = 0;
   const failFindings = findings.filter(f => f.status === 'fail');
   for (const f of failFindings) {
-    const weight = SEVERITY_WEIGHT[f.severity] ?? 2;
+    const weight = SEVERITY_WEIGHT[f.severity as SeverityLevel] ?? 2;
     // Age factor: findings get worse over time (min 1x, max 3x at 90+ days)
     const age = f.createdAt
       ? Math.max(0, (Date.now() - new Date(f.createdAt).getTime()) / (1000 * 60 * 60 * 24))

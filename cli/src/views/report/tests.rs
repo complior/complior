@@ -49,6 +49,8 @@ mod tests {
             tier: None,
             external_tool_results: None,
             agent_summaries: None,
+            filter_context: None,
+            top_actions: None,
         }
     }
 

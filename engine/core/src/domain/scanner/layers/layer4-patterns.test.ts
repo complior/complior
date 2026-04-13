@@ -318,7 +318,7 @@ try {
   });
 
 describe('layer4ToCheckResults', () => {
-  it('converts bare-llm negative FOUND to info (not fail)', () => {
+  it('converts bare-llm negative FOUND to fail', () => {
     const checkResults = layer4ToCheckResults([{
       obligationId: 'eu-ai-act-OBL-015',
       article: 'Art. 50(1)',
@@ -332,9 +332,9 @@ describe('layer4ToCheckResults', () => {
     }]);
 
     expect(checkResults).toHaveLength(1);
-    expect(checkResults[0].type).toBe('info');
-    if (checkResults[0].type === 'info') {
-      expect(checkResults[0].severity).toBe('info');
+    expect(checkResults[0].type).toBe('fail');
+    if (checkResults[0].type === 'fail') {
+      expect(checkResults[0].severity).toBe('medium');
       expect(checkResults[0].message).toContain('src/chat.ts:5');
       expect(checkResults[0].message).toContain('Consider @complior/sdk');
     }

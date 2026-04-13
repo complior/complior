@@ -220,7 +220,6 @@ export const layer2ToCheckResults = (l2Results: readonly L2CheckResult[]): reado
           obligationId: r.obligationId,
           articleReference: r.article,
           fix: `Edit ${r.document} — replace [bracketed] placeholders with actual data`,
-          docQuality: r.docQuality,
         };
       }
       return {

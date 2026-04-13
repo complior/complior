@@ -45,10 +45,10 @@ export const createEuAiActFramework = (
     deadline: EU_AI_ACT_DEADLINE_ISO,
     checks,
     categories,
-    gradeMapping: {
-      type: 'letter',
+    gradeMapping: Object.freeze({
+      type: 'letter' as const,
       thresholds: LETTER_GRADE_THRESHOLDS,
-    },
+    }),
   });
 };
 

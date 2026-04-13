@@ -239,17 +239,12 @@ const renderWatermark = (doc: PdfDoc, isFree: boolean) => {
   );
 };
 
-export const renderPdfReport = async (
+export const renderPdfToBuffer = async (
   data: AuditReportData,
-  outputPath: string,
   options?: { readonly isFree?: boolean },
-): Promise<string> => {
+): Promise<Buffer> => {
   const { default: PDFDocument } = await import('pdfkit');
-  const { createWriteStream } = await import('node:fs');
-  const { mkdir } = await import('node:fs/promises');
-  const { dirname } = await import('node:path');
-
-  await mkdir(dirname(outputPath), { recursive: true });
+  const { PassThrough } = await import('node:stream');
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -263,8 +258,13 @@ export const renderPdfReport = async (
       },
     }) as unknown as PdfDoc;
 
-    const stream = createWriteStream(outputPath);
+    const chunks: Buffer[] = [];
+    const stream = new PassThrough();
     doc.pipe(stream);
+
+    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', reject);
 
     renderHeader(doc, data);
     renderExecutiveSummary(doc, data);
@@ -275,8 +275,5 @@ export const renderPdfReport = async (
     renderWatermark(doc, options?.isFree !== false);
 
     doc.end();
-
-    stream.on('finish', () => resolve(outputPath));
-    stream.on('error', reject);
   });
 };

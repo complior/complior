@@ -40,6 +40,6 @@ export const isFailedVerdict = (r: { verdict: string }): boolean =>
 
 // ── Score calculation ───────────────────────────────────────────
 
-/** Calculate percentage score with division-by-zero protection. */
-export const calculateScore = (passed: number, total: number): number =>
-  total > 0 ? Math.round((passed / total) * 100) : 0;
+/** Calculate percentage score. Returns null when total is 0 (no data). */
+export const calculateScore = (passed: number, total: number): number | null =>
+  total > 0 ? Math.round((passed / total) * 100) : null;

@@ -97,8 +97,8 @@ pub enum Command {
         #[arg(long)]
         llm: bool,
 
-        /// [planned] Cloud scan via `SaaS` API (Tier 3, planned for Month 3-4)
-        #[arg(long)]
+        /// [planned] Cloud scan via `SaaS` API
+        #[arg(long, hide = true)]
         cloud: bool,
 
         /// Show only critical findings and score
@@ -148,15 +148,23 @@ pub enum Command {
         path: Option<String>,
     },
 
-    /// Generate compliance report (markdown or PDF)
+    /// Generate compliance readiness report
     Report {
-        /// Output format: md or pdf (default: md)
-        #[arg(long, default_value = "md")]
+        /// Output format: human, json, md, markdown, pdf, html (default: human)
+        #[arg(long, default_value = "human")]
         format: String,
 
-        /// Output path (default: auto-generated)
+        /// Output path (default: stdout for human/json, auto-generated for files)
         #[arg(long, short)]
         output: Option<String>,
+
+        /// Output JSON to stdout (shorthand for --format json)
+        #[arg(long)]
+        json: bool,
+
+        /// Generate offline HTML report for sharing
+        #[arg(long)]
+        share: bool,
 
         /// Project path (default: current directory)
         path: Option<String>,
@@ -1065,6 +1073,7 @@ pub fn wants_quiet_startup(cli: &Cli) -> bool {
                 | Command::Scan { sarif: true, .. }
                 | Command::Fix { json: true, .. }
                 | Command::Eval { json: true, .. }
+                | Command::Report { json: true, .. }
         )
     )
 }
