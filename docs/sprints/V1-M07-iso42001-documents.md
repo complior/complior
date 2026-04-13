@@ -1,8 +1,8 @@
 # V1-M07: ISO 42001 Document Generators
 
-**Status:** 🔴 RED (tests written, implementation pending)
+**Status:** ⏳ IN PROGRESS (T-1..T-6 ✅ DONE, T-7 Rust CLI awaiting rust-dev)
 **Created:** 2026-04-12
-**Updated:** 2026-04-13 (scope correction: F-V9-24 AI Policy already implemented)
+**Updated:** 2026-04-13 (T-4/T-5/T-6 implemented — 23 tests GREEN, 0 regressions)
 **Deadline:** 2026-04-26 (2 weeks)
 **Agents:** nodejs-dev (engine), rust-dev (CLI)
 **Feature Areas:** FA-04 (Passport), FA-05 (Report)
