@@ -2,10 +2,11 @@
 
 **Status:** 🔴 RED (tests written, implementation pending)
 **Created:** 2026-04-12
+**Updated:** 2026-04-13 (scope correction: F-V9-24 AI Policy already implemented)
 **Deadline:** 2026-04-26 (2 weeks)
 **Agents:** nodejs-dev (engine), rust-dev (CLI)
 **Feature Areas:** FA-04 (Passport), FA-05 (Report)
-**Branch:** feature/V1-M07-iso42001 (from dev)
+**Branch:** feature/V1-M07-iso42001 (rebased onto dev 2026-04-13)
 
 ---
 
@@ -16,18 +17,21 @@
 Phase 2 per STRATEGY.md: ISO 42001 is the first certifiable AI management standard.
 EU AI Act enforcement in ~4 months (2026-08-02). Companies need **both**:
 - EU AI Act compliance documents (14 types — ✅ DONE)
-- ISO 42001 management system documents (3 new types — THIS MILESTONE)
+- ISO 42001 management system documents (2 new types — THIS MILESTONE)
 
 ISO 42001 adds organizational governance layer on top of EU AI Act technical requirements.
 Customers pursuing certification need: AI Policy, Statement of Applicability, Risk Register.
 
 ### What we're building
 
-3 new deterministic document generators (no LLM required):
+2 new deterministic document generators (no LLM required):
 
 1. **Statement of Applicability (SoA)** — 39 ISO 42001 controls × applicability × evidence from scan
 2. **Risk Register** — Scan findings → risk matrix (likelihood × impact × mitigation)
-3. **ISO 42001 AI Policy** — Organizational AI policy from passport data
+
+> **NOTE:** F-V9-24 (AI Policy Generator) already implemented via `complior agent policy`.
+> 8 industry-specific templates exist in `data/templates/policies/`.
+> ISO 42001 AI Policy template added in T-3 for completeness.
 
 All follow the existing pattern: passport data → template → prefilled document + manual fields.
 
