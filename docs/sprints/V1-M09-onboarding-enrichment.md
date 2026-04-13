@@ -1,6 +1,6 @@
 # V1-M09: Onboarding Enrichment — Dynamic Obligation Filtering
 
-**Status:** IN PROGRESS (T-1/T-2/T-3/T-6 ✅ DONE, T-4/T-5 awaiting dev)
+**Status:** ✅ DONE (6/6 tasks, 2460 tests GREEN, reviewer APPROVED 2026-04-13)
 **Branch:** `feature/V1-M09-onboarding-enrichment`
 **Created:** 2026-04-13
 **Depends on:** V1-M08 (Context-Aware Scan) ✅ DONE
@@ -189,8 +189,8 @@ gpaiModelDetected: boolean  // NEW: found GPAI model usage in code
 | T-1 | 5 new QuestionBlocks | architect | ✅ unit: question count = 9 | `onboarding/questions.ts` |
 | T-2 | Dynamic computeApplicableObligations | architect+nodejs-dev | ✅ unit: 4 profile scenarios with exact counts | `onboarding/profile.ts` |
 | T-3 | ProfileSchema new fields | architect | ✅ unit: Zod validates, existing tests pass | `onboarding/profile.ts` |
-| T-4 | `--reconfigure` flag | nodejs-dev+rust-dev | ⏳ E2E: init → scan → reconfigure → scan different | `cli.rs`, `wizard.ts`, `onboarding.route.ts` |
-| T-5 | Auto-detect GPAI | nodejs-dev | ⏳ unit: openai dep → gpaiModelDetected=true | `auto-detect.ts` |
+| T-4 | `--reconfigure` flag | nodejs-dev+rust-dev | ✅ E2E: init → scan → reconfigure → scan different | `cli.rs`, `wizard.ts`, `onboarding.route.ts` |
+| T-5 | Auto-detect GPAI | nodejs-dev | ✅ unit: openai dep → gpaiModelDetected=true | `auto-detect.ts` |
 | T-6 | RED tests | architect | ✅ 14 new tests, 24 total, all GREEN | `onboarding.test.ts` |
 
 ---
