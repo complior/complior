@@ -182,12 +182,20 @@ T-2 (risk-filter) → T-3 (scan-service) → T-4 (composition-root) → T-5 (top
 
 ## Test Summary
 
-**RED tests committed (23 total):**
+**RED unit tests committed (23 total):**
 - `risk-level-filter.test.ts` — 8 tests (T-2)
 - `scan-service-context.test.ts` — 4 tests (T-3)
 - `scan-filter-context.test.ts` — 4 tests (T-4/T-5, 1 trivially passes)
 - `obligation-coverage-risk.test.ts` — 5 tests (T-7, 3 trivially pass)
 - `fix-filter-context.test.ts` — 2 tests (T-8, 1 trivially passes)
+
+**RED E2E tests committed (5 total):**
+- `e2e/context-scan-e2e.test.ts` — 5 tests (T-4/T-5/T-8)
+  - `POST /scan response includes filterContext with profile data` — RED (T-4)
+  - `POST /scan filterContext counts are consistent` — RED (T-4)
+  - `POST /scan response includes topActions array (0-3 items)` — RED (T-5)
+  - `POST /fix/apply-all response includes filterContext from last scan` — RED (T-8)
+  - `POST /scan without profile returns profileFound=false` — trivially passes (T-3 done)
 
 **GREEN tests (contract):**
 - `contract.test.ts` — 19/19 GREEN (TS, includes 3 new ScanFilterContext tests)
