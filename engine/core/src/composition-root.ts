@@ -575,6 +575,19 @@ export const loadApplication = async (): Promise<Application> => {
     return readFile(resolve(policyTemplatesDir, templateFile), 'utf-8');
   };
 
+  // V1-M07: load ISO 42001 Annex A controls
+  const iso42001Controls: readonly import('./types/common.types.js').Iso42001Control[] = await (async () => {
+    try {
+      const raw = await readFile(
+        resolve(fileURLToPath(import.meta.url), '..', '..', 'data', 'iso-42001-controls.json'), 'utf-8',
+      );
+      const parsed = JSON.parse(raw) as unknown[];
+      return parsed as readonly import('./types/common.types.js').Iso42001Control[];
+    } catch {
+      return [] as readonly import('./types/common.types.js').Iso42001Control[];
+    }
+  })();
+
   const passportService = createPassportService({
     collectFiles,
     scanner,
@@ -585,6 +598,7 @@ export const loadApplication = async (): Promise<Application> => {
     loadPolicyTemplate,
     evidenceStore,
     auditStore,
+    iso42001Controls,
   });
 
   // Shared helper: passport completeness lookup (used by cost + debt services)

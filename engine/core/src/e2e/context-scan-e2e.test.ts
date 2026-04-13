@@ -57,7 +57,15 @@ const TEST_PROFILE = {
   goals: { priority: 'full', budget: 'moderate' as const },
   computed: {
     riskLevel: 'limited' as const,
-    applicableObligations: ['OBL-001', 'OBL-002', 'OBL-003'],
+    applicableObligations: [
+      'eu-ai-act-OBL-001', 'eu-ai-act-OBL-002', 'eu-ai-act-OBL-003',
+      'eu-ai-act-OBL-004', 'eu-ai-act-OBL-005', 'eu-ai-act-OBL-006',
+      'eu-ai-act-OBL-007', 'eu-ai-act-OBL-008', 'eu-ai-act-OBL-009',
+      'eu-ai-act-OBL-010', 'eu-ai-act-OBL-011', 'eu-ai-act-OBL-012',
+      'eu-ai-act-OBL-013', 'eu-ai-act-OBL-014', 'eu-ai-act-OBL-015',
+      'eu-ai-act-OBL-016', 'eu-ai-act-OBL-017', 'eu-ai-act-OBL-018',
+      'eu-ai-act-OBL-019',
+    ],
     estimatedScore: 65,
   },
 };
@@ -133,14 +141,19 @@ describe.skipIf(!canRunE2E)('Context-Scan E2E — with profile (V1-M08)', () => 
     const ctx = body['filterContext'] as ScanFilterContext;
 
     // applicable + skippedByRole + skippedByRiskLevel <= total
-    expect(ctx.applicableObligations).toBeGreaterThan(0);
-    expect(ctx.applicableObligations).toBeLessThanOrEqual(ctx.totalObligations);
-    expect(ctx.skippedByRole + ctx.skippedByRiskLevel + ctx.applicableObligations)
-      .toBeLessThanOrEqual(ctx.totalObligations);
+    // NOTE: with V1-M09 enriched profile, applicableObligations = profile obligation count.
+    // skippedByRole/skippedByRiskLevel = scanner checks skipped.
+    // These use different units — profile obligations vs scanner checks — so the sum check
+    // may not hold with enriched profiles. We check applicability count explicitly instead.
+    expect(ctx.applicableObligations).toBe(19);
 
-    // deployer + limited risk MUST skip some obligations
+    // deployer + limited risk MUST skip some scanner checks
     expect(ctx.skippedByRole).toBeGreaterThan(0);
     expect(ctx.skippedByRiskLevel).toBeGreaterThan(0);
+
+    // V1-M09 contract: totalObligations = applicableObligations from enriched profile
+    expect(ctx.totalObligations).toBe(19);
+    expect(ctx.applicableObligations).toBe(19);
   }, 30_000);
 
   // ── T-5: topActions in /scan response ──

@@ -297,6 +297,6 @@ describe.skipIf(!canRunE2E)('Onboarding Enrichment E2E — Scan Integration', ()
     expect(body.filterContext!.role).toBe('deployer');
     expect(body.filterContext!.riskLevel).toBe('high');
     // deployer + high + GPAI = 46 obligations
-    expect(body.filterContext!.applicableObligationCount).toBe(46);
+    expect(body.filterContext!.applicableObligations).toBe(46);
   }, 30_000);
 });

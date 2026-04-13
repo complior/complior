@@ -1,0 +1,274 @@
+[
+  {
+    "controlId": "A.2.2",
+    "group": "AI Policies",
+    "title": "AI Policy",
+    "description": "Establish an AI policy appropriate to the organization's purpose, providing a framework for setting AI objectives",
+    "euAiActArticles": ["Art. 4", "Art. 17"],
+    "checkIds": ["l1-ai-literacy", "l1-qms"]
+  },
+  {
+    "controlId": "A.2.3",
+    "group": "AI Policies",
+    "title": "Roles and responsibilities for AI",
+    "description": "Define and communicate roles and responsibilities for AI system development, deployment, and monitoring",
+    "euAiActArticles": ["Art. 26"],
+    "checkIds": ["l1-monitoring-policy"]
+  },
+  {
+    "controlId": "A.3.2",
+    "group": "Internal Organization",
+    "title": "AI system inventory",
+    "description": "Establish and maintain an inventory of AI systems developed, deployed, or used by the organization",
+    "euAiActArticles": ["Art. 49"],
+    "checkIds": ["l1-passport", "passport-presence"]
+  },
+  {
+    "controlId": "A.3.3",
+    "group": "Internal Organization",
+    "title": "Resources for AI systems",
+    "description": "Determine and provide resources needed for AI system lifecycle management",
+    "euAiActArticles": ["Art. 9"],
+    "checkIds": ["l3-dependencies"]
+  },
+  {
+    "controlId": "A.4.2",
+    "group": "Resources for AI Systems",
+    "title": "Competence of workers involved in AI",
+    "description": "Ensure persons working on AI systems are competent on the basis of appropriate education, training, or experience",
+    "euAiActArticles": ["Art. 4"],
+    "checkIds": ["l1-ai-literacy"]
+  },
+  {
+    "controlId": "A.4.3",
+    "group": "Resources for AI Systems",
+    "title": "Awareness for AI stakeholders",
+    "description": "Ensure relevant stakeholders are aware of the AI policy, their contribution, and implications of non-conformance",
+    "euAiActArticles": ["Art. 4", "Art. 26(7)"],
+    "checkIds": ["l1-ai-literacy", "l1-worker-notification"]
+  },
+  {
+    "controlId": "A.4.4",
+    "group": "Resources for AI Systems",
+    "title": "Communication about AI",
+    "description": "Determine internal and external communications relevant to the AI management system",
+    "euAiActArticles": ["Art. 50", "Art. 52"],
+    "checkIds": ["l4-disclosure", "l4-content-marking"]
+  },
+  {
+    "controlId": "A.5.2",
+    "group": "Assessing AI System Impacts",
+    "title": "AI risk assessment",
+    "description": "Assess risks associated with AI systems including potential harms to individuals, groups, and society",
+    "euAiActArticles": ["Art. 9"],
+    "checkIds": ["l1-risk-management", "l1-fria"]
+  },
+  {
+    "controlId": "A.5.3",
+    "group": "Assessing AI System Impacts",
+    "title": "AI system impact assessment",
+    "description": "Conduct impact assessments for AI systems, considering fundamental rights and societal impacts",
+    "euAiActArticles": ["Art. 27"],
+    "checkIds": ["l1-fria", "l2-fria-depth"]
+  },
+  {
+    "controlId": "A.5.4",
+    "group": "Assessing AI System Impacts",
+    "title": "Documenting AI risk treatment",
+    "description": "Document risk treatment decisions, including acceptance criteria and residual risk",
+    "euAiActArticles": ["Art. 9"],
+    "checkIds": ["l1-risk-management"]
+  },
+  {
+    "controlId": "A.6.2.2",
+    "group": "AI System Lifecycle",
+    "title": "Objectives of AI systems",
+    "description": "Define objectives for AI systems consistent with organizational AI policy and applicable requirements",
+    "euAiActArticles": ["Art. 9", "Art. 13"],
+    "checkIds": ["l1-instructions-for-use", "passport-completeness"]
+  },
+  {
+    "controlId": "A.6.2.3",
+    "group": "AI System Lifecycle",
+    "title": "Requirements for AI systems",
+    "description": "Determine requirements for AI systems considering intended purpose, legal, and ethical aspects",
+    "euAiActArticles": ["Art. 11", "Art. 13"],
+    "checkIds": ["l1-technical-documentation", "l1-instructions-for-use"]
+  },
+  {
+    "controlId": "A.6.2.4",
+    "group": "AI System Lifecycle",
+    "title": "Design and development planning",
+    "description": "Plan the design and development of AI systems, including architecture, data requirements, and validation",
+    "euAiActArticles": ["Art. 10", "Art. 11"],
+    "checkIds": ["l1-technical-documentation", "l1-data-governance"]
+  },
+  {
+    "controlId": "A.6.2.5",
+    "group": "AI System Lifecycle",
+    "title": "Testing of AI systems",
+    "description": "Test AI systems against defined requirements including performance, safety, bias, and robustness",
+    "euAiActArticles": ["Art. 9", "Art. 15"],
+    "checkIds": ["l4-testing", "l4-accuracy-robustness"]
+  },
+  {
+    "controlId": "A.6.2.6",
+    "group": "AI System Lifecycle",
+    "title": "Deployment of AI systems",
+    "description": "Establish procedures for AI system deployment including approval, monitoring setup, and rollback",
+    "euAiActArticles": ["Art. 26"],
+    "checkIds": ["l1-monitoring-policy", "l3-config"]
+  },
+  {
+    "controlId": "A.6.2.7",
+    "group": "AI System Lifecycle",
+    "title": "Operations and monitoring",
+    "description": "Monitor AI systems during operation for performance degradation, drift, and incidents",
+    "euAiActArticles": ["Art. 26", "Art. 72"],
+    "checkIds": ["l1-monitoring-policy", "l4-logging", "l4-deployer-monitoring"]
+  },
+  {
+    "controlId": "A.6.2.8",
+    "group": "AI System Lifecycle",
+    "title": "Third party and customer relationships",
+    "description": "Manage relationships with third parties providing or receiving AI systems or components",
+    "euAiActArticles": ["Art. 25", "Art. 26"],
+    "checkIds": ["l3-dependencies", "l4-banned-package"]
+  },
+  {
+    "controlId": "A.6.2.9",
+    "group": "AI System Lifecycle",
+    "title": "Documentation requirements",
+    "description": "Maintain documentation for AI systems including design decisions, data sources, and test results",
+    "euAiActArticles": ["Art. 11", "Art. 12"],
+    "checkIds": ["l1-technical-documentation", "passport-completeness"]
+  },
+  {
+    "controlId": "A.6.2.10",
+    "group": "AI System Lifecycle",
+    "title": "Responsible AI use",
+    "description": "Ensure AI systems are not used for prohibited practices and comply with ethical requirements",
+    "euAiActArticles": ["Art. 5"],
+    "checkIds": ["l1-art5-screening", "l3-banned-package", "l4-prohibited-patterns"]
+  },
+  {
+    "controlId": "A.6.2.11",
+    "group": "AI System Lifecycle",
+    "title": "Third party AI components",
+    "description": "Assess and manage risks from third-party AI components, models, and data",
+    "euAiActArticles": ["Art. 25"],
+    "checkIds": ["l3-dependencies", "l3-sbom", "l4-banned-package"]
+  },
+  {
+    "controlId": "A.7.2",
+    "group": "Data for AI Systems",
+    "title": "Data quality for AI",
+    "description": "Establish data quality criteria and processes for AI training, validation, and testing data",
+    "euAiActArticles": ["Art. 10"],
+    "checkIds": ["l1-data-governance"]
+  },
+  {
+    "controlId": "A.7.3",
+    "group": "Data for AI Systems",
+    "title": "Data provenance",
+    "description": "Document and track the origin, transformations, and lineage of data used in AI systems",
+    "euAiActArticles": ["Art. 10", "Art. 12"],
+    "checkIds": ["l1-data-governance", "l4-data-governance"]
+  },
+  {
+    "controlId": "A.7.4",
+    "group": "Data for AI Systems",
+    "title": "Data preparation",
+    "description": "Establish processes for data collection, labeling, cleaning, and augmentation",
+    "euAiActArticles": ["Art. 10"],
+    "checkIds": ["l1-data-governance"]
+  },
+  {
+    "controlId": "A.7.5",
+    "group": "Data for AI Systems",
+    "title": "Data for testing AI",
+    "description": "Ensure test data is representative, unbiased, and sufficient for evaluating AI system performance",
+    "euAiActArticles": ["Art. 10", "Art. 15"],
+    "checkIds": ["l4-testing", "l4-accuracy-robustness"]
+  },
+  {
+    "controlId": "A.8.2",
+    "group": "Information for Interested Parties",
+    "title": "Information about AI systems",
+    "description": "Provide relevant information about AI systems to interested parties (users, affected persons, authorities)",
+    "euAiActArticles": ["Art. 13", "Art. 50"],
+    "checkIds": ["l1-instructions-for-use", "l4-disclosure"]
+  },
+  {
+    "controlId": "A.8.3",
+    "group": "Information for Interested Parties",
+    "title": "Communication about AI interaction",
+    "description": "Inform users when they are interacting with an AI system (transparency obligation)",
+    "euAiActArticles": ["Art. 50", "Art. 52"],
+    "checkIds": ["l4-disclosure", "l4-content-marking"]
+  },
+  {
+    "controlId": "A.8.4",
+    "group": "Information for Interested Parties",
+    "title": "Reporting to interested parties",
+    "description": "Establish reporting mechanisms for AI system performance, incidents, and compliance status",
+    "euAiActArticles": ["Art. 72", "Art. 73"],
+    "checkIds": ["l1-monitoring-policy", "l1-incident-report"]
+  },
+  {
+    "controlId": "A.9.2",
+    "group": "Use of AI Systems",
+    "title": "Instructions for human intervention",
+    "description": "Provide clear instructions for human oversight and intervention in AI system operation",
+    "euAiActArticles": ["Art. 14"],
+    "checkIds": ["l4-human-oversight", "l4-kill-switch"]
+  },
+  {
+    "controlId": "A.9.3",
+    "group": "Use of AI Systems",
+    "title": "AI system monitoring",
+    "description": "Monitor AI systems for conformance with requirements and performance objectives",
+    "euAiActArticles": ["Art. 26", "Art. 72"],
+    "checkIds": ["l1-monitoring-policy", "l4-deployer-monitoring", "l4-logging"]
+  },
+  {
+    "controlId": "A.9.4",
+    "group": "Use of AI Systems",
+    "title": "Responsibilities for AI use",
+    "description": "Assign responsibilities for the use, monitoring, and oversight of AI systems",
+    "euAiActArticles": ["Art. 26"],
+    "checkIds": ["l1-monitoring-policy", "passport-completeness"]
+  },
+  {
+    "controlId": "A.9.5",
+    "group": "Use of AI Systems",
+    "title": "Procedures for human override",
+    "description": "Establish procedures for human override of AI system decisions, including escalation and suspension",
+    "euAiActArticles": ["Art. 14"],
+    "checkIds": ["l4-human-oversight", "l4-kill-switch"]
+  },
+  {
+    "controlId": "A.10.2",
+    "group": "Third Party Relationships",
+    "title": "Terms with third parties",
+    "description": "Establish terms and conditions with third parties for AI system provision, data sharing, and compliance",
+    "euAiActArticles": ["Art. 25"],
+    "checkIds": ["l3-dependencies"]
+  },
+  {
+    "controlId": "A.10.3",
+    "group": "Third Party Relationships",
+    "title": "Monitoring third party AI services",
+    "description": "Monitor third-party AI services for compliance, performance, and security",
+    "euAiActArticles": ["Art. 25", "Art. 26"],
+    "checkIds": ["l3-dependencies", "l4-banned-package"]
+  },
+  {
+    "controlId": "A.10.4",
+    "group": "Third Party Relationships",
+    "title": "Customer handling of AI outputs",
+    "description": "Provide guidance to customers on handling AI system outputs, including limitations and appropriate use",
+    "euAiActArticles": ["Art. 13", "Art. 50"],
+    "checkIds": ["l1-instructions-for-use", "l4-disclosure"]
+  }
+]

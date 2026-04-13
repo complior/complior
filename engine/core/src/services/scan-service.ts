@@ -220,13 +220,16 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     findings = afterRisk;
 
+    // V1-M09 T-4: when a real profile with obligations exists, use its count;
+    // otherwise fall back to scan findings (for unit tests with stub data).
+    const profileObligationCount = realProfile?.applicableObligations.length ?? 0;
     const filterContext: ScanFilterContext = {
       role,
       riskLevel,
       domain,
       profileFound,
-      totalObligations: scanResult.findings.length,
-      applicableObligations: findings.filter(f => f.type !== 'skip').length,
+      totalObligations: profileObligationCount > 0 ? profileObligationCount : scanResult.findings.length,
+      applicableObligations: profileObligationCount > 0 ? profileObligationCount : findings.filter(f => f.type !== 'skip').length,
       skippedByRole,
       skippedByRiskLevel,
     };

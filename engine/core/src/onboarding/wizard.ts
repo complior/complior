@@ -23,7 +23,13 @@ export const createOnboardingWizard = (deps: WizardDeps) => {
 
   const getQuestions = () => QUESTION_BLOCKS;
 
-  const complete = async (answers: OnboardingAnswers): Promise<WizardResult> => {
+  const complete = async (
+    answers: OnboardingAnswers,
+    reconfigure = false,
+  ): Promise<WizardResult> => {
+    // V1-M09 T-4: reconfigure flag accepted for HTTP/CLI routing.
+    // Currently always writes (no guard needed at wizard level).
+    void reconfigure;
     const projectPath = getProjectPath();
     const autoDetected = await autoDetect(projectPath);
     const profile = buildProfile(autoDetected, answers);
@@ -34,7 +40,7 @@ export const createOnboardingWizard = (deps: WizardDeps) => {
       throw new Error(`Invalid profile: ${validation.errors?.join(', ')}`);
     }
 
-    // Save profile
+    // Save profile — always overwrites (V1-M09 T-4: reconfigure flag is already in body)
     const compliorDir = join(projectPath, '.complior');
     await mkdir(compliorDir, { recursive: true });
     const profilePath = join(compliorDir, 'profile.json');
