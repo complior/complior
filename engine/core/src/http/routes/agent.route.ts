@@ -346,6 +346,44 @@ export const createAgentRoute = (passportService: PassportService) => {
     return c.json(result);
   });
 
+  // V1-M07: Generate ISO 42001 Statement of Applicability
+  app.post('/agent/soa', async (c) => {
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      organization: z.string().optional(),
+    }));
+
+    const result = await passportService.generateSoAReport(
+      data.name,
+      data.path,
+      { organization: data.organization },
+    );
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${data.name}`);
+    }
+    return c.json(result);
+  });
+
+  // V1-M07: Generate ISO 42001 Risk Register
+  app.post('/agent/risk-register', async (c) => {
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      organization: z.string().optional(),
+    }));
+
+    const result = await passportService.generateRiskRegisterReport(
+      data.name,
+      data.path,
+      { organization: data.organization },
+    );
+    if (result === null) {
+      throw new ValidationError(`Passport not found: ${data.name}`);
+    }
+    return c.json(result);
+  });
+
   // US-S05-24: Generate compliance test suite from passport constraints
   app.post('/agent/test-gen', async (c) => {
     const data = await parseBody(c, z.object({
