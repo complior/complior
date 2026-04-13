@@ -1,7 +1,7 @@
 # Project State
 
-> Last updated: 2026-04-11
-> Status: V1-M01..M04 DONE · V1-M05 partial (typecheck fix) · **REVIEWER APPROVED** — awaiting user merge to main
+> Last updated: 2026-04-13
+> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE (context-scan) · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M08** — awaiting user merge to main
 
 ## Overview
 
@@ -48,6 +48,9 @@ cli/, engine/                → Code (GREEN)
 | V1-M03 | ✅ DONE | All — docs, CI, version bump, release polish | `feature/reporter` | 2026-04-11 |
 | V1-M04 | ✅ DONE | All FA — full CLI flag binary E2E + engine flags | `feature/reporter` | 2026-04-11 |
 | V1-M05 | ⏳ PARTIAL | All FA — 57 TS type errors fixed, CI typecheck re-enabled. Release pending. | `feature/reporter` | — |
+| V1-M06 | ✅ DONE | FA-07 (TUI) — UX quality sprint, 11 RED→GREEN | `feature/V1-M06-ux-quality` | — |
+| V1-M07 | 🔴 RED | FA-04 (Passport), FA-05 (Report) — ISO 42001 Document Generators. Specs ready, awaiting dev. | `feature/V1-M07-iso42001` | — |
+| V1-M08 | ✅ DONE | FA-01 (Scanner) — Context-Aware Scan: profile filters, risk-level, filterContext | `feature/V1-M08-context-scan` | — |
 
 > Old milestones (M01-M04, S01-S12) archived to `docs/old/sprints/`
 
@@ -94,19 +97,20 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 ---
 
-## Test Status (2026-04-11)
+## Test Status (2026-04-13)
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| Engine TS (vitest) | 2165 passed, 10 skipped | ✅ GREEN (156 files) |
-| CLI Rust (cargo test) | 195 | ✅ GREEN |
-| **Total** | **2360** | ✅ **ALL GREEN** |
+| Engine TS (vitest) | 2225 passed, 10 skipped | ✅ GREEN (163 files) |
+| CLI Rust (cargo test) | 199 | ✅ GREEN |
+| **Total** | **2424** | ✅ **ALL GREEN** |
 | Acceptance: verify_pipeline.sh | 9/9 checks | ✅ PASS |
 | Acceptance: verify_report_export.sh | 6/6 checks | ✅ PASS |
 | E2E: pipeline-e2e.test.ts | 5 passed, 1 skipped (LLM — no key) | ✅ GREEN |
 | E2E: gaps-e2e.test.ts | 9 passed | ✅ GREEN |
 | E2E: report-html.test.ts | 11 passed | ✅ GREEN |
 | E2E: ci-flags-e2e.test.ts | 7 passed, 3 skipped (eval target — no env) | ✅ GREEN |
+| E2E: context-scan-e2e.test.ts | 5 passed (V1-M08) | ✅ GREEN |
 
 ---
 
@@ -173,6 +177,42 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 ---
 
+## V1-M08 Delivery (feature/V1-M08-context-scan)
+
+**Completed:** 2026-04-13 | **Status:** ✅ DONE — REVIEWER APPROVED (with scope violation noted as TD-15)
+
+**Branch:** `feature/V1-M08-context-scan` (5 commits: acbae26..ecc500e)
+
+### What was delivered:
+
+| Component | Description |
+|-----------|-------------|
+| ScanFilterContext type | `types/common.types.ts` — role, riskLevel, domain, profileFound, obligation/skip counts |
+| Zod schema | `types/common.schemas.ts` — ScanFilterContextSchema |
+| Risk-level filter | `domain/scanner/risk-level-filter.ts` — filters findings by project risk level (mirrors role-filter) |
+| Profile-aware scan | `services/scan-service.ts` — `applyProfileFilters()` replaces `applyRoleFilter()`, supports getProjectProfile + legacy getProjectRole fallback |
+| Obligation coverage | `domain/reporter/obligation-coverage.ts` — `riskApplies()` filter for risk level |
+| Scan route topActions | `http/routes/scan.route.ts` — top-3 priority actions in scan response |
+| Fix route filterContext | `http/routes/fix.route.ts` — filterContext from last scan in fix response |
+| Composition root wiring | `composition-root.ts` — getProjectProfile closure wired |
+| check-to-obligations data | `data/check-to-obligations.json` — expanded mappings for fria, conformity-assessment |
+| Rust types | `cli/src/types/engine.rs` — ScanFilterContext + TopAction structs |
+| Contract tests | `types/contract.test.ts` + `cli/src/contract_test.rs` — schema+sample extended |
+
+### Test specs delivered (architect):
+
+| File | Tests | Scope |
+|------|-------|-------|
+| `risk-level-filter.test.ts` | 8 | T-2: risk level filtering logic |
+| `scan-service-context.test.ts` | 4 | T-3: filterContext integration |
+| `scan-filter-context.test.ts` | 4 | T-4/T-5: scan route filter + topActions |
+| `obligation-coverage-risk.test.ts` | 5 | T-7: obligation coverage with risk |
+| `fix-filter-context.test.ts` | 2 | T-8: fix route filterContext passthrough |
+| `context-scan-e2e.test.ts` | 5 | E2E: full HTTP contract |
+| contract.test.ts (extended) | +3 | T-1: schema conformance |
+
+---
+
 ## Tech Debt
 
 | # | Description | File | Status |
@@ -188,3 +228,8 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | TD-9 | 🟡 OPEN: Dev changed test assertion (scope violation) | `layer4-patterns.test.ts` — bare-llm `info`→`fail`/`medium` in `dfff13e`. Policy change correct, impl in sync. | architect ratify |
 | TD-10 | 🟡 OPEN: SDK tests run separately | SDK ~414 tests not in main vitest count. Total 2360 excludes SDK. | architect wire |
 | TD-11 | 🟡 OPEN: V1-M04 acceptance not CI-automated | `verify_cli_flags.sh` requires binary. Manual gate before v1.0. | architect/user |
+| TD-12 | 🟡 OPEN: scan.route.ts imports unused `buildPriorityActions` | V1-M08 `scan.route.ts` — imports `buildPriorityActions` but uses inline `computeTopActions` instead. Deduplicate. | dev fix |
+| TD-13 | 🟡 OPEN: O(n²) skip counting in applyProfileFilters | V1-M08 `scan-service.ts` — uses `.find()` in loop for skippedByRole/skippedByRiskLevel counting. Refactor to Set-based lookup. | dev fix |
+| TD-14 | 🔴 OPEN: agent-discovery Express route parsing | `agent-discovery.ts` — `app.get('env')` parsed as route. RED test written (V1-M07). | dev fix |
+| TD-15 | 🔴 SCOPE VIOLATION: Dev changed existing test spec | V1-M08 `scan-service.test.ts` — dev changed score assertion 33→40, skippedChecks 2→0 in role-filter test. Legacy fallback no longer recalculates score. Original spec: score recalculated after role filtering. | architect ratify or revert |
+| TD-16 | 🟡 OPEN: Dev modified E2E test setup | V1-M08 `context-scan-e2e.test.ts` — dev added temp dir isolation (mkdtemp) to fix vitest module-state leakage. Assertions unchanged. Infra fix, not spec change. | architect ratify |
