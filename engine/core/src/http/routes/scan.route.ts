@@ -4,6 +4,8 @@ import type { ScanService } from '../../services/scan-service.js';
 import type { ScanResult } from '../../types/common.types.js';
 import { parseBody, requireQuery } from '../utils/validation.js';
 import type { PriorityAction } from '../../domain/reporter/types.js';
+import { buildScoreDisclaimer } from '../../domain/scanner/score-disclaimer.js';
+import { buildCategoryBreakdown } from '../../domain/scanner/category-breakdown.js';
 
 const ScanRequestSchema = z.object({
   path: z.string().min(1),
@@ -22,16 +24,17 @@ export interface ScanRouteDeps {
   readonly getLastScan: () => ScanResult | null;
 }
 
-/** V1-M08 T-5: Build topActions from scan result (top-3 priority actions from fail findings). */
-const computeTopActions = (result: ScanResult): Omit<PriorityAction, 'rank' | 'effort' | 'projectedScore'>[] =>
+/** V1-M08 T-5: Build topActions from scan result (top-5 priority actions from fail findings). */
+const computeTopActions = (result: ScanResult): PriorityAction[] =>
   result.findings
     .filter((f) => f.type === 'fail')
     .sort((a, b) => {
       const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
       return (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5);
     })
-    .slice(0, 3)
-    .map((f) => ({
+    .slice(0, 5)
+    .map((f, index) => ({
+      rank: index + 1,
       source: 'scan' as const,
       id: f.checkId,
       title: f.fix ?? f.message,
@@ -43,6 +46,8 @@ const computeTopActions = (result: ScanResult): Omit<PriorityAction, 'rank' | 'e
       fixAvailable: !!f.fixDiff || !!f.fix,
       command: 'complior fix',
       priorityScore: f.priority ?? 5,
+      effort: undefined,
+      projectedScore: undefined,
     }));
 
 export const createScanRoute = (deps: ScanRouteDeps) => {
@@ -53,8 +58,21 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
     const data = await parseBody(c, ScanRequestSchema);
     const result = await scanService.scan(data.path);
 
-    /** V1-M08 T-5: include top-3 priority actions in scan response */
+    /** V1-M08 T-5: include top-5 priority actions in scan response */
     const topActions = computeTopActions(result);
+
+    /** V1-M10 T-1: score disclaimer -- what the score does and doesn't cover */
+    const coveredIds = Array.from(
+      new Set(
+        result.findings
+          .filter((f) => f.type === 'pass' && f.obligationId !== undefined)
+          .map((f) => f.obligationId!),
+      ),
+    );
+    const scoreDisclaimer = buildScoreDisclaimer(result.score, result.filterContext ?? null, coveredIds);
+
+    /** V1-M10 T-2: per-category breakdown with impact levels and top failures */
+    const categoryBreakdown = buildCategoryBreakdown(result.score, result.findings);
 
     // Auto-sync: if saasToken provided, push scan to SaaS
     const saasToken = data.saasToken;
@@ -80,7 +98,7 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
       }
     }
 
-    return c.json({ ...result, topActions });
+    return c.json({ ...result, topActions, scoreDisclaimer, categoryBreakdown });
   });
 
   app.post('/scan/deep', async (c) => {
@@ -90,7 +108,7 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
     return c.json(result);
   });
 
-  // US-S05-34: Compliance Diff — delegates to scanService.scanDiff()
+  // US-S05-34: Compliance Diff -- delegates to scanService.scanDiff()
   app.post('/scan/diff', async (c) => {
     const data = await parseBody(c, ScanDiffRequestSchema);
 
@@ -103,7 +121,7 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
     return c.json(result);
   });
 
-  // E-115: Tier 2 scan — external tools via uv
+  // E-115: Tier 2 scan -- external tools via uv
   app.post('/scan/tier2', async (c) => {
     const data = await parseBody(c, ScanRequestSchema);
 
@@ -111,7 +129,7 @@ export const createScanRoute = (deps: ScanRouteDeps) => {
     return c.json(result);
   });
 
-  // Alias: POST /scan/llm → scanDeep (L5 LLM analysis)
+  // Alias: POST /scan/llm -> scanDeep (L5 LLM analysis)
   app.post('/scan/llm', async (c) => {
     const data = await parseBody(c, ScanRequestSchema);
 

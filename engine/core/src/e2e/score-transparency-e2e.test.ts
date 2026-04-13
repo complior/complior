@@ -27,17 +27,17 @@ const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
 const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
 
 describe('V1-M10: Score Transparency E2E', () => {
-  let app: Application;
+  let application: Application;
 
   beforeAll(async () => {
     if (!canRunE2E) return;
-    app = await loadApplication();
+    application = await loadApplication();
   }, 30_000);
 
   it('POST /scan response includes scoreDisclaimer with coverage numbers', async () => {
     if (!canRunE2E) return;
 
-    const res = await app.request('/scan', {
+    const res = await application.app.request('/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
@@ -63,7 +63,7 @@ describe('V1-M10: Score Transparency E2E', () => {
   it('POST /scan response includes categoryBreakdown with explanations', async () => {
     if (!canRunE2E) return;
 
-    const res = await app.request('/scan', {
+    const res = await application.app.request('/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
@@ -93,7 +93,7 @@ describe('V1-M10: Score Transparency E2E', () => {
   it('POST /scan topActions have rank and effort fields', async () => {
     if (!canRunE2E) return;
 
-    const res = await app.request('/scan', {
+    const res = await application.app.request('/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
@@ -124,14 +124,14 @@ describe('V1-M10: Score Transparency E2E', () => {
     if (!canRunE2E) return;
 
     // First trigger a scan so there's data
-    await app.request('/scan', {
+    await application.app.request('/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
     });
 
     // V1-M10 T-4: new endpoint
-    const res = await app.request('/status/posture');
+    const res = await application.app.request('/status/posture');
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -155,7 +155,7 @@ describe('V1-M10: Score Transparency E2E', () => {
   it('GET /status/posture returns profile when project has one', async () => {
     if (!canRunE2E) return;
 
-    const res = await app.request('/status/posture');
+    const res = await application.app.request('/status/posture');
     expect(res.status).toBe(200);
     const body = await res.json();
 
