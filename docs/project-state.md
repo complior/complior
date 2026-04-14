@@ -1,7 +1,7 @@
 # Project State
 
-> Last updated: 2026-04-13
-> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE · V1-M09 DONE (onboarding enrichment) · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M09** — awaiting architect ratify TD-5/6, resolve TD-7, then user merge
+> Last updated: 2026-04-14
+> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE · V1-M09 DONE · V1-M10 ✅ DONE (TS portion) · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M10** — conditions: architect ratify TD-20/21, T-4 Rust CLI pending rust-dev, then user merge
 
 ## Overview
 
@@ -52,6 +52,7 @@ cli/, engine/                → Code (GREEN)
 | V1-M07 | 🔴 RED | FA-04 (Passport), FA-05 (Report) — ISO 42001 Document Generators. Specs ready, awaiting dev. | `feature/V1-M07-iso42001` | — |
 | V1-M08 | ✅ DONE | FA-01 (Scanner) — Context-Aware Scan: profile filters, risk-level, filterContext | `feature/V1-M08-context-scan` | — |
 | V1-M09 | ✅ DONE | Onboarding Enrichment — 9 questions, dynamic obligation filtering, reconfigure, GPAI auto-detect | `feature/V1-M09-onboarding-enrichment` | — |
+| V1-M10 | ✅ DONE (TS) | FA-01 (Scanner), FA-05 (Report) — Score Transparency: disclaimer, category breakdown, profile-aware topActions, /status/posture | `feature/V1-M10-score-transparency` | — |
 
 > Old milestones (M01-M04, S01-S12) archived to `docs/old/sprints/`
 
@@ -98,13 +99,13 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 ---
 
-## Test Status (2026-04-13)
+## Test Status (2026-04-14)
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| Engine TS (vitest) | 2261 passed, 10 skipped | ✅ GREEN (166 files) |
+| Engine TS (vitest) | 2281 passed, 10 skipped | ✅ GREEN (170 files) |
 | CLI Rust (cargo test) | 199 | ✅ GREEN |
-| **Total** | **2460** | ✅ **ALL GREEN** |
+| **Total** | **2480** | ✅ **ALL GREEN** |
 | Acceptance: verify_pipeline.sh | 9/9 checks | ✅ PASS |
 | Acceptance: verify_report_export.sh | 6/6 checks | ✅ PASS |
 | E2E: pipeline-e2e.test.ts | 5 passed, 1 skipped (LLM — no key) | ✅ GREEN |
@@ -113,6 +114,7 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | E2E: ci-flags-e2e.test.ts | 7 passed, 3 skipped (eval target — no env) | ✅ GREEN |
 | E2E: context-scan-e2e.test.ts | 5 passed (V1-M08) | ✅ GREEN |
 | E2E: onboarding-enrichment-e2e.test.ts | 6 passed (V1-M09) | ✅ GREEN |
+| E2E: score-transparency-e2e.test.ts | 5 passed (V1-M10) | ✅ GREEN |
 
 ---
 
@@ -244,6 +246,41 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 ---
 
+## V1-M10 Delivery (feature/V1-M10-score-transparency)
+
+**Completed:** 2026-04-14 (TS portion) | **Status:** ✅ DONE (nodejs-dev) — REVIEWER APPROVED (conditions: architect ratify TD-20/21, T-4 Rust CLI pending)
+
+**Branch:** `feature/V1-M10-score-transparency` (4 commits: 71aa9fe..4e52327)
+
+### What was delivered:
+
+| Component | Description |
+|-----------|-------------|
+| Score disclaimer | `domain/scanner/score-disclaimer.ts` — pure function: explains what score covers/doesn't, coverage %, limitations, critical cap |
+| Category breakdown | `domain/scanner/category-breakdown.ts` — per-category impact levels, top failures, explanations; uses `check-id-categories.json` |
+| Profile-aware topActions | `domain/scanner/profile-priority.ts` — deadline proximity × severity × category weakness scoring, top 5 actions |
+| Scan route enrichment | `http/routes/scan.route.ts` — POST /scan returns `scoreDisclaimer`, `categoryBreakdown`, profile-aware `topActions` |
+| Compliance posture endpoint | `http/routes/status.route.ts` — `GET /status/posture` returns `CompliancePosture` aggregate |
+| Status service | `services/status-service.ts` — `getCompliancePosture()` orchestrates disclaimer+breakdown+topActions+profile+passport+evidence |
+| Types (architect) | `types/common.types.ts` — `ScoreDisclaimer`, `CategoryBreakdown`, `CompliancePosture` interfaces |
+| Zod schemas (architect) | `types/common.schemas.ts` — `ScoreDisclaimerSchema`, `CategoryBreakdownSchema`, `CompliancePostureSchema` |
+
+### Test specs delivered (architect):
+
+| File | Tests | Scope |
+|------|-------|-------|
+| `score-disclaimer.test.ts` | 6 | T-1: disclaimer generation |
+| `category-breakdown.test.ts` | 5 | T-2: category explanations |
+| `profile-priority.test.ts` | 4 | T-3: profile-aware actions |
+| `score-transparency-e2e.test.ts` | 5 | E2E: full HTTP contract |
+| `verify_score_transparency.sh` | 6 | Acceptance: CLI output |
+
+### Pending:
+
+- **T-4 Rust CLI**: `complior status [--json] [path]` — awaiting rust-dev
+
+---
+
 ## Tech Debt
 
 | # | Description | File | Status |
@@ -264,6 +301,10 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | TD-14 | 🔴 OPEN: agent-discovery Express route parsing | `agent-discovery.ts` — `app.get('env')` parsed as route. RED test written (V1-M07). | dev fix |
 | TD-15 | 🔴 SCOPE VIOLATION: Dev changed existing test spec | V1-M08 `scan-service.test.ts` — dev changed score assertion 33→40, skippedChecks 2→0 in role-filter test. Legacy fallback no longer recalculates score. Original spec: score recalculated after role filtering. | architect ratify or revert |
 | TD-16 | 🟡 OPEN: Dev modified E2E test setup | V1-M08 `context-scan-e2e.test.ts` — dev added temp dir isolation (mkdtemp) to fix vitest module-state leakage. Assertions unchanged. Infra fix, not spec change. | architect ratify |
-| TD-17 | 🟡 OPEN: V1-M09 dev modified M08 E2E test data+assertions | `context-scan-e2e.test.ts` — TEST_PROFILE changed from 3 fake OBL-IDs → 19 real `eu-ai-act-OBL-*`. Assertions range→exact (applicableObligations=19). Stricter but scope violation. | architect ratify |
-| TD-18 | 🟡 OPEN: V1-M09 dev fixed field name in E2E test | `onboarding-enrichment-e2e.test.ts` — `applicableObligationCount`→`applicableObligations`. Architect spec naming mismatch. | architect ratify |
-| TD-19 | 🔴 OPEN: V1-M07 files duplicated on M09 branch | `iso-42001-controls.json`, `soa-generator.ts`, `risk-register-generator.ts`, `passport-documents.ts` — copied from M07 branch for typecheck. Merge conflict risk when M07 merges to dev. | architect resolve before merge |
+| TD-17 | ✅ RATIFIED 2026-04-13: real OBL-IDs and exact assertions are stricter — spec improved. | `context-scan-e2e.test.ts` | closed |
+| TD-18 | ✅ RATIFIED 2026-04-13: architect spec had wrong field name, dev fix is correct. | `onboarding-enrichment-e2e.test.ts` | closed |
+| TD-19 | ✅ RESOLVED 2026-04-14: M07 rebased onto dev and merged (PR #10). Conflicts resolved in 5 files. | composition-root, passport-documents, etc. | closed |
+| TD-20 | ✅ RATIFIED 2026-04-14: architect spec used wrong API shape (`app.request()` vs `application.app.request()`). Dev fix is correct — assertions unchanged, only infra call fixed. | `score-transparency-e2e.test.ts` | closed |
+| TD-21 | ✅ RATIFIED 2026-04-14: V1-M10 raised topActions limit 3→5 by design. M08 E2E spec must align. Architect already committed the same fix (`141aa91`). | `context-scan-e2e.test.ts` | closed |
+| TD-22 | 🟡 OPEN: Silent error swallowing in status-service | `status-service.ts:106,115,124` — `catch { /* ignore */ }` for profile, passports, evidence. Should log at debug level. | dev fix |
+| TD-23 | 🟡 OPEN: V1-M10 T-4 Rust CLI not implemented | `complior status [--json] [path]` — TS endpoint done, Rust CLI command missing. | rust-dev |
