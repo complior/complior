@@ -250,6 +250,9 @@ async fn main() -> color_eyre::Result<()> {
                 headless::run_doctor(&config).await;
                 0
             }
+            Some(cli::Command::Status { json, path }) => {
+                headless::run_headless_status(*json, path.as_deref(), &config).await
+            }
             Some(cli::Command::Report {
                 format,
                 output,

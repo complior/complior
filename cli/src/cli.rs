@@ -148,6 +148,16 @@ pub enum Command {
         path: Option<String>,
     },
 
+    /// V1-M10 T-4: Show aggregated compliance posture (score disclaimer, categories, top actions)
+    Status {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
+
     /// Generate compliance readiness report
     Report {
         /// Output format: human, json, md, markdown, pdf, html (default: human)
