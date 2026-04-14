@@ -2,7 +2,6 @@ import type { EngineStatus, ScanResult, CompliancePosture, ScoreBreakdown, ScanF
 import type { PriorityAction } from '../domain/reporter/types.js';
 import { buildScoreDisclaimer } from '../domain/scanner/score-disclaimer.js';
 import { buildCategoryBreakdown } from '../domain/scanner/category-breakdown.js';
-import { buildProfileAwareTopActions } from '../domain/scanner/profile-priority.js';
 import type { OnboardingProfile } from '../onboarding/profile.js';
 
 export interface StatusServiceDeps {
@@ -81,9 +80,29 @@ export const createStatusService = (deps: StatusServiceDeps) => {
       ? buildCategoryBreakdown(lastScan.score, lastScan.findings)
       : [];
 
-    // V1-M10 T-3: build top actions via pure function
+    // Build top actions from findings
+    const sevOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
     const topActions: PriorityAction[] = lastScan
-      ? buildProfileAwareTopActions(lastScan, lastScan.filterContext ?? null)
+      ? lastScan.findings
+          .filter((f: Finding) => f.type === 'fail')
+          .sort((a: Finding, b: Finding) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5))
+          .slice(0, 5)
+          .map((f: Finding, index: number) => ({
+            rank: index + 1,
+            source: 'scan' as const,
+            id: f.checkId,
+            title: f.fix ?? f.message,
+            article: f.articleReference ?? '',
+            severity: f.severity,
+            deadline: null,
+            daysLeft: null,
+            scoreImpact: f.priority ?? 5,
+            fixAvailable: !!f.fixDiff || !!f.fix,
+            command: 'complior fix',
+            priorityScore: f.priority ?? 5,
+            effort: undefined,
+            projectedScore: undefined,
+          }))
       : [];
 
     // Load profile for filter context

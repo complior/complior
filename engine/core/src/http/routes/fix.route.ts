@@ -3,8 +3,11 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import type { FixService } from '../../services/fix-service.js';
 import type { UndoService } from '../../services/undo-service.js';
+import type { PassportService } from '../../services/passport-service.js';
+import { ValidationError } from '../../types/errors.js';
 import { parseBody } from '../utils/validation.js';
 import { simulateActions } from '../../domain/whatif/simulate-actions.js';
+import { ALL_DOC_TYPES } from '../../domain/documents/document-generator.js';
 
 const FixApplySchema = z.object({
   checkId: z.string().min(1),
@@ -24,10 +27,11 @@ const FixUndoSchema = z.object({
 export interface FixRouteDeps {
   readonly fixService: FixService;
   readonly undoService: UndoService;
+  readonly passportService?: PassportService;
 }
 
 export const createFixRoute = (deps: FixRouteDeps) => {
-  const { fixService, undoService } = deps;
+  const { fixService, undoService, passportService } = deps;
   const app = new Hono();
 
   // Preview all available fixes (rendered — [TEMPLATE:xxx] replaced with actual markdown)
@@ -268,6 +272,181 @@ export const createFixRoute = (deps: FixRouteDeps) => {
   app.get('/fix/history', async (c) => {
     const history = await undoService.getHistory();
     return c.json(history);
+  });
+
+  // ────────────────────────────────────────────────────────────
+  // V1-M11 T-4: Document generation routes (moved from /agent/*)
+  // ────────────────────────────────────────────────────────────
+
+  // C.D01: Generate FRIA
+  app.post('/fix/doc/fria', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      organization: z.string().optional(),
+      assessor: z.string().optional(),
+      impact: z.string().optional(),
+      mitigation: z.string().optional(),
+      approval: z.string().optional(),
+    }));
+
+    const result = await passportService.generateFriaReport(
+      data.name,
+      data.path,
+      {
+        organization: data.organization,
+        assessor: data.assessor,
+        impact: data.impact,
+        mitigation: data.mitigation,
+        approval: data.approval,
+      },
+    );
+    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
+    return c.json({ ...result });
+  });
+
+  // C.D02: Generate Worker Notification (Art.26(7))
+  app.post('/fix/doc/notify', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      companyName: z.string().optional(),
+      contactName: z.string().optional(),
+      contactEmail: z.string().optional(),
+      contactPhone: z.string().optional(),
+      deploymentDate: z.string().optional(),
+      affectedRoles: z.string().optional(),
+      impactDescription: z.string().optional(),
+    }));
+
+    const result = await passportService.generateWorkerNotification(
+      data.name,
+      data.path,
+      {
+        companyName: data.companyName,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        deploymentDate: data.deploymentDate,
+        affectedRoles: data.affectedRoles,
+        impactDescription: data.impactDescription,
+      },
+    );
+    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
+    return c.json({ path: result.savedPath, markdown: result.markdown, timestamp: new Date().toISOString() });
+  });
+
+  // US-S05-15: Generate industry-specific AI usage policy
+  app.post('/fix/doc/policy', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const VALID_INDUSTRIES = ['hr', 'finance', 'healthcare', 'education', 'legal'] as const;
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      domain: z.enum(VALID_INDUSTRIES),
+      organization: z.string().optional(),
+      approver: z.string().optional(),
+    }));
+
+    const result = await passportService.generatePolicy(
+      data.name,
+      data.domain,
+      data.path,
+      { organization: data.organization, approver: data.approver },
+    );
+    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
+    return c.json({ ...result, savedPath: undefined });
+  });
+
+  // US-S06-06: Generate a single compliance document by type
+  app.post('/fix/doc/generate', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      docType: z.enum(ALL_DOC_TYPES as readonly [string, ...string[]]),
+      organization: z.string().optional(),
+    }));
+
+    const result = await passportService.generateDocByType(
+      data.name,
+      data.docType,
+      data.path,
+      { organization: data.organization },
+    );
+    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
+    return c.json({ ...result, timestamp: new Date().toISOString() });
+  });
+
+  // C.D03: Generate ISO 42001 Statement of Applicability (SoA)
+  app.post('/fix/doc/soa', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      organization: z.string().optional(),
+    }));
+
+    const result = await passportService.generateSoAReport(
+      data.name,
+      data.path,
+      { organization: data.organization },
+    );
+    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
+    return c.json({ ...result });
+  });
+
+  // C.D04: Generate ISO 42001 Risk Register
+  app.post('/fix/doc/risk-register', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      organization: z.string().optional(),
+    }));
+
+    const result = await passportService.generateRiskRegisterReport(
+      data.name,
+      data.path,
+      { organization: data.organization },
+    );
+    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
+    return c.json({ ...result });
+  });
+
+  // US-S05-24: Generate compliance test suite from passport constraints
+  app.post('/fix/doc/test-gen', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+    }));
+
+    const result = await passportService.generateTestGenReport(
+      data.name,
+      data.path,
+    );
+    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
+    return c.json({ ...result });
+  });
+
+  // C.D05: Generate all compliance documents
+  app.post('/fix/doc/all', async (c) => {
+    if (!passportService) throw new ValidationError('Passport service not available');
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+      path: z.string().optional(),
+      organization: z.string().optional(),
+    }));
+
+    const result = await passportService.generateAllDocs(
+      data.name,
+      data.path,
+      { organization: data.organization },
+    );
+    return c.json({ ...result, timestamp: new Date().toISOString() });
   });
 
   return app;

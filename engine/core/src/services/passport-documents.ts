@@ -26,10 +26,8 @@ import type { IndustryId } from '../data/industry-patterns.js';
 import { INDUSTRY_TEMPLATE_MAP } from '../data/industry-patterns.js';
 import type { PassportServiceDeps } from './passport-service.js';
 import { ensureTemplate, saveDocumentReport, updatePassportCompliance } from './passport-service-utils.js';
-import { generateSoA } from '../domain/documents/soa-generator.js';
-import type { SoAResult } from '../types/common.types.js';
-import { generateRiskRegister } from '../domain/documents/risk-register-generator.js';
-import type { RiskRegisterResult } from '../types/common.types.js';
+import { generateComplianceTests } from '../domain/passport/test-generator.js';
+import type { GeneratedTestSuite } from '../domain/passport/test-generator.js';
 
 export interface PassportDocumentOps {
   readonly showPassport: (name: string, projectPath?: string) => Promise<AgentPassport | null>;
@@ -335,6 +333,35 @@ export const createPassportDocuments = (deps: PassportServiceDeps, ops: Passport
     return { ...result, savedPath };
   };
 
+  /** US-S05-24: Generate compliance test suite from passport constraints */
+  const generateTestGenReport = async (
+    name: string,
+    projectPath?: string,
+  ): Promise<GeneratedTestSuite | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+
+    const result = generateComplianceTests({
+      name: manifest.name,
+      permissions: {
+        tools: manifest.permissions.tools,
+        denied: manifest.permissions.denied,
+      },
+      constraints: {
+        rate_limits: manifest.constraints.rate_limits
+          ? [{ action: 'rate_limit', limit: manifest.constraints.rate_limits.max_actions_per_minute, window: 'minute' }]
+          : undefined,
+        prohibited_actions: manifest.constraints.prohibited_actions,
+        budget: manifest.constraints.budget ? {
+          max_cost: manifest.constraints.budget.max_cost_per_session_usd,
+          currency: 'USD',
+        } : undefined,
+      },
+    });
+
+    return result;
+  };
+
   return Object.freeze({
     generateFriaReport,
     generateWorkerNotification,
@@ -344,5 +371,6 @@ export const createPassportDocuments = (deps: PassportServiceDeps, ops: Passport
     generateAllDocs,
     generateSoAReport,
     generateRiskRegisterReport,
+    generateTestGenReport,
   });
 };

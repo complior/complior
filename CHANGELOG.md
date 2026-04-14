@@ -5,6 +5,23 @@ All notable changes to Complior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking
+
+**Command Restructuring (V1-M11)**
+- `complior agent` renamed to `complior passport` (16 subcommands)
+- Document generation moved from `complior agent <type>` to `complior fix --doc <type>`
+  - `complior agent fria` → `complior fix --doc fria <name>`
+  - `complior agent notify` → `complior fix --doc notify <name>`
+  - `complior agent policy` → `complior fix --doc policy <name>`
+  - `complior agent soa` → `complior fix --doc soa <name>`
+  - `complior agent risk-register` → `complior fix --doc risk-register <name>`
+  - `complior agent test-gen` → `complior fix --doc test-gen <name>`
+  - `complior agent doc all` → `complior fix --doc all <name>`
+- All `/agent/*` HTTP routes deprecated → `/passport/*` (passport CRUD)
+- All doc-gen HTTP routes moved to `/fix/doc/*`
+
 ## [0.9.5] - 2026-04-12
 
 ### Added

@@ -8,6 +8,7 @@ use crate::headless::format::colors::{
 use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
 use crate::headless::format::{plural, project_name, separator};
+use crate::headless::common::{ensure_engine, resolve_project_path_buf};
 
 /// Run a headless fix (dry-run or apply).
 pub async fn run_headless_fix(
@@ -1315,6 +1316,105 @@ fn shorten_path(path: &str) -> &str {
     path[start..]
         .find('/')
         .map_or(path, |pos| &path[start + pos + 1..])
+}
+
+// ── Document generation (fix --doc) ─────────────────────────────────
+
+const VALID_DOC_TYPES: &[&str] = &[
+    "ai-literacy",
+    "art5-screening",
+    "technical-documentation",
+    "incident-report",
+    "declaration-of-conformity",
+    "monitoring-policy",
+    "fria",
+    "worker-notification",
+    "risk-management",
+    "data-governance",
+    "qms",
+    "instructions-for-use",
+    "gpai-transparency",
+    "gpai-systemic-risk",
+];
+
+/// Run `fix --doc <type> [agent]` — generate a compliance document.
+/// Agent name defaults to "default" if not provided.
+pub async fn run_doc_generate_fix(
+    doc_type: &str,
+    agent: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    if !VALID_DOC_TYPES.contains(&doc_type) {
+        eprintln!("Error: Invalid document type: {doc_type}");
+        eprintln!("Valid types: {}", VALID_DOC_TYPES.join(", "));
+        return 1;
+    }
+
+    let project_path = resolve_project_path_buf(path);
+    let agent_name = agent.unwrap_or("default");
+
+    let client = match ensure_engine(config).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    if !json {
+        println!("Generating '{doc_type}' document for passport '{agent_name}'...");
+    }
+
+    let body = serde_json::json!({
+        "path": project_path.to_string_lossy(),
+        "name": agent_name,
+        "docType": doc_type,
+    });
+
+    match client.post_json("/fix/doc/generate", &body).await {
+        Ok(result) => {
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                return 0;
+            }
+
+            let saved_path = result
+                .get("savedPath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let prefilled = result
+                .get("prefilledFields")
+                .and_then(|v| v.as_array())
+                .map_or(0, std::vec::Vec::len);
+            let manual = result
+                .get("manualFields")
+                .and_then(|v| v.as_array())
+                .map_or(0, std::vec::Vec::len);
+
+            println!("\nDocument generated:");
+            println!("  Type:      {doc_type}");
+            println!("  Passport:  {agent_name}");
+            println!("  Saved to: {saved_path}");
+            println!("  Prefilled: {prefilled} field(s)");
+            println!("  Manual:    {manual} field(s) remaining");
+
+            if let Some(fields) = result.get("manualFields").and_then(|v| v.as_array())
+                && !fields.is_empty()
+            {
+                println!("\n  Fields to complete manually:");
+                for field in fields {
+                    if let Some(f) = field.as_str() {
+                        println!("    - {f}");
+                    }
+                }
+            }
+
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to generate document: {e}");
+            1
+        }
+    }
 }
 
 #[cfg(test)]

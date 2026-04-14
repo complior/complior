@@ -1,6 +1,6 @@
 # V1-M11: Command Restructuring (agent→passport, docs→fix)
 
-**Status:** 🔴 RED (specs ready, awaiting implementation)
+**Status:** ✅ DONE (2498 tests GREEN, reviewer APPROVED 2026-04-14)
 **Created:** 2026-04-13
 **Deadline:** 2026-04-27 (2 weeks)
 **Agents:** nodejs-dev (routes), rust-dev (CLI), architect (tests, docs)

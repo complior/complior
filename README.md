@@ -173,8 +173,8 @@ complior eval --target http://localhost:4000/api/chat --agent my-bot
 complior fix
 
 # 5. Generate compliance documents (FRIA, policy, audit package)
-complior agent fria my-bot
-complior agent audit-package
+complior fix --doc fria my-bot
+complior passport audit-package
 
 # 6. Launch TUI dashboard for continuous monitoring
 complior
@@ -215,34 +215,38 @@ complior audit <url>                         # full audit: scan + eval + securit
 complior report [path]                       # compliance report
   --format md|pdf --output/-o file
 
-# ─── AGENT PASSPORT ───
-complior agent init [path]                   # (optional) manual agent discovery → passports
-  --force --json                             # init does this automatically
-complior agent list [path]                   # list all passports
+# ─── PASSPORT (renamed from agent) ───
+complior passport init [path]                  # (optional) manual agent discovery → passports
+  --force --json                              # init does this automatically
+complior passport list [path]                  # list all passports
   --verbose/-v --json
-complior agent show <name> [path] --json     # show specific passport
-complior agent rename <old> <new> [path]     # rename passport + re-sign
-complior agent validate [name] [path]        # schema + signature + completeness
+complior passport show <name> [path] --json  # show specific passport
+complior passport rename <old> <new> [path]    # rename passport + re-sign
+complior passport validate [name] [path]       # schema + signature + completeness
   --ci --strict --verbose --json
-complior agent completeness <name> --json    # obligation gaps breakdown
-complior agent autonomy [path] --json        # autonomy level (L1-L5)
-complior agent diff <name> --json            # compare passport versions
-complior agent fria <name> [path]            # FRIA report (Art.27)
-  --organization --impact --mitigation --approval --json
-complior agent notify <name> [path]          # worker notification (Art.26(7))
-  --company-name --contact-name --contact-email --contact-phone
-  --deployment-date --affected-roles --impact-description --json
-complior agent policy <name> --industry hr   # AI usage policy (Art.6)
-  --organization --approver --json [path]    # industries: hr|finance|healthcare|education|legal
-complior agent export <name> --format a2a    # export (a2a|aiuc-1|nist)
-complior agent import --from a2a <file>      # import external passport
-complior agent test-gen <name> --json        # generate compliance tests
-complior agent audit-package [-o file]       # audit package (tar.gz)
-complior agent evidence [--verify] --json    # evidence chain
-complior agent permissions --json            # cross-agent permissions matrix
-complior agent registry --json               # per-agent compliance registry
-complior agent audit                         # audit trail (event log)
+complior passport completeness <name> --json   # obligation gaps breakdown
+complior passport autonomy [path] --json       # autonomy level (L1-L5)
+complior passport diff <name> --json           # compare passport versions
+complior passport evidence [--verify] --json  # evidence chain
+complior passport permissions --json           # cross-agent permissions matrix
+complior passport registry --json              # per-agent compliance registry
+complior passport export <name> --format a2a  # export (a2a|aiuc-1|nist)
+complior passport import --from a2a <file>     # import external passport
+complior passport audit-package [-o file]      # audit package (tar.gz)
+complior passport audit                        # audit trail (event log)
   --agent <name> --since DATE --type EVENT --limit N --json
+
+# ─── DOCUMENT GENERATION (via fix) ───
+complior fix --doc fria <name> [path]          # FRIA report (Art.27)
+  --organization --impact --mitigation --approval --json
+complior fix --doc notify <name> [path]        # worker notification (Art.26(7))
+  --company --contact-name --contact-email --contact-phone
+  --deployment-date --affected-roles --impact-description --json
+complior fix --doc policy <name> --industry hr # AI usage policy (Art.6)
+  --organization --approver --json [path]     # industries: hr|finance|healthcare|education|legal
+complior fix --doc soa <name> [path]          # Statement of Applicability (ISO 42001)
+complior fix --doc risk-register <name>       # Risk Register (ISO 42001)
+complior fix --doc all <name>                  # generate all documents
 
 # ─── CERTIFICATION ───
 complior cert readiness <name> --json [path] # AIUC-1 readiness score
