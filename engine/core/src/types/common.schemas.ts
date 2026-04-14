@@ -140,6 +140,50 @@ const EvidenceChainSchema = z.object({
   lastHash: z.string(),
 });
 
+// --- Score Transparency schemas (V1-M10) ---
+
+export const ScoreDisclaimerSchema = z.object({
+  summary: z.string(),
+  coveredObligations: z.number(),
+  totalApplicableObligations: z.number(),
+  coveragePercent: z.number(),
+  uncoveredCount: z.number(),
+  limitations: z.array(z.string()),
+  criticalCapExplanation: z.string().nullable(),
+});
+
+export const CategoryBreakdownSchema = z.object({
+  category: z.string(),
+  score: z.number(),
+  weight: z.number(),
+  passed: z.number(),
+  failed: z.number(),
+  impact: z.enum(['high', 'medium', 'low']),
+  topFailures: z.array(z.string()),
+  explanation: z.string(),
+});
+
+export const CompliancePostureSchema = z.object({
+  score: ScoreBreakdownSchema,
+  disclaimer: ScoreDisclaimerSchema,
+  categories: z.array(CategoryBreakdownSchema),
+  topActions: z.array(z.object({
+    rank: z.number(),
+    source: z.string(),
+    id: z.string(),
+    title: z.string(),
+    severity: z.string(),
+    fixAvailable: z.boolean(),
+    command: z.string(),
+    priorityScore: z.number(),
+  }).passthrough()),
+  profile: ScanFilterContextSchema.nullable(),
+  lastScanAt: z.string().nullable(),
+  passportCount: z.number(),
+  documentCount: z.number(),
+  evidenceVerified: z.boolean().nullable(),
+});
+
 // --- Parse functions (never throw) ---
 
 export const parseScanResult = (json: string): ScanResult | null => {

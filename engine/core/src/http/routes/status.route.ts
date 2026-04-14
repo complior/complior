@@ -16,6 +16,12 @@ export const createStatusRoute = (deps: StatusRouteDeps) => {
     return c.json(statusService.getStatus());
   });
 
+  /** V1-M10 T-4: Aggregated compliance posture for `complior status`. */
+  app.get('/status/posture', async (c) => {
+    const posture = await statusService.getCompliancePosture();
+    return c.json(posture);
+  });
+
   app.get('/llm/info', (c) => {
     if (!llm) {
       return c.json({ error: 'LLM_NOT_CONFIGURED', message: 'No LLM adapter available' }, 404);
