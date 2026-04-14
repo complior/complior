@@ -1,26 +1,57 @@
 /**
  * E2E tests for ISO 42001 document generation HTTP endpoints.
- * Tests POST /agent/soa and POST /agent/risk-register via Hono in-memory.
+ * Tests POST /fix/doc/soa and POST /fix/doc/risk-register via Hono in-memory.
  *
- * RED until nodejs-dev wires routes in agent.route.ts (T-6).
+ * V1-M11 RED spec: /agent/soa → /fix/doc/soa, /agent/risk-register → /fix/doc/risk-register.
+ *
+ * RED until nodejs-dev wires /fix/doc/* routes (T-4).
  */
-import { describe, it, expect, beforeAll } from 'vitest';
-import { Hono } from 'hono';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+import { loadApplication, type Application } from '../composition-root.js';
 
-// NOTE: These imports will resolve once routes are wired.
-// The test file tests the HTTP contract, not internal logic.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
+  ?? resolve(__dirname, '../../../../..', 'test-projects/acme-ai-support');
 
-describe('ISO 42001 E2E — HTTP Routes', () => {
-  // Skip if the test project is not available (env-gated)
-  const TEST_PROJECT = process.env.COMPLIOR_TEST_PROJECT;
-  const describeWithProject = TEST_PROJECT ? describe : describe.skip;
+const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
 
-  describeWithProject('POST /agent/soa', () => {
+describe.skipIf(!canRunE2E)('ISO 42001 E2E — HTTP Routes', () => {
+  let application: Application;
+  let passportName = '';
+
+  beforeAll(async () => {
+    process.env['COMPLIOR_PROJECT_PATH'] = TEST_PROJECT;
+    application = await loadApplication();
+
+    // Init a passport so we have a valid name
+    const initRes = await application.app.request('/passport/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: TEST_PROJECT }),
+    });
+    if (initRes.status === 200) {
+      const body = await initRes.json() as Record<string, unknown>;
+      const manifests = body['manifests'] as Array<Record<string, unknown>>;
+      if (manifests.length > 0) {
+        passportName = manifests[0]!['name'] as string;
+      }
+    }
+  }, 30_000);
+
+  afterAll(() => {
+    application?.shutdown();
+    delete process.env['COMPLIOR_PROJECT_PATH'];
+  });
+
+  describe('POST /fix/doc/soa', () => {
     it('returns SoA with entries array', async () => {
-      const res = await fetch(`http://localhost:${process.env.COMPLIOR_PORT ?? 9876}/agent/soa`, {
+      const res = await application.app.request('/fix/doc/soa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'test', path: TEST_PROJECT }),
+        body: JSON.stringify({ name: passportName, path: TEST_PROJECT }),
       });
 
       expect(res.status).toBe(200);
@@ -33,10 +64,10 @@ describe('ISO 42001 E2E — HTTP Routes', () => {
     });
 
     it('returns entries with expected fields', async () => {
-      const res = await fetch(`http://localhost:${process.env.COMPLIOR_PORT ?? 9876}/agent/soa`, {
+      const res = await application.app.request('/fix/doc/soa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'test', path: TEST_PROJECT }),
+        body: JSON.stringify({ name: passportName, path: TEST_PROJECT }),
       });
 
       const data = await res.json() as { entries: Record<string, unknown>[] };
@@ -52,12 +83,12 @@ describe('ISO 42001 E2E — HTTP Routes', () => {
     });
   });
 
-  describeWithProject('POST /agent/risk-register', () => {
+  describe('POST /fix/doc/risk-register', () => {
     it('returns risk register with entries array', async () => {
-      const res = await fetch(`http://localhost:${process.env.COMPLIOR_PORT ?? 9876}/agent/risk-register`, {
+      const res = await application.app.request('/fix/doc/risk-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'test', path: TEST_PROJECT }),
+        body: JSON.stringify({ name: passportName, path: TEST_PROJECT }),
       });
 
       expect(res.status).toBe(200);
@@ -71,10 +102,10 @@ describe('ISO 42001 E2E — HTTP Routes', () => {
     });
 
     it('returns entries sorted by riskScore descending', async () => {
-      const res = await fetch(`http://localhost:${process.env.COMPLIOR_PORT ?? 9876}/agent/risk-register`, {
+      const res = await application.app.request('/fix/doc/risk-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'test', path: TEST_PROJECT }),
+        body: JSON.stringify({ name: passportName, path: TEST_PROJECT }),
       });
 
       const data = await res.json() as { entries: { riskScore: number }[] };

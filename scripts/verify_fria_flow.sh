@@ -2,7 +2,7 @@
 # =============================================================================
 # verify_fria_flow.sh — FRIA generation and passport update verification
 #
-# Tests: agent init → agent fria → fria_completed = true → evidence recorded
+# Tests: complior init → complior fix --doc fria → fria_completed = true → evidence
 # Exit 0 = PASS, Exit 1 = FAIL
 # =============================================================================
 set -euo pipefail
@@ -78,8 +78,8 @@ fi
 
 # ── Step 3: Generate FRIA ────────────────────────────────────────────────
 echo ""
-echo "Step 3: Generate FRIA report"
-FRIA_OUTPUT=$($COMPLIOR agent fria "$AGENT_NAME" --json "$TEST_PROJECT" 2>&1 || true)
+echo "Step 3: Generate FRIA report via fix --doc"
+FRIA_OUTPUT=$($COMPLIOR fix --doc fria "$AGENT_NAME" --json "$TEST_PROJECT" 2>&1 || true)
 
 # Check FRIA file was created
 FRIA_FILES=$(ls "$TEST_PROJECT/.complior/"*fria* 2>/dev/null || ls "$TEST_PROJECT/.complior/reports/"*fria* 2>/dev/null || true)

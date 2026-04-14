@@ -143,7 +143,7 @@ describe.skipIf(!canRunE2E)('Scan Flags E2E', () => {
   // ─────────────────────────────────────────────────────────
   it('scan result contains agentSummaries for --agent filtering', async () => {
     // First init passports so agent data exists
-    await application.app.request('/agent/init', {
+    await application.app.request('/passport/init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
