@@ -312,3 +312,4 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | TD-21 | ✅ RATIFIED 2026-04-14: V1-M10 raised topActions limit 3→5 by design. M08 E2E spec must align. Architect already committed the same fix (`141aa91`). | `context-scan-e2e.test.ts` | closed |
 | TD-22 | 🟡 OPEN: Silent error swallowing in status-service | `status-service.ts:106,115,124` — `catch { /* ignore */ }` for profile, passports, evidence. Should log at debug level. | dev fix |
 | TD-23 | ✅ DONE: V1-M10 T-4 Rust CLI implemented | `complior status [--json] [path]` — commit `b15d2f3`. | closed |
+| TD-24 | ✅ RATIFIED 2026-04-14: dev fixed `first` ReferenceError in passport-pipeline-e2e.test.ts by fetching via /passport/show. Assertions unchanged — infra fix. | `passport-pipeline-e2e.test.ts` | closed |
