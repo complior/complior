@@ -6,7 +6,7 @@
 //! runners, shell scripts, and human operators.
 
 // Core
-pub mod agent;
+pub mod passport;
 mod commands;
 pub mod common;
 pub mod daemon;
