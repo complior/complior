@@ -1,7 +1,7 @@
 # Project State
 
 > Last updated: 2026-04-14
-> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE · V1-M09 DONE · V1-M10 ✅ DONE · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M10** — all conditions met, TD-20/21 ratified, T-4 Rust done. Ready for user merge.
+> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE · V1-M09 DONE · V1-M10 ✅ DONE · V1-M11 ✅ DONE · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M11** — all tests GREEN (2498), route mismatch TD-27 fixed, TD-14/15 resolved. T-8 docs partial (TD-28). Ready for user merge to dev.
 
 ## Overview
 
@@ -53,6 +53,7 @@ cli/, engine/                → Code (GREEN)
 | V1-M08 | ✅ DONE | FA-01 (Scanner) — Context-Aware Scan: profile filters, risk-level, filterContext | `feature/V1-M08-context-scan` | — |
 | V1-M09 | ✅ DONE | Onboarding Enrichment — 9 questions, dynamic obligation filtering, reconfigure, GPAI auto-detect | `feature/V1-M09-onboarding-enrichment` | — |
 | V1-M10 | ✅ DONE | FA-01 (Scanner), FA-05 (Report) — Score Transparency: disclaimer, category breakdown, profile-aware topActions, /status/posture, CLI `complior status` | `feature/V1-M10-score-transparency` | — |
+| V1-M11 | ✅ DONE | FA-04 (Passport), FA-03 (Fix) — Command Restructuring: `agent`→`passport`, doc-gen→`fix --doc`. 19 `/passport/*` routes, 8 `/fix/doc/*` routes, Rust CLI renamed. | `feature/V1-M11-command-restructuring` | — |
 
 > Old milestones (M01-M04, S01-S12) archived to `docs/old/sprints/`
 
@@ -66,8 +67,10 @@ cli/, engine/                → Code (GREEN)
 complior scan [--deep|--llm|--cloud]   # static code analysis (5 layers)
 complior eval --target <url> [--llm|--security|--full]  # dynamic AI testing
 complior fix [--dry-run|--ai]         # auto-remediation
-complior agent init                   # passport generation
+complior passport init               # passport generation
+complior fix --doc fria <name>       # document generation (FRIA, SoA, etc.)
 complior report [--json|--format markdown|pdf]  # compliance report
+complior status [--json]             # compliance posture overview
 ```
 
 ### Daemon (Node.js)
@@ -103,18 +106,18 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| Engine TS (vitest) | 2281 passed, 10 skipped | ✅ GREEN (170 files) |
-| CLI Rust (cargo test) | 199 | ✅ GREEN |
-| **Total** | **2480** | ✅ **ALL GREEN** |
+| Engine TS unit (vitest) | 2194 passed, 2 skipped | ✅ GREEN (157 files) |
+| Engine TS E2E (vitest --no-file-parallelism) | 130 passed, 10 skipped | ✅ GREEN (16 files) |
+| CLI Rust (cargo test) | 174 | ✅ GREEN |
+| **Total** | **2498** | ✅ **ALL GREEN** |
 | Acceptance: verify_pipeline.sh | 9/9 checks | ✅ PASS |
 | Acceptance: verify_report_export.sh | 6/6 checks | ✅ PASS |
-| E2E: pipeline-e2e.test.ts | 5 passed, 1 skipped (LLM — no key) | ✅ GREEN |
-| E2E: gaps-e2e.test.ts | 9 passed | ✅ GREEN |
-| E2E: report-html.test.ts | 11 passed | ✅ GREEN |
-| E2E: ci-flags-e2e.test.ts | 7 passed, 3 skipped (eval target — no env) | ✅ GREEN |
+| E2E: command-restructuring-e2e.test.ts | 8 passed (V1-M11) | ✅ GREEN |
 | E2E: context-scan-e2e.test.ts | 5 passed (V1-M08) | ✅ GREEN |
 | E2E: onboarding-enrichment-e2e.test.ts | 6 passed (V1-M09) | ✅ GREEN |
 | E2E: score-transparency-e2e.test.ts | 5 passed (V1-M10) | ✅ GREEN |
+
+> Note: E2E tests split to `vitest.e2e.config.ts` (V1-M11). Run via `npm run test:e2e`. Requires `--no-file-parallelism` (shared disk state).
 
 ---
 
@@ -285,6 +288,37 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 ---
 
+## V1-M11 Delivery (feature/V1-M11-command-restructuring)
+
+**Completed:** 2026-04-14 | **Status:** ✅ DONE — REVIEWER APPROVED
+
+**Branch:** `feature/V1-M11-command-restructuring` (10 commits on top of dev: a5c13c1..bf0a67e)
+
+### What was delivered:
+
+| Component | Description |
+|-----------|-------------|
+| passport.route.ts (NEW) | 19 `/passport/*` routes — passport CRUD, validation, evidence, audit, export, registry, permissions |
+| fix.route.ts (EXTENDED) | 8 `/fix/doc/*` routes — fria, notify, policy, soa, risk-register, test-gen, generate, all |
+| agent.route.ts (DEPRECATED) | All `/agent/*` routes return 404 with migration message |
+| Rust `Command::Passport` | `cli.rs` — `Agent`→`Passport`, `AgentAction`→`PassportAction`, doc-gen variants removed |
+| Rust `passport.rs` | `headless/passport.rs` — 2497 lines, 19 passport subcommand handlers |
+| Rust `fix --doc` | `cli.rs` — `--doc <type>` + `--agent <name>` flags on Fix command |
+| Rust `run_doc_generate_fix()` | `headless/fix.rs` — POST `/fix/doc/generate` for doc generation via fix |
+| vitest config split | `vitest.e2e.config.ts` — E2E tests isolated from unit tests |
+| TD-14 fixed | `agent-discovery.ts` — filter non-path route strings (`app.get('env')` no longer parsed as route) |
+| TD-27 fixed | Rust CLI routes corrected: `/passport/doc` → `/fix/doc/generate` |
+| E2E tests | `command-restructuring-e2e.test.ts` (8 tests) — validates `/passport/*` + `/fix/doc/*` + `/agent/*` 404 |
+
+### Reviewer notes:
+
+- T-8 (docs update) partial — 19 active docs still reference `complior agent` (TD-28)
+- TD-15 ratified (scan-service score assertion — legacy fallback correct)
+- TD-24 ratified (passport-pipeline ReferenceError infra fix)
+- No test weakening — E2E URL updates by architect (T-1 scope)
+
+---
+
 ## Tech Debt
 
 | # | Description | File | Status |
@@ -302,7 +336,7 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | TD-11 | 🟡 OPEN: V1-M04 acceptance not CI-automated | `verify_cli_flags.sh` requires binary. Manual gate before v1.0. | architect/user |
 | TD-12 | 🟡 OPEN: scan.route.ts imports unused `buildPriorityActions` | V1-M08 `scan.route.ts` — imports `buildPriorityActions` but uses inline `computeTopActions` instead. Deduplicate. | dev fix |
 | TD-13 | 🟡 OPEN: O(n²) skip counting in applyProfileFilters | V1-M08 `scan-service.ts` — uses `.find()` in loop for skippedByRole/skippedByRiskLevel counting. Refactor to Set-based lookup. | dev fix |
-| TD-14 | 🔴 OPEN: agent-discovery Express route parsing | `agent-discovery.ts` — `app.get('env')` parsed as route. RED test written (V1-M07). | dev fix |
+| TD-14 | ✅ FIXED 2026-04-14: `agent-discovery.ts` — filter routes to only `\/`-prefixed strings. Commit `2ccfdc9`. | `agent-discovery.ts` | closed |
 | TD-15 | ✅ RATIFIED 2026-04-14: architect spec assumed legacy fallback recalculates score — it doesn't. Dev corrected to match actual behavior (score=40 from mock, not recalculated). Added 3 stricter assertions (filterContext, profileFound, role). Test improved. | `scan-service.test.ts` | closed |
 | TD-16 | 🟡 OPEN: Dev modified E2E test setup | V1-M08 `context-scan-e2e.test.ts` — dev added temp dir isolation (mkdtemp) to fix vitest module-state leakage. Assertions unchanged. Infra fix, not spec change. | architect ratify |
 | TD-17 | ✅ RATIFIED 2026-04-13: real OBL-IDs and exact assertions are stricter — spec improved. | `context-scan-e2e.test.ts` | closed |
@@ -313,3 +347,8 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | TD-22 | 🟡 OPEN: Silent error swallowing in status-service | `status-service.ts:106,115,124` — `catch { /* ignore */ }` for profile, passports, evidence. Should log at debug level. | dev fix |
 | TD-23 | ✅ DONE: V1-M10 T-4 Rust CLI implemented | `complior status [--json] [path]` — commit `b15d2f3`. | closed |
 | TD-24 | ✅ RATIFIED 2026-04-14: dev fixed `first` ReferenceError in passport-pipeline-e2e.test.ts by fetching via /passport/show. Assertions unchanged — infra fix. | `passport-pipeline-e2e.test.ts` | closed |
+| TD-25 | 🟡 OPEN: E2E tests require `--no-file-parallelism` | Shared `.complior/` disk state causes flaky failures without sequential execution. `npm run test:e2e` script added. | vitest config |
+| TD-26 | 🟡 OPEN: `agent.route.ts` deprecated stub | 29-line stub returns 404 for all `/agent/*`. Remove after all callers migrated. | `agent.route.ts` |
+| TD-27 | ✅ FIXED 2026-04-14: Rust CLI called `/passport/doc` (404). Corrected to `/fix/doc/generate` and `/fix/doc/all`. Commit `bf0a67e`. | `fix.rs`, `doc.rs` | closed |
+| TD-28 | 🟡 OPEN: T-8 docs incomplete — 19 active docs still reference `complior agent` | TUI-DESIGN-SPEC (67), FEATURE-AGENT-PASSPORT (34), DOCUMENT-PIPELINE (22), PRODUCT-VISION (12), + 15 others. | docs/*.md |
+| TD-29 | 🟡 OPEN: `doc.rs` duplicates `fix.rs` run_doc_generate_fix | Both have identical doc generation logic calling `/fix/doc/generate`. Deduplicate. | `doc.rs`, `fix.rs` |
