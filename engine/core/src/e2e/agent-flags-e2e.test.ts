@@ -20,7 +20,7 @@ const TEST_PROJECT = process.env['COMPLIOR_TEST_PROJECT']
 
 const canRunE2E = existsSync(resolve(TEST_PROJECT, 'package.json'));
 
-describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
+describe.skipIf(!canRunE2E)('Agent Passport Flags E2E', () => {
   let application: Application;
   let agentName: string;
 
@@ -29,38 +29,18 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
     application = await loadApplication();
 
     // Init passports to have data for all tests
-    // V1-M11: Prefer /passport/init. Fall back to /agent/init during migration.
-    let initRes = await application.app.request('/passport/init', {
+    await application.app.request('/agent/init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
     });
-    // Fall back to /agent/init during transition (remove after V1-M11 merged to dev)
-    if (initRes.status === 404) {
-      initRes = await application.app.request('/agent/init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: TEST_PROJECT }),
-      });
-    }
 
-    // Get the first passport name — try /passport/list first, fall back to /agent/list
-    let listRes = await application.app.request(
-      `/passport/list?path=${encodeURIComponent(TEST_PROJECT)}`,
+    // Get the first agent name
+    const listRes = await application.app.request(
+      `/agent/list?path=${encodeURIComponent(TEST_PROJECT)}`,
     );
-    if (listRes.status === 404) {
-      listRes = await application.app.request(
-        `/agent/list?path=${encodeURIComponent(TEST_PROJECT)}`,
-      );
-    }
-    if (listRes.status !== 200) {
-      throw new Error(`Failed to list passports: ${listRes.status}`);
-    }
-    const passports = (await listRes.json()) as Array<Record<string, unknown>>;
-    agentName = (passports[0]?.['name'] as string) ?? '';
-    if (!agentName) {
-      throw new Error('No passports found after init');
-    }
+    const agents = (await listRes.json()) as Array<Record<string, unknown>>;
+    agentName = (agents[0]?.['name'] as string) ?? '';
   }, 30_000);
 
   afterAll(() => {
@@ -69,11 +49,11 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   });
 
   // ─────────────────────────────────────────────────────────
-  // 1. GET /passport/validate — schema + signature + completeness
+  // 1. GET /agent/validate — schema + signature + completeness
   // ─────────────────────────────────────────────────────────
-  it('passport validate checks schema, signature, and completeness', async () => {
+  it('agent validate checks schema, signature, and completeness', async () => {
     const res = await application.app.request(
-      `/passport/validate?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}`,
+      `/agent/validate?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}`,
     );
     expect(res.status).toBe(200);
 
@@ -87,11 +67,11 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 2. GET /passport/completeness — completeness score + field breakdown
+  // 2. GET /agent/completeness — completeness score + field breakdown
   // ─────────────────────────────────────────────────────────
-  it('passport completeness returns score and field counts', async () => {
+  it('agent completeness returns score and field counts', async () => {
     const res = await application.app.request(
-      `/passport/completeness?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}`,
+      `/agent/completeness?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}`,
     );
     expect(res.status).toBe(200);
 
@@ -103,11 +83,11 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 3. GET /passport/autonomy — autonomy level analysis (L1-L5)
+  // 3. GET /agent/autonomy — autonomy level analysis (L1-L5)
   // ─────────────────────────────────────────────────────────
-  it('passport autonomy returns autonomy level per passport', async () => {
+  it('agent autonomy returns autonomy level per agent', async () => {
     const res = await application.app.request(
-      `/passport/autonomy?path=${encodeURIComponent(TEST_PROJECT)}`,
+      `/agent/autonomy?path=${encodeURIComponent(TEST_PROJECT)}`,
     );
     expect(res.status).toBe(200);
 
@@ -125,11 +105,11 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 4. GET /passport/export — export to A2A/AIUC-1/NIST format
+  // 4. GET /agent/export — export to A2A/AIUC-1/NIST format
   // ─────────────────────────────────────────────────────────
   it('agent export to A2A format returns valid structure', async () => {
     const res = await application.app.request(
-      `/passport/export?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}&format=a2a`,
+      `/agent/export?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}&format=a2a`,
     );
     expect(res.status).toBe(200);
 
@@ -141,7 +121,7 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
 
   it('agent export to AIUC-1 format returns valid structure', async () => {
     const res = await application.app.request(
-      `/passport/export?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}&format=aiuc-1`,
+      `/agent/export?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}&format=aiuc-1`,
     );
     expect(res.status).toBe(200);
 
@@ -152,19 +132,19 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
 
   it('agent export with invalid format returns error', async () => {
     const res = await application.app.request(
-      `/passport/export?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}&format=invalid`,
+      `/agent/export?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}&format=invalid`,
     );
     // Should return 400 validation error
     expect(res.status).toBeGreaterThanOrEqual(400);
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 5. POST /passport/rename — rename passport
+  // 5. POST /agent/rename — rename passport
   // ─────────────────────────────────────────────────────────
   it('agent rename changes passport name', async () => {
     const newName = `${agentName}-renamed-test`;
 
-    const res = await application.app.request('/passport/rename', {
+    const res = await application.app.request('/agent/rename', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -180,7 +160,7 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
       expect(body['newName']).toBe(newName);
 
       // Rename back to original
-      await application.app.request('/passport/rename', {
+      await application.app.request('/agent/rename', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,10 +173,10 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 6. POST /passport/notify — worker notification (Art.26(7))
+  // 6. POST /agent/notify — worker notification (Art.26(7))
   // ─────────────────────────────────────────────────────────
   it('agent notify generates worker notification document', async () => {
-    const res = await application.app.request('/passport/notify', {
+    const res = await application.app.request('/agent/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -220,11 +200,11 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 7. GET /passport/registry — unified compliance registry
+  // 7. GET /agent/registry — unified compliance registry
   // ─────────────────────────────────────────────────────────
   it('agent registry returns list of all agents with status', async () => {
     const res = await application.app.request(
-      `/passport/registry?path=${encodeURIComponent(TEST_PROJECT)}`,
+      `/agent/registry?path=${encodeURIComponent(TEST_PROJECT)}`,
     );
     expect(res.status).toBe(200);
 
@@ -239,11 +219,11 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 8. GET /passport/permissions — cross-agent permissions matrix
+  // 8. GET /agent/permissions — cross-agent permissions matrix
   // ─────────────────────────────────────────────────────────
   it('agent permissions returns matrix of tool permissions', async () => {
     const res = await application.app.request(
-      `/passport/permissions?path=${encodeURIComponent(TEST_PROJECT)}`,
+      `/agent/permissions?path=${encodeURIComponent(TEST_PROJECT)}`,
     );
     expect(res.status).toBe(200);
 
@@ -254,11 +234,11 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 9. GET /passport/evidence/verify — verify chain integrity
+  // 9. GET /agent/evidence/verify — verify chain integrity
   // ─────────────────────────────────────────────────────────
   it('evidence verify confirms chain integrity', async () => {
     const res = await application.app.request(
-      `/passport/evidence/verify?path=${encodeURIComponent(TEST_PROJECT)}`,
+      `/agent/evidence/verify?path=${encodeURIComponent(TEST_PROJECT)}`,
     );
     expect(res.status).toBe(200);
 
@@ -273,10 +253,10 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 10. GET /passport/audit/summary — audit trail summary
+  // 10. GET /agent/audit/summary — audit trail summary
   // ─────────────────────────────────────────────────────────
   it('agent audit summary returns event counts', async () => {
-    const res = await application.app.request('/passport/audit/summary');
+    const res = await application.app.request('/agent/audit/summary');
     expect(res.status).toBe(200);
 
     const body = await res.json() as Record<string, unknown>;
@@ -286,10 +266,10 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
   }, 15_000);
 
   // ─────────────────────────────────────────────────────────
-  // 11. POST /passport/init with force=true — re-creates passport
+  // 11. POST /agent/init with force=true — re-creates passport
   // ─────────────────────────────────────────────────────────
   it('agent init --force re-creates existing passport', async () => {
-    const res = await application.app.request('/passport/init', {
+    const res = await application.app.request('/agent/init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT, force: true }),
@@ -298,7 +278,7 @@ describe.skipIf(!canRunE2E)('Passport Flags E2E', () => {
 
     // Should still have the same agent
     const listRes = await application.app.request(
-      `/passport/list?path=${encodeURIComponent(TEST_PROJECT)}`,
+      `/agent/list?path=${encodeURIComponent(TEST_PROJECT)}`,
     );
     const agents = (await listRes.json()) as Array<Record<string, unknown>>;
     expect(agents.length).toBeGreaterThan(0);

@@ -27,38 +27,12 @@ const cleanup = async () => {
 
 describe.skipIf(!canRunE2E)('Passport Pipeline E2E', () => {
   let application: Application;
-  let passportName = '';
+  let agentName = '';
 
   beforeAll(async () => {
     await cleanup();
     process.env['COMPLIOR_PROJECT_PATH'] = TEST_PROJECT;
     application = await loadApplication();
-
-    // V1-M11: Prefer /passport/init. Fall back to /agent/init during transition.
-    let initRes = await application.app.request('/passport/init', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: TEST_PROJECT }),
-    });
-    if (initRes.status === 404) {
-      initRes = await application.app.request('/agent/init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: TEST_PROJECT }),
-      });
-    }
-    expect(initRes.status).toBe(200);
-
-    const body = await initRes.json() as Record<string, unknown>;
-    const manifests = body['manifests'] as Array<Record<string, unknown>>;
-    expect(Array.isArray(manifests)).toBe(true);
-    expect(manifests.length).toBeGreaterThan(0);
-
-    // Save first passport name for subsequent tests
-    const first = manifests[0]!;
-    passportName = first['name'] as string;
-    expect(typeof passportName).toBe('string');
-    expect(passportName.length).toBeGreaterThan(0);
   }, 30_000);
 
   afterAll(async () => {
@@ -66,12 +40,27 @@ describe.skipIf(!canRunE2E)('Passport Pipeline E2E', () => {
     delete process.env['COMPLIOR_PROJECT_PATH'];
   });
 
-  // Test 1: passport manifest has required fields (initialized in beforeAll)
+  // ─────────────────────────────────────────────────────────
+  // Test 1: passport init creates manifest with required fields
   // ─────────────────────────────────────────────────────────
   it('passport init creates manifest with 36 fields', async () => {
-    // passportName was set in beforeAll after init
-    expect(passportName).not.toBe('');
-    expect(passportName.length).toBeGreaterThan(0);
+    const res = await application.app.request('/agent/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: TEST_PROJECT }),
+    });
+    expect(res.status).toBe(200);
+
+    const body = await res.json() as Record<string, unknown>;
+    const manifests = body['manifests'] as Array<Record<string, unknown>>;
+    expect(Array.isArray(manifests)).toBe(true);
+    expect(manifests.length).toBeGreaterThan(0);
+
+    // Save first agent name for subsequent tests
+    const first = manifests[0]!;
+    agentName = first['name'] as string;
+    expect(typeof agentName).toBe('string');
+    expect(agentName.length).toBeGreaterThan(0);
 
     // Passport should have core identity fields
     expect(first).toHaveProperty('name');
@@ -114,16 +103,16 @@ describe.skipIf(!canRunE2E)('Passport Pipeline E2E', () => {
   // Test 3: FRIA generation updates passport fria_completed
   // ─────────────────────────────────────────────────────────
   it('FRIA generation sets passport fria_completed to true', async () => {
-    // Ensure we have a passport name from test 1
-    expect(passportName).not.toBe('');
+    // Ensure we have an agent name from test 1
+    expect(agentName).not.toBe('');
 
     // Generate FRIA
-    const friaRes = await application.app.request('/fix/doc/fria', {
+    const friaRes = await application.app.request('/agent/fria', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         path: TEST_PROJECT,
-        name: passportName,
+        name: agentName,
         organization: 'Test Corp',
       }),
     });
@@ -131,7 +120,7 @@ describe.skipIf(!canRunE2E)('Passport Pipeline E2E', () => {
 
     // Re-read passport — fria_completed should be true
     const showRes = await application.app.request(
-      `/passport/show?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(passportName)}`,
+      `/agent/show?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(agentName)}`,
     );
     expect(showRes.status).toBe(200);
 
@@ -145,7 +134,7 @@ describe.skipIf(!canRunE2E)('Passport Pipeline E2E', () => {
   // ─────────────────────────────────────────────────────────
   it('FRIA event appears in evidence chain', async () => {
     const evRes = await application.app.request(
-      `/passport/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
+      `/agent/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
     );
     expect(evRes.status).toBe(200);
 

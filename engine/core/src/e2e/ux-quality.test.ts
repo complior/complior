@@ -712,7 +712,7 @@ describe('T-7: Passport discovery endpoint URL construction', () => {
 
 // --- T-6/T-7 E2E: passport discovery via HTTP ---
 
-describe.skipIf(!canRunE2E)('T-6/T-7 E2E: Passport discovery via /passport/init', () => {
+describe.skipIf(!canRunE2E)('T-6/T-7 E2E: Passport discovery via /agent/init', () => {
   let application: Application;
 
   beforeAll(async () => {
@@ -725,8 +725,8 @@ describe.skipIf(!canRunE2E)('T-6/T-7 E2E: Passport discovery via /passport/init'
     delete process.env['COMPLIOR_PROJECT_PATH'];
   });
 
-  it('POST /passport/init discovers agents with clean model names (no comment matches)', async () => {
-    const res = await application.app.request('/passport/init', {
+  it('POST /agent/init discovers agents with clean model names (no comment matches)', async () => {
+    const res = await application.app.request('/agent/init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
@@ -734,7 +734,7 @@ describe.skipIf(!canRunE2E)('T-6/T-7 E2E: Passport discovery via /passport/init'
     expect(res.status).toBe(200);
 
     const body = await res.json() as Record<string, unknown>;
-    // passport/init returns the created passport or discovery result
+    // agent/init returns the created passport or discovery result
     // Check detectedModels if present in the response
     const agents = (body['agents'] ?? body['discoveredAgents'] ?? [body]) as Array<Record<string, unknown>>;
 
@@ -752,8 +752,8 @@ describe.skipIf(!canRunE2E)('T-6/T-7 E2E: Passport discovery via /passport/init'
     }
   }, 30_000);
 
-  it('POST /passport/init produces valid endpoint URLs (no garbage concatenation)', async () => {
-    const res = await application.app.request('/passport/init', {
+  it('POST /agent/init produces valid endpoint URLs (no garbage concatenation)', async () => {
+    const res = await application.app.request('/agent/init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
