@@ -104,14 +104,23 @@ v1.0 = ТОЛЬКО pipeline команды со ВСЕМИ их флагами 
 | `complior eval` | `--det`, `--llm`, `--security`, `--full`, `--json`, `--ci`, `--threshold`, `--categories`, `--last`, `--failures`, `--verbose`, `--remediation`, `--fix`, `--dry-run`, `--model`, `--api-key`, `--request-template`, `--response-path`, `--headers`, `--concurrency`, `--agent` |
 | `complior fix` | `--dry-run`, `--json`, `--ai`, `--source scan/eval/all`, `--check-id` |
 | `complior report` | `--format human/json/md/html/pdf`, `--json`, `--share`, `--output` |
-| `complior agent` | `init`, `list`, `show`, `validate`, `completeness`, `fria`, `evidence`, `export`, `rename`, `autonomy`, `notify`, `registry`, `permissions` |
+| `complior passport` | `init`, `list`, `show`, `validate`, `completeness`, `rename`, `autonomy`, `notify`, `registry`, `permissions`, `evidence`, `audit`, `export`, `import` |
+| `complior fix` | `--dry-run`, `--json`, `--ai`, `--source scan/eval/all`, `--check-id`, `--doc fria/notify/policy/soa/risk-register/test-gen/all` |
 
 **НЕ входит в v1.0:** daemon, chat, supply-chain, cost, debt, simulate, jurisdiction, proxy, doc, import, redteam, tools, login/logout, sync. Это `#[cfg(feature = "extras")]` или post-v1.0.
 
 **Текущие milestones:**
 - V1-M01 ✅ DONE — pipeline acceptance (happy path)
-- V1-M02 ⏳ — ВСЕ флаги каждой команды покрыты E2E тестами
-- V1-M03 ⏳ — docs, CI, version bump, PR → main
+- V1-M02 ✅ DONE — ВСЕ флаги каждой команды покрыты E2E тестами (36 tests)
+- V1-M03 ✅ DONE — docs, CI, version bump, release polish
+- V1-M04 ✅ DONE — full CLI flag binary E2E + engine flags
+- V1-M05 ✅ DONE — type errors fixed, CI typecheck re-enabled
+- V1-M06 ✅ DONE — UX quality sprint (11 RED→GREEN)
+- V1-M07 ✅ DONE — ISO 42001 Document Generators (SoA, Risk Register)
+- V1-M08 ✅ DONE — Context-Aware Scan (profile filters, filterContext)
+- V1-M09 ✅ DONE — Onboarding Enrichment (9 questions, dynamic obligations)
+- V1-M10 ✅ DONE — Score Transparency (disclaimer, category breakdown, /status/posture)
+- V1-M11 🔴 RED — Command Restructuring (agent→passport, docs→fix)
 
 ## Important Context
 
