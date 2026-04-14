@@ -33,9 +33,13 @@ if (envVars['COMPLIOR_TEST_PROJECT']) {
   process.env['COMPLIOR_TEST_PROJECT'] = envVars['COMPLIOR_TEST_PROJECT'];
 }
 
+// Fallback to COMPLIOR_TEST_PROJECT from shell env (set via `COMPLIOR_TEST_PROJECT=... npx vitest`)
+// OR resolve from a known test project path so cleanup always runs during E2E runs
+const TEST_PROJECT_FALLBACK = resolve(wsRoot, 'test-projects', 'eval-target');
+
 // Reset evidence chain before E2E tests to avoid stale key conflicts
 // Uses SYNC operations so the chain is cleared BEFORE vitest starts running tests
-const testProject = process.env['COMPLIOR_TEST_PROJECT'] ?? '';
+const testProject = process.env['COMPLIOR_TEST_PROJECT'] ?? TEST_PROJECT_FALLBACK;
 if (testProject) {
   const compliorDir = resolve(testProject, '.complior');
   // Reset entire .complior dir for full test isolation
@@ -64,8 +68,12 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     globals: false,
     testTimeout: 10_000,
-    // E2E tests share .complior/ state on disk — run files sequentially
-    // to avoid cross-contamination. Total suite is ~20s so no perf impact.
+    // E2E tests share .complior/ state on disk.
+    // Run files sequentially AND in the same worker (isolate: false) to prevent
+    // parallel workers from racing on disk I/O. With fileParallelism: false each
+    // test file completes its beforeAll/cleanup before the next starts, ensuring
+    // proper sequential isolation even when tests modify the eval-target project.
     fileParallelism: false,
+    isolate: false,
   },
 });

@@ -30,14 +30,12 @@ describe.skipIf(!canRunE2E)('V1-M11: Command Restructuring E2E', () => {
     process.env['COMPLIOR_PROJECT_PATH'] = TEST_PROJECT;
     application = await loadApplication();
 
-    // Init passport (still /agent/init until T-3 renames it)
-    // After T-3, this should be /passport/init
+    // Init passport — V1-M11: prefer /passport/init, fall back to /agent/init
     const initRes = await application.app.request('/passport/init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: TEST_PROJECT }),
     });
-    // If /passport/init doesn't exist yet, fall back to /agent/init
     if (initRes.status === 404) {
       await application.app.request('/agent/init', {
         method: 'POST',
@@ -46,17 +44,42 @@ describe.skipIf(!canRunE2E)('V1-M11: Command Restructuring E2E', () => {
       });
     }
 
-    // Get passport name from new or old endpoint
-    let listRes = await application.app.request(
-      `/passport/list?path=${encodeURIComponent(TEST_PROJECT)}`,
-    );
-    if (listRes.status === 404) {
-      listRes = await application.app.request(
-        `/agent/list?path=${encodeURIComponent(TEST_PROJECT)}`,
+    // Get the first available passport name — try both new and old endpoints
+    // Retry up to 3 times in case parallel tests are creating passports
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let listRes = await application.app.request(
+        `/passport/list?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
+      if (listRes.status === 404) {
+        listRes = await application.app.request(
+          `/agent/list?path=${encodeURIComponent(TEST_PROJECT)}`,
+        );
+      }
+      if (listRes.status === 200) {
+        const passports = (await listRes.json()) as Array<Record<string, unknown>>;
+        if (passports.length > 0) {
+          passportName = passports[0]!['name'] as string;
+          break;
+        }
+      }
+      // Wait a bit for other tests to create passports
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
-    const passports = (await listRes.json()) as Array<Record<string, unknown>>;
-    passportName = (passports[0]?.['name'] as string) ?? 'test-passport';
+    // Fallback: if still no passport, use the first manifest file on disk
+    if (!passportName) {
+      try {
+        const { readdir } = await import('node:fs/promises');
+        const agentsDir = resolve(TEST_PROJECT, '.complior', 'agents');
+        const files = await readdir(agentsDir);
+        const manifestFile = files.find(f => f.endsWith('-manifest.json'));
+        if (manifestFile) {
+          passportName = manifestFile.replace('-manifest.json', '');
+        }
+      } catch { /* non-fatal */ }
+    }
+    if (!passportName) {
+      passportName = 'test-passport';
+    }
   }, 30_000);
 
   afterAll(() => {
