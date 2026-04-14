@@ -88,7 +88,7 @@ async fn run_doc_generate(
             "organization": organization,
         });
 
-        match client.post_json("/passport/doc/all", &body).await {
+        match client.post_json("/fix/doc/all", &body).await {
             Ok(result) => {
                 if json {
                     println!(
@@ -152,7 +152,7 @@ async fn run_doc_generate(
             "organization": organization,
         });
 
-        match client.post_json("/passport/doc", &body).await {
+        match client.post_json("/fix/doc/generate", &body).await {
             Ok(result) => {
                 if json {
                     println!(
@@ -237,7 +237,7 @@ pub async fn run_doc_generate_fix(
         "docType": doc_type,
     });
 
-    match client.post_json("/passport/doc", &body).await {
+    match client.post_json("/fix/doc/generate", &body).await {
         Ok(result) => {
             if json {
                 println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
