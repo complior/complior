@@ -209,7 +209,9 @@ const detectEndpoints = (
     }
   }
 
-  return { port, routes: [...routes] };
+  // Only include actual path routes (start with /) — exclude config getters like 'env', 'trust proxy'
+  const filtered = [...routes].filter(r => r.startsWith('/'));
+  return { port, routes: filtered };
 };
 
 // --- Agent name inference ---
