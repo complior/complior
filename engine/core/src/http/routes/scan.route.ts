@@ -6,6 +6,7 @@ import { parseBody, requireQuery } from '../utils/validation.js';
 import type { PriorityAction } from '../../domain/reporter/types.js';
 import { buildScoreDisclaimer } from '../../domain/scanner/score-disclaimer.js';
 import { buildCategoryBreakdown } from '../../domain/scanner/category-breakdown.js';
+import { buildProfileAwareTopActions } from '../../domain/scanner/profile-priority.js';
 
 const ScanRequestSchema = z.object({
   path: z.string().min(1),
@@ -24,31 +25,9 @@ export interface ScanRouteDeps {
   readonly getLastScan: () => ScanResult | null;
 }
 
-/** V1-M08 T-5: Build topActions from scan result (top-5 priority actions from fail findings). */
+/** V1-M10 T-3: Build topActions from scan result — delegates to pure buildProfileAwareTopActions(). */
 const computeTopActions = (result: ScanResult): PriorityAction[] =>
-  result.findings
-    .filter((f) => f.type === 'fail')
-    .sort((a, b) => {
-      const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-      return (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5);
-    })
-    .slice(0, 5)
-    .map((f, index) => ({
-      rank: index + 1,
-      source: 'scan' as const,
-      id: f.checkId,
-      title: f.fix ?? f.message,
-      article: f.articleReference ?? '',
-      severity: f.severity,
-      deadline: null,
-      daysLeft: null,
-      scoreImpact: f.priority ?? 5,
-      fixAvailable: !!f.fixDiff || !!f.fix,
-      command: 'complior fix',
-      priorityScore: f.priority ?? 5,
-      effort: undefined,
-      projectedScore: undefined,
-    }));
+  buildProfileAwareTopActions(result, result.filterContext ?? null);
 
 export const createScanRoute = (deps: ScanRouteDeps) => {
   const app = new Hono();
