@@ -1,7 +1,7 @@
 # Project State
 
 > Last updated: 2026-04-14
-> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE · V1-M09 DONE · V1-M10 ✅ DONE (TS portion) · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M10** — conditions: architect ratify TD-20/21, T-4 Rust CLI pending rust-dev, then user merge
+> Status: V1-M01..M04 DONE · V1-M05 partial · V1-M06 DONE · V1-M08 DONE · V1-M09 DONE · V1-M10 ✅ DONE · V1-M07 RED (ISO 42001 — awaiting dev) · **REVIEWER APPROVED V1-M10** — all conditions met, TD-20/21 ratified, T-4 Rust done. Ready for user merge.
 
 ## Overview
 
@@ -52,7 +52,7 @@ cli/, engine/                → Code (GREEN)
 | V1-M07 | 🔴 RED | FA-04 (Passport), FA-05 (Report) — ISO 42001 Document Generators. Specs ready, awaiting dev. | `feature/V1-M07-iso42001` | — |
 | V1-M08 | ✅ DONE | FA-01 (Scanner) — Context-Aware Scan: profile filters, risk-level, filterContext | `feature/V1-M08-context-scan` | — |
 | V1-M09 | ✅ DONE | Onboarding Enrichment — 9 questions, dynamic obligation filtering, reconfigure, GPAI auto-detect | `feature/V1-M09-onboarding-enrichment` | — |
-| V1-M10 | ✅ DONE (TS) | FA-01 (Scanner), FA-05 (Report) — Score Transparency: disclaimer, category breakdown, profile-aware topActions, /status/posture | `feature/V1-M10-score-transparency` | — |
+| V1-M10 | ✅ DONE | FA-01 (Scanner), FA-05 (Report) — Score Transparency: disclaimer, category breakdown, profile-aware topActions, /status/posture, CLI `complior status` | `feature/V1-M10-score-transparency` | — |
 
 > Old milestones (M01-M04, S01-S12) archived to `docs/old/sprints/`
 
@@ -248,7 +248,7 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 
 ## V1-M10 Delivery (feature/V1-M10-score-transparency)
 
-**Completed:** 2026-04-14 (TS portion) | **Status:** ✅ DONE (nodejs-dev) — REVIEWER APPROVED (conditions: architect ratify TD-20/21, T-4 Rust CLI pending)
+**Completed:** 2026-04-14 | **Status:** ✅ DONE — REVIEWER APPROVED (all conditions met)
 
 **Branch:** `feature/V1-M10-score-transparency` (4 commits: 71aa9fe..4e52327)
 
@@ -275,9 +275,13 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | `score-transparency-e2e.test.ts` | 5 | E2E: full HTTP contract |
 | `verify_score_transparency.sh` | 6 | Acceptance: CLI output |
 
-### Pending:
+### T-4 Rust CLI (rust-dev — commit b15d2f3):
 
-- **T-4 Rust CLI**: `complior status [--json] [path]` — awaiting rust-dev
+| Component | Description |
+|-----------|-------------|
+| `complior status` command | `cli/src/cli.rs` — `Status { json, path }` variant in Command enum |
+| Headless runner | `cli/src/headless/status.rs` — `run_headless_status()` + human formatter (score bar, disclaimer, categories, actions) |
+| V1-M10 Rust types | `cli/src/types/engine.rs` — `CompliancePosture`, `ScoreDisclaimer`, `CategoryBreakdown`, `PriorityAction`, `Zone::label()`, `de_usize` |
 
 ---
 
@@ -307,4 +311,4 @@ Runtime middleware: pre-hooks → LLM call → post-hooks (EU AI Act compliance 
 | TD-20 | ✅ RATIFIED 2026-04-14: architect spec used wrong API shape (`app.request()` vs `application.app.request()`). Dev fix is correct — assertions unchanged, only infra call fixed. | `score-transparency-e2e.test.ts` | closed |
 | TD-21 | ✅ RATIFIED 2026-04-14: V1-M10 raised topActions limit 3→5 by design. M08 E2E spec must align. Architect already committed the same fix (`141aa91`). | `context-scan-e2e.test.ts` | closed |
 | TD-22 | 🟡 OPEN: Silent error swallowing in status-service | `status-service.ts:106,115,124` — `catch { /* ignore */ }` for profile, passports, evidence. Should log at debug level. | dev fix |
-| TD-23 | 🟡 OPEN: V1-M10 T-4 Rust CLI not implemented | `complior status [--json] [path]` — TS endpoint done, Rust CLI command missing. | rust-dev |
+| TD-23 | ✅ DONE: V1-M10 T-4 Rust CLI implemented | `complior status [--json] [path]` — commit `b15d2f3`. | closed |
