@@ -62,6 +62,13 @@ describe.skipIf(!canRunE2E)('Passport Pipeline E2E', () => {
     expect(typeof agentName).toBe('string');
     expect(agentName.length).toBeGreaterThan(0);
 
+    // Fetch the passport to validate its structure (avoids scope issue with `first`)
+    const showRes = await application.app.request(
+      `/passport/show?path=${encodeURIComponent(TEST_PROJECT)}&name=${encodeURIComponent(passportName)}`,
+    );
+    expect(showRes.status).toBe(200);
+    const first = await showRes.json() as Record<string, unknown>;
+
     // Passport should have core identity fields
     expect(first).toHaveProperty('name');
     expect(first).toHaveProperty('version');
