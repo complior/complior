@@ -18,6 +18,9 @@ const VALID_DOC_TYPES: &[&str] = &[
     "instructions-for-use",
     "gpai-transparency",
     "gpai-systemic-risk",
+    "iso42001-ai-policy",
+    "iso42001-soa",
+    "iso42001-risk-register",
 ];
 
 pub async fn run_doc_command(action: &DocAction, config: &TuiConfig) -> i32 {
