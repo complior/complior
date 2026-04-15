@@ -470,7 +470,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
     let mut agent_list: Vec<(String, String, String, f64)> = Vec::new();
     let mut skipped_count: usize = 0;
 
-    match client.post_json("/agent/init", &body).await {
+    match client.post_json("/passport/init", &body).await {
         Ok(result) => {
             let manifests = result.get("manifests").and_then(|v| v.as_array());
             let skipped = result.get("skipped").and_then(|v| v.as_array());
@@ -503,7 +503,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
             }
         }
         Err(_) => {
-            eprintln!("  Warning: Agent discovery failed. Run `complior agent init` later.");
+            eprintln!("  Warning: Agent discovery failed. Run `complior passport init` later.");
         }
     }
 
@@ -574,7 +574,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
             );
             println!(
                 "      {}",
-                dim("complior agent show <name>  — view missing fields")
+                dim("complior passport show <name>  — view missing fields")
             );
             println!(
                 "      {}",

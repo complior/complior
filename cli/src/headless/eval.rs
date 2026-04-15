@@ -235,7 +235,7 @@ pub async fn run_eval_command(
     if !ci && !json {
         if let Some(agent_name) = agent {
             let show_url = format!(
-                "/agent/show?path={}&name={}",
+                "/passport/show?path={}&name={}",
                 url_encode(&project_path),
                 url_encode(agent_name)
             );
@@ -260,7 +260,7 @@ pub async fn run_eval_command(
                         "path": project_path,
                         "name": agent_name,
                     });
-                    match client.post_json("/agent/init", &init_body).await {
+                    match client.post_json("/passport/init", &init_body).await {
                         Ok(_) => {
                             eprintln!("   {} Passport '{}' created.", check_mark(), agent_name)
                         }

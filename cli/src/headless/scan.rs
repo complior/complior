@@ -338,7 +338,7 @@ pub async fn run_headless_scan(
 
     // Hint: suggest agent init if no passports found (non-CI, non-JSON, non-SARIF)
     if !ci && !json && !sarif {
-        let hint_url = format!("/agent/list?path={}", super::common::url_encode(&scan_path));
+        let hint_url = format!("/passport/list?path={}", super::common::url_encode(&scan_path));
         if let Ok(list) = client.get_json(&hint_url).await {
             let count = list.as_array().map_or(0, std::vec::Vec::len);
             if count == 0 {
@@ -346,7 +346,7 @@ pub async fn run_headless_scan(
                 eprintln!(
                     "  {}",
                     super::format::colors::dim(
-                        "Hint: No agent passports found. Run `complior agent init` for \
+                        "Hint: No agent passports found. Run `complior passport init` for \
                          passport-aware scanning and pre-filled fix scaffolds."
                     )
                 );
