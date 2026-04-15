@@ -1615,4 +1615,42 @@ mod tests {
             "should produce no output for empty unfixed findings"
         );
     }
+
+    // ── V1-M12 T-1: RED test — ISO 42001 doc types in CLI allowlist ──
+
+    #[test]
+    fn valid_doc_types_includes_iso42001_soa() {
+        assert!(
+            VALID_DOC_TYPES.contains(&"iso42001-soa"),
+            "VALID_DOC_TYPES must include 'iso42001-soa' — ISO 42001 Statement of Applicability"
+        );
+    }
+
+    #[test]
+    fn valid_doc_types_includes_iso42001_risk_register() {
+        assert!(
+            VALID_DOC_TYPES.contains(&"iso42001-risk-register"),
+            "VALID_DOC_TYPES must include 'iso42001-risk-register' — ISO 42001 Risk Register"
+        );
+    }
+
+    #[test]
+    fn valid_doc_types_includes_iso42001_ai_policy() {
+        assert!(
+            VALID_DOC_TYPES.contains(&"iso42001-ai-policy"),
+            "VALID_DOC_TYPES must include 'iso42001-ai-policy' — ISO 42001 AI Policy"
+        );
+    }
+
+    #[test]
+    fn valid_doc_types_count_matches_engine_registry() {
+        // Engine template-registry.ts has 17 entries (14 EU AI Act + 3 ISO 42001).
+        // Rust CLI VALID_DOC_TYPES must have the same count.
+        assert_eq!(
+            VALID_DOC_TYPES.len(),
+            17,
+            "VALID_DOC_TYPES should have 17 entries (14 EU AI Act + 3 ISO 42001), got {}",
+            VALID_DOC_TYPES.len()
+        );
+    }
 }
