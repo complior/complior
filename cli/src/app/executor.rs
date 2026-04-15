@@ -675,7 +675,7 @@ pub async fn execute_command(
             app.passport_view.passport_loading = true;
             app.passport_view.passport_error = None;
             let path = app.project_path.to_string_lossy().to_string();
-            let url = format!("/agent/list?path={}", url_encode(&path));
+            let url = format!("/passport/list?path={}", url_encode(&path));
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
             tokio::spawn(async move {
@@ -716,7 +716,7 @@ pub async fn execute_command(
         AppCommand::LoadPassportCompleteness => {
             if let Some((path, name)) = app.passport_path_name() {
                 let url = format!(
-                    "/agent/completeness?path={}&name={}",
+                    "/passport/completeness?path={}&name={}",
                     url_encode(&path),
                     url_encode(&name)
                 );
@@ -736,7 +736,7 @@ pub async fn execute_command(
         AppCommand::ValidatePassport => {
             if let Some((path, name)) = app.passport_path_name() {
                 let url = format!(
-                    "/agent/validate?path={}&name={}",
+                    "/passport/validate?path={}&name={}",
                     url_encode(&path),
                     url_encode(&name)
                 );
@@ -782,14 +782,14 @@ pub async fn execute_command(
             } else {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
-                    "No passport loaded. Run `complior agent init` first.",
+                    "No passport loaded. Run `complior passport init` first.",
                 );
             }
         }
         AppCommand::GeneratePassportFria => {
             if let Some((path, name)) = app.passport_path_name() {
                 let body = serde_json::json!({ "path": path, "name": name });
-                match app.engine_client.post_json("/agent/fria", &body).await {
+                match app.engine_client.post_json("/fix/doc/fria", &body).await {
                     Ok(result) => {
                         let output_path = result
                             .get("savedPath")
@@ -810,14 +810,14 @@ pub async fn execute_command(
             } else {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
-                    "No passport loaded. Run `complior agent init` first.",
+                    "No passport loaded. Run `complior passport init` first.",
                 );
             }
         }
         AppCommand::ExportPassport => {
             if let Some((path, name)) = app.passport_path_name() {
                 let url = format!(
-                    "/agent/show?path={}&name={}",
+                    "/passport/show?path={}&name={}",
                     url_encode(&path),
                     url_encode(&name)
                 );
@@ -850,7 +850,7 @@ pub async fn execute_command(
             } else {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
-                    "No passport loaded. Run `complior agent init` first.",
+                    "No passport loaded. Run `complior passport init` first.",
                 );
             }
         }
@@ -881,7 +881,7 @@ pub async fn execute_command(
             }
             app.passport_view.registry_loading = true;
             let path = app.project_path.to_string_lossy().to_string();
-            let url = format!("/agent/registry?path={}", url_encode(&path));
+            let url = format!("/passport/registry?path={}", url_encode(&path));
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
             tokio::spawn(async move {
@@ -915,7 +915,7 @@ pub async fn execute_command(
             }
             app.passport_view.audit_loading = true;
             let path = app.project_path.to_string_lossy().to_string();
-            let url = format!("/agent/audit?path={}&limit=50", url_encode(&path));
+            let url = format!("/passport/audit?path={}&limit=50", url_encode(&path));
             let client = app.engine_client.clone();
             let tx = app.bg_tx.clone();
             tokio::spawn(async move {
