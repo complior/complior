@@ -47,10 +47,10 @@ These CANNOT be tested via `application.app.request()`. They need the **real bin
 | eval | `--agent` | Engine passport attribution | ❌ engine |
 | fix | `--source eval/all` | Rust routing logic | ❌ CLI binary |
 | report | `--output` | Rust file I/O | ❌ CLI binary |
-| agent | rename | CLI → engine | ❌ CLI binary |
-| agent | notify | CLI → engine | ❌ CLI binary |
-| agent | registry | CLI → engine | ❌ CLI binary |
-| agent | permissions | CLI → engine | ❌ CLI binary |
+| passport | rename | CLI → engine | ❌ CLI binary |
+| fix --doc | notify | CLI → engine | ❌ CLI binary |
+| passport | registry | CLI → engine | ❌ CLI binary |
+| passport | permissions | CLI → engine | ❌ CLI binary |
 
 ---
 
@@ -92,10 +92,10 @@ These CANNOT be tested via `application.app.request()`. They need the **real bin
 | 9 | `complior report --json $PROJECT` | JSON report output |
 | 10 | `complior report --output /tmp/test.json --json $PROJECT` | File created |
 | 11 | `complior report --format markdown $PROJECT` | Markdown output |
-| 12 | `complior agent rename` via CLI | Rename works E2E |
-| 13 | `complior agent notify` via CLI | Notification document generated |
-| 14 | `complior agent registry` via CLI | Registry returns agents |
-| 15 | `complior agent permissions` via CLI | Permissions matrix returned |
+| 12 | `complior passport rename` via CLI | Rename works E2E |
+| 13 | `complior fix --doc notify` via CLI | Notification document generated |
+| 14 | `complior passport registry` via CLI | Registry returns agents |
+| 15 | `complior passport permissions` via CLI | Permissions matrix returned |
 
 ### 2.3 Stream 3: Eval CLI flags (env-gated)
 

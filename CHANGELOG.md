@@ -7,20 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-04-15
+
 ### Breaking
 
 **Command Restructuring (V1-M11)**
 - `complior agent` renamed to `complior passport` (16 subcommands)
 - Document generation moved from `complior agent <type>` to `complior fix --doc <type>`
-  - `complior agent fria` → `complior fix --doc fria <name>`
-  - `complior agent notify` → `complior fix --doc notify <name>`
-  - `complior agent policy` → `complior fix --doc policy <name>`
-  - `complior agent soa` → `complior fix --doc soa <name>`
-  - `complior agent risk-register` → `complior fix --doc risk-register <name>`
-  - `complior agent test-gen` → `complior fix --doc test-gen <name>`
-  - `complior agent doc all` → `complior fix --doc all <name>`
-- All `/agent/*` HTTP routes deprecated → `/passport/*` (passport CRUD)
-- All doc-gen HTTP routes moved to `/fix/doc/*`
+  - `complior passport fria` → `complior fix --doc fria <name>`
+  - `complior passport notify` → `complior fix --doc notify <name>`
+  - `complior passport policy` → `complior fix --doc policy <name>`
+  - `complior fix --doc soa <name>` (ISO 42001 Statement of Applicability)
+  - `complior fix --doc risk-register <name>` (ISO 42001 Risk Register)
+  - `complior fix --doc test-gen <name>` (compliance test suite)
+  - `complior fix --doc all <name>` (generate all documents)
+- All `/agent/*` HTTP routes removed → `/passport/*` (passport CRUD) and `/fix/doc/*` (doc generation)
+
+### Added
+
+**ISO 42001 Document Generators (V1-M07)**
+- Statement of Applicability (SoA): 39 ISO 42001 Annex A controls × applicability × evidence from scan
+- Risk Register: scan findings → risk matrix (likelihood × impact × mitigation)
+- AI Management Policy template (ISO 42001 Clause 5.2)
+- 39 ISO 42001 controls data file (`iso-42001-controls.json`)
+- New types: `Iso42001Control`, `SoAEntry`, `SoAResult`, `RiskRegisterEntry`, `RiskRegisterResult`
+
+**Context-Aware Scan (V1-M08)**
+- Profile-based finding filters: role (provider/deployer) and risk level (high/limited/minimal)
+- `ScanFilterContext` in scan response: role, riskLevel, domain, obligationCounts, skipCounts
+- Obligation coverage filtering by risk level
+- Top-3 priority actions in scan response (profile-aware)
+
+**Onboarding Enrichment (V1-M09)**
+- 9-question onboarding wizard across 5 blocks (role, business, data, system, deployment)
+- Dynamic obligation filtering: 108 obligations filtered by role + risk level + GPAI status
+- GPAI auto-detection from package.json (openai, anthropic, google, mistral, cohere SDKs)
+- `complior init --reconfigure` to update project profile without full re-init
+- New profile fields: `gpaiModel`, `autonomousDecisions`, `biometricData`, `userFacing`
+
+**Score Transparency (V1-M10)**
+- Score disclaimer: explains coverage, limitations, category weights, critical-cap rule
+- Category breakdown: per-category impact levels, top failures, explanations
+- Profile-aware top-5 priority actions (deadline proximity × severity × category weakness)
+- `complior status [--json]` command with full compliance posture overview
+- `GET /status/posture` endpoint returning aggregate `CompliancePosture`
+
+**Command Restructuring (V1-M11)**
+- `complior passport` with 16 subcommands: init, list, show, validate, completeness, rename, autonomy, notify, registry, permissions, evidence, audit, export, import
+- `complior fix --doc <type>` for document generation (fria, notify, policy, soa, risk-register, test-gen, all)
+- 19 `/passport/*` HTTP routes for passport CRUD, validation, evidence, audit, export
+- 8 `/fix/doc/*` HTTP routes for document generation
+- E2E tests split to separate vitest config (`vitest.e2e.config.ts`)
+
+### Fixed
+
+- Rust CLI `VALID_DOC_TYPES` now includes 3 ISO 42001 types (V1-M12)
+- Agent discovery no longer parses non-path route strings like `app.get('env')` (TD-14)
+- Rust CLI routes corrected: `/passport/doc` → `/fix/doc/generate` (TD-27)
+- Deprecated `/agent/*` route stub removed (TD-26)
+- Unused `buildPriorityActions` import removed from scan.route.ts (TD-12)
+
+### Notes
+
+- 2502 total tests: 2194 TS unit + 130 E2E + 178 Rust — all GREEN
+- EU AI Act enforcement: August 2, 2026 (~3.5 months)
+- All v1.0 pipeline commands feature-complete: init, scan, eval, fix, report, passport, status
 
 ## [0.9.5] - 2026-04-12
 
@@ -41,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `complior eval` — all 22 flags wired and E2E tested: `--det`, `--llm`, `--security`, `--full`, `--json`, `--ci`, `--threshold`, `--categories`, `--last`, `--failures`, `--verbose`, `--remediation`, `--fix`, `--dry-run`, `--model`, `--api-key`, `--request-template`, `--response-path`, `--headers`, `--concurrency`, `--no-remediation`, `--agent`
 - `complior fix` — all 5 flags: `--dry-run`, `--json`, `--ai`, `--source scan/eval/all`, `--check-id`
 - `complior report` — all 4 flags: `--format human/json/md/html/pdf`, `--json`, `--share`, `--output`
-- `complior agent` — all 14 subcommands: `init`, `list`, `show`, `validate`, `completeness`, `fria`, `evidence`, `export`, `rename`, `autonomy`, `notify`, `registry`, `permissions`
+- `complior passport` — all 14 subcommands: `init`, `list`, `show`, `validate`, `completeness`, `rename`, `autonomy`, `registry`, `permissions`, `evidence`, `export`, `import`, `audit` (renamed from `complior agent` in v0.9.6)
 
 **E2E Test Suite**
 - 46 engine-level E2E tests via Hono in-memory HTTP (scan, eval, fix, report, agent flags)
@@ -89,14 +140,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `complior version` / `complior update` -- Version info and self-update
 
 **Agent Passport**
-- `complior agent init` -- Auto-generate Agent Passport (36 fields) from codebase analysis
-- `complior agent list/show/validate` -- Manage and inspect passports
-- `complior agent fria` -- Generate Fundamental Rights Impact Assessment (Art. 27)
-- `complior agent notify` -- Generate Worker Notification (Art. 26(7))
-- `complior agent export` -- Export to A2A, AIUC-1, NIST formats
-- `complior agent evidence` -- Tamper-evident evidence chain (ed25519 signed, hash-linked)
-- `complior agent policy` -- Generate industry-specific AI usage policies
-- `complior agent permissions/registry/completeness` -- Cross-agent governance
+- `complior passport init` -- Auto-generate Agent Passport (36 fields) from codebase analysis
+- `complior passport list/show/validate` -- Manage and inspect passports
+- `complior fix --doc fria` -- Generate Fundamental Rights Impact Assessment (Art. 27)
+- `complior fix --doc notify` -- Generate Worker Notification (Art. 26(7))
+- `complior passport export` -- Export to A2A, AIUC-1, NIST formats
+- `complior passport evidence` -- Tamper-evident evidence chain (ed25519 signed, hash-linked)
+- `complior fix --doc policy` -- Generate industry-specific AI usage policies
+- `complior passport permissions/registry/completeness` -- Cross-agent governance
 
 **Scanner**
 - 33 pattern rules across 8 categories

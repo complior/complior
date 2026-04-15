@@ -1,6 +1,6 @@
 # V1-M12: Release v0.9.6
 
-**Status:** 🔴 RED (specs written, awaiting implementation)
+**Status:** ⏳ T-1..T-7 ✅ DONE, T-8 final gate pending
 **Created:** 2026-04-15
 **Target:** Ship v0.9.6 — feature-complete pre-release
 **Agents:** rust-dev (T-1), nodejs-dev (T-2), architect (T-3..T-8)

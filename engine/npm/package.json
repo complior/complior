@@ -1,6 +1,6 @@
 {
   "name": "complior",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "type": "module",
   "description": "AI Act Compliance Scanner & Fixer — EU AI Act compliance for your AI systems. CLI, TUI dashboard, and background daemon.",
   "license": "AGPL-3.0-only",
