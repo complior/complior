@@ -17,7 +17,8 @@ v1.0 = ТОЛЬКО pipeline команды + Agent Passport:
 - `complior eval` (--det, --llm, --security, --full, --json, --ci, --categories, --last, --remediation, etc.)
 - `complior fix` (--dry-run, --json, --ai, --source, --check-id)
 - `complior report` (--format human/json/md/html/pdf, --json, --share, --output)
-- `complior agent` (init, list, show, validate, completeness, fria, evidence, export, rename, autonomy, notify, registry, permissions)
+- `complior passport` (init, list, show, validate, completeness, evidence, export, rename, autonomy, notify, registry, permissions)
+- `complior fix --doc` (fria, soa, risk-register, policy, notify)
 
 НЕ входит в v1.0: daemon, chat, supply-chain, cost, debt, simulate, jurisdiction, proxy, doc, import, redteam, tools, login/logout, sync.
 
@@ -83,23 +84,23 @@ v1.0 = ТОЛЬКО pipeline команды + Agent Passport:
 | report --format pdf | POST /report/status/pdf | path to PDF file |
 | report 7 readiness dimensions | GET /report/status | All 7 dimensions present |
 
-### 3.4 Agent Passport Flags E2E (11 тестов)
+### 3.4 Passport Flags E2E (11 тестов)
 | File: `engine/core/src/e2e/agent-flags-e2e.test.ts` |
 | Test | Endpoint | Expected |
 |------|----------|----------|
-| agent validate | GET /agent/validate | valid, issues, signatureValid, completeness |
-| agent completeness | GET /agent/completeness | completeness, completed_fields, total_fields |
-| agent autonomy L1-L5 | GET /agent/autonomy | agents with level 1-5 |
-| agent export A2A | GET /agent/export?format=a2a | format=a2a, data object |
-| agent export AIUC-1 | GET /agent/export?format=aiuc-1 | format=aiuc-1 |
-| agent export invalid format | GET /agent/export?format=bad | 400 error |
-| agent rename | POST /agent/rename | success, newName |
-| agent notify (worker notification) | POST /agent/notify | path, content, timestamp |
-| agent registry | GET /agent/registry | agents array |
-| agent permissions matrix | GET /agent/permissions | matrix array |
-| agent evidence verify | GET /agent/evidence/verify | verified, entries, issues |
-| agent audit summary | GET /agent/audit/summary | total_events, by_type |
-| agent init --force | POST /agent/init {force:true} | Re-creates passport |
+| passport validate | GET /passport/validate | valid, issues, signatureValid, completeness |
+| passport completeness | GET /passport/completeness | completeness, completed_fields, total_fields |
+| passport autonomy L1-L5 | GET /passport/autonomy | agents with level 1-5 |
+| passport export A2A | GET /passport/export?format=a2a | format=a2a, data object |
+| passport export AIUC-1 | GET /passport/export?format=aiuc-1 | format=aiuc-1 |
+| passport export invalid format | GET /passport/export?format=bad | 400 error |
+| passport rename | POST /passport/rename | success, newName |
+| passport notify (worker notification) | POST /fix/doc/notify | path, content, timestamp |
+| passport registry | GET /passport/registry | agents array |
+| passport permissions matrix | GET /passport/permissions | matrix array |
+| passport evidence verify | GET /passport/evidence/verify | verified, entries, issues |
+| passport audit summary | GET /passport/audit/summary | total_events, by_type |
+| passport init --force | POST /passport/init {force:true} | Re-creates passport |
 
 ### 3.5 Existing E2E Tests (уже написаны)
 | File | Tests | Status |
@@ -112,9 +113,9 @@ v1.0 = ТОЛЬКО pipeline команды + Agent Passport:
 |--------|----------|---------------|
 | `scripts/verify_score_growth.sh` | init → scan → fix → rescan → score grew | Score delta ≥ 0 |
 | `scripts/verify_manual_edit_score.sh` | scan → write doc → rescan → improved | Score delta ≥ 0 |
-| `scripts/verify_fria_flow.sh` | agent init → fria → fria_completed → evidence | passport updated |
+| `scripts/verify_fria_flow.sh` | passport init → fix --doc fria → fria_completed → evidence | passport updated |
 | `scripts/verify_api_key_handling.sh` | with/without key → graceful | No crash |
-| `scripts/verify_agent_cli.sh` | agent init→list→show→validate→completeness→fria→evidence→export→autonomy | 10/10 PASS |
+| `scripts/verify_agent_cli.sh` | passport init→list→show→validate→completeness→evidence→export→autonomy | 10/10 PASS |
 
 ### 3.7 Contract Tests
 | Test ID | File | Expected |

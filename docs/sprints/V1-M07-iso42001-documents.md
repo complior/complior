@@ -1,6 +1,6 @@
 # V1-M07: ISO 42001 Document Generators
 
-**Status:** ⏳ IN PROGRESS (T-1..T-6 ✅ DONE, T-7 Rust CLI awaiting rust-dev)
+**Status:** ✅ DONE (T-1..T-6 engine ✅, T-7 Rust CLI ✅ — fixed in V1-M12)
 **Created:** 2026-04-12
 **Updated:** 2026-04-13 (T-4/T-5/T-6 implemented — 23 tests GREEN, 0 regressions)
 **Deadline:** 2026-04-26 (2 weeks)
@@ -29,7 +29,7 @@ Customers pursuing certification need: AI Policy, Statement of Applicability, Ri
 1. **Statement of Applicability (SoA)** — 39 ISO 42001 controls × applicability × evidence from scan
 2. **Risk Register** — Scan findings → risk matrix (likelihood × impact × mitigation)
 
-> **NOTE:** F-V9-24 (AI Policy Generator) already implemented via `complior agent policy`.
+> **NOTE:** F-V9-24 (AI Policy Generator) already implemented via `complior fix --doc policy`.
 > 8 industry-specific templates exist in `data/templates/policies/`.
 > ISO 42001 AI Policy template added in T-3 for completeness.
 
@@ -253,9 +253,9 @@ generateSoA(name: string, opts?: { organization?: string }): Promise<SoAResult>
 generateRiskRegister(name: string, opts?: { organization?: string }): Promise<RiskRegisterResult>
 ```
 
-**HTTP routes (agent.route.ts):**
-- `POST /agent/soa` → `{ name, organization? }` → `SoAResult`
-- `POST /agent/risk-register` → `{ name, organization? }` → `RiskRegisterResult`
+**HTTP routes (passport.route.ts):**
+- `POST /fix/doc/soa` → `{ name, organization? }` → `SoAResult`
+- `POST /fix/doc/risk-register` → `{ name, organization? }` → `RiskRegisterResult`
 
 **Composition root:**
 - Wire `iso42001Controls` data into PassportServiceDeps
@@ -263,7 +263,7 @@ generateRiskRegister(name: string, opts?: { organization?: string }): Promise<Ri
 
 **Key files:**
 - `engine/core/src/services/passport-service.ts` (add 2 methods)
-- `engine/core/src/http/routes/agent.route.ts` (add 2 routes)
+- `engine/core/src/http/routes/passport.route.ts` (add 2 routes)
 - `engine/core/src/composition-root.ts` (wire data)
 
 **Verification:** E2E test in `iso42001-e2e.test.ts` — HTTP routes return valid responses
@@ -272,19 +272,19 @@ generateRiskRegister(name: string, opts?: { organization?: string }): Promise<Ri
 
 ### T-7: Rust CLI Commands (rust-dev)
 
-Add 2 new subcommands to `complior agent`:
+Add 2 new `--doc` subcommands to `complior fix`:
 
 ```
-complior agent soa <name> [--json] [--organization "Org"]
-complior agent risk-register <name> [--json] [--organization "Org"]
+complior fix --doc soa [--json] [--organization "Org"]
+complior fix --doc risk-register [--json] [--organization "Org"]
 ```
 
 **Key files:**
-- `cli/src/cli.rs` — add `Soa` and `RiskRegister` to `AgentAction` enum
-- `cli/src/headless/agent.rs` — add `run_agent_soa()` and `run_agent_risk_register()`
-- Call `POST /agent/soa` and `POST /agent/risk-register` respectively
+- `cli/src/cli.rs` — add `Soa` and `RiskRegister` to `DocAction` enum
+- `cli/src/headless/passport.rs` — add `run_doc_soa()` and `run_doc_risk_register()`
+- Call `POST /fix/doc/soa` and `POST /fix/doc/risk-register` respectively
 
-**Verification:** `cargo test` GREEN, `complior agent soa --help` works
+**Verification:** `cargo test` GREEN, `complior fix --doc soa --help` works
 
 ---
 
@@ -312,5 +312,5 @@ complior agent risk-register <name> [--json] [--organization "Org"]
 | T-3 | Templates (3 .md files) | architect | files exist | `data/templates/iso-42001/*.md` |
 | T-4 | SoA Generator | nodejs-dev | unit test: 8+ GREEN | `domain/documents/soa-generator.ts` |
 | T-5 | Risk Register Generator | nodejs-dev | unit test: 8+ GREEN | `domain/documents/risk-register-generator.ts` |
-| T-6 | Service + HTTP routes | nodejs-dev | E2E: 2 routes GREEN | `services/passport-service.ts`, `routes/agent.route.ts` |
-| T-7 | Rust CLI commands | rust-dev | cargo test GREEN | `cli/src/cli.rs`, `headless/agent.rs` |
+| T-6 | Service + HTTP routes | nodejs-dev | E2E: 2 routes GREEN | `services/passport-service.ts`, `routes/passport.route.ts` |
+| T-7 | Rust CLI commands | rust-dev | cargo test GREEN | `cli/src/cli.rs`, `headless/passport.rs` |
