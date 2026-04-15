@@ -73,7 +73,7 @@ No other tool does this.
 - **Agent Passport** — central entity (36 fields, ed25519 signed, 3 creation modes)
 - **7-Step Pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
 - **8 MCP Tools** — compliance tools for Claude Code, Cursor, Windsurf, any MCP client
-- **Runtime Middleware** — `@complior/sdk` — proxy-based compliance wrapping for LLM API calls
+- **Runtime Middleware** — `@complior/sdk` (planned) — proxy-based compliance wrapping for LLM API calls
 - **5,011+ AI Tools** — detection patterns for OpenAI, Anthropic, LangChain, and more
 - **100+ Themes** — Tokyo Night, Catppuccin, Gruvbox, Nord, and custom TOML themes
 - **CI/CD** — `complior scan --ci --threshold 80 --json`
@@ -167,7 +167,7 @@ complior init
 complior scan
 
 # 3. Evaluate live AI endpoint (688 dynamic tests)
-complior eval --target http://localhost:4000/api/chat --agent my-bot
+complior eval http://localhost:4000/api/chat --agent my-bot
 
 # 4. Apply recommended fixes
 complior fix
@@ -183,7 +183,7 @@ complior
 ```bash
 # CI/CD pipeline
 complior scan --ci --threshold 80 --json
-complior eval --target $API_URL --agent $AGENT --ci --threshold 70
+complior eval $API_URL --agent $AGENT --ci --threshold 70
 ```
 
 ## All CLI Commands
@@ -303,7 +303,7 @@ complior/
 ├── cli/           # Rust CLI + TUI — dashboard UI, daemon management, connects via HTTP/SSE
 ├── engine/
 │   ├── core/      # @complior/engine — TS daemon (Clean Architecture)
-│   ├── sdk/       # @complior/sdk — runtime compliance middleware
+│   ├── sdk/       # @complior/sdk — runtime compliance middleware (planned)
 │   └── npm/       # npm wrapper package (npx complior)
 ├── docs/          # Architecture, specs, contributing standards
 ├── .github/       # CI/CD workflows
@@ -325,7 +325,7 @@ See `docs/contributing/` for coding standards.
 
 ## License
 
-[MIT](LICENSE)
+[AGPL-3.0](LICENSE)
 
 ---
 

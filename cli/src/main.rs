@@ -159,7 +159,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
                 Err(e) => {
                     eprintln!("Error: Cannot auto-start engine: {e}");
-                    eprintln!("Start the engine manually: cd engine/core && npx tsx src/server.ts");
+                    eprintln!("Try: complior daemon");
                     std::process::exit(1);
                 }
             }
@@ -263,8 +263,7 @@ async fn main() -> color_eyre::Result<()> {
                 0
             }
             Some(cli::Command::Doctor { .. }) => {
-                headless::run_doctor(&config).await;
-                0
+                headless::run_doctor(&config).await
             }
             Some(cli::Command::Status { json, path }) => {
                 headless::run_headless_status(*json, path.as_deref(), &config).await
@@ -717,7 +716,7 @@ async fn run_event_loop(
                 app.engine_status = types::EngineConnectionStatus::Disconnected;
                 app.messages.push(types::ChatMessage::new(
                     types::MessageRole::System,
-                    "Engine not running. Start with: cd engine && npm run dev".to_string(),
+                    "Engine not running. Try: complior daemon".to_string(),
                 ));
             }
         }

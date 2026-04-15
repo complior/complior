@@ -6,13 +6,16 @@ use crate::engine_client::EngineClient;
 /// Print version info and exit.
 pub fn run_version() {
     let version = env!("CARGO_PKG_VERSION");
-    println!("complior {version}");
+    let git_hash = env!("BUILD_GIT_HASH");
+    let target = env!("BUILD_TARGET");
+    println!("complior {version} ({git_hash}) target: {target}");
     println!("AI Act Compliance Scanner & Fixer");
-    println!("https://complior.eu");
+    println!("https://complior.ai");
 }
 
 /// Run doctor diagnostics — 8 system health checks.
-pub async fn run_doctor(config: &TuiConfig) {
+/// Returns 0 if critical checks (engine + Node.js) pass, 1 otherwise.
+pub async fn run_doctor(config: &TuiConfig) -> i32 {
     println!("Complior Doctor — System Health Check");
     println!("=====================================");
     println!();
@@ -91,7 +94,7 @@ pub async fn run_doctor(config: &TuiConfig) {
         .timeout(std::time::Duration::from_secs(5))
         .build();
     match net_client {
-        Ok(c) => match c.head("https://github.com/a3ka/complior").send().await {
+        Ok(c) => match c.head("https://github.com/complior/complior").send().await {
             Ok(resp) if resp.status().is_success() || resp.status().is_redirection() => {
                 println!("GitHub reachable                  OK");
                 passed += 1;
@@ -138,6 +141,9 @@ pub async fn run_doctor(config: &TuiConfig) {
     if passed >= 3 {
         println!("  Ready to scan!");
     }
+
+    // Return non-zero if critical checks failed (engine + Node.js = 2 critical)
+    i32::from(passed < 2)
 }
 
 /// Run headless report generation.
@@ -614,7 +620,7 @@ pub async fn run_update() {
     // Check GitHub API for latest release
     let client = reqwest::Client::new();
     if let Ok(resp) = client
-        .get("https://api.github.com/repos/a3ka/complior/releases/latest")
+        .get("https://api.github.com/repos/complior/complior/releases/latest")
         .header("User-Agent", "complior-update-check")
         .send()
         .await

@@ -5,7 +5,8 @@ use clap::{Parser, Subcommand};
     name = "complior",
     version,
     about = "AI Act Compliance Scanner & Fixer",
-    long_about = "Complior scans your project for EU AI Act compliance, identifies gaps, and helps you fix them.\n\nRun without a subcommand to launch the interactive TUI."
+    long_about = "Complior scans your project for EU AI Act compliance, identifies gaps, and helps you fix them.\n\nRun without a subcommand to launch the interactive TUI.",
+    after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior                              Launch TUI dashboard\n  complior scan                         Scan current project\n  complior scan --ci --threshold 80     CI gate with threshold\n  complior eval http://localhost:4000   Dynamic AI testing\n  complior fix --doc fria my-bot        Generate FRIA report\n  complior passport list                List agent passports\n  complior doctor                       System health check"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -52,6 +53,7 @@ impl std::fmt::Display for FixSource {
 #[derive(Subcommand)]
 pub enum Command {
     /// Scan project for AI Act compliance
+    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior scan                         Basic scan (L1-L4)\n  complior scan --deep                  Include external tools\n  complior scan --llm                   Add LLM analysis (L5)\n  complior scan --ci --threshold 80     CI mode with threshold\n  complior scan --json                  JSON output\n  complior scan --diff main             Compare against branch")]
     Scan {
         /// CI mode: exit 0 if score >= threshold, exit 1 otherwise
         #[arg(long)]
@@ -89,7 +91,7 @@ pub enum Command {
         #[arg(long)]
         comment: bool,
 
-        /// Tier 2: Run external security tools (Semgrep, Bandit, `ModelScan`, detect-secrets) via uv
+        /// Tier 2: Run external security tools (Semgrep, Bandit, ModelScan, detect-secrets) via uv
         #[arg(long)]
         deep: bool,
 
@@ -97,7 +99,7 @@ pub enum Command {
         #[arg(long)]
         llm: bool,
 
-        /// [planned] Cloud scan via `SaaS` API
+        /// [planned] Cloud scan via SaaS API
         #[arg(long, hide = true)]
         cloud: bool,
 
@@ -105,7 +107,7 @@ pub enum Command {
         #[arg(long, short = 'q')]
         quiet: bool,
 
-        /// Filter by agent name (passport `source_files`)
+        /// Filter by agent name (passport source_files)
         #[arg(long)]
         agent: Option<String>,
 
@@ -114,6 +116,7 @@ pub enum Command {
     },
 
     /// Apply fixes to improve compliance score
+    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior fix                          Apply all scan fixes\n  complior fix --dry-run                Preview without applying\n  complior fix --check-id l1-fria       Fix single check\n  complior fix --doc fria my-bot        Generate FRIA report\n  complior fix --doc all my-bot         Generate all documents")]
     Fix {
         /// Dry-run: preview fixes without modifying files
         #[arg(long)]
@@ -157,7 +160,7 @@ pub enum Command {
         path: Option<String>,
     },
 
-    /// V1-M10 T-4: Show aggregated compliance posture (score disclaimer, categories, top actions)
+    /// Show aggregated compliance posture (score disclaimer, categories, top actions)
     Status {
         /// Output as JSON
         #[arg(long)]
@@ -168,6 +171,7 @@ pub enum Command {
     },
 
     /// Generate compliance readiness report
+    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior report                       Human-readable report\n  complior report --format html         Interactive HTML report\n  complior report --json -o report.json Save JSON to file\n  complior report --share               Offline HTML for sharing")]
     Report {
         /// Output format: human, json, md, markdown, pdf, html (default: human)
         #[arg(long, default_value = "human")]
@@ -213,6 +217,7 @@ pub enum Command {
     },
 
     /// Manage Agent Passport (AI system identity, permissions, compliance)
+    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior passport init                Auto-discover agents\n  complior passport list                List all passports\n  complior passport show my-bot         View passport details\n  complior passport validate --ci       CI validation gate\n  complior passport export my-bot --format a2a  Export to A2A")]
     Passport {
         #[command(subcommand)]
         action: PassportAction,
@@ -341,6 +346,7 @@ pub enum Command {
     },
 
     /// Run dynamic AI system evaluation (probes + LLM judge + security)
+    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior eval http://localhost:4000    Deterministic tests\n  complior eval http://localhost:4000 --llm    Add LLM judge\n  complior eval http://localhost:4000 --full   All test suites\n  complior eval --last --failures       Review last failures")]
     Eval {
         /// Target AI endpoint URL (e.g. <http://localhost:4000/api/chat>)
         target: Option<String>,
@@ -456,15 +462,15 @@ pub enum Command {
         path: Option<String>,
     },
 
-    /// Authenticate with `SaaS` dashboard via browser
+    /// Authenticate with SaaS dashboard via browser
     #[cfg(feature = "extras")]
     Login,
 
-    /// Clear `SaaS` authentication tokens
+    /// Clear SaaS authentication tokens
     #[cfg(feature = "extras")]
     Logout,
 
-    /// Sync data with `SaaS` (passports, scans, documents)
+    /// Sync data with SaaS (passports, scans, documents)
     #[cfg(feature = "extras")]
     Sync {
         /// Sync only passports
@@ -742,7 +748,7 @@ pub enum CertAction {
         #[arg(long)]
         adversarial: bool,
 
-        /// Filter categories (comma-separated: `prompt_injection,bias_detection,safety_boundary`)
+        /// Filter categories (comma-separated: prompt_injection,bias_detection,safety_boundary)
         #[arg(long)]
         categories: Option<String>,
 
