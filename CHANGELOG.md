@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-04-15
+## [0.9.7] - 2026-04-16
 
 ### Changed
 
 **Release Polish (V1-M14)**
-- Version bump 0.9.6 → 1.0.0 (all v1.0 pipeline commands complete)
+- Version bump 0.9.6 → 0.9.7
 - README license corrected: MIT → AGPL-3.0
 - README eval syntax: `--target` flag removed (positional argument)
 - SDK references marked as "(planned)" in README

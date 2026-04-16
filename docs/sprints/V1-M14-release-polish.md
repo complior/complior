@@ -1,8 +1,8 @@
-# V1-M14: v1.0.0 Release Polish
+# V1-M14: Release Polish
 
 **Status:** DONE
 **Branch:** `feature/V1-M14-release-polish`
-**Goal:** Fix 18 UX issues blocking v1.0.0 release, version bump 0.9.6 → 1.0.0
+**Goal:** Fix 18 UX issues, version bump 0.9.6 → 0.9.7
 
 ## Context
 
@@ -39,7 +39,7 @@ All v1.0 commands implemented (M01-M13 DONE, 2502 tests GREEN). Deep UX audit re
 ### Group E: Polish
 - [x] E1: npm checksum verification (SHA256 sidecar)
 - [x] E2: CI env vars format (one-per-line, COMPLIOR_SCORE)
-- [x] E3: Version bump 0.9.6 → 1.0.0
+- [x] E3: Version bump 0.9.6 → 0.9.7
 
 ## Verification
 
