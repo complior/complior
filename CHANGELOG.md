@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-04-17
+
+### Changed
+
+**Pre-Release Polish (V1-M15)**
+- SARIF output now includes file locations (`locations` + `partialFingerprints`) for GitHub Code Scanning and IDE integration
+- `--fail-on` flag validates severity at parse time (clap ValueEnum: critical, high, medium, low)
+- "Starting Complior engine..." message shown during cold start instead of silent wait
+- Hidden deprecated `--no-tui` flag (scans are always headless)
+- Added `complior completions <shell>` for bash/zsh/fish/PowerShell tab completions
+- Wrapped engine parse errors with user-friendly messages suggesting `complior doctor`
+- Added "No AI components detected" hint when scan finds no L3/L4/L5 findings
+- Improved `--cloud` stub message with actionable alternatives
+- Version bump 0.9.7 → 0.9.8
+
 ## [0.9.7] - 2026-04-16
 
 ### Changed

@@ -50,6 +50,26 @@ impl std::fmt::Display for FixSource {
     }
 }
 
+/// Severity level for `--fail-on` flag (validated at parse time).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum SeverityLevel {
+    Critical,
+    High,
+    Medium,
+    Low,
+}
+
+impl SeverityLevel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Critical => "critical",
+            Self::High => "high",
+            Self::Medium => "medium",
+            Self::Low => "low",
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Command {
     /// Scan project for AI Act compliance
@@ -67,8 +87,8 @@ pub enum Command {
         #[arg(long)]
         sarif: bool,
 
-        /// Headless human-readable output (no TUI)
-        #[arg(long)]
+        /// [deprecated] Scans are always headless; this flag is a no-op
+        #[arg(long, hide = true)]
         no_tui: bool,
 
         /// Score threshold for CI pass (default: 50)
@@ -76,8 +96,8 @@ pub enum Command {
         threshold: u32,
 
         /// Fail on severity level (critical, high, medium, low)
-        #[arg(long)]
-        fail_on: Option<String>,
+        #[arg(long, value_enum)]
+        fail_on: Option<SeverityLevel>,
 
         /// Diff mode: compare against base branch (e.g. --diff main)
         #[arg(long)]
@@ -205,6 +225,14 @@ pub enum Command {
 
     /// Check for and install updates
     Update,
+
+    /// Generate shell completions (bash, zsh, fish, powershell)
+    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior completions bash > ~/.local/share/bash-completion/completions/complior\n  complior completions zsh > ~/.zfunc/_complior\n  complior completions fish > ~/.config/fish/completions/complior.fish")]
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+    },
 
     /// Daemon management (background compliance monitoring)
     Daemon {
@@ -924,7 +952,7 @@ pub enum JurisdictionAction {
 pub fn needs_engine(cli: &Cli) -> bool {
     match &cli.command {
         None => false,
-        Some(Command::Version | Command::Update | Command::Daemon { .. }) => false,
+        Some(Command::Version | Command::Update | Command::Completions { .. } | Command::Daemon { .. }) => false,
         #[cfg(feature = "extras")]
         Some(Command::Login | Command::Logout) => false,
         _ => true,
@@ -1014,6 +1042,7 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Report { .. }
             | Command::Init { .. }
             | Command::Update
+            | Command::Completions { .. }
             | Command::Daemon { .. }
             | Command::Passport { .. }
             | Command::Eval { .. },
