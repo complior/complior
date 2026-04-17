@@ -308,15 +308,17 @@ pub async fn run_headless_scan(
             format!("{finding_count} findings")
         };
 
-        eprintln!(
-            "  {} Scan complete ({})  {}  {}  {}",
-            green(check_mark()),
-            layers,
-            dim(&findings_label),
-            dim(&format!("Score: {:.0}/100", result.score.total_score)),
-            dim(&format!("{:.0}s", scan_elapsed.elapsed().as_secs_f64())),
-        );
-        eprintln!();
+        if !quiet {
+            eprintln!(
+                "  {} Scan complete ({})  {}  {}  {}",
+                green(check_mark()),
+                layers,
+                dim(&findings_label),
+                dim(&format!("Score: {:.0}/100", result.score.total_score)),
+                dim(&format!("{:.0}s", scan_elapsed.elapsed().as_secs_f64())),
+            );
+            eprintln!();
+        }
 
         let opts = FormatOptions {
             framework_scores: framework_scores.as_ref().map(|mf| mf.frameworks.clone()),
