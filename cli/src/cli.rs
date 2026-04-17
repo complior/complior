@@ -50,6 +50,29 @@ impl std::fmt::Display for FixSource {
     }
 }
 
+/// Report output format (validated at parse time).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum ReportFormat {
+    Human,
+    Json,
+    Md,
+    Markdown,
+    Pdf,
+    Html,
+}
+
+impl ReportFormat {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Human => "human",
+            Self::Json => "json",
+            Self::Md | Self::Markdown => "markdown",
+            Self::Pdf => "pdf",
+            Self::Html => "html",
+        }
+    }
+}
+
 /// Severity level for `--fail-on` flag (validated at parse time).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum SeverityLevel {
@@ -194,8 +217,8 @@ pub enum Command {
     #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior report                       Human-readable report\n  complior report --format html         Interactive HTML report\n  complior report --json -o report.json Save JSON to file\n  complior report --share               Offline HTML for sharing")]
     Report {
         /// Output format: human, json, md, markdown, pdf, html (default: human)
-        #[arg(long, default_value = "human")]
-        format: String,
+        #[arg(long, value_enum, default_value = "human")]
+        format: ReportFormat,
 
         /// Output path (default: stdout for human/json, auto-generated for files)
         #[arg(long, short)]
@@ -223,7 +246,7 @@ pub enum Command {
         path: Option<String>,
     },
 
-    /// Check for and install updates
+    /// Check for available updates
     Update,
 
     /// Generate shell completions (bash, zsh, fish, powershell)

@@ -106,7 +106,7 @@ The primary risks identified include:
 ## 4. Monitoring and Review
 
 Risk assessments are reviewed quarterly and after any significant model update.
-All changes are tracked in the evidence chain via complior agent evidence.
+All changes are tracked in the evidence chain via complior passport evidence.
 DOCEOF
 
 if [[ -f "$DOCS_DIR/risk-management.md" ]]; then

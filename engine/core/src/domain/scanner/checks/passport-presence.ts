@@ -65,7 +65,7 @@ export const checkPassportPresence = (ctx: ScanContext): readonly CheckResult[] 
       severity: 'high',
       obligationId: OBLIGATION_ID,
       articleReference: ARTICLE_REF,
-      fix: 'Run `complior agent init` to generate an Agent Passport for your AI system',
+      fix: 'Run `complior passport init` to generate an Agent Passport for your AI system',
     }];
   }
 

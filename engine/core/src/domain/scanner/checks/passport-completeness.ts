@@ -60,7 +60,7 @@ export const checkPassportCompleteness = (ctx: ScanContext): readonly CheckResul
           severity: pct < 50 ? 'high' : 'medium',
           obligationId: OBLIGATION_ID,
           articleReference: ARTICLE_REF,
-          fix: `Fill missing passport fields using \`complior agent init --force\` or manual edit`,
+          fix: `Fill missing passport fields using \`complior passport init --force\` or manual edit`,
           file: file.relativePath,
         });
       }
@@ -72,7 +72,7 @@ export const checkPassportCompleteness = (ctx: ScanContext): readonly CheckResul
         severity: 'high',
         obligationId: OBLIGATION_ID,
         articleReference: ARTICLE_REF,
-        fix: 'Regenerate passport with `complior agent init --force`',
+        fix: 'Regenerate passport with `complior passport init --force`',
         file: file.relativePath,
       });
     }

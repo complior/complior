@@ -165,6 +165,24 @@ async fn main() -> color_eyre::Result<()> {
             }
         }
 
+        // Ensure engine cleanup on Ctrl+C (SIGINT doesn't call destructors)
+        #[cfg(unix)]
+        if let Some(pid) = engine_guard.as_ref().and_then(EngineManager::child_pid) {
+            let pid = pid as i32;
+            tokio::spawn(async move {
+                let _ = tokio::signal::ctrl_c().await;
+                eprintln!("\nInterrupted. Stopping engine...");
+                unsafe {
+                    libc::kill(-pid, libc::SIGTERM);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                unsafe {
+                    libc::kill(-pid, libc::SIGKILL);
+                }
+                std::process::exit(130);
+            });
+        }
+
         let code: i32 = match &parsed_cli.command {
             Some(cli::Command::Scan {
                 ci,
