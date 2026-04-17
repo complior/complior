@@ -86,11 +86,11 @@ const buildIssues = (ctx: IssueContext): readonly string[] => {
   const issues: string[] = [];
 
   if (!ctx.friaCompleted) {
-    issues.push(`FRIA not completed — run \`complior agent fria ${ctx.name}\``);
+    issues.push(`FRIA not completed — run \`complior passport fria ${ctx.name}\``);
   }
 
   if (ctx.completenessScore < COMPLETENESS_WARNING_THRESHOLD) {
-    issues.push(`Passport only ${ctx.completenessScore}% complete — run \`complior agent init --force\``);
+    issues.push(`Passport only ${ctx.completenessScore}% complete — run \`complior passport init --force\``);
   }
 
   if (!ctx.evidenceValid && ctx.evidenceEntries > 0) {

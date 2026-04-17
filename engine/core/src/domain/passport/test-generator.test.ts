@@ -83,7 +83,7 @@ describe('generateComplianceTests', () => {
 
   it('includes regeneration comment', () => {
     const result = generateComplianceTests({ name: 'my-agent' });
-    expect(result.content).toContain('complior agent test-gen my-agent');
+    expect(result.content).toContain('complior passport test-gen my-agent');
   });
 
   it('returns frozen result', () => {

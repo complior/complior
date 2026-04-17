@@ -526,7 +526,7 @@ const renderTabFixes = (report: ComplianceReport): string => {
 
 const renderTabPassports = (report: ComplianceReport): string => {
   const ps = report.passports;
-  if (ps.totalAgents === 0) return '<div class="empty-state"><p>No agent passports found.</p><p>Run <code>complior agent init</code> to create one.</p></div>';
+  if (ps.totalAgents === 0) return '<div class="empty-state"><p>No agent passports found.</p><p>Run <code>complior passport init</code> to create one.</p></div>';
 
   const cards = ps.passports.map((p) => {
     const ringColor = completenessColor(p.completenessZone);

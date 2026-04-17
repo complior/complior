@@ -4,7 +4,6 @@
   "private": true,
   "workspaces": [
     "engine/core",
-    "engine/sdk",
     "engine/npm"
   ],
   "license": "AGPL-3.0-only",

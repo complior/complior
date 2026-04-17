@@ -9,7 +9,7 @@
 > [!IMPORTANT]
 > **Status: v8 Architecture**
 >
-> Complior v8 is a daemon-orchestrator: background daemon (file watcher + engine + MCP server + HTTP API) + Rust TUI dashboard + CLI commands. The v1 engine (scanner, fixer, 375+ tests) works. Agents connect independently via MCP. Contributions and feedback are welcome.
+> Complior v8 is a daemon-orchestrator: background daemon (file watcher + engine + MCP server + HTTP API) + Rust TUI dashboard + CLI commands. The v1 engine (scanner, fixer, 2500+ tests) works. Agents connect independently via MCP. Contributions and feedback are welcome.
 
 ---
 
@@ -17,7 +17,7 @@
 
 Complior is a background compliance daemon that monitors your AI project for EU AI Act compliance. It watches every file change and rescans in ~200ms. Agents (Claude Code, Cursor, VS Code, OpenCode, aider) work independently and connect via MCP.
 
-**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (~5 months).
+**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (~4 months).
 
 **The solution:** A daemon that monitors file changes and provides real-time compliance feedback. Agents work independently — Complior doesn't manage their processes.
 
@@ -73,7 +73,6 @@ No other tool does this.
 - **Agent Passport** — central entity (36 fields, ed25519 signed, 3 creation modes)
 - **7-Step Pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
 - **8 MCP Tools** — compliance tools for Claude Code, Cursor, Windsurf, any MCP client
-- **Runtime Middleware** — `@complior/sdk` (planned) — proxy-based compliance wrapping for LLM API calls
 - **5,011+ AI Tools** — detection patterns for OpenAI, Anthropic, LangChain, and more
 - **100+ Themes** — Tokyo Night, Catppuccin, Gruvbox, Nord, and custom TOML themes
 - **CI/CD** — `complior scan --ci --threshold 80 --json`
@@ -188,7 +187,7 @@ complior eval $API_URL --agent $AGENT --ci --threshold 70
 
 ## All CLI Commands
 
-> Full flag reference: [`docs/TUI-DESIGN-SPEC.md` §3](docs/TUI-DESIGN-SPEC.md)
+> Full flag reference: `complior <command> --help`
 
 ```bash
 # ─── CORE ───
@@ -303,9 +302,7 @@ complior/
 ├── cli/           # Rust CLI + TUI — dashboard UI, daemon management, connects via HTTP/SSE
 ├── engine/
 │   ├── core/      # @complior/engine — TS daemon (Clean Architecture)
-│   ├── sdk/       # @complior/sdk — runtime compliance middleware (planned)
 │   └── npm/       # npm wrapper package (npx complior)
-├── docs/          # Architecture, specs, contributing standards
 ├── .github/       # CI/CD workflows
 ├── Cargo.toml     # Rust workspace root
 ├── package.json   # TS workspace root
@@ -321,7 +318,7 @@ Complior is in v8 daemon architecture. We welcome:
 - **AI tool data** — detection patterns for AI SDKs
 - **Issues** for feature requests and ideas
 
-See `docs/contributing/` for coding standards.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
