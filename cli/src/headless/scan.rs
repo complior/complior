@@ -42,7 +42,7 @@ pub async fn run_headless_scan(
         }
         Err(e) => {
             eprintln!("Error: Cannot connect to engine at {engine_url}: {e}");
-            eprintln!("Start the engine with: cd engine && npm run dev");
+            eprintln!("Start with: complior daemon");
             return 1;
         }
     }
@@ -51,7 +51,7 @@ pub async fn run_headless_scan(
 
     // Tier 3 stub
     if cloud {
-        eprintln!("Error: --cloud (Tier 3) is not yet available. Planned for Month 3-4.");
+        eprintln!("Error: This feature is not yet available.");
         return 1;
     }
 
@@ -331,9 +331,9 @@ pub async fn run_headless_scan(
             .iter()
             .filter(|f| f.r#type == crate::types::CheckResultType::Fail)
             .count();
-        eprintln!(
-            "COMPLIOR_SCORE={score} COMPLIOR_GRADE={grade} COMPLIOR_FINDINGS={finding_count}"
-        );
+        eprintln!("COMPLIOR_SCORE={score}");
+        eprintln!("COMPLIOR_GRADE={grade}");
+        eprintln!("COMPLIOR_FINDINGS={finding_count}");
     }
 
     // Hint: suggest agent init if no passports found (non-CI, non-JSON, non-SARIF)

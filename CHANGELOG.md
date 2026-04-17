@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.7] - 2026-04-16
+
+### Changed
+
+**Release Polish (V1-M14)**
+- Version bump 0.9.6 → 0.9.7
+- README license corrected: MIT → AGPL-3.0
+- README eval syntax: `--target` flag removed (positional argument)
+- SDK references marked as "(planned)" in README
+- GitHub URL corrected to `complior/complior` across CLI
+- URL consistency: all CLI references now use `complior.ai`
+- Help text cleanup: removed milestone prefixes and backtick artifacts from doc comments
+- `--cloud` error now shows user-friendly message
+- `--help` examples added to Scan, Eval, Fix, Report, Passport, and top-level commands
+- `complior version` now shows git hash and target triple
+- `complior doctor` returns exit code 1 if critical checks fail
+- HTML report uses system fonts (offline-safe, no Google Fonts dependency)
+- npm postinstall verifies SHA256 checksum of downloaded binary
+- CI env vars printed one-per-line with consistent `COMPLIOR_SCORE` naming
+- Passport error messages now include contextual hints (engine not running, not found, timeout)
+- Engine connection errors show `complior daemon` hint instead of internal paths
+- Config parse errors show warning and fall back to defaults
+- Windows: daemon stop uses `taskkill` instead of "not supported" message
+- Windows: `is_process_alive` uses `tasklist` instead of always returning true
+- `libc` dependency conditional on Unix (not compiled on Windows)
+
 ## [0.9.6] - 2026-04-15
 
 ### Breaking

@@ -149,7 +149,7 @@ pub fn format_sarif(result: &ScanResult) -> String {
                 "driver": {
                     "name": "complior",
                     "version": env!("CARGO_PKG_VERSION"),
-                    "informationUri": "https://complior.eu",
+                    "informationUri": "https://complior.ai",
                     "rules": rules
                 }
             },

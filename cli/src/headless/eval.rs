@@ -2183,13 +2183,15 @@ fn print_ci_output(result: &serde_json::Value, threshold: u32) -> i32 {
         .and_then(serde_json::Value::as_u64)
         .unwrap_or(0);
 
-    // Parseable output line (always emitted in CI mode)
-    let sec_part = sec_score
-        .map(|s| format!(" COMPLIOR_SECURITY={s}"))
-        .unwrap_or_default();
-    eprintln!(
-        "COMPLIOR_CONFORMITY={score}{sec_part} COMPLIOR_GRADE={grade} COMPLIOR_TOTAL={total} COMPLIOR_PASSED={passed} COMPLIOR_FAILED={failed}"
-    );
+    // Parseable output lines (always emitted in CI mode)
+    eprintln!("COMPLIOR_SCORE={score}");
+    if let Some(s) = sec_score {
+        eprintln!("COMPLIOR_SECURITY={s}");
+    }
+    eprintln!("COMPLIOR_GRADE={grade}");
+    eprintln!("COMPLIOR_TOTAL={total}");
+    eprintln!("COMPLIOR_PASSED={passed}");
+    eprintln!("COMPLIOR_FAILED={failed}");
 
     if score < u64::from(threshold) {
         eprintln!("CI FAIL: Score {score} < threshold {threshold}");

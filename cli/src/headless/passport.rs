@@ -13,6 +13,30 @@ use crate::config::TuiConfig;
 
 use super::common::{ensure_engine, ensure_engine_for, resolve_project_path_buf, url_encode};
 
+/// Return a user-friendly hint based on an engine error message.
+/// Empty string means no extra hint is needed.
+fn format_engine_hint(err: &str) -> String {
+    let lower = err.to_lowercase();
+    if lower.contains("connection refused") || lower.contains("connect") {
+        "Is the engine running? Try: complior daemon".to_string()
+    } else if lower.contains("not found") {
+        "Run: complior passport list".to_string()
+    } else if lower.contains("timeout") {
+        "Engine may be busy. Try again or run: complior doctor".to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Print an error and, if applicable, a contextual hint.
+fn eprint_with_hint(msg: &str) {
+    eprintln!("{msg}");
+    let hint = format_engine_hint(msg);
+    if !hint.is_empty() {
+        eprintln!("  {hint}");
+    }
+}
+
 /// Find the engine root directory.
 /// Priority: COMPLIOR_ENGINE_DIR env var → walk up from project_path.
 pub fn find_engine_root(project_path: &std::path::Path) -> Option<std::path::PathBuf> {
@@ -191,7 +215,7 @@ async fn run_passport_rename(
             0
         }
         Err(e) => {
-            eprintln!("Error: {e}");
+            eprint_with_hint(&format!("Error: {e}"));
             1
         }
     }
@@ -316,7 +340,7 @@ async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: 
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to initialize passport: {e}");
+            eprint_with_hint(&format!("Error: Failed to initialize passport: {e}"));
             1
         }
     }
@@ -465,7 +489,7 @@ async fn run_passport_list(json: bool, verbose: bool, path: Option<&str>, config
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to list passports: {e}");
+            eprint_with_hint(&format!("Error: Failed to list passports: {e}"));
             1
         }
     }
@@ -931,7 +955,7 @@ async fn run_passport_show(name: &str, json: bool, path: Option<&str>, config: &
             0
         }
         Err(e) => {
-            eprintln!("Error: Passport not found: {e}");
+            eprint_with_hint(&format!("Error: Passport not found: {e}"));
             1
         }
     }
@@ -1054,7 +1078,7 @@ async fn run_passport_autonomy(json: bool, path: Option<&str>, config: &TuiConfi
             0
         }
         Err(e) => {
-            eprintln!("Error: Autonomy analysis failed: {e}");
+            eprint_with_hint(&format!("Error: Autonomy analysis failed: {e}"));
             1
         }
     }
@@ -1108,7 +1132,7 @@ async fn run_passport_validate(
                     .unwrap_or_default()
             }
             Err(e) => {
-                eprintln!("Error: Failed to list passports: {e}");
+                eprint_with_hint(&format!("Error: Failed to list passports: {e}"));
                 return 1;
             }
         }
@@ -1165,7 +1189,7 @@ async fn run_passport_validate(
                 all_results.push((agent_name.clone(), result));
             }
             Err(e) => {
-                eprintln!("Error: Failed to validate {agent_name}: {e}");
+                eprint_with_hint(&format!("Error: Failed to validate {agent_name}: {e}"));
                 any_invalid = true;
             }
         }
@@ -1368,7 +1392,7 @@ async fn run_passport_completeness(
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get completeness: {e}");
+            eprint_with_hint(&format!("Error: Failed to get completeness: {e}"));
             1
         }
     }
@@ -1439,7 +1463,7 @@ async fn run_passport_export(
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to export passport: {e}");
+            eprint_with_hint(&format!("Error: Failed to export passport: {e}"));
             1
         }
     }
@@ -1564,7 +1588,7 @@ async fn run_passport_registry(json: bool, path: Option<&str>, config: &TuiConfi
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get agent registry: {e}");
+            eprint_with_hint(&format!("Error: Failed to get agent registry: {e}"));
             1
         }
     }
@@ -1678,7 +1702,7 @@ async fn run_passport_permissions(json: bool, path: Option<&str>, config: &TuiCo
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get permissions matrix: {e}");
+            eprint_with_hint(&format!("Error: Failed to get permissions matrix: {e}"));
             1
         }
     }
@@ -1770,7 +1794,7 @@ async fn run_passport_audit(
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get audit trail: {e}");
+            eprint_with_hint(&format!("Error: Failed to get audit trail: {e}"));
             1
         }
     }
@@ -1823,7 +1847,7 @@ async fn run_passport_evidence(
                 0
             }
             Err(e) => {
-                eprintln!("Error: Failed to verify evidence chain: {e}");
+                eprint_with_hint(&format!("Error: Failed to verify evidence chain: {e}"));
                 1
             }
         }
@@ -1877,7 +1901,7 @@ async fn run_passport_evidence(
                 0
             }
             Err(e) => {
-                eprintln!("Error: Failed to get evidence summary: {e}");
+                eprint_with_hint(&format!("Error: Failed to get evidence summary: {e}"));
                 1
             }
         }
@@ -1975,7 +1999,7 @@ async fn run_passport_diff(name: &str, path: Option<&str>, json: bool, config: &
             0
         }
         Err(e) => {
-            eprintln!("Error: Passport diff failed: {e}");
+            eprint_with_hint(&format!("Error: Passport diff failed: {e}"));
             1
         }
     }
@@ -2109,7 +2133,7 @@ async fn run_passport_audit_package(
                 0
             }
             Err(e) => {
-                eprintln!("Error: {e}");
+                eprint_with_hint(&format!("Error: {e}"));
                 1
             }
         }
