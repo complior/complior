@@ -102,6 +102,9 @@ pub async fn ensure_engine_for(
     }
 
     // No running daemon found (or the existing one is unresponsive) — try to auto-start engine
+    if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+        eprintln!("  Starting Complior engine...");
+    }
     let engine_root = super::passport::find_engine_root(&project_path);
 
     if let Some(root) = engine_root {

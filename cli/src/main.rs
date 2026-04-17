@@ -49,7 +49,7 @@ use std::io;
 #[cfg(feature = "tui")]
 use std::io::Write as _;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 
 use config::load_config;
 use engine_process::EngineManager;
@@ -200,7 +200,7 @@ async fn main() -> color_eyre::Result<()> {
                         *sarif,
                         *no_tui,
                         *threshold,
-                        fail_on.as_deref(),
+                        *fail_on,
                         *deep,
                         *llm,
                         *cloud,
@@ -290,6 +290,15 @@ async fn main() -> color_eyre::Result<()> {
             }
             Some(cli::Command::Update) => {
                 headless::run_update().await;
+                0
+            }
+            Some(cli::Command::Completions { shell }) => {
+                clap_complete::generate(
+                    *shell,
+                    &mut cli::Cli::command(),
+                    "complior",
+                    &mut std::io::stdout(),
+                );
                 0
             }
             Some(cli::Command::Daemon { action, watch }) => {

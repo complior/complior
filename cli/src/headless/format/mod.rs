@@ -129,7 +129,7 @@ pub fn format_sarif(result: &ScanResult) -> String {
         .findings
         .iter()
         .map(|f| {
-            serde_json::json!({
+            let mut res = serde_json::json!({
                 "ruleId": f.check_id,
                 "message": { "text": f.message },
                 "level": sarif_level(&f.severity),
@@ -137,7 +137,30 @@ pub fn format_sarif(result: &ScanResult) -> String {
                     "severity": f.severity.as_str(),
                     "type": f.r#type
                 }
-            })
+            });
+
+            // Add file locations when available (required for GitHub Code Scanning)
+            if let Some(ref file) = f.file {
+                let mut physical = serde_json::json!({
+                    "artifactLocation": { "uri": file }
+                });
+                if let Some(line) = f.line {
+                    physical["region"] = serde_json::json!({
+                        "startLine": line
+                    });
+                }
+                res["locations"] = serde_json::json!([{
+                    "physicalLocation": physical
+                }]);
+            }
+
+            // Partial fingerprint for deduplication across runs
+            let fingerprint = format!("{}:{}", f.check_id, f.file.as_deref().unwrap_or(""));
+            res["partialFingerprints"] = serde_json::json!({
+                "primaryLocationLineHash": fingerprint
+            });
+
+            res
         })
         .collect();
 

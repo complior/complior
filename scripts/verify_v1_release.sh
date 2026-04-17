@@ -68,6 +68,16 @@ if grep -q 'after_long_help' cli/src/cli.rs 2>/dev/null; then pass "Help example
 
 if grep -q 'fonts.googleapis.com' engine/core/src/domain/reporter/html-renderer.ts 2>/dev/null; then fail "No Google Fonts in HTML report"; else pass "No Google Fonts in HTML report"; fi
 
+# M15 additions
+if grep -q 'physicalLocation' cli/src/headless/format/mod.rs 2>/dev/null; then pass "SARIF has file locations"; else fail "SARIF has file locations"; fi
+if grep -q 'SeverityLevel' cli/src/cli.rs 2>/dev/null; then pass "--fail-on uses ValueEnum"; else fail "--fail-on uses ValueEnum"; fi
+if grep -q 'Starting Complior engine' cli/src/headless/common.rs 2>/dev/null; then pass "Cold start message present"; else fail "Cold start message present"; fi
+if grep -q 'hide = true' cli/src/cli.rs 2>/dev/null; then pass "--no-tui hidden"; else fail "--no-tui hidden"; fi
+if grep -q 'clap_complete' cli/Cargo.toml 2>/dev/null; then pass "Shell completions (clap_complete)"; else fail "Shell completions (clap_complete)"; fi
+if grep -q 'complior doctor' cli/src/headless/scan.rs 2>/dev/null; then pass "Parse errors suggest doctor"; else fail "Parse errors suggest doctor"; fi
+if grep -q 'No AI components' cli/src/headless/scan.rs 2>/dev/null; then pass "Empty project hint present"; else fail "Empty project hint present"; fi
+if grep -q 'Cloud scanning is not yet' cli/src/headless/scan.rs 2>/dev/null; then pass "--cloud has detailed message"; else fail "--cloud has detailed message"; fi
+
 echo
 
 # --- Group D: Windows ---
@@ -91,9 +101,9 @@ CARGO_VER=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/
 ENGINE_VER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('engine/core/package.json','utf8')).version)")
 NPM_VER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('engine/npm/package.json','utf8')).version)")
 
-if [ "$CARGO_VER" = "0.9.7" ]; then pass "Cargo.toml = 0.9.7"; else fail "Cargo.toml = $CARGO_VER (expected 0.9.7)"; fi
-if [ "$ENGINE_VER" = "0.9.7" ]; then pass "engine/core = 0.9.7"; else fail "engine/core = $ENGINE_VER (expected 0.9.7)"; fi
-if [ "$NPM_VER" = "0.9.7" ]; then pass "engine/npm = 0.9.7"; else fail "engine/npm = $NPM_VER (expected 0.9.7)"; fi
+if [ "$CARGO_VER" = "0.9.8" ]; then pass "Cargo.toml = 0.9.8"; else fail "Cargo.toml = $CARGO_VER (expected 0.9.8)"; fi
+if [ "$ENGINE_VER" = "0.9.8" ]; then pass "engine/core = 0.9.8"; else fail "engine/core = $ENGINE_VER (expected 0.9.8)"; fi
+if [ "$NPM_VER" = "0.9.8" ]; then pass "engine/npm = 0.9.8"; else fail "engine/npm = $NPM_VER (expected 0.9.8)"; fi
 if [ "$CARGO_VER" = "$ENGINE_VER" ] && [ "$ENGINE_VER" = "$NPM_VER" ]; then pass "All versions match"; else fail "Version mismatch: cargo=$CARGO_VER engine=$ENGINE_VER npm=$NPM_VER"; fi
 
 if grep -q 'sha256' engine/npm/scripts/postinstall.js 2>/dev/null; then pass "npm postinstall has checksum verify"; else fail "npm postinstall has checksum verify"; fi
