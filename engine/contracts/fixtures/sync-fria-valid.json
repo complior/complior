@@ -1,0 +1,76 @@
+{
+  "toolSlug": "acme-support-bot",
+  "assessmentId": "FRIA-2026-001",
+  "date": "2026-04-10",
+  "sections": {
+    "general_info": {
+      "toolName": "ACME Support Bot",
+      "vendor": "ACME Corp",
+      "purpose": "Handles customer inquiries via chat",
+      "domain": "customer_service",
+      "riskLevel": "limited",
+      "version": "1.2.0",
+      "provider": "OpenAI",
+      "deploymentContext": "EU customer support channels",
+      "assessorName": "Jane Doe",
+      "assessorTitle": "AI Compliance Officer",
+      "geographicScope": "EU/EEA",
+      "organisation": "ACME Corp",
+      "organisationType": "Private company"
+    },
+    "affected_persons": {
+      "categories": ["customers", "employees"],
+      "vulnerableGroups": false,
+      "estimatedCount": "50000",
+      "description": "End-users interacting with support chatbot"
+    },
+    "specific_risks": {
+      "risks": [
+        {
+          "right": "Right to non-discrimination",
+          "article": "Art. 10",
+          "severity": "medium",
+          "likelihood": "low",
+          "description": "Potential bias in response quality across demographics",
+          "affectedGroups": "All customers",
+          "mitigation": "Regular bias testing and monitoring"
+        }
+      ]
+    },
+    "human_oversight": {
+      "hasHumanOversight": true,
+      "oversightType": "human-in-the-loop",
+      "mechanism": "Escalation to human agent for complex queries",
+      "responsibleRole": "Support Team Lead",
+      "escalationProcess": "Automatic escalation for high-value or sensitive topics",
+      "reviewFrequency": "Monthly"
+    },
+    "mitigation_measures": {
+      "measures": [
+        {
+          "risk": "Discriminatory responses",
+          "measure": "Bias detection and monitoring pipeline",
+          "responsible": "ML Engineering",
+          "deadline": "2026-06-01"
+        }
+      ],
+      "incidentResponse": "24h response time for AI-related incidents",
+      "communicationPlan": "Affected users notified within 48h",
+      "suspensionCriteria": "Critical bias or safety incident triggers auto-suspension",
+      "remediationProcess": "Root cause analysis within 72h",
+      "internalComplaint": "AI ethics committee reviews within 5 business days",
+      "externalComplaint": "compliance@acme.com"
+    },
+    "monitoring_plan": {
+      "frequency": "Daily automated, monthly manual review",
+      "metrics": ["response_quality", "bias_score", "escalation_rate"],
+      "responsibleTeam": "AI Compliance Team",
+      "reviewProcess": "Monthly compliance dashboard review",
+      "nextReviewDate": "2026-05-10",
+      "dpiaReference": "DPIA-2026-003",
+      "legalBasis": "Legitimate interest (Art. 6(1)(f) GDPR)",
+      "overallRiskDecision": "Acceptable with mitigations in place",
+      "conditionsForDeployment": "All mitigation measures implemented and verified"
+    }
+  }
+}

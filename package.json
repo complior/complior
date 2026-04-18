@@ -1,8 +1,9 @@
 {
   "name": "complior",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "private": true,
   "workspaces": [
+    "engine/contracts",
     "engine/core",
     "engine/npm"
   ],

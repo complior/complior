@@ -1,0 +1,43 @@
+{
+  "name": "@complior/contracts",
+  "version": "0.9.9",
+  "type": "module",
+  "main": "src/index.ts",
+  "description": "Shared Zod schemas and types for sync API between complior CLI and PROJECT SaaS. Single source of truth for cross-repo contracts.",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Complior",
+    "url": "https://complior.ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/complior/complior",
+    "directory": "engine/contracts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./sync": "./src/sync/index.ts",
+    "./shared": "./src/shared/index.ts",
+    "./fixtures/*": "./fixtures/*"
+  },
+  "files": [
+    "src/",
+    "fixtures/"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "typescript": "^5.7.0",
+    "zod": "^3.23.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

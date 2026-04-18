@@ -1,0 +1,15 @@
+{
+  "documents": [
+    {
+      "type": "fria",
+      "title": "FRIA Report for ACME Bot",
+      "content": "# Fundamental Rights Impact Assessment\n\n## Overview\nThis FRIA covers the ACME Support Bot..."
+    },
+    {
+      "type": "usage_policy",
+      "title": "AI Usage Policy",
+      "content": "# AI Usage Policy\n\n## Purpose\nThis policy governs the use of AI systems...",
+      "toolSlug": "acme-support-bot"
+    }
+  ]
+}
