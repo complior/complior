@@ -8,9 +8,7 @@ pub const SEP_WIDTH: usize = 65;
 
 /// Dynamic separator width: terminal width capped at 80, falling back to `SEP_WIDTH`.
 pub fn display_width() -> usize {
-    crossterm::terminal::size()
-        .map(|(cols, _)| (cols as usize).min(80))
-        .unwrap_or(SEP_WIDTH)
+    crossterm::terminal::size().map_or(SEP_WIDTH, |(cols, _)| (cols as usize).min(80))
 }
 pub const BAR_WIDTH: usize = 20;
 /// Maximum medium-severity findings to display.

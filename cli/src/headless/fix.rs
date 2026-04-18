@@ -1014,11 +1014,9 @@ fn erase_prev_line() {
 /// Render a compact progress bar.
 fn render_progress_bar(completed: u64, total: u64) -> String {
     let bar_width = 20usize;
-    let filled = if total > 0 {
-        (completed * bar_width as u64 / total) as usize
-    } else {
-        0
-    };
+    let filled = (completed * bar_width as u64)
+        .checked_div(total)
+        .unwrap_or(0) as usize;
     let empty = bar_width.saturating_sub(filled);
     format!(
         "[{}{}]  {}/{}",
@@ -1203,7 +1201,7 @@ async fn run_fix_stream(
                                 erase_prev_line();
                             }
                             let label = check_label(check_id);
-                            eprintln!("  {}  {:<16} {}", red("✖"), label, dim(error),);
+                            eprintln!("  {}  {:<16} {}", red("✖"), label, dim(error));
                             fix_lines.push((
                                 check_id.to_string(),
                                 String::new(),

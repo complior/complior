@@ -24,8 +24,8 @@ fn collect_entries(dir: &std::path::Path, depth: usize, entries: &mut Vec<FileEn
         .collect();
 
     items.sort_by(|a, b| {
-        let a_dir = a.file_type().map(|t| t.is_dir()).unwrap_or(false);
-        let b_dir = b.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        let a_dir = a.file_type().map_or(false, |t| t.is_dir());
+        let b_dir = b.file_type().map_or(false, |t| t.is_dir());
         b_dir.cmp(&a_dir).then_with(|| {
             a.file_name()
                 .to_string_lossy()
@@ -36,7 +36,7 @@ fn collect_entries(dir: &std::path::Path, depth: usize, entries: &mut Vec<FileEn
 
     for item in items {
         let name = item.file_name().to_string_lossy().to_string();
-        let is_dir = item.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        let is_dir = item.file_type().map_or(false, |t| t.is_dir());
         let path = item.path();
 
         entries.push(FileEntry {

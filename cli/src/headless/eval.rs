@@ -1975,9 +1975,7 @@ fn wrap_aligned(label_prefix: &str, text: &str, term_width: usize) -> String {
 
 /// Get terminal width, defaulting to 100.
 fn term_width() -> usize {
-    crossterm::terminal::size()
-        .map(|(w, _)| w as usize)
-        .unwrap_or(100)
+    crossterm::terminal::size().map_or(100, |(w, _)| w as usize)
 }
 
 /// Format duration: "38s" for <60s, "1m 38s" for >=60s.
@@ -2119,11 +2117,7 @@ fn print_owasp_breakdown(results: Option<&Vec<serde_json::Value>>) {
         let total = passed + failed + inconc;
         let definitive = passed + failed;
         // Score = pass / (pass + fail) — inconclusive excluded
-        let score = if definitive > 0 {
-            (*passed * 100) / definitive
-        } else {
-            0
-        };
+        let score = (*passed * 100).checked_div(definitive).unwrap_or(0);
         let bar = format_bar(*passed, definitive, 10);
         let ratio = format!("{passed:>3}/{total:>3}");
         let score_str = format!("{score}%");

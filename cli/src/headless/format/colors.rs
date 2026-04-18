@@ -13,7 +13,7 @@ fn color_enabled() -> bool {
         if std::env::var("NO_COLOR").is_ok() {
             return false;
         }
-        if std::env::var("TERM").map(|t| t == "dumb").unwrap_or(false) {
+        if std::env::var("TERM").is_ok_and(|t| t == "dumb") {
             return false;
         }
         std::io::stdout().is_terminal()
@@ -28,7 +28,7 @@ pub fn use_unicode() -> bool {
         if std::env::var("NO_COLOR").is_ok() {
             return false;
         }
-        if std::env::var("TERM").map(|t| t == "dumb").unwrap_or(false) {
+        if std::env::var("TERM").is_ok_and(|t| t == "dumb") {
             return false;
         }
         std::io::stdout().is_terminal()

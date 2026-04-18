@@ -209,9 +209,7 @@ pub fn print_paged(text: &str) {
         return;
     }
 
-    let term_height = crossterm::terminal::size()
-        .map(|(_, h)| h as usize)
-        .unwrap_or(24);
+    let term_height = crossterm::terminal::size().map_or(24, |(_, h)| h as usize);
     let line_count = text.lines().count();
     if line_count <= term_height.saturating_sub(2) {
         print!("{text}");
