@@ -22,21 +22,30 @@
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/cjs/index.cjs"
       },
-      "default": "./src/index.ts"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
     },
     "./sync": {
       "require": {
         "types": "./dist/esm/sync/index.d.ts",
         "default": "./dist/cjs/sync/index.cjs"
       },
-      "default": "./src/sync/index.ts"
+      "import": {
+        "types": "./dist/esm/sync/index.d.ts",
+        "default": "./dist/esm/sync/index.js"
+      }
     },
     "./shared": {
       "require": {
         "types": "./dist/esm/shared/index.d.ts",
         "default": "./dist/cjs/shared/index.cjs"
       },
-      "default": "./src/shared/index.ts"
+      "import": {
+        "types": "./dist/esm/shared/index.d.ts",
+        "default": "./dist/esm/shared/index.js"
+      }
     },
     "./fixtures/*": "./fixtures/*"
   },
