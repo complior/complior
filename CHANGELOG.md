@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.9] - 2026-04-17
+
+### Added
+
+**Pre-Release Polish Sprint (V1-M16)**
+- `docs/project-state.md` — living project status document (all milestones, command status, metrics)
+- `docs/tech-debt.md` — tech debt tracker with resolution history
+- `scripts/verify_v1_pipeline_full.sh` — comprehensive v1.0 pipeline acceptance test (27 checks)
+- E2E tests for `POST /fix/doc/test-gen` and `POST /fix/doc/all` endpoints
+- E2E tests for 7 additional document types via `POST /fix/doc/generate` (art5-screening, technical-documentation, incident-report, data-governance, instructions-for-use, monitoring-policy, risk-management)
+
+### Changed
+
+- Version bump 0.9.8 to 0.9.9
+- Archived stale M01-scanner-eval-core.md milestone (work completed in S01-S06)
+- `verify_v1_release.sh` version check updated to 0.9.9
+
+### Notes
+
+- All v1.0 pipeline commands confirmed production-ready: init, scan, eval, fix, report, passport, status, daemon
+- 2,382+ total tests: 2,194 TS + 188 Rust — all GREEN
+- EU AI Act enforcement: August 2, 2026 (~107 days)
+
 ## [0.9.8] - 2026-04-17
 
 ### Changed

@@ -101,9 +101,9 @@ CARGO_VER=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/
 ENGINE_VER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('engine/core/package.json','utf8')).version)")
 NPM_VER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('engine/npm/package.json','utf8')).version)")
 
-if [ "$CARGO_VER" = "0.9.8" ]; then pass "Cargo.toml = 0.9.8"; else fail "Cargo.toml = $CARGO_VER (expected 0.9.8)"; fi
-if [ "$ENGINE_VER" = "0.9.8" ]; then pass "engine/core = 0.9.8"; else fail "engine/core = $ENGINE_VER (expected 0.9.8)"; fi
-if [ "$NPM_VER" = "0.9.8" ]; then pass "engine/npm = 0.9.8"; else fail "engine/npm = $NPM_VER (expected 0.9.8)"; fi
+if [ "$CARGO_VER" = "0.9.9" ]; then pass "Cargo.toml = 0.9.9"; else fail "Cargo.toml = $CARGO_VER (expected 0.9.9)"; fi
+if [ "$ENGINE_VER" = "0.9.9" ]; then pass "engine/core = 0.9.9"; else fail "engine/core = $ENGINE_VER (expected 0.9.9)"; fi
+if [ "$NPM_VER" = "0.9.9" ]; then pass "engine/npm = 0.9.9"; else fail "engine/npm = $NPM_VER (expected 0.9.9)"; fi
 if [ "$CARGO_VER" = "$ENGINE_VER" ] && [ "$ENGINE_VER" = "$NPM_VER" ]; then pass "All versions match"; else fail "Version mismatch: cargo=$CARGO_VER engine=$ENGINE_VER npm=$NPM_VER"; fi
 
 if grep -q 'sha256' engine/npm/scripts/postinstall.js 2>/dev/null; then pass "npm postinstall has checksum verify"; else fail "npm postinstall has checksum verify"; fi

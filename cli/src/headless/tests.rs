@@ -1049,6 +1049,48 @@ mod tests {
         assert!(text.contains("15 excluded"));
     }
 
+    /// V1-M17: Quiet mode must produce ≤5 non-empty lines (score block only).
+    /// No header, no scan info, no layer list — just score for CI consumption.
+    #[test]
+    fn format_human_quiet_compact() {
+        let result = mock_scan_result();
+        let opts = FormatOptions {
+            framework_scores: None,
+            quiet: true,
+            prev_score: None,
+        };
+        let text = format_human(&result, &opts);
+        let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+        // Quiet mode: ≤5 non-empty lines (score block only, no header/info)
+        assert!(
+            lines.len() <= 5,
+            "Quiet mode should produce ≤5 non-empty lines, got {}: {lines:?}",
+            lines.len(),
+        );
+        // Must NOT contain header or scan info
+        assert!(
+            !text.contains("Complior v"),
+            "Quiet mode should not show header"
+        );
+        assert!(
+            !text.contains("Scanning"),
+            "Quiet mode should not show scan info"
+        );
+        assert!(
+            !text.contains("Elapsed"),
+            "Quiet mode should not show elapsed time"
+        );
+        assert!(
+            !text.contains("Layers"),
+            "Quiet mode should not show layer list"
+        );
+        // Must still contain the score
+        assert!(
+            text.contains("COMPLIANCE SCORE"),
+            "Quiet mode must show score"
+        );
+    }
+
     #[test]
     fn sort_findings_full_order() {
         use crate::headless::format::layers::sort_findings_full;
