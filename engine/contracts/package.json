@@ -1,8 +1,10 @@
 {
   "name": "@complior/contracts",
-  "version": "0.9.9",
+  "version": "0.10.0",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
   "description": "Shared Zod schemas and types for sync API between complior CLI and PROJECT SaaS. Single source of truth for cross-repo contracts.",
   "license": "AGPL-3.0-only",
   "author": {
@@ -15,12 +17,31 @@
     "directory": "engine/contracts"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./sync": "./src/sync/index.ts",
-    "./shared": "./src/shared/index.ts",
+    ".": {
+      "require": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/cjs/index.cjs"
+      },
+      "default": "./src/index.ts"
+    },
+    "./sync": {
+      "require": {
+        "types": "./dist/esm/sync/index.d.ts",
+        "default": "./dist/cjs/sync/index.cjs"
+      },
+      "default": "./src/sync/index.ts"
+    },
+    "./shared": {
+      "require": {
+        "types": "./dist/esm/shared/index.d.ts",
+        "default": "./dist/cjs/shared/index.cjs"
+      },
+      "default": "./src/shared/index.ts"
+    },
     "./fixtures/*": "./fixtures/*"
   },
   "files": [
+    "dist/",
     "src/",
     "fixtures/"
   ],
@@ -28,15 +49,17 @@
     "node": ">=22"
   },
   "peerDependencies": {
-    "zod": "^3.23.0"
+    "zod": ">=3.23.0"
   },
   "devDependencies": {
+    "tsup": "^8.0.0",
     "vitest": "^3.0.0",
     "typescript": "^5.7.0",
     "zod": "^3.23.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   }
