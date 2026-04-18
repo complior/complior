@@ -6,7 +6,6 @@
 //! runners, shell scripts, and human operators.
 
 // Core
-pub mod passport;
 mod commands;
 pub mod common;
 pub mod daemon;
@@ -14,6 +13,7 @@ pub mod eval;
 pub mod fix;
 pub mod format;
 pub mod interactive;
+pub mod passport;
 pub mod scan;
 pub mod status;
 

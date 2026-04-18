@@ -243,7 +243,10 @@ pub async fn run_doc_generate_fix(
     match client.post_json("/fix/doc/generate", &body).await {
         Ok(result) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 

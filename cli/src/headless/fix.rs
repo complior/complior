@@ -1,6 +1,7 @@
 use futures_util::StreamExt;
 
 use crate::config::TuiConfig;
+use crate::headless::common::{ensure_engine, resolve_project_path_buf};
 use crate::headless::format::colors::{
     bar_empty, bar_filled, bold, bold_red, check_mark, cyan, diamond, dim, green, red, score_color,
     yellow,
@@ -8,7 +9,6 @@ use crate::headless::format::colors::{
 use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
 use crate::headless::format::{plural, project_name, separator};
-use crate::headless::common::{ensure_engine, resolve_project_path_buf};
 
 /// Run a headless fix (dry-run or apply).
 pub async fn run_headless_fix(
@@ -1376,7 +1376,10 @@ pub async fn run_doc_generate_fix(
     match client.post_json("/fix/doc/generate", &body).await {
         Ok(result) => {
             if json {
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
                 return 0;
             }
 

@@ -47,8 +47,7 @@ pub fn is_process_alive(pid: u32) -> bool {
         .args(["/FI", &format!("PID eq {pid}"), "/NH"])
         .output()
         .map(|o| {
-            o.status.success()
-                && String::from_utf8_lossy(&o.stdout).contains(&pid.to_string())
+            o.status.success() && String::from_utf8_lossy(&o.stdout).contains(&pid.to_string())
         })
         .unwrap_or(true) // conservatively assume alive if check fails
 }
