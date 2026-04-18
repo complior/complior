@@ -53,7 +53,9 @@ pub async fn run_headless_scan(
     // Tier 3 stub
     if cloud {
         eprintln!("Error: Cloud scanning is not yet available.");
-        eprintln!("  Use 'complior scan' for local scanning or 'complior scan --deep' for enhanced analysis.");
+        eprintln!(
+            "  Use 'complior scan' for local scanning or 'complior scan --deep' for enhanced analysis."
+        );
         return 1;
     }
 
@@ -180,7 +182,9 @@ pub async fn run_headless_scan(
             }
             Err(_e) => {
                 stop_spinner(&spinner_active, spinner_handle);
-                eprintln!("Failed to parse engine response. This may indicate a version mismatch between CLI and engine.");
+                eprintln!(
+                    "Failed to parse engine response. This may indicate a version mismatch between CLI and engine."
+                );
                 eprintln!("  Try: complior doctor");
                 return 1;
             }
@@ -194,7 +198,9 @@ pub async fn run_headless_scan(
                 match serde_json::from_value::<crate::types::ScanResult>(r) {
                     Ok(result) => result,
                     Err(_e) => {
-                        eprintln!("Failed to parse engine response. This may indicate a version mismatch between CLI and engine.");
+                        eprintln!(
+                            "Failed to parse engine response. This may indicate a version mismatch between CLI and engine."
+                        );
                         eprintln!("  Try: complior doctor");
                         return 1;
                     }
@@ -215,7 +221,9 @@ pub async fn run_headless_scan(
                 match serde_json::from_value::<crate::types::ScanResult>(r) {
                     Ok(result) => result,
                     Err(_e) => {
-                        eprintln!("Failed to parse engine response. This may indicate a version mismatch between CLI and engine.");
+                        eprintln!(
+                            "Failed to parse engine response. This may indicate a version mismatch between CLI and engine."
+                        );
                         eprintln!("  Try: complior doctor");
                         return 1;
                     }
@@ -365,7 +373,10 @@ pub async fn run_headless_scan(
         }
 
         // Suggest agent init if no passports found
-        let hint_url = format!("/passport/list?path={}", super::common::url_encode(&scan_path));
+        let hint_url = format!(
+            "/passport/list?path={}",
+            super::common::url_encode(&scan_path)
+        );
         if let Ok(list) = client.get_json(&hint_url).await {
             let count = list.as_array().map_or(0, std::vec::Vec::len);
             if count == 0 {

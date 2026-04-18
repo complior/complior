@@ -346,7 +346,12 @@ async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: 
     }
 }
 
-async fn run_passport_list(json: bool, verbose: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_list(
+    json: bool,
+    verbose: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     use super::format::colors::{bold, dim, score_color};
     use super::format::{plural, separator};
 
@@ -479,7 +484,10 @@ async fn run_passport_list(json: bool, verbose: bool, path: Option<&str>, config
                         }
                     }
                     println!();
-                    println!("  {}", dim("Run `complior passport show <name>` for details"));
+                    println!(
+                        "  {}",
+                        dim("Run `complior passport show <name>` for details")
+                    );
                 }
                 _ => {
                     println!("\n  No Agent Passports found.");

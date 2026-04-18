@@ -253,24 +253,46 @@ async fn main() -> color_eyre::Result<()> {
                 } else {
                     match source {
                         cli::FixSource::Eval => {
-                            headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await
+                            headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config)
+                                .await
                         }
                         cli::FixSource::All => {
-                            let scan_code =
-                                headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai)
-                                    .await;
-                            let eval_code =
-                                headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config)
-                                    .await;
+                            let scan_code = headless::run_headless_fix(
+                                *dry_run,
+                                *json,
+                                path.as_deref(),
+                                &config,
+                                *ai,
+                            )
+                            .await;
+                            let eval_code = headless::eval::run_eval_fix(
+                                *dry_run,
+                                *json,
+                                path.as_deref(),
+                                &config,
+                            )
+                            .await;
                             if scan_code != 0 { scan_code } else { eval_code }
                         }
                         cli::FixSource::Scan => {
                             if let Some(cid) = check_id {
-                                headless::fix::run_fix_single(cid, *json, path.as_deref(), &config, *ai)
-                                    .await
+                                headless::fix::run_fix_single(
+                                    cid,
+                                    *json,
+                                    path.as_deref(),
+                                    &config,
+                                    *ai,
+                                )
+                                .await
                             } else {
-                                headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai)
-                                    .await
+                                headless::run_headless_fix(
+                                    *dry_run,
+                                    *json,
+                                    path.as_deref(),
+                                    &config,
+                                    *ai,
+                                )
+                                .await
                             }
                         }
                     }
@@ -280,9 +302,7 @@ async fn main() -> color_eyre::Result<()> {
                 headless::run_version();
                 0
             }
-            Some(cli::Command::Doctor { .. }) => {
-                headless::run_doctor(&config).await
-            }
+            Some(cli::Command::Doctor { .. }) => headless::run_doctor(&config).await,
             Some(cli::Command::Status { json, path }) => {
                 headless::run_headless_status(*json, path.as_deref(), &config).await
             }

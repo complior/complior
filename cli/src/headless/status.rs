@@ -6,8 +6,8 @@
 use crate::config::TuiConfig;
 use crate::headless::common::ensure_engine;
 use crate::headless::format::colors::{
-    bar_empty, bar_filled, bold, bold_red, bold_yellow, check_mark, cyan, dim, green,
-    red, score_color, yellow,
+    bar_empty, bar_filled, bold, bold_red, bold_yellow, check_mark, cyan, dim, green, red,
+    score_color, yellow,
 };
 use crate::headless::format::layers::display_width;
 use crate::types::CompliancePosture;
@@ -86,7 +86,12 @@ fn render_score_block(o: &mut String, posture: &CompliancePosture) {
     };
 
     let bar = build_bar(score);
-    o.push_str(&format!("  {}  {:.0} / 100  ({})\n", bold("Score"), score, zone_colored));
+    o.push_str(&format!(
+        "  {}  {:.0} / 100  ({})\n",
+        bold("Score"),
+        score,
+        zone_colored
+    ));
     o.push_str(&format!("  {}\n\n", bar));
 
     let passed_str = if passed == total {
@@ -113,7 +118,12 @@ fn build_bar(score: f64) -> String {
     let empty = 20usize.saturating_sub(filled);
     let filled_str = bar_filled().repeat(filled);
     let empty_str = bar_empty().repeat(empty);
-    format!("  {}{}  {}", filled_str, empty_str, score_color(score, &format!("{:.0}", score)))
+    format!(
+        "  {}{}  {}",
+        filled_str,
+        empty_str,
+        score_color(score, &format!("{:.0}", score))
+    )
 }
 
 fn render_disclaimer(o: &mut String, posture: &CompliancePosture, w: usize) {
@@ -140,7 +150,11 @@ fn render_disclaimer(o: &mut String, posture: &CompliancePosture, w: usize) {
     }
 
     if !d.limitations.is_empty() {
-        o.push_str(&format!("  {}  {}\n", bold("Limitations:"), dim("Score reflects automated checks only")));
+        o.push_str(&format!(
+            "  {}  {}\n",
+            bold("Limitations:"),
+            dim("Score reflects automated checks only")
+        ));
         for lim in &d.limitations {
             if !lim.contains("automated checks only") {
                 o.push_str("    • ");
@@ -182,7 +196,9 @@ fn render_categories(o: &mut String, posture: &CompliancePosture, w: usize) {
         ));
         o.push_str(&format!(
             "    {} of {} obligations met  ·  weight {}%\n",
-            cat.passed, cat.passed + cat.failed, weight_pct
+            cat.passed,
+            cat.passed + cat.failed,
+            weight_pct
         ));
 
         if !cat.top_failures.is_empty() {
@@ -277,8 +293,16 @@ fn render_footer(o: &mut String, posture: &CompliancePosture, w: usize) {
 
     if posture.evidence_verified.is_some() {
         let verified = posture.evidence_verified.unwrap_or(false);
-        let icon = if verified { "✓".to_string() } else { dim("✗") };
-        let text = if verified { green("verified") } else { dim("not verified") };
+        let icon = if verified {
+            "✓".to_string()
+        } else {
+            dim("✗")
+        };
+        let text = if verified {
+            green("verified")
+        } else {
+            dim("not verified")
+        };
         o.push_str(&format!("  {}  evidence chain: {}\n", icon, text));
     }
 

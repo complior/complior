@@ -96,7 +96,9 @@ impl SeverityLevel {
 #[derive(Subcommand)]
 pub enum Command {
     /// Scan project for AI Act compliance
-    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior scan                         Basic scan (L1-L4)\n  complior scan --deep                  Include external tools\n  complior scan --llm                   Add LLM analysis (L5)\n  complior scan --ci --threshold 80     CI mode with threshold\n  complior scan --json                  JSON output\n  complior scan --diff main             Compare against branch")]
+    #[command(
+        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior scan                         Basic scan (L1-L4)\n  complior scan --deep                  Include external tools\n  complior scan --llm                   Add LLM analysis (L5)\n  complior scan --ci --threshold 80     CI mode with threshold\n  complior scan --json                  JSON output\n  complior scan --diff main             Compare against branch"
+    )]
     Scan {
         /// CI mode: exit 0 if score >= threshold, exit 1 otherwise
         #[arg(long)]
@@ -159,7 +161,9 @@ pub enum Command {
     },
 
     /// Apply fixes to improve compliance score
-    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior fix                          Apply all scan fixes\n  complior fix --dry-run                Preview without applying\n  complior fix --check-id l1-fria       Fix single check\n  complior fix --doc fria my-bot        Generate FRIA report\n  complior fix --doc all my-bot         Generate all documents")]
+    #[command(
+        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior fix                          Apply all scan fixes\n  complior fix --dry-run                Preview without applying\n  complior fix --check-id l1-fria       Fix single check\n  complior fix --doc fria my-bot        Generate FRIA report\n  complior fix --doc all my-bot         Generate all documents"
+    )]
     Fix {
         /// Dry-run: preview fixes without modifying files
         #[arg(long)]
@@ -214,7 +218,9 @@ pub enum Command {
     },
 
     /// Generate compliance readiness report
-    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior report                       Human-readable report\n  complior report --format html         Interactive HTML report\n  complior report --json -o report.json Save JSON to file\n  complior report --share               Offline HTML for sharing")]
+    #[command(
+        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior report                       Human-readable report\n  complior report --format html         Interactive HTML report\n  complior report --json -o report.json Save JSON to file\n  complior report --share               Offline HTML for sharing"
+    )]
     Report {
         /// Output format: human, json, md, markdown, pdf, html (default: human)
         #[arg(long, value_enum, default_value = "human")]
@@ -250,7 +256,9 @@ pub enum Command {
     Update,
 
     /// Generate shell completions (bash, zsh, fish, powershell)
-    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior completions bash > ~/.local/share/bash-completion/completions/complior\n  complior completions zsh > ~/.zfunc/_complior\n  complior completions fish > ~/.config/fish/completions/complior.fish")]
+    #[command(
+        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior completions bash > ~/.local/share/bash-completion/completions/complior\n  complior completions zsh > ~/.zfunc/_complior\n  complior completions fish > ~/.config/fish/completions/complior.fish"
+    )]
     Completions {
         /// Shell to generate completions for
         #[arg(value_enum)]
@@ -268,7 +276,9 @@ pub enum Command {
     },
 
     /// Manage Agent Passport (AI system identity, permissions, compliance)
-    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior passport init                Auto-discover agents\n  complior passport list                List all passports\n  complior passport show my-bot         View passport details\n  complior passport validate --ci       CI validation gate\n  complior passport export my-bot --format a2a  Export to A2A")]
+    #[command(
+        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior passport init                Auto-discover agents\n  complior passport list                List all passports\n  complior passport show my-bot         View passport details\n  complior passport validate --ci       CI validation gate\n  complior passport export my-bot --format a2a  Export to A2A"
+    )]
     Passport {
         #[command(subcommand)]
         action: PassportAction,
@@ -397,7 +407,9 @@ pub enum Command {
     },
 
     /// Run dynamic AI system evaluation (probes + LLM judge + security)
-    #[command(after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior eval http://localhost:4000    Deterministic tests\n  complior eval http://localhost:4000 --llm    Add LLM judge\n  complior eval http://localhost:4000 --full   All test suites\n  complior eval --last --failures       Review last failures")]
+    #[command(
+        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior eval http://localhost:4000    Deterministic tests\n  complior eval http://localhost:4000 --llm    Add LLM judge\n  complior eval http://localhost:4000 --full   All test suites\n  complior eval --last --failures       Review last failures"
+    )]
     Eval {
         /// Target AI endpoint URL (e.g. <http://localhost:4000/api/chat>)
         target: Option<String>,
@@ -554,10 +566,8 @@ pub enum Command {
     },
 }
 
-
 #[derive(Subcommand, Debug, Clone)]
 pub enum PassportAction {
-
     /// Rename an existing Agent Passport
     Rename {
         /// Current passport name
@@ -774,7 +784,6 @@ pub enum PassportAction {
     },
 }
 
-
 #[cfg(feature = "extras")]
 #[derive(Subcommand, Debug, Clone)]
 pub enum CertAction {
@@ -975,7 +984,12 @@ pub enum JurisdictionAction {
 pub fn needs_engine(cli: &Cli) -> bool {
     match &cli.command {
         None => false,
-        Some(Command::Version | Command::Update | Command::Completions { .. } | Command::Daemon { .. }) => false,
+        Some(
+            Command::Version
+            | Command::Update
+            | Command::Completions { .. }
+            | Command::Daemon { .. },
+        ) => false,
         #[cfg(feature = "extras")]
         Some(Command::Login | Command::Logout) => false,
         _ => true,
@@ -1546,7 +1560,14 @@ mod tests {
 
     #[test]
     fn cli_parse_passport_diff_path() {
-        let cli = Cli::parse_from(["complior", "passport", "diff", "my-bot", "--path", "/tmp/proj"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "passport",
+            "diff",
+            "my-bot",
+            "--path",
+            "/tmp/proj",
+        ]);
         match &cli.command {
             Some(Command::Passport {
                 action: PassportAction::Diff { name, path, .. },
@@ -1834,7 +1855,14 @@ mod tests {
 
     #[test]
     fn cli_parse_passport_import() {
-        let cli = Cli::parse_from(["complior", "passport", "import", "--from", "a2a", "card.json"]);
+        let cli = Cli::parse_from([
+            "complior",
+            "passport",
+            "import",
+            "--from",
+            "a2a",
+            "card.json",
+        ]);
         match &cli.command {
             Some(Command::Passport {
                 action:
