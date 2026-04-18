@@ -1,7 +1,41 @@
-use crate::cli::AgentAction;
+//! Headless `complior passport` command (V1-M11 T-5).
+//!
+//! Wraps GET+/POST /passport/* HTTP routes:
+//! init, list, show, rename, validate, completeness, export,
+//! autonomy, registry, permissions, evidence, audit, audit-package,
+//! import, diff. Document-gen removed (now via `fix --doc`).
+//!
+//! Note: /agent/* routes are renamed to /passport/* in V1-M11.
+//! Old /agent/fria, /agent/policy etc removed — use `fix --doc` instead.
+
+use crate::cli::PassportAction;
 use crate::config::TuiConfig;
 
 use super::common::{ensure_engine, ensure_engine_for, resolve_project_path_buf, url_encode};
+
+/// Return a user-friendly hint based on an engine error message.
+/// Empty string means no extra hint is needed.
+fn format_engine_hint(err: &str) -> String {
+    let lower = err.to_lowercase();
+    if lower.contains("connection refused") || lower.contains("connect") {
+        "Is the engine running? Try: complior daemon".to_string()
+    } else if lower.contains("not found") {
+        "Run: complior passport list".to_string()
+    } else if lower.contains("timeout") {
+        "Engine may be busy. Try again or run: complior doctor".to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Print an error and, if applicable, a contextual hint.
+fn eprint_with_hint(msg: &str) {
+    eprintln!("{msg}");
+    let hint = format_engine_hint(msg);
+    if !hint.is_empty() {
+        eprintln!("  {hint}");
+    }
+}
 
 /// Find the engine root directory.
 /// Priority: COMPLIOR_ENGINE_DIR env var → walk up from project_path.
@@ -48,29 +82,29 @@ fn grade_color(grade: &str) -> String {
     }
 }
 
-pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 {
+pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -> i32 {
     match action {
-        AgentAction::Rename {
+        PassportAction::Rename {
             old_name,
             new_name,
             json,
             path,
-        } => run_agent_rename(old_name, new_name, *json, path.as_deref(), config).await,
-        AgentAction::Init { json, force, path } => {
-            run_agent_init(*json, *force, path.as_deref(), config).await
+        } => run_passport_rename(old_name, new_name, *json, path.as_deref(), config).await,
+        PassportAction::Init { json, force, path } => {
+            run_passport_init(*json, *force, path.as_deref(), config).await
         }
-        AgentAction::List {
+        PassportAction::List {
             json,
             verbose,
             path,
-        } => run_agent_list(*json, *verbose, path.as_deref(), config).await,
-        AgentAction::Show { name, json, path } => {
-            run_agent_show(name, *json, path.as_deref(), config).await
+        } => run_passport_list(*json, *verbose, path.as_deref(), config).await,
+        PassportAction::Show { name, json, path } => {
+            run_passport_show(name, *json, path.as_deref(), config).await
         }
-        AgentAction::Autonomy { json, path } => {
-            run_agent_autonomy(*json, path.as_deref(), config).await
+        PassportAction::Autonomy { json, path } => {
+            run_passport_autonomy(*json, path.as_deref(), config).await
         }
-        AgentAction::Validate {
+        PassportAction::Validate {
             name,
             json,
             ci,
@@ -78,7 +112,7 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
             verbose,
             path,
         } => {
-            run_agent_validate(
+            run_passport_validate(
                 name.as_deref(),
                 *json,
                 *ci,
@@ -89,98 +123,28 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
             )
             .await
         }
-        AgentAction::Completeness { name, json, path } => {
-            run_agent_completeness(name, *json, path.as_deref(), config).await
+        PassportAction::Completeness { name, json, path } => {
+            run_passport_completeness(name, *json, path.as_deref(), config).await
         }
-        AgentAction::Fria {
-            name,
-            json,
-            organization,
-            impact,
-            mitigation,
-            approval,
-            path,
-        } => {
-            run_agent_fria(
-                name,
-                *json,
-                organization.as_deref(),
-                impact.as_deref(),
-                mitigation.as_deref(),
-                approval.as_deref(),
-                path.as_deref(),
-                config,
-            )
-            .await
-        }
-        AgentAction::Notify {
-            name,
-            json,
-            company_name,
-            contact_name,
-            contact_email,
-            contact_phone,
-            deployment_date,
-            affected_roles,
-            impact_description,
-            path,
-        } => {
-            run_agent_notify(
-                name,
-                *json,
-                company_name.as_deref(),
-                contact_name.as_deref(),
-                contact_email.as_deref(),
-                contact_phone.as_deref(),
-                deployment_date.as_deref(),
-                affected_roles.as_deref(),
-                impact_description.as_deref(),
-                path.as_deref(),
-                config,
-            )
-            .await
-        }
-        AgentAction::Export {
+        PassportAction::Export {
             name,
             format,
             json,
             path,
-        } => run_agent_export(name, format, *json, path.as_deref(), config).await,
-        AgentAction::Registry { json, path } => {
-            run_agent_registry(*json, path.as_deref(), config).await
+        } => run_passport_export(name, format, *json, path.as_deref(), config).await,
+        PassportAction::Registry { json, path } => {
+            run_passport_registry(*json, path.as_deref(), config).await
         }
-        AgentAction::Evidence { json, verify, path } => {
-            run_agent_evidence(*json, *verify, path.as_deref(), config).await
+        PassportAction::Evidence { json, verify, path } => {
+            run_passport_evidence(*json, *verify, path.as_deref(), config).await
         }
-        AgentAction::Permissions { json, path } => {
-            run_agent_permissions(*json, path.as_deref(), config).await
+        PassportAction::Permissions { json, path } => {
+            run_passport_permissions(*json, path.as_deref(), config).await
         }
-        AgentAction::Policy {
-            name,
-            industry,
-            json,
-            organization,
-            approver,
-            path,
-        } => {
-            run_agent_policy(
-                name,
-                industry,
-                *json,
-                organization.as_deref(),
-                approver.as_deref(),
-                path.as_deref(),
-                config,
-            )
-            .await
+        PassportAction::Diff { name, path, json } => {
+            run_passport_diff(name, path.as_deref(), *json, config).await
         }
-        AgentAction::TestGen { name, path, json } => {
-            run_agent_test_gen(name, path.as_deref(), *json, config).await
-        }
-        AgentAction::Diff { name, path, json } => {
-            run_agent_diff(name, path.as_deref(), *json, config).await
-        }
-        AgentAction::Audit {
+        PassportAction::Audit {
             agent,
             since,
             event_type,
@@ -188,7 +152,7 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
             json,
             path,
         } => {
-            run_agent_audit(
+            run_passport_audit(
                 agent.as_deref(),
                 since.as_deref(),
                 event_type.as_deref(),
@@ -199,19 +163,19 @@ pub async fn run_agent_command(action: &AgentAction, config: &TuiConfig) -> i32 
             )
             .await
         }
-        AgentAction::Import {
+        PassportAction::Import {
             from,
             file,
             json,
             path,
-        } => run_agent_import(from, file, *json, path, config).await,
-        AgentAction::AuditPackage { output, json, path } => {
-            run_agent_audit_package(output.as_deref(), *json, path.as_deref(), config).await
+        } => run_passport_import(from, file, *json, path, config).await,
+        PassportAction::AuditPackage { output, json, path } => {
+            run_passport_audit_package(output.as_deref(), *json, path.as_deref(), config).await
         }
     }
 }
 
-async fn run_agent_rename(
+async fn run_passport_rename(
     old_name: &str,
     new_name: &str,
     json: bool,
@@ -230,7 +194,7 @@ async fn run_agent_rename(
         "newName": new_name,
     });
 
-    match client.post_json("/agent/rename", &body).await {
+    match client.post_json("/passport/rename", &body).await {
         Ok(result) => {
             if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
                 let msg = result
@@ -251,13 +215,13 @@ async fn run_agent_rename(
             0
         }
         Err(e) => {
-            eprintln!("Error: {e}");
+            eprint_with_hint(&format!("Error: {e}"));
             1
         }
     }
 }
 
-async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     if !json {
@@ -275,7 +239,7 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
         "force": force,
     });
 
-    match client.post_json("/agent/init", &body).await {
+    match client.post_json("/passport/init", &body).await {
         Ok(result) => {
             if json {
                 println!(
@@ -363,10 +327,10 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
             let created_count = manifests.map_or(0, std::vec::Vec::len);
             if created_count > 0 {
                 println!("Agent Passport(s) generated successfully.");
-                println!("Run `complior agent list` to view all passports.");
+                println!("Run `complior passport list` to view all passports.");
             } else if skipped_count > 0 {
                 println!("All discovered agents already have passports.");
-                println!("Run `complior agent init --force` to regenerate.");
+                println!("Run `complior passport init --force` to regenerate.");
             } else {
                 println!("No AI agents detected in project.");
                 println!(
@@ -376,13 +340,18 @@ async fn run_agent_init(json: bool, force: bool, path: Option<&str>, config: &Tu
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to initialize passport: {e}");
+            eprint_with_hint(&format!("Error: Failed to initialize passport: {e}"));
             1
         }
     }
 }
 
-async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_list(
+    json: bool,
+    verbose: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     use super::format::colors::{bold, dim, score_color};
     use super::format::{plural, separator};
 
@@ -394,7 +363,7 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
     };
 
     let url = format!(
-        "/agent/list?path={}",
+        "/passport/list?path={}",
         url_encode(&project_path.to_string_lossy())
     );
     match client.get_json(&url).await {
@@ -515,23 +484,26 @@ async fn run_agent_list(json: bool, verbose: bool, path: Option<&str>, config: &
                         }
                     }
                     println!();
-                    println!("  {}", dim("Run `complior agent show <name>` for details"));
+                    println!(
+                        "  {}",
+                        dim("Run `complior passport show <name>` for details")
+                    );
                 }
                 _ => {
                     println!("\n  No Agent Passports found.");
-                    println!("  Run {} to generate one.\n", dim("complior agent init"));
+                    println!("  Run {} to generate one.\n", dim("complior passport init"));
                 }
             }
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to list passports: {e}");
+            eprint_with_hint(&format!("Error: Failed to list passports: {e}"));
             1
         }
     }
 }
 
-async fn run_agent_show(name: &str, json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_show(name: &str, json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     use super::format::colors::{bold, cyan, dim, green, red, score_color, yellow};
     use super::format::separator;
 
@@ -543,7 +515,7 @@ async fn run_agent_show(name: &str, json: bool, path: Option<&str>, config: &Tui
     };
 
     let url = format!(
-        "/agent/show?path={}&name={}",
+        "/passport/show?path={}&name={}",
         url_encode(&project_path.to_string_lossy()),
         url_encode(name)
     );
@@ -991,7 +963,7 @@ async fn run_agent_show(name: &str, json: bool, path: Option<&str>, config: &Tui
             0
         }
         Err(e) => {
-            eprintln!("Error: Passport not found: {e}");
+            eprint_with_hint(&format!("Error: Passport not found: {e}"));
             1
         }
     }
@@ -999,7 +971,7 @@ async fn run_agent_show(name: &str, json: bool, path: Option<&str>, config: &Tui
 
 // --- C.S02: Autonomy analysis ---
 
-async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     if !json {
@@ -1012,7 +984,7 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
     };
 
     let url = format!(
-        "/agent/autonomy?path={}",
+        "/passport/autonomy?path={}",
         url_encode(&project_path.to_string_lossy())
     );
     match client.get_json(&url).await {
@@ -1103,18 +1075,18 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
             println!("\nAutonomy Analysis (project-level)\n");
             if level == "not assessed" {
                 println!("  No agent configuration detected in this project.");
-                println!("  Run `complior agent init` to discover and register agents.\n");
+                println!("  Run `complior passport init` to discover and register agents.\n");
             } else {
                 println!("  Level:               {level} ({agent_type})");
                 println!("  Human approval gates: {human_gates}");
                 println!("  Unsupervised actions: {unsupervised}");
                 println!("  Logging gaps:         {no_logging}");
-                println!("\n  Tip: Run `complior agent init` to see per-agent breakdown.");
+                println!("\n  Tip: Run `complior passport init` to see per-agent breakdown.");
             }
             0
         }
         Err(e) => {
-            eprintln!("Error: Autonomy analysis failed: {e}");
+            eprint_with_hint(&format!("Error: Autonomy analysis failed: {e}"));
             1
         }
     }
@@ -1122,7 +1094,7 @@ async fn run_agent_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) 
 
 // --- C.S07: Passport validation ---
 
-async fn run_agent_validate(
+async fn run_passport_validate(
     name: Option<&str>,
     json: bool,
     ci: bool,
@@ -1144,7 +1116,7 @@ async fn run_agent_validate(
     } else {
         // List all passports first
         let list_url = format!(
-            "/agent/list?path={}",
+            "/passport/list?path={}",
             url_encode(&project_path.to_string_lossy())
         );
         match client.get_json(&list_url).await {
@@ -1168,7 +1140,7 @@ async fn run_agent_validate(
                     .unwrap_or_default()
             }
             Err(e) => {
-                eprintln!("Error: Failed to list passports: {e}");
+                eprint_with_hint(&format!("Error: Failed to list passports: {e}"));
                 return 1;
             }
         }
@@ -1179,7 +1151,7 @@ async fn run_agent_validate(
             println!("[]");
         } else {
             println!("No Agent Passports found.");
-            println!("Run `complior agent init` to generate one.");
+            println!("Run `complior passport init` to generate one.");
         }
         return 0;
     }
@@ -1190,7 +1162,7 @@ async fn run_agent_validate(
 
     for agent_name in &names {
         let url = format!(
-            "/agent/validate?path={}&name={}",
+            "/passport/validate?path={}&name={}",
             url_encode(&project_path.to_string_lossy()),
             url_encode(agent_name)
         );
@@ -1225,7 +1197,7 @@ async fn run_agent_validate(
                 all_results.push((agent_name.clone(), result));
             }
             Err(e) => {
-                eprintln!("Error: Failed to validate {agent_name}: {e}");
+                eprint_with_hint(&format!("Error: Failed to validate {agent_name}: {e}"));
                 any_invalid = true;
             }
         }
@@ -1331,7 +1303,7 @@ async fn run_agent_validate(
 
 // --- C.S09: Completeness score ---
 
-async fn run_agent_completeness(
+async fn run_passport_completeness(
     name: &str,
     json: bool,
     path: Option<&str>,
@@ -1345,7 +1317,7 @@ async fn run_agent_completeness(
     };
 
     let url = format!(
-        "/agent/completeness?path={}&name={}",
+        "/passport/completeness?path={}&name={}",
         url_encode(&project_path.to_string_lossy()),
         url_encode(name)
     );
@@ -1428,208 +1400,7 @@ async fn run_agent_completeness(
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get completeness: {e}");
-            1
-        }
-    }
-}
-
-// --- C.D01: FRIA generation ---
-
-async fn run_agent_fria(
-    name: &str,
-    json: bool,
-    organization: Option<&str>,
-    impact: Option<&str>,
-    mitigation: Option<&str>,
-    approval: Option<&str>,
-    path: Option<&str>,
-    config: &TuiConfig,
-) -> i32 {
-    let project_path = resolve_project_path_buf(path);
-
-    if !json {
-        println!("Generating FRIA for agent '{name}'...");
-    }
-
-    let client = match ensure_engine_for(config, &project_path).await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
-    let mut body = serde_json::json!({
-        "path": project_path.to_string_lossy(),
-        "name": name,
-    });
-
-    if let Some(org) = organization {
-        body["organization"] = serde_json::Value::String(org.to_string());
-    }
-    if let Some(imp) = impact {
-        body["impact"] = serde_json::Value::String(imp.to_string());
-    }
-    if let Some(mit) = mitigation {
-        body["mitigation"] = serde_json::Value::String(mit.to_string());
-    }
-    if let Some(app) = approval {
-        body["approval"] = serde_json::Value::String(app.to_string());
-    }
-
-    match client.post_json("/agent/fria", &body).await {
-        Ok(result) => {
-            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result
-                    .get("message")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(err_msg);
-                eprintln!("Error: {msg}");
-                return 1;
-            }
-
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-                return 0;
-            }
-
-            let saved_path = result
-                .get("savedPath")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let prefilled_count = result
-                .get("prefilledFields")
-                .and_then(|v| v.as_array())
-                .map_or(0, std::vec::Vec::len);
-            let empty_vec = vec![];
-            let manual_fields = result
-                .get("manualFields")
-                .and_then(|v| v.as_array())
-                .unwrap_or(&empty_vec);
-
-            println!("\nFRIA generated: {name}");
-            println!("  Saved: {saved_path}");
-            println!("  Pre-filled: {prefilled_count} fields");
-            println!("  Manual review needed ({} fields):", manual_fields.len());
-            for field in manual_fields {
-                if let Some(f) = field.as_str() {
-                    println!("    - {f}");
-                }
-            }
-            println!("\nReview and complete the FRIA document before submission.");
-            0
-        }
-        Err(e) => {
-            eprintln!("Error: Failed to generate FRIA: {e}");
-            1
-        }
-    }
-}
-
-// --- C.D02: Worker Notification ---
-
-#[allow(clippy::too_many_arguments)]
-async fn run_agent_notify(
-    name: &str,
-    json: bool,
-    company_name: Option<&str>,
-    contact_name: Option<&str>,
-    contact_email: Option<&str>,
-    contact_phone: Option<&str>,
-    deployment_date: Option<&str>,
-    affected_roles: Option<&str>,
-    impact_description: Option<&str>,
-    path: Option<&str>,
-    config: &TuiConfig,
-) -> i32 {
-    let project_path = resolve_project_path_buf(path);
-
-    if !json {
-        println!("Generating Worker Notification for agent '{name}'...");
-    }
-
-    let client = match ensure_engine_for(config, &project_path).await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
-    let mut body = serde_json::json!({
-        "path": project_path.to_string_lossy(),
-        "name": name,
-    });
-
-    if let Some(v) = company_name {
-        body["companyName"] = serde_json::Value::String(v.to_string());
-    }
-    if let Some(v) = contact_name {
-        body["contactName"] = serde_json::Value::String(v.to_string());
-    }
-    if let Some(v) = contact_email {
-        body["contactEmail"] = serde_json::Value::String(v.to_string());
-    }
-    if let Some(v) = contact_phone {
-        body["contactPhone"] = serde_json::Value::String(v.to_string());
-    }
-    if let Some(v) = deployment_date {
-        body["deploymentDate"] = serde_json::Value::String(v.to_string());
-    }
-    if let Some(v) = affected_roles {
-        body["affectedRoles"] = serde_json::Value::String(v.to_string());
-    }
-    if let Some(v) = impact_description {
-        body["impactDescription"] = serde_json::Value::String(v.to_string());
-    }
-
-    match client.post_json("/agent/notify", &body).await {
-        Ok(result) => {
-            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result
-                    .get("message")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(err_msg);
-                eprintln!("Error: {msg}");
-                return 1;
-            }
-
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-                return 0;
-            }
-
-            let saved_path = result
-                .get("savedPath")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let prefilled_count = result
-                .get("prefilledFields")
-                .and_then(|v| v.as_array())
-                .map_or(0, std::vec::Vec::len);
-            let empty_vec = vec![];
-            let manual_fields = result
-                .get("manualFields")
-                .and_then(|v| v.as_array())
-                .unwrap_or(&empty_vec);
-
-            println!("\nWorker Notification generated: {name}");
-            println!("  Saved: {saved_path}");
-            println!("  Pre-filled: {prefilled_count} fields");
-            println!("  Manual review needed ({} fields):", manual_fields.len());
-            for field in manual_fields {
-                if let Some(f) = field.as_str() {
-                    println!("    - {f}");
-                }
-            }
-            println!(
-                "\nReview and distribute the notification to affected workers before deployment."
-            );
-            0
-        }
-        Err(e) => {
-            eprintln!("Error: Failed to generate Worker Notification: {e}");
+            eprint_with_hint(&format!("Error: Failed to get completeness: {e}"));
             1
         }
     }
@@ -1637,7 +1408,7 @@ async fn run_agent_notify(
 
 // --- C.S08: Passport export ---
 
-async fn run_agent_export(
+async fn run_passport_export(
     name: &str,
     format: &str,
     json: bool,
@@ -1656,7 +1427,7 @@ async fn run_agent_export(
     };
 
     let url = format!(
-        "/agent/export?path={}&name={}&format={}",
+        "/passport/export?path={}&name={}&format={}",
         url_encode(&project_path.to_string_lossy()),
         url_encode(name),
         url_encode(format)
@@ -1700,7 +1471,7 @@ async fn run_agent_export(
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to export passport: {e}");
+            eprint_with_hint(&format!("Error: Failed to export passport: {e}"));
             1
         }
     }
@@ -1708,7 +1479,7 @@ async fn run_agent_export(
 
 // --- US-S05-13: Agent Registry ---
 
-async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_registry(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -1717,7 +1488,7 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
     };
 
     let url = format!(
-        "/agent/registry?path={}",
+        "/passport/registry?path={}",
         url_encode(&project_path.to_string_lossy())
     );
     match client.get_json(&url).await {
@@ -1819,13 +1590,13 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
                 }
                 _ => {
                     println!("No Agent Passports found.");
-                    println!("Run `complior agent init` to generate one.");
+                    println!("Run `complior passport init` to generate one.");
                 }
             }
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get agent registry: {e}");
+            eprint_with_hint(&format!("Error: Failed to get agent registry: {e}"));
             1
         }
     }
@@ -1833,7 +1604,7 @@ async fn run_agent_registry(json: bool, path: Option<&str>, config: &TuiConfig) 
 
 // --- US-S05-14: Permissions matrix ---
 
-async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_permissions(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -1842,7 +1613,7 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
     };
 
     let url = format!(
-        "/agent/permissions?path={}",
+        "/passport/permissions?path={}",
         url_encode(&project_path.to_string_lossy())
     );
     match client.get_json(&url).await {
@@ -1939,104 +1710,7 @@ async fn run_agent_permissions(json: bool, path: Option<&str>, config: &TuiConfi
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get permissions matrix: {e}");
-            1
-        }
-    }
-}
-
-// --- US-S05-15: Policy generation ---
-
-async fn run_agent_policy(
-    name: &str,
-    industry: &str,
-    json: bool,
-    organization: Option<&str>,
-    approver: Option<&str>,
-    path: Option<&str>,
-    config: &TuiConfig,
-) -> i32 {
-    let valid_industries = ["hr", "finance", "healthcare", "education", "legal"];
-    if !valid_industries.contains(&industry) {
-        eprintln!(
-            "Error: Invalid industry '{}'. Must be one of: {}",
-            industry,
-            valid_industries.join(", ")
-        );
-        return 1;
-    }
-
-    let project_path = resolve_project_path_buf(path);
-
-    if !json {
-        println!("Generating {industry} AI usage policy for agent '{name}'...");
-    }
-
-    let client = match ensure_engine_for(config, &project_path).await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
-    let mut body = serde_json::json!({
-        "path": project_path.to_string_lossy(),
-        "name": name,
-        "industry": industry,
-    });
-
-    if let Some(org) = organization {
-        body["organization"] = serde_json::Value::String(org.to_string());
-    }
-    if let Some(app) = approver {
-        body["approver"] = serde_json::Value::String(app.to_string());
-    }
-
-    match client.post_json("/agent/policy", &body).await {
-        Ok(result) => {
-            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result
-                    .get("message")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(err_msg);
-                eprintln!("Error: {msg}");
-                return 1;
-            }
-
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-                return 0;
-            }
-
-            let saved_path = result
-                .get("savedPath")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let prefilled_count = result
-                .get("prefilledFields")
-                .and_then(|v| v.as_array())
-                .map_or(0, std::vec::Vec::len);
-            let empty_vec = vec![];
-            let manual_fields = result
-                .get("manualFields")
-                .and_then(|v| v.as_array())
-                .unwrap_or(&empty_vec);
-
-            println!("\nAI Usage Policy generated: {name} ({industry})");
-            println!("  Saved: {saved_path}");
-            println!("  Pre-filled: {prefilled_count} fields");
-            println!("  Manual review needed ({} fields):", manual_fields.len());
-            for field in manual_fields {
-                if let Some(f) = field.as_str() {
-                    println!("    - {f}");
-                }
-            }
-            println!("\nReview and complete the policy document before adoption.");
-            0
-        }
-        Err(e) => {
-            eprintln!("Error: Failed to generate policy: {e}");
+            eprint_with_hint(&format!("Error: Failed to get permissions matrix: {e}"));
             1
         }
     }
@@ -2045,7 +1719,7 @@ async fn run_agent_policy(
 // --- US-S05-14: Audit trail ---
 
 #[allow(clippy::too_many_arguments)]
-async fn run_agent_audit(
+async fn run_passport_audit(
     agent: Option<&str>,
     since: Option<&str>,
     event_type: Option<&str>,
@@ -2070,7 +1744,7 @@ async fn run_agent_audit(
         params.push(format!("type={}", url_encode(t)));
     }
 
-    let url = format!("/agent/audit?{}", params.join("&"));
+    let url = format!("/passport/audit?{}", params.join("&"));
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
@@ -2128,7 +1802,7 @@ async fn run_agent_audit(
             0
         }
         Err(e) => {
-            eprintln!("Error: Failed to get audit trail: {e}");
+            eprint_with_hint(&format!("Error: Failed to get audit trail: {e}"));
             1
         }
     }
@@ -2136,7 +1810,7 @@ async fn run_agent_audit(
 
 // --- C.R20: Evidence chain ---
 
-async fn run_agent_evidence(
+async fn run_passport_evidence(
     json: bool,
     verify: bool,
     path: Option<&str>,
@@ -2151,7 +1825,7 @@ async fn run_agent_evidence(
 
     if verify {
         let url = format!(
-            "/agent/evidence/verify?path={}",
+            "/passport/evidence/verify?path={}",
             url_encode(&project_path.to_string_lossy())
         );
         match client.get_json(&url).await {
@@ -2181,13 +1855,13 @@ async fn run_agent_evidence(
                 0
             }
             Err(e) => {
-                eprintln!("Error: Failed to verify evidence chain: {e}");
+                eprint_with_hint(&format!("Error: Failed to verify evidence chain: {e}"));
                 1
             }
         }
     } else {
         let url = format!(
-            "/agent/evidence?path={}",
+            "/passport/evidence?path={}",
             url_encode(&project_path.to_string_lossy())
         );
         match client.get_json(&url).await {
@@ -2235,71 +1909,16 @@ async fn run_agent_evidence(
                 0
             }
             Err(e) => {
-                eprintln!("Error: Failed to get evidence summary: {e}");
+                eprint_with_hint(&format!("Error: Failed to get evidence summary: {e}"));
                 1
             }
         }
     }
 }
 
-// --- US-S05-24: Test suite generation ---
-
-async fn run_agent_test_gen(name: &str, path: Option<&str>, json: bool, config: &TuiConfig) -> i32 {
-    let project_path = resolve_project_path_buf(path);
-    let client = match ensure_engine_for(config, &project_path).await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
-    let body = serde_json::json!({
-        "name": name,
-        "path": project_path,
-    });
-
-    match client.post_json("/agent/test-gen", &body).await {
-        Ok(result) => {
-            if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
-                let msg = result
-                    .get("message")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(err_msg);
-                eprintln!("Error: {msg}");
-                return 1;
-            }
-
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-                return 0;
-            }
-
-            let filename = result
-                .get("filename")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let test_count = result
-                .get("testCount")
-                .and_then(serde_json::Value::as_u64)
-                .unwrap_or(0);
-
-            println!("\nGenerated compliance test suite for: {name}\n");
-            println!("  Tests:    {test_count}");
-            println!("  File:     {filename}");
-            println!("\nRun: npx vitest run {filename}");
-            0
-        }
-        Err(e) => {
-            eprintln!("Error: Test generation failed: {e}");
-            1
-        }
-    }
-}
-
 // --- US-S05-24: Passport diff ---
 
-async fn run_agent_diff(name: &str, path: Option<&str>, json: bool, config: &TuiConfig) -> i32 {
+async fn run_passport_diff(name: &str, path: Option<&str>, json: bool, config: &TuiConfig) -> i32 {
     let project_path = resolve_project_path_buf(path);
     let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
@@ -2307,7 +1926,7 @@ async fn run_agent_diff(name: &str, path: Option<&str>, json: bool, config: &Tui
     };
 
     let url = format!(
-        "/agent/diff?name={}&path={}",
+        "/passport/diff?name={}&path={}",
         url_encode(name),
         url_encode(&project_path.to_string_lossy())
     );
@@ -2388,7 +2007,7 @@ async fn run_agent_diff(name: &str, path: Option<&str>, json: bool, config: &Tui
             0
         }
         Err(e) => {
-            eprintln!("Error: Passport diff failed: {e}");
+            eprint_with_hint(&format!("Error: Passport diff failed: {e}"));
             1
         }
     }
@@ -2396,7 +2015,7 @@ async fn run_agent_diff(name: &str, path: Option<&str>, json: bool, config: &Tui
 
 // --- US-S06-11: Passport import from A2A format ---
 
-async fn run_agent_import(
+async fn run_passport_import(
     from: &str,
     file: &str,
     json: bool,
@@ -2435,7 +2054,7 @@ async fn run_agent_import(
         body["path"] = serde_json::Value::String(p.clone());
     }
 
-    match client.post_json("/agent/import", &body).await {
+    match client.post_json("/passport/import", &body).await {
         Ok(result) => {
             if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
                 let msg = result
@@ -2472,7 +2091,7 @@ async fn run_agent_import(
                 if let Some(passport) = result.get("passport") {
                     let name = passport.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                     println!("\n  Passport name: {name}");
-                    println!("  Run `complior agent show {name}` to view details.");
+                    println!("  Run `complior passport show {name}` to view details.");
                 }
             }
             0
@@ -2486,7 +2105,7 @@ async fn run_agent_import(
 
 // --- US-S06-12: Audit package export ---
 
-async fn run_agent_audit_package(
+async fn run_passport_audit_package(
     output: Option<&str>,
     json: bool,
     path: Option<&str>,
@@ -2502,7 +2121,7 @@ async fn run_agent_audit_package(
     if json {
         // Get metadata only
         let url = format!(
-            "/agent/audit-package/meta?path={}",
+            "/passport/audit-package/meta?path={}",
             url_encode(&project_path.to_string_lossy())
         );
         match client.get_json(&url).await {
@@ -2522,14 +2141,14 @@ async fn run_agent_audit_package(
                 0
             }
             Err(e) => {
-                eprintln!("Error: {e}");
+                eprint_with_hint(&format!("Error: {e}"));
                 1
             }
         }
     } else {
         // Download the binary archive
         let url = format!(
-            "/agent/audit-package?path={}",
+            "/passport/audit-package?path={}",
             url_encode(&project_path.to_string_lossy())
         );
         let output_path = output.unwrap_or("complior-audit.tar.gz");
@@ -2553,5 +2172,151 @@ async fn run_agent_audit_package(
                 1
             }
         }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// V1-M13 Route Cleanup Tests
+// ═══════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
+mod route_cleanup_tests {
+    //! Verify that reachable Rust CLI source no longer references `/agent/`
+    //! HTTP routes and that dead functions have been removed.
+
+    // ── T-3: No `/agent/` routes in reachable source ─────────────
+
+    #[test]
+    fn executor_no_agent_routes() {
+        let src = include_str!("../app/executor.rs");
+        // Exclude test modules and comments from the check
+        let reachable: Vec<&str> = src
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .filter(|l| !l.contains("#[cfg(test)]"))
+            .collect();
+        let reachable_text = reachable.join("\n");
+        assert!(
+            !reachable_text.contains("\"/agent/"),
+            "executor.rs still contains /agent/ route(s) — expected /passport/ or /fix/doc/"
+        );
+    }
+
+    #[test]
+    fn commands_no_agent_routes() {
+        let src = include_str!("commands.rs");
+        let reachable: Vec<&str> = src
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .collect();
+        let reachable_text = reachable.join("\n");
+        assert!(
+            !reachable_text.contains("\"/agent/"),
+            "commands.rs still contains /agent/ route(s)"
+        );
+    }
+
+    #[test]
+    fn eval_no_agent_routes() {
+        let src = include_str!("eval.rs");
+        let reachable: Vec<&str> = src
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .collect();
+        let reachable_text = reachable.join("\n");
+        assert!(
+            !reachable_text.contains("\"/agent/"),
+            "eval.rs still contains /agent/ route(s)"
+        );
+    }
+
+    #[test]
+    fn scan_no_agent_routes() {
+        let src = include_str!("scan.rs");
+        let reachable: Vec<&str> = src
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .collect();
+        let reachable_text = reachable.join("\n");
+        assert!(
+            !reachable_text.contains("\"/agent/"),
+            "scan.rs still contains /agent/ route(s)"
+        );
+    }
+
+    #[test]
+    fn passport_no_agent_routes() {
+        let src = include_str!("passport.rs");
+        // Filter out comments, test module lines, and assertion lines
+        let reachable: Vec<&str> = src
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .filter(|l| !l.contains("route_cleanup_tests"))
+            .filter(|l| !l.contains("include_str!"))
+            .filter(|l| !l.contains("assert!"))
+            .filter(|l| !l.contains(".contains("))
+            .collect();
+        let reachable_text = reachable.join("\n");
+        // Build needle dynamically to avoid self-matching
+        let needle = format!("\"/{}/", "agent");
+        assert!(
+            !reachable_text.contains(&needle),
+            "passport.rs still contains /agent/ route(s)"
+        );
+    }
+
+    // ── T-3 specific: FRIA route goes to /fix/doc/fria ───────────
+
+    #[test]
+    fn executor_fria_route_is_fix_doc() {
+        let src = include_str!("../app/executor.rs");
+        assert!(
+            src.contains("/fix/doc/fria"),
+            "executor.rs FRIA route should be /fix/doc/fria, not /passport/fria"
+        );
+    }
+
+    // ── T-2: Dead functions deleted ──────────────────────────────
+    // Use format!() to build needles dynamically so include_str!
+    // of this file does not match the test's own assertion strings.
+
+    #[test]
+    fn no_dead_fn_fria() {
+        let src = include_str!("passport.rs");
+        let needle = format!("fn run_passport_{}", "fria(");
+        assert!(
+            !src.contains(&needle),
+            "run_passport_fria should be deleted"
+        );
+    }
+
+    #[test]
+    fn no_dead_fn_notify() {
+        let src = include_str!("passport.rs");
+        let needle = format!("fn run_passport_{}", "notify(");
+        assert!(
+            !src.contains(&needle),
+            "run_passport_notify should be deleted"
+        );
+    }
+
+    #[test]
+    fn no_dead_fn_policy() {
+        let src = include_str!("passport.rs");
+        let needle = format!("fn run_passport_{}", "policy(");
+        assert!(
+            !src.contains(&needle),
+            "run_passport_policy should be deleted"
+        );
+    }
+
+    #[test]
+    fn no_dead_fn_test_gen() {
+        let src = include_str!("passport.rs");
+        let needle = format!("fn run_passport_{}", "test_gen(");
+        assert!(
+            !src.contains(&needle),
+            "run_passport_test_gen should be deleted"
+        );
     }
 }

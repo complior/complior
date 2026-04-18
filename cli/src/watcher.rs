@@ -54,7 +54,7 @@ pub fn spawn_watcher(project_path: PathBuf, tx: mpsc::UnboundedSender<PathBuf>) 
 
         // Block forever — watcher lives until task is aborted
         loop {
-            std::thread::sleep(std::time::Duration::from_secs(3600));
+            std::thread::sleep(std::time::Duration::from_hours(1));
         }
     })
 }

@@ -295,7 +295,14 @@ fn legacy_config_path() -> PathBuf {
 fn load_global_config() -> GlobalConfig {
     let path = global_config_path();
     match std::fs::read_to_string(&path) {
-        Ok(content) => toml::from_str(&content).unwrap_or_default(),
+        Ok(content) => match toml::from_str(&content) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Warning: Could not parse {}: {e}", path.display());
+                eprintln!("  Using default configuration.");
+                GlobalConfig::default()
+            }
+        },
         Err(_) => GlobalConfig::default(),
     }
 }
@@ -303,7 +310,14 @@ fn load_global_config() -> GlobalConfig {
 fn load_project_config() -> ProjectConfig {
     let path = project_config_path();
     match std::fs::read_to_string(&path) {
-        Ok(content) => toml::from_str(&content).unwrap_or_default(),
+        Ok(content) => match toml::from_str(&content) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Warning: Could not parse {}: {e}", path.display());
+                eprintln!("  Using default configuration.");
+                ProjectConfig::default()
+            }
+        },
         Err(_) => ProjectConfig::default(),
     }
 }

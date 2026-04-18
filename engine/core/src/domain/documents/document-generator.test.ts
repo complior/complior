@@ -59,8 +59,8 @@ const SIMPLE_TEMPLATE = `# Test Document
 
 describe('document-generator', () => {
   describe('ALL_DOC_TYPES', () => {
-    it('contains exactly 14 document types', () => {
-      expect(ALL_DOC_TYPES).toHaveLength(14);
+    it('contains exactly 17 document types', () => {
+      expect(ALL_DOC_TYPES).toHaveLength(17);
     });
 
     it('maps each type to a template file', () => {

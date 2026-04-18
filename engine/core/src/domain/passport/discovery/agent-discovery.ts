@@ -2,6 +2,7 @@ import type { ScanContext } from '../../../ports/scanner.port.js';
 import type { ParsedDependency } from '../../scanner/layers/layer3-parsers.js';
 import type { DiscoveredAgent } from '../../../types/passport.types.js';
 import { AI_SDK_PACKAGES } from '../../scanner/rules/banned-packages-sdk.js';
+import { stripCommentsOnly } from '../../scanner/rules/comment-filter.js';
 
 // --- Framework detection patterns ---
 
@@ -73,16 +74,27 @@ const detectFileFrameworks = (
 // --- Model detection ---
 
 const detectModels = (
-  sourceFiles: readonly { readonly content: string }[],
+  sourceFiles: readonly { readonly content: string; readonly extension: string }[],
 ): readonly string[] => {
   const models = new Set<string>();
 
   for (const file of sourceFiles) {
+    // Strip comments first — model names in comments are false positives
+    const stripped = stripCommentsOnly(file.content, file.extension);
+
     for (const pattern of MODEL_PATTERNS) {
       pattern.lastIndex = 0;
       let match: RegExpExecArray | null;
-      while ((match = pattern.exec(file.content)) !== null) {
-        models.add(match[0]);
+      while ((match = pattern.exec(stripped)) !== null) {
+        const candidate = match[0]!;
+        // Check if this model name is part of an env var KEY (e.g. OPENAI_MODEL_KEY)
+        const before = stripped.slice(Math.max(0, match.index - 12), match.index);
+        const after = stripped.slice(match.index + candidate.length, match.index + candidate.length + 2);
+        // Skip if preceded by uppercase letters + underscore (env var key) and followed by = or space=
+        if (/[A-Z_]+\s*$/.test(before) && /(?:\s*=|,|$)/.test(after)) {
+          continue; // likely an env var KEY, not a model value
+        }
+        models.add(candidate);
       }
     }
   }
@@ -197,7 +209,9 @@ const detectEndpoints = (
     }
   }
 
-  return { port, routes: [...routes] };
+  // Only include actual path routes (start with /) — exclude config getters like 'env', 'trust proxy'
+  const filtered = [...routes].filter(r => r.startsWith('/'));
+  return { port, routes: filtered };
 };
 
 // --- Agent name inference ---

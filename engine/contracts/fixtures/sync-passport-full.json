@@ -1,0 +1,92 @@
+{
+  "name": "acme-support-bot",
+  "slug": "acme-support-bot",
+  "display_name": "ACME Support Bot",
+  "description": "Customer support chatbot",
+  "purpose": "Handles customer inquiries",
+  "domain": "customer_service",
+  "version": "1.2.0",
+  "vendorName": "ACME Corp",
+  "vendorUrl": "https://acme.com",
+  "framework": "langchain",
+  "modelProvider": "openai",
+  "modelId": "gpt-4o",
+  "dataResidency": "EU",
+  "riskLevel": "limited",
+  "compliorScore": 72,
+  "projectScore": 68,
+  "lifecycleStatus": "active",
+  "friaCompleted": true,
+  "friaDate": "2026-03-15",
+  "workerNotificationSent": true,
+  "policyGenerated": true,
+  "scanSummary": {
+    "totalChecks": 150,
+    "passed": 120,
+    "failed": 25,
+    "skipped": 5,
+    "failedChecks": ["ai-disclosure", "logging-check"],
+    "scanDate": "2026-04-10"
+  },
+  "multiFramework": [
+    { "frameworkId": "eu-ai-act", "frameworkName": "EU AI Act", "score": 72, "grade": "C" },
+    { "frameworkId": "owasp-llm", "frameworkName": "OWASP LLM Top 10", "score": 85, "grade": "B" }
+  ],
+  "autonomyLevel": "L3",
+  "autonomyEvidence": {
+    "humanApprovalGates": 2,
+    "unsupervisedActions": 5,
+    "noLoggingActions": 0,
+    "autoRated": true
+  },
+  "agentType": "hybrid",
+  "owner": {
+    "team": "Platform",
+    "contact": "team@acme.com",
+    "responsiblePerson": "Jane Doe"
+  },
+  "permissions": {
+    "tools": ["search", "email"],
+    "dataAccess": { "read": ["crm"], "write": ["tickets"], "delete": [] },
+    "denied": ["admin"],
+    "dataBoundaries": { "piiHandling": "redact" }
+  },
+  "constraints": {
+    "rateLimits": { "maxActionsPerMinute": 60 },
+    "budget": { "maxCostPerSessionUsd": 5.0 },
+    "humanApprovalRequired": ["refund > 100"],
+    "prohibitedActions": ["delete_account"],
+    "escalationRules": [
+      { "condition": "amount > 1000", "action": "require_approval", "description": "High value" }
+    ]
+  },
+  "oversight": {
+    "responsiblePerson": "Jane Doe",
+    "role": "AI Officer",
+    "contact": "jane@acme.com",
+    "overrideMechanism": "kill switch",
+    "escalationProcedure": "Notify manager"
+  },
+  "disclosure": {
+    "userFacing": true,
+    "disclosureText": "I am an AI assistant.",
+    "aiMarking": { "responsesMarked": true, "method": "prefix" }
+  },
+  "logging": {
+    "actionsLogged": true,
+    "retentionDays": 90,
+    "includesDecisionRationale": true
+  },
+  "manifestVersion": "1.0.0",
+  "detectionPatterns": ["openai", "langchain"],
+  "versions": { "langchain": "0.1.0", "openai": "1.0.0" },
+  "sourceFiles": ["src/bot.ts", "src/agent.ts"],
+  "endpoints": ["https://api.acme.com/chat"],
+  "signature": {
+    "algorithm": "ed25519",
+    "publicKey": "abc123",
+    "signedAt": "2026-04-10T12:00:00Z",
+    "hash": "sha256:deadbeef",
+    "value": "sig_xyz"
+  }
+}

@@ -120,7 +120,7 @@ export const buildComplianceReport = (input: ReportBuildInput): ComplianceReport
   const documents = buildDocumentInventory(findings);
   const oblCoverage = buildObligationCoverage(obligations, findings, projectRole ?? 'both');
   const passportStatus = buildPassportStatus(passports);
-  const actionPlan = buildPriorityActions(findings, documents, oblCoverage, passportStatus, evalScore);
+  const actionPlan = buildPriorityActions(findings, documents, oblCoverage, passportStatus, evalScore, reporterConfig.priorityActions.maxActionsHttp);
 
   // Detect Art. 5 prohibited practice findings
   const hasArt5 = findings.some(

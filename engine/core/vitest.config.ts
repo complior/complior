@@ -33,9 +33,13 @@ if (envVars['COMPLIOR_TEST_PROJECT']) {
   process.env['COMPLIOR_TEST_PROJECT'] = envVars['COMPLIOR_TEST_PROJECT'];
 }
 
+// Fallback to COMPLIOR_TEST_PROJECT from shell env (set via `COMPLIOR_TEST_PROJECT=... npx vitest`)
+// OR resolve from a known test project path so cleanup always runs during E2E runs
+const TEST_PROJECT_FALLBACK = resolve(wsRoot, 'test-projects', 'eval-target');
+
 // Reset evidence chain before E2E tests to avoid stale key conflicts
 // Uses SYNC operations so the chain is cleared BEFORE vitest starts running tests
-const testProject = process.env['COMPLIOR_TEST_PROJECT'] ?? '';
+const testProject = process.env['COMPLIOR_TEST_PROJECT'] ?? TEST_PROJECT_FALLBACK;
 if (testProject) {
   const compliorDir = resolve(testProject, '.complior');
   // Reset entire .complior dir for full test isolation
@@ -61,11 +65,14 @@ if (testProject) {
 
 export default defineConfig({
   test: {
+    // Default run: unit tests only. E2E tests (src/e2e/) are excluded because:
+    // 1. E2E tests use shared disk state (.complior/) that requires sequential execution
+    // 2. With isolate: false, module mocks in unit tests conflict with E2E's real
+    //    module imports (E2E imports run first, caching real modules before mocks apply)
+    // Run E2E separately: npx vitest run src/e2e/ --no-file-parallelism
     include: ['src/**/*.test.ts'],
+    exclude: ['src/e2e/**'],
     globals: false,
     testTimeout: 10_000,
-    // E2E tests share .complior/ state on disk — run files sequentially
-    // to avoid cross-contamination. Total suite is ~20s so no perf impact.
-    fileParallelism: false,
   },
 });

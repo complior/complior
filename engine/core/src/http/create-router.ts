@@ -43,7 +43,7 @@ import { createProviderRoute } from './routes/provider.route.js';
 import { createDisclaimerRoute } from './routes/disclaimer.route.js';
 import { createOnboardingRoute } from './routes/onboarding.route.js';
 import { createWhatIfRoute } from './routes/whatif.route.js';
-import { createAgentRoute } from './routes/agent.route.js';
+import { createPassportRoute } from './routes/passport.route.js';
 import { createObligationsRoute } from './routes/obligations.route.js';
 import { createSyncRoute } from './routes/sync.route.js';
 import { createCertRoute } from './routes/cert.route.js';
@@ -153,7 +153,7 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createScanRoute({ scanService: deps.scanService, getLastScan: deps.getLastScan }));
   app.route('/', createChatRoute({ chatService: deps.chatService, llm: deps.llm, toolExecutorDeps: deps.toolExecutorDeps, getMode: deps.getMode, setMode: deps.setMode, maxRequestsPerHour: deps.maxRequestsPerHour }));
   app.route('/', createFileRoute(deps.fileService));
-  app.route('/', createFixRoute({ fixService: deps.fixService, undoService: deps.undoService }));
+  app.route('/', createFixRoute({ fixService: deps.fixService, undoService: deps.undoService, passportService: deps.passportService }));
   app.route('/', createBadgeRoute(deps.badgeService));
   app.route('/', createShareRoute(deps.shareService));
   app.route('/', createReportRoute(deps.reportService));
@@ -171,7 +171,7 @@ export const createRouter = (deps: RouterDeps) => {
     generateAllConfigs: deps.generateAllConfigs!,
     simulateActions: deps.simulateActions!,
   }));
-  app.route('/', createAgentRoute(deps.passportService));
+  app.route('/', createPassportRoute(deps.passportService));
   app.route('/', createCertRoute({
     passportService: deps.passportService,
     callLlm: deps.callLlm,

@@ -41,7 +41,7 @@ const FindingExplanationSchema = z.object({
 
 const FindingSchema = z.object({
   checkId: z.string(),
-  type: z.enum(['pass', 'fail', 'skip']),
+  type: z.enum(['pass', 'fail', 'skip', 'info']),
   message: z.string(),
   severity: z.enum(['critical', 'high', 'medium', 'low', 'info']),
   file: z.string().optional(),
@@ -97,6 +97,19 @@ const RegulationVersionSchema = z.object({
   lastUpdated: z.string(),
 });
 
+// --- Filter context schema (V1-M08) ---
+
+const ScanFilterContextSchema = z.object({
+  role: z.enum(['provider', 'deployer', 'both']),
+  riskLevel: z.string().nullable(),
+  domain: z.string().nullable(),
+  profileFound: z.boolean(),
+  totalObligations: z.number(),
+  applicableObligations: z.number(),
+  skippedByRole: z.number(),
+  skippedByRiskLevel: z.number(),
+});
+
 // --- Top-level I/O schemas ---
 
 const ScanResultSchema = z.object({
@@ -109,6 +122,7 @@ const ScanResultSchema = z.object({
   deepAnalysis: z.boolean().optional(),
   l5Cost: z.number().optional(),
   regulationVersion: RegulationVersionSchema.optional(),
+  filterContext: ScanFilterContextSchema.optional(),
 });
 
 const EvidenceEntrySchema = z.object({
@@ -124,6 +138,50 @@ const EvidenceChainSchema = z.object({
   projectPath: z.string(),
   entries: z.array(EvidenceEntrySchema),
   lastHash: z.string(),
+});
+
+// --- Score Transparency schemas (V1-M10) ---
+
+export const ScoreDisclaimerSchema = z.object({
+  summary: z.string(),
+  coveredObligations: z.number(),
+  totalApplicableObligations: z.number(),
+  coveragePercent: z.number(),
+  uncoveredCount: z.number(),
+  limitations: z.array(z.string()),
+  criticalCapExplanation: z.string().nullable(),
+});
+
+export const CategoryBreakdownSchema = z.object({
+  category: z.string(),
+  score: z.number(),
+  weight: z.number(),
+  passed: z.number(),
+  failed: z.number(),
+  impact: z.enum(['high', 'medium', 'low']),
+  topFailures: z.array(z.string()),
+  explanation: z.string(),
+});
+
+export const CompliancePostureSchema = z.object({
+  score: ScoreBreakdownSchema,
+  disclaimer: ScoreDisclaimerSchema,
+  categories: z.array(CategoryBreakdownSchema),
+  topActions: z.array(z.object({
+    rank: z.number(),
+    source: z.string(),
+    id: z.string(),
+    title: z.string(),
+    severity: z.string(),
+    fixAvailable: z.boolean(),
+    command: z.string(),
+    priorityScore: z.number(),
+  }).passthrough()),
+  profile: ScanFilterContextSchema.nullable(),
+  lastScanAt: z.string().nullable(),
+  passportCount: z.number(),
+  documentCount: z.number(),
+  evidenceVerified: z.boolean().nullable(),
 });
 
 // --- Parse functions (never throw) ---

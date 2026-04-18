@@ -11,6 +11,8 @@ export interface AutoDetectResult {
   readonly hasEnvExample: boolean;
   readonly detectedModels: string[];
   readonly confidence: number;
+  /** V1-M09 T-5: true if project uses a GPAI foundation model (OpenAI, Anthropic, Gemini, Mistral, Cohere). */
+  readonly gpaiModelDetected: boolean;
 }
 
 const fileExists = async (path: string): Promise<boolean> => {
@@ -49,6 +51,15 @@ const AI_LIBRARIES: ReadonlyMap<string, string> = new Map([
   ['cohere-ai', 'Cohere'],
 ]);
 
+/** V1-M09 T-5: GPAI foundation model libraries — these are API wrappers for third-party GP AI models. */
+const GPAI_LIBRARIES: ReadonlySet<string> = new Set([
+  'OpenAI SDK',
+  'Anthropic SDK',
+  'Mistral',
+  'Google GenAI',
+  'Cohere',
+]);
+
 const MODEL_PATTERNS: readonly RegExp[] = [
   /\bgpt-4[a-z0-9-]*/g,
   /\bgpt-3\.5[a-z0-9-]*/g,
@@ -77,6 +88,7 @@ export const autoDetect = async (projectPath: string): Promise<AutoDetectResult>
   let deployment = 'unknown';
   let confidence = 0;
   let signals = 0;
+  let gpaiModelDetected = false; // V1-M09 T-5: hoisted so accessible outside pkgContent block
 
   // Package.json
   const pkgPath = join(projectPath, 'package.json');
@@ -101,6 +113,9 @@ export const autoDetect = async (projectPath: string): Promise<AutoDetectResult>
       if (deps[pkg]) aiLibraries.push(name);
     }
     if (aiLibraries.length > 0) signals++;
+
+    // V1-M09 T-5: detect GPAI foundation model usage (assign to outer-scope let)
+    gpaiModelDetected = aiLibraries.some((lib) => GPAI_LIBRARIES.has(lib));
   }
 
   // Python
@@ -148,6 +163,13 @@ export const autoDetect = async (projectPath: string): Promise<AutoDetectResult>
   const detectedModels = detectModels(sourceSnippets);
   if (detectedModels.length > 0) signals++;
 
+  // V1-M09 T-5: also flag GPAI if model name patterns found in source (gpt-*, claude-*, gemini-*)
+  const gpaiByDeps = gpaiModelDetected;
+  const gpaiByModelName = detectedModels.some((m) =>
+    /\bgpt-4/i.test(m) || /\bgpt-3\.5/i.test(m) || /\bclaude-4/i.test(m) || /\bclaude-3/i.test(m) || /\bgemini-/i.test(m) || /\bmistral-/i.test(m),
+  );
+  const gpaiModelDetectedFinal = gpaiByDeps || gpaiByModelName;
+
   confidence = Math.min(1.0, signals / 6);
 
   return {
@@ -160,5 +182,6 @@ export const autoDetect = async (projectPath: string): Promise<AutoDetectResult>
     hasEnvExample,
     detectedModels,
     confidence,
+    gpaiModelDetected: gpaiModelDetectedFinal,
   };
 };

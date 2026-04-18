@@ -1,0 +1,29 @@
+{
+  "projectPath": "/home/user/project",
+  "score": 72,
+  "securityScore": 85,
+  "tier": 2,
+  "findings": [
+    {
+      "checkId": "ai-disclosure",
+      "severity": "high",
+      "message": "Missing AI disclosure in user-facing responses"
+    },
+    {
+      "severity": "low",
+      "message": "No logging retention policy",
+      "agentId": "bot-1",
+      "l5Analyzed": true,
+      "file": "src/bot.ts",
+      "line": 42
+    }
+  ],
+  "toolsDetected": [
+    {
+      "name": "openai",
+      "version": "1.0.0",
+      "vendor": "OpenAI",
+      "category": "llm"
+    }
+  ]
+}

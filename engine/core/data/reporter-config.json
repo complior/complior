@@ -41,6 +41,7 @@
   },
   "priorityActions": {
     "maxActions": 20,
+    "maxActionsHttp": 5,
     "severityWeight": {
       "critical": 4.0,
       "high": 3.0,

@@ -41,9 +41,15 @@ pub fn is_process_alive(pid: u32) -> bool {
 }
 
 #[cfg(not(unix))]
-pub fn is_process_alive(_pid: u32) -> bool {
-    // On non-Unix, conservatively assume alive if PID file exists
-    true
+pub fn is_process_alive(pid: u32) -> bool {
+    // Windows: check if process exists via tasklist
+    std::process::Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {pid}"), "/NH"])
+        .output()
+        .map(|o| {
+            o.status.success() && String::from_utf8_lossy(&o.stdout).contains(&pid.to_string())
+        })
+        .unwrap_or(true) // conservatively assume alive if check fails
 }
 
 /// Looks for a running daemon in the given project directory.

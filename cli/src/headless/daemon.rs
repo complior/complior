@@ -207,8 +207,35 @@ fn run_daemon_stop(project_path: &Path) {
 
             #[cfg(not(unix))]
             {
-                eprintln!("Signal-based stop not supported on this platform.");
-                eprintln!("Please stop the process manually (PID {}).", info.pid);
+                // Windows: use taskkill for graceful stop, then force after timeout
+                let graceful = std::process::Command::new("taskkill")
+                    .args(["/PID", &info.pid.to_string()])
+                    .output();
+                match graceful {
+                    Ok(o) if o.status.success() => {
+                        // Wait up to 5 seconds for process to exit
+                        for _ in 0..25 {
+                            std::thread::sleep(std::time::Duration::from_millis(200));
+                            if !daemon::is_process_alive(info.pid) {
+                                break;
+                            }
+                        }
+                        if daemon::is_process_alive(info.pid) {
+                            eprintln!("Daemon did not stop gracefully, forcing...");
+                            let _ = std::process::Command::new("taskkill")
+                                .args(["/F", "/PID", &info.pid.to_string()])
+                                .output();
+                            std::thread::sleep(std::time::Duration::from_millis(200));
+                        }
+                    }
+                    _ => {
+                        // Graceful failed, try force
+                        let _ = std::process::Command::new("taskkill")
+                            .args(["/F", "/PID", &info.pid.to_string()])
+                            .output();
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                    }
+                }
             }
 
             // Clean up PID file

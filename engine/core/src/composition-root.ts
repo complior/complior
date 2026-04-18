@@ -64,6 +64,8 @@ import { analyzeScenario } from './domain/whatif/scenario-engine.js';
 import { generateAllConfigs } from './domain/whatif/config-fixer.js';
 import { simulateActions } from './domain/whatif/simulate-actions.js';
 import { compareSeverity } from './types/common.types.js';
+import type { Iso42001Control } from './types/common.types.js';
+import iso42001ControlsData from '../data/iso-42001-controls.json' with { type: 'json' };
 import { autoDetect } from './onboarding/auto-detect.js';
 import { createInitialState as createOnboardingInitialState } from './domain/onboarding/guided-onboarding.js';
 
@@ -284,6 +286,20 @@ export const loadApplication = async (): Promise<Application> => {
     } catch (e) { log.debug('Profile load:', e); }
     return 'both';
   };
+  /** V1-M08 T-4: Full profile loader for context-aware scan (role + riskLevel + domain). */
+  const getProjectProfile = async (_projectPath: string) => {
+    try {
+      const profile = await lazyWizard?.loadProfile();
+      if (!profile) return null;
+      return {
+        role: (profile.organization?.role ?? 'both') as import('./types/common.types.js').Role,
+        riskLevel: (profile.computed?.riskLevel ?? null) as import('./types/common.types.js').RiskLevel | null,
+        domain: profile.business?.domain ?? null,
+        applicableObligations: profile.computed?.applicableObligations ?? [],
+      };
+    } catch (e) { log.debug('Profile load:', e); }
+    return null;
+  };
 
   const scanService = createScanService({
     scanner,
@@ -295,16 +311,24 @@ export const loadApplication = async (): Promise<Application> => {
     auditStore,
     scanCache,
     passportService: lazyScanPassport,
-    getProjectRole,
+    getProjectProfile,
+    getProjectRole, // kept for legacy tests (V1-M07)
     saveScanModeScore,
   });
 
   // Template loader for fixer
-  const templatesDir = resolve(
-    fileURLToPath(import.meta.url), '..', '..', 'data', 'templates', 'eu-ai-act',
+  const templatesBaseDir = resolve(
+    fileURLToPath(import.meta.url), '..', '..', 'data', 'templates',
   );
+  const euAiActTemplatesDir = resolve(templatesBaseDir, 'eu-ai-act');
+  const iso42001TemplatesDir = resolve(templatesBaseDir, 'iso-42001');
   const loadTemplate = async (templateFile: string): Promise<string> => {
-    return readFile(resolve(templatesDir, templateFile), 'utf-8');
+    // Try eu-ai-act first, then iso-42001
+    try {
+      return await readFile(resolve(euAiActTemplatesDir, templateFile), 'utf-8');
+    } catch {
+      return readFile(resolve(iso42001TemplatesDir, templateFile), 'utf-8');
+    }
   };
 
   const undoService = createUndoService({
@@ -450,26 +474,81 @@ export const loadApplication = async (): Promise<Application> => {
     },
     getDocumentContents: async () => {
       try {
-        const scanResult = state.lastScanResult;
-        if (!scanResult) return [];
-        const docFindings = scanResult.findings.filter(
-          (f) => f.checkId.startsWith('l1-') && f.type === 'pass' && f.file,
-        );
         const contents: import('./domain/reporter/types.js').DocumentContent[] = [];
-        for (const f of docFindings) {
-          if (!f.file) continue;
-          try {
-            const fullPath = resolve(state.projectPath, f.file);
-            const raw = await readFile(fullPath, 'utf-8');
-            // Truncate large docs to 5000 chars for report size
-            const content = raw.length > 5000 ? raw.slice(0, 5000) + '\n\n...(truncated)' : raw;
-            contents.push({
-              docType: f.checkId.replace('l1-', ''),
-              path: f.file,
-              content,
-            });
-          } catch { /* file not readable */ }
+
+        // Approach 1: Find documents referenced in scan results (l1-pass findings)
+        const scanResult = state.lastScanResult;
+        if (scanResult) {
+          const docFindings = scanResult.findings.filter(
+            (f) => f.checkId.startsWith('l1-') && f.type === 'pass' && f.file,
+          );
+          for (const f of docFindings) {
+            if (!f.file) continue;
+            try {
+              const fullPath = resolve(state.projectPath, f.file);
+              const raw = await readFile(fullPath, 'utf-8');
+              const content = raw.length > 500 ? raw.slice(0, 500) + '\n\n...(truncated)' : raw;
+              contents.push({
+                docType: f.checkId.replace('l1-', ''),
+                path: f.file,
+                content,
+              });
+            } catch { /* file not readable */ }
+          }
         }
+
+        // Approach 2: Scan .complior/docs/ directory for generated compliance documents
+        const docsDir = resolve(state.projectPath, '.complior', 'docs');
+        try {
+          const { readdir, stat } = await import('node:fs/promises');
+          const entries = await readdir(docsDir);
+          for (const entry of entries) {
+            if (!entry.endsWith('.md')) continue;
+            const fullPath = resolve(docsDir, entry);
+            try {
+              const statResult = await stat(fullPath);
+              if (!statResult.isFile()) continue;
+              const raw = await readFile(fullPath, 'utf-8');
+              const content = raw.length > 500 ? raw.slice(0, 500) + '\n\n...(truncated)' : raw;
+              // Derive docType from filename (e.g., fria.md → fria)
+              const docType = entry.replace(/\.md$/, '').replace(/-/g, '-');
+              // Avoid duplicate entries (same path may already be added from scan findings)
+              if (!contents.some((c) => c.path === `.complior/docs/${entry}`)) {
+                contents.push({
+                  docType,
+                  path: `.complior/docs/${entry}`,
+                  content,
+                });
+              }
+            } catch { /* skip unreadable files */ }
+          }
+        } catch { /* .complior/docs/ may not exist yet */ }
+
+        // Approach 3: Scan docs/compliance/ directory
+        const complianceDir = resolve(state.projectPath, 'docs', 'compliance');
+        try {
+          const { readdir, stat } = await import('node:fs/promises');
+          const entries = await readdir(complianceDir);
+          for (const entry of entries) {
+            if (!entry.endsWith('.md')) continue;
+            const fullPath = resolve(complianceDir, entry);
+            try {
+              const statResult = await stat(fullPath);
+              if (!statResult.isFile()) continue;
+              const raw = await readFile(fullPath, 'utf-8');
+              const content = raw.length > 500 ? raw.slice(0, 500) + '\n\n...(truncated)' : raw;
+              const docType = entry.replace(/\.md$/, '').replace(/-/g, '-');
+              if (!contents.some((c) => c.path === `docs/compliance/${entry}`)) {
+                contents.push({
+                  docType,
+                  path: `docs/compliance/${entry}`,
+                  content,
+                });
+              }
+            } catch { /* skip unreadable files */ }
+          }
+        } catch { /* docs/compliance/ may not exist yet */ }
+
         return contents;
       } catch {
         return [];
@@ -515,6 +594,7 @@ export const loadApplication = async (): Promise<Application> => {
     loadPolicyTemplate,
     evidenceStore,
     auditStore,
+    iso42001Controls: iso42001ControlsData as unknown as readonly Iso42001Control[],
   });
 
   // Shared helper: passport completeness lookup (used by cost + debt services)

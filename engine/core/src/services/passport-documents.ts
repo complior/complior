@@ -18,10 +18,16 @@ import { generatePolicy as generatePolicyDoc } from '../domain/documents/policy-
 import type { PolicyResult } from '../domain/documents/policy-generator.js';
 import { generateDocument, ALL_DOC_TYPES, TEMPLATE_FILE_MAP } from '../domain/documents/document-generator.js';
 import type { DocType, DocResult } from '../domain/documents/document-generator.js';
+import { generateSoA } from '../domain/documents/soa-generator.js';
+import type { SoAResult } from '../types/common.types.js';
+import { generateRiskRegister } from '../domain/documents/risk-register-generator.js';
+import type { RiskRegisterResult } from '../types/common.types.js';
 import type { IndustryId } from '../data/industry-patterns.js';
 import { INDUSTRY_TEMPLATE_MAP } from '../data/industry-patterns.js';
 import type { PassportServiceDeps } from './passport-service.js';
 import { ensureTemplate, saveDocumentReport, updatePassportCompliance } from './passport-service-utils.js';
+import { generateComplianceTests } from '../domain/passport/test-generator.js';
+import type { GeneratedTestSuite } from '../domain/passport/test-generator.js';
 
 export interface PassportDocumentOps {
   readonly showPassport: (name: string, projectPath?: string) => Promise<AgentPassport | null>;
@@ -254,6 +260,108 @@ export const createPassportDocuments = (deps: PassportServiceDeps, ops: Passport
     return { generated, errors };
   };
 
+
+  const generateSoAReport = async (
+    name: string,
+    projectPath?: string,
+    options?: { organization?: string },
+  ): Promise<(SoAResult & { savedPath: string }) | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+
+    const scanResult = deps.getLastScanResult();
+    const controls = deps.iso42001Controls ?? [];
+
+    const result = generateSoA({
+      manifest,
+      scanResult: scanResult ?? {
+        score: { totalScore: 0, zone: 'red', categoryScores: [], criticalCapApplied: false, totalChecks: 0, passedChecks: 0, failedChecks: 0, skippedChecks: 0 },
+        findings: [],
+        projectPath: projectPath ?? deps.getProjectPath(),
+        scannedAt: new Date().toISOString(),
+        duration: 0,
+        filesScanned: 0,
+      },
+      controls,
+      organization: options?.organization,
+    });
+
+    const savedPath = await saveDocumentReport(
+      deps, name, 'iso42001-soa', result.markdown, 'document', projectPath,
+      'documents', { docType: 'iso42001-soa' },
+    );
+
+    if (deps.auditStore) {
+      await deps.auditStore.append('document.generated', { name, docType: 'iso42001-soa', savedPath }, name);
+    }
+
+    return { ...result, savedPath };
+  };
+
+  const generateRiskRegisterReport = async (
+    name: string,
+    projectPath?: string,
+    options?: { organization?: string },
+  ): Promise<(RiskRegisterResult & { savedPath: string }) | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+
+    const scanResult = deps.getLastScanResult();
+
+    const result = generateRiskRegister({
+      manifest,
+      scanResult: scanResult ?? {
+        score: { totalScore: 0, zone: 'red', categoryScores: [], criticalCapApplied: false, totalChecks: 0, passedChecks: 0, failedChecks: 0, skippedChecks: 0 },
+        findings: [],
+        projectPath: projectPath ?? deps.getProjectPath(),
+        scannedAt: new Date().toISOString(),
+        duration: 0,
+        filesScanned: 0,
+      },
+      organization: options?.organization,
+    });
+
+    const savedPath = await saveDocumentReport(
+      deps, name, 'iso42001-risk-register', result.markdown, 'document', projectPath,
+      'documents', { docType: 'iso42001-risk-register' },
+    );
+
+    if (deps.auditStore) {
+      await deps.auditStore.append('document.generated', { name, docType: 'iso42001-risk-register', savedPath }, name);
+    }
+
+    return { ...result, savedPath };
+  };
+
+  /** US-S05-24: Generate compliance test suite from passport constraints */
+  const generateTestGenReport = async (
+    name: string,
+    projectPath?: string,
+  ): Promise<GeneratedTestSuite | null> => {
+    const manifest = await showPassport(name, projectPath);
+    if (manifest === null) return null;
+
+    const result = generateComplianceTests({
+      name: manifest.name,
+      permissions: {
+        tools: manifest.permissions.tools,
+        denied: manifest.permissions.denied,
+      },
+      constraints: {
+        rate_limits: manifest.constraints.rate_limits
+          ? [{ action: 'rate_limit', limit: manifest.constraints.rate_limits.max_actions_per_minute, window: 'minute' }]
+          : undefined,
+        prohibited_actions: manifest.constraints.prohibited_actions,
+        budget: manifest.constraints.budget ? {
+          max_cost: manifest.constraints.budget.max_cost_per_session_usd,
+          currency: 'USD',
+        } : undefined,
+      },
+    });
+
+    return result;
+  };
+
   return Object.freeze({
     generateFriaReport,
     generateWorkerNotification,
@@ -261,5 +369,8 @@ export const createPassportDocuments = (deps: PassportServiceDeps, ops: Passport
     generatePolicy,
     generateDocByType,
     generateAllDocs,
+    generateSoAReport,
+    generateRiskRegisterReport,
+    generateTestGenReport,
   });
 };

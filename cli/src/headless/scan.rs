@@ -2,6 +2,7 @@ use std::io::IsTerminal as _;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::cli::SeverityLevel;
 use crate::config::TuiConfig;
 use crate::engine_client::EngineClient;
 use crate::types::Severity;
@@ -18,7 +19,7 @@ pub async fn run_headless_scan(
     sarif: bool,
     _no_tui: bool,
     threshold: u32,
-    fail_on: Option<&str>,
+    fail_on: Option<SeverityLevel>,
     deep: bool,
     llm: bool,
     cloud: bool,
@@ -42,7 +43,7 @@ pub async fn run_headless_scan(
         }
         Err(e) => {
             eprintln!("Error: Cannot connect to engine at {engine_url}: {e}");
-            eprintln!("Start the engine with: cd engine && npm run dev");
+            eprintln!("Start with: complior daemon");
             return 1;
         }
     }
@@ -51,7 +52,10 @@ pub async fn run_headless_scan(
 
     // Tier 3 stub
     if cloud {
-        eprintln!("Error: --cloud (Tier 3) is not yet available. Planned for Month 3-4.");
+        eprintln!("Error: Cloud scanning is not yet available.");
+        eprintln!(
+            "  Use 'complior scan' for local scanning or 'complior scan --deep' for enhanced analysis."
+        );
         return 1;
     }
 
@@ -176,9 +180,12 @@ pub async fn run_headless_scan(
                 stop_spinner(&spinner_active, spinner_handle);
                 r
             }
-            Err(e) => {
+            Err(_e) => {
                 stop_spinner(&spinner_active, spinner_handle);
-                eprintln!("Failed to parse scan result: {e}");
+                eprintln!(
+                    "Failed to parse engine response. This may indicate a version mismatch between CLI and engine."
+                );
+                eprintln!("  Try: complior doctor");
                 return 1;
             }
         }
@@ -190,8 +197,11 @@ pub async fn run_headless_scan(
                 stop_spinner(&spinner_active, spinner_handle);
                 match serde_json::from_value::<crate::types::ScanResult>(r) {
                     Ok(result) => result,
-                    Err(e) => {
-                        eprintln!("Failed to parse scan result: {e}");
+                    Err(_e) => {
+                        eprintln!(
+                            "Failed to parse engine response. This may indicate a version mismatch between CLI and engine."
+                        );
+                        eprintln!("  Try: complior doctor");
                         return 1;
                     }
                 }
@@ -210,8 +220,11 @@ pub async fn run_headless_scan(
                 stop_spinner(&spinner_active, spinner_handle);
                 match serde_json::from_value::<crate::types::ScanResult>(r) {
                     Ok(result) => result,
-                    Err(e) => {
-                        eprintln!("Failed to parse scan result: {e}");
+                    Err(_e) => {
+                        eprintln!(
+                            "Failed to parse engine response. This may indicate a version mismatch between CLI and engine."
+                        );
+                        eprintln!("  Try: complior doctor");
                         return 1;
                     }
                 }
@@ -303,15 +316,17 @@ pub async fn run_headless_scan(
             format!("{finding_count} findings")
         };
 
-        eprintln!(
-            "  {} Scan complete ({})  {}  {}  {}",
-            green(check_mark()),
-            layers,
-            dim(&findings_label),
-            dim(&format!("Score: {:.0}/100", result.score.total_score)),
-            dim(&format!("{:.0}s", scan_elapsed.elapsed().as_secs_f64())),
-        );
-        eprintln!();
+        if !quiet {
+            eprintln!(
+                "  {} Scan complete ({})  {}  {}  {}",
+                green(check_mark()),
+                layers,
+                dim(&findings_label),
+                dim(&format!("Score: {:.0}/100", result.score.total_score)),
+                dim(&format!("{:.0}s", scan_elapsed.elapsed().as_secs_f64())),
+            );
+            eprintln!();
+        }
 
         let opts = FormatOptions {
             framework_scores: framework_scores.as_ref().map(|mf| mf.frameworks.clone()),
@@ -331,14 +346,37 @@ pub async fn run_headless_scan(
             .iter()
             .filter(|f| f.r#type == crate::types::CheckResultType::Fail)
             .count();
-        eprintln!(
-            "COMPLIOR_SCORE={score} COMPLIOR_GRADE={grade} COMPLIOR_FINDINGS={finding_count}"
-        );
+        eprintln!("COMPLIOR_SCORE={score}");
+        eprintln!("COMPLIOR_GRADE={grade}");
+        eprintln!("COMPLIOR_FINDINGS={finding_count}");
     }
 
-    // Hint: suggest agent init if no passports found (non-CI, non-JSON, non-SARIF)
+    // Hints (non-CI, non-JSON, non-SARIF)
     if !ci && !json && !sarif {
-        let hint_url = format!("/agent/list?path={}", super::common::url_encode(&scan_path));
+        // No AI components detected
+        let has_ai_findings = result.findings.iter().any(|f| {
+            f.check_id.starts_with("l3-")
+                || f.check_id.starts_with("l4-")
+                || f.check_id.starts_with("l5-")
+                || f.check_id.starts_with("ext-")
+        });
+        if !has_ai_findings && result.score.total_checks > 0 {
+            eprintln!();
+            eprintln!(
+                "  {}",
+                super::format::colors::dim(
+                    "Note: No AI components detected. Complior is designed for AI systems \
+                     under the EU AI Act. If this project uses AI, ensure your dependencies \
+                     are installed and source files are accessible."
+                )
+            );
+        }
+
+        // Suggest agent init if no passports found
+        let hint_url = format!(
+            "/passport/list?path={}",
+            super::common::url_encode(&scan_path)
+        );
         if let Ok(list) = client.get_json(&hint_url).await {
             let count = list.as_array().map_or(0, std::vec::Vec::len);
             if count == 0 {
@@ -346,7 +384,7 @@ pub async fn run_headless_scan(
                 eprintln!(
                     "  {}",
                     super::format::colors::dim(
-                        "Hint: No agent passports found. Run `complior agent init` for \
+                        "Hint: No agent passports found. Run `complior passport init` for \
                          passport-aware scanning and pre-filled fix scaffolds."
                     )
                 );
@@ -364,23 +402,29 @@ pub async fn run_headless_scan(
 
         // Check fail-on severity
         if let Some(level) = fail_on {
-            let has_severity = result.findings.iter().any(|f| {
-                matches!(
-                    (level, &f.severity),
-                    ("critical", Severity::Critical)
-                        | ("high", Severity::Critical | Severity::High)
-                        | (
-                            "medium",
-                            Severity::Critical | Severity::High | Severity::Medium
-                        )
-                        | (
-                            "low",
-                            Severity::Critical | Severity::High | Severity::Medium | Severity::Low
-                        )
-                )
+            let has_severity = result.findings.iter().any(|f| match level {
+                SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
+                SeverityLevel::High => {
+                    matches!(f.severity, Severity::Critical | Severity::High)
+                }
+                SeverityLevel::Medium => {
+                    matches!(
+                        f.severity,
+                        Severity::Critical | Severity::High | Severity::Medium
+                    )
+                }
+                SeverityLevel::Low => {
+                    matches!(
+                        f.severity,
+                        Severity::Critical | Severity::High | Severity::Medium | Severity::Low
+                    )
+                }
             });
             if has_severity {
-                eprintln!("CI FAIL: Found findings at severity '{level}' or above");
+                eprintln!(
+                    "CI FAIL: Found findings at severity '{}' or above",
+                    level.as_str()
+                );
                 return 2;
             }
         }

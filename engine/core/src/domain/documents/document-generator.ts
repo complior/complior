@@ -227,6 +227,25 @@ export const generateDocument = (input: DocGeneratorInput): DocResult => {
       manualFields.push('Incident tracking procedures');
       manualFields.push('Cybersecurity measures');
       break;
+
+    case 'iso42001-ai-policy':
+      manualFields.push('AI management objectives');
+      manualFields.push('Scope of AI management system');
+      manualFields.push('Leadership commitment');
+      manualFields.push('Review and approval signatures');
+      break;
+
+    case 'iso42001-soa':
+      manualFields.push('Non-applicable control justifications');
+      manualFields.push('Review and approval signatures');
+      manualFields.push('Controls assessment details');
+      break;
+
+    case 'iso42001-risk-register':
+      manualFields.push('Treatment plan details');
+      manualFields.push('Review and approval signatures');
+      manualFields.push('Risk acceptance criteria');
+      break;
   }
 
   return Object.freeze({

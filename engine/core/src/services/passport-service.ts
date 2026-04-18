@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
-import type { ScanResult } from '../types/common.types.js';
+import type { ScanResult, Iso42001Control } from '../types/common.types.js';
 import type { AgentPassport } from '../types/passport.types.js';
 import { parsePassport } from '../types/passport-schemas.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
@@ -47,6 +47,8 @@ export interface PassportServiceDeps {
   readonly loadPolicyTemplate?: (file: string) => Promise<string>;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
+  /** V1-M07: ISO 42001 Annex A controls loaded from iso-42001-controls.json. */
+  readonly iso42001Controls?: readonly Iso42001Control[];
 }
 
 export interface InitPassportResult {

@@ -292,5 +292,38 @@ openai.chat.completions.create({});`,
       expect(result).toHaveLength(1);
       expect(result[0].detectedEndpoints).toEqual(['http://localhost:5000/api/chat']);
     });
+
+    // TD-14: Endpoint route validation — only /-prefixed strings are valid routes
+    it('filters out non-path routes like Express config getters (TD-14)', () => {
+      // Express `app.get('env')` reads a setting, NOT a route definition.
+      // ROUTE_PATTERN captures it as a "route" → broken URL `http://localhost:3000env`
+      // Fix: only keep routes that start with `/`
+      const ctx = createMockContext([
+        createFile('.env', 'PORT=3000', '.env'),
+        createFile(
+          'src/server.ts',
+          `import OpenAI from 'openai';
+const app = express();
+app.get('/api/chat', chatHandler);
+app.get('env');
+app.get('trust proxy');
+app.post('/v1/completions', completionHandler);
+openai.chat.completions.create({});`,
+        ),
+      ]);
+      const deps = createMockDeps(['openai']);
+
+      const result = discoverAgents(ctx, deps);
+
+      expect(result).toHaveLength(1);
+      // Only /-prefixed paths should appear as endpoints
+      const endpoints = result[0].detectedEndpoints ?? [];
+      expect(endpoints).toContain('http://localhost:3000/api/chat');
+      expect(endpoints).toContain('http://localhost:3000/v1/completions');
+      // Non-path strings must NOT appear
+      expect(endpoints).not.toContain('http://localhost:3000env');
+      expect(endpoints).not.toContain('http://localhost:3000trust proxy');
+      expect(endpoints).toHaveLength(2);
+    });
   });
 });

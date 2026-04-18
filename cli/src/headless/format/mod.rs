@@ -129,7 +129,7 @@ pub fn format_sarif(result: &ScanResult) -> String {
         .findings
         .iter()
         .map(|f| {
-            serde_json::json!({
+            let mut res = serde_json::json!({
                 "ruleId": f.check_id,
                 "message": { "text": f.message },
                 "level": sarif_level(&f.severity),
@@ -137,7 +137,30 @@ pub fn format_sarif(result: &ScanResult) -> String {
                     "severity": f.severity.as_str(),
                     "type": f.r#type
                 }
-            })
+            });
+
+            // Add file locations when available (required for GitHub Code Scanning)
+            if let Some(ref file) = f.file {
+                let mut physical = serde_json::json!({
+                    "artifactLocation": { "uri": file }
+                });
+                if let Some(line) = f.line {
+                    physical["region"] = serde_json::json!({
+                        "startLine": line
+                    });
+                }
+                res["locations"] = serde_json::json!([{
+                    "physicalLocation": physical
+                }]);
+            }
+
+            // Partial fingerprint for deduplication across runs
+            let fingerprint = format!("{}:{}", f.check_id, f.file.as_deref().unwrap_or(""));
+            res["partialFingerprints"] = serde_json::json!({
+                "primaryLocationLineHash": fingerprint
+            });
+
+            res
         })
         .collect();
 
@@ -149,7 +172,7 @@ pub fn format_sarif(result: &ScanResult) -> String {
                 "driver": {
                     "name": "complior",
                     "version": env!("CARGO_PKG_VERSION"),
-                    "informationUri": "https://complior.eu",
+                    "informationUri": "https://complior.ai",
                     "rules": rules
                 }
             },
@@ -186,9 +209,7 @@ pub fn print_paged(text: &str) {
         return;
     }
 
-    let term_height = crossterm::terminal::size()
-        .map(|(_, h)| h as usize)
-        .unwrap_or(24);
+    let term_height = crossterm::terminal::size().map_or(24, |(_, h)| h as usize);
     let line_count = text.lines().count();
     if line_count <= term_height.saturating_sub(2) {
         print!("{text}");

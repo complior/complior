@@ -15,6 +15,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
   ScanResult,
+  ScanFilterContext,
   Finding,
   ScoreBreakdown,
   CategoryScore,
@@ -24,6 +25,7 @@ import type {
   Severity,
   ScoreZone,
 } from './common.types.js';
+import { parseScanResult } from './common.schemas.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SAMPLE_PATH = resolve(__dirname, '../../data/schemas/http-contract-sample.json');
@@ -169,6 +171,56 @@ describe('HTTP Contract — TS side', () => {
     expect(typeof raw.deepAnalysis).toBe('boolean');
     expect(typeof raw.l5Cost).toBe('number');
     expect(raw.regulationVersion).toBeDefined();
+  });
+
+  it('ScanFilterContext has correct structure when present', () => {
+    const raw = loadSample() as ScanResult;
+    expect(raw.filterContext).toBeDefined();
+
+    const ctx: ScanFilterContext = raw.filterContext!;
+    expect(['provider', 'deployer', 'both']).toContain(ctx.role);
+    expect(typeof ctx.profileFound).toBe('boolean');
+    expect(typeof ctx.totalObligations).toBe('number');
+    expect(typeof ctx.applicableObligations).toBe('number');
+    expect(typeof ctx.skippedByRole).toBe('number');
+    expect(typeof ctx.skippedByRiskLevel).toBe('number');
+
+    // Nullable fields
+    expect(ctx.riskLevel === null || typeof ctx.riskLevel === 'string').toBe(true);
+    expect(ctx.domain === null || typeof ctx.domain === 'string').toBe(true);
+  });
+
+  it('ScanResultSchema accepts scan result with filterContext', () => {
+    const raw = readFileSync(SAMPLE_PATH, 'utf-8');
+    const parsed = parseScanResult(raw);
+    expect(parsed).not.toBeNull();
+    expect(parsed!.filterContext).toBeDefined();
+    expect(parsed!.filterContext!.role).toBe('deployer');
+    expect(parsed!.filterContext!.riskLevel).toBe('limited');
+    expect(parsed!.filterContext!.domain).toBe('healthcare');
+    expect(parsed!.filterContext!.profileFound).toBe(true);
+    expect(parsed!.filterContext!.totalObligations).toBe(57);
+    expect(parsed!.filterContext!.applicableObligations).toBe(22);
+    expect(parsed!.filterContext!.skippedByRole).toBe(4);
+    expect(parsed!.filterContext!.skippedByRiskLevel).toBe(8);
+  });
+
+  it('ScanResultSchema accepts scan result WITHOUT filterContext', () => {
+    const minimal: ScanResult = {
+      score: {
+        totalScore: 50, zone: 'yellow', categoryScores: [],
+        criticalCapApplied: false, totalChecks: 10, passedChecks: 5,
+        failedChecks: 3, skippedChecks: 2,
+      },
+      findings: [],
+      projectPath: '/test',
+      scannedAt: '2026-01-01T00:00:00Z',
+      duration: 100,
+      filesScanned: 5,
+    };
+    const parsed = parseScanResult(JSON.stringify(minimal));
+    expect(parsed).not.toBeNull();
+    expect(parsed!.filterContext).toBeUndefined();
   });
 
   it('sample round-trips through JSON serialization', () => {

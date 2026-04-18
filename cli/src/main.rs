@@ -49,7 +49,7 @@ use std::io;
 #[cfg(feature = "tui")]
 use std::io::Write as _;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 
 use config::load_config;
 use engine_process::EngineManager;
@@ -159,10 +159,28 @@ async fn main() -> color_eyre::Result<()> {
                 }
                 Err(e) => {
                     eprintln!("Error: Cannot auto-start engine: {e}");
-                    eprintln!("Start the engine manually: cd engine/core && npx tsx src/server.ts");
+                    eprintln!("Try: complior daemon");
                     std::process::exit(1);
                 }
             }
+        }
+
+        // Ensure engine cleanup on Ctrl+C (SIGINT doesn't call destructors)
+        #[cfg(unix)]
+        if let Some(pid) = engine_guard.as_ref().and_then(EngineManager::child_pid) {
+            let pid = pid as i32;
+            tokio::spawn(async move {
+                let _ = tokio::signal::ctrl_c().await;
+                eprintln!("\nInterrupted. Stopping engine...");
+                unsafe {
+                    libc::kill(-pid, libc::SIGTERM);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                unsafe {
+                    libc::kill(-pid, libc::SIGKILL);
+                }
+                std::process::exit(130);
+            });
         }
 
         let code: i32 = match &parsed_cli.command {
@@ -200,7 +218,7 @@ async fn main() -> color_eyre::Result<()> {
                         *sarif,
                         *no_tui,
                         *threshold,
-                        fail_on.as_deref(),
+                        *fail_on,
                         *deep,
                         *llm,
                         *cloud,
@@ -218,37 +236,75 @@ async fn main() -> color_eyre::Result<()> {
                 ai,
                 source,
                 check_id,
+                doc,
+                agent,
                 path,
-            }) => match source {
-                cli::FixSource::Eval => {
-                    headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config).await
-                }
-                cli::FixSource::All => {
-                    let scan_code =
-                        headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai)
+            }) => {
+                // --doc flag: delegate to document generation
+                if let Some(ref doc_type) = *doc {
+                    headless::fix::run_doc_generate_fix(
+                        doc_type,
+                        agent.as_deref(),
+                        *json,
+                        path.as_deref(),
+                        &config,
+                    )
+                    .await
+                } else {
+                    match source {
+                        cli::FixSource::Eval => {
+                            headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config)
+                                .await
+                        }
+                        cli::FixSource::All => {
+                            let scan_code = headless::run_headless_fix(
+                                *dry_run,
+                                *json,
+                                path.as_deref(),
+                                &config,
+                                *ai,
+                            )
                             .await;
-                    let eval_code =
-                        headless::eval::run_eval_fix(*dry_run, *json, path.as_deref(), &config)
+                            let eval_code = headless::eval::run_eval_fix(
+                                *dry_run,
+                                *json,
+                                path.as_deref(),
+                                &config,
+                            )
                             .await;
-                    if scan_code != 0 { scan_code } else { eval_code }
-                }
-                cli::FixSource::Scan => {
-                    if let Some(cid) = check_id {
-                        headless::fix::run_fix_single(cid, *json, path.as_deref(), &config, *ai)
-                            .await
-                    } else {
-                        headless::run_headless_fix(*dry_run, *json, path.as_deref(), &config, *ai)
-                            .await
+                            if scan_code != 0 { scan_code } else { eval_code }
+                        }
+                        cli::FixSource::Scan => {
+                            if let Some(cid) = check_id {
+                                headless::fix::run_fix_single(
+                                    cid,
+                                    *json,
+                                    path.as_deref(),
+                                    &config,
+                                    *ai,
+                                )
+                                .await
+                            } else {
+                                headless::run_headless_fix(
+                                    *dry_run,
+                                    *json,
+                                    path.as_deref(),
+                                    &config,
+                                    *ai,
+                                )
+                                .await
+                            }
+                        }
                     }
                 }
-            },
+            }
             Some(cli::Command::Version) => {
                 headless::run_version();
                 0
             }
-            Some(cli::Command::Doctor { .. }) => {
-                headless::run_doctor(&config).await;
-                0
+            Some(cli::Command::Doctor { .. }) => headless::run_doctor(&config).await,
+            Some(cli::Command::Status { json, path }) => {
+                headless::run_headless_status(*json, path.as_deref(), &config).await
             }
             Some(cli::Command::Report {
                 format,
@@ -274,13 +330,22 @@ async fn main() -> color_eyre::Result<()> {
                 headless::run_update().await;
                 0
             }
+            Some(cli::Command::Completions { shell }) => {
+                clap_complete::generate(
+                    *shell,
+                    &mut cli::Cli::command(),
+                    "complior",
+                    &mut std::io::stdout(),
+                );
+                0
+            }
             Some(cli::Command::Daemon { action, watch }) => {
                 let project_path = std::env::current_dir().unwrap_or_default();
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
                 0
             }
-            Some(cli::Command::Agent { action }) => {
-                headless::agent::run_agent_command(action, &config).await
+            Some(cli::Command::Passport { action }) => {
+                headless::passport::run_passport_command(action, &config).await
             }
             Some(cli::Command::Eval {
                 target,
@@ -698,7 +763,7 @@ async fn run_event_loop(
                 app.engine_status = types::EngineConnectionStatus::Disconnected;
                 app.messages.push(types::ChatMessage::new(
                     types::MessageRole::System,
-                    "Engine not running. Start with: cd engine && npm run dev".to_string(),
+                    "Engine not running. Try: complior daemon".to_string(),
                 ));
             }
         }

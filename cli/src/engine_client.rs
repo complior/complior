@@ -379,7 +379,7 @@ impl EngineClient {
             .post(&url)
             .header("Accept", "text/event-stream")
             .json(body)
-            .timeout(std::time::Duration::from_secs(120))
+            .timeout(std::time::Duration::from_mins(2))
             .send()
             .await?;
         if resp.status() == 429 {
@@ -410,7 +410,7 @@ impl EngineClient {
             .post(&url)
             .header("Accept", "text/event-stream")
             .json(body)
-            .timeout(std::time::Duration::from_secs(3600))
+            .timeout(std::time::Duration::from_hours(1))
             .send()
             .await?;
         if !resp.status().is_success() {
@@ -433,7 +433,7 @@ impl EngineClient {
             .client
             .post(format!("{}{endpoint}", self.base_url))
             .json(body)
-            .timeout(std::time::Duration::from_secs(1800))
+            .timeout(std::time::Duration::from_mins(30))
             .send()
             .await?;
         let status = resp.status();

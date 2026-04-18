@@ -389,7 +389,7 @@ fn render_two_column(
     // Critical uncovered
     if let Some(critical) = obligations["critical"].as_array() {
         if !critical.is_empty() {
-            o.push_str(&format!("\n  {} CRITICAL UNCOVERED:\n", bold_red("⚠"),));
+            o.push_str(&format!("\n  {} CRITICAL UNCOVERED:\n", bold_red("⚠")));
             for obl in critical.iter().take(5) {
                 let id = obl["id"].as_str().unwrap_or("?");
                 let art = obl["article"].as_str().unwrap_or("");
@@ -455,13 +455,13 @@ fn render_passports_evidence(
             o.push_str(&format!(
                 "\n  {} {}     {}\n",
                 dim("->"),
-                dim("complior agent list"),
+                dim("complior passport list"),
                 dim("view all passports"),
             ));
             o.push_str(&format!(
                 "  {} {}  {}\n",
                 dim("->"),
-                dim("complior agent show <name>"),
+                dim("complior passport show <name>"),
                 dim("view passport details"),
             ));
         }
@@ -729,7 +729,7 @@ fn render_actions_section(o: &mut String, actions: &serde_json::Value, w: usize)
             // R2: Second row with command
             if !command.is_empty() {
                 let cmd_indent = " ".repeat(action_col_start - 2);
-                o.push_str(&format!("  {cmd_indent}{} {}\n", dim("->"), dim(command),));
+                o.push_str(&format!("  {cmd_indent}{} {}\n", dim("->"), dim(command)));
             }
         }
     }
@@ -848,7 +848,7 @@ fn render_summary_section(
         bold("⏰"),
     ));
 
-    o.push_str(&format!("  {}  Complior v{version}\n", " ".repeat(7),));
+    o.push_str(&format!("  {}  Complior v{version}\n", " ".repeat(7)));
 
     // Bottom border
     o.push_str(&format!(

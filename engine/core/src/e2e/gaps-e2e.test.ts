@@ -66,7 +66,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
 
       // Check evidence chain
       const evRes = await application.app.request(
-        `/agent/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       expect(evRes.status).toBe(200);
       const summary = await evRes.json() as Record<string, unknown>;
@@ -77,13 +77,13 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
     it('passport init creates evidence with source "passport"', async () => {
       // Get evidence count before
       const beforeRes = await application.app.request(
-        `/agent/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       const beforeSummary = await beforeRes.json() as Record<string, unknown>;
       const countBefore = beforeSummary['totalEntries'] as number;
 
       // Init passport (force to handle stale/empty files from previous runs)
-      const initRes = await application.app.request('/agent/init', {
+      const initRes = await application.app.request('/passport/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: TEST_PROJECT, force: true }),
@@ -94,7 +94,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
 
       // Get evidence count after
       const afterRes = await application.app.request(
-        `/agent/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       const afterSummary = await afterRes.json() as Record<string, unknown>;
       const countAfter = afterSummary['totalEntries'] as number;
@@ -107,7 +107,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
 
     it('evidence chain verification passes after all events', async () => {
       const verifyRes = await application.app.request(
-        `/agent/evidence/verify?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence/verify?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       expect(verifyRes.status).toBe(200);
       const result = await verifyRes.json() as Record<string, unknown>;
@@ -123,7 +123,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
 
     it('generates FRIA and saves to .complior/reports/fria-{name}.md', async () => {
       // Ensure passport exists (force to handle stale files)
-      await application.app.request('/agent/init', {
+      await application.app.request('/passport/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: TEST_PROJECT, force: true }),
@@ -131,7 +131,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
 
       // Get actual agent name from engine
       const listRes = await application.app.request(
-        `/agent/list?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/list?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       const agents = await listRes.json() as Array<Record<string, unknown>>;
       expect(agents.length).toBeGreaterThan(0);
@@ -139,7 +139,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
       expect(AGENT_NAME).toBeDefined();
 
       // Generate FRIA
-      const friaRes = await application.app.request('/agent/fria', {
+      const friaRes = await application.app.request('/fix/doc/fria', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -178,13 +178,13 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
     it('FRIA generation creates evidence with source "fria"', async () => {
       // Get evidence before
       const beforeRes = await application.app.request(
-        `/agent/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       const beforeSummary = await beforeRes.json() as Record<string, unknown>;
       const countBefore = beforeSummary['totalEntries'] as number;
 
       // Generate another FRIA (idempotent — overwrites the same file)
-      const friaRes = await application.app.request('/agent/fria', {
+      const friaRes = await application.app.request('/fix/doc/fria', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -196,7 +196,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
 
       // Evidence should have increased
       const afterRes = await application.app.request(
-        `/agent/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       const afterSummary = await afterRes.json() as Record<string, unknown>;
       const countAfter = afterSummary['totalEntries'] as number;
@@ -224,7 +224,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
     it('updated passport signature is still valid', async () => {
       // Verify via API
       const showRes = await application.app.request(
-        `/agent/show?path=${encodeURIComponent(TEST_PROJECT)}&name=${AGENT_NAME}`,
+        `/passport/show?path=${encodeURIComponent(TEST_PROJECT)}&name=${AGENT_NAME}`,
       );
       expect(showRes.status).toBe(200);
       const manifest = await showRes.json() as Record<string, unknown>;
@@ -243,7 +243,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
   describe('Cross-gap: Full evidence chain integrity', () => {
     it('evidence chain is valid after scan + passport + fria events', async () => {
       const verifyRes = await application.app.request(
-        `/agent/evidence/verify?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence/verify?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       expect(verifyRes.status).toBe(200);
       const result = await verifyRes.json() as Record<string, unknown>;
@@ -253,7 +253,7 @@ describe.skipIf(!canRunE2E)('Gap Closures E2E', () => {
 
     it('evidence summary shows multiple event sources', async () => {
       const summaryRes = await application.app.request(
-        `/agent/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
+        `/passport/evidence?path=${encodeURIComponent(TEST_PROJECT)}`,
       );
       expect(summaryRes.status).toBe(200);
       const summary = await summaryRes.json() as Record<string, unknown>;

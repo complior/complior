@@ -247,6 +247,11 @@ impl EngineManager {
         }
     }
 
+    /// Return the child process PID (if running), for signal handling.
+    pub fn child_pid(&self) -> Option<u32> {
+        self.child.as_ref().map(Child::id)
+    }
+
     /// Build the engine URL from the port.
     pub fn engine_url(&self) -> String {
         format!("http://127.0.0.1:{}", self.port)

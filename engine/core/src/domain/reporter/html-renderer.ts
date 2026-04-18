@@ -526,7 +526,7 @@ const renderTabFixes = (report: ComplianceReport): string => {
 
 const renderTabPassports = (report: ComplianceReport): string => {
   const ps = report.passports;
-  if (ps.totalAgents === 0) return '<div class="empty-state"><p>No agent passports found.</p><p>Run <code>complior agent init</code> to create one.</p></div>';
+  if (ps.totalAgents === 0) return '<div class="empty-state"><p>No agent passports found.</p><p>Run <code>complior passport init</code> to create one.</p></div>';
 
   const cards = ps.passports.map((p) => {
     const ringColor = completenessColor(p.completenessZone);
@@ -694,9 +694,6 @@ export const generateReportHtml = (report: ComplianceReport): string => {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Complior Report</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -707,7 +704,7 @@ export const generateReportHtml = (report: ComplianceReport): string => {
 --score:#d97706;
 --b:rgba(0,0,0,.07);--b2:rgba(0,0,0,.12);--b3:rgba(0,0,0,.2);
 --card:#fff;--card2:rgba(0,0,0,.02);
---f-display:'Fraunces',serif;--f-body:'Plus Jakarta Sans',sans-serif;--f-mono:'JetBrains Mono',monospace;
+--f-display:system-ui,-apple-system,'Segoe UI',sans-serif;--f-body:system-ui,-apple-system,'Segoe UI',sans-serif;--f-mono:'SFMono-Regular','Cascadia Code',Consolas,monospace;
 }
 html{scroll-behavior:smooth}
 body{font-family:var(--f-body);background:var(--bg);color:var(--dark3);line-height:1.6;-webkit-font-smoothing:antialiased;margin:0;padding:0;overflow-x:hidden}

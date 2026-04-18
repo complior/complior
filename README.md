@@ -9,7 +9,7 @@
 > [!IMPORTANT]
 > **Status: v8 Architecture**
 >
-> Complior v8 is a daemon-orchestrator: background daemon (file watcher + engine + MCP server + HTTP API) + Rust TUI dashboard + CLI commands. The v1 engine (scanner, fixer, 375+ tests) works. Agents connect independently via MCP. Contributions and feedback are welcome.
+> Complior v8 is a daemon-orchestrator: background daemon (file watcher + engine + MCP server + HTTP API) + Rust TUI dashboard + CLI commands. The v1 engine (scanner, fixer, 2500+ tests) works. Agents connect independently via MCP. Contributions and feedback are welcome.
 
 ---
 
@@ -17,7 +17,7 @@
 
 Complior is a background compliance daemon that monitors your AI project for EU AI Act compliance. It watches every file change and rescans in ~200ms. Agents (Claude Code, Cursor, VS Code, OpenCode, aider) work independently and connect via MCP.
 
-**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (~5 months).
+**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (~4 months).
 
 **The solution:** A daemon that monitors file changes and provides real-time compliance feedback. Agents work independently — Complior doesn't manage their processes.
 
@@ -73,7 +73,6 @@ No other tool does this.
 - **Agent Passport** — central entity (36 fields, ed25519 signed, 3 creation modes)
 - **7-Step Pipeline** — Discover → Classify → Scan → Fix → Document → Monitor → Certify
 - **8 MCP Tools** — compliance tools for Claude Code, Cursor, Windsurf, any MCP client
-- **Runtime Middleware** — `@complior/sdk` — proxy-based compliance wrapping for LLM API calls
 - **5,011+ AI Tools** — detection patterns for OpenAI, Anthropic, LangChain, and more
 - **100+ Themes** — Tokyo Night, Catppuccin, Gruvbox, Nord, and custom TOML themes
 - **CI/CD** — `complior scan --ci --threshold 80 --json`
@@ -167,14 +166,14 @@ complior init
 complior scan
 
 # 3. Evaluate live AI endpoint (688 dynamic tests)
-complior eval --target http://localhost:4000/api/chat --agent my-bot
+complior eval http://localhost:4000/api/chat --agent my-bot
 
 # 4. Apply recommended fixes
 complior fix
 
 # 5. Generate compliance documents (FRIA, policy, audit package)
-complior agent fria my-bot
-complior agent audit-package
+complior fix --doc fria my-bot
+complior passport audit-package
 
 # 6. Launch TUI dashboard for continuous monitoring
 complior
@@ -183,12 +182,12 @@ complior
 ```bash
 # CI/CD pipeline
 complior scan --ci --threshold 80 --json
-complior eval --target $API_URL --agent $AGENT --ci --threshold 70
+complior eval $API_URL --agent $AGENT --ci --threshold 70
 ```
 
 ## All CLI Commands
 
-> Full flag reference: [`docs/TUI-DESIGN-SPEC.md` §3](docs/TUI-DESIGN-SPEC.md)
+> Full flag reference: `complior <command> --help`
 
 ```bash
 # ─── CORE ───
@@ -215,34 +214,38 @@ complior audit <url>                         # full audit: scan + eval + securit
 complior report [path]                       # compliance report
   --format md|pdf --output/-o file
 
-# ─── AGENT PASSPORT ───
-complior agent init [path]                   # (optional) manual agent discovery → passports
-  --force --json                             # init does this automatically
-complior agent list [path]                   # list all passports
+# ─── PASSPORT (renamed from agent) ───
+complior passport init [path]                  # (optional) manual agent discovery → passports
+  --force --json                              # init does this automatically
+complior passport list [path]                  # list all passports
   --verbose/-v --json
-complior agent show <name> [path] --json     # show specific passport
-complior agent rename <old> <new> [path]     # rename passport + re-sign
-complior agent validate [name] [path]        # schema + signature + completeness
+complior passport show <name> [path] --json  # show specific passport
+complior passport rename <old> <new> [path]    # rename passport + re-sign
+complior passport validate [name] [path]       # schema + signature + completeness
   --ci --strict --verbose --json
-complior agent completeness <name> --json    # obligation gaps breakdown
-complior agent autonomy [path] --json        # autonomy level (L1-L5)
-complior agent diff <name> --json            # compare passport versions
-complior agent fria <name> [path]            # FRIA report (Art.27)
-  --organization --impact --mitigation --approval --json
-complior agent notify <name> [path]          # worker notification (Art.26(7))
-  --company-name --contact-name --contact-email --contact-phone
-  --deployment-date --affected-roles --impact-description --json
-complior agent policy <name> --industry hr   # AI usage policy (Art.6)
-  --organization --approver --json [path]    # industries: hr|finance|healthcare|education|legal
-complior agent export <name> --format a2a    # export (a2a|aiuc-1|nist)
-complior agent import --from a2a <file>      # import external passport
-complior agent test-gen <name> --json        # generate compliance tests
-complior agent audit-package [-o file]       # audit package (tar.gz)
-complior agent evidence [--verify] --json    # evidence chain
-complior agent permissions --json            # cross-agent permissions matrix
-complior agent registry --json               # per-agent compliance registry
-complior agent audit                         # audit trail (event log)
+complior passport completeness <name> --json   # obligation gaps breakdown
+complior passport autonomy [path] --json       # autonomy level (L1-L5)
+complior passport diff <name> --json           # compare passport versions
+complior passport evidence [--verify] --json  # evidence chain
+complior passport permissions --json           # cross-agent permissions matrix
+complior passport registry --json              # per-agent compliance registry
+complior passport export <name> --format a2a  # export (a2a|aiuc-1|nist)
+complior passport import --from a2a <file>     # import external passport
+complior passport audit-package [-o file]      # audit package (tar.gz)
+complior passport audit                        # audit trail (event log)
   --agent <name> --since DATE --type EVENT --limit N --json
+
+# ─── DOCUMENT GENERATION (via fix) ───
+complior fix --doc fria <name> [path]          # FRIA report (Art.27)
+  --organization --impact --mitigation --approval --json
+complior fix --doc notify <name> [path]        # worker notification (Art.26(7))
+  --company --contact-name --contact-email --contact-phone
+  --deployment-date --affected-roles --impact-description --json
+complior fix --doc policy <name> --industry hr # AI usage policy (Art.6)
+  --organization --approver --json [path]     # industries: hr|finance|healthcare|education|legal
+complior fix --doc soa <name> [path]          # Statement of Applicability (ISO 42001)
+complior fix --doc risk-register <name>       # Risk Register (ISO 42001)
+complior fix --doc all <name>                  # generate all documents
 
 # ─── CERTIFICATION ───
 complior cert readiness <name> --json [path] # AIUC-1 readiness score
@@ -299,9 +302,7 @@ complior/
 ├── cli/           # Rust CLI + TUI — dashboard UI, daemon management, connects via HTTP/SSE
 ├── engine/
 │   ├── core/      # @complior/engine — TS daemon (Clean Architecture)
-│   ├── sdk/       # @complior/sdk — runtime compliance middleware
 │   └── npm/       # npm wrapper package (npx complior)
-├── docs/          # Architecture, specs, contributing standards
 ├── .github/       # CI/CD workflows
 ├── Cargo.toml     # Rust workspace root
 ├── package.json   # TS workspace root
@@ -317,11 +318,11 @@ Complior is in v8 daemon architecture. We welcome:
 - **AI tool data** — detection patterns for AI SDKs
 - **Issues** for feature requests and ideas
 
-See `docs/contributing/` for coding standards.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[MIT](LICENSE)
+[AGPL-3.0](LICENSE)
 
 ---
 

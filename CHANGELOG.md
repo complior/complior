@@ -5,16 +5,158 @@ All notable changes to Complior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.5] - 2026-04-11
+## [Unreleased]
+
+## [0.9.9] - 2026-04-17
 
 ### Added
+
+**Pre-Release Polish Sprint (V1-M16)**
+- `docs/project-state.md` — living project status document (all milestones, command status, metrics)
+- `docs/tech-debt.md` — tech debt tracker with resolution history
+- `scripts/verify_v1_pipeline_full.sh` — comprehensive v1.0 pipeline acceptance test (27 checks)
+- E2E tests for `POST /fix/doc/test-gen` and `POST /fix/doc/all` endpoints
+- E2E tests for 7 additional document types via `POST /fix/doc/generate` (art5-screening, technical-documentation, incident-report, data-governance, instructions-for-use, monitoring-policy, risk-management)
+
+### Changed
+
+- Version bump 0.9.8 to 0.9.9
+- Archived stale M01-scanner-eval-core.md milestone (work completed in S01-S06)
+- `verify_v1_release.sh` version check updated to 0.9.9
+
+### Notes
+
+- All v1.0 pipeline commands confirmed production-ready: init, scan, eval, fix, report, passport, status, daemon
+- 2,382+ total tests: 2,194 TS + 188 Rust — all GREEN
+- EU AI Act enforcement: August 2, 2026 (~107 days)
+
+## [0.9.8] - 2026-04-17
+
+### Changed
+
+**Pre-Release Polish (V1-M15)**
+- SARIF output now includes file locations (`locations` + `partialFingerprints`) for GitHub Code Scanning and IDE integration
+- `--fail-on` flag validates severity at parse time (clap ValueEnum: critical, high, medium, low)
+- "Starting Complior engine..." message shown during cold start instead of silent wait
+- Hidden deprecated `--no-tui` flag (scans are always headless)
+- Added `complior completions <shell>` for bash/zsh/fish/PowerShell tab completions
+- Wrapped engine parse errors with user-friendly messages suggesting `complior doctor`
+- Added "No AI components detected" hint when scan finds no L3/L4/L5 findings
+- Improved `--cloud` stub message with actionable alternatives
+- Version bump 0.9.7 → 0.9.8
+
+## [0.9.7] - 2026-04-16
+
+### Changed
+
+**Release Polish (V1-M14)**
+- Version bump 0.9.6 → 0.9.7
+- README license corrected: MIT → AGPL-3.0
+- README eval syntax: `--target` flag removed (positional argument)
+- SDK references marked as "(planned)" in README
+- GitHub URL corrected to `complior/complior` across CLI
+- URL consistency: all CLI references now use `complior.ai`
+- Help text cleanup: removed milestone prefixes and backtick artifacts from doc comments
+- `--cloud` error now shows user-friendly message
+- `--help` examples added to Scan, Eval, Fix, Report, Passport, and top-level commands
+- `complior version` now shows git hash and target triple
+- `complior doctor` returns exit code 1 if critical checks fail
+- HTML report uses system fonts (offline-safe, no Google Fonts dependency)
+- npm postinstall verifies SHA256 checksum of downloaded binary
+- CI env vars printed one-per-line with consistent `COMPLIOR_SCORE` naming
+- Passport error messages now include contextual hints (engine not running, not found, timeout)
+- Engine connection errors show `complior daemon` hint instead of internal paths
+- Config parse errors show warning and fall back to defaults
+- Windows: daemon stop uses `taskkill` instead of "not supported" message
+- Windows: `is_process_alive` uses `tasklist` instead of always returning true
+- `libc` dependency conditional on Unix (not compiled on Windows)
+
+## [0.9.6] - 2026-04-15
+
+### Breaking
+
+**Command Restructuring (V1-M11)**
+- `complior agent` renamed to `complior passport` (16 subcommands)
+- Document generation moved from `complior agent <type>` to `complior fix --doc <type>`
+  - `complior passport fria` → `complior fix --doc fria <name>`
+  - `complior passport notify` → `complior fix --doc notify <name>`
+  - `complior passport policy` → `complior fix --doc policy <name>`
+  - `complior fix --doc soa <name>` (ISO 42001 Statement of Applicability)
+  - `complior fix --doc risk-register <name>` (ISO 42001 Risk Register)
+  - `complior fix --doc test-gen <name>` (compliance test suite)
+  - `complior fix --doc all <name>` (generate all documents)
+- All `/agent/*` HTTP routes removed → `/passport/*` (passport CRUD) and `/fix/doc/*` (doc generation)
+
+### Added
+
+**ISO 42001 Document Generators (V1-M07)**
+- Statement of Applicability (SoA): 39 ISO 42001 Annex A controls × applicability × evidence from scan
+- Risk Register: scan findings → risk matrix (likelihood × impact × mitigation)
+- AI Management Policy template (ISO 42001 Clause 5.2)
+- 39 ISO 42001 controls data file (`iso-42001-controls.json`)
+- New types: `Iso42001Control`, `SoAEntry`, `SoAResult`, `RiskRegisterEntry`, `RiskRegisterResult`
+
+**Context-Aware Scan (V1-M08)**
+- Profile-based finding filters: role (provider/deployer) and risk level (high/limited/minimal)
+- `ScanFilterContext` in scan response: role, riskLevel, domain, obligationCounts, skipCounts
+- Obligation coverage filtering by risk level
+- Top-3 priority actions in scan response (profile-aware)
+
+**Onboarding Enrichment (V1-M09)**
+- 9-question onboarding wizard across 5 blocks (role, business, data, system, deployment)
+- Dynamic obligation filtering: 108 obligations filtered by role + risk level + GPAI status
+- GPAI auto-detection from package.json (openai, anthropic, google, mistral, cohere SDKs)
+- `complior init --reconfigure` to update project profile without full re-init
+- New profile fields: `gpaiModel`, `autonomousDecisions`, `biometricData`, `userFacing`
+
+**Score Transparency (V1-M10)**
+- Score disclaimer: explains coverage, limitations, category weights, critical-cap rule
+- Category breakdown: per-category impact levels, top failures, explanations
+- Profile-aware top-5 priority actions (deadline proximity × severity × category weakness)
+- `complior status [--json]` command with full compliance posture overview
+- `GET /status/posture` endpoint returning aggregate `CompliancePosture`
+
+**Command Restructuring (V1-M11)**
+- `complior passport` with 16 subcommands: init, list, show, validate, completeness, rename, autonomy, notify, registry, permissions, evidence, audit, export, import
+- `complior fix --doc <type>` for document generation (fria, notify, policy, soa, risk-register, test-gen, all)
+- 19 `/passport/*` HTTP routes for passport CRUD, validation, evidence, audit, export
+- 8 `/fix/doc/*` HTTP routes for document generation
+- E2E tests split to separate vitest config (`vitest.e2e.config.ts`)
+
+### Fixed
+
+- Rust CLI `VALID_DOC_TYPES` now includes 3 ISO 42001 types (V1-M12)
+- Agent discovery no longer parses non-path route strings like `app.get('env')` (TD-14)
+- Rust CLI routes corrected: `/passport/doc` → `/fix/doc/generate` (TD-27)
+- Deprecated `/agent/*` route stub removed (TD-26)
+- Unused `buildPriorityActions` import removed from scan.route.ts (TD-12)
+
+### Notes
+
+- 2502 total tests: 2194 TS unit + 130 E2E + 178 Rust — all GREEN
+- EU AI Act enforcement: August 2, 2026 (~3.5 months)
+- All v1.0 pipeline commands feature-complete: init, scan, eval, fix, report, passport, status
+
+## [0.9.5] - 2026-04-12
+
+### Added
+
+**UX Quality Polish (V1-M06)**
+- Fix preview renders full template content (not `[TEMPLATE:xxx]` markers)
+- Action plan returns top-5 prioritized actions with `effort` + `projectedScore`
+- Obligations endpoint filters by project role + risk level
+- L4 findings grouped by checkId (aggregated: `count` + `affectedFiles`)
+- Report builder populates `documentContents` from project docs
+- Passport model detection strips comments, filters env var keys
+- Fix preview includes `projectedScore` (what-if simulation)
+- 29 new UX quality tests (11 unit + 18 E2E-gated)
 
 **Full CLI Flag Coverage (v1.0 pipeline commands)**
 - `complior scan` — all 12 flags wired and E2E tested: `--json`, `--sarif`, `--ci`, `--threshold`, `--fail-on`, `--diff`, `--fail-on-regression`, `--comment`, `--deep`, `--llm`, `--quiet`, `--agent`
 - `complior eval` — all 22 flags wired and E2E tested: `--det`, `--llm`, `--security`, `--full`, `--json`, `--ci`, `--threshold`, `--categories`, `--last`, `--failures`, `--verbose`, `--remediation`, `--fix`, `--dry-run`, `--model`, `--api-key`, `--request-template`, `--response-path`, `--headers`, `--concurrency`, `--no-remediation`, `--agent`
 - `complior fix` — all 5 flags: `--dry-run`, `--json`, `--ai`, `--source scan/eval/all`, `--check-id`
 - `complior report` — all 4 flags: `--format human/json/md/html/pdf`, `--json`, `--share`, `--output`
-- `complior agent` — all 14 subcommands: `init`, `list`, `show`, `validate`, `completeness`, `fria`, `evidence`, `export`, `rename`, `autonomy`, `notify`, `registry`, `permissions`
+- `complior passport` — all 14 subcommands: `init`, `list`, `show`, `validate`, `completeness`, `rename`, `autonomy`, `registry`, `permissions`, `evidence`, `export`, `import`, `audit` (renamed from `complior agent` in v0.9.6)
 
 **E2E Test Suite**
 - 46 engine-level E2E tests via Hono in-memory HTTP (scan, eval, fix, report, agent flags)
@@ -43,8 +185,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- 2360 total tests: 2165 TS (vitest) + 195 Rust (cargo test) — all GREEN
-- Reviewer approved: 113 files, +11,391 lines, 23 commits on `feature/reporter`
+- 2389 total tests: 2194 TS (vitest, 157 files) + 195 Rust (cargo test) — all GREEN
+- TypeScript typecheck clean: `tsc --noEmit` → 0 errors
+- Reviewer approved: V1-M01..M06 complete
 - EU AI Act enforcement: August 2, 2026 (~4 months)
 
 ## [0.9.0] - 2026-04-03
@@ -61,14 +204,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `complior version` / `complior update` -- Version info and self-update
 
 **Agent Passport**
-- `complior agent init` -- Auto-generate Agent Passport (36 fields) from codebase analysis
-- `complior agent list/show/validate` -- Manage and inspect passports
-- `complior agent fria` -- Generate Fundamental Rights Impact Assessment (Art. 27)
-- `complior agent notify` -- Generate Worker Notification (Art. 26(7))
-- `complior agent export` -- Export to A2A, AIUC-1, NIST formats
-- `complior agent evidence` -- Tamper-evident evidence chain (ed25519 signed, hash-linked)
-- `complior agent policy` -- Generate industry-specific AI usage policies
-- `complior agent permissions/registry/completeness` -- Cross-agent governance
+- `complior passport init` -- Auto-generate Agent Passport (36 fields) from codebase analysis
+- `complior passport list/show/validate` -- Manage and inspect passports
+- `complior fix --doc fria` -- Generate Fundamental Rights Impact Assessment (Art. 27)
+- `complior fix --doc notify` -- Generate Worker Notification (Art. 26(7))
+- `complior passport export` -- Export to A2A, AIUC-1, NIST formats
+- `complior passport evidence` -- Tamper-evident evidence chain (ed25519 signed, hash-linked)
+- `complior fix --doc policy` -- Generate industry-specific AI usage policies
+- `complior passport permissions/registry/completeness` -- Cross-agent governance
 
 **Scanner**
 - 33 pattern rules across 8 categories

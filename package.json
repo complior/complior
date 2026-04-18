@@ -1,10 +1,10 @@
 {
   "name": "complior",
-  "version": "0.9.5",
+  "version": "0.9.9",
   "private": true,
   "workspaces": [
+    "engine/contracts",
     "engine/core",
-    "engine/sdk",
     "engine/npm"
   ],
   "license": "AGPL-3.0-only",

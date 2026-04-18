@@ -1,15 +1,18 @@
 /**
- * Contract tests for Sync API schemas.
+ * Contract tests for Sync API schemas (engine/core side).
  *
  * Validates that:
  * 1. Full AgentPassport can be mapped to SyncPassportPayload without data loss
  * 2. ScanResult can be mapped to SyncScanPayload
  * 3. Schemas accept valid payloads and reject invalid ones
  *
- * These tests are the CONTRACT between complior CLI and PROJECT SaaS.
+ * These tests use schemas re-exported from @complior/contracts and
+ * shared fixtures from @complior/contracts/fixtures.
  * If a test fails, the sync API is broken.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   SyncPassportSchema,
   SyncScanSchema,
@@ -17,88 +20,20 @@ import {
   SyncFriaSchema,
 } from './sync.types.js';
 
+// Load shared fixtures from @complior/contracts
+const contractsFixtures = resolve(import.meta.dirname, '..', '..', '..', 'contracts', 'fixtures');
+const loadFixture = (name: string): unknown =>
+  JSON.parse(readFileSync(resolve(contractsFixtures, name), 'utf-8'));
+
 describe('SyncPassportSchema', () => {
   it('accepts minimal payload (name only)', () => {
-    const result = SyncPassportSchema.safeParse({ name: 'my-agent' });
+    const fixture = loadFixture('sync-passport-minimal.json');
+    const result = SyncPassportSchema.safeParse(fixture);
     expect(result.success).toBe(true);
   });
 
   it('accepts full payload with all 36 fields', () => {
-    const full = {
-      name: 'acme-support-bot',
-      slug: 'acme-support-bot',
-      display_name: 'ACME Support Bot',
-      description: 'Customer support chatbot',
-      purpose: 'Handles customer inquiries',
-      domain: 'customer_service',
-      version: '1.2.0',
-      vendorName: 'ACME Corp',
-      vendorUrl: 'https://acme.com',
-      framework: 'langchain',
-      modelProvider: 'openai',
-      modelId: 'gpt-4o',
-      dataResidency: 'EU',
-      riskLevel: 'limited' as const,
-      compliorScore: 72,
-      projectScore: 68,
-      lifecycleStatus: 'active' as const,
-      friaCompleted: true,
-      friaDate: '2026-03-15',
-      workerNotificationSent: true,
-      policyGenerated: true,
-      scanSummary: {
-        totalChecks: 150, passed: 120, failed: 25, skipped: 5,
-        failedChecks: ['ai-disclosure', 'logging-check'],
-        scanDate: '2026-04-10',
-      },
-      multiFramework: [
-        { frameworkId: 'eu-ai-act', frameworkName: 'EU AI Act', score: 72, grade: 'C' },
-        { frameworkId: 'owasp-llm', frameworkName: 'OWASP LLM Top 10', score: 85, grade: 'B' },
-      ],
-      autonomyLevel: 'L3' as const,
-      autonomyEvidence: {
-        humanApprovalGates: 2,
-        unsupervisedActions: 5,
-        noLoggingActions: 0,
-        autoRated: true,
-      },
-      agentType: 'hybrid' as const,
-      owner: { team: 'Platform', contact: 'team@acme.com', responsiblePerson: 'Jane Doe' },
-      permissions: {
-        tools: ['search', 'email'],
-        dataAccess: { read: ['crm'], write: ['tickets'], delete: [] },
-        denied: ['admin'],
-        dataBoundaries: { piiHandling: 'redact' as const },
-      },
-      constraints: {
-        rateLimits: { maxActionsPerMinute: 60 },
-        budget: { maxCostPerSessionUsd: 5.0 },
-        humanApprovalRequired: ['refund > 100'],
-        prohibitedActions: ['delete_account'],
-        escalationRules: [
-          { condition: 'amount > 1000', action: 'require_approval' as const, description: 'High value' },
-        ],
-      },
-      oversight: {
-        responsiblePerson: 'Jane Doe', role: 'AI Officer',
-        contact: 'jane@acme.com', overrideMechanism: 'kill switch',
-        escalationProcedure: 'Notify manager',
-      },
-      disclosure: {
-        userFacing: true, disclosureText: 'I am an AI assistant.',
-        aiMarking: { responsesMarked: true, method: 'prefix' },
-      },
-      logging: { actionsLogged: true, retentionDays: 90, includesDecisionRationale: true },
-      manifestVersion: '1.0.0',
-      detectionPatterns: ['openai', 'langchain'],
-      versions: { langchain: '0.1.0', openai: '1.0.0' },
-      sourceFiles: ['src/bot.ts', 'src/agent.ts'],
-      endpoints: ['https://api.acme.com/chat'],
-      signature: {
-        algorithm: 'ed25519', publicKey: 'abc123',
-        signedAt: '2026-04-10T12:00:00Z', hash: 'sha256:deadbeef', value: 'sig_xyz',
-      },
-    };
+    const full = loadFixture('sync-passport-full.json');
 
     const result = SyncPassportSchema.safeParse(full);
     expect(result.success).toBe(true);
@@ -134,19 +69,8 @@ describe('SyncPassportSchema', () => {
 
 describe('SyncScanSchema', () => {
   it('accepts valid scan payload', () => {
-    const result = SyncScanSchema.safeParse({
-      projectPath: '/home/user/project',
-      score: 72,
-      securityScore: 85,
-      tier: 2,
-      findings: [
-        { severity: 'high', message: 'Missing AI disclosure', checkId: 'ai-disclosure' },
-        { severity: 'low', message: 'No logging', agentId: 'bot-1', l5Analyzed: true },
-      ],
-      toolsDetected: [
-        { name: 'openai', version: '1.0.0', vendor: 'OpenAI', category: 'llm' },
-      ],
-    });
+    const fixture = loadFixture('sync-scan-valid.json');
+    const result = SyncScanSchema.safeParse(fixture);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.findings[1].agentId).toBe('bot-1');
@@ -164,13 +88,12 @@ describe('SyncScanSchema', () => {
 
 describe('SyncDocumentsSchema', () => {
   it('accepts valid document payload', () => {
-    const result = SyncDocumentsSchema.safeParse({
-      documents: [
-        { type: 'fria', title: 'FRIA Report', content: '# FRIA\n...' },
-        { type: 'usage_policy', title: 'AI Policy', content: '# Policy\n...', toolSlug: 'bot-1' },
-      ],
-    });
+    const fixture = loadFixture('sync-documents-valid.json');
+    const result = SyncDocumentsSchema.safeParse(fixture);
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.documents).toHaveLength(2);
+    }
   });
 
   it('rejects empty documents array', () => {
@@ -181,16 +104,12 @@ describe('SyncDocumentsSchema', () => {
 
 describe('SyncFriaSchema', () => {
   it('accepts valid FRIA payload', () => {
-    const result = SyncFriaSchema.safeParse({
-      generalInfo: {
-        toolName: 'ACME Bot',
-        vendor: 'ACME',
-        purpose: 'Support',
-        domain: 'customer_service',
-        riskLevel: 'limited',
-      },
-      affectedPersons: { categories: ['customers', 'employees'] },
-    });
+    const fixture = loadFixture('sync-fria-valid.json');
+    const result = SyncFriaSchema.safeParse(fixture);
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.toolSlug).toBe('acme-support-bot');
+      expect(result.data.sections.general_info.toolName).toBe('ACME Support Bot');
+    }
   });
 });

@@ -26,7 +26,7 @@ describe('checkPassportPresence', () => {
     expect(results[0].type).toBe('fail');
     if (results[0].type === 'fail') {
       expect(results[0].severity).toBe('high');
-      expect(results[0].fix).toContain('complior agent init');
+      expect(results[0].fix).toContain('complior passport init');
     }
   });
 

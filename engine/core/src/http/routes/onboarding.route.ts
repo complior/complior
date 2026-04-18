@@ -5,6 +5,8 @@ import { parseBody } from '../utils/validation.js';
 
 const CompleteSchema = z.object({
   answers: z.record(z.union([z.string(), z.array(z.string())])),
+  /** V1-M09 T-4: When true, overwrites any existing profile. */
+  reconfigure: z.boolean().optional().default(false),
 });
 
 export const createOnboardingRoute = (wizard: OnboardingWizard) => {
@@ -32,7 +34,7 @@ export const createOnboardingRoute = (wizard: OnboardingWizard) => {
   app.post('/onboarding/complete', async (c) => {
     const data = await parseBody(c, CompleteSchema);
 
-    const result = await wizard.complete(data.answers);
+    const result = await wizard.complete(data.answers, data.reconfigure);
     return c.json({
       profile: result.profile,
       autoDetected: result.autoDetected,

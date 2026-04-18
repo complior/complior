@@ -6,7 +6,6 @@
 //! runners, shell scripts, and human operators.
 
 // Core
-pub mod agent;
 mod commands;
 pub mod common;
 pub mod daemon;
@@ -14,7 +13,9 @@ pub mod eval;
 pub mod fix;
 pub mod format;
 pub mod interactive;
+pub mod passport;
 pub mod scan;
+pub mod status;
 
 // Extras
 #[cfg(feature = "extras")]
@@ -54,6 +55,7 @@ mod tests;
 pub use commands::{run_doctor, run_init, run_report, run_update, run_version};
 pub use fix::run_headless_fix;
 pub use scan::run_headless_scan;
+pub use status::run_headless_status;
 
 #[cfg(feature = "extras")]
 pub use login::{run_login, run_logout};

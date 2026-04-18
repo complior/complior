@@ -235,7 +235,7 @@ pub async fn run_eval_command(
     if !ci && !json {
         if let Some(agent_name) = agent {
             let show_url = format!(
-                "/agent/show?path={}&name={}",
+                "/passport/show?path={}&name={}",
                 url_encode(&project_path),
                 url_encode(agent_name)
             );
@@ -260,7 +260,7 @@ pub async fn run_eval_command(
                         "path": project_path,
                         "name": agent_name,
                     });
-                    match client.post_json("/agent/init", &init_body).await {
+                    match client.post_json("/passport/init", &init_body).await {
                         Ok(_) => {
                             eprintln!("   {} Passport '{}' created.", check_mark(), agent_name)
                         }
@@ -1975,9 +1975,7 @@ fn wrap_aligned(label_prefix: &str, text: &str, term_width: usize) -> String {
 
 /// Get terminal width, defaulting to 100.
 fn term_width() -> usize {
-    crossterm::terminal::size()
-        .map(|(w, _)| w as usize)
-        .unwrap_or(100)
+    crossterm::terminal::size().map_or(100, |(w, _)| w as usize)
 }
 
 /// Format duration: "38s" for <60s, "1m 38s" for >=60s.
@@ -2119,11 +2117,7 @@ fn print_owasp_breakdown(results: Option<&Vec<serde_json::Value>>) {
         let total = passed + failed + inconc;
         let definitive = passed + failed;
         // Score = pass / (pass + fail) — inconclusive excluded
-        let score = if definitive > 0 {
-            (*passed * 100) / definitive
-        } else {
-            0
-        };
+        let score = (*passed * 100).checked_div(definitive).unwrap_or(0);
         let bar = format_bar(*passed, definitive, 10);
         let ratio = format!("{passed:>3}/{total:>3}");
         let score_str = format!("{score}%");
@@ -2183,13 +2177,15 @@ fn print_ci_output(result: &serde_json::Value, threshold: u32) -> i32 {
         .and_then(serde_json::Value::as_u64)
         .unwrap_or(0);
 
-    // Parseable output line (always emitted in CI mode)
-    let sec_part = sec_score
-        .map(|s| format!(" COMPLIOR_SECURITY={s}"))
-        .unwrap_or_default();
-    eprintln!(
-        "COMPLIOR_CONFORMITY={score}{sec_part} COMPLIOR_GRADE={grade} COMPLIOR_TOTAL={total} COMPLIOR_PASSED={passed} COMPLIOR_FAILED={failed}"
-    );
+    // Parseable output lines (always emitted in CI mode)
+    eprintln!("COMPLIOR_SCORE={score}");
+    if let Some(s) = sec_score {
+        eprintln!("COMPLIOR_SECURITY={s}");
+    }
+    eprintln!("COMPLIOR_GRADE={grade}");
+    eprintln!("COMPLIOR_TOTAL={total}");
+    eprintln!("COMPLIOR_PASSED={passed}");
+    eprintln!("COMPLIOR_FAILED={failed}");
 
     if score < u64::from(threshold) {
         eprintln!("CI FAIL: Score {score} < threshold {threshold}");

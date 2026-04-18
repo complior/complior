@@ -103,6 +103,93 @@ export const QUESTION_BLOCKS: readonly QuestionBlock[] = [
       },
     ],
   },
+  {
+    id: 'system',
+    title: 'AI System Type',
+    questions: [
+      {
+        id: 'system_type',
+        text: 'What type of AI system are you building?',
+        type: 'single',
+        options: [
+          { value: 'feature', label: 'Feature — AI is one feature of a larger product' },
+          { value: 'standalone', label: 'Standalone — dedicated AI application' },
+          { value: 'platform', label: 'Platform — hosts multiple AI models/agents' },
+          { value: 'internal', label: 'Internal — AI tool for internal use only' },
+        ],
+        descriptions: {
+          feature: 'Most common. Example: chatbot in SaaS, AI-assisted search, recommendation engine.',
+          standalone: 'Entire product is AI-powered. Example: AI writing tool, image generator, code assistant.',
+          platform: 'You host or orchestrate multiple AI models. Triggers LIMITED risk minimum. Example: LLM gateway, agent framework.',
+          internal: 'Not user-facing. May qualify for MINIMAL risk if using public data only.',
+        },
+        default: 'feature',
+      },
+      {
+        id: 'gpai_model',
+        text: 'Does your system use a General-Purpose AI (GPAI) foundation model?',
+        type: 'single',
+        options: [
+          { value: 'yes', label: 'Yes — uses GPT-4, Claude, Gemini, Mistral, or similar' },
+          { value: 'no', label: 'No — custom/specialized model only' },
+          { value: 'unknown', label: 'Not sure' },
+        ],
+        descriptions: {
+          yes: 'GPAI models trigger 14 additional obligations under Articles 52-56 (transparency, copyright, risk assessment).',
+          no: 'Custom or fine-tuned models without a GPAI base. Fewer obligations.',
+          unknown: 'We will try to auto-detect from your dependencies.',
+        },
+        default: 'unknown',
+      },
+    ],
+  },
+  {
+    id: 'deployment',
+    title: 'Deployment Context',
+    questions: [
+      {
+        id: 'user_facing',
+        text: 'Does the AI interact directly with end users?',
+        type: 'single',
+        options: [
+          { value: 'yes', label: 'Yes — users see or interact with AI output' },
+          { value: 'no', label: 'No — backend/internal processing only' },
+        ],
+        descriptions: {
+          yes: 'Triggers transparency obligations: users must be informed they are interacting with AI (Art. 50).',
+          no: 'Fewer transparency requirements, but data governance obligations still apply.',
+        },
+        default: 'yes',
+      },
+      {
+        id: 'autonomous_decisions',
+        text: 'Does the AI make decisions without human review?',
+        type: 'single',
+        options: [
+          { value: 'yes', label: 'Yes — automated decisions affecting people' },
+          { value: 'no', label: 'No — human always reviews AI output' },
+        ],
+        descriptions: {
+          yes: 'Strong indicator of HIGH RISK. Requires human oversight mechanisms (Art. 14).',
+          no: 'Human-in-the-loop reduces risk classification.',
+        },
+        default: 'no',
+      },
+      {
+        id: 'biometric_data',
+        text: 'Does the AI process biometric identification or categorization data?',
+        type: 'single',
+        options: [
+          { value: 'yes', label: 'Yes — face recognition, fingerprint, voice ID, emotion detection' },
+          { value: 'no', label: 'No' },
+        ],
+        descriptions: {
+          yes: 'Biometric AI systems are HIGH RISK or PROHIBITED depending on use case (Art. 5, Annex III).',
+        },
+        default: 'no',
+      },
+    ],
+  },
 ];
 
 export const getQuestionBlock = (blockId: string): QuestionBlock | undefined =>

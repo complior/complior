@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 description = "AI Act Compliance Scanner & Fixer — CLI"
 homepage = "https://complior.ai"
+build = "build.rs"
 keywords = ["compliance", "ai", "eu-ai-act", "scanner", "terminal"]
 categories = ["development-tools", "command-line-utilities"]
 readme = "../README.md"
@@ -33,7 +34,7 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 clap = { version = "4", features = ["derive"] }
-libc = "0.2"
+clap_complete = "4"
 base64 = "0.22.1"
 crossterm = { version = "0.28", features = ["event-stream"] }
 futures-util = "0.3"
@@ -43,6 +44,9 @@ ratatui = { version = "0.30", optional = true }
 syntect = { version = "5", optional = true }
 notify = { version = "6", optional = true }
 unicode-width = { version = "0.2", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 insta = { version = "1", features = ["filters"] }

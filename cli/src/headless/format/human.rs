@@ -25,8 +25,10 @@ pub fn format_human(result: &ScanResult, opts: &FormatOptions) -> String {
         .filter(|f| f.r#type == CheckResultType::Fail)
         .collect();
 
-    render_header(&mut o, result);
-    render_scan_info(&mut o, result);
+    if !opts.quiet {
+        render_header(&mut o, result);
+        render_scan_info(&mut o, result);
+    }
     render_score_block(&mut o, result, opts);
 
     if opts.quiet {
