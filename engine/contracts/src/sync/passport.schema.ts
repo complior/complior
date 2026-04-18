@@ -124,7 +124,7 @@ export const SyncPassportSchema = z.object({
   // --- GROUP F: Metadata + Signature ---
   manifestVersion: z.string().max(50).optional(),
   detectionPatterns: z.array(z.string()).optional(),
-  versions: z.record(z.string()).optional(),
+  versions: z.record(z.string(), z.string()).optional(),
   sourceFiles: z.array(z.string()).optional(),
   endpoints: z.array(z.string()).optional(),
   signature: z.object({
