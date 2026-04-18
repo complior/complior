@@ -31,6 +31,7 @@ jobs:
               - 'deny.toml'
             ts-engine:
               - 'engine/core/**'
+              - 'engine/contracts/**'
               - 'package.json'
 
   # ── Rust ──────────────────────────────────────────
@@ -91,6 +92,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
+      - run: npm run build --workspace=engine/contracts
       - run: cd engine/core && npx tsc --noEmit
       - run: cd engine/core && npx vitest run --exclude '**/e2e/**'
 

@@ -1,36 +1,10 @@
 import { createLogger } from './logger.js';
+import type { SyncPassportPayload, SyncScanPayload } from '../types/sync.types.js';
 
 const log = createLogger('saas-client');
 
-export interface SyncPassportPayload {
-  readonly name: string;
-  readonly vendorName?: string;
-  readonly vendorUrl?: string;
-  readonly description?: string;
-  readonly purpose?: string;
-  readonly domain?: string;
-  readonly riskLevel?: string;
-  readonly slug?: string;
-  readonly detectionPatterns?: unknown;
-  readonly versions?: unknown;
-  readonly autonomyLevel?: string;
-  readonly framework?: string;
-  readonly modelProvider?: string;
-  readonly modelId?: string;
-  readonly dataResidency?: string;
-  readonly lifecycleStatus?: string;
-  readonly compliorScore?: number;
-  readonly manifestVersion?: string;
-  readonly signature?: unknown;
-  readonly extendedFields?: unknown;
-}
-
-export interface SyncScanPayload {
-  readonly projectPath: string;
-  readonly score?: number;
-  readonly findings?: readonly { severity: string; message: string; tool?: string }[];
-  readonly toolsDetected: readonly { name: string; version?: string; vendor?: string; category?: string }[];
-}
+// SyncPassportPayload, SyncScanPayload, SyncDocPayload now come from
+// @complior/contracts via src/types/sync.types.ts (single source of truth)
 
 export interface SyncDocPayload {
   readonly type: string;
