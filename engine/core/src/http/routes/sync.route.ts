@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { SyncFriaSchema } from '@complior/contracts/sync';
+import { SyncPassportSchema, SyncScanSchema, SyncDocumentsSchema, SyncFriaSchema } from '@complior/contracts/sync';
 import { createSaasClient, type SyncDocPayload } from '../../infra/saas-client.js';
 import type { AgentPassport } from '../../types/passport.types.js';
 import type { ScanResult } from '../../types/common.types.js';
@@ -196,7 +196,13 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
         const manifest = parseManifest(content);
         if (!manifest) { results.push({ name: file, action: 'error', error: 'Invalid manifest' }); continue; }
         const payload = mapPassport(manifest);
-        const result = await client.syncPassport(token, payload);
+        const parseResult = SyncPassportSchema.safeParse(payload);
+        if (!parseResult.success) {
+          log.warn(`Passport ${file} validation failed, skipping: ${parseResult.error.message}`);
+          results.push({ name: manifest.name ?? file, action: 'skipped', error: `Validation failed: ${parseResult.error.message}` });
+          continue;
+        }
+        const result = await client.syncPassport(token, parseResult.data);
         results.push({ name: manifest.name, ...result });
         if (result.action === 'created') created++;
         if (result.action === 'updated') updated++;
@@ -257,7 +263,13 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
       toolsDetected,
     };
 
-    const result = await client.syncScan(token, payload);
+    const parseResult = SyncScanSchema.safeParse(payload);
+    if (!parseResult.success) {
+      log.warn(`Scan sync validation failed: ${parseResult.error.message}`);
+      return c.json({ processed: 0, tools: [], message: `Validation failed: ${parseResult.error.message}` });
+    }
+
+    const result = await client.syncScan(token, parseResult.data);
     return c.json(result);
   });
 
@@ -341,7 +353,13 @@ export const createSyncRoute = (deps: SyncRouteDeps) => {
       return c.json({ synced: 0, created: 0, updated: 0, results: [], message: 'No mappable docs found' });
     }
 
-    const result = await client.syncDocuments(token, documents);
+    const parseResult = SyncDocumentsSchema.safeParse({ documents });
+    if (!parseResult.success) {
+      log.warn(`Documents sync validation failed, skipping: ${parseResult.error.message}`);
+      return c.json({ synced: 0, created: 0, updated: 0, results: [], message: `Validation failed: ${parseResult.error.message}` });
+    }
+
+    const result = await client.syncDocuments(token, parseResult.data.documents);
     return c.json(result);
   });
 
