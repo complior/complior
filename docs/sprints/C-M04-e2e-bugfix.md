@@ -268,26 +268,26 @@ bash scripts/verify_e2e_bugfix.sh
 
 **Progress:** 28/34 PASS (was 18/34 baseline → +10 improvement)
 
-### R2-1: eval --det POST probe (B-01) — nodejs-dev
+### R2-1: eval --det health check (B-01) — nodejs-dev — ✅ POST probe DONE, health check REMAINING
 
-**File:** `engine/core/src/domain/eval/adapters/auto-detect.ts`
-**Root cause:** Dev implemented step 1 (URL path heuristic) but NOT step 2 (POST probe). When URL is `http://localhost:4000` (no `/v1/chat/completions` in path), auto-detect still falls back to HTTP adapter.
+**Status:** POST probe (R2-1 from Round 2) is IMPLEMENTED and WORKS — auto-detect correctly selects OpenAI adapter.
+But OpenAI adapter's `checkHealth()` fails because it GETs `/v1/models` (returns 404 on eval-target).
 
-**Fix:** After step 3 (Ollama probe) and step 4 (URL heuristic), add step 4.5:
+**Root cause chain (verified via engine logs):**
+1. ✅ `tryOpenAIPost(baseUrl)` → POST `/v1/chat/completions` → 200 → OpenAI adapter created
+2. ❌ `adapter.checkHealth()` → GET `/v1/models` → 404 → `isHealthy(404) = false` → throws "Target not reachable"
+
+**File:** `engine/core/src/domain/eval/adapters/openai-adapter.ts` line 55
+**Fix (1 line):**
 ```typescript
-// Step 4.5: POST probe — try sending minimal OpenAI request to /v1/chat/completions
-try {
-  const probeRes = await fetch(`${baseUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: model || 'test', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
-  });
-  if (probeRes.status !== 404) {
-    // Endpoint exists (even 400/401 means it's OpenAI-compatible)
-    return createOpenAIAdapter(baseUrl, model, apiKey);
-  }
-} catch { /* not OpenAI */ }
+// BEFORE:
+isHealthy: (status) => status === 200,
+// AFTER:
+isHealthy: (status) => status < 500,
 ```
+
+This matches the HTTP adapter's health check behavior (`res.status < 500`) and allows
+OpenAI-compatible endpoints that don't expose `/v1/models` to pass health checks.
 
 ### R2-2: fix --dry-run score path (U-03) — rust-dev
 

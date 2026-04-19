@@ -1008,7 +1008,10 @@ async fn run_passport_autonomy(
 
     if !json {
         if let Some(n) = name {
-            println!("Analyzing autonomy for '{n}' in {}...", project_path.display());
+            println!(
+                "Analyzing autonomy for '{n}' in {}...",
+                project_path.display()
+            );
         } else {
             println!("Analyzing autonomy in {}...", project_path.display());
         }
@@ -1535,7 +1538,11 @@ async fn run_passport_registry(
 
     if !json {
         if let Some(n) = name {
-            println!("Agent Compliance Registry for '{}' in {}...", n, project_path.display());
+            println!(
+                "Agent Compliance Registry for '{}' in {}...",
+                n,
+                project_path.display()
+            );
         } else {
             println!("Agent Compliance Registry in {}...", project_path.display());
         }

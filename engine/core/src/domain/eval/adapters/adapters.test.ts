@@ -319,6 +319,35 @@ describe('autoDetectAdapter', () => {
   });
 });
 
+// ── C-M04 R3: OpenAI adapter health check tolerance ─────────
+// The OpenAI adapter health check should NOT require /v1/models to return 200.
+// Many OpenAI-compatible servers (LiteLLM, vLLM, custom proxies) expose
+// /v1/chat/completions but NOT /v1/models. Health check should be lenient.
+
+describe('OpenAI adapter checkHealth', () => {
+  it('passes health check when /v1/models returns 404 (B-01)', async () => {
+    // Target has no /v1/models endpoint (returns 404), but is otherwise reachable.
+    // Health check should still pass (404 is not a server error).
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) return { status: 404, ok: false };
+      return { status: 200, ok: true };
+    });
+    const adapter = createOpenAIAdapter('http://localhost:4000');
+    const healthy = await adapter.checkHealth();
+    expect(healthy).toBe(true);
+  });
+
+  it('fails health check when /v1/models returns 500', async () => {
+    // Server error means target is broken — health check should fail.
+    mockFetch.mockImplementation(async () => {
+      return { status: 500, ok: false };
+    });
+    const adapter = createOpenAIAdapter('http://localhost:4000');
+    const healthy = await adapter.checkHealth();
+    expect(healthy).toBe(false);
+  });
+});
+
 // ── safeJsonParse ──────────────────────────────────────────────
 
 describe('safeJsonParse', () => {
