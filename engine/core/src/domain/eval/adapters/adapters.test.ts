@@ -209,6 +209,143 @@ describe('autoDetectAdapter', () => {
     const adapter = await autoDetectAdapter('http://localhost:9999');
     expect(adapter.name).toBe('http');
   });
+
+  // ── C-M04 T-1: URL path heuristic for auto-detection ──────────
+
+  it('uses OpenAI adapter when URL contains /v1/chat/completions (B-01)', async () => {
+    // Target has /v1/chat/completions but NO /v1/models endpoint.
+    // Auto-detect should recognize the URL path and use OpenAI adapter.
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) throw new Error('not found');
+      if (url.includes('/api/tags')) throw new Error('not found');
+      // The actual completions endpoint works:
+      if (url.includes('/v1/chat/completions')) {
+        return jsonResponse({ choices: [{ message: { content: 'hello' } }] });
+      }
+      throw new Error('not found');
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000/v1/chat/completions');
+    expect(adapter.name).toBe('openai');
+  });
+
+  it('OpenAI adapter from URL heuristic sends correct {messages} format (B-01)', async () => {
+    // When auto-detect picks OpenAI from URL path, the adapter must send
+    // {messages: [{role: "user", content: "probe"}]} NOT {message: "probe"}.
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) throw new Error('not found');
+      if (url.includes('/api/tags')) throw new Error('not found');
+      return jsonResponse({ choices: [{ message: { content: 'I am AI' } }] });
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000/v1/chat/completions');
+    await adapter.send('Are you AI?');
+
+    // Find the POST call to /v1/chat/completions (not the probe GETs)
+    const postCalls = mockFetch.mock.calls.filter(
+      (call) => (call[1] as RequestInit)?.method === 'POST'
+        || (call[1] as RequestInit)?.body !== undefined,
+    );
+    expect(postCalls.length).toBeGreaterThan(0);
+    const body = JSON.parse(postCalls[0]![1]!.body as string);
+    expect(body.messages).toBeDefined();
+    expect(body.messages[0].role).toBe('user');
+    expect(body.messages[0].content).toBe('Are you AI?');
+    // Must NOT have the HTTP adapter's {message} field
+    expect(body.message).toBeUndefined();
+  });
+
+  it('does NOT double-append /v1/chat/completions when URL already contains it (B-01)', async () => {
+    // When URL is http://host:4000/v1/chat/completions, OpenAI adapter
+    // must NOT create http://host:4000/v1/chat/completions/v1/chat/completions
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) throw new Error('not found');
+      if (url.includes('/api/tags')) throw new Error('not found');
+      return jsonResponse({ choices: [{ message: { content: 'ok' } }] });
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000/v1/chat/completions');
+    await adapter.send('test');
+
+    const postCalls = mockFetch.mock.calls.filter(
+      (call) => (call[1] as RequestInit)?.body !== undefined,
+    );
+    for (const call of postCalls) {
+      const url = call[0] as string;
+      // URL must NOT contain double path
+      expect(url).not.toContain('/v1/chat/completions/v1/chat/completions');
+    }
+  });
+
+  // ── C-M04 R2-1: POST probe to /v1/chat/completions ─────────────
+
+  it('uses OpenAI adapter when POST /v1/chat/completions succeeds (B-01)', async () => {
+    // Target URL has no /v1/chat/completions path, /v1/models returns 404,
+    // /api/tags returns 404 — but POST to /v1/chat/completions returns 200.
+    // Auto-detect should fall through to POST probe and use OpenAI adapter.
+    mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+      if (url.includes('/v1/models')) return { status: 404, ok: false };
+      if (url.includes('/api/tags')) return { status: 404, ok: false };
+      // POST probe succeeds
+      if (opts?.method === 'POST' && url.includes('/v1/chat/completions')) {
+        return jsonResponse({ choices: [{ message: { content: 'pong' } }] });
+      }
+      return { status: 404, ok: false };
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000');
+    expect(adapter.name).toBe('openai');
+  });
+
+  it('sends correct {messages} format after POST probe detection (B-01)', async () => {
+    // After POST probe selects OpenAI adapter, it must send {messages} not {message}.
+    mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+      if (url.includes('/v1/models')) return { status: 404, ok: false };
+      if (url.includes('/api/tags')) return { status: 404, ok: false };
+      if (opts?.method === 'POST' && url.includes('/v1/chat/completions')) {
+        return jsonResponse({ choices: [{ message: { content: 'pong' } }] });
+      }
+      return { status: 404, ok: false };
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000');
+    await adapter.send('test probe');
+
+    // Find POST call — second POST is from adapter.send() (first is POST probe)
+    const postCalls = mockFetch.mock.calls.filter(
+      (call) => (call[1] as RequestInit)?.method === 'POST',
+    );
+    expect(postCalls.length).toBe(2); // POST probe + send call
+    const body = JSON.parse(postCalls[1]![1]!.body as string);
+    expect(body.messages).toBeDefined();
+    expect(body.messages[0].role).toBe('user');
+    expect(body.messages[0].content).toBe('test probe');
+    expect(body.message).toBeUndefined();
+  });
+});
+
+// ── C-M04 R3: OpenAI adapter health check tolerance ─────────
+// The OpenAI adapter health check should NOT require /v1/models to return 200.
+// Many OpenAI-compatible servers (LiteLLM, vLLM, custom proxies) expose
+// /v1/chat/completions but NOT /v1/models. Health check should be lenient.
+
+describe('OpenAI adapter checkHealth', () => {
+  it('passes health check when /v1/models returns 404 (B-01)', async () => {
+    // Target has no /v1/models endpoint (returns 404), but is otherwise reachable.
+    // Health check should still pass (404 is not a server error).
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) return { status: 404, ok: false };
+      return { status: 200, ok: true };
+    });
+    const adapter = createOpenAIAdapter('http://localhost:4000');
+    const healthy = await adapter.checkHealth();
+    expect(healthy).toBe(true);
+  });
+
+  it('fails health check when /v1/models returns 500', async () => {
+    // Server error means target is broken — health check should fail.
+    mockFetch.mockImplementation(async () => {
+      return { status: 500, ok: false };
+    });
+    const adapter = createOpenAIAdapter('http://localhost:4000');
+    const healthy = await adapter.checkHealth();
+    expect(healthy).toBe(false);
+  });
 });
 
 // ── safeJsonParse ──────────────────────────────────────────────

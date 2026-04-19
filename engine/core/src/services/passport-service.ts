@@ -97,13 +97,29 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     projectPath?: string,
     overrides?: Record<string, unknown>,
     force?: boolean,
+    agentName?: string,
   ): Promise<InitPassportResult> => {
     const path = projectPath ?? getProjectPath();
     const ctx = await collectFiles(path);
     const parsedDeps = parseDepsFromContext(ctx);
-    const agents = discoverAgents(ctx, parsedDeps);
+    let agents = discoverAgents(ctx, parsedDeps);
 
-    if (agents.length === 0) return { manifests: [], savedPaths: [], skipped: [] };
+    // T-13: Filter by agent name if provided (passport init <name>)
+    if (agentName !== undefined) {
+      agents = agents.filter(a => a.name === agentName);
+    }
+
+    if (agents.length === 0) {
+      // If filtered but no match, return empty with helpful message
+      if (agentName !== undefined) {
+        return {
+          manifests: [],
+          savedPaths: [],
+          skipped: [],
+        };
+      }
+      return { manifests: [], savedPaths: [], skipped: [] };
+    }
 
     const l3Results = runLayer3(ctx);
     const l4Results = runLayer4(ctx, l3Results);

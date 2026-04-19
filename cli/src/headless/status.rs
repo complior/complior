@@ -185,7 +185,7 @@ fn render_categories(o: &mut String, posture: &CompliancePosture, w: usize) {
 
         let bar = build_category_bar(cat.score);
         let score_colored = score_color(cat.score, &format!("{:.0}", cat.score));
-        let weight_pct = (cat.weight * 100.0).round() as usize;
+        let weight_pct = cat.weight.round() as usize;
 
         o.push_str(&format!(
             "  {} {}  {}  {}\n",

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createFixRoute, type FixRouteDeps } from './fix.route.js';
 import type { FixService } from '../../services/fix-service.js';
 import type { UndoService } from '../../services/undo-service.js';
+import type { PassportService } from '../../services/passport-service.js';
 
 /** Minimal mock that satisfies the route's usage of FixService. */
 const createMockFixService = (overrides: Partial<FixService> = {}): FixService =>
@@ -24,6 +25,14 @@ const createMockUndoService = (): UndoService =>
     getHistory: vi.fn().mockResolvedValue([]),
   }) as unknown as UndoService;
 
+const createMockPassportService = (overrides: Partial<PassportService> = {}): PassportService =>
+  ({
+    generateDocByType: vi.fn().mockResolvedValue({ savedPath: 'docs/test.md', prefilledFields: 5, manualFields: ['field1'] }),
+    generateAllDocs: vi.fn().mockResolvedValue({ documents: [{ docType: 'ai-literacy', savedPath: 'docs/test.md' }], total: 1 }),
+    listPassports: vi.fn().mockResolvedValue([]),
+    ...overrides,
+  }) as unknown as PassportService;
+
 /** Parse an SSE text body into an array of { event, data } objects. */
 const parseSSE = (text: string): { event: string; data: string }[] => {
   const events: { event: string; data: string }[] = [];
@@ -42,12 +51,14 @@ const parseSSE = (text: string): { event: string; data: string }[] => {
 describe('fix route', () => {
   let fixService: FixService;
   let undoService: UndoService;
+  let passportService: PassportService;
   let deps: FixRouteDeps;
 
   beforeEach(() => {
     fixService = createMockFixService();
     undoService = createMockUndoService();
-    deps = { fixService, undoService };
+    passportService = createMockPassportService();
+    deps = { fixService, undoService, passportService };
   });
 
   describe('GET /fix/preview', () => {
@@ -185,6 +196,46 @@ describe('fix route', () => {
       // clearInterval should still have been called (finally block)
       expect(clearSpy).toHaveBeenCalled();
       clearSpy.mockRestore();
+    });
+  });
+
+  // ── C-M04 T-2: fix --doc all — "all" accepted and delegates to generateAllDocs ─────
+
+  describe('POST /fix/doc/generate', () => {
+    it('accepts docType "all" and calls generateAllDocs (B-04)', async () => {
+      const app = createFixRoute(deps);
+      const res = await app.request('/fix/doc/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'my-bot', docType: 'all', path: '/tmp' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(passportService.generateAllDocs).toHaveBeenCalledWith(
+        'my-bot',
+        '/tmp',
+        { organization: undefined },
+      );
+      // generateDocByType should NOT be called for "all"
+      expect(passportService.generateDocByType).not.toHaveBeenCalled();
+    });
+
+    it('still calls generateDocByType for specific doc types (B-04 regression)', async () => {
+      const app = createFixRoute(deps);
+      const res = await app.request('/fix/doc/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'my-bot', docType: 'ai-literacy', path: '/tmp' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(passportService.generateDocByType).toHaveBeenCalledWith(
+        'my-bot',
+        'ai-literacy',
+        '/tmp',
+        { organization: undefined },
+      );
+      expect(passportService.generateAllDocs).not.toHaveBeenCalled();
     });
   });
 });
