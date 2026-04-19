@@ -1,18 +1,17 @@
 /**
- * RED tests for C-M02: sync route MUST send data matching @complior/contracts schemas.
+ * Contract tests for sync routes — validates payload shapes against @complior/contracts schemas.
  *
- * These tests validate the SHAPE of payloads sent to SaaS, not SaaS responses.
- * They specify:
- * 1. mapPassport() output has NO extendedFields key — all fields are top-level typed
- * 2. Scan findings use checkId NOT tool field
- * 3. FRIA payloads are validated against SyncFriaSchema before sync
+ * C-M02: Shape validation (extendedFields removal, checkId canonical, FRIA schema)
+ * C-M03: Pre-send validation (all 4 endpoints must safeParse before sending to SaaS)
  *
  * @see docs/sprints/C-M02-saas-contracts-migration.md
+ * @see docs/sprints/C-M03-cli-presend-validation.md
  */
 import { describe, it, expect } from 'vitest';
 import {
   SyncPassportSchema,
   SyncScanSchema,
+  SyncDocumentsSchema,
   SyncFriaSchema,
 } from '@complior/contracts/sync';
 
@@ -331,5 +330,127 @@ describe('FRIA payload validation', () => {
     };
     const result = SyncFriaSchema.safeParse(payload);
     expect(result.success).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// C-M03: CLI Pre-Send Validation
+// All 4 sync endpoints must safeParse() payloads BEFORE sending to SaaS.
+// Invalid data is logged and skipped, never sent.
+// @see docs/sprints/C-M03-cli-presend-validation.md
+// ═══════════════════════════════════════════════════════════════════════
+
+// ─── CLI pre-send validation: passport ────────────────────────────────
+
+describe('CLI pre-send validation: passport', () => {
+  it('valid passport passes SyncPassportSchema.safeParse()', () => {
+    // Minimal valid passport from mapPassport() must validate
+    const payload = { name: 'test-agent', vendorName: 'ACME', framework: 'langchain' };
+    const result = SyncPassportSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+  });
+
+  it('passport without name is rejected by safeParse()', () => {
+    // name is z.string().min(1).max(255) — required field
+    const payload = { vendorName: 'ACME', framework: 'langchain' };
+    const result = SyncPassportSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it('passport with name exceeding 255 chars is rejected', () => {
+    // name has .max(255) constraint
+    const payload = { name: 'a'.repeat(256) };
+    const result = SyncPassportSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── CLI pre-send validation: scan ────────────────────────────────────
+
+describe('CLI pre-send validation: scan', () => {
+  it('valid scan payload passes SyncScanSchema.safeParse()', () => {
+    const payload = {
+      projectPath: '/home/user/project',
+      score: 75,
+      findings: [{ checkId: 'l1-fria', severity: 'high' as const, message: 'Missing FRIA' }],
+      toolsDetected: [{ name: 'openai' }],
+    };
+    const result = SyncScanSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+  });
+
+  it('scan without toolsDetected is rejected', () => {
+    // toolsDetected is z.array().min(1) — required, not optional
+    const payload = { projectPath: '/path', findings: [] };
+    const result = SyncScanSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it('scan with empty toolsDetected is rejected (min 1)', () => {
+    // toolsDetected has .min(1) — empty array fails
+    const payload = { projectPath: '/path', findings: [], toolsDetected: [] };
+    const result = SyncScanSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it('scan with score > 100 is rejected', () => {
+    // score is z.number().min(0).max(100) — 150 exceeds max
+    const payload = {
+      projectPath: '/path',
+      score: 150,
+      findings: [],
+      toolsDetected: [{ name: 'x' }],
+    };
+    const result = SyncScanSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── CLI pre-send validation: documents ───────────────────────────────
+
+describe('CLI pre-send validation: documents', () => {
+  it('valid documents payload passes SyncDocumentsSchema.safeParse()', () => {
+    const payload = {
+      documents: [{
+        type: 'fria' as const,
+        title: 'FRIA Report',
+        content: '# FRIA\nContent here...',
+      }],
+    };
+    const result = SyncDocumentsSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+  });
+
+  it('documents with empty array is rejected (min 1)', () => {
+    // documents has .min(1) — empty array fails
+    const payload = { documents: [] };
+    const result = SyncDocumentsSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it('document with invalid type is rejected', () => {
+    // type is z.enum(SYNC_DOC_TYPES) — 'invalid_type' not in enum
+    const payload = {
+      documents: [{
+        type: 'invalid_type',
+        title: 'Bad Doc',
+        content: 'content',
+      }],
+    };
+    const result = SyncDocumentsSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it('document with empty content is rejected', () => {
+    // content is z.string().min(1) — empty string fails
+    const payload = {
+      documents: [{
+        type: 'fria' as const,
+        title: 'FRIA',
+        content: '',
+      }],
+    };
+    const result = SyncDocumentsSchema.safeParse(payload);
+    expect(result.success).toBe(false);
   });
 });
