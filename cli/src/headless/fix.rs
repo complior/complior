@@ -49,12 +49,17 @@ pub async fn run_headless_fix(
             .filter_map(|f| f.get("checkId").and_then(|v| v.as_str()).map(String::from))
             .collect();
         // Get current score from status endpoint (lightweight, no re-scan)
-        let score = client
-            .get_json("/status")
-            .await
-            .ok()
-            .and_then(|v| v.get("score").and_then(serde_json::Value::as_f64))
-            .unwrap_or(0.0);
+        // R2-2: /status returns {"lastScan": {"score": ...}}, not {"score": ...}
+        let score = match client.get_json("/status").await.ok() {
+            Some(v) => match v.get("lastScan") {
+                Some(ls) => match ls.get("score") {
+                    Some(sv) => sv.as_f64().unwrap_or(0.0),
+                    None => 0.0,
+                },
+                None => 0.0,
+            },
+            None => 0.0,
+        };
         (check_ids, score)
     } else {
         // No previous scan — run a fresh one

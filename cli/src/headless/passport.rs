@@ -109,8 +109,8 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
         PassportAction::Show { name, json, path } => {
             run_passport_show(name, *json, path.as_deref(), config).await
         }
-        PassportAction::Autonomy { json, path } => {
-            run_passport_autonomy(*json, path.as_deref(), config).await
+        PassportAction::Autonomy { name, json, path } => {
+            run_passport_autonomy(name.as_deref(), *json, path.as_deref(), config).await
         }
         PassportAction::Validate {
             name,
@@ -140,14 +140,14 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
             json,
             path,
         } => run_passport_export(name, format, *json, path.as_deref(), config).await,
-        PassportAction::Registry { json, path } => {
-            run_passport_registry(*json, path.as_deref(), config).await
+        PassportAction::Registry { name, json, path } => {
+            run_passport_registry(name.as_deref(), *json, path.as_deref(), config).await
         }
         PassportAction::Evidence { json, verify, path } => {
             run_passport_evidence(*json, *verify, path.as_deref(), config).await
         }
-        PassportAction::Permissions { json, path } => {
-            run_passport_permissions(*json, path.as_deref(), config).await
+        PassportAction::Permissions { name, json, path } => {
+            run_passport_permissions(name.as_deref(), *json, path.as_deref(), config).await
         }
         PassportAction::Diff { name, path, json } => {
             run_passport_diff(name, path.as_deref(), *json, config).await
@@ -998,11 +998,20 @@ async fn run_passport_show(name: &str, json: bool, path: Option<&str>, config: &
 
 // --- C.S02: Autonomy analysis ---
 
-async fn run_passport_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_autonomy(
+    name: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     if !json {
-        println!("Analyzing autonomy in {}...", project_path.display());
+        if let Some(n) = name {
+            println!("Analyzing autonomy for '{n}' in {}...", project_path.display());
+        } else {
+            println!("Analyzing autonomy in {}...", project_path.display());
+        }
     }
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -1010,10 +1019,18 @@ async fn run_passport_autonomy(json: bool, path: Option<&str>, config: &TuiConfi
         Err(code) => return code,
     };
 
-    let url = format!(
-        "/passport/autonomy?path={}",
-        url_encode(&project_path.to_string_lossy())
-    );
+    let url = if let Some(n) = name {
+        format!(
+            "/passport/autonomy?path={}&name={}",
+            url_encode(&project_path.to_string_lossy()),
+            url_encode(n)
+        )
+    } else {
+        format!(
+            "/passport/autonomy?path={}",
+            url_encode(&project_path.to_string_lossy())
+        )
+    };
     match client.get_json(&url).await {
         Ok(result) => {
             // Check for engine error response
@@ -1508,18 +1525,39 @@ async fn run_passport_export(
 
 // --- US-S05-13: Agent Registry ---
 
-async fn run_passport_registry(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_registry(
+    name: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
+
+    if !json {
+        if let Some(n) = name {
+            println!("Agent Compliance Registry for '{}' in {}...", n, project_path.display());
+        } else {
+            println!("Agent Compliance Registry in {}...", project_path.display());
+        }
+    }
 
     let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
 
-    let url = format!(
-        "/passport/registry?path={}",
-        url_encode(&project_path.to_string_lossy())
-    );
+    let url = if let Some(n) = name {
+        format!(
+            "/passport/registry?path={}&name={}",
+            url_encode(&project_path.to_string_lossy()),
+            url_encode(n)
+        )
+    } else {
+        format!(
+            "/passport/registry?path={}",
+            url_encode(&project_path.to_string_lossy())
+        )
+    };
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
@@ -1633,7 +1671,12 @@ async fn run_passport_registry(json: bool, path: Option<&str>, config: &TuiConfi
 
 // --- US-S05-14: Permissions matrix ---
 
-async fn run_passport_permissions(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_permissions(
+    name: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -1641,10 +1684,18 @@ async fn run_passport_permissions(json: bool, path: Option<&str>, config: &TuiCo
         Err(code) => return code,
     };
 
-    let url = format!(
-        "/passport/permissions?path={}",
-        url_encode(&project_path.to_string_lossy())
-    );
+    let url = if let Some(n) = name {
+        format!(
+            "/passport/permissions?path={}&name={}",
+            url_encode(&project_path.to_string_lossy()),
+            url_encode(n)
+        )
+    } else {
+        format!(
+            "/passport/permissions?path={}",
+            url_encode(&project_path.to_string_lossy())
+        )
+    };
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {

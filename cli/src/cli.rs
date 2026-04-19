@@ -632,6 +632,9 @@ pub enum PassportAction {
     },
     /// Analyze project autonomy level (L1-L5) without generating a passport
     Autonomy {
+        /// Agent name (show breakdown for this agent only; omit for all agents)
+        name: Option<String>,
+
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -693,6 +696,9 @@ pub enum PassportAction {
     },
     /// Show unified per-agent compliance registry
     Registry {
+        /// Agent name (show this agent only; omit for all agents)
+        name: Option<String>,
+
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -715,6 +721,9 @@ pub enum PassportAction {
     },
     /// Show cross-agent permissions matrix and conflicts
     Permissions {
+        /// Agent name (show this agent's permissions only; omit for all agents)
+        name: Option<String>,
+
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -1444,8 +1453,9 @@ mod tests {
         let cli = Cli::parse_from(["complior", "passport", "autonomy"]);
         match &cli.command {
             Some(Command::Passport {
-                action: PassportAction::Autonomy { json, path },
+                action: PassportAction::Autonomy { name, json, path },
             }) => {
+                assert_eq!(name.as_deref(), None);
                 assert!(!json);
                 assert!(path.is_none());
             }
@@ -1468,12 +1478,30 @@ mod tests {
     }
 
     #[test]
-    fn cli_parse_passport_autonomy_path() {
-        let cli = Cli::parse_from(["complior", "passport", "autonomy", "/tmp/proj"]);
+    fn cli_parse_passport_autonomy_name_positional() {
+        // R2-3: positional name (E2E case: passport autonomy eval-target-openai)
+        let cli = Cli::parse_from(["complior", "passport", "autonomy", "eval-target-openai"]);
         match &cli.command {
             Some(Command::Passport {
-                action: PassportAction::Autonomy { path, .. },
+                action: PassportAction::Autonomy { name, json, path },
             }) => {
+                assert_eq!(name.as_deref(), Some("eval-target-openai"));
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Passport Autonomy command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_passport_autonomy_name_and_path() {
+        // R2-3: name and path as sequential positionals
+        let cli = Cli::parse_from(["complior", "passport", "autonomy", "my-agent", "/tmp/proj"]);
+        match &cli.command {
+            Some(Command::Passport {
+                action: PassportAction::Autonomy { name, path, .. },
+            }) => {
+                assert_eq!(name.as_deref(), Some("my-agent"));
                 assert_eq!(path.as_deref(), Some("/tmp/proj"));
             }
             _ => panic!("Expected Passport Autonomy command"),
@@ -1574,6 +1602,40 @@ mod tests {
                 assert!(*json);
             }
             _ => panic!("Expected Passport Completeness command"),
+        }
+    }
+
+    // R2-3: Passport subcommands with name positional arg
+
+    #[test]
+    fn cli_parse_passport_registry_name_positional() {
+        // R2-3: positional name (E2E: passport registry eval-target-openai)
+        let cli = Cli::parse_from(["complior", "passport", "registry", "eval-target-openai"]);
+        match &cli.command {
+            Some(Command::Passport {
+                action: PassportAction::Registry { name, json, path },
+            }) => {
+                assert_eq!(name.as_deref(), Some("eval-target-openai"));
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Passport Registry command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_passport_permissions_name_positional() {
+        // R2-3: positional name (E2E: passport permissions eval-target-openai)
+        let cli = Cli::parse_from(["complior", "passport", "permissions", "eval-target-openai"]);
+        match &cli.command {
+            Some(Command::Passport {
+                action: PassportAction::Permissions { name, json, path },
+            }) => {
+                assert_eq!(name.as_deref(), Some("eval-target-openai"));
+                assert!(!json);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Passport Permissions command"),
         }
     }
 
