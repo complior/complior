@@ -392,15 +392,23 @@ async fn main() -> color_eyre::Result<()> {
                         target_raw.clone()
                     };
 
-                    if !normalized_target.starts_with("http://") && !normalized_target.starts_with("https://") {
-                        eprintln!("Error: eval target must be an HTTP(S) URL, got: {normalized_target}");
+                    if !normalized_target.starts_with("http://")
+                        && !normalized_target.starts_with("https://")
+                    {
+                        eprintln!(
+                            "Error: eval target must be an HTTP(S) URL, got: {normalized_target}"
+                        );
                         eprintln!();
                         eprintln!("Usage: complior eval <url> [--det] [--llm] [--security]");
                         eprintln!("Example: complior eval http://localhost:4000/api/chat");
-                        eprintln!("Note: openai://, anthropic://, ollama:// protocol hints are supported.");
+                        eprintln!(
+                            "Note: openai://, anthropic://, ollama:// protocol hints are supported."
+                        );
                         eprintln!();
                         eprintln!("Eval tests a running AI endpoint dynamically.");
-                        eprintln!("To scan local source code, use: complior scan {normalized_target}");
+                        eprintln!(
+                            "To scan local source code, use: complior scan {normalized_target}"
+                        );
                         1
                     } else if *fix {
                         // Run eval then apply fixes

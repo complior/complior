@@ -398,7 +398,10 @@ pub async fn run_headless_scan(
             SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
             SeverityLevel::High => matches!(f.severity, Severity::Critical | Severity::High),
             SeverityLevel::Medium => {
-                matches!(f.severity, Severity::Critical | Severity::High | Severity::Medium)
+                matches!(
+                    f.severity,
+                    Severity::Critical | Severity::High | Severity::Medium
+                )
             }
             SeverityLevel::Low => {
                 matches!(

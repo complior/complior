@@ -90,7 +90,13 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
             json,
             path,
         } => run_passport_rename(old_name, new_name, *json, path.as_deref(), config).await,
-        PassportAction::Init { name, json, force, agent, path } => {
+        PassportAction::Init {
+            name,
+            json,
+            force,
+            agent,
+            path,
+        } => {
             // Positional `name` takes priority over `--agent` flag.
             let resolved_name = name.as_deref().or(agent.as_deref());
             run_passport_init(*json, *force, resolved_name, path.as_deref(), config).await
@@ -236,7 +242,10 @@ async fn run_passport_init(
     // Otherwise discover all agents in the project.
     if !json {
         if let Some(n) = name {
-            println!("Discovering AI agent '{n}' in {}...", project_path.display());
+            println!(
+                "Discovering AI agent '{n}' in {}...",
+                project_path.display()
+            );
         } else {
             println!("Discovering AI agents in {}...", project_path.display());
         }

@@ -1326,7 +1326,10 @@ mod tests {
         let cli = Cli::parse_from(["complior", "passport", "init", "--agent", "my-bot"]);
         match &cli.command {
             Some(Command::Passport {
-                action: PassportAction::Init { name, agent, path, .. },
+                action:
+                    PassportAction::Init {
+                        name, agent, path, ..
+                    },
             }) => {
                 assert_eq!(name.as_deref(), None);
                 assert_eq!(agent.as_deref(), Some("my-bot"));
@@ -1342,7 +1345,10 @@ mod tests {
         let cli = Cli::parse_from(["complior", "passport", "init", "my-test-agent"]);
         match &cli.command {
             Some(Command::Passport {
-                action: PassportAction::Init { name, agent, path, .. },
+                action:
+                    PassportAction::Init {
+                        name, agent, path, ..
+                    },
             }) => {
                 assert_eq!(name.as_deref(), Some("my-test-agent"));
                 assert_eq!(agent.as_deref(), None); // positional takes priority

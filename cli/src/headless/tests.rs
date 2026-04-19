@@ -722,7 +722,10 @@ mod tests {
         assert!(text.contains("Framework Breakdown"));
         assert!(text.contains("EU AI Act 2024/1689"));
         // T-5: Bar + number now use compliance score (72), not framework score (60)
-        assert!(text.contains("72 / 100"), "Framework breakdown should use compliance score 72 not fw.score 60");
+        assert!(
+            text.contains("72 / 100"),
+            "Framework breakdown should use compliance score 72 not fw.score 60"
+        );
         // Bar chart characters (uses ASCII fallback in test/CI environment)
         use crate::headless::format::colors::{bar_empty, bar_filled};
         assert!(text.contains(bar_filled()));
@@ -752,7 +755,10 @@ mod tests {
         let text = format_human(&result, &default_opts());
         assert!(text.contains("Generate docs"));
         // T-9: "complior docs generate --missing" replaced with "complior fix --doc <type>"
-        assert!(text.contains("complior fix --doc"), "Generate docs action should reference 'complior fix --doc <type>'");
+        assert!(
+            text.contains("complior fix --doc"),
+            "Generate docs action should reference 'complior fix --doc <type>'"
+        );
     }
 
     #[test]
@@ -1124,10 +1130,7 @@ mod tests {
         }
     }
 
-    fn make_finding_full(
-        check_id: &str,
-        severity: Severity,
-    ) -> Finding {
+    fn make_finding_full(check_id: &str, severity: Severity) -> Finding {
         Finding {
             check_id: check_id.into(),
             r#type: CheckResultType::Fail,
@@ -1159,9 +1162,7 @@ mod tests {
 
         let mut result = mock_scan_result();
         // Override findings to have exactly 1 medium severity finding
-        result.findings = vec![
-            make_finding_full("test-medium", Severity::Medium),
-        ];
+        result.findings = vec![make_finding_full("test-medium", Severity::Medium)];
 
         let fail_on = Some(SeverityLevel::Medium);
         let _ci = false; // NO --ci flag
@@ -1172,7 +1173,10 @@ mod tests {
                 SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
                 SeverityLevel::High => matches!(f.severity, Severity::Critical | Severity::High),
                 SeverityLevel::Medium => {
-                    matches!(f.severity, Severity::Critical | Severity::High | Severity::Medium)
+                    matches!(
+                        f.severity,
+                        Severity::Critical | Severity::High | Severity::Medium
+                    )
                 }
                 SeverityLevel::Low => {
                     matches!(
@@ -1203,9 +1207,7 @@ mod tests {
         use crate::cli::SeverityLevel;
 
         let mut result = mock_scan_result();
-        result.findings = vec![
-            make_finding_full("test-low", Severity::Low),
-        ];
+        result.findings = vec![make_finding_full("test-low", Severity::Low)];
 
         let fail_on = Some(SeverityLevel::Low);
         let exit_code = if let Some(level) = fail_on {
@@ -1213,7 +1215,10 @@ mod tests {
                 SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
                 SeverityLevel::High => matches!(f.severity, Severity::Critical | Severity::High),
                 SeverityLevel::Medium => {
-                    matches!(f.severity, Severity::Critical | Severity::High | Severity::Medium)
+                    matches!(
+                        f.severity,
+                        Severity::Critical | Severity::High | Severity::Medium
+                    )
                 }
                 SeverityLevel::Low => {
                     matches!(
@@ -1250,7 +1255,10 @@ mod tests {
                 SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
                 SeverityLevel::High => matches!(f.severity, Severity::Critical | Severity::High),
                 SeverityLevel::Medium => {
-                    matches!(f.severity, Severity::Critical | Severity::High | Severity::Medium)
+                    matches!(
+                        f.severity,
+                        Severity::Critical | Severity::High | Severity::Medium
+                    )
                 }
                 SeverityLevel::Low => {
                     matches!(
@@ -1276,9 +1284,7 @@ mod tests {
         use crate::cli::SeverityLevel;
 
         let mut result = mock_scan_result();
-        result.findings = vec![
-            make_finding_full("test-critical", Severity::Critical),
-        ];
+        result.findings = vec![make_finding_full("test-critical", Severity::Critical)];
 
         let fail_on = Some(SeverityLevel::High);
         let exit_code = if let Some(level) = fail_on {
@@ -1286,7 +1292,10 @@ mod tests {
                 SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
                 SeverityLevel::High => matches!(f.severity, Severity::Critical | Severity::High),
                 SeverityLevel::Medium => {
-                    matches!(f.severity, Severity::Critical | Severity::High | Severity::Medium)
+                    matches!(
+                        f.severity,
+                        Severity::Critical | Severity::High | Severity::Medium
+                    )
                 }
                 SeverityLevel::Low => {
                     matches!(
@@ -1316,21 +1325,19 @@ mod tests {
         // Override compliance score to 72.0
         result.score.total_score = 72.0;
         let opts = FormatOptions {
-            framework_scores: Some(vec![
-                FrameworkScoreResult {
-                    framework_id: "eu-ai-act".into(),
-                    framework_name: "EU AI Act 2024/1689".into(),
-                    // Framework-specific score (e.g. unweighted) is DIFFERENT from compliance score
-                    score: 82.0,
-                    grade: "B".into(),
-                    grade_type: "letter".into(),
-                    gaps: 5,
-                    total_checks: 25,
-                    passed_checks: 18,
-                    deadline: None,
-                    categories: vec![],
-                },
-            ]),
+            framework_scores: Some(vec![FrameworkScoreResult {
+                framework_id: "eu-ai-act".into(),
+                framework_name: "EU AI Act 2024/1689".into(),
+                // Framework-specific score (e.g. unweighted) is DIFFERENT from compliance score
+                score: 82.0,
+                grade: "B".into(),
+                grade_type: "letter".into(),
+                gaps: 5,
+                total_checks: 25,
+                passed_checks: 18,
+                deadline: None,
+                categories: vec![],
+            }]),
             quiet: false,
             prev_score: None,
         };
@@ -1360,20 +1367,18 @@ mod tests {
         let mut result = mock_scan_result();
         result.score.total_score = 85.0;
         let opts = FormatOptions {
-            framework_scores: Some(vec![
-                FrameworkScoreResult {
-                    framework_id: "eu-ai-act".into(),
-                    framework_name: "EU AI Act 2024/1689".into(),
-                    score: 85.0, // Same as compliance score
-                    grade: "B".into(),
-                    grade_type: "letter".into(),
-                    gaps: 3,
-                    total_checks: 20,
-                    passed_checks: 17,
-                    deadline: None,
-                    categories: vec![],
-                },
-            ]),
+            framework_scores: Some(vec![FrameworkScoreResult {
+                framework_id: "eu-ai-act".into(),
+                framework_name: "EU AI Act 2024/1689".into(),
+                score: 85.0, // Same as compliance score
+                grade: "B".into(),
+                grade_type: "letter".into(),
+                gaps: 3,
+                total_checks: 20,
+                passed_checks: 17,
+                deadline: None,
+                categories: vec![],
+            }]),
             quiet: false,
             prev_score: None,
         };
@@ -1429,7 +1434,6 @@ mod tests {
     /// with "must be HTTP(S) URL" validation.
     #[test]
     fn protocol_hints_normalized_to_http() {
-
         // Simulate the normalization logic from main.rs
         fn normalize(target_raw: &str) -> String {
             target_raw
@@ -1447,22 +1451,37 @@ mod tests {
         }
 
         // openai://localhost:4000 → http://localhost:4000
-        assert_eq!(normalize("openai://localhost:4000"), "http://localhost:4000");
+        assert_eq!(
+            normalize("openai://localhost:4000"),
+            "http://localhost:4000"
+        );
 
         // openai://http://localhost:4000 → http://localhost:4000
-        assert_eq!(normalize("openai://http://localhost:4000"), "http://localhost:4000");
+        assert_eq!(
+            normalize("openai://http://localhost:4000"),
+            "http://localhost:4000"
+        );
 
         // anthropic://api.anthropic.com → http://api.anthropic.com
-        assert_eq!(normalize("anthropic://api.anthropic.com"), "http://api.anthropic.com");
+        assert_eq!(
+            normalize("anthropic://api.anthropic.com"),
+            "http://api.anthropic.com"
+        );
 
         // ollama://localhost:11434 → http://localhost:11434
-        assert_eq!(normalize("ollama://localhost:11434"), "http://localhost:11434");
+        assert_eq!(
+            normalize("ollama://localhost:11434"),
+            "http://localhost:11434"
+        );
 
         // http://localhost:4000 → unchanged
         assert_eq!(normalize("http://localhost:4000"), "http://localhost:4000");
 
         // https://api.openai.com/v1/chat → unchanged
-        assert_eq!(normalize("https://api.openai.com/v1/chat"), "https://api.openai.com/v1/chat");
+        assert_eq!(
+            normalize("https://api.openai.com/v1/chat"),
+            "https://api.openai.com/v1/chat"
+        );
 
         // No protocol → unchanged
         assert_eq!(normalize("localhost:4000"), "localhost:4000"); // no http prefix
