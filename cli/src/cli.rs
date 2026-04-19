@@ -585,6 +585,10 @@ pub enum PassportAction {
     },
     /// Auto-generate Agent Passport from codebase analysis
     Init {
+        /// Agent name — if provided, init only that agent (not all discovered agents).
+        /// If not provided, discovers and creates all agents found.
+        name: Option<String>,
+
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -592,6 +596,11 @@ pub enum PassportAction {
         /// Overwrite existing passports (default: skip)
         #[arg(long)]
         force: bool,
+
+        /// Agent name — if provided, init only that agent (not all discovered agents).
+        /// If not provided, discovers and creates all agents found.
+        #[arg(long)]
+        agent: Option<String>,
 
         /// Project path (default: current directory)
         path: Option<String>,
@@ -1312,12 +1321,46 @@ mod tests {
     }
 
     #[test]
-    fn cli_parse_passport_init_path() {
-        let cli = Cli::parse_from(["complior", "passport", "init", "/tmp/project"]);
+    fn cli_parse_passport_init_with_agent() {
+        // --agent flag form
+        let cli = Cli::parse_from(["complior", "passport", "init", "--agent", "my-bot"]);
         match &cli.command {
             Some(Command::Passport {
-                action: PassportAction::Init { path, .. },
+                action: PassportAction::Init { name, agent, path, .. },
             }) => {
+                assert_eq!(name.as_deref(), None);
+                assert_eq!(agent.as_deref(), Some("my-bot"));
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Passport Init command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_passport_init_name_positional() {
+        // T-13: positional <name> form (matches E2E: passport init my-test-agent)
+        let cli = Cli::parse_from(["complior", "passport", "init", "my-test-agent"]);
+        match &cli.command {
+            Some(Command::Passport {
+                action: PassportAction::Init { name, agent, path, .. },
+            }) => {
+                assert_eq!(name.as_deref(), Some("my-test-agent"));
+                assert_eq!(agent.as_deref(), None); // positional takes priority
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected Passport Init command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_passport_init_path() {
+        // passport init <name> <path>
+        let cli = Cli::parse_from(["complior", "passport", "init", "my-agent", "/tmp/project"]);
+        match &cli.command {
+            Some(Command::Passport {
+                action: PassportAction::Init { name, path, .. },
+            }) => {
+                assert_eq!(name.as_deref(), Some("my-agent"));
                 assert_eq!(path.as_deref(), Some("/tmp/project"));
             }
             _ => panic!("Expected Passport Init command"),

@@ -90,8 +90,10 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
             json,
             path,
         } => run_passport_rename(old_name, new_name, *json, path.as_deref(), config).await,
-        PassportAction::Init { json, force, path } => {
-            run_passport_init(*json, *force, path.as_deref(), config).await
+        PassportAction::Init { name, json, force, agent, path } => {
+            // Positional `name` takes priority over `--agent` flag.
+            let resolved_name = name.as_deref().or(agent.as_deref());
+            run_passport_init(*json, *force, resolved_name, path.as_deref(), config).await
         }
         PassportAction::List {
             json,
@@ -221,11 +223,23 @@ async fn run_passport_rename(
     }
 }
 
-async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_init(
+    json: bool,
+    force: bool,
+    name: Option<&str>,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
+    // T-13: If `name` is provided, use it as the agent name filter.
+    // Otherwise discover all agents in the project.
     if !json {
-        println!("Discovering AI agents in {}...", project_path.display());
+        if let Some(n) = name {
+            println!("Discovering AI agent '{n}' in {}...", project_path.display());
+        } else {
+            println!("Discovering AI agents in {}...", project_path.display());
+        }
     }
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -233,11 +247,15 @@ async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: 
         Err(code) => return code,
     };
 
-    // Call engine to init passport
-    let body = serde_json::json!({
+    // Build request body
+    let mut body = serde_json::json!({
         "path": project_path.to_string_lossy(),
         "force": force,
     });
+    // T-13: Pass agent name filter to engine if provided
+    if let Some(n) = name {
+        body["agentName"] = serde_json::json!(n);
+    }
 
     match client.post_json("/passport/init", &body).await {
         Ok(result) => {
@@ -1225,8 +1243,10 @@ async fn run_passport_validate(
                 .unwrap_or(false);
             let completeness_score = result
                 .get("completeness")
-                .and_then(|c| c.get("score"))
-                .and_then(serde_json::Value::as_f64)
+                // B-07: /passport/validate returns completeness as raw number (74).
+                // /passport/completeness returns completeness as object {score, ...}.
+                // Handle both cases.
+                .and_then(|c| c.as_f64().or_else(|| c.get("score").and_then(serde_json::Value::as_f64)))
                 .unwrap_or(0.0);
 
             let status_icon = if valid { "PASS" } else { "FAIL" };

@@ -375,20 +375,37 @@ async fn main() -> color_eyre::Result<()> {
             }) => {
                 if *last {
                     headless::eval::run_eval_last(*json, *failures, *ci, *threshold, &config).await
-                } else if let Some(target) = target {
-                    if !target.starts_with("http://") && !target.starts_with("https://") {
-                        eprintln!("Error: eval target must be an HTTP(S) URL, got: {target}");
+                } else if let Some(target_raw) = target {
+                    // T-12: Strip protocol hints (openai://, anthropic://, ollama://)
+                    // so they become valid HTTP(S) URLs for the engine's parseProtocolHint().
+                    let normalized_target = if let Some(stripped) = target_raw
+                        .strip_prefix("openai://")
+                        .or_else(|| target_raw.strip_prefix("anthropic://"))
+                        .or_else(|| target_raw.strip_prefix("ollama://"))
+                    {
+                        if stripped.starts_with("http://") || stripped.starts_with("https://") {
+                            stripped.to_string()
+                        } else {
+                            format!("http://{stripped}")
+                        }
+                    } else {
+                        target_raw.clone()
+                    };
+
+                    if !normalized_target.starts_with("http://") && !normalized_target.starts_with("https://") {
+                        eprintln!("Error: eval target must be an HTTP(S) URL, got: {normalized_target}");
                         eprintln!();
                         eprintln!("Usage: complior eval <url> [--det] [--llm] [--security]");
                         eprintln!("Example: complior eval http://localhost:4000/api/chat");
+                        eprintln!("Note: openai://, anthropic://, ollama:// protocol hints are supported.");
                         eprintln!();
                         eprintln!("Eval tests a running AI endpoint dynamically.");
-                        eprintln!("To scan local source code, use: complior scan {target}");
+                        eprintln!("To scan local source code, use: complior scan {normalized_target}");
                         1
                     } else if *fix {
                         // Run eval then apply fixes
                         let code = headless::eval::run_eval_command(
-                            target,
+                            &normalized_target,
                             *det,
                             *llm,
                             *security,
@@ -419,7 +436,7 @@ async fn main() -> color_eyre::Result<()> {
                         }
                     } else {
                         headless::eval::run_eval_command(
-                            target,
+                            &normalized_target,
                             *det,
                             *llm,
                             *security,

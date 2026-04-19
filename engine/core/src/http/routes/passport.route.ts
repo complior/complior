@@ -24,6 +24,8 @@ const InitRequestSchema = z.object({
   path: z.string().min(1),
   overrides: z.record(z.unknown()).optional(),
   force: z.boolean().optional(),
+  // T-13: Filter init to only a specific agent name (passport init <name>)
+  agentName: z.string().optional(),
 });
 
 export const createPassportRoute = (passportService: PassportService) => {
@@ -36,6 +38,7 @@ export const createPassportRoute = (passportService: PassportService) => {
       data.path,
       data.overrides,
       data.force,
+      data.agentName,
     );
     return c.json(result);
   });

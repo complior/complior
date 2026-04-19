@@ -392,41 +392,37 @@ pub async fn run_headless_scan(
         }
     }
 
+    // Check fail-on severity (works independently of --ci)
+    if let Some(level) = fail_on {
+        let has_severity = result.findings.iter().any(|f| match level {
+            SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
+            SeverityLevel::High => matches!(f.severity, Severity::Critical | Severity::High),
+            SeverityLevel::Medium => {
+                matches!(f.severity, Severity::Critical | Severity::High | Severity::Medium)
+            }
+            SeverityLevel::Low => {
+                matches!(
+                    f.severity,
+                    Severity::Critical | Severity::High | Severity::Medium | Severity::Low
+                )
+            }
+        });
+        if has_severity {
+            let prefix = if ci { "CI FAIL" } else { "FAIL" };
+            eprintln!(
+                "{prefix}: Found findings at severity '{}' or above",
+                level.as_str()
+            );
+            return 2;
+        }
+    }
+
     // Determine exit code (2 = compliance threshold failure)
     if ci {
         let score = result.score.total_score.round() as u32;
         if score < threshold {
             eprintln!("CI FAIL: Score {score} is below threshold {threshold}");
             return 2;
-        }
-
-        // Check fail-on severity
-        if let Some(level) = fail_on {
-            let has_severity = result.findings.iter().any(|f| match level {
-                SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
-                SeverityLevel::High => {
-                    matches!(f.severity, Severity::Critical | Severity::High)
-                }
-                SeverityLevel::Medium => {
-                    matches!(
-                        f.severity,
-                        Severity::Critical | Severity::High | Severity::Medium
-                    )
-                }
-                SeverityLevel::Low => {
-                    matches!(
-                        f.severity,
-                        Severity::Critical | Severity::High | Severity::Medium | Severity::Low
-                    )
-                }
-            });
-            if has_severity {
-                eprintln!(
-                    "CI FAIL: Found findings at severity '{}' or above",
-                    level.as_str()
-                );
-                return 2;
-            }
         }
     }
 

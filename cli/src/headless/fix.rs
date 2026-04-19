@@ -1340,7 +1340,50 @@ const VALID_DOC_TYPES: &[&str] = &[
 
 /// Run `fix --doc <type> [agent]` — generate a compliance document.
 /// Agent name defaults to "default" if not provided.
+/// T-2: Special case `doc_type = "all"` generates all document types.
 pub async fn run_doc_generate_fix(
+    doc_type: &str,
+    agent: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    // T-2: Handle "all" as a special case that generates all document types.
+    if doc_type == "all" {
+        if json {
+            println!(
+                "{{\"action\": \"generate-all\", \"docTypes\": {}}}",
+                serde_json::to_string(VALID_DOC_TYPES).unwrap_or_default()
+            );
+        } else {
+            println!("Generating all compliance documents...\n");
+        }
+        let mut failures = 0;
+        for dtype in VALID_DOC_TYPES {
+            let code = run_doc_generate_single(dtype, agent, json, path, config).await;
+            if code != 0 {
+                failures += 1;
+                eprintln!("  [FAIL] {dtype}");
+            } else if !json {
+                println!("  [OK] {dtype}");
+            }
+        }
+        if !json {
+            println!(
+                "\nDone: {} types generated, {} failures.",
+                VALID_DOC_TYPES.len() - failures,
+                failures
+            );
+        }
+        i32::from(failures > 0)
+    } else {
+        run_doc_generate_single(doc_type, agent, json, path, config).await
+    }
+}
+
+/// Generate a single document type (called by run_doc_generate_fix for single types
+/// and by the "all" loop).
+async fn run_doc_generate_single(
     doc_type: &str,
     agent: Option<&str>,
     json: bool,

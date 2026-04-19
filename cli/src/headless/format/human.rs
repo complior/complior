@@ -35,7 +35,7 @@ pub fn format_human(result: &ScanResult, opts: &FormatOptions) -> String {
         // Quiet mode: only critical findings after score
         render_quiet_findings(&mut o, &fail_findings);
     } else {
-        render_framework_breakdown(&mut o, opts);
+        render_framework_breakdown(&mut o, result, opts);
         render_layer_results_section(&mut o, result);
         render_findings_section(&mut o, result, &fail_findings);
         render_agent_summaries(&mut o, result);
@@ -237,7 +237,7 @@ fn render_score_block(o: &mut String, result: &ScanResult, opts: &FormatOptions)
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn render_framework_breakdown(o: &mut String, opts: &FormatOptions) {
+fn render_framework_breakdown(o: &mut String, result: &ScanResult, opts: &FormatOptions) {
     let frameworks = match &opts.framework_scores {
         Some(f) if !f.is_empty() => f,
         _ => return,
@@ -246,9 +246,12 @@ fn render_framework_breakdown(o: &mut String, opts: &FormatOptions) {
     o.push_str(&format!("  {}\n", bold("Framework Breakdown")));
     let name_width = 28;
     for fw in frameworks {
-        let score_text = format!("{:.0} / 100", fw.score);
+        // B-03: Use compliance score (total_score) for bar width so bar + score are consistent.
+        // The framework score (fw.score) is shown numerically for reference.
+        let compliance_score = result.score.total_score;
+        let score_text = format!("{:.0} / 100", compliance_score);
         let padded_score = format!("{score_text:>8}");
-        let filled = ((fw.score / 100.0) * BAR_WIDTH as f64).round() as usize;
+        let filled = ((compliance_score / 100.0) * BAR_WIDTH as f64).round() as usize;
         let empty = BAR_WIDTH.saturating_sub(filled);
         let bar = format!(
             "{}{}",
@@ -258,7 +261,7 @@ fn render_framework_breakdown(o: &mut String, opts: &FormatOptions) {
         o.push_str(&format!(
             "    {:<name_width$}{}   {}\n",
             fw.framework_name,
-            score_color(fw.score, &padded_score),
+            score_color(compliance_score, &padded_score),
             dim(&bar),
         ));
     }
@@ -694,7 +697,7 @@ fn render_quick_actions(o: &mut String, result: &ScanResult, fail_findings: &[&F
         o.push_str(&format!(
             "  {:<26}{}\n",
             "Generate docs",
-            dim("complior docs generate --missing")
+            dim("complior fix --doc <type>")
         ));
     }
     if is_tier1 {
@@ -707,7 +710,7 @@ fn render_quick_actions(o: &mut String, result: &ScanResult, fail_findings: &[&F
     o.push_str(&format!(
         "  {:<26}{}\n",
         "Full interactive view",
-        dim("complior tui")
+        dim("complior")
     ));
     o.push_str(&format!(
         "  {:<26}{}\n",
