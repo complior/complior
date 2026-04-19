@@ -209,6 +209,70 @@ describe('autoDetectAdapter', () => {
     const adapter = await autoDetectAdapter('http://localhost:9999');
     expect(adapter.name).toBe('http');
   });
+
+  // ── C-M04 T-1: URL path heuristic for auto-detection ──────────
+
+  it('uses OpenAI adapter when URL contains /v1/chat/completions (B-01)', async () => {
+    // Target has /v1/chat/completions but NO /v1/models endpoint.
+    // Auto-detect should recognize the URL path and use OpenAI adapter.
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) throw new Error('not found');
+      if (url.includes('/api/tags')) throw new Error('not found');
+      // The actual completions endpoint works:
+      if (url.includes('/v1/chat/completions')) {
+        return jsonResponse({ choices: [{ message: { content: 'hello' } }] });
+      }
+      throw new Error('not found');
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000/v1/chat/completions');
+    expect(adapter.name).toBe('openai');
+  });
+
+  it('OpenAI adapter from URL heuristic sends correct {messages} format (B-01)', async () => {
+    // When auto-detect picks OpenAI from URL path, the adapter must send
+    // {messages: [{role: "user", content: "probe"}]} NOT {message: "probe"}.
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) throw new Error('not found');
+      if (url.includes('/api/tags')) throw new Error('not found');
+      return jsonResponse({ choices: [{ message: { content: 'I am AI' } }] });
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000/v1/chat/completions');
+    await adapter.send('Are you AI?');
+
+    // Find the POST call to /v1/chat/completions (not the probe GETs)
+    const postCalls = mockFetch.mock.calls.filter(
+      (call) => (call[1] as RequestInit)?.method === 'POST'
+        || (call[1] as RequestInit)?.body !== undefined,
+    );
+    expect(postCalls.length).toBeGreaterThan(0);
+    const body = JSON.parse(postCalls[0]![1]!.body as string);
+    expect(body.messages).toBeDefined();
+    expect(body.messages[0].role).toBe('user');
+    expect(body.messages[0].content).toBe('Are you AI?');
+    // Must NOT have the HTTP adapter's {message} field
+    expect(body.message).toBeUndefined();
+  });
+
+  it('does NOT double-append /v1/chat/completions when URL already contains it (B-01)', async () => {
+    // When URL is http://host:4000/v1/chat/completions, OpenAI adapter
+    // must NOT create http://host:4000/v1/chat/completions/v1/chat/completions
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v1/models')) throw new Error('not found');
+      if (url.includes('/api/tags')) throw new Error('not found');
+      return jsonResponse({ choices: [{ message: { content: 'ok' } }] });
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000/v1/chat/completions');
+    await adapter.send('test');
+
+    const postCalls = mockFetch.mock.calls.filter(
+      (call) => (call[1] as RequestInit)?.body !== undefined,
+    );
+    for (const call of postCalls) {
+      const url = call[0] as string;
+      // URL must NOT contain double path
+      expect(url).not.toContain('/v1/chat/completions/v1/chat/completions');
+    }
+  });
 });
 
 // ── safeJsonParse ──────────────────────────────────────────────
