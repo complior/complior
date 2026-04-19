@@ -1,6 +1,6 @@
 # C-M04: E2E Bug Fix Sprint
 
-**Status:** 🟡 IN PROGRESS (28/34 PASS, 6 remaining)
+**Status:** ✅ DONE (34/34 PASS — all unit + E2E GREEN)
 **Created:** 2026-04-19
 **Depends on:** C-M03 ✅ DONE
 **Feature Areas:** FA-02 (Eval), FA-04 (Passport), FA-01 (Scanner), FA-07 (TUI)
@@ -261,14 +261,15 @@ cargo test -p complior-cli
 bash scripts/verify_e2e_bugfix.sh
 # BASELINE:  18 PASS / 16 FAIL
 # ROUND 1:  28 PASS /  6 FAIL  (+10 fixes, test script + rustfmt fixed)
-# TARGET:   34 PASS /  0 FAIL
+# ROUND 2:  33 PASS /  1 FAIL  (R2-2 score path, R2-3 name args)
+# ROUND 3:  34 PASS /  0 FAIL  (R2-1 health check — fd0ed6f)  ✅ DONE
 ```
 
 ## Round 2: Remaining 6 Fixes (after first dev pass)
 
 **Progress:** 28/34 PASS (was 18/34 baseline → +10 improvement)
 
-### R2-1: eval --det health check (B-01) — nodejs-dev — ✅ POST probe DONE, health check REMAINING
+### R2-1: eval --det health check (B-01) — nodejs-dev — ✅ DONE (fd0ed6f)
 
 **Status:** POST probe (R2-1 from Round 2) is IMPLEMENTED and WORKS — auto-detect correctly selects OpenAI adapter.
 But OpenAI adapter's `checkHealth()` fails because it GETs `/v1/models` (returns 404 on eval-target).
