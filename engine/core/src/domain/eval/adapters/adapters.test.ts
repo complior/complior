@@ -273,6 +273,50 @@ describe('autoDetectAdapter', () => {
       expect(url).not.toContain('/v1/chat/completions/v1/chat/completions');
     }
   });
+
+  // ── C-M04 R2-1: POST probe to /v1/chat/completions ─────────────
+
+  it('uses OpenAI adapter when POST /v1/chat/completions succeeds (B-01)', async () => {
+    // Target URL has no /v1/chat/completions path, /v1/models returns 404,
+    // /api/tags returns 404 — but POST to /v1/chat/completions returns 200.
+    // Auto-detect should fall through to POST probe and use OpenAI adapter.
+    mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+      if (url.includes('/v1/models')) return { status: 404, ok: false };
+      if (url.includes('/api/tags')) return { status: 404, ok: false };
+      // POST probe succeeds
+      if (opts?.method === 'POST' && url.includes('/v1/chat/completions')) {
+        return jsonResponse({ choices: [{ message: { content: 'pong' } }] });
+      }
+      return { status: 404, ok: false };
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000');
+    expect(adapter.name).toBe('openai');
+  });
+
+  it('sends correct {messages} format after POST probe detection (B-01)', async () => {
+    // After POST probe selects OpenAI adapter, it must send {messages} not {message}.
+    mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+      if (url.includes('/v1/models')) return { status: 404, ok: false };
+      if (url.includes('/api/tags')) return { status: 404, ok: false };
+      if (opts?.method === 'POST' && url.includes('/v1/chat/completions')) {
+        return jsonResponse({ choices: [{ message: { content: 'pong' } }] });
+      }
+      return { status: 404, ok: false };
+    });
+    const adapter = await autoDetectAdapter('http://localhost:4000');
+    await adapter.send('test probe');
+
+    // Find POST call — second POST is from adapter.send() (first is POST probe)
+    const postCalls = mockFetch.mock.calls.filter(
+      (call) => (call[1] as RequestInit)?.method === 'POST',
+    );
+    expect(postCalls.length).toBe(2); // POST probe + send call
+    const body = JSON.parse(postCalls[1]![1]!.body as string);
+    expect(body.messages).toBeDefined();
+    expect(body.messages[0].role).toBe('user');
+    expect(body.messages[0].content).toBe('test probe');
+    expect(body.message).toBeUndefined();
+  });
 });
 
 // ── safeJsonParse ──────────────────────────────────────────────
