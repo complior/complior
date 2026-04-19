@@ -70,6 +70,21 @@ fi
 
 CMD="$COMPLIOR --engine-url $ENGINE_URL"
 
+# ── Setup: Ensure passports exist ──────────────────────────────────────────
+# Passport tests require at least one initialized passport in the target project.
+# Run passport init to discover and create agents before testing.
+
+header "SETUP: PASSPORT INITIALIZATION"
+
+INIT_OUTPUT=$(cd "$TARGET_DIR" && $CMD passport init 2>&1 || true)
+AGENT_COUNT=$(cd "$TARGET_DIR" && $CMD passport list --json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('agents',[])))" 2>/dev/null || echo "0")
+if [ "$AGENT_COUNT" -gt 0 ]; then
+  pass "Setup: $AGENT_COUNT agent(s) initialized in $TARGET_DIR"
+else
+  echo "WARN: No agents found after passport init. Passport tests may fail."
+  echo "  Init output: $INIT_OUTPUT"
+fi
+
 # ══════════════════════════════════════════════════════════════════════════════
 # §1 SCAN TESTS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -250,9 +265,13 @@ else
 fi
 
 # ── B-06: passport init <name> ──────────────────────────────────────────
+# Old broken behavior: "Discovering AI agents in /cwd/my-test-agent..." (name used as path suffix)
+# Fixed behavior: "Discovering AI agent 'my-test-agent' in /cwd..." (name used as agent filter)
 OUTPUT=$(cd "$TARGET_DIR" && $CMD passport init my-test-agent 2>&1)
-if echo "$OUTPUT" | grep -q "Discovering.*my-test-agent"; then
-  fail "B-06: passport init <name>: still treats name as directory"
+if echo "$OUTPUT" | grep -q "agents in.*my-test-agent"; then
+  fail "B-06: passport init <name>: still treats name as directory path"
+elif echo "$OUTPUT" | grep -q "'my-test-agent'"; then
+  pass "B-06: passport init <name>: handles name as agent filter"
 else
   pass "B-06: passport init <name>: handles name correctly"
 fi

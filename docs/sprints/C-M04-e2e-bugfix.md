@@ -1,6 +1,6 @@
 # C-M04: E2E Bug Fix Sprint
 
-**Status:** 🔴 RED
+**Status:** 🟡 IN PROGRESS (28/34 PASS, 6 remaining)
 **Created:** 2026-04-19
 **Depends on:** C-M03 ✅ DONE
 **Feature Areas:** FA-02 (Eval), FA-04 (Passport), FA-01 (Scanner), FA-07 (TUI)
@@ -259,9 +259,79 @@ cargo test -p complior-cli
 
 # Full E2E acceptance (test-runner запускает ПОСЛЕ реализации):
 bash scripts/verify_e2e_bugfix.sh
-# BASELINE: 18 PASS / 16 FAIL
-# TARGET:   34 PASS / 0 FAIL
+# BASELINE:  18 PASS / 16 FAIL
+# ROUND 1:  28 PASS /  6 FAIL  (+10 fixes, test script + rustfmt fixed)
+# TARGET:   34 PASS /  0 FAIL
 ```
+
+## Round 2: Remaining 6 Fixes (after first dev pass)
+
+**Progress:** 28/34 PASS (was 18/34 baseline → +10 improvement)
+
+### R2-1: eval --det POST probe (B-01) — nodejs-dev
+
+**File:** `engine/core/src/domain/eval/adapters/auto-detect.ts`
+**Root cause:** Dev implemented step 1 (URL path heuristic) but NOT step 2 (POST probe). When URL is `http://localhost:4000` (no `/v1/chat/completions` in path), auto-detect still falls back to HTTP adapter.
+
+**Fix:** After step 3 (Ollama probe) and step 4 (URL heuristic), add step 4.5:
+```typescript
+// Step 4.5: POST probe — try sending minimal OpenAI request to /v1/chat/completions
+try {
+  const probeRes = await fetch(`${baseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: model || 'test', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+  });
+  if (probeRes.status !== 404) {
+    // Endpoint exists (even 400/401 means it's OpenAI-compatible)
+    return createOpenAIAdapter(baseUrl, model, apiKey);
+  }
+} catch { /* not OpenAI */ }
+```
+
+### R2-2: fix --dry-run score path (U-03) — rust-dev
+
+**File:** `cli/src/headless/fix.rs` (around line 56)
+**Root cause:** Reads `status.score` but `/status` returns `{"lastScan": {"score": 84.57}}`.
+**Fix:** Change JSON path from `.get("score")` to `.get("lastScan").and_then(|v| v.get("score"))`.
+
+### R2-3: passport subcommands name arg (B-08/B-09/B-10) — rust-dev
+
+**Files:** `cli/src/cli.rs`, `cli/src/headless/passport.rs`
+**Root cause:** `PassportAction::Autonomy`, `::Permissions`, `::Registry` have no `name` positional arg. When user passes `eval-target-openai`, clap treats it as `path`, creating nonexistent directory path.
+
+**Fix pattern (same for all 3):**
+1. In `cli.rs`, add `name: Option<String>` positional BEFORE `path` in each variant
+2. In `passport.rs`, when `name` is Some, use current directory as project path and pass `?name=...` to engine
+3. Analogous to the T-13 fix already done for `PassportAction::Init`
+
+**Example for Autonomy:**
+```rust
+// cli.rs
+Autonomy {
+    /// Agent name (e.g., eval-target-openai)
+    name: Option<String>,
+    #[arg(long)]
+    json: bool,
+    /// Project path (default: current directory)
+    path: Option<String>,
+},
+```
+
+```rust
+// passport.rs run_passport_autonomy
+// If name provided, send as query param, use cwd as path
+let url = match name {
+    Some(n) => format!("/passport/autonomy?path={}&name={}", encode(&project_path), encode(n)),
+    None => format!("/passport/autonomy?path={}", encode(&project_path)),
+};
+```
+
+### R2-4: B-06 test script — FIXED (architect)
+
+Test grep pattern was too broad. Fixed in `scripts/verify_e2e_bugfix.sh`.
+
+---
 
 ## Out of Scope
 - I-02 (obligation vs check count) — conceptual distinction, needs product decision
