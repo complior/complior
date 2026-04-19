@@ -239,6 +239,14 @@ Reproduces EXACT same E2E test plan from the report. Every command tested, every
 | T-11 | Estimated score | rust-dev | acceptance: verify_e2e_bugfix.sh §fix | cli/src/headless/fix.rs |
 | T-12 | Protocol hints | rust-dev | unit: cli.rs test GREEN | cli/src/cli.rs |
 | T-13 | Passport init name | rust-dev | acceptance: verify_e2e_bugfix.sh §passport | cli/src/headless/passport.rs |
+| **E2E** | **Full acceptance** | **test-runner** | `bash scripts/verify_e2e_bugfix.sh` → **34/34 PASS** | all |
+
+## Execution Order
+
+1. **User** запускает **nodejs-dev** → T-1, T-2 (engine), T-3
+2. **User** запускает **rust-dev** → T-4..T-13 (CLI)
+3. **User** запускает **test-runner** → `bash scripts/verify_e2e_bugfix.sh` (34/34 PASS)
+4. **User** запускает **reviewer** → project-state, tech-debt
 
 ## Verification Commands
 
@@ -247,15 +255,12 @@ Reproduces EXACT same E2E test plan from the report. Every command tested, every
 cd engine/core && npx vitest run src/domain/eval/adapters/adapters.test.ts
 
 # Rust unit tests (after T-4, T-5, T-9, T-10, T-12):
-cargo test -p complior
+cargo test -p complior-cli
 
-# Full E2E acceptance (after ALL tasks):
+# Full E2E acceptance (test-runner запускает ПОСЛЕ реализации):
 bash scripts/verify_e2e_bugfix.sh
-
-# Manual E2E retest (same commands as report):
-complior --engine-url http://127.0.0.1:3099 scan --fail-on medium   # should exit 2
-complior --engine-url http://127.0.0.1:3099 eval http://localhost:4000 --det  # should work
-complior --engine-url http://127.0.0.1:3099 passport validate eval-target-openai  # consistent %
+# BASELINE: 18 PASS / 16 FAIL
+# TARGET:   34 PASS / 0 FAIL
 ```
 
 ## Out of Scope
