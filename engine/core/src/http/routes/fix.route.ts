@@ -57,7 +57,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
       return { ...plan, projectedScore: simulation.projectedScore };
     });
 
-    return c.json({ fixes: enriched, count: enriched.length });
+    return c.json({ fixes: enriched, count: enriched.length, currentScore });
   });
 
   // Preview fix for a specific finding
@@ -360,15 +360,25 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     return c.json({ ...result, savedPath: undefined });
   });
 
-  // US-S06-06: Generate a single compliance document by type
+  // US-S06-06: Generate a single compliance document by type (or "all")
   app.post('/fix/doc/generate', async (c) => {
     if (!passportService) throw new ValidationError('Passport service not available');
     const data = await parseBody(c, z.object({
       name: z.string().min(1),
       path: z.string().optional(),
-      docType: z.enum(ALL_DOC_TYPES as readonly [string, ...string[]]),
+      docType: z.enum([...ALL_DOC_TYPES, 'all'] as unknown as [string, ...string[]]),
       organization: z.string().optional(),
     }));
+
+    // "all" — delegate to generateAllDocs (same logic as /fix/doc/all)
+    if (data.docType === 'all') {
+      const result = await passportService.generateAllDocs(
+        data.name,
+        data.path,
+        { organization: data.organization },
+      );
+      return c.json({ ...result, timestamp: new Date().toISOString() });
+    }
 
     const result = await passportService.generateDocByType(
       data.name,

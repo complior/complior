@@ -99,6 +99,14 @@ export const autoDetectAdapter = async (
     return createOllamaAdapter(baseUrl, model);
   }
 
-  // 4. Fallback to generic HTTP
+  // 4. URL path heuristic — if URL already contains /v1/chat/completions,
+  //    this is an OpenAI-compatible endpoint. Strip the path to get baseUrl
+  //    and create the OpenAI adapter (it re-adds /v1/chat/completions).
+  if (url.includes('/v1/chat/completions')) {
+    const openAiBase = url.replace(/\/v1\/chat\/completions\/?$/, '').replace(/\/$/, '');
+    return createOpenAIAdapter(openAiBase || baseUrl, model, key);
+  }
+
+  // 5. Fallback to generic HTTP
   return createHttpAdapter(url);
 };

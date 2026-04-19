@@ -77,10 +77,18 @@ export const createPassportRoute = (passportService: PassportService) => {
     const path = c.req.query('path');
 
     const manifests = await passportService.listPassports(path ?? undefined);
+
+    /** Normalize autonomy level to a number (handles both string 'L3' and numeric 3). */
+    const toLevel = (al: unknown): number => {
+      if (typeof al === 'number' && Number.isInteger(al)) return al;
+      if (typeof al === 'string') return parseInt(al.replace(/^L/, ''), 10);
+      return 0;
+    };
+
     if (manifests.length > 0) {
       const agents = manifests.map(m => ({
         name: m.name,
-        level: parseInt(m.autonomy_level.replace('L', ''), 10),
+        level: toLevel(m.autonomy_level),
         agentType: m.type,
         evidence: m.autonomy_evidence ?? {
           human_approval_gates: 0,
@@ -195,15 +203,15 @@ export const createPassportRoute = (passportService: PassportService) => {
   app.get('/passport/permissions', async (c) => {
     const path = c.req.query('path');
     const result = await passportService.getPermissionsMatrix(path ?? undefined);
-    const matrixArray: Array<Record<string, unknown>> = [];
+    // matrix must be Record<string, Record<string, boolean>> for Rust CLI to parse with as_object()
+    const matrixObj: Record<string, Record<string, boolean>> = {};
     for (const agentName of result.agents) {
-      const agentPerms = result.matrix[agentName] ?? {};
-      matrixArray.push({ agent: agentName, ...agentPerms });
+      matrixObj[agentName] = result.matrix[agentName] ?? {};
     }
     return c.json({
       agents: result.agents,
       permissions: result.permissions,
-      matrix: matrixArray,
+      matrix: matrixObj,
       conflicts: result.conflicts,
     });
   });
