@@ -15,11 +15,14 @@ import type { EvalRunnerDeps, EvalTestSources, EvalScorer, EvalJudge } from '../
 import { createEvalRunner } from '../domain/eval/eval-runner.js';
 import { autoDetectAdapter } from '../domain/eval/adapters/auto-detect.js';
 import { createConformityScorer } from '../domain/eval/conformity-score.js';
+import { scoreSeverityWeighted } from '../domain/eval/eval-severity-scoring.js';
 import { createLlmJudge } from '../domain/eval/llm-judge.js';
 import { createSecurityProbeLoader } from '../domain/eval/security-integration.js';
 import { getSecurityRubric } from '../data/eval/security-rubrics.js';
 import { buildPassportEvalBlock, mergeEvalIntoPassport } from '../domain/eval/eval-passport.js';
 import { generateEvalReport } from '../domain/eval/eval-report.js';
+import { filterTestsByProfile, type FilterProfile } from '../domain/eval/eval-profile-filter.js';
+import { buildEvalDisclaimer } from '../domain/eval/eval-disclaimer.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import type { RemediationAction, RemediationReport } from '../domain/eval/remediation-types.js';
@@ -49,6 +52,12 @@ export interface EvalServiceDeps {
   readonly events?: EventBusPort;
   readonly scanService?: { scan: (path: string) => Promise<ScanResult> };
   readonly listPassports?: () => Promise<readonly AgentPassport[]>;
+  /** V1-M12 T-13: Load project profile for context-aware eval filtering. */
+  readonly getProjectProfile?: (path: string) => Promise<{
+    role: 'provider' | 'deployer' | 'both';
+    riskLevel: string | null;
+    domain: string | null;
+  } | null>;
 }
 
 export const createEvalService = (deps: EvalServiceDeps) => {
@@ -180,7 +189,35 @@ export const createEvalService = (deps: EvalServiceDeps) => {
       ? createEvalRunner(runnerDeps)
       : baseRunner;
 
-    const result = await effectiveRunner.runEval(adapter, resolvedOptions, testSources, scorer, judge, onProgress);
+    // V1-M12 T-13: Load profile for context-aware filtering
+    const profile = deps.getProjectProfile
+      ? await deps.getProjectProfile(deps.getProjectPath()).catch(() => null)
+      : null;
+
+    let result = await effectiveRunner.runEval(adapter, resolvedOptions, testSources, scorer, judge, onProgress);
+
+    // V1-M12 T-12: Build filterContext + disclaimer from profile
+    if (profile) {
+      const filterProfile: FilterProfile = {
+        role: profile.role as 'provider' | 'deployer' | 'both',
+        riskLevel: profile.riskLevel,
+        domain: profile.domain,
+      };
+      // Re-run filter to get counts (tests already filtered in test sources)
+      const allTests = [
+        ...testSources.getDeterministicTests(),
+        ...testSources.getLlmTests(),
+      ];
+      const { context: filterContext } = filterTestsByProfile(allTests, filterProfile);
+      const disclaimer = buildEvalDisclaimer(filterContext, true);
+
+      // V1-M12: Attach filterContext + disclaimer to result (merged object)
+      result = Object.freeze({
+        ...result,
+        filterContext,
+        disclaimer,
+      });
+    }
 
     // US-REM-04: Auto-sync eval results into agent passport (non-fatal)
     if (deps.updatePassportEval) {
