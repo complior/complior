@@ -39,7 +39,7 @@ interface CriticalCap {
   readonly maxOverall: number;   // ...cap overall at this.
 }
 
-const CRITICAL_CAPS: readonly CriticalCap[] = Object.freeze([
+export const CRITICAL_CAPS: readonly CriticalCap[] = Object.freeze([
   { category: 'prohibited',    triggerBelow: 1, maxOverall: 29 },  // 0% prohibited → F
   { category: 'transparency',  triggerBelow: 1, maxOverall: 49 },  // 0% transparency → D max
 ]);

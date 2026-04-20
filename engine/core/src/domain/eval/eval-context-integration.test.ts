@@ -9,10 +9,10 @@ import { describe, it, expect } from 'vitest';
 import type { ConformityTest, EvalResult } from './types.js';
 import type { EvalFilterContext, EvalDisclaimer } from '../../types/common.types.js';
 
-// --- Test will import from implementation (not yet implemented) ---
-// import { filterTestsByProfile } from './eval-profile-filter.js';
-// import { buildEvalDisclaimer } from './eval-disclaimer.js';
-// import { scoreSeverityWeighted } from './conformity-score.js';
+// --- Test imports ---
+import { filterTestsByProfile } from './eval-profile-filter.js';
+import { buildEvalDisclaimer } from './eval-disclaimer.js';
+import { scoreSeverityWeighted } from './eval-severity-scoring.js';
 
 import applicabilityData from '../../../data/eval/test-applicability.json' with { type: 'json' };
 
@@ -29,12 +29,6 @@ const makeTest = (id: string, category: ConformityTest['category'], severity: Co
 
 describe('V1-M12: Eval Context Integration', () => {
   it('deployer + healthcare: filters out provider-only + non-healthcare industry tests', () => {
-    // A deployer in healthcare should see:
-    // - All general tests (CT-1 through CT-7, CT-9)
-    // - NOT provider-only logging tests (CT-8)
-    // - NOT GPAI tests unless gpai risk
-    // - ONLY healthcare industry tests (CT-11-016..020), not HR/education/etc.
-
     const tests: ConformityTest[] = [
       makeTest('CT-1-001', 'transparency'),
       makeTest('CT-8-001', 'logging'),           // provider-only
@@ -43,23 +37,22 @@ describe('V1-M12: Eval Context Integration', () => {
       makeTest('CT-10-001', 'gpai'),              // GPAI-only
     ];
 
-    // const { filtered, context } = filterTestsByProfile(
-    //   tests,
-    //   { role: 'deployer', riskLevel: 'high', domain: 'healthcare' },
-    //   applicabilityData.overrides,
-    // );
-    //
-    // expect(filtered).toHaveLength(2); // CT-1-001 + CT-11-016
-    // expect(filtered.find(t => t.id === 'CT-1-001')).toBeDefined();
-    // expect(filtered.find(t => t.id === 'CT-11-016')).toBeDefined();
-    // expect(filtered.find(t => t.id === 'CT-8-001')).toBeUndefined();  // provider-only
-    // expect(filtered.find(t => t.id === 'CT-11-001')).toBeUndefined(); // HR-only
-    // expect(filtered.find(t => t.id === 'CT-10-001')).toBeUndefined(); // GPAI-only
-    //
-    // expect(context.skippedByRole).toBe(1);
-    // expect(context.skippedByRiskLevel).toBe(1);
-    // expect(context.skippedByDomain).toBe(1);
-    expect.fail('Not implemented: full context integration');
+    const { filtered, context } = filterTestsByProfile(
+      tests,
+      { role: 'deployer', riskLevel: 'high', domain: 'healthcare' },
+      applicabilityData.overrides as Record<string, { roles?: readonly string[]; riskLevels?: readonly string[]; industries?: readonly string[] }>,
+    );
+
+    expect(filtered).toHaveLength(2); // CT-1-001 + CT-11-016
+    expect(filtered.find(t => t.id === 'CT-1-001')).toBeDefined();
+    expect(filtered.find(t => t.id === 'CT-11-016')).toBeDefined();
+    expect(filtered.find(t => t.id === 'CT-8-001')).toBeUndefined();  // provider-only
+    expect(filtered.find(t => t.id === 'CT-11-001')).toBeUndefined(); // HR-only
+    expect(filtered.find(t => t.id === 'CT-10-001')).toBeUndefined(); // GPAI-only
+
+    expect(context.skippedByRole).toBe(1);
+    expect(context.skippedByRiskLevel).toBe(1);
+    expect(context.skippedByDomain).toBe(1);
   });
 
   it('no profile = all tests included (backward compatibility)', () => {
@@ -70,13 +63,12 @@ describe('V1-M12: Eval Context Integration', () => {
       makeTest('CT-11-001', 'industry'),
     ];
 
-    // const { filtered, context } = filterTestsByProfile(tests, null, applicabilityData.overrides);
-    // expect(filtered).toHaveLength(4); // all tests pass through
-    // expect(context.profileFound).toBe(false);
-    // expect(context.skippedByRole).toBe(0);
-    // expect(context.skippedByRiskLevel).toBe(0);
-    // expect(context.skippedByDomain).toBe(0);
-    expect.fail('Not implemented: backward compatibility');
+    const { filtered, context } = filterTestsByProfile(tests, null, applicabilityData.overrides as Record<string, { roles?: readonly string[]; riskLevels?: readonly string[]; industries?: readonly string[] }>);
+    expect(filtered).toHaveLength(4); // all tests pass through
+    expect(context.profileFound).toBe(false);
+    expect(context.skippedByRole).toBe(0);
+    expect(context.skippedByRiskLevel).toBe(0);
+    expect(context.skippedByDomain).toBe(0);
   });
 
   it('EvalResult contains filterContext and disclaimer fields', () => {
@@ -125,9 +117,8 @@ describe('V1-M12: Eval Context Integration', () => {
     expect(result.disclaimer).toBeDefined();
     expect(result.disclaimer!.profileUsed).toBe(true);
 
-    // But the actual BUILDING of filterContext + disclaimer requires implementation
-    // const builtDisclaimer = buildEvalDisclaimer(result.filterContext!, true);
-    // expect(builtDisclaimer.summary).toContain('deployer');
-    expect.fail('Not implemented: buildEvalDisclaimer integration');
+    // Test buildEvalDisclaimer integration
+    const builtDisclaimer = buildEvalDisclaimer(result.filterContext!, true);
+    expect(builtDisclaimer.summary).toContain('deployer');
   });
 });

@@ -7,13 +7,10 @@
 
 import { describe, it, expect } from 'vitest';
 import type { TestResult } from './types.js';
-
-// --- Test will import retry wrapper (not yet implemented) ---
-// import { withTimeoutRetry } from './eval-runner.js';
+import { withTimeoutRetry } from './eval-timeout-retry.js';
 
 describe('V1-M12: Eval Timeout Retry', () => {
   it('retries exactly once on AbortError (timeout)', async () => {
-    // Mock function that fails first (AbortError), succeeds second
     let callCount = 0;
     const fn = async (): Promise<TestResult> => {
       callCount++;
@@ -38,24 +35,21 @@ describe('V1-M12: Eval Timeout Retry', () => {
       };
     };
 
-    // const result = await withTimeoutRetry(fn);
-    // expect(callCount).toBe(2); // called twice: first fail, then retry
-    // expect(result.verdict).toBe('pass');
-    expect.fail('Not implemented: withTimeoutRetry');
+    const result = await withTimeoutRetry(fn, 100); // short timeout triggers retry
+    expect(callCount).toBe(2); // called twice: first fail, then retry
+    expect(result.verdict).toBe('pass');
   });
 
   it('returns error verdict after retry also fails', async () => {
-    // Mock that always throws AbortError
     const fn = async (): Promise<TestResult> => {
       const err = new Error('Timeout');
       err.name = 'AbortError';
       throw err;
     };
 
-    // const result = await withTimeoutRetry(fn);
-    // expect(result.verdict).toBe('error');
-    // expect(result.reasoning).toMatch(/timeout|retry/i);
-    expect.fail('Not implemented: withTimeoutRetry');
+    const result = await withTimeoutRetry(fn, 100);
+    expect(result.verdict).toBe('error');
+    expect(result.reasoning).toMatch(/timeout|retry/i);
   });
 
   it('does NOT retry on 401/403 auth error', async () => {
@@ -67,10 +61,9 @@ describe('V1-M12: Eval Timeout Retry', () => {
       throw err;
     };
 
-    // const result = await withTimeoutRetry(fn);
-    // expect(callCount).toBe(1); // only called once, no retry
-    // expect(result.verdict).toBe('error');
-    expect.fail('Not implemented: withTimeoutRetry');
+    const result = await withTimeoutRetry(fn);
+    expect(callCount).toBe(1); // only called once, no retry
+    expect(result.verdict).toBe('error');
   });
 
   it('successful retry returns the pass result', async () => {
@@ -98,9 +91,8 @@ describe('V1-M12: Eval Timeout Retry', () => {
       };
     };
 
-    // const result = await withTimeoutRetry(fn);
-    // expect(result.verdict).toBe('pass');
-    // expect(result.score).toBe(100);
-    expect.fail('Not implemented: withTimeoutRetry');
+    const result = await withTimeoutRetry(fn, 100);
+    expect(result.verdict).toBe('pass');
+    expect(result.score).toBe(100);
   });
 });

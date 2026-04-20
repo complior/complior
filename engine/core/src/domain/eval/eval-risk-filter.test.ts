@@ -7,9 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { ConformityTest } from './types.js';
-
-// --- Test will import from eval-profile-filter.ts (not yet implemented) ---
-// import { filterTestsByProfile } from './eval-profile-filter.js';
+import { filterTestsByProfile } from './eval-profile-filter.js';
 
 const makeTest = (id: string, category: ConformityTest['category']): ConformityTest => ({
   id,
@@ -38,38 +36,29 @@ const allTests: readonly ConformityTest[] = [
 
 describe('V1-M12: Eval Risk-Level Filter', () => {
   it('null riskLevel = no filtering (all tests pass through)', () => {
-    // const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: null, domain: null }, applicabilityMap);
-    // expect(filtered).toHaveLength(5);
-    expect.fail('Not implemented: filterTestsByProfile');
+    const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: null, domain: null }, applicabilityMap);
+    expect(filtered).toHaveLength(5);
   });
 
   it('riskLevel="limited" skips GPAI tests (CT-10)', () => {
-    // Limited risk systems should not see GPAI-specific tests
-    // const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'limited', domain: null }, applicabilityMap);
-    // expect(filtered).toHaveLength(2); // 5 total - 3 GPAI
-    // expect(filtered.every(t => t.category !== 'gpai')).toBe(true);
-    expect.fail('Not implemented: filterTestsByProfile');
+    const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'limited', domain: null }, applicabilityMap);
+    expect(filtered).toHaveLength(2); // 5 total - 3 GPAI
+    expect(filtered.every(t => t.category !== 'gpai')).toBe(true);
   });
 
   it('riskLevel="gpai" includes GPAI tests', () => {
-    // GPAI systems should see CT-10 tests
-    // const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'gpai', domain: null }, applicabilityMap);
-    // expect(filtered).toHaveLength(5);
-    // expect(filtered.filter(t => t.category === 'gpai')).toHaveLength(3);
-    expect.fail('Not implemented: filterTestsByProfile');
+    const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'gpai', domain: null }, applicabilityMap);
+    expect(filtered).toHaveLength(5);
+    expect(filtered.filter(t => t.category === 'gpai')).toHaveLength(3);
   });
 
   it('riskLevel="high" passes all non-GPAI tests', () => {
-    // High-risk = all tests except GPAI-specific ones
-    // const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'high', domain: null }, applicabilityMap);
-    // expect(filtered).toHaveLength(2); // transparency + accuracy, no GPAI
-    expect.fail('Not implemented: filterTestsByProfile');
+    const { filtered } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'high', domain: null }, applicabilityMap);
+    expect(filtered).toHaveLength(2); // transparency + accuracy, no GPAI
   });
 
   it('counts skippedByRiskLevel correctly', () => {
-    // Limited risk should skip 3 GPAI tests
-    // const { context } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'limited', domain: null }, applicabilityMap);
-    // expect(context.skippedByRiskLevel).toBe(3);
-    expect.fail('Not implemented: filterTestsByProfile');
+    const { context } = filterTestsByProfile(allTests, { role: 'both', riskLevel: 'limited', domain: null }, applicabilityMap);
+    expect(context.skippedByRiskLevel).toBe(3);
   });
 });
