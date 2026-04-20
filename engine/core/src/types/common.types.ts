@@ -364,6 +364,31 @@ export interface RiskRegisterEntry {
   readonly status: 'open' | 'in-progress' | 'closed';
 }
 
+// --- Eval Filter Context (V1-M12) ---
+
+/** V1-M12: Context about how eval tests were filtered based on project profile. */
+export interface EvalFilterContext {
+  readonly role: Role;
+  readonly riskLevel: string | null;
+  readonly domain: string | null;
+  readonly profileFound: boolean;
+  readonly totalTests: number;
+  readonly applicableTests: number;
+  readonly skippedByRole: number;
+  readonly skippedByRiskLevel: number;
+  readonly skippedByDomain: number;
+}
+
+/** V1-M12: Explains eval score coverage and filtering applied. */
+export interface EvalDisclaimer {
+  readonly summary: string;
+  readonly profileUsed: boolean;
+  readonly testsRun: number;
+  readonly testsSkipped: number;
+  readonly severityWeighted: boolean;
+  readonly limitations: readonly string[];
+}
+
 // --- Score Transparency (V1-M10) ---
 
 /** V1-M10: Explains what the compliance score covers and doesn't cover. */
@@ -412,42 +437,3 @@ export interface RiskRegisterResult {
   readonly highCount: number;
   readonly averageRiskScore: number;
 }
-
-// --- Score Transparency (V1-M10) ---
-
-/** V1-M10: Explains what the compliance score covers and doesn't cover. */
-export interface ScoreDisclaimer {
-  readonly summary: string;
-  readonly coveredObligations: number;
-  readonly totalApplicableObligations: number;
-  readonly coveragePercent: number;
-  readonly uncoveredCount: number;
-  readonly limitations: readonly string[];
-  readonly criticalCapExplanation: string | null;
-}
-
-/** V1-M10: Category breakdown with human-readable explanation. */
-export interface CategoryBreakdown {
-  readonly category: string;
-  readonly score: number;
-  readonly weight: number;
-  readonly passed: number;
-  readonly failed: number;
-  readonly impact: 'high' | 'medium' | 'low';
-  readonly topFailures: readonly string[];
-  readonly explanation: string;
-}
-
-/** V1-M10: Aggregated compliance posture for `complior status`. */
-export interface CompliancePosture {
-  readonly score: ScoreBreakdown;
-  readonly disclaimer: ScoreDisclaimer;
-  readonly categories: readonly CategoryBreakdown[];
-  readonly topActions: readonly PriorityAction[];
-  readonly profile: ScanFilterContext | null;
-  readonly lastScanAt: string | null;
-  readonly passportCount: number;
-  readonly documentCount: number;
-  readonly evidenceVerified: boolean | null;
-}
-

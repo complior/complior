@@ -140,6 +140,29 @@ const EvidenceChainSchema = z.object({
   lastHash: z.string(),
 });
 
+// --- Eval Filter Context schemas (V1-M12) ---
+
+export const EvalFilterContextSchema = z.object({
+  role: z.enum(['provider', 'deployer', 'both']),
+  riskLevel: z.string().nullable(),
+  domain: z.string().nullable(),
+  profileFound: z.boolean(),
+  totalTests: z.number(),
+  applicableTests: z.number(),
+  skippedByRole: z.number(),
+  skippedByRiskLevel: z.number(),
+  skippedByDomain: z.number(),
+});
+
+export const EvalDisclaimerSchema = z.object({
+  summary: z.string(),
+  profileUsed: z.boolean(),
+  testsRun: z.number(),
+  testsSkipped: z.number(),
+  severityWeighted: z.boolean(),
+  limitations: z.array(z.string()),
+});
+
 // --- Score Transparency schemas (V1-M10) ---
 
 export const ScoreDisclaimerSchema = z.object({
