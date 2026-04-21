@@ -15,7 +15,6 @@ import type { EvalRunnerDeps, EvalTestSources, EvalScorer, EvalJudge } from '../
 import { createEvalRunner } from '../domain/eval/eval-runner.js';
 import { autoDetectAdapter } from '../domain/eval/adapters/auto-detect.js';
 import { createConformityScorer } from '../domain/eval/conformity-score.js';
-import { scoreSeverityWeighted } from '../domain/eval/eval-severity-scoring.js';
 import { createLlmJudge } from '../domain/eval/llm-judge.js';
 import { createSecurityProbeLoader } from '../domain/eval/security-integration.js';
 import { getSecurityRubric } from '../data/eval/security-rubrics.js';
