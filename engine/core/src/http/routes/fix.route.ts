@@ -39,7 +39,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     // Use rendered preview if available (full feature), fallback to plain preview
     const renderedPlans = fixService.previewAllRendered !== undefined
       ? await fixService.previewAllRendered()
-      : fixService.previewAll();
+      : await fixService.previewAll();
     const currentScore = fixService.getCurrentScore();
     const lastScan = fixService.getLastScanResult?.() ?? null;
     const findings = lastScan?.findings ?? [];
@@ -65,7 +65,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     const data = await parseBody(c, FixApplySchema);
 
     // Look up the actual finding from the last scan so we preserve fixDiff / strategy context
-    const allPlans = fixService.previewAll();
+    const allPlans = await fixService.previewAll();
     const plan = allPlans.find((p) => p.checkId === data.checkId)
       ?? fixService.preview({
         checkId: data.checkId,
@@ -100,7 +100,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
   app.post('/fix/apply', async (c) => {
     const data = await parseBody(c, FixApplySchema);
 
-    const allPlans = fixService.previewAll();
+    const allPlans = await fixService.previewAll();
     const plan = allPlans.find((p) => p.checkId === data.checkId)
       ?? fixService.preview({
         checkId: data.checkId,
@@ -173,7 +173,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
 
     return streamSSE(c, async (stream) => {
       try {
-        const plans = fixService.previewAll();
+        const plans = await fixService.previewAll();
         const currentScore = fixService.getCurrentScore();
 
         // Emit start event

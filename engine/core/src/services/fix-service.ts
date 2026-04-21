@@ -6,6 +6,7 @@ import type { Finding, ScanResult } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { Fixer } from '../domain/fixer/create-fixer.js';
 import type { FixPlan, FixResult, FixValidation } from '../domain/fixer/types.js';
+import { filterFixPlansByProfile, type FixFilterProfile } from '../domain/fixer/fix-profile-filter.js';
 import type { ScanService } from './scan-service.js';
 import type { UndoService } from './undo-service.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
@@ -48,6 +49,8 @@ export interface FixServiceDeps {
   readonly evidenceStore?: EvidenceStore;
   readonly passportService?: { listPassports: (path?: string) => Promise<readonly AgentPassport[]> };
   readonly llm?: LlmPort;
+  /** V1-M19: Project profile for fix plan filtering. */
+  readonly getProjectProfile?: () => Promise<FixFilterProfile | null>;
 }
 
 export const createFixService = (deps: FixServiceDeps) => {
@@ -238,15 +241,46 @@ export const createFixService = (deps: FixServiceDeps) => {
     return fixer.previewFix(finding);
   };
 
-  const previewAll = (): readonly FixPlan[] => {
+  // V1-M19: Holds the last fix filter context for getFixFilterContext()
+  let _fixFilterContext: ReturnType<typeof filterFixPlansByProfile>['context'] | null = null;
+
+  /**
+   * V1-M19: Generate fix plans filtered by project profile.
+   * Used by both previewAll and applyAll for consistent filtering.
+   * Called from both sync (previewAll) and async (applyAll) paths.
+   */
+  const _filterPlans = async (allPlans: readonly FixPlan[], findings: readonly Finding[]): Promise<readonly FixPlan[]> => {
+    const profile: FixFilterProfile | null = deps.getProjectProfile ? await deps.getProjectProfile() : null;
+
+    if (!profile) {
+      _fixFilterContext = {
+        role: 'both',
+        riskLevel: null,
+        domain: null,
+        profileFound: false,
+        totalPlans: allPlans.length,
+        applicablePlans: allPlans.length,
+        excludedBySkip: 0,
+        excludedByDomain: 0,
+      };
+      return allPlans;
+    }
+
+    const { filtered, context } = filterFixPlansByProfile(allPlans, findings, profile);
+    _fixFilterContext = context;
+    return filtered;
+  };
+
+  const previewAll = async (): Promise<readonly FixPlan[]> => {
     const lastScan = getLastScanResult();
     if (!lastScan) return [];
-    return fixer.generateFixes(lastScan.findings);
+    const allPlans = fixer.generateFixes(lastScan.findings);
+    return _filterPlans(allPlans, lastScan.findings);
   };
 
   /** Like previewAll but renders [TEMPLATE:xxx] markers to actual markdown content. */
   const previewAllRendered = async (): Promise<readonly FixPlan[]> => {
-    const plans = previewAll();
+    const plans = await previewAll();
     if (plans.length === 0) return [];
 
     // Load all passports for placeholder resolution (once)
@@ -394,7 +428,7 @@ export const createFixService = (deps: FixServiceDeps) => {
     results: readonly (FixResult & { validation: FixValidation })[];
     totalDelta: number;
   }> => {
-    const plans = previewAll();
+    const plans = await previewAll();
     const results: (FixResult & { validation: FixValidation })[] = [];
     for (const plan of plans) {
       const result = await applyAndValidate(plan, useAi);
@@ -414,10 +448,9 @@ export const createFixService = (deps: FixServiceDeps) => {
   }) => Promise<void>;
 
   const applyAll = async (useAi = false, overridePath?: string, onProgress?: FixProgressCallback): Promise<readonly FixResult[]> => {
-    const plans = fixer.generateFixes(
-      getLastScanResult()?.findings ?? [],
-      useAi ? { useAi: true } : undefined,
-    );
+    const findings = getLastScanResult()?.findings ?? [];
+    const allPlans = fixer.generateFixes(findings, useAi ? { useAi: true } : undefined);
+    const plans = await _filterPlans(allPlans, findings);
     if (plans.length === 0) return [];
 
     const projectPath = overridePath ?? getProjectPath();
@@ -584,7 +617,7 @@ export const createFixService = (deps: FixServiceDeps) => {
       if (pass >= 2) break; // Last pass is just the final scan
 
       // Check for new fixable findings (splice + cascading create/edit)
-      const newPlans = previewAll().filter((p) => {
+      const newPlans = (await previewAll()).filter((p) => {
         if (p.actions.length === 0) return false;
         const a = p.actions[0]!;
         const key = a.type === 'splice' ? `${a.path}:${a.startLine}` : a.path;
@@ -684,7 +717,9 @@ export const createFixService = (deps: FixServiceDeps) => {
   const getUnfixedFindings = (): readonly Finding[] => {
     const lastScan = getLastScanResult();
     if (!lastScan) return [];
-    const fixableIds = new Set(previewAll().map((p) => p.checkId));
+    // Use raw fixer.generateFixes (unfiltered) for getUnfixedFindings to ensure completeness.
+    // Filtering is only applied at the presentation layer (previewAll/previewAllRendered).
+    const fixableIds = new Set(fixer.generateFixes(lastScan.findings).map((p) => p.checkId));
     return lastScan.findings.filter(
       (f) => f.type === 'fail' && !fixableIds.has(f.checkId),
     );
@@ -708,7 +743,9 @@ export const createFixService = (deps: FixServiceDeps) => {
     }
   };
 
-  return Object.freeze({ preview, previewAll, previewAllRendered, applyFix, applyAll, applyAndValidate, applyAllAndValidate, getUnfixedFindings, getCurrentScore, getLastScanResult, getPassportCompleteness });
+  const getFixFilterContext = () => _fixFilterContext;
+
+  return Object.freeze({ preview, previewAll, previewAllRendered, applyFix, applyAll, applyAndValidate, applyAllAndValidate, getUnfixedFindings, getCurrentScore, getLastScanResult, getPassportCompleteness, getFixFilterContext });
 };
 
 export type FixService = ReturnType<typeof createFixService>;

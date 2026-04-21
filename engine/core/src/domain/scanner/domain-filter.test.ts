@@ -170,7 +170,7 @@ describe('V1-M18: filterFindingsByDomain', () => {
  * Ensures the JSON data file that domain-filter.ts depends on
  * has the expected structure and key domain overrides.
  */
-import applicabilityData from '../../../../data/scanner/check-applicability.json' with { type: 'json' };
+import applicabilityData from '../../../data/scanner/check-applicability.json' with { type: 'json' };
 
 const data = applicabilityData as {
   version: string;

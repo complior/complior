@@ -7,3 +7,5 @@ export type { TemplateData } from './template-engine.js';
 export type { FixType, FixAction, FixPlan, FixResult, FixContext } from './types.js';
 export type { FixValidation, FixHistoryFile, FixHistoryEntry, FixHistory, FixStrategy, TemplateMapping } from './types.js';
 export { findStrategy } from './strategies/index.js';
+export { filterFixPlansByProfile } from './fix-profile-filter.js';
+export type { FixFilterProfile, FixFilterContext } from './fix-profile-filter.js';

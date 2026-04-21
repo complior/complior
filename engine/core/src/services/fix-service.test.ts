@@ -530,7 +530,7 @@ describe('V1-M19: fix-service profile-based fix filtering', () => {
       }),
     });
 
-    const plans = service.previewAll();
+    const plans = await service.previewAll();
 
     // Provider-only fixes (qms, gpai-transparency) should be excluded
     // because their findings are type: 'skip'
@@ -596,7 +596,7 @@ describe('V1-M19: fix-service profile-based fix filtering', () => {
       }),
     });
 
-    const plans = service.previewAll();
+    const plans = await service.previewAll();
 
     // HR-only fixes should be excluded (their findings are type: 'skip')
     expect(plans).toHaveLength(2);
