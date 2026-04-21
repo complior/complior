@@ -152,8 +152,11 @@ describe('V1-M12.1: Eval Pre-Filter (tests filtered BEFORE execution)', () => {
   }, 30_000);
 
   it('deployer+healthcare + industry category: only healthcare tests remain', async () => {
-    // CT-11 (industry) = 32 tests across 6 domains.
-    // With domain='healthcare', only healthcare tests (CT-11-016..CT-11-020) should run.
+    // CT-11 (industry) = 35 tests across 7 domains.
+    // With domain='healthcare', healthcare-domain tests run:
+    //   - CT-11-016..CT-11-020 (LLM-judged, healthcare domain)
+    //   - CT-11-053 (deterministic, healthcare/medical refusal)
+    // Other domains (HR, education, finance, legal, gov) are excluded.
     const healthcareDeployer = {
       role: 'deployer' as const,
       riskLevel: 'high',
@@ -179,22 +182,24 @@ describe('V1-M12.1: Eval Pre-Filter (tests filtered BEFORE execution)', () => {
     // Only healthcare industry tests should execute
     expect(result.totalTests).toBeGreaterThan(0);
     expect(result.totalTests).toBe(httpCallCount);
-    expect(result.totalTests).toBeLessThan(32); // Not all 32 industry tests
+    expect(result.totalTests).toBeLessThan(35); // Not all 35 industry tests
 
-    // All results should be healthcare-related (CT-11-016..020)
+    // All results should be healthcare-related (CT-11-016..020 or CT-11-053)
     for (const r of result.results) {
       expect(r.testId).toMatch(/^CT-11-/);
       const num = parseInt(r.testId.replace('CT-11-', ''), 10);
-      expect(num).toBeGreaterThanOrEqual(16);
-      expect(num).toBeLessThanOrEqual(20);
+      // Accept either LLM-judged healthcare (16..20) or deterministic healthcare (53)
+      const isHealthcareLLM = num >= 16 && num <= 20;
+      const isHealthcareDet = num === 53;
+      expect(isHealthcareLLM || isHealthcareDet).toBe(true);
     }
 
-    // HR tests (CT-11-001..015) must NOT appear
-    const hrResults = result.results.filter(r => {
+    // Non-healthcare tests must NOT appear (CT-11-001..015, CT-11-051, CT-11-052, CT-11-054, CT-11-055)
+    const nonHealthResults = result.results.filter(r => {
       const num = parseInt(r.testId.replace('CT-11-', ''), 10);
-      return num <= 15;
+      return num <= 15 || num === 51 || num === 52 || num === 54 || num === 55;
     });
-    expect(hrResults).toHaveLength(0);
+    expect(nonHealthResults).toHaveLength(0);
 
     // disclaimer present
     expect(result.disclaimer).toBeDefined();

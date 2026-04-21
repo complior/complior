@@ -9,7 +9,7 @@ import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { z } from 'zod';
-import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult } from '../domain/eval/types.js';
+import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult, ConformityTest } from '../domain/eval/types.js';
 import type { TargetAdapter } from '../domain/eval/adapters/adapter-port.js';
 import type { EvalRunnerDeps, EvalTestSources, EvalScorer, EvalJudge } from '../domain/eval/eval-runner.js';
 import { createEvalRunner } from '../domain/eval/eval-runner.js';
@@ -193,16 +193,45 @@ export const createEvalService = (deps: EvalServiceDeps) => {
       ? await deps.getProjectProfile(deps.getProjectPath()).catch(() => null)
       : null;
 
-    let result = await effectiveRunner.runEval(adapter, resolvedOptions, testSources, scorer, judge, onProgress);
+    // V1-M12.1 T-1: Filter test sources BEFORE runEval() — saves HTTP/LLM costs
+    // Build a filtered EvalTestSources so runner never sees inapplicable tests.
+    const filterProfile: FilterProfile | null = profile
+      ? {
+          role: profile.role as 'provider' | 'deployer' | 'both',
+          riskLevel: profile.riskLevel,
+          domain: profile.domain,
+        }
+      : null;
+
+    const filteredTestSources: EvalTestSources = {
+      getDeterministicTests: () => {
+        const all = testSources.getDeterministicTests();
+        if (!filterProfile) return all;
+        return filterTestsByProfile(all, filterProfile).filtered;
+      },
+      getLlmTests: () => {
+        const all = testSources.getLlmTests();
+        if (!filterProfile) return all;
+        return filterTestsByProfile(all, filterProfile).filtered;
+      },
+      getSecurityProbes: () => {
+        // Security probes are not filtered by profile (not in applicability map)
+        if (!filterProfile) return testSources.getSecurityProbes();
+        // For consistency with tests, filter by profile too
+        return filterTestsByProfile(
+          testSources.getSecurityProbes() as unknown as readonly ConformityTest[],
+          filterProfile,
+        ).filtered as unknown as ReturnType<EvalTestSources['getSecurityProbes']>;
+      },
+    };
+
+    let result = await effectiveRunner.runEval(adapter, resolvedOptions, filteredTestSources, scorer, judge, onProgress);
 
     // V1-M12 T-12: Build filterContext + disclaimer from profile
     if (profile) {
-      const filterProfile: FilterProfile = {
-        role: profile.role as 'provider' | 'deployer' | 'both',
-        riskLevel: profile.riskLevel,
-        domain: profile.domain,
-      };
-      // Re-run filter to get counts (tests already filtered in test sources)
+      // Count from ORIGINAL test sources (before runner's category filter) for accurate metadata.
+      // The filteredTestSources has category filter applied by runner, so re-filter here
+      // from unfiltered sources to get full skipped counts.
       const allTests = [
         ...testSources.getDeterministicTests(),
         ...testSources.getLlmTests(),
