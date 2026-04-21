@@ -325,6 +325,9 @@ pub struct ScanFilterContext {
     pub applicable_obligations: u32,
     pub skipped_by_role: u32,
     pub skipped_by_risk_level: u32,
+    /// V1-M18: Findings skipped because they apply to a different industry domain.
+    #[serde(default)]
+    pub skipped_by_domain: u32,
 }
 
 /// V1-M08: Priority action from scan for "FIX FIRST" CLI display.

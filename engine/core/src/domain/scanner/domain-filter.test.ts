@@ -163,3 +163,56 @@ describe('V1-M18: filterFindingsByDomain', () => {
     expect(Object.isFrozen(result)).toBe(true);
   });
 });
+
+/**
+ * V1-M18: Validate check-applicability.json data structure.
+ *
+ * Ensures the JSON data file that domain-filter.ts depends on
+ * has the expected structure and key domain overrides.
+ */
+import applicabilityData from '../../../../data/scanner/check-applicability.json' with { type: 'json' };
+
+const data = applicabilityData as {
+  version: string;
+  defaults: { roles: string[]; riskLevels: string[]; domains: string[] };
+  overrides: Record<string, { roles?: string[]; domains?: string[]; riskLevels?: string[] }>;
+};
+
+describe('V1-M18: check-applicability.json data integrity', () => {
+
+  it('has version field', () => {
+    expect(data.version).toBe('1.0.0');
+  });
+
+  it('defaults.domains is empty array (conservative: applies to all)', () => {
+    expect(data.defaults.domains).toEqual([]);
+  });
+
+  it('has HR domain overrides for industry-hr checks', () => {
+    expect(data.overrides['industry-hr-bias']).toBeDefined();
+    expect(data.overrides['industry-hr-bias']!.domains).toContain('hr');
+  });
+
+  it('has finance domain overrides', () => {
+    expect(data.overrides['industry-finance-credit']).toBeDefined();
+    expect(data.overrides['industry-finance-credit']!.domains).toContain('finance');
+  });
+
+  it('has healthcare domain overrides', () => {
+    expect(data.overrides['industry-healthcare-clinical']).toBeDefined();
+    expect(data.overrides['industry-healthcare-clinical']!.domains).toContain('healthcare');
+  });
+
+  it('has education domain overrides', () => {
+    expect(data.overrides['industry-education-assessment']).toBeDefined();
+    expect(data.overrides['industry-education-assessment']!.domains).toContain('education');
+  });
+
+  it('provider-only checks have roles override without domain', () => {
+    const qms = data.overrides['qms'];
+    expect(qms).toBeDefined();
+    expect(qms!.roles).toEqual(['provider']);
+    // qms has no domain restriction — it's a role-only override
+    expect(qms!.domains).toBeUndefined();
+  });
+});

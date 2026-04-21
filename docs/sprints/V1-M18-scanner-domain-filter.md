@@ -37,17 +37,17 @@ Scanner currently filters findings by role (V1-M08) and risk level (V1-M09), but
 
 ## Tasks
 
-| # | Task | Agent | Method | Files |
-|---|------|-------|--------|-------|
-| T-1 | Create check-applicability.json (sparse format) | architect | data file | `data/scanner/check-applicability.json` |
-| T-2 | Add `skippedByDomain` to ScanFilterContext | architect | types + schemas | `types/common.types.ts`, `types/common.schemas.ts` |
-| T-3 | RED tests: domain-filter (9 tests) | architect | test spec | `domain/scanner/domain-filter.test.ts` |
-| T-4 | RED test: scan-service domain integration (1 test) | architect | test spec | `services/scan-service.test.ts` |
-| T-5 | RED E2E tests: domain filter (3 tests) | architect | test spec | `e2e/domain-filter-e2e.test.ts` |
-| T-6 | RED acceptance script | architect | script | `scripts/verify_domain_filter.sh` |
-| T-7 | Refactor role-filter.ts → use JSON data | nodejs-dev | existing tests GREEN | `domain/scanner/role-filter.ts` |
-| T-8 | Create domain-filter.ts | nodejs-dev | T-3 tests GREEN | `domain/scanner/domain-filter.ts` |
-| T-9 | Wire domain filter into scan-service (Step 3) | nodejs-dev | T-4 + T-5 tests GREEN | `services/scan-service.ts` |
+| # | Task | Agent | Method | Arch Requirements | Files |
+|---|------|-------|--------|-------------------|-------|
+| T-1 | Create check-applicability.json (sparse format) | architect | data file | Sparse override format, version field | `data/scanner/check-applicability.json` |
+| T-2 | Add `skippedByDomain` to ScanFilterContext | architect | types + schemas | readonly, Zod paired, Rust mirror | `types/common.types.ts`, `types/common.schemas.ts`, `cli/src/types/engine.rs` |
+| T-3 | RED tests: domain-filter (9 tests) | architect | test spec | Real types, frozen, deterministic | `domain/scanner/domain-filter.test.ts` |
+| T-4 | RED test: scan-service domain integration (1 test) | architect | test spec | Real types, concrete assertions | `services/scan-service.test.ts` |
+| T-5 | RED E2E tests: domain filter (3 tests) | architect | test spec | Hono in-memory, temp project | `e2e/domain-filter-e2e.test.ts` |
+| T-6 | RED acceptance script | architect | script FAIL | Bash+Python, exit codes | `scripts/verify_domain_filter.sh` |
+| T-7 | Refactor role-filter.ts → use JSON data | nodejs-dev | existing tests GREEN | import JSON with `{ type: 'json' }`, pure fn | `domain/scanner/role-filter.ts` |
+| T-8 | Create domain-filter.ts | nodejs-dev | T-3 tests GREEN | Pure fn, Object.freeze, data from JSON, same-ref optimization | `domain/scanner/domain-filter.ts` |
+| T-9 | Wire domain filter into scan-service (Step 3) | nodejs-dev | T-4 + T-5 tests GREEN | Insert after Step 2, count skippedByDomain, no I/O in domain | `services/scan-service.ts` |
 
 ---
 

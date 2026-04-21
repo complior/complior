@@ -25,7 +25,7 @@ This milestone adds profile-based filtering to the fix pipeline, bringing it to 
 
 ## Acceptance Criteria
 
-- [ ] 9 fix-profile-filter unit tests GREEN
+- [ ] 8 fix-profile-filter unit tests GREEN
 - [ ] 2 fix-service integration tests GREEN
 - [ ] 3 E2E tests GREEN (`e2e/domain-filter-e2e.test.ts` — V1-M19 section)
 - [ ] `scripts/verify_domain_filter.sh` PASS (fix sections)
@@ -39,16 +39,16 @@ This milestone adds profile-based filtering to the fix pipeline, bringing it to 
 
 ## Tasks
 
-| # | Task | Agent | Method | Files |
-|---|------|-------|--------|-------|
-| T-1 | Add FixFilterContext type + Zod schema | architect | types + schemas | `types/common.types.ts`, `types/common.schemas.ts` |
-| T-2 | RED tests: fix-profile-filter (9 tests) | architect | test spec | `domain/fixer/fix-profile-filter.test.ts` |
-| T-3 | RED tests: fix-service integration (2 tests) | architect | test spec | `services/fix-service.test.ts` |
-| T-4 | RED E2E tests: fix filter (3 tests) | architect | test spec | `e2e/domain-filter-e2e.test.ts` |
-| T-5 | RED acceptance script (fix sections) | architect | script | `scripts/verify_domain_filter.sh` |
-| T-6 | Create fix-profile-filter.ts | nodejs-dev | T-2 tests GREEN | `domain/fixer/fix-profile-filter.ts` |
-| T-7 | Wire filter into fix-service + add getProjectProfile | nodejs-dev | T-3 + T-4 tests GREEN | `services/fix-service.ts` |
-| T-8 | Add fixFilterContext to fix route responses | nodejs-dev | E2E + existing tests GREEN | `http/routes/fix.route.ts` |
+| # | Task | Agent | Method | Arch Requirements | Files |
+|---|------|-------|--------|-------------------|-------|
+| T-1 | Add FixFilterContext type + Zod schema | architect | types + schemas | readonly, Zod paired | `types/common.types.ts`, `types/common.schemas.ts` |
+| T-2 | RED tests: fix-profile-filter (8 tests) | architect | test spec | Real types, frozen, deterministic | `domain/fixer/fix-profile-filter.test.ts` |
+| T-3 | RED tests: fix-service integration (2 tests) | architect | test spec | Real types, concrete assertions | `services/fix-service.test.ts` |
+| T-4 | RED E2E tests: fix filter (3 tests) | architect | test spec | Hono in-memory, temp project | `e2e/domain-filter-e2e.test.ts` |
+| T-5 | RED acceptance script (fix sections) | architect | script FAIL | Bash+Python, exit codes | `scripts/verify_domain_filter.sh` |
+| T-6 | Create fix-profile-filter.ts | nodejs-dev | T-2 tests GREEN | Pure fn, Object.freeze on result, match plan.checkId→finding.type | `domain/fixer/fix-profile-filter.ts` |
+| T-7 | Wire filter into fix-service + add getProjectProfile | nodejs-dev | T-3 + T-4 tests GREEN | DI via deps closure, no direct I/O, filter after generateFixes() | `services/fix-service.ts` |
+| T-8 | Add fixFilterContext to fix route responses | nodejs-dev | E2E + existing tests GREEN | Add to GET /fix/preview JSON response | `http/routes/fix.route.ts` |
 
 ---
 
@@ -110,7 +110,7 @@ readonly getFixFilterContext?: () => FixFilterContext | null;
 
 ---
 
-## Test Specs (T-2): fix-profile-filter.test.ts — 9 RED tests
+## Test Specs (T-2): fix-profile-filter.test.ts — 8 RED tests
 
 1. `returns all plans when profile is null (no filtering)` — backward compat
 2. `excludes plans for skip findings (role-skipped)` — provider-only → no fix for deployer
