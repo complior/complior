@@ -294,9 +294,13 @@ cargo build 2>&1 | tail -5                    # компилируется?
 4. Обнови STRATEGY.md — фичи ✅ DONE
 5. Обнови milestone статус → ВЫПОЛНЕН
 6. Попроси user запустить reviewer
-7. НЕ трогай project-state.md и tech-debt.md — это работа reviewer'а
+7. Reviewer обновляет project-state.md и tech-debt.md
 8. **Создай PR: feature/* → dev** (architect создаёт, user мержит)
-9. После merge в dev — user решает когда мержить dev → main (релиз)
+9. **POST-MERGE обновление project-state.md:**
+   - После merge feature → dev: architect переносит milestone из "pending" → "on dev"
+   - После merge dev → main: architect переносит milestones в "on main (released)"
+   - Это ОБЯЗАТЕЛЬНЫЙ шаг, иначе project-state отстаёт от реальности
+10. После merge в dev — user решает когда мержить dev → main (релиз)
 
 ### CI/CD flow после merge
 ```
