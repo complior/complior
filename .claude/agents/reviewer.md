@@ -59,6 +59,10 @@ For EVERY changed file, verify against the full coding standards:
 - [ ] Early returns — max 2 levels of `if` nesting
 - [ ] Functions < 50 lines, files < 300 lines (SRP)
 - [ ] Return objects, not arrays (named fields, self-documenting)
+- [ ] Consistent return types — function ALWAYS returns same structure (no mixed boolean/object)
+- [ ] **No `bind`/`call`/`apply`** — use arrow functions and spread
+- [ ] **No chained assignments** (`let a = b = c = 0`) — each variable declared separately
+- [ ] No dead code — no commented-out code, no stubs without TODO + milestone reference
 
 #### 2.3 TypeScript — Validation & Boundaries
 

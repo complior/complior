@@ -160,6 +160,7 @@ fn test_all_severity_levels_handled() {
 - [ ] Если factory — import с `create` prefix?
 - [ ] Если factory — проверен `Object.isFrozen()` на service object?
 - [ ] Если async — проверена обработка ошибок?
+- [ ] Consistent return shape — функция возвращает один тип во всех ветках?
 - [ ] Конкретные числа в assertions (не `toBeGreaterThan(0)`)?
 - [ ] Каждый тест проверяет одну вещь?
 - [ ] Название: `функция_когда_что` или BDD `should X when Y`?
