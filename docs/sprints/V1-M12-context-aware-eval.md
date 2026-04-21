@@ -1,6 +1,6 @@
 # V1-M12: Context-Aware Eval
 
-**Status:** 🔴 RED
+**Status:** ✅ DONE (merged to dev 2026-04-21)
 **Created:** 2026-04-20
 **Feature Area:** FA-02 (Eval Architecture) — see `docs/feature-areas/eval-architecture.md` §11-§14
 **Goal:** Eval filters tests by role, risk level, and domain — matching scan's context-awareness
@@ -23,14 +23,14 @@
 
 ## Acceptance Criteria
 
-- [ ] `complior eval <url> --full` with profile → runs only applicable tests
-- [ ] `complior eval <url> --full` without profile → runs ALL tests (backward compat)
-- [ ] EvalResult JSON contains `filterContext` + `disclaimer` fields
-- [ ] Severity-weighted scoring changes category scores
-- [ ] Timeout tests retry once with 2s backoff
-- [ ] 32 new tests GREEN (7 test files)
-- [ ] Existing 2225+ tests still GREEN
-- [ ] `scripts/verify_eval_context.sh` PASS
+- [x] `complior eval <url> --full` with profile → runs only applicable tests
+- [x] `complior eval <url> --full` without profile → runs ALL tests (backward compat)
+- [x] EvalResult JSON contains `filterContext` + `disclaimer` fields
+- [x] Severity-weighted scoring changes category scores
+- [x] Timeout tests retry once with 2s backoff
+- [x] 32 new tests GREEN (7 test files) — 2257 total TS tests GREEN
+- [x] Existing 2225+ tests still GREEN
+- [x] `scripts/verify_eval_context.sh` PASS
 
 ---
 
@@ -74,8 +74,8 @@ T-5 (eval types) ─┘     T-9 (scoring) ──────────┘
 - [x] cargo build компилируется
 - [x] npm test запускается (RED тесты — ок, ошибки среды — нет)
 - [x] cargo test запускается
-- [ ] Feature branch: `feature/V1-M12-context-aware-eval`
-- [ ] RED тесты закоммичены на feature branch
+- [x] Feature branch: `feature/V1-M12-context-aware-eval`
+- [x] RED тесты закоммичены на feature branch
 
 ---
 

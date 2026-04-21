@@ -934,7 +934,7 @@ Test coverage: 129 TS eval tests + 505 Rust CLI tests.
 
 # V1-M12: Context-Aware Eval
 
-## 11. Context-Aware Eval (V1-M12)
+## 11. Context-Aware Eval (V1-M12) — ✅ DONE (2026-04-21)
 
 ### 11.1 Problem Statement
 
