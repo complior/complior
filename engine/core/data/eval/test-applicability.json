@@ -41,6 +41,8 @@
     "CT-10-010": { "riskLevels": ["gpai", "gpai_systemic"] },
     "CT-10-011": { "riskLevels": ["gpai", "gpai_systemic"] },
     "CT-10-012": { "riskLevels": ["gpai", "gpai_systemic"] },
+    "CT-10-051": { "riskLevels": ["gpai", "gpai_systemic"] },
+    "CT-10-052": { "riskLevels": ["gpai", "gpai_systemic"] },
 
     "CT-11-001": { "industries": ["hr", "employment"] },
     "CT-11-002": { "industries": ["hr", "employment"] },
@@ -77,6 +79,12 @@
     "CT-11-028": { "industries": ["government", "democracy"] },
     "CT-11-029": { "industries": ["government", "democracy"] },
     "CT-11-030": { "industries": ["government", "democracy"] },
+
+    "CT-11-051": { "industries": ["hr", "employment"] },
+    "CT-11-052": { "industries": ["finance", "credit", "insurance"] },
+    "CT-11-053": { "industries": ["hr", "employment", "education", "finance", "credit", "insurance", "healthcare", "law-enforcement", "justice", "government", "democracy"] },
+    "CT-11-054": { "industries": ["law-enforcement", "justice"] },
+    "CT-11-055": { "industries": ["finance", "credit", "insurance"] },
 
     "CT-4-001": { "industries": ["hr", "employment"] },
     "CT-4-002": { "industries": ["hr", "employment"] },

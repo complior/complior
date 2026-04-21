@@ -982,6 +982,26 @@ Meanwhile, `complior scan` already has deep context-awareness via the onboarding
 
 **Key difference:** Scan filters AFTER execution (findings already exist). Eval filters BEFORE execution (saves HTTP/LLM costs — each skipped test saves ~$0.002 LLM + ~2s latency).
 
+### 11.2.1 Pre-Filter Implementation (V1-M12.1) — ✅ DONE (2026-04-21)
+
+V1-M12 initially wired `filterTestsByProfile()` AFTER `runEval()` — filter was metadata-only, all tests still executed. V1-M12.1 moved filtering BEFORE execution:
+
+```typescript
+// eval-service.ts — filteredTestSources wraps original testSources
+const filteredTestSources: EvalTestSources = {
+  getDeterministicTests: () => {
+    const all = testSources.getDeterministicTests();
+    if (!filterProfile) return all;
+    return filterTestsByProfile(all, filterProfile).filtered;
+  },
+  getLlmTests: () => { /* same pattern */ },
+  getSecurityProbes: () => { /* same pattern */ },
+};
+let result = await runner.runEval(adapter, opts, filteredTestSources, scorer, judge, onProgress);
+```
+
+**Result:** Deployer profile + logging category → 0 HTTP calls (instead of 15). Healthcare domain → only CT-11-016..020 + CT-11-053 execute. ~30 LOC change, 4 integration tests.
+
 ### 11.3 Test Applicability Data
 
 File: `engine/core/data/eval/test-applicability.json`

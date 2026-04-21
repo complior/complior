@@ -104,13 +104,14 @@ docs/sprints/M0X-name.md
 
 ### 2.4 — Обязательная таблица в конце milestone
 ```markdown
-| # | Задача | Агент | Метод верификации | Файлы |
-|---|---|---|---|---|
-| 1 | ... | rust-dev | unit test: TestX GREEN | cli/... |
-| 2 | ... | nodejs-dev | acceptance: scripts/verify_Y.sh | engine/... |
-| 3 | ... | nodejs-dev | E2E: eval --threshold 70 PASS | engine/core/src/e2e/ |
+| # | Задача | Агент | Метод верификации | Архитектурные требования | Файлы |
+|---|---|---|---|---|---|
+| 1 | ... | rust-dev | unit test: TestX GREEN | Result<T,E>, no unwrap, exhaustive match | cli/... |
+| 2 | ... | nodejs-dev | acceptance: scripts/verify_Y.sh | Factory fn, Object.freeze, pure fn | engine/... |
+| 3 | ... | nodejs-dev | E2E: eval --threshold 70 PASS | DI via deps, data from JSON | engine/core/src/e2e/ |
 ```
 Без таблицы user не знает кого запускать и что проверять.
+Колонка "Архитектурные требования" — ключевая: dev видит ожидания по стилю ДО кода.
 
 ---
 
@@ -149,6 +150,59 @@ docs/sprints/M0X-name.md
 - engine/core/src/e2e/*.test.ts — Hono in-memory (не нужен daemon)
 - Или acceptance script с `complior eval <url> --ci --threshold N`
 - Для LLM-judged тестов: OPENROUTER_API_KEY обязателен
+
+### 4.4 — Архитектурные проверки в тестах (ОБЯЗАТЕЛЬНО)
+
+Тесты — единственная гарантия что dev напишет код по стандартам.
+Dev-агенты теряют context при compaction. Тесты не теряются.
+
+**В КАЖДОМ тесте для TS domain/factory function добавляй:**
+
+```typescript
+// Иммутабельность — Object.freeze на результате
+it('returns frozen result', () => {
+  const result = fn(input);
+  expect(Object.isFrozen(result)).toBe(true);
+});
+
+// Вложенные коллекции тоже frozen
+it('returns frozen nested collections', () => {
+  const result = fn(input);
+  if (result.items) expect(Object.isFrozen(result.items)).toBe(true);
+});
+
+// Pure function — детерминированность
+it('is deterministic (same input → same output)', () => {
+  expect(fn(input)).toStrictEqual(fn(input));
+});
+```
+
+**Если функция использует справочные данные:**
+```typescript
+// Data from JSON, not hardcoded
+import data from '../../../data/x.json' with { type: 'json' };
+it('uses data from JSON file', () => {
+  expect(data.key).toBeDefined();
+  const result = fn(input, data); // configurable param
+});
+```
+
+**Если factory function:**
+```typescript
+// Factory pattern, not class
+import { createXxx } from './xxx.js'; // create prefix
+it('factory returns frozen service', () => {
+  expect(Object.isFrozen(createXxx(deps))).toBe(true);
+});
+```
+
+**Чеклист перед коммитом каждого test file:**
+- [ ] Object.isFrozen() на результат
+- [ ] Pure function (deterministic) проверка
+- [ ] Данные из JSON если применимо
+- [ ] Factory `create` prefix на import
+- [ ] Конкретные числа в assert (не `> 0`)
+- [ ] Реальные типы из types/
 
 ---
 
