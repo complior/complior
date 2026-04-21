@@ -25,6 +25,8 @@ Scanner currently filters findings by role (V1-M08) and risk level (V1-M09), but
 
 - [ ] 9 domain-filter unit tests GREEN
 - [ ] 1 scan-service integration test GREEN
+- [ ] 3 E2E tests GREEN (`e2e/domain-filter-e2e.test.ts`)
+- [ ] `scripts/verify_domain_filter.sh` PASS
 - [ ] Existing role-filter + risk-level-filter tests GREEN (backward compat)
 - [ ] Role mappings moved from hardcoded TS to check-applicability.json
 - [ ] `ScanFilterContext.skippedByDomain` populated in scan results
@@ -41,9 +43,11 @@ Scanner currently filters findings by role (V1-M08) and risk level (V1-M09), but
 | T-2 | Add `skippedByDomain` to ScanFilterContext | architect | types + schemas | `types/common.types.ts`, `types/common.schemas.ts` |
 | T-3 | RED tests: domain-filter (9 tests) | architect | test spec | `domain/scanner/domain-filter.test.ts` |
 | T-4 | RED test: scan-service domain integration (1 test) | architect | test spec | `services/scan-service.test.ts` |
-| T-5 | Refactor role-filter.ts → use JSON data | nodejs-dev | existing tests GREEN | `domain/scanner/role-filter.ts` |
-| T-6 | Create domain-filter.ts | nodejs-dev | T-3 tests GREEN | `domain/scanner/domain-filter.ts` |
-| T-7 | Wire domain filter into scan-service (Step 3) | nodejs-dev | T-4 test GREEN | `services/scan-service.ts` |
+| T-5 | RED E2E tests: domain filter (3 tests) | architect | test spec | `e2e/domain-filter-e2e.test.ts` |
+| T-6 | RED acceptance script | architect | script | `scripts/verify_domain_filter.sh` |
+| T-7 | Refactor role-filter.ts → use JSON data | nodejs-dev | existing tests GREEN | `domain/scanner/role-filter.ts` |
+| T-8 | Create domain-filter.ts | nodejs-dev | T-3 tests GREEN | `domain/scanner/domain-filter.ts` |
+| T-9 | Wire domain filter into scan-service (Step 3) | nodejs-dev | T-4 + T-5 tests GREEN | `services/scan-service.ts` |
 
 ---
 

@@ -27,6 +27,8 @@ This milestone adds profile-based filtering to the fix pipeline, bringing it to 
 
 - [ ] 9 fix-profile-filter unit tests GREEN
 - [ ] 2 fix-service integration tests GREEN
+- [ ] 3 E2E tests GREEN (`e2e/domain-filter-e2e.test.ts` — V1-M19 section)
+- [ ] `scripts/verify_domain_filter.sh` PASS (fix sections)
 - [ ] Existing fix-service tests GREEN (backward compat)
 - [ ] Fix preview only shows profile-relevant fixes
 - [ ] `FixFilterContext` populated in fix responses
@@ -42,9 +44,11 @@ This milestone adds profile-based filtering to the fix pipeline, bringing it to 
 | T-1 | Add FixFilterContext type + Zod schema | architect | types + schemas | `types/common.types.ts`, `types/common.schemas.ts` |
 | T-2 | RED tests: fix-profile-filter (9 tests) | architect | test spec | `domain/fixer/fix-profile-filter.test.ts` |
 | T-3 | RED tests: fix-service integration (2 tests) | architect | test spec | `services/fix-service.test.ts` |
-| T-4 | Create fix-profile-filter.ts | nodejs-dev | T-2 tests GREEN | `domain/fixer/fix-profile-filter.ts` |
-| T-5 | Wire filter into fix-service + add getProjectProfile | nodejs-dev | T-3 tests GREEN | `services/fix-service.ts` |
-| T-6 | Add fixFilterContext to fix route responses | nodejs-dev | existing tests GREEN | `http/routes/fix.route.ts` |
+| T-4 | RED E2E tests: fix filter (3 tests) | architect | test spec | `e2e/domain-filter-e2e.test.ts` |
+| T-5 | RED acceptance script (fix sections) | architect | script | `scripts/verify_domain_filter.sh` |
+| T-6 | Create fix-profile-filter.ts | nodejs-dev | T-2 tests GREEN | `domain/fixer/fix-profile-filter.ts` |
+| T-7 | Wire filter into fix-service + add getProjectProfile | nodejs-dev | T-3 + T-4 tests GREEN | `services/fix-service.ts` |
+| T-8 | Add fixFilterContext to fix route responses | nodejs-dev | E2E + existing tests GREEN | `http/routes/fix.route.ts` |
 
 ---
 
