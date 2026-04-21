@@ -232,6 +232,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
       applicableObligations: profileObligationCount > 0 ? profileObligationCount : findings.filter(f => f.type !== 'skip').length,
       skippedByRole,
       skippedByRiskLevel,
+      skippedByDomain: 0,
     };
 
     if (profileFound) {
