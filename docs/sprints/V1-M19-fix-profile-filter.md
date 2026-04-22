@@ -1,6 +1,6 @@
 # V1-M19: Fix Profile Filter
 
-**Status:** 🔴 RED (tests written, implementation pending)
+**Status:** ✅ DONE (merged to dev — PR #18)
 **Created:** 2026-04-21
 **Feature Area:** FA-03 (Fix Architecture) — see `docs/feature-areas/fix-architecture.md` §9
 **Goal:** Filter fix plans by project profile so only profile-relevant fixes appear

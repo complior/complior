@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-21
-**Updated by:** Architect (full audit — project-state was 5 milestones behind reality)
+**Updated:** 2026-04-22
+**Updated by:** Architect (post-merge V1-M18 + V1-M19)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `dev` (29 commits ahead of main)
+**Branch:** `dev` (34 commits ahead of main)
 
 ---
 
@@ -11,12 +11,12 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2261 passed, 2 skipped (166 files) |
+| TS Engine (`engine/core/`) | GREEN | 2288 passed, 2 skipped (169 files) |
 | Rust CLI (`cli/`) | GREEN | 202 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2463 tests GREEN**
+**Total: 2490 tests GREEN**
 
 ---
 
@@ -51,6 +51,8 @@
 | C-M04 | E2E bug fix sprint (13 tasks, 19 issues) | DONE | ✅ |
 | V1-M12 | Context-Aware Eval (profile filter, severity scoring, disclaimer, timeout retry) | DONE | ✅ |
 | V1-M12.1 | Eval Pre-Filter (filter BEFORE execution, saves HTTP/LLM costs) | DONE | ✅ (PR #17) |
+| V1-M18 | Scanner Domain Filter (3rd dimension: industry domain) | DONE | ✅ (PR #18) |
+| V1-M19 | Fix Profile Filter (filter fix plans by project profile) | DONE | ✅ (PR #18) |
 
 ## In Progress / RED
 
@@ -140,6 +142,22 @@
 
 - Tests: 4/4 GREEN (`eval-prefilter.test.ts`)
 - **Review Notes:** TD-43 (dev modified test), TD-44 (double `as unknown as` cast).
+
+## V1-M18 + V1-M19: Scanner Domain Filter + Fix Profile Filter (DONE — on dev)
+
+**Scope:** 29 files, +3968/-18 LOC (PR #18)
+**What:** Brings scanner and fix to parity with eval's 3-dimension profile filtering:
+
+| Module | Purpose |
+|--------|---------|
+| `domain-filter.ts` | Filters scanner findings by project industry domain (3rd dimension after role + risk-level) |
+| `fix-profile-filter.ts` | Filters fix plans by project profile: excludes plans for skip findings |
+| `check-applicability.ts` | Shared data accessor for `check-applicability.json` (deduped TD-46/TD-47) |
+| `check-applicability.json` | Sparse override map: 29 overrides for role + domain applicability |
+| Feature Areas | `scanner-architecture.md` (160→955 lines), `fix-architecture.md` (157→1174 lines) |
+
+- Tests: 27 new (domain-filter 16, fix-profile-filter 8, scan-service 1, fix-service 2, E2E 6, Rust 1)
+- **Review Notes:** TD-45 (architect import path error), TD-46 (FixFilterContext dedup — fixed), TD-47 (helper dedup — fixed)
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 

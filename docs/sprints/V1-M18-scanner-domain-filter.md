@@ -1,6 +1,6 @@
 # V1-M18: Scanner Domain Filter
 
-**Status:** 🔴 RED (tests written, implementation pending)
+**Status:** ✅ DONE (merged to dev — PR #18)
 **Created:** 2026-04-21
 **Feature Area:** FA-01 (Scanner Architecture) — see `docs/feature-areas/scanner-architecture.md` §7
 **Goal:** Add domain filtering as 3rd filter dimension to scanner + externalize role mappings to JSON
