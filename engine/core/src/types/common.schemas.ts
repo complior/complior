@@ -108,6 +108,7 @@ const ScanFilterContextSchema = z.object({
   applicableObligations: z.number(),
   skippedByRole: z.number(),
   skippedByRiskLevel: z.number(),
+  skippedByDomain: z.number(),
 });
 
 // --- Top-level I/O schemas ---
@@ -161,6 +162,19 @@ export const EvalDisclaimerSchema = z.object({
   testsSkipped: z.number(),
   severityWeighted: z.boolean(),
   limitations: z.array(z.string()),
+});
+
+// --- Fix Filter Context schemas (V1-M19) ---
+
+export const FixFilterContextSchema = z.object({
+  role: z.enum(['provider', 'deployer', 'both']),
+  riskLevel: z.string().nullable(),
+  domain: z.string().nullable(),
+  profileFound: z.boolean(),
+  totalPlans: z.number(),
+  applicablePlans: z.number(),
+  excludedBySkip: z.number(),
+  excludedByDomain: z.number(),
 });
 
 // --- Score Transparency schemas (V1-M10) ---

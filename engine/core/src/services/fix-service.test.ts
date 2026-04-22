@@ -468,3 +468,141 @@ describe('fix-service', () => {
     });
   });
 });
+
+/**
+ * V1-M19 T-3: Fix Profile Filter integration tests — RED test specs.
+ *
+ * Tests that previewAll filters out fix plans for findings that were
+ * skipped by the scan's profile filtering (role, domain).
+ *
+ * RED until fix-profile-filter.ts is created + wired into fix-service previewAll.
+ */
+describe('V1-M19: fix-service profile-based fix filtering', () => {
+  it('previewAll with deployer profile: excludes provider-only fixes, reports fixFilterContext', async () => {
+    // Scan result contains both fail and skip findings (role-filtered by scanner)
+    const scanResult = createMockScanResult({
+      score: {
+        totalScore: 55,
+        zone: 'yellow',
+        categoryScores: [],
+        criticalCapApplied: false,
+        totalChecks: 10,
+        passedChecks: 5,
+        failedChecks: 3,
+        skippedChecks: 2,
+      },
+      findings: [
+        // Provider-only check → scanner already set to 'skip' for deployer
+        createMockFinding({ checkId: 'qms', type: 'skip', severity: 'medium' }),
+        // Provider-only check → scanner already set to 'skip' for deployer
+        createMockFinding({ checkId: 'gpai-transparency', type: 'skip', severity: 'high' }),
+        // Deployer-applicable check → fail (needs fix)
+        createMockFinding({ checkId: 'ai-disclosure', type: 'fail', obligationId: 'OBL-015' }),
+        // Universal check → fail (needs fix)
+        createMockFinding({ checkId: 'interaction-logging', type: 'fail', obligationId: 'OBL-020' }),
+      ],
+    });
+
+    // Fixer generates plans for ALL findings (it doesn't know about profiles)
+    const allPlans: FixPlan[] = [
+      createMockPlan({ checkId: 'qms', obligationId: 'OBL-001', article: 'Art. 17' }),
+      createMockPlan({ checkId: 'gpai-transparency', obligationId: 'OBL-002', article: 'Art. 53' }),
+      createMockPlan({ checkId: 'ai-disclosure', obligationId: 'OBL-015', article: 'Art. 52' }),
+      createMockPlan({ checkId: 'interaction-logging', obligationId: 'OBL-020', article: 'Art. 14' }),
+    ];
+
+    const service = createFixService({
+      fixer: {
+        previewFix: vi.fn(),
+        generateFix: vi.fn(),
+        generateFixes: vi.fn().mockReturnValue(allPlans),
+      },
+      scanService: { scan: vi.fn() },
+      events: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
+      getProjectPath: () => '/tmp/test-project',
+      getLastScanResult: () => scanResult,
+      loadTemplate: vi.fn(),
+      // V1-M19: getProjectProfile enables fix profile filtering
+      getProjectProfile: async () => ({
+        role: 'deployer' as const,
+        riskLevel: 'high',
+        domain: null,
+      }),
+    });
+
+    const plans = await service.previewAll();
+
+    // Provider-only fixes (qms, gpai-transparency) should be excluded
+    // because their findings are type: 'skip'
+    expect(plans).toHaveLength(2);
+    expect(plans.map(p => p.checkId)).toEqual(['ai-disclosure', 'interaction-logging']);
+
+    // fixFilterContext should be available on the service
+    const filterContext = service.getFixFilterContext?.();
+    expect(filterContext).toBeDefined();
+    expect(filterContext!.totalPlans).toBe(4);
+    expect(filterContext!.applicablePlans).toBe(2);
+    expect(filterContext!.excludedBySkip).toBe(2);
+    expect(filterContext!.profileFound).toBe(true);
+  });
+
+  it('previewAll with healthcare domain: excludes HR-only fixes', async () => {
+    // Scan result: HR checks already skipped by domain filter, healthcare checks fail
+    const scanResult = createMockScanResult({
+      score: {
+        totalScore: 60,
+        zone: 'yellow',
+        categoryScores: [],
+        criticalCapApplied: false,
+        totalChecks: 10,
+        passedChecks: 6,
+        failedChecks: 2,
+        skippedChecks: 2,
+      },
+      findings: [
+        // HR-only check → skipped by domain filter for healthcare project
+        createMockFinding({ checkId: 'industry-hr-bias', type: 'skip', severity: 'medium' }),
+        // HR-only check → skipped by domain filter
+        createMockFinding({ checkId: 'industry-hr-notification', type: 'skip', severity: 'medium' }),
+        // Healthcare check → fail (applicable)
+        createMockFinding({ checkId: 'industry-healthcare-clinical', type: 'fail', severity: 'high' }),
+        // Universal check → fail (applicable)
+        createMockFinding({ checkId: 'ai-disclosure', type: 'fail', obligationId: 'OBL-015' }),
+      ],
+    });
+
+    const allPlans: FixPlan[] = [
+      createMockPlan({ checkId: 'industry-hr-bias', article: 'Art. 26' }),
+      createMockPlan({ checkId: 'industry-hr-notification', article: 'Art. 26' }),
+      createMockPlan({ checkId: 'industry-healthcare-clinical', article: 'Art. 14' }),
+      createMockPlan({ checkId: 'ai-disclosure', obligationId: 'OBL-015', article: 'Art. 52' }),
+    ];
+
+    const service = createFixService({
+      fixer: {
+        previewFix: vi.fn(),
+        generateFix: vi.fn(),
+        generateFixes: vi.fn().mockReturnValue(allPlans),
+      },
+      scanService: { scan: vi.fn() },
+      events: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
+      getProjectPath: () => '/tmp/test-project',
+      getLastScanResult: () => scanResult,
+      loadTemplate: vi.fn(),
+      getProjectProfile: async () => ({
+        role: 'deployer' as const,
+        riskLevel: 'high',
+        domain: 'healthcare',
+      }),
+    });
+
+    const plans = await service.previewAll();
+
+    // HR-only fixes should be excluded (their findings are type: 'skip')
+    expect(plans).toHaveLength(2);
+    expect(plans.map(p => p.checkId)).toEqual([
+      'industry-healthcare-clinical',
+      'ai-disclosure',
+    ]);
+  });
+});

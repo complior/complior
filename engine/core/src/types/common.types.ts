@@ -195,6 +195,8 @@ export interface ScanFilterContext {
   readonly applicableObligations: number;
   readonly skippedByRole: number;
   readonly skippedByRiskLevel: number;
+  /** V1-M18: Findings skipped because they apply to a different industry domain. */
+  readonly skippedByDomain: number;
 }
 
 // --- Scan ---
@@ -387,6 +389,22 @@ export interface EvalDisclaimer {
   readonly testsSkipped: number;
   readonly severityWeighted: boolean;
   readonly limitations: readonly string[];
+}
+
+// --- Fix Filter Context (V1-M19) ---
+
+/** V1-M19: Context about how fix plans were filtered based on project profile. */
+export interface FixFilterContext {
+  readonly role: Role;
+  readonly riskLevel: string | null;
+  readonly domain: string | null;
+  readonly profileFound: boolean;
+  readonly totalPlans: number;
+  readonly applicablePlans: number;
+  /** Plans excluded because their associated finding was already type: 'skip' (from scan filtering). */
+  readonly excludedBySkip: number;
+  /** Plans excluded via direct domain check against check-applicability.json (no prior scan). */
+  readonly excludedByDomain: number;
 }
 
 // --- Score Transparency (V1-M10) ---

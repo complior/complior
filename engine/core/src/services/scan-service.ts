@@ -16,6 +16,7 @@ import { computeComplianceDiff, formatDiffMarkdown, type ComplianceDiff } from '
 import { loadCustomBannedPackages } from '../domain/scanner/rules/banned-packages.js';
 import { filterFindingsByRole } from '../domain/scanner/role-filter.js';
 import { filterFindingsByRiskLevel } from '../domain/scanner/risk-level-filter.js';
+import { filterFindingsByDomain } from '../domain/scanner/domain-filter.js';
 import type { RiskLevel, ScanFilterContext } from '../types/common.types.js';
 import type { ScanCache } from '../domain/scanner/scan-cache.js';
 
@@ -220,6 +221,16 @@ export const createScanService = (deps: ScanServiceDeps) => {
 
     findings = afterRisk;
 
+    // Step 3: Domain filter — count skips (not already role/risk-skipped)
+    const afterDomain = filterFindingsByDomain(findings, domain);
+    let skippedByDomain = 0;
+    for (let i = 0; i < findings.length; i++) {
+      if (findings[i]!.type !== 'skip' && afterDomain.find(f => f.checkId === findings[i]!.checkId)?.type === 'skip') {
+        skippedByDomain++;
+      }
+    }
+    findings = afterDomain;
+
     // V1-M09 T-4: when a real profile with obligations exists, use its count;
     // otherwise fall back to scan findings (for unit tests with stub data).
     const profileObligationCount = realProfile?.applicableObligations.length ?? 0;
@@ -232,6 +243,7 @@ export const createScanService = (deps: ScanServiceDeps) => {
       applicableObligations: profileObligationCount > 0 ? profileObligationCount : findings.filter(f => f.type !== 'skip').length,
       skippedByRole,
       skippedByRiskLevel,
+      skippedByDomain,
     };
 
     if (profileFound) {
