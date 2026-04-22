@@ -57,7 +57,9 @@ export const createFixRoute = (deps: FixRouteDeps) => {
       return { ...plan, projectedScore: simulation.projectedScore };
     });
 
-    return c.json({ fixes: enriched, count: enriched.length, currentScore });
+    /** V1-M19 T-8: expose fixFilterContext in preview response */
+    const fixFilterContext = fixService.getFixFilterContext?.() ?? null;
+    return c.json({ fixes: enriched, count: enriched.length, currentScore, fixFilterContext });
   });
 
   // Preview fix for a specific finding

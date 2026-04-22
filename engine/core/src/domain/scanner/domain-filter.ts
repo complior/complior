@@ -31,6 +31,9 @@ export const filterFindingsByDomain = (
 
   let changed = false;
   const result = findings.map((f) => {
+    // Already skipped by prior filter (role/risk-level) → don't overwrite message
+    if (f.type === 'skip') return f;
+
     const checkDomains = getCheckDomains(f.checkId);
 
     // If check has no domain restriction → pass through unchanged

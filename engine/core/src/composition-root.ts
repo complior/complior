@@ -355,6 +355,12 @@ export const loadApplication = async (): Promise<Application> => {
     evidenceStore,
     passportService: lazyPassportService,
     llm,
+    /** V1-M19: Wire project profile for fix plan filtering. */
+    getProjectProfile: async () => {
+      const profile = await getProjectProfile(state.projectPath);
+      if (!profile) return null;
+      return { role: profile.role, riskLevel: profile.riskLevel, domain: profile.domain };
+    },
   });
 
   const chatService = createChatService({
