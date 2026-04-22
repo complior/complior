@@ -9,31 +9,7 @@
  * findings for inapplicable domains become type: 'skip' (visible but not scored).
  */
 import type { Finding } from '../../types/common.types.js';
-import applicabilityData from '../../../data/scanner/check-applicability.json' with { type: 'json' };
-
-const data = applicabilityData as {
-  version: string;
-  defaults: { roles: string[]; riskLevels: string[]; domains: string[] };
-  overrides: Readonly<Record<string, { roles?: string[]; domains?: string[]; riskLevels?: string[] }>>;
-};
-
-/** Get applicable domains for a checkId. Unlisted → all domains (conservative default). */
-const getCheckDomains = (checkId: string): readonly string[] => {
-  const override = data.overrides[checkId];
-  if (!override) return data.defaults.domains; // empty = all domains
-  return override.domains ?? data.defaults.domains;
-};
-
-/**
- * Check if an checkId applies to the given domain.
- * If checkId has no domain restriction → applies to all.
- * If project domain is in the check's domain list → applies.
- */
-const domainApplies = (checkDomains: readonly string[], projectDomain: string): boolean => {
-  // Empty = applies to ALL domains (conservative default from data.defaults.domains)
-  if (checkDomains.length === 0) return true;
-  return checkDomains.includes(projectDomain);
-};
+import { getCheckDomains, domainApplies } from './check-applicability.js';
 
 /**
  * Filter findings by project industry domain.

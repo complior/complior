@@ -11,35 +11,13 @@
  * No profile → all plans pass through (backward compatible).
  */
 import type { FixPlan } from './types.js';
-import type { Finding, Role } from '../../types/common.types.js';
-import applicabilityData from '../../../data/scanner/check-applicability.json' with { type: 'json' };
+import type { Finding, FixFilterContext, Role } from '../../types/common.types.js';
+import { getCheckDomains, domainApplies } from '../scanner/check-applicability.js';
 
 export type FixFilterProfile = {
   readonly role: Role;
   readonly riskLevel: string | null;
   readonly domain: string | null;
-};
-
-const data = applicabilityData as {
-  version: string;
-  defaults: { roles: string[]; riskLevels: string[]; domains: string[] };
-  overrides: Readonly<Record<string, { roles?: string[]; domains?: string[]; riskLevels?: string[] }>>;
-};
-
-/** Get applicable domains for a checkId. Unlisted → all domains (conservative default). */
-const getCheckDomains = (checkId: string): readonly string[] => {
-  const override = data.overrides[checkId];
-  if (!override) return data.defaults.domains; // empty = all domains
-  return override.domains ?? data.defaults.domains;
-};
-
-/**
- * Check if an checkId applies to the given domain.
- * If checkId has no domain restriction → applies to all.
- */
-const domainApplies = (checkDomains: readonly string[], projectDomain: string): boolean => {
-  if (checkDomains.length === 0) return true;
-  return checkDomains.includes(projectDomain);
 };
 
 /** Build lookup: checkId → finding.type for O(1) filtering. */
@@ -122,13 +100,5 @@ export const filterFixPlansByProfile = (
   return { filtered: Object.freeze(filtered), context };
 };
 
-export interface FixFilterContext {
-  readonly role: Role;
-  readonly riskLevel: string | null;
-  readonly domain: string | null;
-  readonly profileFound: boolean;
-  readonly totalPlans: number;
-  readonly applicablePlans: number;
-  readonly excludedBySkip: number;
-  readonly excludedByDomain: number;
-}
+// FixFilterContext is imported from '../../types/common.types.js'
+export type { FixFilterContext } from '../../types/common.types.js';
