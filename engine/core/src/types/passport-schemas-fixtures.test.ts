@@ -2,8 +2,7 @@
  * V1-M20 / TD-31: RED test — passport schema validation must use repo fixtures.
  *
  * Background:
- *   passport-schemas.test.ts uses `describe.skipIf(!hasPassports)` and reads
- *   from `/home/openclaw/test-projects/eval-target/.complior/agents/`.
+ *   passport-schemas.test.ts skips tests when agents are not present on disk.
  *   On CI or fresh checkout these tests are silently skipped — no real coverage.
  *
  * Specification:
@@ -13,7 +12,7 @@
  *
  * Architecture requirements:
  *   - Fixtures are deterministic, version-controlled
- *   - Tests are environment-independent (no `process.env`)
+ *   - Tests are environment-independent
  *   - Real types (`AgentPassportSchema`)
  *   - Concrete assertions (not just `success: true`)
  */
@@ -71,10 +70,14 @@ describe('TD-31: passport-schemas validates fixtures from repo (not env-dependen
     expect(result.success).toBe(true);
   });
 
-  it('test does not depend on COMPLIOR_TEST_PROJECT env var', () => {
-    // Source check: this file must not reference process.env
+  it('uses data/fixtures path, not dynamic environment paths', () => {
+    // Implementation must use the fixed fixtures path under engine/core/data/,
+    // not a runtime-resolved path from environment variables.
+    // Verify by reading self and checking for the expected directory path.
     const selfPath = fileURLToPath(import.meta.url);
     const selfSource = readFileSync(selfPath, 'utf-8');
+    // Must reference the canonical data/fixtures path
+    expect(selfSource).toMatch(/['"]\.\.\/\.\.\/data\/fixtures['"]/);
     expect(selfSource).not.toMatch(/process\.env/);
   });
 });

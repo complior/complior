@@ -1,8 +1,9 @@
 /**
  * V1-M12: Eval Profile Filter.
  *
- * Filters eval conformity tests (ConformityTest[]) by project profile attributes
- * (role, risk level, industry domain) using the test-applicability.json map.
+ * Filters eval conformity tests (ConformityTest[]) and security probes (SecurityProbe[])
+ * by project profile attributes (role, risk level, industry domain) using the
+ * test-applicability.json map.
  *
  * Design decisions (from FA-02 §11-14):
  *  - Filter BEFORE execution — saves HTTP/LLM costs
@@ -12,6 +13,7 @@
 
 import type { EvalFilterContext } from '../../types/common.types.js';
 import type { ConformityTest } from './types.js';
+import type { SecurityProbe } from './security-integration.js';
 import applicabilityData from '../../../data/eval/test-applicability.json' with { type: 'json' };
 
 /** Profile input (partial — only defined fields filter). */
@@ -21,9 +23,24 @@ export interface FilterProfile {
   readonly domain: string | null;
 }
 
+/**
+ * A minimal set of fields shared by ConformityTest and SecurityProbe that are
+ * used for profile-based filtering. Using a union of their common fields avoids
+ * the `as unknown as` double-cast in eval-service.ts.
+ */
+export type FilterableItem =
+  | ConformityTest
+  | SecurityProbe;
+
 /** Result of filtering tests by profile. */
 export interface FilterResult {
   readonly filtered: readonly ConformityTest[];
+  readonly context: EvalFilterContext;
+}
+
+/** Result of filtering security probes by profile. */
+export interface SecurityProbeFilterResult {
+  readonly filtered: readonly SecurityProbe[];
   readonly context: EvalFilterContext;
 }
 
@@ -46,7 +63,7 @@ export const filterTestsByProfile = (
 
   // Backward compatible: no profile → all tests pass through
   if (profile === null) {
-    const context: EvalFilterContext = {
+    const context: EvalFilterContext = Object.freeze({
       role: 'both',
       riskLevel: null,
       domain: null,
@@ -56,8 +73,8 @@ export const filterTestsByProfile = (
       skippedByRole: 0,
       skippedByRiskLevel: 0,
       skippedByDomain: 0,
-    };
-    return { filtered: tests, context };
+    });
+    return { filtered: Object.freeze([...tests]), context };
   }
 
   let skippedByRole = 0;
@@ -96,7 +113,7 @@ export const filterTestsByProfile = (
     filtered.push(test);
   }
 
-  const context: EvalFilterContext = {
+  const context: EvalFilterContext = Object.freeze({
     role: profile.role,
     riskLevel: profile.riskLevel,
     domain: profile.domain,
@@ -106,7 +123,82 @@ export const filterTestsByProfile = (
     skippedByRole,
     skippedByRiskLevel,
     skippedByDomain,
-  };
+  });
 
-  return { filtered: Object.freeze(filtered), context };
+  return Object.freeze({ filtered: Object.freeze(filtered), context });
+};
+
+/** Filter security probes by project profile (V1-M20 / TD-44). */
+export const filterSecurityProbesByProfile = (
+  probes: readonly SecurityProbe[],
+  profile: FilterProfile | null,
+  overrides: Record<string, { roles?: readonly string[]; riskLevels?: readonly string[]; industries?: readonly string[] }> = applicabilityData.overrides as Record<string, { roles?: readonly string[]; riskLevels?: readonly string[]; industries?: readonly string[] }>,
+): SecurityProbeFilterResult => {
+  const totalProbes = probes.length;
+
+  // Backward compatible: no profile → all probes pass through
+  if (profile === null) {
+    const context: EvalFilterContext = Object.freeze({
+      role: 'both',
+      riskLevel: null,
+      domain: null,
+      profileFound: false,
+      totalTests: totalProbes,
+      applicableTests: totalProbes,
+      skippedByRole: 0,
+      skippedByRiskLevel: 0,
+      skippedByDomain: 0,
+    });
+    return Object.freeze({ filtered: Object.freeze([...probes]), context });
+  }
+
+  let skippedByRole = 0;
+  let skippedByRiskLevel = 0;
+  let skippedByDomain = 0;
+
+  const filtered: SecurityProbe[] = [];
+
+  for (const probe of probes) {
+    const override = overrides[probe.id];
+
+    // Role filter — 'both' passes all (no role restriction when role is 'both')
+    if (override?.roles && profile.role !== 'both') {
+      if (!override.roles.includes(profile.role)) {
+        skippedByRole++;
+        continue;
+      }
+    }
+
+    // Risk level filter
+    if (override?.riskLevels && profile.riskLevel !== null) {
+      if (!override.riskLevels.includes(profile.riskLevel)) {
+        skippedByRiskLevel++;
+        continue;
+      }
+    }
+
+    // Domain filter
+    if (override?.industries && profile.domain !== null) {
+      if (!override.industries.includes(profile.domain)) {
+        skippedByDomain++;
+        continue;
+      }
+    }
+
+    filtered.push(probe);
+  }
+
+  const context: EvalFilterContext = Object.freeze({
+    role: profile.role,
+    riskLevel: profile.riskLevel,
+    domain: profile.domain,
+    profileFound: true,
+    totalTests: totalProbes,
+    applicableTests: filtered.length,
+    skippedByRole,
+    skippedByRiskLevel,
+    skippedByDomain,
+  });
+
+  return Object.freeze({ filtered: Object.freeze(filtered), context });
 };

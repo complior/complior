@@ -20,7 +20,7 @@ import { createSecurityProbeLoader } from '../domain/eval/security-integration.j
 import { getSecurityRubric } from '../data/eval/security-rubrics.js';
 import { buildPassportEvalBlock, mergeEvalIntoPassport } from '../domain/eval/eval-passport.js';
 import { generateEvalReport } from '../domain/eval/eval-report.js';
-import { filterTestsByProfile, type FilterProfile } from '../domain/eval/eval-profile-filter.js';
+import { filterTestsByProfile, filterSecurityProbesByProfile, type FilterProfile } from '../domain/eval/eval-profile-filter.js';
 import { buildEvalDisclaimer } from '../domain/eval/eval-disclaimer.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
@@ -215,13 +215,12 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         return filterTestsByProfile(all, filterProfile).filtered;
       },
       getSecurityProbes: () => {
-        // Security probes are not filtered by profile (not in applicability map)
+        // Security probes: filter by profile using dedicated function (V1-M20 / TD-44)
         if (!filterProfile) return testSources.getSecurityProbes();
-        // For consistency with tests, filter by profile too
-        return filterTestsByProfile(
-          testSources.getSecurityProbes() as unknown as readonly ConformityTest[],
+        return filterSecurityProbesByProfile(
+          testSources.getSecurityProbes(),
           filterProfile,
-        ).filtered as unknown as ReturnType<EvalTestSources['getSecurityProbes']>;
+        ).filtered;
       },
     };
 
@@ -305,7 +304,7 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         log.warn('Invalid eval result on disk:', parsed.error.message);
         return null;
       }
-      return parsed.data as unknown as EvalResult;
+      return parsed.data;
     } catch {
       return null;
     }
