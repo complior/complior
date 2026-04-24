@@ -17,6 +17,7 @@ import { loadCustomBannedPackages } from '../domain/scanner/rules/banned-package
 import { filterFindingsByRole } from '../domain/scanner/role-filter.js';
 import { filterFindingsByRiskLevel } from '../domain/scanner/risk-level-filter.js';
 import { filterFindingsByDomain } from '../domain/scanner/domain-filter.js';
+import { buildScanDisclaimer } from '../domain/scanner/scan-disclaimer.js';
 import type { RiskLevel, ScanFilterContext } from '../types/common.types.js';
 import type { ScanCache } from '../domain/scanner/scan-cache.js';
 
@@ -249,11 +250,40 @@ export const createScanService = (deps: ScanServiceDeps) => {
     if (profileFound) {
       // Only recalculate score when real profile is available
       const filteredScore = recalcScore(findings, scanResult.score);
-      return { ...scanResult, findings, score: filteredScore, filterContext };
+
+      // W-1: Wire disclaimer into scan result (mirrors eval-service pattern)
+      const disclaimerCtx = {
+        role: effectiveProfile.role,
+        riskLevel: effectiveProfile.riskLevel ?? 'unknown',
+        domain: effectiveProfile.domain ?? 'unknown',
+        profileFound,
+        totalTests: effectiveProfile.applicableObligations.length > 0
+          ? effectiveProfile.applicableObligations.length
+          : findings.length,
+        applicableTests: findings.filter(f => f.type !== 'skip').length,
+        skippedByRole,
+        skippedByRiskLevel,
+        skippedByDomain,
+      };
+      const disclaimer = buildScanDisclaimer(disclaimerCtx);
+
+      return Object.freeze({ ...scanResult, findings, score: filteredScore, filterContext, disclaimer });
     }
 
     // No real profile — return scan result with filtered findings + filterContext (no score recalculation)
-    return { ...scanResult, findings, filterContext };
+    // W-1: Still attach disclaimer with no-profile defaults
+    const disclaimer = buildScanDisclaimer({
+      role: effectiveProfile.role,
+      riskLevel: 'unknown',
+      domain: 'unknown',
+      profileFound: false,
+      totalTests: findings.length,
+      applicableTests: findings.filter(f => f.type !== 'skip').length,
+      skippedByRole,
+      skippedByRiskLevel,
+      skippedByDomain,
+    });
+    return Object.freeze({ ...scanResult, findings, filterContext, disclaimer });
   };
 
   const scan = async (projectPath: string): Promise<ScanResult> => {

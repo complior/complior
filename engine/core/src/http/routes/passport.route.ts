@@ -156,13 +156,15 @@ export const createPassportRoute = (passportService: PassportService) => {
     if (!name) throw new ValidationError('Missing required query param: name');
     const format = c.req.query('format') as string | undefined;
 
-    const validFormats = ['a2a', 'aiuc-1', 'nist'] as const;
-    const parsed = validFormats.find(f => f === format);
+    const validFormats = ['a2a', 'aiuc-1', 'aiuc1', 'nist'] as const;
+    // Normalize aiuc1 → aiuc-1 before passing to service
+    const normalized = format === 'aiuc1' ? 'aiuc-1' : format;
+    const parsed = validFormats.find(f => f === normalized);
     if (!parsed) {
-      throw new ValidationError('Invalid "format" — must be a2a, aiuc-1, or nist');
+      throw new ValidationError('Invalid "format" — must be a2a, aiuc-1, aiuc1, or nist');
     }
 
-    const result = await passportService.exportPassportToFormat(name, parsed, path);
+    const result = await passportService.exportPassportToFormat(name, parsed === 'aiuc-1' ? 'aiuc-1' : parsed, path);
     if (result === null) throw new ValidationError(`Passport not found: ${name}`);
     return c.json(result);
   });
@@ -306,6 +308,16 @@ export const createPassportRoute = (passportService: PassportService) => {
     const path = c.req.query('path');
     const result = await passportService.diffPassport(name, path);
     return c.json(result);
+  });
+
+  // W-3: Worker notification route (Art. 26(7))
+  app.post('/passport/notify', async (c) => {
+    const data = await parseBody(c, z.object({
+      name: z.string().min(1),
+    }));
+
+    const result = await passportService.notifyWorkers(data.name);
+    return c.json({ path: result.path });
   });
 
   return app;

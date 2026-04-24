@@ -93,7 +93,18 @@ async function buildScanServiceForTest() {
   // Use the project's composition-root or a minimal scaffold.
   // This intentionally tests the SAME factory user invocation goes through.
   const { createScanService } = await import('./scan-service.js');
-  const { collectFiles } = await import('../domain/scanner/file-collector.js');
+
+  // Inline stub for collectFiles (file-collector.ts does not exist as a module)
+  const stubCollectFiles = async (_projectPath: string) =>
+    Object.freeze({
+      files: Object.freeze([
+        Object.freeze({
+          relativePath: 'README.md',
+          content: '# Test\n',
+          size: 6,
+        }),
+      ]),
+    });
 
   // Minimal scanner stub returning empty result (focus on disclaimer wiring)
   const stubScanner = Object.freeze({
@@ -124,9 +135,10 @@ async function buildScanServiceForTest() {
 
   const scanService = createScanService({
     scanner: stubScanner as never,
-    collectFiles,
+    collectFiles: stubCollectFiles as never,
     events: stubEvents as never,
     setLastScanResult: () => undefined,
+    getLastScanResult: () => null,
   } as never);
 
   return { scanService };
