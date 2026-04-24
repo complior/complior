@@ -180,6 +180,50 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
         PassportAction::AuditPackage { output, json, path } => {
             run_passport_audit_package(output.as_deref(), *json, path.as_deref(), config).await
         }
+        // V1-M22 B-1: worker notification subcommand (PRODUCT-VISION §11)
+        PassportAction::Notify { name, json, path } => {
+            run_passport_notify(name, *json, path.as_deref(), config).await
+        }
+    }
+}
+
+async fn run_passport_notify(
+    name: &str,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let project_path = resolve_project_path_buf(path);
+    let client = match ensure_engine_for(config, &project_path).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    // POST /passport/notify with { name }
+    let body = serde_json::json!({ "name": name });
+    match client.post_json("/passport/notify", &body).await {
+        Ok(result) => {
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
+                return 0;
+            }
+
+            let path_str = result
+                .get("path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            println!("Notification generated:");
+            println!("  Agent: {name}");
+            println!("  Saved to: {path_str}");
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to generate worker notification: {e}");
+            1
+        }
     }
 }
 
@@ -2382,8 +2426,8 @@ mod route_cleanup_tests {
         let src = include_str!("passport.rs");
         let needle = format!("fn run_passport_{}", "notify(");
         assert!(
-            !src.contains(&needle),
-            "run_passport_notify should be deleted"
+            src.contains(&needle),
+            "run_passport_notify should exist — V1-M22 B-1 implements worker notification"
         );
     }
 

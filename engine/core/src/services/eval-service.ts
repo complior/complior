@@ -9,7 +9,7 @@ import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { z } from 'zod';
-import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult, ConformityTest } from '../domain/eval/types.js';
+import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult } from '../domain/eval/types.js';
 import type { TargetAdapter } from '../domain/eval/adapters/adapter-port.js';
 import type { EvalRunnerDeps, EvalTestSources, EvalScorer, EvalJudge } from '../domain/eval/eval-runner.js';
 import { createEvalRunner } from '../domain/eval/eval-runner.js';
@@ -304,7 +304,9 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         log.warn('Invalid eval result on disk:', parsed.error.message);
         return null;
       }
-      return parsed.data;
+      // Schema intentionally minimal (forward-compat: accept old disk formats).
+      // passthrough() keeps extra fields at runtime; cast narrows back to EvalResult.
+      return parsed.data as unknown as EvalResult;
     } catch {
       return null;
     }

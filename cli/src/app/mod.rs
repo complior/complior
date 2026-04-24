@@ -544,9 +544,7 @@ impl App {
     /// Returns true when the app is performing a blocking operation and idle
     /// suggestions should be suppressed (T08: responsive widget selection).
     pub fn is_busy(&self) -> bool {
-        self.operation_start.is_some()
-            || self.streaming.active
-            || self.confirm_dialog.is_some()
+        self.operation_start.is_some() || self.streaming.active || self.confirm_dialog.is_some()
     }
 }
 

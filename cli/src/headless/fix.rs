@@ -10,6 +10,12 @@ use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
 use crate::headless::format::{plural, project_name, separator};
 
+// ── V1-M22 D-2: Exit code constants for fix --check-id semantics ──
+/// Exit code when no auto-fix is available (informational, not a failure).
+pub const EXIT_NO_FIX_AVAILABLE: i32 = 0;
+/// Exit code when fix actually failed (error condition).
+pub const EXIT_FIX_FAILED: i32 = 2;
+
 /// Run a headless fix (dry-run or apply).
 pub async fn run_headless_fix(
     dry_run: bool,
@@ -1338,9 +1344,6 @@ const VALID_DOC_TYPES: &[&str] = &[
     "instructions-for-use",
     "gpai-transparency",
     "gpai-systemic-risk",
-    "iso42001-ai-policy",
-    "iso42001-soa",
-    "iso42001-risk-register",
 ];
 
 /// Run `fix --doc <type> [agent]` — generate a compliance document.
@@ -1668,40 +1671,39 @@ mod tests {
         );
     }
 
-    // ── V1-M12 T-1: RED test — ISO 42001 doc types in CLI allowlist ──
+    // ── V1-M22 C-3: RED test — ISO 42001 doc types NOT in CLI allowlist ──
 
     #[test]
-    fn valid_doc_types_includes_iso42001_soa() {
+    fn valid_doc_types_excludes_iso_soa() {
         assert!(
-            VALID_DOC_TYPES.contains(&"iso42001-soa"),
-            "VALID_DOC_TYPES must include 'iso42001-soa' — ISO 42001 Statement of Applicability"
+            !VALID_DOC_TYPES.contains(&"iso42001-soa"),
+            "VALID_DOC_TYPES must NOT include iso42001-soa — ISO 42001 removed in V1-M22"
         );
     }
 
     #[test]
-    fn valid_doc_types_includes_iso42001_risk_register() {
+    fn valid_doc_types_excludes_iso_rr() {
         assert!(
-            VALID_DOC_TYPES.contains(&"iso42001-risk-register"),
-            "VALID_DOC_TYPES must include 'iso42001-risk-register' — ISO 42001 Risk Register"
+            !VALID_DOC_TYPES.contains(&"iso42001-risk-register"),
+            "VALID_DOC_TYPES must NOT include iso42001-risk-register — ISO 42001 removed in V1-M22"
         );
     }
 
     #[test]
-    fn valid_doc_types_includes_iso42001_ai_policy() {
+    fn valid_doc_types_excludes_iso_ap() {
         assert!(
-            VALID_DOC_TYPES.contains(&"iso42001-ai-policy"),
-            "VALID_DOC_TYPES must include 'iso42001-ai-policy' — ISO 42001 AI Policy"
+            !VALID_DOC_TYPES.contains(&"iso42001-ai-policy"),
+            "VALID_DOC_TYPES must NOT include iso42001-ai-policy — ISO 42001 removed in V1-M22"
         );
     }
 
     #[test]
-    fn valid_doc_types_count_matches_engine_registry() {
-        // Engine template-registry.ts has 17 entries (14 EU AI Act + 3 ISO 42001).
-        // Rust CLI VALID_DOC_TYPES must have the same count.
+    fn valid_doc_types_count_after_iso_removal() {
+        // V1-M22: 14 EU AI Act doc types only (iso42001 removed)
         assert_eq!(
             VALID_DOC_TYPES.len(),
-            17,
-            "VALID_DOC_TYPES should have 17 entries (14 EU AI Act + 3 ISO 42001), got {}",
+            14,
+            "VALID_DOC_TYPES should have 14 entries (EU AI Act only), got {}",
             VALID_DOC_TYPES.len()
         );
     }
