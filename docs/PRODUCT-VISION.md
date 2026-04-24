@@ -871,12 +871,23 @@ S10  ████████████████████  Deep scan + O
 S11  ████████████████████  complior eval (dynamic)        ✅ DONE
 V1-M01..M11 ████████████  Pipeline + flags + E2E         ✅ DONE
 C-M01..M04 █████████████  Contracts + bugfixes + E2E     ✅ DONE
+V1-M12..M19 ████████████  Context-aware eval/scan/fix    ✅ DONE (on dev)
+
+MONTH 1.5 — v1.0.0 FINALIZATION (in progress)
+──────────────────────────────────────────────────────────────────
+V1-M20 ░░░░░░░░░░░░░░░░░  Tech debt cleanup (TD-31/35/40/41/44)  🔴 RED
+V1-M21 ░░░░░░░░░░░░░░░░░  Deep E2E manual testing + HTML review  🔵 PLANNED
+RELEASE ░░░░░░░░░░░░░░░░  v1.0.0 tag + crates.io + npm publish   ⏳ PENDING
 
 MONTH 3-4 — CLOUD SERVICES
 ──────────────────────────────────────────────────────────────────
+V2-M01 ░░░░░░░░░░░░░░░░░  SDK enrichment (FA-06 Layer 2)
+V2-M02 ░░░░░░░░░░░░░░░░░  MCP enrichment (FA-08 runtime mode)
+V2-M03 ░░░░░░░░░░░░░░░░░  Guard integration (FA-09, after Guard MVP)
 GUARD ░░░░░░░░░░░░░░░░░░░  Guard API R&D (~11 weeks, parallel track)
 S10-C ░░░░░░░░░░░░░░░░░░░  Cloud Scan API, vendor assessment, PDF
-SaaS  ░░░░░░░░░░░░░░░░░░░  Fleet Dashboard, FRIA Wizard, Registry
+V2-M05 ░░░░░░░░░░░░░░░░░  SaaS: Fleet Dashboard, FRIA Wizard, Registry
+V2-M06 ░░░░░░░░░░░░░░░░░  Sync end-to-end verification (FA-Sync)
 
 MONTH 7+ — PAID
 ──────────────────────────────────────────────────────────────────
@@ -925,8 +936,17 @@ SaaS  ░░░░░░░░░░░░░░░░░░░  Incidents, Moni
 - [x] Full CLI flag coverage: 59 flags across 6 commands (E2E: 34/34 acceptance PASS)
 - [x] Unit tests: 202 Rust + 2225 TS = 2427 GREEN
 
+### Осталось для Month 1.5 (v1.0.0 finalization)
+
+- [ ] V1-M20: Tech debt cleanup (TD-31, TD-35, TD-40, TD-41, TD-44 — все RED, ждут dev'а)
+- [ ] V1-M21: Deep E2E manual testing на dev (scan/eval/fix/passport/report HTML)
+- [ ] v1.0.0 release tag (после V1-M21 без release blocker'ов) → crates.io + npm publish
+
 ### Осталось для Month 3-4 (Cloud Services)
 
+- [ ] V2-M01: SDK enrichment (FA-06 Layer 2, Guard API integration)
+- [ ] V2-M02: MCP enrichment (FA-08 runtime mode)
+- [ ] V2-M03: Guard integration (FA-09, после Guard MVP)
 - [ ] Guard API MVP (5 классификаторов: PromptGuard 2, LLM Guard, Presidio, Qwen 2.5 7B)
 - [ ] Cloud Scan API (SBOM, Presidio PII, vendor assessment, PDF export)
 - [ ] SDK Layer 2 (Guard API integration, двухуровневая проверка)
