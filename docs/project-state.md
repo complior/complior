@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-22
-**Updated by:** Architect (post-merge V1-M18 + V1-M19)
+**Updated:** 2026-04-24
+**Updated by:** Reviewer (V1-M20 + V1-M21 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `dev` (34 commits ahead of main)
+**Branch:** `feature/V1-M20-M21-roadmap-cleanup` (pending merge to dev)
 
 ---
 
@@ -11,12 +11,12 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2288 passed, 2 skipped (169 files) |
-| Rust CLI (`cli/`) | GREEN | 202 passed (0 failed) |
+| TS Engine (`engine/core/`) | GREEN | 2297 passed, 2 skipped (171 files) |
+| Rust CLI (`cli/`) | GREEN | 203 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2490 tests GREEN**
+**Total: 2500 tests GREEN**
 
 ---
 
@@ -53,6 +53,7 @@
 | V1-M12.1 | Eval Pre-Filter (filter BEFORE execution, saves HTTP/LLM costs) | DONE | ✅ (PR #17) |
 | V1-M18 | Scanner Domain Filter (3rd dimension: industry domain) | DONE | ✅ (PR #18) |
 | V1-M19 | Fix Profile Filter (filter fix plans by project profile) | DONE | ✅ (PR #18) |
+| V1-M20 | Tech Debt Cleanup (TD-44, TD-31, TD-35, TD-41) | DONE | pending merge |
 
 ## In Progress / RED
 
@@ -158,6 +159,30 @@
 
 - Tests: 27 new (domain-filter 16, fix-profile-filter 8, scan-service 1, fix-service 2, E2E 6, Rust 1)
 - **Review Notes:** TD-45 (architect import path error), TD-46 (FixFilterContext dedup — fixed), TD-47 (helper dedup — fixed)
+
+## V1-M20: Tech Debt Cleanup (DONE — pending merge to dev)
+
+**Branch:** `feature/V1-M20-M21-roadmap-cleanup`
+**Scope:** 37 files, +3333/-54 LOC (unique to branch)
+**What:** Resolves 4 tracked tech debt items with RED tests written by architect:
+
+| TD | Description | Resolution |
+|----|-------------|------------|
+| TD-44 | Double `as unknown as` cast in eval-service | `filterTestsByProfile` now accepts `SecurityProbe[]` natively; zero `as unknown as` in eval-service.ts |
+| TD-31 | Passport schema tests skipped on CI (env-dependent) | 2 repo fixtures (`passport-anthropic.json`, `passport-openai.json`) in `data/fixtures/`; tests never skip |
+| TD-35 | 4x `#[allow(dead_code)] // TODO(T10)` markers in cli/src | Removed annotations (responsive widgets wired or fields deleted) |
+| TD-41 | C-M04 acceptance grep fails on `eval --det` empty output | `verify_eval_det_grep.sh` acceptance script with fallback |
+
+- Tests: 5 new (TS: 2 files, Rust: 1 test)
+- Acceptance scripts: 3 new (`verify_completions_isolated.sh`, `verify_eval_det_grep.sh`, `verify_v1_deep_e2e.sh`)
+- Feature Areas: 8 new (contract-layer, guard-integration, mcp, passport, report, sdk, sync, tui)
+- V1-M19 hotfix: wired `getProjectProfile` + `fixFilterContext` in fix route
+
+**Review Notes:**
+- Tests GREEN: 2297 TS + 203 Rust = 2500 total
+- No existing test assertions weakened or removed
+- TD-48: Architect wrote implementation code for TD-44/TD-35/TD-31 fixes (minor process deviation — acceptable for targeted tech debt cleanup)
+- V1-M21 milestone spec created (Deep E2E Testing) — RED, not yet implemented
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 

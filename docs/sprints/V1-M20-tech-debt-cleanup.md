@@ -1,11 +1,15 @@
 # V1-M20: Tech Debt Cleanup
 
-> **Status:** 🔴 RED — RED tests written, awaiting implementation
+> **Status:** ✅ DONE — all RED tests GREEN, reviewer APPROVED, pending merge to dev
 > **Branch:** `feature/V1-M20-M21-roadmap-cleanup`
 > **Created:** 2026-04-24
-> **Author:** Architect
+> **Completed:** 2026-04-24
+> **Author:** Architect (specs + RED tests), nodejs-dev + rust-dev (impl)
+> **Reviewer:** APPROVED (2500 tests GREEN, no test mods, project-state updated)
 > **Predecessor:** V1-M19 Fix Profile Filter (DONE on dev)
 > **Successor:** V1-M21 Deep E2E Manual Testing → release v1.0.0
+>
+> **Resolution:** TD-44, TD-31, TD-35, TD-41 → ✅ FIXED. TD-40 deferred (process flake, not blocker). TD-48 logged (architect impl-code on tech-debt fixes — non-blocker process note).
 
 ---
 

@@ -1,7 +1,7 @@
 # Tech Debt Tracker — Complior v8
 
 **Updated:** 2026-04-24
-**Author:** Architect (V1-M20 RED test attribution + TD-38 verified GREEN)
+**Author:** Reviewer (V1-M20 review — mark TD-31/35/44 FIXED, add TD-48)
 
 ---
 
@@ -21,11 +21,11 @@
 | ID | Severity | Description | Location | Test on fix | Status |
 |----|----------|-------------|----------|-------------|--------|
 | TD-30 | LOW | `--cloud` flag returns stub "not yet available" | cli/src/headless/scan.rs:54 | — | OPEN (Phase 2) |
-| TD-31 | LOW | 2 skipped tests: conditional on passport JSON files on disk | engine/core/src/types/passport-schemas.test.ts | `passport_schemas_use_repo_fixtures` (V1-M20) | 🔴 OPEN |
+| TD-31 | LOW | 2 skipped tests: conditional on passport JSON files on disk | engine/core/src/types/passport-schemas.test.ts | `passport_schemas_use_repo_fixtures` (V1-M20) | ✅ FIXED (V1-M20) |
 | TD-32 | LOW | Stale M01 milestone file (status NEXT, but work done) | docs/sprints/M01-scanner-eval-core.md | — | OPEN |
 | TD-33 | LOW | Redteam command is alias to eval --security, not standalone | cli/src/headless/redteam.rs | — | OPEN (by design) |
 | TD-34 | LOW | Sync command auth scaffolding only, logic feature-gated | cli/src/headless/sync.rs | — | OPEN (Phase 2) |
-| TD-35 | LOW | 3x TODO(T10) dead_code markers for responsive widgets | cli/src/components/suggestions.rs:52, layout.rs:38, app/mod.rs:153 | `no_dead_code_markers` (V1-M20) | 🔴 OPEN |
+| TD-35 | LOW | 3x TODO(T10) dead_code markers for responsive widgets | cli/src/components/suggestions.rs:52, layout.rs:38, app/mod.rs:153 | `no_dead_code_markers` (V1-M20) | ✅ FIXED (V1-M20) |
 | TD-36 | MEDIUM | PRODUCT-VISION.md 11 "Remaining for Month 1" checklist outdated | docs/PRODUCT-VISION.md:916-924 | — | OPEN |
 | TD-37 | LOW | V1-M01..M15 milestone files not on disk (historical knowledge gap) | docs/sprints/ | — | OPEN |
 | TD-38 | MEDIUM | `scan --quiet` outputs 16 lines instead of ≤5 (header+info not suppressed) | cli/src/headless/format/human.rs:28-30 | `format_human_quiet_compact` (cli/src/headless/tests.rs:1069) | ✅ FIXED (test GREEN; real-world re-verify in V1-M21) |
@@ -34,7 +34,8 @@
 | TD-41 | LOW | C-M04 acceptance script B-01 grep `\d+ passed` fails when eval --det returns all 0/N/A | scripts/verify_e2e_bugfix.sh:187-195 | `scripts/verify_eval_det_grep.sh` (V1-M20) | 🔴 OPEN |
 | TD-42 | LOW | C-M04: dev wrote Rust tests (T-4..T-12) without architect RED specs — process deviation | cli/src/headless/tests.rs | — | OPEN (process) |
 | TD-43 | LOW | V1-M12.1: dev modified architect test (expanded healthcare IDs for new data entries) — process deviation | engine/core/src/services/eval-prefilter.test.ts | — | OPEN (process) |
-| TD-44 | MEDIUM | V1-M12.1: double `as unknown as` cast in getSecurityProbes() filter — type safety smell | engine/core/src/services/eval-service.ts:221-224 | `eval-service-no-unsafe-cast.test.ts` (V1-M20) | 🔴 OPEN |
+| TD-44 | MEDIUM | V1-M12.1: double `as unknown as` cast in getSecurityProbes() filter — type safety smell | engine/core/src/services/eval-service.ts:221-224 | `eval-service-no-unsafe-cast.test.ts` (V1-M20) | ✅ FIXED (V1-M20) |
+| TD-48 | LOW | V1-M20: architect wrote implementation code for TD-44/TD-35/TD-31 fixes — minor process deviation | V1-M20 commits | — | OPEN (process) |
 
 ---
 
@@ -63,4 +64,5 @@
 - TD-41: Script grep looks for `\d+ passed` but `eval --det` output has `0/20 N/A` format when target returns empty results. Fix: add fallback — if no `176 errors` found AND eval completed, count as PASS
 - TD-42: Architect spec'd test names in milestone doc (C-M04) but did not write RED Rust test code. Dev wrote both tests and implementation. No assertions weakened — acceptable for bugfix sprint, but future milestones should include RED Rust tests
 - TD-43: Dev added 7 entries to `test-applicability.json` (CT-10-051..052, CT-11-051..055). CT-11-053 includes "healthcare", causing architect's test to fail. Dev expanded test assertions rather than filing SCOPE VIOLATION REQUEST. Assertions NOT weakened — expanded, not relaxed
-- TD-44: `getSecurityProbes()` returns a different type (`SecurityProbe[]`) than `ConformityTest[]`. The `filterTestsByProfile()` is forced through double cast. Architect should add `SecurityProbe` support to filter function, or exclude security probes from profile filtering
+- TD-44: FIXED in V1-M20 — `filterTestsByProfile` now accepts `SecurityProbe[]` natively via union type. Zero `as unknown as` casts in eval-service.ts. Verified by `eval-service-no-unsafe-cast.test.ts` (GREEN)
+- TD-48: V1-M20 architect wrote impl code for tech debt cleanup (eval-profile-filter.ts, cli dead_code removal, fixture wiring). Acceptable for targeted fixes with pre-written RED tests, but not a pattern to repeat for feature milestones
