@@ -1,0 +1,66 @@
+# Tech Debt Tracker — Complior v8
+
+**Updated:** 2026-04-24
+**Author:** Architect (V1-M20 RED test attribution + TD-38 verified GREEN)
+
+---
+
+## Format
+
+| ID | Severity | Description | Location | Test on fix | Status |
+|----|----------|-------------|----------|-------------|--------|
+
+- **Severity**: CRITICAL / HIGH / MEDIUM / LOW
+- **Status**: OPEN / FIXED / WONTFIX
+- **Test on fix**: Name of test that verifies the fix (architect writes)
+
+---
+
+## Active Tech Debt
+
+| ID | Severity | Description | Location | Test on fix | Status |
+|----|----------|-------------|----------|-------------|--------|
+| TD-30 | LOW | `--cloud` flag returns stub "not yet available" | cli/src/headless/scan.rs:54 | — | OPEN (Phase 2) |
+| TD-31 | LOW | 2 skipped tests: conditional on passport JSON files on disk | engine/core/src/types/passport-schemas.test.ts | `passport_schemas_use_repo_fixtures` (V1-M20) | 🔴 OPEN |
+| TD-32 | LOW | Stale M01 milestone file (status NEXT, but work done) | docs/sprints/M01-scanner-eval-core.md | — | OPEN |
+| TD-33 | LOW | Redteam command is alias to eval --security, not standalone | cli/src/headless/redteam.rs | — | OPEN (by design) |
+| TD-34 | LOW | Sync command auth scaffolding only, logic feature-gated | cli/src/headless/sync.rs | — | OPEN (Phase 2) |
+| TD-35 | LOW | 3x TODO(T10) dead_code markers for responsive widgets | cli/src/components/suggestions.rs:52, layout.rs:38, app/mod.rs:153 | `no_dead_code_markers` (V1-M20) | 🔴 OPEN |
+| TD-36 | MEDIUM | PRODUCT-VISION.md 11 "Remaining for Month 1" checklist outdated | docs/PRODUCT-VISION.md:916-924 | — | OPEN |
+| TD-37 | LOW | V1-M01..M15 milestone files not on disk (historical knowledge gap) | docs/sprints/ | — | OPEN |
+| TD-38 | MEDIUM | `scan --quiet` outputs 16 lines instead of ≤5 (header+info not suppressed) | cli/src/headless/format/human.rs:28-30 | `format_human_quiet_compact` (cli/src/headless/tests.rs:1069) | ✅ FIXED (test GREEN; real-world re-verify in V1-M21) |
+| TD-39 | LOW | Installed binary in PATH was v0.9.4 (stale), causing passport acceptance failures | ~/.cargo/bin/complior | — | ✅ FIXED (cargo install) |
+| TD-40 | LOW | Completions acceptance test flaky in full pipeline script (engine process leak) | scripts/verify_v1_pipeline_full.sh:321 | `scripts/verify_completions_isolated.sh` (V1-M20) | 🔴 OPEN |
+| TD-41 | LOW | C-M04 acceptance script B-01 grep `\d+ passed` fails when eval --det returns all 0/N/A | scripts/verify_e2e_bugfix.sh:187-195 | `scripts/verify_eval_det_grep.sh` (V1-M20) | 🔴 OPEN |
+| TD-42 | LOW | C-M04: dev wrote Rust tests (T-4..T-12) without architect RED specs — process deviation | cli/src/headless/tests.rs | — | OPEN (process) |
+| TD-43 | LOW | V1-M12.1: dev modified architect test (expanded healthcare IDs for new data entries) — process deviation | engine/core/src/services/eval-prefilter.test.ts | — | OPEN (process) |
+| TD-44 | MEDIUM | V1-M12.1: double `as unknown as` cast in getSecurityProbes() filter — type safety smell | engine/core/src/services/eval-service.ts:221-224 | `eval-service-no-unsafe-cast.test.ts` (V1-M20) | 🔴 OPEN |
+
+---
+
+## Resolved Tech Debt (v0.9.5 - v0.9.8)
+
+| ID | Description | Fixed in | Resolution |
+|----|-------------|----------|------------|
+| TD-12 | Unused `buildPriorityActions` import in scan.route.ts | v0.9.6 | Removed |
+| TD-14 | Agent discovery parses non-path route strings | v0.9.6 | Fixed parser |
+| TD-26 | Deprecated `/agent/*` route stubs remaining | v0.9.6 | Removed |
+| TD-27 | Rust CLI routes incorrect: `/passport/doc` | v0.9.6 | Fixed to `/fix/doc/generate` |
+| TD-28 | 57 TypeScript type errors | v0.9.5 | All resolved |
+| TD-29 | npm security vulnerabilities (hono, vite) | v0.9.5 | Upgraded |
+
+---
+
+## Notes
+
+- TD-30, TD-34: By design — Cloud and Sync are Phase 2 features, not v1.0 scope
+- TD-31: Tests skip gracefully when test project not present; not a regression
+- TD-33: Redteam as eval alias is acceptable for v1.0; standalone planned post-v1.0
+- TD-36: PRODUCT-VISION checklist predates M07-M10 work that completed ISO 42001 docs and eval
+- TD-38: V1-M17 milestone created with RED test `format_human_quiet_compact`
+- TD-39: Fixed by running `cargo install --path cli` (0.9.4 → 0.9.9)
+- TD-40: Completions test passes in isolation; fails in script due to engine process from prior section
+- TD-41: Script grep looks for `\d+ passed` but `eval --det` output has `0/20 N/A` format when target returns empty results. Fix: add fallback — if no `176 errors` found AND eval completed, count as PASS
+- TD-42: Architect spec'd test names in milestone doc (C-M04) but did not write RED Rust test code. Dev wrote both tests and implementation. No assertions weakened — acceptable for bugfix sprint, but future milestones should include RED Rust tests
+- TD-43: Dev added 7 entries to `test-applicability.json` (CT-10-051..052, CT-11-051..055). CT-11-053 includes "healthcare", causing architect's test to fail. Dev expanded test assertions rather than filing SCOPE VIOLATION REQUEST. Assertions NOT weakened — expanded, not relaxed
+- TD-44: `getSecurityProbes()` returns a different type (`SecurityProbe[]`) than `ConformityTest[]`. The `filterTestsByProfile()` is forced through double cast. Architect should add `SecurityProbe` support to filter function, or exclude security probes from profile filtering

@@ -5,6 +5,7 @@
 > **Date:** 2026-04-21
 > **Purpose:** Deterministic auto-remediation -- 5 categories, 20 strategies, 17 templates
 > **Milestones:** V1-M19 Fix Profile Filter (section 9)
+> **Status (v1.0.0):** ✅ COMPLETE — production-ready, in v1.0.0 scope
 
 ---
 

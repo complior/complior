@@ -5,6 +5,7 @@
 > **Date:** 2026-04-21
 > **Purpose:** Deterministic 5-layer compliance analysis engine -- 500+ tests
 > **Milestones:** V1-M08 Context-Aware Scan, V1-M18 Domain Filter (SS7)
+> **Status (v1.0.0):** ✅ COMPLETE — production-ready, in v1.0.0 scope
 
 ---
 

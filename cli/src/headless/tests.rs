@@ -1486,4 +1486,57 @@ mod tests {
         // No protocol → unchanged
         assert_eq!(normalize("localhost:4000"), "localhost:4000"); // no http prefix
     }
+
+    /// V1-M20 / TD-35: RED test — no `#[allow(dead_code)] // TODO(T10)` markers must
+    /// remain in cli/src/. Either responsive widget selection is wired, or the
+    /// stale fields are removed.
+    ///
+    /// Architecture requirement: dead code is technical debt; if a field is unused,
+    /// either implement the feature that uses it or delete the field. `TODO(T10)`
+    /// markers were carried over from S03 and must be resolved before v1.0.0 release.
+    #[test]
+    fn no_dead_code_markers() {
+        use std::fs;
+        use std::path::Path;
+
+        // Only flag REAL `#[allow(dead_code)]` annotations bearing the
+        // `TODO(T10)` marker — not docstring/comment mentions of the marker
+        // (this very test references TD-35 in its docs).
+        fn scan_dir(dir: &Path, hits: &mut Vec<String>) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        if path.file_name().is_some_and(|n| n == "target") {
+                            continue;
+                        }
+                        scan_dir(&path, hits);
+                    } else if path.extension().is_some_and(|e| e == "rs") {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            for (i, line) in content.lines().enumerate() {
+                                let trimmed = line.trim_start();
+                                // Match: `#[allow(dead_code)] // TODO(T10)…`
+                                let is_allow_dead = trimmed.starts_with("#[allow(dead_code)]")
+                                    || trimmed.starts_with("#[ allow ( dead_code ) ]");
+                                if is_allow_dead && line.contains("TODO(T10)") {
+                                    hits.push(format!("{}:{}", path.display(), i + 1));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let cli_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut hits = Vec::new();
+        scan_dir(&cli_src, &mut hits);
+
+        assert!(
+            hits.is_empty(),
+            "TD-35: Found {} `#[allow(dead_code)]` lines tagged TODO(T10) — must be resolved (implement OR remove). Locations:\n  {}",
+            hits.len(),
+            hits.join("\n  "),
+        );
+    }
 }
