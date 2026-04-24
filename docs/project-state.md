@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-04-24
-**Updated by:** Reviewer (V1-M22 review)
+**Updated by:** Reviewer (V1-M23 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M22-release-blockers` (pending merge to dev)
+**Branch:** `feature/V1-M23-wiring-fixes` (pending merge to dev)
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2310 passed, 2 skipped (175 files) |
-| Rust CLI (`cli/`) | GREEN | 207 passed (0 failed) |
+| TS Engine (`engine/core/`) | GREEN | 2328 passed, 2 skipped (179 files) |
+| Rust CLI (`cli/`) | GREEN | 208 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2517 tests GREEN**
+**Total: 2536 tests GREEN**
 
 ---
 
@@ -56,12 +56,12 @@
 | V1-M19 | Fix Profile Filter (filter fix plans by project profile) | DONE | ✅ (PR #18) |
 | V1-M20 | Tech Debt Cleanup (TD-44, TD-31, TD-35, TD-41) | DONE | pending merge |
 | V1-M22 | v1.0.0 Release Blockers (HTML report, ISO 42001 removal, UX fixes) | DONE | pending merge |
+| V1-M23 | Runtime Wiring Fixes (4 release blockers from V1-M21 re-run) | DONE | pending merge |
 
 ## In Progress / RED
 
 | Milestone | Description | Branch | Status |
 |-----------|-------------|--------|--------|
-| V1-M22 E | Test infrastructure fixes (architect scope) | `feature/V1-M22-release-blockers` | Pending (after review) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
@@ -212,6 +212,30 @@
 - TD-49: Dev modified 8 architect test files across 3 commits. 5 expected (ISO removal counts 17→14), 2 clippy/mock fixes, 1 eval-service assertion narrowed (justified — getLastResult Zod cast). No assertions weakened critically
 - TD-50: 2 passport-schemas tests still skipped (was fixed in V1-M20 with repo fixtures — needs investigation)
 - Section E (test infrastructure) remains for architect after this review
+
+## V1-M23: Runtime Wiring Fixes (DONE — pending merge to dev)
+
+**Branch:** `feature/V1-M23-wiring-fixes` (chained from V1-M22)
+**Scope:** 4 files, +96/-10 LOC (V1-M23 specific) + 4 new test files
+**What:** Closes 4 runtime wiring gaps discovered during V1-M21 deep E2E re-run:
+
+| ID | Description | Fix | Status |
+|----|-------------|-----|--------|
+| W-1 | `scan --json` missing `disclaimer` field | Wire `buildScanDisclaimer` in scan-service, attach to ScanResult | ✅ GREEN |
+| W-2 | `report --output` ignored for md/html/pdf | CLI passes `outputPath` in JSON body to engine | ✅ GREEN |
+| W-3 | `passport notify` route returns 404 | Register `POST /passport/notify` in passport.route.ts with Zod validation | ✅ GREEN |
+| W-4 | `aiuc1` alias rejected at runtime | Add `aiuc1` to clap value_parser + normalize to `aiuc-1` in engine route | ✅ GREEN |
+
+- Tests: 2536 GREEN (2328 TS + 208 Rust), 2 skipped
+- New test files: 4 TS + 1 Rust test added to `tests.rs`
+- No existing tests modified by V1-M23 commits
+
+**Review Notes:**
+- Clean implementation — all fixes are minimal, focused wiring
+- W-1 follows eval-service disclaimer pattern, Object.freeze on result
+- W-2 includes sanity warning if engine path differs from requested
+- W-3 uses Zod body validation (consistent with other routes)
+- No new tech debt
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 
