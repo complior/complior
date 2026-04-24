@@ -149,10 +149,6 @@ pub struct App {
     // T07: Dismiss modal
     pub dismiss_modal: Option<crate::components::quick_actions::DismissModal>,
 
-    // T08: Responsive layout breakpoint
-    #[allow(dead_code)] // TODO(T10): use for responsive widget selection
-    pub breakpoint: Breakpoint,
-
     // T08: Mouse click areas (populated each render frame)
     pub click_areas: Vec<(Rect, ClickTarget)>,
     pub scroll_events: Vec<Instant>,
@@ -285,7 +281,6 @@ impl App {
             zen_messages_limit: 1000,
             zen_active: false,
             dismiss_modal: None,
-            breakpoint: Breakpoint::Medium,
             click_areas: Vec::new(),
             scroll_events: Vec::new(),
             undo_history: UndoHistoryState::new(),
@@ -545,13 +540,18 @@ impl App {
         self.terminal_output = data.terminal_output;
         self.last_scan = data.last_scan;
     }
+
+    /// Returns true when the app is performing a blocking operation and idle
+    /// suggestions should be suppressed (T08: responsive widget selection).
+    pub fn is_busy(&self) -> bool {
+        self.operation_start.is_some()
+            || self.streaming.active
+            || self.confirm_dialog.is_some()
+    }
 }
 
 /// Commands that `apply_action()` can emit for async execution by the event loop.
-/// Some variants are dispatched indirectly (e.g., `SaveTheme` via overlay confirmation)
-/// so not all call sites are statically visible.
 #[derive(Debug)]
-#[allow(dead_code)] // TODO(T10): wire remaining variants or remove after feature audit
 pub enum AppCommand {
     Scan,
     AutoScan,
