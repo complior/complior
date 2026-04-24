@@ -1539,4 +1539,155 @@ mod tests {
             hits.join("\n  "),
         );
     }
+
+    // ── V1-M22 / B-1 (B-3): passport notify subcommand ──────────
+
+    /// V1-M22: `complior passport notify <agent>` must be a recognized subcommand.
+    /// Current state (V1-M21 discovery): "error: unrecognized subcommand 'notify'".
+    ///
+    /// Spec: PassportAction enum in cli.rs must have a variant named `Notify`.
+    /// Source-level test (not type-level) so this file still compiles during RED.
+    #[test]
+    fn passport_notify_variant_in_cli_source() {
+        use std::fs;
+        use std::path::Path;
+
+        let cli_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("cli.rs");
+        let content = fs::read_to_string(&cli_rs).expect("cli.rs readable");
+
+        // Find the PassportAction enum block
+        let start = content
+            .find("pub enum PassportAction")
+            .expect("PassportAction enum must exist");
+        let tail = &content[start..];
+        let end = tail.find("\n}\n").expect("enum has closing brace");
+        let enum_body = &tail[..end];
+
+        assert!(
+            enum_body.contains("Notify"),
+            "V1-M22 B-1: PassportAction enum must have `Notify` variant. \
+             Current enum body:\n{enum_body}"
+        );
+    }
+
+    // ── V1-M22 / D-1 (U-2): passport export format alias ────────
+
+    /// V1-M22: `--format aiuc1` should be accepted as alias for `aiuc-1`.
+    /// Dev can fix either by clap value_parser alias or by normalizing in handler.
+    /// Source-level spec: cli.rs should document/configure `aiuc1` alongside `aiuc-1`.
+    #[test]
+    fn passport_export_format_supports_aiuc1_alias() {
+        use std::fs;
+        use std::path::Path;
+
+        let cli_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("cli.rs");
+        let content = fs::read_to_string(&cli_rs).expect("cli.rs readable");
+
+        // Either:
+        //   - clap alias: #[arg(value_parser = ..., alias = "aiuc1")]  OR
+        //   - documented both: "aiuc-1, aiuc1" in help
+        //   - value_parser list containing both "aiuc-1" and "aiuc1"
+        let has_both_forms = content.contains("\"aiuc1\"") && content.contains("\"aiuc-1\"");
+        let has_alias_attr = content.contains("alias = \"aiuc1\"")
+            || content.contains("aliases = &[\"aiuc1\"]");
+
+        assert!(
+            has_both_forms || has_alias_attr,
+            "V1-M22 D-1: cli.rs must accept `aiuc1` as alias for `aiuc-1`. \
+             Expected either both strings or #[arg(alias = \"aiuc1\")] in PassportAction::Export."
+        );
+    }
+
+    // ── V1-M22 / C-3: ISO 42001 removed from Rust CLI ───────────
+
+    /// V1-M22: zero `iso42001` references in cli/src/. User decision:
+    /// ISO 42001 deferred, code preserved in `archive/iso-42001` branch.
+    #[test]
+    fn no_iso42001_references_in_cli() {
+        use std::fs;
+        use std::path::Path;
+
+        fn scan_dir(dir: &Path, hits: &mut Vec<String>, skip_self: &Path) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        if path.file_name().is_some_and(|n| n == "target") {
+                            continue;
+                        }
+                        scan_dir(&path, hits, skip_self);
+                    } else if path.extension().is_some_and(|e| e == "rs") {
+                        // Skip this test file (contains the pattern as data)
+                        if path == skip_self {
+                            continue;
+                        }
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            // case-insensitive iso42001 / iso-42001 / iso_42001
+                            let lower = content.to_lowercase();
+                            for variant in ["iso42001", "iso-42001", "iso_42001"] {
+                                if lower.contains(variant) {
+                                    hits.push(format!(
+                                        "{} (contains '{}')",
+                                        path.display(),
+                                        variant
+                                    ));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let cli_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let self_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("tests.rs");
+        let mut hits = Vec::new();
+        scan_dir(&cli_src, &mut hits, &self_path);
+
+        assert!(
+            hits.is_empty(),
+            "V1-M22 C-3: Found {} iso42001 references in cli/src/. \
+             All ISO 42001 code must be removed (preserved in archive/iso-42001 branch). \
+             Locations:\n  {}",
+            hits.len(),
+            hits.join("\n  "),
+        );
+    }
+
+    // ── V1-M22 / D-2 (U-3): fix --check-id exit semantics ───────
+
+    /// V1-M22: `fix --check-id <id>` exit code semantics.
+    /// "No auto-fix available" (informational) should exit 0.
+    /// Actual failure should exit non-zero.
+    ///
+    /// Source-level test: fix.rs must define named constants for both exit codes.
+    /// This avoids magic numbers scattered through the handler.
+    #[test]
+    fn fix_check_id_exit_code_constants_defined() {
+        use std::fs;
+        use std::path::Path;
+
+        let fix_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("fix.rs");
+        let content = fs::read_to_string(&fix_rs).expect("fix.rs readable");
+
+        let has_no_fix_const = content.contains("EXIT_NO_FIX_AVAILABLE");
+        let has_failed_const = content.contains("EXIT_FIX_FAILED");
+
+        assert!(
+            has_no_fix_const && has_failed_const,
+            "V1-M22 D-2: fix.rs must define constants EXIT_NO_FIX_AVAILABLE (0) \
+             and EXIT_FIX_FAILED (non-zero). Missing: no_fix={has_no_fix_const}, failed={has_failed_const}"
+        );
+    }
 }
