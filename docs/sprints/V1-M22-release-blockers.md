@@ -1,12 +1,21 @@
 # V1-M22: v1.0.0 Release Blockers
 
-> **Status:** 🔴 RED — RED tests written, awaiting implementation
+> **Status:** ✅ DONE — все 14 dev задач GREEN, reviewer APPROVED, V1-M21 re-run в процессе
 > **Branch:** `feature/V1-M22-release-blockers` (chained from `feature/V1-M20-M21-roadmap-cleanup`)
 > **Created:** 2026-04-24
-> **Author:** Architect
+> **Completed:** 2026-04-24
+> **Author:** Architect (specs + RED tests), nodejs-dev + rust-dev (impl), Architect (Section E)
+> **Reviewer:** APPROVED — 2517 tests GREEN (2310 TS + 207 Rust), typecheck clean
 > **Triggered by:** V1-M21 Deep E2E Test Report (2026-04-24)
 > **Predecessor:** V1-M20 Tech Debt + V1-M21 manual E2E (blockers discovered)
-> **Successor:** V1-M21 re-run → release v1.0.0
+> **Successor:** V1-M21 re-run on eval-target → merge → release v1.0.0
+>
+> **Resolution:**
+> - Section A (HTML quality): A-1..A-8 ✅ — report --output, no $1 placeholders, profile block, LAWS detail, doc IDs, FIXES tab, actions dedup, evidence chain auto-init
+> - Section B (Feature gaps): B-1 passport notify ✅, B-2 scan disclaimer ✅
+> - Section C (ISO 42001): C-1..C-6 ✅ — removed from engine/cli/templates, archived in `archive/iso-42001` branch
+> - Section D (UX): D-1 aiuc1 alias ✅, D-2 fix exit codes ✅
+> - Section E (architect, post-dev): test scripts fixed, V1-M21 re-run in progress on eval-target
 
 ---
 

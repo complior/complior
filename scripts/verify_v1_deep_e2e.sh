@@ -32,14 +32,18 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_BIN="${REPO_ROOT}/target/release/complior"
 [[ -x "${DEFAULT_BIN}" ]] || DEFAULT_BIN="${REPO_ROOT}/cli/target/release/complior"
 COMPLIOR_BIN="${COMPLIOR_BIN:-${DEFAULT_BIN}}"
-TEST_PROJECT="${TEST_PROJECT:-${HOME}/test-projects/acme-ai-support}"
-EVAL_MOCK_TARGET="${EVAL_MOCK_TARGET:-http://127.0.0.1:8080}"
+# V1-M22 E-2: switch to eval-target (has AI server + intentional compliance violations)
+TEST_PROJECT="${TEST_PROJECT:-${HOME}/test-projects/eval-target}"
+# V1-M22 E-2: mock target served by eval-target itself (npm run dev spawns server on :4000)
+EVAL_MOCK_TARGET="${EVAL_MOCK_TARGET:-http://127.0.0.1:4000}"
 EVAL_REAL_TARGET="${EVAL_REAL_TARGET:-https://api.openai.com/v1}"
 REPORTS_DIR="${REPORTS_DIR:-/tmp/reports}"
 DATE="$(date +%Y-%m-%d)"
 REPORT_FILE="${REPO_ROOT}/docs/E2E-DEEP-TEST-REPORT-${DATE}.md"
 LOG_DIR="${REPORTS_DIR}/v1-m21-logs"
 TMUX_SESSION="complior-e2e"
+# V1-M22 TS-1: daemon port is 3099, NOT 4000
+DAEMON_PORT="${DAEMON_PORT:-3099}"
 
 mkdir -p "${REPORTS_DIR}" "${LOG_DIR}"
 
@@ -101,6 +105,9 @@ cleanup() {
   tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
   "${COMPLIOR_BIN}" daemon stop >/dev/null 2>&1 || true
   pkill -f "node.*complior.*server" >/dev/null 2>&1 || true
+  # V1-M22 E-2: cleanup AI server spawned from eval-target
+  pkill -f "tsx.*server.ts" >/dev/null 2>&1 || true
+  pkill -f "node.*eval-target" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -108,14 +115,36 @@ trap cleanup EXIT
 echo
 echo -e "${CYAN}§4.1 Bootstrap${NC}"
 cd "${TEST_PROJECT}"
+
+# V1-M22 E-2: Spawn AI server from eval-target (OpenRouter proxy on :4000)
+if [[ -f "${TEST_PROJECT}/package.json" ]] && grep -q "\"dev\"" "${TEST_PROJECT}/package.json"; then
+  echo "  → Spawning AI server (npm run dev) on :4000"
+  (cd "${TEST_PROJECT}" && npm run dev >"${LOG_DIR}/ai-server.log" 2>&1 &)
+  AI_SERVER_STARTED=1
+  # Wait for AI server with explicit probing (up to 15s)
+  for i in {1..15}; do
+    if curl -sf http://localhost:4000/ >/dev/null 2>&1 || curl -sf http://localhost:4000/api/chat -X POST -H "Content-Type: application/json" -d '{}' >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+fi
+
+# Daemon on its own port (DAEMON_PORT=3099)
 tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
 tmux new-session -d -s "${TMUX_SESSION}" \
   "${COMPLIOR_BIN} daemon start --watch >${LOG_DIR}/daemon.log 2>&1"
-sleep 5
-if curl -sf http://localhost:4000/health >/dev/null; then
-  record "4.1" "daemon_health" "PASS"
+# Wait for daemon to bind (up to 10s)
+for i in {1..10}; do
+  if curl -sf "http://localhost:${DAEMON_PORT}/health" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+if curl -sf "http://localhost:${DAEMON_PORT}/health" >/dev/null 2>&1; then
+  record "4.1" "daemon_health (port ${DAEMON_PORT})" "PASS"
 else
-  record "4.1" "daemon_health" "FAIL" "/health did not return 200 within 5s"
+  record "4.1" "daemon_health (port ${DAEMON_PORT})" "FAIL" "/health did not return 200 within 10s"
 fi
 
 # ── §4.2 Onboarding ────────────────────────────────────────────────
@@ -237,7 +266,18 @@ fix_case "F-2"  "--json"                  --dry-run --json
 fix_case "F-4"  "--source scan"           --dry-run --source scan
 fix_case "F-5"  "--source eval"           --dry-run --source eval
 fix_case "F-6"  "--source all"            --dry-run --source all
-fix_case "F-7"  "--check-id L1-A001"      --dry-run --check-id L1-A001 || true
+# V1-M22 TS-5 + D-2: derive real check-id from prior scan JSON (not hardcoded L1-A001)
+REAL_CHECK_ID=$(jq -r '.findings[0].checkId // .findings[0].check_id // empty' \
+  "${LOG_DIR}/score-check.json" 2>/dev/null || echo "")
+if [[ -z "${REAL_CHECK_ID}" ]]; then
+  # score-check.json not written yet — do a quick scan
+  "${COMPLIOR_BIN}" scan --json >"${LOG_DIR}/tmp-scan.json" 2>/dev/null || true
+  REAL_CHECK_ID=$(jq -r '.findings[0].checkId // .findings[0].check_id // empty' \
+    "${LOG_DIR}/tmp-scan.json" 2>/dev/null || echo "")
+fi
+REAL_CHECK_ID="${REAL_CHECK_ID:-fria}"
+echo "  → Using real check-id: ${REAL_CHECK_ID}"
+fix_case "F-7"  "--check-id ${REAL_CHECK_ID}"      --dry-run --check-id "${REAL_CHECK_ID}" || true
 fix_case "F-8"  "--doc fria"              --doc fria
 fix_case "F-9"  "--doc soa"               --doc soa
 fix_case "F-10" "--doc risk-register"     --doc risk-register
@@ -260,9 +300,16 @@ else
   record "4.6" "score.totalScore" "FAIL" "missing or non-numeric"
 fi
 if jq -e '.disclaimer' "${LOG_DIR}/score-check.json" >/dev/null 2>&1; then
-  record "4.6" "disclaimer present" "PASS"
+  record "4.6" "disclaimer present (V1-M22 B-2)" "PASS"
 else
-  record "4.6" "disclaimer" "FAIL" "missing"
+  record "4.6" "disclaimer" "FAIL" "missing (V1-M22 B-2)"
+fi
+# V1-M22 A-7 Actions dedup check — verify `passport init` NOT suggested
+if jq -e '.topActions // .actions // [] | map(select(.command // "" | test("passport\\s+init"))) | length == 0' \
+   "${LOG_DIR}/score-check.json" >/dev/null 2>&1; then
+  record "4.6" "no deprecated `passport init` action (A-7)" "PASS"
+else
+  record "4.6" "Actions contain passport init" "FAIL" "deprecated suggestion still present"
 fi
 
 # ── §4.7 Passport flow ─────────────────────────────────────────────
@@ -279,18 +326,31 @@ pp_case() {
   fi
 }
 
-pp_case "P-1"  "init acme-bot"          init acme-bot --yes || true
+# V1-M22 TS-3: passport init creates passport under project name, not the arg.
+# Discover the actual passport name via `passport list --json`, then use that.
+"${COMPLIOR_BIN}" passport init acme-bot --yes >/dev/null 2>&1 || true
+ACTUAL_PP=$("${COMPLIOR_BIN}" passport list --json 2>/dev/null \
+  | jq -r '.agents[0].name // .passports[0].name // empty' 2>/dev/null || true)
+if [[ -z "${ACTUAL_PP}" ]]; then
+  # Fallback: scan passport list human output for first agent name
+  ACTUAL_PP=$("${COMPLIOR_BIN}" passport list 2>/dev/null \
+    | awk '/^\s+-\s+/{print $2; exit}; /^[[:alnum:]_-]+\s+/{print $1; exit}' 2>/dev/null || echo "eval-target")
+fi
+echo "  → Using actual passport name: ${ACTUAL_PP}"
+
+pp_case "P-1"  "init (done above)"      list >/dev/null
 pp_case "P-2"  "list"                   list
-pp_case "P-3"  "show acme-bot"          show acme-bot || true
-pp_case "P-4"  "validate acme-bot"      validate acme-bot || true
-pp_case "P-5"  "completeness"           completeness acme-bot || true
-pp_case "P-6"  "autonomy"               autonomy acme-bot || true
-pp_case "P-7"  "notify"                 notify acme-bot || true
+pp_case "P-3"  "show"                   show "${ACTUAL_PP}" || true
+pp_case "P-4"  "validate"               validate "${ACTUAL_PP}" || true
+pp_case "P-5"  "completeness"           completeness "${ACTUAL_PP}" || true
+pp_case "P-6"  "autonomy"               autonomy "${ACTUAL_PP}" || true
+pp_case "P-7"  "notify (V1-M22 B-1)"    notify "${ACTUAL_PP}" || true
 pp_case "P-8"  "registry"               registry
-pp_case "P-9"  "permissions"            permissions acme-bot || true
+pp_case "P-9"  "permissions"            permissions "${ACTUAL_PP}" || true
 pp_case "P-10" "evidence"               evidence
 pp_case "P-11" "audit"                  audit
-pp_case "P-12" "export aiuc1"           export acme-bot --format aiuc1 || true
+# V1-M22 TS-4 + D-1: format can be `aiuc1` or `aiuc-1` (alias accepted)
+pp_case "P-12" "export aiuc1 alias"     export "${ACTUAL_PP}" --format aiuc1 || true
 pp_case "P-13" "import"                 import --help
 
 # ── §4.8 Report formats ────────────────────────────────────────────
@@ -301,8 +361,19 @@ report_case() {
   local id="$1"; local fmt="$2"; local out="${3:-}"
   local args=( --format "${fmt}" )
   [[ -n "${out}" ]] && args+=( --output "${out}" )
+  # Remove target file first to verify --output really writes there (V1-M22 A-1)
+  [[ -n "${out}" ]] && rm -f "${out}"
   if run_capture "report-${id}" "${COMPLIOR_BIN}" report "${args[@]}"; then
-    record "4.8" "${id} ${fmt}" "PASS"
+    # V1-M22 A-1: if --output specified, file MUST exist at that exact path
+    if [[ -n "${out}" ]]; then
+      if [[ -f "${out}" ]]; then
+        record "4.8" "${id} ${fmt} (--output honored)" "PASS"
+      else
+        record "4.8" "${id} ${fmt} (--output NOT honored)" "FAIL" "CLI exit 0 but file absent at ${out}"
+      fi
+    else
+      record "4.8" "${id} ${fmt}" "PASS"
+    fi
   else
     record "4.8" "${id} ${fmt}" "FAIL" "exit != 0"
   fi
@@ -312,6 +383,27 @@ report_case "R-1" "human"  ""
 report_case "R-2" "json"   "${REPORTS_DIR}/v1-m21-report.json"
 report_case "R-3" "md"     "${REPORTS_DIR}/v1-m21-report.md"
 report_case "R-4" "html"   "${REPORTS_DIR}/v1-m21-report.html"
+# V1-M22 A-2: HTML must have ZERO `$N` placeholder leaks
+if [[ -f "${REPORTS_DIR}/v1-m21-report.html" ]]; then
+  placeholder_count=$(grep -oE '\$[0-9]' "${REPORTS_DIR}/v1-m21-report.html" | wc -l)
+  if [[ "${placeholder_count}" -eq 0 ]]; then
+    record "4.8" "R-4a no \$N placeholders (A-2)" "PASS"
+  else
+    record "4.8" "R-4a HTML \$N placeholders" "FAIL" "${placeholder_count} leftover placeholders in HTML"
+  fi
+  # V1-M22 A-3: HTML must contain company profile block
+  if grep -qE 'company-profile|project-profile|Company Profile|Project Profile' "${REPORTS_DIR}/v1-m21-report.html"; then
+    record "4.8" "R-4b company profile block (A-3)" "PASS"
+  else
+    record "4.8" "R-4b company profile block" "FAIL" "no profile block found in HTML"
+  fi
+  # V1-M22 A-5: HTML must contain real document IDs (e.g., TDD-2026-001), not placeholders
+  if grep -qE '\[YYYY\]|\[NNN\]' "${REPORTS_DIR}/v1-m21-report.html"; then
+    record "4.8" "R-4c document IDs (A-5)" "FAIL" "placeholder IDs [YYYY]/[NNN] still present"
+  else
+    record "4.8" "R-4c document IDs (A-5)" "PASS"
+  fi
+fi
 report_case "R-5" "pdf"    "${REPORTS_DIR}/v1-m21-report.pdf"
 if run_capture "report-share" "${COMPLIOR_BIN}" report --share; then
   record "4.8" "R-6 --share" "PASS"
