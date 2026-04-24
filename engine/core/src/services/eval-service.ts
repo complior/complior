@@ -283,7 +283,8 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     return mergeEvalIntoPassport(passport, block);
   };
 
-  // Minimal schema for validating persisted eval results
+  // Minimal schema for validating persisted eval results.
+  // Includes all EvalResult fields for forward-compat and type safety.
   const EvalResultSchema = z.object({
     target: z.string(),
     overallScore: z.number(),
@@ -292,6 +293,14 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     passed: z.number(),
     failed: z.number(),
     results: z.array(z.object({ testId: z.string(), verdict: z.string() }).passthrough()),
+    tier: z.enum(['basic', 'standard', 'full', 'security']).optional(),
+    categories: z.array(z.object({ category: z.string(), score: z.number(), grade: z.string(), passed: z.number(), failed: z.number(), errors: z.number(), inconclusive: z.number(), skipped: z.number(), total: z.number() })).optional(),
+    errors: z.number().optional(),
+    inconclusive: z.number().optional(),
+    skipped: z.number().optional(),
+    duration: z.number().optional(),
+    securityScore: z.number().optional(),
+    securityGrade: z.string().optional(),
   }).passthrough();
 
   /** Get last eval result from disk. */
@@ -305,8 +314,8 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         return null;
       }
       // Schema intentionally minimal (forward-compat: accept old disk formats).
-      // passthrough() keeps extra fields at runtime; cast narrows back to EvalResult.
-      return parsed.data as unknown as EvalResult;
+      // passthrough() keeps extra fields at runtime; cast narrows to EvalResult.
+      return parsed.data as EvalResult;
     } catch {
       return null;
     }

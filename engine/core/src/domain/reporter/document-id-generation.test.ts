@@ -86,25 +86,46 @@ describe('V1-M22 / A-5: HTML report contains real document IDs, not placeholders
 });
 
 function mockReportWithDocuments(): unknown {
+  // documents must be a DocumentInventory object, not a raw array.
+  // buildHtmlReport does {...defaults.documents, ...inp.documents}
+  // → if inp.documents is a bare array, spread makes {0: doc, 1: doc, documents: []}
+  //   which means docs.documents (the array) is [] → no IDs rendered.
   return Object.freeze({
     projectPath: '/tmp/test-project',
     scannedAt: '2026-04-24T12:00:00Z',
     score: { totalScore: 72, zone: 'yellow' },
     findings: [],
-    documents: [
-      Object.freeze({
-        id: 'TDD-2026-001',
-        type: 'technical-documentation',
-        path: 'docs/TECH-DOCUMENTATION.md',
-        generatedAt: '2026-04-24T12:00:00Z',
-      }),
-      Object.freeze({
-        id: 'FRIA-2026-001',
-        type: 'fria',
-        path: '.complior/fria/test-fria.md',
-        generatedAt: '2026-04-24T12:00:00Z',
-      }),
-    ],
+    documents: {
+      total: 2,
+      byStatus: { missing: 0, scaffold: 0, draft: 0, reviewed: 2 },
+      score: 100,
+      documents: [
+        Object.freeze({
+          id: 'TDD-2026-001',
+          docType: 'technical-documentation',
+          article: 'Art. 11',
+          description: 'Technical Documentation',
+          outputFile: 'docs/TECH-DOCUMENTATION.md',
+          status: 'reviewed' as const,
+          scoreImpact: 0,
+          prefilledPercent: null,
+          lastModified: null,
+          templateFile: null,
+        }),
+        Object.freeze({
+          id: 'FRIA-2026-001',
+          docType: 'fria',
+          article: 'Art. 27',
+          description: 'Fundamental Rights Impact Assessment',
+          outputFile: '.complior/fria/test-fria.md',
+          status: 'reviewed' as const,
+          scoreImpact: 0,
+          prefilledPercent: null,
+          lastModified: null,
+          templateFile: null,
+        }),
+      ],
+    },
     obligations: [],
     disclaimer: { summary: 'test', limitations: [] },
   });

@@ -1,5 +1,14 @@
 import type { SharePayload } from './share.js';
 
+// --- Company Profile (from onboarding / project.toml) ---
+
+export interface CompanyProfile {
+  readonly role: string;
+  readonly riskLevel: string;
+  readonly domain: string;
+  readonly applicableArticles?: readonly string[];
+}
+
 // --- Readiness ---
 
 export type ReadinessZone = 'green' | 'yellow' | 'orange' | 'red';
@@ -33,6 +42,8 @@ export interface ReadinessDashboard {
 export type DocumentStatusLevel = 'missing' | 'scaffold' | 'draft' | 'reviewed';
 
 export interface DocumentStatus {
+  /** Document ID (e.g. "TDD-2026-001") — set when document is generated and registered. Optional for template/scaffold docs. */
+  readonly id?: string;
   readonly docType: string;
   readonly article: string;
   readonly description: string;
@@ -253,6 +264,7 @@ export interface ComplianceReport {
   readonly evalResults: EvalResultsSummary | null;
   readonly fixHistory: readonly FixHistoryEntry[];
   readonly documentContents: readonly DocumentContent[];
+  readonly profile?: CompanyProfile;
 }
 
 // --- Share V2 ---

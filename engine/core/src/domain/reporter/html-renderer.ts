@@ -274,9 +274,32 @@ const renderTabOverview = (report: ComplianceReport): string => {
       <span class="dim-value">${d.available ? pct(d.score ?? 0) : 'N/A'}</span>
     </div>`).join('');
 
+  const profileSection = report.profile ? `
+    <section id="company-profile" class="profile-block">
+      <h3>Company Profile</h3>
+      <div class="profile-row">
+        <span class="profile-label">Role:</span>
+        <span class="profile-value">${escapeHtml(report.profile.role)}</span>
+      </div>
+      <div class="profile-row">
+        <span class="profile-label">Risk Level:</span>
+        <span class="profile-value">${escapeHtml(report.profile.riskLevel)}</span>
+      </div>
+      <div class="profile-row">
+        <span class="profile-label">Domain:</span>
+        <span class="profile-value">${escapeHtml(report.profile.domain)}</span>
+      </div>
+      ${report.profile.applicableArticles?.length ? `
+      <div class="profile-articles">
+        <span class="profile-label">EU AI Act Articles:</span>
+        ${report.profile.applicableArticles.map((a) => `<span class="art-tag">${escapeHtml(a)}</span>`).join(' ')}
+      </div>` : ''}
+    </section>` : '';
+
   return `
     <div class="ov-top">
       ${renderGauge(report.readiness.readinessScore, report.readiness.zone)}
+      ${profileSection}
       <div class="key-stats">
         <div class="key-stat"><span class="key-val">${s.scanScore ?? '-'}</span> scan score</div>
         <div class="key-stat"><span class="key-val">${s.totalFindings}</span> fail findings</div>
@@ -463,6 +486,7 @@ const renderTabDocuments = (report: ComplianceReport): string => {
     return `
     <div class="doc-card">
       <div class="doc-header">
+        ${d.id ? `<code class="doc-id">${escapeHtml(d.id)}</code>` : ''}
         <strong>${escapeHtml(d.docType)}</strong>
         <span class="status-badge" style="background:${DOC_STATUS_COLORS[d.status]}">${d.status}</span>
         <span class="muted">${escapeHtml(d.article)}</span>
@@ -764,6 +788,7 @@ h3{font-family:var(--f-body);font-size:.8125rem;font-weight:700;color:var(--dark
 .countdown-label{font-family:var(--f-mono);font-size:.75rem;color:var(--dark5)}
 .doc-card{border:1px solid var(--b2);border-radius:10px;padding:.875rem 1rem;margin:.5rem 0;background:var(--card);transition:border-color .2s,box-shadow .2s}
 .doc-card:hover{border-color:var(--b3);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.doc-header code.doc-id{font-size:.6875rem;background:var(--bg3);padding:1px 6px;border-radius:4px;color:var(--teal);font-weight:700}
 .doc-header{display:flex;gap:.625rem;align-items:center;flex-wrap:wrap}
 .doc-header strong{font-family:var(--f-display);font-size:.875rem;font-weight:700;color:var(--dark)}
 .doc-meta{margin-top:.25rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}

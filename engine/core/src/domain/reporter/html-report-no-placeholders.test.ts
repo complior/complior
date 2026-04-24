@@ -20,11 +20,21 @@
 import { describe, it, expect } from 'vitest';
 
 describe('V1-M22 / A-2: HTML report no placeholder leakage', () => {
-  it('generated HTML has no `$N` placeholders', async () => {
+  it('generated HTML has no visible `$N` placeholders (excludes script/style JS code)', async () => {
     const { buildHtmlReport } = await import('./html-report.js');
     const html = buildHtmlReport(mockReportData());
 
-    expect(html).not.toMatch(/\$[0-9]/);
+    // Strip <script> and <style> tag bodies before checking $N.
+    // The $1/$2 in JS regex replacements like .replace(/^##/gm,'<h3>$1</h3>')
+    // are legitimate JavaScript — not visible to users in rendered HTML.
+    // Original V1-M21 bug was literal <h2>$1</h2> in HTML markup, not JS code.
+    const stripScriptStyle = (s: string): string =>
+      s.replace(/<script[\s\S]*?<\/script>/gi, '')
+       .replace(/<style[\s\S]*?<\/style>/gi, '')
+       .replace(/\sdata-md="[^"]*"/gi, '');
+
+    const visibleHtml = stripScriptStyle(html);
+    expect(visibleHtml).not.toMatch(/\$[0-9]/);
   });
 
   it('generated HTML has no `{{placeholder}}` leftovers', async () => {

@@ -46,9 +46,9 @@ describe('getTemplateForObligation', () => {
 });
 
 describe('getAvailableTemplates', () => {
-  it('returns all 17 templates', () => {
+  it('returns all 14 templates', () => {
     const templates = getAvailableTemplates();
-    expect(templates).toHaveLength(17);
+    expect(templates).toHaveLength(14); // V1-M22: ISO 42001 removed (was 17)
   });
 
   it('each template has required fields', () => {

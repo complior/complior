@@ -6,9 +6,9 @@
  *   `archive/iso-42001` branch. Dev/main must have 0 references to iso42001.
  *
  * Specification:
- *   - `engine/core/src/**/*.ts` has zero `iso42001` occurrences
- *   - `engine/core/data/templates/iso-42001/` directory absent
- *   - `cli/src/**/*.rs` has zero `iso42001` occurrences (covered in Rust test)
+ *   - engine/core/src has zero iso42001 occurrences (tested by walkTs)
+ *   - engine/core/data/templates/iso-42001 directory absent
+ *   - cli/src has zero iso42001 occurrences (Rust test)
  *
  * Architecture:
  *   - Filesystem scan from repo root
