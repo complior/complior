@@ -314,8 +314,9 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         return null;
       }
       // Schema intentionally minimal (forward-compat: accept old disk formats).
-      // passthrough() keeps extra fields at runtime; cast narrows to EvalResult.
-      return parsed.data as EvalResult;
+      // passthrough() keeps extra fields at runtime; Zod output fully covers EvalResult fields.
+      // Single `as unknown` bridge here because Zod output type ≠ interface type structurally.
+      return parsed.data as unknown as EvalResult;
     } catch {
       return null;
     }

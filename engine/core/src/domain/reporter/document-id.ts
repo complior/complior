@@ -2,8 +2,6 @@
 // Pure function — deterministic, Object.freeze on result
 // Counter persistence is a SEPARATE concern (handled by caller via doc-counter.json)
 
-const DOC_ID_PREFIXES = new Set(['TDD', 'INC', 'DOC', 'WRK', 'DGP', 'FRIA', 'AIL', 'MON', 'QMS']);
-
 /**
  * Generate a document ID in format: {PREFIX}-{YYYY}-{NNN}
  * @param prefix - Document type prefix (TDD, INC, DOC, WRK, DGP, FRIA, AIL, MON, QMS)

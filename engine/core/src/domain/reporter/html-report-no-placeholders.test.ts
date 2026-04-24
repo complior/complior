@@ -63,10 +63,13 @@ describe('V1-M22 / A-2: HTML report no placeholder leakage', () => {
 
 function mockReportData(): unknown {
   // Minimal stub — real shape determined by html-report.ts signature.
-  // Test will fail to compile until dev creates html-report.ts with a typed API.
+  // FIXED generatedAt: two calls produce identical output (deterministic).
+  const TS = '2026-04-24T12:00:00.000Z';
   return Object.freeze({
+    generatedAt: TS,
+    compliorVersion: '1.0.0',
     projectPath: '/tmp/test-project',
-    scannedAt: '2026-04-24T12:00:00Z',
+    scannedAt: TS,
     score: { totalScore: 72, zone: 'yellow' },
     findings: [],
     filterContext: {

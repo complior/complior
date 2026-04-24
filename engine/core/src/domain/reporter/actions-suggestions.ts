@@ -29,12 +29,6 @@ function isScanStale(lastScanAt: string | null): boolean {
   return Date.now() - new Date(lastScanAt).getTime() > THIRTY_MIN_MS;
 }
 
-function passportNeedsUpdate(passport: unknown): boolean {
-  // A passport needs update if completeness < 80%
-  // But we don't have completeness here — simplify: all passports need update check
-  return true;
-}
-
 /**
  * Build action suggestions based on project state.
  * Rules from V1-M22 milestone §4:

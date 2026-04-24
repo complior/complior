@@ -350,9 +350,9 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     projectPath?: string,
   ): Promise<{ path: string; content: string }> => {
     // Fall back to deps.projectPath if getProjectPath is not available (test mock)
-    const resolvedPath = projectPath
-      ?? (typeof getProjectPath === 'function' ? getProjectPath() : (deps as { projectPath?: string }).projectPath);
-    const path = resolvedPath;
+    const resolvedPath = (projectPath
+      ?? (typeof getProjectPath === 'function' ? getProjectPath() : (deps as { projectPath?: string }).projectPath)) ?? '';
+    const path: string = resolvedPath;
     const agentsDir = join(path, '.complior', 'agents');
     const passportPath = join(agentsDir, `${name}.json`);
 
