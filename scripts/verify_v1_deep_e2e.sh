@@ -20,9 +20,18 @@
 
 set -euo pipefail
 
+# Run-time guards: ensure tmux uses our user's socket dir even if we are
+# inheriting a TMUX env var from a parent (e.g. running inside another user's
+# tmux session via Claude Code).
+unset TMUX TMUX_PANE 2>/dev/null || true
+export TMUX_TMPDIR="${TMUX_TMPDIR:-/tmp/tmux-$(id -u)}"
+
 # ── Config ─────────────────────────────────────────────────────────
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPLIOR_BIN="${COMPLIOR_BIN:-${REPO_ROOT}/cli/target/release/complior}"
+# Workspace builds land at REPO/target/, not REPO/cli/target/
+DEFAULT_BIN="${REPO_ROOT}/target/release/complior"
+[[ -x "${DEFAULT_BIN}" ]] || DEFAULT_BIN="${REPO_ROOT}/cli/target/release/complior"
+COMPLIOR_BIN="${COMPLIOR_BIN:-${DEFAULT_BIN}}"
 TEST_PROJECT="${TEST_PROJECT:-${HOME}/test-projects/acme-ai-support}"
 EVAL_MOCK_TARGET="${EVAL_MOCK_TARGET:-http://127.0.0.1:8080}"
 EVAL_REAL_TARGET="${EVAL_REAL_TARGET:-https://api.openai.com/v1}"
