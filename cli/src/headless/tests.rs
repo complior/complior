@@ -1669,6 +1669,37 @@ mod tests {
         );
     }
 
+    // ── V1-M23 / W-2: CLI must pass --output to engine body ─────
+
+    /// V1-M23 W-2: CLI report handler for `--format <md|html|pdf> --output <path>`
+    /// must pass user's --output value to engine via JSON body field `outputPath`.
+    /// Currently sends empty `{}` body (commands.rs:247) — engine never receives
+    /// the user's path, files end up in `.complior/reports/` regardless.
+    ///
+    /// Source-level spec: commands.rs report handler must include "outputPath"
+    /// in the JSON body sent to /report/status/{pdf,markdown} or /report/share.
+    #[test]
+    fn report_handler_passes_output_to_engine() {
+        use std::fs;
+        use std::path::Path;
+
+        let commands_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("commands.rs");
+        let content = fs::read_to_string(&commands_rs).expect("commands.rs readable");
+
+        let has_output_path_in_body = content.contains("\"outputPath\":")
+            || content.contains("outputPath:");
+
+        assert!(
+            has_output_path_in_body,
+            "V1-M23 W-2: cli/src/headless/commands.rs report handler must pass \
+             user's --output to engine via `outputPath` JSON body field. \
+             Currently sends empty `{{}}` body."
+        );
+    }
+
     // ── V1-M22 / D-2 (U-3): fix --check-id exit semantics ───────
 
     /// V1-M22: `fix --check-id <id>` exit code semantics.
