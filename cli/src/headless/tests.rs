@@ -1702,6 +1702,60 @@ mod tests {
 
     // ── V1-M22 / D-2 (U-3): fix --check-id exit semantics ───────
 
+    // ── V1-M24 / R-1: ScanResult struct must deserialize `disclaimer` ──
+
+    /// V1-M24 R-1: Rust ScanResult struct in cli/src/types/engine.rs must include
+    /// `disclaimer` field. Without it, serde silently drops the field during
+    /// deserialization, then `complior scan --json` re-serializes without disclaimer.
+    ///
+    /// Background: V1-M22/V1-M23 wired buildScanDisclaimer into TS service correctly.
+    /// Engine route emits `disclaimer` in JSON. But CLI's ScanResult struct doesn't
+    /// have a matching field — serde drops it.
+    ///
+    /// Spec: deserialize a JSON with `disclaimer` and verify it's preserved.
+    #[test]
+    fn scan_result_deserializes_disclaimer_field() {
+        use crate::types::ScanResult;
+
+        let json = r#"{
+            "score": {
+                "totalScore": 75.0,
+                "zone": "yellow",
+                "categoryScores": [],
+                "criticalCapApplied": false,
+                "totalChecks": 10,
+                "passedChecks": 7,
+                "failedChecks": 3,
+                "skippedChecks": 0
+            },
+            "findings": [],
+            "projectPath": "/tmp",
+            "scannedAt": "2026-04-25T00:00:00Z",
+            "duration": 0,
+            "filesScanned": 1,
+            "disclaimer": {
+                "summary": "Scan covers L1-L4 deterministic checks",
+                "limitations": []
+            }
+        }"#;
+
+        let parsed: ScanResult = serde_json::from_str(json)
+            .expect("ScanResult must deserialize valid JSON");
+
+        let reserialized = serde_json::to_value(&parsed)
+            .expect("ScanResult must serialize back to JSON");
+
+        // After roundtrip: disclaimer field MUST be preserved
+        assert!(
+            reserialized.get("disclaimer").is_some()
+                && !reserialized["disclaimer"].is_null(),
+            "V1-M24 R-1: ScanResult struct (cli/src/types/engine.rs) must include \
+             `disclaimer` field. Currently serde drops it on deserialize, then \
+             `complior scan --json` re-serializes without disclaimer. \
+             Reserialized: {reserialized}"
+        );
+    }
+
     /// V1-M22: `fix --check-id <id>` exit code semantics.
     /// "No auto-fix available" (informational) should exit 0.
     /// Actual failure should exit non-zero.
