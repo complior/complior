@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-04-25
-**Updated by:** Reviewer (V1-M24 review)
+**Updated by:** Reviewer (V1-M25 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M23-wiring-fixes` (includes V1-M24, pending merge to dev)
+**Branch:** `feature/V1-M25-r4b-profile-wiring` (V1-M25, pending merge to dev)
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2348 passed, 2 skipped (183 files) |
+| TS Engine (`engine/core/`) | GREEN | 2351 passed, 2 skipped (183 files) |
 | Rust CLI (`cli/`) | GREEN | 209 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2557 tests GREEN**
+**Total: 2560 tests GREEN**
 
 ---
 
@@ -57,7 +57,9 @@
 | V1-M20 | Tech Debt Cleanup (TD-44, TD-31, TD-35, TD-41) | DONE | pending merge |
 | V1-M22 | v1.0.0 Release Blockers (HTML report, ISO 42001 removal, UX fixes) | DONE | pending merge |
 | V1-M23 | Runtime Wiring Fixes (4 release blockers from V1-M21 re-run) | DONE | pending merge |
-| V1-M24 | Final Wiring (R-1..R-5 — last 4 wiring gaps before v1.0.0 tag) | DONE | pending merge |
+| V1-M24 | Final Wiring (R-1..R-5 — last 4 wiring gaps before v1.0.0 tag) | DONE | ✅ (PR #21) |
+| V1-M24.1 | CI Hotfix (cargo fmt + rustls-webpki RUSTSEC-2026-0104) | DONE | ✅ (PR #22) |
+| V1-M25 | R-4b Composition Wiring (profile → reportService → HTML) | DONE | pending merge |
 
 ## In Progress / RED
 
@@ -262,6 +264,28 @@
 - R-2: Added `outputPath` to `PdfReportSchema` in report.route.ts
 - R-4: Added `renderCompanyProfile()` section to `generateOfflineHtml()` in html-renderer.ts
 - R-5: `generateDocumentId()` helper substitutes `[YYYY]/[NNN]` with real values (e.g. `TDD-2026-001`)
+- No new tech debt
+
+## V1-M25: R-4b Composition Wiring (DONE — pending merge to dev)
+
+**Branch:** `feature/V1-M25-r4b-profile-wiring`
+**Scope:** 2 files, +15/-1 LOC (implementation only)
+**What:** Closes last release blocker — profile block absent from production HTML report despite V1-M24 builder fix. Wiring gap between project.toml → reportService → buildComplianceReport:
+
+| ID | Description | Status |
+|----|-------------|--------|
+| W-1 | Add `getProjectProfile` to `ReportServiceDeps` interface (optional, back-compat) | ✅ GREEN |
+| W-2 | `generateReport()` calls getter, passes `profile` to `buildComplianceReport` | ✅ GREEN |
+| W-3 | `composition-root.ts` wires `getProjectProfile` with `Object.freeze` on output | ✅ GREEN |
+
+- Tests: 2560 GREEN (2351 TS + 209 Rust), 2 skipped
+- New test file: `report-service-profile-wiring.test.ts` (5 tests — created by architect, not modified by dev)
+- No existing tests modified
+
+**Review Notes:**
+- Clean, minimal implementation — 3 changes total across 2 files
+- Optional dep pattern preserves back-compat with all existing tests
+- `Object.freeze` on composition-root profile output (follows project conventions)
 - No new tech debt
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)

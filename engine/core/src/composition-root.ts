@@ -552,6 +552,18 @@ export const loadApplication = async (): Promise<Application> => {
         return [];
       }
     },
+    /** V1-M25: Wire project profile so HTML report renders profile block. */
+    getProjectProfile: async () => {
+      const p = await getProjectProfile(state.projectPath);
+      if (!p) return null;
+      // Transform to CompanyProfile shape (role: string, riskLevel: string, domain: string, applicableArticles)
+      return Object.freeze({
+        role: p.role,
+        riskLevel: p.riskLevel ?? 'limited',
+        domain: p.domain ?? 'general',
+        applicableArticles: (p.applicableObligations ?? []) as readonly string[],
+      });
+    },
   });
 
   let _externalScan: ExternalScanService | null = null;
