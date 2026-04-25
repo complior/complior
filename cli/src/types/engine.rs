@@ -375,6 +375,9 @@ pub struct ScanResult {
     /// V1-M08: Top priority actions for CLI "FIX FIRST" section.
     #[serde(default)]
     pub top_actions: Option<Vec<TopAction>>,
+    /// V1-M24 R-1: Disclaimer field from scan service (explains scan scope, limitations).
+    #[serde(default)]
+    pub disclaimer: Option<ScoreDisclaimer>,
 }
 
 /// Result from a single external security tool (Semgrep, Bandit, etc.)
@@ -648,7 +651,7 @@ pub struct EngineStatus {
 // ── V1-M10: Score Transparency types ──────────────────────────────
 
 /// V1-M10: Score disclaimer explaining what the compliance score covers.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScoreDisclaimer {
     pub summary: String,

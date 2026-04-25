@@ -92,6 +92,7 @@ mod tests {
             agent_summaries: None,
             filter_context: None,
             top_actions: None,
+            disclaimer: None,
         }
     }
 
@@ -1735,7 +1736,12 @@ mod tests {
             "filesScanned": 1,
             "disclaimer": {
                 "summary": "Scan covers L1-L4 deterministic checks",
-                "limitations": []
+                "coveredObligations": 15,
+                "totalApplicableObligations": 20,
+                "coveragePercent": 75.0,
+                "uncoveredCount": 5,
+                "limitations": [],
+                "criticalCapExplanation": null
             }
         }"#;
 
