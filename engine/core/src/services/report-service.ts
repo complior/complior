@@ -3,7 +3,7 @@ import type { ScanResult, Role, ScanMode } from '../types/common.types.js';
 import type { EventBusPort } from '../ports/events.port.js';
 import type { EvidenceChainSummary } from '../domain/scanner/evidence-store.js';
 import type { EvalResult } from '../domain/eval/types.js';
-import type { ComplianceReport, FixHistoryEntry, DocumentContent } from '../domain/reporter/types.js';
+import type { CompanyProfile, ComplianceReport, FixHistoryEntry, DocumentContent } from '../domain/reporter/types.js';
 import type { PassportData } from '../domain/reporter/passport-status.js';
 import type { ObligationRecord } from '../domain/reporter/obligation-coverage.js';
 import { ValidationError } from '../types/errors.js';
@@ -26,6 +26,8 @@ export interface ReportServiceDeps {
   readonly getEvalResult?: () => Promise<EvalResult | null>;
   readonly getFixHistory?: () => Promise<readonly FixHistoryEntry[]>;
   readonly getDocumentContents?: () => Promise<readonly DocumentContent[]>;
+  /** V1-M25: Wire project profile so HTML report renders profile block. */
+  readonly getProjectProfile?: () => Promise<CompanyProfile | null>;
 }
 
 export const createReportService = (deps: ReportServiceDeps) => {
@@ -96,6 +98,7 @@ export const createReportService = (deps: ReportServiceDeps) => {
     const evalResult = (await deps.getEvalResult?.()) ?? null;
     const fixHistory = (await deps.getFixHistory?.()) ?? [];
     const documentContents = (await deps.getDocumentContents?.()) ?? [];
+    const profile = (await deps.getProjectProfile?.()) ?? undefined;
 
     return buildComplianceReport({
       scanResult,
@@ -109,6 +112,7 @@ export const createReportService = (deps: ReportServiceDeps) => {
       evalResult,
       fixHistory,
       documentContents,
+      profile,
     });
   };
 
