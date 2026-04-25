@@ -64,8 +64,6 @@ import { analyzeScenario } from './domain/whatif/scenario-engine.js';
 import { generateAllConfigs } from './domain/whatif/config-fixer.js';
 import { simulateActions } from './domain/whatif/simulate-actions.js';
 import { compareSeverity } from './types/common.types.js';
-import type { Iso42001Control } from './types/common.types.js';
-import iso42001ControlsData from '../data/iso-42001-controls.json' with { type: 'json' };
 import { autoDetect } from './onboarding/auto-detect.js';
 import { createInitialState as createOnboardingInitialState } from './domain/onboarding/guided-onboarding.js';
 
@@ -321,14 +319,8 @@ export const loadApplication = async (): Promise<Application> => {
     fileURLToPath(import.meta.url), '..', '..', 'data', 'templates',
   );
   const euAiActTemplatesDir = resolve(templatesBaseDir, 'eu-ai-act');
-  const iso42001TemplatesDir = resolve(templatesBaseDir, 'iso-42001');
   const loadTemplate = async (templateFile: string): Promise<string> => {
-    // Try eu-ai-act first, then iso-42001
-    try {
-      return await readFile(resolve(euAiActTemplatesDir, templateFile), 'utf-8');
-    } catch {
-      return readFile(resolve(iso42001TemplatesDir, templateFile), 'utf-8');
-    }
+    return readFile(resolve(euAiActTemplatesDir, templateFile), 'utf-8');
   };
 
   const undoService = createUndoService({
@@ -600,7 +592,6 @@ export const loadApplication = async (): Promise<Application> => {
     loadPolicyTemplate,
     evidenceStore,
     auditStore,
-    iso42001Controls: iso42001ControlsData as unknown as readonly Iso42001Control[],
   });
 
   // Shared helper: passport completeness lookup (used by cost + debt services)

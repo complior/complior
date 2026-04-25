@@ -244,16 +244,29 @@ pub async fn run_report(
         _ => "/report/status/markdown",
     };
 
-    match client.post_json(endpoint, &serde_json::json!({})).await {
+    // V1-M23 W-2: pass user's --output to engine via `outputPath` JSON body field.
+    // Without this, engine writes to its default path (.complior/reports/...) and
+    // the CLI prints a misleading "Report saved to: <user path>" message.
+    let body = match output {
+        Some(dest) => serde_json::json!({ "outputPath": dest }),
+        None => serde_json::json!({}),
+    };
+
+    match client.post_json(endpoint, &body).await {
         Ok(resp) => {
-            let out_path = resp
+            let engine_path = resp
                 .get("path")
                 .and_then(|v| v.as_str())
                 .unwrap_or("report");
             if let Some(dest) = output {
-                println!("Report saved to: {dest}");
+                // Trust the engine's response path (it confirms what was actually written).
+                println!("Report saved to: {engine_path}");
+                // Sanity: warn if engine path doesn't match requested (shouldn't happen post-W-2).
+                if engine_path != dest {
+                    eprintln!("Warning: requested {dest} but engine reports {engine_path}");
+                }
             } else {
-                println!("Report generated: {out_path}");
+                println!("Report generated: {engine_path}");
             }
             0
         }

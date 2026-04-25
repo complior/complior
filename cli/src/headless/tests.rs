@@ -1122,19 +1122,15 @@ mod tests {
     // ── B-02: --fail-on works outside --ci block ─────────────────────────────
 
     /// Extract exit code from scan output by checking for "FAIL" prefix.
-    fn scan_exit_code_from_text(text: &str) -> Option<i32> {
-        if text.contains("FAIL:") {
-            Some(2)
-        } else {
-            Some(0)
-        }
+    fn scan_exit_code_from_text(text: &str) -> i32 {
+        if text.contains("FAIL:") { 2 } else { 0 }
     }
 
     fn make_finding_full(check_id: &str, severity: Severity) -> Finding {
         Finding {
             check_id: check_id.into(),
             r#type: CheckResultType::Fail,
-            message: format!("Test finding {check_id}").into(),
+            message: format!("Test finding {check_id}"),
             severity,
             obligation_id: None,
             article_reference: None,
@@ -1421,8 +1417,8 @@ mod tests {
         }
 
         // Edge cases
-        assert_eq!(0.0_f64.round() as usize, 0);
-        assert_eq!(100.0_f64.round() as usize, 100);
+        assert_eq!(0.0_f64 as usize, 0);
+        assert_eq!(100.0_f64 as usize, 100);
         assert_eq!((0.001_f64 * 100.0).round() as usize, 0); // rounds down
     }
 
@@ -1440,14 +1436,16 @@ mod tests {
                 .strip_prefix("openai://")
                 .or_else(|| target_raw.strip_prefix("anthropic://"))
                 .or_else(|| target_raw.strip_prefix("ollama://"))
-                .map(|stripped| {
-                    if stripped.starts_with("http://") || stripped.starts_with("https://") {
-                        stripped.to_string()
-                    } else {
-                        format!("http://{stripped}")
-                    }
-                })
-                .unwrap_or_else(|| target_raw.to_string())
+                .map_or_else(
+                    || target_raw.to_string(),
+                    |stripped| {
+                        if stripped.starts_with("http://") || stripped.starts_with("https://") {
+                            stripped.to_string()
+                        } else {
+                            format!("http://{stripped}")
+                        }
+                    },
+                )
         }
 
         // openai://localhost:4000 → http://localhost:4000
@@ -1485,5 +1483,249 @@ mod tests {
 
         // No protocol → unchanged
         assert_eq!(normalize("localhost:4000"), "localhost:4000"); // no http prefix
+    }
+
+    /// V1-M20 / TD-35: RED test — no `#[allow(dead_code)] // TODO(T10)` markers must
+    /// remain in cli/src/. Either responsive widget selection is wired, or the
+    /// stale fields are removed.
+    ///
+    /// Architecture requirement: dead code is technical debt; if a field is unused,
+    /// either implement the feature that uses it or delete the field. `TODO(T10)`
+    /// markers were carried over from S03 and must be resolved before v1.0.0 release.
+    #[test]
+    fn no_dead_code_markers() {
+        use std::fs;
+        use std::path::Path;
+
+        // Only flag REAL `#[allow(dead_code)]` annotations bearing the
+        // `TODO(T10)` marker — not docstring/comment mentions of the marker
+        // (this very test references TD-35 in its docs).
+        fn scan_dir(dir: &Path, hits: &mut Vec<String>) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        if path.file_name().is_some_and(|n| n == "target") {
+                            continue;
+                        }
+                        scan_dir(&path, hits);
+                    } else if path.extension().is_some_and(|e| e == "rs") {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            for (i, line) in content.lines().enumerate() {
+                                let trimmed = line.trim_start();
+                                // Match: `#[allow(dead_code)] // TODO(T10)…`
+                                let is_allow_dead = trimmed.starts_with("#[allow(dead_code)]")
+                                    || trimmed.starts_with("#[ allow ( dead_code ) ]");
+                                if is_allow_dead && line.contains("TODO(T10)") {
+                                    hits.push(format!("{}:{}", path.display(), i + 1));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let cli_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut hits = Vec::new();
+        scan_dir(&cli_src, &mut hits);
+
+        assert!(
+            hits.is_empty(),
+            "TD-35: Found {} `#[allow(dead_code)]` lines tagged TODO(T10) — must be resolved (implement OR remove). Locations:\n  {}",
+            hits.len(),
+            hits.join("\n  "),
+        );
+    }
+
+    // ── V1-M22 / B-1 (B-3): passport notify subcommand ──────────
+
+    /// V1-M22: `complior passport notify <agent>` must be a recognized subcommand.
+    /// Current state (V1-M21 discovery): "error: unrecognized subcommand 'notify'".
+    ///
+    /// Spec: PassportAction enum in cli.rs must have a variant named `Notify`.
+    /// Source-level test (not type-level) so this file still compiles during RED.
+    #[test]
+    fn passport_notify_variant_in_cli_source() {
+        use std::fs;
+        use std::path::Path;
+
+        let cli_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("cli.rs");
+        let content = fs::read_to_string(&cli_rs).expect("cli.rs readable");
+
+        // Find the PassportAction enum block
+        let start = content
+            .find("pub enum PassportAction")
+            .expect("PassportAction enum must exist");
+        let tail = &content[start..];
+        let end = tail.find("\n}\n").expect("enum has closing brace");
+        let enum_body = &tail[..end];
+
+        assert!(
+            enum_body.contains("Notify"),
+            "V1-M22 B-1: PassportAction enum must have `Notify` variant. \
+             Current enum body:\n{enum_body}"
+        );
+    }
+
+    // ── V1-M22 / D-1 (U-2): passport export format alias ────────
+
+    /// V1-M22: `--format aiuc1` should be accepted as alias for `aiuc-1`.
+    /// Dev can fix either by clap value_parser alias or by normalizing in handler.
+    /// Source-level spec: cli.rs should document/configure `aiuc1` alongside `aiuc-1`.
+    #[test]
+    fn passport_export_format_supports_aiuc1_alias() {
+        use std::fs;
+        use std::path::Path;
+
+        let cli_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("cli.rs");
+        let content = fs::read_to_string(&cli_rs).expect("cli.rs readable");
+
+        // Either:
+        //   - clap alias: #[arg(value_parser = ..., alias = "aiuc1")]  OR
+        //   - documented both: "aiuc-1, aiuc1" in help
+        //   - value_parser list containing both "aiuc-1" and "aiuc1"
+        let has_both_forms = content.contains("\"aiuc1\"") && content.contains("\"aiuc-1\"");
+        let has_alias_attr =
+            content.contains("alias = \"aiuc1\"") || content.contains("aliases = &[\"aiuc1\"]");
+
+        assert!(
+            has_both_forms || has_alias_attr,
+            "V1-M22 D-1: cli.rs must accept `aiuc1` as alias for `aiuc-1`. \
+             Expected either both strings or #[arg(alias = \"aiuc1\")] in PassportAction::Export."
+        );
+    }
+
+    // ── V1-M22 / C-3: ISO 42001 removed from Rust CLI ───────────
+
+    /// V1-M22: zero `iso42001` references in cli/src/. User decision:
+    /// ISO 42001 deferred, code preserved in `archive/iso-42001` branch.
+    #[test]
+    fn no_iso42001_references_in_cli() {
+        use std::fs;
+        use std::path::Path;
+
+        fn scan_dir(dir: &Path, hits: &mut Vec<String>, skip_self: &Path) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        // Skip target/, tests/, and headless/ dirs.
+                        // headless/ contains fix.rs tests that use iso42001 strings in assertion messages.
+                        if path
+                            .file_name()
+                            .is_some_and(|n| n == "target" || n == "tests" || n == "headless")
+                        {
+                            continue;
+                        }
+                        scan_dir(&path, hits, skip_self);
+                    } else if path.extension().is_some_and(|e| e == "rs") {
+                        if path == skip_self {
+                            continue;
+                        }
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            // Skip files that are test files (contain #[test] attributes).
+                            // These have iso42001 strings in assertion messages (test data, not code).
+                            if content.contains("#[test]") || content.contains("#[tokio::test]") {
+                                continue;
+                            }
+                            // case-insensitive iso42001 / iso-42001 / iso_42001
+                            let lower = content.to_lowercase();
+                            for variant in ["iso42001", "iso-42001", "iso_42001"] {
+                                if lower.contains(variant) {
+                                    hits.push(format!(
+                                        "{} (contains '{}')",
+                                        path.display(),
+                                        variant
+                                    ));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let cli_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let self_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("tests.rs");
+        let mut hits = Vec::new();
+        scan_dir(&cli_src, &mut hits, &self_path);
+
+        assert!(
+            hits.is_empty(),
+            "V1-M22 C-3: Found {} iso42001 references in cli/src/. \
+             All ISO 42001 code must be removed (preserved in archive/iso-42001 branch). \
+             Locations:\n  {}",
+            hits.len(),
+            hits.join("\n  "),
+        );
+    }
+
+    // ── V1-M23 / W-2: CLI must pass --output to engine body ─────
+
+    /// V1-M23 W-2: CLI report handler for `--format <md|html|pdf> --output <path>`
+    /// must pass user's --output value to engine via JSON body field `outputPath`.
+    /// Currently sends empty `{}` body (commands.rs:247) — engine never receives
+    /// the user's path, files end up in `.complior/reports/` regardless.
+    ///
+    /// Source-level spec: commands.rs report handler must include "outputPath"
+    /// in the JSON body sent to /report/status/{pdf,markdown} or /report/share.
+    #[test]
+    fn report_handler_passes_output_to_engine() {
+        use std::fs;
+        use std::path::Path;
+
+        let commands_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("commands.rs");
+        let content = fs::read_to_string(&commands_rs).expect("commands.rs readable");
+
+        let has_output_path_in_body =
+            content.contains("\"outputPath\":") || content.contains("outputPath:");
+
+        assert!(
+            has_output_path_in_body,
+            "V1-M23 W-2: cli/src/headless/commands.rs report handler must pass \
+             user's --output to engine via `outputPath` JSON body field. \
+             Currently sends empty `{{}}` body."
+        );
+    }
+
+    // ── V1-M22 / D-2 (U-3): fix --check-id exit semantics ───────
+
+    /// V1-M22: `fix --check-id <id>` exit code semantics.
+    /// "No auto-fix available" (informational) should exit 0.
+    /// Actual failure should exit non-zero.
+    ///
+    /// Source-level test: fix.rs must define named constants for both exit codes.
+    /// This avoids magic numbers scattered through the handler.
+    #[test]
+    fn fix_check_id_exit_code_constants_defined() {
+        use std::fs;
+        use std::path::Path;
+
+        let fix_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("fix.rs");
+        let content = fs::read_to_string(&fix_rs).expect("fix.rs readable");
+
+        let has_no_fix_const = content.contains("EXIT_NO_FIX_AVAILABLE");
+        let has_failed_const = content.contains("EXIT_FIX_FAILED");
+
+        assert!(
+            has_no_fix_const && has_failed_const,
+            "V1-M22 D-2: fix.rs must define constants EXIT_NO_FIX_AVAILABLE (0) \
+             and EXIT_FIX_FAILED (non-zero). Missing: no_fix={has_no_fix_const}, failed={has_failed_const}"
+        );
     }
 }

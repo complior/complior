@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-22
-**Updated by:** Architect (post-merge V1-M18 + V1-M19)
+**Updated:** 2026-04-24
+**Updated by:** Reviewer (V1-M23 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `dev` (34 commits ahead of main)
+**Branch:** `feature/V1-M23-wiring-fixes` (pending merge to dev)
 
 ---
 
@@ -11,12 +11,13 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2288 passed, 2 skipped (169 files) |
-| Rust CLI (`cli/`) | GREEN | 202 passed (0 failed) |
+| TS Engine (`engine/core/`) | GREEN | 2328 passed, 2 skipped (179 files) |
+| Rust CLI (`cli/`) | GREEN | 208 passed (0 failed) |
 | tsc --noEmit | PASS | — |
+| cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2490 tests GREEN**
+**Total: 2536 tests GREEN**
 
 ---
 
@@ -53,6 +54,9 @@
 | V1-M12.1 | Eval Pre-Filter (filter BEFORE execution, saves HTTP/LLM costs) | DONE | ✅ (PR #17) |
 | V1-M18 | Scanner Domain Filter (3rd dimension: industry domain) | DONE | ✅ (PR #18) |
 | V1-M19 | Fix Profile Filter (filter fix plans by project profile) | DONE | ✅ (PR #18) |
+| V1-M20 | Tech Debt Cleanup (TD-44, TD-31, TD-35, TD-41) | DONE | pending merge |
+| V1-M22 | v1.0.0 Release Blockers (HTML report, ISO 42001 removal, UX fixes) | DONE | pending merge |
+| V1-M23 | Runtime Wiring Fixes (4 release blockers from V1-M21 re-run) | DONE | pending merge |
 
 ## In Progress / RED
 
@@ -158,6 +162,80 @@
 
 - Tests: 27 new (domain-filter 16, fix-profile-filter 8, scan-service 1, fix-service 2, E2E 6, Rust 1)
 - **Review Notes:** TD-45 (architect import path error), TD-46 (FixFilterContext dedup — fixed), TD-47 (helper dedup — fixed)
+
+## V1-M20: Tech Debt Cleanup (DONE — pending merge to dev)
+
+**Branch:** `feature/V1-M20-M21-roadmap-cleanup`
+**Scope:** 37 files, +3333/-54 LOC (unique to branch)
+**What:** Resolves 4 tracked tech debt items with RED tests written by architect:
+
+| TD | Description | Resolution |
+|----|-------------|------------|
+| TD-44 | Double `as unknown as` cast in eval-service | `filterTestsByProfile` now accepts `SecurityProbe[]` natively; zero `as unknown as` in eval-service.ts |
+| TD-31 | Passport schema tests skipped on CI (env-dependent) | 2 repo fixtures (`passport-anthropic.json`, `passport-openai.json`) in `data/fixtures/`; tests never skip |
+| TD-35 | 4x `#[allow(dead_code)] // TODO(T10)` markers in cli/src | Removed annotations (responsive widgets wired or fields deleted) |
+| TD-41 | C-M04 acceptance grep fails on `eval --det` empty output | `verify_eval_det_grep.sh` acceptance script with fallback |
+
+- Tests: 5 new (TS: 2 files, Rust: 1 test)
+- Acceptance scripts: 3 new (`verify_completions_isolated.sh`, `verify_eval_det_grep.sh`, `verify_v1_deep_e2e.sh`)
+- Feature Areas: 8 new (contract-layer, guard-integration, mcp, passport, report, sdk, sync, tui)
+- V1-M19 hotfix: wired `getProjectProfile` + `fixFilterContext` in fix route
+
+**Review Notes:**
+- Tests GREEN: 2297 TS + 203 Rust = 2500 total
+- No existing test assertions weakened or removed
+- TD-48: Architect wrote implementation code for TD-44/TD-35/TD-31 fixes (minor process deviation — acceptable for targeted tech debt cleanup)
+- V1-M21 milestone spec created (Deep E2E Testing) — RED, not yet implemented
+
+## V1-M22: v1.0.0 Release Blockers (DONE — pending merge to dev)
+
+**Branch:** `feature/V1-M22-release-blockers` (chained from V1-M20-M21)
+**Scope:** 133 files, +16146/-2083 LOC (full branch vs main)
+**What:** Closes all release blockers from V1-M21 Deep E2E test:
+
+| Section | Tasks | Description | Status |
+|---------|-------|-------------|--------|
+| A (HTML Report) | A-1..A-8 | Report --output, $1 placeholders, company profile, LAWS tab, document IDs, FIXES tab, actions dedup, evidence auto-init | ✅ 8/8 GREEN |
+| B (Feature Gaps) | B-1..B-2 | `passport notify` subcommand + route, `scan --json` disclaimer | ✅ 2/2 GREEN |
+| C (ISO 42001 Removal) | C-1..C-6 | Remove all iso42001 refs from engine + CLI, delete templates, archive in branch | ✅ 6/6 GREEN |
+| D (UX Fixes) | D-1..D-2 | `passport export --format aiuc1` alias, `fix --check-id` exit codes | ✅ 2/2 GREEN |
+| E (Test Infrastructure) | E-1..E-3 | Fix test scripts, reorient on eval-target | 🔲 Architect scope (post-review) |
+
+**ISO 42001 Archive:** Code preserved in `archive/iso-42001` branch for future V2-M04 restoration.
+
+- Tests: 2517 GREEN (2310 TS + 207 Rust), 2 skipped
+- Clippy: CLEAN
+- tsc --noEmit: CLEAN
+- ISO 42001: 0 source refs in engine + CLI (templates deleted)
+
+**Review Notes:**
+- TD-49: Dev modified 8 architect test files across 3 commits. 5 expected (ISO removal counts 17→14), 2 clippy/mock fixes, 1 eval-service assertion narrowed (justified — getLastResult Zod cast). No assertions weakened critically
+- TD-50: 2 passport-schemas tests still skipped (was fixed in V1-M20 with repo fixtures — needs investigation)
+- Section E (test infrastructure) remains for architect after this review
+
+## V1-M23: Runtime Wiring Fixes (DONE — pending merge to dev)
+
+**Branch:** `feature/V1-M23-wiring-fixes` (chained from V1-M22)
+**Scope:** 4 files, +96/-10 LOC (V1-M23 specific) + 4 new test files
+**What:** Closes 4 runtime wiring gaps discovered during V1-M21 deep E2E re-run:
+
+| ID | Description | Fix | Status |
+|----|-------------|-----|--------|
+| W-1 | `scan --json` missing `disclaimer` field | Wire `buildScanDisclaimer` in scan-service, attach to ScanResult | ✅ GREEN |
+| W-2 | `report --output` ignored for md/html/pdf | CLI passes `outputPath` in JSON body to engine | ✅ GREEN |
+| W-3 | `passport notify` route returns 404 | Register `POST /passport/notify` in passport.route.ts with Zod validation | ✅ GREEN |
+| W-4 | `aiuc1` alias rejected at runtime | Add `aiuc1` to clap value_parser + normalize to `aiuc-1` in engine route | ✅ GREEN |
+
+- Tests: 2536 GREEN (2328 TS + 208 Rust), 2 skipped
+- New test files: 4 TS + 1 Rust test added to `tests.rs`
+- No existing tests modified by V1-M23 commits
+
+**Review Notes:**
+- Clean implementation — all fixes are minimal, focused wiring
+- W-1 follows eval-service disclaimer pattern, Object.freeze on result
+- W-2 includes sanity warning if engine path differs from requested
+- W-3 uses Zod body validation (consistent with other routes)
+- No new tech debt
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 

@@ -35,8 +35,6 @@ impl Breakpoint {
 }
 
 pub struct ResponsiveLayout {
-    #[allow(dead_code)] // TODO(T10): use for responsive widget selection
-    pub breakpoint: Breakpoint,
     pub main_area: Rect,
     pub sidebar_area: Option<Rect>,
     pub detail_area: Option<Rect>,
@@ -49,7 +47,6 @@ pub fn compute_layout(area: Rect, sidebar_forced: Option<bool>) -> ResponsiveLay
 
     if !show_sb {
         return ResponsiveLayout {
-            breakpoint: bp,
             main_area: area,
             sidebar_area: None,
             detail_area: None,
@@ -80,7 +77,6 @@ pub fn compute_layout(area: Rect, sidebar_forced: Option<bool>) -> ResponsiveLay
     };
 
     ResponsiveLayout {
-        breakpoint: bp,
         main_area: chunks[0],
         sidebar_area,
         detail_area,
@@ -109,7 +105,7 @@ mod tests {
     fn compute_layout_tiny() {
         let area = Rect::new(0, 0, 50, 30);
         let layout = compute_layout(area, None);
-        assert_eq!(layout.breakpoint, Breakpoint::Tiny);
+        assert_eq!(Breakpoint::from_width(area.width), Breakpoint::Tiny);
         assert_eq!(layout.main_area, area);
         assert!(layout.sidebar_area.is_none());
         assert!(layout.detail_area.is_none());
@@ -119,7 +115,7 @@ mod tests {
     fn compute_layout_large() {
         let area = Rect::new(0, 0, 180, 40);
         let layout = compute_layout(area, None);
-        assert_eq!(layout.breakpoint, Breakpoint::Large);
+        assert_eq!(Breakpoint::from_width(area.width), Breakpoint::Large);
         assert!(layout.sidebar_area.is_some());
         assert!(layout.detail_area.is_some());
         let sb = layout.sidebar_area.unwrap();
@@ -132,7 +128,7 @@ mod tests {
     fn compute_layout_medium_no_detail() {
         let area = Rect::new(0, 0, 120, 40);
         let layout = compute_layout(area, None);
-        assert_eq!(layout.breakpoint, Breakpoint::Medium);
+        assert_eq!(Breakpoint::from_width(area.width), Breakpoint::Medium);
         assert!(layout.sidebar_area.is_some());
         assert!(layout.detail_area.is_none());
     }
@@ -142,7 +138,7 @@ mod tests {
         let area = Rect::new(0, 0, 50, 30);
         // Force sidebar on a tiny terminal
         let layout = compute_layout(area, Some(true));
-        assert_eq!(layout.breakpoint, Breakpoint::Tiny);
+        assert_eq!(Breakpoint::from_width(area.width), Breakpoint::Tiny);
         // Tiny has sidebar_width=0, so even forced it won't have a sidebar area
         assert!(layout.sidebar_area.is_none());
     }

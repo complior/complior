@@ -21,6 +21,9 @@ export { OWASP_LLM_CATEGORIES, OWASP_LLM_LABELS, adaptProbesForEval } from './se
 export { createSecurityProbeLoader, countByOwaspCategory, filterByOwaspCategory } from './security-integration.js';
 export { filterBySeverity, calculateEvalSecurityScore } from './security-integration.js';
 export type { SecurityProbe, OwaspLlmCategory } from './security-integration.js';
+export { filterTestsByProfile } from './eval-profile-filter.js';
+export type { FilterProfile, FilterResult, SecurityProbeFilterResult } from './eval-profile-filter.js';
+export { filterSecurityProbesByProfile } from './eval-profile-filter.js';
 export { EVAL_CATEGORIES, EvalCategorySchema, CATEGORY_META } from './types.js';
 export { EVAL_TIERS, EvalTierSchema, TIER_INCLUDES, resolveIncludes, resolveTierLabel } from './types.js';
 export { EvalOptionsSchema, AuditOptionsSchema } from './types.js';

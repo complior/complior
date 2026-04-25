@@ -678,13 +678,25 @@ pub enum PassportAction {
         /// Project path (default: current directory)
         path: Option<String>,
     },
+    /// Generate worker notification for an AI agent (Art. 26(7))
+    Notify {
+        /// Agent name (use "all" for all agents)
+        name: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Project path (default: current directory)
+        path: Option<String>,
+    },
     /// Export passport to external format (A2A, AIUC-1, NIST)
     Export {
         /// Agent name
         name: String,
 
-        /// Export format: a2a, aiuc-1, nist
-        #[arg(long)]
+        /// Export format: a2a, aiuc-1, aiuc1, nist
+        #[arg(long, value_parser = ["a2a", "aiuc-1", "aiuc1", "nist"], default_value = "a2a")]
         format: String,
 
         /// Output as JSON
@@ -1041,7 +1053,8 @@ pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
             | PassportAction::Diff { path, .. }
             | PassportAction::Import { path, .. }
             | PassportAction::AuditPackage { path, .. }
-            | PassportAction::Audit { path, .. } => path.as_deref(),
+            | PassportAction::Audit { path, .. }
+            | PassportAction::Notify { path, .. } => path.as_deref(),
         },
         #[cfg(feature = "extras")]
         Some(Command::Audit { path, .. } | Command::SupplyChain { path, .. }) => path.as_deref(),

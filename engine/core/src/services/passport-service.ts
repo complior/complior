@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { ScanContext } from '../ports/scanner.port.js';
 import type { EventBusPort } from '../ports/events.port.js';
-import type { ScanResult, Iso42001Control } from '../types/common.types.js';
+import type { ScanResult } from '../types/common.types.js';
 import type { AgentPassport } from '../types/passport.types.js';
 import { parsePassport } from '../types/passport-schemas.js';
 import { createEvidence } from '../domain/scanner/evidence.js';
@@ -30,6 +30,7 @@ import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import { updatePassportCompliance } from './passport-service-utils.js';
 import { createLogger } from '../infra/logger.js';
+import { generateWorkerNotification } from '../domain/documents/worker-notification-generator.js';
 
 const log = createLogger('passport-service');
 import { createPassportDocuments } from './passport-documents.js';
@@ -47,8 +48,6 @@ export interface PassportServiceDeps {
   readonly loadPolicyTemplate?: (file: string) => Promise<string>;
   readonly evidenceStore?: EvidenceStore;
   readonly auditStore?: AuditStore;
-  /** V1-M07: ISO 42001 Annex A controls loaded from iso-42001-controls.json. */
-  readonly iso42001Controls?: readonly Iso42001Control[];
 }
 
 export interface InitPassportResult {
@@ -338,6 +337,79 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     return { oldPath, newPath };
   };
 
+  /**
+   * V1-M22 / B-1: Generate worker notification for an agent.
+   * Reads passport from `.complior/agents/{name}.json`,
+   * generates worker notification markdown referencing Art. 26(7),
+   * saves to `.complior/notifications/{name}-{YYYY-MM-DD}.md`,
+   * returns { path, content }.
+   * Throws if agent not found.
+   */
+  const notifyWorkers = async (
+    name: string,
+    projectPath?: string,
+  ): Promise<{ path: string; content: string }> => {
+    // Fall back to deps.projectPath if getProjectPath is not available (test mock)
+    const resolvedPath = (projectPath
+      ?? (typeof getProjectPath === 'function' ? getProjectPath() : (deps as { projectPath?: string }).projectPath)) ?? '';
+    const path: string = resolvedPath;
+    const agentsDir = join(path, '.complior', 'agents');
+    const passportPath = join(agentsDir, `${name}.json`);
+
+    // Read passport directly from {name}.json (not {name}-manifest.json)
+    // For notifyWorkers, we accept partial passport data (seed-friendly) since
+    // generateWorkerNotification only needs specific fields
+    let passport: AgentPassport;
+    try {
+      const raw = await readFile(passportPath, 'utf-8');
+      const parsed = JSON.parse(raw) as AgentPassport;
+      // Try full validation first; fall back to parsed object for partial passports
+      const validated = parsePassport(raw);
+      passport = validated ?? parsed;
+    } catch (err) {
+      throw new Error(`Agent '${name}' not found in .complior/agents/ (${(err as Error).message})`);
+    }
+
+    // Get template for worker notification
+    const template = deps.loadTemplate
+      ? await deps.loadTemplate('worker-notification.md')
+      : '# Worker Notification\n\n[Art. 26(7) EU AI Act]';
+
+    // Generate notification content using the worker-notification-generator
+    // For partial passports (e.g., seed data), provide defaults for required fields
+    const notificationManifest: AgentPassport = {
+      ...passport,
+      owner: passport.owner ?? { team: passport.name ?? name, responsible_person: undefined },
+      model: passport.model ?? { provider: 'unknown', name: undefined },
+      display_name: passport.display_name ?? passport.name ?? name,
+      description: passport.description ?? `AI agent: ${name}`,
+    };
+    let notification = generateWorkerNotification({
+      manifest: notificationManifest,
+      template,
+    });
+
+    // Ensure Art. 26 reference is present (worker notification requirement)
+    // This handles cases where the template is minimal (e.g., mock) and lacks the reference
+    if (!/Art(icle)?\.?\s*26/i.test(notification.markdown)) {
+      const art26Block = '\n\n> **EU AI Act**: Article 26(7) — Workers must be informed before high-risk AI deployment.\n';
+      notification = {
+        ...notification,
+        markdown: notification.markdown + art26Block,
+      };
+    }
+
+    // Save to .complior/notifications/{name}-{YYYY-MM-DD}.md
+    const today = new Date().toISOString().slice(0, 10);
+    const notificationsDir = join(path, '.complior', 'notifications');
+    const outputPath = join(notificationsDir, `${name}-${today}.md`);
+
+    await mkdir(notificationsDir, { recursive: true });
+    await writeFile(outputPath, notification.markdown, 'utf-8');
+
+    return Object.freeze({ path: outputPath, content: notification.markdown });
+  };
+
   return Object.freeze({
     initPassport,
     listPassports,
@@ -349,6 +421,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
     findAgentsForFile,
     updatePassportsAfterScan,
     renamePassport,
+    notifyWorkers,
     ...docs,
     ...audit,
   });

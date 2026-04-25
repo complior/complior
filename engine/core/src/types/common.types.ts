@@ -315,37 +315,7 @@ export interface EvidenceChain {
   readonly lastHash: string;
 }
 
-// --- ISO 42001 (V1-M07) ---
-
-export interface Iso42001Control {
-  readonly controlId: string;
-  readonly group: string;
-  readonly title: string;
-  readonly description: string;
-  readonly euAiActArticles: readonly string[];
-  readonly checkIds: readonly string[];
-}
-
-export type SoAApplicability = 'applicable' | 'not-applicable' | 'partial';
-export type SoAStatus = 'implemented' | 'planned' | 'not-started';
-
-export interface SoAEntry {
-  readonly controlId: string;
-  readonly title: string;
-  readonly applicable: SoAApplicability;
-  readonly justification: string;
-  readonly status: SoAStatus;
-  readonly evidence: readonly string[];
-  readonly gaps: readonly string[];
-}
-
-export interface SoAResult {
-  readonly markdown: string;
-  readonly entries: readonly SoAEntry[];
-  readonly completeness: number;
-  readonly applicableCount: number;
-  readonly implementedCount: number;
-}
+// --- Risk Register Types ---
 
 export type RiskLikelihood = 'rare' | 'unlikely' | 'possible' | 'likely' | 'almost-certain';
 export type RiskImpact = 'negligible' | 'minor' | 'moderate' | 'major' | 'severe';

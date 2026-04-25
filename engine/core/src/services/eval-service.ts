@@ -9,7 +9,7 @@ import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { z } from 'zod';
-import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult, ConformityTest } from '../domain/eval/types.js';
+import type { EvalResult, EvalOptions, EvalProgressCallback, TestResult } from '../domain/eval/types.js';
 import type { TargetAdapter } from '../domain/eval/adapters/adapter-port.js';
 import type { EvalRunnerDeps, EvalTestSources, EvalScorer, EvalJudge } from '../domain/eval/eval-runner.js';
 import { createEvalRunner } from '../domain/eval/eval-runner.js';
@@ -20,7 +20,7 @@ import { createSecurityProbeLoader } from '../domain/eval/security-integration.j
 import { getSecurityRubric } from '../data/eval/security-rubrics.js';
 import { buildPassportEvalBlock, mergeEvalIntoPassport } from '../domain/eval/eval-passport.js';
 import { generateEvalReport } from '../domain/eval/eval-report.js';
-import { filterTestsByProfile, type FilterProfile } from '../domain/eval/eval-profile-filter.js';
+import { filterTestsByProfile, filterSecurityProbesByProfile, type FilterProfile } from '../domain/eval/eval-profile-filter.js';
 import { buildEvalDisclaimer } from '../domain/eval/eval-disclaimer.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
@@ -215,13 +215,12 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         return filterTestsByProfile(all, filterProfile).filtered;
       },
       getSecurityProbes: () => {
-        // Security probes are not filtered by profile (not in applicability map)
+        // Security probes: filter by profile using dedicated function (V1-M20 / TD-44)
         if (!filterProfile) return testSources.getSecurityProbes();
-        // For consistency with tests, filter by profile too
-        return filterTestsByProfile(
-          testSources.getSecurityProbes() as unknown as readonly ConformityTest[],
+        return filterSecurityProbesByProfile(
+          testSources.getSecurityProbes(),
           filterProfile,
-        ).filtered as unknown as ReturnType<EvalTestSources['getSecurityProbes']>;
+        ).filtered;
       },
     };
 
@@ -284,7 +283,8 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     return mergeEvalIntoPassport(passport, block);
   };
 
-  // Minimal schema for validating persisted eval results
+  // Minimal schema for validating persisted eval results.
+  // Includes all EvalResult fields for forward-compat and type safety.
   const EvalResultSchema = z.object({
     target: z.string(),
     overallScore: z.number(),
@@ -293,6 +293,14 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     passed: z.number(),
     failed: z.number(),
     results: z.array(z.object({ testId: z.string(), verdict: z.string() }).passthrough()),
+    tier: z.enum(['basic', 'standard', 'full', 'security']).optional(),
+    categories: z.array(z.object({ category: z.string(), score: z.number(), grade: z.string(), passed: z.number(), failed: z.number(), errors: z.number(), inconclusive: z.number(), skipped: z.number(), total: z.number() })).optional(),
+    errors: z.number().optional(),
+    inconclusive: z.number().optional(),
+    skipped: z.number().optional(),
+    duration: z.number().optional(),
+    securityScore: z.number().optional(),
+    securityGrade: z.string().optional(),
   }).passthrough();
 
   /** Get last eval result from disk. */
@@ -305,6 +313,9 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         log.warn('Invalid eval result on disk:', parsed.error.message);
         return null;
       }
+      // Schema intentionally minimal (forward-compat: accept old disk formats).
+      // passthrough() keeps extra fields at runtime; Zod output fully covers EvalResult fields.
+      // Single `as unknown` bridge here because Zod output type ≠ interface type structurally.
       return parsed.data as unknown as EvalResult;
     } catch {
       return null;
