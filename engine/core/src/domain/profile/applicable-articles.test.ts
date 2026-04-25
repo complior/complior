@@ -40,17 +40,18 @@ describe('V1-M26: obligationsToArticles maps OBL-IDs → EU AI Act articles', ()
 
   it('result is sorted ascending by article number', async () => {
     const { obligationsToArticles } = await import('./applicable-articles.js');
+    // OBL-001 → Article 4, OBL-002 → Article 5, OBL-015 → Article 50(1)
     const result = obligationsToArticles([
-      'eu-ai-act-OBL-014', // Article 14
+      'eu-ai-act-OBL-015', // Article 50(1)
       'eu-ai-act-OBL-001', // Article 4
-      'eu-ai-act-OBL-005', // Article 5
+      'eu-ai-act-OBL-002', // Article 5
     ]);
     // Find positions
     const idxArt4 = result.findIndex((a) => a === 'Article 4');
     const idxArt5 = result.findIndex((a) => a === 'Article 5');
-    const idxArt14 = result.findIndex((a) => a === 'Article 14');
+    const idxArt50 = result.findIndex((a) => a === 'Article 50(1)');
     expect(idxArt4).toBeLessThan(idxArt5);
-    expect(idxArt5).toBeLessThan(idxArt14);
+    expect(idxArt5).toBeLessThan(idxArt50);
   });
 
   it('silently filters unknown OBL IDs (forward-compat)', async () => {
