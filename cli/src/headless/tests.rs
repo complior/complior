@@ -1745,16 +1745,15 @@ mod tests {
             }
         }"#;
 
-        let parsed: ScanResult = serde_json::from_str(json)
-            .expect("ScanResult must deserialize valid JSON");
+        let parsed: ScanResult =
+            serde_json::from_str(json).expect("ScanResult must deserialize valid JSON");
 
-        let reserialized = serde_json::to_value(&parsed)
-            .expect("ScanResult must serialize back to JSON");
+        let reserialized =
+            serde_json::to_value(&parsed).expect("ScanResult must serialize back to JSON");
 
         // After roundtrip: disclaimer field MUST be preserved
         assert!(
-            reserialized.get("disclaimer").is_some()
-                && !reserialized["disclaimer"].is_null(),
+            reserialized.get("disclaimer").is_some() && !reserialized["disclaimer"].is_null(),
             "V1-M24 R-1: ScanResult struct (cli/src/types/engine.rs) must include \
              `disclaimer` field. Currently serde drops it on deserialize, then \
              `complior scan --json` re-serializes without disclaimer. \
