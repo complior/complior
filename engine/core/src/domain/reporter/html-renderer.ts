@@ -497,7 +497,7 @@ const renderTabDocuments = (report: ComplianceReport): string => {
         ${d.scoreImpact > 0 ? ` | Score impact: +${d.scoreImpact}` : ''}
       </div>
       ${d.status === 'missing' ? `<div class="muted small">Run <code>complior fix</code> to generate</div>` : ''}
-      ${content ? `<details><summary class="muted">View Document</summary><div class="doc-preview" data-md="${escapeHtml(content.content)}">${escapeHtml(content.content.slice(0, 200))}...</div></details>` : ''}
+      ${content ? `<details><summary class="muted">View Document</summary><div class="doc-preview" data-md="${escapeHtml(content.content.replace(/\[YYYY\]|\[NNN\]/g, ''))}">${escapeHtml(content.content.slice(0, 200).replace(/\[YYYY\]|\[NNN\]/g, ''))}...</div></details>` : ''}
     </div>`;
   }).join('');
 
@@ -1010,14 +1010,14 @@ ${sections}
     var md=el.getAttribute('data-md');
     if(!md)return;
     var html=md
-      .replace(/^### (.+)$/gm,'<h4>$1</h4>')
-      .replace(/^## (.+)$/gm,'<h3>$1</h3>')
-      .replace(/^# (.+)$/gm,'<h2>$1</h2>')
-      .replace(/\\*\\*(.+?)\\*\\*/g,'<strong>$1</strong>')
-      .replace(/\\*(.+?)\\*/g,'<em>$1</em>')
-      .replace(/\`([^\`]+)\`/g,'<code>$1</code>')
-      .replace(/^- (.+)$/gm,'<li>$1</li>')
-      .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+      .replace(/^### (.+)$/gm, function(_p,m1){return'<h4>'+m1+'</h4>'})
+      .replace(/^## (.+)$/gm, function(_p,m1){return'<h3>'+m1+'</h3>'})
+      .replace(/^# (.+)$/gm, function(_p,m1){return'<h2>'+m1+'</h2>'})
+      .replace(/\\*\\*(.+?)\\*\\*/g, function(_p,m1){return'<strong>'+m1+'</strong>'})
+      .replace(/\\*(.+?)\\*/g, function(_p,m1){return'<em>'+m1+'</em>'})
+      .replace(/\`([^\`]+)\`/g, function(_p,m1){return'<code>'+m1+'</code>'})
+      .replace(/^- (.+)$/gm, function(_p,m1){return'<li>'+m1+'</li>'})
+      .replace(/^> (.+)$/gm, function(_p,m1){return'<blockquote>'+m1+'</blockquote>'})
       .replace(/\\n/g,'<br>');
     el.innerHTML=html;
     el.removeAttribute('data-md');
