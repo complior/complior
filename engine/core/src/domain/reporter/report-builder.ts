@@ -1,5 +1,5 @@
 import type { ScanResult, Role, ScanMode } from '../../types/common.types.js';
-import type { ComplianceReport, ReportSummary, FindingSummary, EvalResultsSummary, EvalCategorySummary, EvalTestSummary, FixHistoryEntry, DocumentContent } from './types.js';
+import type { ComplianceReport, ReportSummary, FindingSummary, EvalResultsSummary, EvalCategorySummary, EvalTestSummary, FixHistoryEntry, DocumentContent, CompanyProfile } from './types.js';
 import type { EvidenceChainSummary } from '../scanner/evidence-store.js';
 import type { EvalResult } from '../eval/types.js';
 import type { PassportData } from './passport-status.js';
@@ -31,6 +31,7 @@ export interface ReportBuildInput {
   readonly evalResult?: EvalResult | null;
   readonly fixHistory?: readonly FixHistoryEntry[];
   readonly documentContents?: readonly DocumentContent[];
+  readonly profile?: CompanyProfile;
 }
 
 /** Infer scanner layer from checkId prefix. */
@@ -176,6 +177,7 @@ export const buildComplianceReport = (input: ReportBuildInput): ComplianceReport
   return {
     generatedAt: now.toISOString(),
     compliorVersion: version,
+    profile: input.profile,
     readiness,
     documents,
     obligations: oblCoverage,

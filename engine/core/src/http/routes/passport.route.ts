@@ -164,7 +164,9 @@ export const createPassportRoute = (passportService: PassportService) => {
       throw new ValidationError('Invalid "format" — must be a2a, aiuc-1, aiuc1, or nist');
     }
 
-    const result = await passportService.exportPassportToFormat(name, parsed === 'aiuc-1' ? 'aiuc-1' : parsed, path);
+    // Normalize aiuc1 → aiuc-1 with type narrowing for ExportFormat
+    const canonical: 'a2a' | 'aiuc-1' | 'nist' = parsed === 'aiuc1' ? 'aiuc-1' : parsed;
+    const result = await passportService.exportPassportToFormat(name, canonical, path);
     if (result === null) throw new ValidationError(`Passport not found: ${name}`);
     return c.json(result);
   });

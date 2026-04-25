@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-24
-**Updated by:** Reviewer (V1-M23 review)
+**Updated:** 2026-04-25
+**Updated by:** Reviewer (V1-M24 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M23-wiring-fixes` (pending merge to dev)
+**Branch:** `feature/V1-M23-wiring-fixes` (includes V1-M24, pending merge to dev)
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2328 passed, 2 skipped (179 files) |
-| Rust CLI (`cli/`) | GREEN | 208 passed (0 failed) |
+| TS Engine (`engine/core/`) | GREEN | 2348 passed, 2 skipped (183 files) |
+| Rust CLI (`cli/`) | GREEN | 209 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2536 tests GREEN**
+**Total: 2557 tests GREEN**
 
 ---
 
@@ -57,6 +57,7 @@
 | V1-M20 | Tech Debt Cleanup (TD-44, TD-31, TD-35, TD-41) | DONE | pending merge |
 | V1-M22 | v1.0.0 Release Blockers (HTML report, ISO 42001 removal, UX fixes) | DONE | pending merge |
 | V1-M23 | Runtime Wiring Fixes (4 release blockers from V1-M21 re-run) | DONE | pending merge |
+| V1-M24 | Final Wiring (R-1..R-5 — last 4 wiring gaps before v1.0.0 tag) | DONE | pending merge |
 
 ## In Progress / RED
 
@@ -235,6 +236,32 @@
 - W-1 follows eval-service disclaimer pattern, Object.freeze on result
 - W-2 includes sanity warning if engine path differs from requested
 - W-3 uses Zod body validation (consistent with other routes)
+- No new tech debt
+
+## V1-M24: Final Wiring (DONE — pending merge to dev)
+
+**Branch:** `feature/V1-M23-wiring-fixes` (chained from V1-M23)
+**Scope:** 11 files, +757/-27 LOC (V1-M24 delta)
+**What:** Closes last 4 wiring gaps from V1-M23 final E2E (51/64 PASS → targeting 0 release blockers):
+
+| Task | Description | Status |
+|------|-------------|--------|
+| R-1 | Rust `ScanResult` struct missing `disclaimer` field (serde silently drops) | FIXED |
+| R-2 | PDF endpoint ignores `outputPath` (Zod schema missing field) | FIXED |
+| R-3 | ~~HTML `$N` placeholders~~ FALSE POSITIVE — was `$500,000` in security probes | REMOVED |
+| R-4 | HTML Overview missing company profile block | FIXED |
+| R-5 | HTML embedded doc markdown contains `[YYYY]/[NNN]` placeholders | FIXED |
+
+- Tests: 2557 GREEN (2348 TS + 209 Rust), 2 skipped
+- New test files: 3 TS (`scan-route-disclaimer`, `report-pdf-output-path`, `html-production-output`) + 1 Rust test
+- No existing tests modified (only `disclaimer: None` fixture extension in Rust mock + cosmetic reformat)
+
+**Review Notes:**
+- Clean implementation — all fixes are minimal, focused wiring
+- R-1: Added `Disclaimer` struct + `disclaimer: Option<Disclaimer>` to Rust ScanResult with serde roundtrip test
+- R-2: Added `outputPath` to `PdfReportSchema` in report.route.ts
+- R-4: Added `renderCompanyProfile()` section to `generateOfflineHtml()` in html-renderer.ts
+- R-5: `generateDocumentId()` helper substitutes `[YYYY]/[NNN]` with real values (e.g. `TDD-2026-001`)
 - No new tech debt
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)

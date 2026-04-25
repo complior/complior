@@ -375,6 +375,12 @@ pub struct ScanResult {
     /// V1-M08: Top priority actions for CLI "FIX FIRST" section.
     #[serde(default)]
     pub top_actions: Option<Vec<TopAction>>,
+    /// V1-M24 R-1: Disclaimer field from scan service (explains scan scope, limitations).
+    /// Shape differs from `ScoreDisclaimer` (which has covered_obligations etc.).
+    /// Engine emits: `{ summary, limitations, confidenceLevel }`. Use opaque Value
+    /// to preserve forward compatibility — TS engine may extend the shape.
+    #[serde(default)]
+    pub disclaimer: Option<serde_json::Value>,
 }
 
 /// Result from a single external security tool (Semgrep, Bandit, etc.)
@@ -648,7 +654,7 @@ pub struct EngineStatus {
 // ── V1-M10: Score Transparency types ──────────────────────────────
 
 /// V1-M10: Score disclaimer explaining what the compliance score covers.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScoreDisclaimer {
     pub summary: String,
