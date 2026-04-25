@@ -1,12 +1,22 @@
 # V1-M24: Final Wiring — v1.0.0 Tag-ready
 
-> **Status:** 🔴 RED — RED tests written, awaiting implementation
+> **Status:** ✅ DONE — все 4 R-* GREEN, reviewer APPROVED, V1-M21 final E2E running
 > **Branch:** `feature/V1-M24-final-wiring` (from updated `dev` post-PR #20 merge)
 > **Created:** 2026-04-25
-> **Author:** Architect
-> **Triggered by:** V1-M23 final E2E (51/64 PASS) — 5 wiring gaps remain
+> **Completed:** 2026-04-25
+> **Author:** Architect (specs + RED tests + Section E + typecheck hotfix), nodejs-dev (R-2/R-4/R-5), rust-dev (R-1)
+> **Reviewer:** APPROVED — 2557 GREEN (2348 TS + 209 Rust), 0 failed, 0 new tech debt
+> **Triggered by:** V1-M23 final E2E (51/64 PASS) — 5 wiring gaps remained
 > **Predecessor:** V1-M23 wiring fixes (W-3/W-4 done, W-1/W-2 partial)
 > **Successor:** V1-M21 final-final re-run → tag v1.0.0
+>
+> **Resolution:**
+> - R-1 ✅ disclaimer field added to Rust ScanResult struct
+> - R-2 ✅ PdfReportSchema accepts outputPath
+> - ~~R-3~~ removed (false positive — `$N` matched dollar amounts)
+> - R-4 ✅ buildComplianceReport surfaces profile to output
+> - R-5 ✅ HTML embedded markdown filters/substitutes [YYYY]/[NNN] placeholders
+> - Architect typecheck hotfix: aiuc1 alias type narrowing in passport.route.ts
 
 ---
 
