@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-04-25
-**Updated by:** Reviewer (V1-M25 review)
+**Updated by:** Reviewer (V1-M26 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M25-r4b-profile-wiring` (V1-M25, pending merge to dev)
+**Branch:** `dev` (V1-M26 applicable articles — reviewed, pending commit)
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2351 passed, 2 skipped (183 files) |
+| TS Engine (`engine/core/`) | GREEN | 2360 passed, 2 skipped (185 files) |
 | Rust CLI (`cli/`) | GREEN | 209 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2560 tests GREEN**
+**Total: 2569 tests GREEN**
 
 ---
 
@@ -65,6 +65,7 @@
 
 | Milestone | Description | Branch | Status |
 |-----------|-------------|--------|--------|
+| V1-M26 | Applicable Articles (OBL-IDs → Article refs) | `dev` (uncommitted) | DONE (reviewer APPROVED, pending commit) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
@@ -287,6 +288,26 @@
 - Optional dep pattern preserves back-compat with all existing tests
 - `Object.freeze` on composition-root profile output (follows project conventions)
 - No new tech debt
+
+## V1-M26: Applicable Articles (DONE — reviewer APPROVED)
+
+**Branch:** `dev` (uncommitted working tree changes)
+**Scope:** 2 files modified, 1 new file, +113/-2 LOC
+**What:** Closes UX gap — profile shows EU AI Act article references instead of raw obligation IDs:
+
+| ID | Description | Status |
+|----|-------------|--------|
+| W-1 | Pure fn `obligationsToArticles(obligationIds, options)` — maps OBL-IDs to deduplicated, sorted article references with optional domain filter | ✅ GREEN |
+| W-2 | Update composition-root.ts — call `obligationsToArticles` to convert before returning profile | ✅ GREEN |
+
+- Tests: 2569 GREEN (2360 TS + 209 Rust), 2 skipped
+- New file: `domain/profile/applicable-articles.ts` (pure function, Object.freeze, data from obligations.json)
+- Composition-root change: 6 lines — focused wiring
+- Architecture: pure function, Object.freeze, data externalization, domain layer ✅
+
+**Review Notes:**
+- TD-51: Dev modified architect test — corrected 2 OBL IDs in sorting test (architect assumed wrong OBL→Article mappings per obligations.json). Test intent preserved, assertions not weakened. Data correction only
+- Changes not yet committed — dev should commit and push for CI
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 

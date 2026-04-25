@@ -1,7 +1,7 @@
 # Tech Debt Tracker — Complior v8
 
-**Updated:** 2026-04-24
-**Author:** Reviewer (V1-M22 review — add TD-49, TD-50)
+**Updated:** 2026-04-25
+**Author:** Reviewer (V1-M26 review — add TD-51)
 
 ---
 
@@ -38,6 +38,7 @@
 | TD-48 | LOW | V1-M20: architect wrote implementation code for TD-44/TD-35/TD-31 fixes — minor process deviation | V1-M20 commits | — | OPEN (process) |
 | TD-49 | LOW | V1-M22: dev modified 8 architect test files (5 ISO removal expected, 2 clippy/mock fixes, 1 eval-service weakened — getLastResult cast exclusion). No SCOPE VIOLATION REQUEST filed for eval-service change | Multiple test files | — | OPEN (process) |
 | TD-50 | LOW | V1-M22: 2 passport-schemas tests still skipped despite V1-M20 repo fixture fix (TD-31). May be test environment issue or fixture path mismatch | engine/core/src/types/passport-schemas.test.ts | — | 🔴 OPEN |
+| TD-51 | LOW | V1-M26: dev modified architect test — corrected 2 OBL IDs in sorting test (OBL-005→OBL-002, OBL-014→OBL-015). Architect assumed wrong OBL→Article mappings. Test intent preserved, assertions not weakened. No SCOPE VIOLATION REQUEST filed | engine/core/src/domain/profile/applicable-articles.test.ts | — | OPEN (process) |
 
 ---
 
@@ -70,3 +71,4 @@
 - TD-48: V1-M20 architect wrote impl code for tech debt cleanup (eval-profile-filter.ts, cli dead_code removal, fixture wiring). Acceptable for targeted fixes with pre-written RED tests, but not a pattern to repeat for feature milestones
 - TD-49: V1-M22 dev modified tests in 3 categories: (1) ISO 42001 removal — all doc type counts 17→14, 2 test files deleted with their implementations (expected, scope C); (2) clippy/fmt — mechanical fixes to satisfy `cargo clippy -D warnings` (Option→i32, format!.into()→format!, map→map_or_else); (3) assertion changes — `document-id-generation.test.ts` mock fixed (architect used wrong structure), `html-report-no-placeholders.test.ts` refined to exclude JS regex `$1` in `<script>`, `eval-service-no-unsafe-cast.test.ts` narrowed to exclude `getLastResult()` Zod cast. The eval-service change is the only true weakening — getLastResult needs `as unknown as` for forward-compatible Zod passthrough deserialization. Dev should have filed SCOPE VIOLATION REQUEST
 - TD-50: V1-M20 fixed TD-31 by adding repo fixtures (`data/fixtures/passport-anthropic.json`, `passport-openai.json`). But passport-schemas.test.ts still shows 2 skipped in V1-M22 test run. Possible causes: conditional `describe.skipIf()` not updated, or fixture path relative to test runner CWD
+- TD-51: V1-M26 architect used `OBL-005` assuming "Article 5" and `OBL-014` assuming "Article 14" in sorting test. Actual data: `OBL-005` → "Article 11 / Annex IV", `OBL-014` → "Article 49". Dev corrected to `OBL-002` (→ "Article 5") and `OBL-015` (→ "Article 50(1)"). Ascending sort intent and assertions fully preserved — data correction only. Process note: dev should file SCOPE VIOLATION REQUEST before modifying test files
