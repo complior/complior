@@ -1,17 +1,54 @@
-# E2E Deep Test Report — 2026-04-24
+# E2E Deep Test Report — 2026-04-24 (3 runs over V1-M22→V1-M23)
 
-**Branch:** `feature/V1-M20-M21-roadmap-cleanup`
-**Binary:** `/home/openclaw/complior/target/release/complior`
-**Test Project:** `/home/openclaw/test-projects/eval-target`
+**Branch:** `feature/V1-M23-wiring-fixes` (chained V1-M20 → V1-M21 → V1-M22 → V1-M23)
+**Binary:** `target/release/complior` v0.10.0
+**Test Project:** `~/test-projects/eval-target`
 
-## Summary
+## Progress across 3 runs
+
+| Run | Trigger | PASS | FAIL | SKIP | Real blockers |
+|-----|---------|------|------|------|---------------|
+| 1 | V1-M22 dev impl, eval-target | 39 | 20 | 1 | 4 (B-1..B-4) + 8 HTML + 3 UX |
+| 2 | V1-M22 + Section E test scripts | 47 | 13 | 1 | 4 (W-1..W-4 from V1-M22 wiring gaps) |
+| **3 (FINAL — V1-M23)** | V1-M23 wiring fixes applied | **51** | **12** | **1** | **5 partial — needs V1-M24 follow-up** |
+
+## V1-M23 closure summary
+
+| Task | Unit | Runtime | Verdict |
+|------|------|---------|---------|
+| W-1 disclaimer | ✅ GREEN | ❌ scan --json missing | partial — service returns it, HTTP route doesn't surface it |
+| W-2 --output | ✅ GREEN | ✅ md/html OK, ❌ PDF NOT | partial — PDF endpoint missed |
+| W-3 passport notify | ✅ GREEN | ✅ P-7 PASS | **DONE** ✅ |
+| W-4 aiuc1 alias | ✅ GREEN | ✅ manual confirmed | **DONE** ✅ (script bug — ACTUAL_PP empty) |
+
+## V1-M22 A-* tests illusory GREEN (need V1-M24 closure)
+
+Unit tests passed against mock data; real HTML production rendering still has gaps:
+
+| Task | Unit | Real HTML | Issue |
+|------|------|-----------|-------|
+| A-2 placeholders | ✅ GREEN | ❌ 3 `$N` left | Real template has placeholders unit didn't see |
+| A-3 company profile | ✅ GREEN | ❌ no profile section | Unit checked builder fn, not real HTML output |
+| A-5 doc IDs | ✅ GREEN | ❌ `[YYYY]/[NNN]` left | Real template still has placeholders |
+
+## Final pass rate (run 3)
 
 | Metric | Count |
 |--------|-------|
-| Total cases | 61 |
-| PASS | 47 |
-| FAIL | 13 |
+| Total cases | 64 |
+| PASS | 51 (~80%) |
+| FAIL | 12 (3 script bugs + 4 expected after C-3 + 5 real wiring gaps for V1-M24) |
 | SKIP | 1 |
+
+## Remaining release blockers — V1-M24 scope (R-1..R-5)
+
+- R-1: scan --json includes disclaimer (HTTP route layer wire-up)
+- R-2: PDF endpoint honors outputPath
+- R-3: HTML template removes all `$N` placeholders (real production path)
+- R-4: HTML Overview section includes company profile block (real template)
+- R-5: HTML substitutes real document IDs (TDD-2026-001 etc.)
+
+## Old summary (run 1, retained for history)
 
 ## Per-case Results
 
@@ -30,7 +67,7 @@
 | §4.3 | S-9 --quiet (TD-38) | PASS |  |
 | §4.3 | S-10 --agent acme-bot | PASS |  |
 | §4.3 | S-11 domain filter (M18) | PASS |  |
-| §4.3 | S-9 quiet line count | FAIL | 12 non-empty lines |
+| §4.3 | S-9 quiet ≤10 lines (real-world) | PASS |  |
 | §4.4 | E-1 --det | PASS |  |
 | §4.4 | E-2 --det --llm | PASS |  |
 | §4.4 | E-3 --security | PASS |  |
@@ -65,7 +102,7 @@
 | §4.7 | P-4 validate | PASS |  |
 | §4.7 | P-5 completeness | FAIL | exit != 0 |
 | §4.7 | P-6 autonomy | PASS |  |
-| §4.7 | P-7 notify (V1-M22 B-1) | FAIL | exit != 0 |
+| §4.7 | P-7 notify (V1-M22 B-1) | PASS |  |
 | §4.7 | P-8 registry | PASS |  |
 | §4.7 | P-9 permissions | PASS |  |
 | §4.7 | P-10 evidence | PASS |  |
@@ -74,8 +111,11 @@
 | §4.7 | P-13 import | PASS |  |
 | §4.8 | R-1 human | PASS |  |
 | §4.8 | R-2 json (--output honored) | PASS |  |
-| §4.8 | R-3 md (--output NOT honored) | FAIL | CLI exit 0 but file absent at /tmp/reports/v1-m21-report.md |
-| §4.8 | R-4 html (--output NOT honored) | FAIL | CLI exit 0 but file absent at /tmp/reports/v1-m21-report.html |
+| §4.8 | R-3 md (--output honored) | PASS |  |
+| §4.8 | R-4 html (--output honored) | PASS |  |
+| §4.8 | R-4a HTML $N placeholders | FAIL | 3 leftover placeholders in HTML |
+| §4.8 | R-4b company profile block | FAIL | no profile block found in HTML |
+| §4.8 | R-4c document IDs (A-5) | FAIL | placeholder IDs [YYYY]/[NNN] still present |
 | §4.8 | R-5 pdf (--output NOT honored) | FAIL | CLI exit 0 but file absent at /tmp/reports/v1-m21-report.pdf |
 | §4.8 | R-6 --share | PASS |  |
 

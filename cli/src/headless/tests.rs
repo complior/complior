@@ -1689,8 +1689,8 @@ mod tests {
             .join("commands.rs");
         let content = fs::read_to_string(&commands_rs).expect("commands.rs readable");
 
-        let has_output_path_in_body = content.contains("\"outputPath\":")
-            || content.contains("outputPath:");
+        let has_output_path_in_body =
+            content.contains("\"outputPath\":") || content.contains("outputPath:");
 
         assert!(
             has_output_path_in_body,

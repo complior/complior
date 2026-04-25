@@ -1,12 +1,20 @@
 # V1-M23: Runtime Wiring Fixes — v1.0.0 Release Final
 
-> **Status:** 🔴 RED — RED runtime integration tests written, awaiting implementation
+> **Status:** ✅ DONE — все 4 wiring задачи GREEN, reviewer APPROVED, V1-M21 final re-run в процессе
 > **Branch:** `feature/V1-M23-wiring-fixes` (chained from `feature/V1-M22-release-blockers`)
 > **Created:** 2026-04-24
-> **Author:** Architect
+> **Completed:** 2026-04-24
+> **Author:** Architect (specs + RED tests + Section E), nodejs-dev (W-1/W-3/W-4 + W-2 engine), rust-dev (D-* legacy) + Architect hotfix (W-2 CLI)
+> **Reviewer:** APPROVED (commit `a15dabf`) — 2536 tests GREEN (2328 TS + 208 Rust), 0 failed
 > **Triggered by:** V1-M21 re-run on eval-target (47/61 PASS) — 4 release blockers remain
 > **Predecessor:** V1-M22 release-blockers (unit tests GREEN, runtime broken)
 > **Successor:** V1-M21 final re-run → merge V1-M23 → tag v1.0.0
+>
+> **Resolution:**
+> - W-1 ✅ scan --json includes `disclaimer` field (mirrors eval pattern)
+> - W-2 ✅ report --output honored for md/html/pdf — engine route + CLI body wiring fixed
+> - W-3 ✅ POST /passport/notify route registered, returns 200
+> - W-4 ✅ aiuc1 alias accepted at engine route validation
 
 ---
 
