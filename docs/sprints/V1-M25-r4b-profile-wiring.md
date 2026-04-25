@@ -1,6 +1,6 @@
 # V1-M25: R-4b — Composition Wiring for HTML Profile Block
 
-> **Status:** 🔴 RED — RED test written, awaiting implementation
+> **Status:** ✅ DONE — reviewer APPROVED, pending merge to dev
 > **Branch:** `feature/V1-M25-r4b-profile-wiring` (from updated `dev` post-PR #21)
 > **Created:** 2026-04-25
 > **Author:** Architect
