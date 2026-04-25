@@ -66,6 +66,7 @@ import { simulateActions } from './domain/whatif/simulate-actions.js';
 import { compareSeverity } from './types/common.types.js';
 import { autoDetect } from './onboarding/auto-detect.js';
 import { createInitialState as createOnboardingInitialState } from './domain/onboarding/guided-onboarding.js';
+import { obligationsToArticles } from './domain/profile/applicable-articles.js';
 
 
 export interface ApplicationState {
@@ -557,11 +558,17 @@ export const loadApplication = async (): Promise<Application> => {
       const p = await getProjectProfile(state.projectPath);
       if (!p) return null;
       // Transform to CompanyProfile shape (role: string, riskLevel: string, domain: string, applicableArticles)
+      // V1-M26: Convert OBL-IDs to article references (e.g. "eu-ai-act-OBL-001" → "Article 4")
+      const domain = p.domain ?? 'general';
+      const articles = obligationsToArticles(p.applicableObligations ?? [], {
+        domain,
+        excludeOtherIndustries: true,
+      });
       return Object.freeze({
         role: p.role,
         riskLevel: p.riskLevel ?? 'limited',
-        domain: p.domain ?? 'general',
-        applicableArticles: (p.applicableObligations ?? []) as readonly string[],
+        domain,
+        applicableArticles: articles,
       });
     },
   });
