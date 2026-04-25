@@ -300,7 +300,24 @@ cargo build 2>&1 | tail -5                    # компилируется?
    - После merge feature → dev: architect переносит milestone из "pending" → "on dev"
    - После merge dev → main: architect переносит milestones в "on main (released)"
    - Это ОБЯЗАТЕЛЬНЫЙ шаг, иначе project-state отстаёт от реальности
-10. После merge в dev — user решает когда мержить dev → main (релиз)
+10. **После merge в dev — ПРОВЕРИТЬ CI на GitHub Actions (ОБЯЗАТЕЛЬНО):**
+    ```bash
+    # 1. Дождаться завершения CI на dev (push'ом merge коммита триггерится ci.yml)
+    gh run list --branch dev --limit 1
+    gh run watch <run-id>            # либо просто проверить статус через ~5 мин
+
+    # 2. Все джобы должны быть SUCCESS
+    gh run view <run-id>             # проверить каждую jobs/check
+    ```
+    **Architect's work is NOT done until dev branch CI is fully GREEN.**
+
+    Если CI failed:
+    - Диагностировать локально (cargo test, npx vitest run, cargo fmt --check, cargo clippy)
+    - Создать hotfix milestone (V1-MNN.1) ИЛИ дописать fix к текущему milestone
+    - НЕ переходить к следующему milestone пока dev CI не GREEN
+    - Если CI красный из-за external (cla-check, dependabot) — это OK, но Rust/TS/typecheck должны быть SUCCESS
+
+11. После CI GREEN на dev — user решает когда мержить dev → main (релиз)
 
 ### CI/CD flow после merge
 ```
