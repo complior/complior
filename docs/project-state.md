@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-25
-**Updated by:** Reviewer (V1-M26 review)
+**Updated:** 2026-04-26
+**Updated by:** Reviewer (V1-M27 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `dev` (V1-M26 applicable articles — reviewed, pending commit)
+**Branch:** `feature/V1-M27-html-report-ux` (V1-M27 HTML report UX — reviewed, APPROVED)
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2360 passed, 2 skipped (185 files) |
+| TS Engine (`engine/core/`) | GREEN | 2394 passed, 2 skipped (193 files) |
 | Rust CLI (`cli/`) | GREEN | 209 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2569 tests GREEN**
+**Total: 2603 tests GREEN**
 
 ---
 
@@ -65,7 +65,8 @@
 
 | Milestone | Description | Branch | Status |
 |-----------|-------------|--------|--------|
-| V1-M26 | Applicable Articles (OBL-IDs → Article refs) | `dev` (uncommitted) | DONE (reviewer APPROVED, pending commit) |
+| V1-M26 | Applicable Articles (OBL-IDs → Article refs) | `main` (merged PR #24) | DONE |
+| V1-M27 | HTML Report UX Rework (8 tab improvements) | `feature/V1-M27-html-report-ux` | DONE (reviewer APPROVED, ready for PR) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
@@ -308,6 +309,30 @@
 **Review Notes:**
 - TD-51: Dev modified architect test — corrected 2 OBL IDs in sorting test (architect assumed wrong OBL→Article mappings per obligations.json). Test intent preserved, assertions not weakened. Data correction only
 - Changes not yet committed — dev should commit and push for CI
+
+## V1-M27: HTML Report UX Rework (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M27-html-report-ux`
+**Scope:** 10 files, +665/-131 LOC (implementation commit)
+**What:** Closes 8 UX gaps in HTML compliance report identified by user:
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| HR-1 | Auto-init evidence chain | `runInit` creates genesis evidence entry, removes "Score capped" message | ✅ GREEN |
+| HR-2 | Tests tab grouping | Group tests by source (scan/eval --det/--llm/--security/--deep) with human descriptions | ✅ GREEN |
+| HR-3 | Findings human format | Card layout: What Happened / Why This Matters / What To Do + severity/article/fixable | ✅ GREEN |
+| HR-4 | Laws profile filter | Show only applicable obligations + disclaimer about excluded profiles | ✅ GREEN |
+| HR-5 | Documents profile filter | Show only required docs for profile + disclaimer | ✅ GREEN |
+| HR-6 | Fixes tab populate | Applied fixes + available fix plans (or "No fixes needed" if green) | ✅ GREEN |
+| HR-7 | Passports expandable | `<details><summary>` per passport with Identity/Compliance/Endpoints/Evidence sections | ✅ GREEN |
+| HR-8 | Actions/Timeline UX | Explanatory headers: "Suggested next commands" / "EU AI Act enforcement deadlines" | ✅ GREEN |
+
+- Tests: 2603 GREEN (2394 TS + 209 Rust), 2 skipped
+- Implementation: 4 files (html-renderer.ts major rework, init-service.ts new, evidence-store.ts factory, scan-service.ts wiring)
+- Architecture: pure functions, Object.freeze, data externalization ✅
+
+**Review Notes:**
+- TD-52: Dev modified 6 architect test files — 5× `extractTab()` regex helper fix (architect used `id="${tabId}"` but HTML generates `id="tab-${tabId}"`), 1× async `await` correction (architect called async factory synchronously). All modifications are infrastructure corrections — zero assertion changes, test intent 100% preserved. No SCOPE VIOLATION REQUEST filed
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 
