@@ -88,25 +88,49 @@ command -v jq >/dev/null || { echo -e "${RED}FAIL${NC}: jq not installed"; exit 
 
 mkdir -p "${SANDBOX_ROOT}" "${SNAPSHOT_DIR}"
 
+# ── AI server PID tracker ──────────────────────────────────────────
+AI_SERVER_PID=""
+
 # ── Cleanup ────────────────────────────────────────────────────────
+# Port-specific cleanup: only kill PIDs listening on our managed ports.
+# AI server (port 4000) is preserved across profiles unless we explicitly stop it.
+kill_pid_on_port() {
+  local port="$1"
+  local pid=$(ss -tnlp 2>/dev/null | grep ":${port} " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
+  [[ -n "$pid" ]] && kill -TERM "$pid" 2>/dev/null && sleep 1
+  pid=$(ss -tnlp 2>/dev/null | grep ":${port} " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
+  [[ -n "$pid" ]] && kill -KILL "$pid" 2>/dev/null
+}
+
 cleanup() {
   echo
   echo "→ Cleanup"
   "${COMPLIOR_BIN}" daemon stop >/dev/null 2>&1 || true
-  pkill -f "node.*server.ts" >/dev/null 2>&1 || true
-  pkill -f "tsx.*server.ts" >/dev/null 2>&1 || true
-  pkill -f "node.*complior.*server" >/dev/null 2>&1 || true
+  kill_pid_on_port "${DAEMON_PORT}"
+  # Stop AI server only on FINAL exit (trap), not between profiles
+  if [[ -n "$AI_SERVER_PID" ]]; then
+    kill -TERM "$AI_SERVER_PID" 2>/dev/null
+    sleep 1
+    kill -KILL "$AI_SERVER_PID" 2>/dev/null
+  fi
+  # Backup: anything still listening on AI port (zombie children)
+  kill_pid_on_port 4000
 }
 trap cleanup EXIT
 
 # ── Spawn AI server ────────────────────────────────────────────────
 spawn_ai_server() {
   local proj_dir="$1"
+  if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
+    echo "  ✓ AI server already running"
+    return 0
+  fi
   echo "  → Spawning AI server (npm run dev) in ${proj_dir}"
   (cd "${proj_dir}" && npm run dev >"${SANDBOX_ROOT}/ai-server.log" 2>&1 &)
+  AI_SERVER_PID=$!
   for i in {1..20}; do
     if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
-      echo "  ✓ AI server ready"
+      echo "  ✓ AI server ready (pid ${AI_SERVER_PID})"
       return 0
     fi
     sleep 1
@@ -115,22 +139,24 @@ spawn_ai_server() {
   return 1
 }
 
+# Verify AI server still alive; re-spawn if needed (resilience between profiles)
+ensure_ai_server() {
+  if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "  ⚠ AI server lost — re-spawning"
+  AI_SERVER_PID=""
+  spawn_ai_server "${SOURCE_PROJECT}"
+}
+
 # ── Spawn daemon ───────────────────────────────────────────────────
 spawn_daemon() {
   local proj_dir="$1"
-  # Force-kill ALL existing daemons to avoid port collision with stale instances
+  # Port-specific kill: only what's listening on DAEMON_PORT.
+  # Do NOT pkill broad patterns — that kills the AI server too.
   "${COMPLIOR_BIN}" daemon stop >/dev/null 2>&1 || true
-  pkill -f "node.*server.ts" 2>/dev/null || true
-  pkill -f "tsx.*server.ts" 2>/dev/null || true
-  pkill -f "complior daemon" 2>/dev/null || true
-  sleep 2
-
-  # Verify port is free
-  if ss -tnlp 2>/dev/null | grep -q ":${DAEMON_PORT}"; then
-    local stale_pid=$(ss -tnlp 2>/dev/null | grep ":${DAEMON_PORT}" | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
-    [[ -n "$stale_pid" ]] && kill -9 "$stale_pid" 2>/dev/null
-    sleep 1
-  fi
+  kill_pid_on_port "${DAEMON_PORT}"
+  sleep 1
 
   # Spawn with fixed port via --port flag (Rust CLI passes through to engine)
   (cd "${proj_dir}" && "${COMPLIOR_BIN}" daemon start --watch --port "${DAEMON_PORT}" >"${SANDBOX_ROOT}/daemon.log" 2>&1 &)
@@ -210,6 +236,7 @@ run_profile() {
   setup_profile_toml "${proj_dir}" "${role}" "${risk}" "${domain}"
 
   spawn_daemon "${proj_dir}"
+  ensure_ai_server   # re-spawn AI server if previous profile killed it
 
   cd "${proj_dir}"
 
