@@ -424,7 +424,10 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
                 if let Some(existing) =
                     interactive::load_onboarding_answers_from_toml(&project_toml_path)
                 {
-                    println!("\n  {} Using existing profile.toml answers (--yes)", dim("*"));
+                    println!(
+                        "\n  {} Using existing profile.toml answers (--yes)",
+                        dim("*")
+                    );
                     existing
                 } else {
                     println!("\n  {} Using defaults (--yes)", dim("*"));

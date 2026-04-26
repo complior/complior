@@ -296,7 +296,9 @@ pub fn build_default_answers(questions_json: &serde_json::Value) -> serde_json::
 ///
 /// Returns `None` if the file or section is absent/malformed.
 /// The returned JSON is suitable for `POST /onboarding/complete { answers }`.
-pub fn load_onboarding_answers_from_toml(project_toml_path: &std::path::Path) -> Option<serde_json::Value> {
+pub fn load_onboarding_answers_from_toml(
+    project_toml_path: &std::path::Path,
+) -> Option<serde_json::Value> {
     let content = std::fs::read_to_string(project_toml_path).ok()?;
     let parsed: toml::Value = content.parse().ok()?;
 
@@ -312,11 +314,9 @@ pub fn load_onboarding_answers_from_toml(project_toml_path: &std::path::Path) ->
                 .map_or(serde_json::Value::Null, serde_json::Value::Number),
             toml::Value::Boolean(b) => serde_json::Value::Bool(*b),
             toml::Value::Array(arr) => serde_json::Value::Array(arr.iter().map(to_json).collect()),
-            toml::Value::Table(t) => serde_json::Value::Object(
-                t.iter()
-                    .map(|(k, v)| (k.clone(), to_json(v)))
-                    .collect(),
-            ),
+            toml::Value::Table(t) => {
+                serde_json::Value::Object(t.iter().map(|(k, v)| (k.clone(), to_json(v))).collect())
+            }
             toml::Value::Datetime(dt) => serde_json::Value::String(dt.to_string()),
         }
     }
