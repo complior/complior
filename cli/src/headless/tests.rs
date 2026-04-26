@@ -1787,4 +1787,80 @@ mod tests {
              and EXIT_FIX_FAILED (non-zero). Missing: no_fix={has_no_fix_const}, failed={has_failed_const}"
         );
     }
+
+    // ── V1-M28: init --yes must respect existing project.toml ──
+
+    /// V1-M28 / W-2: A helper for reading `[onboarding_answers]` table from
+    /// `.complior/project.toml` must exist in commands.rs or interactive.rs.
+    ///
+    /// Background: /deep-e2e cross-profile test failed because all 3 profiles
+    /// were tested as deployer/limited/general — `init --yes` overwrote
+    /// pre-set TOML profiles with auto-detected defaults from question metadata.
+    ///
+    /// Source-level test detects helper presence via name OR string literal
+    /// match on "[onboarding_answers]".
+    #[test]
+    fn load_existing_answers_from_toml_helper_exists() {
+        use std::fs;
+        use std::path::Path;
+
+        let cmd_paths = [
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("src")
+                .join("headless")
+                .join("commands.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("src")
+                .join("headless")
+                .join("interactive.rs"),
+        ];
+
+        let mut found = false;
+        for path in &cmd_paths {
+            if let Ok(content) = fs::read_to_string(path) {
+                if content.contains("load_existing_answers_from_toml")
+                    || content.contains("load_answers_from_toml")
+                    || content.contains("read_onboarding_answers")
+                    || content.contains("[onboarding_answers]")
+                {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(
+            found,
+            "V1-M28 W-2: cli/src/headless/{{commands,interactive}}.rs must define a \
+             helper that reads `[onboarding_answers]` from .complior/project.toml \
+             so `init --yes` can respect existing profile."
+        );
+    }
+
+    /// V1-M28 / W-1: `run_init` (or equivalent) must check for existing TOML
+    /// answers and prefer them over `build_default_answers` in --yes mode.
+    #[test]
+    fn run_init_yes_branch_prefers_toml_over_defaults() {
+        use std::fs;
+        use std::path::Path;
+
+        let commands_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("commands.rs");
+        let content = fs::read_to_string(&commands_rs).expect("commands.rs readable");
+
+        // Source must reference TOML loading near the build_default_answers call site
+        let has_toml_check = content.contains("project.toml")
+            && (content.contains("onboarding_answers")
+                || content.contains("existing_answers")
+                || content.contains("load_existing"));
+
+        assert!(
+            has_toml_check,
+            "V1-M28 W-1: cli/src/headless/commands.rs run_init must check for \
+             existing project.toml [onboarding_answers] before falling back to \
+             build_default_answers when --yes is set."
+        );
+    }
 }

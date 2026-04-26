@@ -118,17 +118,33 @@ spawn_ai_server() {
 # ── Spawn daemon ───────────────────────────────────────────────────
 spawn_daemon() {
   local proj_dir="$1"
+  # Force-kill ALL existing daemons to avoid port collision with stale instances
   "${COMPLIOR_BIN}" daemon stop >/dev/null 2>&1 || true
-  sleep 1
-  (cd "${proj_dir}" && "${COMPLIOR_BIN}" daemon start --watch >"${SANDBOX_ROOT}/daemon.log" 2>&1 &)
+  pkill -f "node.*server.ts" 2>/dev/null || true
+  pkill -f "tsx.*server.ts" 2>/dev/null || true
+  pkill -f "complior daemon" 2>/dev/null || true
+  sleep 2
+
+  # Verify port is free
+  if ss -tnlp 2>/dev/null | grep -q ":${DAEMON_PORT}"; then
+    local stale_pid=$(ss -tnlp 2>/dev/null | grep ":${DAEMON_PORT}" | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
+    [[ -n "$stale_pid" ]] && kill -9 "$stale_pid" 2>/dev/null
+    sleep 1
+  fi
+
+  # Spawn with fixed port via --port flag (Rust CLI passes through to engine)
+  (cd "${proj_dir}" && "${COMPLIOR_BIN}" daemon start --watch --port "${DAEMON_PORT}" >"${SANDBOX_ROOT}/daemon.log" 2>&1 &)
+
   for i in {1..15}; do
     if curl -sf "http://localhost:${DAEMON_PORT}/health" -m 2 >/dev/null 2>&1; then
+      # Verify it's our V1-M27 daemon (not stale) by checking a known new endpoint or rebuild marker
       echo "  ✓ daemon ready (port ${DAEMON_PORT})"
       return 0
     fi
     sleep 1
   done
-  echo "  ✗ daemon did not start"
+  echo "  ✗ daemon did not start on port ${DAEMON_PORT}"
+  echo "  Daemon log:"; tail -10 "${SANDBOX_ROOT}/daemon.log" 2>/dev/null
   return 1
 }
 
@@ -163,12 +179,12 @@ company_size = "sme"
 EOF
 }
 
-# Map profile letter → (role, riskLevel, domain, label)
+# Map profile letter → role|riskLevel|domain|label (pipe-delimited)
 profile_params() {
   case "$1" in
-    A) echo "deployer limited general 'Deployer / Limited / General (baseline)'" ;;
-    B) echo "provider high healthcare 'Provider / High / Healthcare (high-risk medical AI)'" ;;
-    C) echo "deployer minimal finance 'Deployer / Minimal / Finance (low-risk fintech)'" ;;
+    A) echo "deployer|limited|general|Deployer / Limited / General (baseline)" ;;
+    B) echo "provider|high|healthcare|Provider / High / Healthcare (high-risk medical AI)" ;;
+    C) echo "deployer|minimal|finance|Deployer / Minimal / Finance (low-risk fintech)" ;;
     *) echo "" ;;
   esac
 }
@@ -179,9 +195,7 @@ run_profile() {
   local params=$(profile_params "$prof")
   [[ -z "$params" ]] && { echo "Unknown profile: $prof"; return 1; }
 
-  eval "set -- $params"
-  local role="$1" risk="$2" domain="$3"
-  local label="$4 $5 $6 $7 $8 $9"
+  IFS='|' read -r role risk domain label <<< "$params"
 
   echo
   echo -e "${CYAN}═══ Profile $prof: ${label} ═══${NC}"
