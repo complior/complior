@@ -418,10 +418,19 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
         if let Ok(questions_json) = client.get_json("/onboarding/questions").await {
             let answers = if is_interactive {
                 interactive::run_interactive_onboarding(&questions_json)
-            } else {
-                if yes {
+            } else if yes {
+                // V1-M28: prefer existing [onboarding_answers] from project.toml
+                // over hardcoded question defaults
+                if let Some(existing) =
+                    interactive::load_onboarding_answers_from_toml(&project_toml_path)
+                {
+                    println!("\n  {} Using existing profile.toml answers (--yes)", dim("*"));
+                    existing
+                } else {
                     println!("\n  {} Using defaults (--yes)", dim("*"));
+                    interactive::build_default_answers(&questions_json)
                 }
+            } else {
                 interactive::build_default_answers(&questions_json)
             };
 
