@@ -93,9 +93,13 @@ async function loadInitService() {
 
   // Need a way to obtain wired evidenceStore + scanService for TEST_PROJECT.
   // Composition-root style — V1-M27 dev wires this through.
+  type EvidenceStoreResult = { summary?: () => Promise<{ totalEntries: number }>; verify?: () => Promise<{ valid: boolean }> };
+  type EvidenceStoreFactory = (path: string) => Promise<EvidenceStoreResult>;
+  const evidenceStore = await ((evidenceModule as unknown as { createEvidenceStoreForProject: EvidenceStoreFactory }).createEvidenceStoreForProject(TEST_PROJECT));
+
   return {
     runInit: (initModule as unknown as { runInit: (opts: { projectPath: string; autoYes: boolean }) => Promise<unknown> }).runInit,
-    evidenceStore: (evidenceModule as unknown as { createEvidenceStoreForProject: (path: string) => { summary?: () => Promise<{ totalEntries: number }>; verify?: () => Promise<{ valid: boolean }> } }).createEvidenceStoreForProject(TEST_PROJECT),
+    evidenceStore,
     scanService: (scanModule as unknown as { createScanServiceForProject: (path: string) => { scan: (path: string) => Promise<unknown> } }).createScanServiceForProject(TEST_PROJECT),
   };
 }

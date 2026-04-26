@@ -200,3 +200,54 @@ export const createEvidenceStore = (
 
   return Object.freeze({ append, getChain, verify, getSummary });
 };
+
+// --- Project-level factory (used by init-service) ---
+
+/**
+ * Creates an EvidenceStore for a given project path.
+ * Uses HMAC-SHA256 for signing (suitable for testing; production may use ed25519).
+ *
+ * IMPORTANT: Must use the SAME path that runInit uses for signing.
+ * runInit creates chain at: join(projectPath, '.complior', 'evidence', 'chain.json')
+ * So projectPath here must be the same absolute path.
+ */
+export const createEvidenceStoreForProject = async (projectPath: string): Promise<{
+  summary?: () => Promise<{ totalEntries: number }>;
+  verify?: () => Promise<{ valid: boolean }>;
+}> => {
+  const { join } = await import('node:path');
+  const { createHmac } = await import('node:crypto');
+  const { readFile } = await import('node:fs/promises');
+
+  // IMPORTANT: Use same path as runInit - absolute path to project root
+  const chainPath = join(projectPath, '.complior', 'evidence', 'chain.json');
+
+  // HMAC-based signing - use the same projectPath as runInit
+  const signHash = (hash: string): string => {
+    const key = `complior-evidence-${projectPath}`;
+    return createHmac('sha256', key).update(hash).digest('hex');
+  };
+
+  const verifyHash = (hash: string, signature: string): boolean => {
+    const expected = signHash(hash);
+    return expected === signature;
+  };
+
+  // Create store with the chainPath (NOT projectPath)
+  const store = createEvidenceStore(chainPath, signHash, verifyHash);
+
+  // Return test-compatible interface
+  // summary reads directly from file to avoid caching issues
+  return {
+    summary: async () => {
+      try {
+        const raw = await readFile(chainPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        return { totalEntries: parsed.entries?.length ?? 0 };
+      } catch {
+        return { totalEntries: 0 };
+      }
+    },
+    verify: store.verify,
+  };
+};

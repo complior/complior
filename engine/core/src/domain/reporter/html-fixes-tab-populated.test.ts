@@ -71,9 +71,12 @@ describe('V1-M27 HR-6: Fixes tab populated with applied + pending', () => {
 // ── Helpers ────────────────────────────────────────────────────────
 
 function extractTab(html: string, tabId: string): string {
+  // Prefer tab-content div (pattern 2) over button (pattern 3) — button only
+  // captures label text, not actual tab body. Pattern 2 uses lookahead to
+  // stop at the next tab div boundary.
   const patterns = [
     new RegExp(`<section[^>]*id=["']?tab-${tabId}["']?[^>]*>([\\s\\S]*?)</section>`, 'i'),
-    new RegExp(`<div[^>]*id=["']?${tabId}["']?[^>]*>([\\s\\S]*?)</div>`, 'i'),
+    new RegExp(`<div[^>]*id=["']?tab-${tabId}["']?[^>]*>([\\s\\S]*?)(?=\\s*<div[^>]*id=["']?tab-)`, 'i'),
     new RegExp(`data-tab=["']?${tabId}["']?[^>]*>([\\s\\S]*?)</`, 'i'),
   ];
   for (const re of patterns) {

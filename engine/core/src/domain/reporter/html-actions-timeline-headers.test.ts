@@ -68,9 +68,15 @@ describe('V1-M27 HR-8: Actions/Timeline tabs have explanatory headers', () => {
 // ── Helpers ────────────────────────────────────────────────────────
 
 function extractTab(html: string, tabId: string): string {
+  // Prefer tab-content div (pattern 2) over button (pattern 3) — button only
+  // captures label text, not actual tab body.
+  // Pattern 2: capture until </div>\s*(?!<div...id="tab-). This correctly handles:
+  //   - Nested <div> elements (digitalOmnibusBanner, etc.) — stops at FIRST </div>
+  //     followed by \s* where the next thing is NOT <div...id="tab-XXX">
+  //   - Last tab (timeline) — no next tab div, so stops at its closing </div>
   const patterns = [
     new RegExp(`<section[^>]*id=["']?tab-${tabId}["']?[^>]*>([\\s\\S]*?)</section>`, 'i'),
-    new RegExp(`<div[^>]*id=["']?${tabId}["']?[^>]*>([\\s\\S]*?)</div>`, 'i'),
+    new RegExp(`<div[^>]*id=["']?tab-${tabId}["']?[^>]*>([\\s\\S]*?)(?=</div>\\s*<div)`, 'i'),
     new RegExp(`data-tab=["']?${tabId}["']?[^>]*>([\\s\\S]*?)</`, 'i'),
   ];
   for (const re of patterns) {
