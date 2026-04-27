@@ -433,7 +433,18 @@ const renderFindingCard = (f: FindingWithExplanation): string => {
 };
 
 const renderTabFindings = (report: ComplianceReport): string => {
-  const findings = report.findings as readonly FindingWithExplanation[];
+  const profile = report.profile;
+  const allFindings = report.findings as readonly FindingWithExplanation[];
+  const profileRole = (profile?.role ?? '').toLowerCase();
+
+  // W-2: Profile-aware filtering — only show findings applicable to this role
+  const applicableFindings = allFindings.filter((f) => {
+    const fRole = (f as unknown as { appliesToRole?: string }).appliesToRole;
+    if (!fRole) return true; // No role restriction = show all
+    return fRole.toLowerCase() === profileRole || fRole.toLowerCase() === 'both';
+  });
+
+  const findings = applicableFindings;
   const fails = findings.filter((f) => f.type === 'fail');
   const passes = findings.filter((f) => f.type === 'pass');
   const scanScore = report.summary.scanScore;
@@ -483,6 +494,11 @@ const renderTabFindings = (report: ComplianceReport): string => {
       return `<details open><summary><strong>${s.charAt(0).toUpperCase() + s.slice(1)} (${items.length})</strong></summary>${inner}</details>`;
     }).join('');
 
+  // W-2: Pagination hint when many findings
+  const paginationNote = allFindings.length > 10 && applicableFindings.length > 10
+    ? `<p class="muted" style="margin-bottom:.75rem">Showing all ${applicableFindings.length} findings (${allFindings.length} total for this project)</p>`
+    : '';
+
   return `
     <style>
     .finding-card{border:1px solid var(--b2);border-radius:12px;padding:1rem;margin:.5rem 0;background:var(--card)}
@@ -508,6 +524,7 @@ const renderTabFindings = (report: ComplianceReport): string => {
     <h3>By Layer</h3>
     ${layerBars || '<p class="muted">No findings.</p>'}
     <h3>Findings</h3>
+    ${paginationNote}
     ${findingsList || '<p class="muted">No failed checks.</p>'}`;
 };
 
@@ -555,17 +572,24 @@ const isObligationApplicable = (
 const renderTabLaws = (report: ComplianceReport): string => {
   const obl = report.obligations;
   const profile = report.profile;
+  const profileRole = (profile?.role ?? '').toLowerCase();
+  const profileRisk = (profile?.riskLevel ?? '').toLowerCase();
+  const profileDomain = (profile?.domain ?? '').toLowerCase();
 
   // HR-4: Handle both full format (with obligations array) and simplified format (test helpers)
   // In full format: byArticle[].obligations[] has full ObligationDetail
   // In simplified format: byArticle[] has just article/total/covered (no obligations)
   let allObls: readonly { article?: string; title?: string; role?: string; id?: string; covered?: boolean; deadline?: string | null; linkedChecks?: readonly string[] }[] = [];
-  let hasObligations = false;
 
-  if (obl.byArticle.length > 0 && obl.byArticle[0] && 'obligations' in obl.byArticle[0] && Array.isArray((obl.byArticle[0] as { obligations?: unknown }).obligations)) {
-    // Full format with obligations array
+  if (
+    obl.byArticle.length > 0 &&
+    obl.byArticle[0] &&
+    'obligations' in obl.byArticle[0] &&
+    Array.isArray((obl.byArticle[0] as unknown as { obligations?: unknown }).obligations) &&
+    (obl.byArticle[0] as unknown as { obligations: unknown[] }).obligations.length > 0
+  ) {
+    // Full format with obligations array (non-empty)
     allObls = obl.byArticle.flatMap((a) => (a as { obligations: readonly { article?: string; title?: string; role?: string; id?: string; covered?: boolean; deadline?: string | null; linkedChecks?: readonly string[] }[] }).obligations);
-    hasObligations = true;
   } else {
     // Simplified format (test helper) - use byArticle entries directly
     allObls = obl.byArticle.map((a) => ({
@@ -579,8 +603,8 @@ const renderTabLaws = (report: ComplianceReport): string => {
     }));
   }
 
-  // HR-4: Filter by profile
-  const applicableObls = hasObligations ? allObls.filter(o => isObligationApplicable(o, profile)) : allObls;
+  // HR-4: Filter by profile — always apply filtering (both full format and simplified format)
+  const applicableObls = allObls.filter(o => isObligationApplicable(o, profile));
   const excludedCount = allObls.length - applicableObls.length;
 
   const lawItems = applicableObls.map((o) => `
@@ -596,22 +620,22 @@ const renderTabLaws = (report: ComplianceReport): string => {
 
   const uncoveredNoChecks = applicableObls.filter((o) => !o.covered && (o.linkedChecks?.length ?? 0) === 0).length;
 
-  // HR-4: Disclaimer about excluded obligations (always show for deployer/limited/general profiles)
-  // When domain is healthcare (or other industry), show specific context
-  const domainContext = profile?.domain === 'healthcare' ? 'Healthcare deployers have additional obligations under Art. 9 (data governance) and Annex III.' :
-    profile?.domain === 'finance' ? 'Finance sector obligations under Art. 12 and Annex III.' :
-    profile?.domain === 'education' ? 'Education sector obligations under Annex III.' :
-    profile?.domain === 'hr' || profile?.domain === 'recruitment' ? 'HR/recruitment obligations under Annex III.' : '';
+  // HR-4: Disclaimer about excluded obligations (always when N > 0)
+  // Additionally show disclaimer for deployer/provider role mismatch with exclusions
+  const hasRoleExclusion = (profileRole === 'deployer' || profileRole === 'provider') && excludedCount > 0;
+  const hasRiskExclusion = profileRisk === 'limited' && excludedCount > 0;
+  const hasDomainExclusion = profileDomain === 'general' && excludedCount > 0;
 
-  const disclaimer = (excludedCount > 0 || domainContext || profile?.role === 'deployer' || profile?.riskLevel === 'limited' || profile?.domain === 'general') ? `
+  // Always show disclaimer when obligations are excluded by profile (any dimension)
+  const disclaimer = (excludedCount > 0 || hasRoleExclusion || hasRiskExclusion || hasDomainExclusion) ? `
     <div class="profile-disclaimer">
       <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-      <span>${domainContext || `+${excludedCount} obligations not applicable for your profile`}
-        ${profile?.riskLevel === 'limited' ? '(high-risk obligations hidden)' : ''}
-        ${profile?.role === 'deployer' ? '(provider-only obligations hidden)' : ''}
-        ${profile?.domain === 'general' ? '(industry-specific hidden)' : ''}.</span>
+      <span>+${excludedCount} obligations not applicable for your profile
+        ${profileRisk === 'limited' ? '(high-risk obligations hidden)' : ''}
+        ${profileRole === 'deployer' ? '(provider-only obligations hidden)' : ''}
+        ${profileDomain === 'general' ? '(industry-specific hidden)' : ''}.</span>
     </div>` : '';
 
   return `
@@ -671,6 +695,8 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   const docs = report.documents;
   const contents = report.documentContents;
   const profile = report.profile;
+  const profileRole = (profile?.role ?? '').toLowerCase();
+  const profileRisk = (profile?.riskLevel ?? '').toLowerCase();
 
   const contentMap = new Map<string, DocumentContent>();
   for (const c of contents) contentMap.set(c.docType, c);
@@ -678,6 +704,16 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   // HR-5: Filter by profile
   const applicableDocs = docs.documents.filter(d => isDocumentApplicable(d, profile));
   const excludedCount = docs.documents.length - applicableDocs.length;
+
+  // Track whether specific doc types are hidden (for W-4 disclaimer)
+  const friaExcluded = profileRisk === 'limited' && docs.documents.some(d => {
+    const docType = d.docType.toLowerCase();
+    return docType === 'fria' || d.article.toLowerCase().includes('art. 27');
+  });
+  const declarationExcluded = profileRole === 'deployer' && docs.documents.some(d => {
+    const docType = d.docType.toLowerCase();
+    return docType === 'declaration-of-conformity' || d.article.toLowerCase().includes('art. 47');
+  });
 
   const docCards = applicableDocs.map((d) => {
     const content = contentMap.get(d.docType);
@@ -699,16 +735,15 @@ const renderTabDocuments = (report: ComplianceReport): string => {
     </div>`;
   }).join('');
 
-  // HR-5: Disclaimer about excluded documents
+  // W-4: Disclaimer about excluded documents (always when N > 0)
   const disclaimer = excludedCount > 0 ? `
     <div class="docs-disclaimer">
       <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       <span>+${excludedCount} documents not required for your profile
-        ${profile?.riskLevel === 'limited' ? '(Art. 27 high-risk only)' : ''}
-        ${profile?.role === 'deployer' ? '(Declaration of Conformity hidden — provider-only)' : ''}.
-      </span>
+        ${friaExcluded ? '(FRIA Art. 27 — high-risk only)' : ''}
+        ${declarationExcluded ? '(Declaration of Conformity — provider-only)' : ''}.</span>
     </div>` : '';
 
   return `
@@ -913,7 +948,11 @@ const renderTabPassports = (report: ComplianceReport): string => {
 // --- TAB 8: Actions (HR-8: explanatory intro header) ---
 
 const renderTabActions = (report: ComplianceReport): string => {
-  const actions = report.actionPlan.actions;
+  let actions = report.actionPlan.actions;
+
+  // W-5: Filter out deprecated passport init command
+  // `complior passport init` was deprecated in V1-M11 (auto-created via complior init)
+  actions = actions.filter((a) => !/passport\s+init/i.test(a.command ?? ''));
 
   // HR-8: Add explanatory intro paragraph
   const intro = actions.length > 0

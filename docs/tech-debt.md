@@ -1,7 +1,7 @@
 # Tech Debt Tracker — Complior v8
 
-**Updated:** 2026-04-26
-**Author:** Reviewer (V1-M27 review — add TD-52)
+**Updated:** 2026-04-27
+**Author:** Reviewer (V1-M29 review — add TD-53, TD-54, TD-55)
 
 ---
 
@@ -40,6 +40,9 @@
 | TD-50 | LOW | V1-M22: 2 passport-schemas tests still skipped despite V1-M20 repo fixture fix (TD-31). May be test environment issue or fixture path mismatch | engine/core/src/types/passport-schemas.test.ts | — | 🔴 OPEN |
 | TD-51 | LOW | V1-M26: dev modified architect test — corrected 2 OBL IDs in sorting test (OBL-005→OBL-002, OBL-014→OBL-015). Architect assumed wrong OBL→Article mappings. Test intent preserved, assertions not weakened. No SCOPE VIOLATION REQUEST filed | engine/core/src/domain/profile/applicable-articles.test.ts | — | OPEN (process) |
 | TD-52 | LOW | V1-M27: dev modified 6 architect test files — 5× `extractTab()` regex helper fix (architect wrote `id="${tabId}"` but HTML generates `id="tab-${tabId}"` + boundary lookahead for nested divs), 1× added `await` to async `createEvidenceStoreForProject()` call. Zero assertion changes, test intent preserved. No SCOPE VIOLATION REQUEST filed | 5 html-*-*.test.ts + init-evidence-chain.test.ts | — | OPEN (process) |
+| TD-53 | LOW | V1-M29: dev modified 3 architect test files (171 ins, 42 del). (a) Added `explanation`, `layer`, `title` fields to fixtures (required by HTML pipeline), (b) scoped FRIA/declaration assertions to doc-cards only (not disclaimer), (c) rewrote findings profile test with explicit role assertions. No assertion weakening. Recurring pattern from TD-52 — architect test data lags type contracts. No SCOPE VIOLATION REQUEST filed | html-documents-strict-filter.test.ts, html-findings-completeness.test.ts, html-laws-strict-filter.test.ts | — | OPEN (process) |
+| TD-54 | LOW | V1-M29 W-1: `runInitForProject` export in init-service.ts is an unnecessary alias — identical to `runInit` | engine/core/src/services/init-service.ts:78 | — | OPEN |
+| TD-55 | LOW | V1-M29 W-2: `as unknown as { appliesToRole?: string }` cast in renderTabFindings — should use extended FindingWithExplanation type | engine/core/src/domain/reporter/html-renderer.ts:442 | — | OPEN |
 
 ---
 
@@ -73,4 +76,7 @@
 - TD-49: V1-M22 dev modified tests in 3 categories: (1) ISO 42001 removal — all doc type counts 17→14, 2 test files deleted with their implementations (expected, scope C); (2) clippy/fmt — mechanical fixes to satisfy `cargo clippy -D warnings` (Option→i32, format!.into()→format!, map→map_or_else); (3) assertion changes — `document-id-generation.test.ts` mock fixed (architect used wrong structure), `html-report-no-placeholders.test.ts` refined to exclude JS regex `$1` in `<script>`, `eval-service-no-unsafe-cast.test.ts` narrowed to exclude `getLastResult()` Zod cast. The eval-service change is the only true weakening — getLastResult needs `as unknown as` for forward-compatible Zod passthrough deserialization. Dev should have filed SCOPE VIOLATION REQUEST
 - TD-50: V1-M20 fixed TD-31 by adding repo fixtures (`data/fixtures/passport-anthropic.json`, `passport-openai.json`). But passport-schemas.test.ts still shows 2 skipped in V1-M22 test run. Possible causes: conditional `describe.skipIf()` not updated, or fixture path relative to test runner CWD
 - TD-51: V1-M26 architect used `OBL-005` assuming "Article 5" and `OBL-014` assuming "Article 14" in sorting test. Actual data: `OBL-005` → "Article 11 / Annex IV", `OBL-014` → "Article 49". Dev corrected to `OBL-002` (→ "Article 5") and `OBL-015` (→ "Article 50(1)"). Ascending sort intent and assertions fully preserved — data correction only. Process note: dev should file SCOPE VIOLATION REQUEST before modifying test files
+- TD-53: V1-M29 dev test modifications in three categories: (a) data infrastructure — architect test fixtures missing `explanation` (V1-M27 HR-3 format), `layer`, `title` fields required by HTML rendering pipeline (without these fields, cards render empty or skip). (b) assertion correction — architect tested `/\bFRIA\b/` on full tab text, but V1-M29 W-4 disclaimer legitimately mentions "FRIA Art. 27 — high-risk only"; dev scoped to doc-card elements only (assertion more precise, not weaker). (c) test rewrite — architect's findings profile test was weak (`dCount !== pCount`); dev replaced with explicit role-based filtering assertions using `appliesToRole` field. Pattern repeats from TD-52: architect writes tests against assumed type contracts, dev corrects when actual rendering needs more fields
+- TD-54: `runInitForProject` is a dead-code alias. If no test references it distinctly, it can be deleted. If a test imports it specifically, rename to `runInit`
+- TD-55: `appliesToRole` is not on the `FindingWithExplanation` type. Options: (a) extend type to include optional `appliesToRole`, (b) use intersection type in function signature. Cast works but hides type evolution
 - TD-52: V1-M27 test modifications in two categories: (1) 5 html-*-*.test.ts files — `extractTab()` helper regex fix: architect wrote `id="${tabId}"` but actual html-renderer.ts generates `id="tab-${tabId}"`, plus lazy `</div>` boundary replaced with lookahead `(?=\s*<div[^>]*id=["']?tab-)` to handle nested divs inside tab content. (2) init-evidence-chain.test.ts — architect called `createEvidenceStoreForProject()` synchronously but factory returns Promise; dev added `await` and extracted intermediate types. Both categories are infrastructure/helper corrections — ZERO assertions changed in any file. Dev should file SCOPE VIOLATION REQUEST even for helper fixes

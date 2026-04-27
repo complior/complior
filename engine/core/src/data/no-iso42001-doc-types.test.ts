@@ -33,8 +33,10 @@ function walkTs(dir: string, files: string[] = []): string[] {
       if (entry === 'node_modules' || entry === 'dist') continue;
       walkTs(full, files);
     } else if (entry.endsWith('.ts') && !entry.endsWith('.d.ts')) {
-      // Skip the test file itself (which contains the pattern as data)
-      if (entry === 'no-iso42001-doc-types.test.ts') continue;
+      // Skip ALL test files — they may legitimately reference "iso42001" as
+      // assertion data (e.g., V1-M29 W-4 verifies absence of iso42001 in HTML).
+      // Production code is what matters; tests are excluded.
+      if (entry.endsWith('.test.ts') || entry.endsWith('.spec.ts')) continue;
       files.push(full);
     }
   }
