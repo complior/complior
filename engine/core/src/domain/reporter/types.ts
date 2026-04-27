@@ -94,6 +94,8 @@ export interface ObligationCoverage {
   readonly coveragePercent: number;
   readonly byArticle: readonly ArticleCoverage[];
   readonly critical: readonly ObligationDetail[];
+  /** V1-M30: Number of obligations excluded by profile filtering (e.g., industry mismatch). */
+  readonly excludedCount: number;
 }
 
 // --- Passport Status ---

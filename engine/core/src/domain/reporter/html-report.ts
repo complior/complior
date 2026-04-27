@@ -33,7 +33,7 @@ export const buildHtmlReport = (input: unknown): string => {
       daysUntilEnforcement: 0,
     },
     documents: { total: 0, byStatus: { missing: 0, scaffold: 0, draft: 0, reviewed: 0 }, score: 0, documents: [] },
-    obligations: { total: 0, covered: 0, uncovered: 0, coveragePercent: 0, byArticle: [], critical: [] },
+    obligations: { total: 0, covered: 0, uncovered: 0, coveragePercent: 0, byArticle: [], critical: [], excludedCount: 0 },
     passports: { totalAgents: 0, passports: [], averageCompleteness: 0 },
     actionPlan: { actions: [], totalActions: 0, shownActions: 0 },
     summary: {

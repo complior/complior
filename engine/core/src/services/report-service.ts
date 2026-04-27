@@ -113,6 +113,8 @@ export const createReportService = (deps: ReportServiceDeps) => {
       fixHistory,
       documentContents,
       profile,
+      /** V1-M30: Wire domain so buildObligationCoverage filters by industry */
+      projectDomain: profile?.domain,
     });
   };
 
