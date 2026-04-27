@@ -71,6 +71,15 @@ const createGenesisEntry = (projectPath: string) => {
  * Idempotent — skips if chain already exists and is valid.
  */
 export const runInit = async (opts: InitOptions): Promise<{ success: boolean; message: string }> => {
+  return initInternal(opts);
+};
+
+/** Alias for runInit — used by V1-M29 W-1 production tests */
+export const runInitForProject = async (opts: InitOptions): Promise<{ success: boolean; message: string }> => {
+  return initInternal(opts);
+};
+
+const initInternal = async (opts: InitOptions): Promise<{ success: boolean; message: string }> => {
   const { projectPath } = opts;
   const evidenceDir = join(projectPath, '.complior', 'evidence');
   const chainPath = join(evidenceDir, 'chain.json');
