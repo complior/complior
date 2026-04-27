@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-26
-**Updated by:** Reviewer (V1-M27 review)
+**Updated:** 2026-04-27
+**Updated by:** Reviewer (V1-M29 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M27-html-report-ux` (V1-M27 HTML report UX — reviewed, APPROVED)
+**Branch:** `feature/V1-M29-html-runtime-fixes` (V1-M29 HTML runtime fixes — reviewed, APPROVED)
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2394 passed, 2 skipped (193 files) |
-| Rust CLI (`cli/`) | GREEN | 209 passed (0 failed) |
+| TS Engine (`engine/core/`) | GREEN | 2405 passed, 2 skipped (195 files) |
+| Rust CLI (`cli/`) | GREEN | 211 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2603 tests GREEN**
+**Total: 2616 tests GREEN**
 
 ---
 
@@ -66,7 +66,9 @@
 | Milestone | Description | Branch | Status |
 |-----------|-------------|--------|--------|
 | V1-M26 | Applicable Articles (OBL-IDs → Article refs) | `main` (merged PR #24) | DONE |
-| V1-M27 | HTML Report UX Rework (8 tab improvements) | `feature/V1-M27-html-report-ux` | DONE (reviewer APPROVED, ready for PR) |
+| V1-M27 | HTML Report UX Rework (8 tab improvements) | `main` (merged PR #25) | DONE |
+| V1-M28 | init --yes respects project.toml | `main` (merged PR #26) | DONE |
+| V1-M29 | HTML Runtime Fixes (5 cross-profile UX issues) | `feature/V1-M29-html-runtime-fixes` | DONE (reviewer APPROVED, ready for PR) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
@@ -333,6 +335,30 @@
 
 **Review Notes:**
 - TD-52: Dev modified 6 architect test files — 5× `extractTab()` regex helper fix (architect used `id="${tabId}"` but HTML generates `id="tab-${tabId}"`), 1× async `await` correction (architect called async factory synchronously). All modifications are infrastructure corrections — zero assertion changes, test intent 100% preserved. No SCOPE VIOLATION REQUEST filed
+
+## V1-M29: HTML Runtime Fixes (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M29-html-runtime-fixes`
+**Scope:** 8 files, +246/-292 LOC (implementation commit)
+**What:** Closes 5 cross-profile visual quality issues found by /deep-e2e per-tab analysis on 3 profiles:
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| W-1 | Init evidence chain | `runInit` creates genesis evidence entry; idempotent — re-run skips if chain valid | ✅ GREEN |
+| W-2 | Findings completeness | Render ALL findings (not truncated to 2), each card has `complior fix` command, profile-aware filter by `appliesToRole` | ✅ GREEN |
+| W-3 | Laws strict filter | Strict role+risk+domain filter on obligations; disclaimer only when `excludedCount > 0` | ✅ GREEN |
+| W-4 | Documents strict filter | FRIA only for high-risk, declaration-of-conformity only for provider; disclaimer with specific exclusion reasons | ✅ GREEN |
+| W-5 | Actions filter | Remove deprecated `passport init` from action plan suggestions | ✅ GREEN |
+
+- Tests: 2616 GREEN (2405 TS + 211 Rust), 2 skipped
+- 2 superseded V1-M27 test files deleted (documents-profile-filter, laws-profile-filter) — replaced by M29 strict filter tests
+- `no-iso42001-doc-types.test.ts` updated to exclude `.test.ts` files from iso42001 scan
+- Architecture: pure functions, profile-aware filtering, clean disclaimer logic ✅
+
+**Review Notes:**
+- TD-53: Dev modified 3 architect test files (171 insertions, 42 deletions). Changes: (a) added `explanation`, `layer`, `title` fields to test fixtures (required by HTML rendering pipeline — data infrastructure), (b) scoped FRIA/declaration assertions to doc-cards only (not disclaimer text — assertion correction), (c) rewrote findings profile test with explicit role-based assertions (test strengthened). No assertion weakening. Recurring pattern from V1-M27 TD-52 — architect test data lags behind type contracts
+- TD-54: `runInitForProject` alias in init-service.ts identical to `runInit` — unnecessary wrapper
+- TD-55: `as unknown as` cast for `appliesToRole` in renderTabFindings — should use extended type
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 
