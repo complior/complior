@@ -88,25 +88,49 @@ command -v jq >/dev/null || { echo -e "${RED}FAIL${NC}: jq not installed"; exit 
 
 mkdir -p "${SANDBOX_ROOT}" "${SNAPSHOT_DIR}"
 
+# ── AI server PID tracker ──────────────────────────────────────────
+AI_SERVER_PID=""
+
 # ── Cleanup ────────────────────────────────────────────────────────
+# Port-specific cleanup: only kill PIDs listening on our managed ports.
+# AI server (port 4000) is preserved across profiles unless we explicitly stop it.
+kill_pid_on_port() {
+  local port="$1"
+  local pid=$(ss -tnlp 2>/dev/null | grep ":${port} " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
+  [[ -n "$pid" ]] && kill -TERM "$pid" 2>/dev/null && sleep 1
+  pid=$(ss -tnlp 2>/dev/null | grep ":${port} " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
+  [[ -n "$pid" ]] && kill -KILL "$pid" 2>/dev/null
+}
+
 cleanup() {
   echo
   echo "→ Cleanup"
   "${COMPLIOR_BIN}" daemon stop >/dev/null 2>&1 || true
-  pkill -f "node.*server.ts" >/dev/null 2>&1 || true
-  pkill -f "tsx.*server.ts" >/dev/null 2>&1 || true
-  pkill -f "node.*complior.*server" >/dev/null 2>&1 || true
+  kill_pid_on_port "${DAEMON_PORT}"
+  # Stop AI server only on FINAL exit (trap), not between profiles
+  if [[ -n "$AI_SERVER_PID" ]]; then
+    kill -TERM "$AI_SERVER_PID" 2>/dev/null
+    sleep 1
+    kill -KILL "$AI_SERVER_PID" 2>/dev/null
+  fi
+  # Backup: anything still listening on AI port (zombie children)
+  kill_pid_on_port 4000
 }
 trap cleanup EXIT
 
 # ── Spawn AI server ────────────────────────────────────────────────
 spawn_ai_server() {
   local proj_dir="$1"
+  if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
+    echo "  ✓ AI server already running"
+    return 0
+  fi
   echo "  → Spawning AI server (npm run dev) in ${proj_dir}"
   (cd "${proj_dir}" && npm run dev >"${SANDBOX_ROOT}/ai-server.log" 2>&1 &)
+  AI_SERVER_PID=$!
   for i in {1..20}; do
     if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
-      echo "  ✓ AI server ready"
+      echo "  ✓ AI server ready (pid ${AI_SERVER_PID})"
       return 0
     fi
     sleep 1
@@ -115,20 +139,38 @@ spawn_ai_server() {
   return 1
 }
 
+# Verify AI server still alive; re-spawn if needed (resilience between profiles)
+ensure_ai_server() {
+  if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "  ⚠ AI server lost — re-spawning"
+  AI_SERVER_PID=""
+  spawn_ai_server "${SOURCE_PROJECT}"
+}
+
 # ── Spawn daemon ───────────────────────────────────────────────────
 spawn_daemon() {
   local proj_dir="$1"
+  # Port-specific kill: only what's listening on DAEMON_PORT.
+  # Do NOT pkill broad patterns — that kills the AI server too.
   "${COMPLIOR_BIN}" daemon stop >/dev/null 2>&1 || true
+  kill_pid_on_port "${DAEMON_PORT}"
   sleep 1
-  (cd "${proj_dir}" && "${COMPLIOR_BIN}" daemon start --watch >"${SANDBOX_ROOT}/daemon.log" 2>&1 &)
+
+  # Spawn with fixed port via --port flag (Rust CLI passes through to engine)
+  (cd "${proj_dir}" && "${COMPLIOR_BIN}" daemon start --watch --port "${DAEMON_PORT}" >"${SANDBOX_ROOT}/daemon.log" 2>&1 &)
+
   for i in {1..15}; do
     if curl -sf "http://localhost:${DAEMON_PORT}/health" -m 2 >/dev/null 2>&1; then
+      # Verify it's our V1-M27 daemon (not stale) by checking a known new endpoint or rebuild marker
       echo "  ✓ daemon ready (port ${DAEMON_PORT})"
       return 0
     fi
     sleep 1
   done
-  echo "  ✗ daemon did not start"
+  echo "  ✗ daemon did not start on port ${DAEMON_PORT}"
+  echo "  Daemon log:"; tail -10 "${SANDBOX_ROOT}/daemon.log" 2>/dev/null
   return 1
 }
 
@@ -163,12 +205,12 @@ company_size = "sme"
 EOF
 }
 
-# Map profile letter → (role, riskLevel, domain, label)
+# Map profile letter → role|riskLevel|domain|label (pipe-delimited)
 profile_params() {
   case "$1" in
-    A) echo "deployer limited general 'Deployer / Limited / General (baseline)'" ;;
-    B) echo "provider high healthcare 'Provider / High / Healthcare (high-risk medical AI)'" ;;
-    C) echo "deployer minimal finance 'Deployer / Minimal / Finance (low-risk fintech)'" ;;
+    A) echo "deployer|limited|general|Deployer / Limited / General (baseline)" ;;
+    B) echo "provider|high|healthcare|Provider / High / Healthcare (high-risk medical AI)" ;;
+    C) echo "deployer|minimal|finance|Deployer / Minimal / Finance (low-risk fintech)" ;;
     *) echo "" ;;
   esac
 }
@@ -179,9 +221,7 @@ run_profile() {
   local params=$(profile_params "$prof")
   [[ -z "$params" ]] && { echo "Unknown profile: $prof"; return 1; }
 
-  eval "set -- $params"
-  local role="$1" risk="$2" domain="$3"
-  local label="$4 $5 $6 $7 $8 $9"
+  IFS='|' read -r role risk domain label <<< "$params"
 
   echo
   echo -e "${CYAN}═══ Profile $prof: ${label} ═══${NC}"
@@ -196,6 +236,7 @@ run_profile() {
   setup_profile_toml "${proj_dir}" "${role}" "${risk}" "${domain}"
 
   spawn_daemon "${proj_dir}"
+  ensure_ai_server   # re-spawn AI server if previous profile killed it
 
   cd "${proj_dir}"
 
