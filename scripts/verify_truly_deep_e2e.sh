@@ -96,10 +96,16 @@ AI_SERVER_PID=""
 # AI server (port 4000) is preserved across profiles unless we explicitly stop it.
 kill_pid_on_port() {
   local port="$1"
-  local pid=$(ss -tnlp 2>/dev/null | grep ":${port} " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
-  [[ -n "$pid" ]] && kill -TERM "$pid" 2>/dev/null && sleep 1
-  pid=$(ss -tnlp 2>/dev/null | grep ":${port} " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1)
-  [[ -n "$pid" ]] && kill -KILL "$pid" 2>/dev/null
+  local pid
+  # `set -o pipefail` + `grep` exits 1 on no match; allow with || true
+  pid=$(ss -tnlp 2>/dev/null | grep ":${port} " 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1 || true)
+  if [[ -n "$pid" ]]; then
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 1
+    pid=$(ss -tnlp 2>/dev/null | grep ":${port} " 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | head -1 || true)
+    [[ -n "$pid" ]] && { kill -KILL "$pid" 2>/dev/null || true; }
+  fi
+  return 0
 }
 
 cleanup() {
@@ -442,6 +448,174 @@ echo -e "${CYAN}═══ Cross-profile comparison ═══${NC}"
     echo '```'
     echo
   done
+
+  # ── Per-tab analysis (V1-M29: automated visual checks per HTML tab) ─
+  echo
+  echo "## Per-tab automated analysis"
+  echo
+  echo "Each tab is inspected for V1-M27/M29 features + profile-aware filtering."
+  echo
+  if command -v python3 >/dev/null 2>&1; then
+    PROFILES_LIST="$PROFILES" SNAPSHOT_DIR="$SNAPSHOT_DIR" python3 - <<'PYEOF'
+import os, re, json, sys
+
+profiles_str = os.environ.get('PROFILES_LIST', 'A B C')
+snapshot_dir = os.environ.get('SNAPSHOT_DIR', './tests/e2e-snapshots')
+profiles_list = profiles_str.split()
+
+def load(p):
+    base = f'{snapshot_dir}/profile-{p}'
+    try:
+        with open(f'{base}/report.html', encoding='utf-8') as f:
+            html = f.read()
+        with open(f'{base}/report.json', encoding='utf-8') as f:
+            data = json.load(f)
+        return html, data
+    except FileNotFoundError:
+        return None, None
+
+def extract_tab(html, tab_id):
+    m = re.search(rf'<div class="tab-content" id="tab-{tab_id}"[^>]*>(.*?)(?=<div class="tab-content"|</body>)', html, re.DOTALL)
+    return m.group(1) if m else ''
+
+def check(label, ok):
+    return f"{'✅' if ok else '❌'} {label}"
+
+# Collect data
+loaded = {p: load(p) for p in profiles_list}
+loaded = {p: (h, d) for p, (h, d) in loaded.items() if h is not None}
+
+if not loaded:
+    print("(no snapshots found)")
+    sys.exit(0)
+
+# ─── Overview tab ───
+print("### Overview tab")
+print()
+print("| Profile | Score capped (HR-1) | Profile block | Articles count |")
+print("|---------|---------------------|---------------|-----------------|")
+for p, (html, data) in loaded.items():
+    sc = 'YES ⚠️' if 'Score capped' in html else 'no ✓'
+    pb = 'YES ✓' if 'company-profile' in html else 'no ❌'
+    art_count = len(data.get('profile', {}).get('applicableArticles', []))
+    print(f"| {p} | {sc} | {pb} | {art_count} |")
+print()
+
+# ─── Tests tab ───
+print("### Tests tab (HR-2: source command grouping)")
+print()
+print("| Profile | Sections | Has descriptions |")
+print("|---------|----------|------------------|")
+for p, (html, data) in loaded.items():
+    tab = extract_tab(html, 'tests')
+    headers = re.findall(r'<h[2-4][^>]*>([^<]+)</h[2-4]>', tab)
+    section_check = sum(1 for h in headers if h.strip() in ('Scan', 'Eval --det', 'Eval --llm', 'Security'))
+    has_desc = 'tab-intro' in tab
+    print(f"| {p} | {section_check}/4 | {has_desc} |")
+print()
+
+# ─── Findings tab ───
+print("### Findings tab (HR-3: cards + actionable + profile-aware)")
+print()
+print("| Profile | Findings (data) | Cards rendered | Has cmd | Profile-aware (count diff) |")
+print("|---------|----------------|----------------|---------|-----------------------------|")
+counts = {}
+for p, (html, data) in loaded.items():
+    n_data = len(data.get('findings', []))
+    n_cards = html.count('finding-card')
+    has_cmd = 'complior fix' in extract_tab(html, 'findings')
+    counts[p] = n_data
+    print(f"| {p} | {n_data} | {n_cards} | {has_cmd} | (see below) |")
+unique_counts = set(counts.values())
+print(f"\n  → Profile-aware: {'❌ all profiles same count' if len(unique_counts) == 1 else '✅ counts differ across profiles'}")
+print()
+
+# ─── Laws tab ───
+print("### Laws tab (HR-4: strict filter + disclaimer)")
+print()
+print("| Profile | Total obligations | Has disclaimer | Sample obligations |")
+print("|---------|-------------------|----------------|--------------------|")
+for p, (html, data) in loaded.items():
+    tab = extract_tab(html, 'laws')
+    obl = data.get('obligations', {})
+    n = obl.get('total', 0)
+    has_disc = bool(re.search(r'not\s+applicable\s+for\s+your\s+profile|excluded|\+\s*\d+\s+(more|other|additional)\s+obligation', tab, re.IGNORECASE))
+    titles = re.findall(r'<div class="law-title">([^<]+)</div>', tab)[:3]
+    print(f"| {p} | {n} | {'✅' if has_disc else '❌'} | {'; '.join(t[:40] for t in titles)} |")
+print()
+
+# ─── Documents tab ───
+print("### Documents tab (HR-5: profile-required filter)")
+print()
+print("| Profile | Risk | FRIA shown (should be: high=YES, limited=no) | Has disclaimer |")
+print("|---------|------|----------------------------------------------|----------------|")
+for p, (html, data) in loaded.items():
+    tab = extract_tab(html, 'documents')
+    risk = data.get('profile', {}).get('riskLevel', '?')
+    fria_shown = bool(re.search(r'\bFRIA\b|fria\.md', tab, re.IGNORECASE))
+    expected = (risk in ('high', 'unacceptable'))
+    fria_ok = '✅' if fria_shown == expected else '❌'
+    has_disc = bool(re.search(r'not\s+(required|applicable)\s+for\s+your\s+profile|\+\s*\d+\s+(more|other|additional)\s+(documents?|docs?)|excluded.*profile', tab, re.IGNORECASE))
+    print(f"| {p} | {risk} | {fria_ok} ({fria_shown}) | {'✅' if has_disc else '❌'} |")
+print()
+
+# ─── Fixes tab ───
+print("### Fixes tab (HR-6: applied + pending)")
+print()
+print("| Profile | History entries | Applied section | Available section | Cmds shown |")
+print("|---------|----------------|-----------------|-------------------|------------|")
+for p, (html, data) in loaded.items():
+    tab = extract_tab(html, 'fixes')
+    n_hist = len(data.get('fixHistory', []))
+    has_a = 'Applied' in tab
+    has_v = 'Available' in tab or 'Recommended' in tab or 'Pending' in tab
+    cmd_count = len(re.findall(r'complior\s+fix', tab))
+    print(f"| {p} | {n_hist} | {'✅' if has_a else '❌'} | {'✅' if has_v else '❌'} | {cmd_count} |")
+print()
+
+# ─── Passports tab ───
+print("### Passports tab (HR-7: expandable details)")
+print()
+print("| Profile | Total agents | <details> count | Sections (Identity/Compliance/Evidence) |")
+print("|---------|-------------|------------------|------------------------------------------|")
+for p, (html, data) in loaded.items():
+    tab = extract_tab(html, 'passports')
+    n_ag = data.get('passports', {}).get('totalAgents', 0)
+    n_det = tab.count('<details')
+    sec = 'Identity' in tab and 'Compliance' in tab and 'Evidence' in tab
+    print(f"| {p} | {n_ag} | {n_det} | {'✅' if sec else '❌'} |")
+print()
+
+# ─── Actions tab ───
+print("### Actions tab (HR-8: explanatory + dedup + no deprecated)")
+print()
+print("| Profile | Explanatory header | Has deprecated 'passport init' | 'fix' cmd count |")
+print("|---------|--------------------|-------------------------------|------------------|")
+for p, (html, data) in loaded.items():
+    tab = extract_tab(html, 'actions')
+    has_intro = 'tab-intro' in tab and ('Suggested' in tab or 'Recommended' in tab)
+    has_pp_init = 'passport init' in tab
+    fix_count = len(re.findall(r'<code[^>]*>complior\s+fix[^<]*</code>', tab))
+    print(f"| {p} | {'✅' if has_intro else '❌'} | {'⚠️ YES' if has_pp_init else '✅ no'} | {fix_count} |")
+print()
+
+# ─── Timeline tab ───
+print("### Timeline tab (HR-8: enforcement deadlines)")
+print()
+print("| Profile | Header | 2026-08-02 | 2027-08-02 | Past-due markers |")
+print("|---------|--------|-----------|-----------|-------------------|")
+for p, (html, data) in loaded.items():
+    tab = extract_tab(html, 'timeline')
+    has_intro = 'tab-intro' in tab and ('enforcement' in tab.lower() or 'deadline' in tab.lower())
+    has_2026 = '2026-08-02' in tab or 'August 2026' in tab
+    has_2027 = '2027-08-02' in tab or 'August 2027' in tab
+    has_past = 'past-due' in tab or 'overdue' in tab.lower()
+    print(f"| {p} | {'✅' if has_intro else '❌'} | {'✅' if has_2026 else '❌'} | {'✅' if has_2027 else '❌'} | {'✅' if has_past else '❌'} |")
+print()
+PYEOF
+  else
+    echo "(python3 not available — tab analysis skipped)"
+  fi
 } > "${REPORT_FILE}"
 
 echo
