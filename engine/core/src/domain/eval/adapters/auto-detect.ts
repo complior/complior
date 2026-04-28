@@ -25,7 +25,24 @@ export interface AutoDetectOptions {
   readonly requestTemplate?: string;
   readonly responsePath?: string;
   readonly headers?: string;
+  /**
+   * Optional logger for diagnostics. When `autoDetectAdapter` cannot positively
+   * identify a target and falls back to the generic http adapter, it emits a
+   * single `warn(...)` so callers can surface the surprise to the user.
+   * Pure DI — no global logger import.
+   */
+  readonly logger?: { warn(msg: string): void };
 }
+
+/**
+ * Default timeout for the POST `/v1/chat/completions` LLM probe used by
+ * `tryOpenAIPost` to detect OpenAI-compatible endpoints that don't expose
+ * `/v1/models`. Must be generous enough to accommodate cold LLM round-trips
+ * (V1-M30.3: previously 3 000 ms, which lost the race against cold OpenRouter
+ * proxies and caused /deep-e2e Profile B to fall back to the broken http
+ * adapter, returning all 635 tests as `verdict: error`).
+ */
+export const OPENAI_POST_PROBE_TIMEOUT_MS = 15_000;
 
 /** Parse protocol-hinted URLs like openai://localhost:4000 → http://localhost:4000 */
 const parseProtocolHint = (url: string): { protocol: string; httpUrl: string } | null => {
@@ -49,11 +66,11 @@ const tryFetch = async (url: string, timeout = 3000): Promise<boolean> => {
 };
 
 /** Try POST to /v1/chat/completions with minimal OpenAI payload. Returns true if 2xx. */
-const tryOpenAIPost = async (
+export const tryOpenAIPost = async (
   baseUrl: string,
   model?: string,
   key?: string,
-  timeout = 3000,
+  timeout: number = OPENAI_POST_PROBE_TIMEOUT_MS,
 ): Promise<boolean> => {
   try {
     return await withTimeout(async (signal) => {
@@ -143,6 +160,12 @@ export const autoDetectAdapter = async (
     return createOpenAIAdapter(baseUrl, model, key);
   }
 
-  // 5. Fallback to generic HTTP
+  // 5. Fallback to generic HTTP — warn the caller so they can diagnose surprises
+  //    (e.g. OpenAI-compat target whose LLM probe timed out → wrong adapter).
+  opts.logger?.warn(
+    `autoDetectAdapter: no positive match for ${url} — fallback to generic http adapter ` +
+      `(this often means the target is OpenAI-compatible but the probe timed out; ` +
+      `consider passing the explicit /v1/chat/completions URL).`,
+  );
   return createHttpAdapter(url);
 };

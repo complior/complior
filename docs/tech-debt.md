@@ -1,7 +1,7 @@
 # Tech Debt Tracker — Complior v8
 
-**Updated:** 2026-04-27
-**Author:** Reviewer (V1-M29 review — add TD-53, TD-54, TD-55)
+**Updated:** 2026-04-28
+**Author:** Reviewer (V1-M30.3 review — add TD-56)
 
 ---
 
@@ -43,6 +43,7 @@
 | TD-53 | LOW | V1-M29: dev modified 3 architect test files (171 ins, 42 del). (a) Added `explanation`, `layer`, `title` fields to fixtures (required by HTML pipeline), (b) scoped FRIA/declaration assertions to doc-cards only (not disclaimer), (c) rewrote findings profile test with explicit role assertions. No assertion weakening. Recurring pattern from TD-52 — architect test data lags type contracts. No SCOPE VIOLATION REQUEST filed | html-documents-strict-filter.test.ts, html-findings-completeness.test.ts, html-laws-strict-filter.test.ts | — | OPEN (process) |
 | TD-54 | LOW | V1-M29 W-1: `runInitForProject` export in init-service.ts is an unnecessary alias — identical to `runInit` | engine/core/src/services/init-service.ts:78 | — | OPEN |
 | TD-55 | LOW | V1-M29 W-2: `as unknown as { appliesToRole?: string }` cast in renderTabFindings — should use extended FindingWithExplanation type | engine/core/src/domain/reporter/html-renderer.ts:442 | — | OPEN |
+| TD-56 | MEDIUM | V1-M30.3 Part A incomplete: scripts/verify_truly_deep_e2e.sh lines 292 + 374 still use `${AI_TARGET}/health`. With AI_TARGET=`${AI_BASE}/v1/chat/completions`, the health URL becomes `…/v1/chat/completions/health` which 404s. Line 374 is harmless (falls into spawn_ai_server which probes correctly). Line 292 is harmful: per-profile eval gate always SKIPS the eval section ("AI server not reachable") so /deep-e2e cannot end-to-end verify the V1-M30.3 fix. Flip both to `${AI_BASE}/health` | scripts/verify_truly_deep_e2e.sh:292,374 | re-run /deep-e2e Profile B should show real Score (B/C), not "skipping eval section" | 🔴 OPEN |
 
 ---
 
