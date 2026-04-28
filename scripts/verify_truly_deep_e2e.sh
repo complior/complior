@@ -289,7 +289,7 @@ run_profile() {
     > "${snap_dir}/scan-filter-context.json" 2>/dev/null || echo '{}' > "${snap_dir}/scan-filter-context.json"
 
   # ─ eval all flags ─
-  if curl -sf "${AI_TARGET}/health" -m 3 >/dev/null 2>&1; then
+  if curl -sf "${AI_BASE}/health" -m 3 >/dev/null 2>&1; then
     echo "→ §eval (against ${AI_TARGET})"
     "${COMPLIOR_BIN}" eval "${AI_TARGET}" --det --json >"${snap_dir}/eval_det.log" 2>&1 || true
     "${COMPLIOR_BIN}" eval "${AI_TARGET}" --security --concurrency 10 --json >"${snap_dir}/eval_security.log" 2>&1 || true
@@ -371,7 +371,7 @@ run_profile() {
 # ── Spawn AI server (one-time) ─────────────────────────────────────
 echo
 echo -e "${CYAN}═══ Spawning AI server ═══${NC}"
-if ! curl -sf "${AI_TARGET}/health" -m 3 >/dev/null 2>&1; then
+if ! curl -sf "${AI_BASE}/health" -m 3 >/dev/null 2>&1; then
   spawn_ai_server "${SOURCE_PROJECT}"
 else
   echo "  ✓ AI server already running"
