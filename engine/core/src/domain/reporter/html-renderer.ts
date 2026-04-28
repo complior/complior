@@ -1,4 +1,5 @@
-import type { ComplianceReport, ReadinessZone, CompletenessZone, DocumentStatusLevel, FindingSummary, EvalTestSummary, DocumentContent } from './types.js';
+import type { ComplianceReport, ReadinessZone, CompletenessZone, DocumentStatusLevel, FindingSummary, EvalTestSummary, DocumentContent, EvalResultsSummary } from './types.js';
+import { formatDateHuman, formatDateTimeHuman } from './format-dates.js';
 
 // --- Color constants (CSS variable references) ---
 
@@ -145,7 +146,26 @@ const buildCategoryBars = (tests: readonly EvalTestSummary[]): string => {
 };
 
 
-const renderTestSection = (sectionId: string, title: string, subtitle: string, tests: readonly EvalTestSummary[], isSecurity: boolean): string => {
+/**
+ * Render one section (Scan / Eval --det / Eval --llm / Security) of the Tests tab.
+ *
+ * @param sectionId   Stable id used for table/section anchors.
+ * @param title       Header text (e.g. "Eval --det").
+ * @param subtitle    Optional descriptive subtitle.
+ * @param tests       Test rows for this section (may be empty).
+ * @param isSecurity  Whether to render the OWASP column header.
+ * @param emptyState  Optional override for the empty-state markup; overrides the default
+ *                    "No tests in this category." paragraph. Use this to surface
+ *                    actionable hints (HR-T2 → "see Findings tab", HR-T3 → "run `complior …`").
+ */
+const renderTestSection = (
+  sectionId: string,
+  title: string,
+  subtitle: string,
+  tests: readonly EvalTestSummary[],
+  isSecurity: boolean,
+  emptyState?: string,
+): string => {
   // HR-2: Always show section header, even if empty (for old format test helpers)
   const stats = tests.length > 0 ? sectionStats(tests) : { passed: 0, failed: 0, errors: 0, skipped: 0, inconclusive: 0 };
   const bars = (tests.length > 0 && !isSecurity) ? buildCategoryBars(tests) : '';
@@ -215,7 +235,7 @@ const renderTestSection = (sectionId: string, title: string, subtitle: string, t
         <thead><tr><th>Test Name</th><th>${isSecurity ? 'OWASP' : 'Category'}</th><th>Verdict</th><th>Score</th><th>Conf</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      ${showAllBtn}` : '<p class="muted">No tests in this category.</p>'}
+      ${showAllBtn}` : (emptyState ?? '<p class="muted">No tests in this category.</p>')}
     </div>`;
 };
 
@@ -318,6 +338,31 @@ const renderTabOverview = (report: ComplianceReport): string => {
 
 // --- TAB 2: Tests (HR-2: grouped by source command with descriptions) ---
 
+/**
+ * V1-M30.2 HR-T1: pick the score to display in the Tests-tab header stat.
+ *
+ * When only OWASP/security tests have been collected (no `--det`/`--llm` runs),
+ * the conformity weighting algorithm divides by zero across the 11 conformity
+ * bins and `overallScore` collapses to 0 (grade `F`) — visually misleading
+ * because `securityScore` may be high (e.g. 96 / `A`).
+ *
+ * In that exact failure mode, fall back to displaying the security score so
+ * the header reflects what was actually measured. Pure (no I/O), deterministic.
+ */
+const pickHeaderScore = (
+  ev: EvalResultsSummary,
+): { readonly score: number; readonly grade: string; readonly isSecurityFallback: boolean } => {
+  const isSecurityFallback =
+    ev.totalTests > 0
+    && ev.overallScore === 0
+    && ev.securityScore !== undefined
+    && ev.securityScore > 0;
+  if (isSecurityFallback) {
+    return { score: ev.securityScore as number, grade: ev.securityGrade ?? '-', isSecurityFallback: true };
+  }
+  return { score: ev.overallScore, grade: ev.grade, isSecurityFallback: false };
+};
+
 const renderTabTests = (report: ComplianceReport): string => {
   const ev = report.evalResults;
   if (!ev) {
@@ -359,20 +404,38 @@ const renderTabTests = (report: ComplianceReport): string => {
     ? 'OWASP LLM Top 10 probes from `complior eval --security`: adversarial robustness testing'
     : 'OWASP LLM Top 10 probes from `complior eval --security`: adversarial robustness testing';
 
+  // HR-T1: pick the right header score (security fallback when conformity is empty)
+  const header = pickHeaderScore(ev);
+  const headerNote = header.isSecurityFallback
+    ? '<div class="muted small" style="margin-top:.25rem">(security only — run <code>complior eval --det</code> for full coverage)</div>'
+    : '';
+
+  // HR-T2: when scanner findings exist but the Scan section has no eval tests,
+  // direct the user to the Findings tab instead of the bare "No tests" message.
+  const findingsCount = report.findings.length;
+  const scanEmptyState = findingsCount > 0
+    ? `<p class="muted">Scanner found <strong>${findingsCount}</strong> findings. <a href="#tab-findings" class="tab-link" data-tab="findings">View in Findings tab &rarr;</a></p>`
+    : undefined;
+
+  // HR-T3: actionable hint when an eval section is empty (instead of bare "No tests").
+  const evalDetEmptyState = '<p class="muted">Not run in this report. To populate: <code>complior eval --det &lt;target&gt;</code></p>';
+  const evalLlmEmptyState = '<p class="muted">Not run in this report. To populate: <code>complior eval --llm &lt;target&gt;</code></p>';
+  const securityEmptyState = '<p class="muted">Not run in this report. To populate: <code>complior eval --security &lt;target&gt;</code></p>';
+
   return `
     <div class="stat-row">
-      <div class="stat"><span class="stat-num">${ev.overallScore}</span><span class="stat-label">Score (${ev.grade})</span></div>
+      <div class="stat"><span class="stat-num">${header.score}</span><span class="stat-label">Score (${header.grade})</span>${headerNote}</div>
       <div class="stat"><span class="stat-num" style="color:var(--teal)">${ev.passed}</span><span class="stat-label">Passed</span></div>
       <div class="stat"><span class="stat-num" style="color:var(--coral)">${ev.failed}</span><span class="stat-label">Failed</span></div>
       <div class="stat"><span class="stat-num" style="color:var(--amber)">${ev.errors}</span><span class="stat-label">Errors</span></div>
-      <div class="stat"><span class="stat-num">${ev.totalTests}</span><span class="stat-label">Total</span></div>
+      <div class="stat"><span class="stat-num">${ev.totalTests}</span><span class="stat-label">Eval tests</span></div>
       <div class="stat"><span class="stat-num">${Math.round(ev.duration / 1000)}s</span><span class="stat-label">Duration</span></div>
     </div>
     ${ev.securityScore !== undefined ? `<div class="stat-row"><div class="stat"><span class="stat-num">${ev.securityScore}</span><span class="stat-label">Security (${ev.securityGrade ?? '-'})</span></div></div>` : ''}
-    ${renderTestSection('scan', 'Scan', scanDesc, scanTests, false)}
-    ${renderTestSection('evaldet', 'Eval --det', evalDetDesc, evalDetTests, false)}
-    ${renderTestSection('evallm', 'Eval --llm', evalLlmDesc, evalLlmTests, false)}
-    ${renderTestSection('sec', 'Security', securityDesc, securityTests, true)}`;
+    ${renderTestSection('scan', 'Scan', scanDesc, scanTests, false, scanEmptyState)}
+    ${renderTestSection('evaldet', 'Eval --det', evalDetDesc, evalDetTests, false, evalDetEmptyState)}
+    ${renderTestSection('evallm', 'Eval --llm', evalLlmDesc, evalLlmTests, false, evalLlmEmptyState)}
+    ${renderTestSection('sec', 'Security', securityDesc, securityTests, true, securityEmptyState)}`;
 };
 
 // --- TAB 3: Findings (HR-3: human-friendly card format) ---
@@ -630,7 +693,7 @@ const renderTabLaws = (report: ComplianceReport): string => {
       <div class="law-art" title="${escapeHtml(o.article ?? '')}">${escapeHtml(o.article ?? '')}</div>
       <div class="law-body">
         <div class="law-title">${escapeHtml(o.title ?? '')}</div>
-        <div class="law-meta"><span class="muted">${escapeHtml(o.id ?? '')}</span><span class="muted">${escapeHtml(o.role ?? '')}</span>${o.deadline ? `<span class="muted">${escapeHtml(o.deadline)}</span>` : ''}</div>
+        <div class="law-meta"><span class="muted">${escapeHtml(o.id ?? '')}</span><span class="muted">${escapeHtml(o.role ?? '')}</span>${o.deadline ? `<span class="muted">${escapeHtml(formatDateHuman(o.deadline))}</span>` : ''}</div>
       </div>
       <div class="law-status"><span class="verdict-badge" style="background:${o.covered ? 'var(--teal)' : 'var(--coral)'}">${o.covered ? 'covered' : 'uncovered'}</span></div>
     </div>`).join('');
@@ -737,7 +800,7 @@ const renderTabDocuments = (report: ComplianceReport): string => {
         <span class="muted">${escapeHtml(d.article)}</span>
       </div>
       <div class="doc-meta muted">
-        ${d.lastModified ? `Modified: ${escapeHtml(d.lastModified)}` : ''}
+        ${d.lastModified ? `Modified: ${escapeHtml(formatDateTimeHuman(d.lastModified))}` : ''}
         ${d.prefilledPercent !== null ? ` | Prefilled: ${d.prefilledPercent}%` : ''}
         ${d.scoreImpact > 0 ? ` | Score impact: +${d.scoreImpact}` : ''}
       </div>
@@ -833,7 +896,7 @@ const renderTabFixes = (report: ComplianceReport): string => {
             ${(f.files ?? []).length > 0 ? `<div class="muted small">
               ${(f.files ?? []).map((file) => `${escapeHtml((file as {action?: string; path?: string}).action ?? '')}: ${escapeHtml((file as {action?: string; path?: string}).path ?? '')}`).join(' | ')}
             </div>` : ''}
-            <div class="muted small">Score: ${scoreBefore} → ${scoreAfter} (${delta >= 0 ? '+' : ''}${delta}) · ${escapeHtml(f.timestamp)}</div>
+            <div class="muted small">Score: ${scoreBefore} → ${scoreAfter} (${delta >= 0 ? '+' : ''}${delta}) · ${escapeHtml(formatDateTimeHuman(f.timestamp))}</div>
           </div>`;
       }).join('');
 
@@ -921,7 +984,7 @@ const renderTabPassports = (report: ComplianceReport): string => {
             <div class="pp-section-title">Evidence</div>
             <div class="pp-field-grid">
               ${p.signed ? '<span class="pp-field filled">Signed (ed25519)</span>' : '<span class="pp-field missing">Not signed</span>'}
-              ${p.lastUpdated ? `<span class="pp-field filled">Updated: ${escapeHtml(p.lastUpdated)}</span>` : ''}
+              ${p.lastUpdated ? `<span class="pp-field filled">Updated: ${escapeHtml(formatDateTimeHuman(p.lastUpdated))}</span>` : ''}
               <span class="pp-field filled">Completeness: ${p.completeness}%</span>
             </div>
           </div>
@@ -1039,16 +1102,16 @@ const renderTabTimeline = (report: ComplianceReport): string => {
 
   return `
     ${digitalOmnibusBanner()}
-    <p class="tab-intro">${introText} Key dates: 2025-08-02 (AI Literacy), 2026-08-02 (Main Enforcement), 2027-08-02 (High-Risk Annex III).</p>
+    <p class="tab-intro">${introText} Key dates: ${formatDateHuman('2025-08-02')} (AI Literacy), ${formatDateHuman('2026-08-02')} (Main Enforcement), ${formatDateHuman('2027-08-02')} (High-Risk Annex III).</p>
     <h3>Enforcement Countdown</h3>
-    <p>${s.daysUntilEnforcement > 0 ? `${s.daysUntilEnforcement} days until EU AI Act enforcement (${s.enforcementDate})` : 'Enforcement date has passed'}</p>
+    <p>${s.daysUntilEnforcement > 0 ? `${s.daysUntilEnforcement} days until EU AI Act enforcement (${formatDateHuman(s.enforcementDate)})` : 'Enforcement date has passed'}</p>
     <div class="countdown-bar"><div class="countdown-fill" style="width:${enfPct}%"></div></div>
 
     ${pastDue.length > 0 ? `
     <h3>Past Due (${pastDue.length})</h3>
-    <ul class="timeline-list">${pastDue.map((o) => `<li class="past-due"><strong>${escapeHtml(o.id)}</strong> ${escapeHtml(o.title)} &mdash; ${o.deadline ? escapeHtml(o.deadline) : 'no date'}</li>`).join('')}</ul>` : ''}
+    <ul class="timeline-list">${pastDue.map((o) => `<li class="past-due"><strong>${escapeHtml(o.id)}</strong> ${escapeHtml(o.title)} &mdash; ${o.deadline ? escapeHtml(formatDateHuman(o.deadline)) : 'no date'}</li>`).join('')}</ul>` : ''}
 
-    <h3>${s.enforcementDate} &mdash; Main Enforcement (${mainEnforcement.length} obligations)</h3>
+    <h3>${escapeHtml(formatDateHuman(s.enforcementDate))} &mdash; Main Enforcement (${mainEnforcement.length} obligations)</h3>
     <div class="muted">${mainEnforcement.filter((o) => !o.covered).length} uncovered, ${mainEnforcement.filter((o) => o.covered).length} covered</div>
     <details><summary class="muted">Show all obligations</summary>
     <ul class="timeline-list">${mainEnforcement.map((o) => `<li>${o.covered ? '<span style="color:var(--teal)">&#10003;</span>' : '<span style="color:var(--coral)">&#10007;</span>'} ${escapeHtml(o.id)} ${escapeHtml(o.title)}</li>`).join('')}</ul>
@@ -1262,7 +1325,7 @@ details{margin:.25rem 0}
   <div>
     <h1>Complior Report</h1>
     <div class="rpt-header-meta">
-      Generated: ${escapeHtml(report.generatedAt)} &middot; v${escapeHtml(report.compliorVersion)}
+      Generated: ${escapeHtml(formatDateTimeHuman(report.generatedAt))} &middot; v${escapeHtml(report.compliorVersion)}
     </div>
   </div>
   <div class="rpt-score">
@@ -1279,7 +1342,7 @@ details{margin:.25rem 0}
 ${sections}
 
 <div class="rpt-footer">
-  Generated by <strong>Complior</strong> v${escapeHtml(report.compliorVersion)} &middot; EU AI Act Compliance &middot; ${escapeHtml(report.generatedAt)}
+  Generated by <strong>Complior</strong> v${escapeHtml(report.compliorVersion)} &middot; EU AI Act Compliance &middot; ${escapeHtml(formatDateTimeHuman(report.generatedAt))}
 </div>
 
 <script>
