@@ -269,7 +269,10 @@ describe('generateReportHtml', () => {
     const html = generateReportHtml(createMinimalReport());
     // Days until enforcement should appear
     expect(html).toContain('114');
-    expect(html).toContain('2026-08-02');
+    // V1-M30.2 HR-T4: enforcement date is now humanized (formatDateHuman) —
+    // "2026-08-02" → "August 2, 2026". Accept either form so this test stays
+    // robust if the renderer ever exposes both representations.
+    expect(html).toMatch(/August\s+2,\s+2026|2026-08-02/);
   });
 
   it('renders document inventory with status badges', () => {
