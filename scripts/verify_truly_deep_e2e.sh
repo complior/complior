@@ -549,18 +549,30 @@ for p, (html, data) in loaded.items():
 print()
 
 # ─── Documents tab ───
+# V1-M30.1 A-1/A-2: tighter detectors that ignore disclaimer prose and require an
+# actual exclusion to demand a disclaimer.
 print("### Documents tab (HR-5: profile-required filter)")
 print()
-print("| Profile | Risk | FRIA shown (should be: high=YES, limited=no) | Has disclaimer |")
+print("| Profile | Risk | FRIA card (should be: high=YES, limited=no) | Has disclaimer |")
 print("|---------|------|----------------------------------------------|----------------|")
 for p, (html, data) in loaded.items():
     tab = extract_tab(html, 'documents')
     risk = data.get('profile', {}).get('riskLevel', '?')
-    fria_shown = bool(re.search(r'\bFRIA\b|fria\.md', tab, re.IGNORECASE))
+    # A-1: only count FRIA if it's the doc-card name (<strong>fria...</strong>),
+    # not the word "FRIA" appearing inside disclaimer prose.
+    doc_strongs = re.findall(r'<div class="doc-card">[\s\S]*?<strong>([^<]+)</strong>', tab)
+    fria_shown = any('fria' in s.lower() for s in doc_strongs)
     expected = (risk in ('high', 'unacceptable'))
     fria_ok = '✅' if fria_shown == expected else '❌'
-    has_disc = bool(re.search(r'not\s+(required|applicable)\s+for\s+your\s+profile|\+\s*\d+\s+(more|other|additional)\s+(documents?|docs?)|excluded.*profile', tab, re.IGNORECASE))
-    print(f"| {p} | {risk} | {fria_ok} ({fria_shown}) | {'✅' if has_disc else '❌'} |")
+    # A-2: only require a disclaimer when the inventory data actually has excludedCount > 0.
+    docs_data = data.get('documents', {})
+    excluded_n = docs_data.get('excludedCount', 0) if isinstance(docs_data, dict) else 0
+    if excluded_n == 0:
+        disc_ok = '✅ n/a'
+    else:
+        has_disc = bool(re.search(r'not\s+(required|applicable)\s+for\s+your\s+profile|\+\s*\d+\s+(more|other|additional)\s+(documents?|docs?)|excluded.*profile|FRIA\s+Art\.|Declaration\s+of\s+Conformity', tab, re.IGNORECASE))
+        disc_ok = '✅' if has_disc else '❌'
+    print(f"| {p} | {risk} | {fria_ok} ({fria_shown}) | {disc_ok} |")
 print()
 
 # ─── Fixes tab ───
@@ -604,17 +616,38 @@ for p, (html, data) in loaded.items():
 print()
 
 # ─── Timeline tab ───
+# V1-M30.1 A-3: only require past-due markers when a profile actually has past-deadline
+# obligations in its filtered set. If no past obligations apply → marker not needed.
 print("### Timeline tab (HR-8: enforcement deadlines)")
 print()
 print("| Profile | Header | 2026-08-02 | 2027-08-02 | Past-due markers |")
 print("|---------|--------|-----------|-----------|-------------------|")
+import datetime as _dt
+TODAY = _dt.date.today()
+def _has_past_oblig(data):
+    obls = data.get('obligations', {})
+    seq = obls.get('items') or obls.get('list') or obls.get('all') or []
+    for o in seq if isinstance(seq, list) else []:
+        d = o.get('deadline') or o.get('enforcementDate')
+        if not d: continue
+        try:
+            if _dt.date.fromisoformat(d[:10]) < TODAY:
+                return True
+        except Exception:
+            continue
+    return False
 for p, (html, data) in loaded.items():
     tab = extract_tab(html, 'timeline')
     has_intro = 'tab-intro' in tab and ('enforcement' in tab.lower() or 'deadline' in tab.lower())
     has_2026 = '2026-08-02' in tab or 'August 2026' in tab
     has_2027 = '2027-08-02' in tab or 'August 2027' in tab
-    has_past = 'past-due' in tab or 'overdue' in tab.lower()
-    print(f"| {p} | {'✅' if has_intro else '❌'} | {'✅' if has_2026 else '❌'} | {'✅' if has_2027 else '❌'} | {'✅' if has_past else '❌'} |")
+    has_past_text = 'past-due' in tab or 'overdue' in tab.lower()
+    needs_past = _has_past_oblig(data)
+    if not needs_past:
+        past_ok = '✅ n/a'
+    else:
+        past_ok = '✅' if has_past_text else '❌'
+    print(f"| {p} | {'✅' if has_intro else '❌'} | {'✅' if has_2026 else '❌'} | {'✅' if has_2027 else '❌'} | {past_ok} |")
 print()
 PYEOF
   else
