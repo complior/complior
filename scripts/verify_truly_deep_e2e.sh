@@ -50,7 +50,11 @@ SNAPSHOT_DIR="${SNAPSHOT_DIR:-${REPO_ROOT}/tests/e2e-snapshots}"
 DATE="$(date +%Y-%m-%d)"
 REPORT_FILE="${REPORT_FILE:-${REPO_ROOT}/docs/E2E-TRULY-DEEP-REPORT-${DATE}.md}"
 DAEMON_PORT="${DAEMON_PORT:-3099}"
-AI_TARGET="${AI_TARGET:-http://127.0.0.1:4000}"
+# V1-M30.3: AI_BASE used for /health probes, AI_TARGET points at OpenAI-compat endpoint
+# directly so eval auto-detect bypasses the slow tryOpenAIPost LLM probe (3s timeout
+# loses race when LLM is cold, falls back to broken http adapter, all tests error out).
+AI_BASE="${AI_BASE:-http://127.0.0.1:4000}"
+AI_TARGET="${AI_TARGET:-${AI_BASE}/v1/chat/completions}"
 PROFILES="${PROFILES:-A B C}"
 SKIP_FULL_EVAL="${SKIP_FULL_EVAL:-0}"
 SKIP_LLM="${SKIP_LLM:-0}"
@@ -127,7 +131,7 @@ trap cleanup EXIT
 # ── Spawn AI server ────────────────────────────────────────────────
 spawn_ai_server() {
   local proj_dir="$1"
-  if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
+  if curl -sf "${AI_BASE}/health" -m 2 >/dev/null 2>&1; then
     echo "  ✓ AI server already running"
     return 0
   fi
@@ -139,7 +143,7 @@ spawn_ai_server() {
   AI_SERVER_PID=$!
   popd >/dev/null
   for i in {1..20}; do
-    if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
+    if curl -sf "${AI_BASE}/health" -m 2 >/dev/null 2>&1; then
       echo "  ✓ AI server ready (pid ${AI_SERVER_PID})"
       return 0
     fi
@@ -151,7 +155,7 @@ spawn_ai_server() {
 
 # Verify AI server still alive; re-spawn if needed (resilience between profiles)
 ensure_ai_server() {
-  if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
+  if curl -sf "${AI_BASE}/health" -m 2 >/dev/null 2>&1; then
     return 0
   fi
   echo "  ⚠ AI server lost — re-spawning"
