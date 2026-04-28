@@ -132,8 +132,12 @@ spawn_ai_server() {
     return 0
   fi
   echo "  → Spawning AI server (npm run dev) in ${proj_dir}"
-  (cd "${proj_dir}" && npm run dev >"${SANDBOX_ROOT}/ai-server.log" 2>&1 &)
+  # cd in current shell so $! captures the actual background PID.
+  # Subshell `(cmd &)` would lose $! to the parent shell under `set -u`.
+  pushd "${proj_dir}" >/dev/null
+  npm run dev >"${SANDBOX_ROOT}/ai-server.log" 2>&1 &
   AI_SERVER_PID=$!
+  popd >/dev/null
   for i in {1..20}; do
     if curl -sf "${AI_TARGET}/health" -m 2 >/dev/null 2>&1; then
       echo "  ✓ AI server ready (pid ${AI_SERVER_PID})"

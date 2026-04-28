@@ -31,14 +31,35 @@ export const buildObligationCoverage = (
   projectRole: Role = 'both',
   /** V1-M08 T-7: filter obligations by risk level (from profile). */
   projectRisk: string | null = null,
+  /** V1-M30: filter obligations by industry domain (e.g., healthcare, finance). */
+  projectDomain: string | null = null,
 ): ObligationCoverage => {
   const oblToChecks = buildOblToChecks();
 
+  /** V1-M30: Filter by industry domain BEFORE role/risk filtering to count exclusions */
+  const preFiltered = projectDomain && projectDomain !== 'general'
+    ? obligations.filter((obl) => {
+        const domainKeywords: Record<string, readonly string[]> = {
+          healthcare: ['healthcare', 'medical'],
+          finance: ['finance'],
+          education: ['education'],
+          hr: ['hr', 'recruitment'],
+          legal: ['legal'],
+          'critical infra': ['critical infra'],
+        };
+        const oblTitle = (obl.title ?? '').toLowerCase();
+        const oblArticle = (obl.article_reference ?? '').toLowerCase();
+        const allowedKeywords = domainKeywords[projectDomain] ?? [projectDomain];
+        return allowedKeywords.some(kw => oblTitle.includes(kw) || oblArticle.includes(kw));
+      })
+    : obligations;
+
   // Filter obligations by project role AND risk level
-  const applicable = obligations.filter((obl) =>
-    roleApplies(String(obl.applies_to_role ?? 'both'), projectRole) &&
-    riskApplies(obl.applies_to_risk_level as readonly string[] ?? [], projectRisk),
-  );
+  const applicable = preFiltered.filter((obl) => {
+    if (!roleApplies(String(obl.applies_to_role ?? 'both'), projectRole)) return false;
+    if (!riskApplies(obl.applies_to_risk_level as readonly string[] ?? [], projectRisk)) return false;
+    return true;
+  });
 
   // Build set of covered obligation IDs from passing checks
   const coveredIds = new Set<string>();
@@ -101,5 +122,20 @@ export const buildObligationCoverage = (
     coveragePercent: total > 0 ? Math.round((covered / total) * 100) : 0,
     byArticle,
     critical,
+    excludedCount: obligations.length - obligations.filter(obl => { // industry exclusions only
+      const domainKeywords: Record<string, readonly string[]> = {
+        healthcare: ['healthcare', 'medical'],
+        finance: ['finance'],
+        education: ['education'],
+        hr: ['hr', 'recruitment'],
+        legal: ['legal'],
+        'critical infra': ['critical infra'],
+      };
+      if (!projectDomain || projectDomain === 'general') return false;
+      const oblTitle = (obl.title ?? '').toLowerCase();
+      const oblArticle = (obl.article_reference ?? '').toLowerCase();
+      const allowed = domainKeywords[projectDomain] ?? [projectDomain];
+      return !allowed.some(kw => oblTitle.includes(kw) || oblArticle.includes(kw));
+    }).length,
   };
 };

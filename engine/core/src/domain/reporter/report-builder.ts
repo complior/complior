@@ -32,6 +32,8 @@ export interface ReportBuildInput {
   readonly fixHistory?: readonly FixHistoryEntry[];
   readonly documentContents?: readonly DocumentContent[];
   readonly profile?: CompanyProfile;
+  /** V1-M30: Filter obligations by domain (e.g., healthcare, finance). */
+  readonly projectDomain?: string;
 }
 
 /** Infer scanner layer from checkId prefix. */
@@ -119,7 +121,11 @@ export const buildComplianceReport = (input: ReportBuildInput): ComplianceReport
 
   // Build sections
   const documents = buildDocumentInventory(findings);
-  const oblCoverage = buildObligationCoverage(obligations, findings, projectRole ?? 'both');
+  const oblCoverage = buildObligationCoverage(
+    obligations, findings, projectRole ?? 'both',
+    input.profile?.riskLevel ?? null,  // pass risk level from profile
+    input.projectDomain ?? input.profile?.domain,  // V1-M30: domain filter
+  );
   const passportStatus = buildPassportStatus(passports);
   const actionPlan = buildPriorityActions(findings, documents, oblCoverage, passportStatus, evalScore, reporterConfig.priorityActions.maxActionsHttp);
 

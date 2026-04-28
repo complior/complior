@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-04-27
-**Updated by:** Reviewer (V1-M29 review)
+**Updated by:** Reviewer (V1-M30 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M29-html-runtime-fixes` (V1-M29 HTML runtime fixes — reviewed, APPROVED)
+**Branch:** `feature/V1-M30-html-runtime-integration` (V1-M30 HTML runtime integration — reviewed, APPROVED)
 
 ---
 
@@ -11,13 +11,14 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2405 passed, 2 skipped (195 files) |
+| TS Engine (`engine/core/`) | GREEN | 2547 passed, 14 skipped (214 files) + 16 pre-existing E2E failures |
 | Rust CLI (`cli/`) | GREEN | 211 passed (0 failed) |
 | tsc --noEmit | PASS | — |
 | cargo clippy | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2616 tests GREEN**
+**Total: 2758 TS tests (2547 passed, 14 skipped, 16 pre-existing E2E failures) + 211 Rust = 2769**
+**V1-M30 new tests: 14 integration tests (5 files), all GREEN**
 
 ---
 
@@ -68,7 +69,8 @@
 | V1-M26 | Applicable Articles (OBL-IDs → Article refs) | `main` (merged PR #24) | DONE |
 | V1-M27 | HTML Report UX Rework (8 tab improvements) | `main` (merged PR #25) | DONE |
 | V1-M28 | init --yes respects project.toml | `main` (merged PR #26) | DONE |
-| V1-M29 | HTML Runtime Fixes (5 cross-profile UX issues) | `feature/V1-M29-html-runtime-fixes` | DONE (reviewer APPROVED, ready for PR) |
+| V1-M29 | HTML Runtime Fixes (5 cross-profile UX issues) | `feature/V1-M29-html-runtime-fixes` | DONE (merged to main, PR #27) |
+| V1-M30 | HTML Runtime Integration (5 integration tests replacing mock-driven tests) | `feature/V1-M30-html-runtime-integration` | DONE (reviewer APPROVED, ready for PR) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
@@ -359,6 +361,33 @@
 - TD-53: Dev modified 3 architect test files (171 insertions, 42 deletions). Changes: (a) added `explanation`, `layer`, `title` fields to test fixtures (required by HTML rendering pipeline — data infrastructure), (b) scoped FRIA/declaration assertions to doc-cards only (not disclaimer text — assertion correction), (c) rewrote findings profile test with explicit role-based assertions (test strengthened). No assertion weakening. Recurring pattern from V1-M27 TD-52 — architect test data lags behind type contracts
 - TD-54: `runInitForProject` alias in init-service.ts identical to `runInit` — unnecessary wrapper
 - TD-55: `as unknown as` cast for `appliesToRole` in renderTabFindings — should use extended type
+
+## V1-M30: HTML Runtime Integration (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M30-html-runtime-integration`
+**Scope:** 15 files, +808/-89 LOC (full branch vs dev)
+**What:** Replaces mock-driven unit tests with INTEGRATION tests that run through the real production code path (composition-root → service → renderer). Fixes 5 persistent HTML issues that passed V1-M27/M29 unit tests but failed in production:
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| W-1 | Init evidence chain | Wired `runInit({projectPath})` in onboarding.route.ts — production `POST /onboarding/complete` now creates evidence genesis | ✅ GREEN |
+| W-2 | Findings completeness | All findings render as `finding-card` (was `finding-item` for non-explanation findings). Every card has `complior fix --check-id X` command | ✅ GREEN |
+| W-3 | Laws strict filter | Domain filter always active: only show obligations matching domain keywords. Generic articles (Article N) pass through. `excludedCount` from `ObligationCoverage.excludedCount` | ✅ GREEN |
+| W-4 | Documents profile filter | Same domain filter applied in HTML renderer for doc-cards | ✅ GREEN |
+| W-5 | Fixes tab commands | Always renders `complior fix --check-id X` (was using `f.fix` field or nothing). `appliedSection2` always shows "Applied Fixes" header | ✅ GREEN |
+
+- Tests: 2547 passed + 14 skipped + 16 pre-existing E2E failures (unchanged from dev baseline)
+- V1-M30 new integration tests: 14/14 GREEN (5 files in `e2e/v1m30-*.test.ts`)
+- No existing tests modified by dev
+- Architecture: `OnboardingRouteDeps` interface (clean DI), `excludedCount` on `ObligationCoverage` type, domain-aware obligation filtering in `obligation-coverage.ts` + `html-renderer.ts`
+
+**Review Notes:**
+- Dev did NOT modify any test files (clean `git diff ab56806..fabb274 -- '*.test.ts'` = empty) ✅
+- Implementation touches 9 files — all within `engine/core/src/` (nodejs-dev scope) ✅
+- TD-56: `domainKeywords` object duplicated in `obligation-coverage.ts` (lines 49-56 and lines 128-135) and `html-renderer.ts` (lines 573-580). Should be extracted to shared utility
+- TD-55 persists (from V1-M29): `as unknown as` cast for `appliesToRole` in `renderTabFindings`
+- TD-54 persists (from V1-M29): `runInitForProject` alias identical to `runInit`
+- Missing newline at end of `onboarding.route.ts` (cosmetic)
 
 ## G-M02.5: Remediation Pipeline (RED — feature branch)
 

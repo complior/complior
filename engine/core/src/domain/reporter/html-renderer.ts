@@ -388,6 +388,8 @@ interface FindingWithExplanation extends FindingSummary {
 const renderFindingCard = (f: FindingWithExplanation): string => {
   const hasExplanation = f.explanation?.what || f.explanation?.why || f.explanation?.how;
 
+  // W-2: Always render as finding-card (enhanced card layout)
+  // Even without explanation, card format has better UX
   if (hasExplanation) {
     // HR-3: Human-friendly 3-section card
     return `
@@ -417,18 +419,22 @@ const renderFindingCard = (f: FindingWithExplanation): string => {
           </div>` : ''}
         </div>
         ${f.file ? `<div class="finding-meta muted small">${escapeHtml(f.file)}${f.line ? `:${f.line}` : ''}</div>` : ''}
+        ${f.fixAvailable ? `<div class="muted small">Run <code>complior fix --check-id ${escapeHtml(f.checkId)}</code></div>` : ''}
       </div>`;
   }
 
-  // Fallback: original format for findings without explanation
+  // W-2: Render ALL findings as cards (not just those with explanations)
   return `
-    <div class="finding-item" data-sev="${f.severity}" data-layer="${f.layer}" data-type="${f.type}">
-      <span class="severity-dot" style="background:${severityColor(f.severity)}"></span>
-      <strong>${escapeHtml(f.checkId)}</strong> &mdash; ${escapeHtml(f.message)}
-      ${f.file ? `<div class="muted small">${escapeHtml(f.file)}${f.line ? `:${f.line}` : ''}</div>` : ''}
-      ${f.fix ? `<div class="muted small">Fix: ${escapeHtml(f.fix)}</div>` : ''}
-      ${f.fixAvailable ? '<span class="tag tag-green">Auto-fixable</span>' : ''}
-      ${f.articleReference ? `<span class="tag tag-gray">${escapeHtml(f.articleReference)}</span>` : ''}
+    <div class="finding-card" data-sev="${f.severity}" data-layer="${f.layer}" data-type="${f.type}">
+      <div class="finding-card-header">
+        <span class="severity-dot" style="background:${severityColor(f.severity)}"></span>
+        <strong class="finding-title">${escapeHtml(f.checkId)}</strong>
+        <span class="finding-message">${escapeHtml(f.message)}</span>
+        ${f.articleReference ? `<span class="tag tag-gray">${escapeHtml(f.articleReference)}</span>` : ''}
+        ${f.fixAvailable ? '<span class="tag tag-green">Auto-fixable</span>' : ''}
+      </div>
+      ${f.file ? `<div class="finding-meta muted small">${escapeHtml(f.file)}${f.line ? `:${f.line}` : ''}</div>` : ''}
+      ${f.fixAvailable ? `<div class="muted small">Run <code>complior fix --check-id ${escapeHtml(f.checkId)}</code></div>` : ''}
     </div>`;
 };
 
@@ -558,10 +564,22 @@ const isObligationApplicable = (
     }
   }
 
-  // Industry-specific obligations hidden for general domain
-  if (profileDomain === 'general') {
-    const industryKeywords = ['healthcare', 'medical', 'finance', 'education', 'hr', 'recruitment', 'biometric', 'migration', 'legal', 'critical infra'];
-    if (industryKeywords.some(kw => oblTitle.includes(kw) || oblArticle.includes(kw))) {
+  // Industry-specific obligations: filter when domain is non-general
+  // Only show obligations whose industry matches the profile domain.
+  // Obligations with generic/industry-agnostic titles (Article X) always pass through.
+  if (profileDomain !== 'general') {
+    const domainKeywords: Record<string, readonly string[]> = {
+      healthcare: ['healthcare', 'medical', 'annex'],
+      finance: ['finance'],
+      education: ['education'],
+      hr: ['hr', 'recruitment'],
+      legal: ['legal'],
+      'critical infra': ['critical infra'],
+    };
+    const allowedKeywords = domainKeywords[profileDomain] ?? [profileDomain];
+    // Generic article references (e.g., "Article 4", "Article 79") are industry-agnostic — always include
+    const isGenericArticle = /^(article\s+\d+|art\.?\s*\d+)/i.test(oblArticle.trim());
+    if (!isGenericArticle && !allowedKeywords.some(kw => oblTitle.includes(kw) || oblArticle.includes(kw))) {
       return false;
     }
   }
@@ -572,8 +590,6 @@ const isObligationApplicable = (
 const renderTabLaws = (report: ComplianceReport): string => {
   const obl = report.obligations;
   const profile = report.profile;
-  const profileRole = (profile?.role ?? '').toLowerCase();
-  const profileRisk = (profile?.riskLevel ?? '').toLowerCase();
   const profileDomain = (profile?.domain ?? '').toLowerCase();
 
   // HR-4: Handle both full format (with obligations array) and simplified format (test helpers)
@@ -605,7 +621,8 @@ const renderTabLaws = (report: ComplianceReport): string => {
 
   // HR-4: Filter by profile — always apply filtering (both full format and simplified format)
   const applicableObls = allObls.filter(o => isObligationApplicable(o, profile));
-  const excludedCount = allObls.length - applicableObls.length;
+  const excludedCount = (obl as { excludedCount?: number }).excludedCount
+    ?? (allObls.length - applicableObls.length);
 
   const lawItems = applicableObls.map((o) => `
     <div class="law-item">
@@ -620,22 +637,16 @@ const renderTabLaws = (report: ComplianceReport): string => {
 
   const uncoveredNoChecks = applicableObls.filter((o) => !o.covered && (o.linkedChecks?.length ?? 0) === 0).length;
 
-  // HR-4: Disclaimer about excluded obligations (always when N > 0)
-  // Additionally show disclaimer for deployer/provider role mismatch with exclusions
-  const hasRoleExclusion = (profileRole === 'deployer' || profileRole === 'provider') && excludedCount > 0;
-  const hasRiskExclusion = profileRisk === 'limited' && excludedCount > 0;
-  const hasDomainExclusion = profileDomain === 'general' && excludedCount > 0;
-
-  // Always show disclaimer when obligations are excluded by profile (any dimension)
-  const disclaimer = (excludedCount > 0 || hasRoleExclusion || hasRiskExclusion || hasDomainExclusion) ? `
+  // Show disclaimer when obligations are excluded by industry/domain mismatch
+  // (always when excludedCount > 0, or when domain is non-general)
+  const disclaimer = (excludedCount > 0 || profileDomain !== 'general') ? `
     <div class="profile-disclaimer">
       <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-      <span>+${excludedCount} obligations not applicable for your profile
-        ${profileRisk === 'limited' ? '(high-risk obligations hidden)' : ''}
-        ${profileRole === 'deployer' ? '(provider-only obligations hidden)' : ''}
-        ${profileDomain === 'general' ? '(industry-specific hidden)' : ''}.</span>
+      <span>${profileDomain !== 'general'
+        ? `Showing obligations for <strong>${profileDomain}</strong> domain${excludedCount > 0 ? ` (${excludedCount} excluded)` : ''}`
+        : `+${excludedCount} obligations not applicable for your profile`}.</span>
     </div>` : '';
 
   return `
@@ -778,48 +789,6 @@ const renderTabFixes = (report: ComplianceReport): string => {
       </div>`;
   }
 
-  // Applied fixes section
-  const appliedSection = hasAppliedFixes ? (() => {
-    const applied = fixes.filter((f) => f.status === 'applied');
-    // Handle old format (impact) vs new format (scoreBefore/scoreAfter)
-    const firstScore = fixes.length > 0
-      ? (fixes[fixes.length - 1] as { scoreBefore?: number; scoreAfter?: number }).scoreBefore ?? 0
-      : 0;
-    const lastScore = fixes.length > 0
-      ? (fixes[0] as { scoreAfter?: number }).scoreAfter ?? 0
-      : 0;
-
-    const fixItems = [...fixes].reverse().map((f) => {
-      // Handle both old and new format
-      const fAny = f as unknown as Record<string, unknown>;
-      const scoreBefore = (fAny.scoreBefore as number) ?? 0;
-      const scoreAfter = (fAny.scoreAfter as number) ?? 0;
-      const delta = scoreAfter - scoreBefore;
-      const id = typeof f.id === 'string' ? f.id : String(f.id);
-
-      return `
-        <div class="fix-item">
-          <div class="fix-header">
-            <strong>#${escapeHtml(id)}</strong> <code>${escapeHtml(f.checkId)}</code>
-            <span class="tag ${f.status === 'applied' ? 'tag-green' : 'tag-gray'}">${escapeHtml(f.status)}</span>
-            <span class="muted">${escapeHtml(f.fixType)}</span>
-          </div>
-          ${(f.files ?? []).length > 0 ? `<div class="muted small">
-            ${(f.files ?? []).map((file) => `${escapeHtml((file as {action?: string; path?: string}).action ?? '')}: ${escapeHtml((file as {action?: string; path?: string}).path ?? '')}`).join(' | ')}
-          </div>` : ''}
-          <div class="muted small">Score: ${scoreBefore} → ${scoreAfter} (${delta >= 0 ? '+' : ''}${delta}) · ${escapeHtml(f.timestamp)}</div>
-        </div>`;
-    }).join('');
-
-    return `
-      <h3>Applied Fixes</h3>
-      <div class="stat-row">
-        <div class="stat"><span class="stat-num">${applied.length}</span><span class="stat-label">Applied</span></div>
-        ${firstScore > 0 || lastScore > 0 ? `<div class="stat"><span class="stat-num">${firstScore} → ${lastScore}</span><span class="stat-label">Score Change</span></div>` : ''}
-      </div>
-      <div class="fix-list">${fixItems}</div>`;
-  })() : '';
-
   // Available fix plans section
   const availableSection = hasAvailableFixes ? `
     <h3>Available Fix Plans</h3>
@@ -831,13 +800,65 @@ const renderTabFixes = (report: ComplianceReport): string => {
             <span class="tag tag-gray">${escapeHtml(f.severity)}</span>
           </div>
           <div>${escapeHtml(f.message)}</div>
-          ${f.fix ? `<div class="muted small">Run <code>${escapeHtml(f.fix)}</code></div>` : ''}
+          <div class="muted small">Run <code>complior fix --check-id ${escapeHtml(f.checkId)}</code></div>
         </div>`).join('')}
     </div>` : '';
 
+  // W-5: Always show Applied section header (even when no fixes applied yet)
+  // This satisfies the "Applied + Available sections both present" acceptance criteria
+  const appliedSection2 = (() => {
+    if (hasAppliedFixes) {
+      const applied = fixes.filter((f) => f.status === 'applied');
+      const firstScore = fixes.length > 0
+        ? (fixes[fixes.length - 1] as { scoreBefore?: number; scoreAfter?: number }).scoreBefore ?? 0
+        : 0;
+      const lastScore = fixes.length > 0
+        ? (fixes[0] as { scoreAfter?: number }).scoreAfter ?? 0
+        : 0;
+
+      const fixItems = [...fixes].reverse().map((f) => {
+        const fAny = f as unknown as Record<string, unknown>;
+        const scoreBefore = (fAny.scoreBefore as number) ?? 0;
+        const scoreAfter = (fAny.scoreAfter as number) ?? 0;
+        const delta = scoreAfter - scoreBefore;
+        const id = typeof f.id === 'string' ? f.id : String(f.id);
+
+        return `
+          <div class="fix-item">
+            <div class="fix-header">
+              <strong>#${escapeHtml(id)}</strong> <code>${escapeHtml(f.checkId)}</code>
+              <span class="tag ${f.status === 'applied' ? 'tag-green' : 'tag-gray'}">${escapeHtml(f.status)}</span>
+              <span class="muted">${escapeHtml(f.fixType)}</span>
+            </div>
+            ${(f.files ?? []).length > 0 ? `<div class="muted small">
+              ${(f.files ?? []).map((file) => `${escapeHtml((file as {action?: string; path?: string}).action ?? '')}: ${escapeHtml((file as {action?: string; path?: string}).path ?? '')}`).join(' | ')}
+            </div>` : ''}
+            <div class="muted small">Score: ${scoreBefore} → ${scoreAfter} (${delta >= 0 ? '+' : ''}${delta}) · ${escapeHtml(f.timestamp)}</div>
+          </div>`;
+      }).join('');
+
+      return `
+        <h3>Applied Fixes</h3>
+        <div class="stat-row">
+          <div class="stat"><span class="stat-num">${applied.length}</span><span class="stat-label">Applied</span></div>
+          ${firstScore > 0 || lastScore > 0 ? `<div class="stat"><span class="stat-num">${firstScore} → ${lastScore}</span><span class="stat-label">Score Change</span></div>` : ''}
+        </div>
+        <div class="fix-list">${fixItems}</div>`;
+    } else if (fixes.length > 0) {
+      // History exists but no applied fixes — show "Applied" header + empty state
+      return `
+        <h3>Applied Fixes</h3>
+        <p class="muted">No applied fixes yet.</p>`;
+    } else {
+      return `
+        <h3>Applied Fixes</h3>
+        <p class="muted">No fixes applied yet.</p>`;
+    }
+  })();
+
   return `
-    ${appliedSection}
-    ${appliedSection && availableSection ? '<hr class="section-divider"/>' : ''}
+    ${appliedSection2}
+    ${availableSection ? '<hr class="section-divider"/>' : ''}
     ${availableSection}`;
 };
 
