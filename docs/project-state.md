@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-27
-**Updated by:** Reviewer (V1-M30 review)
+**Updated:** 2026-04-28
+**Updated by:** Reviewer (V1-M30.2 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30-html-runtime-integration` (V1-M30 HTML runtime integration — reviewed, APPROVED)
+**Branch:** `feature/V1-M30.2-tests-tab-ux-polish` (V1-M30.2 Tests tab UX + date humanization — reviewed, APPROVED)
 
 ---
 
@@ -11,14 +11,15 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2547 passed, 14 skipped (214 files) + 16 pre-existing E2E failures |
-| Rust CLI (`cli/`) | GREEN | 211 passed (0 failed) |
+| TS Engine (`engine/core/`) | GREEN | 2421 passed, 2 skipped (198 files) — full unit suite |
+| Rust CLI (`cli/`) | GREEN | clippy clean, fmt clean |
 | tsc --noEmit | PASS | — |
-| cargo clippy | PASS | — |
+| cargo clippy --all-targets -D warnings | PASS | — |
+| cargo fmt --check | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**Total: 2758 TS tests (2547 passed, 14 skipped, 16 pre-existing E2E failures) + 211 Rust = 2769**
-**V1-M30 new tests: 14 integration tests (5 files), all GREEN**
+**V1-M30.2 new tests: 17 GREEN (10 format-dates + 6 tests-tab-ux + 1 E2E integration) — all RED→GREEN, no test weakening**
+**V1-M30.1 regression check: 2/2 GREEN (evidence-chain genesis survives trim)**
 
 ---
 
@@ -71,7 +72,34 @@
 | V1-M28 | init --yes respects project.toml | `main` (merged PR #26) | DONE |
 | V1-M29 | HTML Runtime Fixes (5 cross-profile UX issues) | `feature/V1-M29-html-runtime-fixes` | DONE (merged to main, PR #27) |
 | V1-M30 | HTML Runtime Integration (5 integration tests replacing mock-driven tests) | `feature/V1-M30-html-runtime-integration` | DONE (reviewer APPROVED, ready for PR) |
+| V1-M30.1 | Evidence chain genesis survives MAX_ENTRIES trim | `feature/V1-M30.1-evidence-chain-genesis-trim` | DONE (reviewer APPROVED) |
+| V1-M30.2 | Tests tab UX polish + date humanization (5 HR-T fixes) | `feature/V1-M30.2-tests-tab-ux-polish` | DONE (reviewer APPROVED, ready for PR) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.2: Tests Tab UX Polish + Date Humanization (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M30.2-tests-tab-ux-polish`
+**Commits:** 3 (1b5076f spec+RED, f6705e5 impl, 44a2b83 obsolete-assert relax)
+**Files:** +5 / M2 (148 LOC spec, 60 LOC pure helpers, 60 LOC helper tests, 181 LOC tab-ux tests, 77 LOC E2E test, +101 LOC html-renderer, +5 LOC report-html.test relax)
+
+**Scope (5 visible bugs in HTML report):**
+- HR-T1: Tests-tab header score collapsed to 0 (F) when only `--security` ran → fall back to securityScore. Pure `pickHeaderScore()` helper, display-only (no scoring engine change).
+- HR-T2: Empty Scan section now points users to Findings tab when scanner findings exist.
+- HR-T3: Empty Eval/Security sections now show actionable hint (`complior eval --det <target>` etc.) instead of bare "No tests".
+- HR-T4: ALL raw ISO date renders (`2026-08-02`, `2026-04-28T10:48:32.816Z`) replaced with humanized form (`August 2, 2026`, `April 28, 2026 at 10:48 UTC`) via two pure helpers in new `format-dates.ts`.
+- HR-T5: "Total" stat label clarified to "Eval tests" so users distinguish from scanner findings.
+
+**Quality gates:**
+- 17/17 new RED tests GREEN (10 format-dates + 6 tests-tab-ux + 1 E2E real-HTML integration)
+- Full unit suite: 2421 passed / 2 skipped / 0 failed
+- V1-M30.1 regression: 2/2 GREEN
+- tsc --noEmit: clean | cargo fmt --check: clean | cargo clippy: clean
+- Architecture audit: format-dates.ts is pure (no I/O, locale-pinned `en-US`, UTC-pinned, returns input unchanged on invalid, JSDoc explains intent, named exports). renderTestSection extension is non-breaking (optional 6th param with `?? default` fallback). pickHeaderScore is pure.
+- Scope audit: dev did NOT touch cli/, eval/, conformity-score.ts, eval-severity-scoring.ts, types.ts, or any other V1-M30/V1-M30.1 RED tests.
+
+**Architect's relaxation patch (44a2b83):** `report-html.test.ts:272` previously asserted `toContain('2026-08-02')` which directly contradicts HR-T4 spec. Patched to `toMatch(/August\s+2,\s+2026|2026-08-02/)` — accepts BOTH humanized and raw forms, preserves the assertion's intent (countdown shows enforcement date), and is robust to either form. Justified relaxation, not a weakening; no other test files were modified.
 
 ---
 
