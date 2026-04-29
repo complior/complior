@@ -275,9 +275,18 @@ pub enum Command {
         watch: bool,
     },
 
-    /// Manage Agent Passport (AI system identity, permissions, compliance)
+    /// Manage Agent Passport (AI system identity, permissions, compliance) — PRIMARY command
     #[command(
-        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior passport init                Auto-discover agents\n  complior passport list                List all passports\n  complior passport show my-bot         View passport details\n  complior passport validate --ci       CI validation gate\n  complior passport export my-bot --format a2a  Export to A2A"
+        after_long_help = "\x1b[1mExamples:\x1b[0m\n  complior agent init                Auto-discover agents\n  complior agent list                List all passports\n  complior agent show my-bot         View passport details\n  complior agent validate --ci       CI validation gate\n  complior agent export my-bot --format a2a  Export to A2A"
+    )]
+    Agent {
+        #[command(subcommand)]
+        action: PassportAction,
+    },
+
+    /// [DEPRECATED] Alias for `complior agent` — will be removed in v2.0.0
+    #[command(
+        after_long_help = "\x1b[33m⚠ Deprecated:\x1b[0m use `complior agent` instead. The `passport` alias will be removed in v2.0.0.\n\n\x1b[1mExamples:\x1b[0m\n  complior agent init                Auto-discover agents\n  complior agent list                List all passports\n  complior agent show my-bot         View passport details"
     )]
     Passport {
         #[command(subcommand)]
@@ -1038,7 +1047,7 @@ pub fn explicit_project_path(cli: &Cli) -> Option<std::path::PathBuf> {
             | Command::Doctor { path, .. },
         ) => path.as_deref(),
         Some(Command::Eval { path, .. }) => path.as_deref(),
-        Some(Command::Passport { action }) => match action {
+        Some(Command::Agent { action } | Command::Passport { action }) => match action {
             PassportAction::Init { path, .. }
             | PassportAction::List { path, .. }
             | PassportAction::Show { path, .. }
@@ -1112,6 +1121,7 @@ pub fn is_headless(cli: &Cli) -> bool {
             | Command::Update
             | Command::Completions { .. }
             | Command::Daemon { .. }
+            | Command::Agent { .. }
             | Command::Passport { .. }
             | Command::Eval { .. },
         ) => true,

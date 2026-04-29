@@ -344,7 +344,18 @@ async fn main() -> color_eyre::Result<()> {
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
                 0
             }
+            Some(cli::Command::Agent { action }) => {
+                headless::passport::run_passport_command(action, &config).await
+            }
             Some(cli::Command::Passport { action }) => {
+                // V1-M30.4 B.1: `passport` is now a deprecated alias for `agent`.
+                // Print a one-line yellow warning to stderr (so JSON/SARIF stdout
+                // remains valid for CI consumers) but still dispatch to the same
+                // handler so existing scripts keep working.
+                eprintln!(
+                    "\x1b[33m⚠ Deprecated: 'complior passport' is now 'complior agent'. \
+                     The 'passport' alias will be removed in v2.0.0.\x1b[0m"
+                );
                 headless::passport::run_passport_command(action, &config).await
             }
             Some(cli::Command::Eval {
