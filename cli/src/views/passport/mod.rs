@@ -310,7 +310,7 @@ fn render_agent_list_view(frame: &mut Frame, area: Rect, app: &App) {
                     Style::default().fg(t.muted),
                 )),
                 Line::from(Span::styled(
-                    " Run: complior passport init",
+                    " Run: complior agent init",
                     Style::default().fg(t.muted),
                 )),
             ]),

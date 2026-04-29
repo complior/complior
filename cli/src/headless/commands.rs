@@ -534,7 +534,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
             }
         }
         Err(_) => {
-            eprintln!("  Warning: Agent discovery failed. Run `complior passport init` later.");
+            eprintln!("  Warning: Agent discovery failed. Run `complior agent init` later.");
         }
     }
 
