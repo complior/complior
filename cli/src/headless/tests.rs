@@ -1911,7 +1911,8 @@ mod tests {
         let mut found = false;
         for path in &candidates {
             if let Ok(content) = fs::read_to_string(path) {
-                let has_warning = (content.contains("Deprecated") || content.contains("deprecated"))
+                let has_warning = (content.contains("Deprecated")
+                    || content.contains("deprecated"))
                     && content.contains("complior agent")
                     && content.contains("eprintln!");
                 if has_warning {
