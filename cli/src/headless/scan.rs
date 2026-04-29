@@ -384,7 +384,7 @@ pub async fn run_headless_scan(
                 eprintln!(
                     "  {}",
                     super::format::colors::dim(
-                        "Hint: No agent passports found. Run `complior passport init` for \
+                        "Hint: No agent passports found. Run `complior agent init` for \
                          passport-aware scanning and pre-filled fix scaffolds."
                     )
                 );

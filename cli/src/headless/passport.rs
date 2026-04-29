@@ -401,7 +401,7 @@ async fn run_passport_init(
                 println!("Run `complior passport list` to view all passports.");
             } else if skipped_count > 0 {
                 println!("All discovered agents already have passports.");
-                println!("Run `complior passport init --force` to regenerate.");
+                println!("Run `complior agent init --force` to regenerate.");
             } else {
                 println!("No AI agents detected in project.");
                 println!(
@@ -562,7 +562,7 @@ async fn run_passport_list(
                 }
                 _ => {
                     println!("\n  No Agent Passports found.");
-                    println!("  Run {} to generate one.\n", dim("complior passport init"));
+                    println!("  Run {} to generate one.\n", dim("complior agent init"));
                 }
             }
             0
@@ -1166,13 +1166,13 @@ async fn run_passport_autonomy(
             println!("\nAutonomy Analysis (project-level)\n");
             if level == "not assessed" {
                 println!("  No agent configuration detected in this project.");
-                println!("  Run `complior passport init` to discover and register agents.\n");
+                println!("  Run `complior agent init` to discover and register agents.\n");
             } else {
                 println!("  Level:               {level} ({agent_type})");
                 println!("  Human approval gates: {human_gates}");
                 println!("  Unsupervised actions: {unsupervised}");
                 println!("  Logging gaps:         {no_logging}");
-                println!("\n  Tip: Run `complior passport init` to see per-agent breakdown.");
+                println!("\n  Tip: Run `complior agent init` to see per-agent breakdown.");
             }
             0
         }
@@ -1242,7 +1242,7 @@ async fn run_passport_validate(
             println!("[]");
         } else {
             println!("No Agent Passports found.");
-            println!("Run `complior passport init` to generate one.");
+            println!("Run `complior agent init` to generate one.");
         }
         return 0;
     }
@@ -1708,7 +1708,7 @@ async fn run_passport_registry(
                 }
                 _ => {
                     println!("No Agent Passports found.");
-                    println!("Run `complior passport init` to generate one.");
+                    println!("Run `complior agent init` to generate one.");
                 }
             }
             0

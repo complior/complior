@@ -1959,4 +1959,60 @@ mod tests {
              the existing passport handler). Currently only Passport is dispatched."
         );
     }
+
+    // ── V1-M30.5 / W-5: passport-list empty hint says `complior agent init` ──
+    //
+    // After the V1-M30.4 CLI rename, output text inside passport.rs (and other
+    // user-facing strings) still says "Run `complior passport init`". The
+    // command alias still works, but the user-facing hint should reflect the
+    // new primary verb so newcomers see the agent name first.
+
+    #[test]
+    fn user_facing_init_hints_use_agent_not_passport() {
+        use std::fs;
+        use std::path::Path;
+
+        // Files where user-facing init hints appear (per architect's audit).
+        let files = [
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/passport.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/scan.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/commands.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/app/executor.rs"),
+        ];
+
+        for path in &files {
+            let content = fs::read_to_string(path)
+                .unwrap_or_else(|_| panic!("cannot read {}", path.display()));
+            // Only inspect string literals containing user-facing init hints.
+            // Ignore comments and ignore strings that EXPLAIN the deprecation.
+            for (lineno, line) in content.lines().enumerate() {
+                let trimmed = line.trim_start();
+                if trimmed.starts_with("//") {
+                    continue;
+                }
+                // The deprecation warning itself is ALLOWED to mention
+                // "passport" — that's the literal command name we deprecated.
+                if line.contains("Deprecated") || line.contains("deprecated") {
+                    continue;
+                }
+                // The eprintln deprecation line in main.rs.
+                if line.contains("v2.0.0") {
+                    continue;
+                }
+                // Find any `complior passport init` literal in non-test,
+                // non-doc source lines.
+                // V1-M30.5 TD-61: clippy::manual_assert — use assert! not if+panic!
+                assert!(
+                    !line.contains("complior passport init"),
+                    "V1-M30.5 W-5: {}:{} contains user-facing hint \
+                     `complior passport init` — should use `complior agent init` \
+                     after V1-M30.4 rename (passport remains a deprecated alias \
+                     but new hints should reference agent).\n  >>> {}",
+                    path.display(),
+                    lineno + 1,
+                    line
+                );
+            }
+        }
+    }
 }

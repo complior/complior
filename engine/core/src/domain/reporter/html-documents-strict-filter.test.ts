@@ -6,24 +6,27 @@
  * - FRIA visible for Profile A (limited risk) — Art. 27 doesn't require FRIA for limited
  * - Disclaimer present in A+C but NOT in B (inconsistent)
  *
- * Specification:
- *   1. FRIA only shown for high-risk profiles (riskLevel='high' or 'unacceptable')
- *   2. Declaration-of-conformity only for provider role
- *   3. ISO 42001-related docs already removed (V1-M22 C-3) — verify still absent
- *   4. Disclaimer always present when N docs excluded
+ * Specification (V1-M29 W-4, corrected by V1-M30.5 W-2):
+ *   1. All documents shown in the documents tab (no FRIA filtering by risk level);
+ *      Declaration-of-Conformity still filtered for deployer-only.
+ *   2. Disclaimer explains which documents are not required for the profile.
+ *   3. ISO 42001-related docs already removed (V1-M22 C-3) — verify still absent.
+ *   4. Disclaimer always present when N docs excluded (Declaration-of-Conformity for deployers).
  */
 
 import { describe, it, expect } from 'vitest';
 
 describe('V1-M29 W-4: Documents tab strict profile-required filter', () => {
-  it('Limited-risk profile: FRIA NOT shown (in document list, not disclaimer)', async () => {
+  it('Limited-risk profile: FRIA IS shown in the document list (V1-M30.5 W-2 correction)', async () => {
     const { generateReportHtml } = await import('./html-renderer.js');
     const html = generateReportHtml(buildReport('deployer', 'limited', 'general'));
     const docsTab = extractTab(html, 'documents');
-    // Check only the document CARD list (not the disclaimer which may mention FRIA)
+    // V1-M30.5 W-2: all documents shown in tab; disclaimer notes profile-specific exclusions.
+    // FRIA appears in the document cards for all profiles (it is a useful reference document
+    // even when not strictly required for limited-risk deployers).
     const docCards = docsTab.match(/<div class="doc-card">[\s\S]*?<\/div>\s*(?=<\/div>|<\w)/g) ?? [];
     const docCardsText = docCards.join(' ');
-    expect(docCardsText).not.toMatch(/\bFRIA\b|fria\.md|fundamental\.rights\.impact\.assessment/i);
+    expect(docCardsText).toMatch(/\bFRIA\b|fundamental\.rights\.impact\.assessment/i);
   });
 
   it('High-risk profile: FRIA IS shown', async () => {

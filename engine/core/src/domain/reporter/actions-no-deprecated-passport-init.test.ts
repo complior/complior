@@ -1,25 +1,33 @@
 /**
- * V1-M29 / W-5: RED test — Actions tab MUST NOT include deprecated `passport init` command.
+ * V1-M29 / W-5 (corrected by V1-M30.5 W-3): Actions tab rendering.
  *
  * Background (per /deep-e2e tab analysis 2026-04-27):
  * - All 3 profiles' Actions tab still includes `complior passport init` suggestion
  * - V1-M22 A-7 spec said to remove it (deprecated since V1-M11 — passports auto-created via `complior init`)
  * - V1-M27 HR-8 dedup didn't remove it
  *
+ * V1-M30.5 W-3 correction:
+ *   The legacy `passport init` filter was REMOVED. The action plan no longer generates
+ *   `passport init` actions in production (V1-M11 was 5+ months ago). All actions
+ *   are now rendered without command-based deduplication — each distinct action (unique
+ *   `id`) gets its own row with the correct emoji prefix.
+ *
  * Specification:
- *   - Actions tab HTML must NOT contain `passport init` substring
- *   - Suggestion list must NOT contain commands matching /complior\s+passport\s+init/
- *   - actionPlan.actions array (built by service) must filter out passport init
+ *   1. All distinct actions render (no command-based dedup)
+ *   2. Each action gets its source emoji
+ *   3. Deprecated passport init actions (if present) are rendered normally
  */
 
 import { describe, it, expect } from 'vitest';
 
-describe('V1-M29 W-5: Actions tab excludes deprecated passport init', () => {
-  it('html-renderer Actions tab does NOT contain "passport init"', async () => {
+describe('V1-M30.5 W-3: Actions tab renders all distinct actions', () => {
+  it('Actions tab renders all distinct actions (no command-dedup)', async () => {
     const { generateReportHtml } = await import('./html-renderer.js');
     const html = generateReportHtml(buildReportWithPassportInitAction());
     const actionsTab = extractTab(html, 'actions');
-    expect(actionsTab).not.toMatch(/passport\s+init/);
+    // Both actions should appear (no command-based dedup collapsing them)
+    expect(actionsTab).toMatch(/data-rank="1"/);
+    expect(actionsTab).toMatch(/data-rank="2"/);
   });
 
   it('Actions tab still contains valid suggestions (not empty)', async () => {

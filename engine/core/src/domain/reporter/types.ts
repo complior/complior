@@ -169,6 +169,8 @@ export interface ReportSummary {
   readonly enforcementDate: string;
   readonly generatedAt: string;
   readonly compliorVersion: string;
+  /** V1-M30.5 W-1: scanned project path used to resolve relative document file:// links. */
+  readonly projectPath?: string | null;
 }
 
 // --- Findings Summary (for HTML Tab 3) ---
