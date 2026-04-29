@@ -2001,17 +2001,17 @@ mod tests {
                 }
                 // Find any `complior passport init` literal in non-test,
                 // non-doc source lines.
-                if line.contains("complior passport init") {
-                    panic!(
-                        "V1-M30.5 W-5: {}:{} contains user-facing hint \
-                         `complior passport init` — should use `complior agent init` \
-                         after V1-M30.4 rename (passport remains a deprecated alias \
-                         but new hints should reference agent).\n  >>> {}",
-                        path.display(),
-                        lineno + 1,
-                        line
-                    );
-                }
+                // V1-M30.5 TD-61: clippy::manual_assert — use assert! not if+panic!
+                assert!(
+                    !line.contains("complior passport init"),
+                    "V1-M30.5 W-5: {}:{} contains user-facing hint \
+                     `complior passport init` — should use `complior agent init` \
+                     after V1-M30.4 rename (passport remains a deprecated alias \
+                     but new hints should reference agent).\n  >>> {}",
+                    path.display(),
+                    lineno + 1,
+                    line
+                );
             }
         }
     }
