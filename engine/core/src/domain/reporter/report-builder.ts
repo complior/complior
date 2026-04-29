@@ -174,6 +174,7 @@ export const buildComplianceReport = (input: ReportBuildInput): ComplianceReport
     enforcementDate: EU_AI_ACT_DEADLINE_ISO,
     generatedAt: now.toISOString(),
     compliorVersion: version,
+    projectPath: scanResult?.projectPath ?? null,
   };
 
   // Build new report sections

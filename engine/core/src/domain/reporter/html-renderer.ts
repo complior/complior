@@ -828,7 +828,29 @@ const renderTabLaws = (report: ComplianceReport): string => {
 
 // --- TAB 5: Documents (HR-5: profile-filtered with disclaimer) ---
 
-// HR-5: Filter documents based on profile
+/**
+ * V1-M30.5 W-2: Resolve a document outputFile to an absolute path for file:// links.
+ *
+ * - Absolute path (starts with `/`) → returned as-is.
+ * - Relative path + projectPath provided → `${projectPath}/${outputFile}`.
+ * - Relative path, no projectPath → `${process.cwd()}/${outputFile}` (degraded fallback).
+ *
+ * @param outputFile - The document output path (may be absolute or relative).
+ * @param projectPath - The scanned project root (from report.summary.projectPath).
+ * @returns An absolute file:// URL string.
+ */
+export const resolveDocumentPath = (outputFile: string, projectPath?: string | null): string => {
+  if (outputFile.startsWith('/')) return outputFile;
+  if (projectPath) return `${projectPath}/${outputFile}`;
+  // Degraded fallback — only used when projectPath is unavailable
+  return `${process.cwd()}/${outputFile}`;
+};
+
+// HR-5: Filter documents based on profile.
+// A document is applicable when its required risk level is met by the profile's risk level.
+// HIGH-RISK docs apply to both HIGH and LIMITED profiles (the user's AI system may be high-risk
+// even if the deployer's overall posture is "limited" — the doc is still useful).
+// LIMITED-RISK docs apply only to LIMITED profiles.
 const isDocumentApplicable = (
   doc: { readonly docType: string; readonly article: string },
   profile: { readonly role: string; readonly riskLevel: string; readonly domain: string } | undefined,
@@ -837,18 +859,14 @@ const isDocumentApplicable = (
 
   const docType = doc.docType.toLowerCase();
   const article = doc.article.toLowerCase();
-  const riskLevel = profile.riskLevel.toLowerCase();
-
-  // FRIA (Art. 27) is high-risk only
-  if ((docType === 'fria' || article.includes('art. 27')) && riskLevel === 'limited') {
-    return false;
-  }
 
   // Declaration of Conformity (Art. 47) is provider-only
   if ((docType === 'declaration-of-conformity' || article.includes('art. 47')) && profile.role.toLowerCase() === 'deployer') {
     return false;
   }
 
+  // All other documents (including FRIA/Art.27) are shown — the disclaimer explains
+  // which ones are not strictly required for the current profile/risk level.
   return true;
 };
 
@@ -857,7 +875,6 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   const contents = report.documentContents;
   const profile = report.profile;
   const profileRole = (profile?.role ?? '').toLowerCase();
-  const profileRisk = (profile?.riskLevel ?? '').toLowerCase();
 
   const contentMap = new Map<string, DocumentContent>();
   for (const c of contents) contentMap.set(c.docType, c);
@@ -866,23 +883,19 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   const applicableDocs = docs.documents.filter(d => isDocumentApplicable(d, profile));
   const excludedCount = docs.documents.length - applicableDocs.length;
 
-  // Track whether specific doc types are hidden (for W-4 disclaimer)
-  const friaExcluded = profileRisk === 'limited' && docs.documents.some(d => {
-    const docType = d.docType.toLowerCase();
-    return docType === 'fria' || d.article.toLowerCase().includes('art. 27');
-  });
+  // Track whether Declaration-of-Conformity is hidden (for disclaimer)
   const declarationExcluded = profileRole === 'deployer' && docs.documents.some(d => {
     const docType = d.docType.toLowerCase();
     return docType === 'declaration-of-conformity' || d.article.toLowerCase().includes('art. 47');
   });
 
-  // V1-M30.4 A.4: render document title as a clickable file:// link so users
-  // can open the document directly in their editor. Resolve relative paths
-  // against the current working directory.
+  // V1-M30.4 A.4 / V1-M30.5 W-2: render document title as a clickable file:// link.
+  // Resolve relative paths against summary.projectPath (from scanResult), not process.cwd().
+  const projectPath = report.summary?.projectPath ?? null;
   const docCards = applicableDocs.map((d) => {
     const content = contentMap.get(d.docType);
     const absPath = d.outputFile
-      ? (d.outputFile.startsWith('/') ? d.outputFile : `${process.cwd()}/${d.outputFile}`)
+      ? resolveDocumentPath(d.outputFile, projectPath)
       : '';
     const titleHtml = absPath
       ? `<a href="file://${escapeHtml(absPath)}" target="_blank" class="doc-link"><strong>${escapeHtml(d.docType)}</strong></a>`
@@ -919,20 +932,23 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   };
   const excludedLinks = excludedDocs.filter(d => !isProviderOnlyDoc(d)).map((d) => {
     const absPath = d.outputFile
-      ? (d.outputFile.startsWith('/') ? d.outputFile : `${process.cwd()}/${d.outputFile}`)
+      ? resolveDocumentPath(d.outputFile, projectPath)
       : '';
     const label = escapeHtml(d.article || d.docType);
     return absPath
       ? `<a href="file://${escapeHtml(absPath)}" target="_blank" class="doc-link muted">${label}</a>`
       : `<span class="muted">${label}</span>`;
   }).join(' &middot; ');
+  // V1-M30.5 W-2: Disclaimer about excluded documents (always when N > 0).
+  // V1-M30.5 W-2: FRIA is shown in the tab for all profiles (the document is useful
+  // for reference even for limited-risk deployers). Declaration-of-Conformity is
+  // the only doc type truly excluded from the tab for deployer-only profiles.
   const disclaimer = excludedCount > 0 ? `
     <div class="docs-disclaimer">
       <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       <span>+${excludedCount} documents not required for your profile
-        ${friaExcluded ? '(FRIA Art. 27 — high-risk only)' : ''}
         ${declarationExcluded ? '(Declaration of Conformity — provider-only)' : ''}.
         ${excludedLinks ? ` Excluded: ${excludedLinks}.` : ''}</span>
     </div>` : '';
@@ -1172,11 +1188,11 @@ const renderTabPassports = (report: ComplianceReport): string => {
 // --- TAB 8: Actions (HR-8: explanatory intro header) ---
 
 const renderTabActions = (report: ComplianceReport): string => {
-  let actions = report.actionPlan.actions;
+  const actions = report.actionPlan.actions;
 
-  // W-5: Filter out deprecated passport init command
-  // `complior passport init` was deprecated in V1-M11 (auto-created via complior init)
-  actions = actions.filter((a) => !/passport\s+init/i.test(a.command ?? ''));
+  // V1-M30.5 W-3: Render ALL actions — no command-based deduplication and no
+  // legacy passport-init filter. Each distinct action (identified by unique `id`)
+  // gets its own row with the correct emoji prefix.
 
   // HR-8: Add explanatory intro paragraph
   const intro = actions.length > 0
@@ -1185,18 +1201,10 @@ const renderTabActions = (report: ComplianceReport): string => {
 
   if (actions.length === 0) return `${intro}<p class="muted">No priority actions identified.</p>`;
 
-  // HR-8: Deduplicate commands - only show unique commands once
-  const seenCommands = new Set<string>();
-  const uniqueActions = actions.filter((a) => {
-    if (seenCommands.has(a.command)) return false;
-    seenCommands.add(a.command);
-    return true;
-  });
-
   // V1-M30.4 A.6: prefix each action title with a source emoji, and prepend
   // a "Done" badge when the action's id matches an entry in fixHistory.
   const fixedCheckIds = new Set(report.fixHistory.map((h) => h.checkId));
-  const rows = uniqueActions.map((a) => {
+  const rows = actions.map((a) => {
     const icon = sourceIcon(a.source);
     const titlePrefix = icon ? `${icon} ` : '';
     const isDone = a.id !== undefined && fixedCheckIds.has(a.id);
