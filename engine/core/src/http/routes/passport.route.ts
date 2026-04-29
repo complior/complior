@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Handler } from 'hono';
 import { z } from 'zod';
 import { ValidationError } from '../../types/errors.js';
 import type { PassportService } from '../../services/passport-service.js';
@@ -21,7 +22,9 @@ const AuditQuerySchema = z.object({
 });
 
 const InitRequestSchema = z.object({
-  path: z.string().min(1),
+  // V1-M30.4: `path` made optional — service falls back to env-based getProjectPath()
+  // when missing. Required to support `POST /agent/init` with empty body.
+  path: z.string().min(1).optional(),
   overrides: z.record(z.unknown()).optional(),
   force: z.boolean().optional(),
   // T-13: Filter init to only a specific agent name (passport init <name>)
@@ -31,7 +34,20 @@ const InitRequestSchema = z.object({
 export const createPassportRoute = (passportService: PassportService) => {
   const app = new Hono();
 
-  app.post('/passport/init', async (c) => {
+  // V1-M30.4 B.2: All `/passport/*` routes are also exposed under `/agent/*`.
+  // The CLI rename `complior passport` → `complior agent` (Section B.1, rust-dev)
+  // requires the engine to expose both URL prefixes. Same handler, identical
+  // response shape — `/passport/*` stays as deprecated back-compat alias.
+  const onBoth = (
+    method: 'get' | 'post',
+    suffix: string,
+    handler: Handler,
+  ): void => {
+    app[method](`/passport${suffix}`, handler);
+    app[method](`/agent${suffix}`, handler);
+  };
+
+  onBoth('post', '/init', async (c) => {
     const data = await parseBody(c, InitRequestSchema);
 
     const result = await passportService.initPassport(
@@ -43,13 +59,13 @@ export const createPassportRoute = (passportService: PassportService) => {
     return c.json(result);
   });
 
-  app.get('/passport/list', async (c) => {
+  onBoth('get', '/list', async (c) => {
     const path = c.req.query('path');
     const manifests = await passportService.listPassports(path);
     return c.json(manifests);
   });
 
-  app.get('/passport/show', async (c) => {
+  onBoth('get', '/show', async (c) => {
     const path = c.req.query('path');
     const name = c.req.query('name');
     if (!name) throw new ValidationError('Missing required query param: name');
@@ -60,7 +76,7 @@ export const createPassportRoute = (passportService: PassportService) => {
     return c.json(manifest);
   });
 
-  app.post('/passport/rename', async (c) => {
+  onBoth('post', '/rename', async (c) => {
     const data = await parseBody(c, z.object({
       path: z.string().min(1),
       oldName: z.string().min(1),
@@ -76,7 +92,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // C.S02: Standalone autonomy analysis (per-agent breakdown)
-  app.get('/passport/autonomy', async (c) => {
+  onBoth('get', '/autonomy', async (c) => {
     const path = c.req.query('path');
 
     const manifests = await passportService.listPassports(path ?? undefined);
@@ -109,7 +125,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // C.S07: Passport validation (schema + signature + completeness)
-  app.get('/passport/validate', async (c) => {
+  onBoth('get', '/validate', async (c) => {
     const path = c.req.query('path');
     const name = c.req.query('name');
     if (!name) throw new ValidationError('Missing required query param: name');
@@ -129,7 +145,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // C.S09: Passport completeness score
-  app.get('/passport/completeness', async (c) => {
+  onBoth('get', '/completeness', async (c) => {
     const path = c.req.query('path');
     const name = c.req.query('name');
     if (!name) throw new ValidationError('Missing required query param: name');
@@ -150,7 +166,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // C.S08: Export passport to external format (A2A, AIUC-1, NIST)
-  app.get('/passport/export', async (c) => {
+  onBoth('get', '/export', async (c) => {
     const path = c.req.query('path');
     const name = c.req.query('name');
     if (!name) throw new ValidationError('Missing required query param: name');
@@ -172,7 +188,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // C.R20: Evidence chain summary
-  app.get('/passport/evidence', async (c) => {
+  onBoth('get', '/evidence', async (c) => {
     const path = c.req.query('path');
     const [summary, chainData] = await Promise.all([
       passportService.getEvidenceChainSummary(path ?? undefined),
@@ -186,7 +202,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // C.R20: Evidence chain verification
-  app.get('/passport/evidence/verify', async (c) => {
+  onBoth('get', '/evidence/verify', async (c) => {
     const path = c.req.query('path');
     const result = await passportService.verifyEvidenceChain(path ?? undefined);
     return c.json({
@@ -199,7 +215,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S05-13: Agent Registry
-  app.get('/passport/registry', async (c) => {
+  onBoth('get', '/registry', async (c) => {
     const path = c.req.query('path');
     const entries = await passportService.getAgentRegistry(path ?? undefined);
     const agents = entries.map(e => ({ ...e, completeness: e.passportCompleteness }));
@@ -207,7 +223,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S05-14: Permissions matrix
-  app.get('/passport/permissions', async (c) => {
+  onBoth('get', '/permissions', async (c) => {
     const path = c.req.query('path');
     const result = await passportService.getPermissionsMatrix(path ?? undefined);
     // matrix must be Record<string, Record<string, boolean>> for Rust CLI to parse with as_object()
@@ -224,7 +240,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S05-14: Audit trail query
-  app.get('/passport/audit', async (c) => {
+  onBoth('get', '/audit', async (c) => {
     const data = parseQuery(c, AuditQuerySchema);
 
     const entries = await passportService.getAuditTrail({
@@ -238,7 +254,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S05-14: Audit trail summary
-  app.get('/passport/audit/summary', async (c) => {
+  onBoth('get', '/audit/summary', async (c) => {
     const result = await passportService.getAuditSummary();
     return c.json({
       total_events: result.totalEntries,
@@ -253,7 +269,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S05-19: AIUC-1 Readiness Score
-  app.get('/passport/readiness', async (c) => {
+  onBoth('get', '/readiness', async (c) => {
     const name = c.req.query('name');
     if (!name) throw new ValidationError('Missing required query param: name');
     const path = c.req.query('path');
@@ -265,7 +281,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S06-11: Import passport from external format
-  app.post('/passport/import', async (c) => {
+  onBoth('post', '/import', async (c) => {
     const data = await parseBody(c, z.object({
       format: z.enum(['a2a']),
       data: z.record(z.unknown()),
@@ -281,7 +297,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S06-12: Audit package export
-  app.get('/passport/audit-package', async (c) => {
+  onBoth('get', '/audit-package', async (c) => {
     const path = c.req.query('path');
     const result = await passportService.generateAuditPackage(path);
     return new Response(result.buffer as unknown as BodyInit, {
@@ -293,7 +309,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S06-12: Audit package metadata
-  app.get('/passport/audit-package/meta', async (c) => {
+  onBoth('get', '/audit-package/meta', async (c) => {
     const path = c.req.query('path');
     const result = await passportService.generateAuditPackage(path);
     return c.json({
@@ -304,7 +320,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // US-S05-24: Compare passport versions
-  app.get('/passport/diff', async (c) => {
+  onBoth('get', '/diff', async (c) => {
     const name = c.req.query('name');
     if (!name) throw new ValidationError('Missing required query param: name');
     const path = c.req.query('path');
@@ -313,7 +329,7 @@ export const createPassportRoute = (passportService: PassportService) => {
   });
 
   // W-3: Worker notification route (Art. 26(7))
-  app.post('/passport/notify', async (c) => {
+  onBoth('post', '/notify', async (c) => {
     const data = await parseBody(c, z.object({
       name: z.string().min(1),
     }));
