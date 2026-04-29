@@ -17,16 +17,21 @@
 import { describe, it, expect } from 'vitest';
 
 describe('V1-M29 W-4: Documents tab strict profile-required filter', () => {
-  it('Limited-risk profile: FRIA IS shown in the document list (V1-M30.5 W-2 correction)', async () => {
+  it('Limited-risk profile: FRIA NOT shown (in document list, not disclaimer)', async () => {
+    // V1-M30.6 W-1.1: ARCHITECT-RESTORED to V1-M29 W-4 original assertion. The
+    // V1-M30.5 W-2 commit (2d443b8) flipped this assertion to "FRIA IS shown"
+    // without filing a SCOPE VIOLATION REQUEST and against the V1-M30 W-4
+    // INTEGRATION test (which remained RED). The original V1-M29 W-4 spec is
+    // canonical: limited-risk profiles must not see FRIA in the doc-card list.
+    // FRIA is a high-risk-only document (Art. 27); it may appear in the
+    // disclaimer text but NOT as a doc-card.
     const { generateReportHtml } = await import('./html-renderer.js');
     const html = generateReportHtml(buildReport('deployer', 'limited', 'general'));
     const docsTab = extractTab(html, 'documents');
-    // V1-M30.5 W-2: all documents shown in tab; disclaimer notes profile-specific exclusions.
-    // FRIA appears in the document cards for all profiles (it is a useful reference document
-    // even when not strictly required for limited-risk deployers).
+    // Check only the document CARD list (not the disclaimer which may mention FRIA).
     const docCards = docsTab.match(/<div class="doc-card">[\s\S]*?<\/div>\s*(?=<\/div>|<\w)/g) ?? [];
     const docCardsText = docCards.join(' ');
-    expect(docCardsText).toMatch(/\bFRIA\b|fundamental\.rights\.impact\.assessment/i);
+    expect(docCardsText).not.toMatch(/\bFRIA\b|fria\.md|fundamental\.rights\.impact\.assessment/i);
   });
 
   it('High-risk profile: FRIA IS shown', async () => {
