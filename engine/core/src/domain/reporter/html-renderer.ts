@@ -1,5 +1,6 @@
-import type { ComplianceReport, ReadinessZone, CompletenessZone, DocumentStatusLevel, FindingSummary, EvalTestSummary, DocumentContent, EvalResultsSummary } from './types.js';
+import type { ComplianceReport, ReadinessZone, CompletenessZone, DocumentStatusLevel, FindingSummary, EvalTestSummary, DocumentContent, EvalResultsSummary, FixHistoryEntry } from './types.js';
 import { formatDateHuman, formatDateTimeHuman } from './format-dates.js';
+import { sourceIcon } from './source-icons.js';
 
 // --- Color constants (CSS variable references) ---
 
@@ -158,6 +159,40 @@ const buildCategoryBars = (tests: readonly EvalTestSummary[]): string => {
  *                    "No tests in this category." paragraph. Use this to surface
  *                    actionable hints (HR-T2 → "see Findings tab", HR-T3 → "run `complior …`").
  */
+// V1-M30.4 A.7: render tests with failed-first ordering — error before fail
+// before pass — secondary by severity (critical → low) and confidence (high
+// first). Pure function that returns a sorted COPY (input remains untouched).
+const VERDICT_PRIORITY: Readonly<Record<string, number>> = Object.freeze({
+  error: 0,
+  fail: 1,
+  inconclusive: 2,
+  skip: 3,
+  pass: 4,
+});
+const SEVERITY_PRIORITY: Readonly<Record<string, number>> = Object.freeze({
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  info: 4,
+});
+
+const sortTestsFailedFirst = (
+  tests: readonly EvalTestSummary[],
+): readonly EvalTestSummary[] => {
+  const pVerdict = (v: string): number => VERDICT_PRIORITY[v] ?? 99;
+  const pSeverity = (s: string | undefined): number => (s ? SEVERITY_PRIORITY[s] ?? 99 : 99);
+  // Slice to avoid mutating the caller's array.
+  return [...tests].sort((a, b) => {
+    const dv = pVerdict(a.verdict) - pVerdict(b.verdict);
+    if (dv !== 0) return dv;
+    const ds = pSeverity(a.severity) - pSeverity(b.severity);
+    if (ds !== 0) return ds;
+    // High confidence first → reverse subtraction.
+    return (b.confidence ?? 0) - (a.confidence ?? 0);
+  });
+};
+
 const renderTestSection = (
   sectionId: string,
   title: string,
@@ -166,12 +201,14 @@ const renderTestSection = (
   isSecurity: boolean,
   emptyState?: string,
 ): string => {
+  // V1-M30.4 A.7: render in failed-first order (error → fail → pass).
+  const sorted = sortTestsFailedFirst(tests);
   // HR-2: Always show section header, even if empty (for old format test helpers)
-  const stats = tests.length > 0 ? sectionStats(tests) : { passed: 0, failed: 0, errors: 0, skipped: 0, inconclusive: 0 };
-  const bars = (tests.length > 0 && !isSecurity) ? buildCategoryBars(tests) : '';
+  const stats = sorted.length > 0 ? sectionStats(sorted) : { passed: 0, failed: 0, errors: 0, skipped: 0, inconclusive: 0 };
+  const bars = (sorted.length > 0 && !isSecurity) ? buildCategoryBars(sorted) : '';
   const tblId = `tbl-${sectionId}`;
 
-  const rows = tests.map((t, i) => {
+  const rows = sorted.map((t, i) => {
     const hidden = i >= INITIAL_VISIBLE ? ' hidden-row' : '';
     const methodBadge = t.method === 'deterministic'
       ? '<span class="method-badge det">DET</span>'
@@ -204,8 +241,8 @@ const renderTestSection = (
     return dataRow + detailRow;
   }).join('');
 
-  const showAllBtn = tests.length > INITIAL_VISIBLE
-    ? `<button class="show-all-btn" data-section="${tblId}">Show all ${tests.length} tests</button>`
+  const showAllBtn = sorted.length > INITIAL_VISIBLE
+    ? `<button class="show-all-btn" data-section="${tblId}">Show all ${sorted.length} tests</button>`
     : '';
 
   // HR-2: Show subtitle with complior command reference
@@ -220,10 +257,10 @@ const renderTestSection = (
           <h3 style="margin:0">${escapeHtml(title)}</h3>
           ${subtitleHtml}
         </div>
-        ${tests.length > 0 ? renderMiniDonut(stats.passed, tests.length) : ''}
+        ${sorted.length > 0 ? renderMiniDonut(stats.passed, sorted.length) : ''}
       </div>
       ${bars ? `<div class="ts-categories">${bars}</div>` : ''}
-      ${tests.length > 0 ? `
+      ${sorted.length > 0 ? `
       <div class="filter-bar" data-target="${tblId}">
         <button class="filter-btn active" data-filter="all">All</button>
         <button class="filter-btn" data-filter="pass">Passed</button>
@@ -307,6 +344,7 @@ const renderTabOverview = (report: ComplianceReport): string => {
     </section>` : '';
 
   return `
+    <p class="tab-intro">Your overall EU AI Act readiness across 7 dimensions. Green &ge; 80, yellow 60-79, orange 40-59, red &lt; 40. Each dimension has equal weight (1/7) &mdash; they all matter for compliance certification.</p>
     <div class="ov-top">
       ${renderGauge(report.readiness.readinessScore, report.readiness.zone)}
       ${profileSection}
@@ -363,10 +401,12 @@ const pickHeaderScore = (
   return { score: ev.overallScore, grade: ev.grade, isSecurityFallback: false };
 };
 
+const TESTS_TAB_INTRO = '<p class="tab-intro">Test results from your AI system: rule-based scan checks (<code>complior scan</code>), deterministic eval probes (<code>complior eval --det</code>), AI-judged disclosure tests (<code>complior eval --llm</code>), and OWASP LLM Top 10 security probes (<code>complior eval --security</code>).</p>';
+
 const renderTabTests = (report: ComplianceReport): string => {
   const ev = report.evalResults;
   if (!ev) {
-    return '<div class="empty-state"><p>No eval results available.</p><p>Run <code>complior eval --det &lt;target&gt;</code> to test your AI system.</p></div>';
+    return `${TESTS_TAB_INTRO}<div class="empty-state"><p>No eval results available.</p><p>Run <code>complior eval --det &lt;target&gt;</code> to test your AI system.</p></div>`;
   }
 
   // HR-2: Group tests by source command
@@ -423,6 +463,7 @@ const renderTabTests = (report: ComplianceReport): string => {
   const securityEmptyState = '<p class="muted">Not run in this report. To populate: <code>complior eval --security &lt;target&gt;</code></p>';
 
   return `
+    ${TESTS_TAB_INTRO}
     <div class="stat-row">
       <div class="stat"><span class="stat-num">${header.score}</span><span class="stat-label">Score (${header.grade})</span>${headerNote}</div>
       <div class="stat"><span class="stat-num" style="color:var(--teal)">${ev.passed}</span><span class="stat-label">Passed</span></div>
@@ -448,8 +489,22 @@ interface FindingWithExplanation extends FindingSummary {
   };
 }
 
-const renderFindingCard = (f: FindingWithExplanation): string => {
+interface FindingCardContext {
+  /** V1-M30.4 A.2: collection of historic fixes — used to surface a re-scan hint
+   * when a finding was fixed but the cached scan still shows it. */
+  readonly fixHistory: readonly FixHistoryEntry[];
+}
+
+const renderFindingCard = (f: FindingWithExplanation, ctx: FindingCardContext): string => {
   const hasExplanation = f.explanation?.what || f.explanation?.why || f.explanation?.how;
+
+  // V1-M30.4 A.2: when a fix was already applied for this checkId, the user
+  // needs to re-run scan to see whether the issue is gone. Surface that hint
+  // inline next to the title.
+  const fixApplied = ctx.fixHistory.some((h) => h.checkId === f.checkId);
+  const rescanBadge = fixApplied
+    ? '<span class="tag tag-amber">Fix applied &mdash; re-scan to verify</span>'
+    : '';
 
   // W-2: Always render as finding-card (enhanced card layout)
   // Even without explanation, card format has better UX
@@ -460,6 +515,7 @@ const renderFindingCard = (f: FindingWithExplanation): string => {
         <div class="finding-card-header">
           <span class="severity-dot" style="background:${severityColor(f.severity)}"></span>
           <strong class="finding-title">${escapeHtml(f.checkId)}</strong>
+          ${rescanBadge}
           <span class="finding-message">${escapeHtml(f.message)}</span>
           ${f.articleReference ? `<span class="tag tag-gray">${escapeHtml(f.articleReference)}</span>` : ''}
           ${f.fixAvailable ? '<span class="tag tag-green">Auto-fixable</span>' : ''}
@@ -492,6 +548,7 @@ const renderFindingCard = (f: FindingWithExplanation): string => {
       <div class="finding-card-header">
         <span class="severity-dot" style="background:${severityColor(f.severity)}"></span>
         <strong class="finding-title">${escapeHtml(f.checkId)}</strong>
+        ${rescanBadge}
         <span class="finding-message">${escapeHtml(f.message)}</span>
         ${f.articleReference ? `<span class="tag tag-gray">${escapeHtml(f.articleReference)}</span>` : ''}
         ${f.fixAvailable ? '<span class="tag tag-green">Auto-fixable</span>' : ''}
@@ -559,7 +616,7 @@ const renderTabFindings = (report: ComplianceReport): string => {
     .filter((s) => grouped.has(s))
     .map((s) => {
       const items = grouped.get(s)!;
-      const inner = items.map(renderFindingCard).join('');
+      const inner = items.map((f) => renderFindingCard(f, { fixHistory: report.fixHistory })).join('');
       return `<details open><summary><strong>${s.charAt(0).toUpperCase() + s.slice(1)} (${items.length})</strong></summary>${inner}</details>`;
     }).join('');
 
@@ -569,6 +626,7 @@ const renderTabFindings = (report: ComplianceReport): string => {
     : '';
 
   return `
+    <p class="tab-intro">Issues found by the 5-layer scanner in your code, configs, and documents. Each card shows what was found, why it matters under EU AI Act, and what to do. Apply fixes via <code>complior fix --check-id &lt;id&gt;</code> then re-scan to verify.</p>
     <style>
     .finding-card{border:1px solid var(--b2);border-radius:12px;padding:1rem;margin:.5rem 0;background:var(--card)}
     .finding-card-header{display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap;margin-bottom:.75rem}
@@ -687,16 +745,37 @@ const renderTabLaws = (report: ComplianceReport): string => {
   const excludedCount = (obl as { excludedCount?: number }).excludedCount
     ?? (allObls.length - applicableObls.length);
 
-  const lawItems = applicableObls.map((o) => `
+  // V1-M30.4 A.3: classify obligation status — covered / past-due / pending —
+  // and render a leading emoji-badge plus clickable links to each linkedCheck.
+  const now = new Date();
+  const obligationStatus = (o: { covered?: boolean; deadline?: string | null }): { label: string; emoji: string; cssClass: string } => {
+    if (o.covered) return { label: 'Covered', emoji: '✅', cssClass: 'status-covered' };
+    if (o.deadline) {
+      const d = new Date(o.deadline);
+      if (!Number.isNaN(d.getTime()) && d < now) {
+        return { label: 'Past-due', emoji: '🚨', cssClass: 'status-pastdue' };
+      }
+    }
+    return { label: 'Pending', emoji: '⏳', cssClass: 'status-pending' };
+  };
+
+  const lawItems = applicableObls.map((o) => {
+    const st = obligationStatus(o);
+    const linkedAnchors = (o.linkedChecks ?? []).map((checkId) =>
+      `<a href="#tab-findings" class="tab-link" data-tab="findings">&rarr; ${escapeHtml(checkId)}</a>`,
+    ).join(' ');
+    return `
     <div class="law-item">
       <div class="law-band ${o.covered ? 'covered' : 'uncovered'}"></div>
       <div class="law-art" title="${escapeHtml(o.article ?? '')}">${escapeHtml(o.article ?? '')}</div>
       <div class="law-body">
         <div class="law-title">${escapeHtml(o.title ?? '')}</div>
-        <div class="law-meta"><span class="muted">${escapeHtml(o.id ?? '')}</span><span class="muted">${escapeHtml(o.role ?? '')}</span>${o.deadline ? `<span class="muted">${escapeHtml(formatDateHuman(o.deadline))}</span>` : ''}</div>
+        <div class="law-meta"><span class="muted">${escapeHtml(o.id ?? '')}</span> <span class="law-status-badge ${st.cssClass}">${st.emoji} ${st.label}</span> <span class="muted">${escapeHtml(o.role ?? '')}</span>${o.deadline ? `<span class="muted">${escapeHtml(formatDateHuman(o.deadline))}</span>` : ''}</div>
+        ${linkedAnchors ? `<div class="law-linked muted small">Linked checks: ${linkedAnchors}</div>` : ''}
       </div>
       <div class="law-status"><span class="verdict-badge" style="background:${o.covered ? 'var(--teal)' : 'var(--coral)'}">${o.covered ? 'covered' : 'uncovered'}</span></div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const uncoveredNoChecks = applicableObls.filter((o) => !o.covered && (o.linkedChecks?.length ?? 0) === 0).length;
 
@@ -713,11 +792,19 @@ const renderTabLaws = (report: ComplianceReport): string => {
     </div>` : '';
 
   return `
+    <p class="tab-intro">EU AI Act regulatory obligations applicable to your profile (role &times; risk level &times; domain). 'Covered' means you have an artifact (scan finding, document, or passport field) demonstrating compliance. 'Pending' means action needed for certification.</p>
     ${digitalOmnibusBanner()}
     ${disclaimer}
     <style>
     .law-item{display:grid;grid-template-columns:4px 90px 1fr auto;gap:0 .75rem;align-items:center;padding:.5rem;border-bottom:1px solid var(--b);font-size:.75rem}
     .law-item:hover{background:rgba(13,148,136,.03)}
+    .law-status-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-family:var(--f-mono);font-size:.625rem;font-weight:600;margin-right:.25rem}
+    .law-status-badge.status-covered{background:rgba(13,148,136,.1);color:var(--teal)}
+    .law-status-badge.status-pending{background:rgba(217,119,6,.1);color:var(--amber)}
+    .law-status-badge.status-pastdue{background:rgba(192,57,43,.1);color:var(--coral)}
+    .law-linked{margin-top:.25rem}
+    .law-linked a{color:var(--teal);margin-right:.5rem;text-decoration:none}
+    .law-linked a:hover{text-decoration:underline}
     .law-band{height:100%;border-radius:2px;align-self:stretch}
     .law-band.covered{background:var(--teal)}
     .law-band.uncovered{background:var(--coral)}
@@ -789,13 +876,22 @@ const renderTabDocuments = (report: ComplianceReport): string => {
     return docType === 'declaration-of-conformity' || d.article.toLowerCase().includes('art. 47');
   });
 
+  // V1-M30.4 A.4: render document title as a clickable file:// link so users
+  // can open the document directly in their editor. Resolve relative paths
+  // against the current working directory.
   const docCards = applicableDocs.map((d) => {
     const content = contentMap.get(d.docType);
+    const absPath = d.outputFile
+      ? (d.outputFile.startsWith('/') ? d.outputFile : `${process.cwd()}/${d.outputFile}`)
+      : '';
+    const titleHtml = absPath
+      ? `<a href="file://${escapeHtml(absPath)}" target="_blank" class="doc-link"><strong>${escapeHtml(d.docType)}</strong></a>`
+      : `<strong>${escapeHtml(d.docType)}</strong>`;
     return `
     <div class="doc-card">
       <div class="doc-header">
         ${d.id ? `<code class="doc-id">${escapeHtml(d.id)}</code>` : ''}
-        <strong>${escapeHtml(d.docType)}</strong>
+        ${titleHtml}
         <span class="status-badge" style="background:${DOC_STATUS_COLORS[d.status]}">${d.status}</span>
         <span class="muted">${escapeHtml(d.article)}</span>
       </div>
@@ -809,7 +905,27 @@ const renderTabDocuments = (report: ComplianceReport): string => {
     </div>`;
   }).join('');
 
-  // W-4: Disclaimer about excluded documents (always when N > 0)
+  // W-4: Disclaimer about excluded documents (always when N > 0).
+  // V1-M30.4 A.4: include file:// links to excluded docs so that users can
+  // still open them from the report even though they are filtered from the
+  // primary list. We only emit links for excluded docs that are NOT
+  // provider-only (V1-M29 W-4 invariant: declaration-of-conformity must not
+  // appear anywhere in the docs tab when the profile is deployer-only). FRIA
+  // and other risk-gated docs may legitimately surface in the disclaimer.
+  const excludedDocs = docs.documents.filter(d => !isDocumentApplicable(d, profile));
+  const isProviderOnlyDoc = (d: { docType: string; article: string }): boolean => {
+    const t = d.docType.toLowerCase();
+    return t === 'declaration-of-conformity' || d.article.toLowerCase().includes('art. 47');
+  };
+  const excludedLinks = excludedDocs.filter(d => !isProviderOnlyDoc(d)).map((d) => {
+    const absPath = d.outputFile
+      ? (d.outputFile.startsWith('/') ? d.outputFile : `${process.cwd()}/${d.outputFile}`)
+      : '';
+    const label = escapeHtml(d.article || d.docType);
+    return absPath
+      ? `<a href="file://${escapeHtml(absPath)}" target="_blank" class="doc-link muted">${label}</a>`
+      : `<span class="muted">${label}</span>`;
+  }).join(' &middot; ');
   const disclaimer = excludedCount > 0 ? `
     <div class="docs-disclaimer">
       <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
@@ -817,10 +933,19 @@ const renderTabDocuments = (report: ComplianceReport): string => {
       </svg>
       <span>+${excludedCount} documents not required for your profile
         ${friaExcluded ? '(FRIA Art. 27 — high-risk only)' : ''}
-        ${declarationExcluded ? '(Declaration of Conformity — provider-only)' : ''}.</span>
+        ${declarationExcluded ? '(Declaration of Conformity — provider-only)' : ''}.
+        ${excludedLinks ? ` Excluded: ${excludedLinks}.` : ''}</span>
     </div>` : '';
 
   return `
+    <p class="tab-intro">Required compliance documents per EU AI Act. Click any document title to open it in your editor (file:// link).</p>
+    <div class="legend doc-legend">
+      <strong>Status legend:</strong>
+      <span class="legend-item"><span class="status-badge" style="background:${DOC_STATUS_COLORS.missing}">Missing</span> file doesn't exist</span>
+      <span class="legend-item"><span class="status-badge" style="background:${DOC_STATUS_COLORS.scaffold}">Scaffold</span> placeholder template</span>
+      <span class="legend-item"><span class="status-badge" style="background:${DOC_STATUS_COLORS.draft}">Draft</span> partially filled</span>
+      <span class="legend-item"><span class="status-badge" style="background:${DOC_STATUS_COLORS.reviewed}">Reviewed</span> finalised</span>
+    </div>
     ${disclaimer}
     <div class="stat-row">
       <div class="stat"><span class="stat-num" style="color:var(--teal)">${docs.byStatus.reviewed}</span><span class="stat-label">Reviewed</span></div>
@@ -833,6 +958,8 @@ const renderTabDocuments = (report: ComplianceReport): string => {
 };
 
 // --- TAB 6: Fixes (HR-6: populated with applied + available) ---
+
+const FIXES_TAB_INTRO = '<p class="tab-intro">History of <code>complior fix</code> applications. Score change shows the impact on overall readiness &mdash; small numbers are normal because the score averages 7 dimensions. Each fix typically improves ONE dimension; cumulative effect is what matters over time.</p>';
 
 const renderTabFixes = (report: ComplianceReport): string => {
   const fixes = report.fixHistory;
@@ -847,6 +974,7 @@ const renderTabFixes = (report: ComplianceReport): string => {
   if (!hasAppliedFixes && !hasAvailableFixes) {
     // HR-6 requires "No fixes needed", existing test requires "No fixes applied yet"
     return `
+      ${FIXES_TAB_INTRO}
       <div class="empty-state">
         <p>No fixes needed &mdash; No fixes applied yet, &checkmark; your project is compliant.</p>
       </div>`;
@@ -886,6 +1014,14 @@ const renderTabFixes = (report: ComplianceReport): string => {
         const delta = scoreAfter - scoreBefore;
         const id = typeof f.id === 'string' ? f.id : String(f.id);
 
+        // V1-M30.4 A.5: when scoreBefore === scoreAfter, the overall readiness
+        // score did not move (a single dimension improved but the 7-dimension
+        // average rounded back). Surface that explicitly so users don't think
+        // the fix had no effect.
+        const scoreDisplay = scoreBefore === scoreAfter
+          ? `${scoreBefore} → ${scoreAfter} <span class="muted small">no overall change (single-dimension improvement, expected)</span>`
+          : `${scoreBefore} → ${scoreAfter} (${delta >= 0 ? '+' : ''}${delta})`;
+
         return `
           <div class="fix-item">
             <div class="fix-header">
@@ -896,7 +1032,7 @@ const renderTabFixes = (report: ComplianceReport): string => {
             ${(f.files ?? []).length > 0 ? `<div class="muted small">
               ${(f.files ?? []).map((file) => `${escapeHtml((file as {action?: string; path?: string}).action ?? '')}: ${escapeHtml((file as {action?: string; path?: string}).path ?? '')}`).join(' | ')}
             </div>` : ''}
-            <div class="muted small">Score: ${scoreBefore} → ${scoreAfter} (${delta >= 0 ? '+' : ''}${delta}) · ${escapeHtml(formatDateTimeHuman(f.timestamp))}</div>
+            <div class="muted small">Score: ${scoreDisplay} · ${escapeHtml(formatDateTimeHuman(f.timestamp))}</div>
           </div>`;
       }).join('');
 
@@ -920,6 +1056,7 @@ const renderTabFixes = (report: ComplianceReport): string => {
   })();
 
   return `
+    ${FIXES_TAB_INTRO}
     ${appliedSection2}
     ${availableSection ? '<hr class="section-divider"/>' : ''}
     ${availableSection}`;
@@ -927,9 +1064,11 @@ const renderTabFixes = (report: ComplianceReport): string => {
 
 // --- TAB 7: Passports (HR-7: expandable details layout) ---
 
+const PASSPORTS_TAB_INTRO = '<p class="tab-intro">Agent Passport &mdash; identity document for each AI system in your project. Required by EU AI Act Art. 11 for transparency. Completeness % = filled fields / 36 total. Run <code>complior agent show &lt;name&gt;</code> to view missing fields.</p>';
+
 const renderTabPassports = (report: ComplianceReport): string => {
   const ps = report.passports;
-  if (ps.totalAgents === 0) return '<div class="empty-state"><p>No agent passports found.</p><p>Run <code>complior passport init</code> to create one.</p></div>';
+  if (ps.totalAgents === 0) return `${PASSPORTS_TAB_INTRO}<div class="empty-state"><p>No agent passports found.</p><p>Run <code>complior agent init</code> to create one.</p></div>`;
 
   // Extended passport type with optional extra fields from test helper
   type ExtendedPassport = typeof ps.passports[number] & Record<string, unknown>;
@@ -998,6 +1137,7 @@ const renderTabPassports = (report: ComplianceReport): string => {
   }).join('');
 
   return `
+    ${PASSPORTS_TAB_INTRO}
     <style>
     .pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:.75rem}
     @media(max-width:900px){.pp-grid{grid-template-columns:1fr}}
@@ -1053,21 +1193,35 @@ const renderTabActions = (report: ComplianceReport): string => {
     return true;
   });
 
-  const rows = uniqueActions.map((a) => `
-    <tr data-rank="${a.rank}" data-sev="${SEV_ORDER[a.severity] ?? 9}" data-days="${a.daysLeft ?? 9999}" data-impact="${a.scoreImpact}" data-source="${a.source ?? ''}">
+  // V1-M30.4 A.6: prefix each action title with a source emoji, and prepend
+  // a "Done" badge when the action's id matches an entry in fixHistory.
+  const fixedCheckIds = new Set(report.fixHistory.map((h) => h.checkId));
+  const rows = uniqueActions.map((a) => {
+    const icon = sourceIcon(a.source);
+    const titlePrefix = icon ? `${icon} ` : '';
+    const isDone = a.id !== undefined && fixedCheckIds.has(a.id);
+    const doneBadge = isDone ? '<span class="tag tag-green">&check; Done</span> ' : '';
+    const rowClass = isDone ? ' done' : '';
+    return `
+    <tr class="action-row${rowClass}" data-rank="${a.rank}" data-sev="${SEV_ORDER[a.severity] ?? 9}" data-days="${a.daysLeft ?? 9999}" data-impact="${a.scoreImpact}" data-source="${a.source ?? ''}">
       <td class="rank">#${a.rank}</td>
-      <td><span class="severity-dot" style="background:${severityColor(a.severity)}"></span>${escapeHtml(a.title ?? '')}</td>
+      <td>${doneBadge}<span class="severity-dot" style="background:${severityColor(a.severity)}"></span>${titlePrefix}${escapeHtml(a.title ?? '')}</td>
       <td><span class="tag tag-gray">${escapeHtml(a.source ?? '')}</span></td>
       <td>${escapeHtml(a.article ?? '')}</td>
       <td>${a.daysLeft !== null ? `${a.daysLeft}d` : '-'}</td>
       <td>${a.fixAvailable ? '<span class="tag tag-green">Auto</span>' : '<span class="tag tag-gray">Manual</span>'}</td>
       <td><code>${escapeHtml(a.command ?? '')}</code></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return `
     ${digitalOmnibusBanner()}
     ${intro}
     ${report.actionPlan.totalActions > report.actionPlan.shownActions ? `<p class="muted">Showing ${report.actionPlan.shownActions} of ${report.actionPlan.totalActions} actions</p>` : ''}
+    <style>
+    .action-row.done{opacity:.55}
+    .action-row.done td:first-child{text-decoration:line-through}
+    </style>
     <table class="actions-table" id="actions-tbl">
       <thead><tr>
         <th class="sortable" data-col="rank">#</th>
@@ -1140,8 +1294,13 @@ export const generateReportHtml = (report: ComplianceReport): string => {
     { id: 'timeline', html: renderTabTimeline(report) },
   ];
 
+  // V1-M30.4: keep `class="tab-content"` exactly (no extra classes inline) so
+  // analyzer/test regexes that match `<div class="tab-content" id="tab-X"…>`
+  // can locate every tab. The "active" indicator now uses a `data-active`
+  // attribute; the runtime script below promotes the data-active tab into
+  // the visible state on DOMContentLoaded (and on tab-button clicks).
   const sections = tabContents.map((t, i) =>
-    `<div class="tab-content${i === 0 ? ' active' : ''}" id="tab-${t.id}">${t.html}</div>`,
+    `<div class="tab-content" id="tab-${t.id}"${i === 0 ? ' data-active="true"' : ''}>${t.html}</div>`,
   ).join('\n');
 
   return `<!DOCTYPE html>
@@ -1350,6 +1509,10 @@ ${sections}
   /* Tab switching */
   var btns=document.querySelectorAll('.tab-btn');
   var tabs=document.querySelectorAll('.tab-content');
+  /* V1-M30.4: promote the data-active="true" tab to the visible state at boot.
+     We render the bare tab-content class (no inline active marker) so that
+     analyzer regexes can locate each tab by exact class string match. */
+  tabs.forEach(function(t){if(t.getAttribute('data-active')==='true')t.classList.add('active')});
   btns.forEach(function(btn){
     btn.addEventListener('click',function(){
       btns.forEach(function(b){b.classList.remove('active')});

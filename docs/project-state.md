@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-28
-**Updated by:** Reviewer (V1-M30.3 review)
+**Updated:** 2026-04-29
+**Updated by:** Reviewer (V1-M30.4 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.3-eval-adapter-detect-timeout-fix` (V1-M30.3 eval auto-detect timeout race fix — reviewed, APPROVED WITH NOTES)
+**Branch:** `feature/V1-M30.4-tabs-ux-rename-tech-debt` (V1-M30.4 tab UX polish + CLI passport→agent rename + TD-57/TD-58 — reviewed, APPROVED)
 
 ---
 
@@ -11,13 +11,14 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2425 passed, 2 skipped (199 files) — full unit suite |
-| Rust CLI (`cli/`) | GREEN | clippy clean, fmt clean |
+| TS Engine (`engine/core/`) | GREEN | 2448 passed, 2 skipped (200 files) — full unit suite |
+| Rust CLI (`cli/`) | GREEN | 214 passed, clippy clean, fmt clean |
 | tsc --noEmit | PASS | — |
 | cargo clippy --all-targets -D warnings | PASS | — |
 | cargo fmt --check | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V1-M30.4 new tests: 26 GREEN (21 tab-ux + 2 agent-aliases + 3 Rust CLI agent/passport) — all RED→GREEN, no test weakening**
 **V1-M30.3 new tests: 4 GREEN (auto-detect-timeout W-1.1/1.2/1.3 + W-2.1) — all RED→GREEN, no test weakening**
 **V1-M30.2 new tests: 17 GREEN (10 format-dates + 6 tests-tab-ux + 1 E2E integration) — all RED→GREEN, no test weakening**
 **V1-M30.1 regression check: 2/2 GREEN (evidence-chain genesis survives trim)**
@@ -77,7 +78,67 @@
 | V1-M30.1 | Evidence chain genesis survives MAX_ENTRIES trim | `feature/V1-M30.1-evidence-chain-genesis-trim` | DONE (reviewer APPROVED) |
 | V1-M30.2 | Tests tab UX polish + date humanization (5 HR-T fixes) | `feature/V1-M30.2-tests-tab-ux-polish` | DONE (reviewer APPROVED, ready for PR) |
 | V1-M30.3 | Eval auto-detect timeout race fix (3s→15s) + script AI_TARGET patch | `feature/V1-M30.3-eval-adapter-detect-timeout-fix` | DONE (reviewer APPROVED WITH NOTES — see TD: script lines 292/374 still use `${AI_TARGET}/health` which now 404s) |
+| V1-M30.4 | Tab UX polish (7 areas) + CLI passport→agent rename + TD-57/TD-58 | `feature/V1-M30.4-tabs-ux-rename-tech-debt` | DONE (reviewer APPROVED, ready for PR) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.4: Tab UX Polish + CLI passport→agent + TD-57/TD-58 (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M30.4-tabs-ux-rename-tech-debt`
+**Commits:** 4 (5bf2bda spec+RED+TD script, 9556c89 rust-dev B.1, 56490ac architect fmt fix, 5466767 nodejs-dev A+B.2 committed by architect)
+**Files:**
+- Spec: `docs/sprints/V1-M30.4-tabs-ux-rename-tech-debt.md` (+211)
+- RED tests: `engine/core/src/domain/reporter/v1m30-4-tab-ux.test.ts` (+265, 21 tests), `engine/core/src/http/routes/agent-aliases.test.ts` (+85, 2 tests), `cli/src/headless/tests.rs` (+95, 3 tests)
+- Implementation A (UX): `engine/core/src/domain/reporter/html-renderer.ts` (+187/-24), new `source-icons.ts` (+21)
+- Implementation B.1 (CLI): `cli/src/cli.rs` (+13/-3), `cli/src/main.rs` (+11)
+- Implementation B.2 (HTTP): `engine/core/src/http/routes/passport.route.ts` (+34/-24)
+- Tech debt C: `scripts/verify_truly_deep_e2e.sh` (+5/-3) — TD-57 humanized dates, TD-58 rendered-card count
+
+**Section A — Tab UX polish (7 sub-areas, all GREEN via 21-test it.each over 9 tabs):**
+- A.1: tab intros (`<p class="tab-intro">`) on all 9 tabs (overview, tests, findings, laws, documents, fixes, passports, actions, timeline)
+- A.2: findings cards display amber `Fix applied — re-scan to verify` badge when checkId in fixHistory
+- A.3: laws obligations get status badge (✅ Covered / ⏳ Pending / 🚨 Past-due) + clickable linkedCheck anchors
+- A.4: documents render file:// links (using process.cwd() for relative path resolution) + 4-status legend at top
+- A.5: fixes rows where scoreBefore===scoreAfter explicitly explain "no overall change (single-dimension improvement, expected)"
+- A.6: actions get source emoji prefix (📋/🔍/📄/🤖/🧪) + green "✓ Done" badge if id matched in fixHistory
+- A.7: tests sorted failed-first via pure `sortTestsFailedFirst` (returns sliced copy, no input mutation; verdict→severity→confidence)
+
+**Section B — CLI rename `passport` → `agent`:**
+- B.1 (rust-dev): `Agent { action: PassportAction }` enum variant added as PRIMARY; existing `Passport` kept as deprecated alias that prints yellow `⚠ Deprecated: 'complior passport' is now 'complior agent'` to stderr (preserves JSON/SARIF stdout for CI). Same `PassportAction` enum, same handler, same internal types — zero subcommand drift. All 200+ existing passport E2E tests still pass.
+- B.2 (nodejs-dev): `onBoth(method, suffix, handler)` helper registers each handler under both `/passport/*` and `/agent/*`. 16 routes aliased, no new endpoints, identical response shapes. `InitRequestSchema.path` made optional so empty-body POST `/agent/init` falls back to env-based getProjectPath().
+
+**Section C — Tech debt:**
+- TD-57 (timeline analyzer): `verify_truly_deep_e2e.sh` lines 647-648 now accept humanized dates (`August 2, 2026`) alongside raw ISO (`2026-08-02`) for V1-M30.2 compat
+- TD-58 (findings analyzer): line 532 now counts rendered `<div class="finding-card"` instead of `len(data.findings)` — so profile-aware filter is genuinely measured (Profile A=20, B/C=24)
+- TD-59 (ed25519/HMAC unification): DEFERRED to v1.0.1 per spec (internal architecture only, no user-facing impact)
+
+**Quality gates:**
+- 26/26 new RED tests GREEN (21 tab-ux + 2 agent-aliases + 3 CLI agent/passport)
+- V1-M30.1 + V1-M30.2 E2E regression: 3/3 GREEN
+- V1-M30.3 regression: 4/4 GREEN
+- Full unit suite: 2448 passed / 2 skipped / 0 failed (was 2425 + 23 new + drift)
+- Full Rust suite: 214 passed (was 211 + 3 new)
+- tsc --noEmit: clean | cargo fmt --check: clean | cargo clippy --all-targets -D warnings: clean
+
+**Architecture audit:**
+- `Object.freeze` applied to SOURCE_ICONS, VERDICT_PRIORITY, SEVERITY_PRIORITY constants
+- `sortTestsFailedFirst` is pure — `[...tests].sort(...)` returns a sorted COPY (does NOT mutate input)
+- `sourceIcon()` is pure — single named export, no side effects
+- `onBoth()` helper avoids route duplication; 1:1 alias mapping verified — no ad-hoc routes
+- Deprecation warning on `Passport` variant goes to **stderr** only (eprintln!), `Agent` invocation prints nothing — JSON/SARIF stdout stays clean for CI consumers
+- Internal types (`AgentPassport`, `PassportAction`, `run_passport_command`) intentionally NOT renamed — they correctly model the document concept; only the user-facing CLI verb changed
+
+**Scope audit:**
+- rust-dev (9556c89): touched ONLY `cli/src/cli.rs` + `cli/src/main.rs` — zero TypeScript files touched
+- nodejs-dev work (5466767, committed by architect because dev finished without committing): touched ONLY `engine/core/src/domain/reporter/html-renderer.ts`, new `source-icons.ts`, `engine/core/src/http/routes/passport.route.ts` — zero Rust files touched
+- architect (5bf2bda + 56490ac): only architect-owned files (spec, RED tests, script for tech debt). 56490ac is rustfmt-only whitespace fix (3 lines, line break in boolean expression — semantics identical, verified via diff)
+- No V1-M30.1, V1-M30.2, V1-M30.3 RED tests modified
+- No process violations observed
+
+**Reviewer notes (NON-BLOCKING):**
+- Minor concern: `process.cwd()` is read inside `renderTabDocuments` (lines 885, 922) for resolving relative document paths to absolute file:// URLs. This is a side-effect read in an otherwise pure renderer. Acceptable because it's a UX cosmetic in a leaf renderer (not domain logic), and the renderer is invoked at report-generation time only. Could be hoisted to a parameter in a future refactor — tracked as TD-60.
+- TD-59 (ed25519/HMAC unification) confirmed deferred to v1.0.1 per the spec.
 
 ---
 

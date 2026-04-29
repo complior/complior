@@ -529,7 +529,8 @@ print("| Profile | Findings (data) | Cards rendered | Has cmd | Profile-aware (c
 print("|---------|----------------|----------------|---------|-----------------------------|")
 counts = {}
 for p, (html, data) in loaded.items():
-    n_data = len(data.get('findings', []))
+    # V1-M30.4 TD-58: count rendered cards (profile-aware filter applied), not raw data
+    n_data = html.count('<div class="finding-card"')
     n_cards = html.count('finding-card')
     has_cmd = 'complior fix' in extract_tab(html, 'findings')
     counts[p] = n_data
@@ -643,8 +644,9 @@ def _has_past_oblig(data):
 for p, (html, data) in loaded.items():
     tab = extract_tab(html, 'timeline')
     has_intro = 'tab-intro' in tab and ('enforcement' in tab.lower() or 'deadline' in tab.lower())
-    has_2026 = '2026-08-02' in tab or 'August 2026' in tab
-    has_2027 = '2027-08-02' in tab or 'August 2027' in tab
+    # V1-M30.4 TD-57: accept humanized dates (V1-M30.2) AND raw ISO (legacy)
+    has_2026 = '2026-08-02' in tab or 'August 2, 2026' in tab or 'August 2026' in tab
+    has_2027 = '2027-08-02' in tab or 'August 2, 2027' in tab or 'August 2027' in tab
     has_past_text = 'past-due' in tab or 'overdue' in tab.lower()
     needs_past = _has_past_oblig(data)
     if not needs_past:

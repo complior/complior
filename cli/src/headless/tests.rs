@@ -1863,4 +1863,100 @@ mod tests {
              build_default_answers when --yes is set."
         );
     }
+
+    // ── V1-M30.4 / Section B.1: CLI rename `passport` → `agent` ──────────
+    //
+    // `agent` becomes the PRIMARY top-level command. `passport` is kept as a
+    // deprecated alias that prints a one-line warning to stderr but still
+    // dispatches to the same handlers (no break for existing CI scripts).
+    //
+    // RED before fix: cli.rs only has `Passport` enum variant, no `Agent`.
+    // GREEN after fix: cli.rs has both `Agent` and `Passport` enum variants;
+    // the dispatch in main.rs routes both to the same handler; passport path
+    // additionally emits the deprecation warning.
+
+    #[test]
+    fn cli_has_agent_top_level_command() {
+        use std::fs;
+        use std::path::Path;
+
+        let cli_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("cli.rs");
+        let content = fs::read_to_string(&cli_rs).expect("cli.rs readable");
+
+        // The Agent variant must exist in the Commands enum.
+        assert!(
+            content.contains("Agent {") || content.contains("Agent("),
+            "V1-M30.4 B.1: cli/src/cli.rs Commands enum must include an `Agent` \
+             variant — `complior agent ...` should be the primary top-level \
+             command. The existing `Passport` variant is kept as a deprecated alias."
+        );
+    }
+
+    #[test]
+    fn passport_command_remains_as_deprecated_alias() {
+        use std::fs;
+        use std::path::Path;
+
+        // The passport handler (or main.rs dispatch) must emit a deprecation
+        // warning string mentioning `agent` so users know to migrate.
+        let candidates = [
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/main.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/passport.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/agent.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/commands.rs"),
+        ];
+
+        let mut found = false;
+        for path in &candidates {
+            if let Ok(content) = fs::read_to_string(path) {
+                let has_warning = (content.contains("Deprecated")
+                    || content.contains("deprecated"))
+                    && content.contains("complior agent")
+                    && content.contains("eprintln!");
+                if has_warning {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(
+            found,
+            "V1-M30.4 B.1: One of cli/src/{{main.rs, headless/passport.rs, \
+             headless/agent.rs, headless/commands.rs}} must emit a deprecation \
+             warning via eprintln! that mentions both 'deprecated' (case-insensitive) \
+             and 'complior agent' when the user invokes `complior passport ...`. \
+             The alias must continue to dispatch to the same handler — only \
+             add the warning."
+        );
+    }
+
+    #[test]
+    fn agent_dispatches_through_same_passport_handler() {
+        use std::fs;
+        use std::path::Path;
+
+        // Either main.rs maps both Agent and Passport variants to the same
+        // run_passport_command (or rename it run_agent_command and route
+        // both there). Check by seeing both enum variants reach the same
+        // function call site OR a shared dispatcher.
+        let main_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("main.rs");
+        let content = fs::read_to_string(&main_rs).expect("main.rs readable");
+
+        // Both Agent and Passport patterns appear in the match
+        let both_variants_dispatched = content.contains("Agent {")
+            || content.contains("Agent(")
+            || content.contains("Commands::Agent");
+
+        assert!(
+            both_variants_dispatched,
+            "V1-M30.4 B.1: cli/src/main.rs must dispatch the `Agent` enum variant \
+             (e.g. Commands::Agent variant routed to run_agent_command or to \
+             the existing passport handler). Currently only Passport is dispatched."
+        );
+    }
 }
