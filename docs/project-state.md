@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-04-29
-**Updated by:** Reviewer (V1-M30.4 review)
+**Updated by:** Reviewer (V1-M30.5 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.4-tabs-ux-rename-tech-debt` (V1-M30.4 tab UX polish + CLI passport→agent rename + TD-57/TD-58 — reviewed, APPROVED)
+**Branch:** `feature/V1-M30.5-doc-links-action-emojis-md-date` (V1-M30.5 doc-links, action-emojis, MD date humanized — reviewed, APPROVED WITH NOTES — TD-61 clippy fix needed before merge)
 
 ---
 
@@ -11,13 +11,15 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2448 passed, 2 skipped (200 files) — full unit suite |
-| Rust CLI (`cli/`) | GREEN | 214 passed, clippy clean, fmt clean |
+| TS Engine (`engine/core/`) | GREEN | 2455 passed, 2 skipped (201 files) — full unit suite |
+| Rust CLI (`cli/`) | GREEN | 215 passed, fmt clean |
 | tsc --noEmit | PASS | — |
-| cargo clippy --all-targets -D warnings | PASS | — |
+| cargo clippy --all-targets -D warnings | ❌ FAIL | 1 error: architect's RED test `tests.rs:2004` uses `if { panic! }` instead of `assert!()` (TD-61) |
 | cargo fmt --check | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V1-M30.5 new tests: 8 GREEN (7 TS in v1m30-5-doc-links-actions.test.ts + 1 Rust user_facing_init_hints) — all RED→GREEN**
+**V1-M30.5 test corrections: 2 V1-M29 test files modified by dev (spec supersession, see TD-62)**
 **V1-M30.4 new tests: 26 GREEN (21 tab-ux + 2 agent-aliases + 3 Rust CLI agent/passport) — all RED→GREEN, no test weakening**
 **V1-M30.3 new tests: 4 GREEN (auto-detect-timeout W-1.1/1.2/1.3 + W-2.1) — all RED→GREEN, no test weakening**
 **V1-M30.2 new tests: 17 GREEN (10 format-dates + 6 tests-tab-ux + 1 E2E integration) — all RED→GREEN, no test weakening**
@@ -79,7 +81,77 @@
 | V1-M30.2 | Tests tab UX polish + date humanization (5 HR-T fixes) | `feature/V1-M30.2-tests-tab-ux-polish` | DONE (reviewer APPROVED, ready for PR) |
 | V1-M30.3 | Eval auto-detect timeout race fix (3s→15s) + script AI_TARGET patch | `feature/V1-M30.3-eval-adapter-detect-timeout-fix` | DONE (reviewer APPROVED WITH NOTES — see TD: script lines 292/374 still use `${AI_TARGET}/health` which now 404s) |
 | V1-M30.4 | Tab UX polish (7 areas) + CLI passport→agent rename + TD-57/TD-58 | `feature/V1-M30.4-tabs-ux-rename-tech-debt` | DONE (reviewer APPROVED, ready for PR) |
+| V1-M30.5 | Doc file:// links + action emojis + MD date humanized + CLI hint rename | `feature/V1-M30.5-doc-links-action-emojis-md-date` | DONE (reviewer APPROVED WITH NOTES — TD-61 clippy fix needed) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.5: Doc Links + Action Emojis + MD Date Humanized (DONE — reviewer APPROVED WITH NOTES)
+
+**Branch:** `feature/V1-M30.5-doc-links-action-emojis-md-date`
+**Commits:** 3 (8d4564a spec+RED, 0584cfd rust-dev W-5, 2d443b8 nodejs-dev W-1..W-4)
+**Files:**
+- Spec: `docs/sprints/V1-M30.5-doc-links-action-emojis-md-date.md` (+135)
+- RED tests: `engine/core/src/domain/reporter/v1m30-5-doc-links-actions.test.ts` (+191, 7 tests), `cli/src/headless/tests.rs` (+56, 1 test)
+- Implementation W-1: `engine/core/src/domain/reporter/report-builder.ts` (+1) — `projectPath` field on summary
+- Implementation W-1: `engine/core/src/domain/reporter/types.ts` (+2) — `projectPath?: string | null` on `ReportSummary`
+- Implementation W-2: `engine/core/src/domain/reporter/html-renderer.ts` (+72/-48) — `resolveDocumentPath()` pure helper, FRIA filter removed, command-dedup removed, passport-init filter removed
+- Implementation W-3: Actions tab renders ALL actions with emoji prefix (no dedup/filter)
+- Implementation W-4: `engine/core/src/domain/reporter/compliance-md.ts` (+3/-1) — humanized timestamp via `formatDateTimeHuman`
+- Implementation W-5: `cli/src/app/executor.rs` (+3/-3), `cli/src/headless/commands.rs` (+1/-1), `cli/src/headless/passport.rs` (+6/-6), `cli/src/headless/scan.rs` (+1/-1), `cli/src/views/passport/mod.rs` (+1/-1) — 12 string replacements `passport init` → `agent init`
+- Test corrections: `actions-no-deprecated-passport-init.test.ts` (+22/-13), `html-documents-strict-filter.test.ts` (+19/-13) — V1-M29 specs superseded by V1-M30.5
+
+**Section W-1+W-2 — Document file:// links (REAL BUG FIX):**
+- `ReportSummary.projectPath?: string | null` — new optional field, populated from `scanResult.projectPath` in `report-builder.ts`
+- `resolveDocumentPath(outputFile, projectPath)` — exported pure function with JSDoc: absolute path → as-is, relative + projectPath → resolved, fallback → `process.cwd()` (degraded path with comment)
+- Both doc-cards AND excluded-links sections use the helper consistently
+- **Resolves TD-60** (process.cwd() in renderer)
+
+**Section W-2 — FRIA filter behavior change:**
+- `isDocumentApplicable()` no longer excludes FRIA for limited-risk profiles
+- FRIA is now shown for ALL profiles as a reference document (even when not strictly required)
+- Declaration-of-Conformity remains deployer-only (Art. 47 — correct per EU AI Act)
+- Disclaimer explains which documents are not required for the profile
+
+**Section W-3 — Actions tab (REAL BUG FIX):**
+- Legacy `passport init` filter REMOVED (V1-M11 was 5+ months ago; action plan no longer generates these)
+- Command-based dedup REMOVED (was collapsing distinct actions with same `command` e.g. "manual review")
+- `let actions` → `const actions` (immutability improvement)
+- Each action now renders with source emoji prefix via `sourceIcon()` (📋 obligation, 🔍 scan, 🤖 passport, etc.)
+
+**Section W-4 — MD date humanization:**
+- `compliance-md.ts` imports `formatDateTimeHuman` from existing `format-dates.ts` (V1-M30.2)
+- "Generated by Complior on …" line now shows "April 29, 2026 at 14:55 UTC" instead of raw ISO
+
+**Section W-5 — CLI hint rename:**
+- 12 string replacements across 5 Rust files: `complior passport init` → `complior agent init`
+- Deprecation warning in `main.rs` intentionally preserved (correctly names the deprecated command)
+
+**Quality gates:**
+- 8/8 new RED tests GREEN (7 TS + 1 Rust)
+- Full unit suite: 2455 passed / 2 skipped / 0 failed (was 2448, +7)
+- Full Rust suite: 215 passed (was 214, +1)
+- tsc --noEmit: clean | cargo fmt --check: clean
+- cargo clippy: ❌ FAIL — 1 error in architect's RED test (`tests.rs:2004`, `manual-assert` lint). See TD-61
+
+**Architecture audit:**
+- `resolveDocumentPath` is pure function with JSDoc, exported named export ✅
+- `projectPath` field is optional — backward-compatible with all existing tests ✅
+- `isDocumentApplicable` FRIA change is well-documented with inline comment explaining rationale ✅
+- Actions tab now uses `const` (was `let`), removes both filters cleanly ✅
+- MD humanization reuses existing `formatDateTimeHuman` — no new code ✅
+- Rust changes are string-literal-only, no logic changes ✅
+
+**Scope audit:**
+- rust-dev (0584cfd): touched ONLY `cli/` files — zero TypeScript files ✅
+- nodejs-dev (2d443b8): touched ONLY `engine/core/src/domain/reporter/` — zero Rust files ✅
+- Architect's NEW test file `v1m30-5-doc-links-actions.test.ts` NOT modified by dev ✅
+- Two V1-M29 test files modified by dev (TD-62, see below)
+
+**Reviewer notes:**
+- **BLOCKING:** TD-61 — architect must fix clippy lint (`if { panic! }` → `assert!()`) in `tests.rs:2004` before merge
+- **NON-BLOCKING:** TD-62 — dev modified 2 V1-M29 test files without SCOPE VIOLATION REQUEST. Both are justified spec supersessions (V1-M30.5 spec explicitly changes FRIA filtering and actions dedup behavior). No assertions weakened — old specs directly contradicted new milestone. Recurring process pattern from TD-52/TD-53
+- TD-60 **FIXED** by W-2: `process.cwd()` replaced by `resolveDocumentPath` with `projectPath` from scan result
 
 ---
 
