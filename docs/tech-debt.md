@@ -1,7 +1,7 @@
 # Tech Debt Tracker — Complior v8
 
-**Updated:** 2026-04-28
-**Author:** Reviewer (V1-M30.3 review — add TD-56)
+**Updated:** 2026-04-29
+**Author:** Reviewer (V1-M30.4 review — add TD-57/TD-58 (FIXED), TD-59 (DEFERRED), TD-60 (OPEN))
 
 ---
 
@@ -44,6 +44,10 @@
 | TD-54 | LOW | V1-M29 W-1: `runInitForProject` export in init-service.ts is an unnecessary alias — identical to `runInit` | engine/core/src/services/init-service.ts:78 | — | OPEN |
 | TD-55 | LOW | V1-M29 W-2: `as unknown as { appliesToRole?: string }` cast in renderTabFindings — should use extended FindingWithExplanation type | engine/core/src/domain/reporter/html-renderer.ts:442 | — | OPEN |
 | TD-56 | MEDIUM | V1-M30.3 Part A incomplete: scripts/verify_truly_deep_e2e.sh lines 292 + 374 still use `${AI_TARGET}/health`. With AI_TARGET=`${AI_BASE}/v1/chat/completions`, the health URL becomes `…/v1/chat/completions/health` which 404s. Line 374 is harmless (falls into spawn_ai_server which probes correctly). Line 292 is harmful: per-profile eval gate always SKIPS the eval section ("AI server not reachable") so /deep-e2e cannot end-to-end verify the V1-M30.3 fix. Flip both to `${AI_BASE}/health` | scripts/verify_truly_deep_e2e.sh:292,374 | re-run /deep-e2e Profile B should show real Score (B/C), not "skipping eval section" | 🔴 OPEN |
+| TD-57 | LOW | V1-M30.4: timeline analyzer in /deep-e2e accepted only raw ISO `2026-08-02`/`2027-08-02` substrings; V1-M30.2 changed renderer to emit humanized `August 2, 2026` form. Without alternation, /deep-e2e timeline checks would always fail post-V1-M30.2 | scripts/verify_truly_deep_e2e.sh:647-648 | /deep-e2e timeline check accepts both `August 2, 2026` and `2026-08-02` | ✅ FIXED (V1-M30.4 spec commit 5bf2bda) |
+| TD-58 | LOW | V1-M30.4: findings analyzer in /deep-e2e counted `len(data.findings)` (raw, unfiltered) instead of `<div class="finding-card"` count from rendered HTML (profile-aware). Profile A=20, B/C=24 differ AFTER profile filter — analyzer was not measuring the filter at all | scripts/verify_truly_deep_e2e.sh:532 | per-profile counts genuinely differ in /deep-e2e output | ✅ FIXED (V1-M30.4 spec commit 5bf2bda) |
+| TD-59 | LOW | V1-M30.4 spec called out: ed25519 vs HMAC signing path inconsistency between init-service and composition-root (internal architecture only, no user-facing impact). Deferred to v1.0.1 per spec | engine/core/src/services/init-service.ts vs composition-root.ts | TBD (v1.0.1 milestone) | ⏸ DEFERRED (v1.0.1) |
+| TD-60 | LOW | V1-M30.4 A.4: `renderTabDocuments` reads `process.cwd()` directly (lines 885, 922) for resolving relative outputFile paths to absolute file:// URLs. Side-effect read in an otherwise pure renderer. Cosmetic only (file:// links are UX nicety) and invoked at report-generation time, but ideally cwd should be passed as a parameter to keep the renderer pure | engine/core/src/domain/reporter/html-renderer.ts:885,922 | renderTabDocuments accepts `baseDir` parameter; no `process.cwd()` reference inside renderer | 🔴 OPEN |
 
 ---
 
@@ -81,3 +85,7 @@
 - TD-54: `runInitForProject` is a dead-code alias. If no test references it distinctly, it can be deleted. If a test imports it specifically, rename to `runInit`
 - TD-55: `appliesToRole` is not on the `FindingWithExplanation` type. Options: (a) extend type to include optional `appliesToRole`, (b) use intersection type in function signature. Cast works but hides type evolution
 - TD-52: V1-M27 test modifications in two categories: (1) 5 html-*-*.test.ts files — `extractTab()` helper regex fix: architect wrote `id="${tabId}"` but actual html-renderer.ts generates `id="tab-${tabId}"`, plus lazy `</div>` boundary replaced with lookahead `(?=\s*<div[^>]*id=["']?tab-)` to handle nested divs inside tab content. (2) init-evidence-chain.test.ts — architect called `createEvidenceStoreForProject()` synchronously but factory returns Promise; dev added `await` and extracted intermediate types. Both categories are infrastructure/helper corrections — ZERO assertions changed in any file. Dev should file SCOPE VIOLATION REQUEST even for helper fixes
+- TD-57: FIXED in V1-M30.4 spec commit. Architect wrote alternation for both forms simultaneously when shipping the RED tests + script TD section
+- TD-58: FIXED in V1-M30.4 spec commit. Original analyzer line `n_data = len(data.get('findings', []))` was structurally wrong because profile-aware filtering happens in HTML renderer (renderTabFindings), not in scan-result data. Counting rendered cards is the only way to verify profile-aware filter is actually applied
+- TD-59: DEFERRED to v1.0.1. Per architect, this is internal architecture only — both signing paths produce valid signatures; users see no difference. Unification is a refactor, not a bugfix
+- TD-60: V1-M30.4 introduced this minor purity violation but it's strictly cosmetic (file:// link generation). Acceptable for v1.0.0 release. Hoisting `cwd` to a parameter is a 5-line refactor when next renderer change happens
