@@ -26,7 +26,11 @@ describe('checkPassportPresence', () => {
     expect(results[0].type).toBe('fail');
     if (results[0].type === 'fail') {
       expect(results[0].severity).toBe('high');
-      expect(results[0].fix).toContain('complior passport init');
+      // V1-M30.6 W-2 spec supersession: user-facing hint changed from
+      // 'complior passport init' → 'complior agent init' as part of the CLI
+      // primary-verb rename (V1-M30.4 B.1). The `passport` alias still works
+      // at the CLI level, but new hints must reference the new primary verb.
+      expect(results[0].fix).toContain('complior agent init');
     }
   });
 

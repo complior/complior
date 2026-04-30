@@ -848,9 +848,16 @@ export const resolveDocumentPath = (outputFile: string, projectPath?: string | n
 
 // HR-5: Filter documents based on profile.
 // A document is applicable when its required risk level is met by the profile's risk level.
-// HIGH-RISK docs apply to both HIGH and LIMITED profiles (the user's AI system may be high-risk
-// even if the deployer's overall posture is "limited" — the doc is still useful).
-// LIMITED-RISK docs apply only to LIMITED profiles.
+//
+// Filtering rules (applied in order):
+//  1. Declaration of Conformity (Art. 47) → deployer-only restriction (not provider)
+//  2. FRIA / Art. 27 → shown ONLY when profile.riskLevel === 'high' OR 'unacceptable'.
+//     Limited/limited-risk profiles do not require a Fundamental Rights Impact Assessment
+//     (V1-M30 W-4 spec; regression introduced by V1-M30.5 W-2 and corrected here).
+//     The disclaimer text explains which docs are filtered for the current risk level.
+//
+// HIGH-RISK docs (FRIA/Art.27) apply to both HIGH and UNACCEPTABLE profiles.
+// LIMITED-RISK docs apply only to LIMITED profiles (no FRIA for limited).
 const isDocumentApplicable = (
   doc: { readonly docType: string; readonly article: string },
   profile: { readonly role: string; readonly riskLevel: string; readonly domain: string } | undefined,
@@ -860,13 +867,16 @@ const isDocumentApplicable = (
   const docType = doc.docType.toLowerCase();
   const article = doc.article.toLowerCase();
 
-  // Declaration of Conformity (Art. 47) is provider-only
+  // Rule 1: Declaration of Conformity (Art. 47) is provider-only
   if ((docType === 'declaration-of-conformity' || article.includes('art. 47')) && profile.role.toLowerCase() === 'deployer') {
     return false;
   }
 
-  // All other documents (including FRIA/Art.27) are shown — the disclaimer explains
-  // which ones are not strictly required for the current profile/risk level.
+  // Rule 2: FRIA / Art. 27 — high-risk only (unacceptable + high)
+  if ((docType === 'fria' || article.includes('art. 27')) && profile.riskLevel.toLowerCase() !== 'high' && profile.riskLevel.toLowerCase() !== 'unacceptable') {
+    return false;
+  }
+
   return true;
 };
 
@@ -939,18 +949,20 @@ const renderTabDocuments = (report: ComplianceReport): string => {
       ? `<a href="file://${escapeHtml(absPath)}" target="_blank" class="doc-link muted">${label}</a>`
       : `<span class="muted">${label}</span>`;
   }).join(' &middot; ');
-  // V1-M30.5 W-2: Disclaimer about excluded documents (always when N > 0).
-  // V1-M30.5 W-2: FRIA is shown in the tab for all profiles (the document is useful
-  // for reference even for limited-risk deployers). Declaration-of-Conformity is
-  // the only doc type truly excluded from the tab for deployer-only profiles.
+  // V1-M30.6 W-1.2: Disclaimer about excluded documents (always when N > 0).
+  // V1-M30.6 W-1.2: FRIA (Art. 27) is filtered for limited/unacceptable-risk profiles.
+  // Declaration-of-Conformity (Art. 47) is excluded for deployer-only.
+  // Both doc types may appear in the disclaimer. excludedLinks includes FRIA
+  // (non-provider-only, valid to surface in disclaimer); excludes Declaration-of-Conformity.
   const disclaimer = excludedCount > 0 ? `
     <div class="docs-disclaimer">
       <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       <span>+${excludedCount} documents not required for your profile
-        ${declarationExcluded ? '(Declaration of Conformity — provider-only)' : ''}.
-        ${excludedLinks ? ` Excluded: ${excludedLinks}.` : ''}</span>
+        ${declarationExcluded ? '(Declaration of Conformity — provider-only)' : ''}
+        ${excludedCount === 1 && excludedDocs.some(d => d.docType.toLowerCase() === 'fria' || d.article.toLowerCase().includes('art. 27')) ? '(FRIA Art. 27 — high-risk only)' : ''}
+        ${excludedLinks ? `. Excluded: ${excludedLinks}.` : ''}</span>
     </div>` : '';
 
   return `
