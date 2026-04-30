@@ -1,3 +1,6 @@
+// V1-M30.7: CI re-trigger marker (post-merge engine + Rust verification).
+// See engine/core/src/index.ts for context — both files prepended together
+// so paths-filter runs both Rust + Engine jobs in one CI invocation.
 // V1-M30.6: CI re-trigger marker (post-merge engine + Rust verification).
 // See engine/core/src/index.ts for context — both files prepended together
 // so paths-filter runs both Rust + Engine jobs in one CI invocation.
