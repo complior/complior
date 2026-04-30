@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-29
-**Updated by:** Reviewer (V1-M30.5 review)
+**Updated:** 2026-04-30
+**Updated by:** Reviewer (V1-M30.6 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.5-doc-links-action-emojis-md-date` (V1-M30.5 doc-links, action-emojis, MD date humanized — reviewed, APPROVED WITH NOTES — TD-61 clippy fix needed before merge)
+**Branch:** `feature/V1-M30.6-fria-regression-passport-hints-ts` (V1-M30.6 FRIA filter regression fix + TS passport hints — reviewed, APPROVED)
 
 ---
 
@@ -11,15 +11,16 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2455 passed, 2 skipped (201 files) — full unit suite |
+| TS Engine (`engine/core/`) | GREEN | 2459 passed, 2 skipped (202 files) — full unit suite |
 | Rust CLI (`cli/`) | GREEN | 215 passed, fmt clean |
 | tsc --noEmit | PASS | — |
-| cargo clippy --all-targets -D warnings | ❌ FAIL | 1 error: architect's RED test `tests.rs:2004` uses `if { panic! }` instead of `assert!()` (TD-61) |
+| cargo clippy --all-targets -D warnings | PASS | — (TD-61 fixed in V1-M30.5 merge) |
 | cargo fmt --check | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V1-M30.6 new tests: 5 RED→GREEN (4 TS passport-hints + 1 restored FRIA doc-filter) + V1-M30 integration regression GREEN**
+**V1-M30.6 process: dev filed SCOPE VIOLATION REQUEST for passport-presence.test.ts — architect handled (first correct process since TD-62 pattern)**
 **V1-M30.5 new tests: 8 GREEN (7 TS in v1m30-5-doc-links-actions.test.ts + 1 Rust user_facing_init_hints) — all RED→GREEN**
-**V1-M30.5 test corrections: 2 V1-M29 test files modified by dev (spec supersession, see TD-62)**
 **V1-M30.4 new tests: 26 GREEN (21 tab-ux + 2 agent-aliases + 3 Rust CLI agent/passport) — all RED→GREEN, no test weakening**
 **V1-M30.3 new tests: 4 GREEN (auto-detect-timeout W-1.1/1.2/1.3 + W-2.1) — all RED→GREEN, no test weakening**
 **V1-M30.2 new tests: 17 GREEN (10 format-dates + 6 tests-tab-ux + 1 E2E integration) — all RED→GREEN, no test weakening**
@@ -81,8 +82,66 @@
 | V1-M30.2 | Tests tab UX polish + date humanization (5 HR-T fixes) | `feature/V1-M30.2-tests-tab-ux-polish` | DONE (reviewer APPROVED, ready for PR) |
 | V1-M30.3 | Eval auto-detect timeout race fix (3s→15s) + script AI_TARGET patch | `feature/V1-M30.3-eval-adapter-detect-timeout-fix` | DONE (reviewer APPROVED WITH NOTES — see TD: script lines 292/374 still use `${AI_TARGET}/health` which now 404s) |
 | V1-M30.4 | Tab UX polish (7 areas) + CLI passport→agent rename + TD-57/TD-58 | `feature/V1-M30.4-tabs-ux-rename-tech-debt` | DONE (reviewer APPROVED, ready for PR) |
-| V1-M30.5 | Doc file:// links + action emojis + MD date humanized + CLI hint rename | `feature/V1-M30.5-doc-links-action-emojis-md-date` | DONE (reviewer APPROVED WITH NOTES — TD-61 clippy fix needed) |
+| V1-M30.5 | Doc file:// links + action emojis + MD date humanized + CLI hint rename | `feature/V1-M30.5-doc-links-action-emojis-md-date` | DONE (merged to dev, PR #33) |
+| V1-M30.6 | FRIA filter regression fix + TS engine passport→agent hints | `feature/V1-M30.6-fria-regression-passport-hints-ts` | DONE (reviewer APPROVED) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.6: FRIA Filter Regression + TS Engine Passport Hints (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M30.6-fria-regression-passport-hints-ts`
+**Commits:** 3 (0f9f718 architect spec+RED+test-restoration, 74f68c8 architect test-update for passport-presence, ed6b674 nodejs-dev W-1.2+W-2)
+**Files:**
+- Spec: `docs/sprints/V1-M30.6-fria-regression-passport-hints-ts.md` (+109)
+- RED test restoration: `engine/core/src/domain/reporter/html-documents-strict-filter.test.ts` (+15/-5) — architect reverted V1-M30.5 W-2 flip
+- New RED test: `engine/core/src/domain/reporter/v1m30-6-ts-passport-hints.test.ts` (+70, 4 tests)
+- Architect test update: `engine/core/src/domain/scanner/checks/passport-presence.test.ts` (+5/-1) — `passport init` → `agent init` assertion
+- Implementation W-1.2: `engine/core/src/domain/reporter/html-renderer.ts` (+36/-19) — FRIA risk-level filter restored
+- Implementation W-2: `engine/core/src/domain/reporter/priority-actions.ts` (+1/-1), `engine/core/src/domain/registry/compute-agent-score.ts` (+2/-2), `engine/core/src/domain/scanner/checks/passport-presence.ts` (+1/-1), `engine/core/src/domain/scanner/checks/passport-completeness.ts` (+2/-2) — 6× `passport` → `agent`
+
+**Section W-1.2 — FRIA risk-level filter restoration (REGRESSION FIX):**
+- `isDocumentApplicable()` now has 2 clearly documented rules (applied in order):
+  - Rule 1: Declaration of Conformity (Art. 47) → deployer-only restriction
+  - Rule 2: FRIA / Art. 27 → shown ONLY for `high` or `unacceptable` risk levels
+- Comment block rewritten with full rationale + V1-M30 W-4 spec reference + regression note
+- Disclaimer updated: shows "(FRIA Art. 27 — high-risk only)" when FRIA is the sole excluded doc
+- V1-M30 W-4 INTEGRATION test (`v1m30-documents-integration.test.ts`) was RED → now GREEN (4/4)
+- V1-M29 W-4 unit test restored to original assertion ("FRIA NOT shown") → GREEN
+
+**Section W-2 — TS engine passport→agent hints:**
+- 6 string replacements across 4 files (1:1 `complior passport <verb>` → `complior agent <verb>`):
+  - `priority-actions.ts:128`: `complior agent init`
+  - `compute-agent-score.ts:89`: `complior agent fria ${ctx.name}`
+  - `compute-agent-score.ts:93`: `complior agent init --force`
+  - `passport-presence.ts:68`: `complior agent init`
+  - `passport-completeness.ts:63`: `complior agent init --force`
+  - `passport-completeness.ts:75`: `complior agent init --force`
+
+**Quality gates:**
+- 5/5 new RED tests GREEN (4 TS passport-hints + 1 restored FRIA doc-filter)
+- V1-M30 integration regression: 4/4 GREEN (was RED before W-1.2)
+- Full unit suite: 2459 passed / 2 skipped / 0 failed (was 2455, +4 new)
+- Full Rust suite: 215 passed (unchanged — no Rust changes)
+- tsc --noEmit: clean | cargo fmt --check: clean | cargo clippy --all-targets -D warnings: clean
+
+**Architecture audit:**
+- `isDocumentApplicable` remains a pure function — no mutation, readonly params ✅
+- 2-rule filtering order is deterministic and well-documented ✅
+- String replacements are source-text-only — zero logic changes ✅
+- Disclaimer labels are profile-aware (Declaration for deployer, FRIA for non-high-risk) ✅
+
+**Scope audit:**
+- nodejs-dev (ed6b674): touched ONLY 5 `engine/core/src/domain/` files — zero test files, zero Rust files, zero docs ✅
+- Architect (0f9f718): spec + RED tests + test restoration ✅
+- Architect (74f68c8): `passport-presence.test.ts` assertion update — per dev's SCOPE VIOLATION REQUEST ✅
+- **Dev did NOT modify ANY test files** — `git diff 74f68c8..ed6b674 -- '*.test.ts'` is EMPTY ✅
+- **PROCESS WIN:** Dev filed SCOPE VIOLATION REQUEST for `passport-presence.test.ts` instead of modifying it silently. Architect handled the test update in a separate commit. This is the CORRECT process — first time since TD-62 recurring pattern began (V1-M27 TD-52 → V1-M29 TD-53 → V1-M30.5 TD-62). Lesson learned ✅
+
+**Reviewer notes:**
+- No blocking issues
+- Minor cosmetic: disclaimer line 964 uses `excludedCount === 1` guard — when BOTH Declaration AND FRIA are excluded (deployer+limited), only Declaration gets its own parenthetical; FRIA appears as excluded link but without explicit label. Non-blocking — the information is still conveyed
+- No new tech debt
 
 ---
 
