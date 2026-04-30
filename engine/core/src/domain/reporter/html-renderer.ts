@@ -159,6 +159,16 @@ const buildCategoryBars = (tests: readonly EvalTestSummary[]): string => {
  *                    "No tests in this category." paragraph. Use this to surface
  *                    actionable hints (HR-T2 → "see Findings tab", HR-T3 → "run `complior …`").
  */
+// V1-M30.7 W-3: Render action command column.
+// Non-CLI placeholders (manual review / manual edit) are rendered as muted text,
+// not as <code> which implies a runnable shell command.
+const renderActionCommand = (cmd: string): string => {
+  if (/^manual\s+(review|edit)$/i.test(cmd)) {
+    return `<span class="muted small">${escapeHtml(cmd)}</span>`;
+  }
+  return `<code>${escapeHtml(cmd)}</code>`;
+};
+
 // V1-M30.4 A.7: render tests with failed-first ordering — error before fail
 // before pass — secondary by severity (critical → low) and confidence (high
 // first). Pure function that returns a sorted COPY (input remains untouched).
@@ -993,8 +1003,9 @@ const renderTabFixes = (report: ComplianceReport): string => {
   const fixes = report.fixHistory;
   const findings = report.findings;
 
-  // Available fix plans from findings
-  const fixableFindings = findings.filter((f) => f.fixAvailable || f.fix);
+  // Available fix plans from findings — W-4: filter out Skipped: messages
+  const fixableFindings = findings.filter((f) => f.fixAvailable || f.fix)
+    .filter((f) => !f.message?.startsWith('Skipped:'));
   const hasAppliedFixes = fixes.length > 0;
   const hasAvailableFixes = fixableFindings.length > 0;
 
@@ -1092,7 +1103,7 @@ const renderTabFixes = (report: ComplianceReport): string => {
 
 // --- TAB 7: Passports (HR-7: expandable details layout) ---
 
-const PASSPORTS_TAB_INTRO = '<p class="tab-intro">Agent Passport &mdash; identity document for each AI system in your project. Required by EU AI Act Art. 11 for transparency. Completeness % = filled fields / 36 total. Run <code>complior agent show &lt;name&gt;</code> to view missing fields.</p>';
+const PASSPORTS_TAB_INTRO = '<p class="tab-intro">Agent Passport &mdash; identity document for each AI system in your project. Required by EU AI Act Art. 11 for transparency. Completeness % = filled fields / 37 total. Run <code>complior agent show &lt;name&gt;</code> to view missing fields.</p>';
 
 const renderTabPassports = (report: ComplianceReport): string => {
   const ps = report.passports;
@@ -1119,7 +1130,7 @@ const renderTabPassports = (report: ComplianceReport): string => {
           <div class="pp-summary-content">
             <div class="pp-ring">
               <svg viewBox="0 0 44 44"><circle class="pp-ring-bg" cx="22" cy="22" r="18"/><circle class="pp-ring-fill" cx="22" cy="22" r="18" stroke="${ringColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${offset.toFixed(1)}"/></svg>
-              <div class="pp-ring-val">${pct(p.completeness)}%</div>
+              <div class="pp-ring-val">${pct(p.completeness)}</div>
             </div>
             <div class="pp-info">
               <div class="pp-name">${escapeHtml(p.name)}</div>
@@ -1152,7 +1163,7 @@ const renderTabPassports = (report: ComplianceReport): string => {
             <div class="pp-field-grid">
               ${p.signed ? '<span class="pp-field filled">Signed (ed25519)</span>' : '<span class="pp-field missing">Not signed</span>'}
               ${p.lastUpdated ? `<span class="pp-field filled">Updated: ${escapeHtml(formatDateTimeHuman(p.lastUpdated))}</span>` : ''}
-              <span class="pp-field filled">Completeness: ${p.completeness}%</span>
+              <span class="pp-field filled">Completeness: ${pct(p.completeness)}</span>
             </div>
           </div>
           ${(p.missingFields ?? []).length > 0 ? `
@@ -1230,7 +1241,7 @@ const renderTabActions = (report: ComplianceReport): string => {
       <td>${escapeHtml(a.article ?? '')}</td>
       <td>${a.daysLeft !== null ? `${a.daysLeft}d` : '-'}</td>
       <td>${a.fixAvailable ? '<span class="tag tag-green">Auto</span>' : '<span class="tag tag-gray">Manual</span>'}</td>
-      <td><code>${escapeHtml(a.command ?? '')}</code></td>
+      <td>${renderActionCommand(a.command ?? '')}</td>
     </tr>`;
   }).join('');
 
