@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-04-30
-**Updated by:** Reviewer (V1-M30.6 review)
+**Updated by:** Reviewer (V1-M30.7 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.6-fria-regression-passport-hints-ts` (V1-M30.6 FRIA filter regression fix + TS passport hints — reviewed, APPROVED)
+**Branch:** `feature/V1-M30.7-rendering-bugs` (V1-M30.7 — 4 critical UI rendering bugs — reviewed, APPROVED)
 
 ---
 
@@ -11,15 +11,15 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2459 passed, 2 skipped (202 files) — full unit suite |
+| TS Engine (`engine/core/`) | GREEN | 2465 passed, 2 skipped (203 files) — full unit suite |
 | Rust CLI (`cli/`) | GREEN | 215 passed, fmt clean |
 | tsc --noEmit | PASS | — |
-| cargo clippy --all-targets -D warnings | PASS | — (TD-61 fixed in V1-M30.5 merge) |
+| cargo clippy --all-targets -D warnings | PASS | — |
 | cargo fmt --check | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
-**V1-M30.6 new tests: 5 RED→GREEN (4 TS passport-hints + 1 restored FRIA doc-filter) + V1-M30 integration regression GREEN**
-**V1-M30.6 process: dev filed SCOPE VIOLATION REQUEST for passport-presence.test.ts — architect handled (first correct process since TD-62 pattern)**
+**V1-M30.7 new tests: 6 RED→GREEN (double-%, field count, manual-command, skipped-fix) — all RED→GREEN, no test modifications**
+**V1-M30.6 regression: 10/10 GREEN (4 passport-hints + 6 doc-filter)**
 **V1-M30.5 new tests: 8 GREEN (7 TS in v1m30-5-doc-links-actions.test.ts + 1 Rust user_facing_init_hints) — all RED→GREEN**
 **V1-M30.4 new tests: 26 GREEN (21 tab-ux + 2 agent-aliases + 3 Rust CLI agent/passport) — all RED→GREEN, no test weakening**
 **V1-M30.3 new tests: 4 GREEN (auto-detect-timeout W-1.1/1.2/1.3 + W-2.1) — all RED→GREEN, no test weakening**
@@ -84,7 +84,61 @@
 | V1-M30.4 | Tab UX polish (7 areas) + CLI passport→agent rename + TD-57/TD-58 | `feature/V1-M30.4-tabs-ux-rename-tech-debt` | DONE (reviewer APPROVED, ready for PR) |
 | V1-M30.5 | Doc file:// links + action emojis + MD date humanized + CLI hint rename | `feature/V1-M30.5-doc-links-action-emojis-md-date` | DONE (merged to dev, PR #33) |
 | V1-M30.6 | FRIA filter regression fix + TS engine passport→agent hints | `feature/V1-M30.6-fria-regression-passport-hints-ts` | DONE (reviewer APPROVED) |
+| V1-M30.7 | 4 critical UI rendering bugs (double %, field count, manual cmd, skipped fix) | `feature/V1-M30.7-rendering-bugs` | DONE (reviewer APPROVED) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.7: 4 Critical UI Rendering Bugs (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M30.7-rendering-bugs`
+**Commits:** 2 (e70f330 architect spec+RED, 2306ba0 nodejs-dev W-1..W-4)
+**Files:**
+- Spec: `docs/sprints/V1-M30.7-rendering-bugs.md` (+78)
+- RED tests: `engine/core/src/domain/reporter/v1m30-7-rendering.test.ts` (+175, 6 tests)
+- Implementation: `engine/core/src/domain/reporter/html-renderer.ts` (+17/-6)
+
+**Section W-1 — Double % in passports tab:**
+- `html-renderer.ts:1122`: `${pct(p.completeness)}%` → `${pct(p.completeness)}` (removed extra `%`; `pct()` already appends `%`)
+- `html-renderer.ts:1155`: `${p.completeness}%` → `${pct(p.completeness)}` (switched to helper, single `%`)
+
+**Section W-2 — Passport field count reconciled to 37:**
+- `PASSPORTS_TAB_INTRO`: `/ 36 total` → `/ 37 total` (matches `KNOWN_FIELDS` array which has 37 entries)
+- Data wins — no change to `KNOWN_FIELDS`
+
+**Section W-3 — Manual commands as muted span:**
+- New pure helper `renderActionCommand(cmd: string): string` at ~line 164
+- `/^manual\s+(review|edit)$/i` → `<span class="muted small">…</span>` (not `<code>`)
+- All other commands → `<code>…</code>` (preserved behavior for real CLI commands)
+- Used in `renderTabActions` at line ~1241
+
+**Section W-4 — Skipped findings filtered from Available Fix Plans:**
+- `fixableFindings` chain extended: `.filter((f) => !f.message?.startsWith('Skipped:'))`
+- Uses optional chaining (`?.`) — safe when `message` is undefined
+
+**Quality gates:**
+- 6/6 new RED tests GREEN (2 double-%, 1 field-count, 2 manual-cmd, 1 skipped-fix)
+- V1-M30.6 regression: 10/10 GREEN
+- Full unit suite: 2465 passed / 2 skipped / 0 failed (was 2459, +6 new)
+- Full Rust suite: 215 passed (unchanged — no Rust changes)
+- tsc --noEmit: clean | cargo fmt --check: clean | cargo clippy --all-targets -D warnings: clean
+
+**Architecture audit:**
+- `renderActionCommand` is pure function — regex + escapeHtml, no side effects ✅
+- `pct()` usage consistent — both occurrences now use same helper ✅
+- Skipped filter uses string prefix match — deterministic, no regex overhead ✅
+- No public type changes (PassportDetail, PriorityAction, FindingSummary unchanged) ✅
+
+**Scope audit:**
+- nodejs-dev (2306ba0): touched ONLY `engine/core/src/domain/reporter/html-renderer.ts` — 1 file, zero test files, zero Rust files ✅
+- `git diff e70f330..2306ba0 -- '*.test.ts'` = EMPTY ✅
+- No SCOPE VIOLATION REQUEST needed — no test conflicts
+- No V1-M30.{1..6} tests modified ✅
+
+**Reviewer notes:**
+- No blocking issues
+- No new tech debt
+- Cleanest milestone in the V1-M30.x series: 1 file, 4 surgical fixes, zero process deviations
 
 ---
 
