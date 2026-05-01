@@ -605,7 +605,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
             );
             println!(
                 "      {}",
-                dim("complior passport show <name>  — view missing fields")
+                dim("complior agent show <name>  — view missing fields")
             );
             println!(
                 "      {}",
