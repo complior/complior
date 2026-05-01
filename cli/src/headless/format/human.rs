@@ -632,16 +632,11 @@ fn render_single_finding(o: &mut String, f: &Finding, finding_num: &mut usize) {
         }
     }
 
-    // Docs command hint (if article reference exists)
-    if let Some(art) = article
-        && let Some(art_num) = extract_article_number(art)
-    {
-        o.push_str(&format!(
-            "         {}  {}\n",
-            dim("Docs:"),
-            dim(&format!("complior docs --article {art_num}"))
-        ));
-    }
+    // V1-M30.8a W-3 (hotfix continuation): `complior docs` does NOT exist in
+    // v1.0.0. Removed the docs hint line entirely — the article reference is
+    // already shown above the fix suggestion. The `complior fix --check-id`
+    // hint above is the actionable next step.
+    let _ = article;
 
     o.push('\n');
 }
