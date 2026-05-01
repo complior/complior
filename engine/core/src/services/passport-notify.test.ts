@@ -108,8 +108,11 @@ function mockDeps(): unknown {
 
 async function seedPassport(name: string): Promise<void> {
   const { writeFileSync } = await import('node:fs');
+  // V1-M30.8a W-2 spec supersession: passport files use `-manifest.json` suffix
+  // (FA-04 spec). Pre-V1-M30.8a tests wrote bare `${name}.json` which became
+  // unreachable after the lookup was fixed. Update test fixture to match.
   writeFileSync(
-    resolve(TEST_PROJECT, '.complior/agents', `${name}.json`),
+    resolve(TEST_PROJECT, '.complior/agents', `${name}-manifest.json`),
     JSON.stringify({
       name,
       kind: 'deployer_agent',

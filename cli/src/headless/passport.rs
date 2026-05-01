@@ -555,10 +555,7 @@ async fn run_passport_list(
                         }
                     }
                     println!();
-                    println!(
-                        "  {}",
-                        dim("Run `complior agent show <name>` for details")
-                    );
+                    println!("  {}", dim("Run `complior agent show <name>` for details"));
                 }
                 _ => {
                     println!("\n  No Agent Passports found.");
