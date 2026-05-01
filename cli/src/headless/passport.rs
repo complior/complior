@@ -20,7 +20,7 @@ fn format_engine_hint(err: &str) -> String {
     if lower.contains("connection refused") || lower.contains("connect") {
         "Is the engine running? Try: complior daemon".to_string()
     } else if lower.contains("not found") {
-        "Run: complior passport list".to_string()
+        "Run: complior agent list".to_string()
     } else if lower.contains("timeout") {
         "Engine may be busy. Try again or run: complior doctor".to_string()
     } else {
@@ -398,7 +398,7 @@ async fn run_passport_init(
             let created_count = manifests.map_or(0, std::vec::Vec::len);
             if created_count > 0 {
                 println!("Agent Passport(s) generated successfully.");
-                println!("Run `complior passport list` to view all passports.");
+                println!("Run `complior agent list` to view all passports.");
             } else if skipped_count > 0 {
                 println!("All discovered agents already have passports.");
                 println!("Run `complior agent init --force` to regenerate.");
@@ -557,7 +557,7 @@ async fn run_passport_list(
                     println!();
                     println!(
                         "  {}",
-                        dim("Run `complior passport show <name>` for details")
+                        dim("Run `complior agent show <name>` for details")
                     );
                 }
                 _ => {
@@ -2222,7 +2222,7 @@ async fn run_passport_import(
                 if let Some(passport) = result.get("passport") {
                     let name = passport.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                     println!("\n  Passport name: {name}");
-                    println!("  Run `complior passport show {name}` to view details.");
+                    println!("  Run `complior agent show {name}` to view details.");
                 }
             }
             0

@@ -455,13 +455,13 @@ fn render_passports_evidence(
             o.push_str(&format!(
                 "\n  {} {}     {}\n",
                 dim("->"),
-                dim("complior passport list"),
+                dim("complior agent list"),
                 dim("view all passports"),
             ));
             o.push_str(&format!(
                 "  {} {}  {}\n",
                 dim("->"),
-                dim("complior passport show <name>"),
+                dim("complior agent show <name>"),
                 dim("view passport details"),
             ));
         }

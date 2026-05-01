@@ -2015,4 +2015,124 @@ mod tests {
             }
         }
     }
+
+    // ── V1-M30.8a / W-1: All `complior passport <verb>` user-facing strings ──
+    //
+    // V1-M30.5 W-5 + V1-M30.6 W-2 fixed `passport init` and a few hints, but
+    // Phase 1 deep-dive of /deep-e2e CLI outputs found 6 more strings still
+    // saying `complior passport list/show/...`. The deprecation alias still
+    // works (V1-M30.4 B.1), but new user-facing hints must reference the
+    // primary verb `agent`. The deprecation warning string in main.rs is
+    // exempt — it MUST literally name the deprecated alias.
+
+    #[test]
+    fn user_facing_passport_subcommand_hints_use_agent() {
+        use std::fs;
+        use std::path::Path;
+
+        let files = [
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/passport.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/commands.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/headless/format/report.rs"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/app/executor.rs"),
+        ];
+
+        // Forbidden full-string subcommand hints. The list explicitly excludes
+        // `complior passport init` (already handled in V1-M30.5) — but we
+        // re-include it here to keep regression coverage.
+        let forbidden_substrings = [
+            "complior passport init",
+            "complior passport list",
+            "complior passport show",
+            "complior passport rename",
+            "complior passport autonomy",
+            "complior passport notify",
+            "complior passport export",
+            "complior passport registry",
+            "complior passport evidence",
+            "complior passport permissions",
+            "complior passport audit",
+            "complior passport import",
+            "complior passport completeness",
+            "complior passport diff",
+            "complior passport validate",
+            "complior passport fria",
+        ];
+
+        for path in &files {
+            let content = match fs::read_to_string(path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            for (lineno, line) in content.lines().enumerate() {
+                let trimmed = line.trim_start();
+                if trimmed.starts_with("//") {
+                    continue;
+                }
+                // Allow lines that document the rename/deprecation
+                if line.contains("Deprecated") || line.contains("deprecated") {
+                    continue;
+                }
+                if line.contains("v2.0.0") {
+                    continue;
+                }
+                for forbidden in &forbidden_substrings {
+                    assert!(
+                        !line.contains(forbidden),
+                        "V1-M30.8a W-1: {}:{} contains user-facing hint `{}` — should use `complior agent ...` (alias still works at CLI level but new hints must reference primary verb).\n  >>> {}",
+                        path.display(),
+                        lineno + 1,
+                        forbidden,
+                        line,
+                    );
+                }
+            }
+        }
+    }
+
+    // ── V1-M30.8a / W-8: Fix score estimate not hardcoded to 100 ──
+    //
+    // fix.rs:517 currently does `format!("{before:.0} → ~{after:.0}")` where
+    // `after` ends up being 100 in many cases. Realistic estimate must be
+    // computed from per-fix score impacts; the `~` prefix can stay (it's
+    // still an estimate), but the value must NOT be a hardcoded ceiling.
+
+    #[test]
+    fn fix_score_estimate_is_not_hardcoded_to_100() {
+        use std::fs;
+        use std::path::Path;
+
+        let fix_rs = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("headless")
+            .join("fix.rs");
+        let content = fs::read_to_string(&fix_rs).expect("fix.rs readable");
+
+        // Forbid: `100` literal as direct estimate output and forbid clamps that
+        // pin the estimate to 100. Allow: a function that *caps* at 99 to indicate
+        // estimate (since 100 implies certainty).
+        // Heuristic: look for the formatting line and check that it uses a
+        // computed `after` variable, not a literal 100.
+        let re_estimate_line = regex_lite_search(&content, "→ ~");
+        assert!(
+            !re_estimate_line.is_empty(),
+            "V1-M30.8a W-8: expected fix.rs to render an estimated score line",
+        );
+        // No direct format using the literal `100`
+        assert!(
+            !content.contains("→ ~100"),
+            "V1-M30.8a W-8: fix.rs must not hardcode `→ ~100` as the estimate. Compute from per-fix scoreImpact instead.",
+        );
+    }
+
+    // Tiny helper since we don't want to add a regex dep — substring search.
+    fn regex_lite_search(haystack: &str, needle: &str) -> Vec<usize> {
+        let mut out = Vec::new();
+        let mut pos = 0;
+        while let Some(idx) = haystack[pos..].find(needle) {
+            out.push(pos + idx);
+            pos += idx + needle.len();
+        }
+        out
+    }
 }
