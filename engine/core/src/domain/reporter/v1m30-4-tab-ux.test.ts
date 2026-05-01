@@ -32,8 +32,12 @@ const baseReport: ComplianceReport = {
   documents: {
     total: 2, byStatus: { missing: 0, scaffold: 0, draft: 1, reviewed: 1 }, score: 64, excludedCount: 0,
     documents: [
-      { docType: 'fria', article: 'Art. 27', description: 'FRIA',
-        outputFile: '/abs/path/docs/compliance/fria.md', status: 'draft', scoreImpact: 5,
+      // V1-M30.8b TD-63: switched from FRIA (Art. 27) to ai-literacy (Art. 4) —
+      // FRIA is excluded for limited-risk profiles by V1-M30.6 W-1.2 filter, so
+      // it never made it into doc-cards in the default deployer/limited fixture.
+      // The A.4 invariant (file:// links per doc) is doc-type-agnostic.
+      { docType: 'ai-literacy', article: 'Art. 4', description: 'AI Literacy',
+        outputFile: '/abs/path/docs/compliance/ai-literacy-policy.md', status: 'draft', scoreImpact: 5,
         prefilledPercent: 30, lastModified: null, templateFile: null },
       { docType: 'risk-management', article: 'Art. 9', description: 'Risk Mgmt',
         outputFile: '/abs/path/docs/compliance/risk-management.md', status: 'reviewed', scoreImpact: 8,
@@ -172,7 +176,8 @@ describe('V1-M30.4 A.4: Documents — file:// links + status legend', () => {
     const { generateReportHtml } = await import('./html-renderer.js');
     const html = generateReportHtml(baseReport);
     const t = tab(html, 'documents');
-    expect(t).toMatch(/<a[^>]+href="file:\/\/[^"]*fria\.md"/);
+    // V1-M30.8b TD-63: ai-literacy replaces fria (filtered for limited-risk).
+    expect(t).toMatch(/<a[^>]+href="file:\/\/[^"]*ai-literacy-policy\.md"/);
     expect(t).toMatch(/<a[^>]+href="file:\/\/[^"]*risk-management\.md"/);
   });
 
