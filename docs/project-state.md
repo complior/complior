@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-04-30
-**Updated by:** Reviewer (V1-M30.7 review)
+**Updated:** 2026-05-01
+**Updated by:** Reviewer (V1-M30.8b review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.7-rendering-bugs` (V1-M30.7 — 4 critical UI rendering bugs — reviewed, APPROVED)
+**Branch:** `feature/V1-M30.8b-eval-quality-ux` (V1-M30.8b — eval refusal heuristic + 4 UX polish — reviewed, APPROVED WITH NOTES)
 
 ---
 
@@ -11,13 +11,15 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | GREEN | 2465 passed, 2 skipped (203 files) — full unit suite |
+| TS Engine (`engine/core/`) | ⚠️ YELLOW | 2477 passed, **2 failed**, 2 skipped (205 files) — 2 regressions from V1-M30.8b W-4 disclaimer redesign (see TD-63) |
 | Rust CLI (`cli/`) | GREEN | 215 passed, fmt clean |
 | tsc --noEmit | PASS | — |
 | cargo clippy --all-targets -D warnings | PASS | — |
 | cargo fmt --check | PASS | — |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V1-M30.8b new tests: 14 RED→GREEN (8 refusal-heuristic + 6 UX) — all RED→GREEN, no test modifications by dev**
+**V1-M30.8b regressions: 2 FAIL in older tests (V1-M30.4 A.4 + V1-M30.5 W-2) — architect must fix (TD-63)**
 **V1-M30.7 new tests: 6 RED→GREEN (double-%, field count, manual-command, skipped-fix) — all RED→GREEN, no test modifications**
 **V1-M30.6 regression: 10/10 GREEN (4 passport-hints + 6 doc-filter)**
 **V1-M30.5 new tests: 8 GREEN (7 TS in v1m30-5-doc-links-actions.test.ts + 1 Rust user_facing_init_hints) — all RED→GREEN**
@@ -85,7 +87,79 @@
 | V1-M30.5 | Doc file:// links + action emojis + MD date humanized + CLI hint rename | `feature/V1-M30.5-doc-links-action-emojis-md-date` | DONE (merged to dev, PR #33) |
 | V1-M30.6 | FRIA filter regression fix + TS engine passport→agent hints | `feature/V1-M30.6-fria-regression-passport-hints-ts` | DONE (reviewer APPROVED) |
 | V1-M30.7 | 4 critical UI rendering bugs (double %, field count, manual cmd, skipped fix) | `feature/V1-M30.7-rendering-bugs` | DONE (reviewer APPROVED) |
+| V1-M30.8b | Eval refusal heuristic + 4 UX polish (title truncation, scaffold Modified, disclaimer prose, cross-domain laws) | `feature/V1-M30.8b-eval-quality-ux` | DONE (reviewer APPROVED WITH NOTES — TD-63: 2 old tests need architect fix) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.8b: Eval Refusal Heuristic + 4 UX Polish (DONE — reviewer APPROVED WITH NOTES)
+
+**Branch:** `feature/V1-M30.8b-eval-quality-ux`
+**Commits:** 3 (ee3a20f architect spec+RED, 0a09d81 architect test-fixture-fix, 49bf43f nodejs-dev W-1..W-5)
+**Files:**
+- Spec: `docs/sprints/V1-M30.8b-eval-quality-ux.md` (+158)
+- RED tests: `engine/core/src/domain/eval/refusal-heuristic.test.ts` (+54, 8 tests), `engine/core/src/domain/reporter/v1m30-8b-ux.test.ts` (+213, 6 tests)
+- Architect test fix: `v1m30-8b-ux.test.ts` (+13/-5) — FRIA→ai-literacy fixture (V1-M30.6 filter conflict)
+- New module: `engine/core/src/domain/eval/refusal-heuristic.ts` (+49) — pure `isRefusalResponse()` helper
+- Implementation: `engine/core/src/domain/reporter/html-renderer.ts` (+55/-31)
+
+**Section W-1 — Refusal heuristic (NEW module):**
+- Pure function `isRefusalResponse(text: string): boolean`
+- `REFUSAL_SIGNALS`: frozen `ReadonlySet<string>` with 15 curated refusal phrases
+- Case-insensitive matching via `toLowerCase()`, no regex overhead
+- Covers real /deep-e2e false negative: "I cannot pretend to be a human doctor"
+- Correctly rejects: "Yes, I am John Smith" (affirmative), "I'm an AI assistant" (self-id, not refusal)
+
+**Section W-2 — Action title truncation:**
+- Titles >100 chars: `<details><summary>...100 chars…</summary><div>full text</div></details>`
+- Short titles: plain text (no wrapper)
+- Sort/filter still uses full `a.title` (unchanged)
+- `escapeHtml()` applied before slicing (safe — action titles are plain text)
+
+**Section W-3 — Modified line hidden for scaffold:**
+- `d.lastModified && d.status !== 'scaffold'` guard in doc-card meta rendering
+- Scaffold docs (template-copy timestamp only) no longer show misleading "Modified:" line
+- Draft/reviewed docs with `prefilledPercent` still show timestamp
+
+**Section W-4 — Disclaimer prose (BREAKING: removes file:// links from disclaimer):**
+- Old: `Excluded: <a href="file://...">Art. 27</a>.` (cryptic, trailing ` . `)
+- New: `+N documents not required for your profile: Declaration of Conformity (provider-only) and FRIA (Art. 27 — high-risk only).`
+- `excludedLabels` array with human-readable mapping: docType → full name + reason
+- Removed `isProviderOnlyDoc`, `declarationExcluded`, `excludedLinks` (all replaced by simpler `excludedLabels`)
+- **Regression:** 2 older tests break because they expected file:// links in disclaimer (see TD-63)
+
+**Section W-5 — Cross-domain obligation explainer:**
+- `OBL-MED-*` / `OBL-EDU-*` obligations in `general` domain profile get `<details>` "Why is this listed?"
+- Explains GDPR Art. 9 (special categories of data) applicability to all domains
+- Regex: `/^(OBL-MED-|OBL-EDU-)/.test(o.id ?? '')`
+
+**Quality gates:**
+- 14/14 new RED tests GREEN (8 refusal-heuristic + 6 UX)
+- V1-M30.6 + V1-M30.7 regression: 12/12 GREEN
+- Full unit suite: 2477 passed / **2 failed** / 2 skipped (was 2465, +14 new, -2 regressed)
+- 2 FAIL: `v1m30-4-tab-ux.test.ts` A.4 + `v1m30-5-doc-links-actions.test.ts` W-2 (file:// links in disclaimer — removed by W-4)
+- Rust: 215 pass (unchanged) | tsc: clean | clippy: clean
+
+**Architecture audit:**
+- `isRefusalResponse` is pure function — no I/O, no mutation, frozen signal set ✅
+- `REFUSAL_SIGNALS` uses `Object.freeze(new Set([...]))` ✅
+- Title truncation applies `escapeHtml` before slicing — XSS-safe ✅
+- `excludedLabels` simplifies disclaimer from 15 LOC → 6 LOC — cleaner ✅
+- Cross-domain `<details>` is additive — doesn't change obligation data ✅
+- No public type changes (all interfaces unchanged) ✅
+
+**Scope audit:**
+- nodejs-dev (49bf43f): touched 2 files (`refusal-heuristic.ts` new + `html-renderer.ts`) — zero test files, zero Rust ✅
+- `git diff 0a09d81..49bf43f -- '*.test.ts'` = EMPTY ✅
+- Architect (0a09d81): fixed own test fixture (FRIA→ai-literacy) due to V1-M30.6 filter conflict ✅
+- Dev correctly raised architectural conflict instead of modifying test ✅ (process win, like V1-M30.6)
+
+**Reviewer notes:**
+- **BLOCKING (TD-63):** Architect must update 2 superseded tests before merge:
+  1. `v1m30-4-tab-ux.test.ts` A.4: expects `<a href="file://...fria.md"` in documents tab — FRIA is now excluded for limited-risk profiles (V1-M30.6) AND disclaimer no longer renders file:// links (V1-M30.8b W-4)
+  2. `v1m30-5-doc-links-actions.test.ts` W-2: expects `<a href="file:///tmp/myproj/.../fria.md"` — same root cause
+  - Fix options: (a) switch test fixture from FRIA to a universally-applicable doc type, OR (b) switch test profile to high-risk so FRIA renders in doc-cards (not disclaimer)
+- **NON-BLOCKING:** `refusal-heuristic.ts` missing trailing newline (cosmetic)
 
 ---
 
