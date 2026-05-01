@@ -44,8 +44,12 @@ const makeReport = (over: Partial<ComplianceReport> & { summaryOver?: Partial<Re
   documents: {
     total: 2, byStatus: { missing: 0, scaffold: 0, draft: 1, reviewed: 1 }, score: 64, excludedCount: 0,
     documents: [
-      { docType: 'fria', article: 'Art. 27', description: 'FRIA',
-        outputFile: 'docs/compliance/fria.md', status: 'draft', scoreImpact: 5,
+      // V1-M30.8b TD-63: switched from FRIA to ai-literacy — V1-M30.6 W-1.2
+      // filter excludes FRIA for limited-risk profiles (default in this fixture),
+      // so the test could not verify file:// link rendering. ai-literacy is
+      // universally applicable.
+      { docType: 'ai-literacy', article: 'Art. 4', description: 'AI Literacy',
+        outputFile: 'docs/compliance/ai-literacy-policy.md', status: 'draft', scoreImpact: 5,
         prefilledPercent: 30, lastModified: null, templateFile: null },
       { docType: 'risk-management', article: 'Art. 9', description: 'Risk Mgmt',
         outputFile: '/abs/path/risk.md', status: 'reviewed', scoreImpact: 8,
@@ -75,7 +79,8 @@ describe('V1-M30.5 W-1+W-2: Documents file:// links use projectPath, not process
     const report = makeReport({ summaryOver: { projectPath: '/tmp/myproj/eval-target' } as Partial<ReportSummary> });
     const html = generateReportHtml(report);
     const t = tab(html, 'documents');
-    expect(t).toMatch(/<a[^>]+href="file:\/\/\/tmp\/myproj\/eval-target\/docs\/compliance\/fria\.md"/);
+    // V1-M30.8b TD-63: ai-literacy replaces fria (filtered for limited-risk).
+    expect(t).toMatch(/<a[^>]+href="file:\/\/\/tmp\/myproj\/eval-target\/docs\/compliance\/ai-literacy-policy\.md"/);
   });
 
   it('absolute outputFile (starts with /) is preserved as-is', async () => {
@@ -95,7 +100,8 @@ describe('V1-M30.5 W-1+W-2: Documents file:// links use projectPath, not process
     // the engine's CWD does NOT appear in the rendered Documents links when
     // projectPath is provided.
     const cwd = process.cwd();
-    expect(t).not.toMatch(new RegExp(`<a[^>]+href="file://${cwd}/docs/compliance/fria\\.md"`));
+    // V1-M30.8b TD-63: ai-literacy replaces fria (filtered for limited-risk).
+    expect(t).not.toMatch(new RegExp(`<a[^>]+href="file://${cwd}/docs/compliance/ai-literacy-policy\\.md"`));
   });
 });
 
