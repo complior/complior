@@ -95,9 +95,16 @@ describe('V1-M30.8b W-2: long action titles truncated with <details> expand', ()
 });
 
 describe('V1-M30.8b W-3: doc Modified line hidden for scaffold-status docs', () => {
+  // V1-M30.8b W-3 test fixture FIX: previously used FRIA (Art. 27) but the
+  // V1-M30.6 W-1.2 risk-level filter excludes FRIA from the documents tab
+  // for limited-risk profiles (which baseReport defaults to). The fixture
+  // never rendered a doc-card → test was vacuously passing/failing.
+  // Switched to ai-literacy (Art. 4) which is universally applicable to all
+  // profiles. The W-3 invariant under test (Modified: hidden for scaffold,
+  // shown for draft) is doc-type-agnostic.
   const baseDoc: DocumentStatus = {
-    docType: 'fria', article: 'Art. 27', description: 'FRIA',
-    outputFile: '/abs/path/fria.md', status: 'scaffold', scoreImpact: 5,
+    docType: 'ai-literacy', article: 'Art. 4', description: 'AI Literacy',
+    outputFile: '/abs/path/ai-literacy-policy.md', status: 'scaffold', scoreImpact: 5,
     prefilledPercent: null, lastModified: '2026-04-30T10:00:00Z',
     templateFile: null,
   };
@@ -112,9 +119,10 @@ describe('V1-M30.8b W-3: doc Modified line hidden for scaffold-status docs', () 
     });
     const html = generateReportHtml(report);
     const dTab = tab(html, 'documents');
-    // Find the FRIA doc-card
-    const card = dTab.match(/<div class="doc-card">[\s\S]*?fria[\s\S]*?(?=<div class="doc-card"|<div class="docs-disclaimer"|$)/i);
-    expect(card?.[0] ?? '').not.toMatch(/Modified:/);
+    // Find the ai-literacy doc-card
+    const card = dTab.match(/<div class="doc-card">[\s\S]*?ai-literacy[\s\S]*?(?=<div class="doc-card"|<div class="docs-disclaimer"|$)/i);
+    expect(card, 'ai-literacy doc-card must be rendered (not filtered)').not.toBeNull();
+    expect(card![0]).not.toMatch(/Modified:/);
   });
 
   it('draft doc with prefilledPercent renders Modified: line', async () => {
