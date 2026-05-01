@@ -1,6 +1,8 @@
 import type { FixStrategy, FixAction, TemplateMapping } from '../types.js';
 import { generateCreateDiff } from '../diff.js';
 import { TEMPLATE_REGISTRY } from '../../../data/template-registry.js';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // --- Template mapping: derived from TEMPLATE_REGISTRY (single source of truth) ---
 
@@ -29,30 +31,39 @@ export const documentationStrategy: FixStrategy = (finding, context) => {
   const mapping = TEMPLATE_MAP.find((m) => m.obligationId === oblId);
   if (!mapping) return null;
 
+  const fullOutputPath = resolve(context.projectPath, mapping.outputFile);
+  const fileExists = existsSync(fullOutputPath);
+
   // For L1 (presence) findings: skip if file already exists
   // For L2 (structure/quality) findings: only fix scaffold/none — never overwrite draft/reviewed docs
   const isL2 = finding.checkId.startsWith('l2-');
   if (isL2 && !context.useAi && (finding.docQuality === 'draft' || finding.docQuality === 'reviewed')) return null;
-  if (!isL2 && context.existingFiles.some((f) => f.endsWith(mapping.outputFile))) return null;
+  if (!isL2 && (context.existingFiles.some((f) => f.endsWith(mapping.outputFile)) || fileExists)) return null;
 
   const action: FixAction = {
-    type: 'create',
+    type: fileExists ? 'enrich' : 'create',
     path: mapping.outputFile,
     content: `[TEMPLATE:${mapping.templateFile}]`,
-    description: `Generate ${mapping.description} from template`,
+    description: fileExists
+      ? `Enrich existing ${mapping.description} with template content`
+      : `Generate ${mapping.description} from template`,
   };
 
   return {
     obligationId: oblId,
     checkId: finding.checkId,
     article: mapping.article,
-    fixType: isL2 && context.useAi ? 'ai_enrichment' : 'template_generation',
+    fixType: fileExists && isL2 && context.useAi ? 'ai_enrichment' : fileExists ? 'ai_enrichment' : 'template_generation',
     framework: context.framework,
     actions: [action],
     diff: generateCreateDiff(mapping.outputFile, `# ${mapping.description}\n\n[Generated from template: ${mapping.templateFile}]`),
     scoreImpact: 8,
-    commitMessage: `fix: generate ${mapping.description} (${mapping.article}) -- via Complior`,
-    description: `Generate ${mapping.description} from compliance template`,
+    commitMessage: fileExists
+      ? `fix: enrich ${mapping.description} (${mapping.article}) -- via Complior`
+      : `fix: generate ${mapping.description} (${mapping.article}) -- via Complior`,
+    description: fileExists
+      ? `Enrich existing ${mapping.description}`
+      : `Generate ${mapping.description} from compliance template`,
   };
 };
 

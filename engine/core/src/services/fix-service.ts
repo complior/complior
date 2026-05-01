@@ -193,6 +193,25 @@ export const createFixService = (deps: FixServiceDeps) => {
       await writeFile(fullPath, content, 'utf-8');
       events.emit('file.changed', { path: fullPath, action: 'create' });
       return manualFields;
+    } else if (action.type === 'enrich') {
+      // enrich: merge template content into existing file (never overwrite)
+      let current: string;
+      try { current = await readFile(fullPath, 'utf-8'); } catch {
+        throw new Error(`enrich action requires existing file: ${action.path}`);
+      }
+      // For [TEMPLATE:xxx] markers: load and append/prepend template content
+      if (action.content?.match(/^\[TEMPLATE:(.+)]$/)) {
+        const templateFile = action.content.match(/^\[TEMPLATE:(.+)]$/)![1]!;
+        const template = await loadTemplate(templateFile);
+        // Append template content marker to existing content (preserve user edits)
+        const enriched = `${current}\n\n<!-- COMPLIOR:ENRICHED -->\n${template}`;
+        await writeFile(fullPath, enriched, 'utf-8');
+      } else if (action.content) {
+        // Append custom content
+        await writeFile(fullPath, `${current}\n\n${action.content}`, 'utf-8');
+      }
+      events.emit('file.changed', { path: fullPath, action: 'edit' });
+      return undefined;
     } else if (action.type === 'splice') {
       const content = await readFile(fullPath, 'utf-8');
       const lines = content.split('\n');
