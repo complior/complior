@@ -354,7 +354,7 @@ export const createPassportService = (deps: PassportServiceDeps) => {
       ?? (typeof getProjectPath === 'function' ? getProjectPath() : (deps as { projectPath?: string }).projectPath)) ?? '';
     const path: string = resolvedPath;
     const agentsDir = join(path, '.complior', 'agents');
-    const passportPath = join(agentsDir, `${name}.json`);
+    const passportPath = join(agentsDir, `${name}-manifest.json`);
 
     // Read passport directly from {name}.json (not {name}-manifest.json)
     // For notifyWorkers, we accept partial passport data (seed-friendly) since
