@@ -774,6 +774,11 @@ const renderTabLaws = (report: ComplianceReport): string => {
     const linkedAnchors = (o.linkedChecks ?? []).map((checkId) =>
       `<a href="#tab-findings" class="tab-link" data-tab="findings">&rarr; ${escapeHtml(checkId)}</a>`,
     ).join(' ');
+    // W-5: cross-domain obligations get <details> explainer when domain is general
+    const isCrossDomain = profileDomain === 'general' && /^(OBL-MED-|OBL-EDU-)/.test(o.id ?? '');
+    const crossDomainNote = isCrossDomain
+      ? `<details class="obligation-cross-domain-note"><summary class="muted small">Why is this listed?</summary><div class="obligation-note-body muted small">This obligation applies to all domains under GDPR Art. 9 (special categories of data). Even projects labeled "general" domain must address AI systems processing health, education, or other protected data if they exist in the codebase.</div></details>`
+      : '';
     return `
     <div class="law-item">
       <div class="law-band ${o.covered ? 'covered' : 'uncovered'}"></div>
@@ -782,6 +787,7 @@ const renderTabLaws = (report: ComplianceReport): string => {
         <div class="law-title">${escapeHtml(o.title ?? '')}</div>
         <div class="law-meta"><span class="muted">${escapeHtml(o.id ?? '')}</span> <span class="law-status-badge ${st.cssClass}">${st.emoji} ${st.label}</span> <span class="muted">${escapeHtml(o.role ?? '')}</span>${o.deadline ? `<span class="muted">${escapeHtml(formatDateHuman(o.deadline))}</span>` : ''}</div>
         ${linkedAnchors ? `<div class="law-linked muted small">Linked checks: ${linkedAnchors}</div>` : ''}
+        ${crossDomainNote}
       </div>
       <div class="law-status"><span class="verdict-badge" style="background:${o.covered ? 'var(--teal)' : 'var(--coral)'}">${o.covered ? 'covered' : 'uncovered'}</span></div>
     </div>`;
@@ -894,7 +900,6 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   const docs = report.documents;
   const contents = report.documentContents;
   const profile = report.profile;
-  const profileRole = (profile?.role ?? '').toLowerCase();
 
   const contentMap = new Map<string, DocumentContent>();
   for (const c of contents) contentMap.set(c.docType, c);
@@ -903,11 +908,7 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   const applicableDocs = docs.documents.filter(d => isDocumentApplicable(d, profile));
   const excludedCount = docs.documents.length - applicableDocs.length;
 
-  // Track whether Declaration-of-Conformity is hidden (for disclaimer)
-  const declarationExcluded = profileRole === 'deployer' && docs.documents.some(d => {
-    const docType = d.docType.toLowerCase();
-    return docType === 'declaration-of-conformity' || d.article.toLowerCase().includes('art. 47');
-  });
+  // W-5: Disclaimer about excluded documents (always when N > 0).
 
   // V1-M30.4 A.4 / V1-M30.5 W-2: render document title as a clickable file:// link.
   // Resolve relative paths against summary.projectPath (from scanResult), not process.cwd().
@@ -929,7 +930,7 @@ const renderTabDocuments = (report: ComplianceReport): string => {
         <span class="muted">${escapeHtml(d.article)}</span>
       </div>
       <div class="doc-meta muted">
-        ${d.lastModified ? `Modified: ${escapeHtml(formatDateTimeHuman(d.lastModified))}` : ''}
+        ${d.lastModified && d.status !== 'scaffold' ? `Modified: ${escapeHtml(formatDateTimeHuman(d.lastModified))}` : ''}
         ${d.prefilledPercent !== null ? ` | Prefilled: ${d.prefilledPercent}%` : ''}
         ${d.scoreImpact > 0 ? ` | Score impact: +${d.scoreImpact}` : ''}
       </div>
@@ -943,36 +944,23 @@ const renderTabDocuments = (report: ComplianceReport): string => {
   // still open them from the report even though they are filtered from the
   // primary list. We only emit links for excluded docs that are NOT
   // provider-only (V1-M29 W-4 invariant: declaration-of-conformity must not
-  // appear anywhere in the docs tab when the profile is deployer-only). FRIA
-  // and other risk-gated docs may legitimately surface in the disclaimer.
+  // W-4: Disclaimer about excluded documents (always when N > 0).
+  // W-4: Clean prose — full doc names, no cryptic article-only labels, no trailing " . ".
+  // Both FRIA and Declaration-of-Conformity may appear in disclaimer (non-applicable to profile).
   const excludedDocs = docs.documents.filter(d => !isDocumentApplicable(d, profile));
-  const isProviderOnlyDoc = (d: { docType: string; article: string }): boolean => {
+  const excludedLabels = excludedDocs.map((d: { docType: string; article: string }) => {
     const t = d.docType.toLowerCase();
-    return t === 'declaration-of-conformity' || d.article.toLowerCase().includes('art. 47');
-  };
-  const excludedLinks = excludedDocs.filter(d => !isProviderOnlyDoc(d)).map((d) => {
-    const absPath = d.outputFile
-      ? resolveDocumentPath(d.outputFile, projectPath)
-      : '';
-    const label = escapeHtml(d.article || d.docType);
-    return absPath
-      ? `<a href="file://${escapeHtml(absPath)}" target="_blank" class="doc-link muted">${label}</a>`
-      : `<span class="muted">${label}</span>`;
-  }).join(' &middot; ');
-  // V1-M30.6 W-1.2: Disclaimer about excluded documents (always when N > 0).
-  // V1-M30.6 W-1.2: FRIA (Art. 27) is filtered for limited/unacceptable-risk profiles.
-  // Declaration-of-Conformity (Art. 47) is excluded for deployer-only.
-  // Both doc types may appear in the disclaimer. excludedLinks includes FRIA
-  // (non-provider-only, valid to surface in disclaimer); excludes Declaration-of-Conformity.
+    const art = d.article.toLowerCase();
+    if (t === 'declaration-of-conformity' || art.includes('art. 47')) return 'Declaration of Conformity (provider-only)';
+    if (t === 'fria' || art.includes('art. 27')) return 'FRIA (Art. 27 — high-risk only)';
+    return escapeHtml(d.article || d.docType);
+  }).join(' and ');
   const disclaimer = excludedCount > 0 ? `
     <div class="docs-disclaimer">
       <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-      <span>+${excludedCount} documents not required for your profile
-        ${declarationExcluded ? '(Declaration of Conformity — provider-only)' : ''}
-        ${excludedCount === 1 && excludedDocs.some(d => d.docType.toLowerCase() === 'fria' || d.article.toLowerCase().includes('art. 27')) ? '(FRIA Art. 27 — high-risk only)' : ''}
-        ${excludedLinks ? `. Excluded: ${excludedLinks}.` : ''}</span>
+      <span>+${excludedCount} documents not required for your profile${excludedLabels ? `: ${excludedLabels}` : ''}.</span>
     </div>` : '';
 
   return `
@@ -1233,10 +1221,15 @@ const renderTabActions = (report: ComplianceReport): string => {
     const isDone = a.id !== undefined && fixedCheckIds.has(a.id);
     const doneBadge = isDone ? '<span class="tag tag-green">&check; Done</span> ' : '';
     const rowClass = isDone ? ' done' : '';
+    // W-2: truncate title to 100 chars with <details> expand for long titles
+    const escapedTitle = escapeHtml(a.title ?? '');
+    const titleContent = escapedTitle.length > 100
+      ? `<details class="action-title-details"><summary class="action-title-summary">${escapedTitle.slice(0, 100)}…</summary><div class="action-title-full">${escapedTitle}</div></details>`
+      : escapedTitle;
     return `
     <tr class="action-row${rowClass}" data-rank="${a.rank}" data-sev="${SEV_ORDER[a.severity] ?? 9}" data-days="${a.daysLeft ?? 9999}" data-impact="${a.scoreImpact}" data-source="${a.source ?? ''}">
       <td class="rank">#${a.rank}</td>
-      <td>${doneBadge}<span class="severity-dot" style="background:${severityColor(a.severity)}"></span>${titlePrefix}${escapeHtml(a.title ?? '')}</td>
+      <td>${doneBadge}<span class="severity-dot" style="background:${severityColor(a.severity)}"></span>${titlePrefix}${titleContent}</td>
       <td><span class="tag tag-gray">${escapeHtml(a.source ?? '')}</span></td>
       <td>${escapeHtml(a.article ?? '')}</td>
       <td>${a.daysLeft !== null ? `${a.daysLeft}d` : '-'}</td>
