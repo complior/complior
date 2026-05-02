@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-05-02
-**Updated by:** Reviewer (V1-M30.9 review)
+**Updated by:** Reviewer (V1-M30.10 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.9-mini-hotfix` (V1-M30.9 — 3 remaining bugs: Rust docs literals, enrich action type, predictedScore cap 99 — reviewed, APPROVED WITH NOTES)
+**Branch:** `feature/V1-M30.10-engine-client-score-cap` (V1-M30.10 — single-line semantic fix: engine_client::fix_dry_run uses MAX_PREDICTED_SCORE constant — reviewed, APPROVED — ready for PR)
 
 ---
 
@@ -12,12 +12,13 @@
 | Component | Status | Tests |
 |-----------|--------|-------|
 | TS Engine (`engine/core/`) | ✅ GREEN | 2493 passed, 0 failed, 2 skipped (210 files) — TD-63 regressions FIXED by V1-M30.9 spec supersessions |
-| Rust CLI (`cli/`) | ✅ GREEN | 217 passed, 0 failed, clippy clean |
+| Rust CLI (`cli/`) | ✅ GREEN | 222 passed, 0 failed, clippy clean, fmt clean |
 | tsc --noEmit | PASS | — |
 | cargo clippy --all-targets -D warnings | PASS | — |
-| cargo fmt --check | ⚠️ FAIL | 1 cosmetic: `tests.rs:947` assert needs multi-line formatting (TD-66) |
+| cargo fmt --check | ✅ PASS | TD-66 resolved by V1-M30.9 follow-up (commit `d1579ce`) |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V1-M30.10 new tests: 5 RED→GREEN (predicted_score_cap_tests — 2 RED static-source + 3 GREEN invariant) — all RED→GREEN, no test modifications by dev. ROOT-CAUSE fix that V1-M30.9 missed: V1-M30.9 only patched the OFFLINE fallback (`fix.rs:119`); the CONNECTED branch via `engine_client::fix_dry_run` still capped at 100.0. Diff is exactly 2 insertions / 1 deletion in `cli/src/engine_client.rs` (import + literal swap to `MAX_PREDICTED_SCORE`).**
 **V1-M30.9 new tests: 5 RED→GREEN (2 discovery-enrich + 3 predicted-score) — all RED→GREEN, no test modifications by dev**
 **V1-M30.9 BUG-2b regression: dev conflated fixType with action.type — architect reverted fixType logic, kept action.type — CLEAN**
 **V1-M30.8b regressions (TD-63): 2 FAIL tests FIXED by V1-M30.9 spec supersession (cap 100→99 + docs hint removal)**
@@ -90,7 +91,8 @@
 | V1-M30.6 | FRIA filter regression fix + TS engine passport→agent hints | `feature/V1-M30.6-fria-regression-passport-hints-ts` | DONE (reviewer APPROVED) |
 | V1-M30.7 | 4 critical UI rendering bugs (double %, field count, manual cmd, skipped fix) | `feature/V1-M30.7-rendering-bugs` | DONE (reviewer APPROVED) |
 | V1-M30.8b | Eval refusal heuristic + 4 UX polish (title truncation, scaffold Modified, disclaimer prose, cross-domain laws) | `feature/V1-M30.8b-eval-quality-ux` | DONE (reviewer APPROVED WITH NOTES — TD-63 FIXED by V1-M30.9) |
-| V1-M30.9 | Mini-hotfix: 3 remaining bugs (Rust docs literals, enrich action type, predictedScore cap 99) | `feature/V1-M30.9-mini-hotfix` | DONE (reviewer APPROVED WITH NOTES — TD-66: cargo fmt) |
+| V1-M30.9 | Mini-hotfix: 3 remaining bugs (Rust docs literals, enrich action type, predictedScore cap 99) | `feature/V1-M30.9-mini-hotfix` | DONE (merged to dev — TD-66 fmt fix in `d1579ce`; W-3 OFFLINE-only patch — root cause closed by V1-M30.10) |
+| V1-M30.10 | Mini-hotfix: cap engine_client::fix_dry_run predictedScore at MAX_PREDICTED_SCORE (=99) — closes W-3 root cause | `feature/V1-M30.10-engine-client-score-cap` | DONE (reviewer APPROVED, awaiting PR) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---

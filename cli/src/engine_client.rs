@@ -2,6 +2,7 @@ use reqwest::Client;
 
 use crate::config::TuiConfig;
 use crate::error::{Result, TuiError};
+use crate::types::engine::MAX_PREDICTED_SCORE;
 use crate::types::{
     CostEstimateResult, DebtResult, EngineStatus, MultiFrameworkScoreResult, ReadinessResult,
     ScanResult,
@@ -198,7 +199,7 @@ impl EngineClient {
             }).collect())
             .unwrap_or_default();
 
-        let predicted = (current_score + adjusted_impact).clamp(current_score, 100.0);
+        let predicted = (current_score + adjusted_impact).clamp(current_score, MAX_PREDICTED_SCORE);
 
         Ok(serde_json::json!({
             "changes": changes,
