@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-05-02
-**Updated by:** Reviewer (V1-M30.10 review)
+**Updated by:** Architect (post-merge V1-M30.10 → dev)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.10-engine-client-score-cap` (V1-M30.10 — single-line semantic fix: engine_client::fix_dry_run uses MAX_PREDICTED_SCORE constant — reviewed, APPROVED — ready for PR)
+**Branch:** `dev` (V1-M30.10 merged via PR #29 commit `4f0f43f`; CI run #25261612863 — Rust Tests/Clippy/Fmt/Audit + Version Consistency + Detect changes ✅ SUCCESS, Engine/npm Audit SKIPPED — paths-filter, no TS changes)
 
 ---
 
@@ -92,7 +92,7 @@
 | V1-M30.7 | 4 critical UI rendering bugs (double %, field count, manual cmd, skipped fix) | `feature/V1-M30.7-rendering-bugs` | DONE (reviewer APPROVED) |
 | V1-M30.8b | Eval refusal heuristic + 4 UX polish (title truncation, scaffold Modified, disclaimer prose, cross-domain laws) | `feature/V1-M30.8b-eval-quality-ux` | DONE (reviewer APPROVED WITH NOTES — TD-63 FIXED by V1-M30.9) |
 | V1-M30.9 | Mini-hotfix: 3 remaining bugs (Rust docs literals, enrich action type, predictedScore cap 99) | `feature/V1-M30.9-mini-hotfix` | DONE (merged to dev — TD-66 fmt fix in `d1579ce`; W-3 OFFLINE-only patch — root cause closed by V1-M30.10) |
-| V1-M30.10 | Mini-hotfix: cap engine_client::fix_dry_run predictedScore at MAX_PREDICTED_SCORE (=99) — closes W-3 root cause | `feature/V1-M30.10-engine-client-score-cap` | DONE (reviewer APPROVED, awaiting PR) |
+| V1-M30.10 | Mini-hotfix: cap engine_client::fix_dry_run predictedScore at MAX_PREDICTED_SCORE (=99) — closes W-3 root cause | `dev` | DONE (merged PR #29 → dev, CI ✅ GREEN — awaiting final /deep-e2e to verify W-3 evidence and v1.0.0 release prep) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
