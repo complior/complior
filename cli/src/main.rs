@@ -1,3 +1,6 @@
+// V1-M30.11: CI re-trigger marker (post-merge engine + Rust verification).
+// Merge commit's Rust Clippy was cancelled by docs-only follow-up; touch-trigger
+// re-runs all Rust jobs. See engine/core/src/index.ts for context.
 // V1-M30.9: CI re-trigger marker (post-merge engine + Rust verification).
 // See engine/core/src/index.ts for context. paths-filter triggers Rust job.
 // V1-M30.8a+b: CI re-trigger marker (post-merge engine + Rust verification).
