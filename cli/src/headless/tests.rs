@@ -944,7 +944,10 @@ mod tests {
             "format_human MUST NOT emit invalid `complior docs --article N` hint (V1-M30.9 W-1)",
         );
         // The valid actionable hint must be present somewhere
-        assert!(text.contains("complior fix"), "format_human should emit valid `complior fix` hint");
+        assert!(
+            text.contains("complior fix"),
+            "format_human should emit valid `complior fix` hint"
+        );
     }
 
     #[test]
