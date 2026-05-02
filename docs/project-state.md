@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
 **Updated:** 2026-05-02
-**Updated by:** Architect (post-merge V1-M30.10 → dev)
+**Updated by:** Architect (post-merge V1-M30.11 → dev)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `dev` (V1-M30.10 merged via PR #29 commit `4f0f43f`; CI run #25261612863 — Rust Tests/Clippy/Fmt/Audit + Version Consistency + Detect changes ✅ SUCCESS, Engine/npm Audit SKIPPED — paths-filter, no TS changes)
+**Branch:** `dev` (V1-M30.11 merged via PR #30 commit `4da4f4c`; awaiting CI verify, then final /deep-e2e v3 → v1.0.0 release)
 
 ---
 
@@ -12,12 +12,13 @@
 | Component | Status | Tests |
 |-----------|--------|-------|
 | TS Engine (`engine/core/`) | ✅ GREEN | 2493 passed, 0 failed, 2 skipped (210 files) — TD-63 regressions FIXED by V1-M30.9 spec supersessions |
-| Rust CLI (`cli/`) | ✅ GREEN | 222 passed, 0 failed, clippy clean, fmt clean |
+| Rust CLI (`cli/`) | ✅ GREEN | 226 passed, 0 failed, clippy clean, fmt clean |
 | tsc --noEmit | PASS | — |
 | cargo clippy --all-targets -D warnings | PASS | — |
 | cargo fmt --check | ✅ PASS | TD-66 resolved by V1-M30.9 follow-up (commit `d1579ce`) |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V1-M30.11 new tests: 3 RED→GREEN (doc_generate_error_tests — 3 static-source) + 1 pre-existing sanity = 4 total — all RED→GREEN, no test modifications by dev. 3 files changed (+45/-4 LOC): fix.rs, doc.rs, scan.rs — all in `cli/src/headless/`. Consistent `result.get("error")` pattern across all 3 doc-generate handlers + git stderr truncation with "not a git repository" friendly detection.**
 **V1-M30.10 new tests: 5 RED→GREEN (predicted_score_cap_tests — 2 RED static-source + 3 GREEN invariant) — all RED→GREEN, no test modifications by dev. ROOT-CAUSE fix that V1-M30.9 missed: V1-M30.9 only patched the OFFLINE fallback (`fix.rs:119`); the CONNECTED branch via `engine_client::fix_dry_run` still capped at 100.0. Diff is exactly 2 insertions / 1 deletion in `cli/src/engine_client.rs` (import + literal swap to `MAX_PREDICTED_SCORE`).**
 **V1-M30.9 new tests: 5 RED→GREEN (2 discovery-enrich + 3 predicted-score) — all RED→GREEN, no test modifications by dev**
 **V1-M30.9 BUG-2b regression: dev conflated fixType with action.type — architect reverted fixType logic, kept action.type — CLEAN**
@@ -93,7 +94,60 @@
 | V1-M30.8b | Eval refusal heuristic + 4 UX polish (title truncation, scaffold Modified, disclaimer prose, cross-domain laws) | `feature/V1-M30.8b-eval-quality-ux` | DONE (reviewer APPROVED WITH NOTES — TD-63 FIXED by V1-M30.9) |
 | V1-M30.9 | Mini-hotfix: 3 remaining bugs (Rust docs literals, enrich action type, predictedScore cap 99) | `feature/V1-M30.9-mini-hotfix` | DONE (merged to dev — TD-66 fmt fix in `d1579ce`; W-3 OFFLINE-only patch — root cause closed by V1-M30.10) |
 | V1-M30.10 | Mini-hotfix: cap engine_client::fix_dry_run predictedScore at MAX_PREDICTED_SCORE (=99) — closes W-3 root cause | `dev` | DONE (merged PR #29 → dev, CI ✅ GREEN — awaiting final /deep-e2e to verify W-3 evidence and v1.0.0 release prep) |
+| V1-M30.11 | Mini-hotfix: fix --doc swallows engine errors + scan --diff dumps git --help | `feature/V1-M30.11-doc-generate-error-handling` | DONE (reviewer APPROVED, ready for PR) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.11: Doc-Generate Error Handling + Git Stderr Truncation (DONE — reviewer APPROVED)
+
+**Branch:** `feature/V1-M30.11-doc-generate-error-handling`
+**Commits:** 2 (d162ecc architect spec+RED tests, 59e2500 rust-dev T-1..T-3)
+**Files:**
+- Spec: `docs/sprints/V1-M30.11-doc-generate-error-handling.md` (+158)
+- RED tests: `cli/src/types/engine.rs::doc_generate_error_tests` (3 RED static-source + 1 GREEN sanity)
+- Implementation: `cli/src/headless/fix.rs` (+12), `cli/src/headless/doc.rs` (+22), `cli/src/headless/scan.rs` (+15/-4)
+
+**Section T-1 — fix.rs error field check:**
+- `run_doc_generate_single` (~line 1432): `result.get("error")` check added
+- Extracts `err_obj.get("message")`, prints to stderr, returns exit code 1
+- `--json` mode unaffected — raw JSON still printed before error check (for consumers)
+
+**Section T-2 — doc.rs error field check (2 sites):**
+- `run_doc_generate` (~line 159): identical error check pattern
+- `run_doc_generate_fix` (~line 254): identical error check pattern
+- Consistent across all 3 doc-generate handlers in the codebase
+
+**Section T-3 — scan.rs git stderr truncation:**
+- `to_lowercase().contains("not a git repository")` → friendly 1-line message: "Not a git repository (no .git/ directory found)"
+- Any other unexpected git output → `&stderr_str[..stderr_str.len().min(200)]` (200-char truncation)
+- No more ~70 lines of `git --help` dumped to stderr
+
+**Quality gates:**
+- 3/3 new RED tests GREEN + 1 pre-existing sanity GREEN = 4/4
+- Full Rust suite: 226 passed / 0 failed (was 222, +4 new)
+- Full TS suite: 2493 passed / 0 failed / 2 skipped (unchanged — no TS changes)
+- cargo fmt --check: CLEAN | cargo clippy --all-targets -D warnings: CLEAN
+- tsc --noEmit: CLEAN (not applicable — no TS changes)
+
+**Architecture audit:**
+- All 3 handlers use identical `result.get("error")` → `.get("message")` → stderr → return 1 pattern ✅
+- Error output goes to stderr only — `--json` stdout consumers unaffected ✅
+- `unwrap_or("Unknown engine error")` safe fallback ✅
+- Git stderr detection is case-insensitive (`to_lowercase()`) ✅
+- No new dependencies, no new types, no new routes ✅
+
+**Scope audit:**
+- rust-dev (59e2500): touched ONLY 3 `cli/src/headless/` files — zero TypeScript files, zero test files, zero docs ✅
+- `git diff d162ecc..59e2500 -- '*.test.ts' '*.test.rs'` = EMPTY ✅
+- `git diff d162ecc..59e2500 -- cli/src/types/engine.rs` = EMPTY (spec module untouched) ✅
+- No SCOPE VIOLATION REQUEST needed — no cross-scope changes
+
+**Reviewer notes:**
+- No blocking issues
+- No new tech debt
+- Minor observation (NON-BLOCKING): 200-char byte-level truncation on `String::from_utf8_lossy` output could theoretically panic on multi-byte char boundary, but git stderr is ASCII in practice — no action needed
+- Cleanest milestone in the V1-M30.x series alongside V1-M30.7: 3 files, surgical fixes, zero process deviations
 
 ---
 
