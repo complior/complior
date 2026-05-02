@@ -931,12 +931,22 @@ mod tests {
 
     #[test]
     fn format_human_docs_command() {
+        // V1-M30.9 W-1 spec supersession: removed `complior docs --article N`
+        // hint from format/human.rs because the `complior docs` subcommand does
+        // NOT exist in v1.0.0 (only `complior fix --doc <type>` is valid).
+        // The test now ASSERTS THE OPPOSITE — invalid hint must not appear.
+        // Article reference is still shown in finding metadata above the fix
+        // hint; the fix hint itself is `complior fix --check-id` which IS valid.
         let result = mock_scan_result();
         let text = format_human(&result, &default_opts());
-        // Docs command hint for findings with article reference
         assert!(
-            text.contains("complior docs --article 27")
-                || text.contains("complior docs --article 50")
+            !text.contains("complior docs --article"),
+            "format_human MUST NOT emit invalid `complior docs --article N` hint (V1-M30.9 W-1)",
+        );
+        // The valid actionable hint must be present somewhere
+        assert!(
+            text.contains("complior fix"),
+            "format_human should emit valid `complior fix` hint"
         );
     }
 

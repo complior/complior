@@ -112,9 +112,11 @@ pub async fn run_headless_fix(
                 );
             }
         } else {
-            // Offline estimate — rough approximation based on fix count
+            // Offline estimate — rough approximation based on fix count.
+            // V1-M30.9 W-3: cap at 99 (not 100) — 100 implies certainty, but
+            // this is an estimate. Mirrors simulate-actions.ts cap.
             let impact = (fixable.len() as f64 * 3.0).min(60.0) as i32;
-            let predicted = (current_score + f64::from(impact)).min(100.0);
+            let predicted = (current_score + f64::from(impact)).min(99.0);
             if json {
                 println!(
                     "{{\"dryRun\": true, \"fixable\": {}, \"currentScore\": {current_score:.0}, \"predictedScore\": {predicted:.0}}}",

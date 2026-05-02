@@ -3,7 +3,7 @@ import type { CheckResultType, Finding } from '../../types/common.types.js';
 export type FixType = 'code_injection' | 'template_generation' | 'config_fix' | 'metadata_generation' | 'dependency_fix' | 'ai_enrichment';
 
 export interface FixAction {
-  readonly type: 'create' | 'edit' | 'splice';
+  readonly type: 'create' | 'edit' | 'splice' | 'enrich';
   readonly path: string;
   readonly content?: string;           // create
   readonly oldContent?: string;        // edit
@@ -57,7 +57,7 @@ export interface FixValidation {
 
 export interface FixHistoryFile {
   readonly path: string;
-  readonly action: 'create' | 'edit' | 'splice';
+  readonly action: 'create' | 'edit' | 'splice' | 'enrich';
   readonly backupPath: string;
 }
 
