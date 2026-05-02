@@ -1,112 +1,89 @@
 /**
- * V1-M30.9 / W-2: RED — fix planner Discovery phase must detect existing files.
+ * V1-M30.9 / W-2: documentation strategy emits action.type='enrich' for
+ * existing files (instead of 'create' which would overwrite user edits).
  *
- * V1-M30.8a W-7 RED test was structural (checked that `planFix` exists). It
- * passed because the function exists, but the ACTUAL behaviour wasn't fixed:
- * /deep-e2e shows `FILES TO CREATE` for files that exist as `draft` on disk.
- *
- * This RED test verifies the CONCRETE behaviour: a finding whose `outputFile`
- * exists on disk MUST produce an `enrich` (or `edit`) action, NOT `create`.
+ * Uses the real `findStrategy` API + a realistic finding shape (matching
+ * BUG-2b sibling tests in strategies.test.ts).
  */
 
 import { describe, it, expect } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { findStrategy } from './strategies/index.js';
+import type { Finding, FixContext } from './types.js';
 
-describe('V1-M30.9 W-2: fix Discovery emits enrich (not create) for existing files', () => {
-  it('finding whose outputFile exists on disk → action.type === "enrich"', async () => {
+function makeFinding(over: Partial<Finding>): Finding {
+  return {
+    checkId: 'l2-fria',
+    obligationId: 'eu-ai-act-OBL-013',
+    type: 'fail',
+    severity: 'high',
+    layer: 'L2',
+    message: 'FRIA needs enrichment',
+    article: 'Art. 27',
+    fix: 'Edit FRIA',
+    docQuality: 'draft',
+    ...over,
+  } as Finding;
+}
+
+function makeContext(over: Partial<FixContext>): FixContext {
+  return {
+    projectPath: '/tmp/x',
+    framework: 'node',
+    existingFiles: [],
+    useAi: false,
+    ...over,
+  } as FixContext;
+}
+
+describe('V1-M30.9 W-2: fix Discovery emits enrich for existing files', () => {
+  it('L2 finding + useAi=true + outputFile EXISTS → action.type === "enrich"', () => {
     const proj = mkdtempSync(resolve(tmpdir(), 'm30-9-w2-'));
     try {
-      // Pre-create the file the finding will reference.
+      // Pre-create the file the FRIA strategy will target.
+      // TEMPLATE_REGISTRY maps OBL-013 → docs/compliance/fria.md (or similar).
       mkdirSync(resolve(proj, 'docs', 'compliance'), { recursive: true });
       writeFileSync(
-        resolve(proj, 'docs', 'compliance', 'ai-literacy-policy.md'),
-        '# AI Literacy Policy\n\n[some content]\n',
+        resolve(proj, 'docs', 'compliance', 'fria.md'),
+        '# FRIA\n\n[user-edited content already present]\n',
       );
-      expect(existsSync(resolve(proj, 'docs', 'compliance', 'ai-literacy-policy.md'))).toBe(true);
 
-      // Probe the fixer — module location is FA-03 spec
-      const fixerCandidates = [
-        '../fixer/index.js',
-        '../fixer/planner.js',
-        '../fixer/strategies/index.js',
-      ];
-      let planner: ((finding: unknown, ctx: unknown) => unknown) | null = null;
-      for (const path of fixerCandidates) {
-        try {
-          const mod = await import(path);
-          for (const k of Object.keys(mod)) {
-            if (typeof (mod as Record<string, unknown>)[k] === 'function' && /^plan|generatePlan|buildPlan/.test(k)) {
-              planner = (mod as Record<string, unknown>)[k] as typeof planner;
-              break;
-            }
-          }
-          if (planner) break;
-        } catch { /* try next */ }
-      }
-      expect(planner, 'fixer must expose a plan/planFix/buildPlan function').not.toBeNull();
+      // useAi=true is required because L2 docs in draft state are intentionally
+      // skipped without --ai opt-in (don't overwrite user edits).
+      const finding = makeFinding({ checkId: 'l2-fria', obligationId: 'eu-ai-act-OBL-013', docQuality: 'draft' });
+      const ctx = makeContext({ projectPath: proj, useAi: true });
+      const plan = findStrategy(finding, ctx);
 
-      // V1-M30.8a W-7 spec / V1-M30.9 W-2 retest:
-      // a finding pointing to existing file → action.type !== 'create'
-      const finding = {
-        checkId: 'l2-ai-literacy',
-        outputFile: 'docs/compliance/ai-literacy-policy.md',
-        type: 'fail',
-        severity: 'low',
-        layer: 'L2',
-      };
-      const result = planner!(finding, { projectPath: proj }) as {
-        actions?: readonly { type?: string }[];
-      } | null;
-      const actionTypes = (result?.actions ?? []).map((a) => a?.type);
-      expect(actionTypes, `actions for existing file must NOT contain "create": got ${JSON.stringify(actionTypes)}`)
-        .not.toContain('create');
-      // Positive: must contain enrich/edit/update
-      expect(
-        actionTypes.some((t) => t === 'enrich' || t === 'edit' || t === 'update'),
-        `at least one action must be enrich/edit/update for existing file: got ${JSON.stringify(actionTypes)}`,
-      ).toBe(true);
+      expect(plan, 'findStrategy must return a plan for L2 + useAi finding (file exists)').not.toBeNull();
+      const types = plan!.actions.map((a) => a.type);
+      // V1-M30.9 W-2 invariant: existing file → NOT create (would overwrite)
+      expect(types, `actions for existing file must NOT contain "create": ${JSON.stringify(types)}`).not.toContain('create');
+      // Must contain enrich (the new V1-M30.9 W-2 action type)
+      expect(types).toContain('enrich');
     } finally {
       rmSync(proj, { recursive: true, force: true });
     }
   });
 
-  it('finding whose outputFile does NOT exist → action.type === "create"', async () => {
+  it('L1 finding + outputFile does NOT exist → action.type === "create"', () => {
     const proj = mkdtempSync(resolve(tmpdir(), 'm30-9-w2-missing-'));
     try {
-      // Do NOT create the file — outputFile points to non-existent path
-      const fixerCandidates = ['../fixer/index.js', '../fixer/planner.js', '../fixer/strategies/index.js'];
-      let planner: ((finding: unknown, ctx: unknown) => unknown) | null = null;
-      for (const path of fixerCandidates) {
-        try {
-          const mod = await import(path);
-          for (const k of Object.keys(mod)) {
-            if (typeof (mod as Record<string, unknown>)[k] === 'function' && /^plan|generatePlan|buildPlan/.test(k)) {
-              planner = (mod as Record<string, unknown>)[k] as typeof planner;
-              break;
-            }
-          }
-          if (planner) break;
-        } catch { /* try next */ }
-      }
-      expect(planner).not.toBeNull();
-      const finding = {
-        checkId: 'l1-missing-fria',
-        outputFile: 'docs/compliance/fria.md',
-        type: 'fail',
-        severity: 'high',
+      // L1 = file presence; docQuality='none' means file genuinely missing
+      const finding = makeFinding({
+        checkId: 'fria',
+        obligationId: 'eu-ai-act-OBL-013',
         layer: 'L1',
-      };
-      const result = planner!(finding, { projectPath: proj }) as {
-        actions?: readonly { type?: string }[];
-      } | null;
-      const actionTypes = (result?.actions ?? []).map((a) => a?.type);
-      // Missing file → create action
-      expect(
-        actionTypes.some((t) => t === 'create' || t === 'generate'),
-        `missing file should produce create/generate action, got ${JSON.stringify(actionTypes)}`,
-      ).toBe(true);
+        docQuality: 'none',
+      });
+      const ctx = makeContext({ projectPath: proj, useAi: false, existingFiles: [] });
+      const plan = findStrategy(finding, ctx);
+
+      expect(plan, 'findStrategy must return a plan for L1 missing-file finding').not.toBeNull();
+      const types = plan!.actions.map((a) => a.type);
+      expect(types).toContain('create');
+      expect(types).not.toContain('enrich');
     } finally {
       rmSync(proj, { recursive: true, force: true });
     }

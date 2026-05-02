@@ -53,7 +53,11 @@ export const documentationStrategy: FixStrategy = (finding, context) => {
     obligationId: oblId,
     checkId: finding.checkId,
     article: mapping.article,
-    fixType: fileExists && isL2 && context.useAi ? 'ai_enrichment' : fileExists ? 'ai_enrichment' : 'template_generation',
+    // V1-M30.9 W-2 / BUG-2b regression fix: fixType (template vs LLM-driven)
+    // is INDEPENDENT of action.type (create vs enrich-existing). Pre-existing
+    // BUG-2b spec: L2 + useAi → ai_enrichment regardless of file presence.
+    // The action.type 'enrich' (above) handles the file-already-exists case.
+    fixType: isL2 && context.useAi ? 'ai_enrichment' : 'template_generation',
     framework: context.framework,
     actions: [action],
     diff: generateCreateDiff(mapping.outputFile, `# ${mapping.description}\n\n[Generated from template: ${mapping.templateFile}]`),
