@@ -673,10 +673,17 @@ fn get_changed_files(base_branch: &str, project_path: &str) -> Vec<String> {
                     .map(String::from)
                     .collect(),
                 _ => {
-                    eprintln!(
-                        "Warning: git diff failed: {}",
-                        String::from_utf8_lossy(&o.stderr).trim()
-                    );
+                    let stderr_str = String::from_utf8_lossy(&o.stderr).trim().to_string();
+                    // V1-M30.11 BUG-3: git stderr on non-git projects contains the
+                    // full `git --help` text (~70 lines). Detect the specific case
+                    // and print a friendly 1-line message; fall back to 200-char
+                    // truncation for any other unexpected git output.
+                    let friendly = if stderr_str.to_lowercase().contains("not a git repository") {
+                        "Not a git repository (no .git/ directory found)"
+                    } else {
+                        &stderr_str[..stderr_str.len().min(200)]
+                    };
+                    eprintln!("Warning: git diff failed: {friendly}");
                     vec![]
                 }
             }

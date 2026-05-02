@@ -1426,6 +1426,18 @@ async fn run_doc_generate_single(
 
     match client.post_json("/fix/doc/generate", &body).await {
         Ok(result) => {
+            // V1-M30.11 BUG-1: engine returns error JSON (e.g. 400 "Passport not found")
+            // even though HTTP status was 200. Check for the structured error field
+            // before treating the response as a success.
+            if let Some(err_obj) = result.get("error") {
+                let msg = err_obj
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown engine error");
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
             if json {
                 println!(
                     "{}",
