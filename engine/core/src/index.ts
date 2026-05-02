@@ -1,3 +1,6 @@
+// V1-M30.9: CI re-trigger marker (post-merge engine + Rust verification).
+// Race condition cancelled merge commit's CI run on dev — same pattern as
+// V1-M30.6/.7/.8. paths-filter requires a touch in engine/core or cli/.
 // V1-M30.8a+b: CI re-trigger marker (post-merge engine + Rust verification).
 // Race condition cancelled the merge commit's CI runs on dev — same pattern
 // as V1-M30.6 / V1-M30.7. paths-filter requires a touch in engine/core or cli/.
