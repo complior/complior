@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-05-01
-**Updated by:** Reviewer (V1-M30.8b review)
+**Updated:** 2026-05-02
+**Updated by:** Reviewer (V1-M30.9 review)
 **Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `feature/V1-M30.8b-eval-quality-ux` (V1-M30.8b — eval refusal heuristic + 4 UX polish — reviewed, APPROVED WITH NOTES)
+**Branch:** `feature/V1-M30.9-mini-hotfix` (V1-M30.9 — 3 remaining bugs: Rust docs literals, enrich action type, predictedScore cap 99 — reviewed, APPROVED WITH NOTES)
 
 ---
 
@@ -11,15 +11,17 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | ⚠️ YELLOW | 2477 passed, **2 failed**, 2 skipped (205 files) — 2 regressions from V1-M30.8b W-4 disclaimer redesign (see TD-63) |
-| Rust CLI (`cli/`) | GREEN | 215 passed, fmt clean |
+| TS Engine (`engine/core/`) | ✅ GREEN | 2493 passed, 0 failed, 2 skipped (210 files) — TD-63 regressions FIXED by V1-M30.9 spec supersessions |
+| Rust CLI (`cli/`) | ✅ GREEN | 217 passed, 0 failed, clippy clean |
 | tsc --noEmit | PASS | — |
 | cargo clippy --all-targets -D warnings | PASS | — |
-| cargo fmt --check | PASS | — |
+| cargo fmt --check | ⚠️ FAIL | 1 cosmetic: `tests.rs:947` assert needs multi-line formatting (TD-66) |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V1-M30.9 new tests: 5 RED→GREEN (2 discovery-enrich + 3 predicted-score) — all RED→GREEN, no test modifications by dev**
+**V1-M30.9 BUG-2b regression: dev conflated fixType with action.type — architect reverted fixType logic, kept action.type — CLEAN**
+**V1-M30.8b regressions (TD-63): 2 FAIL tests FIXED by V1-M30.9 spec supersession (cap 100→99 + docs hint removal)**
 **V1-M30.8b new tests: 14 RED→GREEN (8 refusal-heuristic + 6 UX) — all RED→GREEN, no test modifications by dev**
-**V1-M30.8b regressions: 2 FAIL in older tests (V1-M30.4 A.4 + V1-M30.5 W-2) — architect must fix (TD-63)**
 **V1-M30.7 new tests: 6 RED→GREEN (double-%, field count, manual-command, skipped-fix) — all RED→GREEN, no test modifications**
 **V1-M30.6 regression: 10/10 GREEN (4 passport-hints + 6 doc-filter)**
 **V1-M30.5 new tests: 8 GREEN (7 TS in v1m30-5-doc-links-actions.test.ts + 1 Rust user_facing_init_hints) — all RED→GREEN**
@@ -87,8 +89,78 @@
 | V1-M30.5 | Doc file:// links + action emojis + MD date humanized + CLI hint rename | `feature/V1-M30.5-doc-links-action-emojis-md-date` | DONE (merged to dev, PR #33) |
 | V1-M30.6 | FRIA filter regression fix + TS engine passport→agent hints | `feature/V1-M30.6-fria-regression-passport-hints-ts` | DONE (reviewer APPROVED) |
 | V1-M30.7 | 4 critical UI rendering bugs (double %, field count, manual cmd, skipped fix) | `feature/V1-M30.7-rendering-bugs` | DONE (reviewer APPROVED) |
-| V1-M30.8b | Eval refusal heuristic + 4 UX polish (title truncation, scaffold Modified, disclaimer prose, cross-domain laws) | `feature/V1-M30.8b-eval-quality-ux` | DONE (reviewer APPROVED WITH NOTES — TD-63: 2 old tests need architect fix) |
+| V1-M30.8b | Eval refusal heuristic + 4 UX polish (title truncation, scaffold Modified, disclaimer prose, cross-domain laws) | `feature/V1-M30.8b-eval-quality-ux` | DONE (reviewer APPROVED WITH NOTES — TD-63 FIXED by V1-M30.9) |
+| V1-M30.9 | Mini-hotfix: 3 remaining bugs (Rust docs literals, enrich action type, predictedScore cap 99) | `feature/V1-M30.9-mini-hotfix` | DONE (reviewer APPROVED WITH NOTES — TD-66: cargo fmt) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
+
+---
+
+## V1-M30.9: Mini-Hotfix — 3 Remaining Bugs (DONE — reviewer APPROVED WITH NOTES)
+
+**Branch:** `feature/V1-M30.9-mini-hotfix`
+**Commits:** 4 (6cbc97a architect W-1 Rust patches, 4397e74 architect RED tests+spec, ce060d9 nodejs-dev W-2+W-3, e995f96 architect BUG-2b revert+test fixtures)
+**Files:**
+- Spec: `docs/sprints/V1-M30.9-mini-hotfix.md` (+110)
+- RED tests: `engine/core/src/domain/fixer/discovery-detects-existing.test.ts` (+91, 2 tests), `engine/core/src/services/fix-predicted-score.test.ts` (+64, 3 tests)
+- Architect test fixtures: `engine/core/src/domain/whatif/simulate-actions.test.ts` (+6/-4, cap 100→99 supersession), `cli/src/headless/tests.rs` (+13/-6, docs→fix hint supersession)
+- Implementation W-1 (architect, mechanical): `cli/src/headless/eval.rs` (+2/-2), `cli/src/headless/format/human.rs` (+5/-10)
+- Implementation W-2 (dev): `engine/core/src/domain/fixer/strategies/documentation.ts` (+25/-4), `engine/core/src/domain/fixer/types.ts` (+2/-2), `engine/core/src/services/fix-service.ts` (+19)
+- Implementation W-3 (dev): `engine/core/src/domain/whatif/simulate-actions.ts` (+1/-1)
+- BUG-2b revert (architect): `engine/core/src/domain/fixer/strategies/documentation.ts` (+6/-1)
+- Architect Rust W-3 fix: `cli/src/headless/fix.rs` (+4/-2)
+
+**Section W-1 — Rust `complior docs` literals (architect mechanical fix):**
+- 3 Rust files still had `complior docs --article N` after V1-M30.8a W-3 only scanned TS
+- `eval.rs:1796,1802`: replaced with valid `complior fix --doc` commands
+- `format/human.rs:642`: removed redundant docs hint entirely (complior fix --check-id above is correct)
+- Verified: `grep -r "complior docs" cli/ engine/` returns 0 matches
+
+**Section W-2 — Fix Discovery enrich action (dev implementation):**
+- `existsSync(resolve(projectPath, outputFile))` checks disk before emitting action
+- `FixAction.type` union extended: `'create' | 'edit' | 'splice' | 'enrich'`
+- `FixHistoryFile.action` union also extended with `'enrich'`
+- `fix-service.ts` handles `enrich` case: reads existing content + appends template with `<!-- COMPLIOR:ENRICHED -->` marker
+- **BUG-2b regression:** Dev conflated `action.type` (create vs enrich) with `fixType` (template_generation vs ai_enrichment). Original: `fixType: isL2 && context.useAi ? 'ai_enrichment' : 'template_generation'`. Dev changed to: `fixType: fileExists ? 'ai_enrichment' : ...` which broke pre-existing tests expecting `template_generation` for non-AI L1 fixes with existing files. Architect reverted `fixType` to original logic in e995f96. Root cause: two orthogonal concerns (file existence → action.type, LLM usage → fixType) incorrectly merged into one conditional.
+
+**Section W-3 — Predicted score cap 99 (dev + architect):**
+- `simulate-actions.ts:106`: `Math.min(100, ...)` → `Math.min(99, ...)`
+- `fix.rs:117`: `(current + impact).min(100.0)` → `.min(99.0)` (architect fixed — dev missed Rust path)
+- Rationale: 100 implies certainty; no score estimate is certain
+- Pre-existing test `simulate-actions.test.ts 'caps projected score at 100'` → architect superseded to `caps at 99`
+
+**Quality gates:**
+- 5/5 new RED tests GREEN (2 discovery-enrich + 3 predicted-score)
+- Pre-existing regressions resolved: 2 TS (TD-63 from V1-M30.8b) + 1 Rust (docs hint)
+- Full TS suite: 2493 passed / 0 failed / 2 skipped (was 2477 passed + 2 failed; +18 net new, +2 previously failing now GREEN)
+- Full Rust suite: 217 passed / 0 failed (was 215 + 2 new)
+- tsc --noEmit: clean | cargo clippy --all-targets -D warnings: clean
+- cargo fmt --check: **FAIL** — 1 cosmetic (tests.rs:947 assert! needs multi-line formatting, see TD-66)
+
+**Architecture audit:**
+- `existsSync` call in `documentationStrategy` is at the correct layer — strategy function (domain/fixer) is allowed filesystem reads for planning decisions ✅
+- `enrich` action handler in fix-service.ts preserves existing content (append-only), uses `<!-- COMPLIOR:ENRICHED -->` marker to prevent double-enrich ✅
+- `fixType` logic correctly separated from `action.type` logic — two orthogonal dimensions (BUG-2b fix) ✅
+- `Math.min(99, ...)` cap consistent between TS and Rust paths ✅
+- No public type changes beyond `FixAction.type` and `FixHistoryFile.action` union extension (additive, back-compat) ✅
+
+**Scope audit:**
+- nodejs-dev (ce060d9): touched 4 files (`documentation.ts`, `types.ts`, `simulate-actions.ts`, `fix-service.ts`) — zero test files, zero Rust files, zero docs ✅
+- `git diff 4397e74..ce060d9 -- '*.test.ts'` = EMPTY ✅
+- Architect (6cbc97a): mechanical W-1 Rust patches — per Option-3 grant from V1-M30.8a ✅
+- Architect (4397e74): RED tests + spec — architect-owned files only ✅
+- Architect (e995f96): BUG-2b revert in `documentation.ts` + Rust `fix.rs` cap + test fixture updates — all justified:
+  - `documentation.ts` fixType revert: corrects dev's BUG-2b regression (architect restoring pre-existing behavior)
+  - `fix.rs` cap: W-3 Rust path dev missed (architect cross-language fix)
+  - `simulate-actions.test.ts`: spec supersession (100→99 per W-3 spec)
+  - `tests.rs`: spec supersession (docs→fix per W-1 spec)
+  - `discovery-detects-existing.test.ts`: architect's own RED test rewrite (probed non-existent APIs)
+  - `fix-predicted-score.test.ts`: architect's own RED test rewrite (same reason)
+
+**Reviewer notes:**
+- **NON-BLOCKING (TD-66):** `cargo fmt --check` fails on `tests.rs:947` — single-line `assert!` needs multi-line formatting. Architect must run `cargo fmt` before merge. Cosmetic only, does not affect test behavior.
+- **NON-BLOCKING:** Dev's commit message (ce060d9) correctly documents the pre-existing test failures as "need architect update" — proper process, did not attempt to modify tests.
+- **TD-63 RESOLVED:** The 2 pre-existing test failures from V1-M30.8b (v1m30-4-tab-ux A.4 + v1m30-5-doc-links-actions W-2) are now resolved — both were spec supersessions by V1-M30.9 W-1 (docs hint removed) and W-3 (cap 100→99). These tests were already contradicting the new specs.
+- **OBSERVATION:** Architect's RED tests in 4397e74 probed for non-existent function names (`planFix`, `predictScore`) — had to be completely rewritten in e995f96 to use real APIs. RED test quality issue — tests should use real imports from the start. Non-blocking, no process deviation (architect owns RED tests).
 
 ---
 
