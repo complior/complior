@@ -1,5 +1,20 @@
 use serde::{Deserialize, Serialize};
 
+// --- Score caps (V1-M30.10) ---
+
+/// Maximum predicted/projected score the engine and CLI may return.
+///
+/// V1-M30.9 / W-3 invariant: the predicted score after a fix is an *estimate*,
+/// not a guarantee. 100 implies certainty — that the project will pass every
+/// check. We cannot promise that, so estimates are capped at 99.
+///
+/// Mirrors `engine/core/src/domain/whatif/simulate-actions.ts:106` which uses
+/// `Math.min(99, currentScore + totalDelta)`.
+///
+/// All score-cap call sites in the Rust CLI MUST use this constant instead of
+/// hardcoded `100.0`. Search prompt: `clamp(.*100\.0)` should return 0 hits.
+pub const MAX_PREDICTED_SCORE: f64 = 99.0;
+
 // --- Engine API response types (mirror TS Engine JSON) ---
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -740,4 +755,105 @@ pub struct CompliancePosture {
     pub document_count: usize,
     #[serde(default)]
     pub evidence_verified: Option<bool>,
+}
+
+// --- V1-M30.10 RED tests: predicted-score cap invariants ---
+
+#[cfg(test)]
+mod predicted_score_cap_tests {
+    use super::MAX_PREDICTED_SCORE;
+
+    /// V1-M30.10 / W-3 root-cause invariant: the predicted-score cap is 99,
+    /// not 100. 100 implies certainty, but predicted scores are estimates.
+    /// Mirrors `simulate-actions.ts` (TS engine) `Math.min(99, ...)`.
+    #[test]
+    fn max_predicted_score_is_99_not_100() {
+        assert!(
+            (MAX_PREDICTED_SCORE - 99.0).abs() < f64::EPSILON,
+            "MAX_PREDICTED_SCORE must be 99.0 (V1-M30.10 W-3 invariant) but was {MAX_PREDICTED_SCORE}",
+        );
+        const _: () = assert!(
+            MAX_PREDICTED_SCORE < 100.0,
+            "MAX_PREDICTED_SCORE must be strictly less than 100 — 100 implies certainty",
+        );
+    }
+
+    /// V1-M30.10 RED → GREEN: `engine_client.rs` source MUST NOT contain a
+    /// hardcoded `100.0` cap inside `fix_dry_run`. It must use the
+    /// `MAX_PREDICTED_SCORE` constant (or `99.0` literal) instead.
+    ///
+    /// This is a static-source invariant test that fails until rust-dev edits
+    /// `engine_client.rs:~201` to replace `clamp(current_score, 100.0)` with
+    /// `clamp(current_score, MAX_PREDICTED_SCORE)`.
+    ///
+    /// Why static-source: `fix_dry_run` is async + makes HTTP calls. Mocking
+    /// it requires non-trivial test infra. The bug is a single-literal cap;
+    /// a source-text invariant test catches both the bug and any regression
+    /// where someone reintroduces `100.0` as the upper bound.
+    #[test]
+    fn engine_client_does_not_hardcode_100_as_predicted_score_cap() {
+        let src = include_str!("../engine_client.rs");
+        // The bad pattern: `.clamp(current_score, 100.0)` or
+        //                  `.clamp(current_score, 100_f64)` etc.
+        // We accept ANY of:
+        //   .clamp(current_score, MAX_PREDICTED_SCORE)
+        //   .clamp(current_score, 99.0)
+        //   .clamp(current_score, 99_f64)
+        let banned_patterns = [
+            "clamp(current_score, 100.0)",
+            "clamp(current_score, 100_f64)",
+            "clamp(current_score, 100f64)",
+            "clamp(current_score, 100)",
+            "min(100.0)",
+            "min(100_f64)",
+        ];
+        for pat in &banned_patterns {
+            assert!(
+                !src.contains(pat),
+                "engine_client.rs contains banned pattern `{pat}` — V1-M30.10 W-3 \
+                 invariant: predicted score must be capped at 99, not 100. \
+                 Replace with MAX_PREDICTED_SCORE from crate::types::engine.",
+            );
+        }
+    }
+
+    /// Engine_client.rs MUST use `MAX_PREDICTED_SCORE` (or the literal 99.0)
+    /// somewhere — proving the cap is wired, not just renamed away.
+    #[test]
+    fn engine_client_uses_max_predicted_score_constant() {
+        let src = include_str!("../engine_client.rs");
+        let has_constant = src.contains("MAX_PREDICTED_SCORE");
+        let has_literal = src.contains("99.0") || src.contains("99_f64");
+        assert!(
+            has_constant || has_literal,
+            "engine_client.rs must reference MAX_PREDICTED_SCORE or 99.0 to \
+             enforce V1-M30.10 W-3 cap. Found neither.",
+        );
+    }
+
+    /// Cap must NOT inflate scores below the cap — it is a ceiling, not a floor.
+    #[test]
+    fn cap_does_not_inflate_low_baselines() {
+        let current_score = 50.0_f64;
+        let impacts = [3.0_f64];
+        let adjusted: f64 = impacts.iter().sum();
+        let predicted = (current_score + adjusted).clamp(current_score, MAX_PREDICTED_SCORE);
+        assert!(
+            (predicted - 53.0).abs() < f64::EPSILON,
+            "predicted={predicted} should be 53.0 (50 baseline + 3 impact, well below cap)",
+        );
+    }
+
+    /// Cap must never push a score backwards (predicted < current).
+    #[test]
+    fn cap_is_monotonic_never_decreases_baseline() {
+        let current_score = 70.0_f64;
+        let impacts: Vec<f64> = vec![]; // no fixes
+        let adjusted: f64 = impacts.iter().sum();
+        let predicted = (current_score + adjusted).clamp(current_score, MAX_PREDICTED_SCORE);
+        assert!(
+            (predicted - 70.0).abs() < f64::EPSILON,
+            "predicted={predicted} should equal current_score=70.0 with no fixes",
+        );
+    }
 }
