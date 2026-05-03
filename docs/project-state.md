@@ -1,9 +1,33 @@
 # Project State — Complior v8
 
-**Updated:** 2026-05-02
-**Updated by:** Architect (post-merge V1-M30.11 → dev)
-**Version:** 0.10.0 (Cargo.toml workspace + package.json)
-**Branch:** `dev` (V1-M30.11 merged via PR #30 commit `4da4f4c`; awaiting CI verify, then final /deep-e2e v3 → v1.0.0 release)
+**Updated:** 2026-05-03
+**Updated by:** Architect (v1.0.0 release prep)
+**Version:** 1.0.0 (workspace + @complior/engine + complior npm wrapper)
+**Branch:** `release/v1.0.0` (manifest bumps + CHANGELOG + project-state final; PR target = `main`)
+
+---
+
+## v1.0.0 RELEASE STATUS
+
+**🎉 v1.0.0 release-ready.**
+
+**Completed:**
+- ✅ All 11 V1-M30.X mini-hotfixes merged to `dev` (V1-M30.1 → V1-M30.11)
+- ✅ /deep-e2e v3 (post V1-M30.11): W-1, W-2, W-3, BUG-1, BUG-3 all verified clean across 3 profiles
+- ✅ Dev CI fully GREEN: Rust Tests/Clippy/Fmt/Audit + Engine + npm Audit + Version Consistency
+- ✅ Manifest versions bumped 0.10.0 → 1.0.0 (workspace Cargo.toml + 2 package.json)
+- ✅ CHANGELOG entry written
+- ✅ Release binary rebuilt + functional smoke verified
+
+**Pending:**
+- ⏳ PR `release/v1.0.0` → `main` (architect creates, user merges)
+- ⏳ `git tag v1.0.0` after merge → triggers `release.yml` (5 build targets: Linux x86/arm, macOS Intel/ARM, Windows; publish: crates.io + npm + GitHub Release)
+- ⏳ Smoke tests on published artifacts
+
+**Known limitations (v1.0.1 candidates):**
+- BUG-4 (P3): `fix --doc <type>` error message generic ("Unknown engine error" vs actual "Passport not found: default") when engine returns 4xx. rust-dev's V1-M30.11 implementation read message from wrong JSON path. Functional fix works; only the message is generic. Affects only invalid-passport error path.
+
+---
 
 ---
 
