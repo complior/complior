@@ -1,6 +1,6 @@
 # FA-10: Contract Layer Architecture
 
-> **Status (v1.0.0):** ✅ IMPLEMENTED — `@complior/contracts` package extracted (C-M01), SaaS migrated (C-M02), CLI pre-send validation (C-M03). Real-world integration verification — **POST web/cloud release** (V2-M05).
+> **Status (v1.0.1):** ✅ IMPLEMENTED — `@complior/contracts@1.0.1` package extracted (C-M01), SaaS migrated (C-M02), CLI pre-send validation (C-M03). Real-world integration verification — **POST web/cloud release** (V2-M05). См. `docs/V2-ROADMAP.md` V2-M05.
 > **Owner:** architect
 > **Created:** 2026-04-18
 > **Related:** FA-06 (SDK), FA-04 (Passport), sync.types.ts, ~/PROJECT

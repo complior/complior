@@ -4,7 +4,7 @@
 > **Version:** 2.2.0 (Passport) + 2.0.0 (Pipeline)
 > **Date:** 2026-03-25
 > **Purpose:** Agent Passport — EU AI Act compliance record for AI systems
-> **Status (v1.0.0):** ✅ COMPLETE — production-ready, in v1.0.0 scope
+> **Status (v1.0.1):** ✅ COMPLETE — shipped in v1.0.0 GA + v1.0.1 patch. 36 fields, 3 modes (Auto / Guided / Manual), ed25519 signed. /deep-e2e v4: 12 export operations across 3 profiles, all `Valid: yes` (a2a / aiuc-1 / aiuc1 / nist). Evidence chain (SHA-256 + ed25519) tamper-proof, 1000 entries verified.
 
 ---
 

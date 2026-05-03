@@ -5,7 +5,7 @@
 > **Date:** 2026-04-21
 > **Purpose:** Deterministic 5-layer compliance analysis engine -- 500+ tests
 > **Milestones:** V1-M08 Context-Aware Scan, V1-M18 Domain Filter (SS7)
-> **Status (v1.0.0):** ✅ COMPLETE — production-ready, in v1.0.0 scope
+> **Status (v1.0.1):** ✅ COMPLETE — shipped in v1.0.0 GA + v1.0.1 patch. Profile-aware filtering (16/67/46 obligations across 3 profiles) verified in /deep-e2e v4. Notable post-v1.0.0 changes: W-1 docs hint removal (V1-M30.9 — no more `complior docs --article` mentions); BUG-3 friendly stderr for non-git repos (V1-M30.11). Score gradient stable: 75/77/77.
 
 ---
 

@@ -4,7 +4,7 @@
 > **Version:** 1.0.0
 > **Date:** 2026-04-05
 > **Purpose:** Aggregated compliance status report — 6 sections, 5 data sources
-> **Status (v1.0.0):** ⚠️ FUNCTIONAL — manual E2E verification needed (HTML render quality) — V1-M21 deep test
+> **Status (v1.0.1):** ✅ COMPLETE — manual HTML render quality verified via 4 cycles of /deep-e2e (v1-v4) across 3 profile contexts. Profile-aware company-profile blocks correctly differ (Profile A: 8 article tags; Profile B: 59; Profile C: 42). All 5 formats valid (human/json/md/html/pdf): HTML 875+ KB rich, JSON schema validation passes, PDF magic bytes confirmed. Tab UX polished through V1-M30.2/.4/.5/.7/.8b.
 
 ---
 

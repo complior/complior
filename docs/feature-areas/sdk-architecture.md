@@ -4,7 +4,7 @@
 > **Version:** 1.0.0
 > **Date:** 2026-03-22
 > **Purpose:** Runtime compliance middleware — `@complior/sdk` for production
-> **Status (v1.0.0):** 🟡 BASE VERSION — 14 hooks shipped in S05; full enrichment is **POST-v1.0.0** (V2-M01)
+> **Status (v1.0.1):** 🟡 BASE VERSION — 14 hooks shipped in S05 (7 pre + 7 post) + 138 Art. 5 prohibited patterns + 50+ PII patterns with checksum validation (IBAN, BSN, NIR, PESEL, Codice Fiscale). Full Layer 2 enrichment (HTTP middleware, hook composition, per-domain enrichment, Guard API readiness): **POST-v1.0.0** (V2-M01). См. `docs/V2-ROADMAP.md` V2-M01.
 
 ---
 

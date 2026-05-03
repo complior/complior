@@ -5,7 +5,7 @@
 > **Date:** 2026-04-21
 > **Purpose:** Deterministic auto-remediation -- 5 categories, 20 strategies, 17 templates
 > **Milestones:** V1-M19 Fix Profile Filter (section 9)
-> **Status (v1.0.0):** ✅ COMPLETE — production-ready, in v1.0.0 scope
+> **Status (v1.0.1):** ✅ COMPLETE — shipped in v1.0.0 GA + v1.0.1 patch. Notable post-v1.0.0 changes: W-2 ENRICH semantics (V1-M30.9, no overwrite of user-edited docs); W-3 predicted-score cap=99 invariant (V1-M30.10, см. ADR-008); BUG-1 engine error surfacing (V1-M30.11); BUG-4 actual error message reading (V1-M30.12 — released as v1.0.1 patch). All verified clean in /deep-e2e v4.
 
 ---
 
