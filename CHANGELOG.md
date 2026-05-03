@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-03
+
+**Patch release — fixes BUG-4 known limitation from v1.0.0.**
+
+### Fixed
+
+**V1-M30.12 BUG-4 — `complior fix --doc <type>` error message reads from correct JSON path**
+
+V1-M30.11 fixed BUG-1 (fake "Document generated" + "Saved to: unknown" when engine returns 4xx) but the implementation read the engine error message from the WRONG JSON path:
+
+```rust
+// BROKEN
+if let Some(err_obj) = result.get("error") {
+    let msg = err_obj.get("message")  // ← engine returns flat JSON: error is a STRING, not object
+        .and_then(|v| v.as_str())
+        .unwrap_or("Unknown engine error");
+}
+```
+
+Engine returns `{"error": "VALIDATION_ERROR", "message": "Passport not found: default"}` (flat). `result.get("error")` returns the string `"VALIDATION_ERROR"`, then `.get("message")` on a string returns `None` → fallback to generic `"Unknown engine error"`.
+
+**User-visible change**:
+- Before v1.0.1: `Error: Unknown engine error` (clear failure but unhelpful)
+- After v1.0.1: `Error: Passport not found: default` (correct, actionable message)
+
+3 sites in `cli/src/headless/`:
+- `fix.rs:1432` (`run_doc_generate_single`)
+- `doc.rs:159` (`run_doc_generate`)
+- `doc.rs:256` (`run_doc_generate_fix`)
+
+### Verification
+
+/deep-e2e v4 (post-merge) confirmed across all 3 profiles:
+- ✅ `Error: Passport not found: default` shown (was "Unknown engine error")
+- ✅ "Unknown engine error": **0 occurrences** (was 14 per profile)
+- ✅ "Passport not found": 15 occurrences per profile (1 fria + 14 from `--doc all` loop)
+- ✅ All prior fixes still clean — 0 regressions:
+  - W-3 (V1-M30.10): predictedScore = 67/70/71 → ~99
+  - W-1 (V1-M30.9): 0 mentions of `complior docs --article`
+  - BUG-1 (V1-M30.11): 0 occurrences of `Saved to: unknown`
+  - BUG-3 (V1-M30.11): scan --diff = 2 friendly lines
+
+### Versions bumped
+
+- `Cargo.toml` workspace: 1.0.0 → 1.0.1
+- `cli/Cargo.toml`: inherits via `version.workspace = true` → 1.0.1
+- root `package.json`: 1.0.0 → 1.0.1
+- `engine/core/package.json` (`@complior/engine`): 1.0.0 → 1.0.1
+- `engine/npm/package.json` (`complior` npm wrapper): 1.0.0 → 1.0.1
+- `engine/contracts/package.json` (`@complior/contracts`): 1.0.0 → 1.0.1
+
 ## [1.0.0] - 2026-05-03
 
 **🎉 First general-availability release.**
