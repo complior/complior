@@ -109,23 +109,25 @@ v1.0 = ТОЛЬКО pipeline команды со ВСЕМИ их флагами 
 
 **НЕ входит в v1.0:** daemon, chat, supply-chain, cost, debt, simulate, jurisdiction, proxy, doc, import, redteam, tools, login/logout, sync. Это `#[cfg(feature = "extras")]` или post-v1.0.
 
-**Текущие milestones:**
-- V1-M01 ✅ DONE — pipeline acceptance (happy path)
-- V1-M02 ✅ DONE — ВСЕ флаги каждой команды покрыты E2E тестами (36 tests)
-- V1-M03 ✅ DONE — docs, CI, version bump, release polish
-- V1-M04 ✅ DONE — full CLI flag binary E2E + engine flags
-- V1-M05 ✅ DONE — type errors fixed, CI typecheck re-enabled
-- V1-M06 ✅ DONE — UX quality sprint (11 RED→GREEN)
-- V1-M07 ✅ DONE — ISO 42001 Document Generators (SoA, Risk Register)
-- V1-M08 ✅ DONE — Context-Aware Scan (profile filters, filterContext)
-- V1-M09 ✅ DONE — Onboarding Enrichment (9 questions, dynamic obligations)
-- V1-M10 ✅ DONE — Score Transparency (disclaimer, category breakdown, /status/posture)
-- V1-M11 🔴 RED — Command Restructuring (agent→passport, docs→fix)
+**Текущая версия: v1.0.1** (released 2026-05-03 — see CHANGELOG.md)
+**Tests: 226 Rust + 2,493 TypeScript = 2,719 total, 0 failures**
+**Distribution:** crates.io `complior-cli@1.0.1` + npm `complior@1.0.1` + `@complior/engine@1.0.1` + GitHub Release (5 platform binaries)
+
+**Milestone history:**
+- V1-M01 ... V1-M19 ✅ DONE — see `docs/sprints/V1-M*.md` for individual specs
+- V1-M20 ... V1-M30 ✅ DONE — sprint backlog cleanup, deep E2E, profile filters, ISO 42001, score transparency, command restructuring
+- V1-M30.1 ... V1-M30.12 ✅ DONE — 12-mini-hotfix journey before/after v1.0.0 GA tag (evidence chain, tabs UX, eval timeout, doc links, FRIA regression, rendering bugs, backend fixes, eval refusal, W-1/W-2/W-3 root cause, BUG-1/BUG-3/BUG-4 cleanup)
+
+**Next priorities (per `docs/STRATEGY.md`):**
+- Phase 1.5: Launch momentum (Mintlify ✅ done, charter docs 🟡 in progress, Show HN/Twitter, README badges, CONTRIBUTING/SECURITY/UPGRADE-GUIDE)
+- Phase 2: V2-M02 MCP enrichment (3-5 days, P1) → V2-M01 SDK enrichment (5-10 days)
+- Phase 2: ADR-007 TUI architecture decision (requires user input)
+- Background: Guard MVP in `~/guard/guard/` (separate track)
 
 ## Important Context
 
-- EU AI Act enforcement: August 2, 2026 (~4 months)
-- Free daemon+TUI (open-source) → Paid Dashboard (SaaS, €49-399/мес) business model
+- EU AI Act enforcement: **August 2, 2026** (~91 days from v1.0.1 release)
+- Free daemon+TUI (open-source) → Paid Dashboard (SaaS, €149-499/мес) business model
 - SaaS project is in separate repo (ai-act-compliance-platform), never modify it from here
 - Engine stays TypeScript (JS-first LLM ecosystem, 15K LOC existing code)
 - Scanner: 5-layer (file presence → document structure → config/deps → AST patterns → LLM analysis)
