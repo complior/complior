@@ -1,31 +1,46 @@
 # Project State — Complior v8
 
 **Updated:** 2026-05-03
-**Updated by:** Architect (v1.0.0 release prep)
-**Version:** 1.0.0 (workspace + @complior/engine + complior npm wrapper)
-**Branch:** `release/v1.0.0` (manifest bumps + CHANGELOG + project-state final; PR target = `main`)
+**Updated by:** Architect (v1.0.1 release prep)
+**Version:** 1.0.1 (workspace + @complior/engine + complior npm wrapper + @complior/contracts)
+**Branch:** `release/v1.0.1` (cherry-pick V1-M30.12 from dev + manifest bumps + CHANGELOG; PR target = `main`)
 
 ---
 
-## v1.0.0 RELEASE STATUS
+## v1.0.1 RELEASE STATUS
 
-**🎉 v1.0.0 release-ready.**
+**Patch release — closes BUG-4 known limitation from v1.0.0.**
 
 **Completed:**
-- ✅ All 11 V1-M30.X mini-hotfixes merged to `dev` (V1-M30.1 → V1-M30.11)
-- ✅ /deep-e2e v3 (post V1-M30.11): W-1, W-2, W-3, BUG-1, BUG-3 all verified clean across 3 profiles
-- ✅ Dev CI fully GREEN: Rust Tests/Clippy/Fmt/Audit + Engine + npm Audit + Version Consistency
-- ✅ Manifest versions bumped 0.10.0 → 1.0.0 (workspace Cargo.toml + 2 package.json)
-- ✅ CHANGELOG entry written
-- ✅ Release binary rebuilt + functional smoke verified
+- ✅ v1.0.0 released (PR #31, tag `v1.0.0`, release.yml: 5 binaries + crates.io + npm + GitHub Release published 2026-05-03)
+- ✅ V1-M30.12 merged to dev (PR #32 commit `667ae95`, dev CI ✅ ALL 9 jobs SUCCESS)
+- ✅ /deep-e2e v4 confirmed BUG-4 fix:
+  - "Unknown engine error" → 0 occurrences across 3 profiles (was 14/profile)
+  - "Passport not found: default" → 15 occurrences/profile (correct, actionable message)
+  - All prior fixes (W-3, W-1, BUG-1, BUG-3) still clean — 0 regressions
+- ✅ Cherry-picked V1-M30.12 (`d625153`) onto release/v1.0.1 branched from main
+- ✅ Manifest versions bumped 1.0.0 → 1.0.1 (5 files)
+- ✅ CHANGELOG v1.0.1 entry written
+- ✅ Local cargo build clean + version.test.ts 5/5 PASS
 
 **Pending:**
-- ⏳ PR `release/v1.0.0` → `main` (architect creates, user merges)
-- ⏳ `git tag v1.0.0` after merge → triggers `release.yml` (5 build targets: Linux x86/arm, macOS Intel/ARM, Windows; publish: crates.io + npm + GitHub Release)
-- ⏳ Smoke tests on published artifacts
+- ⏳ PR `release/v1.0.1` → `main`
+- ⏳ CI verify
+- ⏳ Merge + tag `v1.0.1` → triggers release.yml (5 build targets + crates.io + npm + GitHub Release)
 
-**Known limitations (v1.0.1 candidates):**
-- BUG-4 (P3): `fix --doc <type>` error message generic ("Unknown engine error" vs actual "Passport not found: default") when engine returns 4xx. rust-dev's V1-M30.11 implementation read message from wrong JSON path. Functional fix works; only the message is generic. Affects only invalid-passport error path.
+**Known limitations:** None remaining as of v1.0.1.
+
+---
+
+## v1.0.0 RELEASE STATUS (historical)
+
+**🎉 v1.0.0 released 2026-05-03.**
+
+- PR #31 merged to main (`8491833`)
+- Tag `v1.0.0` published
+- release.yml: ALL 11 jobs SUCCESS
+- Published: 5 binaries + crates.io `complior-cli@1.0.0` + npm `complior@1.0.0` + `@complior/engine@1.0.0` + GitHub Release
+- Smoke test: `cargo install complior-cli` → `complior 1.0.0 ✅`
 
 ---
 

@@ -969,3 +969,100 @@ mod doc_generate_error_tests {
         );
     }
 }
+
+// --- V1-M30.12 RED tests: BUG-4 error message reads from wrong JSON path ---
+//
+// V1-M30.11 fixed BUG-1 (fake "Document generated" + "Saved to: unknown") but
+// rust-dev's implementation read the error message from the WRONG path:
+//
+//   if let Some(err_obj) = result.get("error") {
+//       let msg = err_obj.get("message")  // ← error is a STRING, not object
+//           .and_then(|v| v.as_str())
+//           .unwrap_or("Unknown engine error");
+//   }
+//
+// Engine returns flat shape {"error": "VALIDATION_ERROR", "message": "..."}.
+// `result.get("error")` returns the string "VALIDATION_ERROR", then .get("message")
+// on a string returns None → fallback to literal "Unknown engine error".
+//
+// Correct pattern reads `message` from TOP-LEVEL of result (not nested):
+//   if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
+//       let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or(err);
+//   }
+#[cfg(test)]
+mod bug4_error_message_tests {
+
+    /// Sanity: source files we will probe actually exist as compile-time strings.
+    #[test]
+    fn sanity_source_files_loadable() {
+        let fix_rs = include_str!("../headless/fix.rs");
+        let doc_rs = include_str!("../headless/doc.rs");
+        assert!(!fix_rs.is_empty(), "fix.rs source must be non-empty");
+        assert!(!doc_rs.is_empty(), "doc.rs source must be non-empty");
+    }
+
+    /// V1-M30.12 BUG-4 invariant: `cli/src/headless/fix.rs` MUST NOT contain
+    /// the broken `err_obj.get("message")` pattern. The variable name `err_obj`
+    /// itself is a smell — `result.get("error")` returns a string, not an object.
+    ///
+    /// This test FAILS until the broken pattern is replaced with the correct
+    /// top-level `result.get("message")` lookup.
+    #[test]
+    fn bug4_fix_rs_no_err_obj_pattern() {
+        let src = include_str!("../headless/fix.rs");
+        assert!(
+            !src.contains("err_obj.get(\"message\")")
+                && !src.contains("err_obj\n                        .get(\"message\")")
+                && !src.contains("err_obj\n                    .get(\"message\")"),
+            "fix.rs contains the broken `err_obj.get(\"message\")` pattern \
+             from V1-M30.11. The engine returns {{\"error\": \"CODE\", \"message\": \"...\"}} \
+             flat — error is a STRING, not an object. Use top-level \
+             `result.get(\"message\")` instead. (V1-M30.12 BUG-4)",
+        );
+    }
+
+    /// Same invariant for doc.rs (which has TWO occurrences of the broken pattern).
+    #[test]
+    fn bug4_doc_rs_no_err_obj_pattern() {
+        let src = include_str!("../headless/doc.rs");
+        let count = src.matches("err_obj.get(\"message\")").count()
+            + src
+                .matches("err_obj\n                        .get(\"message\")")
+                .count()
+            + src
+                .matches("err_obj\n                    .get(\"message\")")
+                .count();
+        assert_eq!(
+            count, 0,
+            "doc.rs contains {count} occurrence(s) of the broken \
+             `err_obj.get(\"message\")` pattern. V1-M30.12 BUG-4 fix: \
+             read message from top-level `result.get(\"message\")` instead.",
+        );
+    }
+
+    /// After the fix, both files MUST contain the corrected pattern
+    /// `result.get("message")` (top-level lookup, not nested under error).
+    #[test]
+    fn bug4_all_sites_use_top_level_message() {
+        // Normalize: collapse all whitespace runs to single space — handles
+        // any indentation depth (current code has both 20-space and 24-space
+        // indents for the multi-line `let msg = result\n  .get(...)` chain).
+        fn count_top_level_message(src: &str) -> usize {
+            let normalized: String = src.split_whitespace().collect::<Vec<_>>().join(" ");
+            normalized.matches("result .get(\"message\")").count()
+                + normalized.matches("result.get(\"message\")").count()
+        }
+        let fix_count = count_top_level_message(include_str!("../headless/fix.rs"));
+        let doc_count = count_top_level_message(include_str!("../headless/doc.rs"));
+        assert!(
+            fix_count >= 1,
+            "fix.rs must contain at least 1 top-level `result.get(\"message\")` \
+             occurrence (V1-M30.12 BUG-4). Found {fix_count}.",
+        );
+        assert!(
+            doc_count >= 2,
+            "doc.rs must contain at least 2 top-level `result.get(\"message\")` \
+             occurrences (BOTH doc-generate handlers, V1-M30.12 BUG-4). Found {doc_count}.",
+        );
+    }
+}
