@@ -1429,11 +1429,14 @@ async fn run_doc_generate_single(
             // V1-M30.11 BUG-1: engine returns error JSON (e.g. 400 "Passport not found")
             // even though HTTP status was 200. Check for the structured error field
             // before treating the response as a success.
-            if let Some(err_obj) = result.get("error") {
-                let msg = err_obj
+            // V1-M30.12 BUG-4 fix: engine returns flat {"error": "CODE", "message": "..."}
+            // — error is a STRING, not an object. Read message at top level of result;
+            // fall back to error code if message absent.
+            if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
+                let msg = result
                     .get("message")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("Unknown engine error");
+                    .unwrap_or(err);
                 eprintln!("Error: {msg}");
                 return 1;
             }
