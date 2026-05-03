@@ -18,9 +18,6 @@ const VALID_DOC_TYPES: &[&str] = &[
     "instructions-for-use",
     "gpai-transparency",
     "gpai-systemic-risk",
-    "iso42001-ai-policy",
-    "iso42001-soa",
-    "iso42001-risk-register",
 ];
 
 pub async fn run_doc_command(action: &DocAction, config: &TuiConfig) -> i32 {
@@ -157,6 +154,17 @@ async fn run_doc_generate(
 
         match client.post_json("/fix/doc/generate", &body).await {
             Ok(result) => {
+                // V1-M30.11 BUG-1: engine may return error JSON (e.g. 400 "Passport
+                // not found") even though HTTP status was 200.
+                if let Some(err_obj) = result.get("error") {
+                    let msg = err_obj
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Unknown engine error");
+                    eprintln!("Error: {msg}");
+                    return 1;
+                }
+
                 if json {
                     println!(
                         "{}",
@@ -242,6 +250,17 @@ pub async fn run_doc_generate_fix(
 
     match client.post_json("/fix/doc/generate", &body).await {
         Ok(result) => {
+            // V1-M30.11 BUG-1: engine may return error JSON (e.g. 400 "Passport
+            // not found") even though HTTP status was 200.
+            if let Some(err_obj) = result.get("error") {
+                let msg = err_obj
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown engine error");
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
             if json {
                 println!(
                     "{}",

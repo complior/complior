@@ -1,0 +1,139 @@
+{
+  "version": "1.0.0",
+  "description": "Sparse applicability matrix for scanner checks. Checks not listed in overrides apply to ALL roles, risk levels, and domains by default. Mirrors eval/test-applicability.json pattern.",
+  "defaults": {
+    "roles": ["provider", "deployer", "both"],
+    "riskLevels": ["unacceptable", "high", "limited", "minimal", "gpai", "gpai_systemic"],
+    "domains": []
+  },
+  "overrides": {
+    "qms": {
+      "roles": ["provider"],
+      "comment": "Quality Management System — provider organizational obligation"
+    },
+    "gpai-transparency": {
+      "roles": ["provider"],
+      "comment": "GPAI model card — provider-only (Art. 51-53)"
+    },
+    "gpai-systemic-risk": {
+      "roles": ["provider"],
+      "riskLevels": ["gpai", "gpai_systemic"],
+      "comment": "Systemic risk assessment — GPAI providers only (Art. 55)"
+    },
+    "l3-missing-bias-testing": {
+      "roles": ["provider"],
+      "comment": "Bias testing config — provider builds the AI system"
+    },
+    "l4-data-governance": {
+      "roles": ["provider"],
+      "comment": "Data governance code patterns — provider obligation (Art. 10)"
+    },
+    "l4-content-marking": {
+      "roles": ["provider"],
+      "comment": "Content marking (C2PA/IPTC) — provider obligation (Art. 50(2))"
+    },
+    "l4-gpai-transparency": {
+      "roles": ["provider"],
+      "riskLevels": ["gpai", "gpai_systemic"],
+      "comment": "GPAI transparency patterns — GPAI providers only"
+    },
+    "l4-conformity-assessment": {
+      "roles": ["provider"],
+      "comment": "Conformity assessment — provider obligation (Art. 19)"
+    },
+    "content-marking": {
+      "roles": ["provider"],
+      "comment": "Content marking file presence — provider obligation (Art. 50(2))"
+    },
+    "monitoring-policy": {
+      "roles": ["deployer"],
+      "comment": "Monitoring policy — deployer obligation (Art. 26)"
+    },
+    "worker-notification": {
+      "roles": ["deployer"],
+      "domains": ["hr", "employment"],
+      "comment": "Worker notification — deployer obligation, HR/employment domain (Art. 26(7))"
+    },
+    "incident-report": {
+      "roles": ["deployer"],
+      "comment": "Incident reporting — deployer obligation (Art. 73)"
+    },
+    "fria": {
+      "roles": ["deployer"],
+      "comment": "FRIA — deployer obligation (Art. 27)"
+    },
+    "l4-deployer-monitoring": {
+      "roles": ["deployer"],
+      "comment": "Deployer monitoring patterns — deployer obligation (Art. 26)"
+    },
+    "l4-record-keeping": {
+      "roles": ["deployer"],
+      "comment": "Record keeping patterns — deployer obligation (Art. 12)"
+    },
+    "l2-worker-notification": {
+      "roles": ["deployer"],
+      "domains": ["hr", "employment"],
+      "comment": "Worker notification document structure — HR/employment domain"
+    },
+    "l2-fria": {
+      "roles": ["deployer"],
+      "comment": "FRIA document structure — deployer obligation"
+    },
+    "l2-monitoring-policy": {
+      "roles": ["deployer"],
+      "comment": "Monitoring policy document structure — deployer obligation"
+    },
+    "industry-hr-bias": {
+      "domains": ["hr", "employment"],
+      "comment": "HR-specific bias testing — EU AI Act Annex III (1)(a)"
+    },
+    "industry-hr-notification": {
+      "domains": ["hr", "employment"],
+      "comment": "Worker notification checks — HR/employment domain"
+    },
+    "industry-hr-data": {
+      "domains": ["hr", "employment"],
+      "comment": "HR data protection — DPIA, retention, employee access"
+    },
+    "industry-finance-credit": {
+      "domains": ["finance"],
+      "comment": "Credit scoring bias — Annex III (5)(a)"
+    },
+    "industry-finance-insurance": {
+      "domains": ["finance"],
+      "comment": "Insurance AI fairness — Annex III (5)(b)"
+    },
+    "industry-finance-benefits": {
+      "domains": ["finance"],
+      "comment": "Benefits AI oversight — Annex III (5)(c)"
+    },
+    "industry-finance-investment": {
+      "domains": ["finance"],
+      "comment": "Investment AI disclosure — Annex III (5)(d)"
+    },
+    "industry-healthcare-clinical": {
+      "domains": ["healthcare", "medical"],
+      "comment": "Clinical validation — MDR conformity (Annex III (1)(a))"
+    },
+    "industry-healthcare-disclosure": {
+      "domains": ["healthcare", "medical"],
+      "comment": "Medical AI disclosure — professional referral requirements"
+    },
+    "industry-healthcare-data": {
+      "domains": ["healthcare", "medical"],
+      "comment": "Health data protection — GDPR Art. 9, encryption, access controls"
+    },
+    "industry-education-assessment": {
+      "domains": ["education"],
+      "comment": "Educational AI assessment — Annex III (3)(a)"
+    },
+    "industry-education-access": {
+      "domains": ["education"],
+      "comment": "Educational access AI — Annex III (3)(b)"
+    },
+    "industry-education-proctoring": {
+      "domains": ["education"],
+      "comment": "AI proctoring checks — bias and surveillance concerns"
+    }
+  }
+}

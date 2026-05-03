@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-03
+
+**🎉 First general-availability release.**
+
+Complior is production-ready for EU AI Act compliance scanning, evaluation, fix automation, Agent Passports, and report generation. All v1.0 pipeline commands (`init`, `scan`, `eval`, `fix`, `report`, `agent`/`passport`, `doctor`) are stable with full flag coverage and exhaustive E2E verification across 3 profile contexts (deployer/limited/general, provider/high/healthcare, deployer/high/finance).
+
+### Highlights since 0.9.9
+
+**Profile-aware filtering (V1-M07 → V1-M19)**
+- Context-aware scan: `role × riskLevel × domain → applicableObligations` (16 / 67 / 46 across 3 profiles)
+- Context-aware eval: 319 / 335 / 327 of 388 tests applicable per profile
+- Onboarding enrichment: 9 questions → dynamic obligations
+- ISO 42001 document generators (SoA, Risk Register)
+- Score transparency: disclaimer, category breakdown, `/status/posture` endpoint
+- Domain filter + fix profile filter
+
+**Command restructuring (V1-M11 + V1-M30.4)**
+- `complior agent <verb>` is the primary form; `complior passport <verb>` retained as deprecated alias (removed in v2.0.0)
+- `complior fix --doc <type>` replaces previous `complior docs` references in CLI output
+
+**TUI UX polish (V1-M30.1 → V1-M30.7)**
+- Tabs UX: humanized dates, double-`%`, field counts, manual-command rendering, skipped-fix badges
+- Documents tab: `file://` links + emoji actions
+- Eval auto-detect timeout fix
+- 4 critical UI rendering bugs (V1-M30.7)
+- 8 backend bugs (V1-M30.8a) + eval refusal heuristic + 4 UX polish (V1-M30.8b)
+
+**Pipeline correctness (V1-M30.9 → V1-M30.11)**
+- W-1: removed `complior docs --article` mentions from scan/eval/fix outputs
+- W-2: documentation strategy emits `enrich` action.type for existing files (no overwrite of user-edited docs)
+- W-3: predicted score capped at 99 (not 100) in BOTH `simulate-actions.ts` (engine whatif) and `engine_client::fix_dry_run` (CLI connected branch). 100 implies certainty; predicted scores are estimates.
+- BUG-1: `fix --doc <type>` no longer swallows engine 4xx errors — exits with code 1 and routes message to stderr instead of fake "Document generated" + "Saved to: unknown".
+- BUG-3: `scan --diff` on non-git project shows friendly 1-line message instead of dumping full ~70-line `git --help`.
+
+**Tests, CI, release infrastructure**
+- Rust CLI: 226 tests, clippy clean, fmt clean
+- TS Engine: 2493 tests, 0 failures, 2 skipped (210 files)
+- TS contract test + Rust contract test both validate against `engine/core/data/schemas/http-contract-sample.json`
+- CI on `dev`: Rust Tests/Clippy/Fmt/Audit + Engine + npm Audit + Version Consistency — all GREEN
+- 11 mini-hotfix milestones (V1-M30.1 → V1-M30.11) consecutively delivered, all merged to dev
+
+### Versions bumped
+
+- `Cargo.toml` workspace: 0.10.0 → 1.0.0
+- `cli/Cargo.toml`: inherits via `version.workspace = true` → 1.0.0
+- `engine/core/package.json` (`@complior/engine`): 0.10.0 → 1.0.0
+- `engine/npm/package.json` (`complior` npm wrapper): 0.10.0 → 1.0.0
+
+### Known limitations (deferred to v1.0.1)
+
+- `fix --doc <type>` error message reads from wrong JSON path when engine returns 4xx — user sees `Error: Unknown engine error` instead of the actual engine message (e.g. `Error: Passport not found: default`). Functional behavior is correct (exit 1, no fake success); only message is generic. Affects only the error path when an invalid passport name is passed.
+- `complior eval` against the bundled mock target server depends on OpenRouter credits for the LLM judge; eval scores will be 0 if credits run out.
+
+### EU AI Act enforcement context
+
+EU AI Act (Regulation (EU) 2024/1689) enforcement: **August 2, 2026** (~91 days from this release).
+
+Complior v1.0 covers: scanner with profile-aware filtering, eval with security and remediation flags, fix automation with template-based document generation and AI-assisted enrichment, Agent Passports (36 fields, ed25519 signed, 3 creation modes), evidence chain with SHA-256 hashing + ed25519 signatures, multi-format reports (human/json/md/html/pdf), passport export to a2a/aiuc-1/nist formats, MCP server (8 tools), and HTTP API (Hono).
+
 ## [0.9.9] - 2026-04-17
 
 ### Added

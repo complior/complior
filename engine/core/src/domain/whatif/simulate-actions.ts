@@ -103,7 +103,7 @@ export const simulateActions = (input: SimulationInput): SimulationResult => {
     );
   }
 
-  const projectedScore = Math.min(100, currentScore + totalDelta);
+  const projectedScore = Math.min(99, currentScore + totalDelta);
 
   return Object.freeze({
     currentScore,

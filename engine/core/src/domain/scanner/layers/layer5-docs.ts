@@ -232,6 +232,18 @@ export const parseDocValidationResponse = (
 };
 
 /**
+ * W-5: Filter doc validation results for limited/unacceptable risk profiles.
+ * FRIA (Art. 27) is high-risk-only per EU AI Act — skip for other risk levels.
+ */
+export const filterDocsByRisk = (
+  results: readonly DocValidationResult[],
+  riskLevel: string,
+): readonly DocValidationResult[] => {
+  if (riskLevel === 'high' || riskLevel === 'unacceptable') return results;
+  return results.filter((r) => r.docType.toLowerCase() !== 'fria');
+};
+
+/**
  * Get checklist for a document type.
  */
 export const getChecklist = (docType: string): DocumentChecklist | undefined =>

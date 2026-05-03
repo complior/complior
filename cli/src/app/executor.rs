@@ -782,7 +782,7 @@ pub async fn execute_command(
             } else {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
-                    "No passport loaded. Run `complior passport init` first.",
+                    "No passport loaded. Run `complior agent init` first.",
                 );
             }
         }
@@ -810,7 +810,7 @@ pub async fn execute_command(
             } else {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
-                    "No passport loaded. Run `complior passport init` first.",
+                    "No passport loaded. Run `complior agent init` first.",
                 );
             }
         }
@@ -850,7 +850,7 @@ pub async fn execute_command(
             } else {
                 app.toasts.push(
                     components::toast::ToastKind::Warning,
-                    "No passport loaded. Run `complior passport init` first.",
+                    "No passport loaded. Run `complior agent init` first.",
                 );
             }
         }

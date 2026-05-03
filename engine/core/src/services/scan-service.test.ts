@@ -471,3 +471,64 @@ describe('ScanService role-based finding filtering', () => {
     expect(result.findings.find(f => f.checkId === 'fria')!.type).toBe('fail');
   });
 });
+
+/**
+ * V1-M18 T-4: Scan with domain profile — domain-specific checks become skip.
+ *
+ * Integration test: getProjectProfile returns healthcare domain profile →
+ * domain filter runs as Step 3 after role + risk-level filters →
+ * HR-only checks become skip, filterContext.skippedByDomain > 0.
+ *
+ * RED until domain-filter.ts is created + wired into scan-service Step 3.
+ */
+describe('V1-M18: ScanService domain-based finding filtering', () => {
+  it('healthcare domain profile: HR-only checks become skip, skippedByDomain > 0', async () => {
+    const findings: Finding[] = [
+      { checkId: 'industry-hr-bias', type: 'fail', message: 'HR bias check not addressed', severity: 'medium' },
+      { checkId: 'industry-hr-notification', type: 'fail', message: 'HR notification missing', severity: 'medium' },
+      { checkId: 'ai-disclosure', type: 'fail', message: 'No AI disclosure', severity: 'high' },
+      { checkId: 'industry-healthcare-clinical', type: 'fail', message: 'Clinical validation missing', severity: 'high' },
+      { checkId: 'l4-bare-llm', type: 'fail', message: 'Bare LLM call detected', severity: 'medium' },
+    ];
+
+    const scanner: Scanner = {
+      scan: () => makeScanResult({ score: 45, findings }),
+    };
+
+    const deps = createMockDeps({ scanner });
+    // Inject healthcare domain profile
+    (deps as Record<string, unknown>).getProjectProfile = async () => ({
+      role: 'deployer' as const,
+      riskLevel: 'high' as const,
+      domain: 'healthcare',
+      applicableObligations: ['OBL-001', 'OBL-002', 'OBL-003', 'OBL-004', 'OBL-005'],
+    });
+    const service = createScanService(deps);
+
+    const result = await service.scan('/project');
+
+    // HR-only checks → skip (not applicable for healthcare domain)
+    const hrBias = result.findings.find(f => f.checkId === 'industry-hr-bias')!;
+    expect(hrBias.type).toBe('skip');
+
+    const hrNotif = result.findings.find(f => f.checkId === 'industry-hr-notification')!;
+    expect(hrNotif.type).toBe('skip');
+
+    // Healthcare-domain check → unchanged (same domain)
+    const clinical = result.findings.find(f => f.checkId === 'industry-healthcare-clinical')!;
+    expect(clinical.type).toBe('fail');
+
+    // Universal checks (no domain restriction) → unchanged
+    const disclosure = result.findings.find(f => f.checkId === 'ai-disclosure')!;
+    expect(disclosure.type).toBe('fail');
+
+    const bareLlm = result.findings.find(f => f.checkId === 'l4-bare-llm')!;
+    expect(bareLlm.type).toBe('fail');
+
+    // filterContext should report domain skips
+    expect(result.filterContext).toBeDefined();
+    expect(result.filterContext!.profileFound).toBe(true);
+    expect(result.filterContext!.domain).toBe('healthcare');
+    expect(result.filterContext!.skippedByDomain).toBe(2);
+  });
+});

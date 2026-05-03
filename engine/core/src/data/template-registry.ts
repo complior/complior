@@ -29,10 +29,6 @@ export const TEMPLATE_REGISTRY: readonly TemplateRegistryEntry[] = [
   { docType: 'instructions-for-use', obligationId: 'eu-ai-act-OBL-007', article: 'Art. 13', templateFile: 'instructions-for-use.md', outputFile: 'docs/compliance/instructions-for-use.md', description: 'Instructions for Use', docIdPrefix: 'IFU' },
   { docType: 'gpai-transparency', obligationId: 'eu-ai-act-OBL-022', article: 'Art. 53', templateFile: 'gpai-transparency.md', outputFile: 'docs/compliance/gpai-transparency.md', description: 'GPAI Transparency Documentation', docIdPrefix: 'GPAI' },
   { docType: 'gpai-systemic-risk', obligationId: 'eu-ai-act-OBL-023', article: 'Art. 55', templateFile: 'gpai-systemic-risk.md', outputFile: 'docs/compliance/gpai-systemic-risk.md', description: 'GPAI Systemic Risk Assessment', docIdPrefix: 'GSR' },
-  // ISO 42001 documents
-  { docType: 'iso42001-ai-policy', obligationId: 'iso-42001-A.2.2', article: 'ISO 42001 Clause 5.2', templateFile: 'iso-42001-ai-policy.md', outputFile: 'docs/compliance/iso42001-ai-policy.md', description: 'AI Management System Policy (ISO 42001)', docIdPrefix: 'ISOPOL' },
-  { docType: 'iso42001-soa', obligationId: 'iso-42001-A.6.1.3', article: 'ISO 42001 Clause 6.1.3', templateFile: 'iso-42001-soa.md', outputFile: 'docs/compliance/iso42001-soa.md', description: 'Statement of Applicability (ISO 42001)', docIdPrefix: 'ISOSOA' },
-  { docType: 'iso42001-risk-register', obligationId: 'iso-42001-A.5.2', article: 'ISO 42001 Clause 6.1.2', templateFile: 'iso-42001-risk-register.md', outputFile: 'docs/compliance/iso42001-risk-register.md', description: 'Risk Register (ISO 42001)', docIdPrefix: 'ISOREG' },
 ] as const;
 
 /** Derive DocType union from registry. */

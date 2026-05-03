@@ -125,7 +125,7 @@ const fromPassports = (passports: PassportStatusSection): Omit<PriorityAction, '
         daysLeft: days,
         scoreImpact: 0,
         fixAvailable: false,
-        command: `complior passport init`,
+        command: `complior agent init`,
         priorityScore: calcPriority(p.completeness < 50 ? 'high' : 'medium', days, 5),
       };
     });

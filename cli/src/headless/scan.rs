@@ -384,11 +384,39 @@ pub async fn run_headless_scan(
                 eprintln!(
                     "  {}",
                     super::format::colors::dim(
-                        "Hint: No agent passports found. Run `complior passport init` for \
+                        "Hint: No agent passports found. Run `complior agent init` for \
                          passport-aware scanning and pre-filled fix scaffolds."
                     )
                 );
             }
+        }
+    }
+
+    // Check fail-on severity (works independently of --ci)
+    if let Some(level) = fail_on {
+        let has_severity = result.findings.iter().any(|f| match level {
+            SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
+            SeverityLevel::High => matches!(f.severity, Severity::Critical | Severity::High),
+            SeverityLevel::Medium => {
+                matches!(
+                    f.severity,
+                    Severity::Critical | Severity::High | Severity::Medium
+                )
+            }
+            SeverityLevel::Low => {
+                matches!(
+                    f.severity,
+                    Severity::Critical | Severity::High | Severity::Medium | Severity::Low
+                )
+            }
+        });
+        if has_severity {
+            let prefix = if ci { "CI FAIL" } else { "FAIL" };
+            eprintln!(
+                "{prefix}: Found findings at severity '{}' or above",
+                level.as_str()
+            );
+            return 2;
         }
     }
 
@@ -398,35 +426,6 @@ pub async fn run_headless_scan(
         if score < threshold {
             eprintln!("CI FAIL: Score {score} is below threshold {threshold}");
             return 2;
-        }
-
-        // Check fail-on severity
-        if let Some(level) = fail_on {
-            let has_severity = result.findings.iter().any(|f| match level {
-                SeverityLevel::Critical => matches!(f.severity, Severity::Critical),
-                SeverityLevel::High => {
-                    matches!(f.severity, Severity::Critical | Severity::High)
-                }
-                SeverityLevel::Medium => {
-                    matches!(
-                        f.severity,
-                        Severity::Critical | Severity::High | Severity::Medium
-                    )
-                }
-                SeverityLevel::Low => {
-                    matches!(
-                        f.severity,
-                        Severity::Critical | Severity::High | Severity::Medium | Severity::Low
-                    )
-                }
-            });
-            if has_severity {
-                eprintln!(
-                    "CI FAIL: Found findings at severity '{}' or above",
-                    level.as_str()
-                );
-                return 2;
-            }
         }
     }
 
@@ -674,10 +673,17 @@ fn get_changed_files(base_branch: &str, project_path: &str) -> Vec<String> {
                     .map(String::from)
                     .collect(),
                 _ => {
-                    eprintln!(
-                        "Warning: git diff failed: {}",
-                        String::from_utf8_lossy(&o.stderr).trim()
-                    );
+                    let stderr_str = String::from_utf8_lossy(&o.stderr).trim().to_string();
+                    // V1-M30.11 BUG-3: git stderr on non-git projects contains the
+                    // full `git --help` text (~70 lines). Detect the specific case
+                    // and print a friendly 1-line message; fall back to 200-char
+                    // truncation for any other unexpected git output.
+                    let friendly = if stderr_str.to_lowercase().contains("not a git repository") {
+                        "Not a git repository (no .git/ directory found)"
+                    } else {
+                        &stderr_str[..stderr_str.len().min(200)]
+                    };
+                    eprintln!("Warning: git diff failed: {friendly}");
                     vec![]
                 }
             }

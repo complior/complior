@@ -6,7 +6,9 @@
  *   2. URL protocol hint (openai://, anthropic://, ollama://)
  *   3. /v1/models → OpenAI-compatible
  *   4. /api/tags → Ollama
- *   5. Fallback → Generic HTTP
+ *   5. URL path contains /v1/chat/completions → OpenAI-compatible
+ *   6. POST /v1/chat/completions with minimal payload → OpenAI-compatible
+ *   7. Fallback → Generic HTTP
  */
 
 import type { TargetAdapter } from './adapter-port.js';
@@ -23,7 +25,24 @@ export interface AutoDetectOptions {
   readonly requestTemplate?: string;
   readonly responsePath?: string;
   readonly headers?: string;
+  /**
+   * Optional logger for diagnostics. When `autoDetectAdapter` cannot positively
+   * identify a target and falls back to the generic http adapter, it emits a
+   * single `warn(...)` so callers can surface the surprise to the user.
+   * Pure DI — no global logger import.
+   */
+  readonly logger?: { warn(msg: string): void };
 }
+
+/**
+ * Default timeout for the POST `/v1/chat/completions` LLM probe used by
+ * `tryOpenAIPost` to detect OpenAI-compatible endpoints that don't expose
+ * `/v1/models`. Must be generous enough to accommodate cold LLM round-trips
+ * (V1-M30.3: previously 3 000 ms, which lost the race against cold OpenRouter
+ * proxies and caused /deep-e2e Profile B to fall back to the broken http
+ * adapter, returning all 635 tests as `verdict: error`).
+ */
+export const OPENAI_POST_PROBE_TIMEOUT_MS = 15_000;
 
 /** Parse protocol-hinted URLs like openai://localhost:4000 → http://localhost:4000 */
 const parseProtocolHint = (url: string): { protocol: string; httpUrl: string } | null => {
@@ -40,6 +59,34 @@ const tryFetch = async (url: string, timeout = 3000): Promise<boolean> => {
     return await withTimeout(async (signal) => {
       const res = await fetch(url, { signal });
       return res.status === 200;
+    }, timeout);
+  } catch {
+    return false;
+  }
+};
+
+/** Try POST to /v1/chat/completions with minimal OpenAI payload. Returns true if 2xx. */
+export const tryOpenAIPost = async (
+  baseUrl: string,
+  model?: string,
+  key?: string,
+  timeout: number = OPENAI_POST_PROBE_TIMEOUT_MS,
+): Promise<boolean> => {
+  try {
+    return await withTimeout(async (signal) => {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (key) headers['Authorization'] = `Bearer ${key}`;
+      const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: model ?? 'gpt-4o',
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 5,
+        }),
+        signal,
+      });
+      return res.ok;
     }, timeout);
   } catch {
     return false;
@@ -99,6 +146,26 @@ export const autoDetectAdapter = async (
     return createOllamaAdapter(baseUrl, model);
   }
 
-  // 4. Fallback to generic HTTP
+  // 4. URL path heuristic — if URL already contains /v1/chat/completions,
+  //    this is an OpenAI-compatible endpoint. Strip the path to get baseUrl
+  //    and create the OpenAI adapter (it re-adds /v1/chat/completions).
+  if (url.includes('/v1/chat/completions')) {
+    const openAiBase = url.replace(/\/v1\/chat\/completions\/?$/, '').replace(/\/$/, '');
+    return createOpenAIAdapter(openAiBase || baseUrl, model, key);
+  }
+
+  // 4.5. POST probe — send minimal OpenAI payload to /v1/chat/completions.
+  //    Catches endpoints that expose completions but not /v1/models.
+  if (await tryOpenAIPost(baseUrl, model, key)) {
+    return createOpenAIAdapter(baseUrl, model, key);
+  }
+
+  // 5. Fallback to generic HTTP — warn the caller so they can diagnose surprises
+  //    (e.g. OpenAI-compat target whose LLM probe timed out → wrong adapter).
+  opts.logger?.warn(
+    `autoDetectAdapter: no positive match for ${url} — fallback to generic http adapter ` +
+      `(this often means the target is OpenAI-compatible but the probe timed out; ` +
+      `consider passing the explicit /v1/chat/completions URL).`,
+  );
   return createHttpAdapter(url);
 };

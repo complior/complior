@@ -287,3 +287,44 @@ pub fn build_default_answers(questions_json: &serde_json::Value) -> serde_json::
 
     serde_json::Value::Object(answers)
 }
+
+/// V1-M28: Load `[onboarding_answers]` table from `.complior/project.toml`.
+///
+/// Returns `Some(serde_json::Value)` with the answers map if:
+///   - `project_toml_path` exists and contains `[onboarding_answers]`
+///   - the section is non-empty
+///
+/// Returns `None` if the file or section is absent/malformed.
+/// The returned JSON is suitable for `POST /onboarding/complete { answers }`.
+pub fn load_onboarding_answers_from_toml(
+    project_toml_path: &std::path::Path,
+) -> Option<serde_json::Value> {
+    let content = std::fs::read_to_string(project_toml_path).ok()?;
+    let parsed: toml::Value = content.parse().ok()?;
+
+    let section = parsed.get("onboarding_answers")?;
+    let table = section.as_table()?;
+
+    // Convert TOML table to serde_json::Object
+    fn to_json(val: &toml::Value) -> serde_json::Value {
+        match val {
+            toml::Value::String(s) => serde_json::Value::String(s.clone()),
+            toml::Value::Integer(i) => serde_json::Value::Number((*i).into()),
+            toml::Value::Float(f) => serde_json::Number::from_f64(*f)
+                .map_or(serde_json::Value::Null, serde_json::Value::Number),
+            toml::Value::Boolean(b) => serde_json::Value::Bool(*b),
+            toml::Value::Array(arr) => serde_json::Value::Array(arr.iter().map(to_json).collect()),
+            toml::Value::Table(t) => {
+                serde_json::Value::Object(t.iter().map(|(k, v)| (k.clone(), to_json(v))).collect())
+            }
+            toml::Value::Datetime(dt) => serde_json::Value::String(dt.to_string()),
+        }
+    }
+
+    let obj: serde_json::Map<String, serde_json::Value> =
+        table.iter().map(|(k, v)| (k.clone(), to_json(v))).collect();
+    if obj.is_empty() {
+        return None;
+    }
+    Some(serde_json::Value::Object(obj))
+}

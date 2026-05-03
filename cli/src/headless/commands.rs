@@ -244,16 +244,29 @@ pub async fn run_report(
         _ => "/report/status/markdown",
     };
 
-    match client.post_json(endpoint, &serde_json::json!({})).await {
+    // V1-M23 W-2: pass user's --output to engine via `outputPath` JSON body field.
+    // Without this, engine writes to its default path (.complior/reports/...) and
+    // the CLI prints a misleading "Report saved to: <user path>" message.
+    let body = match output {
+        Some(dest) => serde_json::json!({ "outputPath": dest }),
+        None => serde_json::json!({}),
+    };
+
+    match client.post_json(endpoint, &body).await {
         Ok(resp) => {
-            let out_path = resp
+            let engine_path = resp
                 .get("path")
                 .and_then(|v| v.as_str())
                 .unwrap_or("report");
             if let Some(dest) = output {
-                println!("Report saved to: {dest}");
+                // Trust the engine's response path (it confirms what was actually written).
+                println!("Report saved to: {engine_path}");
+                // Sanity: warn if engine path doesn't match requested (shouldn't happen post-W-2).
+                if engine_path != dest {
+                    eprintln!("Warning: requested {dest} but engine reports {engine_path}");
+                }
             } else {
-                println!("Report generated: {out_path}");
+                println!("Report generated: {engine_path}");
             }
             0
         }
@@ -405,10 +418,22 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
         if let Ok(questions_json) = client.get_json("/onboarding/questions").await {
             let answers = if is_interactive {
                 interactive::run_interactive_onboarding(&questions_json)
-            } else {
-                if yes {
+            } else if yes {
+                // V1-M28: prefer existing [onboarding_answers] from project.toml
+                // over hardcoded question defaults
+                if let Some(existing) =
+                    interactive::load_onboarding_answers_from_toml(&project_toml_path)
+                {
+                    println!(
+                        "\n  {} Using existing profile.toml answers (--yes)",
+                        dim("*")
+                    );
+                    existing
+                } else {
                     println!("\n  {} Using defaults (--yes)", dim("*"));
+                    interactive::build_default_answers(&questions_json)
                 }
+            } else {
                 interactive::build_default_answers(&questions_json)
             };
 
@@ -509,7 +534,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
             }
         }
         Err(_) => {
-            eprintln!("  Warning: Agent discovery failed. Run `complior passport init` later.");
+            eprintln!("  Warning: Agent discovery failed. Run `complior agent init` later.");
         }
     }
 
@@ -580,7 +605,7 @@ pub async fn run_init(path: Option<&str>, yes: bool, force: bool, config: &TuiCo
             );
             println!(
                 "      {}",
-                dim("complior passport show <name>  — view missing fields")
+                dim("complior agent show <name>  — view missing fields")
             );
             println!(
                 "      {}",

@@ -39,7 +39,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     // Use rendered preview if available (full feature), fallback to plain preview
     const renderedPlans = fixService.previewAllRendered !== undefined
       ? await fixService.previewAllRendered()
-      : fixService.previewAll();
+      : await fixService.previewAll();
     const currentScore = fixService.getCurrentScore();
     const lastScan = fixService.getLastScanResult?.() ?? null;
     const findings = lastScan?.findings ?? [];
@@ -57,7 +57,9 @@ export const createFixRoute = (deps: FixRouteDeps) => {
       return { ...plan, projectedScore: simulation.projectedScore };
     });
 
-    return c.json({ fixes: enriched, count: enriched.length });
+    /** V1-M19 T-8: expose fixFilterContext in preview response */
+    const fixFilterContext = fixService.getFixFilterContext?.() ?? null;
+    return c.json({ fixes: enriched, count: enriched.length, currentScore, fixFilterContext });
   });
 
   // Preview fix for a specific finding
@@ -65,7 +67,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     const data = await parseBody(c, FixApplySchema);
 
     // Look up the actual finding from the last scan so we preserve fixDiff / strategy context
-    const allPlans = fixService.previewAll();
+    const allPlans = await fixService.previewAll();
     const plan = allPlans.find((p) => p.checkId === data.checkId)
       ?? fixService.preview({
         checkId: data.checkId,
@@ -100,7 +102,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
   app.post('/fix/apply', async (c) => {
     const data = await parseBody(c, FixApplySchema);
 
-    const allPlans = fixService.previewAll();
+    const allPlans = await fixService.previewAll();
     const plan = allPlans.find((p) => p.checkId === data.checkId)
       ?? fixService.preview({
         checkId: data.checkId,
@@ -173,7 +175,7 @@ export const createFixRoute = (deps: FixRouteDeps) => {
 
     return streamSSE(c, async (stream) => {
       try {
-        const plans = fixService.previewAll();
+        const plans = await fixService.previewAll();
         const currentScore = fixService.getCurrentScore();
 
         // Emit start event
@@ -360,15 +362,25 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     return c.json({ ...result, savedPath: undefined });
   });
 
-  // US-S06-06: Generate a single compliance document by type
+  // US-S06-06: Generate a single compliance document by type (or "all")
   app.post('/fix/doc/generate', async (c) => {
     if (!passportService) throw new ValidationError('Passport service not available');
     const data = await parseBody(c, z.object({
       name: z.string().min(1),
       path: z.string().optional(),
-      docType: z.enum(ALL_DOC_TYPES as readonly [string, ...string[]]),
+      docType: z.enum([...ALL_DOC_TYPES, 'all'] as unknown as [string, ...string[]]),
       organization: z.string().optional(),
     }));
+
+    // "all" — delegate to generateAllDocs (same logic as /fix/doc/all)
+    if (data.docType === 'all') {
+      const result = await passportService.generateAllDocs(
+        data.name,
+        data.path,
+        { organization: data.organization },
+      );
+      return c.json({ ...result, timestamp: new Date().toISOString() });
+    }
 
     const result = await passportService.generateDocByType(
       data.name,
@@ -378,42 +390,6 @@ export const createFixRoute = (deps: FixRouteDeps) => {
     );
     if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
     return c.json({ ...result, timestamp: new Date().toISOString() });
-  });
-
-  // C.D03: Generate ISO 42001 Statement of Applicability (SoA)
-  app.post('/fix/doc/soa', async (c) => {
-    if (!passportService) throw new ValidationError('Passport service not available');
-    const data = await parseBody(c, z.object({
-      name: z.string().min(1),
-      path: z.string().optional(),
-      organization: z.string().optional(),
-    }));
-
-    const result = await passportService.generateSoAReport(
-      data.name,
-      data.path,
-      { organization: data.organization },
-    );
-    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
-    return c.json({ ...result });
-  });
-
-  // C.D04: Generate ISO 42001 Risk Register
-  app.post('/fix/doc/risk-register', async (c) => {
-    if (!passportService) throw new ValidationError('Passport service not available');
-    const data = await parseBody(c, z.object({
-      name: z.string().min(1),
-      path: z.string().optional(),
-      organization: z.string().optional(),
-    }));
-
-    const result = await passportService.generateRiskRegisterReport(
-      data.name,
-      data.path,
-      { organization: data.organization },
-    );
-    if (result === null) throw new ValidationError(`Passport not found: ${data.name}`);
-    return c.json({ ...result });
   });
 
   // US-S05-24: Generate compliance test suite from passport constraints

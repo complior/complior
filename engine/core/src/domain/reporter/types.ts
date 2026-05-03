@@ -1,5 +1,14 @@
 import type { SharePayload } from './share.js';
 
+// --- Company Profile (from onboarding / project.toml) ---
+
+export interface CompanyProfile {
+  readonly role: string;
+  readonly riskLevel: string;
+  readonly domain: string;
+  readonly applicableArticles?: readonly string[];
+}
+
 // --- Readiness ---
 
 export type ReadinessZone = 'green' | 'yellow' | 'orange' | 'red';
@@ -33,6 +42,8 @@ export interface ReadinessDashboard {
 export type DocumentStatusLevel = 'missing' | 'scaffold' | 'draft' | 'reviewed';
 
 export interface DocumentStatus {
+  /** Document ID (e.g. "TDD-2026-001") — set when document is generated and registered. Optional for template/scaffold docs. */
+  readonly id?: string;
   readonly docType: string;
   readonly article: string;
   readonly description: string;
@@ -83,6 +94,8 @@ export interface ObligationCoverage {
   readonly coveragePercent: number;
   readonly byArticle: readonly ArticleCoverage[];
   readonly critical: readonly ObligationDetail[];
+  /** V1-M30: Number of obligations excluded by profile filtering (e.g., industry mismatch). */
+  readonly excludedCount: number;
 }
 
 // --- Passport Status ---
@@ -156,6 +169,8 @@ export interface ReportSummary {
   readonly enforcementDate: string;
   readonly generatedAt: string;
   readonly compliorVersion: string;
+  /** V1-M30.5 W-1: scanned project path used to resolve relative document file:// links. */
+  readonly projectPath?: string | null;
 }
 
 // --- Findings Summary (for HTML Tab 3) ---
@@ -253,6 +268,7 @@ export interface ComplianceReport {
   readonly evalResults: EvalResultsSummary | null;
   readonly fixHistory: readonly FixHistoryEntry[];
   readonly documentContents: readonly DocumentContent[];
+  readonly profile?: CompanyProfile;
 }
 
 // --- Share V2 ---

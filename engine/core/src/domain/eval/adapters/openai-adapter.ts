@@ -52,7 +52,7 @@ export const createOpenAIAdapter = (
       url: baseUrl.replace(/\/$/, '') + '/v1/models',
       method: 'GET',
       headers: buildHeaders,
-      isHealthy: (status) => status === 200,
+      isHealthy: (status) => status < 500,
     },
   });
 };

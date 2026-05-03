@@ -1,3 +1,16 @@
+// V1-M30.11: CI re-trigger marker (post-merge engine + Rust verification).
+// Merge commit's Rust Clippy was cancelled by docs-only follow-up; touch-trigger
+// re-runs all Rust jobs. See engine/core/src/index.ts for context.
+// V1-M30.9: CI re-trigger marker (post-merge engine + Rust verification).
+// See engine/core/src/index.ts for context. paths-filter triggers Rust job.
+// V1-M30.8a+b: CI re-trigger marker (post-merge engine + Rust verification).
+// See engine/core/src/index.ts for context. paths-filter triggers Rust job.
+// V1-M30.7: CI re-trigger marker (post-merge engine + Rust verification).
+// See engine/core/src/index.ts for context — both files prepended together
+// so paths-filter runs both Rust + Engine jobs in one CI invocation.
+// V1-M30.6: CI re-trigger marker (post-merge engine + Rust verification).
+// See engine/core/src/index.ts for context — both files prepended together
+// so paths-filter runs both Rust + Engine jobs in one CI invocation.
 // TUI-only modules
 #[cfg(feature = "tui")]
 mod animation;
@@ -344,7 +357,18 @@ async fn main() -> color_eyre::Result<()> {
                 headless::daemon::run_daemon(action.as_ref(), *watch, &project_path, &config).await;
                 0
             }
+            Some(cli::Command::Agent { action }) => {
+                headless::passport::run_passport_command(action, &config).await
+            }
             Some(cli::Command::Passport { action }) => {
+                // V1-M30.4 B.1: `passport` is now a deprecated alias for `agent`.
+                // Print a one-line yellow warning to stderr (so JSON/SARIF stdout
+                // remains valid for CI consumers) but still dispatch to the same
+                // handler so existing scripts keep working.
+                eprintln!(
+                    "\x1b[33m⚠ Deprecated: 'complior passport' is now 'complior agent'. \
+                     The 'passport' alias will be removed in v2.0.0.\x1b[0m"
+                );
                 headless::passport::run_passport_command(action, &config).await
             }
             Some(cli::Command::Eval {
@@ -375,20 +399,45 @@ async fn main() -> color_eyre::Result<()> {
             }) => {
                 if *last {
                     headless::eval::run_eval_last(*json, *failures, *ci, *threshold, &config).await
-                } else if let Some(target) = target {
-                    if !target.starts_with("http://") && !target.starts_with("https://") {
-                        eprintln!("Error: eval target must be an HTTP(S) URL, got: {target}");
+                } else if let Some(target_raw) = target {
+                    // T-12: Strip protocol hints (openai://, anthropic://, ollama://)
+                    // so they become valid HTTP(S) URLs for the engine's parseProtocolHint().
+                    let normalized_target = if let Some(stripped) = target_raw
+                        .strip_prefix("openai://")
+                        .or_else(|| target_raw.strip_prefix("anthropic://"))
+                        .or_else(|| target_raw.strip_prefix("ollama://"))
+                    {
+                        if stripped.starts_with("http://") || stripped.starts_with("https://") {
+                            stripped.to_string()
+                        } else {
+                            format!("http://{stripped}")
+                        }
+                    } else {
+                        target_raw.clone()
+                    };
+
+                    if !normalized_target.starts_with("http://")
+                        && !normalized_target.starts_with("https://")
+                    {
+                        eprintln!(
+                            "Error: eval target must be an HTTP(S) URL, got: {normalized_target}"
+                        );
                         eprintln!();
                         eprintln!("Usage: complior eval <url> [--det] [--llm] [--security]");
                         eprintln!("Example: complior eval http://localhost:4000/api/chat");
+                        eprintln!(
+                            "Note: openai://, anthropic://, ollama:// protocol hints are supported."
+                        );
                         eprintln!();
                         eprintln!("Eval tests a running AI endpoint dynamically.");
-                        eprintln!("To scan local source code, use: complior scan {target}");
+                        eprintln!(
+                            "To scan local source code, use: complior scan {normalized_target}"
+                        );
                         1
                     } else if *fix {
                         // Run eval then apply fixes
                         let code = headless::eval::run_eval_command(
-                            target,
+                            &normalized_target,
                             *det,
                             *llm,
                             *security,
@@ -419,7 +468,7 @@ async fn main() -> color_eyre::Result<()> {
                         }
                     } else {
                         headless::eval::run_eval_command(
-                            target,
+                            &normalized_target,
                             *det,
                             *llm,
                             *security,

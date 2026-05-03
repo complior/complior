@@ -7,7 +7,3 @@ export { generatePolicy } from './policy-generator.js';
 export type { PolicyGeneratorInput, PolicyResult } from './policy-generator.js';
 export { generateWorkerNotification } from './worker-notification-generator.js';
 export type { WorkerNotificationInput, WorkerNotificationResult } from './worker-notification-generator.js';
-export { generateSoA } from './soa-generator.js';
-export type { SoAGeneratorInput } from './soa-generator.js';
-export { generateRiskRegister } from './risk-register-generator.js';
-export type { RiskRegisterInput } from './risk-register-generator.js';

@@ -89,7 +89,8 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
     render_nav_tab_bar(frame, tab_area, app.view_state);
 
     // Reserve: owl (2) + tab bar (1) + footer (2) + optional suggestion (2)
-    let suggestion_height: u16 = if app.idle_suggestions.current.is_some() {
+    // T08: suppress suggestion area when app is busy
+    let suggestion_height: u16 = if app.idle_suggestions.should_show(app.is_busy()) {
         2
     } else {
         0
@@ -120,18 +121,20 @@ pub fn render_dashboard(frame: &mut Frame, app: &App) {
         ViewState::Report => super::report::render_report_view(frame, body_area, app),
     }
 
-    // T08: Idle suggestion area (above footer)
-    if let Some(ref suggestion) = app.idle_suggestions.current {
-        let suggestion_area = Rect {
-            x: area.x,
-            y: area.y
-                + area
-                    .height
-                    .saturating_sub(footer_height + suggestion_height),
-            width: area.width,
-            height: suggestion_height,
-        };
-        crate::components::suggestions::render_suggestion(frame, suggestion_area, suggestion);
+    // T08: Idle suggestion area (above footer) — suppressed when app is busy
+    if app.idle_suggestions.should_show(app.is_busy()) {
+        if let Some(ref suggestion) = app.idle_suggestions.current {
+            let suggestion_area = Rect {
+                x: area.x,
+                y: area.y
+                    + area
+                        .height
+                        .saturating_sub(footer_height + suggestion_height),
+                width: area.width,
+                height: suggestion_height,
+            };
+            crate::components::suggestions::render_suggestion(frame, suggestion_area, suggestion);
+        }
     }
 
     // 2-line footer at bottom

@@ -43,6 +43,7 @@ const makeFilterContext = (overrides: Partial<ScanFilterContext> = {}): ScanFilt
   applicableObligations: 46,
   skippedByRole: 48,
   skippedByRiskLevel: 14,
+  skippedByDomain: 0,
   ...overrides,
 });
 

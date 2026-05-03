@@ -122,16 +122,18 @@ describe('simulateActions', () => {
     expect(result.projectedScore).toBe(70);
   });
 
-  it('caps projected score at 100', () => {
+  it('caps projected score at 99 (V1-M30.9 W-3 spec supersession — 100 implies certainty)', () => {
     const result = simulateActions({
       currentScore: 98,
       findings: [{ checkId: 'x', severity: 'critical', status: 'fail' }],
       passportCompleteness: 100,
       actions: [{ type: 'fix', target: 'x' }],
     });
-    expect(result.projectedScore).toBe(100);
-    // delta should be capped too: 100 - 98 = 2, not the raw 5.0
-    expect(result.delta).toBe(2);
+    // V1-M30.9 W-3: cap is 99 (not 100). The estimate should never claim
+    // certainty. simulate-actions.ts:106 uses Math.min(99, ...).
+    expect(result.projectedScore).toBe(99);
+    // delta should be capped too: 99 - 98 = 1, not the raw 5.0
+    expect(result.delta).toBe(1);
   });
 
   it('returns frozen result', () => {

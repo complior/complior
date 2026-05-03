@@ -121,7 +121,7 @@
       "required": [
         "role", "riskLevel", "domain", "profileFound",
         "totalObligations", "applicableObligations",
-        "skippedByRole", "skippedByRiskLevel"
+        "skippedByRole", "skippedByRiskLevel", "skippedByDomain"
       ],
       "properties": {
         "role": {
@@ -134,7 +134,8 @@
         "totalObligations": { "type": "integer" },
         "applicableObligations": { "type": "integer" },
         "skippedByRole": { "type": "integer" },
-        "skippedByRiskLevel": { "type": "integer" }
+        "skippedByRiskLevel": { "type": "integer" },
+        "skippedByDomain": { "type": "integer" }
       },
       "additionalProperties": false
     },

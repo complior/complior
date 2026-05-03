@@ -9,8 +9,6 @@
  *   - /fix/doc/fria → command-restructuring-e2e
  *   - /fix/doc/notify → command-restructuring-e2e
  *   - /fix/doc/policy → command-restructuring-e2e
- *   - /fix/doc/soa → iso42001-e2e
- *   - /fix/doc/risk-register → iso42001-e2e
  *   - /fix/doc/generate → command-restructuring-e2e
  *
  * Uses Hono in-memory (no real HTTP server).

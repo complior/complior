@@ -23,6 +23,7 @@ const stubFilterContext: ScanFilterContext = {
   applicableObligations: 22,
   skippedByRole: 4,
   skippedByRiskLevel: 8,
+  skippedByDomain: 0,
 };
 
 /** Stub fix service that returns deterministic results. */

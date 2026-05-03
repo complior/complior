@@ -10,6 +10,12 @@ use crate::headless::format::labels::check_label;
 use crate::headless::format::layers::SEP_WIDTH;
 use crate::headless::format::{plural, project_name, separator};
 
+// ── V1-M22 D-2: Exit code constants for fix --check-id semantics ──
+/// Exit code when no auto-fix is available (informational, not a failure).
+pub const EXIT_NO_FIX_AVAILABLE: i32 = 0;
+/// Exit code when fix actually failed (error condition).
+pub const EXIT_FIX_FAILED: i32 = 2;
+
 /// Run a headless fix (dry-run or apply).
 pub async fn run_headless_fix(
     dry_run: bool,
@@ -49,12 +55,17 @@ pub async fn run_headless_fix(
             .filter_map(|f| f.get("checkId").and_then(|v| v.as_str()).map(String::from))
             .collect();
         // Get current score from status endpoint (lightweight, no re-scan)
-        let score = client
-            .get_json("/status")
-            .await
-            .ok()
-            .and_then(|v| v.get("score").and_then(serde_json::Value::as_f64))
-            .unwrap_or(0.0);
+        // R2-2: /status returns {"lastScan": {"score": ...}}, not {"score": ...}
+        let score = match client.get_json("/status").await.ok() {
+            Some(v) => match v.get("lastScan") {
+                Some(ls) => match ls.get("score") {
+                    Some(sv) => sv.as_f64().unwrap_or(0.0),
+                    None => 0.0,
+                },
+                None => 0.0,
+            },
+            None => 0.0,
+        };
         (check_ids, score)
     } else {
         // No previous scan — run a fresh one
@@ -101,9 +112,11 @@ pub async fn run_headless_fix(
                 );
             }
         } else {
-            // Offline estimate — rough approximation based on fix count
+            // Offline estimate — rough approximation based on fix count.
+            // V1-M30.9 W-3: cap at 99 (not 100) — 100 implies certainty, but
+            // this is an estimate. Mirrors simulate-actions.ts cap.
             let impact = (fixable.len() as f64 * 3.0).min(60.0) as i32;
-            let predicted = (current_score + f64::from(impact)).min(100.0);
+            let predicted = (current_score + f64::from(impact)).min(99.0);
             if json {
                 println!(
                     "{{\"dryRun\": true, \"fixable\": {}, \"currentScore\": {current_score:.0}, \"predictedScore\": {predicted:.0}}}",
@@ -1333,14 +1346,54 @@ const VALID_DOC_TYPES: &[&str] = &[
     "instructions-for-use",
     "gpai-transparency",
     "gpai-systemic-risk",
-    "iso42001-ai-policy",
-    "iso42001-soa",
-    "iso42001-risk-register",
 ];
 
 /// Run `fix --doc <type> [agent]` — generate a compliance document.
 /// Agent name defaults to "default" if not provided.
+/// T-2: Special case `doc_type = "all"` generates all document types.
 pub async fn run_doc_generate_fix(
+    doc_type: &str,
+    agent: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    // T-2: Handle "all" as a special case that generates all document types.
+    if doc_type == "all" {
+        if json {
+            println!(
+                "{{\"action\": \"generate-all\", \"docTypes\": {}}}",
+                serde_json::to_string(VALID_DOC_TYPES).unwrap_or_default()
+            );
+        } else {
+            println!("Generating all compliance documents...\n");
+        }
+        let mut failures = 0;
+        for dtype in VALID_DOC_TYPES {
+            let code = run_doc_generate_single(dtype, agent, json, path, config).await;
+            if code != 0 {
+                failures += 1;
+                eprintln!("  [FAIL] {dtype}");
+            } else if !json {
+                println!("  [OK] {dtype}");
+            }
+        }
+        if !json {
+            println!(
+                "\nDone: {} types generated, {} failures.",
+                VALID_DOC_TYPES.len() - failures,
+                failures
+            );
+        }
+        i32::from(failures > 0)
+    } else {
+        run_doc_generate_single(doc_type, agent, json, path, config).await
+    }
+}
+
+/// Generate a single document type (called by run_doc_generate_fix for single types
+/// and by the "all" loop).
+async fn run_doc_generate_single(
     doc_type: &str,
     agent: Option<&str>,
     json: bool,
@@ -1373,6 +1426,18 @@ pub async fn run_doc_generate_fix(
 
     match client.post_json("/fix/doc/generate", &body).await {
         Ok(result) => {
+            // V1-M30.11 BUG-1: engine returns error JSON (e.g. 400 "Passport not found")
+            // even though HTTP status was 200. Check for the structured error field
+            // before treating the response as a success.
+            if let Some(err_obj) = result.get("error") {
+                let msg = err_obj
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown engine error");
+                eprintln!("Error: {msg}");
+                return 1;
+            }
+
             if json {
                 println!(
                     "{}",
@@ -1620,40 +1685,39 @@ mod tests {
         );
     }
 
-    // ── V1-M12 T-1: RED test — ISO 42001 doc types in CLI allowlist ──
+    // ── V1-M22 C-3: RED test — ISO 42001 doc types NOT in CLI allowlist ──
 
     #[test]
-    fn valid_doc_types_includes_iso42001_soa() {
+    fn valid_doc_types_excludes_iso_soa() {
         assert!(
-            VALID_DOC_TYPES.contains(&"iso42001-soa"),
-            "VALID_DOC_TYPES must include 'iso42001-soa' — ISO 42001 Statement of Applicability"
+            !VALID_DOC_TYPES.contains(&"iso42001-soa"),
+            "VALID_DOC_TYPES must NOT include iso42001-soa — ISO 42001 removed in V1-M22"
         );
     }
 
     #[test]
-    fn valid_doc_types_includes_iso42001_risk_register() {
+    fn valid_doc_types_excludes_iso_rr() {
         assert!(
-            VALID_DOC_TYPES.contains(&"iso42001-risk-register"),
-            "VALID_DOC_TYPES must include 'iso42001-risk-register' — ISO 42001 Risk Register"
+            !VALID_DOC_TYPES.contains(&"iso42001-risk-register"),
+            "VALID_DOC_TYPES must NOT include iso42001-risk-register — ISO 42001 removed in V1-M22"
         );
     }
 
     #[test]
-    fn valid_doc_types_includes_iso42001_ai_policy() {
+    fn valid_doc_types_excludes_iso_ap() {
         assert!(
-            VALID_DOC_TYPES.contains(&"iso42001-ai-policy"),
-            "VALID_DOC_TYPES must include 'iso42001-ai-policy' — ISO 42001 AI Policy"
+            !VALID_DOC_TYPES.contains(&"iso42001-ai-policy"),
+            "VALID_DOC_TYPES must NOT include iso42001-ai-policy — ISO 42001 removed in V1-M22"
         );
     }
 
     #[test]
-    fn valid_doc_types_count_matches_engine_registry() {
-        // Engine template-registry.ts has 17 entries (14 EU AI Act + 3 ISO 42001).
-        // Rust CLI VALID_DOC_TYPES must have the same count.
+    fn valid_doc_types_count_after_iso_removal() {
+        // V1-M22: 14 EU AI Act doc types only (iso42001 removed)
         assert_eq!(
             VALID_DOC_TYPES.len(),
-            17,
-            "VALID_DOC_TYPES should have 17 entries (14 EU AI Act + 3 ISO 42001), got {}",
+            14,
+            "VALID_DOC_TYPES should have 14 entries (EU AI Act only), got {}",
             VALID_DOC_TYPES.len()
         );
     }

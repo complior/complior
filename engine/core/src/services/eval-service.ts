@@ -20,6 +20,8 @@ import { createSecurityProbeLoader } from '../domain/eval/security-integration.j
 import { getSecurityRubric } from '../data/eval/security-rubrics.js';
 import { buildPassportEvalBlock, mergeEvalIntoPassport } from '../domain/eval/eval-passport.js';
 import { generateEvalReport } from '../domain/eval/eval-report.js';
+import { filterTestsByProfile, filterSecurityProbesByProfile, type FilterProfile } from '../domain/eval/eval-profile-filter.js';
+import { buildEvalDisclaimer } from '../domain/eval/eval-disclaimer.js';
 import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { AuditStore } from '../domain/audit/audit-trail.js';
 import type { RemediationAction, RemediationReport } from '../domain/eval/remediation-types.js';
@@ -49,6 +51,12 @@ export interface EvalServiceDeps {
   readonly events?: EventBusPort;
   readonly scanService?: { scan: (path: string) => Promise<ScanResult> };
   readonly listPassports?: () => Promise<readonly AgentPassport[]>;
+  /** V1-M12 T-13: Load project profile for context-aware eval filtering. */
+  readonly getProjectProfile?: (path: string) => Promise<{
+    role: 'provider' | 'deployer' | 'both';
+    riskLevel: string | null;
+    domain: string | null;
+  } | null>;
 }
 
 export const createEvalService = (deps: EvalServiceDeps) => {
@@ -180,7 +188,63 @@ export const createEvalService = (deps: EvalServiceDeps) => {
       ? createEvalRunner(runnerDeps)
       : baseRunner;
 
-    const result = await effectiveRunner.runEval(adapter, resolvedOptions, testSources, scorer, judge, onProgress);
+    // V1-M12 T-13: Load profile for context-aware filtering
+    const profile = deps.getProjectProfile
+      ? await deps.getProjectProfile(deps.getProjectPath()).catch(() => null)
+      : null;
+
+    // V1-M12.1 T-1: Filter test sources BEFORE runEval() — saves HTTP/LLM costs
+    // Build a filtered EvalTestSources so runner never sees inapplicable tests.
+    const filterProfile: FilterProfile | null = profile
+      ? {
+          role: profile.role as 'provider' | 'deployer' | 'both',
+          riskLevel: profile.riskLevel,
+          domain: profile.domain,
+        }
+      : null;
+
+    const filteredTestSources: EvalTestSources = {
+      getDeterministicTests: () => {
+        const all = testSources.getDeterministicTests();
+        if (!filterProfile) return all;
+        return filterTestsByProfile(all, filterProfile).filtered;
+      },
+      getLlmTests: () => {
+        const all = testSources.getLlmTests();
+        if (!filterProfile) return all;
+        return filterTestsByProfile(all, filterProfile).filtered;
+      },
+      getSecurityProbes: () => {
+        // Security probes: filter by profile using dedicated function (V1-M20 / TD-44)
+        if (!filterProfile) return testSources.getSecurityProbes();
+        return filterSecurityProbesByProfile(
+          testSources.getSecurityProbes(),
+          filterProfile,
+        ).filtered;
+      },
+    };
+
+    let result = await effectiveRunner.runEval(adapter, resolvedOptions, filteredTestSources, scorer, judge, onProgress);
+
+    // V1-M12 T-12: Build filterContext + disclaimer from profile
+    if (profile) {
+      // Count from ORIGINAL test sources (before runner's category filter) for accurate metadata.
+      // The filteredTestSources has category filter applied by runner, so re-filter here
+      // from unfiltered sources to get full skipped counts.
+      const allTests = [
+        ...testSources.getDeterministicTests(),
+        ...testSources.getLlmTests(),
+      ];
+      const { context: filterContext } = filterTestsByProfile(allTests, filterProfile);
+      const disclaimer = buildEvalDisclaimer(filterContext, true);
+
+      // V1-M12: Attach filterContext + disclaimer to result (merged object)
+      result = Object.freeze({
+        ...result,
+        filterContext,
+        disclaimer,
+      });
+    }
 
     // US-REM-04: Auto-sync eval results into agent passport (non-fatal)
     if (deps.updatePassportEval) {
@@ -219,7 +283,8 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     return mergeEvalIntoPassport(passport, block);
   };
 
-  // Minimal schema for validating persisted eval results
+  // Minimal schema for validating persisted eval results.
+  // Includes all EvalResult fields for forward-compat and type safety.
   const EvalResultSchema = z.object({
     target: z.string(),
     overallScore: z.number(),
@@ -228,6 +293,14 @@ export const createEvalService = (deps: EvalServiceDeps) => {
     passed: z.number(),
     failed: z.number(),
     results: z.array(z.object({ testId: z.string(), verdict: z.string() }).passthrough()),
+    tier: z.enum(['basic', 'standard', 'full', 'security']).optional(),
+    categories: z.array(z.object({ category: z.string(), score: z.number(), grade: z.string(), passed: z.number(), failed: z.number(), errors: z.number(), inconclusive: z.number(), skipped: z.number(), total: z.number() })).optional(),
+    errors: z.number().optional(),
+    inconclusive: z.number().optional(),
+    skipped: z.number().optional(),
+    duration: z.number().optional(),
+    securityScore: z.number().optional(),
+    securityGrade: z.string().optional(),
   }).passthrough();
 
   /** Get last eval result from disk. */
@@ -240,6 +313,9 @@ export const createEvalService = (deps: EvalServiceDeps) => {
         log.warn('Invalid eval result on disk:', parsed.error.message);
         return null;
       }
+      // Schema intentionally minimal (forward-compat: accept old disk formats).
+      // passthrough() keeps extra fields at runtime; Zod output fully covers EvalResult fields.
+      // Single `as unknown` bridge here because Zod output type ≠ interface type structurally.
       return parsed.data as unknown as EvalResult;
     } catch {
       return null;

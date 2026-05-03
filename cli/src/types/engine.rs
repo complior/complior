@@ -1,5 +1,20 @@
 use serde::{Deserialize, Serialize};
 
+// --- Score caps (V1-M30.10) ---
+
+/// Maximum predicted/projected score the engine and CLI may return.
+///
+/// V1-M30.9 / W-3 invariant: the predicted score after a fix is an *estimate*,
+/// not a guarantee. 100 implies certainty — that the project will pass every
+/// check. We cannot promise that, so estimates are capped at 99.
+///
+/// Mirrors `engine/core/src/domain/whatif/simulate-actions.ts:106` which uses
+/// `Math.min(99, currentScore + totalDelta)`.
+///
+/// All score-cap call sites in the Rust CLI MUST use this constant instead of
+/// hardcoded `100.0`. Search prompt: `clamp(.*100\.0)` should return 0 hits.
+pub const MAX_PREDICTED_SCORE: f64 = 99.0;
+
 // --- Engine API response types (mirror TS Engine JSON) ---
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -325,6 +340,9 @@ pub struct ScanFilterContext {
     pub applicable_obligations: u32,
     pub skipped_by_role: u32,
     pub skipped_by_risk_level: u32,
+    /// V1-M18: Findings skipped because they apply to a different industry domain.
+    #[serde(default)]
+    pub skipped_by_domain: u32,
 }
 
 /// V1-M08: Priority action from scan for "FIX FIRST" CLI display.
@@ -372,6 +390,12 @@ pub struct ScanResult {
     /// V1-M08: Top priority actions for CLI "FIX FIRST" section.
     #[serde(default)]
     pub top_actions: Option<Vec<TopAction>>,
+    /// V1-M24 R-1: Disclaimer field from scan service (explains scan scope, limitations).
+    /// Shape differs from `ScoreDisclaimer` (which has covered_obligations etc.).
+    /// Engine emits: `{ summary, limitations, confidenceLevel }`. Use opaque Value
+    /// to preserve forward compatibility — TS engine may extend the shape.
+    #[serde(default)]
+    pub disclaimer: Option<serde_json::Value>,
 }
 
 /// Result from a single external security tool (Semgrep, Bandit, etc.)
@@ -645,7 +669,7 @@ pub struct EngineStatus {
 // ── V1-M10: Score Transparency types ──────────────────────────────
 
 /// V1-M10: Score disclaimer explaining what the compliance score covers.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScoreDisclaimer {
     pub summary: String,
@@ -731,4 +755,217 @@ pub struct CompliancePosture {
     pub document_count: usize,
     #[serde(default)]
     pub evidence_verified: Option<bool>,
+}
+
+// --- V1-M30.10 RED tests: predicted-score cap invariants ---
+
+#[cfg(test)]
+mod predicted_score_cap_tests {
+    use super::MAX_PREDICTED_SCORE;
+
+    /// V1-M30.10 / W-3 root-cause invariant: the predicted-score cap is 99,
+    /// not 100. 100 implies certainty, but predicted scores are estimates.
+    /// Mirrors `simulate-actions.ts` (TS engine) `Math.min(99, ...)`.
+    #[test]
+    fn max_predicted_score_is_99_not_100() {
+        assert!(
+            (MAX_PREDICTED_SCORE - 99.0).abs() < f64::EPSILON,
+            "MAX_PREDICTED_SCORE must be 99.0 (V1-M30.10 W-3 invariant) but was {MAX_PREDICTED_SCORE}",
+        );
+        const _: () = assert!(
+            MAX_PREDICTED_SCORE < 100.0,
+            "MAX_PREDICTED_SCORE must be strictly less than 100 — 100 implies certainty",
+        );
+    }
+
+    /// V1-M30.10 RED → GREEN: `engine_client.rs` source MUST NOT contain a
+    /// hardcoded `100.0` cap inside `fix_dry_run`. It must use the
+    /// `MAX_PREDICTED_SCORE` constant (or `99.0` literal) instead.
+    ///
+    /// This is a static-source invariant test that fails until rust-dev edits
+    /// `engine_client.rs:~201` to replace `clamp(current_score, 100.0)` with
+    /// `clamp(current_score, MAX_PREDICTED_SCORE)`.
+    ///
+    /// Why static-source: `fix_dry_run` is async + makes HTTP calls. Mocking
+    /// it requires non-trivial test infra. The bug is a single-literal cap;
+    /// a source-text invariant test catches both the bug and any regression
+    /// where someone reintroduces `100.0` as the upper bound.
+    #[test]
+    fn engine_client_does_not_hardcode_100_as_predicted_score_cap() {
+        let src = include_str!("../engine_client.rs");
+        // The bad pattern: `.clamp(current_score, 100.0)` or
+        //                  `.clamp(current_score, 100_f64)` etc.
+        // We accept ANY of:
+        //   .clamp(current_score, MAX_PREDICTED_SCORE)
+        //   .clamp(current_score, 99.0)
+        //   .clamp(current_score, 99_f64)
+        let banned_patterns = [
+            "clamp(current_score, 100.0)",
+            "clamp(current_score, 100_f64)",
+            "clamp(current_score, 100f64)",
+            "clamp(current_score, 100)",
+            "min(100.0)",
+            "min(100_f64)",
+        ];
+        for pat in &banned_patterns {
+            assert!(
+                !src.contains(pat),
+                "engine_client.rs contains banned pattern `{pat}` — V1-M30.10 W-3 \
+                 invariant: predicted score must be capped at 99, not 100. \
+                 Replace with MAX_PREDICTED_SCORE from crate::types::engine.",
+            );
+        }
+    }
+
+    /// Engine_client.rs MUST use `MAX_PREDICTED_SCORE` (or the literal 99.0)
+    /// somewhere — proving the cap is wired, not just renamed away.
+    #[test]
+    fn engine_client_uses_max_predicted_score_constant() {
+        let src = include_str!("../engine_client.rs");
+        let has_constant = src.contains("MAX_PREDICTED_SCORE");
+        let has_literal = src.contains("99.0") || src.contains("99_f64");
+        assert!(
+            has_constant || has_literal,
+            "engine_client.rs must reference MAX_PREDICTED_SCORE or 99.0 to \
+             enforce V1-M30.10 W-3 cap. Found neither.",
+        );
+    }
+
+    /// Cap must NOT inflate scores below the cap — it is a ceiling, not a floor.
+    #[test]
+    fn cap_does_not_inflate_low_baselines() {
+        let current_score = 50.0_f64;
+        let impacts = [3.0_f64];
+        let adjusted: f64 = impacts.iter().sum();
+        let predicted = (current_score + adjusted).clamp(current_score, MAX_PREDICTED_SCORE);
+        assert!(
+            (predicted - 53.0).abs() < f64::EPSILON,
+            "predicted={predicted} should be 53.0 (50 baseline + 3 impact, well below cap)",
+        );
+    }
+
+    /// Cap must never push a score backwards (predicted < current).
+    #[test]
+    fn cap_is_monotonic_never_decreases_baseline() {
+        let current_score = 70.0_f64;
+        let impacts: Vec<f64> = vec![]; // no fixes
+        let adjusted: f64 = impacts.iter().sum();
+        let predicted = (current_score + adjusted).clamp(current_score, MAX_PREDICTED_SCORE);
+        assert!(
+            (predicted - 70.0).abs() < f64::EPSILON,
+            "predicted={predicted} should equal current_score=70.0 with no fixes",
+        );
+    }
+}
+
+// --- V1-M30.11 RED tests: fix --doc engine error handling + scan --diff git stderr ---
+//
+// Background: post V1-M30.10 final /deep-e2e exposed two UX bugs.
+//
+// BUG-1 (P2): `engine_client::post_json` returns Ok(error_json) for HTTP 4xx
+// responses (deliberate, so callers can read structured error fields). But the
+// `fix --doc <type>` handlers in fix.rs and doc.rs DON'T check the `error`
+// field — they just call `.get("savedPath")` which returns None → "unknown".
+// User sees fake "Document generated" + "Saved to: unknown" + "Prefilled: 0"
+// + "Manual: 0" instead of the real "Passport not found: <name>" error.
+//
+// BUG-3 (P3): `scan --diff main` on a non-git project dumps full git --help
+// (~70 lines) because scan.rs:677 prints `String::from_utf8_lossy(&o.stderr)`
+// without truncation or pattern detection.
+//
+// rust-dev MUST add error-field checks (BUG-1) + friendly stderr handling
+// (BUG-3). These are static-source invariant tests.
+#[cfg(test)]
+mod doc_generate_error_tests {
+
+    /// Sanity: source files we will probe actually exist as compile-time strings.
+    #[test]
+    fn sanity_source_files_loadable() {
+        let fix_rs = include_str!("../headless/fix.rs");
+        let doc_rs = include_str!("../headless/doc.rs");
+        let scan_rs = include_str!("../headless/scan.rs");
+        assert!(!fix_rs.is_empty(), "fix.rs source must be non-empty");
+        assert!(!doc_rs.is_empty(), "doc.rs source must be non-empty");
+        assert!(!scan_rs.is_empty(), "scan.rs source must be non-empty");
+    }
+
+    /// V1-M30.11 BUG-1 invariant: `cli/src/headless/fix.rs` MUST check for
+    /// the `error` field in the doc-generate response before reading other
+    /// fields, INSIDE the `run_doc_generate_single` function specifically
+    /// (not in other handlers that already do).
+    ///
+    /// We slice the source between `fn run_doc_generate_single` and the
+    /// next top-level `fn ` boundary, then assert `get("error")` appears
+    /// in that window.
+    #[test]
+    fn fix_rs_doc_generate_checks_error_field() {
+        let src = include_str!("../headless/fix.rs");
+        let fn_start = src
+            .find("async fn run_doc_generate_single")
+            .or_else(|| src.find("fn run_doc_generate_single"))
+            .expect("fix.rs must define run_doc_generate_single fn");
+        // End-of-fn boundary: next "\n}\n\n" closure followed by another fn,
+        // mod boundary, or EOF. Cheap heuristic: take the next 4 KB.
+        let window_end = (fn_start + 4096).min(src.len());
+        let window = &src[fn_start..window_end];
+        assert!(
+            window.contains("get(\"error\")"),
+            "fix.rs::run_doc_generate_single MUST check `result.get(\"error\")` \
+             after post_json (V1-M30.11 BUG-1). Without this check the user \
+             sees fake 'Document generated' + 'Saved to: unknown' instead of \
+             the real engine error like 'Passport not found: default'. \
+             Note: error checks elsewhere in fix.rs do NOT count — must be \
+             inside run_doc_generate_single specifically.",
+        );
+    }
+
+    /// V1-M30.11 BUG-1 invariant: `cli/src/headless/doc.rs` has TWO doc-generate
+    /// handlers (one for /fix/doc/all loop response and one for single types).
+    /// Both must check for the engine error field.
+    ///
+    /// This test counts occurrences of `get("error")` and requires at least 2.
+    #[test]
+    fn doc_rs_handlers_check_error_field() {
+        let src = include_str!("../headless/doc.rs");
+        let count = src.matches("get(\"error\")").count();
+        assert!(
+            count >= 2,
+            "doc.rs MUST check `result.get(\"error\")` in BOTH doc-generate \
+             handlers (V1-M30.11 BUG-1). Found {count} occurrence(s), need ≥2. \
+             Without these checks user sees fake success messages when engine \
+             returns 4xx error JSON.",
+        );
+    }
+
+    /// V1-M30.11 BUG-3 invariant: `cli/src/headless/scan.rs` MUST NOT dump raw
+    /// git stderr unbounded. When git fails on a non-git project, its stderr
+    /// contains the full ~70 line `git --help` output. Must be:
+    ///   - detected via "not a git repository" pattern + friendly message, OR
+    ///   - truncated explicitly (e.g. `.lines().next()` or `[..200]` slice)
+    ///
+    /// This test asserts that scan.rs source either:
+    ///   (a) contains the case-insensitive pattern "not a git" / "not_a_git" check
+    ///   (b) OR contains an explicit truncation pattern on stderr
+    #[test]
+    fn scan_rs_diff_does_not_dump_git_help() {
+        let src = include_str!("../headless/scan.rs");
+        // Either detect the not-git case…
+        let has_not_git_check = src.contains("not a git")
+            || src.contains("not_a_git")
+            || src.contains("Not a git")
+            || src.contains("NotARepo")
+            || src.contains("repository");
+        // …or explicitly truncate stderr length.
+        let has_truncation = src.contains("stderr).lines().next()")
+            || src.contains("stderr_first_line")
+            || src.contains("truncate(200)")
+            || src.contains("&stderr_str[..");
+        assert!(
+            has_not_git_check || has_truncation,
+            "scan.rs MUST detect 'not a git repository' pattern OR truncate \
+             git stderr explicitly (V1-M30.11 BUG-3). Without this fix, \
+             `complior scan --diff main` on non-git projects dumps the full \
+             git --help text (~70 lines).",
+        );
+    }
 }

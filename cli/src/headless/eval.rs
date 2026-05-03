@@ -1793,13 +1793,13 @@ fn print_quick_actions(
     }
     if has_prohibited_failures {
         println!(
-            "  {}  complior docs --article 5",
+            "  {}  complior fix --doc art5-screening",
             dim(&format!("{:<22}", "Fix prohibited"))
         );
     }
     if has_bias_failures {
         println!(
-            "  {}  complior docs --article 10",
+            "  {}  complior fix --doc data-governance",
             dim(&format!("{:<22}", "Review bias findings"))
         );
     }

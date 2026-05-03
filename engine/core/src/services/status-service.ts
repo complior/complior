@@ -120,6 +120,7 @@ export const createStatusService = (deps: StatusServiceDeps) => {
             applicableObligations: onboardingProfile.computed?.applicableObligations?.length ?? 108,
             skippedByRole: 0,
             skippedByRiskLevel: 0,
+            skippedByDomain: 0,
           };
         }
       } catch { /* ignore */ }

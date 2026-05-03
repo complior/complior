@@ -6,6 +6,7 @@ const PdfReportSchema = z.object({
   organization: z.string().optional(),
   jurisdiction: z.string().optional(),
   isFree: z.boolean().optional(),
+  outputPath: z.string().optional(),
 });
 
 const HtmlReportSchema = z.object({

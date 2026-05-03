@@ -1,5 +1,5 @@
 import type { ScanResult, Role, ScanMode } from '../../types/common.types.js';
-import type { ComplianceReport, ReportSummary, FindingSummary, EvalResultsSummary, EvalCategorySummary, EvalTestSummary, FixHistoryEntry, DocumentContent } from './types.js';
+import type { ComplianceReport, ReportSummary, FindingSummary, EvalResultsSummary, EvalCategorySummary, EvalTestSummary, FixHistoryEntry, DocumentContent, CompanyProfile } from './types.js';
 import type { EvidenceChainSummary } from '../scanner/evidence-store.js';
 import type { EvalResult } from '../eval/types.js';
 import type { PassportData } from './passport-status.js';
@@ -31,6 +31,9 @@ export interface ReportBuildInput {
   readonly evalResult?: EvalResult | null;
   readonly fixHistory?: readonly FixHistoryEntry[];
   readonly documentContents?: readonly DocumentContent[];
+  readonly profile?: CompanyProfile;
+  /** V1-M30: Filter obligations by domain (e.g., healthcare, finance). */
+  readonly projectDomain?: string;
 }
 
 /** Infer scanner layer from checkId prefix. */
@@ -118,7 +121,11 @@ export const buildComplianceReport = (input: ReportBuildInput): ComplianceReport
 
   // Build sections
   const documents = buildDocumentInventory(findings);
-  const oblCoverage = buildObligationCoverage(obligations, findings, projectRole ?? 'both');
+  const oblCoverage = buildObligationCoverage(
+    obligations, findings, projectRole ?? 'both',
+    input.profile?.riskLevel ?? null,  // pass risk level from profile
+    input.projectDomain ?? input.profile?.domain,  // V1-M30: domain filter
+  );
   const passportStatus = buildPassportStatus(passports);
   const actionPlan = buildPriorityActions(findings, documents, oblCoverage, passportStatus, evalScore, reporterConfig.priorityActions.maxActionsHttp);
 
@@ -167,6 +174,7 @@ export const buildComplianceReport = (input: ReportBuildInput): ComplianceReport
     enforcementDate: EU_AI_ACT_DEADLINE_ISO,
     generatedAt: now.toISOString(),
     compliorVersion: version,
+    projectPath: scanResult?.projectPath ?? null,
   };
 
   // Build new report sections
@@ -176,6 +184,7 @@ export const buildComplianceReport = (input: ReportBuildInput): ComplianceReport
   return {
     generatedAt: now.toISOString(),
     compliorVersion: version,
+    profile: input.profile,
     readiness,
     documents,
     obligations: oblCoverage,

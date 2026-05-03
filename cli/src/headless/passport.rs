@@ -20,7 +20,7 @@ fn format_engine_hint(err: &str) -> String {
     if lower.contains("connection refused") || lower.contains("connect") {
         "Is the engine running? Try: complior daemon".to_string()
     } else if lower.contains("not found") {
-        "Run: complior passport list".to_string()
+        "Run: complior agent list".to_string()
     } else if lower.contains("timeout") {
         "Engine may be busy. Try again or run: complior doctor".to_string()
     } else {
@@ -90,8 +90,16 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
             json,
             path,
         } => run_passport_rename(old_name, new_name, *json, path.as_deref(), config).await,
-        PassportAction::Init { json, force, path } => {
-            run_passport_init(*json, *force, path.as_deref(), config).await
+        PassportAction::Init {
+            name,
+            json,
+            force,
+            agent,
+            path,
+        } => {
+            // Positional `name` takes priority over `--agent` flag.
+            let resolved_name = name.as_deref().or(agent.as_deref());
+            run_passport_init(*json, *force, resolved_name, path.as_deref(), config).await
         }
         PassportAction::List {
             json,
@@ -101,8 +109,8 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
         PassportAction::Show { name, json, path } => {
             run_passport_show(name, *json, path.as_deref(), config).await
         }
-        PassportAction::Autonomy { json, path } => {
-            run_passport_autonomy(*json, path.as_deref(), config).await
+        PassportAction::Autonomy { name, json, path } => {
+            run_passport_autonomy(name.as_deref(), *json, path.as_deref(), config).await
         }
         PassportAction::Validate {
             name,
@@ -132,14 +140,14 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
             json,
             path,
         } => run_passport_export(name, format, *json, path.as_deref(), config).await,
-        PassportAction::Registry { json, path } => {
-            run_passport_registry(*json, path.as_deref(), config).await
+        PassportAction::Registry { name, json, path } => {
+            run_passport_registry(name.as_deref(), *json, path.as_deref(), config).await
         }
         PassportAction::Evidence { json, verify, path } => {
             run_passport_evidence(*json, *verify, path.as_deref(), config).await
         }
-        PassportAction::Permissions { json, path } => {
-            run_passport_permissions(*json, path.as_deref(), config).await
+        PassportAction::Permissions { name, json, path } => {
+            run_passport_permissions(name.as_deref(), *json, path.as_deref(), config).await
         }
         PassportAction::Diff { name, path, json } => {
             run_passport_diff(name, path.as_deref(), *json, config).await
@@ -171,6 +179,50 @@ pub async fn run_passport_command(action: &PassportAction, config: &TuiConfig) -
         } => run_passport_import(from, file, *json, path, config).await,
         PassportAction::AuditPackage { output, json, path } => {
             run_passport_audit_package(output.as_deref(), *json, path.as_deref(), config).await
+        }
+        // V1-M22 B-1: worker notification subcommand (PRODUCT-VISION §11)
+        PassportAction::Notify { name, json, path } => {
+            run_passport_notify(name, *json, path.as_deref(), config).await
+        }
+    }
+}
+
+async fn run_passport_notify(
+    name: &str,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
+    let project_path = resolve_project_path_buf(path);
+    let client = match ensure_engine_for(config, &project_path).await {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    // POST /passport/notify with { name }
+    let body = serde_json::json!({ "name": name });
+    match client.post_json("/passport/notify", &body).await {
+        Ok(result) => {
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
+                return 0;
+            }
+
+            let path_str = result
+                .get("path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            println!("Notification generated:");
+            println!("  Agent: {name}");
+            println!("  Saved to: {path_str}");
+            0
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to generate worker notification: {e}");
+            1
         }
     }
 }
@@ -221,11 +273,26 @@ async fn run_passport_rename(
     }
 }
 
-async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_init(
+    json: bool,
+    force: bool,
+    name: Option<&str>,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
+    // T-13: If `name` is provided, use it as the agent name filter.
+    // Otherwise discover all agents in the project.
     if !json {
-        println!("Discovering AI agents in {}...", project_path.display());
+        if let Some(n) = name {
+            println!(
+                "Discovering AI agent '{n}' in {}...",
+                project_path.display()
+            );
+        } else {
+            println!("Discovering AI agents in {}...", project_path.display());
+        }
     }
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -233,11 +300,15 @@ async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: 
         Err(code) => return code,
     };
 
-    // Call engine to init passport
-    let body = serde_json::json!({
+    // Build request body
+    let mut body = serde_json::json!({
         "path": project_path.to_string_lossy(),
         "force": force,
     });
+    // T-13: Pass agent name filter to engine if provided
+    if let Some(n) = name {
+        body["agentName"] = serde_json::json!(n);
+    }
 
     match client.post_json("/passport/init", &body).await {
         Ok(result) => {
@@ -327,10 +398,10 @@ async fn run_passport_init(json: bool, force: bool, path: Option<&str>, config: 
             let created_count = manifests.map_or(0, std::vec::Vec::len);
             if created_count > 0 {
                 println!("Agent Passport(s) generated successfully.");
-                println!("Run `complior passport list` to view all passports.");
+                println!("Run `complior agent list` to view all passports.");
             } else if skipped_count > 0 {
                 println!("All discovered agents already have passports.");
-                println!("Run `complior passport init --force` to regenerate.");
+                println!("Run `complior agent init --force` to regenerate.");
             } else {
                 println!("No AI agents detected in project.");
                 println!(
@@ -484,14 +555,11 @@ async fn run_passport_list(
                         }
                     }
                     println!();
-                    println!(
-                        "  {}",
-                        dim("Run `complior passport show <name>` for details")
-                    );
+                    println!("  {}", dim("Run `complior agent show <name>` for details"));
                 }
                 _ => {
                     println!("\n  No Agent Passports found.");
-                    println!("  Run {} to generate one.\n", dim("complior passport init"));
+                    println!("  Run {} to generate one.\n", dim("complior agent init"));
                 }
             }
             0
@@ -971,11 +1039,23 @@ async fn run_passport_show(name: &str, json: bool, path: Option<&str>, config: &
 
 // --- C.S02: Autonomy analysis ---
 
-async fn run_passport_autonomy(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_autonomy(
+    name: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     if !json {
-        println!("Analyzing autonomy in {}...", project_path.display());
+        if let Some(n) = name {
+            println!(
+                "Analyzing autonomy for '{n}' in {}...",
+                project_path.display()
+            );
+        } else {
+            println!("Analyzing autonomy in {}...", project_path.display());
+        }
     }
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -983,10 +1063,18 @@ async fn run_passport_autonomy(json: bool, path: Option<&str>, config: &TuiConfi
         Err(code) => return code,
     };
 
-    let url = format!(
-        "/passport/autonomy?path={}",
-        url_encode(&project_path.to_string_lossy())
-    );
+    let url = if let Some(n) = name {
+        format!(
+            "/passport/autonomy?path={}&name={}",
+            url_encode(&project_path.to_string_lossy()),
+            url_encode(n)
+        )
+    } else {
+        format!(
+            "/passport/autonomy?path={}",
+            url_encode(&project_path.to_string_lossy())
+        )
+    };
     match client.get_json(&url).await {
         Ok(result) => {
             // Check for engine error response
@@ -1075,13 +1163,13 @@ async fn run_passport_autonomy(json: bool, path: Option<&str>, config: &TuiConfi
             println!("\nAutonomy Analysis (project-level)\n");
             if level == "not assessed" {
                 println!("  No agent configuration detected in this project.");
-                println!("  Run `complior passport init` to discover and register agents.\n");
+                println!("  Run `complior agent init` to discover and register agents.\n");
             } else {
                 println!("  Level:               {level} ({agent_type})");
                 println!("  Human approval gates: {human_gates}");
                 println!("  Unsupervised actions: {unsupervised}");
                 println!("  Logging gaps:         {no_logging}");
-                println!("\n  Tip: Run `complior passport init` to see per-agent breakdown.");
+                println!("\n  Tip: Run `complior agent init` to see per-agent breakdown.");
             }
             0
         }
@@ -1151,7 +1239,7 @@ async fn run_passport_validate(
             println!("[]");
         } else {
             println!("No Agent Passports found.");
-            println!("Run `complior passport init` to generate one.");
+            println!("Run `complior agent init` to generate one.");
         }
         return 0;
     }
@@ -1225,8 +1313,10 @@ async fn run_passport_validate(
                 .unwrap_or(false);
             let completeness_score = result
                 .get("completeness")
-                .and_then(|c| c.get("score"))
-                .and_then(serde_json::Value::as_f64)
+                // B-07: /passport/validate returns completeness as raw number (74).
+                // /passport/completeness returns completeness as object {score, ...}.
+                // Handle both cases.
+                .and_then(|c| c.as_f64().or_else(|| c.get("score").and_then(serde_json::Value::as_f64)))
                 .unwrap_or(0.0);
 
             let status_icon = if valid { "PASS" } else { "FAIL" };
@@ -1479,18 +1569,43 @@ async fn run_passport_export(
 
 // --- US-S05-13: Agent Registry ---
 
-async fn run_passport_registry(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_registry(
+    name: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
+
+    if !json {
+        if let Some(n) = name {
+            println!(
+                "Agent Compliance Registry for '{}' in {}...",
+                n,
+                project_path.display()
+            );
+        } else {
+            println!("Agent Compliance Registry in {}...", project_path.display());
+        }
+    }
 
     let client = match ensure_engine_for(config, &project_path).await {
         Ok(c) => c,
         Err(code) => return code,
     };
 
-    let url = format!(
-        "/passport/registry?path={}",
-        url_encode(&project_path.to_string_lossy())
-    );
+    let url = if let Some(n) = name {
+        format!(
+            "/passport/registry?path={}&name={}",
+            url_encode(&project_path.to_string_lossy()),
+            url_encode(n)
+        )
+    } else {
+        format!(
+            "/passport/registry?path={}",
+            url_encode(&project_path.to_string_lossy())
+        )
+    };
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
@@ -1590,7 +1705,7 @@ async fn run_passport_registry(json: bool, path: Option<&str>, config: &TuiConfi
                 }
                 _ => {
                     println!("No Agent Passports found.");
-                    println!("Run `complior passport init` to generate one.");
+                    println!("Run `complior agent init` to generate one.");
                 }
             }
             0
@@ -1604,7 +1719,12 @@ async fn run_passport_registry(json: bool, path: Option<&str>, config: &TuiConfi
 
 // --- US-S05-14: Permissions matrix ---
 
-async fn run_passport_permissions(json: bool, path: Option<&str>, config: &TuiConfig) -> i32 {
+async fn run_passport_permissions(
+    name: Option<&str>,
+    json: bool,
+    path: Option<&str>,
+    config: &TuiConfig,
+) -> i32 {
     let project_path = resolve_project_path_buf(path);
 
     let client = match ensure_engine_for(config, &project_path).await {
@@ -1612,10 +1732,18 @@ async fn run_passport_permissions(json: bool, path: Option<&str>, config: &TuiCo
         Err(code) => return code,
     };
 
-    let url = format!(
-        "/passport/permissions?path={}",
-        url_encode(&project_path.to_string_lossy())
-    );
+    let url = if let Some(n) = name {
+        format!(
+            "/passport/permissions?path={}&name={}",
+            url_encode(&project_path.to_string_lossy()),
+            url_encode(n)
+        )
+    } else {
+        format!(
+            "/passport/permissions?path={}",
+            url_encode(&project_path.to_string_lossy())
+        )
+    };
     match client.get_json(&url).await {
         Ok(result) => {
             if let Some(err_msg) = result.get("error").and_then(|v| v.as_str()) {
@@ -2091,7 +2219,7 @@ async fn run_passport_import(
                 if let Some(passport) = result.get("passport") {
                     let name = passport.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                     println!("\n  Passport name: {name}");
-                    println!("  Run `complior passport show {name}` to view details.");
+                    println!("  Run `complior agent show {name}` to view details.");
                 }
             }
             0
@@ -2295,8 +2423,8 @@ mod route_cleanup_tests {
         let src = include_str!("passport.rs");
         let needle = format!("fn run_passport_{}", "notify(");
         assert!(
-            !src.contains(&needle),
-            "run_passport_notify should be deleted"
+            src.contains(&needle),
+            "run_passport_notify should exist — V1-M22 B-1 implements worker notification"
         );
     }
 

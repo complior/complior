@@ -48,6 +48,7 @@ const stubScanResult: ScanResult = {
     applicableObligations: 22,
     skippedByRole: 4,
     skippedByRiskLevel: 8,
+    skippedByDomain: 0,
   },
 };
 

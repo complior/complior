@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod';
+import type { EvalFilterContext, EvalDisclaimer } from '../../types/common.types.js';
 
 // ── Eval Categories (11 conformity areas) ───────────────────────
 
@@ -192,6 +193,10 @@ export interface EvalResult {
   readonly criticalCapped: boolean;
   readonly agent?: string;        // Agent passport name
   readonly adapterName?: string;  // Target adapter type (openai, anthropic, ollama, http)
+  /** V1-M12: Context about how eval tests were filtered based on project profile. */
+  readonly filterContext?: EvalFilterContext;
+  /** V1-M12: Explains eval score coverage and filtering applied. */
+  readonly disclaimer?: EvalDisclaimer;
 }
 
 // ── Eval Options (input to runner) ──────────────────────────────
@@ -216,6 +221,12 @@ export const EvalOptionsSchema = z.object({
   headers: z.string().optional(),           // JSON string of custom headers
   // Concurrency
   concurrency: z.number().int().min(1).max(50).optional(), // Parallel test execution (default: 1)
+  // V1-M12: Context-aware eval — profile-based test filtering
+  profile: z.object({
+    role: z.enum(['provider', 'deployer', 'both']),
+    riskLevel: z.string().nullable(),
+    domain: z.string().nullable(),
+  }).optional(),
 });
 
 export type EvalOptions = z.infer<typeof EvalOptionsSchema>;

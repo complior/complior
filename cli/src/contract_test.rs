@@ -246,6 +246,7 @@ mod contract_tests {
         assert_eq!(ctx.applicable_obligations, 22);
         assert_eq!(ctx.skipped_by_role, 4);
         assert_eq!(ctx.skipped_by_risk_level, 8);
+        assert_eq!(ctx.skipped_by_domain, 0);
     }
 
     #[test]

@@ -162,7 +162,7 @@ export const createRouter = (deps: RouterDeps) => {
   app.route('/', createGitRoute());
   app.route('/', createProviderRoute(deps.llm));
   app.route('/', createDisclaimerRoute({ getVersion: deps.getVersion }));
-  app.route('/', createOnboardingRoute(deps.onboardingWizard));
+  app.route('/', createOnboardingRoute({ wizard: deps.onboardingWizard, getProjectPath: deps.getProjectPath }));
   app.route('/', createWhatIfRoute({
     loadProfile: deps.loadProfile,
     getLastScore: deps.getLastScore,

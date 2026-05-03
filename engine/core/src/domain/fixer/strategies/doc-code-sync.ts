@@ -27,8 +27,10 @@ ${finding.message || 'Documentation does not match the current codebase implemen
 ## Auto-generate Missing Docs
 
 \`\`\`bash
-complior docs generate --missing
+complior fix --doc &lt;type&gt;
 \`\`\`
+
+Replace &lt;type&gt; with the document type (e.g. fria, notify, policy, soa, risk-register, test-gen).
 `;
 
   const action: FixAction = {

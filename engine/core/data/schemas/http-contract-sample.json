@@ -84,6 +84,7 @@
     "totalObligations": 57,
     "applicableObligations": 22,
     "skippedByRole": 4,
-    "skippedByRiskLevel": 8
+    "skippedByRiskLevel": 8,
+    "skippedByDomain": 0
   }
 }
