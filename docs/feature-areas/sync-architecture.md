@@ -3,7 +3,7 @@
 > **Source:** `engine/core/src/types/sync.types.ts` (единый источник правды)
 > **Version:** 1.0.0
 > **Date:** 2026-04-10
-> **Status (v1.0.0):** 🔵 CONTRACT ONLY — schema defined + pre-send validation; полная end-to-end проверка sync — **POST web/cloud release** (V2-M05/M06)
+> **Status (v1.0.1):** 🔵 CONTRACT ONLY — schema defined + pre-send validation; полная end-to-end проверка sync — **POST web/cloud release** (V2-M05/M06). См. `docs/V2-ROADMAP.md` для блокировок (требуется SaaS deploy + Cloud Sync API).
 
 ## 1. Purpose
 

@@ -4,7 +4,7 @@
 > **Version:** 1.0.0
 > **Date:** 2026-02-26
 > **Purpose:** Terminal UI — 9 pages, daemon + TUI architecture
-> **Status (v1.0.0):** 🟡 OPEN QUESTION — нужно решение: оставлять как отдельную сущность или схлопнуть с CLI/Daemon. Решение перед V2.
+> **Status (v1.0.1):** 🟡 OPEN QUESTION — нужно решение: оставлять как отдельную сущность или схлопнуть с CLI/Daemon. **Полный анализ опций (A/B/C/D) + recommendation: см. `docs/adr/ADR-007-tui-architecture-decision.md`.** Требуется user decision перед V2-M01/M02 началом.
 
 ---
 

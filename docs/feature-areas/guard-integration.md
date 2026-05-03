@@ -3,7 +3,7 @@
 **Version:** 1.0.0
 **Updated:** 2026-04-17
 **Owner:** Architect
-**Status (v1.0.0):** 🔵 SEPARATE TRACK — разрабатывается параллельно (`~/guard/guard/`); интеграция в Complior — **POST-v1.0.0** (V2-M03), после Guard MVP
+**Status (v1.0.1):** 🔵 SEPARATE TRACK — разрабатывается параллельно (`~/guard/guard/`); интеграция в Complior — **POST-v1.0.0** (V2-M03), после Guard MVP G-M01. См. `docs/V2-ROADMAP.md` V2-M03.
 
 ---
 

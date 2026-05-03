@@ -4,7 +4,7 @@
 > **Version:** 1.0.0
 > **Date:** 2026-03-17
 > **Purpose:** MCP Server + Proxy — 8 tools, proxy infrastructure for Mode 2 passport
-> **Status (v1.0.0):** 🟡 BASE VERSION — 8 tools shipped; полная доработка **POST-v1.0.0** (V2-M02)
+> **Status (v1.0.1):** 🟡 BASE VERSION — **7 tools shipped** (count corrected; charter docs previously said 8 — actual count from `engine/core/src/mcp/tools.ts` is 7: scan, fix, status, explain, search_tool, classify, report). Full enrichment to 12+ tools: **POST-v1.0.0** (V2-M02 — recommended first track). См. `docs/V2-ROADMAP.md` V2-M02.
 
 ---
 

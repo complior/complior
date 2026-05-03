@@ -1,9 +1,9 @@
 # PRODUCT-VISION.md — Complior: Платформа управления AI Compliance
 
-**Версия:** 12.0.0
-**Дата:** 2026-04-19
+**Версия:** 12.0.1
+**Дата:** 2026-05-03
 **Автор:** Marcus (CTO) via Claude Code
-**Статус:** Утверждено | v1.0.0 — Month 1 scope COMPLETE
+**Статус:** Утверждено | v1.0.1 — Month 1 RELEASED + BUG-4 patch (npm + crates.io + GitHub Release)
 
 ---
 
@@ -986,5 +986,15 @@ SaaS  ░░░░░░░░░░░░░░░░░░░  Incidents, Moni
 
 ---
 
-**Обновлено:** 2026-04-19
-**Автор:** Marcus (CTO) via Claude Code (Opus 4.6)
+**Обновлено:** 2026-05-03 (v1.0.1 release + post-release docs sync)
+**Автор:** Marcus (CTO) via Claude Code (Opus 4.7)
+
+### v1.0.0 / v1.0.1 RELEASED — Month 1 scope shipped
+
+- ✅ v1.0.0 GA tagged 2026-05-03 — `complior@1.0.0` (npm), `complior-cli@1.0.0` (crates.io), 5 platform binaries
+- ✅ v1.0.1 patch tagged 2026-05-03 — closes BUG-4 from v1.0.0 known limitations
+- 226 Rust + 2,493 TS = 2,719 tests, 0 failures
+- 4-cycle exhaustive E2E across 3 profile contexts before each tag
+- 12 mini-hotfix milestones (V1-M30.1 → V1-M30.12) consecutively delivered
+
+**Roadmap forward:** see `docs/STRATEGY.md` for Phase 1.5 / Phase 2 / Phase 3 execution detail.

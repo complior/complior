@@ -5,7 +5,7 @@
 > **Date:** 2026-04-20
 > **Purpose:** Dynamic AI System Testing — 380 conformity tests + 300 security probes
 > **Milestone:** V1-M12 Context-Aware Eval (§11-§14)
-> **Status (v1.0.0):** ✅ COMPLETE — production-ready, in v1.0.0 scope
+> **Status (v1.0.1):** ✅ COMPLETE — shipped in v1.0.0 GA + v1.0.1 patch. /deep-e2e v4 verified across 3 profile contexts. 226 Rust + 2,493 TS tests, 0 failures. Refusal heuristic (V1-M30.8b) + auto-detect timeout (V1-M30.3) confirmed working.
 
 ---
 
