@@ -59,11 +59,57 @@ chore: update dependencies
 
 ## Pull Request Process
 
-1. Create a feature branch from `dev`
+1. Create a feature branch from `dev` (`feature/<short-description>`)
 2. Make your changes with clear, focused commits
-3. Ensure all tests pass: `cargo test --all-features` and `npx vitest run`
-4. Run clippy: `cargo clippy --all-features -- -D warnings`
-5. Open a PR to `dev` with a clear description
+3. Ensure all tests pass:
+   - Rust: `cargo test --bin complior` (expect 226+ PASS)
+   - TS Engine: `cd engine/core && npx vitest run` (expect 2,493+ PASS, 0 failures)
+   - SDK: `cd engine/sdk && npx vitest run`
+4. Run quality gates:
+   - `cargo fmt -- --check`
+   - `cargo clippy --all-targets -- -D warnings`
+   - Version consistency: `cd engine/core && npx vitest run src/version.test.ts` (5/5 PASS)
+5. Open a PR to `dev` with a clear description following the template below
+6. Wait for CI green (Rust Tests/Clippy/Fmt/Audit + Engine + npm Audit + Version Consistency + Detect changes)
+7. Address review feedback
+8. Maintainer will merge
+
+### PR description template
+
+```markdown
+## Summary
+
+[What this PR does, 1-3 sentences]
+
+## What changed
+
+[Bullet list of concrete changes]
+
+## Verification
+
+- [ ] All tests pass locally
+- [ ] cargo fmt + clippy clean
+- [ ] No test files modified (tests are specs — see below)
+- [ ] Documentation updated if behavior changed
+
+## Test plan
+
+- [ ] [How to verify the change]
+
+## References
+
+[Links to issues, RFCs, related PRs]
+```
+
+### Test discipline
+
+Tests in this repo are **specifications**, not just verifications:
+- Tests are written by the architect ahead of implementation (RED phase)
+- Implementation makes them GREEN
+- **Do not modify existing tests to make your code pass** — file an issue if a test seems wrong
+- New tests should follow the same pattern: write RED first, then implement
+
+This discipline is enforced in code review.
 
 ## What We Accept
 
@@ -94,16 +140,41 @@ chore: update dependencies
 
 ## Architecture Rules
 
-1. **Deterministic core**: LLM never makes compliance determinations
-2. **Clean Architecture**: Domain never imports from infra/http
-3. **Data externalization**: Reference data in JSON files, not hardcoded in TS
-4. **Feature flags**: TUI and extras behind Cargo feature gates
+1. **Deterministic core**: LLM never makes compliance determinations. LLM is opt-in for L5 deep scan and document enrichment only (`--llm`, `--ai`, `--full`).
+2. **Clean Architecture**: Domain never imports from infra/http. Closures-as-DI in TS Engine; trait-based in Rust CLI.
+3. **Data externalization**: Reference data in JSON files (`engine/core/data/`), not hardcoded in TS. Imports use `import data from '...json' with { type: 'json' }`.
+4. **Feature flags**: TUI and extras behind Cargo feature gates (`tui`, `extras`).
+5. **Branch model**: `feature/* → dev → main`. Never push directly to `dev` or `main`. PRs only.
+6. **Predicted score cap**: Predicted/projected scores are capped at 99 (never 100) — see [ADR-008](docs/adr/ADR-008-predicted-score-cap-invariant.md). Static-source tests enforce this invariant.
+7. **No global state in Engine**: All services receive dependencies via closures. Composition root is `engine/core/src/composition-root.ts`.
+8. **Object.freeze() on returned objects**: TS Engine domain functions return frozen objects to enforce immutability.
+
+See `docs/feature-areas/*.md` for per-subsystem architecture detail and `docs/contributing/CODING-STANDARDS*.md` for style conventions (Rust + TypeScript).
+
+## Roadmap & Charter
+
+Before proposing large changes, please review:
+
+- [`docs/PRODUCT-VISION.md`](docs/PRODUCT-VISION.md) — what we're building, why
+- [`docs/STRATEGY.md`](docs/STRATEGY.md) — phased roadmap
+- [`docs/V2-ROADMAP.md`](docs/V2-ROADMAP.md) — milestone-level V2 plan
+- [`docs/feature-areas/*.md`](docs/feature-areas/) — per-subsystem architecture
+- [`docs/adr/*.md`](docs/adr/) — architecture decision records
+
+Open an [issue](https://github.com/complior/complior/issues) tagged `rfc` to discuss large changes before opening a PR.
+
+## Release process
+
+For maintainers cutting a new release: see [`docs/RELEASE-PROCESS.md`](docs/RELEASE-PROCESS.md) for the full operational runbook (manifest bumps, CHANGELOG, tag → release.yml flow).
 
 ## Getting Help
 
-- Open an issue for bugs or feature requests
-- Check existing issues before creating new ones
-- Use the issue templates provided
+- **Bug reports / feature requests:** [open an issue](https://github.com/complior/complior/issues)
+- **Security vulnerabilities:** see [SECURITY.md](SECURITY.md) — email security@complior.ai (do NOT open public issue)
+- **Documentation:** [docs.complior.ai](https://docs.complior.ai)
+- **Discussions:** [GitHub Discussions](https://github.com/complior/complior/discussions)
+- **Existing issues:** Please search before creating new ones.
+- **Issue templates:** Use the provided templates when available.
 
 ## License
 

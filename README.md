@@ -2,14 +2,23 @@
 
 **Daemon-Orchestrator for AI Compliance**
 
+[![crates.io](https://img.shields.io/crates/v/complior-cli.svg)](https://crates.io/crates/complior-cli)
+[![npm](https://img.shields.io/npm/v/complior.svg)](https://www.npmjs.com/package/complior)
+[![CI](https://github.com/complior/complior/actions/workflows/ci.yml/badge.svg)](https://github.com/complior/complior/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![GitHub release](https://img.shields.io/github/v/release/complior/complior)](https://github.com/complior/complior/releases/latest)
+[![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Aug%202%2C%202026-red.svg)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689)
+
 > Background compliance daemon for AI applications. Compliance gate on every file change.
 
 ---
 
 > [!IMPORTANT]
-> **Status: v8 Architecture**
+> **Status: v1.0.1 — Generally Available**
 >
-> Complior v8 is a daemon-orchestrator: background daemon (file watcher + engine + MCP server + HTTP API) + Rust TUI dashboard + CLI commands. The v1 engine (scanner, fixer, 2500+ tests) works. Agents connect independently via MCP. Contributions and feedback are welcome.
+> First GA release tagged 2026-05-03. Production-ready for EU AI Act compliance scanning, evaluation, fix automation, Agent Passports, and report generation. Daemon-orchestrator architecture: background daemon (file watcher + engine + MCP server + HTTP API) + Rust TUI dashboard + CLI commands. 226 Rust + 2,493 TS = **2,719 tests, 0 failures**. Agents (Claude Code, Cursor, VS Code) connect independently via MCP.
+>
+> **Install:** `npm install -g complior` · `cargo install complior-cli` · or [download binary](https://github.com/complior/complior/releases/latest)
 
 ---
 
@@ -17,7 +26,7 @@
 
 Complior is a background compliance daemon that monitors your AI project for EU AI Act compliance. It watches every file change and rescans in ~200ms. Agents (Claude Code, Cursor, VS Code, OpenCode, aider) work independently and connect via MCP.
 
-**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (~4 months).
+**The problem:** Developers write AI code without compliance. Lawyers check compliance without code. No tool bridges this gap. EU AI Act enforcement: **August 2, 2026** (~91 days from latest release).
 
 **The solution:** A daemon that monitors file changes and provides real-time compliance feedback. Agents work independently — Complior doesn't manage their processes.
 
