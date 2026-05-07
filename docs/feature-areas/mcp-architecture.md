@@ -1,10 +1,13 @@
 # Feature Area: MCP Architecture
 
 > **Source:** `docs/MCP-UNIFIED-PLAN.md`
-> **Version:** 1.0.0
-> **Date:** 2026-03-17
-> **Purpose:** MCP Server + Proxy — 8 tools, proxy infrastructure for Mode 2 passport
-> **Status (v1.0.1):** 🟡 BASE VERSION — **7 tools shipped** (count corrected; charter docs previously said 8 — actual count from `engine/core/src/mcp/tools.ts` is 7: scan, fix, status, explain, search_tool, classify, report). Full enrichment to 12+ tools: **POST-v1.0.0** (V2-M02 — recommended first track). См. `docs/V2-ROADMAP.md` V2-M02.
+> **Version:** 2.0.0
+> **Date:** 2026-05-07
+> **Purpose:** MCP Server + Proxy — 13 tools, proxy infrastructure for Mode 2 passport
+> **Status (v1.1.0):** ✅ ENRICHED — **13 tools shipped** in V2-M02 (Phase 2.1 Builder + Phase 2.2 Analytics).
+> Legacy v1.0 (7 tools): scan, fix, status, explain, search_tool, classify, report.
+> V2-M02 additions (6 tools): passport_init, doc_generate, redteam, evidence_verify, drift_detect, obligations_status.
+> Phase 4 (deferred): SaaS Dashboard MCP — blocked on cloud deploy (V2-M07).
 
 ---
 
@@ -32,7 +35,7 @@ Agent ──MCP──> Complior Proxy ──MCP──> Upstream MCP Server
 
 ## 2. Current State
 
-### Implemented (60%)
+### Implemented (v1.1.0)
 
 | Component | File | LOC |
 |-----------|------|-----|
@@ -43,45 +46,69 @@ Agent ──MCP──> Complior Proxy ──MCP──> Upstream MCP Server
 | JSON-RPC | `domain/proxy/json-rpc.ts` | — |
 | Proxy Service | `services/proxy-service.ts` | 82 |
 | Proxy Routes | `http/routes/proxy.route.ts` | 43 |
-| **8 MCP Tools** | `mcp/`, `llm/tool-definitions.ts` | — |
+| **13 MCP Tools** | `mcp/tools.ts`, `mcp/handlers.ts`, `mcp/server.ts` | 200 + 564 + 130 |
+| MCP test suite | `mcp/mcp-server.test.ts` | 37 tests |
+
+### V2-M02 Builder + Analytics tools (NEW in v1.1.0)
+
+| Tool | Service used | Use case |
+|------|--------------|----------|
+| `complior_passport_init` | `PassportService.initPassport` | AI agent generates Mode-1 Auto Passport from inside Claude Code |
+| `complior_doc_generate` | `PassportService.generateDocByType` | Generate one of 14 EU AI Act docs (FRIA, RMS, etc.) without leaving chat |
+| `complior_redteam` | `EvalService.runEval({security: true})` | 300 OWASP/MITRE probes against endpoint, threshold gate |
+| `complior_evidence_verify` | `EvidenceStore.verify + getSummary` | Audit-prep: verify chain integrity (SHA-256 + ed25519) |
+| `complior_drift_detect` | `detectDrift(current, previous)` | "What changed since last scan?" with severity classification |
+| `complior_obligations_status` | `regulationData.obligations` + `getLastScanResult` | Per-obligation coverage breakdown, role/risk filters |
 
 ### Not Yet Implemented
 
-| What | Complexity | User Story |
-|------|------------|------------|
-| Passport enrichment logic | Medium | US-S06-01 |
-| Policy hot-reload (file watcher) | Low | US-S06-02 |
-| `complior passport init --from-proxy` (Mode 2) | Medium | US-S06-01 |
-| Analytics endpoint (`GET /analytics/proxy`) | Low | US-S07-09 |
-| Guard tools (3 new MCP tools) | Medium | US-S08-12 |
-| Builder workflow tools (3 new MCP tools) | Medium | US-S08-13 |
+| What | Complexity | Track |
+|------|------------|-------|
+| Passport enrichment logic from MCP proxy logs | Medium | US-S06-01 (post-V2) |
+| Policy hot-reload (file watcher) | Low | US-S06-02 (post-V2) |
+| `complior passport init --from-proxy` (Mode 2) | Medium | US-S06-01 (post-V2) |
+| Analytics endpoint (`GET /analytics/proxy`) | Low | US-S07-09 (post-V2) |
+| Guard tools (3 new MCP tools) | Medium | V2-M03 — blocked on Guard MVP |
+| SaaS Dashboard MCP integration | High | V2-M07 — blocked on cloud deploy |
 
 ---
 
-## 3. MCP Tools (Existing 8)
+## 3. MCP Tools (13 total)
+
+### Legacy v1.0 (7 tools)
 
 | Tool | Purpose |
 |------|---------|
-| `complior_scan` | Run scan, get findings |
-| `complior_fix` | Apply fix to finding |
-| `complior_score` | Get current score |
-| `complior_passport` | Generate/read passport |
-| `complior_explain` | Explain OBL-xxx in human language |
-| `complior_validate` | Check passport completeness |
-| `complior_guard_check` | Runtime safety check |
-| `complior_guard_pii` | PII detection |
+| `complior_scan` | Run scan, get findings + score |
+| `complior_fix` | Apply fix to a specific finding |
+| `complior_status` | Last-scan score + category breakdown |
+| `complior_explain` | Explain OBL-xxx / Art. xx in plain language |
+| `complior_search_tool` | Search AI tool catalog (OpenAI / Anthropic / LangChain / etc.) |
+| `complior_classify` | Risk classification from description + domain |
+| `complior_report` | Generate compliance report (JSON / Markdown) |
+
+### V2-M02 additions (6 tools, v1.1.0)
+
+| Tool | Purpose | Long-running |
+|------|---------|--------------|
+| `complior_passport_init` | Mode 1 Auto: AST scan → AgentPassport (36 fields, ed25519-signed) | 1-3s |
+| `complior_doc_generate` | Generate one of 14 EU AI Act documents (FRIA, RMS, Data Governance, ...) | <1s |
+| `complior_redteam` | 300+ OWASP/MITRE adversarial probes against an endpoint | 30s–5min |
+| `complior_evidence_verify` | Verify SHA-256 + ed25519 evidence chain integrity | <1s |
+| `complior_drift_detect` | Compare current vs previous scan, severity classification | <1s |
+| `complior_obligations_status` | 108-obligation coverage with role / risk-level / coverage filters | <1s |
 
 ---
 
-## 4. Planned MCP Tools
+## 4. Future MCP Tools (post-v1.1.0)
 
-### Guard Tools (US-S08-12)
+### Guard Tools (V2-M03 — blocked on Guard MVP G-M01)
 
-3 tools: `check`, `pii`, `bias`. **Recommended approach:** MCP tools call SDK hooks internally (DRY — same hooks for SDK direct and MCP tool call).
+3 tools: `complior_guard_check`, `complior_guard_pii`, `complior_guard_bias`. **Recommended approach:** MCP tools call SDK hooks internally (DRY — same hooks for SDK direct and MCP tool call).
 
-### Builder Workflow Tools (US-S08-13)
+### SaaS Dashboard tools (V2-M07 — blocked on cloud deploy)
 
-3 tools: pre-generate, post-generate, suggest.
+Tools that require online state from Complior Cloud (sync status, fleet view, etc.). Deferred until SaaS Dashboard ships.
 
 ---
 
@@ -97,25 +124,27 @@ Agent ──MCP──> Complior Proxy ──MCP──> Upstream MCP Server
 
 ---
 
-## 6. Implementation Order
+## 6. Implementation History
 
-```
-Phase 1 (1 day): Finish Proxy Core
-  └── US-S06-01: Passport enrichment from call logs
-  └── US-S06-02: Policy hot-reload + risk-class linking
+### Phase 1 — Proxy Core (S06, partial)
+- US-S06-01: Passport enrichment from call logs (deferred post-V2)
+- US-S06-02: Policy hot-reload + risk-class linking (deferred post-V2)
 
-Phase 2 (1 day): Guard + Builder Tools
-  └── US-S08-12: 3 guard tools (call SDK hooks internally)
-  └── US-S08-13: 3 builder workflow tools
+### Phase 2 — Builder Tools ✅ (V2-M02, v1.1.0, 2026-05-07)
+- `complior_passport_init` — Mode 1 Auto passport generation
+- `complior_doc_generate` — 14 doc types (FRIA, RMS, Data Governance, ...)
+- `complior_redteam` — 300 OWASP/MITRE security probes
 
-Phase 3 (<1 day): Analytics
-  └── US-S07-09: Proxy analytics endpoint + TUI sparkline
+### Phase 3 — Analytics Tools ✅ (V2-M02, v1.1.0, 2026-05-07)
+- `complior_evidence_verify` — chain integrity verification
+- `complior_drift_detect` — between-scan delta + severity
+- `complior_obligations_status` — per-obligation coverage breakdown
 
-Phase 4 (SaaS): Dashboard
-  └── D-46: SaaS proxy analytics (separate repo)
-```
+### Phase 4 — Guard Tools ⏳ (V2-M03 — blocked on Guard MVP)
+- `complior_guard_check` / `_pii` / `_bias` — call SDK hooks internally
 
-**Total: ~12 SP (5 US), estimated 2-3 days**
+### Phase 5 — SaaS Dashboard tools ⏳ (V2-M07 — blocked on cloud deploy)
+- D-46: SaaS proxy analytics (separate repo)
 
 ## 8. Cross-Dependencies
 
@@ -129,8 +158,20 @@ Phase 4 (SaaS): Dashboard
 
 | Used by | How |
 |---|---|
-| Claude Desktop, Cursor, etc. | stdio transport MCP integration |
+| Claude Code / Claude Desktop / Cursor / Windsurf / Codex CLI | stdio transport MCP integration |
 
 ## 9. Test Coverage
 
-MCP server tests: mcp-server.test.ts (integration covering 8 tools)
+MCP server tests: `engine/core/src/mcp/mcp-server.test.ts` — **37 tests** total:
+
+- 4 schema-registry tests (count = 13, legacy preservation, V2-M02 additions, description completeness)
+- 4 legacy v1.0 handler tests (regression fence — must stay GREEN)
+- 29 V2-M02 handler tests across 6 describe-blocks:
+  - `complior_passport_init` (5)
+  - `complior_doc_generate` (5)
+  - `complior_redteam` (5)
+  - `complior_evidence_verify` (4)
+  - `complior_drift_detect` (5)
+  - `complior_obligations_status` (5)
+
+All tests use real types from `types/`, concrete number assertions, deterministic checks, typed-error coverage, and missing-service graceful-fallback coverage.

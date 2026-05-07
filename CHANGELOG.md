@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**MCP Enrichment (V2-M02)** — target release: v1.1.0 (minor bump from v1.0.1)
+
+The MCP server grows from 7 → 13 tools, organized into three groups (Core / Builder / Analytics).
+0 breaking changes; every existing v1.0 MCP client keeps working identically.
+
+**Builder tools (3 new):**
+- `complior_passport_init` — Mode 1 Auto Agent Passport generation (36 fields, ed25519-signed) directly from Claude Code / Cursor / Windsurf
+- `complior_doc_generate` — generate one of 14 EU AI Act compliance documents (FRIA, RMS, Data Governance, etc.) without leaving the chat
+- `complior_redteam` — 300+ OWASP/MITRE adversarial probes against an endpoint, with optional threshold gate
+
+**Analytics tools (3 new):**
+- `complior_evidence_verify` — verify SHA-256 + ed25519 evidence chain integrity (audit-prep)
+- `complior_drift_detect` — between-scan delta with severity classification (none / minor / major / critical)
+- `complior_obligations_status` — per-obligation coverage breakdown across 108 EU AI Act obligations, filterable by role / risk level / coverage
+
+**Files:**
+- New milestone spec: `docs/sprints/V2-M02-mcp-enrichment.md`
+- Test suite: `engine/core/src/mcp/mcp-server.test.ts` — 5 → 37 tests (8 GREEN baseline + 29 new V2-M02 handler tests + 4 schema-registry tests)
+- Mintlify docs: `mcp/tools-reference.mdx` — full schemas + usage patterns for all 13 tools
+- Smoke test: `scripts/verify_v2_m02_mcp.sh` — verifies real MCP server registers all 13 tools over stdio
+- FA-08 status updated `🟡 BASE → ✅ ENRICHED (13 tools)`
+
+**Architecture:**
+- New optional dependencies on `McpStackDeps` and `McpHandlerDeps`: PassportService, EvalService, EvidenceStore, getPreviousScanResult — all graceful when undefined (returns `isError: true` rather than throw)
+- Composition root (`engine/core/src/composition-root.ts`) wires V2-M02 services through to MCP startup path (`server.ts startMcp`)
+
 ## [0.9.9] - 2026-04-17
 
 ### Added
