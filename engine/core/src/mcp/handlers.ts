@@ -1,11 +1,27 @@
 import type { ScanService } from '../services/scan-service.js';
 import type { FixService } from '../services/fix-service.js';
+import type { PassportService } from '../services/passport-service.js';
+import type { EvalService } from '../services/eval-service.js';
+import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import type { ScanResult } from '../types/common.types.js';
 import type { RegulationData } from '../data/regulation/regulation-loader.js';
 import type { Obligation } from '../data/schemas/schemas.js';
 import { toJsonOutput } from '../output/json-output.js';
 import { toGithubIssue } from '../output/github-issue.js';
 
+/**
+ * Dependencies for MCP tool handlers.
+ *
+ * v1.0 (S05): scanService, fixService, getProjectPath, getLastScanResult, getRegulationData, version
+ * V2-M02: + passportService (passport_init, doc_generate)
+ *         + evalService (redteam)
+ *         + evidenceStore (evidence_verify)
+ *         + getPreviousScanResult (drift_detect)
+ *
+ * The V2-M02 deps are optional — when absent, the corresponding tool returns
+ * `{isError: true, content: [{type: 'text', text: '<service-name> not configured'}]}`
+ * rather than throwing. This keeps the legacy 7-tool stack working in minimal setups.
+ */
 export interface McpHandlerDeps {
   readonly scanService: ScanService;
   readonly fixService: FixService;
@@ -13,6 +29,10 @@ export interface McpHandlerDeps {
   readonly getLastScanResult: () => ScanResult | null;
   readonly getRegulationData: () => RegulationData;
   readonly version: string;
+  readonly passportService?: PassportService;
+  readonly evalService?: EvalService;
+  readonly evidenceStore?: EvidenceStore;
+  readonly getPreviousScanResult?: () => ScanResult | null;
 }
 
 export const createMcpHandlers = (deps: McpHandlerDeps) => {

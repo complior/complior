@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types/common.types.js';
 import type { RegulationData } from '../data/regulation/regulation-loader.js';
+import type { PassportService } from '../services/passport-service.js';
+import type { EvalService } from '../services/eval-service.js';
+import type { EvidenceStore } from '../domain/scanner/evidence-store.js';
 import { createEventBus } from '../infra/event-bus.js';
 import { createScanner } from '../domain/scanner/create-scanner.js';
 import { collectFiles } from '../infra/file-collector.js';
@@ -12,12 +15,32 @@ import { createFixService } from '../services/fix-service.js';
 import { createMcpHandlers } from './handlers.js';
 import { createMcpServer } from './server.js';
 
+/**
+ * Dependencies required to build the MCP stack.
+ *
+ * v1.0 (S05): only scan + fix services were wired through here (the other tools were
+ * pure functions over `regulationData`). V2-M02 adds builder + analytics tools that
+ * delegate to existing services rather than reimplementing logic — so we accept those
+ * services as injected dependencies (DI via closure, no global state, no mutation).
+ *
+ * All optional services are *optional* on purpose — a thin MCP setup (no passport, no
+ * eval, no evidence store) still works for the legacy 7 tools; missing services cause
+ * the corresponding new tools to return a graceful error rather than throw.
+ */
 export interface McpStackDeps {
   readonly regulationData: RegulationData;
   readonly projectPath: string;
   readonly getLastScanResult: () => ScanResult | null;
   readonly setLastScanResult: (r: ScanResult) => void;
   readonly version: string;
+  /** V2-M02: passport_init + doc_generate. */
+  readonly passportService?: PassportService;
+  /** V2-M02: redteam. */
+  readonly evalService?: EvalService;
+  /** V2-M02: evidence_verify. */
+  readonly evidenceStore?: EvidenceStore;
+  /** V2-M02: drift_detect — returns the previous scan result (one step back). */
+  readonly getPreviousScanResult?: () => ScanResult | null;
 }
 
 export const createMcpStack = async (deps: McpStackDeps) => {
