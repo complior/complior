@@ -113,7 +113,7 @@ const startHttp = async (): Promise<void> => {
 
 const startMcp = async (): Promise<void> => {
   const application = await loadApplication();
-  const { state, setLastScanResult } = application;
+  const { state, setLastScanResult, passportService, evalService, evidenceStore } = application;
   const { createMcpStack } = await import('./mcp/create-mcp-stack.js');
 
   const { mcpServer } = await createMcpStack({
@@ -122,6 +122,10 @@ const startMcp = async (): Promise<void> => {
     getLastScanResult: () => state.lastScanResult,
     setLastScanResult,
     version: state.version,
+    passportService,
+    evalService,
+    evidenceStore,
+    getPreviousScanResult: () => state.previousScanResult,
   });
 
   await mcpServer.start();

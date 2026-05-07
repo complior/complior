@@ -97,6 +97,10 @@ export const createMcpStack = async (deps: McpStackDeps) => {
     getLastScanResult: deps.getLastScanResult,
     getRegulationData: () => regulationData,
     version,
+    passportService: deps.passportService,
+    evalService: deps.evalService,
+    evidenceStore: deps.evidenceStore,
+    getPreviousScanResult: deps.getPreviousScanResult,
   });
 
   const mcpServer = createMcpServer({ handlers, version });

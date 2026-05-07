@@ -76,6 +76,8 @@ export interface ApplicationState {
   readonly version: string;
   /** Mutable fields — modified via event handlers and service callbacks */
   lastScanResult: ScanResult | null;
+  /** V2-M02: previous scan result — used by drift_detect MCP tool for comparison. */
+  previousScanResult: ScanResult | null;
   conversationHistory: CoreMessage[];
   currentMode: AgentMode;
   /** Per-agent last-known scores for delta tracking (agent.score.updated events). */
@@ -89,6 +91,12 @@ export interface Application {
   readonly startWatcher: () => void;
   /** Set last scan result (in-memory + persisted to disk). */
   readonly setLastScanResult: (result: ScanResult) => void;
+  /** V2-M02: passportService for MCP tools. */
+  readonly passportService: import('./services/passport-service.js').PassportService;
+  /** V2-M02: evalService for MCP tools. */
+  readonly evalService: import('./services/eval-service.js').EvalService;
+  /** V2-M02: evidenceStore for MCP tools. */
+  readonly evidenceStore: import('./domain/scanner/evidence-store.js').EvidenceStore;
 }
 
 export const loadApplication = async (): Promise<Application> => {
@@ -116,6 +124,7 @@ export const loadApplication = async (): Promise<Application> => {
     startedAt: Date.now(),
     version: ENGINE_VERSION,
     lastScanResult: persistedScan,
+    previousScanResult: null,
     conversationHistory: [],
     currentMode: 'build',
     agentScores: new Map<string, number>(),
@@ -305,7 +314,7 @@ export const loadApplication = async (): Promise<Application> => {
     collectFiles,
     events,
     getLastScanResult: () => state.lastScanResult,
-    setLastScanResult: (result) => { state.lastScanResult = result; persistScanResult(result); },
+    setLastScanResult: (result) => { state.previousScanResult = state.lastScanResult; state.lastScanResult = result; persistScanResult(result); },
     evidenceStore,
     auditStore,
     scanCache,
@@ -926,7 +935,7 @@ export const loadApplication = async (): Promise<Application> => {
     setMode: (mode) => { state.currentMode = mode; },
     toolExecutorDeps: {
       getScoringData: () => state.regulationData.scoring?.scoring,
-      setLastScanResult: (result) => { state.lastScanResult = result; persistScanResult(result); },
+      setLastScanResult: (result) => { state.previousScanResult = state.lastScanResult; state.lastScanResult = result; persistScanResult(result); },
     },
     onboardingWizard,
     getVersion: () => state.version,
@@ -1004,9 +1013,19 @@ export const loadApplication = async (): Promise<Application> => {
   };
 
   const setScanResult = (result: ScanResult): void => {
+    state.previousScanResult = state.lastScanResult;
     state.lastScanResult = result;
     persistScanResult(result);
   };
 
-  return { app, state, shutdown, startWatcher: fileWatcher.start, setLastScanResult: setScanResult };
+  return {
+    app,
+    state,
+    shutdown,
+    startWatcher: fileWatcher.start,
+    setLastScanResult: setScanResult,
+    passportService,
+    evalService,
+    evidenceStore,
+  };
 };

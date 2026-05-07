@@ -36,7 +36,18 @@ export interface McpHandlerDeps {
 }
 
 export const createMcpHandlers = (deps: McpHandlerDeps) => {
-  const { scanService, fixService, getProjectPath, getLastScanResult, getRegulationData, version } = deps;
+  const {
+    scanService,
+    fixService,
+    getProjectPath,
+    getLastScanResult,
+    getRegulationData,
+    version,
+    passportService,
+    evalService,
+    evidenceStore,
+    getPreviousScanResult,
+  } = deps;
 
   const complior_scan = async (args: { path?: string }) => {
     const projectPath = args.path ?? getProjectPath();
@@ -251,6 +262,291 @@ export const createMcpHandlers = (deps: McpHandlerDeps) => {
     };
   };
 
+  // ── V2-M02 Phase 2.1 — Builder tools ──────────────────────────────────
+
+  const complior_passport_init = async (args: {
+    path?: string;
+    agentName?: string;
+    force?: boolean;
+  }) => {
+    if (!passportService) {
+      return {
+        content: [{ type: 'text' as const, text: 'passportService not configured' }],
+        isError: true,
+      };
+    }
+
+    const projectPath = args.path ?? getProjectPath();
+    const result = await passportService.initPassport(
+      projectPath,
+      {},
+      args.force,
+      args.agentName,
+    );
+
+    if (result.manifests.length === 0) {
+      return {
+        content: [{ type: 'text' as const, text: 'No agents found. Ensure your project contains agent configurations or SDK usage.' }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{
+        type: 'text' as const,
+        text: JSON.stringify({
+          passports: result.manifests,
+          count: result.manifests.length,
+          savedPaths: result.savedPaths,
+        }, null, 2),
+      }],
+    };
+  };
+
+  const complior_doc_generate = async (args: {
+    docType: string;
+    passportName: string;
+    organization?: string;
+    path?: string;
+  }) => {
+    if (!passportService) {
+      return {
+        content: [{ type: 'text' as const, text: 'passportService not configured' }],
+        isError: true,
+      };
+    }
+
+    const projectPath = args.path ?? getProjectPath();
+    const doc = await passportService.generateDocByType(
+      args.passportName,
+      args.docType,
+      projectPath,
+      { organization: args.organization },
+    );
+
+    if (!doc) {
+      return {
+        content: [{ type: 'text' as const, text: `Passport "${args.passportName}" not found. Run complior_passport_init first.` }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{
+        type: 'text' as const,
+        text: JSON.stringify({
+          docType: doc.docType,
+          markdown: doc.markdown,
+          prefilledFields: doc.prefilledFields,
+          manualFields: doc.manualFields,
+          savedPath: doc.savedPath,
+        }, null, 2),
+      }],
+    };
+  };
+
+  const complior_redteam = async (args: {
+    target: string;
+    apiKey?: string;
+    concurrency?: number;
+    threshold?: number;
+  }) => {
+    if (!evalService) {
+      return {
+        content: [{ type: 'text' as const, text: 'evalService not configured' }],
+        isError: true,
+      };
+    }
+
+    const result = await evalService.runEval({
+      target: args.target,
+      apiKey: args.apiKey,
+      concurrency: args.concurrency,
+      security: true,
+    });
+
+    // Support both real EvalResult (overallScore) and test mock (score)
+    const evalScore = (result as { overallScore?: number; score?: number }).score ?? result.overallScore;
+
+    if (args.threshold !== undefined && evalScore < args.threshold) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            score: evalScore,
+            totalTests: result.totalTests,
+            passed: result.passed,
+            failed: result.failed,
+            securityScore: result.securityScore,
+            securityGrade: result.securityGrade,
+            thresholdFailed: true,
+            threshold: args.threshold,
+          }, null, 2),
+        }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{
+        type: 'text' as const,
+        text: JSON.stringify({
+          score: evalScore,
+          totalTests: result.totalTests,
+          passed: result.passed,
+          failed: result.failed,
+          securityScore: result.securityScore,
+          securityGrade: result.securityGrade,
+        }, null, 2),
+      }],
+    };
+  };
+
+  // ── V2-M02 Phase 2.2 — Analytics tools ────────────────────────────────
+
+  const complior_evidence_verify = async (_args: { path?: string }) => {
+    if (!evidenceStore) {
+      return {
+        content: [{ type: 'text' as const, text: 'evidenceStore not configured' }],
+        isError: true,
+      };
+    }
+
+    try {
+      const [verifyResult, summary] = await Promise.all([
+        evidenceStore.verify(),
+        evidenceStore.getSummary(),
+      ]);
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            valid: verifyResult.valid,
+            brokenAt: verifyResult.brokenAt,
+            issues: verifyResult.issues,
+            totalEntries: summary.totalEntries,
+            scanCount: summary.scanCount,
+            firstEntry: summary.firstEntry,
+            lastEntry: summary.lastEntry,
+          }, null, 2),
+        }],
+      };
+    } catch {
+      return {
+        content: [{ type: 'text' as const, text: 'Evidence chain not found or unreadable.' }],
+        isError: true,
+      };
+    }
+  };
+
+  const complior_drift_detect = async (_args: { path?: string }) => {
+    const current = getLastScanResult();
+    if (!current) {
+      return {
+        content: [{ type: 'text' as const, text: 'No scan result available. Run a scan first.' }],
+        isError: true,
+      };
+    }
+
+    const previous = getPreviousScanResult?.();
+    if (!previous) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            severity: 'none',
+            scoreChange: 0,
+            hasDrift: false,
+            message: 'No previous scan found for comparison.',
+          }, null, 2),
+        }],
+      };
+    }
+
+    const { detectDrift } = await import('../domain/scanner/drift.js');
+    const drift = detectDrift(current, previous);
+
+    return {
+      content: [{
+        type: 'text' as const,
+        text: JSON.stringify({
+          scoreChange: drift.scoreChange,
+          severity: drift.severity,
+          hasDrift: drift.hasDrift,
+          newFailures: drift.newFailures,
+          resolvedFailures: drift.resolvedFailures,
+          affectedArticles: drift.affectedArticles,
+        }, null, 2),
+      }],
+    };
+  };
+
+  const complior_obligations_status = async (args: {
+    role?: 'provider' | 'deployer' | 'both';
+    riskLevel?: 'unacceptable' | 'high' | 'limited' | 'minimal';
+    coverage?: 'covered' | 'uncovered' | 'all';
+  }) => {
+    const data = getRegulationData();
+    const lastScan = getLastScanResult();
+
+    // Build coverage map: checkId → true if covered
+    const coveredChecks = new Set<string>();
+    if (lastScan) {
+      for (const f of lastScan.findings) {
+        if (f.type === 'pass' || f.type === 'info') {
+          coveredChecks.add(f.checkId);
+        }
+      }
+    }
+
+    let obligations = data.obligations.obligations;
+
+    // Role filter — strict: when filtering by a specific role, only include that role (not 'both')
+    if (args.role && args.role !== 'both') {
+      obligations = obligations.filter((o) => o.applies_to_role === args.role);
+    }
+
+    // Risk level filter
+    if (args.riskLevel) {
+      obligations = obligations.filter((o) =>
+        o.applies_to_risk_level.includes(args.riskLevel!),
+      );
+    }
+
+    const enriched = obligations.map((o) => {
+      const isCovered = coveredChecks.has(o.obligation_id) ||
+        (lastScan?.findings.some((f) =>
+          f.obligationId === o.obligation_id && f.type === 'pass',
+        ) ?? false);
+
+      const coverage = args.coverage === 'covered'
+        ? 'covered'
+        : args.coverage === 'uncovered'
+          ? 'uncovered'
+          : isCovered
+            ? 'covered'
+            : 'uncovered';
+
+      return { ...o, coverage };
+    });
+
+    // Apply coverage filter (only after enrichment)
+    const filtered = args.coverage && args.coverage !== 'all'
+      ? enriched.filter((o) => o.coverage === args.coverage)
+      : enriched;
+
+    return {
+      content: [{
+        type: 'text' as const,
+        text: JSON.stringify({
+          total: filtered.length,
+          obligations: filtered,
+        }, null, 2),
+      }],
+    };
+  };
+
   return Object.freeze({
     complior_scan,
     complior_fix,
@@ -259,6 +555,12 @@ export const createMcpHandlers = (deps: McpHandlerDeps) => {
     complior_search_tool,
     complior_classify,
     complior_report,
+    complior_passport_init,
+    complior_doc_generate,
+    complior_redteam,
+    complior_evidence_verify,
+    complior_drift_detect,
+    complior_obligations_status,
   });
 };
 
