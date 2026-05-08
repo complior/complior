@@ -68,6 +68,52 @@ export const createMcpServer = (deps: McpServerDeps) => {
     async (args) => handlers.complior_report(args),
   );
 
+  // ── V2-M02 Phase 2.1 — Builder tools ───────────────────────────────
+
+  server.tool(
+    'complior_passport_init',
+    MCP_TOOL_SCHEMAS.complior_passport_init.description,
+    MCP_TOOL_SCHEMAS.complior_passport_init.inputSchema,
+    async (args) => handlers.complior_passport_init(args),
+  );
+
+  server.tool(
+    'complior_doc_generate',
+    MCP_TOOL_SCHEMAS.complior_doc_generate.description,
+    MCP_TOOL_SCHEMAS.complior_doc_generate.inputSchema,
+    async (args) => handlers.complior_doc_generate(args),
+  );
+
+  server.tool(
+    'complior_redteam',
+    MCP_TOOL_SCHEMAS.complior_redteam.description,
+    MCP_TOOL_SCHEMAS.complior_redteam.inputSchema,
+    async (args) => handlers.complior_redteam(args),
+  );
+
+  // ── V2-M02 Phase 2.2 — Analytics tools ─────────────────────────────
+
+  server.tool(
+    'complior_evidence_verify',
+    MCP_TOOL_SCHEMAS.complior_evidence_verify.description,
+    MCP_TOOL_SCHEMAS.complior_evidence_verify.inputSchema,
+    async (args) => handlers.complior_evidence_verify(args),
+  );
+
+  server.tool(
+    'complior_drift_detect',
+    MCP_TOOL_SCHEMAS.complior_drift_detect.description,
+    MCP_TOOL_SCHEMAS.complior_drift_detect.inputSchema,
+    async (args) => handlers.complior_drift_detect(args),
+  );
+
+  server.tool(
+    'complior_obligations_status',
+    MCP_TOOL_SCHEMAS.complior_obligations_status.description,
+    MCP_TOOL_SCHEMAS.complior_obligations_status.inputSchema,
+    async (args) => handlers.complior_obligations_status(args),
+  );
+
   const start = async (): Promise<void> => {
     const transport = new StdioServerTransport();
     await server.connect(transport);
