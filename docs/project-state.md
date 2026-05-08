@@ -1,9 +1,11 @@
 # Project State — Complior v8
 
 **Updated:** 2026-05-08
-**Updated by:** Architect (post-merge V2-M02 → dev, CI ✅ GREEN)
-**Version:** 0.10.0 (Cargo.toml workspace + package.json) — pending 1.1.0 bump for V2-M02 release
-**Branch:** `dev` (V2-M02 merged via PR #36 commit `9347e3d`, CI run 25580846785 GREEN — Detect changes / Version Consistency / Engine typecheck+lint+test / npm audit / All Checks Passed; Rust jobs skipped per paths-filter — no Rust changes in this PR)
+**Updated by:** Architect (post-merge V2-M02.1 → dev, CI ✅ GREEN)
+**Version:** 0.10.0 (Cargo.toml workspace + package.json) — pending 1.1.0 bump for V2-M02 + V2-M02.1 release
+**Branch:** `dev` — most recent merges:
+- V2-M02 PR #36 commit `9347e3d` (CI run 25580846785 ✅)
+- V2-M02.1 PR #37 commit (CI run 25584799529 ✅) — `complior_explain` Art./Article normalization hotfix surfaced via V2-M02 live E2E
 
 ---
 
@@ -11,13 +13,14 @@
 
 | Component | Status | Tests |
 |-----------|--------|-------|
-| TS Engine (`engine/core/`) | ✅ GREEN | 2525 passed, 0 failed, 2 skipped (210 files) — V2-M02 adds 32 net new (29 MCP + 4 schema - 1 rewritten legacy) |
+| TS Engine (`engine/core/`) | ✅ GREEN | 2533 passed, 0 failed, 2 skipped (210 files) — V2-M02 adds 32 net new (29 MCP + 4 schema - 1 rewritten legacy); V2-M02.1 adds 8 more (Art./Article normalization) |
 | Rust CLI (`cli/`) | ✅ GREEN | 230 passed, 0 failed, clippy clean, fmt clean |
 | tsc --noEmit | PASS | — |
 | cargo clippy --all-targets -D warnings | PASS | — |
 | cargo fmt --check | ✅ PASS | TD-66 resolved by V1-M30.9 follow-up (commit `d1579ce`) |
 | SDK (`engine/sdk/`) | Not in this repo | — |
 
+**V2-M02.1 new tests: 8 (4 RED→GREEN for "Art. X" short form + 4 GREEN regression fences for "Article X" / OBL-id / title keyword / unknown article) — all RED→GREEN, no test modifications by dev. 1 file changed (handlers.ts +9/-1): pure `normalize()` helper inside `complior_explain` closure collapses Art./Article prefix to canonical form. Zero handler signature changes; existing OBL-id and title keyword paths preserved. Bug-1 surfaced by V2-M02 live E2E (Bug-2 evidence-verify quirk deferred to TD as pre-existing).**
 **V2-M02 new tests: 29 RED→GREEN + 8 legacy stay GREEN = 37 total — all RED→GREEN, no test modifications by dev. 5 files changed (+1334/-23 LOC): handlers.ts (+304), server.ts (+46), create-mcp-stack.ts (+4), composition-root.ts (+25), server.ts (+6). 6 new MCP tools (7→13): passport_init, doc_generate, redteam, evidence_verify, drift_detect, obligations_status. 0 breaking changes to existing 7 tools.**
 **V1-M30.11 new tests: 3 RED→GREEN (doc_generate_error_tests — 3 static-source) + 1 pre-existing sanity = 4 total — all RED→GREEN, no test modifications by dev. 3 files changed (+45/-4 LOC): fix.rs, doc.rs, scan.rs — all in `cli/src/headless/`. Consistent `result.get("error")` pattern across all 3 doc-generate handlers + git stderr truncation with "not a git repository" friendly detection.**
 **V1-M30.10 new tests: 5 RED→GREEN (predicted_score_cap_tests — 2 RED static-source + 3 GREEN invariant) — all RED→GREEN, no test modifications by dev. ROOT-CAUSE fix that V1-M30.9 missed: V1-M30.9 only patched the OFFLINE fallback (`fix.rs:119`); the CONNECTED branch via `engine_client::fix_dry_run` still capped at 100.0. Diff is exactly 2 insertions / 1 deletion in `cli/src/engine_client.rs` (import + literal swap to `MAX_PREDICTED_SCORE`).**
@@ -96,7 +99,8 @@
 | V1-M30.9 | Mini-hotfix: 3 remaining bugs (Rust docs literals, enrich action type, predictedScore cap 99) | `feature/V1-M30.9-mini-hotfix` | DONE (merged to dev — TD-66 fmt fix in `d1579ce`; W-3 OFFLINE-only patch — root cause closed by V1-M30.10) |
 | V1-M30.10 | Mini-hotfix: cap engine_client::fix_dry_run predictedScore at MAX_PREDICTED_SCORE (=99) — closes W-3 root cause | `dev` | DONE (merged PR #29 → dev, CI ✅ GREEN — awaiting final /deep-e2e to verify W-3 evidence and v1.0.0 release prep) |
 | V1-M30.11 | Mini-hotfix: fix --doc swallows engine errors + scan --diff dumps git --help | `feature/V1-M30.11-doc-generate-error-handling` | DONE (reviewer APPROVED, ready for PR) |
-| V2-M02 | MCP Enrichment (7→13 tools: passport, doc-gen, redteam, evidence, drift, obligations) | `dev` | DONE (merged PR #36 → dev, CI ✅ GREEN — T-13 Mintlify staged in `~/complior_doc/` awaiting commit; T-14 FA-08 ✅ done; T-15 smoke script ✅ done & verified 13/13; version bump deferred to release/v1.1.0 branch) |
+| V2-M02 | MCP Enrichment (7→13 tools: passport, doc-gen, redteam, evidence, drift, obligations) | `dev` | DONE (merged PR #36 → dev, CI ✅ GREEN — T-13 Mintlify ✅ committed `~/complior_doc/` commit `90189d9`; T-14 FA-08 ✅ done; T-15 smoke script ✅ done & verified 13/13; version bump deferred to release/v1.1.0 branch) |
+| V2-M02.1 | Hotfix: `complior_explain` Art./Article normalization (Bug-1 surfaced via V2-M02 live E2E) | `dev` | DONE (merged PR #37 → dev, CI ✅ GREEN — 8 new tests, 9-line normalize() helper, ships in same v1.1.0 release) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
