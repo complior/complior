@@ -1,9 +1,9 @@
 # Project State — Complior v8
 
-**Updated:** 2026-05-07
-**Updated by:** Reviewer (V2-M02 review — APPROVED)
-**Version:** 0.10.0 (Cargo.toml workspace + package.json) — pending 1.1.0 bump with V2-M02
-**Branch:** `feature/V2-M02-mcp-enrichment` (review complete, ready for architect post-GREEN tasks + PR → dev)
+**Updated:** 2026-05-08
+**Updated by:** Architect (post-merge V2-M02 → dev, CI ✅ GREEN)
+**Version:** 0.10.0 (Cargo.toml workspace + package.json) — pending 1.1.0 bump for V2-M02 release
+**Branch:** `dev` (V2-M02 merged via PR #36 commit `9347e3d`, CI run 25580846785 GREEN — Detect changes / Version Consistency / Engine typecheck+lint+test / npm audit / All Checks Passed; Rust jobs skipped per paths-filter — no Rust changes in this PR)
 
 ---
 
@@ -96,7 +96,7 @@
 | V1-M30.9 | Mini-hotfix: 3 remaining bugs (Rust docs literals, enrich action type, predictedScore cap 99) | `feature/V1-M30.9-mini-hotfix` | DONE (merged to dev — TD-66 fmt fix in `d1579ce`; W-3 OFFLINE-only patch — root cause closed by V1-M30.10) |
 | V1-M30.10 | Mini-hotfix: cap engine_client::fix_dry_run predictedScore at MAX_PREDICTED_SCORE (=99) — closes W-3 root cause | `dev` | DONE (merged PR #29 → dev, CI ✅ GREEN — awaiting final /deep-e2e to verify W-3 evidence and v1.0.0 release prep) |
 | V1-M30.11 | Mini-hotfix: fix --doc swallows engine errors + scan --diff dumps git --help | `feature/V1-M30.11-doc-generate-error-handling` | DONE (reviewer APPROVED, ready for PR) |
-| V2-M02 | MCP Enrichment (7→13 tools: passport, doc-gen, redteam, evidence, drift, obligations) | `feature/V2-M02-mcp-enrichment` | DONE (reviewer APPROVED — pending architect post-GREEN: T-13 Mintlify, T-14 FA-08, T-15 smoke script, version bump 1.1.0) |
+| V2-M02 | MCP Enrichment (7→13 tools: passport, doc-gen, redteam, evidence, drift, obligations) | `dev` | DONE (merged PR #36 → dev, CI ✅ GREEN — T-13 Mintlify staged in `~/complior_doc/` awaiting commit; T-14 FA-08 ✅ done; T-15 smoke script ✅ done & verified 13/13; version bump deferred to release/v1.1.0 branch) |
 | G-M02.5 | Remediation Pipeline (Guard integration) | `feature/G-M02.5-remediation-pipeline` | RED (T-7 pending) |
 
 ---
