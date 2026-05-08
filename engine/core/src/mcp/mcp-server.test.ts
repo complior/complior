@@ -611,3 +611,127 @@ describe('complior_obligations_status handler', () => {
     expect(r1.content[0].text).toBe(r2.content[0].text);
   });
 });
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 5 — V2-M02.1 hotfix: complior_explain article-format normalization
+// ════════════════════════════════════════════════════════════════
+//
+// Bug surfaced via V2-M02 live E2E (2026-05-08): tool description tells AI
+// agents to use the "Art. 50" form, but production data uses "Article 50(1)".
+// Substring match in the handler returned no results because "art. 50" is
+// not a substring of "article 50".
+//
+// Fix spec: handler must normalize Art./Article forms in BOTH directions, so
+// either query form ("Art. 50" or "Article 50") matches either data form.
+// This block uses production-shape obligations data ("Article 4", "Article
+// 50(1)") to RED the substring-only handler. After the fix is applied, both
+// query forms must find the same matches deterministically.
+
+describe('complior_explain — production article-format normalization (V2-M02.1)', () => {
+  // Mock with production-shape data: "Article 4", "Article 50(1)" — same
+  // format as engine/core/data/regulations/eu-ai-act/obligations.json.
+  const productionFormatHandlers = createMcpHandlers({
+    ...baseDeps(),
+    getRegulationData: () =>
+      ({
+        obligations: {
+          obligations: [
+            {
+              obligation_id: 'eu-ai-act-OBL-001',
+              article_reference: 'Article 4',
+              title: 'AI Literacy',
+              description: 'Train staff to operate and oversee AI systems',
+              applies_to_role: 'both',
+              applies_to_risk_level: ['high', 'limited'],
+              obligation_type: 'process',
+              what_to_do: ['Train staff'],
+              severity: 'high',
+              deadline: '2025-02-02',
+            },
+            {
+              obligation_id: 'eu-ai-act-OBL-014',
+              article_reference: 'Article 50(1)',
+              title: 'Transparency: AI System Disclosure',
+              description: 'Disclose AI nature in user-facing interactions',
+              applies_to_role: 'provider',
+              applies_to_risk_level: ['limited'],
+              obligation_type: 'transparency',
+              what_to_do: ['Disclose AI'],
+              severity: 'high',
+              deadline: '2026-08-02',
+            },
+            {
+              obligation_id: 'eu-ai-act-OBL-013',
+              article_reference: 'Article 27',
+              title: 'Fundamental Rights Impact Assessment',
+              description: 'Conduct FRIA before deployment',
+              applies_to_role: 'deployer',
+              applies_to_risk_level: ['high'],
+              obligation_type: 'assessment',
+              what_to_do: ['Run FRIA'],
+              severity: 'critical',
+              deadline: '2026-08-02',
+            },
+          ],
+        },
+        scoring: {},
+      }) as never,
+  });
+
+  it('finds Article 50 obligations when query is "Art. 50" (short form)', async () => {
+    const result = await productionFormatHandlers.complior_explain({ article: 'Art. 50' });
+    const data = JSON.parse(result.content[0].text);
+    expect(Array.isArray(data)).toBe(true);
+    expect(data).toHaveLength(1);
+    expect(data[0].id).toBe('eu-ai-act-OBL-014');
+    expect(data[0].article).toBe('Article 50(1)');
+  });
+
+  it('finds Article 50 obligations when query is "Article 50" (long form)', async () => {
+    const result = await productionFormatHandlers.complior_explain({ article: 'Article 50' });
+    const data = JSON.parse(result.content[0].text);
+    expect(data).toHaveLength(1);
+    expect(data[0].id).toBe('eu-ai-act-OBL-014');
+  });
+
+  it('produces identical results for "Art. X" and "Article X" queries (deterministic normalization)', async () => {
+    const r1 = await productionFormatHandlers.complior_explain({ article: 'Art. 27' });
+    const r2 = await productionFormatHandlers.complior_explain({ article: 'Article 27' });
+    expect(r1.content[0].text).toBe(r2.content[0].text);
+  });
+
+  it('finds Article 4 when query is "Art. 4" (regression for short numbers)', async () => {
+    const result = await productionFormatHandlers.complior_explain({ article: 'Art. 4' });
+    const data = JSON.parse(result.content[0].text);
+    expect(data).toHaveLength(1);
+    expect(data[0].id).toBe('eu-ai-act-OBL-001');
+    expect(data[0].title).toBe('AI Literacy');
+  });
+
+  it('handles "Art." with no space ("Art.50") — same result as "Art. 50"', async () => {
+    const r1 = await productionFormatHandlers.complior_explain({ article: 'Art.50' });
+    const r2 = await productionFormatHandlers.complior_explain({ article: 'Art. 50' });
+    const d1 = JSON.parse(r1.content[0].text);
+    const d2 = JSON.parse(r2.content[0].text);
+    expect(d1).toEqual(d2);
+  });
+
+  it('still finds obligations by OBL-xxx id (no regression)', async () => {
+    const result = await productionFormatHandlers.complior_explain({ article: 'OBL-014' });
+    const data = JSON.parse(result.content[0].text);
+    expect(data).toHaveLength(1);
+    expect(data[0].id).toBe('eu-ai-act-OBL-014');
+  });
+
+  it('still finds obligations by title keyword (no regression)', async () => {
+    const result = await productionFormatHandlers.complior_explain({ article: 'Literacy' });
+    const data = JSON.parse(result.content[0].text);
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe('AI Literacy');
+  });
+
+  it('returns helpful error string for genuinely unknown article', async () => {
+    const result = await productionFormatHandlers.complior_explain({ article: 'Article 999' });
+    expect(result.content[0].text).toMatch(/no obligation found/i);
+  });
+});

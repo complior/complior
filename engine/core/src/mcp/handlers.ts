@@ -145,10 +145,18 @@ export const createMcpHandlers = (deps: McpHandlerDeps) => {
     const data = getRegulationData();
     const query = args.article.toLowerCase();
 
+    // V2-M02.1: normalize Art./Article forms in both directions so that
+    // queries like "Art. 50", "Article 50", "Art.50" (no space), "art 50"
+    // all match production data like "Article 50(1)". Pure transform —
+    // collapses any "Art.", "Art", "Article" prefix to canonical "article ".
+    const normalize = (s: string): string =>
+      s.toLowerCase().replace(/^\s*art(?:\.|icle)?\s*/i, 'article ').trim();
+    const queryCanonical = normalize(args.article);
+
     // Search obligations
     const matches = data.obligations.obligations.filter((o: Obligation) =>
       o.obligation_id.toLowerCase().includes(query) ||
-      o.article_reference.toLowerCase().includes(query) ||
+      normalize(o.article_reference).includes(queryCanonical) ||
       o.title.toLowerCase().includes(query),
     );
 
