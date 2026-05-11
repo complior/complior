@@ -735,3 +735,174 @@ describe('complior_explain — production article-format normalization (V2-M02.1
     expect(result.content[0].text).toMatch(/no obligation found/i);
   });
 });
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 6 — V2-M02.2 hotfix: complior_evidence_verify output clarity
+// ════════════════════════════════════════════════════════════════
+//
+// Bug-2 surfaced via V2-M02 live E2E (2026-05-08): the handler returns
+// `valid: true` while `issues: ["Entry N: signature mismatch — ..."]` for
+// every entry — output looks self-contradictory to AI agents.
+//
+// Root cause (engine/core/src/domain/scanner/evidence-store.ts:232-243):
+// signature mismatches are a SOFT failure by design (key rotation, HMAC
+// genesis vs ed25519 entries are legitimate). Store semantics are correct;
+// the MCP handler shape is what's confusing.
+//
+// Fix spec: partition `verifyResult.issues` into `structuralIssues` (broken
+// link / hash mismatch / missing genesis) and `signatureIssues` (soft key
+// warnings). Add `structurallyValid`, `signaturesIntact` booleans plus a
+// human-readable `summary` string. Keep `valid` and `issues` for backward
+// compatibility with v1.1.0 early adopters.
+
+describe('complior_evidence_verify — output clarity (V2-M02.2)', () => {
+  // Healthy chain — both structural + signatures OK
+  const healthyHandlers = createMcpHandlers({
+    ...baseDeps(),
+    evidenceStore: {
+      verify: async () => ({ valid: true, issues: Object.freeze([]) }),
+      getSummary: async () =>
+        Object.freeze({
+          totalEntries: 12,
+          scanCount: 3,
+          firstEntry: '2026-04-01T00:00:00Z',
+          lastEntry: '2026-05-07T00:00:00Z',
+          chainValid: true,
+          uniqueFindings: 8,
+        }),
+    } as never,
+  });
+
+  // Key-rotation chain — structurally valid, but signatures from different keys
+  // (the Bug-2 case observed in E2E)
+  const keyRotationHandlers = createMcpHandlers({
+    ...baseDeps(),
+    evidenceStore: {
+      verify: async () => ({
+        valid: true,
+        issues: Object.freeze([
+          'Entry 0: signature mismatch — entry signed by a different key (or tampered)',
+          'Entry 1: signature mismatch — entry signed by a different key (or tampered)',
+          'Entry 2: signature mismatch — entry signed by a different key (or tampered)',
+        ]),
+      }),
+      getSummary: async () =>
+        Object.freeze({
+          totalEntries: 3,
+          scanCount: 2,
+          firstEntry: '2026-05-01T00:00:00Z',
+          lastEntry: '2026-05-08T00:00:00Z',
+          chainValid: true,
+          uniqueFindings: 3,
+        }),
+    } as never,
+  });
+
+  // Structural break — hash mismatch (chain tampered)
+  const tamperedHandlers = createMcpHandlers({
+    ...baseDeps(),
+    evidenceStore: {
+      verify: async () => ({
+        valid: false,
+        brokenAt: 4,
+        issues: Object.freeze([
+          'Entry 4: hash mismatch — evidence content may have been modified after recording',
+        ]),
+      }),
+      getSummary: async () =>
+        Object.freeze({
+          totalEntries: 10,
+          scanCount: 2,
+          firstEntry: '2026-04-01T00:00:00Z',
+          lastEntry: '2026-05-07T00:00:00Z',
+          chainValid: false,
+          uniqueFindings: 5,
+        }),
+    } as never,
+  });
+
+  it('healthy chain — both structurallyValid and signaturesIntact are true', async () => {
+    const result = await healthyHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.structurallyValid).toBe(true);
+    expect(data.signaturesIntact).toBe(true);
+    expect(data.structuralIssues).toEqual([]);
+    expect(data.signatureIssues).toEqual([]);
+  });
+
+  it('healthy chain — summary text says "All signatures verified"', async () => {
+    const result = await healthyHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.summary).toMatch(/structurally valid.*12 entries.*3 scans/i);
+    expect(data.summary).toMatch(/all signatures verified/i);
+  });
+
+  it('key-rotation chain — structurallyValid=true but signaturesIntact=false', async () => {
+    const result = await keyRotationHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.structurallyValid).toBe(true);
+    expect(data.signaturesIntact).toBe(false);
+    expect(data.structuralIssues).toEqual([]);
+    expect(data.signatureIssues).toHaveLength(3);
+  });
+
+  it('key-rotation chain — summary explains "key rotation or session change, not tampering"', async () => {
+    const result = await keyRotationHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.summary).toMatch(/3 signature warnings/i);
+    expect(data.summary).toMatch(/key rotation|session change|not tampering/i);
+  });
+
+  it('tampered chain — structurallyValid=false with brokenAt index', async () => {
+    const result = await tamperedHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.structurallyValid).toBe(false);
+    expect(data.brokenAt).toBe(4);
+    expect(data.structuralIssues).toHaveLength(1);
+    expect(data.structuralIssues[0]).toMatch(/hash mismatch/i);
+  });
+
+  it('tampered chain — summary says "BROKEN at entry 4"', async () => {
+    const result = await tamperedHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.summary).toMatch(/broken at entry 4/i);
+  });
+
+  it('backward compat — preserves `valid` field as alias for structurallyValid', async () => {
+    const healthy = JSON.parse(
+      (await healthyHandlers.complior_evidence_verify({})).content[0].text,
+    );
+    const rotated = JSON.parse(
+      (await keyRotationHandlers.complior_evidence_verify({})).content[0].text,
+    );
+    const tampered = JSON.parse(
+      (await tamperedHandlers.complior_evidence_verify({})).content[0].text,
+    );
+    expect(healthy.valid).toBe(healthy.structurallyValid);
+    expect(rotated.valid).toBe(rotated.structurallyValid);
+    expect(tampered.valid).toBe(tampered.structurallyValid);
+  });
+
+  it('backward compat — preserves combined `issues` field (structural + signature)', async () => {
+    const result = await keyRotationHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    // legacy `issues` array must equal structuralIssues ++ signatureIssues
+    expect(data.issues).toEqual([...data.structuralIssues, ...data.signatureIssues]);
+    expect(data.issues).toHaveLength(3);
+  });
+
+  it('summary fields (totalEntries, scanCount, firstEntry, lastEntry) preserved', async () => {
+    const result = await healthyHandlers.complior_evidence_verify({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.totalEntries).toBe(12);
+    expect(data.scanCount).toBe(3);
+    expect(data.firstEntry).toBe('2026-04-01T00:00:00Z');
+    expect(data.lastEntry).toBe('2026-05-07T00:00:00Z');
+  });
+
+  it('is deterministic (same input → byte-identical output)', async () => {
+    const r1 = await keyRotationHandlers.complior_evidence_verify({});
+    const r2 = await keyRotationHandlers.complior_evidence_verify({});
+    expect(r1.content[0].text).toBe(r2.content[0].text);
+  });
+});
