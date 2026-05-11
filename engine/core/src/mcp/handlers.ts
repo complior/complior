@@ -426,13 +426,59 @@ export const createMcpHandlers = (deps: McpHandlerDeps) => {
         evidenceStore.getSummary(),
       ]);
 
+      // V2-M02.2 — partition issues into structural vs signature.
+      // Signature mismatches are SOFT failures by design (key rotation,
+      // HMAC genesis vs ed25519 entries are legitimate). Structural issues
+      // (broken-link / hash-mismatch / missing-genesis) are HARD failures.
+      // Pure string partition — no evidence-store changes.
+      const signatureIssues: readonly string[] = verifyResult.issues.filter(
+        (msg) => /signature mismatch/i.test(msg),
+      );
+      const structuralIssues: readonly string[] = verifyResult.issues.filter(
+        (msg) => !/signature mismatch/i.test(msg),
+      );
+
+      const structurallyValid = verifyResult.valid;
+      const signaturesIntact = signatureIssues.length === 0;
+
+      // Compose human-readable summary covering 4 cases:
+      // empty / tampered (structural break) / key-rotation / healthy.
+      const buildSummary = (): string => {
+        if (summary.totalEntries === 0) {
+          return 'Empty evidence chain (no scans recorded yet).';
+        }
+        if (!structurallyValid) {
+          const firstStructural = structuralIssues[0] ?? 'unknown structural error';
+          const at = verifyResult.brokenAt;
+          return at !== undefined
+            ? `Chain BROKEN at entry ${at}: ${firstStructural}.`
+            : `Chain BROKEN: ${firstStructural}.`;
+        }
+        const base = `Chain structurally valid (${summary.totalEntries} entries, ${summary.scanCount} scans).`;
+        if (signaturesIntact) {
+          return `${base} All signatures verified.`;
+        }
+        return `${base} ${signatureIssues.length} signature warnings — signed by different keys (key rotation or session change, not tampering).`;
+      };
+
+      // Combined `issues` keeps backward-compat ordering: structural first, then signature.
+      const combinedIssues: readonly string[] = [...structuralIssues, ...signatureIssues];
+
       return {
         content: [{
           type: 'text' as const,
           text: JSON.stringify({
-            valid: verifyResult.valid,
+            // Backward-compat fields
+            valid: structurallyValid,
             brokenAt: verifyResult.brokenAt,
-            issues: verifyResult.issues,
+            issues: combinedIssues,
+            // V2-M02.2 explicit fields
+            structurallyValid,
+            signaturesIntact,
+            structuralIssues,
+            signatureIssues,
+            summary: buildSummary(),
+            // Summary fields (unchanged)
             totalEntries: summary.totalEntries,
             scanCount: summary.scanCount,
             firstEntry: summary.firstEntry,
